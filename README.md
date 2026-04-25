@@ -1,17 +1,18 @@
-# claude-gh-task-manager
+# CC Github Project Task Manager
+
+repo: [claude-gh-task-manager](https://github.com/kburson/claude-gh-task-manager)
 
 A Claude Code `/task` skill that binds your AI work sessions to GitHub issues and automatically logs time and context-word usage to a "⏱ Timing Log" comment on each issue.
 
-## What it does
+## Why use it
 
-- **`/task #42`** — Start working on issue #42. The AI assistant displays the issue details, moves it to "In Progress" on your Kanban board, and begins tracking time.
-- **`/task pause`** — Flush elapsed time to the GitHub comment and pause.
-- **`/task end`** — Stop tracking and clear the active task.
-- **`/task new [title]`** — Create a new GitHub issue and start working on it.
-- **`/task status`** — Show active task, elapsed active minutes, and words since last marker.
-- **`/task config`** — View or set config values.
+AI coding sessions work best when they're focused on a single, well-scoped problem. But real projects aren't like that — a plan expands, bugs surface mid-implementation, scope creeps, and "one more thing" features accumulate. Without a system to capture and queue that work, discoveries get lost or derail the current thread.
 
-Time and context words are logged automatically on every Claude compaction and session start via hooks, so data is never lost even in long sessions.
+`/task` connects Claude Code to a GitHub Issues backlog so that surfaced work goes somewhere. When you spot a defect or a follow-on feature mid-session, `/task new` captures it as an issue without interrupting your flow. When the current thread is done, you switch to the next queued item with `/task #N`. The timing log records how long you were actively engaged with Claude on each issue, along with the volume of chat context you read and wrote during the session — useful for estimation, reporting, and understanding where AI acceleration is (and isn't) happening.
+
+It's especially valuable for long multi-step plans: break the work into issues up front, work them in order, and let the skill handle Kanban state transitions and time tracking automatically.
+
+Time and context words are logged automatically on every Claude compaction and session start via hooks, so data is never lost in long sessions — **unless you use `/clear`** (see [Session Management](#session-management) below).
 
 ## Prerequisites
 
@@ -31,7 +32,7 @@ npx claude-gh-task-manager install
 npx claude-gh-task-manager init
 
 # 3. Commit the generated config and issue templates
-git add .claude/task-tracker.json .github/ISSUE_TEMPLATE/
+git add .claude/task-tracker.json` .github/ISSUE_TEMPLATE/
 git commit -m "chore: add claude-gh-task-manager"
 
 # 4. Open Claude Code and start tracking
@@ -42,13 +43,13 @@ git commit -m "chore: add claude-gh-task-manager"
 
 | Command | Description |
 |---|---|
+| `/task` | Show active task, elapsed minutes, and word count (default when no args given) |
 | `/task #N` | Switch to issue #N, display it, move board to In Progress |
 | `/task new [title]` | Create a new issue and start tracking it |
-| `/task plan` | Open an untracked planning bucket (no issue yet) |
+| `/task plan` | Start a planning-phase timer before a GitHub issue exists. When you later run `/task new`, the issue is created from the plan and inherits the timing data. |
 | `/task start` | Resume the last active task |
 | `/task pause` | Flush timing, pause (keeps last-active for resume) |
 | `/task end` | Flush timing, clear active task |
-| `/task status` | Show active task, elapsed minutes, and word count |
 | `/task config` | List all config values with sources |
 | `/task config <key> <value>` | Set a config value project-locally |
 
@@ -108,6 +109,37 @@ Active minutes exclude idle gaps (configurable via `idleThresholdMinutes`).
 
 Hooks flush data on every compaction, so long sessions spanning multiple compactions are fully captured.
 
+## Session Management
+
+### `/compact` vs `/clear`
+
+| | `/compact` | `/clear` |
+|---|---|---|
+| **Token cost** | ~2k tokens to summarize | ~50k tokens to reload fresh session context (can be trimmed to ~20k with a lean config) |
+| **Context** | Summarizes and continues current thread | Flushes everything; starts a new thread |
+| **Hooks** | Triggers PreCompact + PostCompact hooks | **Bypasses all hooks** |
+| **Timing data** | Flushed safely before compaction | Lost if not manually paused first |
+| **When to use** | Working in the same task/thread | Starting completely unrelated work |
+
+> **What loads on a fresh session:** CLAUDE.md, MEMORY.md, all active skill definitions, MCP server manifests, and any project-level settings — before a single message is exchanged.
+
+**Default to `/compact`.** It costs ~25x fewer tokens and keeps your timing data intact.
+
+Only use `/clear` when you genuinely need a clean slate — a different project, a context-poisoned session, or a fresh debugging thread with no carryover.
+
+### Before you `/clear`
+
+`/clear` bypasses hooks. Any time logged since the last flush (start, pause, or compaction) will be lost.
+
+Always run `/task pause` first:
+
+```
+/task pause
+/clear
+```
+
+This flushes elapsed time and context words to the GitHub issue comment before the session is wiped.
+
 ## Issue Templates
 
 `npx claude-gh-task-manager init` creates `.github/ISSUE_TEMPLATE/task.yml` and `bug.yml` with fields for:
@@ -140,21 +172,25 @@ npx claude-gh-task-manager statusline
 
 This installs `~/.claude/statusline.sh` and wires it into `~/.claude/settings.json`. Once active, the CLI header shows `task #42` while a task is running, and goes blank when no task is active.
 
-Requires `jq` (`brew install jq` / `apt install jq`).
+Requires `jq`:
+- **macOS:** `brew install jq`
+- **Linux:** `apt install jq`
+- **Windows:** `winget install jqlang.jq` (or `choco install jq` / `scoop install jq`)
 
 ## Value Report
 
-Generate an HTML/PDF report showing the ROI of AI-assisted development across all tracked issues on your board:
+Generate an HTML report showing the ROI of AI-assisted development across all tracked issues on your board:
 
 ```bash
-# HTML + PDF (requires puppeteer: npm install --save-dev puppeteer)
+# HTML only (default, no extra dependencies)
 npm run report:value
 
-# HTML only (no extra dependencies)
-npm run report:value:html
+# PDF output (requires puppeteer: npm install --save-dev puppeteer)
+# Generates both HTML and PDF
+npm run report:value:pdf
 
 # Filtered to specific issues
-node scripts/reports/generate-value-report.mjs --issues 10,11,12 --html
+node scripts/reports/generate-value-report.mjs --issues 10,11,12
 
 # Override region and role for cost table
 node scripts/reports/generate-value-report.mjs --region sf_bay --role senior

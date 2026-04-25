@@ -2,19 +2,21 @@
 
 ## What This Repo Is
 
-An npm package that installs the `/task` Claude Code skill into any project. The skill binds Claude sessions to GitHub issues and auto-logs time + context words to a "⏱ Timing Log" comment on each issue.
-
-**Source of truth:** Extracted from `kpburson/options-co-pilot` (`ocp-services`). All project-specific hardcoding removed and replaced with config-driven values.
-
----
+An npm package that installs the `/task` Claude Code skill into any project. The skill binds Claude sessions to GitHub issues and auto-logs time + context words to a "⏱ Timing Log" comment on each issue. Requires Node.js v18+ (ES modules) and the GitHub CLI (`gh`).
 
 ## Behavior
 
-Direct, blunt, no filler. Give critical feedback without softening. Only answer confidently — say "unsure" rather than guess. After long explanations or multi-part analysis, stop and wait for user to signal ready. Do not make any changes until you have 95% confidence in what you need to build. Ask follow-up questions until that confidence is reached.
+- Direct, blunt, no filler.
+- Give critical feedback without softening.
+- Only answer confidently — say "unsure" rather than guess.
+- After long explanations or multi-part analysis, stop and wait for user to signal ready. Do not make any changes until you have 95% confidence in what you need to build.
+- Ask follow-up questions until that confidence is reached.
 
 ## Sub-Agents
 
-Before repetitive independent work, ask if user wants parallel sub-agents — name candidates, estimate parallelism, flag shared files. No spawning without approval. Each agent gets a self-contained prompt with STOP conditions.
+- Before repetitive independent work, ask if user wants parallel sub-agents — name candidates, estimate parallelism, flag shared files.
+- No spawning without approval.
+- Each agent gets a self-contained prompt with STOP conditions.
 
 ---
 
@@ -22,28 +24,23 @@ Before repetitive independent work, ask if user wants parallel sub-agents — na
 
 Full rules in `docs/workflow.md`. Quick reference:
 
-- **Always assign new issues to `kburson`** — every `gh issue create` must include `--assignee kburson`.
+- **Always assign new issues to the configured assignee** — every `gh issue create` must include `--assignee <value>`, where `<value>` is the `assignee` key from `.claude/task-tracker.json` (defaults to `@me`, which resolves to the authenticated `gh` user).
 - Move issues through states: `scripts/gh/move-state.sh <issue#> <state>`
 - Set priority: `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]`
-- Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close.
+- Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close. **Note:** GitHub Projects supports only one level of nesting — sub-issues cannot themselves have sub-issues.
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
 - At issue close: set `Actual Session Time` + `Context Length` on board. See `docs/ai-value-framework.md`.
 
 ## Cleanup
 
-Full procedure in `docs/workflow.md` → Cleanup Procedure section. Summary: update docs → update GitHub issues → commit → post-commit updates → value summary (if epic) → `/compact`.
+Full procedure in `docs/workflow.md` → Cleanup Procedure section.
+Summary: update docs → update GitHub issues → commit → post-commit updates → value summary (if epic) → `/compact`.
 
 ---
 
 ## Recommended Claude Settings
 
-See `docs/settings-guide.md` for full setup. Key settings:
-
-- **autoCompactWindow**: `150000` — auto-compact at 150k tokens
-- **outputStyle**: `Concise`
-- **model**: `claude-sonnet-4-6`
-- **Superpowers plugin**: required — install via Claude Code settings
-- **Status line**: shows active `/task` issue in the Claude Code header
+See [`docs/settings-guide.md`](docs/settings-guide.md) for full setup.
 
 ## Recommended Skills (Superpowers)
 
@@ -62,12 +59,6 @@ See `docs/settings-guide.md` for full setup. Key settings:
 | `superpowers:test-driven-development` | When implementing testable features |
 
 ---
-
-## Stack
-
-- Node.js v18+ (ES modules, `"type": "module"`)
-- No framework, no runtime dependencies — pure Node.js + shell
-- GitHub CLI (`gh`) for all GitHub API calls
 
 ## Key Files
 
@@ -89,7 +80,6 @@ See `docs/settings-guide.md` for full setup. Key settings:
 | `scripts/reports/generate-value-report.mjs` | Generates HTML/PDF value report from GitHub Projects data |
 | `scripts/reports/value-report-config.json` | Default config for report (region, role, WPM, output dir) |
 | `scripts/reports/regional-rates.json` | Fully-burdened US engineering rates by region |
-| `plans/roadmap.md` | What's done, what's next, publishing checklist |
 
 ## Tool Usage Rules
 

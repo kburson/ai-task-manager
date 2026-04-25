@@ -11,8 +11,8 @@
     "claude-gh-task-manager": "./bin/cli.mjs"
   },
   "scripts": {
-    "report:value": "node scripts/reports/generate-value-report.mjs",
-    "report:value:html": "node scripts/reports/generate-value-report.mjs --html"
+    "report:value": "node scripts/reports/generate-value-report.mjs --html",
+    "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf"
   },
   "files": [
     "bin/",

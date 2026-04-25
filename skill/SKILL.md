@@ -1,6 +1,6 @@
 ---
 name: task
-description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task followed by #N, new, plan, start, pause, end, status, or config.
+description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task with no args or followed by #N, new, plan, start, pause, end, or config.
 ---
 
 # Task Tracker
@@ -15,13 +15,13 @@ The user types one of these commands. For `/task #N`, always fetch and display t
 
 | Command | Action |
 |---|---|
+| `/task` | **Default (no args)** — print active task, elapsed, words since last marker; equivalent to the old `status` verb |
 | `/task #N` | **Start/switch to issue #N AND display its details.** Invoke CLI, then fetch issue with `gh issue view` and present the title + body to Claude. |
 | `/task new [title]` | Create a new issue and start working on it; promotes any active plan bucket |
 | `/task plan` | Open an untracked planning bucket |
 | `/task start` | Resume the last active task |
 | `/task pause` | Soft-stop — flush timing, keep last-active |
 | `/task end` | Hard-stop — flush timing, clear last-active |
-| `/task status` | Print active task, elapsed, words since last marker |
 | `/task config` | List all config values |
 | `/task config <key> <value>` | Set a config value (project-local) |
 
