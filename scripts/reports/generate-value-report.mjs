@@ -289,7 +289,7 @@ function buildHtml(project, items, s) {
     const ratioClass = ratio == null ? '' : +ratio >= 1.5 ? 'good' : +ratio < 0.8 ? 'over' : 'warn';
     return `<tr>
       <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
-      <td class="title-cell" title="${i.title.replace(/"/g, '&quot;')}">${i.title}</td>
+      <td class="title-cell" title="${i.title.replace(/"/g, '&quot;')}">${i.title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
       <td class="num">${i.estimate ?? '—'}</td>
       <td class="num">${i.sessionMin != null ? i.sessionMin + ' min' : '—'}</td>
       <td class="num">${i.contextWords != null ? i.contextWords.toLocaleString() : '—'}</td>
