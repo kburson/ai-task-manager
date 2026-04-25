@@ -1,0 +1,14 @@
+{
+  "_comment": "Default configuration for generate-value-report.mjs. CLI flags override these values.",
+  "readingWpm": 180,
+  "focusHoursPerDay": 5,
+  "role": "mid",
+  "soloRole": "senior",
+  "_soloRoleComment": "Engineer level used for the Solo Engineer scenario. Default: senior — the minimum level capable of autonomous delivery on non-trivial software.",
+  "seniorEfficiencyFactor": 0.70,
+  "_seniorEfficiencyFactorComment": "Fraction of mid-level hours a senior engineer needs for the same work. 0.70 = senior completes the same scope in 70% of the estimated time.",
+  "region": "national",
+  "_regionComment": "Region ID from regional-rates.json used for headline cost figures. Options: sf_bay | nyc_boston | seattle_denver_austin | chicago_dc_la | south_midwest | national",
+  "outputDir": "./reports",
+  "_outputDirComment": "Directory where value-report.html and value-report.pdf are written. --output flag overrides the full path (including filename)."
+}

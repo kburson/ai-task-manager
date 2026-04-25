@@ -1,0 +1,68 @@
+{
+  "regions": [
+    {
+      "id": "sf_bay",
+      "label": "SF Bay Area / Silicon Valley",
+      "junior": 145,
+      "mid": 210,
+      "senior": 275,
+      "staff": 340
+    },
+    {
+      "id": "nyc_boston",
+      "label": "New York City / Boston",
+      "junior": 130,
+      "mid": 190,
+      "senior": 250,
+      "staff": 315
+    },
+    {
+      "id": "seattle_denver_austin",
+      "label": "Seattle / Denver / Austin",
+      "junior": 120,
+      "mid": 170,
+      "senior": 225,
+      "staff": 285
+    },
+    {
+      "id": "chicago_dc_la",
+      "label": "Chicago / D.C. / Los Angeles",
+      "junior": 115,
+      "mid": 160,
+      "senior": 210,
+      "staff": 265
+    },
+    {
+      "id": "south_midwest",
+      "label": "South / Midwest / Mountain",
+      "junior": 95,
+      "mid": 135,
+      "senior": 180,
+      "staff": 230
+    },
+    {
+      "id": "national",
+      "label": "National Average (US)",
+      "junior": 110,
+      "mid": 150,
+      "senior": 200,
+      "staff": 255
+    }
+  ],
+  "notes": "All rates are fully-burdened: base salary + benefits + equity + tooling + management overhead. Source: Levels.fyi, Radford, internal benchmarks (2025-2026).",
+  "aiCosts": {
+    "claudeSonnet": {
+      "label": "Claude Sonnet 4.x",
+      "inputPerMillion": 3.00,
+      "outputPerMillion": 15.00,
+      "typicalTokensPerComplexIssue": 500000,
+      "humanReviewMinutesPerIssue": 20
+    }
+  },
+  "workday": {
+    "hoursPerDay": 8,
+    "daysPerWeek": 5,
+    "focusedCodingHoursPerDay": 5,
+    "productivityNote": "Engineers average ~5 focused coding hours/day (25 hrs/week). The remaining 3 hrs/day covers standups, PR review, Slack, planning, and context switching."
+  }
+}

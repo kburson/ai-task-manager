@@ -128,6 +128,34 @@ npx claude-gh-task-manager init
 
 Existing config values are merged — only fields discovered during init are overwritten.
 
+## Value Report
+
+Generate an HTML/PDF report showing the ROI of AI-assisted development across all tracked issues on your board:
+
+```bash
+# HTML + PDF (requires puppeteer: npm install --save-dev puppeteer)
+npm run report:value
+
+# HTML only (no extra dependencies)
+npm run report:value:html
+
+# Filtered to specific issues
+node scripts/reports/generate-value-report.mjs --issues 10,11,12 --html
+
+# Override region and role for cost table
+node scripts/reports/generate-value-report.mjs --region sf_bay --role senior
+```
+
+The report reads `projectId` and `repo` from `.claude/task-tracker.json` automatically. It pulls `Estimate`, `Actual Session Time`, and `Context Length` from your GitHub Projects board and calculates:
+
+- **Engaged Hours** = session minutes + human reading time (context words ÷ WPM)
+- **Estimated Acceleration** = Estimate ÷ Engaged Hours
+- **Value ratios** vs budget baseline, solo senior engineer, and enterprise team costs
+
+Configure defaults in `scripts/reports/value-report-config.json` (region, role, reading WPM, output directory).
+
+See [docs/ai-value-framework.md](docs/ai-value-framework.md) for the full methodology.
+
 ## Troubleshooting
 
 **`task-tracker not configured`** — Run `npx claude-gh-task-manager init`.

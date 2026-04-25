@@ -244,7 +244,7 @@ At the end of every feature or epic, post this summary as a comment on the paren
 **Value delivered / reading-time cost:** ~XXX×
 ```
 
-Query to pull estimates and measurements from your board:
+Run the report script to pull estimates and measurements automatically, or query the board directly:
 
 ```bash
 gh api graphql -f query='

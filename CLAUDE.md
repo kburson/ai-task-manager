@@ -85,6 +85,9 @@ See `docs/settings-guide.md` for full setup. Key settings:
 | `docs/workflow.md` | GitHub Issues, Kanban, estimates, cleanup — full workflow rules |
 | `docs/settings-guide.md` | Recommended Claude Code settings |
 | `docs/ai-value-framework.md` | ROI measurement model, sizing guide, session log template |
+| `scripts/reports/generate-value-report.mjs` | Generates HTML/PDF value report from GitHub Projects data |
+| `scripts/reports/value-report-config.json` | Default config for report (region, role, WPM, output dir) |
+| `scripts/reports/regional-rates.json` | Fully-burdened US engineering rates by region |
 | `plans/roadmap.md` | What's done, what's next, publishing checklist |
 
 ## Tool Usage Rules
