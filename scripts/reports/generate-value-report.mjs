@@ -552,8 +552,7 @@ td a:hover{text-decoration:underline}
         <h3>AI-Assisted Cost (measured)</h3>
         <div class="crow"><span class="cl">Budget baseline (engaged ${totalEh} @ ${$(natMid)}/hr ${cfg.role})</span><span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natMid) : '—'}</span></div>
         <div class="crow"><span class="cl">Solo ${cfg.soloRole} equivalent (engaged ${totalEh} @ ${$(natSr)}/hr)</span><span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natSr) : '—'}</span></div>
-        <div class="crow" style="margin-top:.625rem"><span class="cl">Claude subscription</span><span class="cv">flat rate (not metered)</span></div>
-        <div class="crow"><span class="cl">Human reading time (${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm)</span><span class="cv">${readingH > 0 ? fmtMin(readingH) : '—'}</span></div>
+        <div class="crow" style="margin-top:.625rem"><span class="cl">Human reading time (${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm)</span><span class="cv">${readingH > 0 ? fmtMin(readingH) : '—'}</span></div>
         <div class="crow"><span class="cl">Session time (AI active)</span><span class="cv">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</span></div>
         <div class="crow"><span class="cl">Total engaged time</span><span class="cv">${totalEh}</span></div>
         <div class="crow" style="font-weight:700"><span class="cl">Measurable human cost (reading time × ${$(natMid)}/hr)</span><span class="cv good">${$(readingCost)}</span></div>
