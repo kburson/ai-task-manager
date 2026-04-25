@@ -262,8 +262,11 @@ function buildHtml(project, items, s) {
   const soloCost       = soloHours * natSr;
   const enterpriseCost = (s.totalEst / 0.50) * natSr * 1.30;
 
-  const fmtDuration = w => w <= 0 ? '—' : w.toFixed(1) + ' wks';
+  const fmtDuration = w => w <= 0 ? '—' : Math.ceil(w) + ' wks';
   const estDuration  = fmtDuration(s.totalEst / focusPerWeek);
+  const humanWeeks   = s.totalEst / focusPerWeek;
+  const aiWeeks      = s.totalEngaged / 30;
+  const calAccel     = s.totalEngaged > 0 && aiWeeks > 0 ? Math.round(humanWeeks / aiWeeks) : null;
   const entHours     = s.totalEst / 0.50;
 
   const readingH    = s.totalContextWords / cfg.readingWpm / 60;
@@ -360,10 +363,19 @@ td a:hover{text-decoration:underline}
 .good{color:#16a34a;font-weight:600}.warn{color:#d97706;font-weight:600}.over{color:#dc2626;font-weight:600}
 .closed{color:#16a34a}.open{color:#d97706}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.three{display:grid;grid-template-columns:1fr 9rem 1fr;gap:2.5rem;align-items:start}
 .col h3{font-size:.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.875rem;padding-bottom:.5rem;border-bottom:2px solid #e2e8f0}
-.col.human h3{color:#ef4444}.col.ai h3{color:#6366f1}
-.crow{display:flex;justify-content:space-between;align-items:baseline;padding:.3125rem 0;font-size:.8125rem;border-bottom:1px solid #f8fafc}
-.crow .cl{color:#64748b}.crow .cv{font-weight:600}
+.col.human h3{color:#ef4444}.col.ai h3{color:#6366f1}.col.accel h3{color:#16a34a;text-align:center}
+.col.ai .crow{flex-direction:row-reverse}
+.col.ai .crow .cl-wrap{text-align:right}
+.col.ai .crow .cl-wrap .cl-sub{text-align:right}
+.col.accel .crow{justify-content:center;flex-direction:column;align-items:center;text-align:center}
+.ac-num{font-size:1.125rem;font-weight:800;color:#16a34a;line-height:1.2}
+.ac-lbl{font-size:.5rem;color:#166534;text-transform:uppercase;letter-spacing:.04em;margin-top:.125rem}
+.crow .cl-wrap{color:#64748b;display:flex;flex-direction:column;gap:.1rem}
+.crow .cl-wrap .cl-sub{font-size:.7906rem;color:#94a3b8}
+.crow{display:flex;justify-content:space-between;align-items:center;min-height:2.25rem;padding:.125rem 0;font-size:.8125rem;border-bottom:1px solid #f8fafc}
+.crow .cl{color:#64748b;font-size:.9375rem}.crow .cv{font-weight:700;font-size:1.125rem;line-height:1.2}
 .vr-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:1.25rem}
 .vr{background:#f0fdf4;border:2px solid #16a34a;border-radius:.5rem;padding:1rem 1.5rem;text-align:center}
 .vr-num{font-size:2.5rem;font-weight:800;color:#16a34a;line-height:1}
@@ -396,9 +408,48 @@ td a:hover{text-decoration:underline}
     <span>Generated: ${now}</span>
     <span>Issues: ${items.length}</span>
     <span>Repo: ${cfg.repo || 'unknown'}</span>
-    <span>Role baseline: ${cfg.role}</span>
     <span>Region: ${reg.label}</span>
     ${filterLabel ? `<span style="color:#fbbf24;font-weight:600">Filters: ${filterLabel}</span>` : ''}
+  </div>
+</div>
+
+<div class="sec">
+  <h2>Agentic AI Accelerator</h2>
+  <div class="sec-body">
+    <div class="three">
+      <div class="col human">
+        <h3>Human Engineering Cost (estimated)</h3>
+        <div class="crow">
+          <span class="cl-wrap"><span class="cl">Budget baseline — 1 ${cfg.role} engineer</span><span class="cl-sub">${s.totalEst}h @ ${$(natMid)}/hr · ${reg.label}</span></span>
+          <span class="cv">${$(baselineCost)}</span>
+        </div>
+        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar duration (1 engineer)</span><span class="cv">${estDuration}</span></div>
+      </div>
+      <div class="col accel">
+        <h3>Acceleration</h3>
+        ${s.totalEngaged > 0 ? `
+        <div class="crow"><div class="ac-num">${Math.round(baselineCost / (s.totalEngaged * natMid))}×</div></div>
+        <div class="crow" style="margin-top:.625rem"><div class="ac-num">${calAccel != null ? calAccel + '×' : '—'}</div></div>
+        ` : '<div class="crow" style="justify-content:center;color:#94a3b8">—</div>'}
+      </div>
+      <div class="col ai">
+        <h3>AI-Assisted Cost (measured)</h3>
+        <div class="crow">
+          <span class="cl-wrap"><span class="cl">Budget baseline</span><span class="cl-sub">engaged ${totalEh} @ ${$(natMid)}/hr ${cfg.role}</span></span>
+          <span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natMid) : '—'}</span>
+        </div>
+        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar duration (agentic dev)</span><span class="cv">${s.totalEngaged > 0 ? (aiWeeks < 1 ? Math.ceil(s.totalEngaged / 6) + ' days' : Math.ceil(aiWeeks) + ' wks') : '—'}</span></div>
+      </div>
+    </div>
+    ${s.totalEngaged > 0 ? `
+    <div style="margin-top:.875rem;padding:.5rem .75rem;background:#f8fafc;border-radius:.375rem;border:1px solid #e2e8f0;font-size:.75rem;color:#64748b;line-height:1.6">
+      <strong style="color:#475569">Measurement basis:</strong>
+      ${totalEh} engaged
+      (${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'} &nbsp;·&nbsp; ${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) + ' active session' : '—'})
+      &nbsp;·&nbsp;
+      <strong style="color:#475569">Rate:</strong> ${$(natMid)}/hr ${cfg.role}-level · ${reg.label}
+    </div>
+    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No engaged time data yet — set Actual Session Time fields on issues to calculate.</div></div>`}
   </div>
 </div>
 
@@ -452,11 +503,11 @@ td a:hover{text-decoration:underline}
   </div>
 
   <div class="crow-group value">
-    <div class="crow-label">Value Delivered <span>Human-equivalent cost of the scoped work vs. cost of human reading time — the measurable AI-assisted overhead</span></div>
+    <div class="crow-label">AI Leverage <span>Cost and calendar efficiency vs. equivalent human engineering spend</span></div>
     <div class="crow-cards">
-      <div class="card vr-card"><div class="lbl">vs Budget Baseline</div><div class="val good">${readingCost > 0 ? Math.round(baselineCost / readingCost) + '×' : '—'}</div><div class="sub">${$(baselineCost)} scoped ÷ ${$(readingCost)} reading cost</div></div>
-      <div class="card vr-card"><div class="lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div><div class="val good">${readingCost > 0 ? Math.round(soloCost / readingCost) + '×' : '—'}</div><div class="sub">${$(soloCost)} solo ÷ ${$(readingCost)} reading cost</div></div>
-      <div class="card vr-card"><div class="lbl">vs Enterprise Team</div><div class="val good">${readingCost > 0 ? Math.round(enterpriseCost / readingCost) + '×' : '—'}</div><div class="sub">${$(enterpriseCost)} enterprise ÷ ${$(readingCost)} reading cost</div></div>
+      <div class="card vr-card"><div class="lbl">vs Budget Baseline</div><div class="val good">${s.totalEngaged > 0 ? Math.round(baselineCost / (s.totalEngaged * natMid)) + '×' : '—'}</div><div class="sub">${$(baselineCost)} scoped ÷ ${$(s.totalEngaged * natMid)} engaged cost</div></div>
+      <div class="card vr-card"><div class="lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div><div class="val good">${s.totalEngaged > 0 ? Math.round(soloCost / (s.totalEngaged * natSr)) + '×' : '—'}</div><div class="sub">${$(soloCost)} solo ÷ ${$(s.totalEngaged * natSr)} engaged cost</div></div>
+      <div class="card vr-card"><div class="lbl">vs Enterprise Team</div><div class="val good">${s.totalEngaged > 0 ? Math.round(enterpriseCost / (s.totalEngaged * natSr)) + '×' : '—'}</div><div class="sub">${$(enterpriseCost)} enterprise ÷ ${$(s.totalEngaged * natSr)} engaged cost</div></div>
     </div>
   </div>
 
@@ -534,37 +585,6 @@ td a:hover{text-decoration:underline}
         <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
       </div>
     </div>
-  </div>
-</div>
-
-<div class="sec">
-  <h2>AI vs Human Value Comparison</h2>
-  <div class="sec-body">
-    <div class="two">
-      <div class="col human">
-        <h3>Human Engineering Cost (estimated)</h3>
-        <div class="crow"><span class="cl">Budget baseline — 1 ${cfg.role} engineer (${s.totalEst}h @ ${$(natMid)}/hr · ${reg.label})</span><span class="cv">${$(baselineCost)}</span></div>
-        <div class="crow"><span class="cl">Solo ${cfg.soloRole} engineer (${Math.round(soloHours)}h @ ${$(natSr)}/hr · ${Math.round(cfg.seniorFactor * 100)}% of ${cfg.role}-level estimate)</span><span class="cv">${$(soloCost)}</span></div>
-        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar weeks (1 engineer)</span><span class="cv">${estDuration}</span></div>
-      </div>
-      <div class="col ai">
-        <h3>AI-Assisted Cost (measured)</h3>
-        <div class="crow"><span class="cl">Budget baseline (engaged ${totalEh} @ ${$(natMid)}/hr ${cfg.role})</span><span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natMid) : '—'}</span></div>
-        <div class="crow"><span class="cl">Solo ${cfg.soloRole} equivalent (engaged ${totalEh} @ ${$(natSr)}/hr)</span><span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natSr) : '—'}</span></div>
-        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar weeks (agentic dev)</span><span class="cv">${s.totalEngaged > 0 ? (s.totalEngaged / 30 < 1 ? (s.totalEngaged / 6).toFixed(1) + ' days' : (s.totalEngaged / 30).toFixed(1) + ' wks') : '—'}</span></div>
-        <div class="crow" style="margin-top:.625rem"><span class="cl">Human reading time (${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm)</span><span class="cv">${readingH > 0 ? fmtMin(readingH) : '—'}</span></div>
-        <div class="crow"><span class="cl">Session time (AI active)</span><span class="cv">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</span></div>
-        <div class="crow"><span class="cl">Total engaged time</span><span class="cv">${totalEh}</span></div>
-        <div class="crow" style="margin-top:.625rem"><span class="cl">Estimated acceleration</span><span class="cv good">${s.accel != null ? s.accel + '×' : '—'}</span></div>
-      </div>
-    </div>
-    ${s.totalEngaged > 0 ? `
-    <div class="vr-row">
-      <div class="vr"><div class="vr-num">${Math.round(baselineCost / (s.totalEngaged * natMid))}×</div><div class="vr-lbl">vs Budget Baseline</div></div>
-      <div class="vr"><div class="vr-num">${Math.round(soloCost / (s.totalEngaged * natSr))}×</div><div class="vr-lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div></div>
-    </div>
-    <div style="text-align:center;font-size:.6875rem;color:#64748b;margin-top:.5rem">human estimated cost ÷ AI engaged cost at equivalent rate &nbsp;·&nbsp; acceleration assumes estimates were accurate</div>
-    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No engaged time data yet — set Actual Session Time fields on issues to calculate.</div></div>`}
   </div>
 </div>
 
