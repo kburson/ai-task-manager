@@ -545,25 +545,23 @@ td a:hover{text-decoration:underline}
         <h3>Human Engineering Cost (estimated)</h3>
         <div class="crow"><span class="cl">Budget baseline — 1 ${cfg.role} engineer (${s.totalEst}h @ ${$(natMid)}/hr · ${reg.label})</span><span class="cv">${$(baselineCost)}</span></div>
         <div class="crow"><span class="cl">Solo ${cfg.soloRole} engineer (${Math.round(soloHours)}h @ ${$(natSr)}/hr · ${Math.round(cfg.seniorFactor * 100)}% of ${cfg.role}-level estimate)</span><span class="cv">${$(soloCost)}</span></div>
-        <div class="crow"><span class="cl">Enterprise team — 50% efficiency + 30% coordination overhead</span><span class="cv over">${$(enterpriseCost)}</span></div>
         <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar weeks (1 engineer)</span><span class="cv">${estDuration}</span></div>
       </div>
       <div class="col ai">
         <h3>AI-Assisted Cost (measured)</h3>
         <div class="crow"><span class="cl">Budget baseline (engaged ${totalEh} @ ${$(natMid)}/hr ${cfg.role})</span><span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natMid) : '—'}</span></div>
         <div class="crow"><span class="cl">Solo ${cfg.soloRole} equivalent (engaged ${totalEh} @ ${$(natSr)}/hr)</span><span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natSr) : '—'}</span></div>
+        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar weeks (agentic dev)</span><span class="cv">${s.totalEngaged > 0 ? (s.totalEngaged / 30 < 1 ? (s.totalEngaged / 6).toFixed(1) + ' days' : (s.totalEngaged / 30).toFixed(1) + ' wks') : '—'}</span></div>
         <div class="crow" style="margin-top:.625rem"><span class="cl">Human reading time (${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm)</span><span class="cv">${readingH > 0 ? fmtMin(readingH) : '—'}</span></div>
         <div class="crow"><span class="cl">Session time (AI active)</span><span class="cv">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</span></div>
         <div class="crow"><span class="cl">Total engaged time</span><span class="cv">${totalEh}</span></div>
-        <div class="crow"><span class="cl">Calendar weeks (agentic dev)</span><span class="cv">${s.totalEngaged > 0 ? (s.totalEngaged / 30 < 1 ? (s.totalEngaged / 6).toFixed(1) + ' days' : (s.totalEngaged / 30).toFixed(1) + ' wks') : '—'}</span></div>
-        <div class="crow"><span class="cl">Estimated acceleration</span><span class="cv good">${s.accel != null ? s.accel + '×' : '—'}</span></div>
+        <div class="crow" style="margin-top:.625rem"><span class="cl">Estimated acceleration</span><span class="cv good">${s.accel != null ? s.accel + '×' : '—'}</span></div>
       </div>
     </div>
     ${readingCost > 0 ? `
     <div class="vr-row">
       <div class="vr"><div class="vr-num">${Math.round(baselineCost / readingCost)}×</div><div class="vr-lbl">vs Budget Baseline</div></div>
       <div class="vr"><div class="vr-num">${Math.round(soloCost / readingCost)}×</div><div class="vr-lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div></div>
-      <div class="vr"><div class="vr-num">${Math.round(enterpriseCost / readingCost)}×</div><div class="vr-lbl">vs Enterprise Team</div></div>
     </div>
     <div style="text-align:center;font-size:.6875rem;color:#64748b;margin-top:.5rem">scoped human cost ÷ measurable reading-time cost &nbsp;·&nbsp; acceleration assumes estimates were accurate</div>
     ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No context length data yet — set Context Length fields on issues to calculate.</div></div>`}
