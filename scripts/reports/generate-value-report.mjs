@@ -17,6 +17,9 @@
  *     [--output ./report]          output base path (no extension)
  *     [--html]                     skip PDF, emit HTML only
  *     [--chat-words N]             additional context words not yet in any issue's Context Length field
+ *     [--from YYYY-MM-DD]          only issues closed on or after this date
+ *     [--to   YYYY-MM-DD]          only issues closed on or before this date
+ *     [--state open|closed|all]    filter by issue state (default: all)
  *     [--project-id PVT_...]       override GitHub Projects V2 node ID (default: from .claude/task-tracker.json)
  *
  * Project and owner are read from .claude/task-tracker.json (set by npx claude-gh-task-manager init).
@@ -78,12 +81,26 @@ const cfg = {
   focusHours:    +(flag('--focus-hours') ?? fileCfg.focusHoursPerDay ?? RATES.workday?.focusedCodingHoursPerDay ?? 5),
   readingWpm:    +(flag('--reading-wpm') ?? fileCfg.readingWpm ?? 180),
   chatWords:     +(flag('--chat-words') ?? 0),
+  fromDate:      flag('--from') ? new Date(flag('--from') + 'T00:00:00') : null,
+  toDate:        flag('--to')   ? new Date(flag('--to')   + 'T23:59:59.999') : null,
+  state:         (flag('--state') ?? 'all').toLowerCase(),
   htmlOnly:      has('--html'),
 };
 
 if (!cfg.projectId) {
   console.error('No projectId found. Run: npx claude-gh-task-manager init');
   process.exit(1);
+}
+if (cfg.fromDate && isNaN(cfg.fromDate)) {
+  console.error('Invalid --from date. Expected YYYY-MM-DD.'); process.exit(1);
+}
+if (cfg.toDate && isNaN(cfg.toDate)) {
+  console.error('Invalid --to date. Expected YYYY-MM-DD.'); process.exit(1);
+}
+if (cfg.state === 'open' && (cfg.fromDate || cfg.toDate)) {
+  console.warn('Warning: --from/--to filter on closedAt has no effect when --state open is set (open issues have no closedAt). Ignoring date filters.');
+  cfg.fromDate = null;
+  cfg.toDate   = null;
 }
 
 const GH_TOKEN = execSync('gh auth token', { encoding: 'utf8' }).trim();
@@ -176,9 +193,22 @@ function processItems(raw) {
         status:       f['Status']              ?? null,
       };
     })
-    .filter(i => cfg.issues
-      ? cfg.issues.includes(i.number)
-      : (i.estimate != null || i.sessionMin != null || i.contextWords != null))
+    .filter(i => {
+      // --issues overrides all other filters
+      if (cfg.issues) return cfg.issues.includes(i.number);
+      // must have at least one data field
+      if (i.estimate == null && i.sessionMin == null && i.contextWords == null) return false;
+      // --state filter
+      if (cfg.state === 'closed' && i.state !== 'CLOSED') return false;
+      if (cfg.state === 'open'   && i.state !== 'OPEN')   return false;
+      // --from / --to filter: applies to closedAt; open issues have no closedAt
+      if (cfg.fromDate || cfg.toDate) {
+        if (i.closedAt == null) return false;
+        if (cfg.fromDate && i.closedAt < cfg.fromDate) return false;
+        if (cfg.toDate   && i.closedAt > cfg.toDate)   return false;
+      }
+      return true;
+    })
     .sort((a, b) => a.number - b.number);
 }
 
@@ -215,6 +245,11 @@ const fmtMin = h => {
 
 function buildHtml(project, items, s) {
   const now        = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
+  const filterParts = [];
+  if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
+  if (cfg.fromDate) filterParts.push(`From: ${cfg.fromDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
+  if (cfg.toDate)   filterParts.push(`To: ${cfg.toDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
+  const filterLabel = filterParts.length ? filterParts.join(' · ') : null;
   const reg        = RATES.regions.find(r => r.id === cfg.region)
                      ?? RATES.regions.find(r => r.id === 'national')
                      ?? RATES.regions.at(-1);
@@ -363,6 +398,7 @@ td a:hover{text-decoration:underline}
     <span>Repo: ${cfg.repo || 'unknown'}</span>
     <span>Role baseline: ${cfg.role}</span>
     <span>Region: ${reg.label}</span>
+    ${filterLabel ? `<span style="color:#fbbf24;font-weight:600">Filters: ${filterLabel}</span>` : ''}
   </div>
 </div>
 
