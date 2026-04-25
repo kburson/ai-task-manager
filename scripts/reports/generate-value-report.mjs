@@ -558,13 +558,13 @@ td a:hover{text-decoration:underline}
         <div class="crow" style="margin-top:.625rem"><span class="cl">Estimated acceleration</span><span class="cv good">${s.accel != null ? s.accel + '×' : '—'}</span></div>
       </div>
     </div>
-    ${readingCost > 0 ? `
+    ${s.totalEngaged > 0 ? `
     <div class="vr-row">
-      <div class="vr"><div class="vr-num">${Math.round(baselineCost / readingCost)}×</div><div class="vr-lbl">vs Budget Baseline</div></div>
-      <div class="vr"><div class="vr-num">${Math.round(soloCost / readingCost)}×</div><div class="vr-lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div></div>
+      <div class="vr"><div class="vr-num">${Math.round(baselineCost / (s.totalEngaged * natMid))}×</div><div class="vr-lbl">vs Budget Baseline</div></div>
+      <div class="vr"><div class="vr-num">${Math.round(soloCost / (s.totalEngaged * natSr))}×</div><div class="vr-lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div></div>
     </div>
-    <div style="text-align:center;font-size:.6875rem;color:#64748b;margin-top:.5rem">scoped human cost ÷ measurable reading-time cost &nbsp;·&nbsp; acceleration assumes estimates were accurate</div>
-    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No context length data yet — set Context Length fields on issues to calculate.</div></div>`}
+    <div style="text-align:center;font-size:.6875rem;color:#64748b;margin-top:.5rem">human estimated cost ÷ AI engaged cost at equivalent rate &nbsp;·&nbsp; acceleration assumes estimates were accurate</div>
+    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No engaged time data yet — set Actual Session Time fields on issues to calculate.</div></div>`}
   </div>
 </div>
 
