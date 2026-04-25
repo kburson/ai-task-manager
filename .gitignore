@@ -3,3 +3,5 @@ node_modules/
 # Runtime state files (generated per-project, not committed here)
 .claude/task-tracker-state.json
 .claude/task-tracker-queue.json
+
+reports/
