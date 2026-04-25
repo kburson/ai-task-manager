@@ -128,6 +128,20 @@ npx claude-gh-task-manager init
 
 Existing config values are merged — only fields discovered during init are overwritten.
 
+## Status Line (CLI only)
+
+> **Supported in the Claude Code CLI only.** The status line has no effect in the Claude.ai web app or the Claude desktop application. The desktop app is evolving rapidly and may add status line support in a future release.
+
+Show the active `/task` issue number in the Claude Code CLI header bar:
+
+```bash
+npx claude-gh-task-manager statusline
+```
+
+This installs `~/.claude/statusline.sh` and wires it into `~/.claude/settings.json`. Once active, the CLI header shows `task #42` while a task is running, and goes blank when no task is active.
+
+Requires `jq` (`brew install jq` / `apt install jq`).
+
 ## Value Report
 
 Generate an HTML/PDF report showing the ROI of AI-assisted development across all tracked issues on your board:

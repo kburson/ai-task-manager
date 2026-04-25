@@ -103,39 +103,44 @@ The plugin provides skills invoked via the `Skill` tool. Key skills for this wor
 
 ## Status Line
 
-The status line shows the active `/task` issue number in the Claude Code header bar — useful when juggling multiple issues across sessions.
+> **CLI only.** The status line feature is only supported in the Claude Code CLI (terminal). It has no effect in the Claude.ai web app or the Claude desktop application. The desktop app is evolving rapidly and may add status line support in a future release.
 
-Create `~/.claude/statusline.sh`:
+The status line shows the active `/task` issue number in the Claude Code CLI header bar — useful when juggling multiple issues across sessions.
+
+Install with one command:
 
 ```bash
-#!/usr/bin/env bash
-# Show active task-tracker issue in Claude Code status line.
-# Claude Code calls this script and displays its stdout.
-
-STATE_FILE="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/task-tracker-state.json"
-
-if [[ ! -f "$STATE_FILE" ]]; then
-  exit 0
-fi
-
-ACTIVE=$(python3 -c "
-import json, sys
-try:
-    d = json.load(open('$STATE_FILE'))
-    a = d.get('active','')
-    if a: print(f'task {a}')
-except: pass
-" 2>/dev/null)
-
-if [[ -n "$ACTIVE" ]]; then
-  echo "$ACTIVE"
-fi
+npx claude-gh-task-manager statusline
 ```
 
-Make it executable: `chmod +x ~/.claude/statusline.sh`
+This copies `statusline/statusline.sh` from the package to `~/.claude/statusline.sh` and sets the `statusLine` key in `~/.claude/settings.json` automatically.
 
-Then add to `~/.claude/settings.json`:
-```json
+### What it shows
+
+While a task is active (`/task #42`), the CLI header displays:
+
+```
+task #42
+```
+
+When no task is active, the status line is blank (nothing is printed).
+
+### How it works
+
+Claude Code pipes a JSON object containing the current workspace path to the status line script on each render. The script reads `.claude/task-tracker-state.json` from that workspace and prints the active issue number.
+
+Requires `jq` to be installed (`brew install jq` on macOS, `apt install jq` on Linux).
+
+### Manual install
+
+If you prefer to manage it yourself:
+
+```bash
+# Copy the script
+cp node_modules/claude-gh-task-manager/statusline/statusline.sh ~/.claude/statusline.sh
+chmod +x ~/.claude/statusline.sh
+
+# Add to ~/.claude/settings.json
 {
   "statusLine": "/Users/<you>/.claude/statusline.sh"
 }

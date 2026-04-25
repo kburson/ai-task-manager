@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { homedir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -144,6 +145,38 @@ function cmdInstall(args) {
   console.log('');
 }
 
+function cmdStatusline() {
+  const home = homedir();
+  const claudeDir = join(home, '.claude');
+  const destScript = join(claudeDir, 'statusline.sh');
+  const destSettings = join(claudeDir, 'settings.json');
+
+  // Copy the statusline script
+  const srcScript = join(PKG_ROOT, 'statusline', 'statusline.sh');
+  mkdirSync(claudeDir, { recursive: true });
+  copyFileSync(srcScript, destScript);
+  try { execFileSync('chmod', ['+x', destScript]); } catch { /* ignore on Windows */ }
+  ok(`Status line script installed: ~/.claude/statusline.sh`);
+
+  // Patch ~/.claude/settings.json with the statusLine path
+  let settings = {};
+  if (existsSync(destSettings)) {
+    try { settings = JSON.parse(readFileSync(destSettings, 'utf8')); } catch { /* ignore */ }
+  }
+  settings.statusLine = destScript;
+  writeFileSync(destSettings, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+  ok(`User settings updated: ~/.claude/settings.json`);
+
+  console.log('');
+  console.log(bold('Status line active.'));
+  console.log(dim('The active /task issue will appear in the Claude Code CLI header bar.'));
+  console.log('');
+  console.log(`  ${dim('Note: status line is only supported in the Claude Code CLI (terminal).')}`);
+  console.log(`  ${dim('It has no effect in the Claude.ai web app or the Claude desktop application.')}`);
+  console.log(`  ${dim('The desktop app is evolving rapidly and may add this feature in a future release.')}`);
+  console.log('');
+}
+
 function cmdInit(args) {
   let targetDir = process.cwd();
   const tIdx = args.indexOf('--target');
@@ -185,6 +218,10 @@ switch (command) {
     cmdInit(rest);
     break;
 
+  case 'statusline':
+    cmdStatusline();
+    break;
+
   default:
     console.log(`
 ${bold('claude-gh-task-manager')} v${pkg.version}
@@ -192,13 +229,15 @@ ${bold('claude-gh-task-manager')} v${pkg.version}
 Bind Claude Code sessions to GitHub issues and auto-log time + context words.
 
 ${bold('Usage:')}
-  npx claude-gh-task-manager install [--target <dir>]   Copy files into your project
-  npx claude-gh-task-manager init    [--target <dir>]   Configure GitHub project IDs
-  npx claude-gh-task-manager version                    Print version
+  npx claude-gh-task-manager install    [--target <dir>]   Copy files into your project
+  npx claude-gh-task-manager init       [--target <dir>]   Configure GitHub project IDs
+  npx claude-gh-task-manager statusline                     Install status line (CLI only)
+  npx claude-gh-task-manager version                        Print version
 
 ${bold('Quickstart:')}
   npx claude-gh-task-manager install
   npx claude-gh-task-manager init
+  npx claude-gh-task-manager statusline   ${dim('# optional — shows active task in CLI header')}
   # Then in Claude Code: /task #<issue-number>
 `);
 }
