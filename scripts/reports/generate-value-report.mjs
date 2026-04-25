@@ -555,6 +555,7 @@ td a:hover{text-decoration:underline}
         <div class="crow" style="margin-top:.625rem"><span class="cl">Human reading time (${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm)</span><span class="cv">${readingH > 0 ? fmtMin(readingH) : '—'}</span></div>
         <div class="crow"><span class="cl">Session time (AI active)</span><span class="cv">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</span></div>
         <div class="crow"><span class="cl">Total engaged time</span><span class="cv">${totalEh}</span></div>
+        <div class="crow"><span class="cl">Calendar weeks (agentic dev)</span><span class="cv">${s.totalEngaged > 0 ? (s.totalEngaged / 30).toFixed(1) + ' wks' : '—'}</span></div>
         <div class="crow"><span class="cl">Estimated acceleration</span><span class="cv good">${s.accel != null ? s.accel + '×' : '—'}</span></div>
       </div>
     </div>
