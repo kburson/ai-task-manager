@@ -1,0 +1,36 @@
+{
+  "name": "claude-gh-task-manager",
+  "version": "1.0.0",
+  "description": "Claude Code /task skill — bind AI sessions to GitHub issues and auto-log time + context words",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "claude-gh-task-manager": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin/",
+    "skill/",
+    "hooks/",
+    "scripts/",
+    "docs/"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "github",
+    "task-tracker",
+    "time-tracking",
+    "ai",
+    "anthropic"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kburson/claude-gh-task-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kburson/claude-gh-task-manager/issues"
+  }
+}
