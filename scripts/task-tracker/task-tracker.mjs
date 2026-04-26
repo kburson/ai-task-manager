@@ -151,7 +151,7 @@ async function flushActiveToGH(state, event, description) {
 
 async function runLogIssueTime(issue) {
   if (SKIP_NETWORK) return;
-  const scriptPath = new URL('../../gh/log-issue-time.mjs', import.meta.url).pathname;
+  const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
   try {
     const { stdout } = await pexec(process.execPath, [scriptPath, issue], { timeout: 15000 });
     if (stdout.trim()) console.log(stdout.trim());
