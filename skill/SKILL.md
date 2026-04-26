@@ -30,7 +30,7 @@ The user types one of these commands. For `/task #N`, always fetch and display t
 ### Step 1: Run the CLI
 Via Bash, invoke:
 ```bash
-node "$CLAUDE_PROJECT_DIR/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
+node "$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
 ```
 Print the command's stdout to the user verbatim. If it exits non-zero, print stderr and surface the error.
 
@@ -52,7 +52,7 @@ gh issue reopen <issue-number>
 
 Move it to "in-progress" on the Kanban board:
 ```bash
-"$CLAUDE_PROJECT_DIR/scripts/gh/move-state.sh" <issue-number> in-progress
+"$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <issue-number> in-progress
 ```
 
 #### 2c. If this issue is a sub-issue, ensure the parent is open and in-progress
@@ -75,12 +75,12 @@ gh api graphql -f query='
 If a parent exists and is **closed**, reopen it and move to in-progress:
 ```bash
 gh issue reopen <parent-number>
-"$CLAUDE_PROJECT_DIR/scripts/gh/move-state.sh" <parent-number> in-progress
+"$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <parent-number> in-progress
 ```
 
 If a parent exists and is open but **not** in-progress (board state is `backlog` or `ready`), move it:
 ```bash
-"$CLAUDE_PROJECT_DIR/scripts/gh/move-state.sh" <parent-number> in-progress
+"$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <parent-number> in-progress
 ```
 
 Report any state changes made (e.g., "Opened parent #110 and moved to in-progress").  

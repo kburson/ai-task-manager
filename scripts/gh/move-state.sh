@@ -90,6 +90,6 @@ echo "✓ Issue #$ISSUE moved to: $STATE"
 # End task tracking when an issue is marked done
 if [[ "$STATE" == "done" ]]; then
   if [[ -n "$REPO_ROOT" ]]; then
-    node "$REPO_ROOT/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
+    node "$REPO_ROOT/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
   fi
 fi
