@@ -7,7 +7,7 @@ import { loadConfig, setConfigValue, formatConfig, DEFAULTS } from './config.mjs
 import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
 import { currentSessionId, jsonlPath, markerPathFor, loadMarker, saveMarker, countWords } from './word-counter.mjs';
-import { collectEventTimestamps, computeActiveMinutes } from './active-time.mjs';
+import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue, drain } from './queue.mjs';
 
 const argv = process.argv.slice(2);
@@ -26,16 +26,16 @@ function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
 }
 
-async function safePostTiming(issue, row, cumMin, cumWords) {
+async function safePostTiming(issue, row) {
   if (SKIP_NETWORK) return { ok: true, skipped: true };
   try {
     await postTimingEvent({
-      issueNumber: issue, repo: cfg.repo, row, cumMin, cumWords,
+      issueNumber: issue, repo: cfg.repo, row,
       timeoutMs: cfg.hookNetworkTimeoutMs,
     });
     return { ok: true };
   } catch (err) {
-    enqueue({ kind: 'timing', issue, row, cumMin, cumWords }, queuePath);
+    enqueue({ kind: 'timing', issue, row }, queuePath);
     return { ok: false, queued: true, err: err.message };
   }
 }
@@ -46,7 +46,6 @@ async function draiQueueIfAny() {
     if (evt.kind === 'timing') {
       await postTimingEvent({
         issueNumber: evt.issue, repo: cfg.repo, row: evt.row,
-        cumMin: evt.cumMin, cumWords: evt.cumWords,
         timeoutMs: cfg.hookNetworkTimeoutMs,
       });
     }
@@ -79,10 +78,10 @@ async function verbStatus() {
   let activeMin = wallMin;
   if (sid) {
     const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-    activeMin = computeActiveMinutes({
+    ({ activeMin } = computeActiveAndIdleMinutes({
       startMs, endMs, events,
       idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
-    });
+    }));
   }
   const wallNote = wallMin !== activeMin ? ` (wall ${wallMin})` : '';
   console.log(`Active: ${s.active}. Elapsed: ${activeMin} active min${wallNote}, ${wordsNow - s.wordsAtEntryStart} words since last marker.`);
@@ -109,7 +108,13 @@ function verbConfig() {
   }
 }
 
-async function flushActiveToGH(state, event) {
+const EVENT_DESCRIPTIONS = {
+  'pause':      'task paused',
+  'end':        'task ended',
+  'switch-end': 'switched to next task',
+};
+
+async function flushActiveToGH(state, event, description) {
   const ts = nowIso();
   const sid = currentSessionId();
   let deltaWords = 0;
@@ -120,21 +125,22 @@ async function flushActiveToGH(state, event) {
   const startMs = new Date(state.entryStartTs).getTime();
   const endMs = new Date(ts).getTime();
   const deltaWallMin = Math.round((endMs - startMs) / 60000);
-  let deltaMin = deltaWallMin;
+  let activeMin = deltaWallMin;
+  let idleMin = 0;
   if (sid) {
     const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-    deltaMin = computeActiveMinutes({
+    ({ activeMin, idleMin } = computeActiveAndIdleMinutes({
       startMs, endMs, events,
       idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
-    });
+    }));
   }
-  const cumWords = state.wordsAtEntryStart + deltaWords;
-  const cumMin = deltaMin;  // cumulative tracked in issue comment — each event is a single-session delta here
+  const wordMarker = state.wordsAtEntryStart + deltaWords;
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
-    ts, event, deltaMin, deltaWords, cumMin, cumWords,
+    ts, event, activeMin, idleMin, deltaWords,
+    wordMarker, description: description ?? EVENT_DESCRIPTIONS[event] ?? event,
   });
-  await safePostTiming(state.active, row, cumMin, cumWords);
-  return { ts, deltaMin, deltaWallMin, deltaWords, cumWords };
+  await safePostTiming(state.active, row);
+  return { ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
 }
 
 async function verbEnd() {
@@ -186,9 +192,10 @@ async function verbSwitch(target) {
   };
   saveState(newState, statePath);
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
-    ts, event: 'start', deltaMin: null, deltaWords: null, cumMin: 0, cumWords: wordsAtStart,
+    ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
+    wordMarker: wordsAtStart, description: 'task opened',
   });
-  await safePostTiming(target, row, 0, wordsAtStart);
+  await safePostTiming(target, row);
   console.log(`Active: ${target}.${previousNote}`);
 }
 
@@ -234,9 +241,10 @@ async function verbStart() {
     wordsAtEntryStart: wordsAtStart,
   }, statePath);
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
-    ts, event: 'resume', deltaMin: null, deltaWords: null, cumMin: 0, cumWords: wordsAtStart,
+    ts, event: 'resume', activeMin: 0, idleMin: 0, deltaWords: 0,
+    wordMarker: wordsAtStart, description: 'task resumed',
   });
-  await safePostTiming(s.lastActive, row, 0, wordsAtStart);
+  await safePostTiming(s.lastActive, row);
   console.log(`Resumed ${s.lastActive}.`);
 }
 
@@ -306,10 +314,10 @@ async function verbNew(args) {
     for (const e of s.planBucket.entries) {
       const row = (await import('./gh-timing-comment.mjs')).buildRow({
         ts: e.ts, event: `planning: ${e.event}`,
-        deltaMin: e.deltaMin, deltaWords: e.deltaWords,
-        cumMin: 0, cumWords: s.planBucket.wordsAtStart,
+        activeMin: e.deltaMin ?? 0, idleMin: 0, deltaWords: e.deltaWords ?? 0,
+        wordMarker: s.planBucket.wordsAtStart, description: 'planning session',
       });
-      await safePostTiming(issue, row, 0, s.planBucket.wordsAtStart);
+      await safePostTiming(issue, row);
     }
   }
   const ts = nowIso();
@@ -328,11 +336,42 @@ async function verbNew(args) {
     wordsAtEntryStart: wordsAtStart,
   }, statePath);
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
-    ts, event: 'start', deltaMin: null, deltaWords: null,
-    cumMin: 0, cumWords: wordsAtStart,
+    ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
+    wordMarker: wordsAtStart, description: 'task opened',
   });
-  await safePostTiming(issue, row, 0, wordsAtStart);
+  await safePostTiming(issue, row);
   console.log(`Active: ${issue}.${previousNote} Created with title: "${title}".`);
+}
+
+async function verbUpdate(args) {
+  await draiQueueIfAny();
+  const s = loadState(statePath);
+  if (!s.active || s.active === 'plan') {
+    console.log('nothing to update');
+    return;
+  }
+  const description = args.join(' ').trim() || 'checkpoint';
+  const { deltaMin, idleMin, deltaWallMin, deltaWords, wordMarker, ts } =
+    await flushActiveToGH(s, 'update', description);
+  const totalActiveMinutes = (s.totalActiveMinutes || 0) + deltaMin;
+  const sid = currentSessionId();
+  let wordsAtStart = wordMarker;
+  if (sid) {
+    const { totalLines, count } = countWords(jsonlPath(sid), 0);
+    saveMarker(markerPathFor(sid), totalLines, count, s.active);
+    wordsAtStart = count;
+  }
+  saveState({
+    ...s,
+    entryStartTs: ts,
+    wordsAtEntryStart: wordsAtStart,
+    totalActiveMinutes,
+  }, statePath);
+  const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
+  console.log(
+    `Update ${s.active}: +${deltaMin} active min, +${idleMin} idle min${wallNote}, +${deltaWords} words. ` +
+    `Total: ${totalActiveMinutes} active min, ${wordMarker.toLocaleString('en-US')} words.`
+  );
 }
 
 // ---- Dispatch ----
@@ -345,6 +384,7 @@ async function verbNew(args) {
       case 'end':     await verbEnd(); break;
       case 'pause':   await verbPause(); break;
       case 'start':   await verbStart(); break;
+      case 'update':  await verbUpdate(rest); break;
       case 'plan':    await verbPlan(); break;
       case 'new':     await verbNew(rest); break;
       default:

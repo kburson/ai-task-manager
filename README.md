@@ -49,6 +49,7 @@ git commit -m "chore: add claude-gh-task-manager"
 | `/task plan` | Start a planning-phase timer before a GitHub issue exists. When you later run `/task new`, the issue is created from the plan and inherits the timing data. |
 | `/task start` | Resume the last active task |
 | `/task pause` | Flush timing, pause (keeps last-active for resume) |
+| `/task update [message]` | Checkpoint — flush timing, reset counters, keep task active |
 | `/task end` | Flush timing, clear active task |
 | `/task config` | List all config values with sources |
 | `/task config <key> <value>` | Set a config value project-locally |
@@ -96,16 +97,17 @@ These read all IDs from `.claude/task-tracker.json`, so no manual ID management.
 
 ## How Timing Works
 
-The skill writes a "⏱ Timing Log" comment to each GitHub issue. Every start, pause, end, and switch appends a row:
+The skill writes a "⏱ Timing Log" comment to each GitHub issue. Every start, pause, update, end, and switch appends a row:
 
 ```
-| 2026-04-25T14:30Z | start   | —   | —     |    0 | 2,341 |
-| 2026-04-25T15:45Z | pause   | +72 | +1204 |   72 | 3,545 |
-| 2026-04-25T16:00Z | resume  | —   | —     |   72 | 3,545 |
-| 2026-04-25T17:10Z | end     | +67 | +890  |  139 | 4,435 |
+| Timestamp         | Event  | Active Min | Idle Min | Δ Words | Word Marker | Description  |
+| 2026-04-25T14:30Z | start  | 0          | 0        | 0       | 2,341       | task opened  |
+| 2026-04-25T15:45Z | update | 72         | 3        | 1,204   | 3,545       | checkpoint   |
+| 2026-04-25T16:00Z | resume | 0          | 0        | 0       | 3,545       | task resumed |
+| 2026-04-25T17:10Z | end    | 67         | 5        | 890     | 4,435       | task ended   |
 ```
 
-Active minutes exclude idle gaps (configurable via `idleThresholdMinutes`).
+**Active Min** and **Idle Min** are deltas since the last baseline reset (start, resume, or update). **Word Marker** is the absolute word-count position in the session — useful as a reference point. Active minutes exclude idle gaps (configurable via `idleThresholdMinutes`).
 
 Hooks flush data on every compaction, so long sessions spanning multiple compactions are fully captured.
 

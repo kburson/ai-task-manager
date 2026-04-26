@@ -6,6 +6,7 @@ export const EMPTY_STATE = {
   lastActive: null,
   entryStartTs: null,
   wordsAtEntryStart: 0,
+  totalActiveMinutes: 0,
   planBucket: null,
 };
 

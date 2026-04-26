@@ -10,7 +10,7 @@ import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
 import {
   jsonlPath, markerPathFor, loadMarker, saveMarker, countWords, currentSessionId,
 } from './word-counter.mjs';
-import { collectEventTimestamps, computeActiveMinutes } from './active-time.mjs';
+import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue } from './queue.mjs';
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -22,14 +22,14 @@ function readStdin() {
   try { return readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-async function safePost(issue, row, cumWords) {
+async function safePost(issue, row) {
   try {
     await postTimingEvent({
-      issueNumber: issue, repo: cfg.repo, row, cumMin: 0, cumWords,
+      issueNumber: issue, repo: cfg.repo, row,
       timeoutMs: cfg.hookNetworkTimeoutMs,
     });
-  } catch (err) {
-    enqueue({ kind: 'timing', issue, row, cumMin: 0, cumWords }, queuePath);
+  } catch {
+    enqueue({ kind: 'timing', issue, row }, queuePath);
   }
 }
 
@@ -39,21 +39,21 @@ async function onPreCompact(sid) {
   const marker = loadMarker(markerPathFor(sid));
   const { count: newWords, totalLines } = countWords(jsonlPath(sid), marker.line);
   const ts = new Date().toISOString();
-  const cumWords = s.wordsAtEntryStart + newWords;
+  const wordMarker = s.wordsAtEntryStart + newWords;
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
   const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-  const deltaMin = computeActiveMinutes({
+  const { activeMin, idleMin } = computeActiveAndIdleMinutes({
     startMs, endMs, events,
     idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
   });
   const row = buildRow({
-    ts, event: 'pre-compact-flush', deltaMin, deltaWords: newWords,
-    cumMin: deltaMin, cumWords,
+    ts, event: 'pre-compact-flush', activeMin, idleMin,
+    deltaWords: newWords, wordMarker, description: 'context compacted',
   });
-  await safePost(s.active, row, cumWords);
+  await safePost(s.active, row);
   saveMarker(markerPathFor(sid), totalLines, 0, s.active);
-  saveState({ ...s, entryStartTs: ts, wordsAtEntryStart: cumWords }, statePath);
+  saveState({ ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker }, statePath);
 }
 
 async function onPostCompact(sid) {
@@ -63,9 +63,10 @@ async function onPostCompact(sid) {
   saveMarker(markerPathFor(sid), totalLines, 0, s.active);
   const row = buildRow({
     ts: new Date().toISOString(), event: 'post-compact-resume',
-    deltaMin: null, deltaWords: null, cumMin: 0, cumWords: s.wordsAtEntryStart,
+    activeMin: 0, idleMin: 0, deltaWords: 0,
+    wordMarker: s.wordsAtEntryStart, description: 'resumed after compact',
   });
-  await safePost(s.active, row, s.wordsAtEntryStart);
+  await safePost(s.active, row);
 }
 
 async function onSessionStart(sid) {
@@ -82,9 +83,10 @@ async function onSessionStart(sid) {
     saveMarker(markerPathFor(sid), totalLines, count, s.active);
     const row = buildRow({
       ts: new Date().toISOString(), event: 'session-start',
-      deltaMin: null, deltaWords: null, cumMin: 0, cumWords: s.wordsAtEntryStart,
+      activeMin: 0, idleMin: 0, deltaWords: 0,
+      wordMarker: s.wordsAtEntryStart, description: 'session resumed',
     });
-    await safePost(s.active, row, s.wordsAtEntryStart);
+    await safePost(s.active, row);
   }
 }
 

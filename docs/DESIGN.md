@@ -19,13 +19,14 @@ A project-local Claude Code skill (`/task`) that binds the active work session t
 /task plan              Open an untracked planning bucket (no issue yet)
 /task start             Resume the last active task
 /task pause             Soft-stop — flushes timing, keeps task as "last active"
+/task update [message]  Checkpoint — flush timing, reset counters, keep task active
 /task end               Hard-stop — flushes timing, clears last-active, discards any active plan
 /task status            Print active task, elapsed, words since last marker
 /task config            List all config values
 /task config <key> <value>   Set a config value (project-local)
 ```
 
-**9 command patterns, 7 verbs.**
+**10 command patterns, 8 verbs.**
 
 ## Semantics
 
@@ -56,11 +57,17 @@ A project-local Claude Code skill (`/task`) that binds the active work session t
 - Does NOT end any current active task (would be redundant — `start` only makes sense if nothing is active).
 - Writes `resume` entry to the issue's timing comment.
 
+### `/task update [message]`
+- Flush current entry: compute active minutes, idle minutes, and word delta since last marker; append a row to the timing comment.
+- Reset `entryStartTs` and `wordsAtEntryStart` to current values — next measurement starts from this point.
+- Accumulates `totalActiveMinutes` in state across checkpoints.
+- `message` sets the Description column; defaults to `"checkpoint"`.
+- Prints: `Update #N: +X active min, +Y idle min, +Z words. Total: A active min, B words.`
+
 ### `/task pause` / `/task end`
 - Flush current task's entry: compute minutes since `entryStartTs` and words since `wordsAtLastEvent`, post to the issue's timing comment.
 - `pause`: leaves `lastActive` set for future `/task start`.
 - `end`: clears `lastActive`. If a plan bucket is active, discards it.
-- Both append a running total line to the timing comment (via edit-in-place of the comment — see "Timing comment structure" below).
 
 ### `/task status`
 - Prints active task (or plan bucket or none), elapsed minutes since entry start, words since last marker.
@@ -130,23 +137,29 @@ When a plan bucket is active:
 
 Each tracked GH issue gets exactly one comment with a `⏱ Timing Log` heading. The skill locates it by scanning issue comments for that heading; if not found, creates it.
 
-Append-only format:
+Append-only format. Each row captures a point-in-time measurement; deltas are relative to the previous row's baseline.
+
 ```markdown
 ⏱ Timing Log
 
-| Timestamp | Event | Δ Min | Δ Words | Cum Min | Cum Words |
-|---|---|---|---|---|---|
-| 2026-04-24T14:02Z | start | — | — | 0 | 0 |
-| 2026-04-24T14:47Z | pre-compact-flush | 45 | 12,400 | 45 | 12,400 |
-| 2026-04-24T14:48Z | post-compact-resume | — | — | 45 | 12,400 |
-| 2026-04-24T15:30Z | pause | 42 | 6,800 | 87 | 19,200 |
-| 2026-04-24T16:10Z | resume | — | — | 87 | 19,200 |
-| 2026-04-24T16:55Z | end | 45 | 9,200 | **132** | **28,400** |
-
-**Session total: 132 min, 28,400 words.** (AI active engagement)
+| Timestamp | Event | Active Min | Idle Min | Δ Words | Word Marker | Description |
+|---|---|---|---|---|---|---|
+| 2026-04-24T14:02Z | start | 0 | 0 | 0 | 8,541 | task opened |
+| 2026-04-24T14:47Z | pre-compact-flush | 38 | 7 | 12,400 | 20,941 | context compacted |
+| 2026-04-24T14:48Z | post-compact-resume | 0 | 0 | 0 | 20,941 | resumed after compact |
+| 2026-04-24T15:30Z | update | 40 | 2 | 6,800 | 27,741 | checkpoint |
+| 2026-04-24T15:30Z | pause | 4 | 0 | 312 | 28,053 | task paused |
+| 2026-04-24T16:10Z | resume | 0 | 0 | 0 | 28,053 | task resumed |
+| 2026-04-24T16:55Z | end | 45 | 3 | 9,200 | 37,253 | task ended |
 ```
 
-On each event, the skill pulls the current comment, appends a row, updates the total line, and replaces via `gh issue comment --edit-last` or equivalent GraphQL mutation.
+Column semantics:
+- **Active Min** / **Idle Min** — minutes in this window where Claude was engaged vs. idle (gap > `idleThresholdMinutes`). Deltas since the last baseline reset.
+- **Δ Words** — context words added since the last baseline reset.
+- **Word Marker** — absolute word-count position in the session JSONL at the time of this row; useful as a reference point for manual inspection.
+- **Description** — human-readable label; free-text for `/task update`, fixed strings for automated events.
+
+On each event, the skill pulls the current comment, appends a row, and replaces via GraphQL mutation.
 
 When a task `end` fires, the skill also updates the Projects V2 fields (`Actual Session Time`, `Context Length`, `Actual Hours`) with the cumulative total.
 

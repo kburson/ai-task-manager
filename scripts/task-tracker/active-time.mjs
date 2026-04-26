@@ -36,10 +36,10 @@ export function collectEventTimestamps(filePath, startMs, endMs) {
 // Marks = [start, ...events, end]; for each gap between marks:
 //   if gap > threshold: idle += gap - threshold
 // active = (end - start) - idle.
-// Empty events in a non-empty window → return 0 (no evidence of activity).
-export function computeActiveMinutes({ startMs, endMs, events, idleThresholdMs }) {
-  if (endMs <= startMs) return 0;
-  if (!events || events.length === 0) return 0;
+// Empty events in a non-empty window → return { activeMin: 0, idleMin: 0 } (no evidence of activity).
+export function computeActiveAndIdleMinutes({ startMs, endMs, events, idleThresholdMs }) {
+  if (endMs <= startMs) return { activeMin: 0, idleMin: 0 };
+  if (!events || events.length === 0) return { activeMin: 0, idleMin: 0 };
   const marks = [startMs, ...events, endMs];
   let idleMs = 0;
   for (let i = 1; i < marks.length; i++) {
@@ -47,7 +47,15 @@ export function computeActiveMinutes({ startMs, endMs, events, idleThresholdMs }
     if (gap > idleThresholdMs) idleMs += gap - idleThresholdMs;
   }
   const activeMs = (endMs - startMs) - idleMs;
-  return Math.max(0, Math.round(activeMs / 60000));
+  return {
+    activeMin: Math.max(0, Math.round(activeMs / 60000)),
+    idleMin: Math.max(0, Math.round(idleMs / 60000)),
+  };
+}
+
+// Backward-compat wrapper — returns only activeMin.
+export function computeActiveMinutes(args) {
+  return computeActiveAndIdleMinutes(args).activeMin;
 }
 
 // Convenience wrapper for callers that have ISO strings + a config.
@@ -55,8 +63,8 @@ export function activeMinutesForWindow({ filePath, startIso, endIso, idleThresho
   const startMs = new Date(startIso).getTime();
   const endMs = new Date(endIso).getTime();
   const events = collectEventTimestamps(filePath, startMs, endMs);
-  return computeActiveMinutes({
+  return computeActiveAndIdleMinutes({
     startMs, endMs, events,
     idleThresholdMs: idleThresholdMinutes * 60_000,
-  });
+  }).activeMin;
 }

@@ -6,41 +6,54 @@ import { buildRow, appendRow, buildInitialComment, TIMING_HEADING } from '../gh-
 const row = buildRow({
   ts: '2026-04-24T14:02:00Z',
   event: 'start',
-  deltaMin: null,
-  deltaWords: null,
-  cumMin: 0,
-  cumWords: 0,
+  activeMin: 0,
+  idleMin: 0,
+  deltaWords: 0,
+  wordMarker: 8541,
+  description: 'task opened',
 });
-assert.equal(row, '| 2026-04-24T14:02Z | start | — | — | 0 | 0 |');
+assert.equal(row, '| 2026-04-24T14:02Z | start | 0 | 0 | 0 | 8,541 | task opened |');
 
 // Test 2: buildRow with deltas
 const row2 = buildRow({
   ts: '2026-04-24T14:47:00Z',
   event: 'pre-compact-flush',
-  deltaMin: 45,
+  activeMin: 38,
+  idleMin: 7,
   deltaWords: 12400,
-  cumMin: 45,
-  cumWords: 12400,
+  wordMarker: 20941,
+  description: 'context compacted',
 });
-assert.equal(row2, '| 2026-04-24T14:47Z | pre-compact-flush | 45 | 12,400 | 45 | 12,400 |');
+assert.equal(row2, '| 2026-04-24T14:47Z | pre-compact-flush | 38 | 7 | 12,400 | 20,941 | context compacted |');
 
-// Test 3: buildInitialComment has heading and headers
+// Test 3: buildRow null values render as —
+const row3 = buildRow({
+  ts: '2026-04-24T14:02:00Z',
+  event: 'session-start',
+  activeMin: null,
+  idleMin: null,
+  deltaWords: null,
+  wordMarker: 8541,
+  description: 'session resumed',
+});
+assert.ok(row3.includes('| — | — | — |'));
+
+// Test 4: buildInitialComment has heading and table header
 const initial = buildInitialComment();
 assert.ok(initial.includes(TIMING_HEADING));
 assert.ok(initial.includes('| Timestamp |'));
+assert.ok(initial.includes('Word Marker'));
+assert.ok(initial.includes('Description'));
+assert.ok(!initial.includes('Cum '));
 
-// Test 4: appendRow inserts before total line, replaces total
-const startingBody = buildInitialComment();
-const withOne = appendRow(startingBody, row, { cumMin: 0, cumWords: 0 });
+// Test 5: appendRow inserts into table, no trailing footer
+const withOne = appendRow(initial, row);
 assert.ok(withOne.includes('| 2026-04-24T14:02Z | start |'));
-assert.ok(withOne.includes('**Session total: 0 min, 0 words.**'));
+assert.ok(!withOne.includes('Session total:'));
 
-const withTwo = appendRow(withOne, row2, { cumMin: 45, cumWords: 12400 });
-// New total, old row still present
+const withTwo = appendRow(withOne, row2);
 assert.ok(withTwo.includes('| 2026-04-24T14:02Z | start |'));
 assert.ok(withTwo.includes('| 2026-04-24T14:47Z | pre-compact-flush |'));
-assert.ok(withTwo.includes('**Session total: 45 min, 12,400 words.**'));
-// Old total line removed
-assert.equal((withTwo.match(/Session total:/g) || []).length, 1);
+assert.ok(!withTwo.includes('Session total:'));
 
 console.log('gh-timing-comment.test.mjs: all passed');

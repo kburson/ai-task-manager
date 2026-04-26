@@ -8,35 +8,23 @@ const pexec = promisify(execFile);
 export const TIMING_HEADING = '⏱ Timing Log';
 
 const TABLE_HEADER = [
-  '| Timestamp | Event | Δ Min | Δ Words | Cum Min | Cum Words |',
-  '|---|---|---|---|---|---|',
+  '| Timestamp | Event | Active Min | Idle Min | Δ Words | Word Marker | Description |',
+  '|---|---|---|---|---|---|---|',
 ].join('\n');
 
-const TOTAL_RE = /\*\*Session total: .*\*\*/;
-
-function fmtTs(iso) { return iso.slice(0, 16) + 'Z'; }           // 2026-04-24T14:02Z
+function fmtTs(iso) { return iso.slice(0, 16) + 'Z'; }
 function fmtNum(n)  { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
 
-export function buildRow({ ts, event, deltaMin, deltaWords, cumMin, cumWords }) {
-  return `| ${fmtTs(ts)} | ${event} | ${fmtNum(deltaMin)} | ${fmtNum(deltaWords)} | ${fmtNum(cumMin)} | ${fmtNum(cumWords)} |`;
+export function buildRow({ ts, event, activeMin, idleMin, deltaWords, wordMarker, description = '' }) {
+  return `| ${fmtTs(ts)} | ${event} | ${fmtNum(activeMin)} | ${fmtNum(idleMin)} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |`;
 }
 
 export function buildInitialComment() {
-  return [
-    TIMING_HEADING,
-    '',
-    TABLE_HEADER,
-    '',
-    '**Session total: 0 min, 0 words.** (AI active engagement)',
-  ].join('\n');
+  return [TIMING_HEADING, '', TABLE_HEADER].join('\n');
 }
 
-export function appendRow(body, row, { cumMin, cumWords }) {
-  // Strip existing total line
-  const withoutTotal = body.replace(/\n?\*\*Session total:.*?\n?/s, '\n');
-  const totalLine = `**Session total: ${fmtNum(cumMin)} min, ${fmtNum(cumWords)} words.** (AI active engagement)`;
-  // Find the last table row, insert new row after it
-  const lines = withoutTotal.split('\n');
+export function appendRow(body, row) {
+  const lines = body.split('\n');
   let lastTableIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].startsWith('| ') && !lines[i].startsWith('| Timestamp') && !lines[i].startsWith('|---')) {
@@ -44,13 +32,12 @@ export function appendRow(body, row, { cumMin, cumWords }) {
     }
   }
   if (lastTableIdx === -1) {
-    // First data row — insert after separator
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].startsWith('|---')) { lastTableIdx = i; break; }
     }
   }
   lines.splice(lastTableIdx + 1, 0, row);
-  return lines.join('\n').replace(/\n+$/, '') + '\n\n' + totalLine + '\n';
+  return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
 
 // ---- GH shell-out helpers ----
@@ -94,14 +81,14 @@ export async function updateTimingComment(commentId, repo, body, { timeoutMs } =
 }
 
 export async function postTimingEvent({
-  issueNumber, repo, row, cumMin, cumWords, timeoutMs = 2000,
+  issueNumber, repo, row, timeoutMs = 2000,
 }) {
   const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
-  if (!existing) {
-    const initial = appendRow(buildInitialComment(), row, { cumMin, cumWords });
-    await createTimingComment(issueNumber, repo, initial, { timeoutMs });
-  } else {
-    const updated = appendRow(existing.body, row, { cumMin, cumWords });
+  if (existing) {
+    const updated = appendRow(existing.body, row);
     await updateTimingComment(existing.id, repo, updated, { timeoutMs });
+  } else {
+    const initial = appendRow(buildInitialComment(), row);
+    await createTimingComment(issueNumber, repo, initial, { timeoutMs });
   }
 }
