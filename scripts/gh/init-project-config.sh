@@ -106,79 +106,137 @@ info "Fetching GitHub Projects for $OWNER..."
 PROJECTS_JSON=$(gh project list --owner "$OWNER" --format json --limit 20 2>/dev/null || echo '{"projects":[]}')
 PROJECT_COUNT=$(python3 -c "import json,sys; d=json.loads('''$PROJECTS_JSON'''); print(len(d.get('projects',[])))" 2>/dev/null || echo '0')
 
+PROJECT_NODE_ID=""
 if [[ "$PROJECT_COUNT" == "0" ]]; then
   warn "No GitHub Projects V2 found for $OWNER."
   echo ""
-  bold "  ── Create a GitHub Project ──────────────────────────"
+  info "A GitHub Project board is required to track Kanban state."
   echo ""
-  info "You need a GitHub Projects V2 board with a Status (Kanban) field."
-  info "We can create one for you now, or you can do it manually."
-  echo ""
-  info "Manual steps (if you prefer):"
-  echo "    1. Go to: https://github.com/users/$OWNER/projects/new?type=board"
-  echo "       (or for an org: https://github.com/orgs/$OWNER/projects/new?type=board)"
-  echo "    2. Name it and create with the Board layout (adds Status field automatically)"
-  echo "    3. Re-run: npx claude-gh-task-manager init"
-  echo ""
-  prompt "Create a new GitHub Project now? [Y/n]:"
+  DEFAULT_TITLE="$REPO_NAME Board"
+  prompt "Create a new project now? [Y/n] (title: '$DEFAULT_TITLE'):"
   read -r CREATE_PROJECT
-  if [[ ! "$CREATE_PROJECT" =~ ^[Nn] ]]; then
-    prompt "Project title (e.g. 'My Project Board'):"
-    read -r PROJECT_TITLE
-    info "Creating project '$PROJECT_TITLE' for $OWNER..."
-    PROJECT_CREATE_OUT=$(gh project create --owner "$OWNER" --title "$PROJECT_TITLE" --format json 2>/dev/null || echo '')
-    if [[ -z "$PROJECT_CREATE_OUT" ]]; then
-      err "Failed to create project via CLI. Please create it manually at:"
-      err "  https://github.com/users/$OWNER/projects/new?type=board"
-      err "Then re-run: npx claude-gh-task-manager init"
-      exit 1
-    fi
-    PROJECT_NUMBER=$(python3 -c "import json; print(json.loads('$PROJECT_CREATE_OUT').get('number',''))" 2>/dev/null || echo '')
-    ok "Created project #$PROJECT_NUMBER: $PROJECT_TITLE"
-    echo ""
-    info "Note: The project was created but may not have a Status field yet."
-    info "Visit the project to add a Status (single-select) field with your Kanban states,"
-    info "then re-run: npx claude-gh-task-manager init"
-    echo ""
-    info "Project URL: https://github.com/users/$OWNER/projects/$PROJECT_NUMBER"
-    echo ""
-    prompt "Press Enter when the Status field is ready..."
-    read -r _
-  else
-    prompt "Enter project number manually:"
-    read -r PROJECT_NUMBER
+  if [[ "$CREATE_PROJECT" =~ ^[Nn] ]]; then
+    err "Cannot continue without a GitHub Project. Create one at:"
+    err "  https://github.com/users/$OWNER/projects/new"
+    err "Then re-run: npx claude-gh-task-manager init"
+    exit 1
   fi
+
+  prompt "Project title [$DEFAULT_TITLE]:"
+  read -r PROJECT_TITLE
+  [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
+
+  info "Creating project '$PROJECT_TITLE'..."
+  PROJECT_CREATE_OUT=$(gh project create --owner "$OWNER" --title "$PROJECT_TITLE" --format json 2>/dev/null || echo '')
+  if [[ -z "$PROJECT_CREATE_OUT" ]]; then
+    err "Failed to create project. Please create one manually at:"
+    err "  https://github.com/users/$OWNER/projects/new"
+    err "Then re-run: npx claude-gh-task-manager init"
+    exit 1
+  fi
+  PROJECT_NUMBER=$(python3 -c "import json; print(json.loads('''$PROJECT_CREATE_OUT''').get('number',''))" 2>/dev/null || echo '')
+  ok "Created project #$PROJECT_NUMBER: $PROJECT_TITLE"
+
+  # Resolve the new project node ID immediately
+  info "Fetching project node ID..."
+  PROJECT_NODE_ID=$(gh api graphql -f query="
+{
+  user(login: \"$OWNER\") {
+    projectV2(number: $PROJECT_NUMBER) { id }
+  }
+}" --jq '.data.user.projectV2.id' 2>/dev/null || \
+  gh api graphql -f query="
+{
+  organization(login: \"$OWNER\") {
+    projectV2(number: $PROJECT_NUMBER) { id }
+  }
+}" --jq '.data.organization.projectV2.id' 2>/dev/null || echo '')
+
+  if [[ -z "$PROJECT_NODE_ID" ]]; then
+    err "Could not resolve new project #$PROJECT_NUMBER."
+    exit 1
+  fi
+  ok "Project node ID: $PROJECT_NODE_ID"
+
+  # Create Status field with standard Kanban options
+  info "Creating Status field with Kanban options..."
+  STATUS_FIELD_OUT=$(gh api graphql -f query='
+mutation($proj: ID!) {
+  createProjectV2Field(input: {
+    projectId: $proj
+    dataType: SINGLE_SELECT
+    name: "Status"
+    singleSelectOptions: [
+      {name: "Backlog",     color: GRAY,   description: ""},
+      {name: "Ready",       color: BLUE,   description: ""},
+      {name: "In Progress", color: YELLOW, description: ""},
+      {name: "In Review",   color: ORANGE, description: ""},
+      {name: "Done",        color: GREEN,  description: ""}
+    ]
+  }) {
+    projectV2Field { ... on ProjectV2SingleSelectField { id options { id name } } }
+  }
+}' -f proj="$PROJECT_NODE_ID" 2>/dev/null || echo '')
+
+  if [[ -z "$STATUS_FIELD_OUT" ]]; then
+    err "Could not create Status field. The project was created but setup is incomplete."
+    err "Add a Status (single-select) field manually, then re-run: npx claude-gh-task-manager init"
+    exit 1
+  fi
+  ok "Status field created with Backlog / Ready / In Progress / In Review / Done"
+  echo ""
+
+  # Refresh PROJECTS_JSON and jump to field fetch below
+  PROJECTS_JSON=$(gh project list --owner "$OWNER" --format json --limit 20 2>/dev/null || echo '{"projects":[]}')
+  PROJECT_COUNT=1
 else
   echo ""
   info "Available projects:"
   python3 -c "
-import json, sys
+import json
 d = json.loads('''$PROJECTS_JSON''')
 for p in d.get('projects', []):
     print(f\"    [{p['number']}] {p['title']}\")
 " 2>/dev/null || true
+  FIRST_NUMBER=$(python3 -c "
+import json
+d = json.loads('''$PROJECTS_JSON''')
+ps = d.get('projects', [])
+if ps: print(ps[0]['number'], end='')
+" 2>/dev/null || echo '')
   echo ""
-  prompt "Enter project number:"
-  read -r PROJECT_NUMBER
+  while true; do
+    if [[ -n "$FIRST_NUMBER" ]]; then
+      prompt "Enter project number [$FIRST_NUMBER]:"
+    else
+      prompt "Enter project number:"
+    fi
+    read -r PROJECT_NUMBER
+    [[ -z "$PROJECT_NUMBER" && -n "$FIRST_NUMBER" ]] && PROJECT_NUMBER="$FIRST_NUMBER"
+    [[ "$PROJECT_NUMBER" =~ ^[0-9]+$ ]] && break
+    err "Please enter a valid project number."
+  done
 fi
 
 ok "Using project #$PROJECT_NUMBER"
 echo ""
 
-# Resolve project node ID
-info "Fetching project node ID..."
-PROJECT_NODE_ID=$(gh api graphql -f query="
+# Resolve project node ID (skip if already resolved by auto-create above)
+if [[ -z "$PROJECT_NODE_ID" ]]; then
+  info "Fetching project node ID..."
+  PROJECT_NODE_ID=$(gh api graphql -f query="
 {
   user(login: \"$OWNER\") {
     projectV2(number: $PROJECT_NUMBER) { id title }
   }
 }" --jq '.data.user.projectV2.id' 2>/dev/null || \
-gh api graphql -f query="
+  gh api graphql -f query="
 {
   organization(login: \"$OWNER\") {
     projectV2(number: $PROJECT_NUMBER) { id title }
   }
 }" --jq '.data.organization.projectV2.id' 2>/dev/null || echo '')
+fi
 
 if [[ -z "$PROJECT_NODE_ID" ]]; then
   err "Could not resolve project #$PROJECT_NUMBER for $OWNER."
@@ -225,10 +283,13 @@ for f in fields:
 " 2>/dev/null || true
 echo ""
 
-prompt "Which field is your Kanban status field? (e.g. 'Status'):"
-read -r KANBAN_FIELD_NAME
+KANBAN_FIELD_JSON=""
+while [[ -z "$KANBAN_FIELD_JSON" ]]; do
+  prompt "Which field is your Kanban status field? [Status]:"
+  read -r KANBAN_FIELD_NAME
+  [[ -z "$KANBAN_FIELD_NAME" ]] && KANBAN_FIELD_NAME="Status"
 
-KANBAN_FIELD_JSON=$(python3 -c "
+  KANBAN_FIELD_JSON=$(python3 -c "
 import json
 fields = json.loads('''$FIELDS_JSON''')
 for f in fields:
@@ -237,10 +298,10 @@ for f in fields:
         break
 " 2>/dev/null || echo '')
 
-if [[ -z "$KANBAN_FIELD_JSON" ]]; then
-  err "Field '$KANBAN_FIELD_NAME' not found or has no options."
-  exit 1
-fi
+  if [[ -z "$KANBAN_FIELD_JSON" ]]; then
+    err "Field '$KANBAN_FIELD_NAME' not found or has no options. Try again."
+  fi
+done
 
 KANBAN_FIELD_ID=$(python3 -c "import json; print(json.loads('''$KANBAN_FIELD_JSON''')['id'])")
 ok "Kanban field ID: $KANBAN_FIELD_ID"
@@ -272,10 +333,10 @@ for o in f.get('options', []):
         break
 " 2>/dev/null || echo '')
   if [[ -n "$matched" ]]; then
-    ok "Auto-matched '$label' → $matched"
+    ok "Auto-matched '$label' → $matched" >&2
     echo "$matched"
   else
-    prompt "Option ID for '$label' state:"
+    prompt "Option ID for '$label' state:" >&2
     read -r val
     echo "$val"
   fi
@@ -330,27 +391,6 @@ else
 fi
 echo ""
 
-# Look for timing / numeric fields (Actual Minutes, Context Words, Actual Hours)
-find_field_id() {
-  local keyword="$1"
-  python3 -c "
-import json
-fields = json.loads('''$FIELDS_JSON''')
-for f in fields:
-    if '$keyword' in f.get('name','').lower() and 'options' not in f:
-        print(f['id'])
-        break
-" 2>/dev/null || echo ''
-}
-
-FIELD_ACTUAL_MINUTES=$(find_field_id "actual minutes")
-FIELD_CONTEXT_WORDS=$(find_field_id "context words")
-FIELD_ACTUAL_HOURS=$(find_field_id "actual hours")
-
-[[ -n "$FIELD_ACTUAL_MINUTES" ]] && ok "Found 'Actual Minutes' field: $FIELD_ACTUAL_MINUTES" || warn "No 'Actual Minutes' number field found — timing write-back disabled."
-[[ -n "$FIELD_CONTEXT_WORDS" ]] && ok "Found 'Context Words' field: $FIELD_CONTEXT_WORDS" || warn "No 'Context Words' number field found."
-[[ -n "$FIELD_ACTUAL_HOURS" ]] && ok "Found 'Actual Hours' field: $FIELD_ACTUAL_HOURS" || warn "No 'Actual Hours' number field found."
-echo ""
 
 # ── step 5: write config + issue templates ─────────────────────────────────
 
@@ -382,9 +422,6 @@ existing.update({
     'priorityOptionP0': '$OPTION_P0',
     'priorityOptionP1': '$OPTION_P1',
     'priorityOptionP2': '$OPTION_P2',
-    'fieldActualMinutes': '$FIELD_ACTUAL_MINUTES',
-    'fieldContextWords': '$FIELD_CONTEXT_WORDS',
-    'fieldActualHours': '$FIELD_ACTUAL_HOURS',
 })
 with open(config_file, 'w') as f:
     json.dump(existing, f, indent=2)
@@ -536,9 +573,9 @@ ok "Config:          $CONFIG_FILE"
 ok "Issue templates: $TEMPLATE_DIR/"
 echo ""
 info "Next steps:"
-echo "   1. Commit the new files:"
-echo "      git add .claude/task-tracker.json .github/ISSUE_TEMPLATE/"
-echo "      git commit -m 'chore: add claude-gh-task-manager config'"
+echo "   1. Commit the issue templates (config is gitignored):"
+echo "      git add .github/ISSUE_TEMPLATE/"
+echo "      git commit -m 'chore: add claude-gh-task-manager issue templates'"
 echo ""
 echo "   2. Start Claude Code and type: /task #<issue-number>"
 echo ""

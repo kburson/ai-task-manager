@@ -1,0 +1,20 @@
+{
+  "repo": "kburson/options-co-pilot",
+  "projectId": "PVT_kwHOABCEY84BVBBe",
+  "kanbanFieldId": "PVTSSF_lAHOABCEY84BVBBezhQfvKY",
+  "kanbanOptionBacklog": "f75ad846",
+  "kanbanOptionReady": "e18bf179",
+  "kanbanOptionInProgress": "47fc9ee4",
+  "kanbanOptionInReview": "aba860b9",
+  "kanbanOptionDone": "98236657",
+  "priorityFieldId": "PVTSSF_lAHOABCEY84BVBBezhQfvYw",
+  "priorityOptionP0": "79628723",
+  "priorityOptionP1": "0a877460",
+  "priorityOptionP2": "da944a9c",
+  "fieldActualMinutes": "PVTF_lAHOABCEY84BVBBezhQ9xfI",
+  "fieldContextWords": "PVTF_lAHOABCEY84BVBBezhQ9xfM",
+  "fieldActualHours": "PVTF_lAHOABCEY84BVBBezhQ89nk",
+  "assignee": "@me",
+  "autoEndOnSwitch": true,
+  "wpm": 180
+}

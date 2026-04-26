@@ -11,10 +11,6 @@ export const DEFAULTS = {
   repo: '',
   // GitHub Projects V2 node ID (set by init script)
   projectId: '',
-  // Project field IDs for time/words tracking (set by init script)
-  fieldActualMinutes: '',
-  fieldContextWords: '',
-  fieldActualHours: '',
   // Kanban board field + state option IDs (set by init script)
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
@@ -42,9 +38,6 @@ const TYPES = {
   wpm: 'number',
   repo: 'string',
   projectId: 'string',
-  fieldActualMinutes: 'string',
-  fieldContextWords: 'string',
-  fieldActualHours: 'string',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
   kanbanOptionReady: 'string',

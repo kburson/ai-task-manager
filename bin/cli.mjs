@@ -57,6 +57,7 @@ function patchSettingsJson(settingsPath) {
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
   const entries = [
+    '.claude/task-tracker.json',
     '.claude/task-tracker-state.json',
     '.claude/task-tracker-queue.json',
   ];
@@ -115,12 +116,18 @@ function cmdInstall(args) {
   try { execFileSync('chmod', ['+x', hookStubPath]); } catch { /* ignore on Windows */ }
   ok(`Hook:     .claude/hooks/task-tracker.sh (stub → node_modules)`);
 
-  // 4. Patch .claude/settings.json
+  // 4. Command file — makes /task a recognized slash command
+  const commandDest = join(targetDir, '.claude', 'commands');
+  mkdirSync(commandDest, { recursive: true });
+  writeFileSync(join(commandDest, 'task.md'), 'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS\n', 'utf8');
+  ok(`Command:  .claude/commands/task.md`);
+
+  // 5. Patch .claude/settings.json
   const settingsPath = join(targetDir, '.claude', 'settings.json');
   patchSettingsJson(settingsPath);
   ok(`Hooks:    registered in .claude/settings.json`);
 
-  // 5. Patch .gitignore
+  // 6. Patch .gitignore
   patchGitignore(targetDir);
   ok(`Gitignore: .claude/task-tracker-state.json, .claude/task-tracker-queue.json`);
 
