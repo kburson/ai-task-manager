@@ -20,13 +20,14 @@ A project-local Claude Code skill (`/task`) that binds the active work session t
 /task start             Resume the last active task
 /task pause             Soft-stop — flushes timing, keeps task as "last active"
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
-/task end               Hard-stop — flushes timing, clears last-active, discards any active plan
+/task end               Hard-stop — flushes timing, clears last-active, writes board fields, discards any active plan
+/task log #N            Re-compute and write Actual Session Time + Context Length to GitHub Projects
 /task status            Print active task, elapsed, words since last marker
 /task config            List all config values
 /task config <key> <value>   Set a config value (project-local)
 ```
 
-**10 command patterns, 8 verbs.**
+**12 command patterns, 9 verbs.**
 
 ## Semantics
 
@@ -56,6 +57,13 @@ A project-local Claude Code skill (`/task`) that binds the active work session t
 - Reads `lastActive` from state. Errors if none.
 - Does NOT end any current active task (would be redundant — `start` only makes sense if nothing is active).
 - Writes `resume` entry to the issue's timing comment.
+
+### `/task log #N`
+- Reads the issue's `⏱ Timing Log` comment, sums all `Active Min` deltas for `Actual Session Time`, takes the last `Word Marker` for `Context Length`.
+- Writes both to the GitHub Projects V2 board via `updateProjectV2ItemFieldValue` mutation.
+- Field IDs are looked up by name at runtime — no extra config required.
+- Called automatically by `/task end`. Run manually for issues closed without the skill active.
+- Supports `--dry-run` to print computed values without writing.
 
 ### `/task update [message]`
 - Flush current entry: compute active minutes, idle minutes, and word delta since last marker; append a row to the timing comment.

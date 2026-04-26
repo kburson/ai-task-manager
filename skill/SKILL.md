@@ -22,7 +22,8 @@ The user types one of these commands. For `/task #N`, always fetch and display t
 | `/task start` | Resume the last active task |
 | `/task pause` | Soft-stop — flush timing, keep last-active |
 | `/task update [message]` | Checkpoint — flush timing and reset counters, keep task active. Optional message becomes the row description (default: "checkpoint") |
-| `/task end` | Hard-stop — flush timing, clear last-active |
+| `/task end` | Hard-stop — flush timing, clear last-active, write totals to GitHub Projects board |
+| `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue (use when closed without the skill active) |
 | `/task config` | List all config values |
 | `/task config <key> <value>` | Set a config value (project-local) |
 

@@ -50,7 +50,8 @@ git commit -m "chore: add claude-gh-task-manager"
 | `/task start` | Resume the last active task |
 | `/task pause` | Flush timing, pause (keeps last-active for resume) |
 | `/task update [message]` | Checkpoint — flush timing, reset counters, keep task active |
-| `/task end` | Flush timing, clear active task |
+| `/task end` | Flush timing, clear active task, write totals to GitHub Projects board |
+| `/task log #N` | Re-compute and write board fields for any issue (use when closed without the skill) |
 | `/task config` | List all config values with sources |
 | `/task config <key> <value>` | Set a config value project-locally |
 

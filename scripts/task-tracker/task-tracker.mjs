@@ -3,7 +3,11 @@
 // Read design: .claude/skills/task-tracker/DESIGN.md
 
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { loadConfig, setConfigValue, formatConfig, DEFAULTS } from './config.mjs';
+
+const pexec = promisify(execFile);
 import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
 import { currentSessionId, jsonlPath, markerPathFor, loadMarker, saveMarker, countWords } from './word-counter.mjs';
@@ -143,6 +147,17 @@ async function flushActiveToGH(state, event, description) {
   return { ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
 }
 
+async function runLogIssueTime(issue) {
+  if (SKIP_NETWORK) return;
+  const scriptPath = new URL('../../gh/log-issue-time.mjs', import.meta.url).pathname;
+  try {
+    const { stdout } = await pexec(process.execPath, [scriptPath, issue], { timeout: 15000 });
+    if (stdout.trim()) console.log(stdout.trim());
+  } catch (err) {
+    console.warn(`[task-tracker] Could not update board fields: ${err.message}`);
+  }
+}
+
 async function verbEnd() {
   await draiQueueIfAny();
   const s = loadState(statePath);
@@ -156,6 +171,7 @@ async function verbEnd() {
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   console.log(`Ended ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
   clearActive(statePath);
+  await runLogIssueTime(s.active);
 }
 
 async function verbSwitch(target) {
@@ -385,6 +401,12 @@ async function verbUpdate(args) {
       case 'pause':   await verbPause(); break;
       case 'start':   await verbStart(); break;
       case 'update':  await verbUpdate(rest); break;
+      case 'log': {
+        const target = rest[0];
+        if (!target) { console.error('Usage: /task log #N'); process.exit(1); }
+        await runLogIssueTime(target);
+        break;
+      }
       case 'plan':    await verbPlan(); break;
       case 'new':     await verbNew(rest); break;
       default:
