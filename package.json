@@ -1,6 +1,6 @@
 {
   "name": "@burson.kendrick/claude-gh-task-manager",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Claude Code /task skill — bind AI sessions to GitHub issues and auto-log time + context words",
   "type": "module",
   "license": "MIT",

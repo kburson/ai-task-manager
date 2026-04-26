@@ -71,15 +71,33 @@ if [[ -z "$OPTION_ID" ]]; then
   exit 1
 fi
 
-# Get the project item ID for this issue
+# Get the project item ID for this issue via GraphQL.
+# Resolves through the issue's projectItems edge — works for user- and org-owned
+# projects without a project number, and avoids the `gh project item-list`
+# pagination cap and CLI flag churn.
 REPO=$(read_config repo)
 OWNER=$(echo "$REPO" | cut -d'/' -f1)
+REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 
-ITEM_ID=$(gh project item-list --owner "$OWNER" --format json --limit 500 | \
-  python3 -c "import json,sys; d=json.load(sys.stdin); [print(i['id']) for i in d['items'] if i['content'].get('number')==$ISSUE]" | head -1)
+ITEM_ID=$(gh api graphql -f query="
+{
+  repository(owner: \"$OWNER\", name: \"$REPO_NAME\") {
+    issue(number: $ISSUE) {
+      projectItems(first: 10) { nodes { id project { id } } }
+    }
+  }
+}" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+issue=d.get('data',{}).get('repository',{}).get('issue')
+nodes=(issue or {}).get('projectItems',{}).get('nodes',[])
+for n in nodes:
+    if n.get('project',{}).get('id') == '$PROJECT_ID':
+        print(n['id']); break
+")
 
 if [[ -z "$ITEM_ID" ]]; then
-  echo "Issue #$ISSUE not found in project (owner: $OWNER)"
+  echo "Issue #$ISSUE not found in project (owner: $OWNER, projectId: $PROJECT_ID)"
   exit 1
 fi
 
