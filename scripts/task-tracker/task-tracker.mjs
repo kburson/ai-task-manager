@@ -15,8 +15,10 @@ import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-ti
 import { enqueue, drain } from './queue.mjs';
 
 const argv = process.argv.slice(2);
-const verb = argv[0] || 'status';
-const rest = argv.slice(1);
+// Normalize bare issue numbers: "156" → "#156", "log 156" → "log #156"
+const rawVerb = argv[0] || 'status';
+const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
+const rest = argv.slice(1).map(a => /^\d+$/.test(a) ? `#${a}` : a);
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const cfg = loadConfig();

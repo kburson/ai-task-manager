@@ -71,23 +71,72 @@ async function onPostCompact(sid) {
 
 async function onSessionStart(sid) {
   const s = loadState(statePath);
-  if (!s.active || s.active === 'plan') {
+
+  // Nothing active and nothing paused
+  if (!s.active && !s.lastActive) {
+    console.log('[task-tracker] No active task.');
     if (sid) {
       const { totalLines } = countWords(jsonlPath(sid), 0);
       saveMarker(markerPathFor(sid), totalLines, 0, null);
     }
     return;
   }
+
+  // Was properly paused (active cleared, lastActive preserved)
+  if (!s.active) {
+    console.log(`[task-tracker] ${s.lastActive} is paused. Use /task start to resume.`);
+    if (sid) {
+      const { totalLines } = countWords(jsonlPath(sid), 0);
+      saveMarker(markerPathFor(sid), totalLines, 0, null);
+    }
+    return;
+  }
+
+  // Planning bucket active
+  if (s.active === 'plan') {
+    console.log('[task-tracker] Planning bucket active. Use /task new to promote to an issue.');
+    if (sid) {
+      const { totalLines } = countWords(jsonlPath(sid), 0);
+      saveMarker(markerPathFor(sid), totalLines, 0, 'plan');
+    }
+    return;
+  }
+
+  // Active task — session closed without /task pause; recover unlogged wall time
+  const nowTs = new Date().toISOString();
+  const wallMin = s.entryStartTs
+    ? Math.round((Date.now() - new Date(s.entryStartTs).getTime()) / 60000)
+    : 0;
+
+  if (wallMin > 0) {
+    const recoveryRow = buildRow({
+      ts: nowTs, event: 'session-end-recovery',
+      activeMin: wallMin, idleMin: 0,
+      deltaWords: 0, wordMarker: s.wordsAtEntryStart,
+      description: 'recovered — session closed without /task pause (wall time only)',
+    });
+    await safePost(s.active, recoveryRow);
+  }
+
+  let newWordBaseline = s.wordsAtEntryStart;
   if (sid) {
     const { totalLines, count } = countWords(jsonlPath(sid), 0);
+    newWordBaseline = count;
     saveMarker(markerPathFor(sid), totalLines, count, s.active);
-    const row = buildRow({
-      ts: new Date().toISOString(), event: 'session-start',
+    const startRow = buildRow({
+      ts: nowTs, event: 'session-start',
       activeMin: 0, idleMin: 0, deltaWords: 0,
-      wordMarker: s.wordsAtEntryStart, description: 'session resumed',
+      wordMarker: newWordBaseline, description: 'session resumed',
     });
-    await safePost(s.active, row);
+    await safePost(s.active, startRow);
   }
+
+  saveState({ ...s, entryStartTs: nowTs, wordsAtEntryStart: newWordBaseline }, statePath);
+
+  const recoveryNote = wallMin > 0
+    ? ` — logged ~${wallMin} min from prior session (wall time only)`
+    : '';
+  console.log(`[task-tracker] ${s.active} is active${recoveryNote}. Use /task pause or /task end before closing Claude, running /clear, or switching sessions.`);
 }
 
 (async () => {

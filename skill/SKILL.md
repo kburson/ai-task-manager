@@ -20,7 +20,7 @@ The user types one of these commands. For `/task #N`, always fetch and display t
 | `/task new [title]` | Create a new issue and start working on it; promotes any active plan bucket |
 | `/task plan` | Open an untracked planning bucket |
 | `/task start` | Resume the last active task |
-| `/task pause` | Soft-stop — flush timing, keep last-active |
+| `/task pause` | Soft-stop — flush timing, keep last-active. **Run before closing Claude Code, running `/clear`, or switching sessions** to preserve the current timing window. |
 | `/task update [message]` | Checkpoint — flush timing and reset counters, keep task active. Optional message becomes the row description (default: "checkpoint") |
 | `/task end` | Hard-stop — flush timing, clear last-active, write totals to GitHub Projects board |
 | `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue (use when closed without the skill active) |
@@ -112,6 +112,11 @@ Just invoke the CLI and print its output — don't fetch issue details.
 ## Hooks
 
 The PreCompact, PostCompact, and SessionStart hooks (defined in `.claude/settings.json`) call the hook handler automatically. The skill itself does not need to do anything for compaction/session events.
+
+**SessionStart behavior** (runs automatically when Claude opens):
+- **No active task, nothing paused** → prints `[task-tracker] No active task.`
+- **Task paused** → prints `[task-tracker] #N is paused. Use /task start to resume.`
+- **Task was active when session closed** (forgot to `/task pause`) → posts a `session-end-recovery` row with wall-clock elapsed time, then a fresh `session-start` row, and prints a summary with the recovered minutes.
 
 ## Error handling
 

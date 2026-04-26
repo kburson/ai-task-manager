@@ -143,6 +143,14 @@ Always run `/task pause` first:
 
 This flushes elapsed time and context words to the GitHub issue comment before the session is wiped.
 
+### One session per workspace
+
+The task tracker's state file (`.claude/task-tracker-state.json`) is **workspace-scoped** — it stores a single active task shared across all Claude sessions open in the same directory. Word-count markers are per-session, but the CLI detects the current session by finding the most-recently-modified JSONL file, which is a heuristic that breaks when two sessions are active simultaneously.
+
+**Practical rule: only run `/task` commands from one session at a time.**
+
+If you open a second session in the same workspace (e.g., to look something up), treat it as read-only — don't run any `/task` commands from it. Switching tasks or checkpointing from a second session will corrupt the word-count baseline for the first session. Timing (minutes) will still be correct; only the Δ Words column is affected.
+
 ## Issue Templates
 
 `npx claude-gh-task-manager init` creates `.github/ISSUE_TEMPLATE/task.yml` and `bug.yml` with fields for:
