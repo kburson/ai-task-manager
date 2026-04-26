@@ -24,6 +24,7 @@ The user types one of these commands. For `/task #N`, always fetch and display t
 | `/task update [message]` | Checkpoint — flush timing and reset counters, keep task active. Optional message becomes the row description (default: "checkpoint") |
 | `/task end` | Hard-stop — flush timing, clear last-active, write totals to GitHub Projects board |
 | `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue (use when closed without the skill active) |
+| `/task check "<label>"` | Toggle checkbox `<label>` in the active issue body — checks if unchecked, unchecks if checked (exact match) |
 | `/task config` | List all config values |
 | `/task config <key> <value>` | Set a config value (project-local) |
 

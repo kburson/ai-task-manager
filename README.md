@@ -52,6 +52,7 @@ git commit -m "chore: add claude-gh-task-manager"
 | `/task update [message]` | Checkpoint — flush timing, reset counters, keep task active |
 | `/task end` | Flush timing, clear active task, write totals to GitHub Projects board |
 | `/task log #N` | Re-compute and write board fields for any issue (use when closed without the skill) |
+| `/task check "<label>"` | Toggle checkbox `<label>` in the active issue body — checks if unchecked, unchecks if checked (exact match) |
 | `/task config` | List all config values with sources |
 | `/task config <key> <value>` | Set a config value project-locally |
 

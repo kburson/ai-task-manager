@@ -5,10 +5,12 @@
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import os from 'node:os';
 import { loadConfig, setConfigValue, formatConfig, DEFAULTS } from './config.mjs';
+import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
 
 const pexec = promisify(execFile);
-import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
 import { currentSessionId, jsonlPath, markerPathFor, loadMarker, saveMarker, countWords } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
@@ -392,6 +394,45 @@ async function verbUpdate(args) {
   );
 }
 
+async function verbCheck(args) {
+  const s = loadState(statePath);
+  if (!s.active || s.active === 'plan') {
+    console.error('no active task');
+    process.exit(1);
+  }
+  const label = args.join(' ').trim();
+  if (!label) {
+    console.error('Usage: /task check "<label>"');
+    process.exit(1);
+  }
+  const issueNum = s.active.replace(/^#/, '');
+  const { stdout } = await pexec('gh', [
+    'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body',
+  ], { timeout: 10000 });
+  const body = stdout;
+  const uncheckedLine = `- [ ] ${label}`;
+  const checkedLine   = `- [x] ${label}`;
+  const alreadyChecked = body.includes(checkedLine);
+  if (!alreadyChecked && !body.includes(uncheckedLine)) {
+    const found = [...body.matchAll(/^- \[[ x]\] (.+)$/gm)].map(m => `  "${m[1]}"`);
+    const list = found.length ? `\nCheckboxes found:\n${found.join('\n')}` : '\n(no checkboxes found in issue body)';
+    console.error(`[task-tracker] checkbox "${label}" not found in ${s.active}${list}`);
+    process.exit(1);
+  }
+  const updated = alreadyChecked
+    ? body.replace(checkedLine, uncheckedLine)
+    : body.replace(uncheckedLine, checkedLine);
+  const tmp = path.join(os.tmpdir(), `tt-check-${Date.now()}.md`);
+  try {
+    writeFileSync(tmp, updated, 'utf8');
+    await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], { timeout: 10000 });
+  } finally {
+    try { unlinkSync(tmp); } catch {}
+  }
+  const action = alreadyChecked ? 'Unchecked' : 'Checked';
+  console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}`);
+}
+
 // ---- Dispatch ----
 
 (async () => {
@@ -411,6 +452,7 @@ async function verbUpdate(args) {
       }
       case 'plan':    await verbPlan(); break;
       case 'new':     await verbNew(rest); break;
+      case 'check':   await verbCheck(rest); break;
       default:
         if (/^#\d+$/.test(verb)) { await verbSwitch(verb); break; }
         console.error(`unknown verb: ${verb}`);
