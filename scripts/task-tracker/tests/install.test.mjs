@@ -29,7 +29,7 @@ try {
 
   // settings.json patched
   const settings = JSON.parse(readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'));
-  assert.ok(settings.hooks?.SessionStart?.some(h => h.command?.includes('task-tracker.sh')), 'SessionStart hook missing');
+  assert.ok(settings.hooks?.SessionStart?.some(h => h.hooks?.some(inner => inner.command?.includes('task-tracker.sh'))), 'SessionStart hook missing');
 
   // .gitignore entries written
   const gitignore = readFileSync(path.join(target, '.gitignore'), 'utf8');

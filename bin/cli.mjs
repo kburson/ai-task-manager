@@ -35,7 +35,7 @@ function patchSettingsJson(settingsPath) {
   if (!settings.hooks) settings.hooks = {};
 
   const hookScript = '.claude/hooks/task-tracker.sh';
-  const hookEntry = { type: 'command', command: hookScript };
+  const hookEntry = { matcher: '', hooks: [{ type: 'command', command: hookScript }] };
 
   const eventNames = ['SessionStart', 'PreCompact', 'PostCompact'];
   for (const event of eventNames) {
@@ -43,7 +43,9 @@ function patchSettingsJson(settingsPath) {
       settings.hooks[event] = [];
     }
     const alreadyRegistered = settings.hooks[event].some(
-      h => h.command === hookScript || (typeof h === 'string' && h === hookScript)
+      h => h.command === hookScript ||
+           (typeof h === 'string' && h === hookScript) ||
+           h.hooks?.some(inner => inner.command === hookScript)
     );
     if (!alreadyRegistered) {
       settings.hooks[event].push(hookEntry);
