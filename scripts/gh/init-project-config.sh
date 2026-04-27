@@ -248,7 +248,7 @@ FIELDS_JSON=$(gh api graphql -f query="
       fields(first: 30) {
         nodes {
           ... on ProjectV2SingleSelectField {
-            id name options { id name }
+            id name options { id name color description }
           }
           ... on ProjectV2Field {
             id name
@@ -369,23 +369,18 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
   info "Adding new states: $(IFS=', '; echo "${local_names[*]}")"
 
   # Existing options with their IDs (preserved) + new options (no id = created)
-  EXISTING_OPTS_JSON=$(echo "$KANBAN_FIELD_JSON" | jq '[.options[] | {id, name, color: "GRAY", description: ""}]')
+  EXISTING_OPTS_JSON=$(echo "$KANBAN_FIELD_JSON" | jq '[.options[] | {id, name, color, description}]')
   NEW_STATES_STR="$(IFS='|'; echo "${STATES_TO_CREATE[*]}")"
   NEW_OPTS_JSON=$(echo "$NEW_STATES_STR" | jq -R '
     split("|") | map(split(":") | {name: .[0], color: .[1], description: ""})
   ')
   ALL_OPTS_JSON=$(echo "$EXISTING_OPTS_JSON" "$NEW_OPTS_JSON" | jq -s 'add')
 
-  MUTATION_OK=$(gh api graphql \
-    -f query='mutation($proj:ID!,$field:ID!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){
-      updateProjectV2Field(input:{projectId:$proj,fieldId:$field,singleSelectOptions:$opts}){
-        projectV2Field{...on ProjectV2SingleSelectField{id}}
-      }
-    }' \
-    -f proj="$PROJECT_NODE_ID" \
-    -f field="$KANBAN_FIELD_ID" \
-    -F "opts=$ALL_OPTS_JSON" \
-    --jq '.data.updateProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  MUTATION_OK=$(jq -n \
+    --arg field "$KANBAN_FIELD_ID" \
+    --argjson opts "$ALL_OPTS_JSON" \
+    '{query:"mutation($field:ID!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$field,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{field:$field,opts:$opts}}' \
+    | gh api graphql --input - --jq '.data.updateProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
 
   if [[ -z "$MUTATION_OK" ]]; then
     err "Failed to add new states. Check that you have 'write' access to the GitHub Project."
@@ -401,7 +396,7 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
     ... on ProjectV2 {
       fields(first: 30) {
         nodes {
-          ... on ProjectV2SingleSelectField { id name options { id name } }
+          ... on ProjectV2SingleSelectField { id name options { id name color description } }
         }
       }
     }
@@ -502,14 +497,12 @@ map_or_create_select() {
     [[ -z "$choice" ]] && choice="new"
     if [[ "$choice" == "new" ]]; then
       local new_id
-      new_id=$(gh api graphql -f query='
-mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){
-  createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){
-    projectV2Field{...on ProjectV2SingleSelectField{id}}
-  }
-}' -f proj="$PROJECT_NODE_ID" -f name="$fname" \
-        -F "opts=$create_opts_json" \
-        --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+      new_id=$(jq -n \
+        --arg proj "$PROJECT_NODE_ID" \
+        --arg name "$fname" \
+        --argjson opts "$create_opts_json" \
+        '{query:"mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{proj:$proj,name:$name,opts:$opts}}' \
+        | gh api graphql --input - --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
       if [[ -n "$new_id" ]]; then
         ok "Created '$fname' field."
         refresh_fields
