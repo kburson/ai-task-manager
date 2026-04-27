@@ -16,9 +16,9 @@ warn()  { printf "  \033[33m⚠\033[0m  %s\n" "$*"; }
 err()   { printf "  \033[31m✗\033[0m  %s\n" "$*" >&2; }
 prompt(){ printf "\033[1m%s\033[0m " "$*"; }
 
-py_get() {
-  # py_get <file> <key>
-  python3 -c "import json; d=json.load(open('$1')); print(d.get('$2',''))" 2>/dev/null || echo ''
+jq_get() {
+  # jq_get <json-string> <jq-filter>
+  echo "$1" | jq -r "$2" 2>/dev/null || echo ''
 }
 
 # ── args ───────────────────────────────────────────────────────────────────
@@ -56,6 +56,19 @@ echo ""
 
 if ! command -v gh &>/dev/null; then
   err "GitHub CLI (gh) not found. Install from: https://cli.github.com"
+  exit 1
+fi
+
+if ! command -v jq &>/dev/null; then
+  err "jq not found. Install it:"
+  err "  macOS:  brew install jq"
+  err "  Linux:  apt install jq  (or equivalent)"
+  err "  Windows: winget install jqlang.jq"
+  exit 1
+fi
+
+if ! command -v node &>/dev/null; then
+  err "Node.js not found. Install Node.js 18+ from: https://nodejs.org"
   exit 1
 fi
 
@@ -101,62 +114,46 @@ REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 ok "Repo: $REPO"
 echo ""
 
-# List available projects for this owner
-info "Fetching GitHub Projects for $OWNER..."
-PROJECTS_JSON=$(gh project list --owner "$OWNER" --format json --limit 20 2>/dev/null || echo '{"projects":[]}')
-PROJECT_COUNT=$(python3 -c "import json,sys; d=json.loads('''$PROJECTS_JSON'''); print(len(d.get('projects',[])))" 2>/dev/null || echo '0')
+# List projects linked to this specific repo (not all user projects)
+info "Fetching GitHub Projects linked to $REPO..."
+PROJECTS_JSON=$(gh api graphql -f query="
+{
+  repository(owner: \"$OWNER\", name: \"$REPO_NAME\") {
+    projectsV2(first: 20) {
+      nodes { id title number }
+    }
+  }
+}" --jq '.data.repository.projectsV2.nodes | map({id,title,number})' 2>/dev/null || echo '[]')
+PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq 'length' 2>/dev/null || echo '0')
 
 PROJECT_NODE_ID=""
-if [[ "$PROJECT_COUNT" == "0" ]]; then
-  warn "No GitHub Projects V2 found for $OWNER."
-  echo ""
-  info "A GitHub Project board is required to track Kanban state."
-  echo ""
-  DEFAULT_TITLE="$REPO_NAME Board"
-  prompt "Create a new project now? [Y/n] (title: '$DEFAULT_TITLE'):"
-  read -r CREATE_PROJECT
-  if [[ "$CREATE_PROJECT" =~ ^[Nn] ]]; then
-    err "Cannot continue without a GitHub Project. Create one at:"
-    err "  https://github.com/users/$OWNER/projects/new"
-    err "Then re-run: npx claude-gh-task-manager init"
-    exit 1
-  fi
 
-  prompt "Project title [$DEFAULT_TITLE]:"
-  read -r PROJECT_TITLE
-  [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
-
-  info "Creating project '$PROJECT_TITLE'..."
-  PROJECT_CREATE_OUT=$(gh project create --owner "$OWNER" --title "$PROJECT_TITLE" --format json 2>/dev/null || echo '')
+create_and_link_project() {
+  local title="$1"
+  info "Creating project '$title'..."
+  PROJECT_CREATE_OUT=$(gh project create --owner "$OWNER" --title "$title" --format json 2>/dev/null || echo '')
   if [[ -z "$PROJECT_CREATE_OUT" ]]; then
-    err "Failed to create project. Please create one manually at:"
-    err "  https://github.com/users/$OWNER/projects/new"
-    err "Then re-run: npx claude-gh-task-manager init"
-    exit 1
+    err "Failed to create project."; exit 1
   fi
-  PROJECT_NUMBER=$(python3 -c "import json; print(json.loads('''$PROJECT_CREATE_OUT''').get('number',''))" 2>/dev/null || echo '')
-  ok "Created project #$PROJECT_NUMBER: $PROJECT_TITLE"
+  PROJECT_NUMBER=$(echo "$PROJECT_CREATE_OUT" | jq -r '.number // empty')
+  ok "Created project #$PROJECT_NUMBER: $title"
 
-  # Resolve the new project node ID immediately
-  info "Fetching project node ID..."
-  PROJECT_NODE_ID=$(gh api graphql -f query="
-{
-  user(login: \"$OWNER\") {
-    projectV2(number: $PROJECT_NUMBER) { id }
-  }
-}" --jq '.data.user.projectV2.id' 2>/dev/null || \
-  gh api graphql -f query="
-{
-  organization(login: \"$OWNER\") {
-    projectV2(number: $PROJECT_NUMBER) { id }
-  }
-}" --jq '.data.organization.projectV2.id' 2>/dev/null || echo '')
-
-  if [[ -z "$PROJECT_NODE_ID" ]]; then
-    err "Could not resolve new project #$PROJECT_NUMBER."
-    exit 1
-  fi
+  # Resolve node ID
+  PROJECT_NODE_ID=$(gh api graphql -f query="{ user(login: \"$OWNER\") { projectV2(number: $PROJECT_NUMBER) { id } } }" --jq '.data.user.projectV2.id' 2>/dev/null || \
+    gh api graphql -f query="{ organization(login: \"$OWNER\") { projectV2(number: $PROJECT_NUMBER) { id } } }" --jq '.data.organization.projectV2.id' 2>/dev/null || echo '')
+  if [[ -z "$PROJECT_NODE_ID" ]]; then err "Could not resolve project node ID."; exit 1; fi
   ok "Project node ID: $PROJECT_NODE_ID"
+
+  # Link project to this repo
+  REPO_NODE_ID=$(gh api graphql -f query="{ repository(owner: \"$OWNER\", name: \"$REPO_NAME\") { id } }" --jq '.data.repository.id' 2>/dev/null || echo '')
+  if [[ -n "$REPO_NODE_ID" ]]; then
+    gh api graphql -f query='
+mutation($proj: ID!, $repo: ID!) {
+  linkProjectV2ToRepository(input: { projectId: $proj, repositoryId: $repo }) {
+    repository { nameWithOwner }
+  }
+}' -f proj="$PROJECT_NODE_ID" -f repo="$REPO_NODE_ID" &>/dev/null && ok "Linked project to $REPO" || warn "Could not link project to repo — add it manually in GitHub."
+  fi
 
   # Create Status field with standard Kanban options
   info "Creating Status field with Kanban options..."
@@ -177,70 +174,62 @@ mutation($proj: ID!) {
     projectV2Field { ... on ProjectV2SingleSelectField { id options { id name } } }
   }
 }' -f proj="$PROJECT_NODE_ID" 2>/dev/null || echo '')
+  [[ -n "$STATUS_FIELD_OUT" ]] && ok "Status field created with Backlog / Ready / In Progress / In Review / Done" || warn "Could not create Status field — add it manually then re-run init."
+  echo ""
+}
 
-  if [[ -z "$STATUS_FIELD_OUT" ]]; then
-    err "Could not create Status field. The project was created but setup is incomplete."
-    err "Add a Status (single-select) field manually, then re-run: npx claude-gh-task-manager init"
+if [[ "$PROJECT_COUNT" == "0" ]]; then
+  warn "No GitHub Projects linked to $REPO."
+  echo ""
+  info "A GitHub Project board is required to track Kanban state."
+  echo ""
+  DEFAULT_TITLE="$REPO_NAME Board"
+  prompt "Create a new project now? [Y/n] (title: '$DEFAULT_TITLE'):"
+  read -r CREATE_PROJECT
+  if [[ "$CREATE_PROJECT" =~ ^[Nn] ]]; then
+    err "Cannot continue without a GitHub Project. Create one at:"
+    err "  https://github.com/users/$OWNER/projects/new"
+    err "Then re-run: npx claude-gh-task-manager init"
     exit 1
   fi
-  ok "Status field created with Backlog / Ready / In Progress / In Review / Done"
-  echo ""
-
-  # Refresh PROJECTS_JSON and jump to field fetch below
-  PROJECTS_JSON=$(gh project list --owner "$OWNER" --format json --limit 20 2>/dev/null || echo '{"projects":[]}')
-  PROJECT_COUNT=1
+  prompt "Project title [$DEFAULT_TITLE]:"
+  read -r PROJECT_TITLE
+  [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
+  create_and_link_project "$PROJECT_TITLE"
 else
   echo ""
-  info "Available projects:"
-  python3 -c "
-import json
-d = json.loads('''$PROJECTS_JSON''')
-for p in d.get('projects', []):
-    print(f\"    [{p['number']}] {p['title']}\")
-" 2>/dev/null || true
-  FIRST_NUMBER=$(python3 -c "
-import json
-d = json.loads('''$PROJECTS_JSON''')
-ps = d.get('projects', [])
-if ps: print(ps[0]['number'], end='')
-" 2>/dev/null || echo '')
+  info "Projects linked to $REPO:"
+  echo "$PROJECTS_JSON" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.title)"'
+  echo "    [new] Create a new project"
+  PROJECT_COUNT_DISPLAY=$(echo "$PROJECTS_JSON" | jq 'length')
   echo ""
   while true; do
-    if [[ -n "$FIRST_NUMBER" ]]; then
-      prompt "Enter project number [$FIRST_NUMBER]:"
-    else
-      prompt "Enter project number:"
+    prompt "Enter number or 'new' [1]:"
+    read -r PROJECT_NUMBER_INPUT
+    [[ -z "$PROJECT_NUMBER_INPUT" ]] && PROJECT_NUMBER_INPUT="1"
+    if [[ "$PROJECT_NUMBER_INPUT" == "new" ]]; then
+      DEFAULT_TITLE="$REPO_NAME Board"
+      prompt "Project title [$DEFAULT_TITLE]:"
+      read -r PROJECT_TITLE
+      [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
+      create_and_link_project "$PROJECT_TITLE"
+      break
+    elif [[ "$PROJECT_NUMBER_INPUT" =~ ^[0-9]+$ && "$PROJECT_NUMBER_INPUT" -ge 1 && "$PROJECT_NUMBER_INPUT" -le "$PROJECT_COUNT_DISPLAY" ]]; then
+      idx=$((PROJECT_NUMBER_INPUT - 1))
+      PROJECT_NUMBER=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].number')
+      PROJECT_NODE_ID=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].id')
+      break
     fi
-    read -r PROJECT_NUMBER
-    [[ -z "$PROJECT_NUMBER" && -n "$FIRST_NUMBER" ]] && PROJECT_NUMBER="$FIRST_NUMBER"
-    [[ "$PROJECT_NUMBER" =~ ^[0-9]+$ ]] && break
-    err "Please enter a valid project number."
+    err "Please enter a number 1-$PROJECT_COUNT_DISPLAY or 'new'."
   done
 fi
 
 ok "Using project #$PROJECT_NUMBER"
 echo ""
 
-# Resolve project node ID (skip if already resolved by auto-create above)
 if [[ -z "$PROJECT_NODE_ID" ]]; then
-  info "Fetching project node ID..."
-  PROJECT_NODE_ID=$(gh api graphql -f query="
-{
-  user(login: \"$OWNER\") {
-    projectV2(number: $PROJECT_NUMBER) { id title }
-  }
-}" --jq '.data.user.projectV2.id' 2>/dev/null || \
-  gh api graphql -f query="
-{
-  organization(login: \"$OWNER\") {
-    projectV2(number: $PROJECT_NUMBER) { id title }
-  }
-}" --jq '.data.organization.projectV2.id' 2>/dev/null || echo '')
-fi
-
-if [[ -z "$PROJECT_NODE_ID" ]]; then
-  err "Could not resolve project #$PROJECT_NUMBER for $OWNER."
-  err "Ensure the project exists and you have access."
+  err "Could not resolve project node ID for #$PROJECT_NUMBER."
+  err "Ensure the project is linked to $REPO and you have access."
   exit 1
 fi
 ok "Project node ID: $PROJECT_NODE_ID"
@@ -270,17 +259,9 @@ FIELDS_JSON=$(gh api graphql -f query="
   }
 }" --jq '.data.node.fields.nodes' 2>/dev/null || echo '[]')
 
-# List single-select fields (likely Kanban status candidates)
 echo ""
 info "Single-select fields found:"
-python3 -c "
-import json, sys
-fields = json.loads('''$FIELDS_JSON''')
-for f in fields:
-    if 'options' in f:
-        opts = ', '.join(o['name'] for o in f.get('options', []))
-        print(f\"    [{f['name']}]  options: {opts}\")
-" 2>/dev/null || true
+echo "$FIELDS_JSON" | jq -r '.[] | select(.options) | "    [\(.name)]  options: \([.options[].name] | join(", "))"'
 echo ""
 
 KANBAN_FIELD_JSON=""
@@ -289,144 +270,424 @@ while [[ -z "$KANBAN_FIELD_JSON" ]]; do
   read -r KANBAN_FIELD_NAME
   [[ -z "$KANBAN_FIELD_NAME" ]] && KANBAN_FIELD_NAME="Status"
 
-  KANBAN_FIELD_JSON=$(python3 -c "
-import json
-fields = json.loads('''$FIELDS_JSON''')
-for f in fields:
-    if f.get('name','').lower() == '$KANBAN_FIELD_NAME'.lower() and 'options' in f:
-        print(json.dumps(f))
-        break
-" 2>/dev/null || echo '')
+  KANBAN_FIELD_JSON=$(echo "$FIELDS_JSON" | jq -c --arg name "$KANBAN_FIELD_NAME" \
+    'first(.[] | select((.name | ascii_downcase) == ($name | ascii_downcase) and has("options"))) // empty' \
+    2>/dev/null || echo '')
 
   if [[ -z "$KANBAN_FIELD_JSON" ]]; then
     err "Field '$KANBAN_FIELD_NAME' not found or has no options. Try again."
   fi
 done
 
-KANBAN_FIELD_ID=$(python3 -c "import json; print(json.loads('''$KANBAN_FIELD_JSON''')['id'])")
+KANBAN_FIELD_ID=$(echo "$KANBAN_FIELD_JSON" | jq -r '.id')
 ok "Kanban field ID: $KANBAN_FIELD_ID"
 echo ""
 
-# Map state names to option IDs
-info "Field options:"
-python3 -c "
-import json
-f = json.loads('''$KANBAN_FIELD_JSON''')
-for o in f.get('options', []):
-    print(f\"    [{o['id']}]  {o['name']}\")
-" 2>/dev/null || true
+# Show current states and explain what's needed
+info "Current states in this field:"
+echo "$KANBAN_FIELD_JSON" | jq -r '.options[] | "    \(.name)"'
+echo ""
+info "Required task-tracker states: Backlog, Ready, In Progress, Done"
+info "Optional: In Review. You can also add custom unmanaged states."
 echo ""
 
-map_option() {
+# Global used for inter-function return value (avoids subshell scoping issues)
+PICKED_ID=""
+
+# Try auto-match by name; if no match, show numbered list for interactive selection.
+# Sets PICKED_ID to an existing option ID, "__NEW__" (needs creation), or "" (skipped).
+auto_or_pick() {
   local label="$1"
-  local default_names="$2"
-  local field_json="$3"
-  # Try to auto-match by name
+  local candidates="$2"   # comma-separated auto-match names
+  local optional="$3"     # "required" or "optional"
+
   local matched
-  matched=$(python3 -c "
-import json
-f = json.loads('''$field_json''')
-defaults = [n.strip().lower() for n in '$default_names'.split(',')]
-for o in f.get('options', []):
-    if o['name'].lower() in defaults:
-        print(o['id'])
-        break
-" 2>/dev/null || echo '')
+  matched=$(echo "$KANBAN_FIELD_JSON" | jq -r --arg names "$candidates" '
+    ($names | split(",") | map(ltrimstr(" ") | rtrimstr(" ") | ascii_downcase)) as $targets |
+    first(.options[] | select(.name | ascii_downcase | IN($targets[])) | .id) // empty
+  ' 2>/dev/null || echo '')
+
   if [[ -n "$matched" ]]; then
-    ok "Auto-matched '$label' → $matched" >&2
-    echo "$matched"
-  else
-    prompt "Option ID for '$label' state:" >&2
-    read -r val
-    echo "$val"
+    local mname
+    mname=$(echo "$KANBAN_FIELD_JSON" | jq -r --arg id "$matched" '.options[] | select(.id == $id) | .name')
+    ok "Auto-matched '$label' → '$mname'"
+    PICKED_ID="$matched"
+    return
   fi
+
+  echo ""
+  info "State '$label' ($optional) — no match found:"
+  echo "$KANBAN_FIELD_JSON" | jq -r '.options | to_entries[] | "    [\(.key+1)] \(.value.name)"'
+  echo "    [new] Create '$label' as a new option"
+  [[ "$optional" == "optional" ]] && echo "    [skip] Don't use this state"
+  echo ""
+
+  local count
+  count=$(echo "$KANBAN_FIELD_JSON" | jq '.options | length')
+
+  while true; do
+    prompt "Choice for '$label':"
+    read -r choice
+    if [[ "$optional" == "optional" && "$choice" == "skip" ]]; then
+      PICKED_ID=""; return
+    elif [[ "$choice" == "new" ]]; then
+      PICKED_ID="__NEW__"; return
+    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+      PICKED_ID=$(echo "$KANBAN_FIELD_JSON" | jq -r --argjson i "$((choice-1))" '.options[$i].id')
+      local pname
+      pname=$(echo "$KANBAN_FIELD_JSON" | jq -r --argjson i "$((choice-1))" '.options[$i].name')
+      ok "Mapped '$label' → '$pname'"
+      return
+    fi
+    local skip_hint=""
+    [[ "$optional" == "optional" ]] && skip_hint=", or 'skip'"
+    err "Enter a number 1-$count, 'new'${skip_hint}."
+  done
 }
 
-info "Mapping Kanban state names to option IDs (auto-matched where possible)..."
-echo ""
-OPTION_BACKLOG=$(map_option "Backlog" "backlog,todo,to do" "$KANBAN_FIELD_JSON")
-OPTION_READY=$(map_option "Ready" "ready,refined,groomed" "$KANBAN_FIELD_JSON")
-OPTION_IN_PROGRESS=$(map_option "In Progress" "in progress,in-progress,doing,wip" "$KANBAN_FIELD_JSON")
-OPTION_IN_REVIEW=$(map_option "In Review" "in review,in-review,review,reviewing" "$KANBAN_FIELD_JSON")
-OPTION_DONE=$(map_option "Done" "done,closed,complete,completed" "$KANBAN_FIELD_JSON")
-echo ""
+# Backlog only auto-matches "backlog" — not "todo" (that belongs to Ready)
+auto_or_pick "Backlog"     "backlog"                               "required"; OPTION_BACKLOG="$PICKED_ID"
+auto_or_pick "Ready"       "ready,refined,groomed,todo,to do"      "required"; OPTION_READY="$PICKED_ID"
+auto_or_pick "In Progress" "in progress,in-progress,doing,wip"     "required"; OPTION_IN_PROGRESS="$PICKED_ID"
+auto_or_pick "Done"        "done,closed,complete,completed"        "required"; OPTION_DONE="$PICKED_ID"
+auto_or_pick "In Review"   "in review,in-review,review,reviewing"  "required"; OPTION_IN_REVIEW="$PICKED_ID"
 
-# ── step 4: priority + timing fields ──────────────────────────────────────
 
-bold "Step 4 of 5 — Priority & Timing Fields"
-echo ""
+# Build list of options that need to be created
+STATES_TO_CREATE=()
+[[ "$OPTION_BACKLOG" == "__NEW__" ]]     && STATES_TO_CREATE+=("Backlog:GRAY")
+[[ "$OPTION_READY" == "__NEW__" ]]       && STATES_TO_CREATE+=("Ready:BLUE")
+[[ "$OPTION_IN_PROGRESS" == "__NEW__" ]] && STATES_TO_CREATE+=("In Progress:YELLOW")
+[[ "$OPTION_IN_REVIEW" == "__NEW__" ]]   && STATES_TO_CREATE+=("In Review:ORANGE")
+[[ "$OPTION_DONE" == "__NEW__" ]]        && STATES_TO_CREATE+=("Done:GREEN")
 
-info "Looking for Priority field..."
-PRIORITY_FIELD_JSON=$(python3 -c "
-import json
-fields = json.loads('''$FIELDS_JSON''')
-for f in fields:
-    if 'priority' in f.get('name','').lower() and 'options' in f:
-        print(json.dumps(f))
-        break
-" 2>/dev/null || echo '')
-
-PRIORITY_FIELD_ID=""
-OPTION_P0="" OPTION_P1="" OPTION_P2=""
-
-if [[ -n "$PRIORITY_FIELD_JSON" ]]; then
-  PRIORITY_FIELD_NAME=$(python3 -c "import json; print(json.loads('''$PRIORITY_FIELD_JSON''')['name'])")
-  ok "Found priority field: $PRIORITY_FIELD_NAME"
-  PRIORITY_FIELD_ID=$(python3 -c "import json; print(json.loads('''$PRIORITY_FIELD_JSON''')['id'])")
+# If any new options needed, append them via updateProjectV2Field
+if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
   echo ""
-  info "Priority options:"
-  python3 -c "
-import json
-f = json.loads('''$PRIORITY_FIELD_JSON''')
-for o in f.get('options', []):
-    print(f\"    [{o['id']}]  {o['name']}\")
-" 2>/dev/null || true
-  echo ""
-  OPTION_P0=$(map_option "P0 (critical)" "p0,critical,urgent" "$PRIORITY_FIELD_JSON")
-  OPTION_P1=$(map_option "P1 (high)" "p1,high,important" "$PRIORITY_FIELD_JSON")
-  OPTION_P2=$(map_option "P2 (normal)" "p2,normal,medium,low" "$PRIORITY_FIELD_JSON")
-else
-  warn "No 'Priority' single-select field found — skipping priority config."
-  info "Add a Priority field to your project and re-run init to enable it."
+  local_names=()
+  for s in "${STATES_TO_CREATE[@]}"; do local_names+=("${s%%:*}"); done
+  info "Adding new states: $(IFS=', '; echo "${local_names[*]}")"
+
+  # Existing options with their IDs (preserved) + new options (no id = created)
+  EXISTING_OPTS_JSON=$(echo "$KANBAN_FIELD_JSON" | jq '[.options[] | {id, name, color: "GRAY", description: ""}]')
+  NEW_STATES_STR="$(IFS='|'; echo "${STATES_TO_CREATE[*]}")"
+  NEW_OPTS_JSON=$(echo "$NEW_STATES_STR" | jq -R '
+    split("|") | map(split(":") | {name: .[0], color: .[1], description: ""})
+  ')
+  ALL_OPTS_JSON=$(echo "$EXISTING_OPTS_JSON" "$NEW_OPTS_JSON" | jq -s 'add')
+
+  MUTATION_OK=$(gh api graphql \
+    -f query='mutation($proj:ID!,$field:ID!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){
+      updateProjectV2Field(input:{projectId:$proj,fieldId:$field,singleSelectOptions:$opts}){
+        projectV2Field{...on ProjectV2SingleSelectField{id}}
+      }
+    }' \
+    -f proj="$PROJECT_NODE_ID" \
+    -f field="$KANBAN_FIELD_ID" \
+    -F "opts=$ALL_OPTS_JSON" \
+    --jq '.data.updateProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+
+  if [[ -z "$MUTATION_OK" ]]; then
+    err "Failed to add new states. Check that you have 'write' access to the GitHub Project."
+    exit 1
+  fi
+
+  ok "New states added."
+
+  # Re-fetch the field to get fresh option IDs
+  KANBAN_FIELD_JSON=$(gh api graphql -f query="
+{
+  node(id: \"$PROJECT_NODE_ID\") {
+    ... on ProjectV2 {
+      fields(first: 30) {
+        nodes {
+          ... on ProjectV2SingleSelectField { id name options { id name } }
+        }
+      }
+    }
+  }
+}" --jq --arg fid "$KANBAN_FIELD_ID" \
+    '[.data.node.fields.nodes[] | select(.id == $fid)] | first' 2>/dev/null || echo '')
+
+  # Resolve __NEW__ sentinels to actual option IDs from updated field
+  remap_state() {
+    echo "$KANBAN_FIELD_JSON" | jq -r --arg n "$1" '.options[] | select(.name == $n) | .id'
+  }
+  [[ "$OPTION_BACKLOG" == "__NEW__" ]]     && OPTION_BACKLOG=$(remap_state "Backlog")
+  [[ "$OPTION_READY" == "__NEW__" ]]       && OPTION_READY=$(remap_state "Ready")
+  [[ "$OPTION_IN_PROGRESS" == "__NEW__" ]] && OPTION_IN_PROGRESS=$(remap_state "In Progress")
+  [[ "$OPTION_IN_REVIEW" == "__NEW__" ]]   && OPTION_IN_REVIEW=$(remap_state "In Review")
+  [[ "$OPTION_DONE" == "__NEW__" ]]        && OPTION_DONE=$(remap_state "Done")
 fi
 echo ""
 
+# ── step 4: project management fields ─────────────────────────────────────
+
+bold "Step 4 of 5 — Project Management Fields"
+echo ""
+info "For each field: if a matching field exists it will be used automatically."
+info "Otherwise you can map to an existing field or create a new one (default)."
+echo ""
+
+# Re-fetch with dataType so we can identify number vs text fields.
+FIELDS_JSON=$(gh api graphql -f query="
+{
+  node(id: \"$PROJECT_NODE_ID\") {
+    ... on ProjectV2 {
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2SingleSelectField { id name options { id name } }
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2IterationField { id name }
+        }
+      }
+    }
+  }
+}" --jq '.data.node.fields.nodes' 2>/dev/null || echo '[]')
+
+refresh_fields() {
+  FIELDS_JSON=$(gh api graphql -f query="
+{
+  node(id: \"$PROJECT_NODE_ID\") {
+    ... on ProjectV2 {
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2SingleSelectField { id name options { id name } }
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2IterationField { id name }
+        }
+      }
+    }
+  }
+}" --jq '.data.node.fields.nodes' 2>/dev/null || echo '[]')
+}
+
+# Return values (globals — avoids subshell scoping)
+RESULT_FIELD_ID=""
+RESULT_FIELD_JSON=""
+
+# map_or_create_select <field-name> <options-json>
+# Auto-matches by exact name; otherwise prompts to map existing or create new.
+# Sets RESULT_FIELD_ID and RESULT_FIELD_JSON.
+map_or_create_select() {
+  local fname="$1"
+  local create_opts_json="$2"
+
+  local found
+  found=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" \
+    'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase) and has("options"))) // empty' \
+    2>/dev/null || echo '')
+
+  if [[ -n "$found" ]]; then
+    ok "Found field '$fname'."
+    RESULT_FIELD_ID=$(echo "$found" | jq -r '.id')
+    RESULT_FIELD_JSON="$found"
+    return
+  fi
+
+  echo ""
+  info "Field '$fname' not found on project."
+  local select_fields count
+  select_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(has("options"))]')
+  count=$(echo "$select_fields" | jq 'length')
+  if [[ "$count" -gt 0 ]]; then
+    echo "$select_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
+  fi
+  echo "    [new] Create '$fname' with standard options (default)"
+  echo ""
+
+  while true; do
+    prompt "Choice for '$fname' [new]:"
+    read -r choice
+    [[ -z "$choice" ]] && choice="new"
+    if [[ "$choice" == "new" ]]; then
+      local new_id
+      new_id=$(gh api graphql -f query='
+mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){
+  createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){
+    projectV2Field{...on ProjectV2SingleSelectField{id}}
+  }
+}' -f proj="$PROJECT_NODE_ID" -f name="$fname" \
+        -F "opts=$create_opts_json" \
+        --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+      if [[ -n "$new_id" ]]; then
+        ok "Created '$fname' field."
+        refresh_fields
+        RESULT_FIELD_ID="$new_id"
+        RESULT_FIELD_JSON=$(echo "$FIELDS_JSON" | jq -c --arg id "$new_id" \
+          'first(.[] | select(.id == $id)) // empty')
+      else
+        warn "Could not create '$fname'. Add it manually to your GitHub Project."
+        RESULT_FIELD_ID=""
+        RESULT_FIELD_JSON=""
+      fi
+      return
+    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+      local picked pname
+      picked=$(echo "$select_fields" | jq -c --argjson i "$((choice-1))" '.[$i]')
+      pname=$(echo "$picked" | jq -r '.name')
+      RESULT_FIELD_ID=$(echo "$picked" | jq -r '.id')
+      RESULT_FIELD_JSON="$picked"
+      ok "Mapped '$fname' → '$pname'"
+      return
+    fi
+    err "Enter a number 1-$count or 'new'."
+  done
+}
+
+# map_or_create_number <field-name>
+# Auto-matches by exact name; otherwise prompts to map existing number field or create new.
+# Sets RESULT_FIELD_ID.
+map_or_create_number() {
+  local fname="$1"
+
+  local found_id
+  found_id=$(echo "$FIELDS_JSON" | jq -r --arg n "$fname" \
+    'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase)
+      and (.options == null or (.options | length) == 0)) | .id) // empty' \
+    2>/dev/null || echo '')
+
+  if [[ -n "$found_id" ]]; then
+    ok "Found field '$fname'."
+    RESULT_FIELD_ID="$found_id"
+    return
+  fi
+
+  echo ""
+  info "Field '$fname' not found on project."
+  local num_fields count
+  num_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(.dataType == "NUMBER")]')
+  count=$(echo "$num_fields" | jq 'length')
+  if [[ "$count" -gt 0 ]]; then
+    echo "$num_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
+  fi
+  echo "    [new] Create '$fname' number field (default)"
+  echo ""
+
+  while true; do
+    prompt "Choice for '$fname' [new]:"
+    read -r choice
+    [[ -z "$choice" ]] && choice="new"
+    if [[ "$choice" == "new" ]]; then
+      local new_id
+      new_id=$(gh api graphql -f query='
+mutation($proj:ID!,$name:String!){
+  createProjectV2Field(input:{projectId:$proj,dataType:NUMBER,name:$name}){
+    projectV2Field{...on ProjectV2Field{id}}
+  }
+}' -f proj="$PROJECT_NODE_ID" -f name="$fname" \
+        --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+      if [[ -n "$new_id" ]]; then
+        ok "Created '$fname' field."
+        refresh_fields
+        RESULT_FIELD_ID="$new_id"
+      else
+        warn "Could not create '$fname'. Add it manually to your GitHub Project."
+        RESULT_FIELD_ID=""
+      fi
+      return
+    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+      RESULT_FIELD_ID=$(echo "$num_fields" | jq -r --argjson i "$((choice-1))" '.[$i].id')
+      local pname
+      pname=$(echo "$num_fields" | jq -r --argjson i "$((choice-1))" '.[$i].name')
+      ok "Mapped '$fname' → '$pname'"
+      return
+    fi
+    err "Enter a number 1-$count or 'new'."
+  done
+}
+
+# ── Priority ───────────────────────────────────────────────────────────────
+
+info "Priority (single-select: P0 / P1 / P2)..."
+PRIORITY_OPTS='[{"name":"P0","color":"RED","description":"Critical — blocking"},{"name":"P1","color":"ORANGE","description":"High — this sprint"},{"name":"P2","color":"BLUE","description":"Normal — backlog"}]'
+map_or_create_select "Priority" "$PRIORITY_OPTS"
+PRIORITY_FIELD_ID="$RESULT_FIELD_ID"
+OPTION_P0="" OPTION_P1="" OPTION_P2=""
+if [[ -n "$RESULT_FIELD_JSON" ]]; then
+  KANBAN_FIELD_JSON="$RESULT_FIELD_JSON"
+  auto_or_pick "P0 (critical)" "p0,critical,urgent"   "optional"; OPTION_P0="$PICKED_ID"
+  auto_or_pick "P1 (high)"     "p1,high,important"    "optional"; OPTION_P1="$PICKED_ID"
+  auto_or_pick "P2 (normal)"   "p2,normal,medium,low" "optional"; OPTION_P2="$PICKED_ID"
+  KANBAN_FIELD_JSON=""
+fi
+echo ""
+
+# ── Size ───────────────────────────────────────────────────────────────────
+
+info "Size (single-select: XS / S / M / L / XL)..."
+SIZE_OPTS='[{"name":"XS","color":"BLUE","description":"1-2 hours"},{"name":"S","color":"GREEN","description":"3-4 hours"},{"name":"M","color":"YELLOW","description":"6-10 hours"},{"name":"L","color":"ORANGE","description":"12-20 hours"},{"name":"XL","color":"RED","description":"24+ hours"}]'
+map_or_create_select "Size" "$SIZE_OPTS"
+SIZE_FIELD_ID="$RESULT_FIELD_ID"
+echo ""
+
+# ── Number fields ──────────────────────────────────────────────────────────
+
+info "Number fields..."
+echo ""
+map_or_create_number "Estimate";            FIELD_ESTIMATE="$RESULT_FIELD_ID"
+map_or_create_number "Actual Hours";        FIELD_ACTUAL_HOURS="$RESULT_FIELD_ID"
+map_or_create_number "Actual Session Time"; FIELD_ACTUAL_SESSION_TIME="$RESULT_FIELD_ID"
+map_or_create_number "Context Length";      FIELD_CONTEXT_LENGTH="$RESULT_FIELD_ID"
+map_or_create_number "Sequence";            FIELD_SEQUENCE="$RESULT_FIELD_ID"
+echo ""
 
 # ── step 5: write config + issue templates ─────────────────────────────────
 
 bold "Step 5 of 5 — Writing Config & Issue Templates"
 echo ""
 
-# Write .claude/task-tracker.json
-python3 -c "
-import json, os
-config_file = '$CONFIG_FILE'
-# Merge with existing config if present
-existing = {}
-if os.path.exists(config_file):
-    try:
-        existing = json.load(open(config_file))
-    except Exception:
-        pass
-
-existing.update({
-    'repo': '$REPO',
-    'projectId': '$PROJECT_NODE_ID',
-    'kanbanFieldId': '$KANBAN_FIELD_ID',
-    'kanbanOptionBacklog': '$OPTION_BACKLOG',
-    'kanbanOptionReady': '$OPTION_READY',
-    'kanbanOptionInProgress': '$OPTION_IN_PROGRESS',
-    'kanbanOptionInReview': '$OPTION_IN_REVIEW',
-    'kanbanOptionDone': '$OPTION_DONE',
-    'priorityFieldId': '$PRIORITY_FIELD_ID',
-    'priorityOptionP0': '$OPTION_P0',
-    'priorityOptionP1': '$OPTION_P1',
-    'priorityOptionP2': '$OPTION_P2',
-})
-with open(config_file, 'w') as f:
-    json.dump(existing, f, indent=2)
-    f.write('\n')
-print('written')
+# Write .claude/task-tracker.json — merge with existing config
+CONFIG_FILE="$CONFIG_FILE" \
+REPO="$REPO" \
+PROJECT_NODE_ID="$PROJECT_NODE_ID" \
+KANBAN_FIELD_ID="$KANBAN_FIELD_ID" \
+OPTION_BACKLOG="$OPTION_BACKLOG" \
+OPTION_READY="$OPTION_READY" \
+OPTION_IN_PROGRESS="$OPTION_IN_PROGRESS" \
+OPTION_IN_REVIEW="$OPTION_IN_REVIEW" \
+OPTION_DONE="$OPTION_DONE" \
+PRIORITY_FIELD_ID="$PRIORITY_FIELD_ID" \
+OPTION_P0="$OPTION_P0" \
+OPTION_P1="$OPTION_P1" \
+OPTION_P2="$OPTION_P2" \
+SIZE_FIELD_ID="$SIZE_FIELD_ID" \
+FIELD_ESTIMATE="$FIELD_ESTIMATE" \
+FIELD_ACTUAL_HOURS="$FIELD_ACTUAL_HOURS" \
+FIELD_ACTUAL_SESSION_TIME="$FIELD_ACTUAL_SESSION_TIME" \
+FIELD_CONTEXT_LENGTH="$FIELD_CONTEXT_LENGTH" \
+FIELD_SEQUENCE="$FIELD_SEQUENCE" \
+node -e "
+const fs = require('fs');
+const file = process.env.CONFIG_FILE;
+let existing = {};
+try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
+const updates = {
+  repo:                   process.env.REPO,
+  projectId:              process.env.PROJECT_NODE_ID,
+  kanbanFieldId:          process.env.KANBAN_FIELD_ID,
+  kanbanOptionBacklog:    process.env.OPTION_BACKLOG,
+  kanbanOptionReady:      process.env.OPTION_READY,
+  kanbanOptionInProgress: process.env.OPTION_IN_PROGRESS,
+  kanbanOptionInReview:   process.env.OPTION_IN_REVIEW,
+  kanbanOptionDone:       process.env.OPTION_DONE,
+  priorityFieldId:        process.env.PRIORITY_FIELD_ID,
+  priorityOptionP0:       process.env.OPTION_P0,
+  priorityOptionP1:       process.env.OPTION_P1,
+  priorityOptionP2:       process.env.OPTION_P2,
+};
+// Only write IDs when we got them — don't clobber manually configured values with empty strings
+const optional = {
+  sizeFieldId:            process.env.SIZE_FIELD_ID,
+  fieldEstimate:          process.env.FIELD_ESTIMATE,
+  fieldActualHours:       process.env.FIELD_ACTUAL_HOURS,
+  fieldActualMinutes:     process.env.FIELD_ACTUAL_SESSION_TIME,
+  fieldContextWords:      process.env.FIELD_CONTEXT_LENGTH,
+  fieldSequence:          process.env.FIELD_SEQUENCE,
+};
+for (const [k, v] of Object.entries(optional)) { if (v) updates[k] = v; }
+Object.assign(existing, updates);
+fs.writeFileSync(file, JSON.stringify(existing, null, 2) + '\n');
 "
 ok "Config written: $CONFIG_FILE"
 echo ""

@@ -3,7 +3,7 @@
 // Read design: .claude/skills/task-tracker/DESIGN.md
 
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
@@ -15,6 +15,8 @@ import { postTimingEvent } from './gh-timing-comment.mjs';
 import { currentSessionId, jsonlPath, markerPathFor, loadMarker, saveMarker, countWords } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue, drain } from './queue.mjs';
+import { registerTask, deregisterTask, setTaskStatus, currentBranch,
+         findMainWorktreePath, fleetRegistryPath, readFleet } from './fleet-registry.mjs';
 
 const argv = process.argv.slice(2);
 // Normalize bare issue numbers: "156" → "#156", "log 156" → "log #156"
@@ -27,6 +29,31 @@ const cfg = loadConfig();
 const statePath = path.join(projectDir, cfg.statePath);
 const queuePath = path.join(projectDir, cfg.queuePath);
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
+
+function parseRepoFromRemote(remoteUrl) {
+  // Normalize SSH (git@github.com:owner/repo.git) and HTTPS to owner/repo
+  const s = remoteUrl.trim().replace(/\.git$/, '');
+  const ssh = s.match(/^git@[^:]+:(.+)$/);
+  if (ssh) return ssh[1];
+  const https = s.match(/^https?:\/\/[^/]+\/(.+)$/);
+  if (https) return https[1];
+  return null;
+}
+
+function checkRepoMismatch() {
+  if (!cfg.repo) return;
+  try {
+    const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'],
+      { cwd: projectDir, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    const remoteRepo = parseRepoFromRemote(remoteUrl);
+    if (remoteRepo && remoteRepo !== cfg.repo) {
+      console.warn(
+        `[task-tracker] WARNING: configured repo (${cfg.repo}) does not match\n` +
+        `               git remote (${remoteRepo}). Run /task config init to fix.`
+      );
+    }
+  } catch { /* no remote or git not available — skip silently */ }
+}
 
 function nowIso() { return new Date().toISOString(); }
 
@@ -92,12 +119,16 @@ async function verbStatus() {
     }));
   }
   const wallNote = wallMin !== activeMin ? ` (wall ${wallMin})` : '';
-  console.log(`Active: ${s.active}. Elapsed: ${activeMin} active min${wallNote}, ${wordsNow - s.wordsAtEntryStart} words since last marker.`);
+  console.log(`Active: ${s.active} [${cfg.repo || 'repo not set'}]. Elapsed: ${activeMin} active min${wallNote}, ${wordsNow - s.wordsAtEntryStart} words since last marker.`);
 }
 
 function verbConfig() {
   if (rest.length === 0) {
     console.log(formatConfig(cfg));
+    return;
+  }
+  if (rest[0] === 'init') {
+    console.log('Run /task config init from a Claude session to start the configuration interview.');
     return;
   }
   if (rest.length === 1) {
@@ -117,8 +148,10 @@ function verbConfig() {
 }
 
 const EVENT_DESCRIPTIONS = {
+  'created':    'task created',
   'pause':      'task paused',
-  'end':        'task ended',
+  'close':      'task closed',
+  'end':        'task closed',
   'switch-end': 'switched to next task',
 };
 
@@ -162,7 +195,7 @@ async function runLogIssueTime(issue) {
   }
 }
 
-async function verbEnd() {
+async function verbClose() {
   await draiQueueIfAny();
   const s = loadState(statePath);
   if (!s.active) { console.log('no active task'); return; }
@@ -171,10 +204,32 @@ async function verbEnd() {
     saveState({ ...s, active: null, planBucket: null }, statePath);
     return;
   }
-  const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'end');
+  // Pre-close gate: check for unchecked checkboxes
+  const force = rest.includes('--force');
+  if (!force && !SKIP_NETWORK) {
+    const issueNum = s.active.replace(/^#/, '');
+    try {
+      const { stdout } = await pexec('gh', [
+        'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body,comments',
+      ], { timeout: 10000 });
+      const data = JSON.parse(stdout);
+      const allText = [data.body, ...(data.comments?.map(c => c.body) ?? [])].join('\n');
+      const unchecked = [...allText.matchAll(/^- \[ \] .+$/gm)].map(m => m[0]);
+      if (unchecked.length > 0) {
+        console.error(`[task-tracker] ${s.active} has ${unchecked.length} unchecked item${unchecked.length === 1 ? '' : 's'}:`);
+        unchecked.forEach(u => console.error(`  ${u}`));
+        console.error('Resolve items or run with --force to close anyway.');
+        process.exit(3);
+      }
+    } catch (err) {
+      console.warn(`[task-tracker] Could not check issue body: ${err.message}`);
+    }
+  }
+  const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'close');
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
-  console.log(`Ended ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
+  console.log(`Closed ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
   clearActive(statePath);
+  try { deregisterTask(projectDir, s.active); } catch {}
   await runLogIssueTime(s.active);
 }
 
@@ -192,6 +247,7 @@ async function verbSwitch(target) {
     const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
     previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
     await runLogIssueTime(previous);
+    try { deregisterTask(projectDir, previous); } catch {}
   } else if (s.active === 'plan') {
     console.log('Discarding planning bucket (switch to concrete issue).');
   }
@@ -213,6 +269,7 @@ async function verbSwitch(target) {
     wordsAtEntryStart: wordsAtStart,
   };
   saveState(newState, statePath);
+  try { registerTask(projectDir, target, projectDir, currentBranch(projectDir)); } catch {}
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
     ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
     wordMarker: wordsAtStart, description: 'task opened',
@@ -237,6 +294,7 @@ async function verbPause() {
     wordsAtEntryStart: 0,
     lastActive: s.active,
   }, statePath);
+  try { setTaskStatus(projectDir, s.active, 'paused'); } catch {}
   console.log(`Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task start" to resume.`);
 }
 
@@ -262,6 +320,7 @@ async function verbStart() {
     entryStartTs: ts,
     wordsAtEntryStart: wordsAtStart,
   }, statePath);
+  try { setTaskStatus(projectDir, s.lastActive, 'active'); } catch {}
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
     ts, event: 'resume', activeMin: 0, idleMin: 0, deltaWords: 0,
     wordMarker: wordsAtStart, description: 'task resumed',
@@ -332,14 +391,20 @@ async function verbNew(args) {
     previousNote = ` Previous: ${s.active} ended (+${deltaMin} min, +${deltaWords} words).`;
   }
   const issue = await createNewIssue(title);
+  // Seed the timing comment immediately — ensures it's the first comment on the issue
+  const createdTs = nowIso();
+  const { buildRow } = await import('./gh-timing-comment.mjs');
+  await safePostTiming(issue, buildRow({
+    ts: createdTs, event: 'created', activeMin: 0, idleMin: 0,
+    deltaWords: 0, wordMarker: 0, description: 'task created',
+  }));
   if (wasPlan && !SKIP_NETWORK) {
     for (const e of s.planBucket.entries) {
-      const row = (await import('./gh-timing-comment.mjs')).buildRow({
+      await safePostTiming(issue, buildRow({
         ts: e.ts, event: `planning: ${e.event}`,
         activeMin: e.deltaMin ?? 0, idleMin: 0, deltaWords: e.deltaWords ?? 0,
         wordMarker: s.planBucket.wordsAtStart, description: 'planning session',
-      });
-      await safePostTiming(issue, row);
+      }));
     }
   }
   const ts = nowIso();
@@ -357,11 +422,11 @@ async function verbNew(args) {
     entryStartTs: ts,
     wordsAtEntryStart: wordsAtStart,
   }, statePath);
-  const row = (await import('./gh-timing-comment.mjs')).buildRow({
+  try { registerTask(projectDir, issue, projectDir, currentBranch(projectDir)); } catch {}
+  await safePostTiming(issue, buildRow({
     ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
-    wordMarker: wordsAtStart, description: 'task opened',
-  });
-  await safePostTiming(issue, row);
+    wordMarker: wordsAtStart, description: 'session started',
+  }));
   console.log(`Active: ${issue}.${previousNote} Created with title: "${title}".`);
 }
 
@@ -435,16 +500,49 @@ async function verbCheck(args) {
   console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}`);
 }
 
+async function verbResume() {
+  const target = rest[0]; // '#N' or undefined
+  if (target) {
+    if (!/^#\d+$/.test(target)) {
+      console.error(`invalid issue ref: ${target}`);
+      process.exit(1);
+    }
+    // Switching to a specific task — body reload handled by SKILL.md Step 2
+    await verbSwitch(target);
+  } else {
+    // Resume lastActive — context still warm, no body reload
+    await verbStart();
+  }
+}
+
+async function verbFleet() {
+  const mainPath = findMainWorktreePath(projectDir);
+  const rPath = fleetRegistryPath(mainPath);
+  const fleet = readFleet(rPath);
+  const entries = Object.entries(fleet);
+  if (entries.length === 0) { console.log('No fleet tasks registered.'); return; }
+  const now = Date.now();
+  console.log(`Fleet: ${entries.length} task${entries.length === 1 ? '' : 's'}`);
+  for (const [ref, info] of entries) {
+    const ageMin = Math.round((now - new Date(info.startedAt).getTime()) / 60000);
+    const age = ageMin >= 60 ? `${Math.floor(ageMin / 60)}h ${ageMin % 60}m` : `${ageMin}m`;
+    console.log(`  ${ref.padEnd(6)} ${info.status.padEnd(8)} ${info.branch.padEnd(28)} started ${age} ago`);
+  }
+}
+
 // ---- Dispatch ----
 
 (async () => {
+  checkRepoMismatch();
   try {
     switch (verb) {
       case 'status':  await verbStatus(); break;
       case 'config':  verbConfig(); break;
-      case 'end':     await verbEnd(); break;
+      case 'close':   await verbClose(); break;
+      case 'end':     await verbClose(); break;  // alias
       case 'pause':   await verbPause(); break;
-      case 'start':   await verbStart(); break;
+      case 'resume':  await verbResume(); break;
+      case 'start':   await verbStart(); break;  // alias
       case 'update':  await verbUpdate(rest); break;
       case 'log': {
         const target = rest[0];
@@ -455,6 +553,7 @@ async function verbCheck(args) {
       case 'plan':    await verbPlan(); break;
       case 'new':     await verbNew(rest); break;
       case 'check':   await verbCheck(rest); break;
+      case 'fleet':   await verbFleet(); break;
       default:
         if (/^#\d+$/.test(verb)) { await verbSwitch(verb); break; }
         console.error(`unknown verb: ${verb}`);

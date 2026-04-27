@@ -129,7 +129,21 @@ function cmdInstall(args) {
   patchSettingsJson(settingsPath);
   ok(`Hooks:    registered in .claude/settings.json`);
 
-  // 6. Patch .gitignore
+  // 6. Pickup directive templates (optional feature, off by default)
+  const templateDest = join(targetDir, '.claude', 'task-tracker');
+  mkdirSync(templateDest, { recursive: true });
+  for (const name of ['pickup-directive.md', 'definition-of-done.md']) {
+    const src = join(PKG_ROOT, 'templates', name);
+    const out = join(templateDest, name);
+    if (!existsSync(out)) {
+      copyFileSync(src, out);
+      ok(`Template: .claude/task-tracker/${name}`);
+    } else {
+      ok(`Template: .claude/task-tracker/${name} (already exists, skipped)`);
+    }
+  }
+
+  // 7. Patch .gitignore
   patchGitignore(targetDir);
   ok(`Gitignore: .claude/task-tracker-state.json, .claude/task-tracker-queue.json`);
 

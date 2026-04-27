@@ -32,6 +32,7 @@ export const DEFAULTS = {
   statePath: '.claude/task-tracker-state.json',
   idleThresholdMinutes: 5,
   recordWallClock: true,
+  pickupDirective: false,
 };
 
 const TYPES = {
@@ -56,6 +57,7 @@ const TYPES = {
   statePath: 'string',
   idleThresholdMinutes: 'number',
   recordWallClock: 'boolean',
+  pickupDirective: 'boolean',
 };
 
 function defaultPaths() {

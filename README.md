@@ -18,6 +18,7 @@ Time and context words are logged automatically on every Claude compaction and s
 
 - **Node.js 18+**
 - **GitHub CLI (`gh`)** — [install](https://cli.github.com) and authenticate with `gh auth login`
+- **jq** — [install](https://jqlang.github.io/jq/download/): `brew install jq` / `apt install jq` / `winget install jqlang.jq`
 - **Claude Code** — [install](https://claude.ai/code)
 - A **GitHub Projects V2** board for your repo with a Status field (Kanban) and optionally a Priority field
 
@@ -152,6 +153,83 @@ The task tracker's state file (`.claude/task-tracker-state.json`) is **workspace
 
 If you open a second session in the same workspace (e.g., to look something up), treat it as read-only — don't run any `/task` commands from it. Switching tasks or checkpointing from a second session will corrupt the word-count baseline for the first session. Timing (minutes) will still be correct; only the Δ Words column is affected.
 
+## Multi-Agent Orchestration
+
+When you fan work out to parallel sub-agents, two issues are active simultaneously: an **epic** tracking orchestration time, and one or more **children** tracking execution time. The report uses these separately to calculate human engagement cost (epic) vs. AI execution effort (children).
+
+The key rule: **the active task should always be the issue whose work is being performed in this session right now.**
+
+- `/task #epic` when you're dispatching agents, reviewing results, deciding what to fan out next, or writing the orchestration prompt
+- `/task #child` when you're doing that child's work directly in the main thread (no sub-agent)
+- Switch back to `/task #epic` as soon as you hand work off to a sub-agent or return to orchestration
+
+This keeps timing honest without any mode detection: the epic accumulates calendar/engagement time, children accumulate direct AI effort.
+
+### Orchestration Directive
+
+Copy this into your Claude session (or add it to `CLAUDE.md`) to train the session on task-switching behavior:
+
+```
+## Task Tracker: Orchestration Rules
+
+The active /task should always reflect the work this session is performing right now:
+
+- When orchestrating (dispatching sub-agents, reviewing agent output, deciding what to fan out,
+  writing orchestration prompts, synthesizing results): run `/task #<epic>`.
+
+- When performing a child issue's work directly in this session (no sub-agent):
+  run `/task #<child>`.
+
+- Switch back to `/task #<epic>` the moment you hand work to a sub-agent or return to
+  orchestration decisions.
+
+Never leave the epic active while a child is being worked directly in this session,
+and never leave a child active while you are orchestrating. Timing only means something
+when the active task matches what is actually happening.
+```
+
+### Pickup Directive
+
+The Pickup Directive is an optional pattern that makes every issue self-contained — any agent can pick it up cold, without context from the planning session. It applies to all issue types: epics, sub-issues, and solo tasks.
+
+**Enable it:**
+```
+/task config pickupDirective true
+```
+
+**What gets added to each issue body at creation:**
+
+```markdown
+## ⚡ Pickup Directive
+> Follow: `.claude/task-tracker/pickup-directive.md`
+
+- [ ] Deep dive complete
+
+### Definition of Done
+- [ ] Acceptance criteria met
+- [ ] Tests pass; new coverage committed
+- [ ] ...
+
+---
+```
+
+The issue body stays lean. The detailed agent instructions (deep-dive steps, body append sequence, implementation pattern) live in `.claude/task-tracker/pickup-directive.md` — the agent reads that file on pickup.
+
+**The deep-dive checkpoint** is the key mechanism: on first pickup the agent runs a just-in-time analysis against the current repo state, appends it below the `---`, and flips the checkbox. On every subsequent pickup — after session resets, `/clear`, machine switches, or agent handoffs — the agent sees the checkpoint is checked and skips straight to implementation.
+
+**Before closing,** the agent reviews and verifies every Definition of Done item, marks each with `/task check`, and only then runs `/task close`. The pre-close gate enforces this.
+
+**Customizing:**
+
+Two files are installed to `.claude/task-tracker/` and can be edited per project:
+
+| File | Purpose |
+|---|---|
+| `pickup-directive.md` | Detailed agent instructions — deep dive steps, implementation pattern |
+| `definition-of-done.md` | DoD checklist items — inlined into every new issue body at creation |
+
+Both are skipped on reinstall if they already exist, so edits are preserved.
+
 ## Issue Templates
 
 `npx claude-gh-task-manager init` creates `.github/ISSUE_TEMPLATE/task.yml` and `bug.yml` with fields for:
@@ -184,10 +262,7 @@ npx claude-gh-task-manager statusline
 
 This installs `~/.claude/statusline.sh` and wires it into `~/.claude/settings.json`. Once active, the CLI header shows `task #42` while a task is running, and goes blank when no task is active.
 
-Requires `jq`:
-- **macOS:** `brew install jq`
-- **Linux:** `apt install jq`
-- **Windows:** `winget install jqlang.jq` (or `choco install jq` / `scoop install jq`)
+Requires `jq` (see [Prerequisites](#prerequisites)).
 
 ## Value Report
 
