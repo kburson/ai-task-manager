@@ -191,32 +191,69 @@ Requires `jq`:
 
 ## Value Report
 
-Generate an HTML report showing the ROI of AI-assisted development across all tracked issues on your board:
+Generate a detailed HTML (or PDF) report showing the ROI of AI-assisted development across all tracked issues on your GitHub Projects board. Run it from any project where the package is installed:
 
 ```bash
-# HTML only (default, no extra dependencies)
-npm run report:value
+# All issues with data (HTML — no extra dependencies)
+npx github-project-report --html
 
 # PDF output (requires puppeteer: npm install --save-dev puppeteer)
-# Generates both HTML and PDF
-npm run report:value:pdf
+npx github-project-report
 
-# Filtered to specific issues
-node scripts/reports/generate-value-report.mjs --issues 10,11,12
+# Only closed issues
+npx github-project-report --html --state closed
+
+# Date-range slice (closed issues only)
+npx github-project-report --html --state closed --from 2026-01-01 --to 2026-03-31
+
+# Specific issues
+npx github-project-report --html --issues 10,11,12
 
 # Override region and role for cost table
-node scripts/reports/generate-value-report.mjs --region sf_bay --role senior
+npx github-project-report --html --region sf_bay --role senior
 ```
 
-The report reads `projectId` and `repo` from `.claude/task-tracker.json` automatically. It pulls `Estimate`, `Actual Session Time`, and `Context Length` from your GitHub Projects board and calculates:
+### Why it's useful
 
-- **Engaged Hours** = session minutes + human reading time (context words ÷ WPM)
-- **Estimated Acceleration** = Estimate ÷ Engaged Hours
-- **Value ratios** vs budget baseline, solo senior engineer, and enterprise team costs
+The report answers the question: **what did it actually cost to ship this, versus what would it have cost without AI?**
 
-Configure defaults in `scripts/reports/value-report-config.json` (region, role, reading WPM, output directory).
+It reads three fields from your GitHub Projects board — `Estimate` (pre-execution hours), `Actual Session Time` (measured AI session minutes), and `Context Length` (measured chat words) — and builds a full comparison:
 
-See [docs/ai-value-framework.md](docs/ai-value-framework.md) for the full methodology.
+- **Engaged Hours** = session minutes + human reading time (context words ÷ WPM). This is your real time investment.
+- **Estimated Acceleration** = Estimate ÷ Engaged Hours. A ratio of `4×` means 4 estimated hours were delivered per engaged hour.
+- **Cost table** across all US regions, comparing estimated cost vs. engaged-time cost at fully-burdened rates.
+- **Three baselines**: budget baseline (single mid-level engineer), solo senior engineer (70% efficiency factor), enterprise team (50% efficiency + 30% coordination overhead).
+- **Timeline analysis**: calendar weeks estimated vs. calendar weeks measured.
+
+This makes AI productivity legible to stakeholders — not "we used AI" but "we delivered 82 estimated hours in 11 engaged hours at `$800` instead of `$14,000`."
+
+### All flags
+
+| Flag | Description |
+|---|---|
+| `--html` | Emit HTML only, skip PDF (no puppeteer required) |
+| `--state closed\|open\|all` | Filter by issue state (default: `all`) |
+| `--from YYYY-MM-DD` | Only issues closed on or after this date |
+| `--to YYYY-MM-DD` | Only issues closed on or before this date |
+| `--issues 10,11,12` | Limit to specific issue numbers (overrides all other filters) |
+| `--role mid\|senior\|staff` | Engineer level for cost table (default: `mid`) |
+| `--solo-role mid\|senior\|staff` | Role for solo-engineer baseline (default: `senior`) |
+| `--region <id>` | Region ID from `regional-rates.json` (default: `national`) |
+| `--reading-wpm N` | Override reading WPM for context-word time (default: `180`) |
+| `--chat-words N` | Add extra context words not yet logged to any issue |
+| `--title "..."` | Custom report heading |
+| `--output ./path/report` | Output base path without extension (default: `./reports/value-report`) |
+| `--project-id PVT_...` | Override GitHub Projects V2 node ID (default: from `.claude/task-tracker.json`) |
+
+### Configuration
+
+Defaults are loaded from `scripts/reports/value-report-config.json` inside the installed package. You can override per-project by creating your own `value-report-config.json` at your project root and passing `--output` to point elsewhere.
+
+The report reads `projectId` and `repo` from `.claude/task-tracker.json` automatically — no manual IDs needed.
+
+PDF output requires puppeteer: `npm install --save-dev puppeteer`. Without it, HTML is saved and you can print-to-PDF from Chrome.
+
+See [docs/ai-value-framework.md](docs/ai-value-framework.md) for the full ROI methodology.
 
 ## Troubleshooting
 
