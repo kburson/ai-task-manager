@@ -188,8 +188,10 @@ async function verbSwitch(target) {
   const s = loadState(statePath);
   let previousNote = '';
   if (s.active && s.active !== 'plan' && cfg.autoEndOnSwitch) {
+    const previous = s.active;
     const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
-    previousNote = ` Previous: ${s.active} ended (+${deltaMin} min, +${deltaWords} words).`;
+    previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
+    await runLogIssueTime(previous);
   } else if (s.active === 'plan') {
     console.log('Discarding planning bucket (switch to concrete issue).');
   }
