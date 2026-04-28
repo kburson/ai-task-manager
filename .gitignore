@@ -5,5 +5,5 @@ node_modules/
 .claude/task-tracker-queue.json
 .claude/task-fleet.json
 
-reports/
+/reports/
 .claude/task-tracker.json

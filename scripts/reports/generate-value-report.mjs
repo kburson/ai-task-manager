@@ -19,7 +19,8 @@
  *     [--chat-words N]             additional context words not yet in any issue's Context Length field
  *     [--from YYYY-MM-DD]          only issues closed on or after this date
  *     [--to   YYYY-MM-DD]          only issues closed on or before this date
- *     [--state open|closed|all]    filter by issue state (default: all)
+ *     [--state open|closed|all]    filter by GitHub issue state (default: all)
+ *     [--status Done|Backlog|...]  filter by Kanban board status (case-insensitive)
  *     [--project-id PVT_...]       override GitHub Projects V2 node ID (default: from .claude/task-tracker.json)
  *
  * Project and owner are read from .claude/task-tracker.json (set by npx claude-gh-task-manager init).
@@ -76,14 +77,16 @@ const cfg = {
   issues:        flag('--issues')?.split(',').map(Number) ?? null,
   role:          flag('--role')         ?? fileCfg.role                   ?? 'mid',
   soloRole:      flag('--solo-role')    ?? fileCfg.soloRole               ?? 'senior',
-  seniorFactor:  +(flag('--senior-factor') ?? fileCfg.seniorEfficiencyFactor ?? 0.70),
+  seniorFactor:  +(flag('--senior-factor') ?? fileCfg.seniorEfficiencyFactor ?? 0.60),
   region:        flag('--region')       ?? fileCfg.region                 ?? 'national',
   focusHours:    +(flag('--focus-hours') ?? fileCfg.focusHoursPerDay ?? RATES.workday?.focusedCodingHoursPerDay ?? 5),
   readingWpm:    +(flag('--reading-wpm') ?? fileCfg.readingWpm ?? 180),
+  readingOverlap: +(flag('--reading-overlap') ?? fileCfg.readingOverlapFactor ?? 0.50),
   chatWords:     +(flag('--chat-words') ?? 0),
   fromDate:      flag('--from') ? new Date(flag('--from') + 'T00:00:00') : null,
   toDate:        flag('--to')   ? new Date(flag('--to')   + 'T23:59:59.999') : null,
   state:         (flag('--state') ?? 'all').toLowerCase(),
+  status:        flag('--status') ? flag('--status').toLowerCase() : null,
   htmlOnly:      has('--html'),
 };
 
@@ -134,6 +137,7 @@ async function fetchProject() {
                 ... on Issue {
                   number title state url body
                   createdAt closedAt
+                  parent { number }
                 }
               }
               fieldValues(first: 20) {
@@ -191,6 +195,7 @@ function processItems(raw) {
         sessionMin:   f['Actual Session Time'] ?? null,
         contextWords: f['Context Length']      ?? null,
         status:       f['Status']              ?? null,
+        parentNumber: n.content.parent?.number ?? null,
       };
     })
     .filter(i => {
@@ -198,9 +203,11 @@ function processItems(raw) {
       if (cfg.issues) return cfg.issues.includes(i.number);
       // must have at least one data field
       if (i.estimate == null && i.sessionMin == null && i.contextWords == null) return false;
-      // --state filter
+      // --state filter (GitHub issue state: open/closed)
       if (cfg.state === 'closed' && i.state !== 'CLOSED') return false;
       if (cfg.state === 'open'   && i.state !== 'OPEN')   return false;
+      // --status filter (Kanban board status: Done, Backlog, In Progress, etc.)
+      if (cfg.status && (i.status ?? '').toLowerCase() !== cfg.status) return false;
       // --from / --to filter: applies to closedAt; open issues have no closedAt
       if (cfg.fromDate || cfg.toDate) {
         if (i.closedAt == null) return false;
@@ -212,10 +219,31 @@ function processItems(raw) {
     .sort((a, b) => a.number - b.number);
 }
 
+function buildHierarchy(items) {
+  const byNumber = new Map(items.map(i => [i.number, i]));
+  const childrenMap = new Map();
+  for (const item of items) {
+    if (item.parentNumber != null && byNumber.has(item.parentNumber)) {
+      if (!childrenMap.has(item.parentNumber)) childrenMap.set(item.parentNumber, []);
+      childrenMap.get(item.parentNumber).push(item);
+    }
+  }
+  const childNumbers = new Set([...childrenMap.values()].flat().map(c => c.number));
+  return items
+    .filter(i => !childNumbers.has(i.number))
+    .map(i => ({ item: i, children: (childrenMap.get(i.number) ?? []).sort((a, b) => a.number - b.number) }));
+}
+
+function rollupVal(own, children, key) {
+  const vals = [own, ...children.map(c => c[key])].filter(v => v != null);
+  return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
+}
+
 function engagedHours(sessionMin, contextWords) {
   const sessionH  = (sessionMin   ?? 0) / 60;
   const readingH  = (contextWords ?? 0) / cfg.readingWpm / 60;
-  return sessionH + readingH;
+  // reading time partially overlaps active session (waiting for AI, reading while working)
+  return sessionH + readingH * cfg.readingOverlap;
 }
 
 function summary(items) {
@@ -236,17 +264,30 @@ function summary(items) {
 }
 
 const $   = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+const n   = v => Math.round(v).toLocaleString('en-US');
 const wd  = h => h > 0 ? (h / 8).toFixed(1) : '—';
 const fmtMin = h => {
   const m = Math.round(h * 60);
   const hh = Math.floor(m / 60), mm = m % 60;
   return hh > 0 && mm > 0 ? `${hh}h ${mm}min` : hh > 0 ? `${hh}h` : `${m} min`;
 };
+const fmtMinLong = (h, dayHours = 8) => {
+  const m      = Math.round(h * 60);
+  const dayMin = dayHours * 60;
+  const d      = Math.floor(m / dayMin), rem = m % dayMin;
+  const hh     = Math.floor(rem / 60), mm = rem % 60;
+  const parts  = [];
+  if (d  > 0) parts.push(`${d}d`);
+  if (hh > 0) parts.push(`${hh}h`);
+  if (mm > 0) parts.push(`${mm}min`);
+  return parts.length ? parts.join(' ') : '0 min';
+};
 
 function buildHtml(project, items, s) {
   const now        = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
   const filterParts = [];
   if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
+  if (cfg.status)          filterParts.push(`Status: ${cfg.status}`);
   if (cfg.fromDate) filterParts.push(`From: ${cfg.fromDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
   if (cfg.toDate)   filterParts.push(`To: ${cfg.toDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
   const filterLabel = filterParts.length ? filterParts.join(' · ') : null;
@@ -286,20 +327,36 @@ function buildHtml(project, items, s) {
     </tr>`;
   }).join('\n');
 
-  const issueRows = items.map(i => {
-    const eh         = engagedHours(i.sessionMin, i.contextWords);
-    const ratio      = i.estimate != null && eh > 0 ? (i.estimate / eh).toFixed(1) : null;
+  const escAttr = s => s.replace(/"/g, '&quot;');
+  const escHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const fmtEst  = h => h == null ? '—' : h < 1 ? Math.round(h * 60) + ' min' : Number.isInteger(h) ? h + 'h' : h + 'h';
+
+  function renderRow(i, ru, cls) {
+    const eh         = engagedHours(ru.sessionMin, ru.contextWords);
+    const ratio      = ru.estimate != null && eh > 0 ? (ru.estimate / eh).toFixed(1) : null;
     const ratioClass = ratio == null ? '' : +ratio >= 1.5 ? 'good' : +ratio < 0.8 ? 'over' : 'warn';
-    return `<tr>
+    const prefix     = cls === 'child-row' ? '<span class="child-indent">↳</span> ' : cls === 'epic-row' ? '▶ ' : '';
+    return `<tr class="${cls}">
       <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
-      <td class="title-cell" title="${i.title.replace(/"/g, '&quot;')}">${i.title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
-      <td class="num">${i.estimate ?? '—'}</td>
-      <td class="num">${i.sessionMin != null ? i.sessionMin + ' min' : '—'}</td>
-      <td class="num">${i.contextWords != null ? i.contextWords.toLocaleString() : '—'}</td>
+      <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
+      <td class="num">${fmtEst(ru.estimate)}</td>
+      <td class="num">${ru.sessionMin != null ? fmtMin(ru.sessionMin / 60) : '—'}</td>
+      <td class="num">${ru.contextWords != null ? ru.contextWords.toLocaleString() : '—'}</td>
       <td class="num">${eh > 0 ? fmtMin(eh) : '—'}</td>
       <td class="num ${ratioClass}">${ratio != null ? ratio + '×' : '—'}</td>
-      <td class="${i.state === 'CLOSED' ? 'closed' : 'open'}">${i.status ?? (i.state === 'CLOSED' ? 'Done' : 'Open')}</td>
+      <td class="${(i.status ?? '').toLowerCase() === 'done' ? 'closed' : 'open'}">${i.status ?? '—'}</td>
     </tr>`;
+  }
+
+  const hierarchy = buildHierarchy(items);
+  const issueRows = hierarchy.map(({ item: i, children }) => {
+    const isEpic = children.length > 0;
+    const ru = isEpic
+      ? { estimate: rollupVal(i.estimate, children, 'estimate'), sessionMin: rollupVal(i.sessionMin, children, 'sessionMin'), contextWords: rollupVal(i.contextWords, children, 'contextWords') }
+      : i;
+    const epicRow  = renderRow(i, ru, isEpic ? 'epic-row' : '');
+    const kidRows  = children.map(c => renderRow(c, c, 'child-row')).join('\n');
+    return epicRow + (isEpic ? '\n' + kidRows : '');
   }).join('\n');
 
   const totalEh = s.totalEngaged > 0 ? fmtMin(s.totalEngaged) : '—';
@@ -346,16 +403,24 @@ th{background:#f1f5f9;color:#475569;font-weight:600;text-align:left;padding:.4re
 td{padding:.35rem .625rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 .issue-table{table-layout:fixed}
 .issue-table .col-num{width:4%}
-.issue-table .col-title{width:34%}
-.issue-table .col-est{width:7%}
-.issue-table .col-session{width:10%}
-.issue-table .col-context{width:11%}
-.issue-table .col-engaged{width:10%}
-.issue-table .col-accel{width:8%}
+.issue-table .col-title{width:30%}
+.issue-table .col-est{width:6%}
+.issue-table .col-session{width:9%}
+.issue-table .col-context{width:10%}
+.issue-table .col-engaged{width:9%}
+.issue-table .col-accel{width:7%}
 .issue-table .col-status{width:11%}
 .issue-table td.title-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f8fafc}
+tr.epic-row td{background:#1e293b;color:#f1f5f9;font-weight:600;border-bottom:1px solid #334155}
+tr.epic-row td a{color:#a5b4fc}
+tr.epic-row:hover td{background:#334155}
+tr.child-row td{background:#f8fafc;color:#475569;font-size:.7rem}
+tr.child-row td.closed{color:#16a34a}
+tr.child-row td.open{color:#d97706}
+tr.child-row:hover td{background:#f1f5f9}
+.child-indent{color:#94a3b8;margin-right:.2rem}
 tfoot td{background:#f1f5f9;font-weight:700;border-top:2px solid #e2e8f0}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 td a{color:#6366f1;text-decoration:none;font-weight:600}
@@ -420,7 +485,7 @@ td a:hover{text-decoration:underline}
       <div class="col human">
         <h3>Human Engineering Cost (estimated)</h3>
         <div class="crow">
-          <span class="cl-wrap"><span class="cl">Budget baseline — 1 ${cfg.role} engineer</span><span class="cl-sub">${s.totalEst}h @ ${$(natMid)}/hr · ${reg.label}</span></span>
+          <span class="cl-wrap"><span class="cl">Budget baseline — 1 ${cfg.role} engineer</span><span class="cl-sub">${n(s.totalEst)}h @ ${$(natMid)}/hr · ${reg.label}</span></span>
           <span class="cv">${$(baselineCost)}</span>
         </div>
         <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar duration (1 engineer)</span><span class="cv">${estDuration}</span></div>
@@ -456,7 +521,7 @@ td a:hover{text-decoration:underline}
 <div class="disclaimer">
   <strong>Methodology note:</strong> Estimated acceleration compares pre-execution estimates (mid-level engineer hours) against measured engaged time (session minutes + reading time).
   This is an estimate-based comparison — estimates represent the best guess at the time of planning and may not reflect what a human engineer would have actually taken.
-  The comparison is only as accurate as the original estimates. Reading WPM: ${cfg.readingWpm}.
+  The comparison is only as accurate as the original estimates. Reading WPM: ${cfg.readingWpm}. Reading overlap factor: ${cfg.readingOverlap} (fraction of reading time added to engaged hours — remainder assumed concurrent with active session).
 </div>
 
 <div class="crows-wrap">
@@ -464,7 +529,7 @@ td a:hover{text-decoration:underline}
   <div class="crow-group baseline">
     <div class="crow-label">Budget Baseline <span>Single ${cfg.role}-level engineer · ${reg.label} rate · estimates expressed in ${cfg.role}-level hours</span></div>
     <div class="crow-cards">
-      <div class="card"><div class="lbl">Estimated Hours</div><div class="val">${s.totalEst}h</div><div class="sub">${s.withEst} issues scoped</div></div>
+      <div class="card"><div class="lbl">Estimated Hours</div><div class="val">${n(s.totalEst)}h</div><div class="sub">${s.withEst} issues scoped</div></div>
       <div class="card"><div class="lbl">Working Days</div><div class="val">${wd(s.totalEst)}</div><div class="sub">8 hrs/day</div></div>
       <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${estDuration}</div><div class="sub">${cfg.focusHours} focused hrs/day · ${focusPerWeek} hrs/wk</div></div>
       <div class="card"><div class="lbl">Estimated Cost</div><div class="val sm">${$(baselineCost)}</div><div class="sub">@ ${$(natMid)}/hr ${cfg.role}-level · ${reg.label}</div></div>
@@ -474,7 +539,7 @@ td a:hover{text-decoration:underline}
   <div class="crow-group solo">
     <div class="crow-label">Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer <span>${Math.round(cfg.seniorFactor * 100)}% efficiency factor applied to ${cfg.role}-level estimate · ${reg.label} rate</span></div>
     <div class="crow-cards">
-      <div class="card"><div class="lbl">Adjusted Hours</div><div class="val">${Math.round(soloHours)}h</div><div class="sub">${s.totalEst}h × ${cfg.seniorFactor} efficiency factor</div></div>
+      <div class="card"><div class="lbl">Adjusted Hours</div><div class="val">${n(soloHours)}h</div><div class="sub">${n(s.totalEst)}h × ${cfg.seniorFactor} efficiency factor</div></div>
       <div class="card"><div class="lbl">Working Days</div><div class="val">${wd(soloHours)}</div><div class="sub">8 hrs/day</div></div>
       <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${fmtDuration(soloHours / focusPerWeek)}</div><div class="sub">${cfg.focusHours} focused hrs/day · ${focusPerWeek} hrs/wk</div></div>
       <div class="card"><div class="lbl">Cost</div><div class="val sm">${$(soloCost)}</div><div class="sub">@ ${$(natSr)}/hr ${cfg.soloRole} · ${reg.label}</div></div>
@@ -484,7 +549,7 @@ td a:hover{text-decoration:underline}
   <div class="crow-group enterprise">
     <div class="crow-label">Enterprise Team <span>Large team — same delivery timeline (Brook's Law), paying for coordination overhead + efficiency losses</span></div>
     <div class="crow-cards">
-      <div class="card"><div class="lbl">Billed Hours</div><div class="val">${Math.round(entHours)}h</div><div class="sub">50% efficiency → 2× hours paid</div></div>
+      <div class="card"><div class="lbl">Billed Hours</div><div class="val">${n(entHours)}h</div><div class="sub">50% efficiency → 2× hours paid</div></div>
       <div class="card"><div class="lbl">Working Days</div><div class="val">${wd(entHours)}</div><div class="sub">billed, not delivered</div></div>
       <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${estDuration}</div><div class="sub">more people ≠ faster</div></div>
       <div class="card"><div class="lbl">Cost</div><div class="val sm over">${$(enterpriseCost)}</div><div class="sub">+ 30% coordination overhead</div></div>
@@ -524,8 +589,8 @@ td a:hover{text-decoration:underline}
     <thead>
       <tr>
         <th>#</th><th>Title</th>
-        <th class="num">Est hrs</th>
-        <th class="num">Session min</th>
+        <th class="num">Est</th>
+        <th class="num">Session</th>
         <th class="num">Context words</th>
         <th class="num">Engaged</th>
         <th class="num">Accel.</th>
@@ -537,9 +602,9 @@ td a:hover{text-decoration:underline}
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="2">Total (${items.length} issues)</td>
-        <td class="num">${s.totalEst}h</td>
-        <td class="num">${s.totalSessionMin > 0 ? s.totalSessionMin + ' min' : '—'}</td>
+        <td colspan="2">Total (${items.length} issues · ${hierarchy.filter(r => r.children.length > 0).length} epics)</td>
+        <td class="num">${fmtEst(s.totalEst)}</td>
+        <td class="num">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</td>
         <td class="num">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() : '—'}</td>
         <td class="num">${totalEh}</td>
         <td class="num good">${s.accel != null ? s.accel + '×' : '—'}</td>
@@ -558,7 +623,7 @@ td a:hover{text-decoration:underline}
         <tr>
           <th>Region</th>
           <th class="num">Rate (${cfg.role})</th>
-          <th class="num">Cost @ Est Hours (${s.totalEst}h)</th>
+          <th class="num">Cost @ Est Hours (${n(s.totalEst)}h)</th>
           <th class="num">Cost @ Engaged Hours (${totalEh})</th>
           <th class="num">Savings vs Estimate</th>
         </tr>
@@ -574,13 +639,13 @@ td a:hover{text-decoration:underline}
     <div class="tg">
       <div class="tc">
         <h3>Estimated Effort</h3>
-        <div class="ts"><div class="tn">${s.totalEst}h</div><div class="tl">total estimated hours (mid-level baseline)</div></div>
+        <div class="ts"><div class="tn">${fmtMinLong(s.totalEst, cfg.focusHours)}</div><div class="tl">total estimated effort (mid-level baseline · 1 day = ${cfg.focusHours} focused hrs)</div></div>
         <div class="ts"><div class="tn">${estDuration}</div><div class="tl">calendar weeks @ ${cfg.focusHours} focused hrs/day, ${focusPerWeek} hrs/wk</div></div>
         <div class="ts"><div class="tn">${wd(s.totalEst)} days</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
       </div>
       <div class="tc">
         <h3>Measured / Engaged</h3>
-        <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? s.totalSessionMin + ' min' : '—'}</div><div class="tl">active session time (measured)</div></div>
+        <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? fmtMinLong(s.totalSessionMin / 60, cfg.focusHours) : '—'}</div><div class="tl">active session time (measured · 1 day = ${cfg.focusHours} focused hrs)</div></div>
         <div class="ts"><div class="tn">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() + ' words' : '—'}</div><div class="tl">context length (measured) · ${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'}</div></div>
         <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
       </div>

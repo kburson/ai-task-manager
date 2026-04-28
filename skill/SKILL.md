@@ -507,11 +507,13 @@ Then ask:
 - `/task #child` when performing that child's work directly in this session (no sub-agent).
 - Switch back to `/task #epic` the moment work is handed to a sub-agent or you return to orchestration.
 - Never leave the epic active while a child is being worked directly, and never leave a child active while orchestrating.
+- **Run `/task update` every time an agent returns.** Each agent completion is a checkpoint — flush timing and reset counters before dispatching the next batch. Without this, long orchestration sessions accumulate unbounded wall-clock time with no intermediate record.
 
 **Solo fan-out (a set of independent issues with no parent epic):**
 - The currently active task is the engagement anchor — stay on it while agents work the others. Its time records the orchestration cost.
 - If no task is active when the fan-out is requested, ask the user which of the issues should serve as the engagement anchor before spawning agents.
 - The anchored issue's time will be a mix of orchestration + any direct implementation work the main thread does — this is expected and acceptable for solo fan-out.
+- **Run `/task update` every time an agent returns** — same rule as epic fan-out.
 
 ### Pickup Directive
 
