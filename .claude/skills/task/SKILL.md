@@ -232,6 +232,110 @@ gh api graphql -f query='
 
 From the result, find the field named `Size` and capture its option IDs for: `XS`, `S`, `M`, `L`, `XL`. Store them as local variables for use in the steps below.
 
+### Epic Creation
+
+#### 1. Assemble the epic body
+
+From the spec in context, extract:
+- The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
+- The **Epic Acceptance Criteria** checkboxes
+
+If `pickupDirective` is `true` in config, read `.claude/task-tracker/definition-of-done.md` and append the Pickup Directive block (use placeholder `<this-issue-#>` — replace after creation):
+
+```markdown
+## ⚡ Pickup Directive
+> Follow: `.claude/task-tracker/pickup-directive.md`
+
+- [ ] Deep dive complete
+
+### Definition of Done
+<contents of definition-of-done.md verbatim>
+
+---
+```
+
+#### 2. Create the epic issue
+
+```bash
+gh issue create \
+  --title "EPIC: <title>" \
+  --body "<assembled-body>" \
+  --assignee <assignee from .claude/task-tracker.json key "assignee", default "@me"> \
+  --label "plan/<slug>" \
+  --label "purpose/<inferred1>" \
+  [--label "purpose/<inferred2>" ...] \
+  [--label "<defaultLabel>" ...]
+```
+
+Capture the URL returned; extract the issue number from it (e.g., `https://github.com/owner/repo/issues/42` → `42`). Store as `EPIC_N`.
+
+#### 3. Get the epic's node ID (needed for sub-issue linking)
+
+```bash
+gh issue view <EPIC_N> --json id --jq '.id'
+```
+Store as `EPIC_NODE_ID`.
+
+#### 4. Set Priority
+
+```bash
+"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/set-priority.sh" <EPIC_N> <p0|p1|p2>
+```
+Use the priority declared in the spec. Default: `p0` for epics.
+
+#### 5. Set Size
+
+Get the project item ID first:
+```bash
+gh api graphql -f query='
+  query($owner:String!,$repo:String!,$number:Int!) {
+    repository(owner:$owner, name:$repo) {
+      issue(number:$number) {
+        projectItems(first:5) { nodes { id } }
+      }
+    }
+  }
+' -f owner=<owner> -f repo=<repo> -F number=<EPIC_N> --jq '.data.repository.issue.projectItems.nodes[0].id'
+```
+Store as `ITEM_ID`. Then set Size:
+```bash
+gh project item-edit \
+  --project-id <projectId from .claude/task-tracker.json> \
+  --id <ITEM_ID> \
+  --field-id <sizeFieldId from .claude/task-tracker.json> \
+  --single-select-option-id <option-id for XS|S|M|L|XL from Label Setup C>
+```
+
+#### 6. Set Estimate
+
+```bash
+gh api graphql -f query='
+  mutation($project:ID!, $item:ID!, $field:ID!, $val:Float!) {
+    updateProjectV2ItemFieldValue(input:{
+      projectId:$project, itemId:$item, fieldId:$field,
+      value:{ number: $val }
+    }) { projectV2Item { id } }
+  }
+' -f project=<projectId> -f item=<ITEM_ID> \
+  -f field=<fieldEstimate from .claude/task-tracker.json> \
+  -F val=<estimate-hours as float>
+```
+
+#### 7. Move to Backlog
+
+```bash
+"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <EPIC_N> backlog
+```
+
+#### 8. Replace placeholder issue numbers in body
+
+```bash
+BODY=$(gh issue view <EPIC_N> --json body --jq '.body')
+gh api repos/<owner>/<repo>/issues/<EPIC_N> \
+  --method PATCH \
+  --field body="$(echo "$BODY" | sed 's/<this-issue-#>/<EPIC_N>/g; s/<parent-epic-#>/none — this is the epic/g')"
+```
+
 ## AI Directives
 
 ### Task context — always match active task to the work happening now
