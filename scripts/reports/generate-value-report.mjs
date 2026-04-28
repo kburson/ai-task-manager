@@ -680,9 +680,15 @@ td a:hover{text-decoration:underline}
         const epicStart = children.length > 0
           ? children.reduce((min, c) => c.startedAt && (!min || c.startedAt < min) ? c.startedAt : min, epic.startedAt)
           : epic.startedAt;
-        const makeRow = (i, sa, cls, prefix) => {
-          const lag     = diffDays(i.createdAt, sa);
-          const flight  = diffDays(sa, i.closedAt);
+        const makeRow = (i, sa, cls, prefix, sessionMinOverride) => {
+          const lag        = diffDays(i.createdAt, sa);
+          const flight     = diffDays(sa, i.closedAt);
+          const sessionMin = sessionMinOverride ?? i.sessionMin;
+          let flightVal;
+          if (flight == null)                        flightVal = '—';
+          else if (flight === 0 && sessionMin != null) flightVal = fmtMin(sessionMin / 60);
+          else if (flight === 0)                     flightVal = '< 1d';
+          else                                       flightVal = flight + 'd';
           return `<tr class="${cls}">
             <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
             <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
@@ -690,10 +696,11 @@ td a:hover{text-decoration:underline}
             <td>${fmtDate(sa)}</td>
             <td>${fmtDate(i.closedAt)}</td>
             <td class="num">${lag == null ? '—' : lag + 'd'}</td>
-            <td class="num">${flight == null ? '—' : flight + 'd'}</td>
+            <td class="num">${flightVal}</td>
           </tr>`;
         };
-        const epicRow = makeRow(epic, epicStart, children.length > 0 ? 'epic-row' : '', children.length > 0 ? '▶ ' : '');
+        const epicSessionMin = rollupVal(epic.sessionMin, children, 'sessionMin');
+        const epicRow = makeRow(epic, epicStart, children.length > 0 ? 'epic-row' : '', children.length > 0 ? '▶ ' : '', children.length > 0 ? epicSessionMin : null);
         const kidRows = children.map(c => makeRow(c, c.startedAt, 'child-row', '<span class="child-indent">↳</span> ')).join('\n');
         return [epicRow, kidRows];
       }).join('\n');
