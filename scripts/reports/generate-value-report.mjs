@@ -138,6 +138,9 @@ async function fetchProject() {
                   number title state url body
                   createdAt closedAt
                   parent { number }
+                  comments(first: 10) {
+                    nodes { body }
+                  }
                 }
               }
               fieldValues(first: 20) {
@@ -178,6 +181,19 @@ function fields(item) {
   return out;
 }
 
+function parseStartedAt(comments) {
+  for (const c of (comments ?? [])) {
+    if (!c.body?.includes('⏱ Timing Log')) continue;
+    for (const line of c.body.split('\n')) {
+      const cols = line.split('|').map(s => s.trim()).filter(Boolean);
+      if (cols.length < 2) continue;
+      const ts = cols[0], event = cols[1];
+      if (event === 'start' && /^\d{4}-\d{2}-\d{2}/.test(ts)) return new Date(ts);
+    }
+  }
+  return null;
+}
+
 function processItems(raw) {
   return raw
     .filter(n => n.content?.number)
@@ -191,6 +207,7 @@ function processItems(raw) {
         body:         n.content.body ?? '',
         createdAt:    n.content.createdAt ? new Date(n.content.createdAt) : null,
         closedAt:     n.content.closedAt  ? new Date(n.content.closedAt)  : null,
+        startedAt:    parseStartedAt(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
         sessionMin:   f['Actual Session Time'] ?? null,
         contextWords: f['Context Length']      ?? null,
@@ -650,6 +667,46 @@ td a:hover{text-decoration:underline}
         <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
       </div>
     </div>
+
+    ${(() => {
+      const fmtDate = d => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      const diffDays = (a, b) => a && b ? Math.round(Math.abs(b - a) / 86400000) : null;
+      const hierarchy = buildHierarchy(items);
+      const rows = hierarchy.flatMap(({ item: epic, children }) => {
+        const epicStart = children.length > 0
+          ? children.reduce((min, c) => c.startedAt && (!min || c.startedAt < min) ? c.startedAt : min, epic.startedAt)
+          : epic.startedAt;
+        const makeRow = (i, sa, cls, prefix) => {
+          const lag     = diffDays(i.createdAt, sa);
+          const flight  = diffDays(sa, i.closedAt);
+          return `<tr class="${cls}">
+            <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
+            <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
+            <td>${fmtDate(i.createdAt)}</td>
+            <td>${fmtDate(sa)}</td>
+            <td>${fmtDate(i.closedAt)}</td>
+            <td class="num">${lag == null ? '—' : lag + 'd'}</td>
+            <td class="num">${flight == null ? '—' : flight + 'd'}</td>
+          </tr>`;
+        };
+        const epicRow = makeRow(epic, epicStart, children.length > 0 ? 'epic-row' : '', children.length > 0 ? '▶ ' : '');
+        const kidRows = children.map(c => makeRow(c, c.startedAt, 'child-row', '<span class="child-indent">↳</span> ')).join('\n');
+        return [epicRow, kidRows];
+      }).join('\n');
+      return `<table class="issue-table tl-table" style="margin-top:1.25rem">
+        <colgroup>
+          <col style="width:4%"><col style="width:32%">
+          <col style="width:13%"><col style="width:13%"><col style="width:13%">
+          <col style="width:10%"><col style="width:10%">
+        </colgroup>
+        <thead><tr>
+          <th>#</th><th>Title</th>
+          <th>Created</th><th>Started</th><th>Closed</th>
+          <th class="num">Pre-work lag</th><th class="num">In-flight</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    })()}
   </div>
 </div>
 
