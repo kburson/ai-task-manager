@@ -1,204 +1,221 @@
-# CC Github Project Task Manager
+# Claude GH Task Manager
 
-repo: [claude-gh-task-manager](https://github.com/kburson/claude-gh-task-manager)
+**Turn your AI coding sessions into measurable, managed engineering work.**
 
-A Claude Code `/task` skill that binds your AI work sessions to GitHub issues and automatically logs time and context-word usage to a "⏱ Timing Log" comment on each issue.
+`/task` is a Claude Code skill that binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports — all without leaving your chat.
 
-## Why use it
+---
 
-AI coding sessions work best when they're focused on a single, well-scoped problem. But real projects aren't like that — a plan expands, bugs surface mid-implementation, scope creeps, and "one more thing" features accumulate. Without a system to capture and queue that work, discoveries get lost or derail the current thread.
+## TL;DR — Up in 3 Minutes
 
-`/task` connects Claude Code to a GitHub Issues backlog so that surfaced work goes somewhere. When you spot a defect or a follow-on feature mid-session, `/task new` captures it as an issue without interrupting your flow. When the current thread is done, you switch to the next queued item with `/task #N`. The timing log records how long you were actively engaged with Claude on each issue, along with the volume of chat context you read and wrote during the session — useful for estimation, reporting, and understanding where AI acceleration is (and isn't) happening.
+```bash
+# 1. Install into your project
+npx claude-gh-task-manager install
 
-It's especially valuable for long multi-step plans: break the work into issues up front, work them in order, and let the skill handle Kanban state transitions and time tracking automatically.
+# 2. Connect to your GitHub Project board (interactive)
+npx claude-gh-task-manager init
 
-Time and context words are logged automatically on every Claude compaction and session start via hooks, so data is never lost in long sessions — **unless you use `/clear`** (see [Session Management](#session-management) below).
+# 3. Commit the generated config
+git add .claude/task-tracker.json .github/ISSUE_TEMPLATE/
+git commit -m "chore: add claude-gh-task-manager"
+```
+
+Then in Claude Code:
+```
+/task #42          → switch to issue #42, move board to In Progress, display the brief
+/task new          → create a new issue and start tracking
+/task              → show active task, elapsed time, word count
+/task close        → flush time, move board to Done, write actuals to project fields
+```
+
+That's it. Everything else is optional depth.
+
+---
+
+## What This Is
+
+Most AI coding tools give you a chat. This gives you an **engineering system**.
+
+The gap between "I've been using Claude for a few weeks" and "here's what we shipped, what it cost, and what we got for it" is exactly what this tool fills. Every session is bound to a GitHub issue. Every issue is tracked on a Kanban board. Every hour of AI engagement is measured and compared against your original estimate. At the end of a sprint — or a project — you can generate a report that answers the only question leadership actually cares about: *what did this cost versus what would it have cost without AI?*
+
+The tool has three distinct capability layers:
+
+1. **Session tracking** — bind Claude to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
+2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, sequencing, and pickup directives
+3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
+
+---
 
 ## Prerequisites
 
 - **Node.js 18+**
-- **GitHub CLI (`gh`)** — [install](https://cli.github.com) and authenticate with `gh auth login`
-- **jq** — [install](https://jqlang.github.io/jq/download/): `brew install jq` / `apt install jq` / `winget install jqlang.jq`
+- **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
+- **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
 - **Claude Code** — [install](https://claude.ai/code)
-- **Superpowers plugin** — install via Claude Code: `/install-plugin superpowers`. Required for the brainstorming, planning, and plan-execution skills that drive the `/task plan` → backlog creation workflow.
-- A **GitHub Projects V2** board for your repo with a Status field (Kanban) and optionally a Priority field
+- **Superpowers plugin** — `/install-plugin superpowers` in Claude Code (required for plan-mode backlog orchestration)
+- A **GitHub Projects V2** board with a Status (Kanban) field and optionally Priority, Size, Estimate, Actual Session Time, Context Length, and Sequence fields
 
-## Quick Start
+---
 
-```bash
-# 1. Install into your project
-cd /path/to/your-project
-npx claude-gh-task-manager install
+## Session Tracking
 
-# 2. Configure your GitHub project (interactive — walks you through auth + field discovery)
-npx claude-gh-task-manager init
+### The Core Loop
 
-# 3. Commit the generated config and issue templates
-git add .claude/task-tracker.json` .github/ISSUE_TEMPLATE/
-git commit -m "chore: add claude-gh-task-manager"
+The fundamental unit is a *task session*: Claude is working on one GitHub issue at a time. You switch issues with `/task #N`, and the skill handles the rest — moving the Kanban card, logging the start event, and watching for idle time.
 
-# 4. Open Claude Code and start tracking
-# /task #42
+```
+/task #42          → switch to issue #42
+...work for an hour...
+/task update       → checkpoint — flush timing, reset counters, keep task active
+...work more...
+/task close        → done — move card to Done, write Actual Session Time + Context Length to board
 ```
 
-## Commands
+### Commands
 
-| Command | Description |
+| Command | Action |
 |---|---|
-| `/task` | Show active task, elapsed minutes, and word count (default when no args given) |
-| `/task #N` | Switch to issue #N, display it, move board to In Progress |
+| `/task` | Show active task, elapsed minutes, context words since last marker |
+| `/task #N` | Switch to issue #N — display the brief, move board to In Progress |
 | `/task new [title]` | Create a new issue and start tracking it |
-| `/task plan` | Start a planning-phase timer before a GitHub issue exists. When you later run `/task new`, the issue is created from the plan and inherits the timing data. |
-| `/task start` | Resume the last active task |
-| `/task pause` | Flush timing, pause (keeps last-active for resume) |
-| `/task update [message]` | Checkpoint — flush timing, reset counters, keep task active |
-| `/task end` | Flush timing, clear active task, write totals to GitHub Projects board |
-| `/task log #N` | Re-compute and write board fields for any issue (use when closed without the skill) |
-| `/task check "<label>"` | Toggle checkbox `<label>` in the active issue body — checks if unchecked, unchecks if checked (exact match) |
+| `/task plan` | Open an untracked planning bucket before an issue exists |
+| `/task resume` | Resume the last paused task (no body reload) |
+| `/task resume #N` | Switch back to a paused task and display its body |
+| `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude |
+| `/task update [msg]` | Checkpoint — flush and reset counters, keep task active |
+| `/task close` | Hard-stop — flush, update board fields, move to Done |
+| `/task close --force` | Close even if unchecked DoD items remain |
+| `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue |
+| `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
+| `/task fleet` | Show all active tasks across parallel agent worktrees |
 | `/task config` | List all config values with sources |
 | `/task config <key> <value>` | Set a config value project-locally |
+| `/task config init` | Interactive interview — review and set all config values |
+| `/task help` | Print command reference |
 
-## Configuration
+### How Timing Works
 
-Config is stored in `.claude/task-tracker.json` (project-local) and `~/.claude/task-tracker-config.json` (user-global). Project values take precedence.
-
-Most values are set automatically by `npx claude-gh-task-manager init`. You can also set them manually:
-
-| Key | Default | Description |
-|---|---|---|
-| `repo` | `''` | GitHub repo in `owner/repo` format (**required**) |
-| `assignee` | `'@me'` | Assignee for `/task new` issues |
-| `projectId` | `''` | GitHub Projects V2 node ID |
-| `kanbanFieldId` | `''` | Status field ID |
-| `kanbanOption*` | `''` | State option IDs (Backlog, Ready, InProgress, InReview, Done) |
-| `priorityFieldId` | `''` | Priority field ID |
-| `priorityOption*` | `''` | Priority option IDs (P0, P1, P2) |
-| `fieldActualMinutes` | `''` | Project field ID for actual session minutes |
-| `fieldContextWords` | `''` | Project field ID for context word count |
-| `fieldActualHours` | `''` | Project field ID for actual session hours |
-| `autoEndOnSwitch` | `true` | Auto-end previous task when switching |
-| `idleThresholdMinutes` | `5` | Minutes of inactivity before time is considered idle |
-| `defaultLabels` | `[]` | Labels applied to issues created via `/task new` |
-| `hookNetworkTimeoutMs` | `2000` | Timeout for GitHub API calls from hooks |
-
-### Example: set repo manually
-
-```bash
-# In Claude Code:
-/task config repo myorg/my-project
-```
-
-## Helper Scripts
-
-After `install`, two additional shell scripts are available in `scripts/gh/`:
-
-| Script | Description |
-|---|---|
-| `scripts/gh/move-state.sh <issue#> <state>` | Move an issue to a Kanban state (backlog/ready/in-progress/in-review/done) |
-| `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority; `--cascade` applies to sub-issues too |
-
-These read all IDs from `.claude/task-tracker.json`, so no manual ID management.
-
-## How Timing Works
-
-The skill writes a "⏱ Timing Log" comment to each GitHub issue. Every start, pause, update, end, and switch appends a row:
+Every start, pause, update, and close appends a row to a "⏱ Timing Log" comment on the GitHub issue:
 
 ```
-| Timestamp         | Event  | Active Min | Idle Min | Δ Words | Word Marker | Description  |
-| 2026-04-25T14:30Z | start  | 0          | 0        | 0       | 2,341       | task opened  |
-| 2026-04-25T15:45Z | update | 72         | 3        | 1,204   | 3,545       | checkpoint   |
-| 2026-04-25T16:00Z | resume | 0          | 0        | 0       | 3,545       | task resumed |
-| 2026-04-25T17:10Z | end    | 67         | 5        | 890     | 4,435       | task ended   |
+| Timestamp         | Event  | Active Min | Idle Min | Δ Words | Word Marker |
+| 2026-04-25T14:30Z | start  | 0          | 0        | 0       | 2,341       |
+| 2026-04-25T15:45Z | update | 72         | 3        | 1,204   | 3,545       |
+| 2026-04-25T17:10Z | end    | 67         | 5        | 890     | 4,435       |
 ```
 
-**Active Min** and **Idle Min** are deltas since the last baseline reset (start, resume, or update). **Word Marker** is the absolute word-count position in the session — useful as a reference point. Active minutes exclude idle gaps (configurable via `idleThresholdMinutes`).
+**Active Min** and **Idle Min** are deltas since the last baseline reset. **Idle** is any gap longer than `idleThresholdMinutes` (default: 5). Context words count the visible chat text — the conversation turns a human would read, review, and respond to. This excludes code, files, and references the AI loads into context internally. It's a measure of human review burden: the volume of AI output you're expected to engage with during the session. Reading long responses is also a common source of idle gaps — the clock sees silence while you're actually working through the output.
 
-Hooks flush data on every compaction, so long sessions spanning multiple compactions are fully captured.
+Hooks flush timing on every `/compact` and session start, so long sessions are never lost — **unless you use `/clear`** (always run `/task pause` first if you must).
 
-## Session Management
+### GitHub Projects Board Integration
 
-### `/compact` vs `/clear`
+When you switch tasks or close an issue, the skill updates your board automatically:
 
-| | `/compact` | `/clear` |
-|---|---|---|
-| **Token cost** | ~2k tokens to summarize | ~50k tokens to reload fresh session context (can be trimmed to ~20k with a lean config) |
-| **Context** | Summarizes and continues current thread | Flushes everything; starts a new thread |
-| **Hooks** | Triggers PreCompact + PostCompact hooks | **Bypasses all hooks** |
-| **Timing data** | Flushed safely before compaction | Lost if not manually paused first |
-| **When to use** | Working in the same task/thread | Starting completely unrelated work |
+- **Kanban state** → moves the card (Backlog → Ready → In Progress → In Review → Done)
+- **Actual Session Time** → total measured engaged minutes
+- **Context Length** → total context words across all sessions
+- **Sequence** → the issue's position in the fan-out order
 
-> **What loads on a fresh session:** CLAUDE.md, MEMORY.md, all active skill definitions, MCP server manifests, and any project-level settings — before a single message is exchanged.
+All board IDs are stored in `.claude/task-tracker.json` and set once by `init`. You never manage IDs manually.
 
-**Default to `/compact`.** It costs ~25x fewer tokens and keeps your timing data intact.
+---
 
-Only use `/clear` when you genuinely need a clean slate — a different project, a context-poisoned session, or a fresh debugging thread with no carryover.
+## Backlog Orchestration
 
-### Before you `/clear`
+The orchestration mode is where the tool shifts from tracker to co-pilot.
 
-`/clear` bypasses hooks. Any time logged since the last flush (start, pause, or compaction) will be lost.
+### Plan Mode
 
-Always run `/task pause` first:
+Start a planning session before any issues exist:
 
 ```
-/task pause
-/clear
+/task plan
 ```
 
-This flushes elapsed time and context words to the GitHub issue comment before the session is wiped.
-
-### One session per workspace
-
-The task tracker's state file (`.claude/task-tracker-state.json`) is **workspace-scoped** — it stores a single active task shared across all Claude sessions open in the same directory. Word-count markers are per-session, but the CLI detects the current session by finding the most-recently-modified JSONL file, which is a heuristic that breaks when two sessions are active simultaneously.
-
-**Practical rule: only run `/task` commands from one session at a time.**
-
-If you open a second session in the same workspace (e.g., to look something up), treat it as read-only — don't run any `/task` commands from it. Switching tasks or checkpointing from a second session will corrupt the word-count baseline for the first session. Timing (minutes) will still be correct; only the Δ Words column is affected.
-
-## Multi-Agent Orchestration
-
-When you fan work out to parallel sub-agents, two issues are active simultaneously: an **epic** tracking orchestration time, and one or more **children** tracking execution time. The report uses these separately to calculate human engagement cost (epic) vs. AI execution effort (children).
-
-The key rule: **the active task should always be the issue whose work is being performed in this session right now.**
-
-- `/task #epic` when you're dispatching agents, reviewing results, deciding what to fan out next, or writing the orchestration prompt
-- `/task #child` when you're doing that child's work directly in the main thread (no sub-agent)
-- Switch back to `/task #epic` as soon as you hand work off to a sub-agent or return to orchestration
-
-This keeps timing honest without any mode detection: the epic accumulates calendar/engagement time, children accumulate direct AI effort.
-
-### Orchestration Directive
-
-Copy this into your Claude session (or add it to `CLAUDE.md`) to train the session on task-switching behavior:
+This opens an untracked bucket for time spent thinking, speccing, and designing. When you're ready to execute:
 
 ```
-## Task Tracker: Orchestration Rules
-
-The active /task should always reflect the work this session is performing right now:
-
-- When orchestrating (dispatching sub-agents, reviewing agent output, deciding what to fan out,
-  writing orchestration prompts, synthesizing results): run `/task #<epic>`.
-
-- When performing a child issue's work directly in this session (no sub-agent):
-  run `/task #<child>`.
-
-- Switch back to `/task #<epic>` the moment you hand work to a sub-agent or return to
-  orchestration decisions.
-
-Never leave the epic active while a child is being worked directly in this session,
-and never leave a child active while you are orchestrating. Timing only means something
-when the active task matches what is actually happening.
+/task new My Feature Backlog
 ```
 
-### Pickup Directive
+If you're in plan mode and have a spec in context, the skill prompts:
 
-The Pickup Directive is an optional pattern that makes every issue self-contained — any agent can pick it up cold, without context from the planning session. It applies to all issue types: epics, sub-issues, and solo tasks.
+> "I see a spec in context — use it to build out the full backlog? I'll create all epics and sub-issues, set sizing/priority/sequence, and inject pickup directives across the entire plan — no stopping between issues."
 
-**Enable it:**
+Reply **yes** and the orchestration runs end-to-end. Reply **no** to create a single issue instead.
+
+### From Spec to GitHub in One Pass
+
+Given a spec document (markdown, loaded into context), the orchestrator creates the full project structure:
+
+1. **Labels** — creates `plan:<slug>` for the backlog, plus purpose labels (`backend`, `client`, `infrastructure`, `security`, `data`, `test`, `dx`) inferred from each issue's scope
+2. **Epics** — one per epic block in the spec, with full scope, acceptance criteria, and Pickup Directive
+3. **Sub-issues** — each linked to its parent epic via GitHub's sub-issue relationship
+4. **Solo tasks** — standalone issues with no parent
+5. **Project fields** — Size, Estimate, Priority, and Sequence set on every issue via GitHub Projects V2 API
+6. **Kanban state** — every issue lands in Backlog, ready to work
+
+All of this runs automatically. You watch the progress stream and review the summary table at the end.
+
+### Sequencing and Dependencies
+
+Every issue in the spec should include a `**Sequence:** N` field. Issues with the same number can run in parallel; higher-sequence issues wait for all lower-sequence issues to close first.
+
+```markdown
+#### E1-S1 — Implement email/password registration
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1
+
+#### E1-S2 — Add Google OAuth integration
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S1 (JWT infrastructure)
 ```
-/task config pickupDirective true
+
+The Sequence value is written to a numeric field on the GitHub Projects board, making fan-out order machine-readable. During epic pickup, the agent validates these values against actual code dependencies and posts a confirmed dependency map before fanning out.
+
+**Sequencing rule:** Once an epic is in progress, all parallel work happens within that epic's sub-issues. No cross-epic fan-out until the active epic closes.
+
+### Spec Format
+
+Include a sequencing key and epic execution order at the top of your spec:
+
+```markdown
+**Sequencing key:** Same Sequence = parallel. Higher Sequence = blocked until all lower close.
+**Epic execution order:** Epic 1 (Auth) → Epic 2 (Billing) → Epic 3 (Dashboard)
+
+### S1 — Set up CI pipeline
+**Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Model:** sonnet
 ```
 
-**What gets added to each issue body at creation:**
+The `**Model:**` hint tells orchestration which Claude model to use when fanning out that issue to a sub-agent.
+
+### Conversational Backlog Management
+
+The GitHub integration and skill definitions mean you don't have to memorize slash commands to manage your backlog. The AI agent can discuss and manage issues directly from chat — reading context, inferring intent, and issuing the right `gh` API calls behind the scenes.
+
+Ask naturally:
+
+```
+"What's the status of the auth epic?"
+"Create a new issue for the rate-limiting bug we just found — P1, S estimate."
+"Move issue #34 to In Review."
+"Link #42 as a sub-issue of #38 and set sequence 2."
+"Show me all open P0 issues with no estimate."
+"Close the current task and log time."
+```
+
+The agent translates these into the right combination of `gh issue`, `gh project`, and GitHub Projects V2 GraphQL calls. The pickup directive, definition-of-done checklist, and fleet rules are structured knowledge embedded in the skill — so the agent can enforce your workflow even when driving from conversation, not commands.
+
+`/task` commands are the precise, scriptable interface. Conversation is the flexible one. Both drive the same underlying system.
+
+---
+
+## Pickup Directive
+
+The Pickup Directive makes every issue self-contained. Any agent, on any machine, after any context reset, can pick up an issue cold and know exactly what to do.
+
+### What Gets Injected
+
+Every issue created from a master plan gets this block appended:
 
 ```markdown
 ## ⚡ Pickup Directive
@@ -207,103 +224,142 @@ The Pickup Directive is an optional pattern that makes every issue self-containe
 - [ ] Deep dive complete
 
 ### Definition of Done
-- [ ] Acceptance criteria met
+- [ ] Acceptance criteria met (including test additions from deep dive)
 - [ ] Tests pass; new coverage committed
-- [ ] ...
+- [ ] Pre-commit hooks pass
+- [ ] Issue body checkboxes ticked
+- [ ] Issue moved to Done
+- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
+- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
 
 ---
 ```
 
-The issue body stays lean. The detailed agent instructions (deep-dive steps, body append sequence, implementation pattern) live in `.claude/task-tracker/pickup-directive.md` — the agent reads that file on pickup.
+The issue body stays lean. The detailed agent instructions live in `.claude/task-tracker/pickup-directive.md` — the agent reads that file at pickup time.
 
-**The deep-dive checkpoint** is the key mechanism: on first pickup the agent runs a just-in-time analysis against the current repo state, appends it below the `---`, and flips the checkbox. On every subsequent pickup — after session resets, `/clear`, machine switches, or agent handoffs — the agent sees the checkpoint is checked and skips straight to implementation.
+### The Deep Dive Checkpoint
 
-**Before closing,** the agent reviews and verifies every Definition of Done item, marks each with `/task check`, and only then runs `/task close`. The pre-close gate enforces this.
+On first pickup, the agent runs a just-in-time analysis against the current repo state and appends it to the issue body. The deep dive must include:
 
-**Customizing:**
+- Files to edit (full repo-relative paths)
+- Step-by-step implementation plan
+- Test additions (each test file with a one-line description)
+- Acceptance verification commands
+- Identified risks beyond the original scope
+- **Dependency map** — always required:
+  ```
+  ## Dependency Map
+  Depends on: #12 (JWT model), #14 (refresh token schema)
+  Blocks: #19 (OAuth flow), #21 (MFA enrollment)
+  ```
+
+Once the deep dive checkbox is checked, every subsequent pickup — after `/clear`, machine switches, or agent handoffs — skips straight to implementation.
+
+### Epic Fan-Out with Dependency Validation
+
+When an epic is picked up, before fanning out sub-agents:
+
+1. All sub-issue Sequence fields are validated against actual code dependencies found in the deep dive
+2. Any incorrect Sequence values are updated on the project board
+3. A confirmed dependency map is posted as a comment on the epic
+4. Sequence-1 sub-issues are fanned out immediately; each subsequent wave unblocks when the previous closes
+
+### Customizing
 
 Two files are installed to `.claude/task-tracker/` and can be edited per project:
 
 | File | Purpose |
 |---|---|
-| `pickup-directive.md` | Detailed agent instructions — deep dive steps, implementation pattern |
-| `definition-of-done.md` | DoD checklist items — inlined into every new issue body at creation |
+| `pickup-directive.md` | Agent instructions — deep dive steps, implementation pattern, fan-out rules |
+| `definition-of-done.md` | DoD checklist inlined into every new issue body at creation |
 
-Both are skipped on reinstall if they already exist, so edits are preserved.
+Both are preserved on reinstall.
 
-## Issue Templates
+---
 
-`npx claude-gh-task-manager init` creates `.github/ISSUE_TEMPLATE/task.yml` and `bug.yml` with fields for:
-- Description and acceptance criteria
-- Priority (P0/P1/P2)
-- Size (XS → XL)
-- Estimate (hours)
+## Multi-Agent Orchestration
 
-These align with the GitHub Projects fields used for ROI tracking.
+When work fans out to parallel sub-agents, the **active task should always be the issue whose work is being performed in this session right now**.
 
-## Reconfiguring
+| What you're doing | Active task |
+|---|---|
+| Dispatching sub-agents, reviewing output, orchestrating | `/task #epic` |
+| Performing a child issue's work directly (no sub-agent) | `/task #child` |
+| Returned to orchestration after agent completes | `/task #epic` |
 
-Re-run `init` at any time to update your project config:
+The fleet command shows all active tasks across parallel worktrees:
 
-```bash
-npx claude-gh-task-manager init
+```
+/task fleet
 ```
 
-Existing config values are merged — only fields discovered during init are overwritten.
+### Orchestration Directive (add to `CLAUDE.md`)
 
-## Status Line (CLI only)
+```
+## Task Tracker: Orchestration Rules
 
-> **Supported in the Claude Code CLI only.** The status line has no effect in the Claude.ai web app or the Claude desktop application. The desktop app is evolving rapidly and may add status line support in a future release.
+- Orchestrating (dispatching, reviewing, synthesizing): /task #<epic>
+- Performing child work directly in this session: /task #<child>
+- Return to /task #<epic> the moment work goes to a sub-agent
 
-Show the active `/task` issue number in the Claude Code CLI header bar:
+Never leave the epic active while working a child directly.
+Never leave a child active while orchestrating.
+```
+
+---
+
+## Status Line
+
+Show the active issue number in the Claude Code CLI header bar:
 
 ```bash
 npx claude-gh-task-manager statusline
 ```
 
-This installs `~/.claude/statusline.sh` and wires it into `~/.claude/settings.json`. Once active, the CLI header shows `task #42` while a task is running, and goes blank when no task is active.
+Installs `~/.claude/statusline.sh` and wires it into `~/.claude/settings.json`. The CLI header shows `task #42` while a task is running, blank when idle.
 
-Requires `jq` (see [Prerequisites](#prerequisites)).
+> Supported in the Claude Code CLI only. No effect in the web or desktop app.
+
+Requires `jq`.
+
+---
 
 ## Value Report
 
-Generate a detailed HTML (or PDF) report showing the ROI of AI-assisted development across all tracked issues on your GitHub Projects board. Run it from any project where the package is installed:
+Generate a financial report showing the ROI of AI-assisted development across your entire GitHub Projects board.
 
 ```bash
-# All issues with data (HTML — no extra dependencies)
+# HTML report (no dependencies)
 npx github-project-report --html
 
-# PDF output (requires puppeteer: npm install --save-dev puppeteer)
+# PDF report (requires: npm install --save-dev puppeteer)
 npx github-project-report
 
-# Only closed issues
-npx github-project-report --html --state closed
-
-# Date-range slice (closed issues only)
+# Closed issues only, Q1 date range
 npx github-project-report --html --state closed --from 2026-01-01 --to 2026-03-31
 
 # Specific issues
 npx github-project-report --html --issues 10,11,12
 
-# Override region and role for cost table
+# Override region and seniority for cost table
 npx github-project-report --html --region sf_bay --role senior
 ```
 
-### Why it's useful
+### What the Report Shows
 
-The report answers the question: **what did it actually cost to ship this, versus what would it have cost without AI?**
+The report answers: **what did it actually cost to ship this, versus what would it have cost without AI?**
 
-It reads three fields from your GitHub Projects board — `Estimate` (pre-execution hours), `Actual Session Time` (measured AI session minutes), and `Context Length` (measured chat words) — and builds a full comparison:
+It reads three fields from your board — `Estimate` (pre-work hours), `Actual Session Time` (measured minutes), and `Context Length` (chat words) — and builds:
 
-- **Engaged Hours** = session minutes + human reading time (context words ÷ WPM). This is your real time investment.
-- **Estimated Acceleration** = Estimate ÷ Engaged Hours. A ratio of `4×` means 4 estimated hours were delivered per engaged hour.
-- **Cost table** across all US regions, comparing estimated cost vs. engaged-time cost at fully-burdened rates.
-- **Three baselines**: budget baseline (single mid-level engineer), solo senior engineer (70% efficiency factor), enterprise team (50% efficiency + 30% coordination overhead).
-- **Timeline analysis**: calendar weeks estimated vs. calendar weeks measured.
+- **Engaged Hours** = session minutes + human review time (visible chat words ÷ WPM). Your real time investment — active session time plus the time spent reading, reviewing, and responding to AI output.
+- **Acceleration ratio** = Estimate ÷ Engaged Hours. A `4×` ratio means 4 estimated hours were delivered per engaged hour.
+- **Cost comparison** across all US regions at fully-burdened engineering rates — estimated cost vs. engaged-time cost
+- **Three baselines**: budget (mid-level), solo senior (70% efficiency), enterprise team (50% + 30% coordination overhead)
+- **Timeline analysis**: calendar weeks estimated vs. calendar weeks measured
 
-This makes AI productivity legible to stakeholders — not "we used AI" but "we delivered 82 estimated hours in 11 engaged hours at `$800` instead of `$14,000`."
+This makes AI productivity legible to stakeholders. Not "we used AI" — but "we delivered 82 estimated hours in 11 engaged hours at `$800` instead of `$14,000`."
 
-### All flags
+### All Flags
 
 | Flag | Description |
 |---|---|
@@ -311,39 +367,151 @@ This makes AI productivity legible to stakeholders — not "we used AI" but "we 
 | `--state closed\|open\|all` | Filter by issue state (default: `all`) |
 | `--from YYYY-MM-DD` | Only issues closed on or after this date |
 | `--to YYYY-MM-DD` | Only issues closed on or before this date |
-| `--issues 10,11,12` | Limit to specific issue numbers (overrides all other filters) |
+| `--issues 10,11,12` | Limit to specific issue numbers |
 | `--role mid\|senior\|staff` | Engineer level for cost table (default: `mid`) |
 | `--solo-role mid\|senior\|staff` | Role for solo-engineer baseline (default: `senior`) |
 | `--region <id>` | Region ID from `regional-rates.json` (default: `national`) |
 | `--reading-wpm N` | Override reading WPM for context-word time (default: `180`) |
 | `--chat-words N` | Add extra context words not yet logged to any issue |
 | `--title "..."` | Custom report heading |
-| `--output ./path/report` | Output base path without extension (default: `./reports/value-report`) |
-| `--project-id PVT_...` | Override GitHub Projects V2 node ID (default: from `.claude/task-tracker.json`) |
-
-### Configuration
-
-Defaults are loaded from `scripts/reports/value-report-config.json` inside the installed package. You can override per-project by creating your own `value-report-config.json` at your project root and passing `--output` to point elsewhere.
-
-The report reads `projectId` and `repo` from `.claude/task-tracker.json` automatically — no manual IDs needed.
-
-PDF output requires puppeteer: `npm install --save-dev puppeteer`. Without it, HTML is saved and you can print-to-PDF from Chrome.
+| `--output ./path/report` | Output base path without extension |
+| `--project-id PVT_...` | Override GitHub Projects V2 node ID |
 
 See [docs/ai-value-framework.md](docs/ai-value-framework.md) for the full ROI methodology.
+
+---
+
+## Configuration
+
+Config is stored in `.claude/task-tracker.json` (project-local, committed) and `~/.claude/task-tracker-config.json` (user-global). Project values override user-global; both override defaults.
+
+Run the interactive interview to review and set everything:
+
+```
+/task config init
+```
+
+Or set individual values:
+
+```
+/task config repo myorg/my-project
+/task config assignee @me
+/task config pickupDirective true
+```
+
+### User Settings
+
+| Key | Default | Description |
+|---|---|---|
+| `repo` | `''` | GitHub repo (`owner/repo` format) — required |
+| `assignee` | `'@me'` | Assignee for issues created via `/task new` |
+| `defaultLabels` | `[]` | Labels applied to every new issue |
+| `wpm` | `180` | Your reading speed — used for context-word time calculation |
+| `autoEndOnSwitch` | `true` | Auto-close previous task when switching |
+| `idleThresholdMinutes` | `5` | Gap length before time stops counting as active |
+| `recordWallClock` | `true` | Record wall-clock time in addition to active time |
+| `pickupDirective` | `true` | Inject Pickup Directive block into new issues |
+| `hookNetworkTimeoutMs` | `2000` | GitHub API timeout from hooks |
+
+### Internal Settings (set by `init`)
+
+| Key | Description |
+|---|---|
+| `projectId` | GitHub Projects V2 node ID |
+| `kanbanFieldId` | Status field ID |
+| `kanbanOption*` | Kanban state option IDs (Backlog/Ready/InProgress/InReview/Done) |
+| `sizeFieldId` | Size field ID |
+| `sequenceFieldId` | Sequence field ID (numeric) |
+| `priorityFieldId` | Priority field ID |
+| `priorityOption*` | Priority option IDs (P0/P1/P2) |
+| `fieldEstimate` | Estimate field ID |
+
+---
+
+## Permissions
+
+`install` adds auto-allow rules to `.claude/settings.json` so orchestration runs hands-free. During backlog creation, every shell command executes without a prompt:
+
+| Rule | What it covers |
+|---|---|
+| `Bash(gh issue create*)` | Issue creation |
+| `Bash(gh api graphql*)` | Project field mutations, sub-issue linking |
+| `Bash(gh label create*)` | Label setup |
+| `Bash(gh project item-edit*)` | Size, Sequence, Estimate, Priority fields |
+| `Bash(cat > /tmp/*)` | Issue body temp files |
+| `Bash(node */task-tracker.mjs*)` | All `/task` verbs |
+| `Bash(*/move-state.sh*)` | Kanban state transitions |
+| `Bash(*/set-priority.sh*)` | Priority setting |
+
+All mutations are scoped to the issues being created or updated in the current project. Nothing reaches outside your configured repo and project board.
+
+To review each invocation manually, remove the rules from `.claude/settings.json`.
+
+---
+
+## Session Management
+
+### `/compact` vs `/clear`
+
+Default to `/compact`. It summarizes your session, keeps hooks active, and costs ~25× fewer tokens than a cold reload.
+
+| | `/compact` | `/clear` |
+|---|---|---|
+| Token cost | ~2k (summary) | ~50k (full reload) |
+| Hooks | Fires PreCompact + PostCompact | Bypasses all hooks |
+| Timing data | Flushed automatically | Lost if not manually paused |
+| When to use | Same task, same thread | Completely different context |
+
+**Before `/clear`,** always flush first:
+
+```
+/task pause
+/clear
+```
+
+### One Session Per Workspace
+
+The state file (`.claude/task-tracker-state.json`) is workspace-scoped. Two simultaneous Claude sessions in the same directory will corrupt each other's word-count baseline. Timing (minutes) stays correct; only Δ Words is affected.
+
+**Rule:** only run `/task` commands from one session at a time. Treat any second session as read-only.
+
+---
+
+## Helper Scripts
+
+| Script | Description |
+|---|---|
+| `scripts/gh/move-state.sh <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/ready/in-progress/in-review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID. |
+| `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too. |
+
+Both scripts read all IDs from `.claude/task-tracker.json`. No manual ID management.
+
+---
 
 ## Troubleshooting
 
 **`task-tracker not configured`** — Run `npx claude-gh-task-manager init`.
 
-**`Issue #N not found in project`** — The issue hasn't been added to your GitHub Project board. Open the issue on GitHub and add it to the project manually, or check that your `repo` config matches the project owner.
+**`Issue #N not found in project`** — The issue hasn't been added to your GitHub Project board. Open the issue on GitHub and add it, or check that `repo` in your config matches the project owner.
 
 **`gh: command not found`** — Install the GitHub CLI: [cli.github.com](https://cli.github.com)
 
-**Timing not appearing on issues** — Check that hooks are registered in `.claude/settings.json` (the install command adds them). Verify `gh auth status` is authenticated.
+**Timing not appearing on issues** — Verify hooks are registered in `.claude/settings.json` (the install command adds them). Run `gh auth status` to confirm authentication.
 
-## Design
+**Backlog creation stalls on a permission prompt** — Check that your `.claude/settings.json` includes the `gh api graphql*` and `gh issue create*` allow rules. See [Permissions](#permissions) above.
 
-See [docs/DESIGN.md](docs/DESIGN.md) for the full design specification including data model, state file format, timing comment structure, and hook behavior.
+---
+
+## Design and References
+
+| Document | Contents |
+|---|---|
+| [docs/DESIGN.md](docs/DESIGN.md) | Full design spec — data model, state file format, timing comment structure, hook behavior |
+| [docs/workflow.md](docs/workflow.md) | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules |
+| [docs/ai-value-framework.md](docs/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated |
+| [docs/settings-guide.md](docs/settings-guide.md) | Recommended Claude Code settings for this tool |
+
+---
 
 ## License
 

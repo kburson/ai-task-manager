@@ -1,6 +1,7 @@
 # Task Tracker Skill — Design
 
 **Date:** 2026-04-24
+**Updated:** 2026-04-28
 **Status:** Released
 
 ## Problem
@@ -14,21 +15,26 @@ A project-local Claude Code skill (`/task`) that binds the active work session t
 ## Vocabulary
 
 ```
-/task #107              Work on existing issue
+/task                   Print active task, elapsed, words since last marker
+/task #N                Work on existing issue #N
 /task new [title]       Create a new issue and start working on it
 /task plan              Open an untracked planning bucket (no issue yet)
-/task start             Resume the last active task
+/task resume            Resume the last paused task (no body reload)
+/task resume #N         Switch back to a paused task and display its body
 /task pause             Soft-stop — flushes timing, keeps task as "last active"
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
-/task end               Hard-stop — flushes timing, clears last-active, writes board fields, discards any active plan
+/task close             Hard-stop — flush, update board fields, move to Done
+/task close --force     Close even if unchecked Definition of Done items remain
 /task log #N            Re-compute and write Actual Session Time + Context Length to GitHub Projects
-/task status            Print active task, elapsed, words since last marker
+/task check "<label>"   Toggle a checkbox in the active issue body (exact label match)
 /task fleet             Show all active tasks across parallel agent worktrees
-/task config            List all config values
+/task config            List all config values with sources
 /task config <key> <value>   Set a config value (project-local)
+/task config init       Interactive interview — review and set all config values
+/task help              Print command reference
 ```
 
-**13 command patterns, 10 verbs.**
+`start` and `end` are accepted as aliases for `resume` and `close`.
 
 ## Semantics
 
@@ -104,19 +110,32 @@ File: `.claude/task-tracker.json` (project-local) or `~/.claude/task-tracker-con
 
 Precedence: project-local > user-global > hardcoded defaults.
 
+**User-settable keys** (`/task config <key> <value>` or `~/.claude/task-tracker-config.json`):
+
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
 | `wpm` | number | `180` | Reading speed for context-hours conversion in value reports |
-| `projectId` | string | `PVT_kwHOABCEY84BVBBe` | GH Projects V2 project ID |
-| `fieldActualMinutes` | string | `PVTF_lAHOABCEY84BVBBezhQ9xfI` | "Actual Session Time" field ID |
-| `fieldContextWords` | string | `PVTF_lAHOABCEY84BVBBezhQ9xfM` | "Context Length" field ID |
-| `fieldActualHours` | string | `PVTF_lAHOABCEY84BVBBezhQ89nk` | "Actual Hours" field ID |
-| `repo` | string | `kburson/options-co-pilot` | Repo slug for `gh` commands |
-| `defaultLabels` | string[] | `["needs-triage"]` | Labels applied on `/task new` |
+| `repo` | string | `''` | Repo slug (`owner/repo`) for `gh` commands — required |
+| `assignee` | string | `'@me'` | Assignee for issues created via `/task new` |
+| `defaultLabels` | string[] | `[]` | Labels applied on `/task new` |
 | `autoEndOnSwitch` | boolean | `true` | `/task #X` while another active → auto-end previous |
+| `idleThresholdMinutes` | number | `5` | Gap length (minutes) before time stops counting as active |
+| `recordWallClock` | boolean | `true` | Record wall-clock time in addition to active time |
 | `hookNetworkTimeoutMs` | number | `2000` | PreCompact GH API timeout before queue-fallback |
+| `pickupDirective` | boolean | `true` | Inject Pickup Directive block into issues created via `/task new` |
 | `queuePath` | string | `.claude/task-tracker-queue.json` | Where failed hook posts get queued |
 | `statePath` | string | `.claude/task-tracker-state.json` | Active-task state file |
+
+**Internal keys** (managed by `npx claude-gh-task-manager init` — do not set manually):
+
+| Key | Purpose |
+|-----|---------|
+| `projectId` | GH Projects V2 project node ID |
+| `kanbanFieldId` | Kanban single-select field ID |
+| `kanbanOptionBacklog` / `Ready` / `InProgress` / `InReview` / `Done` | Kanban option IDs |
+| `sequenceFieldId` | Numeric Sequence field ID (fan-out ordering) |
+| `priorityFieldId` | Priority single-select field ID |
+| `priorityOptionP0` / `P1` / `P2` | Priority option IDs |
 
 ## State File
 
@@ -300,6 +319,65 @@ No formal test framework in this repo — follow project conventions:
 - **Unit-ish:** small `.mjs` scripts under `scripts/task-tracker/tests/` invoked via `node <file>` that exercise state/config/queue modules with temp files.
 - **Integration:** a manual smoke-test checklist in `docs/task-tracker-smoke-test.md` covering all 10 command patterns + the 3 hooks.
 - **Hook dry-run:** `task-tracker.sh --dry-run` mode that prints what it would do without touching GH.
+
+## Backlog Orchestration
+
+Added post-v1. Full details in `skill/SKILL.md` and `README.md`.
+
+### Plan Mode
+
+`/task plan` opens an untracked planning bucket. `/task new <title>` while in plan mode prompts to build a full backlog from a spec document in context. Replying yes triggers end-to-end orchestration — no stopping between issues.
+
+### Label Taxonomy
+
+Two label classes are created automatically:
+
+- `plan:<slug>` — one per master plan, e.g. `plan:nexus-saas`
+- Purpose labels: `backend`, `client`, `infrastructure`, `security`, `data`, `test`, `dx` — inferred from each issue's scope and applied at creation
+
+Labels use plain names (no `purpose/` namespace) to keep them short in the GitHub UI.
+
+### Sequencing
+
+Every issue in a spec should include `**Sequence:** N`. Issues with the same number can be fanned out in parallel; higher-sequence issues are blocked until all lower-sequence issues in the same epic close. The value is written to the `sequenceFieldId` numeric field on the GitHub Projects board, making fan-out order machine-readable.
+
+**Rule:** Once an epic is in progress, all parallel work runs within that epic's sub-issues. No cross-epic fan-out until the active epic closes.
+
+### Pickup Directive
+
+Every issue created from a master plan (and optionally single issues when `pickupDirective: true`) gets a structured block injected at creation time:
+
+```markdown
+## ⚡ Pickup Directive
+> Follow: `.claude/task-tracker/pickup-directive.md`
+
+- [ ] Deep dive complete
+
+### Definition of Done
+<contents of definition-of-done.md>
+```
+
+On first pickup, the agent runs a just-in-time deep dive against the current repo state and appends it to the issue body, including a required dependency map:
+
+```
+## Dependency Map
+Depends on: #N (reason)   ← or "none"
+Blocks: #P (reason)       ← or "none"
+```
+
+Full agent instructions live in `.claude/task-tracker/pickup-directive.md` — installed per project and editable.
+
+### Multi-Agent Orchestration
+
+The active task should always match the work being performed in the current session:
+
+- Dispatching/reviewing/orchestrating → `/task #epic`
+- Performing a child issue's work directly (no sub-agent) → `/task #child`
+- Return to `/task #epic` the moment work goes to a sub-agent
+
+`/task fleet` shows all active tasks across parallel worktrees.
+
+---
 
 ## Out of Scope (v1)
 

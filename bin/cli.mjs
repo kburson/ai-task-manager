@@ -32,6 +32,7 @@ function patchSettingsJson(settingsPath) {
     try { settings = JSON.parse(readFileSync(settingsPath, 'utf8')); } catch { /* ignore */ }
   }
 
+  // Hooks
   if (!settings.hooks) settings.hooks = {};
 
   const hookScript = '.claude/hooks/task-tracker.sh';
@@ -49,6 +50,21 @@ function patchSettingsJson(settingsPath) {
     );
     if (!alreadyRegistered) {
       settings.hooks[event].push(hookEntry);
+    }
+  }
+
+  // Permissions — auto-allow task-tracker CLI and helper scripts so Claude doesn't
+  // prompt on every /task command.
+  const autoAllowRules = [
+    'Bash(node */claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs*)',
+    'Bash(*/claude-gh-task-manager/scripts/gh/move-state.sh*)',
+    'Bash(*/claude-gh-task-manager/scripts/gh/set-priority.sh*)',
+  ];
+  if (!settings.permissions) settings.permissions = {};
+  if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
+  for (const rule of autoAllowRules) {
+    if (!settings.permissions.allow.includes(rule)) {
+      settings.permissions.allow.push(rule);
     }
   }
 
@@ -128,6 +144,7 @@ function cmdInstall(args) {
   const settingsPath = join(targetDir, '.claude', 'settings.json');
   patchSettingsJson(settingsPath);
   ok(`Hooks:    registered in .claude/settings.json`);
+  ok(`Permissions: task-tracker commands auto-allowed in .claude/settings.json`);
 
   // 6. Pickup directive templates (optional feature, off by default)
   const templateDest = join(targetDir, '.claude', 'task-tracker');

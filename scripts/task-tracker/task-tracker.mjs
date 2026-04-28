@@ -530,6 +530,32 @@ async function verbFleet() {
   }
 }
 
+function verbHelp() {
+  console.log(`
+Task Tracker — available commands
+
+  /task                     Show active task, elapsed time, words since last marker
+  /task #N                  Start or switch to issue #N
+  /task new [title]         Create a new issue and start tracking it
+  /task plan                Open an untracked planning bucket
+  /task pause               Flush timing and pause the active task
+  /task resume              Resume the last paused task
+  /task resume #N           Switch back to a specific paused task
+  /task update [msg]        Checkpoint — flush timing, reset counters, keep task active
+  /task close               Close the active task (runs pre-close gate)
+  /task close --force       Close even if unchecked items remain
+  /task check "<label>"     Toggle a checkbox in the active issue body
+  /task log #N              Re-compute and write Actual Session Time + Context Length
+  /task fleet               Show all active tasks across parallel worktrees
+  /task config              List all config values
+  /task config <key> <val>  Set a config value (project-local)
+  /task config init         Run the interactive configuration interview
+  /task help | ?            Show this help message
+
+Aliases: start = resume, end = close
+`.trim());
+}
+
 // ---- Dispatch ----
 
 (async () => {
@@ -554,6 +580,8 @@ async function verbFleet() {
       case 'new':     await verbNew(rest); break;
       case 'check':   await verbCheck(rest); break;
       case 'fleet':   await verbFleet(); break;
+      case 'help':
+      case '?':       verbHelp(); break;
       default:
         if (/^#\d+$/.test(verb)) { await verbSwitch(verb); break; }
         console.error(`unknown verb: ${verb}`);

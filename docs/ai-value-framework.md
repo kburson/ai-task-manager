@@ -202,7 +202,7 @@ At cleanup time, post a comment on each completed issue, then update the board f
 
 ### What counts as "active session time"
 
-Claude's active session time is the reliable proxy for AI compute time. Claude stops consuming tokens when waiting for user input — so active time is wall-clock implementation time minus idle gaps. The task skill tracks this automatically.
+Claude's active session time is the reliable proxy for AI compute time. Claude stops consuming tokens when waiting for user input — so active time is wall-clock implementation time minus idle gaps. Reading long AI responses is a common source of those gaps; the context words ÷ WPM term in the Engaged Hours formula recovers that time. The task skill tracks all of this automatically.
 
 ### Planning time: keep it separate
 

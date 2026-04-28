@@ -9,15 +9,26 @@ set -eu
 
 ISSUE=$1
 STATE=${2:-}
+ITEM_ID_OVERRIDE=""
+
+# Parse optional --item-id <id> flag (skips the GraphQL lookup — use when caller
+# already has the project item ID, e.g. from addProjectV2ItemById response)
+shift 2 2>/dev/null || true
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --item-id) ITEM_ID_OVERRIDE="${2:-}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
 
 if [[ ! "$ISSUE" =~ ^[0-9]+$ ]]; then
-  echo "Usage: scripts/gh/move-state.sh <issue#> <state>"
+  echo "Usage: scripts/gh/move-state.sh <issue#> <state> [--item-id <project-item-id>]"
   echo "States: backlog | ready | in-progress | in-review | done"
   exit 1
 fi
 
 if [[ -z "$STATE" ]]; then
-  echo "Usage: scripts/gh/move-state.sh <issue#> <state>"
+  echo "Usage: scripts/gh/move-state.sh <issue#> <state> [--item-id <project-item-id>]"
   echo "States: backlog | ready | in-progress | in-review | done"
   exit 1
 fi
@@ -71,22 +82,25 @@ if [[ -z "$OPTION_ID" ]]; then
   exit 1
 fi
 
-# Get the project item ID for this issue via GraphQL.
-# Resolves through the issue's projectItems edge — works for user- and org-owned
-# projects without a project number, and avoids the `gh project item-list`
-# pagination cap and CLI flag churn.
 REPO=$(read_config repo)
 OWNER=$(echo "$REPO" | cut -d'/' -f1)
 REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 
-ITEM_ID=$(gh api graphql -f query="
-{
-  repository(owner: \"$OWNER\", name: \"$REPO_NAME\") {
-    issue(number: $ISSUE) {
-      projectItems(first: 10) { nodes { id project { id } } }
+if [[ -n "$ITEM_ID_OVERRIDE" ]]; then
+  ITEM_ID="$ITEM_ID_OVERRIDE"
+else
+  # Get the project item ID for this issue via GraphQL.
+  # Resolves through the issue's projectItems edge — works for user- and org-owned
+  # projects without a project number, and avoids the `gh project item-list`
+  # pagination cap and CLI flag churn.
+  ITEM_ID=$(gh api graphql -f query="
+  {
+    repository(owner: \"$OWNER\", name: \"$REPO_NAME\") {
+      issue(number: $ISSUE) {
+        projectItems(first: 10) { nodes { id project { id } } }
+      }
     }
-  }
-}" | python3 -c "
+  }" | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 issue=d.get('data',{}).get('repository',{}).get('issue')
@@ -96,9 +110,10 @@ for n in nodes:
         print(n['id']); break
 ")
 
-if [[ -z "$ITEM_ID" ]]; then
-  echo "Issue #$ISSUE not found in project (owner: $OWNER, projectId: $PROJECT_ID)"
-  exit 1
+  if [[ -z "$ITEM_ID" ]]; then
+    echo "Issue #$ISSUE not found in project (owner: $OWNER, projectId: $PROJECT_ID)"
+    exit 1
+  fi
 fi
 
 gh project item-edit --project-id "$PROJECT_ID" --id "$ITEM_ID" --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID"

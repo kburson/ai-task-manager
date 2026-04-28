@@ -326,8 +326,9 @@ auto_or_pick() {
   count=$(echo "$KANBAN_FIELD_JSON" | jq '.options | length')
 
   while true; do
-    prompt "Choice for '$label':"
+    prompt "Choice for '$label' [new]:"
     read -r choice
+    [[ -z "$choice" ]] && choice="new"
     if [[ "$optional" == "optional" && "$choice" == "skip" ]]; then
       PICKED_ID=""; return
     elif [[ "$choice" == "new" ]]; then
@@ -413,6 +414,47 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
   [[ "$OPTION_IN_PROGRESS" == "__NEW__" ]] && OPTION_IN_PROGRESS=$(remap_state "In Progress")
   [[ "$OPTION_IN_REVIEW" == "__NEW__" ]]   && OPTION_IN_REVIEW=$(remap_state "In Review")
   [[ "$OPTION_DONE" == "__NEW__" ]]        && OPTION_DONE=$(remap_state "Done")
+fi
+
+# ── Reorder columns if only the 5 standard states exist ───────────────────
+
+TOTAL_OPTIONS=$(echo "$KANBAN_FIELD_JSON" | jq '.options | length' 2>/dev/null || echo '0')
+if [[ "$TOTAL_OPTIONS" -eq 5 ]]; then
+  info "Setting column order: Backlog → Ready → In Progress → In Review → Done"
+  ORDERED_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq -c \
+    --arg b  "$OPTION_BACKLOG" \
+    --arg r  "$OPTION_READY" \
+    --arg ip "$OPTION_IN_PROGRESS" \
+    --arg ir "$OPTION_IN_REVIEW" \
+    --arg d  "$OPTION_DONE" \
+    --argjson desc '{
+      "Backlog":     "List of ungroomed features and ideas.",
+      "Ready":       "List of items ready to implement.",
+      "In Progress": "",
+      "In Review":   "Code complete awaiting verification.",
+      "Done":        ""
+    }' \
+    '.options as $opts |
+     [$b,$r,$ip,$ir,$d] |
+     map(. as $id | $opts[] | select(.id == $id) | {id, name, color, description: ($desc[.name] // .description)})' \
+    2>/dev/null || echo '')
+
+  if [[ -n "$ORDERED_OPTS" && "$ORDERED_OPTS" != "null" ]]; then
+    REORDER_OK=$(jq -n \
+      --arg field "$KANBAN_FIELD_ID" \
+      --argjson opts "$ORDERED_OPTS" \
+      '{query:"mutation($field:ID!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$field,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{field:$field,opts:$opts}}' \
+      | gh api graphql --input - --jq '.data.updateProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+    if [[ -n "$REORDER_OK" ]]; then
+      ok "Column order and descriptions set."
+      info "WIP limits cannot be set via API — set them manually in the GitHub Project board:"
+      info "  In Progress: 3   |   In Review: 5"
+    else
+      warn "Could not reorder columns — arrange manually in the GitHub Project board."
+    fi
+  fi
+else
+  info "Project has $TOTAL_OPTIONS status columns — column order not changed (arrange manually in GitHub)."
 fi
 echo ""
 

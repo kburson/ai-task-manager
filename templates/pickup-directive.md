@@ -34,14 +34,45 @@ checkbox. If the checkbox is already checked, skip to step 6.
    - **Acceptance verification commands** — exact commands to prove each criterion
    - **Identified risks** beyond the Scope
    - **Sibling sub-issues to spawn** (if any)
+   - **Dependency map** (always include, even if no dependencies):
+     ```
+     ## Dependency Map
+     Depends on: #N (reason), #M (reason)   ← or "none"
+     Blocks: #P (reason), #Q (reason)        ← or "none"
+     ```
 
 4. **Re-evaluate Estimate and Size.** If the deep dive changes either, update project
    fields and post a comment. If Size jumps ≥ 2 tiers, pause and wait for human direction.
 
-5. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
+5. **If this is an Epic — validate sequencing and fan out sub-issues.**
+
+   Skip this step for plain sub-issues. Only run it when picking up an issue whose title begins with `EPIC:` or that has linked sub-issues.
+
+   a. Fetch all open sub-issues and read their Scope sections.
+
+   b. Validate each sub-issue's `Sequence` field against actual code dependencies found in the deep dive. If a value is wrong, update it:
+      ```bash
+      gh project item-edit \
+        --project-id <projectId> \
+        --id <item-id> \
+        --field-id <sequenceFieldId from .claude/task-tracker.json> \
+        --number <N>
+      ```
+
+   c. Post a validated dependency map comment on the epic:
+      ```markdown
+      ## Dependency Map (validated YYYY-MM-DD)
+      Sequence 1 — start immediately, parallel: #N, #M
+      Sequence 2 — after all Seq 1 close: #P, #Q
+      Sequence 3 — after all Seq 2 close: #R
+      ```
+
+   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When all Sequence-N issues close, spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
+
+6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
    injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
 
-6. **Proceed with implementation.** Branch: `<this-issue-#>-<short-slug>`. Use
+7. **Proceed with implementation.** Branch: `<this-issue-#>-<short-slug>`. Use
    `superpowers:using-git-worktrees`. Every commit references this issue and parent epic:
 
    ```

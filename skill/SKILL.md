@@ -34,30 +34,33 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 ## Implementation
 
-### Step 1: Run the CLI
+### Step 1: For `/task new` — check plan mode BEFORE calling the CLI
+
+**Do this before anything else when the verb is `new`.**
+
+Read the state file:
+```bash
+cat "$(git rev-parse --show-toplevel)/.claude/task-tracker-state.json"
+```
+
+If `active` is **not** `"plan"` → skip to Step 1c (run the CLI normally).
+
+If `active === "plan"` → ask the user:
+
+> "I see a spec in context — use it to build out the full backlog?
+> I'll create **all** epics and sub-issues, set sizing/priority, and inject pickup directives across the entire plan — no stopping between epics.
+> **yes** / **no** (no creates a single blank issue and starts tracking)"
+
+- **no** → skip to Step 1c (run the CLI normally).
+- **yes** → proceed to **Plan-Mode Backlog Orchestration** below. **Do not call the CLI** — orchestration creates issues directly via `gh issue create`.
+
+### Step 1c: Run the CLI (all verbs except `new` in plan mode)
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
 ```
 Print stdout verbatim. On non-zero exit, print stderr and surface the error.
 
 **Exit code 3** from `/task close` means unchecked items were found — see Pre-Close Gate below.
-
-### Step 1b: For `/task new` — check for plan mode
-
-After the CLI returns, read `.claude/task-tracker-state.json`:
-```bash
-cat "$(git rev-parse --show-toplevel)/.claude/task-tracker-state.json"
-```
-If `active` is **not** `"plan"` → proceed to Step 3 (standard flow).
-
-If `active === "plan"` → ask the user:
-
-> "I see a spec in context — use it to build out the full backlog?
-> I'll create the epic, sub-issues, set sizing/priority, and inject pickup directives.
-> **yes** / **no** (no creates a single blank issue and starts tracking)"
-
-- **no** → proceed to Step 3.
-- **yes** → proceed to **Plan-Mode Backlog Orchestration** below.
 
 ### Step 2: For `/task #N` and `/task resume #N` — ensure issue states are correct
 
@@ -158,7 +161,9 @@ When `/task close` exits with code 3, the CLI has already printed the unchecked 
 
 ## Plan-Mode Backlog Orchestration
 
-When the user confirms "yes" in Step 1b, execute the following sections in order.
+When the user confirms "yes" in Step 1b, execute the following sections in order. **Process ALL epics in the spec in document order — do not stop between epics.** Solo tasks (issues with no sub-issues) are created the same way as epic issues but skipped for the sub-issue loop.
+
+**All issues are stubs.** Do not deep-dive any issue at creation time — not epics, not sub-issues, not solos. Every issue gets: scope (verbatim from spec) + acceptance criteria + Pickup Directive. The deep dive happens at pickup time, against the current state of the repo.
 
 ### Label Setup
 
@@ -166,17 +171,15 @@ Do this once before creating any issues.
 
 #### A. Master Plan Label
 
-Derive a slug from the title argument: lowercase, treat `&` and other special chars as hyphen separators, spaces → hyphens, collapse consecutive hyphens, max 30 chars.
-Example: "User Authentication & Identity" → `user-authentication-identity`.
+Derive a slug from the title argument (`/task new <title>`): lowercase, treat `&` and other special chars as hyphen separators, spaces → hyphens, collapse consecutive hyphens, max 30 chars.
+Example: "Nexus SaaS" → `nexus-saas`.
 
-Present to the user:
-> "I'll tag all issues in this plan with **`plan/<slug>`**. Accept or replace?"
-
-Wait for the response. Use whatever label text the user confirms.
+Announce the slug and proceed immediately — no confirmation needed:
+> "Creating backlog with label **`plan:<slug>`**..."
 
 Create the label if it doesn't exist:
 ```bash
-gh label create "plan/<slug>" \
+gh label create "plan:<slug>" \
   --color "#0075ca" \
   --description "Plan: <full title>" \
   2>/dev/null || true
@@ -186,26 +189,26 @@ gh label create "plan/<slug>" \
 
 Create the standard purpose label set (skip any that already exist):
 ```bash
-gh label create "purpose/infrastructure" --color "#e4e669" --description "CI/CD, env, deployment, migrations" 2>/dev/null || true
-gh label create "purpose/backend"        --color "#0e8a16" --description "APIs, business logic, data models, auth" 2>/dev/null || true
-gh label create "purpose/client"         --color "#1d76db" --description "UI components, pages, frontend state" 2>/dev/null || true
-gh label create "purpose/test"           --color "#f9d0c4" --description "Test suites, fixtures, coverage" 2>/dev/null || true
-gh label create "purpose/dx"             --color "#c5def5" --description "Tooling, scripts, docs, onboarding" 2>/dev/null || true
-gh label create "purpose/security"       --color "#d93f0b" --description "Auth hardening, audits, CVE remediation" 2>/dev/null || true
-gh label create "purpose/data"           --color "#bfd4f2" --description "Analytics, exports, aggregations, reporting" 2>/dev/null || true
+gh label create "infrastructure" --color "#e4e669" --description "CI/CD, env, deployment, migrations" 2>/dev/null || true
+gh label create "backend"        --color "#0e8a16" --description "APIs, business logic, data models, auth" 2>/dev/null || true
+gh label create "client"         --color "#1d76db" --description "UI components, pages, frontend state" 2>/dev/null || true
+gh label create "test"           --color "#f9d0c4" --description "Test suites, fixtures, coverage" 2>/dev/null || true
+gh label create "dx"             --color "#c5def5" --description "Tooling, scripts, docs, onboarding" 2>/dev/null || true
+gh label create "security"       --color "#d93f0b" --description "Auth hardening, audits, CVE remediation" 2>/dev/null || true
+gh label create "data"           --color "#bfd4f2" --description "Analytics, exports, aggregations, reporting" 2>/dev/null || true
 ```
 
 **Purpose label inference — apply all that fit per issue:**
 
 | Label | Apply when the scope mentions... |
 |-------|----------------------------------|
-| `purpose/infrastructure` | CI/CD, pipelines, env vars, secrets, deployment, Docker, Railway, cron jobs, database migrations, cleanup scripts |
-| `purpose/backend` | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions |
-| `purpose/client` | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright |
-| `purpose/test` | test suites, fixtures, coverage, integration tests, unit tests, quality tooling |
-| `purpose/dx` | developer experience, documentation, onboarding, scripts, tooling, README, internal guides |
-| `purpose/security` | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation |
-| `purpose/data` | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3 |
+| `infrastructure` | CI/CD, pipelines, env vars, secrets, deployment, Docker, Railway, cron jobs, database migrations, cleanup scripts |
+| `backend` | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions |
+| `client` | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright |
+| `test` | test suites, fixtures, coverage, integration tests, unit tests, quality tooling |
+| `dx` | developer experience, documentation, onboarding, scripts, tooling, README, internal guides |
+| `security` | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation |
+| `data` | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3 |
 
 #### C. Look Up Size Option IDs
 
@@ -230,7 +233,9 @@ gh api graphql -f query='
 ' -f projectId=<projectId-from-task-tracker.json>
 ```
 
-From the result, find the field named `Size` and capture its option IDs for: `XS`, `S`, `M`, `L`, `XL`. Store them as local variables for use in the steps below.
+From the result, find the field named `Size` and capture its option IDs for: `XS`, `S`, `M`, `L`, `XL`. Also capture the `Sequence` field ID (a number field) and store it as `SEQUENCE_FIELD_ID`. Store all as local variables for use in the steps below.
+
+> **Note to spec authors:** Include a `**Sequence:** N` value in every issue header. Issues with the same number run in parallel; higher-sequence issues wait for all lower-sequence issues in their scope to close. Without this, orchestration defaults to Sequence 1 for all issues (fully parallel). Cross-epic ordering belongs in a top-level note at the top of the spec.
 
 ### Epic Creation
 
@@ -240,7 +245,7 @@ From the spec in context, extract:
 - The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
 - The **Epic Acceptance Criteria** checkboxes
 
-If `pickupDirective` is `true` in config, read `.claude/task-tracker/definition-of-done.md` and append the Pickup Directive block (use placeholder `<this-issue-#>` — replace after creation):
+Read `.claude/task-tracker/definition-of-done.md` and append the Pickup Directive block (use placeholder `<this-issue-#>` — replace after creation). This is unconditional in orchestration mode — all issues from a master plan are stubs; the deep dive happens at pickup time regardless of issue type:
 
 ```markdown
 ## ⚡ Pickup Directive
@@ -261,9 +266,9 @@ gh issue create \
   --title "EPIC: <title>" \
   --body "<assembled-body>" \
   --assignee <assignee from .claude/task-tracker.json key "assignee", default "@me"> \
-  --label "plan/<slug>" \
-  --label "purpose/<inferred1>" \
-  [--label "purpose/<inferred2>" ...] \
+  --label "plan:<slug>" \
+  --label "<inferred1>" \
+  [--label "<inferred2>" ...] \
   [--label "<defaultLabel>" ...]
 ```
 
@@ -283,19 +288,17 @@ Store as `EPIC_NODE_ID`.
 ```
 Use the priority declared in the spec. Default: `p0` for epics.
 
-#### 5. Set Size
+#### 5. Add to Project, then Set Size
 
-Get the project item ID first:
+First add the issue to the project (issues aren't auto-added):
 ```bash
 gh api graphql -f query='
-  query($owner:String!,$repo:String!,$number:Int!) {
-    repository(owner:$owner, name:$repo) {
-      issue(number:$number) {
-        projectItems(first:5) { nodes { id } }
-      }
+  mutation($project:ID!, $contentId:ID!) {
+    addProjectV2ItemById(input:{projectId:$project, contentId:$contentId}) {
+      item { id }
     }
   }
-' -f owner=<owner> -f repo=<repo> -F number=<EPIC_N> --jq '.data.repository.issue.projectItems.nodes[0].id'
+' -f project=<projectId> -f contentId=<EPIC_NODE_ID> --jq '.data.addProjectV2ItemById.item.id'
 ```
 Store as `ITEM_ID`. Then set Size:
 ```bash
@@ -321,13 +324,30 @@ gh api graphql -f query='
   -F val=<estimate-hours as float>
 ```
 
-#### 7. Move to Backlog
+#### 7. Set Sequence
+
+Read the `**Sequence:**` value from the spec for this epic (default `1` if not declared). Set it on the project item:
 
 ```bash
-"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <EPIC_N> backlog
+gh api graphql -f query='
+  mutation($project:ID!, $item:ID!, $field:ID!, $val:Float!) {
+    updateProjectV2ItemFieldValue(input:{
+      projectId:$project, itemId:$item, fieldId:$field,
+      value:{ number: $val }
+    }) { projectV2Item { id } }
+  }
+' -f project=<projectId> -f item=<ITEM_ID> \
+  -f field=<SEQUENCE_FIELD_ID> \
+  -F val=<sequence-number as float>
 ```
 
-#### 8. Replace placeholder issue numbers in body
+#### 8. Move to Backlog
+
+```bash
+"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <EPIC_N> backlog --item-id <ITEM_ID>
+```
+
+#### 9. Replace placeholder issue numbers in body
 
 ```bash
 BODY=$(gh issue view <EPIC_N> --json body --jq '.body')
@@ -344,7 +364,7 @@ Repeat the following for each sub-issue in the spec, in document order.
 
 #### 1. Infer purpose labels
 
-Read the sub-issue's Scope. Apply all matching `purpose/*` labels from the inference table in Label Setup B.
+Read the sub-issue's Scope. Apply all matching labels from the inference table in Label Setup B.
 
 #### 2. Assemble the sub-issue body
 
@@ -374,9 +394,9 @@ gh issue create \
   --title "<sub-issue-title>" \
   --body "<assembled-body>" \
   --assignee <assignee from .claude/task-tracker.json key "assignee", default "@me"> \
-  --label "plan/<slug>" \
-  --label "purpose/<inferred1>" \
-  [--label "purpose/<inferred2>" ...] \
+  --label "plan:<slug>" \
+  --label "<inferred1>" \
+  [--label "<inferred2>" ...] \
   [--label "<defaultLabel>" ...]
 ```
 
@@ -388,27 +408,39 @@ Store as `SUB_NODE_ID`.
 
 #### 4. Set Priority, Size, Estimate
 
-Use the same commands as Epic Creation §4–§6, substituting `SUB_N` and the sub-issue's declared Size/Estimate/Priority.
-
-Get the project item ID:
+Add the sub-issue to the project and get its item ID:
 ```bash
 gh api graphql -f query='
-  query($owner:String!,$repo:String!,$number:Int!) {
-    repository(owner:$owner, name:$repo) {
-      issue(number:$number) {
-        projectItems(first:5) { nodes { id } }
-      }
+  mutation($project:ID!, $contentId:ID!) {
+    addProjectV2ItemById(input:{projectId:$project, contentId:$contentId}) {
+      item { id }
     }
   }
-' -f owner=<owner> -f repo=<repo> -F number=<SUB_N> --jq '.data.repository.issue.projectItems.nodes[0].id'
+' -f project=<projectId> -f contentId=<SUB_NODE_ID> --jq '.data.addProjectV2ItemById.item.id'
 ```
+Store as `ITEM_ID`. Then use the same Priority/Size/Estimate commands as Epic Creation §4–§6, substituting `SUB_N` and the sub-issue's declared values.
 
 Priority default for sub-issues: inherit from parent epic if not declared in spec.
+
+Also set Sequence (read from spec `**Sequence:**` field, default `1`):
+
+```bash
+gh api graphql -f query='
+  mutation($project:ID!, $item:ID!, $field:ID!, $val:Float!) {
+    updateProjectV2ItemFieldValue(input:{
+      projectId:$project, itemId:$item, fieldId:$field,
+      value:{ number: $val }
+    }) { projectV2Item { id } }
+  }
+' -f project=<projectId> -f item=<ITEM_ID> \
+  -f field=<SEQUENCE_FIELD_ID> \
+  -F val=<sequence-number as float>
+```
 
 #### 5. Move to Backlog
 
 ```bash
-"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <SUB_N> backlog
+"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <SUB_N> backlog --item-id <ITEM_ID>
 ```
 
 #### 6. Link to epic as sub-issue
@@ -438,52 +470,56 @@ Note: use double-quotes around the sed expression so shell variables (`$SUB_N`, 
 
 After each sub-issue:
 ```
-  Created #<SUB_N>  <title>  [purpose/backend, purpose/security]  S  3h  P0  → linked to #<EPIC_N>
+  Created #<SUB_N>  <title>  [backend, security]  S  3h  P0  Seq:<N>  → linked to #<EPIC_N>
 ```
 
 ### Summary Report
 
-After all sub-issues are created, print the full issue map:
+After ALL epics and sub-issues are created, print the complete issue map:
 
 ```
-Plan: <plan-slug>   label: plan/<slug>
+Plan: <plan-slug>   label: plan:<slug>
 
-Epic:  #<EPIC_N>  EPIC: <title>                              <Size>  <Estimate>h  <Priority>
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
+Epic:  #<N>   EPIC: <title>            <Size>  <Estimate>h  <Priority>  Seq:<N>
+  Sub: #<N>   <sub-title>              <Size>  <Estimate>h  <Priority>  Seq:<N>  [backend, client, ...]
+  Sub: #<N>   <sub-title>              <Size>  <Estimate>h  <Priority>  Seq:<N>  [backend, client, ...]
+
+Epic:  #<N>   EPIC: <title>            <Size>  <Estimate>h  <Priority>  Seq:<N>
+  Sub: #<N>   <sub-title>              <Size>  <Estimate>h  <Priority>  Seq:<N>  [backend, client, ...]
+  ...
+
+Solo: #<N>   <title>                   <Size>  <Estimate>h  <Priority>  Seq:<N>  [backend, client, ...]
 ```
 
 Then ask:
 
-> "Switch the planning bucket to track against the epic (#<EPIC_N>), or keep it untracked and continue planning?"
+> "Which epic should I attach this session to for tracking? (or reply 'none' to stay in plan mode)"
 
-- **Switch** → run `/task #<EPIC_N>` to attach the session to the epic.
-- **Keep planning** → leave plan mode active; the user can run `/task new <next-epic-title>` to create the next epic from the same spec.
-
-### Multiple Epics in One Spec
-
-If the spec contains more than one epic, `/task new <title>` creates **one epic at a time** — the title argument disambiguates which section to use. After completing the summary report and tracking offer, if more epics remain in the spec, ask:
-
-> "Ready to create the next epic? Run `/task new <next-epic-title>` when you are."
-
-Do not proceed to the next epic automatically.
+- User names an epic → run `/task #<EPIC_N>` to attach the session.
+- **none** → leave plan mode active.
 
 ## AI Directives
 
 ### Task context — always match active task to the work happening now
 
+**Epic fan-out (epic + sub-issues):**
 - `/task #epic` when dispatching agents, reviewing output, orchestrating, or deciding what to fan out next.
 - `/task #child` when performing that child's work directly in this session (no sub-agent).
 - Switch back to `/task #epic` the moment work is handed to a sub-agent or you return to orchestration.
 - Never leave the epic active while a child is being worked directly, and never leave a child active while orchestrating.
 
-### Pickup Directive (when `pickupDirective: true`)
+**Solo fan-out (a set of independent issues with no parent epic):**
+- The currently active task is the engagement anchor — stay on it while agents work the others. Its time records the orchestration cost.
+- If no task is active when the fan-out is requested, ask the user which of the issues should serve as the engagement anchor before spawning agents.
+- The anchored issue's time will be a mix of orchestration + any direct implementation work the main thread does — this is expected and acceptable for solo fan-out.
 
-**At issue creation** (epics, sub-issues, and solo tasks alike):
+### Pickup Directive
+
+**At issue creation from a master plan** (epics, sub-issues, and solo tasks alike — unconditional in orchestration mode):
 1. Read `.claude/task-tracker/definition-of-done.md` to get the DoD checklist.
 2. Append this lean block to the issue body (after the Scope section), with the DoD items inlined:
+
+**For single-issue creation** (plain `/task new` outside orchestration mode): only inject if `pickupDirective: true` in config.
 
 ```markdown
 ## ⚡ Pickup Directive
@@ -536,11 +572,11 @@ PreCompact, PostCompact, and SessionStart hooks (in `.claude/settings.json`) cal
 
 ## Multi-Agent / Parallel Worktrees
 
-Run parallel agents in separate git worktrees — each has isolated state and word-count session. Use `/task fleet` from any worktree to see all registered tasks.
+Run parallel agents in separate git worktrees — each has isolated state and word-count session.
 
-Each agent self-registers on start and deregisters on close. Registry lives at the main worktree's `.claude/task-fleet.json`.
+**Epic / sub-issue pattern:** Start `/task #<epic>` in the main (orchestrator) worktree, fan sub-issues to agent worktrees. Epic accumulates orchestration time (human engagement cost); sub-issues accumulate execution time (AI effort). Both feed the value report to separate engagement cost from AI throughput.
 
-**Epic / sub-issue pattern:** Start `/task #<epic>` in the main (orchestrator) worktree, fan sub-issues to agent worktrees. Epic accumulates calendar time (orchestration cost); sub-issues accumulate effort time (AI execution). Both are captured automatically and used by the value report to separate human engagement cost from AI effort.
+**Solo fan-out pattern:** When fanning a set of independent issues with no parent epic, the main thread stays on whichever issue was active when the fan-out began. That issue's time records the orchestration cost. If no task is active, ask the user to pick an anchor before fanning. See AI Directives → Task context.
 
 ## Error Handling
 

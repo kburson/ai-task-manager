@@ -4,6 +4,10 @@
 **Purpose:** Test backlog for exercising GH issue creation directives, pickup directive, and sizing workflow. Issues are fictional but formatted as production-ready.
 **Product:** Nexus — B2B team collaboration SaaS (Node/TypeScript, PostgreSQL, Stripe, React)
 
+**Sequencing key:** Issues with the same `Sequence` number can run in parallel. A higher-sequence issue must wait for all lower-sequence issues in the same scope to close. Within an epic, parallelism is local — no cross-epic fan-out while an epic is active.
+
+**Epic execution order:** Epic 1 (Auth) → Epic 2 (Billing) → Epic 3 (Dashboard). Solo tasks Seq 1 run before epics begin; Solo Seq 2 unblocks after Solo Seq 1 closes.
+
 ---
 
 ## Sizing Key
@@ -26,23 +30,11 @@
 
 ---
 
-## Definition of Done (all issues)
-
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
----
-
 ## Solo Tasks
 
 ### S1 — Set up GitHub Actions CI pipeline
 
-**Priority:** P1 | **Size:** S | **Estimate:** 2h
+**Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Model:** sonnet
 
 #### Scope
 
@@ -57,25 +49,11 @@ Configure a GitHub Actions workflow that runs on every push and PR to `main`. Th
 - [ ] Branch protection rule requires CI green before merge
 - [ ] Secrets documented in `docs/env-vars.md`
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 ### S2 — Configure production environment and secrets
 
-**Priority:** P1 | **Size:** XS | **Estimate:** 1h
+**Priority:** P1 | **Size:** XS | **Estimate:** 1h | **Sequence:** 1 | **Model:** haiku
 
 #### Scope
 
@@ -90,25 +68,11 @@ Provision the production environment on Railway. Set all required environment va
 - [ ] Deployment succeeds from `main` branch via Railway GitHub integration
 - [ ] `docs/env-vars.md` updated with all var names, types, and example values (no real secrets)
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 ### S3 — Dependency security audit and remediation
 
-**Priority:** P1 | **Size:** S | **Estimate:** 2h
+**Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 2 | **Depends on:** S1 (CI gate) | **Model:** sonnet
 
 #### Scope
 
@@ -123,25 +87,11 @@ Run `npm audit` and `npx snyk test` against the full dependency tree. Resolve al
 - [ ] CI pipeline includes `npm audit --audit-level=high` as a gate (fails build on new criticals)
 - [ ] No `npm audit fix --force` used without explicit justification
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 ### S4 — Write user onboarding documentation
 
-**Priority:** P2 | **Size:** M | **Estimate:** 4h
+**Priority:** P2 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Model:** haiku
 
 #### Scope
 
@@ -156,25 +106,11 @@ Write the end-user onboarding guide covering account creation through first succ
 - [ ] Internal links checked — no dead anchors
 - [ ] Product team review complete (tag `@product` in PR)
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 ## Epic 1 — User Authentication & Identity
 
-**Priority:** P0 | **Size:** XL | **Estimate:** 16h (roll-up)
+**Priority:** P0 | **Size:** XL | **Estimate:** 16h (roll-up) | **Model:** sonnet
 
 ### Epic Scope
 
@@ -191,7 +127,7 @@ Implement the full authentication and identity layer for Nexus. Users must be ab
 
 #### E1-S1 — Implement email/password registration and login
 
-**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Parent:** Epic 1
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Parent:** Epic 1 | **Model:** sonnet
 
 ##### Scope
 
@@ -207,25 +143,11 @@ Build the `POST /api/auth/register` and `POST /api/auth/login` endpoints. Passwo
 - [ ] Integration tests cover: happy path, duplicate email, wrong password, unverified email, rate limit
 - [ ] `zxcvbn` score < 2 returns `400` with human-readable password feedback
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E1-S2 — Add Google OAuth integration
 
-**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Parent:** Epic 1
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S1 (JWT/refresh token infrastructure) | **Parent:** Epic 1 | **Model:** sonnet
 
 ##### Scope
 
@@ -241,25 +163,11 @@ Implement the Google OAuth 2.0 flow using `passport-google-oauth20`. On first lo
 - [ ] Integration tests cover: new user, returning user, email collision with confirmation, invalid state param
 - [ ] `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` documented in `docs/env-vars.md`
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E1-S3 — Implement MFA (TOTP)
 
-**Priority:** P0 | **Size:** L | **Estimate:** 6h | **Parent:** Epic 1
+**Priority:** P0 | **Size:** L | **Estimate:** 6h | **Sequence:** 2 | **Depends on:** E1-S1 (login flow) | **Parent:** Epic 1 | **Model:** sonnet
 
 ##### Scope
 
@@ -277,25 +185,11 @@ Add opt-in TOTP-based MFA using `otplib`. Enrollment flow: generate secret → d
 - [ ] Integration tests cover: full enrollment, login with MFA, wrong code, replay attack, backup code use
 - [ ] Brute-force protection: 5 failed TOTP attempts locks MFA for 15 minutes
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E1-S4 — Session management and token refresh
 
-**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Parent:** Epic 1
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S1 (token model) | **Parent:** Epic 1 | **Model:** sonnet
 
 ##### Scope
 
@@ -311,25 +205,11 @@ Implement the refresh token rotation lifecycle. `POST /api/auth/refresh` accepts
 - [ ] Expired refresh tokens cleaned up by a daily cron job (`scripts/cleanup-expired-tokens.ts`)
 - [ ] Integration tests cover: happy rotation, token reuse detection, logout, session list, remote revoke
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 ## Epic 2 — Billing & Subscriptions
 
-**Priority:** P0 | **Size:** XL | **Estimate:** 19h (roll-up)
+**Priority:** P0 | **Size:** XL | **Estimate:** 19h (roll-up) | **Model:** sonnet
 
 ### Epic Scope
 
@@ -346,7 +226,7 @@ Integrate Stripe to power Nexus's subscription model. Three tiers: Free, Pro (`$
 
 #### E2-S1 — Stripe customer and product setup
 
-**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Parent:** Epic 2
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Parent:** Epic 2 | **Model:** sonnet
 
 ##### Scope
 
@@ -362,25 +242,11 @@ Create Stripe Products and Prices for Free/Pro/Team tiers (via Stripe dashboard 
 - [ ] Idempotency key used on `stripe.customers.create` (key: `user-reg-{userId}`)
 - [ ] Integration tests cover: customer creation, checkout session, portal session, missing customer edge case
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E2-S2 — Plan tier enforcement and feature gating
 
-**Priority:** P0 | **Size:** L | **Estimate:** 8h | **Parent:** Epic 2
+**Priority:** P0 | **Size:** L | **Estimate:** 8h | **Sequence:** 2 | **Depends on:** E2-S1 (subscriptions table), E2-S4 (webhook plan refresh) | **Parent:** Epic 2 | **Model:** sonnet
 
 ##### Scope
 
@@ -396,25 +262,11 @@ Implement a `requirePlan(tier)` middleware that reads the user's current plan fr
 - [ ] `GET /api/billing/plan` returns current plan, status, renewal date, and usage against limits
 - [ ] Integration tests cover: each tier boundary, downgrade enforcement, expired subscription, trial period
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E2-S3 — Invoice generation and email delivery
 
-**Priority:** P1 | **Size:** M | **Estimate:** 4h | **Parent:** Epic 2
+**Priority:** P1 | **Size:** M | **Estimate:** 4h | **Sequence:** 2 | **Depends on:** E2-S4 (invoice.paid webhook) | **Parent:** Epic 2 | **Model:** sonnet
 
 ##### Scope
 
@@ -430,25 +282,11 @@ On `invoice.paid` webhook from Stripe, generate a PDF invoice using `puppeteer` 
 - [ ] Duplicate `invoice.paid` events handled idempotently (check `stripeInvoiceId` before insert)
 - [ ] Integration tests cover: PDF generation, email send (mocked SendGrid), duplicate event, S3 upload
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E2-S4 — Stripe webhook handler
 
-**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Parent:** Epic 2
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Parent:** Epic 2 | **Model:** sonnet
 
 ##### Scope
 
@@ -466,25 +304,11 @@ Implement `POST /api/webhooks/stripe` — the single entry point for all Stripe 
 - [ ] Integration tests use `stripe trigger` events replayed via Stripe CLI fixture files
 - [ ] Unrecognized event types log a warning and return `200` (forward-compatible)
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 ## Epic 3 — Core Dashboard & Analytics
 
-**Priority:** P0 | **Size:** XL | **Estimate:** 23h (roll-up)
+**Priority:** P0 | **Size:** XL | **Estimate:** 23h (roll-up) | **Model:** sonnet
 
 ### Epic Scope
 
@@ -501,7 +325,7 @@ Build the Nexus analytics dashboard: collect usage metrics, render them as inter
 
 #### E3-S1 — Usage metrics collection and storage
 
-**Priority:** P0 | **Size:** L | **Estimate:** 6h | **Parent:** Epic 3
+**Priority:** P0 | **Size:** L | **Estimate:** 6h | **Sequence:** 1 | **Parent:** Epic 3 | **Model:** sonnet
 
 ##### Scope
 
@@ -518,25 +342,11 @@ Instrument the backend to emit usage events (messages sent, files uploaded, API 
 - [ ] All queries scoped to `workspaceId` derived from JWT — no raw `userId` filtering
 - [ ] Integration tests cover: event emission, aggregation correctness, cross-workspace isolation
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E3-S2 — Dashboard charts and visualizations
 
-**Priority:** P0 | **Size:** L | **Estimate:** 8h | **Parent:** Epic 3
+**Priority:** P0 | **Size:** L | **Estimate:** 8h | **Sequence:** 2 | **Depends on:** E3-S1 (analytics API) | **Parent:** Epic 3 | **Model:** sonnet
 
 ##### Scope
 
@@ -555,25 +365,11 @@ Build the `/app/dashboard` React page. Use Recharts for all charts. Display: dai
 - [ ] Lighthouse performance ≥ 85 on mobile 4G (measure with `npx lighthouse`)
 - [ ] Playwright tests cover: period switch, empty state, plan tier rendering differences
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E3-S3 — CSV and JSON data export
 
-**Priority:** P1 | **Size:** M | **Estimate:** 3h | **Parent:** Epic 3
+**Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E3-S1 (data access layer) | **Parent:** Epic 3 | **Model:** sonnet
 
 ##### Scope
 
@@ -590,25 +386,11 @@ Let users export their workspace data (messages, files metadata, usage events, m
 - [ ] `GET /api/exports` returns export history with status (`pending`, `ready`, `expired`)
 - [ ] Integration tests cover: sync export, async export trigger, GDPR completeness, expired link
 
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
-
 ---
 
 #### E3-S4 — Team member management (invite, roles, remove)
 
-**Priority:** P0 | **Size:** L | **Estimate:** 6h | **Parent:** Epic 3
+**Priority:** P0 | **Size:** L | **Estimate:** 6h | **Sequence:** 1 | **Parent:** Epic 3 | **Model:** sonnet
 
 ##### Scope
 
@@ -626,20 +408,6 @@ Implement workspace team management. Roles: `owner`, `admin`, `member`. Invitati
 - [ ] `GET /api/workspace/members` returns paginated member list with role, joined date, last active
 - [ ] Invite tokens are single-use; accepting invalidates the token
 - [ ] Integration tests cover: full invite flow, role enforcement, ownership transfer, plan limit rejection
-
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
-- [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
 
 ---
 

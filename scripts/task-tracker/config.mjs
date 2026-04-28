@@ -18,6 +18,8 @@ export const DEFAULTS = {
   kanbanOptionInProgress: '',
   kanbanOptionInReview: '',
   kanbanOptionDone: '',
+  // Sequence field ID (set by init script) — numeric field on the project board
+  sequenceFieldId: '',
   // Priority field + option IDs (set by init script)
   priorityFieldId: '',
   priorityOptionP0: '',
@@ -32,7 +34,7 @@ export const DEFAULTS = {
   statePath: '.claude/task-tracker-state.json',
   idleThresholdMinutes: 5,
   recordWallClock: true,
-  pickupDirective: false,
+  pickupDirective: true,
 };
 
 const TYPES = {
@@ -45,6 +47,7 @@ const TYPES = {
   kanbanOptionInProgress: 'string',
   kanbanOptionInReview: 'string',
   kanbanOptionDone: 'string',
+  sequenceFieldId: 'string',
   priorityFieldId: 'string',
   priorityOptionP0: 'string',
   priorityOptionP1: 'string',
@@ -119,13 +122,42 @@ export function setConfigValue(key, rawValue, paths = {}) {
   return value;
 }
 
+const USER_KEYS = [
+  'repo', 'assignee', 'defaultLabels',
+  'wpm', 'autoEndOnSwitch', 'idleThresholdMinutes', 'recordWallClock', 'hookNetworkTimeoutMs',
+  'pickupDirective',
+  'statePath', 'queuePath',
+];
+
+const INTERNAL_KEYS = [
+  'projectId',
+  'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionDone',
+  'sequenceFieldId',
+  'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
+];
+
+function marker(src) {
+  if (src === 'project') return ' *';
+  if (src === 'user') return ' ^';
+  return '  ';
+}
+
+function formatUserRow(cfg, k) {
+  const val = Array.isArray(cfg[k]) ? JSON.stringify(cfg[k]) : String(cfg[k]);
+  return `  ${marker(cfg._sources[k])} ${k.padEnd(24)} ${val}`;
+}
+
+function formatInternalRow(cfg, k) {
+  const val = cfg[k] ? cfg[k].slice(0, 8) + '…' : '(not set)';
+  return `  ${marker(cfg._sources[k])} ${k.padEnd(24)} ${val}`;
+}
+
 export function formatConfig(cfg) {
-  const lines = ['Task Tracker Config (* = project-local override, ^ = user-global override)'];
-  for (const k of Object.keys(DEFAULTS)) {
-    const src = cfg._sources[k];
-    const marker = src === 'project' ? ' *' : src === 'user' ? ' ^' : '  ';
-    const val = Array.isArray(cfg[k]) ? JSON.stringify(cfg[k]) : String(cfg[k]);
-    lines.push(`  ${marker} ${k.padEnd(24)} ${val}`);
-  }
-  return lines.join('\n');
+  return [
+    'Task Tracker Config (* = project-local override, ^ = user-global override)\n',
+    'Settings  (edit with: /task config <key> <value>)',
+    ...USER_KEYS.map(k => formatUserRow(cfg, k)),
+    '\nInternal  (managed by: npx claude-gh-task-manager init)',
+    ...INTERNAL_KEYS.map(k => formatInternalRow(cfg, k)),
+  ].join('\n');
 }
