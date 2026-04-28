@@ -7,9 +7,11 @@ checkbox. If the checkbox is already checked, skip to step 6.
 
 1. **Start tracking and move the issue to `in-progress`:**
    ```
-   /task #<this-issue-#>
+   /task #<this-issue-#> --role agent
    ```
-   This writes a `start` row to the timing log, opens the issue, and moves the Kanban card to `in-progress` in one step. Run it in the agent's own git worktree — state is per-worktree, so it will not overwrite the orchestrator's active task.
+   This writes a `start` row to the timing log (with Description = `agent`), opens the issue, and moves the Kanban card to `in-progress` in one step. Run it in the agent's own git worktree — state is per-worktree, so it will not overwrite the orchestrator's active task.
+
+   The `--role agent` flag records in the timing log that this session was run by an AI agent, not a human. The value report uses this to separate human engagement cost from parallel agent work when computing the Human Leverage metric.
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
    assumptions still hold, identify concrete files to edit, define the test approach,

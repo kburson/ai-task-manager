@@ -19,10 +19,14 @@ import { registerTask, deregisterTask, setTaskStatus, currentBranch,
          findMainWorktreePath, fleetRegistryPath, readFleet } from './fleet-registry.mjs';
 
 const argv = process.argv.slice(2);
+// Extract --role flag before parsing verb/rest (agent | orchestrator | solo)
+const _roleIdx = argv.indexOf('--role');
+const role = _roleIdx >= 0 && _roleIdx + 1 < argv.length ? argv[_roleIdx + 1] : 'solo';
+const _argvClean = _roleIdx >= 0 ? argv.filter((_, i) => i !== _roleIdx && i !== _roleIdx + 1) : argv;
 // Normalize bare issue numbers: "156" → "#156", "log 156" → "log #156"
-const rawVerb = argv[0] || 'status';
+const rawVerb = _argvClean[0] || 'status';
 const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
-const rest = argv.slice(1).map(a => /^\d+$/.test(a) ? `#${a}` : a);
+const rest = _argvClean.slice(1).map(a => /^\d+$/.test(a) ? `#${a}` : a);
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const cfg = loadConfig();
@@ -272,7 +276,7 @@ async function verbSwitch(target) {
   try { registerTask(projectDir, target, projectDir, currentBranch(projectDir)); } catch {}
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
     ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
-    wordMarker: wordsAtStart, description: 'task opened',
+    wordMarker: wordsAtStart, description: role,
   });
   await safePostTiming(target, row);
   console.log(`Active: ${target}.${previousNote}`);
@@ -425,7 +429,7 @@ async function verbNew(args) {
   try { registerTask(projectDir, issue, projectDir, currentBranch(projectDir)); } catch {}
   await safePostTiming(issue, buildRow({
     ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
-    wordMarker: wordsAtStart, description: 'session started',
+    wordMarker: wordsAtStart, description: role,
   }));
   console.log(`Active: ${issue}.${previousNote} Created with title: "${title}".`);
 }

@@ -508,6 +508,7 @@ Then ask:
 - Switch back to `/task #epic` the moment work is handed to a sub-agent or you return to orchestration.
 - Never leave the epic active while a child is being worked directly, and never leave a child active while orchestrating.
 - **Run `/task update` every time an agent returns.** Each agent completion is a checkpoint — flush timing and reset counters before dispatching the next batch. Without this, long orchestration sessions accumulate unbounded wall-clock time with no intermediate record.
+- When starting the epic session for fan-out, pass `--role orchestrator`: `/task #<epic> --role orchestrator`. This records your session as the human engagement cost in the value report.
 
 **Solo fan-out (a set of independent issues with no parent epic):**
 - The currently active task is the engagement anchor — stay on it while agents work the others. Its time records the orchestration cost.
@@ -515,6 +516,14 @@ Then ask:
 - The anchor task must NOT itself be dispatched to an agent. The anchor's timing log is written exclusively by the orchestrator. If an agent also wrote to it, the session accounting would be corrupted.
 - The anchored issue's time will be a mix of orchestration + any direct implementation work the main thread does — this is expected and acceptable for solo fan-out.
 - **Run `/task update` every time an agent returns** — same rule as epic fan-out.
+
+**Role flag reference:**
+
+| Situation | Flag |
+|---|---|
+| Picking up a solo issue in your own session | (omit — defaults to `solo`) |
+| Starting an epic you will fan out to agents | `--role orchestrator` |
+| Agent picking up a sub-issue via Pickup Directive | `--role agent` (set in pickup-directive.md step 1) |
 
 ### Pickup Directive
 
@@ -577,7 +586,7 @@ PreCompact, PostCompact, and SessionStart hooks (in `.claude/settings.json`) cal
 
 Run parallel agents in separate git worktrees — each has isolated state and word-count session.
 
-**Epic / sub-issue pattern:** Start `/task #<epic>` in the main (orchestrator) worktree, fan sub-issues to agent worktrees. Epic accumulates orchestration time (human engagement cost); sub-issues accumulate execution time (AI effort). Both feed the value report to separate engagement cost from AI throughput.
+**Epic / sub-issue pattern:** Start `/task #<epic> --role orchestrator` in the main worktree, fan sub-issues to agent worktrees (agents use `--role agent` via the Pickup Directive). Epic accumulates orchestration time (human engagement cost); sub-issues accumulate execution time (AI effort). The value report uses the role written into each `start` timing row to compute Human Leverage (estimated effort ÷ human engagement time).
 
 **Solo fan-out pattern:** When fanning a set of independent issues with no parent epic, the main thread stays on whichever issue was active when the fan-out began. That issue's time records the orchestration cost. If no task is active, **stop and ask the user to pick an anchor before dispatching any agents** — never fan out without one. The anchor task must not itself be dispatched to an agent; its timing log belongs exclusively to the orchestrator. See AI Directives → Task context.
 
