@@ -185,17 +185,20 @@ function fields(item) {
   return out;
 }
 
-function parseStartedAt(comments) {
+function parseStartInfo(comments) {
   for (const c of (comments ?? [])) {
     if (!c.body?.includes('⏱ Timing Log')) continue;
     for (const line of c.body.split('\n')) {
       const cols = line.split('|').map(s => s.trim()).filter(Boolean);
       if (cols.length < 2) continue;
-      const ts = cols[0], event = cols[1];
-      if (event === 'start' && /^\d{4}-\d{2}-\d{2}/.test(ts)) return new Date(ts);
+      const [ts, event, , , , , desc] = cols;
+      if (event === 'start' && /^\d{4}-\d{2}-\d{2}/.test(ts)) {
+        const role = ['agent', 'orchestrator', 'solo'].find(r => (desc ?? '').toLowerCase().includes(r)) ?? 'solo';
+        return { startedAt: new Date(ts), role };
+      }
     }
   }
-  return null;
+  return { startedAt: null, role: 'solo' };
 }
 
 function processItems(raw) {
@@ -211,7 +214,7 @@ function processItems(raw) {
         body:         n.content.body ?? '',
         createdAt:    n.content.createdAt ? new Date(n.content.createdAt) : null,
         closedAt:     n.content.closedAt  ? new Date(n.content.closedAt)  : null,
-        startedAt:    parseStartedAt(n.content.comments?.nodes),
+        ...parseStartInfo(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
         sessionMin:   f['Actual Session Time'] ?? null,
         contextWords: f['Context Length']      ?? null,
@@ -278,9 +281,18 @@ function summary(items) {
   const accel             = totalEst > 0 && totalEngaged > 0
     ? (totalEst / totalEngaged).toFixed(1)
     : null;
+  // Human cost = orchestrator + solo sessions only (agent session times are parallel AI work)
+  const humanItems        = items.filter(i => i.role === 'orchestrator' || i.role === 'solo');
+  const humanSessionMin   = humanItems.reduce((s, i) => s + (i.sessionMin   ?? 0), 0);
+  const humanContextWords = humanItems.reduce((s, i) => s + (i.contextWords ?? 0), 0);
+  const humanEngaged      = engagedHours(humanSessionMin, humanContextWords);
+  const humanLeverage     = totalEst > 0 && humanEngaged > 0
+    ? (totalEst / humanEngaged).toFixed(1)
+    : null;
   return {
     totalEst, totalSessionMin, totalContextWords, totalEngaged,
     withEst, withSession, withContext, accel,
+    humanSessionMin, humanContextWords, humanEngaged, humanLeverage,
   };
 }
 
@@ -393,14 +405,29 @@ function buildHtml(project, items, s) {
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.875rem;color:#0f172a;background:#f8fafc}
 .page{max-width:1300px;margin:0 auto;padding:1.25rem 1.5rem}
 .rh{background:#0f172a;color:#fff;padding:1rem 1.5rem;border-radius:.5rem;margin-bottom:1rem}
-.rh h1{font-size:1.25rem;font-weight:700;margin-bottom:.25rem}
-.rh .meta{color:#94a3b8;font-size:.75rem}
-.rh .meta span{margin-right:1.25rem}
+.rh-top{display:flex;justify-content:space-between;align-items:stretch;padding-bottom:.75rem;margin-bottom:.625rem;border-bottom:1px solid #1e293b}
+.rh h1{font-size:1.875rem;font-weight:700;line-height:1.15;align-self:center}
+.rh-right{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;flex-shrink:0;margin-left:1.5rem;text-align:right;gap:.2rem}
+.rh-date{font-size:.6875rem;color:#fff;white-space:nowrap}
+.rh-region{font-size:.6875rem;color:#fff;white-space:nowrap}
+.rh-meta{color:rgba(255,255,255,.75);font-size:.75rem;display:flex;flex-wrap:wrap;gap:.2rem 1.5rem;margin-bottom:.375rem}
+.rh-meta strong{color:#e2e8f0;font-weight:600}
+.rh-filter{color:#fbbf24 !important;font-weight:600 !important;margin-left:auto}
+.exec-summary{background:#fff;border-radius:.5rem;border:1px solid #e2e8f0;margin-bottom:1.25rem;overflow:hidden}
+.exec-summary-header{background:#1e293b;color:#fff;padding:.75rem 1.25rem;font-size:.9375rem;font-weight:600}
+.exec-summary-body{padding:1.25rem;font-size:.8125rem;color:#1e293b;line-height:1.65}
+.exec-summary-body p{margin-bottom:.875rem}
+.exec-summary-body p:last-child{margin-bottom:0}
+.exec-summary-body strong{color:#0f172a}
+.exec-sections{display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;margin:.625rem 0 .875rem;padding:.875rem 1rem;background:#f8fafc;border-radius:.375rem;border:1px solid #e2e8f0}
+.esi .esi-label{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#475569;margin-bottom:.2rem}
+.esi .esi-desc{font-size:.75rem;color:#334155;line-height:1.5}
+.exec-method{font-size:.6875rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:.75rem;margin-top:.875rem;line-height:1.5}
 .crows-wrap{display:flex;flex-direction:column;gap:.3rem;margin-bottom:1rem}
 .crow-group{border-radius:.375rem;overflow:hidden;border:1px solid #e2e8f0}
 .crow-label{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:.3rem .875rem;display:flex;align-items:baseline;gap:.5rem}
-.crow-label span{font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:.625rem}
-.crow-group.baseline .crow-label{background:#1e293b;color:#94a3b8}
+.crow-label span{font-weight:400;text-transform:none;letter-spacing:0;color:rgba(255,255,255,.65);font-size:.625rem}
+.crow-group.baseline .crow-label{background:#1e293b;color:#e2e8f0}
 .crow-group.solo .crow-label{background:#1e3a5f;color:#93c5fd}
 .crow-group.enterprise .crow-label{background:#3b1515;color:#fca5a5}
 .crow-group.ai .crow-label{background:#1a1a3e;color:#a5b4fc}
@@ -434,9 +461,9 @@ td{padding:.35rem .625rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 .issue-table td.title-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f8fafc}
-tr.epic-row td{background:#1e293b;color:#f1f5f9;font-weight:600;border-bottom:1px solid #334155}
-tr.epic-row td a{color:#a5b4fc}
-tr.epic-row:hover td{background:#334155}
+tr.epic-row td{background:#64748b;color:#fff;font-weight:600;border-bottom:1px solid #94a3b8}
+tr.epic-row td a{color:#e0e7ff}
+tr.epic-row:hover td{background:#475569}
 tr.child-row td{background:#f8fafc;color:#475569;font-size:.7rem}
 tr.child-row td.closed{color:#16a34a}
 tr.child-row td.open{color:#d97706}
@@ -451,7 +478,7 @@ td a:hover{text-decoration:underline}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
 .three{display:grid;grid-template-columns:1fr 9rem 1fr;gap:2.5rem;align-items:start}
 .col h3{font-size:.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.875rem;padding-bottom:.5rem;border-bottom:2px solid #e2e8f0}
-.col.human h3{color:#ef4444}.col.ai h3{color:#6366f1}.col.accel h3{color:#16a34a;text-align:center}
+.col.human h3{color:#9f1239}.col.ai h3{color:#6366f1}.col.accel h3{color:#16a34a;text-align:center}
 .col.ai .crow{flex-direction:row-reverse}
 .col.ai .crow .cl-wrap{text-align:right}
 .col.ai .crow .cl-wrap .cl-sub{text-align:right}
@@ -482,12 +509,110 @@ td a:hover{text-decoration:underline}
 .tl-note strong{color:#0f172a}
 .tl-note code{font-family:monospace;font-size:.625rem;background:#e2e8f0;padding:.1em .3em;border-radius:.2em}
 .footer{text-align:center;color:#94a3b8;font-size:.6875rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e2e8f0}
+@page{
+  @bottom-right{
+    content:"Page " counter(page) " of " counter(pages);
+    font-size:.65rem;
+    color:#64748b;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+}
 @media print{
   body{background:#fff}
   .page{padding:.25in .35in;max-width:100%}
   .sec,.crow-group{break-inside:avoid}
   .crows-wrap,.two,.tg,.vr-row{break-inside:avoid}
-  -webkit-print-color-adjust:exact;print-color-adjust:exact
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+
+  /* Report header: keep dark bg but force white on all text */
+  .rh{background:#0f172a}
+  .rh h1{color:#fff}
+  .rh-date{color:rgba(255,255,255,.7)}
+  .rh-region{color:rgba(255,255,255,.7)}
+  .rh-meta{color:#fff}
+  .rh-meta strong{color:#fff}
+  /* Exec summary: already light-bg, just ensure body text is dark */
+  .exec-summary-body{color:#1e293b}
+  .exec-summary-header{background:#1e293b;color:#fff}
+  .exec-sections{background:#f1f5f9;border-color:#cbd5e1}
+  .esi .esi-label{color:#1e293b}
+  .esi .esi-desc{color:#334155}
+  .exec-method{color:#334155}
+
+  /* Dark crow-label stripes → light tinted bg + dark text */
+  .crow-group.baseline .crow-label{background:#e2e8f0;color:#1e293b}
+  .crow-group.baseline .crow-label span{color:#334155}
+  .crow-group.solo .crow-label{background:#dbeafe;color:#1e3a5f}
+  .crow-group.solo .crow-label span{color:#1e40af}
+  .crow-group.enterprise .crow-label{background:#fee2e2;color:#7f1d1d}
+  .crow-group.enterprise .crow-label span{color:#991b1b}
+  .crow-group.ai .crow-label{background:#e0e7ff;color:#3730a3}
+  .crow-group.ai .crow-label span{color:#4338ca}
+  .crow-group.value .crow-label{background:#dcfce7;color:#14532d}
+  .crow-group.value .crow-label span{color:#166534}
+
+  /* Card label/sub text: darken from light gray */
+  .card .lbl{color:#334155;font-size:.7rem}
+  .card .sub{color:#475569;font-size:.7rem}
+
+  /* Section headers keep dark bg */
+  .sec h2{background:#1e293b;color:#fff}
+
+  /* Epic rows: medium grey saves ink vs near-black */
+  tr.epic-row td{background:#64748b;color:#fff}
+  tr.epic-row td a{color:#e0e7ff}
+
+  /* Child rows: ensure readable contrast */
+  tr.child-row td{color:#1e293b}
+  tr.child-row td.closed{color:#15803d}
+  tr.child-row td.open{color:#b45309}
+  .child-indent{color:#475569}
+
+  /* Small muted text: all darkened for print legibility */
+  .note{color:#334155;font-size:.75rem}
+  .disclaimer{color:#334155;font-size:.7rem}
+  .tl-meta{color:#334155;font-size:.75rem}
+  .tl-footnote{color:#475569;font-size:.75rem}
+  .tl-note{color:#1e293b;font-size:.75rem;border-left-color:#94a3b8}
+  .tl-note strong{color:#0f172a}
+  .footer{color:#334155;break-before:avoid;margin-top:.5rem;padding-top:.5rem}
+
+  /* Crow layout text */
+  .crow .cl-wrap{color:#334155}
+  .crow .cl-wrap .cl-sub{color:#475569}
+  .crow .cl{color:#334155}
+  .ac-lbl{color:#14532d}
+
+  /* Timeline heading */
+  .tl-heading{background:#e2e8f0;color:#1e293b}
+
+  /* ── Page compaction: crow groups + issue breakdown on one page ────── */
+  /* Allow crows-wrap to flow with the preceding section, not force a new page */
+  .crows-wrap{break-inside:auto;break-before:avoid;gap:0;margin-bottom:.75rem}
+  .crow-group{break-inside:avoid;margin-bottom:.5rem}
+  .crow-group:last-child{margin-bottom:0}
+  /* Tighten crow-label strip */
+  .crow-label{padding:.2rem .625rem;font-size:.5625rem}
+  /* Shrink card padding and value sizes */
+  .card{padding:.4rem .625rem}
+  .card .val{font-size:.8125rem}
+  .card .val.sm{font-size:.75rem}
+  .card .lbl{font-size:.6rem;margin-bottom:0}
+  .card .sub{font-size:.6rem;margin-top:.0625rem}
+  .vr-card .val{font-size:.875rem}
+  /* Tighten crow-cards grid rows */
+  .crow-cards{gap:0}
+  /* Compact the three-column accelerator layout */
+  .sec-body{padding:.75rem 1rem}
+  .sec{margin-bottom:.75rem}
+  .three{gap:1.5rem}
+  .crow{min-height:1.75rem;padding:.0625rem 0}
+  .crow .cv{font-size:.8125rem}
+  .crow .cl{font-size:.75rem}
+  .ac-num{font-size:.8125rem}
+  /* Tighten issue table rows */
+  th{padding:.3rem .5rem}
+  td{padding:.25rem .5rem}
 }
 </style>
 </head>
@@ -495,14 +620,32 @@ td a:hover{text-decoration:underline}
 <div class="page">
 
 <div class="rh">
-  <h1>${cfg.title}</h1>
-  <div class="meta">
-    <span>Project: ${project.title}</span>
-    <span>Generated: ${now}</span>
-    <span>Issues: ${items.length}</span>
-    <span>Repo: ${cfg.repo || 'unknown'}</span>
-    <span>Region: ${reg.label}</span>
-    ${filterLabel ? `<span style="color:#fbbf24;font-weight:600">Filters: ${filterLabel}</span>` : ''}
+  <div class="rh-top">
+    <h1>${cfg.title}</h1>
+    <div class="rh-right">
+      <span class="rh-date">Generated ${now}</span>
+      <span class="rh-region">Region: ${reg.label}</span>
+    </div>
+  </div>
+  <div class="rh-meta">
+    <span>Project: <strong>${project.title}</strong></span>
+    <span>Repo: <strong>${cfg.repo || 'unknown'}</strong></span>
+    <span>Issues: <strong>${items.length}</strong></span>
+    ${filterLabel ? `<span class="rh-filter">Filters: ${filterLabel}</span>` : ''}
+  </div>
+</div>
+
+<div class="exec-summary">
+  <div class="exec-summary-header">Executive Summary</div>
+  <div class="exec-summary-body">
+    <p>This report measures the engineering value delivered through AI-assisted development by comparing pre-execution time estimates — scoped in GitHub issues before work began — against measured engaged time: active AI session minutes plus estimated human reading time. The result is a concrete, auditable acceleration multiple that translates directly into cost and calendar savings relative to equivalent human engineering spend.</p>
+    <div class="exec-sections">
+      <div class="esi"><div class="esi-label">Agentic AI Accelerator</div><div class="esi-desc">Side-by-side cost comparison: what this scope would have cost with a human-only team (baseline mid-level, solo senior, enterprise) versus actual AI-assisted spend. Acceleration multiples reflect cost efficiency; calendar columns reflect delivery speed.</div></div>
+      <div class="esi"><div class="esi-label">Product Backlog</div><div class="esi-desc">Per-issue detail — estimate, session time, context words, derived engaged time, and acceleration ratio. Use this to spot outliers: high ratios indicate well-scoped work in familiar domains; low ratios point to underestimated scope or novel problem areas.</div></div>
+      <div class="esi"><div class="esi-label">Engineering Cost by US Region</div><div class="esi-desc">The same acceleration math applied to fully-burdened regional engineering rates. Translates efficiency gains into dollar figures meaningful to your organization's geography and hiring profile.</div></div>
+      <div class="esi"><div class="esi-label">Timeline Analysis</div><div class="esi-desc">Calendar view of backlog entry, work start, and close date per issue. Pre-work lag surfaces scheduling friction; in-flight duration shows how long work occupied the team once started. Epic rows show the full orchestration window, including gaps between agent batches.</div></div>
+    </div>
+    <div class="exec-method"><strong>Methodology:</strong> Estimates are mid-level engineer hours captured before execution and may not reflect actual human complexity — the comparison is only as accurate as the original scope. Engaged time is session minutes plus a fraction of reading time (overlap factor: ${cfg.readingOverlap}), since reading partially overlaps active AI work rather than adding in full. Acceleration is estimate ÷ engaged hours. Reading rate: ${cfg.readingWpm} wpm.</div>
   </div>
 </div>
 
@@ -546,11 +689,6 @@ td a:hover{text-decoration:underline}
   </div>
 </div>
 
-<div class="disclaimer">
-  <strong>Methodology note:</strong> Estimated acceleration compares pre-execution estimates (mid-level engineer hours) against measured engaged time (session minutes + reading time).
-  This is an estimate-based comparison — estimates represent the best guess at the time of planning and may not reflect what a human engineer would have actually taken.
-  The comparison is only as accurate as the original estimates. Reading WPM: ${cfg.readingWpm}. Reading overlap factor: ${cfg.readingOverlap} (fraction of reading time added to engaged hours — remainder assumed concurrent with active session).
-</div>
 
 <div class="crows-wrap">
 
@@ -591,7 +729,16 @@ td a:hover{text-decoration:underline}
       <div class="card"><div class="lbl">Context Length</div><div class="val">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() : '—'}</div><div class="sub">reader-visible chat words (excludes injections)</div></div>
       <div class="card"><div class="lbl">Human Reading Time</div><div class="val">${readingH > 0 ? fmtMin(readingH) : '—'}</div><div class="sub">${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm · ${$(readingCost)} @ ${$(natMid)}/hr</div></div>
       <div class="card"><div class="lbl">Total Engaged</div><div class="val">${totalEh}</div><div class="sub">session + reading time</div></div>
-      <div class="card"><div class="lbl">Est. Acceleration</div><div class="val${s.accel != null ? ' good' : ''}">${s.accel != null ? s.accel + '×' : '—'}</div><div class="sub">estimate ÷ engaged · vs mid-level baseline</div></div>
+      <div class="card"><div class="lbl">AI Acceleration</div><div class="val${s.accel == null ? '' : ' good'}">${s.accel == null ? '—' : s.accel + '×'}</div><div class="sub">estimate ÷ total agent session time</div></div>
+    </div>
+  </div>
+
+  <div class="crow-group ai">
+    <div class="crow-label">Agentic AI Accelerator <span>Human Leverage — estimated effort vs. human engagement time only (orchestrator + solo sessions)</span></div>
+    <div class="crow-cards">
+      <div class="card"><div class="lbl">Human Session Time</div><div class="val accent">${s.humanSessionMin > 0 ? fmtMin(s.humanSessionMin / 60) : '—'}</div><div class="sub">orchestrator + solo sessions · agent time excluded</div></div>
+      <div class="card"><div class="lbl">Human Engaged</div><div class="val">${s.humanEngaged > 0 ? fmtMin(s.humanEngaged) : '—'}</div><div class="sub">human session + reading time</div></div>
+      <div class="card"><div class="lbl">Human Leverage</div><div class="val${s.humanLeverage == null ? '' : ' good'}">${s.humanLeverage == null ? '—' : s.humanLeverage + '×'}</div><div class="sub">estimate ÷ human engagement time</div></div>
     </div>
   </div>
 
@@ -607,7 +754,8 @@ td a:hover{text-decoration:underline}
 </div>
 
 <div class="sec">
-  <h2>Issue Breakdown</h2>
+  <h2>Product Backlog</h2>
+  <p class="tl-footnote" style="padding:.5rem 1.25rem 0">&#9432; See notes below for column definitions and interpretation guidance.</p>
   <table class="issue-table">
     <colgroup>
       <col class="col-num"><col class="col-title"><col class="col-est">
@@ -640,6 +788,26 @@ td a:hover{text-decoration:underline}
       </tr>
     </tfoot>
   </table>
+  <div class="sec-body" style="padding-top:2rem">
+    <p class="tl-note">
+      <strong>Column definitions.</strong>
+      <em>#</em> — GitHub issue number, linked to the issue.
+      <em>Est</em> — Pre-execution estimate in mid-level engineer-hours, captured before work began; this is the basis for all acceleration calculations.
+      <em>Session</em> — Measured active AI session time logged by the task tracker.
+      <em>Context words</em> — Reader-visible words in the chat window at session end — text the engineer actually reads. Excludes system reminders, skill bodies, tool results, and other injected payload.
+      <em>Engaged</em> — Total human time investment: session time plus a fraction of reading time (context words ÷ ${cfg.readingWpm} wpm × ${cfg.readingOverlap} overlap factor). The overlap factor accounts for reading that runs concurrently with active AI work rather than stacking on top.
+      <em>Accel.</em> — Acceleration ratio: estimate ÷ engaged hours. Values above 1.0× mean the work was delivered faster than the estimate implied.
+      <span style="color:#16a34a;font-weight:600">Green ≥ 1.5×</span> · <span style="color:#d97706;font-weight:600">Amber 0.8–1.5×</span> · <span style="color:#dc2626;font-weight:600">Red &lt; 0.8×</span>.
+    </p>
+    <p class="tl-note">
+      <strong>Epics and sub-issues.</strong>
+      Epic rows (dark background, ▶ prefix) show rolled-up totals across all their sub-issues — estimate, session, context, and engaged time are summed before the acceleration ratio is calculated. The epic-level ratio therefore reflects aggregate efficiency across the entire body of work, not just the orchestration session. Sub-issues are indented below their parent; their individual ratios capture per-task efficiency and will naturally vary. Do not add epic and sub-issue rows together — sub-issue values are already included in the epic total.
+    </p>
+    <p class="tl-note">
+      <strong>Missing values (—).</strong>
+      A dash means the field was not set on the GitHub project board for that issue. Issues without <em>Estimate</em> cannot contribute to acceleration calculations and are omitted from the aggregate ratio. Issues without <em>Session</em> or <em>Context words</em> reflect work completed outside a task-tracked session or before the tool was in use — they are included in the table for completeness but their engaged time is treated as zero in cost totals.
+    </p>
+  </div>
 </div>
 
 <div class="sec">
@@ -687,6 +855,7 @@ td a:hover{text-decoration:underline}
         const epicStart = children.length > 0
           ? children.reduce((min, c) => c.startedAt && (!min || c.startedAt < min) ? c.startedAt : min, epic.startedAt)
           : epic.startedAt;
+        const ROLE_BADGE = { agent: '🤖', orchestrator: '🎯', solo: '👤' };
         const makeRow = (i, sa, cls, prefix, sessionMinOverride) => {
           const lag        = diffDays(i.createdAt, sa);
           const flight     = diffDays(sa, i.closedAt);
@@ -696,9 +865,10 @@ td a:hover{text-decoration:underline}
           else if (flight === 0 && sessionMin != null) flightVal = fmtMin(sessionMin / 60);
           else if (flight === 0)                     flightVal = '< 1d';
           else                                       flightVal = flight + 'd';
+          const roleBadge = i.role && i.role !== 'solo' ? ` <span title="${i.role}" style="font-size:.7em;opacity:.7">${ROLE_BADGE[i.role] ?? ''}</span>` : '';
           return `<tr class="${cls}">
             <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
-            <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
+            <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}${roleBadge}</td>
             <td>${fmtDate(i.createdAt)}</td>
             <td>${fmtDate(sa)}</td>
             <td>${fmtDate(i.closedAt)}</td>
@@ -765,15 +935,19 @@ td a:hover{text-decoration:underline}
       </p>
       <p class="tl-note">
         <strong>Parallel fan-out and human cost.</strong>
-        When multiple agents run in parallel the wall-clock delivery time compresses, but the
-        engineer shepherding the orchestration does not experience a proportional reduction in
-        effort. Their engagement tracks roughly with the epic's orchestration time plus a fraction
-        of the context-reading time — much of which overlaps idle gaps while agents are running
-        rather than compounding linearly with the number of agents. As a result, the human cost
-        figures in this report may be modestly understated for highly parallel epics: the reading
-        overlap factor (currently ${cfg.readingOverlap * 100}%) already accounts for the
-        concurrent portion, but the residual shepherding attention across many simultaneous streams
-        is difficult to measure precisely.
+        When an engineer directs the AI to fan out an epic, their personal engagement — reading results,
+        answering questions, approving actions — runs as a single orchestration session. That session time
+        is the human's true cost, and it stays roughly constant regardless of how many agents run in parallel.
+        Meanwhile each agent logs its own session time. At the end of an orchestration window the aggregate
+        session time across all agents is typically a multiple of the human's investment: a two-hour
+        orchestration session directing several agents may accumulate four or more hours of total agent work.
+        This creates two compounding effects relative to solo human development: <strong>(1) per-task
+        acceleration</strong> — each agent completes its scope faster than the human baseline estimate; and
+        <strong>(2) parallel leverage</strong> — multiple tasks complete within a single human engagement
+        window, so the human's cost stays flat while the work multiplies. The <strong>Human Leverage</strong>
+        figure captures the product of both effects: the total multiplier from the engineer's perspective.
+        Issues in this table are labelled by role (🎯 orchestrator / 🤖 agent / 👤 solo) based on the
+        timing log entry written when work began. Issues without a role entry default to solo.
       </p>`;
     })()}
   </div>

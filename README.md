@@ -349,13 +349,27 @@ npx github-project-report --html --region sf_bay --role senior
 
 The report answers: **what did it actually cost to ship this, versus what would it have cost without AI?**
 
-It reads three fields from your board — `Estimate` (pre-work hours), `Actual Session Time` (measured minutes), and `Context Length` (chat words) — and builds:
+It reads three fields from your board — `Estimate` (pre-work hours), `Actual Session Time` (measured minutes), and `Context Length` (chat words) — and builds a multi-section, print-optimized PDF or HTML document:
 
-- **Engaged Hours** = session minutes + human review time (visible chat words ÷ WPM). Your real time investment — active session time plus the time spent reading, reviewing, and responding to AI output.
-- **Acceleration ratio** = Estimate ÷ Engaged Hours. A `4×` ratio means 4 estimated hours were delivered per engaged hour.
-- **Cost comparison** across all US regions at fully-burdened engineering rates — estimated cost vs. engaged-time cost
-- **Three baselines**: budget (mid-level), solo senior (70% efficiency), enterprise team (50% + 30% coordination overhead)
-- **Timeline analysis**: calendar weeks estimated vs. calendar weeks measured
+**Page 1 — Executive Summary**
+A branded header (title, generated date, region, project/repo/filters) followed by a plain-English summary of the report's structure and methodology — designed as a clean cover page for stakeholder distribution.
+
+**Page 2 — Agentic AI Accelerator + Comparison Rows**
+- Side-by-side cost view: Human Engineering Cost vs. AI-Assisted Cost with acceleration multiples (cost efficiency and calendar speed)
+- Six comparison rows: Budget Baseline · Solo Senior Engineer · Enterprise Team · AI-Assisted Actual · Agentic AI Accelerator (human leverage only) · AI Leverage summary
+
+**Pages 3+ — Supporting Detail**
+- **Product Backlog** — per-issue table with estimate, session time, context words, engaged hours, and acceleration ratio; epics roll up their sub-issues; column definitions and interpretation notes follow the table
+- **Engineering Cost by US Region** — the same acceleration math at every regional rate, with savings vs. estimate
+- **Timeline Analysis** — calendar view of created → started → closed per issue; pre-work lag and in-flight duration; detailed methodology notes on epic vs. sub-issue timing and parallel fan-out leverage
+
+**Key metrics:**
+- **Engaged Hours** = session minutes + human review time (visible chat words ÷ WPM × overlap factor)
+- **Acceleration ratio** = Estimate ÷ Engaged Hours
+- **Human Leverage** = Estimate ÷ human-only engagement time (orchestrator + solo sessions, agent time excluded)
+- **Three cost baselines**: budget mid-level · solo senior (60% efficiency) · enterprise team (50% + 30% coordination overhead)
+
+The report is print-optimized: high-contrast colors on dark banners, reduced ink usage on background fills, and page numbers in the lower-right corner. Output is landscape Letter PDF (or HTML with `--html`).
 
 This makes AI productivity legible to stakeholders. Not "we used AI" — but "we delivered 82 estimated hours in 11 engaged hours at `$800` instead of `$14,000`."
 

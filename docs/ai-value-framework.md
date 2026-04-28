@@ -244,7 +244,27 @@ At the end of every feature or epic, post this summary as a comment on the paren
 **Value delivered / reading-time cost:** ~XXX×
 ```
 
-Run the report script to pull estimates and measurements automatically, or query the board directly:
+Run the report script to pull estimates and measurements automatically and produce a print-ready PDF:
+
+```bash
+# HTML only (no dependencies)
+node scripts/reports/generate-value-report.mjs --html
+
+# PDF (requires puppeteer)
+node scripts/reports/generate-value-report.mjs
+
+# Closed issues, Q1 only
+node scripts/reports/generate-value-report.mjs --html --state closed --from 2026-01-01 --to 2026-03-31
+```
+
+The report produces a multi-page landscape document:
+- **Page 1** — branded header + executive summary with methodology note
+- **Page 2** — Agentic AI Accelerator section (human vs. AI cost side-by-side) and all six comparison rows (Budget Baseline, Solo Senior, Enterprise Team, AI-Assisted Actual, Human Leverage, AI Leverage)
+- **Pages 3+** — Product Backlog per-issue table with rollup epics, Engineering Cost by US Region, Timeline Analysis with pre-work lag and in-flight duration
+
+Output defaults to `./reports/value-report.html` / `.pdf`. Configure defaults in `scripts/reports/value-report-config.json`. See [README.md](../README.md#value-report) for all flags.
+
+Or query the board directly:
 
 ```bash
 gh api graphql -f query='
