@@ -68,10 +68,14 @@ const argv = process.argv.slice(2);
 const flag = (f, def = null) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : def; };
 const has  = f => argv.includes(f);
 
+const repoFlag = flag('--repo');
+const resolvedRepo = repoFlag ?? ttCfg.repo ?? '';
+const [resolvedOwner] = resolvedRepo.split('/');
+
 const cfg = {
-  projectId:     flag('--project-id', ttCfg.projectId ?? ''),
-  owner:         ttOwner || null,
-  repo:          ttCfg.repo ?? '',
+  projectId:     flag('--project-id') ?? ttCfg.projectId ?? '',
+  owner:         resolvedOwner || null,
+  repo:          resolvedRepo,
   title:         flag('--title', 'AI Engineering Value Report'),
   output:        flag('--output') ?? path.join(fileCfg.outputDir ?? './reports', 'value-report'),
   issues:        flag('--issues')?.split(',').map(Number) ?? null,
