@@ -166,8 +166,8 @@ Do this once before creating any issues.
 
 #### A. Master Plan Label
 
-Derive a slug from the title argument: lowercase, spaces → hyphens, strip special chars, max 30 chars.
-Example: "User Authentication & Identity" → `user-auth-identity`.
+Derive a slug from the title argument: lowercase, treat `&` and other special chars as hyphen separators, spaces → hyphens, collapse consecutive hyphens, max 30 chars.
+Example: "User Authentication & Identity" → `user-authentication-identity`.
 
 Present to the user:
 > "I'll tag all issues in this plan with **`plan/<slug>`**. Accept or replace?"
@@ -333,8 +333,10 @@ gh api graphql -f query='
 BODY=$(gh issue view <EPIC_N> --json body --jq '.body')
 gh api repos/<owner>/<repo>/issues/<EPIC_N> \
   --method PATCH \
-  --field body="$(echo "$BODY" | sed 's/<this-issue-#>/<EPIC_N>/g; s/<parent-epic-#>/none — this is the epic/g')"
+  --field body="$(echo "$BODY" | sed "s/<this-issue-#>/${EPIC_N}/g; s/<parent-epic-#>/none — this is the epic/g")"
 ```
+
+Note: use double-quotes around the sed expression so shell variables (`$EPIC_N`) expand correctly.
 
 ### Sub-Issue Creation Loop
 
@@ -427,8 +429,10 @@ gh api graphql -f query='
 BODY=$(gh issue view <SUB_N> --json body --jq '.body')
 gh api repos/<owner>/<repo>/issues/<SUB_N> \
   --method PATCH \
-  --field body="$(echo "$BODY" | sed 's/<this-issue-#>/<SUB_N>/g; s/<parent-epic-#>/<EPIC_N>/g')"
+  --field body="$(echo "$BODY" | sed "s/<this-issue-#>/${SUB_N}/g; s/<parent-epic-#>/${EPIC_N}/g")"
 ```
+
+Note: use double-quotes around the sed expression so shell variables (`$SUB_N`, `$EPIC_N`) expand correctly.
 
 #### 8. Print progress line
 
