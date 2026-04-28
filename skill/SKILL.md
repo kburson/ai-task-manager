@@ -156,6 +156,82 @@ When `/task close` exits with code 3, the CLI has already printed the unchecked 
 
 **Never run `gh issue close` directly.** Always use `/task close` so the pre-close gate runs. If no task session is active, fetch the issue body first and manually check for `- [ ]` lines before closing.
 
+## Plan-Mode Backlog Orchestration
+
+When the user confirms "yes" in Step 1b, execute the following sections in order.
+
+### Label Setup
+
+Do this once before creating any issues.
+
+#### A. Master Plan Label
+
+Derive a slug from the title argument: lowercase, spaces → hyphens, strip special chars, max 30 chars.
+Example: "User Authentication & Identity" → `user-auth-identity`.
+
+Present to the user:
+> "I'll tag all issues in this plan with **`plan/<slug>`**. Accept or replace?"
+
+Wait for the response. Use whatever label text the user confirms.
+
+Create the label if it doesn't exist:
+```bash
+gh label create "plan/<slug>" \
+  --color "#0075ca" \
+  --description "Plan: <full title>" \
+  2>/dev/null || true
+```
+
+#### B. Purpose Labels
+
+Create the standard purpose label set (skip any that already exist):
+```bash
+gh label create "purpose/infrastructure" --color "#e4e669" --description "CI/CD, env, deployment, migrations" 2>/dev/null || true
+gh label create "purpose/backend"        --color "#0e8a16" --description "APIs, business logic, data models, auth" 2>/dev/null || true
+gh label create "purpose/client"         --color "#1d76db" --description "UI components, pages, frontend state" 2>/dev/null || true
+gh label create "purpose/test"           --color "#f9d0c4" --description "Test suites, fixtures, coverage" 2>/dev/null || true
+gh label create "purpose/dx"             --color "#c5def5" --description "Tooling, scripts, docs, onboarding" 2>/dev/null || true
+gh label create "purpose/security"       --color "#d93f0b" --description "Auth hardening, audits, CVE remediation" 2>/dev/null || true
+gh label create "purpose/data"           --color "#bfd4f2" --description "Analytics, exports, aggregations, reporting" 2>/dev/null || true
+```
+
+**Purpose label inference — apply all that fit per issue:**
+
+| Label | Apply when the scope mentions... |
+|-------|----------------------------------|
+| `purpose/infrastructure` | CI/CD, pipelines, env vars, secrets, deployment, Docker, Railway, cron jobs, database migrations, cleanup scripts |
+| `purpose/backend` | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions |
+| `purpose/client` | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright |
+| `purpose/test` | test suites, fixtures, coverage, integration tests, unit tests, quality tooling |
+| `purpose/dx` | developer experience, documentation, onboarding, scripts, tooling, README, internal guides |
+| `purpose/security` | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation |
+| `purpose/data` | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3 |
+
+#### C. Look Up Size Option IDs
+
+The Size field is a single-select in GitHub Projects. Look up its option IDs once at the start of orchestration so you can set Size per issue without prompting:
+
+```bash
+gh api graphql -f query='
+  query($projectId: ID!) {
+    node(id: $projectId) {
+      ... on ProjectV2 {
+        fields(first: 20) {
+          nodes {
+            ... on ProjectV2SingleSelectField {
+              id name
+              options { id name }
+            }
+          }
+        }
+      }
+    }
+  }
+' -f projectId=<projectId-from-task-tracker.json>
+```
+
+From the result, find the field named `Size` and capture its option IDs for: `XS`, `S`, `M`, `L`, `XL`. Store them as local variables for use in the steps below.
+
 ## AI Directives
 
 ### Task context — always match active task to the work happening now
