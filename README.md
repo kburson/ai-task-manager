@@ -20,6 +20,7 @@ Time and context words are logged automatically on every Claude compaction and s
 - **GitHub CLI (`gh`)** — [install](https://cli.github.com) and authenticate with `gh auth login`
 - **jq** — [install](https://jqlang.github.io/jq/download/): `brew install jq` / `apt install jq` / `winget install jqlang.jq`
 - **Claude Code** — [install](https://claude.ai/code)
+- **Superpowers plugin** — install via Claude Code: `/install-plugin superpowers`. Required for the brainstorming, planning, and plan-execution skills that drive the `/task plan` → backlog creation workflow.
 - A **GitHub Projects V2** board for your repo with a Status field (Kanban) and optionally a Priority field
 
 ## Quick Start
