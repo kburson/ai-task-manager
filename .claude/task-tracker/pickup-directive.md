@@ -5,10 +5,11 @@ checkbox. If the checkbox is already checked, skip to step 6.
 
 ## Required steps before writing any code
 
-1. **Move the issue to `in-progress`:**
-   ```bash
-   node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh <this-issue-#> in-progress
+1. **Start tracking and move the issue to `in-progress`:**
    ```
+   /task #<this-issue-#>
+   ```
+   This writes a `start` row to the timing log, opens the issue, and moves the Kanban card to `in-progress` in one step. Run it in the agent's own git worktree — state is per-worktree, so it will not overwrite the orchestrator's active task.
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
    assumptions still hold, identify concrete files to edit, define the test approach,
@@ -69,8 +70,63 @@ checkbox. If the checkbox is already checked, skip to step 6.
 
    d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When all Sequence-N issues close, spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
 
-6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
-   injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
+6. **Spawn sibling sub-issues if needed.**
+
+   When the deep dive surfaces work that is out of scope for this issue but belongs to the same epic, create a new sub-issue rather than expanding scope. Each spawned issue is a sibling — linked to the parent **epic**, not to this sub-issue (GitHub supports only one level of nesting).
+
+   **Issue body — always open with the provenance block:**
+   ```markdown
+   Spawned from: #<this-issue-#>
+   Parent EPIC: #<parent-epic-#>
+   Priority: <P0|P1|P2>. Size: <XS|S|M|L|XL> (<estimate>h est).
+
+   ## Scope
+   <what was discovered and why it needs its own issue>
+
+   ## Acceptance Criteria
+   - [ ] ...
+   ```
+
+   **Create the issue:**
+   ```bash
+   gh issue create \
+     --title "<title>" \
+     --body-file /tmp/spawned-body.md \
+     --assignee <assignee from .claude/task-tracker.json> \
+     --label "plan/<same-slug-as-parent-epic>" \
+     --label "purpose/<inferred>"
+   ```
+   Capture the new issue number as `SPAWNED_N`. Get its node ID:
+   ```bash
+   gh issue view <SPAWNED_N> --json id --jq '.id'
+   ```
+
+   **Link to the epic as a sub-issue** (not to this issue):
+   ```bash
+   gh api graphql -f query='
+     mutation($parentId:ID!, $childId:ID!) {
+       addSubIssue(input:{ issueId:$parentId, subIssueId:$childId }) {
+         issue { number }
+       }
+     }
+   ' -f parentId=<EPIC_NODE_ID> -f childId=<SPAWNED_NODE_ID>
+   ```
+
+   **Add to project, set Priority / Size / Estimate** — same commands as the backlog orchestration flow. Move to backlog:
+   ```bash
+   scripts/gh/move-state.sh <SPAWNED_N> backlog
+   scripts/gh/set-priority.sh <SPAWNED_N> <p0|p1|p2>
+   ```
+
+   **Inject a Pickup Directive** into the body (append the standard block with the DoD checklist). Replace `<this-issue-#>` with `SPAWNED_N` and `<parent-epic-#>` with the epic number.
+
+   **Post a comment on the epic** so the orchestrator sees the addition:
+   ```bash
+   gh issue comment <parent-epic-#> \
+     --body "Spawned #<SPAWNED_N> from deep dive on #<this-issue-#>: <one-line reason>. Added to backlog."
+   ```
+
+   The spawned issue stays in **backlog** — it is not picked up in this session. The orchestrator decides when to fan it out.
 
 7. **Proceed with implementation.** Branch: `<this-issue-#>-<short-slug>`. Use
    `superpowers:using-git-worktrees`. Every commit references this issue and parent epic:

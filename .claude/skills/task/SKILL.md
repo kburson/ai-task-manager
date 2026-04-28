@@ -511,7 +511,8 @@ Then ask:
 
 **Solo fan-out (a set of independent issues with no parent epic):**
 - The currently active task is the engagement anchor — stay on it while agents work the others. Its time records the orchestration cost.
-- If no task is active when the fan-out is requested, ask the user which of the issues should serve as the engagement anchor before spawning agents.
+- **If no task is active when the fan-out is requested, you MUST ask the user which issue should serve as the anchor before dispatching any agents.** Do not fan out without an anchor — orchestration time would be lost entirely.
+- The anchor task must NOT itself be dispatched to an agent. The anchor's timing log is written exclusively by the orchestrator. If an agent also wrote to it, the session accounting would be corrupted.
 - The anchored issue's time will be a mix of orchestration + any direct implementation work the main thread does — this is expected and acceptable for solo fan-out.
 - **Run `/task update` every time an agent returns** — same rule as epic fan-out.
 
@@ -560,7 +561,7 @@ Then ask:
 
 - **Paused** → `/task resume` to reattach without reloading body.
 - **Abandoned** (forgot to pause) → SessionStart hook auto-recovers timing on next open.
-- **Mid-epic pickup** → `/task #epic` to reattach and reload context before fanning out.
+- **Mid-epic pickup** → `/task #epic` to reattach and reload context before fanning out. Check epic comments for any "Spawned #N from deep dive" notices — those are new backlog items agents added during their deep dives and need to be sequenced into the remaining fan-out.
 - **Jumping between tasks** → `/task resume #N` to reattach and reload body for the target issue.
 
 ## Hooks
@@ -578,7 +579,7 @@ Run parallel agents in separate git worktrees — each has isolated state and wo
 
 **Epic / sub-issue pattern:** Start `/task #<epic>` in the main (orchestrator) worktree, fan sub-issues to agent worktrees. Epic accumulates orchestration time (human engagement cost); sub-issues accumulate execution time (AI effort). Both feed the value report to separate engagement cost from AI throughput.
 
-**Solo fan-out pattern:** When fanning a set of independent issues with no parent epic, the main thread stays on whichever issue was active when the fan-out began. That issue's time records the orchestration cost. If no task is active, ask the user to pick an anchor before fanning. See AI Directives → Task context.
+**Solo fan-out pattern:** When fanning a set of independent issues with no parent epic, the main thread stays on whichever issue was active when the fan-out began. That issue's time records the orchestration cost. If no task is active, **stop and ask the user to pick an anchor before dispatching any agents** — never fan out without one. The anchor task must not itself be dispatched to an agent; its timing log belongs exclusively to the orchestrator. See AI Directives → Task context.
 
 ## Error Handling
 

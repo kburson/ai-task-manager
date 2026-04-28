@@ -474,6 +474,13 @@ td a:hover{text-decoration:underline}
 .ts .tn{font-size:1.875rem;font-weight:700;color:#0f172a}
 .ts .tl{font-size:.6875rem;color:#64748b}
 .disclaimer{font-size:.625rem;color:#94a3b8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.375rem;padding:.375rem .75rem;margin-bottom:.75rem;line-height:1.4}
+.tl-rule{border:none;border-top:1px solid #e2e8f0;margin:1.5rem 0 0}
+.tl-heading{font-size:.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#475569;background:#f1f5f9;padding:.5rem .875rem;margin:0;border-radius:.25rem .25rem 0 0}
+.tl-meta{font-size:.6875rem;color:#64748b;margin:.375rem 0 .625rem;padding:0 .25rem}
+.tl-footnote{font-size:.75rem;color:#94a3b8;margin:1.25rem 0 .375rem;font-style:italic;padding:0 .25rem}
+.tl-note{font-size:.6875rem;color:#475569;line-height:1.6;margin-bottom:.5rem;padding:.625rem .875rem;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 .25rem .25rem 0}
+.tl-note strong{color:#0f172a}
+.tl-note code{font-family:monospace;font-size:.625rem;background:#e2e8f0;padding:.1em .3em;border-radius:.2em}
 .footer{text-align:center;color:#94a3b8;font-size:.6875rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e2e8f0}
 @media print{
   body{background:#fff}
@@ -704,7 +711,28 @@ td a:hover{text-decoration:underline}
         const kidRows = children.map(c => makeRow(c, c.startedAt, 'child-row', '<span class="child-indent">↳</span> ')).join('\n');
         return [epicRow, kidRows];
       }).join('\n');
-      return `<table class="issue-table tl-table" style="margin-top:1.25rem">
+      return `
+      <hr class="tl-rule">
+      <h3 class="tl-heading">Backlog Engagement Timeline</h3>
+      <p class="tl-meta">${(() => {
+        const fmtD = d => d ? d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'any';
+        let scopeLabel;
+        if (cfg.status)            scopeLabel = `Kanban status: ${cfg.status}`;
+        else if (cfg.state === 'all') scopeLabel = 'All issues (open + closed)';
+        else                       scopeLabel = `GitHub state: ${cfg.state}`;
+        const dateRange = (cfg.fromDate || cfg.toDate)
+          ? `Closed: ${fmtD(cfg.fromDate)} → ${fmtD(cfg.toDate)}`
+          : null;
+        const issueCount = items.length === 1 ? '1 issue' : `${items.length} issues`;
+        return [
+          cfg.issues ? `Issues: #${cfg.issues.join(', #')}` : null,
+          scopeLabel,
+          dateRange,
+          issueCount,
+        ].filter(Boolean).join('&ensp;·&ensp;');
+      })()}</p>
+      <p class="tl-footnote">&#9432; See notes below the table for column definitions and interpretation guidance.</p>
+      <table class="issue-table tl-table" style="margin-top:0.5rem">
         <colgroup>
           <col style="width:4%"><col style="width:32%">
           <col style="width:13%"><col style="width:13%"><col style="width:13%">
@@ -716,7 +744,37 @@ td a:hover{text-decoration:underline}
           <th class="num">Pre-work lag</th><th class="num">In-flight</th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table>
+      <p class="tl-note" style="margin-top:1rem">
+        <strong>How to read this table.</strong>
+        <em>Pre-work lag</em> is the calendar days between issue creation and the first recorded
+        <code>start</code> event in the timing log — the time an issue sat in backlog before anyone
+        picked it up. <em>In-flight</em> is the span from first start to close; for issues completed
+        within a single day it shows the measured active session time instead of a calendar count.
+        <em>Started</em> requires a timing log written by the task tracker. Issues worked by
+        sub-agents on an older version of the tool, or implemented without the task skill active,
+        will show <strong>—</strong> for Started and derived columns.
+      </p>
+      <p class="tl-note">
+        <strong>Epic vs. sub-issue in-flight time.</strong>
+        An epic's in-flight span will typically exceed the sum of its sub-issues. The epic clock
+        starts with the orchestrator's first planning pass and runs through final review and close —
+        capturing scheduling overhead, sequencing decisions, and the gaps between agent batches that
+        sub-issue clocks never see. This is expected and is not double-counting: it reflects the
+        real calendar cost of coordinating parallel work.
+      </p>
+      <p class="tl-note">
+        <strong>Parallel fan-out and human cost.</strong>
+        When multiple agents run in parallel the wall-clock delivery time compresses, but the
+        engineer shepherding the orchestration does not experience a proportional reduction in
+        effort. Their engagement tracks roughly with the epic's orchestration time plus a fraction
+        of the context-reading time — much of which overlaps idle gaps while agents are running
+        rather than compounding linearly with the number of agents. As a result, the human cost
+        figures in this report may be modestly understated for highly parallel epics: the reading
+        overlap factor (currently ${cfg.readingOverlap * 100}%) already accounts for the
+        concurrent portion, but the residual shepherding attention across many simultaneous streams
+        is difficult to measure precisely.
+      </p>`;
     })()}
   </div>
 </div>
