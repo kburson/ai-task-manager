@@ -437,6 +437,35 @@ After each sub-issue:
   Created #<SUB_N>  <title>  [purpose/backend, purpose/security]  S  3h  P0  → linked to #<EPIC_N>
 ```
 
+### Summary Report
+
+After all sub-issues are created, print the full issue map:
+
+```
+Plan: <plan-slug>   label: plan/<slug>
+
+Epic:  #<EPIC_N>  EPIC: <title>                              <Size>  <Estimate>h  <Priority>
+  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
+  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
+  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
+  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
+```
+
+Then ask:
+
+> "Switch the planning bucket to track against the epic (#<EPIC_N>), or keep it untracked and continue planning?"
+
+- **Switch** → run `/task #<EPIC_N>` to attach the session to the epic.
+- **Keep planning** → leave plan mode active; the user can run `/task new <next-epic-title>` to create the next epic from the same spec.
+
+### Multiple Epics in One Spec
+
+If the spec contains more than one epic, `/task new <title>` creates **one epic at a time** — the title argument disambiguates which section to use. After completing the summary report and tracking offer, if more epics remain in the spec, ask:
+
+> "Ready to create the next epic? Run `/task new <next-epic-title>` when you are."
+
+Do not proceed to the next epic automatically.
+
 ## AI Directives
 
 ### Task context — always match active task to the work happening now
