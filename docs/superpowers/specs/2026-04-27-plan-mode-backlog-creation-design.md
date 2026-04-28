@@ -37,7 +37,57 @@ Read `.claude/task-tracker-state.json` (via the CLI `status` or directly). If `a
                │
                ├─ no ──→ existing behavior
                │
-               └─ yes ──→ Backlog Orchestration (see below)
+               └─ yes ──→ Label Setup (see below) ──→ Backlog Orchestration
+```
+
+---
+
+## Label Setup
+
+Before creating any issues, establish two label sets.
+
+### Master Plan Label
+
+Derive a short slug from the epic title (lowercase, hyphenated, max 30 chars). Present it to the user:
+
+> "I'll tag all issues in this plan with **`plan/nexus-auth`**. Accept or replace?"
+
+Wait for confirmation. If the user provides a replacement, use that instead.
+
+Create the label in the repo if it doesn't already exist:
+```bash
+gh label create "plan/<slug>" --color "#0075ca" --description "Plan: <full title>" 2>/dev/null || true
+```
+
+All issues (epic and sub-issues) receive this label.
+
+### Purpose Labels
+
+Standard set — create any that are missing before the first issue:
+
+| Label | Color | When to apply |
+|-------|-------|--------------|
+| `purpose/infrastructure` | `#e4e669` | CI/CD, env setup, secrets, deployment, database migrations |
+| `purpose/backend` | `#0e8a16` | API endpoints, business logic, data models, auth |
+| `purpose/client` | `#1d76db` | UI components, pages, frontend state, CSS |
+| `purpose/test` | `#f9d0c4` | Test suites, fixtures, coverage, quality tooling |
+| `purpose/dx` | `#c5def5` | Developer experience: tooling, scripts, docs, onboarding |
+| `purpose/security` | `#d93f0b` | Auth hardening, audits, vulnerability remediation |
+| `purpose/data` | `#bfd4f2` | Analytics, exports, aggregations, reporting |
+
+Claude assigns one or more purpose labels per issue by reading the scope. Apply all that fit — an issue can carry multiple purpose labels.
+
+**Inference examples:**
+- "Set up GitHub Actions CI" → `purpose/infrastructure`, `purpose/dx`
+- "Implement MFA (TOTP)" → `purpose/backend`, `purpose/security`
+- "Dashboard charts and visualizations" → `purpose/client`, `purpose/data`
+- "Stripe webhook handler" → `purpose/backend`, `purpose/infrastructure`
+- "CSV/JSON data export" → `purpose/backend`, `purpose/data`
+- "Write user onboarding documentation" → `purpose/dx`
+
+Create missing labels before the first `gh issue create`:
+```bash
+gh label create "purpose/<name>" --color "<hex>" --description "<description>" 2>/dev/null || true
 ```
 
 ---
@@ -51,7 +101,9 @@ gh issue create \
   --title "EPIC: <title>" \
   --body "<epic-scope-section>" \
   --assignee <assignee-from-config> \
-  --label <defaultLabels-from-config>
+  --label "plan/<slug>" \
+  --label "purpose/<inferred>" \
+  [--label <defaultLabels-from-config> ...]
 ```
 
 Capture the returned issue number as `<EPIC_N>`.
@@ -76,7 +128,11 @@ For each sub-issue section in the spec (in order):
    gh issue create \
      --title "<sub-issue-title>" \
      --body "<assembled-body>" \
-     --assignee <assignee-from-config>
+     --assignee <assignee-from-config> \
+     --label "plan/<slug>" \
+     --label "purpose/<inferred>" \
+     [--label "purpose/<inferred2>" ...] \
+     [--label <defaultLabels-from-config> ...]
    ```
    Capture the returned number as `<SUB_N>`.
 
