@@ -15,7 +15,7 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 |---|---|
 | `/task` | Print active task, elapsed, words since last marker |
 | `/task #N` | **Start/switch to issue #N and display its full body** |
-| `/task new [title]` | Create a new issue and start working on it |
+| `/task new [title]` | Create a new issue and start working on it. In plan mode: optionally orchestrate full epic + sub-issue backlog from a spec in context. |
 | `/task plan` | Open an untracked planning bucket |
 | `/task resume` | Resume the last paused task (no body reload — context still warm) |
 | `/task resume #N` | **Switch back to a specific paused task and display its body** |
@@ -41,6 +41,23 @@ node "$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-t
 Print stdout verbatim. On non-zero exit, print stderr and surface the error.
 
 **Exit code 3** from `/task close` means unchecked items were found — see Pre-Close Gate below.
+
+### Step 1b: For `/task new` — check for plan mode
+
+After the CLI returns, read `.claude/task-tracker-state.json`:
+```bash
+cat "$(git rev-parse --show-toplevel)/.claude/task-tracker-state.json"
+```
+If `active` is **not** `"plan"` → proceed to Step 3 (standard flow).
+
+If `active === "plan"` → ask the user:
+
+> "I see a spec in context — use it to build out the full backlog?
+> I'll create the epic, sub-issues, set sizing/priority, and inject pickup directives.
+> **yes** / **no** (no creates a single blank issue and starts tracking)"
+
+- **no** → proceed to Step 3.
+- **yes** → proceed to **Plan-Mode Backlog Orchestration** below.
 
 ### Step 2: For `/task #N` and `/task resume #N` — ensure issue states are correct
 
