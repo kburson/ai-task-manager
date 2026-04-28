@@ -336,6 +336,107 @@ gh api repos/<owner>/<repo>/issues/<EPIC_N> \
   --field body="$(echo "$BODY" | sed 's/<this-issue-#>/<EPIC_N>/g; s/<parent-epic-#>/none — this is the epic/g')"
 ```
 
+### Sub-Issue Creation Loop
+
+Repeat the following for each sub-issue in the spec, in document order.
+
+#### 1. Infer purpose labels
+
+Read the sub-issue's Scope. Apply all matching `purpose/*` labels from the inference table in Label Setup B.
+
+#### 2. Assemble the sub-issue body
+
+Combine in order:
+1. The **Scope** section text
+2. The **Acceptance Criteria** checkboxes
+3. The Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Read `.claude/task-tracker/definition-of-done.md` and use placeholders for now:
+
+```markdown
+## ⚡ Pickup Directive
+> Follow: `.claude/task-tracker/pickup-directive.md`
+
+- [ ] Deep dive complete
+
+### Definition of Done
+<contents of definition-of-done.md verbatim>
+
+---
+```
+
+Use `<this-issue-#>` and `<parent-epic-#>` as placeholders — replace after creation in step 7.
+
+#### 3. Create the sub-issue
+
+```bash
+gh issue create \
+  --title "<sub-issue-title>" \
+  --body "<assembled-body>" \
+  --assignee <assignee from .claude/task-tracker.json key "assignee", default "@me"> \
+  --label "plan/<slug>" \
+  --label "purpose/<inferred1>" \
+  [--label "purpose/<inferred2>" ...] \
+  [--label "<defaultLabel>" ...]
+```
+
+Capture the issue number as `SUB_N`. Get the node ID:
+```bash
+gh issue view <SUB_N> --json id --jq '.id'
+```
+Store as `SUB_NODE_ID`.
+
+#### 4. Set Priority, Size, Estimate
+
+Use the same commands as Epic Creation §4–§6, substituting `SUB_N` and the sub-issue's declared Size/Estimate/Priority.
+
+Get the project item ID:
+```bash
+gh api graphql -f query='
+  query($owner:String!,$repo:String!,$number:Int!) {
+    repository(owner:$owner, name:$repo) {
+      issue(number:$number) {
+        projectItems(first:5) { nodes { id } }
+      }
+    }
+  }
+' -f owner=<owner> -f repo=<repo> -F number=<SUB_N> --jq '.data.repository.issue.projectItems.nodes[0].id'
+```
+
+Priority default for sub-issues: inherit from parent epic if not declared in spec.
+
+#### 5. Move to Backlog
+
+```bash
+"$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh" <SUB_N> backlog
+```
+
+#### 6. Link to epic as sub-issue
+
+```bash
+gh api graphql -f query='
+  mutation($parentId:ID!, $childId:ID!) {
+    addSubIssue(input:{ issueId:$parentId, subIssueId:$childId }) {
+      issue { number }
+    }
+  }
+' -f parentId=<EPIC_NODE_ID> -f childId=<SUB_NODE_ID>
+```
+
+#### 7. Replace placeholder issue numbers in body
+
+```bash
+BODY=$(gh issue view <SUB_N> --json body --jq '.body')
+gh api repos/<owner>/<repo>/issues/<SUB_N> \
+  --method PATCH \
+  --field body="$(echo "$BODY" | sed 's/<this-issue-#>/<SUB_N>/g; s/<parent-epic-#>/<EPIC_N>/g')"
+```
+
+#### 8. Print progress line
+
+After each sub-issue:
+```
+  Created #<SUB_N>  <title>  [purpose/backend, purpose/security]  S  3h  P0  → linked to #<EPIC_N>
+```
+
 ## AI Directives
 
 ### Task context — always match active task to the work happening now
