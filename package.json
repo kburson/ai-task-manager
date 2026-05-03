@@ -1,6 +1,6 @@
 {
   "name": "@burson.kendrick/claude-gh-task-manager",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Claude Code /task skill — bind AI sessions to GitHub issues and auto-log time + context words",
   "type": "module",
   "license": "MIT",
@@ -15,7 +15,7 @@
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs --html",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
-    "publish": "npm publish --access public"
+    "release": "npm publish --access public"
   },
   "files": [
     "bin/",
