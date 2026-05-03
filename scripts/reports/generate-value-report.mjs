@@ -498,7 +498,7 @@ td a:hover{text-decoration:underline}
 .tg{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
 .tc h3{font-size:.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:.875rem}
 .ts{margin-bottom:.75rem}
-.ts .tn{font-size:1.875rem;font-weight:700;color:#0f172a}
+.ts .tn{font-size:1.125rem;font-weight:700;color:#0f172a}
 .ts .tl{font-size:.6875rem;color:#64748b}
 .disclaimer{font-size:.625rem;color:#94a3b8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.375rem;padding:.375rem .75rem;margin-bottom:.75rem;line-height:1.4}
 .tl-rule{border:none;border-top:1px solid #e2e8f0;margin:1.5rem 0 0}
