@@ -229,7 +229,11 @@ function cmdStatusline() {
   if (existsSync(destSettings)) {
     try { settings = JSON.parse(readFileSync(destSettings, 'utf8')); } catch { /* ignore */ }
   }
-  settings.statusLine = destScript;
+  // Heal legacy string form written by older versions of this installer.
+  if (typeof settings.statusLine === 'string') {
+    settings.statusLine = { type: 'command', command: settings.statusLine };
+  }
+  settings.statusLine = { type: 'command', command: destScript };
   writeFileSync(destSettings, JSON.stringify(settings, null, 2) + '\n', 'utf8');
   ok(`Updated ${dim('~/.claude/settings.json')}`);
 
