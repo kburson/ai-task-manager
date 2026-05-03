@@ -14,7 +14,8 @@
   "scripts": {
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs --html",
-    "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf"
+    "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
+    "publish": "npm publish --access public"
   },
   "files": [
     "bin/",
