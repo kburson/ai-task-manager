@@ -8,13 +8,49 @@
 set -euo pipefail
 
 # ── helpers ────────────────────────────────────────────────────────────────
+# Color palette: bold/dim, fg colors, and a couple of bg banners. Each visual
+# helper aims to delineate sections clearly without becoming visually noisy.
 
-bold()  { printf "\033[1m%s\033[0m\n" "$*"; }
-info()  { printf "  \033[34mℹ\033[0m  %s\n" "$*"; }
-ok()    { printf "  \033[32m✓\033[0m  %s\n" "$*"; }
-warn()  { printf "  \033[33m⚠\033[0m  %s\n" "$*"; }
-err()   { printf "  \033[31m✗\033[0m  %s\n" "$*" >&2; }
-prompt(){ printf "\033[1m%s\033[0m " "$*"; }
+bold()    { printf "\033[1m%s\033[0m\n" "$*"; }
+dim()     { printf "\033[2m%s\033[0m" "$*"; }
+info()    { printf "  \033[36m🔹\033[0m %s\n" "$*"; }
+ok()      { printf "  \033[32m✅\033[0m %s\n" "$*"; }
+warn()    { printf "  \033[33m⚠️ \033[0m %s\n" "$*"; }
+err()     { printf "  \033[31m❌\033[0m %s\n" "$*" >&2; }
+prompt()  { printf "  \033[35m❓\033[0m \033[1m%s\033[0m " "$*"; }
+divider() { printf "  \033[2m─────────────────────────────────────────────────────────\033[0m\n"; }
+
+# banner <emoji> <title> [subtitle]
+banner() {
+  local emoji="$1" title="$2" sub="${3:-}"
+  local pad="                                                              "
+  echo
+  printf "\033[44m\033[97m\033[1m%s\033[0m\n" "  ${pad:0:60}"
+  printf "\033[44m\033[97m\033[1m  %s  %-56s\033[0m\n" "$emoji" "$title"
+  if [[ -n "$sub" ]]; then
+    printf "\033[44m\033[97m  \033[2m   %-57s\033[0m\n" "$sub"
+  fi
+  printf "\033[44m\033[97m\033[1m%s\033[0m\n" "  ${pad:0:60}"
+  echo
+}
+
+# step <emoji> <"Step X of Y"> <title>
+step() {
+  local emoji="$1" idx="$2" title="$3"
+  echo
+  printf "\033[36m▸\033[0m \033[1m%s  %s · %s\033[0m\n" "$emoji" "$idx" "$title"
+  divider
+  echo
+}
+
+# success_banner <message>
+success_banner() {
+  local msg="$1"
+  local pad="                                                              "
+  echo
+  printf "\033[42m\033[30m\033[1m  ✅  %-56s\033[0m\n" "$msg"
+  echo
+}
 
 jq_get() {
   # jq_get <json-string> <jq-filter>
@@ -41,18 +77,11 @@ mkdir -p "$CONFIG_DIR"
 
 # ── banner ─────────────────────────────────────────────────────────────────
 
-echo ""
-bold "═══════════════════════════════════════════════════"
-bold "   claude-gh-task-manager — Project Setup"
-bold "═══════════════════════════════════════════════════"
-echo ""
-info "Target project: $TARGET_DIR"
-echo ""
+banner "🎯" "claude-gh-task-manager — Project Setup" "Target: $TARGET_DIR"
 
 # ── step 1: github auth ────────────────────────────────────────────────────
 
-bold "Step 1 of 5 — GitHub Authentication"
-echo ""
+step "🔐" "Step 1 of 5" "GitHub Authentication"
 
 if ! command -v gh &>/dev/null; then
   err "GitHub CLI (gh) not found. Install from: https://cli.github.com"
@@ -88,8 +117,7 @@ echo ""
 
 # ── step 2: repo + project ─────────────────────────────────────────────────
 
-bold "Step 2 of 5 — Repository & GitHub Project"
-echo ""
+step "📁" "Step 2 of 5" "Repository & GitHub Project"
 
 # Detect repo from git remote
 DETECTED_REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || echo '')
@@ -103,14 +131,25 @@ if [[ -n "$DETECTED_REPO" ]]; then
   fi
 fi
 
-if [[ -z "$DETECTED_REPO" ]]; then
+while [[ -z "$DETECTED_REPO" || ! "$DETECTED_REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; do
   prompt "GitHub repo (owner/repo):"
   read -r DETECTED_REPO
-fi
+  if [[ ! "$DETECTED_REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+    err "Expected format: owner/repo (e.g. octocat/hello-world)"
+    DETECTED_REPO=""
+  fi
+done
 
 REPO="$DETECTED_REPO"
-OWNER=$(echo "$REPO" | cut -d'/' -f1)
-REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+OWNER="${REPO%%/*}"
+REPO_NAME="${REPO##*/}"
+
+# Verify repo exists and is accessible
+if ! gh repo view "$REPO" &>/dev/null; then
+  err "Repo '$REPO' not found or not accessible with current gh auth."
+  err "Check the name, your gh login (gh auth status), or repo visibility."
+  exit 1
+fi
 ok "Repo: $REPO"
 echo ""
 
@@ -124,6 +163,11 @@ PROJECTS_JSON=$(gh api graphql -f query="
     }
   }
 }" --jq '.data.repository.projectsV2.nodes | map({id,title,number})' 2>/dev/null || echo '[]')
+# Coerce anything that isn't a JSON array into an empty array — gh can return a
+# success-shaped error envelope which would otherwise crash later jq filters.
+if ! echo "$PROJECTS_JSON" | jq -e 'type == "array"' &>/dev/null; then
+  PROJECTS_JSON='[]'
+fi
 PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq 'length' 2>/dev/null || echo '0')
 
 PROJECT_NODE_ID=""
@@ -237,8 +281,7 @@ echo ""
 
 # ── step 3: kanban field discovery ────────────────────────────────────────
 
-bold "Step 3 of 5 — Kanban Status Field"
-echo ""
+step "📊" "Step 3 of 5" "Kanban Status Field"
 
 info "Fetching project fields..."
 FIELDS_JSON=$(gh api graphql -f query="
@@ -460,8 +503,7 @@ echo ""
 
 # ── step 4: project management fields ─────────────────────────────────────
 
-bold "Step 4 of 5 — Project Management Fields"
-echo ""
+step "⚙️ " "Step 4 of 5" "Project Management Fields"
 info "For each field: if a matching field exists it will be used automatically."
 info "Otherwise you can map to an existing field or create a new one (default)."
 echo ""
@@ -669,8 +711,7 @@ echo ""
 
 # ── step 5: write config + issue templates ─────────────────────────────────
 
-bold "Step 5 of 5 — Writing Config & Issue Templates"
-echo ""
+step "💾" "Step 5 of 5" "Writing Config & Issue Templates"
 
 # Write .claude/task-tracker.json — merge with existing config
 CONFIG_FILE="$CONFIG_FILE" \
@@ -861,19 +902,21 @@ echo ""
 
 # ── done ───────────────────────────────────────────────────────────────────
 
-bold "═══════════════════════════════════════════════════"
-bold "   Setup complete!"
-bold "═══════════════════════════════════════════════════"
+success_banner "Setup complete!"
+ok "Config           $(dim "$CONFIG_FILE")"
+ok "Issue templates  $(dim "$TEMPLATE_DIR/")"
 echo ""
-ok "Config:          $CONFIG_FILE"
-ok "Issue templates: $TEMPLATE_DIR/"
+divider
 echo ""
-info "Next steps:"
-echo "   1. Commit the issue templates (config is gitignored):"
-echo "      git add .github/ISSUE_TEMPLATE/"
-echo "      git commit -m 'chore: add claude-gh-task-manager issue templates'"
+printf "  \033[1m🚀 Next steps\033[0m\n"
 echo ""
-echo "   2. Start Claude Code and type: /task #<issue-number>"
+printf "    \033[32m1.\033[0m Commit the issue templates \033[2m(config is gitignored)\033[0m:\n"
+printf "       \033[36mgit add .github/ISSUE_TEMPLATE/\033[0m\n"
+printf "       \033[36mgit commit -m 'chore: add claude-gh-task-manager issue templates'\033[0m\n"
 echo ""
-info "To reconfigure at any time, run: npx claude-gh-task-manager init"
+printf "    \033[32m2.\033[0m Start Claude Code and type: \033[35m/task #<issue-number>\033[0m\n"
+echo ""
+divider
+echo ""
+info "To reconfigure at any time, run: \033[36mnpx claude-gh-task-manager init\033[0m"
 echo ""
