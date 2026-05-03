@@ -918,5 +918,5 @@ printf "    \033[32m2.\033[0m Start Claude Code and type: \033[35m/task #<issue-
 echo ""
 divider
 echo ""
-info "To reconfigure at any time, run: \033[36mnpx claude-gh-task-manager init\033[0m"
+printf "  \033[36m🔹\033[0m To reconfigure at any time, run: \033[36mnpx claude-gh-task-manager init\033[0m\n"
 echo ""
