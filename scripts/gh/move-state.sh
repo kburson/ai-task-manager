@@ -83,6 +83,45 @@ if [[ -z "$OPTION_ID" ]]; then
 fi
 
 REPO=$(read_config repo)
+
+# Done gate — refuse if the issue body still has unchecked process boxes.
+# Audited override: TASK_TRACKER_FORCE_DONE=1 bypasses but writes a visible bypass
+# notice to the issue's timing log so the skip is auditable.
+if [[ "$STATE" == "done" ]]; then
+  BODY=$(gh issue view "$ISSUE" -R "$REPO" --json body --jq '.body' 2>/dev/null || echo "")
+  if [[ -n "$BODY" ]]; then
+    UNCHECKED=$(echo "$BODY" | grep -c '^- \[ \] ' || true)
+    HAS_DEEP_DIVE_DONE=$(echo "$BODY" | grep -c '^- \[x\] Deep dive complete' || true)
+    HAS_DEEP_DIVE_LINE=$(echo "$BODY" | grep -c 'Deep dive complete' || true)
+
+    REASONS=()
+    if [[ "$UNCHECKED" -gt 0 ]]; then
+      REASONS+=("$UNCHECKED unchecked checkbox(es) in issue body")
+    fi
+    if [[ "$HAS_DEEP_DIVE_LINE" -gt 0 && "$HAS_DEEP_DIVE_DONE" -eq 0 ]]; then
+      REASONS+=("Deep dive checkpoint is not checked off")
+    fi
+
+    if [[ ${#REASONS[@]} -gt 0 ]]; then
+      if [[ "${TASK_TRACKER_FORCE_DONE:-}" == "1" ]]; then
+        echo "⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing done gate for #$ISSUE" >&2
+        for r in "${REASONS[@]}"; do echo "   • $r" >&2; done
+        gh issue comment "$ISSUE" -R "$REPO" --body "⚠ **Done gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at $(date -u +%Y-%m-%dT%H:%M:%SZ). Unverified: $(IFS=, ; echo "${REASONS[*]}")." >/dev/null 2>&1 || true
+      else
+        echo "" >&2
+        echo "⛔ Refusing to move #$ISSUE to Done:" >&2
+        for r in "${REASONS[@]}"; do echo "   • $r" >&2; done
+        echo "" >&2
+        echo "See .claude/task-tracker/pickup-directive.md § \"Hard Rules\"." >&2
+        echo "Verify each item, check its box, then retry. Legitimate-abandonment override:" >&2
+        echo "   TASK_TRACKER_FORCE_DONE=1 $0 $ISSUE done${ITEM_ID_OVERRIDE:+ --item-id $ITEM_ID_OVERRIDE}" >&2
+        echo "" >&2
+        exit 4
+      fi
+    fi
+  fi
+fi
+
 OWNER=$(echo "$REPO" | cut -d'/' -f1)
 REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 

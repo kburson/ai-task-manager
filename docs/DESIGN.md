@@ -24,7 +24,7 @@ A project-local Claude Code skill (`/task`) that binds the active work session t
 /task pause             Soft-stop — flushes timing, keeps task as "last active"
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
 /task close             Hard-stop — flush, update board fields, move to Done
-/task close --force     Close even if unchecked Definition of Done items remain
+TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified items (legitimate abandonment only); posts an audit comment to the issue
 /task log #N            Re-compute and write Actual Session Time + Context Length to GitHub Projects
 /task check "<label>"   Toggle a checkbox in the active issue body (exact label match)
 /task fleet             Show all active tasks across parallel agent worktrees
@@ -348,7 +348,7 @@ Every issue in a spec should include `**Sequence:** N`. Issues with the same num
 Every issue created from a master plan (and optionally single issues when `pickupDirective: true`) gets a structured block injected at creation time:
 
 ```markdown
-## ⚡ Pickup Directive
+## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
 > Follow: `.claude/task-tracker/pickup-directive.md`
 
 - [ ] Deep dive complete
@@ -356,6 +356,8 @@ Every issue created from a master plan (and optionally single issues when `picku
 ### Definition of Done
 <contents of definition-of-done.md>
 ```
+
+The block is built by `scripts/task-tracker/preflight-issue.mjs`, which also acts as a gate: it verifies that `.claude/task-tracker/pickup-directive.md` and `.claude/task-tracker/definition-of-done.md` exist before any issue is created. If either is missing, the skill aborts with a "(re)install the skill" message — no issues are created until the templates are in place.
 
 On first pickup, the agent runs a just-in-time deep dive against the current repo state and appends it to the issue body, including a required dependency map:
 
@@ -365,7 +367,9 @@ Depends on: #N (reason)   ← or "none"
 Blocks: #P (reason)       ← or "none"
 ```
 
-Full agent instructions live in `.claude/task-tracker/pickup-directive.md` — installed per project and editable.
+Full agent instructions live in `.claude/task-tracker/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
+
+**Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.sh <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. The audited override `TASK_TRACKER_FORCE_DONE=1` bypasses but posts an audit comment listing the unverified items. The GitHub UI (drag a card, delete an issue) is not gated.
 
 ### Multi-Agent Orchestration
 

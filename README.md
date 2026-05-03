@@ -84,7 +84,7 @@ The fundamental unit is a *task session*: Claude is working on one GitHub issue 
 | `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude |
 | `/task update [msg]` | Checkpoint — flush and reset counters, keep task active |
 | `/task close` | Hard-stop — flush, update board fields, move to Done |
-| `/task close --force` | Close even if unchecked DoD items remain |
+| `TASK_TRACKER_FORCE_DONE=1 /task close` | Audited bypass for legitimate abandonment — posts an audit comment to the issue. Do not use to skip verification. |
 | `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue |
 | `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
 | `/task fleet` | Show all active tasks across parallel agent worktrees |
@@ -218,7 +218,7 @@ The Pickup Directive makes every issue self-contained. Any agent, on any machine
 Every issue created from a master plan gets this block appended:
 
 ```markdown
-## ⚡ Pickup Directive
+## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
 > Follow: `.claude/task-tracker/pickup-directive.md`
 
 - [ ] Deep dive complete
@@ -235,7 +235,17 @@ Every issue created from a master plan gets this block appended:
 ---
 ```
 
-The issue body stays lean. The detailed agent instructions live in `.claude/task-tracker/pickup-directive.md` — the agent reads that file at pickup time.
+The issue body stays lean. The detailed agent instructions live in `.claude/task-tracker/pickup-directive.md` — the agent reads that file at pickup time. The injected block is built by `scripts/task-tracker/preflight-issue.mjs`, which also gates issue creation: if either template file is missing, the script aborts and the skill stops creating issues until the install is fixed.
+
+### Hard Rules — Enforced by the Gates
+
+The `/task close` pre-close gate AND `move-state.sh <issue> done` both refuse if:
+- any `- [ ]` remains in the issue body (Deep Dive checkpoint, DoD, acceptance criteria), or
+- the line `- [x] Deep dive complete` is not present when the body contains a Pickup Directive block.
+
+Audited override: `TASK_TRACKER_FORCE_DONE=1` bypasses the gate but writes a visible audit comment to the issue listing what was unverified. Use only for legitimate abandonment (e.g., the issue turned out invalid) — never to skip verification on a real fix.
+
+The GitHub UI (drag a card to Done, delete an issue) still bypasses all gates; the script-driven paths are now consistent and auditable.
 
 ### The Deep Dive Checkpoint
 

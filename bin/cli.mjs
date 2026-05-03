@@ -57,6 +57,7 @@ function patchSettingsJson(settingsPath) {
   // prompt on every /task command.
   const autoAllowRules = [
     'Bash(node */claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs*)',
+    'Bash(node */claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
     'Bash(*/claude-gh-task-manager/scripts/gh/move-state.sh*)',
     'Bash(*/claude-gh-task-manager/scripts/gh/set-priority.sh*)',
   ];
@@ -146,18 +147,29 @@ function cmdInstall(args) {
   ok(`Hooks:    registered in .claude/settings.json`);
   ok(`Permissions: task-tracker commands auto-allowed in .claude/settings.json`);
 
-  // 6. Pickup directive templates (optional feature, off by default)
+  // 6. Pickup directive templates — these encode the process contract the skill
+  // and the move-state/close gates rely on, so they must always be the canonical
+  // bundled version. A pre-existing copy is backed up to `<name>.bak` before
+  // overwrite so any local customizations are preserved for review.
   const templateDest = join(targetDir, '.claude', 'task-tracker');
   mkdirSync(templateDest, { recursive: true });
   for (const name of ['pickup-directive.md', 'definition-of-done.md']) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(templateDest, name);
-    if (!existsSync(out)) {
-      copyFileSync(src, out);
-      ok(`Template: .claude/task-tracker/${name}`);
-    } else {
-      ok(`Template: .claude/task-tracker/${name} (already exists, skipped)`);
+    let suffix = '';
+    if (existsSync(out)) {
+      const existing = readFileSync(out, 'utf8');
+      const bundled = readFileSync(src, 'utf8');
+      if (existing !== bundled) {
+        const backup = out + '.bak';
+        writeFileSync(backup, existing, 'utf8');
+        suffix = ' (overwrote; previous saved as .bak)';
+      } else {
+        suffix = ' (unchanged)';
+      }
     }
+    copyFileSync(src, out);
+    ok(`Template: .claude/task-tracker/${name}${suffix}`);
   }
 
   // 7. Patch .gitignore

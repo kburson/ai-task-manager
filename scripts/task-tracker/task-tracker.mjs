@@ -208,22 +208,52 @@ async function verbClose() {
     saveState({ ...s, active: null, planBucket: null }, statePath);
     return;
   }
-  // Pre-close gate: check for unchecked checkboxes
-  const force = rest.includes('--force');
-  if (!force && !SKIP_NETWORK) {
+  // Pre-close gate: every checkbox in the body must be checked, AND if the body
+  // contains the Pickup Directive's "Deep dive complete" line, it must be ticked.
+  // Audited override: env var TASK_TRACKER_FORCE_DONE=1 bypasses but posts an
+  // audit comment to the issue. The legacy `--force` flag still works (maps to
+  // the same audited override path).
+  const forceFlag = rest.includes('--force');
+  const forceEnv = process.env.TASK_TRACKER_FORCE_DONE === '1';
+  const force = forceFlag || forceEnv;
+  if (!SKIP_NETWORK) {
     const issueNum = s.active.replace(/^#/, '');
     try {
       const { stdout } = await pexec('gh', [
-        'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body,comments',
+        'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body',
       ], { timeout: 10000 });
       const data = JSON.parse(stdout);
-      const allText = [data.body, ...(data.comments?.map(c => c.body) ?? [])].join('\n');
-      const unchecked = [...allText.matchAll(/^- \[ \] .+$/gm)].map(m => m[0]);
+      const body = data.body ?? '';
+      const unchecked = [...body.matchAll(/^- \[ \] .+$/gm)].map(m => m[0]);
+      const hasDeepDiveLine = /Deep dive complete/.test(body);
+      const hasDeepDiveDone = /^- \[x\] Deep dive complete/m.test(body);
+      const reasons = [];
       if (unchecked.length > 0) {
-        console.error(`[task-tracker] ${s.active} has ${unchecked.length} unchecked item${unchecked.length === 1 ? '' : 's'}:`);
-        unchecked.forEach(u => console.error(`  ${u}`));
-        console.error('Resolve items or run with --force to close anyway.');
-        process.exit(3);
+        reasons.push(`${unchecked.length} unchecked checkbox${unchecked.length === 1 ? '' : 'es'} in issue body`);
+      }
+      if (hasDeepDiveLine && !hasDeepDiveDone) {
+        reasons.push('Deep dive checkpoint is not checked off');
+      }
+      if (reasons.length > 0) {
+        if (force) {
+          console.error(`[task-tracker] ⚠ ${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'} — bypassing close gate for ${s.active}`);
+          reasons.forEach(r => console.error(`   • ${r}`));
+          unchecked.forEach(u => console.error(`   ${u}`));
+          try {
+            const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+            const note = `⚠ **Close gate bypassed** via \`${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'}\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
+            await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body', note], { timeout: 10000 });
+          } catch { /* audit comment is best-effort */ }
+        } else {
+          console.error(`[task-tracker] ⛔ Refusing to close ${s.active}:`);
+          reasons.forEach(r => console.error(`   • ${r}`));
+          unchecked.forEach(u => console.error(`   ${u}`));
+          console.error('');
+          console.error('See .claude/task-tracker/pickup-directive.md § "Hard Rules".');
+          console.error('Verify each item, check its box (`/task check "<label>"`), then retry.');
+          console.error('Legitimate-abandonment override: TASK_TRACKER_FORCE_DONE=1 /task close');
+          process.exit(3);
+        }
       }
     } catch (err) {
       console.warn(`[task-tracker] Could not check issue body: ${err.message}`);

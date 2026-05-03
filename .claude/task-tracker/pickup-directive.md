@@ -3,15 +3,48 @@
 These steps apply on first pickup of any issue with an unchecked `- [ ] Deep dive complete`
 checkbox. If the checkbox is already checked, skip to step 6.
 
+## ⛔ Hard Rules — Do Not Skip
+
+These rules are enforced by `/task close` and by `move-state.sh <issue> done`. Bypassing
+them is a process violation, not a shortcut. Closing or moving an issue to Done while any
+required box is unchecked will be refused.
+
+1. **Deep Dive is mandatory before any code changes.**
+   - You MUST complete the deep-dive analysis (step 2 below) and append it to the issue
+     body (step 3) BEFORE editing any source file in service of this issue.
+   - You MUST check `- [ ] Deep dive complete` (`/task check "Deep dive complete"`)
+     immediately after appending. That check is the gate signal — do not run it ahead
+     of time.
+   - If you have already started writing code without doing this: stop, set aside the
+     changes, and run the deep dive against the actual current state of the repo.
+
+2. **Every Definition of Done item must be individually verified.**
+   - For each DoD checkbox, verify completion by **inspection AND by running the
+     relevant tests, builds, or commands**. Read the output. Then check the box.
+   - Same rule for every Acceptance Criterion (including any added during the deep
+     dive).
+   - Never bulk-check. Never check preemptively. "It looks done" is not verification.
+
+3. **All checkboxes must be checked before close.**
+   - Before `/task close` or moving the issue to Done, every `- [ ]` in the issue body
+     MUST be `- [x]`. This includes the Deep Dive checkpoint, every DoD item, every
+     Acceptance Criterion, and any checkpoints you added.
+   - The pre-close gate WILL refuse if any box is unchecked. Do not bypass.
+   - The audited override `TASK_TRACKER_FORCE_DONE=1` exists for legitimate
+     abandonment cases only (e.g., issue turned out invalid). It writes a visible
+     bypass row to the timing log. Do not use it to skip verification.
+
+4. **Move to Done is gated.**
+   - `move-state.sh <issue> done` will refuse if Deep Dive is unchecked or any other
+     box in the issue body is unchecked. Same audited override applies.
+   - Normal path: run `/task close` — it validates, flushes timing, then moves to Done.
+
 ## Required steps before writing any code
 
-1. **Start tracking and move the issue to `in-progress`:**
+1. **Move the issue to `in-progress`:**
+   ```bash
+   node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh <this-issue-#> in-progress
    ```
-   /task #<this-issue-#> --role agent
-   ```
-   This writes a `start` row to the timing log (with Description = `agent`), opens the issue, and moves the Kanban card to `in-progress` in one step. Run it in the agent's own git worktree — state is per-worktree, so it will not overwrite the orchestrator's active task.
-
-   The `--role agent` flag records in the timing log that this session was run by an AI agent, not a human. The value report uses this to separate human engagement cost from parallel agent work when computing the Human Leverage metric.
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
    assumptions still hold, identify concrete files to edit, define the test approach,
@@ -72,63 +105,8 @@ checkbox. If the checkbox is already checked, skip to step 6.
 
    d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When all Sequence-N issues close, spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
 
-6. **Spawn sibling sub-issues if needed.**
-
-   When the deep dive surfaces work that is out of scope for this issue but belongs to the same epic, create a new sub-issue rather than expanding scope. Each spawned issue is a sibling — linked to the parent **epic**, not to this sub-issue (GitHub supports only one level of nesting).
-
-   **Issue body — always open with the provenance block:**
-   ```markdown
-   Spawned from: #<this-issue-#>
-   Parent EPIC: #<parent-epic-#>
-   Priority: <P0|P1|P2>. Size: <XS|S|M|L|XL> (<estimate>h est).
-
-   ## Scope
-   <what was discovered and why it needs its own issue>
-
-   ## Acceptance Criteria
-   - [ ] ...
-   ```
-
-   **Create the issue:**
-   ```bash
-   gh issue create \
-     --title "<title>" \
-     --body-file /tmp/spawned-body.md \
-     --assignee <assignee from .claude/task-tracker.json> \
-     --label "plan/<same-slug-as-parent-epic>" \
-     --label "purpose/<inferred>"
-   ```
-   Capture the new issue number as `SPAWNED_N`. Get its node ID:
-   ```bash
-   gh issue view <SPAWNED_N> --json id --jq '.id'
-   ```
-
-   **Link to the epic as a sub-issue** (not to this issue):
-   ```bash
-   gh api graphql -f query='
-     mutation($parentId:ID!, $childId:ID!) {
-       addSubIssue(input:{ issueId:$parentId, subIssueId:$childId }) {
-         issue { number }
-       }
-     }
-   ' -f parentId=<EPIC_NODE_ID> -f childId=<SPAWNED_NODE_ID>
-   ```
-
-   **Add to project, set Priority / Size / Estimate** — same commands as the backlog orchestration flow. Move to backlog:
-   ```bash
-   scripts/gh/move-state.sh <SPAWNED_N> backlog
-   scripts/gh/set-priority.sh <SPAWNED_N> <p0|p1|p2>
-   ```
-
-   **Inject a Pickup Directive** into the body (append the standard block with the DoD checklist). Replace `<this-issue-#>` with `SPAWNED_N` and `<parent-epic-#>` with the epic number.
-
-   **Post a comment on the epic** so the orchestrator sees the addition:
-   ```bash
-   gh issue comment <parent-epic-#> \
-     --body "Spawned #<SPAWNED_N> from deep dive on #<this-issue-#>: <one-line reason>. Added to backlog."
-   ```
-
-   The spawned issue stays in **backlog** — it is not picked up in this session. The orchestrator decides when to fan it out.
+6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
+   injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
 
 7. **Proceed with implementation.** Branch: `<this-issue-#>-<short-slug>`. Use
    `superpowers:using-git-worktrees`. Every commit references this issue and parent epic:
@@ -143,7 +121,9 @@ checkbox. If the checkbox is already checked, skip to step 6.
 ## Before closing
 
 Review every item in the Definition of Done checklist in the issue body. For each item:
-- Verify it is genuinely complete.
+- Verify it is genuinely complete (inspection + relevant test/command output).
 - Mark it with `/task check "<label>"`.
 
-Only run `/task close` once all items are checked.
+Then verify every Acceptance Criterion the same way. Only run `/task close` once **every
+checkbox in the issue body** is checked. The pre-close gate will refuse otherwise; do not
+bypass it.

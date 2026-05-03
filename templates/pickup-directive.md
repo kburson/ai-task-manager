@@ -3,6 +3,42 @@
 These steps apply on first pickup of any issue with an unchecked `- [ ] Deep dive complete`
 checkbox. If the checkbox is already checked, skip to step 6.
 
+## ⛔ Hard Rules — Do Not Skip
+
+These rules are enforced by `/task close` and by `move-state.sh <issue> done`. Bypassing
+them is a process violation, not a shortcut. Closing or moving an issue to Done while any
+required box is unchecked will be refused.
+
+1. **Deep Dive is mandatory before any code changes.**
+   - You MUST complete the deep-dive analysis (step 2 below) and append it to the issue
+     body (step 3) BEFORE editing any source file in service of this issue.
+   - You MUST check `- [ ] Deep dive complete` (`/task check "Deep dive complete"`)
+     immediately after appending. That check is the gate signal — do not run it ahead
+     of time.
+   - If you have already started writing code without doing this: stop, set aside the
+     changes, and run the deep dive against the actual current state of the repo.
+
+2. **Every Definition of Done item must be individually verified.**
+   - For each DoD checkbox, verify completion by **inspection AND by running the
+     relevant tests, builds, or commands**. Read the output. Then check the box.
+   - Same rule for every Acceptance Criterion (including any added during the deep
+     dive).
+   - Never bulk-check. Never check preemptively. "It looks done" is not verification.
+
+3. **All checkboxes must be checked before close.**
+   - Before `/task close` or moving the issue to Done, every `- [ ]` in the issue body
+     MUST be `- [x]`. This includes the Deep Dive checkpoint, every DoD item, every
+     Acceptance Criterion, and any checkpoints you added.
+   - The pre-close gate WILL refuse if any box is unchecked. Do not bypass.
+   - The audited override `TASK_TRACKER_FORCE_DONE=1` exists for legitimate
+     abandonment cases only (e.g., issue turned out invalid). It writes a visible
+     bypass row to the timing log. Do not use it to skip verification.
+
+4. **Move to Done is gated.**
+   - `move-state.sh <issue> done` will refuse if Deep Dive is unchecked or any other
+     box in the issue body is unchecked. Same audited override applies.
+   - Normal path: run `/task close` — it validates, flushes timing, then moves to Done.
+
 ## Required steps before writing any code
 
 1. **Move the issue to `in-progress`:**
@@ -85,7 +121,9 @@ checkbox. If the checkbox is already checked, skip to step 6.
 ## Before closing
 
 Review every item in the Definition of Done checklist in the issue body. For each item:
-- Verify it is genuinely complete.
+- Verify it is genuinely complete (inspection + relevant test/command output).
 - Mark it with `/task check "<label>"`.
 
-Only run `/task close` once all items are checked.
+Then verify every Acceptance Criterion the same way. Only run `/task close` once **every
+checkbox in the issue body** is checked. The pre-close gate will refuse otherwise; do not
+bypass it.

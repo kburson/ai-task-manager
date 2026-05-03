@@ -154,8 +154,10 @@ When `/task close` exits with code 3, the CLI has already printed the unchecked 
 
 1. Show the unchecked item list to the user.
 2. Ask: **"Would you like me to verify and resolve these items first, or close anyway?"**
-3. If the user wants resolution → work through each item, check them off with `/task check "<label>"` as each is verified, then run `/task close` again.
-4. If the user says close anyway → run `/task close --force`.
+3. **Default behavior is resolution** — work through each unchecked item: verify by inspection AND by running the relevant test/build/command, then check it off with `/task check "<label>"`. Only after every box is checked, run `/task close` again.
+4. If the user explicitly says close anyway (e.g., the issue is being abandoned) → run `TASK_TRACKER_FORCE_DONE=1 /task close`. This writes an audit comment to the issue noting which items were unverified at close. Do NOT use this to skip verification on a real fix — it's for legitimate-abandonment cases only.
+
+The same gate applies to `move-state.sh <issue> done` — it will refuse if the body has unchecked boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` override.
 
 **Never run `gh issue close` directly.** Always use `/task close` so the pre-close gate runs. If no task session is active, fetch the issue body first and manually check for `- [ ]` lines before closing.
 
@@ -164,6 +166,30 @@ When `/task close` exits with code 3, the CLI has already printed the unchecked 
 When the user confirms "yes" in Step 1b, execute the following sections in order. **Process ALL epics in the spec in document order — do not stop between epics.** Solo tasks (issues with no sub-issues) are created the same way as epic issues but skipped for the sub-issue loop.
 
 **All issues are stubs.** Do not deep-dive any issue at creation time — not epics, not sub-issues, not solos. Every issue gets: scope (verbatim from spec) + acceptance criteria + Pickup Directive. The deep dive happens at pickup time, against the current state of the repo.
+
+### Preflight — MANDATORY before any `gh issue create`
+
+Before creating ANY issue (epic, sub-issue, or solo), run the preflight check:
+
+```bash
+node "$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs" --check-only
+```
+
+If this exits non-zero, **STOP all work**. Do not create any issues. Surface the script's
+stderr message to the user verbatim — they need to (re)install the skill before any
+issues can be generated. Resume only after the user confirms the install completed.
+
+The preflight verifies that `.claude/task-tracker/pickup-directive.md` and
+`.claude/task-tracker/definition-of-done.md` exist. These files encode the process
+contract the close gate and `move-state.sh done` gate enforce. Issues created without
+them will reference paths that do not resolve, and agents picking them up will have no
+authoritative directive to follow.
+
+When you actually need to assemble an issue body, run the script **without**
+`--check-only` and capture stdout — it emits the canonical Pickup Directive block to
+splice into the body (with `<this-issue-#>` and `<parent-epic-#>` placeholders).
+Always use this script's output rather than constructing the block from prose, so the
+block stays in lockstep with the canonical templates.
 
 ### Label Setup
 
@@ -245,19 +271,20 @@ From the spec in context, extract:
 - The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
 - The **Epic Acceptance Criteria** checkboxes
 
-Read `.claude/task-tracker/definition-of-done.md` and append the Pickup Directive block (use placeholder `<this-issue-#>` — replace after creation). This is unconditional in orchestration mode — all issues from a master plan are stubs; the deep dive happens at pickup time regardless of issue type:
+Generate the Pickup Directive block by running the preflight script (stdout = the
+canonical block, with `<this-issue-#>` and `<parent-epic-#>` placeholders to be
+replaced after creation). This is unconditional in orchestration mode — all issues
+from a master plan are stubs; the deep dive happens at pickup time regardless of issue
+type:
 
-```markdown
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-<contents of definition-of-done.md verbatim>
-
----
+```bash
+DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs")
+# If this command exits non-zero, STOP — do not create any issues.
 ```
+
+Append `$DIRECTIVE_BLOCK` to the assembled body. Do not hand-craft the block — the
+script reads from `.claude/task-tracker/definition-of-done.md` so the output stays
+authoritative.
 
 #### 2. Create the epic issue
 
@@ -371,21 +398,14 @@ Read the sub-issue's Scope. Apply all matching labels from the inference table i
 Combine in order:
 1. The **Scope** section text
 2. The **Acceptance Criteria** checkboxes
-3. The Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Read `.claude/task-tracker/definition-of-done.md` and use placeholders for now:
+3. The Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Generate via the preflight script:
 
-```markdown
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
-
-- [ ] Deep dive complete
-
-### Definition of Done
-<contents of definition-of-done.md verbatim>
-
----
+```bash
+DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs")
+# If this command exits non-zero, STOP — do not create any issues.
 ```
 
-Use `<this-issue-#>` and `<parent-epic-#>` as placeholders — replace after creation in step 7.
+The script's output already contains `<this-issue-#>` placeholders at the right spots — replace after creation in step 7.
 
 #### 3. Create the sub-issue
 
@@ -527,37 +547,36 @@ Then ask:
 
 ### Pickup Directive
 
-**At issue creation from a master plan** (epics, sub-issues, and solo tasks alike — unconditional in orchestration mode):
-1. Read `.claude/task-tracker/definition-of-done.md` to get the DoD checklist.
-2. Append this lean block to the issue body (after the Scope section), with the DoD items inlined:
+**At issue creation** (epics, sub-issues, and solo tasks — unconditional in orchestration mode; gated by `pickupDirective: true` for plain `/task new` outside orchestration):
 
-**For single-issue creation** (plain `/task new` outside orchestration mode): only inject if `pickupDirective: true` in config.
+1. Run preflight (see "Preflight — MANDATORY" above). If it fails, STOP — do not create the issue.
+2. Capture preflight stdout as `$DIRECTIVE_BLOCK`. It is the canonical block:
+   ```markdown
+   ## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
+   > Follow: `.claude/task-tracker/pickup-directive.md`
 
-```markdown
-## ⚡ Pickup Directive
-> Follow: `.claude/task-tracker/pickup-directive.md`
+   - [ ] Deep dive complete
 
-- [ ] Deep dive complete
+   ### Definition of Done
+   <DoD lines from template>
 
-### Definition of Done
-<contents of definition-of-done.md — each line verbatim>
-
----
-```
-
-3. Replace `<this-issue-#>` and `<parent-epic-#>` placeholders in the body with actual numbers.
+   ---
+   ```
+3. Append `$DIRECTIVE_BLOCK` to the issue body after the Scope section.
+4. Replace `<this-issue-#>` and `<parent-epic-#>` placeholders in the body with actual numbers after `gh issue create` returns.
 
 **At issue pickup** (`/task #N` or `/task resume #N`):
-- Read `.claude/task-tracker/pickup-directive.md` for the detailed step-by-step instructions.
+- Read `.claude/task-tracker/pickup-directive.md` — start with the "Hard Rules" section, then follow the step-by-step instructions.
 - Check if `- [x] Deep dive complete` is present in the issue body.
-  - Checked → skip analysis steps; proceed to implementation (step 6 in the directive).
-  - Unchecked → run the full deep dive as described in the directive.
-- After completing the deep dive (step 3): `/task check "Deep dive complete"`
+  - Checked → skip analysis steps; proceed to implementation (step 7 in the directive).
+  - Unchecked → run the full deep dive **before writing any code**.
+- After completing the deep dive (step 3): `/task check "Deep dive complete"`.
 
-**Before `/task close`:**
-- Review every item in the Definition of Done section of the issue body.
-- Verify each is genuinely complete, then mark it: `/task check "<label>"`.
-- Only run `/task close` once all DoD items are checked. The pre-close gate enforces this.
+**Before `/task close` or moving to Done:**
+- Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
+- Mark each verified item: `/task check "<label>"`.
+- Only run `/task close` once **every** `- [ ]` in the issue body is `- [x]`.
+- The pre-close gate AND `move-state.sh done` will refuse if any box is unchecked or the Deep Dive checkpoint is unticked. The audited override is `TASK_TRACKER_FORCE_DONE=1` — it bypasses but writes a visible audit comment to the issue. Use only for legitimate abandonment (e.g., the issue turned out invalid), never to skip verification.
 
 ### Issue lifecycle
 
