@@ -199,6 +199,22 @@ async function runLogIssueTime(issue) {
   }
 }
 
+// Move issue to Done on the project board. /task close is the ONLY sanctioned
+// path for invoking move-state.sh done — direct invocation skips the timing
+// flush and corrupts the velocity ledger.
+async function runMoveStateDone(issue) {
+  if (SKIP_NETWORK) return;
+  const scriptPath = new URL('../gh/move-state.sh', import.meta.url).pathname;
+  const issueNum = String(issue).replace(/^#/, '');
+  try {
+    const { stdout } = await pexec(scriptPath, [issueNum, 'done'], { timeout: 15000 });
+    if (stdout.trim()) console.log(stdout.trim());
+  } catch (err) {
+    console.warn(`[task-tracker] Could not move ${issue} to Done: ${err.message}`);
+    console.warn(`[task-tracker] Run manually: ${scriptPath} ${issueNum} done`);
+  }
+}
+
 async function verbClose() {
   await draiQueueIfAny();
   const s = loadState(statePath);
@@ -265,6 +281,7 @@ async function verbClose() {
   clearActive(statePath);
   try { deregisterTask(projectDir, s.active); } catch {}
   await runLogIssueTime(s.active);
+  await runMoveStateDone(s.active);
 }
 
 async function verbSwitch(target) {

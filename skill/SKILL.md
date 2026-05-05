@@ -9,6 +9,32 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 **Full design:** `.claude/skills/task/DESIGN.md`
 
+## Mandatory Process Contract
+
+**These rules are non-negotiable. Skipping any step is a process failure that corrupts the velocity ledger and leaves orphan work.**
+
+### Before working on any issue — ALL of these, in order:
+
+1. **Run `/task #N`** to start the timer and register the active task. **NEVER touch source files, run tests, edit issue bodies, or take any action against an issue without an active timer.** "The work is small" is not a valid reason. "The session was resumed and there's no active task" is not a valid reason — re-run `/task #N` to re-register.
+2. **Verify the issue is in-progress** on the project board (the CLI does this automatically; if it failed, fix it before proceeding).
+3. **Follow the Pickup Directive** in the issue body. The deep-dive section MUST be appended to the body and the `Deep dive complete` checkbox ticked **before** any code edits.
+
+### Before closing any issue — ALL of these, in order:
+
+1. **Verify every Acceptance Criteria checkbox** by inspection AND by running the relevant test/build/command. Tick each with `/task check "<label>"`.
+2. **Verify every Definition of Done checkbox** the same way. Tick each.
+3. **Run `/task close`.** This is the ONLY sanctioned way to close an issue. It atomically: writes the final timing-table row, updates Actual Session Time + Context Length on the project board, deregisters from the fleet, **and moves the issue to Done.** If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
+
+### Forbidden — these break the contract:
+
+- ❌ Running `move-state.sh <N> done` directly. `/task close` does this internally; calling it manually skips the timing flush.
+- ❌ Running `gh issue close` directly. Same reason.
+- ❌ Using `TASK_TRACKER_FORCE_DONE=1` for normal completion. It exists only for legitimate abandonment (the issue turned out invalid). Never use it to skip verification.
+- ❌ Editing files for an issue without first running `/task #N`.
+- ❌ Skipping the deep-dive checkpoint because "the scope seems clear."
+
+If any of these are skipped: stop, restore the contract (re-register the task, complete the missed step), then continue.
+
 ## Commands
 
 | Command | Action |
@@ -21,8 +47,8 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 | `/task resume #N` | **Switch back to a specific paused task and display its body** |
 | `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude Code. |
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
-| `/task close` | Hard-stop — flush timing, update board fields, deregister from fleet |
-| `/task close --force` | Close even if unchecked items remain |
+| `/task close` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
+| `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
 | `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue |
 | `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
 | `/task fleet` | Show all active tasks across parallel agent worktrees |
@@ -157,9 +183,9 @@ When `/task close` exits with code 3, the CLI has already printed the unchecked 
 3. **Default behavior is resolution** — work through each unchecked item: verify by inspection AND by running the relevant test/build/command, then check it off with `/task check "<label>"`. Only after every box is checked, run `/task close` again.
 4. If the user explicitly says close anyway (e.g., the issue is being abandoned) → run `TASK_TRACKER_FORCE_DONE=1 /task close`. This writes an audit comment to the issue noting which items were unverified at close. Do NOT use this to skip verification on a real fix — it's for legitimate-abandonment cases only.
 
-The same gate applies to `move-state.sh <issue> done` — it will refuse if the body has unchecked boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` override.
+`/task close` is the ONLY sanctioned close path. It atomically: flushes timing, updates board fields, deregisters from the fleet, and invokes `move-state.sh <N> done` internally to move the issue to Done. The same pre-close gate applies whether triggered through `/task close` or (legacy) direct `move-state.sh done` — both refuse if the body has unchecked boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` audited override.
 
-**Never run `gh issue close` directly.** Always use `/task close` so the pre-close gate runs. If no task session is active, fetch the issue body first and manually check for `- [ ]` lines before closing.
+**Never run `gh issue close` or `move-state.sh <N> done` directly.** Both bypass the timing flush and corrupt the velocity ledger. If no task session is active and you need to mark an issue done, run `/task #N` first to register, complete any verification, then `/task close`.
 
 ## Plan-Mode Backlog Orchestration
 
@@ -581,7 +607,7 @@ Then ask:
 ### Issue lifecycle
 
 - Every issue needs `Estimate` (hours) and `Size` set before work starts. No exceptions.
-- Move states via `scripts/gh/move-state.sh` — never set manually.
+- Move states via `scripts/gh/move-state.sh` — never set manually. **Exception: never invoke `move-state.sh <N> done` directly — only `/task close` does that, and it does so internally.**
 - Sub-issues: one level only. Parent cannot close until all children are closed.
 - Always assign on create: `--assignee` from `.claude/task-tracker.json` key `assignee` (default `@me`).
 
