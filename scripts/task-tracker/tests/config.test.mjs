@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadConfig, setConfigValue, DEFAULTS } from '../config.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-config-'));
 const projectPath = path.join(tmp, 'project.json');
+const legacyProjectPath = path.join(tmp, 'legacy-project.json');
 const userPath = path.join(tmp, 'user.json');
+const legacyUserPath = path.join(tmp, 'legacy-user.json');
 
 // Test 1: defaults when no files exist
 let cfg = loadConfig({ projectPath, userPath });
@@ -42,6 +44,27 @@ assert.throws(() => setConfigValue('bogus', 'x', { projectPath, userPath }), /un
 
 // Test 7: bad type rejected
 assert.throws(() => setConfigValue('wpm', 'abc', { projectPath, userPath }), /numeric/i);
+
+// Test 8: preferred project path wins over legacy fallback
+writeFileSync(legacyProjectPath, JSON.stringify({ repo: 'legacy/repo' }));
+writeFileSync(projectPath, JSON.stringify({ repo: 'new/repo' }));
+cfg = loadConfig({ projectPath, legacyProjectPath, userPath, legacyUserPath });
+assert.equal(cfg.repo, 'new/repo');
+
+// Test 9: legacy project is read when preferred path is absent
+const fallbackProjectPath = path.join(tmp, 'missing-project.json');
+cfg = loadConfig({ projectPath: fallbackProjectPath, legacyProjectPath, userPath, legacyUserPath });
+assert.equal(cfg.repo, 'legacy/repo');
+
+// Test 10: writes go to preferred project path, not legacy
+const writeProjectPath = path.join(tmp, '.ai-task-manager', 'task-tracker.json');
+const writeLegacyPath = path.join(tmp, '.claude', 'task-tracker.json');
+mkdirSync(path.dirname(writeLegacyPath), { recursive: true });
+writeFileSync(writeLegacyPath, JSON.stringify({ wpm: 111 }));
+setConfigValue('wpm', '222', { projectPath: writeProjectPath, legacyProjectPath: writeLegacyPath });
+assert.ok(existsSync(writeProjectPath), 'preferred config path should be written');
+cfg = loadConfig({ projectPath: writeProjectPath, legacyProjectPath: writeLegacyPath, userPath, legacyUserPath });
+assert.equal(cfg.wpm, 222);
 
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

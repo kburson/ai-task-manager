@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Preflight check before any `gh issue create` from the task skill.
 //
-// Verifies that the canonical templates exist in `.claude/task-tracker/` and emits
+// Verifies that the canonical templates exist in `.ai-task-manager/` and emits
 // the Pickup Directive block to stdout for the skill to splice into the issue body.
 //
 // Exit codes:
@@ -16,8 +16,8 @@
 // the planning session — no issues should be created without the templates.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { existingRuntimePath } from './paths.mjs';
 
 function repoRoot() {
   try {
@@ -28,24 +28,23 @@ function repoRoot() {
 }
 
 const root = repoRoot();
-const ttDir = join(root, '.claude', 'task-tracker');
-const pickupPath = join(ttDir, 'pickup-directive.md');
-const dodPath = join(ttDir, 'definition-of-done.md');
+const pickupPath = existingRuntimePath(root, '.ai-task-manager/pickup-directive.md');
+const dodPath = existingRuntimePath(root, '.ai-task-manager/definition-of-done.md');
 
 const missing = [];
-if (!existsSync(pickupPath)) missing.push('.claude/task-tracker/pickup-directive.md');
-if (!existsSync(dodPath))    missing.push('.claude/task-tracker/definition-of-done.md');
+if (!existsSync(pickupPath)) missing.push('.ai-task-manager/pickup-directive.md');
+if (!existsSync(dodPath))    missing.push('.ai-task-manager/definition-of-done.md');
 
 if (missing.length > 0) {
   process.stderr.write([
     '',
-    '⛔ STOP — claude-gh-task-manager templates are missing:',
+    'STOP - ai-task-manager templates are missing:',
     ...missing.map(p => `   - ${p}`),
     '',
     'No GitHub issues will be created until the skill is (re)installed in this',
     'project. Run:',
     '',
-    '   npx @burson.kendrick/claude-gh-task-manager install',
+    '   npx ai-task-manager install',
     '',
     'Then retry. If the install completes but files are still missing, check that',
     'you ran the command from the project root.',
@@ -67,7 +66,7 @@ const dod = readFileSync(dodPath, 'utf8').replace(/\s+$/, '');
 
 const block = [
   '## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.claude/task-tracker/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/pickup-directive.md`',
   '',
   '- [ ] Deep dive complete',
   '',

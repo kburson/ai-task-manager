@@ -1,8 +1,8 @@
-# Claude GH Task Manager
+# AI Task Manager
 
 **Turn your AI coding sessions into measurable, managed engineering work.**
 
-`/task` is a Claude Code skill that binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports — all without leaving your chat.
+AI Task Manager lets Claude Code and Codex share the same GitHub issue/project workflow. It binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports.
 
 ---
 
@@ -10,14 +10,14 @@
 
 ```bash
 # 1. Install into your project
-npx claude-gh-task-manager install
+npx ai-task-manager install --agent both
 
 # 2. Connect to your GitHub Project board (interactive)
-npx claude-gh-task-manager init
+npx ai-task-manager init
 
 # 3. Commit the generated config
-git add .claude/task-tracker.json .github/ISSUE_TEMPLATE/
-git commit -m "chore: add claude-gh-task-manager"
+git add .ai-task-manager/task-tracker.json .github/ISSUE_TEMPLATE/
+git commit -m "chore: add ai-task-manager"
 ```
 
 Then in Claude Code:
@@ -30,17 +30,23 @@ Then in Claude Code:
 
 That's it. Everything else is optional depth.
 
+In Codex, ask naturally:
+
+```text
+Use the task skill to start issue #42.
+```
+
 ---
 
 ## What This Is
 
 Most AI coding tools give you a chat. This gives you an **engineering system**.
 
-The gap between "I've been using Claude for a few weeks" and "here's what we shipped, what it cost, and what we got for it" is exactly what this tool fills. Every session is bound to a GitHub issue. Every issue is tracked on a Kanban board. Every hour of AI engagement is measured and compared against your original estimate. At the end of a sprint — or a project — you can generate a report that answers the only question leadership actually cares about: *what did this cost versus what would it have cost without AI?*
+The gap between "I've been using AI coding agents for a few weeks" and "here's what we shipped, what it cost, and what we got for it" is exactly what this tool fills. Every session is bound to a GitHub issue. Every issue is tracked on a Kanban board. Every hour of AI engagement is measured and compared against your original estimate. At the end of a sprint — or a project — you can generate a report that answers the only question leadership actually cares about: *what did this cost versus what would it have cost without AI?*
 
 The tool has three distinct capability layers:
 
-1. **Session tracking** — bind Claude to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
+1. **Session tracking** — bind Claude Code or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
 2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, sequencing, and pickup directives
 3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
 
@@ -51,9 +57,26 @@ The tool has three distinct capability layers:
 - **Node.js 18+**
 - **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
 - **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
-- **Claude Code** — [install](https://claude.ai/code)
-- **Superpowers plugin** — `/install-plugin superpowers` in Claude Code (required for plan-mode backlog orchestration)
+- **Claude Code and/or Codex** — install whichever agent you plan to use
 - A **GitHub Projects V2** board with a Status (Kanban) field and optionally Priority, Size, Estimate, Actual Session Time, Context Length, and Sequence fields
+
+## Install Targets
+
+Install for one agent or both:
+
+```bash
+npx ai-task-manager install --agent claude
+npx ai-task-manager install --agent codex
+npx ai-task-manager install --agent both
+```
+
+The installer writes stable skill stubs by default:
+
+- Claude Code: `.claude/skills/task/SKILL.md`
+- Codex: `.agents/skills/task/SKILL.md`
+- Shared templates and runtime state: `.ai-task-manager/`
+
+The old `claude-gh-task-manager` bin remains as a compatibility alias for this release, but new installs should use `ai-task-manager`.
 
 ---
 
@@ -81,7 +104,7 @@ The fundamental unit is a *task session*: Claude is working on one GitHub issue 
 | `/task plan` | Open an untracked planning bucket before an issue exists |
 | `/task resume` | Resume the last paused task (no body reload) |
 | `/task resume #N` | Switch back to a paused task and display its body |
-| `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude |
+| `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing an agent session |
 | `/task update [msg]` | Checkpoint — flush and reset counters, keep task active |
 | `/task close` | Hard-stop — flush, update board fields, move to Done |
 | `TASK_TRACKER_FORCE_DONE=1 /task close` | Audited bypass for legitimate abandonment — posts an audit comment to the issue. Do not use to skip verification. |
@@ -117,7 +140,7 @@ When you switch tasks or close an issue, the skill updates your board automatica
 - **Context Length** → total context words across all sessions
 - **Sequence** → the issue's position in the fan-out order
 
-All board IDs are stored in `.claude/task-tracker.json` and set once by `init`. You never manage IDs manually.
+All board IDs are stored in `.ai-task-manager/task-tracker.json` and set once by `init`. You never manage IDs manually.
 
 ---
 
@@ -186,7 +209,7 @@ Include a sequencing key and epic execution order at the top of your spec:
 **Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Model:** sonnet
 ```
 
-The `**Model:**` hint tells orchestration which Claude model to use when fanning out that issue to a sub-agent.
+The `**Model:**` hint tells orchestration which model to use when fanning out that issue to a sub-agent.
 
 ### Conversational Backlog Management
 
@@ -219,7 +242,7 @@ Every issue created from a master plan gets this block appended:
 
 ```markdown
 ## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
-> Follow: `.claude/task-tracker/pickup-directive.md`
+> Follow: `.ai-task-manager/pickup-directive.md`
 
 - [ ] Deep dive complete
 
@@ -235,7 +258,7 @@ Every issue created from a master plan gets this block appended:
 ---
 ```
 
-The issue body stays lean. The detailed agent instructions live in `.claude/task-tracker/pickup-directive.md` — the agent reads that file at pickup time. The injected block is built by `scripts/task-tracker/preflight-issue.mjs`, which also gates issue creation: if either template file is missing, the script aborts and the skill stops creating issues until the install is fixed.
+The issue body stays lean. The detailed agent instructions live in `.ai-task-manager/pickup-directive.md` — the agent reads that file at pickup time. The injected block is built by `scripts/task-tracker/preflight-issue.mjs`, which also gates issue creation: if either template file is missing, the script aborts and the skill stops creating issues until the install is fixed.
 
 ### Hard Rules — Enforced by the Gates
 
@@ -276,14 +299,14 @@ When an epic is picked up, before fanning out sub-agents:
 
 ### Customizing
 
-Two files are installed to `.claude/task-tracker/` and can be edited per project:
+Two files are installed to `.ai-task-manager/` and can be edited per project:
 
 | File | Purpose |
 |---|---|
 | `pickup-directive.md` | Agent instructions — deep dive steps, implementation pattern, fan-out rules |
 | `definition-of-done.md` | DoD checklist inlined into every new issue body at creation |
 
-Both are preserved on reinstall.
+If a local edit differs from the bundled template, reinstall saves the previous file as `.bak` before refreshing it.
 
 ---
 
@@ -323,7 +346,7 @@ Never leave a child active while orchestrating.
 Show the active issue number in the Claude Code CLI header bar:
 
 ```bash
-npx claude-gh-task-manager statusline
+npx ai-task-manager statusline
 ```
 
 Installs `~/.claude/statusline.sh` and wires it into `~/.claude/settings.json`. The CLI header shows `task #42` while a task is running, blank when idle.
@@ -407,7 +430,7 @@ See [docs/ai-value-framework.md](docs/ai-value-framework.md) for the full ROI me
 
 ## Configuration
 
-Config is stored in `.claude/task-tracker.json` (project-local, committed) and `~/.claude/task-tracker-config.json` (user-global). Project values override user-global; both override defaults.
+Config is stored in `.ai-task-manager/task-tracker.json` (project-local, committed) and `~/.ai-task-manager/task-tracker-config.json` (user-global). Legacy `~/.claude/task-tracker-config.json` is still read as a fallback. Project values override user-global; both override defaults.
 
 Run the interactive interview to review and set everything:
 
@@ -495,7 +518,7 @@ Default to `/compact`. It summarizes your session, keeps hooks active, and costs
 
 ### One Session Per Workspace
 
-The state file (`.claude/task-tracker-state.json`) is workspace-scoped. Two simultaneous Claude sessions in the same directory will corrupt each other's word-count baseline. Timing (minutes) stays correct; only Δ Words is affected.
+The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped. Two simultaneous agent sessions in the same directory will corrupt each other's word-count baseline. Timing (minutes) stays correct; only Delta Words is affected.
 
 **Rule:** only run `/task` commands from one session at a time. Treat any second session as read-only.
 
@@ -508,13 +531,13 @@ The state file (`.claude/task-tracker-state.json`) is workspace-scoped. Two simu
 | `scripts/gh/move-state.sh <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/ready/in-progress/in-review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID. |
 | `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too. |
 
-Both scripts read all IDs from `.claude/task-tracker.json`. No manual ID management.
+Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual ID management.
 
 ---
 
 ## Troubleshooting
 
-**`task-tracker not configured`** — Run `npx claude-gh-task-manager init`.
+**`task-tracker not configured`** — Run `npx ai-task-manager init`.
 
 **`Issue #N not found in project`** — The issue hasn't been added to your GitHub Project board. Open the issue on GitHub and add it, or check that `repo` in your config matches the project owner.
 

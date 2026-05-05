@@ -19,7 +19,10 @@ if [ -z "$cwd" ]; then
   exit 0
 fi
 
-state_file="$cwd/.claude/task-tracker-state.json"
+state_file="$cwd/.ai-task-manager/task-tracker-state.json"
+if [ ! -f "$state_file" ]; then
+  state_file="$cwd/.claude/task-tracker-state.json"
+fi
 
 if [ ! -f "$state_file" ]; then
   exit 0

@@ -43,7 +43,7 @@ required box is unchecked will be refused.
 
 1. **Move the issue to `in-progress`:**
    ```bash
-   node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh <this-issue-#> in-progress
+   node_modules/ai-task-manager/scripts/gh/move-state.sh <this-issue-#> in-progress
    ```
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
@@ -91,7 +91,7 @@ required box is unchecked will be refused.
       gh project item-edit \
         --project-id <projectId> \
         --id <item-id> \
-        --field-id <sequenceFieldId from .claude/task-tracker.json> \
+        --field-id <sequenceFieldId from .ai-task-manager/task-tracker.json> \
         --number <N>
       ```
 

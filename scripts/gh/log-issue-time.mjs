@@ -25,7 +25,7 @@ const issueNumber = issueArg.replace('#', '');
 const cfg = loadConfig();
 
 if (!cfg.repo) { console.error('repo not configured. Run: /task config repo owner/repo'); process.exit(1); }
-if (!cfg.projectId) { console.error('projectId not configured. Run: npx claude-gh-task-manager init'); process.exit(1); }
+if (!cfg.projectId) { console.error('projectId not configured. Run: npx ai-task-manager init'); process.exit(1); }
 
 const [owner, repoName] = cfg.repo.split('/');
 

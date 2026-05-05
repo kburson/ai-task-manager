@@ -23,12 +23,15 @@ const argv = process.argv.slice(2);
 const _roleIdx = argv.indexOf('--role');
 const role = _roleIdx >= 0 && _roleIdx + 1 < argv.length ? argv[_roleIdx + 1] : 'solo';
 const _argvClean = _roleIdx >= 0 ? argv.filter((_, i) => i !== _roleIdx && i !== _roleIdx + 1) : argv;
-// Normalize bare issue numbers: "156" → "#156", "log 156" → "log #156"
+// Normalize bare issue numbers only for verbs that accept issue operands.
 const rawVerb = _argvClean[0] || 'status';
 const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
-const rest = _argvClean.slice(1).map(a => /^\d+$/.test(a) ? `#${a}` : a);
+const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check']);
+const rest = _argvClean.slice(1).map(a =>
+  ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
+);
 
-const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const cfg = loadConfig();
 const statePath = path.join(projectDir, cfg.statePath);
 const queuePath = path.join(projectDir, cfg.queuePath);
@@ -265,7 +268,7 @@ async function verbClose() {
           reasons.forEach(r => console.error(`   • ${r}`));
           unchecked.forEach(u => console.error(`   ${u}`));
           console.error('');
-          console.error('See .claude/task-tracker/pickup-directive.md § "Hard Rules".');
+          console.error('See .ai-task-manager/pickup-directive.md Hard Rules.');
           console.error('Verify each item, check its box (`/task check "<label>"`), then retry.');
           console.error('Legitimate-abandonment override: TASK_TRACKER_FORCE_DONE=1 /task close');
           process.exit(3);

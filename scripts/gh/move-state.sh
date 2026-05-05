@@ -3,7 +3,7 @@
 # Usage: scripts/gh/move-state.sh <issue#> <state>
 # States: backlog | ready | in-progress | in-review | done
 #
-# Requires project config in .claude/task-tracker.json (set by: npx claude-gh-task-manager init)
+# Requires project config in .ai-task-manager/task-tracker.json (set by: npx ai-task-manager init)
 
 set -eu
 
@@ -34,11 +34,14 @@ if [[ -z "$STATE" ]]; then
 fi
 
 # Locate config file
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-$(pwd)}")
-CONFIG_FILE="$REPO_ROOT/.claude/task-tracker.json"
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "${AI_TASK_MANAGER_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}")
+CONFIG_FILE="$REPO_ROOT/.ai-task-manager/task-tracker.json"
+if [[ ! -f "$CONFIG_FILE" && -f "$REPO_ROOT/.claude/task-tracker.json" ]]; then
+  CONFIG_FILE="$REPO_ROOT/.claude/task-tracker.json"
+fi
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
-  echo "Error: task-tracker not configured. Run: npx claude-gh-task-manager init" >&2
+  echo "Error: task-tracker not configured. Run: npx ai-task-manager init" >&2
   exit 1
 fi
 
@@ -50,7 +53,7 @@ PROJECT_ID=$(read_config projectId)
 FIELD_ID=$(read_config kanbanFieldId)
 
 if [[ -z "$PROJECT_ID" || -z "$FIELD_ID" ]]; then
-  echo "Error: Kanban board not configured. Run: npx claude-gh-task-manager init" >&2
+  echo "Error: Kanban board not configured. Run: npx ai-task-manager init" >&2
   exit 1
 fi
 
@@ -78,7 +81,7 @@ case "$STATE" in
 esac
 
 if [[ -z "$OPTION_ID" ]]; then
-  echo "Error: option ID for state '$STATE' not configured. Run: npx claude-gh-task-manager init" >&2
+  echo "Error: option ID for state '$STATE' not configured. Run: npx ai-task-manager init" >&2
   exit 1
 fi
 
@@ -112,7 +115,7 @@ if [[ "$STATE" == "done" ]]; then
         echo "⛔ Refusing to move #$ISSUE to Done:" >&2
         for r in "${REASONS[@]}"; do echo "   • $r" >&2; done
         echo "" >&2
-        echo "See .claude/task-tracker/pickup-directive.md § \"Hard Rules\"." >&2
+        echo "See .ai-task-manager/pickup-directive.md Hard Rules." >&2
         echo "Verify each item, check its box, then retry. Legitimate-abandonment override:" >&2
         echo "   TASK_TRACKER_FORCE_DONE=1 $0 $ISSUE done${ITEM_ID_OVERRIDE:+ --item-id $ITEM_ID_OVERRIDE}" >&2
         echo "" >&2
@@ -162,6 +165,6 @@ echo "✓ Issue #$ISSUE moved to: $STATE"
 # End task tracking when an issue is marked done
 if [[ "$STATE" == "done" ]]; then
   if [[ -n "$REPO_ROOT" ]]; then
-    node "$REPO_ROOT/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
+    node "$REPO_ROOT/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
   fi
 fi

@@ -30,8 +30,8 @@ export const DEFAULTS = {
   defaultLabels: [],
   autoEndOnSwitch: true,
   hookNetworkTimeoutMs: 2000,
-  queuePath: '.claude/task-tracker-queue.json',
-  statePath: '.claude/task-tracker-state.json',
+  queuePath: '.ai-task-manager/task-tracker-queue.json',
+  statePath: '.ai-task-manager/task-tracker-state.json',
   idleThresholdMinutes: 5,
   recordWallClock: true,
   pickupDirective: true,
@@ -64,10 +64,12 @@ const TYPES = {
 };
 
 function defaultPaths() {
-  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   return {
-    projectPath: path.join(projectDir, '.claude', 'task-tracker.json'),
-    userPath: path.join(os.homedir(), '.claude', 'task-tracker-config.json'),
+    projectPath: path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
+    legacyProjectPath: path.join(projectDir, '.claude', 'task-tracker.json'),
+    userPath: path.join(os.homedir(), '.ai-task-manager', 'task-tracker-config.json'),
+    legacyUserPath: path.join(os.homedir(), '.claude', 'task-tracker-config.json'),
   };
 }
 
@@ -78,9 +80,13 @@ function readJson(p) {
 }
 
 export function loadConfig(paths = {}) {
-  const { projectPath, userPath } = { ...defaultPaths(), ...paths };
-  const user = readJson(userPath);
-  const project = readJson(projectPath);
+  const defaults = defaultPaths();
+  const projectPath = paths.projectPath ?? defaults.projectPath;
+  const legacyProjectPath = paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
+  const userPath = paths.userPath ?? defaults.userPath;
+  const legacyUserPath = paths.legacyUserPath ?? (paths.userPath ? null : defaults.legacyUserPath);
+  const user = existsSync(userPath) ? readJson(userPath) : (legacyUserPath ? readJson(legacyUserPath) : {});
+  const project = existsSync(projectPath) ? readJson(projectPath) : (legacyProjectPath ? readJson(legacyProjectPath) : {});
   const merged = { ...DEFAULTS };
   const sources = {};
   for (const k of Object.keys(DEFAULTS)) sources[k] = 'default';
@@ -157,7 +163,7 @@ export function formatConfig(cfg) {
     'Task Tracker Config (* = project-local override, ^ = user-global override)\n',
     'Settings  (edit with: /task config <key> <value>)',
     ...USER_KEYS.map(k => formatUserRow(cfg, k)),
-    '\nInternal  (managed by: npx claude-gh-task-manager init)',
+    '\nInternal  (managed by: npx ai-task-manager init)',
     ...INTERNAL_KEYS.map(k => formatInternalRow(cfg, k)),
   ].join('\n');
 }

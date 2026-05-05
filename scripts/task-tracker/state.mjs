@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { legacyPathFor } from './paths.mjs';
 
 export const EMPTY_STATE = {
   active: null,
@@ -11,9 +12,14 @@ export const EMPTY_STATE = {
 };
 
 export function loadState(statePath) {
-  if (!existsSync(statePath)) return { ...EMPTY_STATE };
+  let readPath = statePath;
+  if (!existsSync(readPath)) {
+    const legacy = legacyPathFor(statePath);
+    if (legacy && existsSync(legacy)) readPath = legacy;
+  }
+  if (!existsSync(readPath)) return { ...EMPTY_STATE };
   try {
-    const parsed = JSON.parse(readFileSync(statePath, 'utf8'));
+    const parsed = JSON.parse(readFileSync(readPath, 'utf8'));
     return { ...EMPTY_STATE, ...parsed };
   } catch {
     return { ...EMPTY_STATE };

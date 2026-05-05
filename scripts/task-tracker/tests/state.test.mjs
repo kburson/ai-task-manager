@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadState, saveState, clearActive, EMPTY_STATE } from '../state.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-state-'));
 const statePath = path.join(tmp, 'state.json');
+const preferredStatePath = path.join(tmp, '.ai-task-manager', 'task-tracker-state.json');
+const legacyStatePath = path.join(tmp, '.claude', 'task-tracker-state.json');
 
 // Test 1: missing file returns empty state
 let s = loadState(statePath);
@@ -45,6 +47,17 @@ assert.equal(s.planBucket.entries.length, 1);
 writeFileSync(statePath, '{not json');
 s = loadState(statePath);
 assert.deepEqual(s, EMPTY_STATE);
+
+// Test 6: preferred .ai-task-manager state reads legacy .claude state as fallback
+saveState({ active: '#200', lastActive: '#199' }, legacyStatePath);
+s = loadState(preferredStatePath);
+assert.equal(s.active, '#200');
+
+// Test 7: writes go to preferred path after fallback read
+saveState({ ...s, active: '#201' }, preferredStatePath);
+assert.ok(existsSync(preferredStatePath), 'preferred state path should be written');
+s = loadState(preferredStatePath);
+assert.equal(s.active, '#201');
 
 rmSync(tmp, { recursive: true });
 console.log('state.test.mjs: all passed');

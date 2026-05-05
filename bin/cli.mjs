@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// npx claude-gh-task-manager <command> [options]
-// Commands: install, init, version
+// npx ai-task-manager <command> [options]
+// Commands: install, init, statusline, version
 
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { dirname, join, resolve, relative } from 'node:path';
+import {
+  existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync,
+  symlinkSync, rmSync, lstatSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 
@@ -15,7 +18,8 @@ const PKG_ROOT = join(__dirname, '..');
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
 
-// ── helpers ─────────────────────────────────────────────────────────────────
+const PKG_NAME = 'ai-task-manager';
+const LEGACY_BIN = 'claude-gh-task-manager';
 
 function bold(s)    { return `\x1b[1m${s}\x1b[0m`; }
 function dim(s)     { return `\x1b[2m${s}\x1b[0m`; }
@@ -27,31 +31,30 @@ function magenta(s) { return `\x1b[35m${s}\x1b[0m`; }
 function bgBlue(s)  { return `\x1b[44m\x1b[97m${s}\x1b[0m`; }
 function bgGreen(s) { return `\x1b[42m\x1b[30m${s}\x1b[0m`; }
 
-function ok(msg)   { console.log(`  ${green('✅')} ${msg}`); }
-function err(msg)  { console.error(`  ${red('❌')} ${msg}`); }
-function info(msg) { console.log(`  ${cyan('🔹')} ${msg}`); }
+function ok(msg)   { console.log(`  ${green('OK')} ${msg}`); }
+function err(msg)  { console.error(`  ${red('ERR')} ${msg}`); }
 
-function divider() {
-  console.log(dim('  ─────────────────────────────────────────────────────────'));
-}
-
-function banner(emoji, title, subtitle) {
-  const inner = `  ${emoji}  ${title.padEnd(54)}`;
-  const pad   = ' '.repeat(inner.length);
+function banner(title, subtitle) {
+  const inner = `  ${title.padEnd(58)}`;
+  const pad = ' '.repeat(inner.length);
   console.log('');
   console.log(bgBlue(bold(pad)));
   console.log(bgBlue(bold(inner)));
-  if (subtitle) console.log(bgBlue(`  ${dim('   ' + subtitle.padEnd(53))}`));
+  if (subtitle) console.log(bgBlue(`  ${dim(subtitle.padEnd(58))}`));
   console.log(bgBlue(bold(pad)));
   console.log('');
 }
 
-function step(emoji, title) {
+function step(title) {
   console.log('');
-  console.log(`${cyan('▸')} ${bold(emoji + '  ' + title)}`);
-  console.log(dim('  ─────────────────────────────────────────────────────────'));
+  console.log(`${cyan('>')} ${bold(title)}`);
+  console.log(dim('  ---------------------------------------------------------'));
 }
 
+function parseOption(args, name, fallback = null) {
+  const idx = args.indexOf(name);
+  return idx !== -1 && args[idx + 1] ? args[idx + 1] : fallback;
+}
 
 function patchSettingsJson(settingsPath) {
   let settings = {};
@@ -59,41 +62,33 @@ function patchSettingsJson(settingsPath) {
     try { settings = JSON.parse(readFileSync(settingsPath, 'utf8')); } catch { /* ignore */ }
   }
 
-  // Hooks
   if (!settings.hooks) settings.hooks = {};
 
   const hookScript = '.claude/hooks/task-tracker.sh';
   const hookEntry = { matcher: '', hooks: [{ type: 'command', command: hookScript }] };
 
-  const eventNames = ['SessionStart', 'PreCompact', 'PostCompact'];
-  for (const event of eventNames) {
-    if (!Array.isArray(settings.hooks[event])) {
-      settings.hooks[event] = [];
-    }
+  for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
+    if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
     const alreadyRegistered = settings.hooks[event].some(
       h => h.command === hookScript ||
            (typeof h === 'string' && h === hookScript) ||
            h.hooks?.some(inner => inner.command === hookScript)
     );
-    if (!alreadyRegistered) {
-      settings.hooks[event].push(hookEntry);
-    }
+    if (!alreadyRegistered) settings.hooks[event].push(hookEntry);
   }
 
-  // Permissions — auto-allow task-tracker CLI and helper scripts so Claude doesn't
-  // prompt on every /task command.
   const autoAllowRules = [
+    'Bash(node */ai-task-manager/scripts/task-tracker/task-tracker.mjs*)',
+    'Bash(node */ai-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
+    'Bash(*/ai-task-manager/scripts/gh/move-state.sh*)',
+    'Bash(*/ai-task-manager/scripts/gh/set-priority.sh*)',
     'Bash(node */claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs*)',
     'Bash(node */claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
-    'Bash(*/claude-gh-task-manager/scripts/gh/move-state.sh*)',
-    'Bash(*/claude-gh-task-manager/scripts/gh/set-priority.sh*)',
   ];
   if (!settings.permissions) settings.permissions = {};
   if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
   for (const rule of autoAllowRules) {
-    if (!settings.permissions.allow.includes(rule)) {
-      settings.permissions.allow.push(rule);
-    }
+    if (!settings.permissions.allow.includes(rule)) settings.permissions.allow.push(rule);
   }
 
   mkdirSync(dirname(settingsPath), { recursive: true });
@@ -103,6 +98,10 @@ function patchSettingsJson(settingsPath) {
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
   const entries = [
+    '.ai-task-manager/task-tracker-state.json',
+    '.ai-task-manager/task-tracker-queue.json',
+    '.ai-task-manager/pickup-directive.md.bak',
+    '.ai-task-manager/definition-of-done.md.bak',
     '.claude/task-tracker.json',
     '.claude/task-tracker-state.json',
     '.claude/task-tracker-queue.json',
@@ -118,63 +117,116 @@ function patchGitignore(targetDir) {
   if (changed) writeFileSync(gitignorePath, content, 'utf8');
 }
 
-// ── commands ─────────────────────────────────────────────────────────────────
-
-function cmdVersion() {
-  console.log(`claude-gh-task-manager v${pkg.version}`);
+function writeIfChanged(file, content) {
+  mkdirSync(dirname(file), { recursive: true });
+  if (existsSync(file) && readFileSync(file, 'utf8') === content) return false;
+  writeFileSync(file, content, 'utf8');
+  return true;
 }
 
-function cmdInstall(args) {
-  let targetDir = process.cwd();
-  const tIdx = args.indexOf('--target');
-  if (tIdx !== -1 && args[tIdx + 1]) {
-    targetDir = resolve(args[tIdx + 1]);
+function installStub(file, content, label) {
+  const changed = writeIfChanged(file, content);
+  ok(`${label} ${dim(relative(process.cwd(), file))}${changed ? '' : ` ${dim('(unchanged)')}`}`);
+}
+
+function replaceWithSymlink(dest, src, label) {
+  mkdirSync(dirname(dest), { recursive: true });
+  let existing = null;
+  try { existing = lstatSync(dest); } catch { /* absent */ }
+  if (existing) {
+    if (existing.isSymbolicLink()) rmSync(dest);
+    else throw new Error(`${dest} exists and is not a symlink; rerun with --link-mode stub or remove it manually`);
+  }
+  symlinkSync(src, dest, 'dir');
+  ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
+}
+
+function claudeStub() {
+  return [
+    '---',
+    'name: task',
+    'description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, close, log, check, fleet, or config.',
+    '---',
+    '',
+    '# Task',
+    '',
+    'Load and follow the canonical Claude adapter instructions from:',
+    '',
+    '`node_modules/ai-task-manager/skill/adapters/claude/SKILL.md`',
+    '',
+    'Use executable scripts from:',
+    '',
+    '`node_modules/ai-task-manager/scripts/`',
+    '',
+  ].join('\n');
+}
+
+function codexStub() {
+  return [
+    '---',
+    'name: task',
+    'description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user asks to manage a task, start or close issue work, run /task commands, create backlog issues, track active work, log time, update task status, or inspect the active task fleet.',
+    '---',
+    '',
+    '# Task',
+    '',
+    'Load and follow the canonical Codex adapter instructions from:',
+    '',
+    '`node_modules/ai-task-manager/skill/adapters/codex/SKILL.md`',
+    '',
+    'Use executable scripts from:',
+    '',
+    '`node_modules/ai-task-manager/scripts/`',
+    '',
+  ].join('\n');
+}
+
+function installClaude(targetDir, linkMode) {
+  step('Claude Code files');
+  const skillDest = join(targetDir, '.claude', 'skills', 'task');
+  if (linkMode === 'symlink') {
+    replaceWithSymlink(skillDest, join(PKG_ROOT, 'skill', 'adapters', 'claude'), 'Skill');
+  } else {
+    installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
 
-  banner('📦', `Installing claude-gh-task-manager v${pkg.version}`, `→ ${targetDir}`);
-
-  // 1. Skill
-  step('🧠', 'Skill & design docs');
-  const skillDest = join(targetDir, '.claude', 'skills', 'task');
-  mkdirSync(skillDest, { recursive: true });
-  copyFileSync(join(PKG_ROOT, 'skill', 'SKILL.md'), join(skillDest, 'SKILL.md'));
-  ok(`Skill    ${dim('.claude/skills/task/SKILL.md')}`);
-
-  copyFileSync(join(PKG_ROOT, 'docs', 'DESIGN.md'), join(skillDest, 'DESIGN.md'));
-  ok(`Design   ${dim('.claude/skills/task/DESIGN.md')}`);
-
-  // 2. Hook stub — delegates to node_modules package
-  step('🪝', 'Hook & slash command');
-  const hookDest = join(targetDir, '.claude', 'hooks');
-  mkdirSync(hookDest, { recursive: true });
-  const hookStubPath = join(hookDest, 'task-tracker.sh');
-  const PKG_NAME = '@burson.kendrick/claude-gh-task-manager';
+  const hookStubPath = join(targetDir, '.claude', 'hooks', 'task-tracker.sh');
   const hookStub = [
     '#!/usr/bin/env bash',
-    `# Generated by ${PKG_NAME} install — do not edit.`,
-    `PKG="$(cd "$(dirname "$0")/../.." && pwd)/node_modules/${PKG_NAME}"`,
+    `# Generated by ${PKG_NAME} install - do not edit.`,
+    `PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"`,
+    `PKG="$PROJECT_ROOT/node_modules/${PKG_NAME}"`,
+    'export AI_TASK_MANAGER_PROJECT_DIR="$PROJECT_ROOT"',
     'exec bash "$PKG/hooks/task-tracker.sh"',
     '',
   ].join('\n');
-  writeFileSync(hookStubPath, hookStub, 'utf8');
+  writeIfChanged(hookStubPath, hookStub);
   try { execFileSync('chmod', ['+x', hookStubPath]); } catch { /* ignore on Windows */ }
-  ok(`Hook     ${dim('.claude/hooks/task-tracker.sh (stub → node_modules)')}`);
+  ok(`Hook ${dim('.claude/hooks/task-tracker.sh (stub -> node_modules)')}`);
 
-  const commandDest = join(targetDir, '.claude', 'commands');
-  mkdirSync(commandDest, { recursive: true });
-  writeFileSync(join(commandDest, 'task.md'), 'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS\n', 'utf8');
-  ok(`Command  ${dim('.claude/commands/task.md')}`);
+  installStub(
+    join(targetDir, '.claude', 'commands', 'task.md'),
+    'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS\n',
+    'Command'
+  );
 
-  // 3. Patch .claude/settings.json
-  step('🔐', 'Settings & permissions');
-  const settingsPath = join(targetDir, '.claude', 'settings.json');
-  patchSettingsJson(settingsPath);
-  ok(`Hooks registered in ${dim('.claude/settings.json')}`);
-  ok(`Permissions auto-allowed for task-tracker commands`);
+  patchSettingsJson(join(targetDir, '.claude', 'settings.json'));
+  ok(`Settings ${dim('.claude/settings.json')}`);
+}
 
-  // 4. Pickup directive templates
-  step('📝', 'Process templates');
-  const templateDest = join(targetDir, '.claude', 'task-tracker');
+function installCodex(targetDir, linkMode) {
+  step('Codex files');
+  const skillDest = join(targetDir, '.agents', 'skills', 'task');
+  if (linkMode === 'symlink') {
+    replaceWithSymlink(skillDest, join(PKG_ROOT, 'skill', 'adapters', 'codex'), 'Skill');
+  } else {
+    installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
+  }
+}
+
+function installTemplates(targetDir) {
+  step('Shared templates and gitignore');
+  const templateDest = join(targetDir, '.ai-task-manager');
   mkdirSync(templateDest, { recursive: true });
   for (const name of ['pickup-directive.md', 'definition-of-done.md']) {
     const src = join(PKG_ROOT, 'templates', name);
@@ -184,28 +236,51 @@ function cmdInstall(args) {
       const existing = readFileSync(out, 'utf8');
       const bundled = readFileSync(src, 'utf8');
       if (existing !== bundled) {
-        const backup = out + '.bak';
-        writeFileSync(backup, existing, 'utf8');
+        writeFileSync(out + '.bak', existing, 'utf8');
         suffix = ` ${yellow('(overwrote; previous saved as .bak)')}`;
       } else {
         suffix = ` ${dim('(unchanged)')}`;
       }
     }
     copyFileSync(src, out);
-    ok(`Template ${dim('.claude/task-tracker/' + name)}${suffix}`);
+    ok(`Template ${dim('.ai-task-manager/' + name)}${suffix}`);
+  }
+  patchGitignore(targetDir);
+  ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
+}
+
+function cmdVersion() {
+  console.log(`${PKG_NAME} v${pkg.version}`);
+}
+
+function cmdInstall(args) {
+  let targetDir = process.cwd();
+  const targetArg = parseOption(args, '--target');
+  if (targetArg) targetDir = resolve(targetArg);
+
+  const agent = parseOption(args, '--agent', 'both');
+  const linkMode = parseOption(args, '--link-mode', 'stub');
+  if (!['claude', 'codex', 'both'].includes(agent)) {
+    err(`Unknown --agent ${agent}. Expected claude, codex, or both.`);
+    process.exit(1);
+  }
+  if (!['stub', 'symlink'].includes(linkMode)) {
+    err(`Unknown --link-mode ${linkMode}. Expected stub or symlink.`);
+    process.exit(1);
   }
 
-  // 5. Patch .gitignore
-  step('🙈', 'Gitignore');
-  patchGitignore(targetDir);
-  ok(`Added ${dim('.claude/task-tracker{,-state,-queue}.json')} to .gitignore`);
+  banner(`Installing ${PKG_NAME} v${pkg.version}`, `target: ${targetDir}`);
+
+  if (agent === 'claude' || agent === 'both') installClaude(targetDir, linkMode);
+  if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode);
+  installTemplates(targetDir);
 
   console.log('');
-  console.log(bgGreen(bold('  ✅  Install complete                                       ')));
+  console.log(bgGreen(bold('  Install complete                                          ')));
   console.log('');
-  console.log(`  ${bold('Next step')} ${dim('— configure your GitHub project:')}`);
+  console.log(`  ${bold('Next step')} ${dim('- configure your GitHub project:')}`);
   console.log('');
-  console.log(`     ${cyan(bold('npx claude-gh-task-manager init'))}`);
+  console.log(`     ${cyan(bold('npx ai-task-manager init'))}`);
   console.log('');
 }
 
@@ -215,44 +290,32 @@ function cmdStatusline() {
   const destScript = join(claudeDir, 'statusline.sh');
   const destSettings = join(claudeDir, 'settings.json');
 
-  banner('📟', 'Installing status line', '→ ~/.claude/');
+  banner('Installing status line', 'target: ~/.claude/');
 
-  step('📜', 'Status line script');
+  step('Status line script');
   const srcScript = join(PKG_ROOT, 'statusline', 'statusline.sh');
   mkdirSync(claudeDir, { recursive: true });
   copyFileSync(srcScript, destScript);
   try { execFileSync('chmod', ['+x', destScript]); } catch { /* ignore on Windows */ }
   ok(`Installed ${dim('~/.claude/statusline.sh')}`);
 
-  step('⚙️ ', 'User settings');
+  step('User settings');
   let settings = {};
   if (existsSync(destSettings)) {
     try { settings = JSON.parse(readFileSync(destSettings, 'utf8')); } catch { /* ignore */ }
   }
-  // Heal legacy string form written by older versions of this installer.
   if (typeof settings.statusLine === 'string') {
     settings.statusLine = { type: 'command', command: settings.statusLine };
   }
   settings.statusLine = { type: 'command', command: destScript };
   writeFileSync(destSettings, JSON.stringify(settings, null, 2) + '\n', 'utf8');
   ok(`Updated ${dim('~/.claude/settings.json')}`);
-
-  console.log('');
-  console.log(bgGreen(bold('  ✅  Status line active                                     ')));
-  console.log('');
-  console.log(`  ${cyan('🔹')} ${dim('The active /task issue will appear in the Claude Code CLI header bar.')}`);
-  console.log('');
-  console.log(`  ${yellow('⚠️ ')} ${dim('CLI-only — no effect in the Claude.ai web app or desktop application.')}`);
-  console.log(`     ${dim('The desktop app may add this feature in a future release.')}`);
-  console.log('');
 }
 
 function cmdInit(args) {
   let targetDir = process.cwd();
-  const tIdx = args.indexOf('--target');
-  if (tIdx !== -1 && args[tIdx + 1]) {
-    targetDir = resolve(args[tIdx + 1]);
-  }
+  const targetArg = parseOption(args, '--target');
+  if (targetArg) targetDir = resolve(targetArg);
 
   const initScript = join(PKG_ROOT, 'scripts', 'gh', 'init-project-config.sh');
 
@@ -264,8 +327,6 @@ function cmdInit(args) {
   }
 }
 
-// ── dispatch ─────────────────────────────────────────────────────────────────
-
 const [,, command = 'help', ...rest] = process.argv;
 
 switch (command) {
@@ -274,35 +335,34 @@ switch (command) {
   case '--version':
     cmdVersion();
     break;
-
   case 'install':
     cmdInstall(rest);
     break;
-
   case 'init':
     cmdInit(rest);
     break;
-
   case 'statusline':
     cmdStatusline();
     break;
-
   default:
     console.log(`
-${bgBlue(bold('  🎯  claude-gh-task-manager  '))} ${dim('v' + pkg.version)}
+${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
 
-  ${dim('Bind Claude Code sessions to GitHub issues and auto-log time + context words.')}
+  ${dim('Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow.')}
 
 ${bold('  Usage')}
-    ${cyan('npx claude-gh-task-manager install')}    ${dim('[--target <dir>]   Copy files into your project')}
-    ${cyan('npx claude-gh-task-manager init')}       ${dim('[--target <dir>]   Configure GitHub project IDs')}
-    ${cyan('npx claude-gh-task-manager statusline')}                    ${dim('Install status line (CLI only)')}
-    ${cyan('npx claude-gh-task-manager version')}                       ${dim('Print version')}
+    ${cyan('npx ai-task-manager install')}    ${dim('[--agent both|claude|codex] [--link-mode stub|symlink] [--target <dir>]')}
+    ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>]')}
+    ${cyan('npx ai-task-manager statusline')} ${dim('Install Claude Code status line')}
+    ${cyan('npx ai-task-manager version')}    ${dim('Print version')}
+
+${bold('  Compatibility')}
+    ${cyan(`npx ${LEGACY_BIN} <command>`)} ${dim('continues to work as a bin alias for this release')}
 
 ${bold('  Quickstart')}
-    ${green('1.')} ${cyan('npx claude-gh-task-manager install')}
-    ${green('2.')} ${cyan('npx claude-gh-task-manager init')}
-    ${green('3.')} ${cyan('npx claude-gh-task-manager statusline')}   ${dim('# optional')}
-    ${green('4.')} ${dim('In Claude Code:')} ${magenta('/task #<issue-number>')}
+    ${green('1.')} ${cyan('npx ai-task-manager install --agent both')}
+    ${green('2.')} ${cyan('npx ai-task-manager init')}
+    ${green('3.')} ${dim('Claude Code:')} ${magenta('/task #<issue-number>')}
+    ${green('4.')} ${dim('Codex:')} ${magenta('Use the task skill to start issue #<issue-number>.')}
 `);
 }

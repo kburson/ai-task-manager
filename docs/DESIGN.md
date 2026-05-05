@@ -10,7 +10,7 @@ Manually logging session time and context words onto GitHub issues is lossy — 
 
 ## Solution
 
-A project-local Claude Code skill (`/task`) that binds the active work session to a specific GitHub issue. Time and context-word deltas are recorded to a single "⏱ Timing Log" comment on that issue, appended on every skill invocation and every compaction hook. GitHub is the source of truth; the skill keeps only a tiny local state file pointing at the active task.
+A project-local AI agent skill that binds the active work session to a specific GitHub issue. Claude Code can invoke it through `/task`; Codex can invoke the same workflow through its `.agents/skills` task skill. Time and context-word deltas are recorded to a single "⏱ Timing Log" comment on that issue, appended on every skill invocation and every supported session hook. GitHub is the source of truth; the skill keeps only a tiny local state file pointing at the active task.
 
 ## Vocabulary
 
@@ -96,7 +96,7 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 
 ### `/task config` and `/task config <key> <value>`
 - `/task config` → print all effective config values with source annotations (`*` for project-local overrides).
-- `/task config <key> <value>` → validate type, write to project-local `.claude/task-tracker.json`, echo back the new value.
+- `/task config <key> <value>` → validate type, write to project-local `.ai-task-manager/task-tracker.json`, echo back the new value.
 - Validation:
   - Numeric keys require numeric values.
   - Boolean keys accept `true`/`false`/`1`/`0`/`yes`/`no`.
@@ -106,11 +106,11 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 
 ## Config Schema
 
-File: `.claude/task-tracker.json` (project-local) or `~/.claude/task-tracker-config.json` (user-global).
+File: `.ai-task-manager/task-tracker.json` (project-local) or `~/.ai-task-manager/task-tracker-config.json` (user-global; legacy `~/.claude/task-tracker-config.json` is read as fallback).
 
 Precedence: project-local > user-global > hardcoded defaults.
 
-**User-settable keys** (`/task config <key> <value>` or `~/.claude/task-tracker-config.json`):
+**User-settable keys** (`/task config <key> <value>` or `~/.ai-task-manager/task-tracker-config.json`):
 
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
@@ -123,10 +123,10 @@ Precedence: project-local > user-global > hardcoded defaults.
 | `recordWallClock` | boolean | `true` | Record wall-clock time in addition to active time |
 | `hookNetworkTimeoutMs` | number | `2000` | PreCompact GH API timeout before queue-fallback |
 | `pickupDirective` | boolean | `true` | Inject Pickup Directive block into issues created via `/task new` |
-| `queuePath` | string | `.claude/task-tracker-queue.json` | Where failed hook posts get queued |
-| `statePath` | string | `.claude/task-tracker-state.json` | Active-task state file |
+| `queuePath` | string | `.ai-task-manager/task-tracker-queue.json` | Where failed hook posts get queued |
+| `statePath` | string | `.ai-task-manager/task-tracker-state.json` | Active-task state file |
 
-**Internal keys** (managed by `npx claude-gh-task-manager init` — do not set manually):
+**Internal keys** (managed by `npx ai-task-manager init` — do not set manually):
 
 | Key | Purpose |
 |-----|---------|
@@ -139,7 +139,7 @@ Precedence: project-local > user-global > hardcoded defaults.
 
 ## State File
 
-Location: `.claude/task-tracker-state.json` (gitignored).
+Location: `.ai-task-manager/task-tracker-state.json` (gitignored).
 
 ```json
 {
@@ -295,7 +295,7 @@ Migration steps (executed during implementation):
 4. Update `.claude/settings.json` to call new hook.
 5. Remove `chat-word-count.sh`.
 6. Create `.claude/skills/task-tracker/SKILL.md`.
-7. Create default `.claude/task-tracker.json` with this repo's GH field IDs.
+7. Create default `.ai-task-manager/task-tracker.json` with this repo's GH field IDs.
 8. Add state/queue file paths to `.gitignore`.
 9. Copy this spec to `.claude/skills/task-tracker/DESIGN.md` so the skill ships with its own reference doc. Keep the two files in sync when the spec evolves (future edits should update both — or make `DESIGN.md` a symlink to the spec, decision deferred to the plan).
 10. Smoke test: `/task status` returns "no active task"; `/task #107` starts; `/task pause` flushes; verify timing comment on #107.
@@ -349,7 +349,7 @@ Every issue created from a master plan (and optionally single issues when `picku
 
 ```markdown
 ## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
-> Follow: `.claude/task-tracker/pickup-directive.md`
+> Follow: `.ai-task-manager/pickup-directive.md`
 
 - [ ] Deep dive complete
 
@@ -357,7 +357,7 @@ Every issue created from a master plan (and optionally single issues when `picku
 <contents of definition-of-done.md>
 ```
 
-The block is built by `scripts/task-tracker/preflight-issue.mjs`, which also acts as a gate: it verifies that `.claude/task-tracker/pickup-directive.md` and `.claude/task-tracker/definition-of-done.md` exist before any issue is created. If either is missing, the skill aborts with a "(re)install the skill" message — no issues are created until the templates are in place.
+The block is built by `scripts/task-tracker/preflight-issue.mjs`, which also acts as a gate: it verifies that `.ai-task-manager/pickup-directive.md` and `.ai-task-manager/definition-of-done.md` exist before any issue is created. If either is missing, the skill aborts with a "(re)install the skill" message — no issues are created until the templates are in place.
 
 On first pickup, the agent runs a just-in-time deep dive against the current repo state and appends it to the issue body, including a required dependency map:
 
@@ -367,7 +367,7 @@ Depends on: #N (reason)   ← or "none"
 Blocks: #P (reason)       ← or "none"
 ```
 
-Full agent instructions live in `.claude/task-tracker/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
+Full agent instructions live in `.ai-task-manager/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
 
 **Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.sh <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. The audited override `TASK_TRACKER_FORCE_DONE=1` bypasses but posts an audit comment listing the unverified items. The GitHub UI (drag a card, delete an issue) is not gated.
 

@@ -16,9 +16,13 @@ const target = mkdtempSync(path.join(tmpdir(), 'install-test-'));
 try {
   await pexec('node', [CLI, 'install', '--target', target]);
 
-  // Skill files copied
-  assert.ok(existsSync(path.join(target, '.claude', 'skills', 'task', 'SKILL.md')), 'SKILL.md missing');
-  assert.ok(existsSync(path.join(target, '.claude', 'skills', 'task', 'DESIGN.md')), 'DESIGN.md missing');
+  // Agent stubs installed
+  const claudeSkill = path.join(target, '.claude', 'skills', 'task', 'SKILL.md');
+  const codexSkill = path.join(target, '.agents', 'skills', 'task', 'SKILL.md');
+  assert.ok(existsSync(claudeSkill), 'Claude SKILL.md missing');
+  assert.ok(existsSync(codexSkill), 'Codex SKILL.md missing');
+  assert.match(readFileSync(claudeSkill, 'utf8'), /skill\/adapters\/claude\/SKILL\.md/, 'Claude stub must point to adapter');
+  assert.match(readFileSync(codexSkill, 'utf8'), /skill\/adapters\/codex\/SKILL\.md/, 'Codex stub must point to adapter');
 
   // Stub written, not the original hook
   const stub = path.join(target, '.claude', 'hooks', 'task-tracker.sh');
@@ -33,8 +37,14 @@ try {
 
   // .gitignore entries written
   const gitignore = readFileSync(path.join(target, '.gitignore'), 'utf8');
+  assert.ok(gitignore.includes('.ai-task-manager/task-tracker-state.json'), 'shared state gitignore entry missing');
+  assert.ok(gitignore.includes('.ai-task-manager/task-tracker-queue.json'), 'shared queue gitignore entry missing');
   assert.ok(gitignore.includes('.claude/task-tracker-state.json'), 'state gitignore entry missing');
   assert.ok(gitignore.includes('.claude/task-tracker-queue.json'), 'queue gitignore entry missing');
+
+  // Templates written to shared runtime folder
+  assert.ok(existsSync(path.join(target, '.ai-task-manager', 'pickup-directive.md')), 'pickup directive missing');
+  assert.ok(existsSync(path.join(target, '.ai-task-manager', 'definition-of-done.md')), 'definition of done missing');
 
   // scripts NOT copied to project
   assert.ok(!existsSync(path.join(target, 'scripts', 'task-tracker')), 'scripts/task-tracker must NOT be copied');

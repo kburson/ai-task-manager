@@ -3,7 +3,7 @@
  * Generate an AI value report (HTML/PDF) from GitHub project issue data.
  *
  * When to run: At epic close, sprint end, or stakeholder review.
- * Preconditions: GITHUB_TOKEN env var or gh CLI authenticated; .claude/task-tracker.json configured.
+ * Preconditions: GITHUB_TOKEN env var or gh CLI authenticated; .ai-task-manager/task-tracker.json configured.
  * Side effects: Writes HTML (and optionally PDF) to the output path; no DB writes.
  * Safe to re-run: yes — output files are overwritten.
  *
@@ -21,9 +21,9 @@
  *     [--to   YYYY-MM-DD]          only issues closed on or before this date
  *     [--state open|closed|all]    filter by GitHub issue state (default: all)
  *     [--status Done|Backlog|...]  filter by Kanban board status (case-insensitive)
- *     [--project-id PVT_...]       override GitHub Projects V2 node ID (default: from .claude/task-tracker.json)
+ *     [--project-id PVT_...]       override GitHub Projects V2 node ID (default: from .ai-task-manager/task-tracker.json)
  *
- * Project and owner are read from .claude/task-tracker.json (set by npx claude-gh-task-manager init).
+ * Project and owner are read from .ai-task-manager/task-tracker.json (set by npx ai-task-manager init).
  * Defaults are loaded from value-report-config.json next to this script.
  *
  * PDF output requires puppeteer: npm install --save-dev puppeteer
@@ -47,6 +47,7 @@ import { execSync } from 'node:child_process';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadConfig } from '../task-tracker/config.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -56,11 +57,13 @@ const CONFIG_PATH = path.join(__dir, 'value-report-config.json');
 const fileCfg = existsSync(CONFIG_PATH) ? JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) : {};
 
 // Load task-tracker project config to get projectId and repo
-const projectRoot = process.env.CLAUDE_PROJECT_DIR
+const projectRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR ?? process.env.CLAUDE_PROJECT_DIR
   ?? execSync('git rev-parse --show-toplevel 2>/dev/null || echo ""', { encoding: 'utf8' }).trim()
   ?? process.cwd();
-const ttConfigPath = path.join(projectRoot, '.claude', 'task-tracker.json');
-const ttCfg = existsSync(ttConfigPath) ? JSON.parse(readFileSync(ttConfigPath, 'utf8')) : {};
+const ttCfg = loadConfig({
+  projectPath: path.join(projectRoot, '.ai-task-manager', 'task-tracker.json'),
+  legacyProjectPath: path.join(projectRoot, '.claude', 'task-tracker.json'),
+});
 
 const [ttOwner] = (ttCfg.repo ?? '').split('/');
 
@@ -95,7 +98,7 @@ const cfg = {
 };
 
 if (!cfg.projectId) {
-  console.error('No projectId found. Run: npx claude-gh-task-manager init');
+  console.error('No projectId found. Run: npx ai-task-manager init');
   process.exit(1);
 }
 if (cfg.fromDate && isNaN(cfg.fromDate)) {

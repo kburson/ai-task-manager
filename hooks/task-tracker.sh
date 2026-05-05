@@ -20,7 +20,8 @@ if [ -z "$NODE_BIN" ]; then
   exit 0
 fi
 
-SCRIPT="$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/hook-handler.mjs"
+PROJECT_DIR="${AI_TASK_MANAGER_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+SCRIPT="$PROJECT_DIR/node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
 if [ ! -f "$SCRIPT" ]; then
   echo "[task-tracker] handler not found at $SCRIPT — skipping" >&2
   exit 0

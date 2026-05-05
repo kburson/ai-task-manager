@@ -1,0 +1,13 @@
+{
+  "name": "ai-task-manager",
+  "version": "0.1.0",
+  "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow.",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AI Task Manager",
+    "shortDescription": "Track AI coding sessions against GitHub issues",
+    "developerName": "Kendrick Burson",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"]
+  }
+}

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Interactive setup for claude-gh-task-manager.
+# Interactive setup for ai-task-manager.
 # Walks through GitHub auth, discovers GitHub Projects V2 field/option IDs,
-# and writes .claude/task-tracker.json + .github/ISSUE_TEMPLATE/ in the target project.
+# and writes .ai-task-manager/task-tracker.json + .github/ISSUE_TEMPLATE/ in the target project.
 #
 # Usage: scripts/gh/init-project-config.sh [--target <project-dir>]
 
@@ -71,13 +71,13 @@ if [[ -z "$TARGET_DIR" ]]; then
   TARGET_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-$(pwd)}")
 fi
 
-CONFIG_DIR="$TARGET_DIR/.claude"
+CONFIG_DIR="$TARGET_DIR/.ai-task-manager"
 CONFIG_FILE="$CONFIG_DIR/task-tracker.json"
 mkdir -p "$CONFIG_DIR"
 
 # ── banner ─────────────────────────────────────────────────────────────────
 
-banner "🎯" "claude-gh-task-manager — Project Setup" "Target: $TARGET_DIR"
+banner "🎯" "ai-task-manager — Project Setup" "Target: $TARGET_DIR"
 
 # ── step 1: github auth ────────────────────────────────────────────────────
 
@@ -233,7 +233,7 @@ if [[ "$PROJECT_COUNT" == "0" ]]; then
   if [[ "$CREATE_PROJECT" =~ ^[Nn] ]]; then
     err "Cannot continue without a GitHub Project. Create one at:"
     err "  https://github.com/users/$OWNER/projects/new"
-    err "Then re-run: npx claude-gh-task-manager init"
+    err "Then re-run: npx ai-task-manager init"
     exit 1
   fi
   prompt "Project title [$DEFAULT_TITLE]:"
@@ -713,7 +713,7 @@ echo ""
 
 step "💾" "Step 5 of 5" "Writing Config & Issue Templates"
 
-# Write .claude/task-tracker.json — merge with existing config
+# Write .ai-task-manager/task-tracker.json — merge with existing config
 CONFIG_FILE="$CONFIG_FILE" \
 REPO="$REPO" \
 PROJECT_NODE_ID="$PROJECT_NODE_ID" \
@@ -736,8 +736,12 @@ FIELD_SEQUENCE="$FIELD_SEQUENCE" \
 node -e "
 const fs = require('fs');
 const file = process.env.CONFIG_FILE;
+const legacyFile = file.replace('/.ai-task-manager/', '/.claude/');
 let existing = {};
-try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
+try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); }
+catch {
+  try { existing = JSON.parse(fs.readFileSync(legacyFile, 'utf8')); } catch {}
+}
 const updates = {
   repo:                   process.env.REPO,
   projectId:              process.env.PROJECT_NODE_ID,
@@ -912,11 +916,11 @@ printf "  \033[1m🚀 Next steps\033[0m\n"
 echo ""
 printf "    \033[32m1.\033[0m Commit the issue templates \033[2m(config is gitignored)\033[0m:\n"
 printf "       \033[36mgit add .github/ISSUE_TEMPLATE/\033[0m\n"
-printf "       \033[36mgit commit -m 'chore: add claude-gh-task-manager issue templates'\033[0m\n"
+printf "       \033[36mgit commit -m 'chore: add ai-task-manager issue templates'\033[0m\n"
 echo ""
 printf "    \033[32m2.\033[0m Start Claude Code and type: \033[35m/task #<issue-number>\033[0m\n"
 echo ""
 divider
 echo ""
-printf "  \033[36m🔹\033[0m To reconfigure at any time, run: \033[36mnpx claude-gh-task-manager init\033[0m\n"
+printf "  \033[36m🔹\033[0m To reconfigure at any time, run: \033[36mnpx ai-task-manager init\033[0m\n"
 echo ""

@@ -1,10 +1,16 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { legacyPathFor } from './paths.mjs';
 
 function read(queuePath) {
-  if (!existsSync(queuePath)) return [];
+  let readPath = queuePath;
+  if (!existsSync(readPath)) {
+    const legacy = legacyPathFor(queuePath);
+    if (legacy && existsSync(legacy)) readPath = legacy;
+  }
+  if (!existsSync(readPath)) return [];
   try {
-    const parsed = JSON.parse(readFileSync(queuePath, 'utf8'));
+    const parsed = JSON.parse(readFileSync(readPath, 'utf8'));
     return Array.isArray(parsed) ? parsed : [];
   } catch { return []; }
 }

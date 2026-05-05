@@ -5,7 +5,7 @@
 # Priorities: p0 | p1 | p2
 # --cascade: also set the same priority on all direct sub-issues
 #
-# Requires project config in .claude/task-tracker.json (set by: npx claude-gh-task-manager init)
+# Requires project config in .ai-task-manager/task-tracker.json (set by: npx ai-task-manager init)
 
 set -eu
 
@@ -26,11 +26,14 @@ if [[ -z "$PRIORITY" ]]; then
 fi
 
 # Locate config file
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-$(pwd)}")
-CONFIG_FILE="$REPO_ROOT/.claude/task-tracker.json"
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "${AI_TASK_MANAGER_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}")
+CONFIG_FILE="$REPO_ROOT/.ai-task-manager/task-tracker.json"
+if [[ ! -f "$CONFIG_FILE" && -f "$REPO_ROOT/.claude/task-tracker.json" ]]; then
+  CONFIG_FILE="$REPO_ROOT/.claude/task-tracker.json"
+fi
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
-  echo "Error: task-tracker not configured. Run: npx claude-gh-task-manager init" >&2
+  echo "Error: task-tracker not configured. Run: npx ai-task-manager init" >&2
   exit 1
 fi
 
@@ -45,7 +48,7 @@ OWNER=$(echo "$REPO" | cut -d'/' -f1)
 REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
 
 if [[ -z "$PROJECT_ID" || -z "$PRIORITY_FIELD_ID" ]]; then
-  echo "Error: Priority field not configured. Run: npx claude-gh-task-manager init" >&2
+  echo "Error: Priority field not configured. Run: npx ai-task-manager init" >&2
   exit 1
 fi
 
@@ -61,7 +64,7 @@ case "$(echo "$PRIORITY" | tr '[:upper:]' '[:lower:]')" in
 esac
 
 if [[ -z "$OPTION_ID" ]]; then
-  echo "Error: option ID for priority '$PRIORITY' not configured. Run: npx claude-gh-task-manager init" >&2
+  echo "Error: option ID for priority '$PRIORITY' not configured. Run: npx ai-task-manager init" >&2
   exit 1
 fi
 
