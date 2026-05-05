@@ -635,6 +635,31 @@ Run parallel agents in separate git worktrees — each has isolated state and wo
 
 **Solo fan-out pattern:** When fanning a set of independent issues with no parent epic, the main thread stays on whichever issue was active when the fan-out began. That issue's time records the orchestration cost. If no task is active, **stop and ask the user to pick an anchor before dispatching any agents** — never fan out without one. The anchor task must not itself be dispatched to an agent; its timing log belongs exclusively to the orchestrator. See AI Directives → Task context.
 
+### Worktree creation rules (NON-NEGOTIABLE)
+
+When dispatching agents to parallel worktrees, every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool's `isolation: "worktree"` flag does NOT guarantee this — it may reuse a pre-existing local branch with the same name (e.g. `208-cohorts-lib`) and check out from that branch's stale tip. Agents working off stale tips don't have current `.claude/task-tracker/` directives, current scripts, or recent fixes — their work is at best wasted and at worst introduces regressions.
+
+**Orchestrator pre-flight (before EVERY agent dispatch):**
+
+1. Verify `git rev-parse trunk` is up to date (`git fetch origin trunk` if needed).
+2. Delete any pre-existing local branches that would collide with planned worktree names — agents commonly use names like `<issue#>-<slug>` or `worktree-agent-<id>`. Run `git branch -D <name>` for each colliding branch BEFORE dispatch.
+3. After dispatch, verify each worktree's base SHA matches trunk HEAD: `git -C .claude/worktrees/<agent-id> rev-parse HEAD` must equal `git rev-parse trunk`. If it doesn't, kill the agent immediately, force-remove the worktree (`git worktree remove -f -f <path>`), prune (`git worktree prune`), delete the stale branch, and relaunch. Wasted-work risk increases monotonically with time spent on a stale base.
+
+**Agent bootstrap MUST include (in the agent prompt):**
+
+```
+1. cd into the assigned worktree path
+2. git rev-parse HEAD  # capture current SHA
+3. git rev-parse origin/trunk  # capture trunk HEAD (or local trunk if no remote)
+4. If the two differ: STOP. Report "stale base; please relaunch" and exit.
+   Do NOT attempt rebase/merge/reset on your own — that risks corrupting state across worktrees.
+5. npm install --no-audit --no-fund
+6. node node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs "#<N>" --role agent
+7. Read .claude/task-tracker/pickup-directive.md IN FULL.
+```
+
+**Orchestrator state-isolation guard:** Before dispatching, snapshot `.claude/task-tracker.json` and `.claude/task-tracker-state.json` from the main repo. Agents are known to occasionally resolve git-root incorrectly from inside a worktree and write back into the main repo's `.claude/`. After all agents return (or are killed), diff the snapshots; if either file changed unexpectedly, restore from the snapshot before resuming orchestrator work.
+
 ## Error Handling
 
 If GH API fails, the event is queued. Next successful `/task` call drains the queue.
