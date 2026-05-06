@@ -3,7 +3,7 @@
 // Read design: .claude/skills/task-tracker/DESIGN.md
 
 import path from 'node:path';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
@@ -60,6 +60,26 @@ function checkRepoMismatch() {
       );
     }
   } catch { /* no remote or git not available — skip silently */ }
+}
+
+const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet']);
+
+function checkInit(cfg, verb) {
+  if (INIT_EXEMPT.has(verb)) return;
+  if (!cfg.repo) {
+    process.stderr.write(
+      'task-tracker: not initialized — no repo configured.\n' +
+      '  npx ai-task-manager init   (recommended — sets up repo, project, and board fields)\n' +
+      '  /task config init          (from a Claude session — interactive config interview)\n'
+    );
+    process.exit(1);
+  }
+  if (!cfg.projectId || !cfg.kanbanFieldId) {
+    process.stderr.write(
+      '[task-tracker] Board features unavailable: project not configured (projectId missing).\n' +
+      '  Run: npx ai-task-manager init   or   /task config init\n'
+    );
+  }
 }
 
 function nowIso() { return new Date().toISOString(); }
@@ -200,6 +220,17 @@ async function runLogIssueTime(issue) {
   } catch (err) {
     console.warn(`[task-tracker] Could not update board fields: ${err.message}`);
   }
+}
+
+async function runMigrate(args) {
+  if (SKIP_NETWORK) return;
+  const scriptPath = new URL('../gh/migrate-project.mjs', import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [scriptPath, ...args], {
+    cwd: projectDir,
+    stdio: 'inherit',
+    env: process.env,
+  });
+  if (result.status !== 0) process.exit(result.status || 1);
 }
 
 // Move issue to Done on the project board. /task close is the ONLY sanctioned
@@ -599,7 +630,8 @@ Task Tracker — available commands
   /task close               Close the active task (runs pre-close gate)
   /task close --force       Close even if unchecked items remain
   /task check "<label>"     Toggle a checkbox in the active issue body
-  /task log #N              Re-compute and write Actual Session Time + Context Length
+  /task log #N              Re-compute and write Engaged/Session Time + Context Length
+  /task migrate [--dry-run] Migrate repo issues into a selected/configured project
   /task fleet               Show all active tasks across parallel worktrees
   /task config              List all config values
   /task config <key> <val>  Set a config value (project-local)
@@ -614,6 +646,7 @@ Aliases: start = resume, end = close
 
 (async () => {
   checkRepoMismatch();
+  checkInit(cfg, verb);
   try {
     switch (verb) {
       case 'status':  await verbStatus(); break;
@@ -630,6 +663,9 @@ Aliases: start = resume, end = close
         await runLogIssueTime(target);
         break;
       }
+      case 'migrate':
+        await runMigrate(rest);
+        break;
       case 'plan':    await verbPlan(); break;
       case 'new':     await verbNew(rest); break;
       case 'check':   await verbCheck(rest); break;

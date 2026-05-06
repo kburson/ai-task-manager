@@ -2,7 +2,7 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,8 +12,12 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
 
 const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-cli-'));
-mkdirSync(path.join(sandbox, '.claude'), { recursive: true });
-const env = { ...process.env, CLAUDE_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
+mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
+writeFileSync(
+  path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
+  JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
+);
+const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
 
 // Test 1: status with no active → "no active task"
 let r = await pexec('node', [CLI, 'status'], { env });
@@ -70,4 +74,27 @@ r5 = await pexec('node', [CLI, 'new', 'Fake Title'], { env: envNew });
 assert.match(r5.stdout, /Active: #999/);
 
 rmSync(sandbox, { recursive: true });
+
+// ---- Uninitialized guard tests ----
+const noRepoDirBase = mkdtempSync(path.join(tmpdir(), 'tt-norepo-'));
+mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
+const noRepoEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase, TT_SKIP_NETWORK: '1' };
+
+// Blocked verbs exit non-zero with "not initialized" on stderr
+for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'check', 'log']) {
+  try {
+    await pexec('node', [CLI, blockedVerb], { env: noRepoEnv });
+    assert.fail(`Expected exit(1) for verb: ${blockedVerb}`);
+  } catch (err) {
+    assert.match(err.stderr, /not initialized/i, `verb "${blockedVerb}" should print "not initialized"`);
+  }
+}
+
+// Exempt verbs succeed without repo
+for (const exemptVerb of ['status', 'config', 'help', '?']) {
+  const er = await pexec('node', [CLI, exemptVerb], { env: noRepoEnv });
+  assert.ok(er.stdout.length > 0 || er.stderr.length === 0, `exempt verb "${exemptVerb}" should not error`);
+}
+
+rmSync(noRepoDirBase, { recursive: true });
 console.log('cli.test.mjs: status/config/end passed');
