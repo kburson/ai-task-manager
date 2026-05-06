@@ -1,6 +1,6 @@
 node_modules/
 
-ai-task-manager-1.0.0.tgz
+*.tgz
 
 # Runtime state files (generated per-project, not committed here)
 .claude/
