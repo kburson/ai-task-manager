@@ -58,7 +58,7 @@ The tool has three distinct capability layers:
 - **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
 - **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
 - **Claude Code and/or Codex** — install whichever agent you plan to use
-- A **GitHub Projects V2** board with a Status (Kanban) field and optionally Priority, Size, Estimate, Actual Session Time, Context Length, and Sequence fields
+- A **GitHub Projects V2** board. `init` can use an existing linked board, link an existing user/org board, or create a new board with AI Task Manager-compatible workflow fields.
 
 ## Install Targets
 
@@ -91,7 +91,7 @@ The fundamental unit is a *task session*: Claude is working on one GitHub issue 
 ...work for an hour...
 /task update       → checkpoint — flush timing, reset counters, keep task active
 ...work more...
-/task close        → done — move card to Done, write Actual Session Time + Context Length to board
+/task close        → done — move card to Done, write Engaged Time + Session Time + Context Length to board
 ```
 
 ### Commands
@@ -108,7 +108,8 @@ The fundamental unit is a *task session*: Claude is working on one GitHub issue 
 | `/task update [msg]` | Checkpoint — flush and reset counters, keep task active |
 | `/task close` | Hard-stop — flush, update board fields, move to Done |
 | `TASK_TRACKER_FORCE_DONE=1 /task close` | Audited bypass for legitimate abandonment — posts an audit comment to the issue. Do not use to skip verification. |
-| `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue |
+| `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
+| `/task migrate` | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
 | `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
 | `/task fleet` | Show all active tasks across parallel agent worktrees |
 | `/task config` | List all config values with sources |
@@ -136,11 +137,28 @@ Hooks flush timing on every `/compact` and session start, so long sessions are n
 When you switch tasks or close an issue, the skill updates your board automatically:
 
 - **Kanban state** → moves the card (Backlog → Ready → In Progress → In Review → Done)
-- **Actual Session Time** → total measured engaged minutes
+- **Engaged Time / Session Time** → measured minutes used by reports and board filters
 - **Context Length** → total context words across all sessions
 - **Sequence** → the issue's position in the fan-out order
+- **Start date / End date** → set automatically when work moves to In Progress or Done
 
 All board IDs are stored in `.ai-task-manager/task-tracker.json` and set once by `init`. You never manage IDs manually.
+
+If the current repo has no linked project, `init` lists available user/org projects and offers to create a new repo-linked project. GitHub's built-in web templates, including Feature Release, are not exposed through the supported CLI/API create path, so new boards use an AI Task Manager-compatible Feature Release workflow by default.
+
+Project field definitions live in `.ai-task-manager/project-fields.json`; event bindings live in `.ai-task-manager/project-field-events.json`. These files are intended to be committed so project-specific workflow customizations travel with the repo.
+
+AITM stores portable field values in a compact machine block at the bottom of each issue body. GitHub Project fields are treated as a rebuildable index for filtering, sorting, and reporting. If that block is missing or malformed, field-writing commands heal it before syncing board fields.
+
+The embedded block is intentionally terse and machine-owned:
+
+````md
+<!-- ai-task-manager:fields:start -->
+```json
+{"schema":1,"values":{"priority":"P1","estimate":6,"sessionTime":42}}
+```
+<!-- ai-task-manager:fields:end -->
+````
 
 ---
 
@@ -252,7 +270,7 @@ Every issue created from a master plan gets this block appended:
 - [ ] Pre-commit hooks pass
 - [ ] Issue body checkboxes ticked
 - [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
+- [ ] `/task close` run (writes Engaged Time, Session Time, and Context Length automatically)
 - [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
 
 ---
@@ -277,7 +295,14 @@ On first pickup, the agent runs a just-in-time analysis against the current repo
 - Files to edit (full repo-relative paths)
 - Step-by-step implementation plan
 - Test additions (each test file with a one-line description)
-- Acceptance verification commands
+- Verification Commands as enforceable checkboxes:
+  ```markdown
+  ### Verification Commands
+
+  - [ ] `node scripts/task-tracker/tests/config.test.mjs`
+  - [ ] `node scripts/task-tracker/tests/state.test.mjs`
+  ```
+  Do not add words like `PASS`; a checked box means the exact command was run successfully and output was read.
 - Identified risks beyond the original scope
 - **Dependency map** — always required:
   ```
@@ -382,7 +407,7 @@ npx github-project-report --html --region sf_bay --role senior
 
 The report answers: **what did it actually cost to ship this, versus what would it have cost without AI?**
 
-It reads three fields from your board — `Estimate` (pre-work hours), `Actual Session Time` (measured minutes), and `Context Length` (chat words) — and builds a multi-section, print-optimized PDF or HTML document:
+It reads three fields from your board — `Estimate` (pre-work hours), `Session Time` (measured minutes), and `Context Length` (chat words) — and builds a multi-section, print-optimized PDF or HTML document:
 
 **Page 1 — Executive Summary**
 A branded header (title, generated date, region, project/repo/filters) followed by a plain-English summary of the report's structure and methodology — designed as a clean cover page for stakeholder distribution.

@@ -8,3 +8,8 @@ node_modules/
 /reports/
 .claude/task-tracker.json
 .DS_Store
+.ai-task-manager/task-tracker-state.json
+.ai-task-manager/task-tracker-queue.json
+.ai-task-manager/task-fleet.json
+.ai-task-manager/pickup-directive.md.bak
+.ai-task-manager/definition-of-done.md.bak

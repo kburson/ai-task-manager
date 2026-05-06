@@ -1,17 +1,18 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
       "Bash(node */claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs*)",
       "Bash(*/claude-gh-task-manager/scripts/gh/move-state.sh*)",
       "Bash(*/claude-gh-task-manager/scripts/gh/set-priority.sh*)",
-      "Bash(gh issue create*)",
-      "Bash(gh issue view*)",
-      "Bash(gh issue reopen*)",
-      "Bash(gh label create*)",
-      "Bash(gh api graphql*)",
-      "Bash(gh project item-edit*)",
       "Bash(cat > /tmp/*)",
-      "Bash(yes | cp *)"
+      "Bash(yes | cp *)",
+      "Bash(node */ai-task-manager/scripts/task-tracker/task-tracker.mjs*)",
+      "Bash(node */ai-task-manager/scripts/task-tracker/preflight-issue.mjs*)",
+      "Bash(*/ai-task-manager/scripts/gh/move-state.sh*)",
+      "Bash(*/ai-task-manager/scripts/gh/set-priority.sh*)",
+      "Bash(node */claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs*)"
     ]
   },
   "hooks": {

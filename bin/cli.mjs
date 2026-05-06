@@ -100,17 +100,23 @@ function patchGitignore(targetDir) {
   const entries = [
     '.ai-task-manager/task-tracker-state.json',
     '.ai-task-manager/task-tracker-queue.json',
+    '.ai-task-manager/task-fleet.json',
     '.ai-task-manager/pickup-directive.md.bak',
     '.ai-task-manager/definition-of-done.md.bak',
     '.claude/task-tracker.json',
     '.claude/task-tracker-state.json',
     '.claude/task-tracker-queue.json',
+    '.claude/task-fleet.json',
   ];
+  const COMMENT = '# ai-task-manager — user configuration files (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
   for (const entry of entries) {
     if (!content.includes(entry)) {
-      content += (content.endsWith('\n') || content === '' ? '' : '\n') + entry + '\n';
+      if (!changed && !content.includes(COMMENT)) {
+        content += (content.endsWith('\n') || content === '' ? '' : '\n') + '\n' + COMMENT + '\n';
+      }
+      content += entry + '\n';
       changed = true;
     }
   }
@@ -245,6 +251,26 @@ function installTemplates(targetDir) {
     copyFileSync(src, out);
     ok(`Template ${dim('.ai-task-manager/' + name)}${suffix}`);
   }
+  for (const name of ['project-fields.json', 'project-field-events.json']) {
+    const defaultName = name.replace('.json', '.default.json');
+    const src = join(PKG_ROOT, 'config', defaultName);
+    const out = join(templateDest, name);
+    const bundled = readFileSync(src, 'utf8');
+    if (!existsSync(out)) {
+      copyFileSync(src, out);
+      ok(`Config ${dim('.ai-task-manager/' + name)}`);
+      continue;
+    }
+    const existing = readFileSync(out, 'utf8');
+    if (existing === bundled) {
+      ok(`Config ${dim('.ai-task-manager/' + name)} ${dim('(unchanged)')}`);
+      continue;
+    }
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, 'Z');
+    const sidecar = join(templateDest, name.replace('.json', `.default.${stamp}.json`));
+    writeFileSync(sidecar, bundled, 'utf8');
+    ok(`Config ${dim('.ai-task-manager/' + name)} ${yellow('(kept; new default written beside it)')}`);
+  }
   patchGitignore(targetDir);
   ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
 }
@@ -316,11 +342,14 @@ function cmdInit(args) {
   let targetDir = process.cwd();
   const targetArg = parseOption(args, '--target');
   if (targetArg) targetDir = resolve(targetArg);
+  const projectArg = parseOption(args, '--project') ?? parseOption(args, '--project-url');
 
   const initScript = join(PKG_ROOT, 'scripts', 'gh', 'init-project-config.sh');
 
   try {
-    execFileSync('bash', [initScript, '--target', targetDir], { stdio: 'inherit' });
+    const initArgs = [initScript, '--target', targetDir];
+    if (projectArg) initArgs.push('--project', projectArg);
+    execFileSync('bash', initArgs, { stdio: 'inherit' });
   } catch (e) {
     err(`Init failed: ${e.message}`);
     process.exit(1);
@@ -352,7 +381,7 @@ ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
 
 ${bold('  Usage')}
     ${cyan('npx ai-task-manager install')}    ${dim('[--agent both|claude|codex] [--link-mode stub|symlink] [--target <dir>]')}
-    ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>]')}
+    ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>]')}
     ${cyan('npx ai-task-manager statusline')} ${dim('Install Claude Code status line')}
     ${cyan('npx ai-task-manager version')}    ${dim('Print version')}
 
