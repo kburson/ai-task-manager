@@ -1,15 +1,13 @@
 node_modules/
 
+ai-task-manager-1.0.0.tgz
+
 # Runtime state files (generated per-project, not committed here)
-.claude/task-tracker-state.json
-.claude/task-tracker-queue.json
-.claude/task-fleet.json
+.claude/
+.agents/
+.ai-task-manager/
+codex/
 
 /reports/
-.claude/task-tracker.json
 .DS_Store
-.ai-task-manager/task-tracker-state.json
-.ai-task-manager/task-tracker-queue.json
-.ai-task-manager/task-fleet.json
-.ai-task-manager/pickup-directive.md.bak
-.ai-task-manager/definition-of-done.md.bak
+
