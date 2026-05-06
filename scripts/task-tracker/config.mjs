@@ -20,6 +20,17 @@ export const DEFAULTS = {
   kanbanOptionDone: '',
   // Sequence field ID (set by init script) — numeric field on the project board
   sequenceFieldId: '',
+  fieldIds: {},
+  fieldEstimate: '',
+  fieldEngagedTime: '',
+  fieldSessionTime: '',
+  fieldContextWords: '',
+  fieldSequence: '',
+  fieldStartDate: '',
+  fieldEndDate: '',
+  // Legacy aliases retained for older scripts/config files.
+  fieldActualHours: '',
+  fieldActualMinutes: '',
   // Priority field + option IDs (set by init script)
   priorityFieldId: '',
   priorityOptionP0: '',
@@ -48,6 +59,16 @@ const TYPES = {
   kanbanOptionInReview: 'string',
   kanbanOptionDone: 'string',
   sequenceFieldId: 'string',
+  fieldIds: 'object',
+  fieldEstimate: 'string',
+  fieldEngagedTime: 'string',
+  fieldSessionTime: 'string',
+  fieldContextWords: 'string',
+  fieldSequence: 'string',
+  fieldStartDate: 'string',
+  fieldEndDate: 'string',
+  fieldActualHours: 'string',
+  fieldActualMinutes: 'string',
   priorityFieldId: 'string',
   priorityOptionP0: 'string',
   priorityOptionP1: 'string',
@@ -92,6 +113,18 @@ export function loadConfig(paths = {}) {
   for (const k of Object.keys(DEFAULTS)) sources[k] = 'default';
   for (const [k, v] of Object.entries(user)) { if (k in DEFAULTS) { merged[k] = v; sources[k] = 'user'; } }
   for (const [k, v] of Object.entries(project)) { if (k in DEFAULTS) { merged[k] = v; sources[k] = 'project'; } }
+  if (merged.fieldIds && typeof merged.fieldIds === 'object') {
+    merged.fieldEstimate ||= merged.fieldIds.estimate || '';
+    merged.fieldEngagedTime ||= merged.fieldIds.engagedTime || merged.fieldIds.actualHours || '';
+    merged.fieldSessionTime ||= merged.fieldIds.sessionTime || '';
+    merged.fieldContextWords ||= merged.fieldIds.contextLength || '';
+    merged.fieldSequence ||= merged.fieldIds.sequence || '';
+    merged.sequenceFieldId ||= merged.fieldIds.sequence || '';
+    merged.fieldStartDate ||= merged.fieldIds.startDate || '';
+    merged.fieldEndDate ||= merged.fieldIds.endDate || '';
+  }
+  merged.fieldEngagedTime ||= merged.fieldActualHours || '';
+  merged.fieldSessionTime ||= merged.fieldActualMinutes || '';
   merged._sources = sources;
   return merged;
 }
@@ -111,6 +144,14 @@ function coerce(key, raw) {
   }
   if (t === 'array') {
     return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+  }
+  if (t === 'object') {
+    if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) return raw;
+    try {
+      const parsed = JSON.parse(String(raw));
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) return parsed;
+    } catch {}
+    throw new Error(`value for ${key} must be a JSON object, got: ${raw}`);
   }
   return String(raw);
 }
@@ -139,6 +180,7 @@ const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionDone',
   'sequenceFieldId',
+  'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartDate', 'fieldEndDate',
   'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
 ];
 
@@ -154,7 +196,10 @@ function formatUserRow(cfg, k) {
 }
 
 function formatInternalRow(cfg, k) {
-  const val = cfg[k] ? cfg[k].slice(0, 8) + '…' : '(not set)';
+  const raw = cfg[k];
+  const val = raw && typeof raw === 'object'
+    ? `${Object.keys(raw).length} mapped`
+    : raw ? String(raw).slice(0, 8) + '…' : '(not set)';
   return `  ${marker(cfg._sources[k])} ${k.padEnd(24)} ${val}`;
 }
 

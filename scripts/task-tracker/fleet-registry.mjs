@@ -1,11 +1,12 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { legacyPathFor } from './paths.mjs';
 
 export function findMainWorktreePath(projectDir) {
   try {
     const out = execFileSync('git', ['worktree', 'list', '--porcelain'],
-      { cwd: projectDir, encoding: 'utf8' });
+      { cwd: projectDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const firstBlock = out.split(/\n\n/)[0];
     const match = firstBlock.match(/^worktree (.+)$/m);
     if (match) return match[1].trim();
@@ -14,13 +15,13 @@ export function findMainWorktreePath(projectDir) {
 }
 
 export function fleetRegistryPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.claude', 'task-fleet.json');
+  return path.join(mainWorktreePath, '.ai-task-manager', 'task-fleet.json');
 }
 
 export function currentBranch(projectDir) {
   try {
     return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'],
-      { cwd: projectDir, encoding: 'utf8' }).trim();
+      { cwd: projectDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   } catch {
     return 'unknown';
   }
@@ -28,8 +29,13 @@ export function currentBranch(projectDir) {
 
 export function readFleet(registryPath) {
   try {
-    if (!existsSync(registryPath)) return {};
-    return JSON.parse(readFileSync(registryPath, 'utf8'));
+    let readPath = registryPath;
+    if (!existsSync(readPath)) {
+      const legacy = legacyPathFor(registryPath);
+      if (legacy && existsSync(legacy)) readPath = legacy;
+    }
+    if (!existsSync(readPath)) return {};
+    return JSON.parse(readFileSync(readPath, 'utf8'));
   } catch {
     return {};
   }

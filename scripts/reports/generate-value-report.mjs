@@ -31,7 +31,7 @@
  */
 //
 // Measured fields read from GitHub Projects:
-//   "Actual Session Time"  — minutes of active AI-assisted session time
+//   "Session Time"        — minutes of active AI-assisted session time
 //   "Context Length"       — words of *reader-visible* chat context
 //                            (text actually rendered in the chat window).
 //                            EXCLUDES system-reminders, skill bodies,
@@ -219,7 +219,7 @@ function processItems(raw) {
         closedAt:     n.content.closedAt  ? new Date(n.content.closedAt)  : null,
         ...parseStartInfo(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
-        sessionMin:   f['Actual Session Time'] ?? null,
+        sessionMin:   f['Session Time'] ?? f['Actual Session Time'] ?? null,
         contextWords: f['Context Length']      ?? null,
         status:       f['Status']              ?? null,
         parentNumber: n.content.parent?.number ?? null,
@@ -688,7 +688,7 @@ td a:hover{text-decoration:underline}
       &nbsp;·&nbsp;
       <strong style="color:#475569">Rate:</strong> ${$(natMid)}/hr ${cfg.role}-level · ${reg.label}
     </div>
-    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No engaged time data yet — set Actual Session Time fields on issues to calculate.</div></div>`}
+    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No engaged time data yet — set Session Time fields on issues to calculate.</div></div>`}
   </div>
 </div>
 
@@ -973,7 +973,7 @@ async function main() {
   const items = processItems(raw);
 
   if (items.length === 0) {
-    console.error('No items found with Estimate, Actual Session Time, or Context Length set on the board.');
+    console.error('No items found with Estimate, Session Time, or Context Length set on the board.');
     process.exit(1);
   }
 

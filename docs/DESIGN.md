@@ -89,7 +89,7 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 - Also prints `lastActive` if nothing is currently active.
 
 ### `/task fleet`
-- Reads `.claude/task-fleet.json` from the main worktree (located via `git worktree list --porcelain` — first entry is always the main worktree).
+- Reads `.ai-task-manager/task-fleet.json` from the main worktree (located via `git worktree list --porcelain` — first entry is always the main worktree), with legacy `.claude/task-fleet.json` fallback.
 - Displays all registered tasks: issue ref, status (`active`|`paused`), branch, and age since `startedAt`.
 - If the file is missing or empty: prints `No fleet tasks registered.`
 - Read-only from any worktree — only the owning agent writes its own entry.
@@ -169,7 +169,7 @@ When a plan bucket is active:
 
 ## Fleet Registry
 
-Location: `.claude/task-fleet.json` in the **main worktree** (gitignored). Written atomically (temp file + rename). Last-write-wins is safe — this is a status display file, not a coordination lock.
+Location: `.ai-task-manager/task-fleet.json` in the **main worktree** (gitignored). Legacy `.claude/task-fleet.json` is read as fallback. Written atomically (temp file + rename). Last-write-wins is safe — this is a status display file, not a coordination lock.
 
 ```json
 {
@@ -250,19 +250,21 @@ All hooks: best-effort. Timeout = `hookNetworkTimeoutMs`. Never block the user.
 ## File Layout
 
 ```
-.claude/
-├── skills/
-│   └── task-tracker/
-│       ├── SKILL.md               # Skill definition + command routing
-│       └── DESIGN.md               # Copy of this spec — kept with the skill for long-term reference
-├── hooks/
-│   ├── task-tracker.sh            # Dispatches to lib based on event
-│   ├── setup-nvm.sh               # (existing, unchanged)
-│   └── chat-word-count.sh         # REMOVED — logic absorbed into task-tracker
-├── task-tracker.json              # Project-local config (gitignored initially; committed once stable)
+.ai-task-manager/
+├── task-tracker.json              # Project-local config
 ├── task-tracker-state.json        # Active state (gitignored)
 ├── task-tracker-queue.json        # Failed-post queue (gitignored)
-└── task-fleet.json                # Multi-agent fleet registry (gitignored, main worktree only)
+├── task-fleet.json                # Multi-agent fleet registry (gitignored, main worktree only)
+├── pickup-directive.md
+└── definition-of-done.md
+
+.claude/
+├── skills/
+│   └── task/
+│       └── SKILL.md               # Claude adapter stub or symlink
+├── hooks/
+│   └── task-tracker.sh            # Stub dispatching to package hook
+└── settings.json                  # Hook registrations and permissions
 
 scripts/task-tracker/
 ├── task-tracker.mjs               # Main CLI entry — handles /task verbs

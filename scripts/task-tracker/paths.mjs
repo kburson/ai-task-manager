@@ -8,6 +8,7 @@ const LEGACY_RUNTIME_PATHS = new Map([
   ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json'],
   ['.ai-task-manager/task-tracker-state.json', '.claude/task-tracker-state.json'],
   ['.ai-task-manager/task-tracker-queue.json', '.claude/task-tracker-queue.json'],
+  ['.ai-task-manager/task-fleet.json', '.claude/task-fleet.json'],
   ['.ai-task-manager/pickup-directive.md', '.claude/task-tracker/pickup-directive.md'],
   ['.ai-task-manager/definition-of-done.md', '.claude/task-tracker/definition-of-done.md'],
 ]);

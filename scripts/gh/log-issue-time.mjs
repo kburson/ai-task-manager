@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 // Read an issue's ⏱ Timing Log comment, compute totals, and write them to GitHub Projects V2.
 //
-// Actual Session Time  = sum of all Active Min rows (each is a delta from its own baseline)
-// Context Length       = Word Marker from the last data row (absolute position = final count)
+// Engaged Time / Session Time = sum of all Active Min rows until richer Codex
+// engagement metrics are available.
+// Context Length              = Word Marker from the last data row.
 //
 // Usage: node log-issue-time.mjs <issue#> [--dry-run]
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
-
-const pexec = promisify(execFile);
+import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
+import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
+import {
+  gh,
+  gql,
+  splitRepo,
+  writeProjectFieldValue,
+} from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
 const issueArg = args.find(a => /^#?\d+$/.test(a));
@@ -27,19 +35,21 @@ const cfg = loadConfig();
 if (!cfg.repo) { console.error('repo not configured. Run: /task config repo owner/repo'); process.exit(1); }
 if (!cfg.projectId) { console.error('projectId not configured. Run: npx ai-task-manager init'); process.exit(1); }
 
-const [owner, repoName] = cfg.repo.split('/');
+const { owner, repoName } = splitRepo(cfg.repo);
 
-async function gh(args) {
-  const { stdout } = await pexec('gh', args, { timeout: 10000 });
-  return stdout;
+async function fetchIssueBody() {
+  const out = await gh(['issue', 'view', issueNumber, '-R', cfg.repo, '--json', 'body']);
+  return JSON.parse(out).body ?? '';
 }
 
-async function gql(query, variables = {}) {
-  const varArgs = Object.entries(variables).flatMap(([k, v]) => ['-F', `${k}=${v}`]);
-  const out = await gh(['api', 'graphql', '-f', `query=${query}`, ...varArgs]);
-  const parsed = JSON.parse(out);
-  if (parsed.errors) throw new Error(parsed.errors.map(e => e.message).join('; '));
-  return parsed.data;
+async function writeIssueBody(body) {
+  const tmp = path.join(os.tmpdir(), `aitm-fields-${issueNumber}-${Date.now()}.md`);
+  try {
+    writeFileSync(tmp, body, 'utf8');
+    await gh(['issue', 'edit', issueNumber, '-R', cfg.repo, '--body-file', tmp]);
+  } finally {
+    try { unlinkSync(tmp); } catch {}
+  }
 }
 
 // ---- Parse timing table ----
@@ -106,7 +116,7 @@ async function fetchProjectMeta() {
         ... on ProjectV2 {
           fields(first: 50) {
             nodes {
-              ... on ProjectV2Field { id name }
+              ... on ProjectV2FieldCommon { id name }
             }
           }
         }
@@ -120,28 +130,30 @@ async function fetchProjectMeta() {
   if (!itemNode) throw new Error(`Issue #${issueNumber} is not on project ${cfg.projectId}`);
 
   const fields = data.node.fields.nodes;
-  const fieldByName = name => fields.find(f => f.name === name);
+  const fieldByName = (...names) => fields.find(f => names.includes(f.name));
 
-  const sessionField  = fieldByName('Actual Session Time');
-  const contextField  = fieldByName('Context Length');
-  if (!sessionField) throw new Error('Field "Actual Session Time" not found on project');
+  const engagedField = cfg.fieldEngagedTime
+    ? { id: cfg.fieldEngagedTime }
+    : fieldByName('Engaged Time', 'Actual Hours');
+  const sessionField = cfg.fieldSessionTime
+    ? { id: cfg.fieldSessionTime }
+    : fieldByName('Session Time', 'Actual Session Time');
+  const contextField = cfg.fieldContextWords
+    ? { id: cfg.fieldContextWords }
+    : fieldByName('Context Length');
+  if (!sessionField) throw new Error('Field "Session Time" not found on project');
   if (!contextField) throw new Error('Field "Context Length" not found on project');
 
-  return { itemId: itemNode.id, sessionFieldId: sessionField.id, contextFieldId: contextField.id };
+  return {
+    itemId: itemNode.id,
+    engagedFieldId: engagedField?.id || '',
+    sessionFieldId: sessionField.id,
+    contextFieldId: contextField.id,
+  };
 }
 
-async function writeField(itemId, fieldId, value) {
-  await gql(`
-    mutation($project: ID!, $item: ID!, $field: ID!, $val: Float!) {
-      updateProjectV2ItemFieldValue(input: {
-        projectId: $project
-        itemId: $item
-        fieldId: $field
-        value: { number: $val }
-      }) { projectV2Item { id } }
-    }`,
-    { project: cfg.projectId, item: itemId, field: fieldId, val: value }
-  );
+async function writeNumberField(itemId, fieldId, value) {
+  await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { number: value } });
 }
 
 // ---- Main ----
@@ -161,7 +173,8 @@ async function writeField(itemId, fieldId, value) {
   }
 
   console.log(`Issue #${issueNumber}: ${rowCount} timing rows`);
-  console.log(`  Actual Session Time : ${totalActiveMin} min`);
+  console.log(`  Engaged Time        : ${totalActiveMin} min`);
+  console.log(`  Session Time        : ${totalActiveMin} min`);
   console.log(`  Context Length      : ${(totalContextWords ?? 0).toLocaleString('en-US')} words`);
 
   if (dryRun) {
@@ -169,10 +182,33 @@ async function writeField(itemId, fieldId, value) {
     process.exit(0);
   }
 
-  const { itemId, sessionFieldId, contextFieldId } = await fetchProjectMeta();
+  const { itemId, engagedFieldId, sessionFieldId, contextFieldId } = await fetchProjectMeta();
+  const fieldDefs = loadProjectFieldDefs();
+  const issueBody = await fetchIssueBody();
+  const ensured = ensureIssueFieldDb(issueBody, fieldDefs, {
+    engagedTime: totalActiveMin,
+    sessionTime: totalActiveMin,
+    contextLength: totalContextWords ?? 0,
+  });
+  const values = {
+    ...ensured.values,
+    engagedTime: totalActiveMin,
+    sessionTime: totalActiveMin,
+    contextLength: totalContextWords ?? 0,
+  };
+  const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
+  if (updated.changed) await writeIssueBody(updated.body);
 
-  await writeField(itemId, sessionFieldId, totalActiveMin);
-  await writeField(itemId, contextFieldId, totalContextWords ?? 0);
+  const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values });
+  if (syncPlan.length) {
+    for (const item of syncPlan) {
+      await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId: item.fieldId, value: item.value });
+    }
+  } else {
+    if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, totalActiveMin);
+    await writeNumberField(itemId, sessionFieldId, totalActiveMin);
+    await writeNumberField(itemId, contextFieldId, totalContextWords ?? 0);
+  }
 
   console.log('Fields updated on GitHub Projects board.');
 })().catch(err => {

@@ -60,9 +60,12 @@ jq_get() {
 # ── args ───────────────────────────────────────────────────────────────────
 
 TARGET_DIR=""
+PROJECT_INPUT=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target) TARGET_DIR="$2"; shift 2 ;;
+    --project) PROJECT_INPUT="$2"; shift 2 ;;
+    --project-url) PROJECT_INPUT="$2"; shift 2 ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
 done
@@ -74,6 +77,16 @@ fi
 CONFIG_DIR="$TARGET_DIR/.ai-task-manager"
 CONFIG_FILE="$CONFIG_DIR/task-tracker.json"
 mkdir -p "$CONFIG_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKG_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+FIELD_DEFS_FILE="$CONFIG_DIR/project-fields.json"
+FIELD_EVENTS_FILE="$CONFIG_DIR/project-field-events.json"
+if [[ ! -f "$FIELD_DEFS_FILE" && -f "$PKG_ROOT/config/project-fields.default.json" ]]; then
+  cp "$PKG_ROOT/config/project-fields.default.json" "$FIELD_DEFS_FILE"
+fi
+if [[ ! -f "$FIELD_EVENTS_FILE" && -f "$PKG_ROOT/config/project-field-events.default.json" ]]; then
+  cp "$PKG_ROOT/config/project-field-events.default.json" "$FIELD_EVENTS_FILE"
+fi
 
 # ── banner ─────────────────────────────────────────────────────────────────
 
@@ -112,6 +125,16 @@ else
   gh auth login
   GH_USER=$(gh api user --jq '.login' 2>/dev/null || echo "unknown")
   ok "Authenticated as: $GH_USER"
+fi
+
+AUTH_STATUS=$(gh auth status 2>&1 || true)
+if ! echo "$AUTH_STATUS" | grep -Eq "Token scopes:.*'project'|Token scopes:.*'read:project'"; then
+  err "GitHub Projects V2 access is not enabled for the current gh token."
+  err "Refresh GitHub CLI auth with project scope, then rerun init:"
+  err "  gh auth refresh -h github.com -s project"
+  err "Current token scopes:"
+  echo "$AUTH_STATUS" | sed -n '/Token scopes:/p' >&2
+  exit 1
 fi
 echo ""
 
@@ -153,27 +176,229 @@ fi
 ok "Repo: $REPO"
 echo ""
 
-# List projects linked to this specific repo (not all user projects)
-info "Fetching GitHub Projects linked to $REPO..."
-PROJECTS_JSON=$(gh api graphql -f query="
+# List projects linked to the repo plus user/org projects owned by the repo owner.
+info "Fetching GitHub Projects for $OWNER and projects linked to $REPO..."
+LINKED_PROJECTS_RAW=$(gh api graphql -f query="
 {
   repository(owner: \"$OWNER\", name: \"$REPO_NAME\") {
-    projectsV2(first: 20) {
+    projectsV2(first: 50) {
       nodes { id title number }
     }
   }
-}" --jq '.data.repository.projectsV2.nodes | map({id,title,number})' 2>/dev/null || echo '[]')
-# Coerce anything that isn't a JSON array into an empty array — gh can return a
-# success-shaped error envelope which would otherwise crash later jq filters.
-if ! echo "$PROJECTS_JSON" | jq -e 'type == "array"' &>/dev/null; then
-  PROJECTS_JSON='[]'
-fi
+}" --jq '.data.repository.projectsV2.nodes // [] | map({id,title,number,linked:true})' 2>/dev/null || echo '[]')
+
+OWNER_PROJECTS_RAW=$(gh api graphql -F login="$OWNER" -f query='
+query($login: String!) {
+  user(login: $login) {
+    projectsV2(first: 50) { nodes { id title number } }
+  }
+  organization(login: $login) {
+    projectsV2(first: 50) { nodes { id title number } }
+  }
+}' --jq '[.data.user.projectsV2.nodes[]?, .data.organization.projectsV2.nodes[]?] | map({id,title,number,linked:false})' 2>/dev/null || echo '[]')
+
+normalize_project_list() {
+  local linked="$1"
+  jq -c --argjson linked "$linked" '
+    def clean_nodes:
+      if type == "array" then .
+      elif type == "object" then
+        if (.data.repository.projectsV2.nodes? | type) == "array" then
+          .data.repository.projectsV2.nodes
+        else
+          [(.data.user.projectsV2.nodes[]? // empty), (.data.organization.projectsV2.nodes[]? // empty)]
+        end
+      else [] end;
+    clean_nodes
+    | map(select(.id and .title and .number) | {id, title, number, linked: $linked})
+  ' 2>/dev/null || echo '[]'
+}
+
+LINKED_PROJECTS_JSON=$(printf '%s\n' "$LINKED_PROJECTS_RAW" | normalize_project_list true)
+OWNER_PROJECTS_JSON=$(printf '%s\n' "$OWNER_PROJECTS_RAW" | normalize_project_list false)
+
+PROJECTS_JSON=$(printf '%s\n%s\n' "$LINKED_PROJECTS_JSON" "$OWNER_PROJECTS_JSON" | jq -s '
+  add
+  | group_by(.id)
+  | map({
+      id: .[0].id,
+      title: .[0].title,
+      number: .[0].number,
+      linked: (map(.linked) | any)
+    })
+  | sort_by((if .linked then 0 else 1 end), .number)
+')
 PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq 'length' 2>/dev/null || echo '0')
+LINKED_PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq '[.[] | select(.linked)] | length' 2>/dev/null || echo '0')
 
 PROJECT_NODE_ID=""
+PROJECT_NUMBER=""
+PROJECT_TITLE=""
+
+link_project_to_repo() {
+  local project_id="$1"
+  local repo_id
+  repo_id=$(gh api graphql -f query="{ repository(owner: \"$OWNER\", name: \"$REPO_NAME\") { id } }" --jq '.data.repository.id' 2>/dev/null || echo '')
+  if [[ -n "$repo_id" ]]; then
+    gh api graphql -f query='
+mutation($proj: ID!, $repo: ID!) {
+  linkProjectV2ToRepository(input: { projectId: $proj, repositoryId: $repo }) {
+    repository { nameWithOwner }
+  }
+}' -f proj="$project_id" -f repo="$repo_id" &>/dev/null && ok "Linked project to $REPO" || warn "Could not link project to repo — it may already be linked, or you can add it manually in GitHub."
+  fi
+}
+
+project_number_from_input() {
+  local raw="$1"
+  if [[ "$raw" =~ github\.com/(users|orgs)/([^/]+)/projects/([0-9]+) ]]; then
+    echo "${BASH_REMATCH[2]}:${BASH_REMATCH[3]}"
+  elif [[ "$raw" =~ ^([A-Za-z0-9._-]+)[/:]([0-9]+)$ ]]; then
+    echo "${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
+  elif [[ "$raw" =~ ^[0-9]+$ ]]; then
+    echo "$OWNER:$raw"
+  else
+    echo ""
+  fi
+}
+
+resolve_existing_project() {
+  local raw="$1"
+  local parsed login number project_json
+  parsed=$(project_number_from_input "$raw")
+  if [[ -z "$parsed" ]]; then
+    return 1
+  fi
+  login="${parsed%%:*}"
+  number="${parsed##*:}"
+  project_json=$(gh api graphql -F login="$login" -F number="$number" -f query='
+query($login: String!, $number: Int!) {
+  user(login: $login) {
+    projectV2(number: $number) { id title number }
+  }
+  organization(login: $login) {
+    projectV2(number: $number) { id title number }
+  }
+}' --jq '[.data.user.projectV2, .data.organization.projectV2] | map(select(. != null)) | first // empty' 2>/dev/null || echo '')
+
+  if [[ -z "$project_json" || "$project_json" == "null" ]]; then
+    return 1
+  fi
+
+  PROJECT_NODE_ID=$(echo "$project_json" | jq -r '.id // empty')
+  PROJECT_NUMBER=$(echo "$project_json" | jq -r '.number // empty')
+  PROJECT_TITLE=$(echo "$project_json" | jq -r '.title // empty')
+  [[ -n "$PROJECT_NODE_ID" ]]
+}
+
+prompt_project_template() {
+  local choice
+  echo ""
+  info "GitHub's built-in web templates are not exposed by the supported gh/API project-create command."
+  info "AI Task Manager can create a compatible project shape and link it to this repo."
+  echo ""
+  echo "    [1] Feature Release (recommended) - Status, Priority, Size, Estimate, Actuals, Sequence"
+  echo "    [2] Basic Kanban - Status columns only; remaining fields are mapped/created later"
+  echo ""
+  while true; do
+    prompt "Project workflow template [1]:"
+    read -r choice
+    [[ -z "$choice" ]] && choice="1"
+    case "$choice" in
+      1|feature|feature-release|"Feature Release") PROJECT_TEMPLATE="feature-release"; return ;;
+      2|basic|kanban|"Basic Kanban") PROJECT_TEMPLATE="basic-kanban"; return ;;
+    esac
+    err "Enter 1 for Feature Release or 2 for Basic Kanban."
+  done
+}
+
+create_project_field_if_missing() {
+  local name="$1"
+  local data_type="$2"
+  local options_json="${3:-}"
+  local existing fields_raw
+  fields_raw=$(gh api graphql -f query="
+{
+  node(id: \"$PROJECT_NODE_ID\") {
+    ... on ProjectV2 {
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2SingleSelectField { id name options { id name } }
+          ... on ProjectV2Field { id name dataType }
+        }
+      }
+    }
+  }
+}" 2>/dev/null || echo '{}')
+  existing=$(printf '%s\n' "$fields_raw" | jq -r --arg name "$name" \
+    '[.data.node.fields.nodes[]? | select((.name | ascii_downcase) == ($name | ascii_downcase))] | first.id // empty' \
+    2>/dev/null || echo '')
+  if [[ -n "$existing" ]]; then
+    return
+  fi
+
+  local created
+  if [[ "$data_type" == "SINGLE_SELECT" ]]; then
+    created=$(jq -n \
+      --arg proj "$PROJECT_NODE_ID" \
+      --arg name "$name" \
+      --argjson opts "$options_json" \
+      '{query:"mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{proj:$proj,name:$name,opts:$opts}}' \
+      | gh api graphql --input - --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  else
+    created=$(gh api graphql -f query='
+mutation($proj:ID!,$name:String!){
+  createProjectV2Field(input:{projectId:$proj,dataType:NUMBER,name:$name}){
+    projectV2Field{...on ProjectV2Field{id}}
+  }
+}' -f proj="$PROJECT_NODE_ID" -f name="$name" \
+      --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  fi
+
+  [[ -n "$created" ]] && ok "Created '$name' field." || warn "Could not create '$name' field — it can be mapped or created later."
+}
+
+apply_project_template() {
+  local template="$1"
+  local status_opts priority_opts size_opts
+  status_opts='[
+    {"name":"Backlog","color":"GRAY","description":"List of ungroomed features and ideas."},
+    {"name":"Ready","color":"BLUE","description":"List of items ready to implement."},
+    {"name":"In Progress","color":"YELLOW","description":""},
+    {"name":"In Review","color":"ORANGE","description":"Code complete awaiting verification."},
+    {"name":"Done","color":"GREEN","description":""}
+  ]'
+  priority_opts='[
+    {"name":"P0","color":"RED","description":"Critical — blocking"},
+    {"name":"P1","color":"ORANGE","description":"High — this sprint"},
+    {"name":"P2","color":"BLUE","description":"Normal — backlog"}
+  ]'
+  size_opts='[
+    {"name":"XS","color":"BLUE","description":"1-2 hours"},
+    {"name":"S","color":"GREEN","description":"3-4 hours"},
+    {"name":"M","color":"YELLOW","description":"6-10 hours"},
+    {"name":"L","color":"ORANGE","description":"12-20 hours"},
+    {"name":"XL","color":"RED","description":"24+ hours"}
+  ]'
+
+  info "Applying ${template} project workflow..."
+  create_project_field_if_missing "Status" "SINGLE_SELECT" "$status_opts"
+  if [[ "$template" == "feature-release" ]]; then
+    create_project_field_if_missing "Priority" "SINGLE_SELECT" "$priority_opts"
+    create_project_field_if_missing "Size" "SINGLE_SELECT" "$size_opts"
+    create_project_field_if_missing "Estimate" "NUMBER"
+    create_project_field_if_missing "Engaged Time" "NUMBER"
+    create_project_field_if_missing "Session Time" "NUMBER"
+    create_project_field_if_missing "Context Length" "NUMBER"
+    create_project_field_if_missing "Sequence" "NUMBER"
+    create_project_field_if_missing "Start date" "DATE"
+    create_project_field_if_missing "End date" "DATE"
+  fi
+}
 
 create_and_link_project() {
   local title="$1"
+  local template="${2:-feature-release}"
   info "Creating project '$title'..."
   PROJECT_CREATE_OUT=$(gh project create --owner "$OWNER" --title "$title" --format json 2>/dev/null || echo '')
   if [[ -z "$PROJECT_CREATE_OUT" ]]; then
@@ -188,67 +413,61 @@ create_and_link_project() {
   if [[ -z "$PROJECT_NODE_ID" ]]; then err "Could not resolve project node ID."; exit 1; fi
   ok "Project node ID: $PROJECT_NODE_ID"
 
-  # Link project to this repo
-  REPO_NODE_ID=$(gh api graphql -f query="{ repository(owner: \"$OWNER\", name: \"$REPO_NAME\") { id } }" --jq '.data.repository.id' 2>/dev/null || echo '')
-  if [[ -n "$REPO_NODE_ID" ]]; then
-    gh api graphql -f query='
-mutation($proj: ID!, $repo: ID!) {
-  linkProjectV2ToRepository(input: { projectId: $proj, repositoryId: $repo }) {
-    repository { nameWithOwner }
-  }
-}' -f proj="$PROJECT_NODE_ID" -f repo="$REPO_NODE_ID" &>/dev/null && ok "Linked project to $REPO" || warn "Could not link project to repo — add it manually in GitHub."
-  fi
-
-  # Create Status field with standard Kanban options
-  info "Creating Status field with Kanban options..."
-  STATUS_FIELD_OUT=$(gh api graphql -f query='
-mutation($proj: ID!) {
-  createProjectV2Field(input: {
-    projectId: $proj
-    dataType: SINGLE_SELECT
-    name: "Status"
-    singleSelectOptions: [
-      {name: "Backlog",     color: GRAY,   description: ""},
-      {name: "Ready",       color: BLUE,   description: ""},
-      {name: "In Progress", color: YELLOW, description: ""},
-      {name: "In Review",   color: ORANGE, description: ""},
-      {name: "Done",        color: GREEN,  description: ""}
-    ]
-  }) {
-    projectV2Field { ... on ProjectV2SingleSelectField { id options { id name } } }
-  }
-}' -f proj="$PROJECT_NODE_ID" 2>/dev/null || echo '')
-  [[ -n "$STATUS_FIELD_OUT" ]] && ok "Status field created with Backlog / Ready / In Progress / In Review / Done" || warn "Could not create Status field — add it manually then re-run init."
+  link_project_to_repo "$PROJECT_NODE_ID"
+  apply_project_template "$template"
   echo ""
 }
 
-if [[ "$PROJECT_COUNT" == "0" ]]; then
+if [[ -n "$PROJECT_INPUT" ]]; then
+  if resolve_existing_project "$PROJECT_INPUT"; then
+    ok "Using existing project #$PROJECT_NUMBER: $PROJECT_TITLE"
+    link_project_to_repo "$PROJECT_NODE_ID"
+  else
+    err "Could not resolve project from: $PROJECT_INPUT"
+    err "Use a URL like https://github.com/users/kburson/projects/5 or an owner:number value like kburson:5."
+    exit 1
+  fi
+elif [[ "$PROJECT_COUNT" == "0" ]]; then
   warn "No GitHub Projects linked to $REPO."
   echo ""
   info "A GitHub Project board is required to track Kanban state."
   echo ""
-  DEFAULT_TITLE="$REPO_NAME Board"
-  prompt "Create a new project now? [Y/n] (title: '$DEFAULT_TITLE'):"
-  read -r CREATE_PROJECT
-  if [[ "$CREATE_PROJECT" =~ ^[Nn] ]]; then
-    err "Cannot continue without a GitHub Project. Create one at:"
-    err "  https://github.com/users/$OWNER/projects/new"
-    err "Then re-run: npx ai-task-manager init"
-    exit 1
-  fi
-  prompt "Project title [$DEFAULT_TITLE]:"
-  read -r PROJECT_TITLE
-  [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
-  create_and_link_project "$PROJECT_TITLE"
-else
+  info "You can use an existing user/org project by entering its URL or number."
   echo ""
-  info "Projects linked to $REPO:"
-  echo "$PROJECTS_JSON" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.title)"'
+  DEFAULT_TITLE="$REPO_NAME Board"
+  prompt "Project URL, owner:number, number, or 'new' [new]:"
+  read -r PROJECT_CHOICE
+  [[ -z "$PROJECT_CHOICE" ]] && PROJECT_CHOICE="new"
+  if [[ "$PROJECT_CHOICE" != "new" ]]; then
+    if resolve_existing_project "$PROJECT_CHOICE"; then
+      ok "Using existing project #$PROJECT_NUMBER: $PROJECT_TITLE"
+      link_project_to_repo "$PROJECT_NODE_ID"
+    else
+      err "Could not resolve project from: $PROJECT_CHOICE"
+      exit 1
+    fi
+  else
+    prompt "Project title [$DEFAULT_TITLE]:"
+    read -r PROJECT_TITLE
+    [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
+    PROJECT_TEMPLATE=""
+    prompt_project_template
+    create_and_link_project "$PROJECT_TITLE" "$PROJECT_TEMPLATE"
+  fi
+else
+  if [[ "$LINKED_PROJECT_COUNT" == "0" ]]; then
+    warn "No GitHub Projects are currently linked to $REPO."
+    info "You can link one of the projects below or create a new repo-linked project."
+  fi
+  echo ""
+  info "Available GitHub Projects:"
+  echo "$PROJECTS_JSON" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.title) (#\(.value.number))  \((if .value.linked then "linked" else "not linked" end))"'
+  echo "    [url] Use an existing project URL or owner:number"
   echo "    [new] Create a new project"
   PROJECT_COUNT_DISPLAY=$(echo "$PROJECTS_JSON" | jq 'length')
   echo ""
   while true; do
-    prompt "Enter number or 'new' [1]:"
+    prompt "Enter list number, project URL, owner:number, or 'new' [1]:"
     read -r PROJECT_NUMBER_INPUT
     [[ -z "$PROJECT_NUMBER_INPUT" ]] && PROJECT_NUMBER_INPUT="1"
     if [[ "$PROJECT_NUMBER_INPUT" == "new" ]]; then
@@ -256,19 +475,37 @@ else
       prompt "Project title [$DEFAULT_TITLE]:"
       read -r PROJECT_TITLE
       [[ -z "$PROJECT_TITLE" ]] && PROJECT_TITLE="$DEFAULT_TITLE"
-      create_and_link_project "$PROJECT_TITLE"
+      PROJECT_TEMPLATE=""
+      prompt_project_template
+      create_and_link_project "$PROJECT_TITLE" "$PROJECT_TEMPLATE"
       break
     elif [[ "$PROJECT_NUMBER_INPUT" =~ ^[0-9]+$ && "$PROJECT_NUMBER_INPUT" -ge 1 && "$PROJECT_NUMBER_INPUT" -le "$PROJECT_COUNT_DISPLAY" ]]; then
       idx=$((PROJECT_NUMBER_INPUT - 1))
       PROJECT_NUMBER=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].number')
       PROJECT_NODE_ID=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].id')
+      PROJECT_TITLE=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].title')
+      PROJECT_LINKED=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].linked')
+      if [[ "$PROJECT_LINKED" != "true" ]]; then
+        link_project_to_repo "$PROJECT_NODE_ID"
+      fi
+      break
+    elif [[ "$PROJECT_NUMBER_INPUT" == "url" ]]; then
+      prompt "Project URL or owner:number:"
+      read -r PROJECT_URL_INPUT
+      if resolve_existing_project "$PROJECT_URL_INPUT"; then
+        link_project_to_repo "$PROJECT_NODE_ID"
+        break
+      fi
+      err "Could not resolve project from: $PROJECT_URL_INPUT"
+    elif resolve_existing_project "$PROJECT_NUMBER_INPUT"; then
+      link_project_to_repo "$PROJECT_NODE_ID"
       break
     fi
-    err "Please enter a number 1-$PROJECT_COUNT_DISPLAY or 'new'."
+    err "Please enter a number 1-$PROJECT_COUNT_DISPLAY, a project URL, owner:number, or 'new'."
   done
 fi
 
-ok "Using project #$PROJECT_NUMBER"
+ok "Using project #$PROJECT_NUMBER${PROJECT_TITLE:+: $PROJECT_TITLE}"
 echo ""
 
 if [[ -z "$PROJECT_NODE_ID" ]]; then
@@ -551,10 +788,12 @@ RESULT_FIELD_JSON=""
 map_or_create_select() {
   local fname="$1"
   local create_opts_json="$2"
+  local aliases_json="${3:-[]}"
 
   local found
-  found=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" \
-    'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase) and has("options"))) // empty' \
+  found=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" --argjson aliases "$aliases_json" \
+    '([$n] + $aliases | map(ascii_downcase)) as $names |
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName)) and has("options"))) // empty' \
     2>/dev/null || echo '')
 
   if [[ -n "$found" ]]; then
@@ -617,11 +856,14 @@ map_or_create_select() {
 # Sets RESULT_FIELD_ID.
 map_or_create_number() {
   local fname="$1"
+  local aliases_json="${2:-[]}"
 
   local found_id
-  found_id=$(echo "$FIELDS_JSON" | jq -r --arg n "$fname" \
-    'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase)
-      and (.options == null or (.options | length) == 0)) | .id) // empty' \
+  found_id=$(echo "$FIELDS_JSON" | jq -r --arg n "$fname" --argjson aliases "$aliases_json" \
+    '([$n] + $aliases | map(ascii_downcase)) as $names |
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName))
+      and (.options == null or (.options | length) == 0)
+      and (.dataType == null or .dataType == "NUMBER")) | .id) // empty' \
     2>/dev/null || echo '')
 
   if [[ -n "$found_id" ]]; then
@@ -674,39 +916,137 @@ mutation($proj:ID!,$name:String!){
   done
 }
 
-# ── Priority ───────────────────────────────────────────────────────────────
+map_or_create_date() {
+  local fname="$1"
+  local aliases_json="${2:-[]}"
 
-info "Priority (single-select: P0 / P1 / P2)..."
-PRIORITY_OPTS='[{"name":"P0","color":"RED","description":"Critical — blocking"},{"name":"P1","color":"ORANGE","description":"High — this sprint"},{"name":"P2","color":"BLUE","description":"Normal — backlog"}]'
-map_or_create_select "Priority" "$PRIORITY_OPTS"
-PRIORITY_FIELD_ID="$RESULT_FIELD_ID"
-OPTION_P0="" OPTION_P1="" OPTION_P2=""
-if [[ -n "$RESULT_FIELD_JSON" ]]; then
-  KANBAN_FIELD_JSON="$RESULT_FIELD_JSON"
-  auto_or_pick "P0 (critical)" "p0,critical,urgent"   "optional"; OPTION_P0="$PICKED_ID"
-  auto_or_pick "P1 (high)"     "p1,high,important"    "optional"; OPTION_P1="$PICKED_ID"
-  auto_or_pick "P2 (normal)"   "p2,normal,medium,low" "optional"; OPTION_P2="$PICKED_ID"
-  KANBAN_FIELD_JSON=""
-fi
+  local found_id
+  found_id=$(echo "$FIELDS_JSON" | jq -r --arg n "$fname" --argjson aliases "$aliases_json" \
+    '([$n] + $aliases | map(ascii_downcase)) as $names |
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName))
+      and (.dataType == null or .dataType == "DATE")) | .id) // empty' \
+    2>/dev/null || echo '')
+
+  if [[ -n "$found_id" ]]; then
+    ok "Found field '$fname'."
+    RESULT_FIELD_ID="$found_id"
+    return
+  fi
+
+  echo ""
+  info "Field '$fname' not found on project."
+  local date_fields count
+  date_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(.dataType == "DATE")]')
+  count=$(echo "$date_fields" | jq 'length')
+  if [[ "$count" -gt 0 ]]; then
+    echo "$date_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
+  fi
+  echo "    [new] Create '$fname' date field (default)"
+  echo ""
+
+  while true; do
+    prompt "Choice for '$fname' [new]:"
+    read -r choice
+    [[ -z "$choice" ]] && choice="new"
+    if [[ "$choice" == "new" ]]; then
+      local new_id
+      new_id=$(gh api graphql -f query='
+mutation($proj:ID!,$name:String!){
+  createProjectV2Field(input:{projectId:$proj,dataType:DATE,name:$name}){
+    projectV2Field{...on ProjectV2Field{id}}
+  }
+}' -f proj="$PROJECT_NODE_ID" -f name="$fname" \
+        --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+      if [[ -n "$new_id" ]]; then
+        ok "Created '$fname' field."
+        refresh_fields
+        RESULT_FIELD_ID="$new_id"
+      else
+        warn "Could not create '$fname'. Add it manually to your GitHub Project."
+        RESULT_FIELD_ID=""
+      fi
+      return
+    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+      RESULT_FIELD_ID=$(echo "$date_fields" | jq -r --argjson i "$((choice-1))" '.[$i].id')
+      local pname
+      pname=$(echo "$date_fields" | jq -r --argjson i "$((choice-1))" '.[$i].name')
+      ok "Mapped '$fname' → '$pname'"
+      return
+    fi
+    err "Enter a number 1-$count or 'new'."
+  done
+}
+
+# ── Custom fields from definitions ─────────────────────────────────────────
+
+info "Custom fields from .ai-task-manager/project-fields.json..."
 echo ""
+FIELD_IDS_JSON="{}"
+PRIORITY_FIELD_ID="" OPTION_P0="" OPTION_P1="" OPTION_P2=""
+SIZE_FIELD_ID=""
+FIELD_ESTIMATE=""
+FIELD_ENGAGED_TIME=""
+FIELD_SESSION_TIME=""
+FIELD_CONTEXT_LENGTH=""
+FIELD_SEQUENCE=""
+FIELD_START_DATE=""
+FIELD_END_DATE=""
 
-# ── Size ───────────────────────────────────────────────────────────────────
+set_field_id_json() {
+  FIELD_IDS_JSON=$(printf '%s\n' "$FIELD_IDS_JSON" | jq -c --arg key "$1" --arg val "$2" '. + {($key): $val}')
+}
 
-info "Size (single-select: XS / S / M / L / XL)..."
-SIZE_OPTS='[{"name":"XS","color":"BLUE","description":"1-2 hours"},{"name":"S","color":"GREEN","description":"3-4 hours"},{"name":"M","color":"YELLOW","description":"6-10 hours"},{"name":"L","color":"ORANGE","description":"12-20 hours"},{"name":"XL","color":"RED","description":"24+ hours"}]'
-map_or_create_select "Size" "$SIZE_OPTS"
-SIZE_FIELD_ID="$RESULT_FIELD_ID"
-echo ""
+while IFS= read -r FIELD_DEF <&3; do
+  FIELD_KEY=$(echo "$FIELD_DEF" | jq -r '.key')
+  FIELD_NAME=$(echo "$FIELD_DEF" | jq -r '.name')
+  FIELD_TYPE=$(echo "$FIELD_DEF" | jq -r '.type')
+  FIELD_ALIASES=$(echo "$FIELD_DEF" | jq -c '.aliases // []')
+  RESULT_FIELD_ID=""
+  RESULT_FIELD_JSON=""
+  case "$FIELD_TYPE" in
+    single_select)
+      FIELD_OPTIONS=$(echo "$FIELD_DEF" | jq -c '.options // []')
+      info "$FIELD_NAME (single-select)..."
+      map_or_create_select "$FIELD_NAME" "$FIELD_OPTIONS" "$FIELD_ALIASES"
+      ;;
+    number)
+      info "$FIELD_NAME (number)..."
+      map_or_create_number "$FIELD_NAME" "$FIELD_ALIASES"
+      ;;
+    date)
+      info "$FIELD_NAME (date)..."
+      map_or_create_date "$FIELD_NAME" "$FIELD_ALIASES"
+      ;;
+    *)
+      warn "Skipping unsupported field type '$FIELD_TYPE' for '$FIELD_NAME'."
+      ;;
+  esac
 
-# ── Number fields ──────────────────────────────────────────────────────────
-
-info "Number fields..."
-echo ""
-map_or_create_number "Estimate";            FIELD_ESTIMATE="$RESULT_FIELD_ID"
-map_or_create_number "Actual Hours";        FIELD_ACTUAL_HOURS="$RESULT_FIELD_ID"
-map_or_create_number "Actual Session Time"; FIELD_ACTUAL_SESSION_TIME="$RESULT_FIELD_ID"
-map_or_create_number "Context Length";      FIELD_CONTEXT_LENGTH="$RESULT_FIELD_ID"
-map_or_create_number "Sequence";            FIELD_SEQUENCE="$RESULT_FIELD_ID"
+  if [[ -n "$RESULT_FIELD_ID" ]]; then
+    set_field_id_json "$FIELD_KEY" "$RESULT_FIELD_ID"
+    case "$FIELD_KEY" in
+      priority)
+        PRIORITY_FIELD_ID="$RESULT_FIELD_ID"
+        if [[ -n "$RESULT_FIELD_JSON" ]]; then
+          KANBAN_FIELD_JSON="$RESULT_FIELD_JSON"
+          auto_or_pick "P0 (critical)" "p0,critical,urgent"   "optional"; OPTION_P0="$PICKED_ID"
+          auto_or_pick "P1 (high)"     "p1,high,important"    "optional"; OPTION_P1="$PICKED_ID"
+          auto_or_pick "P2 (normal)"   "p2,normal,medium,low" "optional"; OPTION_P2="$PICKED_ID"
+          KANBAN_FIELD_JSON=""
+        fi
+        ;;
+      size) SIZE_FIELD_ID="$RESULT_FIELD_ID" ;;
+      estimate) FIELD_ESTIMATE="$RESULT_FIELD_ID" ;;
+      engagedTime) FIELD_ENGAGED_TIME="$RESULT_FIELD_ID" ;;
+      sessionTime) FIELD_SESSION_TIME="$RESULT_FIELD_ID" ;;
+      contextLength) FIELD_CONTEXT_LENGTH="$RESULT_FIELD_ID" ;;
+      sequence) FIELD_SEQUENCE="$RESULT_FIELD_ID" ;;
+      startDate) FIELD_START_DATE="$RESULT_FIELD_ID" ;;
+      endDate) FIELD_END_DATE="$RESULT_FIELD_ID" ;;
+    esac
+  fi
+  echo ""
+done 3< <(jq -c '.[]' "$FIELD_DEFS_FILE")
 echo ""
 
 # ── step 5: write config + issue templates ─────────────────────────────────
@@ -729,10 +1069,13 @@ OPTION_P1="$OPTION_P1" \
 OPTION_P2="$OPTION_P2" \
 SIZE_FIELD_ID="$SIZE_FIELD_ID" \
 FIELD_ESTIMATE="$FIELD_ESTIMATE" \
-FIELD_ACTUAL_HOURS="$FIELD_ACTUAL_HOURS" \
-FIELD_ACTUAL_SESSION_TIME="$FIELD_ACTUAL_SESSION_TIME" \
+FIELD_ENGAGED_TIME="$FIELD_ENGAGED_TIME" \
+FIELD_SESSION_TIME="$FIELD_SESSION_TIME" \
 FIELD_CONTEXT_LENGTH="$FIELD_CONTEXT_LENGTH" \
 FIELD_SEQUENCE="$FIELD_SEQUENCE" \
+FIELD_START_DATE="$FIELD_START_DATE" \
+FIELD_END_DATE="$FIELD_END_DATE" \
+FIELD_IDS_JSON="$FIELD_IDS_JSON" \
 node -e "
 const fs = require('fs');
 const file = process.env.CONFIG_FILE;
@@ -760,12 +1103,21 @@ const updates = {
 const optional = {
   sizeFieldId:            process.env.SIZE_FIELD_ID,
   fieldEstimate:          process.env.FIELD_ESTIMATE,
-  fieldActualHours:       process.env.FIELD_ACTUAL_HOURS,
-  fieldActualMinutes:     process.env.FIELD_ACTUAL_SESSION_TIME,
+  fieldEngagedTime:       process.env.FIELD_ENGAGED_TIME,
+  fieldActualHours:       process.env.FIELD_ENGAGED_TIME,
+  fieldSessionTime:       process.env.FIELD_SESSION_TIME,
+  fieldActualMinutes:     process.env.FIELD_SESSION_TIME,
   fieldContextWords:      process.env.FIELD_CONTEXT_LENGTH,
   fieldSequence:          process.env.FIELD_SEQUENCE,
+  sequenceFieldId:        process.env.FIELD_SEQUENCE,
+  fieldStartDate:         process.env.FIELD_START_DATE,
+  fieldEndDate:           process.env.FIELD_END_DATE,
 };
 for (const [k, v] of Object.entries(optional)) { if (v) updates[k] = v; }
+try {
+  const fieldIds = JSON.parse(process.env.FIELD_IDS_JSON || '{}');
+  if (Object.keys(fieldIds).length) updates.fieldIds = fieldIds;
+} catch {}
 Object.assign(existing, updates);
 fs.writeFileSync(file, JSON.stringify(existing, null, 2) + '\n');
 "

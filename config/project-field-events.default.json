@@ -1,0 +1,13 @@
+{
+  "moveToInProgress": [
+    { "field": "startDate", "value": "today", "mode": "set_once" }
+  ],
+  "moveToDone": [
+    { "field": "endDate", "value": "today", "mode": "set" }
+  ],
+  "logTime": [
+    { "field": "engagedTime", "value": "computed.engagedMinutes", "mode": "set" },
+    { "field": "sessionTime", "value": "computed.sessionMinutes", "mode": "set" },
+    { "field": "contextLength", "value": "computed.contextWords", "mode": "set" }
+  ]
+}

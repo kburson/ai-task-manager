@@ -23,7 +23,7 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 1. **Verify every Acceptance Criteria checkbox** by inspection AND by running the relevant test/build/command. Tick each with `/task check "<label>"`.
 2. **Verify every Definition of Done checkbox** the same way. Tick each.
-3. **Run `/task close`.** This is the ONLY sanctioned way to close an issue. It atomically: writes the final timing-table row, updates Actual Session Time + Context Length on the project board, deregisters from the fleet, **and moves the issue to Done.** If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
+3. **Run `/task close`.** This is the ONLY sanctioned way to close an issue. It atomically: writes the final timing-table row, updates Engaged Time + Session Time + Context Length on the project board, deregisters from the fleet, **and moves the issue to Done.** If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
 
 ### Forbidden — these break the contract:
 
@@ -49,7 +49,8 @@ If any of these are skipped: stop, restore the contract (re-register the task, c
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
 | `/task close` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
 | `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
-| `/task log #N` | Re-compute and write Actual Session Time + Context Length for any issue |
+| `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
+| `/task migrate` | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
 | `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
 | `/task fleet` | Show all active tasks across parallel agent worktrees |
 | `/task config` | List all config values |
@@ -600,6 +601,7 @@ Then ask:
 
 **Before `/task close` or moving to Done:**
 - Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
+- Verification commands appended during pickup must be issue-body checkboxes under `### Verification Commands`, and each relevant command checkbox must be checked before checking the related Acceptance Criterion or Definition of Done box.
 - Mark each verified item: `/task check "<label>"`.
 - Only run `/task close` once **every** `- [ ]` in the issue body is `- [x]`.
 - The pre-close gate AND `move-state.sh done` will refuse if any box is unchecked or the Deep Dive checkpoint is unticked. The audited override is `TASK_TRACKER_FORCE_DONE=1` — it bypasses but writes a visible audit comment to the issue. Use only for legitimate abandonment (e.g., the issue turned out invalid), never to skip verification.

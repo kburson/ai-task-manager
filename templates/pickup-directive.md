@@ -23,6 +23,8 @@ required box is unchecked will be refused.
      relevant tests, builds, or commands**. Read the output. Then check the box.
    - Same rule for every Acceptance Criterion (including any added during the deep
      dive).
+   - Do not check a related Acceptance Criterion or DoD box until every relevant
+     Verification Commands checkbox has been checked.
    - Never bulk-check. Never check preemptively. "It looks done" is not verification.
 
 3. **All checkboxes must be checked before close.**
@@ -67,7 +69,15 @@ required box is unchecked will be refused.
    - **Files to edit** (full repo-relative paths)
    - **Step-by-step implementation plan**
    - **Test additions** — list each test file with a one-line description; append as new acceptance-criteria checkboxes
-   - **Acceptance verification commands** — exact commands to prove each criterion
+   - **Verification Commands** — exact commands to prove each criterion, appended
+     as checkboxes and checked only after successful execution and output review:
+     ```markdown
+     ### Verification Commands
+
+     - [ ] `node scripts/task-tracker/tests/config.test.mjs`
+     - [ ] `node scripts/task-tracker/tests/state.test.mjs`
+     ```
+     Do not add words like `PASS`; the checked box is the proof.
    - **Identified risks** beyond the Scope
    - **Sibling sub-issues to spawn** (if any)
    - **Dependency map** (always include, even if no dependencies):
@@ -122,8 +132,11 @@ required box is unchecked will be refused.
 
 Review every item in the Definition of Done checklist in the issue body. For each item:
 - Verify it is genuinely complete (inspection + relevant test/command output).
+- Verify every relevant command in `### Verification Commands` has been run
+  successfully, its output read, and its checkbox checked.
 - Mark it with `/task check "<label>"`.
 
-Then verify every Acceptance Criterion the same way. Only run `/task close` once **every
-checkbox in the issue body** is checked. The pre-close gate will refuse otherwise; do not
-bypass it.
+Then verify every Acceptance Criterion the same way. Do not check the related Acceptance
+Criterion or DoD item until the relevant Verification Commands checkbox is checked. Only
+run `/task close` once **every checkbox in the issue body** is checked. The pre-close gate
+will refuse otherwise; do not bypass it.

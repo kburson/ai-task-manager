@@ -162,6 +162,14 @@ gh project item-edit --project-id "$PROJECT_ID" --id "$ITEM_ID" --field-id "$FIE
 
 echo "✓ Issue #$ISSUE moved to: $STATE"
 
+EVENT_FIELDS_SCRIPT="$REPO_ROOT/node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs"
+if [[ ! -f "$EVENT_FIELDS_SCRIPT" ]]; then
+  EVENT_FIELDS_SCRIPT="$REPO_ROOT/scripts/gh/update-event-fields.mjs"
+fi
+if [[ -f "$EVENT_FIELDS_SCRIPT" ]]; then
+  node "$EVENT_FIELDS_SCRIPT" "$ISSUE" "$STATE" --item-id "$ITEM_ID" 2>/dev/null || true
+fi
+
 # End task tracking when an issue is marked done
 if [[ "$STATE" == "done" ]]; then
   if [[ -n "$REPO_ROOT" ]]; then

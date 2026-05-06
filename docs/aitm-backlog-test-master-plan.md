@@ -527,19 +527,217 @@ Acceptance Criteria:
 - [ ] Publish command and access mode are documented.
 - [ ] Manual GitHub Project test results are recorded.
 
+## Epic 7 - Codex Engagement Metrics
+
+**Priority:** P1 | **Size:** XL | **Estimate:** 36h | **Sequence:** 7
+
+### Scope
+
+Add a Codex-compatible metrics model that separates engaged human review time from true idle time. The current Claude path can derive words and idle gaps from Claude session data, but Codex currently records elapsed task time without a transcript/event source, leaving `Idle Min`, `Delta Words`, and `Word Marker` at zero. This epic makes that limitation explicit and adds a path to recover meaningful engagement metrics.
+
+### Product Model
+
+For each agent turn, the tracker should distinguish:
+
+- **Agent active time** - time spent executing commands or producing output.
+- **Human review time** - plausible time spent reading/evaluating visible assistant output.
+- **True idle time** - wall-clock gap beyond plausible review/input time.
+
+Default formula:
+
+```text
+estimatedReviewMinutes = visibleAssistantWords / configuredWpm
+reviewMinutes = min(responseGapMinutes, estimatedReviewMinutes + reviewGraceMinutes)
+trueIdleMinutes = max(0, responseGapMinutes - reviewMinutes)
+engagedMinutes = wallMinutes - trueIdleMinutes
+```
+
+### Acceptance Criteria
+
+- [ ] Codex timing rows no longer silently report unsupported word/idle metrics as real zeros.
+- [ ] Tracker can represent `unsupported`, `estimated`, and `measured` metric quality.
+- [ ] Human review time is estimated from visible assistant words and configured WPM when Codex transcript/event data is unavailable.
+- [ ] True idle time is calculated as time beyond estimated review budget plus grace.
+- [ ] The chosen Codex data-capture source is documented with evidence and fallback behavior.
+- [ ] Reports and docs explain how engaged time is calculated for Claude and Codex.
+- [ ] Tests cover Codex no-source behavior, estimated review behavior, and long true-idle gaps.
+
+### Sub-Issues
+
+#### E7-S1 - Research official Codex observability surfaces
+**Priority:** P0 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Labels:** research, codex
+
+Determine what OpenAI officially documents for Codex session persistence, hooks, logs, transcript access, and token/session metadata.
+
+Acceptance Criteria:
+
+- [ ] Official OpenAI docs/help pages are reviewed for Codex CLI/session persistence and hooks.
+- [ ] OpenAI Codex repository docs or source references are reviewed for rollout/session storage.
+- [ ] Findings distinguish documented API/support from observed implementation details.
+- [ ] Gaps and unsupported assumptions are recorded in a design note.
+
+#### E7-S2 - Inspect local Codex rollout/session file schema
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Labels:** research, codex, metrics
+
+Analyze local `~/.codex/sessions/**/*.jsonl` rollout files without exposing transcript contents. Build a schema map for timestamps, message roles, visible assistant text, user messages, tool events, command output, token-count events, and session metadata.
+
+Acceptance Criteria:
+
+- [ ] Script or notes identify rollout file locations and naming pattern.
+- [ ] Schema map lists top-level event types and payload shapes.
+- [ ] Candidate visible-text fields are identified.
+- [ ] Non-reviewable fields are identified and excluded, including system/developer instructions, encrypted reasoning, and internal tool payloads.
+- [ ] Privacy constraints are documented so tests use synthetic fixtures, not real transcripts.
+
+#### E7-S3 - Research Codex hooks for real-time capture
+**Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** research, codex, hooks
+
+Determine whether Codex hooks can capture session events in real time, and whether they expose enough data to count visible output words and timestamps.
+
+Acceptance Criteria:
+
+- [ ] `~/.codex/config.toml` and any `hooks.json` behavior are inspected.
+- [ ] Hook event names, payloads, and enablement requirements are documented.
+- [ ] Feasibility of adding AI Task Manager hooks is assessed.
+- [ ] Hook approach is compared against rollout-file parsing for reliability, latency, and installation complexity.
+
+#### E7-S4 - Determine active Codex session discovery strategy
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E7-S2 | **Labels:** research, codex
+
+Find the safest way to map the current project/thread to the active Codex rollout file.
+
+Acceptance Criteria:
+
+- [ ] `~/.codex/session_index.jsonl` is inspected for usable current-thread/project mapping.
+- [ ] Rollout `session_meta` fields are inspected for cwd, session id, source, and model provider.
+- [ ] Strategy handles multiple sessions on the same day.
+- [ ] Strategy handles resumed sessions.
+- [ ] Failure mode is defined when no active session can be confidently selected.
+
+#### E7-S5 - Decide source of truth for Codex metrics
+**Priority:** P0 | **Size:** S | **Estimate:** 2h | **Sequence:** 2 | **Depends on:** E7-S1, E7-S2, E7-S3, E7-S4 | **Labels:** design, codex, metrics
+
+Write a short architecture decision record choosing the initial Codex metrics source and fallback order.
+
+Acceptance Criteria:
+
+- [ ] Decision compares official docs, rollout JSONL parsing, hooks, and manual commands.
+- [ ] Initial implementation source is selected.
+- [ ] Fallback order is selected.
+- [ ] Risks are documented, including rollout format drift and privacy concerns.
+- [ ] Test fixture strategy is documented.
+
+#### E7-S6 - Define metrics schema and quality flags
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** backend, metrics
+
+Define a durable schema for session metrics that can represent measured Claude metrics, estimated Codex metrics, and unsupported fields without conflating unknown values with zero.
+
+Acceptance Criteria:
+
+- [ ] State model can store `agentActiveMinutes`, `humanReviewMinutes`, `trueIdleMinutes`, `visibleAssistantWords`, and metric quality.
+- [ ] Metric quality supports at least `measured`, `estimated`, and `unsupported`.
+- [ ] Existing timing rows can still be emitted in the current table format for backward compatibility.
+- [ ] Unknown word metrics are not displayed as real zero values unless zero was actually measured.
+
+#### E7-S7 - Add agent metrics adapter boundary
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 2 | **Depends on:** E7-S5, E7-S6 | **Labels:** architecture, metrics
+
+Introduce an adapter boundary so Claude and Codex metrics collection can differ without tangling the task tracker core.
+
+Acceptance Criteria:
+
+- [ ] Metrics collection is routed through an adapter selected by agent/environment.
+- [ ] Claude adapter preserves existing JSONL/session behavior.
+- [ ] Codex adapter has a defined no-source fallback.
+- [ ] Tests can inject fake adapters without relying on real agent session files.
+
+#### E7-S8 - Build Codex rollout parser fixture and extractor
+**Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 3 | **Depends on:** E7-S5, E7-S7 | **Labels:** codex, metrics, test
+
+Implement a parser for the selected Codex rollout JSONL fields using synthetic fixtures modeled on observed schema.
+
+Acceptance Criteria:
+
+- [ ] Parser reads JSONL rollout records incrementally from a line marker.
+- [ ] Parser extracts assistant visible-message word counts.
+- [ ] Parser extracts user response timestamps.
+- [ ] Parser ignores developer/system instructions, encrypted reasoning, internal tool call arguments, and hidden payloads.
+- [ ] Tests cover synthetic assistant/user/tool/token-count events.
+
+#### E7-S9 - Implement Codex no-source fallback semantics
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 3 | **Depends on:** E7-S6, E7-S7 | **Labels:** codex, metrics
+
+Make the current Codex limitation explicit instead of writing misleading zeros.
+
+Acceptance Criteria:
+
+- [ ] When no Codex transcript/event source is available, word metrics are marked `unsupported`.
+- [ ] Timing output distinguishes unsupported word metrics from measured `0`.
+- [ ] Idle calculation uses wall-clock fallback only when no review budget is available.
+- [ ] README and design docs state the fallback behavior.
+
+#### E7-S10 - Add visible-output review budget tracking
+**Priority:** P1 | **Size:** L | **Estimate:** 5h | **Sequence:** 4 | **Depends on:** E7-S8, E7-S9 | **Labels:** codex, metrics
+
+Track visible assistant output words so human review time can be estimated even when raw Codex transcript events are not available.
+
+Acceptance Criteria:
+
+- [ ] Tracker can record timestamp and visible word count for the most recent assistant output.
+- [ ] Review budget is computed from visible words and `wpm`.
+- [ ] Config supports `reviewGraceMinutes` with a conservative default.
+- [ ] Multiple pending assistant outputs accumulate review budget without double-counting.
+
+#### E7-S11 - Compute engaged time versus true idle time
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 5 | **Depends on:** E7-S10 | **Labels:** metrics
+
+Use review budget to split response gaps into human review time and true idle time.
+
+Acceptance Criteria:
+
+- [ ] If user responds within review budget plus grace, true idle is zero or near zero.
+- [ ] If user responds after a long gap, only review budget plus grace counts as engaged time.
+- [ ] `Active Min` remains backward-compatible as engaged minutes unless a new table format is adopted.
+- [ ] Tests cover short review, exact budget, and one-hour walk-away scenarios.
+
+#### E7-S12 - Update timing rows and reports for metric quality
+**Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 6 | **Depends on:** E7-S11 | **Labels:** reporting, metrics
+
+Expose metric quality clearly in issue timing logs and value reports.
+
+Acceptance Criteria:
+
+- [ ] Timing rows show whether word/idle metrics are measured, estimated, or unsupported.
+- [ ] Value report includes engaged time using the correct calculation.
+- [ ] Report notes when Codex metrics are estimated.
+- [ ] Existing timing comments remain parseable.
+
+#### E7-S13 - Document Codex engagement metric behavior
+**Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 6 | **Depends on:** E7-S11 | **Labels:** docs, codex
+
+Document how Codex timing differs from Claude timing and how human review time is estimated.
+
+Acceptance Criteria:
+
+- [ ] README explains Agent Active, Human Review, True Idle, and Engaged Time.
+- [ ] Codex adapter docs explain no-source fallback and estimated review behavior.
+- [ ] Config docs explain `wpm` and `reviewGraceMinutes`.
+- [ ] Troubleshooting docs explain why old Codex rows may show zero word markers.
+
 ## Benchmark Characteristics
 
 This plan creates:
 
-- 6 epics.
-- 36 sub-issues.
-- 6 sequential epic phases.
-- 14 distinct parallel fan-out groups across sub-issue Sequence waves.
+- 7 epics.
+- 49 sub-issues.
+- 7 sequential epic phases.
+- 20 distinct parallel fan-out groups across sub-issue Sequence waves.
 - Multiple high-risk dependency boundaries:
   - path migration before CLI/session work,
   - CLI/session work before GitHub workflow safety,
   - shared skill split before installer/plugin packaging,
-  - orchestration governance before docs/release.
+  - orchestration governance before docs/release,
+  - metrics schema and adapter boundaries before Codex engagement calculations.
 
 This should be a strong benchmark for testing whether AI Task Manager correctly:
 
