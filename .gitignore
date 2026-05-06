@@ -11,3 +11,14 @@ codex/
 /reports/
 .DS_Store
 
+
+# ai-task-manager — user configuration files (do not commit)
+.ai-task-manager/task-tracker-state.json
+.ai-task-manager/task-tracker-queue.json
+.ai-task-manager/task-fleet.json
+.ai-task-manager/pickup-directive.md.bak
+.ai-task-manager/definition-of-done.md.bak
+.claude/task-tracker.json
+.claude/task-tracker-state.json
+.claude/task-tracker-queue.json
+.claude/task-fleet.json

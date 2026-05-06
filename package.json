@@ -1,6 +1,6 @@
 {
   "name": "ai-task-manager",
-  "version": "1.1.11",
+  "version": "1.0.0",
   "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
   "type": "module",
   "license": "MIT",
@@ -48,6 +48,7 @@
     "url": "https://github.com/kburson/ai-task-manager/issues"
   },
   "devDependencies": {
+    "ai-task-manager": "file:ai-task-manager-1.0.0.tgz",
     "puppeteer": "^24.42.0"
   }
 }
