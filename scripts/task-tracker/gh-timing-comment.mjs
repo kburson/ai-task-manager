@@ -12,7 +12,15 @@ const TABLE_HEADER = [
   '|---|---|---|---|---|---|---|',
 ].join('\n');
 
-function fmtTs(iso) { return iso.slice(0, 16) + 'Z'; }
+function fmtTs(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  const offsetMin = -d.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMin);
+  const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} ${offset}`;
+}
 function fmtNum(n)  { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
 
 export function buildRow({ ts, event, activeMin, idleMin, deltaWords, wordMarker, description = '' }) {
