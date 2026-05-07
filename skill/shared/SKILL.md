@@ -215,7 +215,7 @@ them will reference paths that do not resolve, and agents picking them up will h
 authoritative directive to follow.
 
 When you actually need to assemble an issue body, run the script **without**
-`--check-only` and capture stdout — it emits the canonical Pickup Directive block to
+`--check-only` and capture stdout — it emits the canonical Definition of Done + Pickup Directive tail block to
 splice into the body (with `<this-issue-#>` and `<parent-epic-#>` placeholders).
 Always use this script's output rather than constructing the block from prose, so the
 block stays in lockstep with the canonical templates.
@@ -325,8 +325,8 @@ From the spec in context, extract:
 - The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
 - The **Epic Acceptance Criteria** checkboxes
 
-Generate the Pickup Directive block by running the preflight script (stdout = the
-canonical block, with `<this-issue-#>` and `<parent-epic-#>` placeholders to be
+Generate the Definition of Done and Pickup Directive tail block by running the preflight script (stdout = the
+canonical tail block, with `<this-issue-#>` and `<parent-epic-#>` placeholders to be
 replaced after creation). This is unconditional in orchestration mode — all issues
 from a master plan are stubs; the deep dive happens at pickup time regardless of issue
 type:
@@ -336,7 +336,7 @@ DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-ma
 # If this command exits non-zero, STOP — do not create any issues.
 ```
 
-Append `$DIRECTIVE_BLOCK` to the assembled body. Do not hand-craft the block — the
+Append `$DIRECTIVE_BLOCK` after Plan Metadata and Acceptance Criteria. Do not hand-craft the block — the
 script reads from `.ai-task-manager/definition-of-done.md` so the output stays
 authoritative.
 
@@ -405,7 +405,7 @@ Read the sub-issue's Scope. Apply all matching labels from the inference table i
 Combine in order:
 1. The **Scope** section text
 2. The **Acceptance Criteria** checkboxes
-3. The Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Generate via the preflight script:
+3. The Definition of Done and Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Generate via the preflight script:
 
 ```bash
 DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs")
@@ -526,19 +526,19 @@ Then ask:
 **At issue creation** (epics, sub-issues, and solo tasks — unconditional in orchestration mode; gated by `pickupDirective: true` for plain `/task new` outside orchestration):
 
 1. Run preflight (see "Preflight — MANDATORY" above). If it fails, STOP — do not create the issue.
-2. Capture preflight stdout as `$DIRECTIVE_BLOCK`. It is the canonical block:
+2. Capture preflight stdout as `$DIRECTIVE_BLOCK`. It is the canonical tail block:
    ```markdown
-   ## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
+   ### Definition of Done
+   <DoD lines from template>
+
+   ## Pickup Directive — MANDATORY, DO NOT SKIP
    > Follow: `.ai-task-manager/pickup-directive.md`
 
    - [ ] Deep dive complete
 
-   ### Definition of Done
-   <DoD lines from template>
-
    ---
    ```
-3. Append `$DIRECTIVE_BLOCK` to the issue body after the Scope section.
+3. Append `$DIRECTIVE_BLOCK` after Acceptance Criteria and Plan Metadata so the issue order is Scope, Plan Metadata, Acceptance Criteria, Definition of Done, Pickup Directive, then any hidden AITM field DB.
 4. Replace `<this-issue-#>` and `<parent-epic-#>` placeholders in the body with actual numbers after `gh issue create` returns.
 
 **At issue pickup** (`/task #N` or `/task resume #N`):

@@ -2,7 +2,7 @@
 // Preflight check before any `gh issue create` from the task skill.
 //
 // Verifies that the canonical templates exist in `.ai-task-manager/` and emits
-// the Pickup Directive block to stdout for the skill to splice into the issue body.
+// the Definition of Done + Pickup Directive tail block to stdout for the skill to splice into the issue body.
 //
 // Exit codes:
 //   0 — both templates present; canonical block written to stdout
@@ -59,19 +59,19 @@ if (checkOnly) {
   process.exit(0);
 }
 
-// Emit the canonical Pickup Directive block. Placeholders `<this-issue-#>` and
+// Emit the canonical Definition of Done + Pickup Directive tail block. Placeholders `<this-issue-#>` and
 // `<parent-epic-#>` are replaced by the caller after `gh issue create` returns the
 // real issue number.
 const dod = readFileSync(dodPath, 'utf8').replace(/\s+$/, '');
 
 const block = [
-  '## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP',
+  '### Definition of Done',
+  dod,
+  '',
+  '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '> Follow: `.ai-task-manager/pickup-directive.md`',
   '',
   '- [ ] Deep dive complete',
-  '',
-  '### Definition of Done',
-  dod,
   '',
   '---',
   '',

@@ -350,13 +350,13 @@ Every issue in a spec should include `**Sequence:** N`. Issues with the same num
 Every issue created from a master plan (and optionally single issues when `pickupDirective: true`) gets a structured block injected at creation time:
 
 ```markdown
-## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
+### Definition of Done
+<contents of definition-of-done.md>
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
 > Follow: `.ai-task-manager/pickup-directive.md`
 
 - [ ] Deep dive complete
-
-### Definition of Done
-<contents of definition-of-done.md>
 ```
 
 The block is built by `scripts/task-tracker/preflight-issue.mjs`, which also acts as a gate: it verifies that `.ai-task-manager/pickup-directive.md` and `.ai-task-manager/definition-of-done.md` exist before any issue is created. If either is missing, the skill aborts with a "(re)install the skill" message — no issues are created until the templates are in place.

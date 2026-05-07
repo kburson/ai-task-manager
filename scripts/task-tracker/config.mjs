@@ -20,6 +20,8 @@ export const DEFAULTS = {
   kanbanOptionDone: '',
   // Sequence field ID (set by init script) — numeric field on the project board
   sequenceFieldId: '',
+  // Size field ID (set by init script) — single-select field on the project board
+  sizeFieldId: '',
   fieldIds: {},
   fieldEstimate: '',
   fieldEngagedTime: '',
@@ -59,6 +61,7 @@ const TYPES = {
   kanbanOptionInReview: 'string',
   kanbanOptionDone: 'string',
   sequenceFieldId: 'string',
+  sizeFieldId: 'string',
   fieldIds: 'object',
   fieldEstimate: 'string',
   fieldEngagedTime: 'string',
@@ -120,6 +123,7 @@ export function loadConfig(paths = {}) {
     merged.fieldContextWords ||= merged.fieldIds.contextLength || '';
     merged.fieldSequence ||= merged.fieldIds.sequence || '';
     merged.sequenceFieldId ||= merged.fieldIds.sequence || '';
+    merged.sizeFieldId ||= merged.fieldIds.size || '';
     merged.fieldStartDate ||= merged.fieldIds.startDate || '';
     merged.fieldEndDate ||= merged.fieldIds.endDate || '';
   }
@@ -179,7 +183,7 @@ const USER_KEYS = [
 const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionDone',
-  'sequenceFieldId',
+  'sequenceFieldId', 'sizeFieldId',
   'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartDate', 'fieldEndDate',
   'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
 ];

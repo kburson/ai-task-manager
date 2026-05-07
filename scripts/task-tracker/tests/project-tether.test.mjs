@@ -105,6 +105,8 @@ async function testExistingProjectSideItemIsReused() {
   assert.equal(result.itemId, 'VISIBLE_ITEM');
   assert.equal(calls.some(c => c.query.includes('addProjectV2ItemById')), false);
   assert.equal(calls.filter(c => c.query.includes('updateProjectV2ItemFieldValue')).length, 5);
+  const sizeCall = calls.find(c => c.query.includes('updateProjectV2ItemFieldValue') && c.variables.field === 'SIZE_FIELD');
+  assert.equal(sizeCall.variables.option, 'SIZE_M');
 }
 
 async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
@@ -189,11 +191,41 @@ async function testLooseLeafDoesNotLinkParent() {
   assert.equal(calls.some(c => c.query.includes('addSubIssue')), false);
 }
 
+async function testSizeFieldMissingFailsLoudly() {
+  const { runGql } = makeRunner({ projectItemOnAttempt: 1 });
+  await assert.rejects(
+    tetherIssueToProject({
+      cfg: { ...cfg, sizeFieldId: '' },
+      issueNumber: 18,
+      size: 'M',
+      runGql,
+      sleep: async () => {},
+    }),
+    /sizeFieldId/i,
+  );
+}
+
+async function testSizeOptionMissingFailsLoudly() {
+  const { runGql } = makeRunner({ projectItemOnAttempt: 1 });
+  await assert.rejects(
+    tetherIssueToProject({
+      cfg,
+      issueNumber: 19,
+      size: 'XL',
+      runGql,
+      sleep: async () => {},
+    }),
+    /Size option.*XL/i,
+  );
+}
+
 await testExistingProjectSideItemIsReused();
 await testMissingItemIsAddedAndVerifiedFromProjectSide();
 await testPhantomItemIsDeletedAndRetried();
 await testRetryExhaustionMentionsProjectSideVerification();
 await testParentLinksAfterProjectVerification();
 await testLooseLeafDoesNotLinkParent();
+await testSizeFieldMissingFailsLoudly();
+await testSizeOptionMissingFailsLoudly();
 
 console.log('project-tether.test.mjs: all passed');

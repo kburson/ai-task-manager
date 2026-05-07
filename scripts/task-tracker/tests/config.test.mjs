@@ -66,5 +66,15 @@ assert.ok(existsSync(writeProjectPath), 'preferred config path should be written
 cfg = loadConfig({ projectPath: writeProjectPath, legacyProjectPath: writeLegacyPath, userPath, legacyUserPath });
 assert.equal(cfg.wpm, 222);
 
+// Test 11: sizeFieldId survives loadConfig
+writeFileSync(projectPath, JSON.stringify({ sizeFieldId: 'SIZE_FIELD_TOP' }));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.sizeFieldId, 'SIZE_FIELD_TOP');
+
+// Test 12: fieldIds.size falls back into sizeFieldId
+writeFileSync(projectPath, JSON.stringify({ fieldIds: { size: 'SIZE_FIELD_FROM_MAP' } }));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.sizeFieldId, 'SIZE_FIELD_FROM_MAP');
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

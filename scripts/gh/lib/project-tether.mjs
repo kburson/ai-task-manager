@@ -207,9 +207,15 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, sequ
 
   const sizeValue = normalizeSize(size);
   if (sizeValue) {
+    if (!cfg.sizeFieldId) {
+      throw new Error(`Size field is not configured (sizeFieldId missing); cannot write Size ${sizeValue}`);
+    }
     const sizeOptionId = cfg.sizeOptions?.[sizeValue]
       || cfg.sizeOptionMap?.[sizeValue]
       || cfg.sizeOptionMap?.[cfg.sizeFieldId]?.[sizeValue];
+    if (!sizeOptionId) {
+      throw new Error(`Size option ${sizeValue} not found for field ${cfg.sizeFieldId}`);
+    }
     await writeField({
       cfg,
       itemId,

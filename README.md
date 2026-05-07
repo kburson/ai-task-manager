@@ -284,19 +284,16 @@ The Pickup Directive makes every issue self-contained. Any agent, on any machine
 Every issue created from a master plan gets this block appended:
 
 ```markdown
-## ⚡ Pickup Directive — MANDATORY, DO NOT SKIP
-> Follow: `.ai-task-manager/pickup-directive.md`
-
-- [ ] Deep dive complete
-
 ### Definition of Done
 - [ ] Acceptance criteria met (including test additions from deep dive)
 - [ ] Tests pass; new coverage committed
 - [ ] Pre-commit hooks pass
 - [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Engaged Time, Session Time, and Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
+> Follow: `.ai-task-manager/pickup-directive.md`
+
+- [ ] Deep dive complete
 
 ---
 ```
