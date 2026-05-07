@@ -240,12 +240,13 @@ async function runMoveStateDone(issue) {
   await runMoveState(issue, 'done');
 }
 
-async function runMoveState(issue, state) {
+async function runMoveState(issue, state, { env: envOverride } = {}) {
   if (SKIP_NETWORK) return;
   const scriptPath = new URL('../gh/move-state.sh', import.meta.url).pathname;
   const issueNum = String(issue).replace(/^#/, '');
   try {
-    const { stdout } = await pexec(scriptPath, [issueNum, state], { timeout: 15000 });
+    const mergedEnv = envOverride ? { ...process.env, ...envOverride } : process.env;
+    const { stdout } = await pexec(scriptPath, [issueNum, state], { timeout: 15000, env: mergedEnv });
     if (stdout.trim()) console.log(stdout.trim());
   } catch (err) {
     console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
@@ -412,6 +413,70 @@ async function verbPause() {
   console.log(`Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task start" to resume.`);
 }
 
+function buildStateOptionMap() {
+  return Object.fromEntries([
+    [cfg.kanbanOptionBacklog,    'backlog'],
+    [cfg.kanbanOptionReady,      'ready'],
+    [cfg.kanbanOptionInProgress, 'in-progress'],
+    [cfg.kanbanOptionInReview,   'in-review'],
+    [cfg.kanbanOptionR4R,        'r4r'],
+    [cfg.kanbanOptionDone,       'done'],
+  ].filter(([k]) => k));
+}
+
+async function fetchSubIssues(issueNum) {
+  if (SKIP_NETWORK) return [];
+  const [owner, repoName] = cfg.repo.split('/');
+  try {
+    const { stdout } = await pexec('gh', ['api', 'graphql', '-f', `query={
+      repository(owner:"${owner}",name:"${repoName}") {
+        issue(number:${issueNum}) {
+          subIssues(first:100) { nodes { number } }
+        }
+      }
+    }`], { timeout: 10000 });
+    return JSON.parse(stdout).data?.repository?.issue?.subIssues?.nodes?.map(n => n.number) ?? [];
+  } catch { return []; }
+}
+
+async function fetchParentIssue(issueNum) {
+  if (SKIP_NETWORK) return null;
+  const [owner, repoName] = cfg.repo.split('/');
+  try {
+    const { stdout } = await pexec('gh', ['api', 'graphql', '-f', `query={
+      repository(owner:"${owner}",name:"${repoName}") {
+        issue(number:${issueNum}) { parent { number } }
+      }
+    }`], { timeout: 10000 });
+    return JSON.parse(stdout).data?.repository?.issue?.parent?.number ?? null;
+  } catch { return null; }
+}
+
+async function getIssueBoardState(issueNum) {
+  if (SKIP_NETWORK) return null;
+  const [owner, repoName] = cfg.repo.split('/');
+  try {
+    const { stdout } = await pexec('gh', ['api', 'graphql', '-f', `query={
+      repository(owner:"${owner}",name:"${repoName}") {
+        issue(number:${issueNum}) {
+          projectItems(first:10) {
+            nodes {
+              project { id }
+              fieldValueByName(name:"Status") {
+                ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+              }
+            }
+          }
+        }
+      }
+    }`], { timeout: 10000 });
+    const nodes = JSON.parse(stdout).data?.repository?.issue?.projectItems?.nodes ?? [];
+    const node = nodes.find(n => n.project?.id === cfg.projectId);
+    const optionId = node?.fieldValueByName?.optionId;
+    return optionId ? (buildStateOptionMap()[optionId] ?? null) : null;
+  } catch { return null; }
+}
+
 async function verbReview(args) {
   await draiQueueIfAny();
   const s = loadState(statePath);
@@ -457,6 +522,30 @@ async function verbReview(args) {
       unchecked.forEach(u => console.error(`   ${u}`));
       process.exit(3);
     }
+    // ── Epic sub-issue gate: all sub-issues must be R4R ───────────────────────
+    const subNums = await fetchSubIssues(issueNum);
+    if (subNums.length > 0) {
+      const childStates = await Promise.all(
+        subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
+      );
+      const notR4R = childStates.filter(c => c.state !== 'r4r');
+      if (notR4R.length > 0) {
+        // Stay in In Review — the epic's own boxes pass but children aren't ready
+        console.error(`[task-tracker] ⛔ Epic ${target} cannot move to R4R — ${notR4R.length} child issue(s) not in R4R:`);
+        notR4R.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
+        console.error('Wait for all sub-issues to reach R4R, then run `/task review` again.');
+        process.exit(3);
+      }
+    }
+    // ── All gates passed: promote to R4R ─────────────────────────────────────
+    await runMoveState(target, 'r4r');
+    const r4rTs = nowIso();
+    const r4rRow = (await import('./gh-timing-comment.mjs')).buildRow({
+      ts: r4rTs, event: 'r4r', activeMin: 0, idleMin: 0, deltaWords: 0,
+      wordMarker: 0, description: 'verification complete — moved to R4R',
+    });
+    await safePostTiming(target, r4rRow);
+    console.log(`✓ ${target} moved to R4R — all verification passed.`);
   }
 }
 
