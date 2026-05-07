@@ -44,13 +44,13 @@ required box is unchecked will be refused.
      pre-close box in the issue body is unchecked. Same audited override applies.
    - Normal path: run `/task close` — it validates, flushes timing, then moves to Done.
 
-5. **Agents MUST NOT run `/task close`. The terminal agent action is `/task review`.**
-   - Once every pre-close checkbox is checked, run `/task review <issue>` and stop.
-   - All checkboxes checked means "ready for human review" — NOT permission to close.
-   - No agent or orchestrator may infer human approval from checked boxes, passing
-     tests, a completed self-review, or any automated signal.
-   - `/task close` requires explicit human instruction (e.g., "close #N", "mark #N done").
-     Running it without that instruction is a process violation.
+5. **Agents MUST NOT run `/task review` or `/task close`. The terminal agent action is reporting `CODE_COMPLETE`.**
+   - Once implementation is complete and all verifiable checkboxes are checked, report
+     `CODE_COMPLETE` and stop. The orchestrator calls `/task review`.
+   - Checking all boxes means "orchestrator should now call `/task review`" — NOT
+     permission for the agent to call `/task review` or `/task close`.
+   - `/task review` is an orchestrator action. `/task close` is a human action.
+     Agents running either is a process violation.
 
 ## Required steps before writing any code
 
@@ -59,11 +59,9 @@ required box is unchecked will be refused.
    node_modules/ai-task-manager/scripts/gh/move-state.sh <this-issue-#> in-progress
    ```
 
-   When implementation is complete and the pre-verification phase begins (CODE_COMPLETE),
-   move to In Review before starting the verification checklist:
-   ```bash
-   node_modules/ai-task-manager/scripts/gh/move-state.sh <this-issue-#> in-review
-   ```
+   When implementation is complete, report `CODE_COMPLETE` and stop. The orchestrator
+   will call `/task review`, which moves the issue to In Review, runs the verification
+   gate, and promotes to R4R on success.
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
    assumptions still hold, identify concrete files to edit, define the test approach,
@@ -154,30 +152,32 @@ sequence prematurely.
 
 | Status | Meaning | Required condition |
 |---|---|---|
-| `CODE_COMPLETE` | Implementation finished; one or more DoD items could not be verified by this agent and remain unchecked. | List every unchecked item explicitly. Orchestrator must not advance the sequence. |
-| `ISSUE_READY_FOR_REVIEW` | Every AC, Verification Command, and DoD item this agent can verify is checked. `/task review` has been run. Issue is now In Review. | No unchecked pre-close boxes remain (agent-verifiable). Agent stops here — orchestrator notifies the human. Do NOT run `/task close`. |
+| `CODE_COMPLETE` | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review`. | List any unchecked items and why they could not be verified. Do NOT call `/task review`. |
+| `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches R4R. | Orchestrator notifies the human for approval. Do NOT run `/task close`. |
 | `BLOCKED` | Cannot proceed without orchestrator or human intervention. | Describe exactly what is needed. |
 
 **Rules for orchestrators:**
+- On receiving `CODE_COMPLETE` from an agent: call `/task review #N`. If it exits
+  non-zero (verification failed), post a comment on the issue listing the failed
+  criteria, confirm the issue has been reverted to In Progress, and re-dispatch the
+  agent to fix the failures. Loop until `/task review` succeeds.
+- On `/task review` success (issue reaches R4R): report `ISSUE_READY_FOR_REVIEW` and
+  notify the human. Do NOT run `/task close`.
 - A sub-issue sequence is complete only after all issues in that sequence reach **Done**
-  via the `/task review` → human approval → `/task close` path — not when agents report
-  `CODE_COMPLETE` or `ISSUE_READY_FOR_REVIEW`.
-- Do not advance to the next sequence while any issue in the current sequence has not
-  been explicitly closed by a human.
-- After receiving `ISSUE_READY_FOR_REVIEW`, notify the human for review. Do NOT run
-  `/task close`. Only after the human instructs close should `/task close <N>` be run.
+  via the `/task review` → human approval → `/task close` path.
+- Do not advance to the next sequence while any issue has not been explicitly closed by
+  a human.
 
 **If a DoD item cannot be verified by the agent** (e.g., it requires a human to observe
 a live environment, or it involves a third-party review), leave that checkbox unchecked,
 report `CODE_COMPLETE`, and list the unverified items. Do not check DoD boxes you cannot
 actually verify.
 
-## Before moving to In Review — agent steps
+## Before reporting CODE_COMPLETE — agent steps
 
-> ⛔ **All checkboxes checked means "ready for human review" — NOT permission to close.**
-> No agent or orchestrator may infer human approval from checked boxes, passing tests,
-> a completed self-review, or any automated signal. The issue stays In Review until a
-> human explicitly instructs close.
+> ⛔ **All checkboxes checked means "ready for orchestrator to call `/task review`" — NOT
+> permission for the agent to call `/task review` or `/task close`.**
+> The agent's terminal action is reporting `CODE_COMPLETE` and stopping.
 
 Review every item in the Definition of Done checklist in the issue body. For each item:
 - Verify it is genuinely complete (inspection + relevant test/command output).
@@ -191,8 +191,6 @@ Review every item in the Definition of Done checklist in the issue body. For eac
 Then verify every Acceptance Criterion the same way. Do not check the related Acceptance
 Criterion or DoD item until the relevant Verification Commands checkbox is checked.
 
-Run `/task review <issue>` to move the issue to **R4R** and flush/pause timing.
-**This is the terminal agent action. Stop here regardless of context.**
-
-Report `ISSUE_READY_FOR_REVIEW` and wait. The orchestrator (or human directly) will
-review and, only upon explicit human instruction, run `/task close`.
+**Stop here. Report `CODE_COMPLETE`. Do NOT call `/task review`.**
+The orchestrator calls `/task review`, which moves the issue through In Review → R4R
+(or reverts to In Progress on failure and re-dispatches this agent).

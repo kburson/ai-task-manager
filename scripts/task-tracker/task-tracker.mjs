@@ -361,8 +361,13 @@ async function verbClose() {
         const r4rChildren = childStates.filter(c => c.state === 'r4r');
         if (r4rChildren.length > 0) {
           console.log(`[task-tracker] Cascade closing ${r4rChildren.length} child issue(s)...`);
+          const { buildRow: br } = await import('./gh-timing-comment.mjs');
           for (const child of r4rChildren) {
             try {
+              await safePostTiming(`#${child.num}`, br({
+                ts: nowIso(), event: 'done', activeMin: 0, idleMin: 0, deltaWords: 0,
+                wordMarker: 0, description: 'cascade closed by epic',
+              }));
               await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' } });
               await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], { timeout: 10000 });
               try { deregisterTask(projectDir, `#${child.num}`); } catch {}
@@ -564,6 +569,11 @@ async function verbReview(args) {
     const body = JSON.parse(stdout).body ?? '';
     const unchecked = uncheckedPreCloseCheckboxes(body);
     if (unchecked.length > 0) {
+      const { buildRow: br } = await import('./gh-timing-comment.mjs');
+      await safePostTiming(target, br({
+        ts: nowIso(), event: 'in-progress', activeMin: 0, idleMin: 0, deltaWords: 0,
+        wordMarker: 0, description: 'verification failed — reverted to In Progress',
+      }));
       await runMoveState(target, 'in-progress');
       console.error(`[task-tracker] Review failed for ${target}:`);
       unchecked.forEach(u => console.error(`   ${u}`));
