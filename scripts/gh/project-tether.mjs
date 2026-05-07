@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+import { loadConfig } from '../task-tracker/config.mjs';
+import { fieldOptionMap } from './lib/github-projects.mjs';
+import { tetherIssueToProject } from './lib/project-tether.mjs';
+
+function usage() {
+  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|ready|in-progress|in-review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
+}
+
+function parseArgs(args) {
+  const parsed = {};
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (!arg.startsWith('--')) continue;
+    const key = arg.slice(2);
+    const value = args[i + 1];
+    if (!value || value.startsWith('--')) {
+      parsed[key] = true;
+    } else {
+      parsed[key] = value;
+      i += 1;
+    }
+  }
+  return parsed;
+}
+
+function numberFlag(value, name) {
+  if (value === undefined || value === true || value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new Error(`${name} must be a number`);
+  return n;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const issueNumber = numberFlag(args.issue, '--issue');
+  if (!issueNumber) {
+    console.error(usage());
+    process.exit(2);
+  }
+
+  const cfg = loadConfig();
+  if (args.size) {
+    const options = await fieldOptionMap(cfg.projectId);
+    cfg.sizeOptionMap = options[cfg.sizeFieldId] || {};
+  }
+
+  const result = await tetherIssueToProject({
+    cfg,
+    issueNumber,
+    parentIssueNumber: numberFlag(args.parent, '--parent'),
+    status: args.status,
+    priority: args.priority,
+    size: args.size,
+    estimate: numberFlag(args.estimate, '--estimate'),
+    sequence: numberFlag(args.sequence, '--sequence'),
+  });
+
+  console.log(`✓ #${issueNumber} tethered to ${result.projectTitle || cfg.projectId}: ${result.itemId}`);
+}
+
+main().catch(err => {
+  console.error(`project-tether: ${err.message}`);
+  process.exit(1);
+});
+

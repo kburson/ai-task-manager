@@ -292,6 +292,31 @@ From the result, find the field named `Size` and capture its option IDs for: `XS
 
 > **Note to spec authors:** Include a `**Sequence:** N` value in every issue header. Issues with the same number run in parallel; higher-sequence issues wait for all lower-sequence issues in their scope to close. Without this, orchestration defaults to Sequence 1 for all issues (fully parallel). Cross-epic ordering belongs in a top-level note at the top of the spec.
 
+### Project Tether — MANDATORY
+
+Every created epic, sub-issue, and solo task must be tethered with the packaged
+helper before orchestration reports success. Do not rely on raw
+`addProjectV2ItemById` output or `Issue.projectItems`; GitHub can return issue-side
+project metadata while the Project board itself still has no visible item.
+
+Use:
+
+```bash
+node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
+  --issue <N> \
+  --status backlog \
+  --priority <P0|P1|P2> \
+  --size <XS|S|M|L|XL> \
+  --estimate <hours> \
+  --sequence <sequence-number> \
+  [--parent <EPIC_N>]
+```
+
+The helper verifies the issue through `ProjectV2.items`, sets project fields only
+after project-side visibility is confirmed, repairs issue-side phantom items when
+possible, and fails closed if the story cannot be made visible in the project.
+For loose leaf tasks, omit `--parent`. For epic child issues, pass `--parent`.
+
 ### Epic Creation
 
 #### 1. Assemble the epic body
@@ -344,66 +369,19 @@ Store as `EPIC_NODE_ID`.
 ```
 Use the priority declared in the spec. Default: `p0` for epics.
 
-#### 5. Add to Project, then Set Size
-
-First add the issue to the project (issues aren't auto-added):
-```bash
-gh api graphql -f query='
-  mutation($project:ID!, $contentId:ID!) {
-    addProjectV2ItemById(input:{projectId:$project, contentId:$contentId}) {
-      item { id }
-    }
-  }
-' -f project=<projectId> -f contentId=<EPIC_NODE_ID> --jq '.data.addProjectV2ItemById.item.id'
-```
-Store as `ITEM_ID`. Then set Size:
-```bash
-gh project item-edit \
-  --project-id <projectId from .ai-task-manager/task-tracker.json> \
-  --id <ITEM_ID> \
-  --field-id <sizeFieldId from .ai-task-manager/task-tracker.json> \
-  --single-select-option-id <option-id for XS|S|M|L|XL from Label Setup C>
-```
-
-#### 6. Set Estimate
+#### 5. Tether to Project Backlog
 
 ```bash
-gh api graphql -f query='
-  mutation($project:ID!, $item:ID!, $field:ID!, $val:Float!) {
-    updateProjectV2ItemFieldValue(input:{
-      projectId:$project, itemId:$item, fieldId:$field,
-      value:{ number: $val }
-    }) { projectV2Item { id } }
-  }
-' -f project=<projectId> -f item=<ITEM_ID> \
-  -f field=<fieldEstimate from .ai-task-manager/task-tracker.json> \
-  -F val=<estimate-hours as float>
+node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
+  --issue <EPIC_N> \
+  --status backlog \
+  --priority <p0|p1|p2 from spec> \
+  --size <XS|S|M|L|XL from spec> \
+  --estimate <estimate-hours as float> \
+  --sequence <sequence-number>
 ```
 
-#### 7. Set Sequence
-
-Read the `**Sequence:**` value from the spec for this epic (default `1` if not declared). Set it on the project item:
-
-```bash
-gh api graphql -f query='
-  mutation($project:ID!, $item:ID!, $field:ID!, $val:Float!) {
-    updateProjectV2ItemFieldValue(input:{
-      projectId:$project, itemId:$item, fieldId:$field,
-      value:{ number: $val }
-    }) { projectV2Item { id } }
-  }
-' -f project=<projectId> -f item=<ITEM_ID> \
-  -f field=<SEQUENCE_FIELD_ID> \
-  -F val=<sequence-number as float>
-```
-
-#### 8. Move to Backlog
-
-```bash
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.sh" <EPIC_N> backlog --item-id <ITEM_ID>
-```
-
-#### 9. Replace placeholder issue numbers in body
+#### 6. Replace placeholder issue numbers in body
 
 ```bash
 BODY=$(gh issue view <EPIC_N> --json body --jq '.body')
@@ -455,56 +433,25 @@ gh issue view <SUB_N> --json id --jq '.id'
 ```
 Store as `SUB_NODE_ID`.
 
-#### 4. Set Priority, Size, Estimate
-
-Add the sub-issue to the project and get its item ID:
-```bash
-gh api graphql -f query='
-  mutation($project:ID!, $contentId:ID!) {
-    addProjectV2ItemById(input:{projectId:$project, contentId:$contentId}) {
-      item { id }
-    }
-  }
-' -f project=<projectId> -f contentId=<SUB_NODE_ID> --jq '.data.addProjectV2ItemById.item.id'
-```
-Store as `ITEM_ID`. Then use the same Priority/Size/Estimate commands as Epic Creation §4–§6, substituting `SUB_N` and the sub-issue's declared values.
+#### 4. Tether to Project Backlog
 
 Priority default for sub-issues: inherit from parent epic if not declared in spec.
 
-Also set Sequence (read from spec `**Sequence:**` field, default `1`):
-
 ```bash
-gh api graphql -f query='
-  mutation($project:ID!, $item:ID!, $field:ID!, $val:Float!) {
-    updateProjectV2ItemFieldValue(input:{
-      projectId:$project, itemId:$item, fieldId:$field,
-      value:{ number: $val }
-    }) { projectV2Item { id } }
-  }
-' -f project=<projectId> -f item=<ITEM_ID> \
-  -f field=<SEQUENCE_FIELD_ID> \
-  -F val=<sequence-number as float>
+node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
+  --issue <SUB_N> \
+  --parent <EPIC_N> \
+  --status backlog \
+  --priority <p0|p1|p2 from spec or parent> \
+  --size <XS|S|M|L|XL from spec> \
+  --estimate <estimate-hours as float> \
+  --sequence <sequence-number>
 ```
 
-#### 5. Move to Backlog
+The helper links the issue to the epic as a GitHub sub-issue after project-side
+visibility is verified.
 
-```bash
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.sh" <SUB_N> backlog --item-id <ITEM_ID>
-```
-
-#### 6. Link to epic as sub-issue
-
-```bash
-gh api graphql -f query='
-  mutation($parentId:ID!, $childId:ID!) {
-    addSubIssue(input:{ issueId:$parentId, subIssueId:$childId }) {
-      issue { number }
-    }
-  }
-' -f parentId=<EPIC_NODE_ID> -f childId=<SUB_NODE_ID>
-```
-
-#### 7. Replace placeholder issue numbers in body
+#### 5. Replace placeholder issue numbers in body
 
 ```bash
 BODY=$(gh issue view <SUB_N> --json body --jq '.body')

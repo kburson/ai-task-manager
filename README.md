@@ -218,8 +218,9 @@ Given a spec document (markdown, loaded into context), the orchestrator creates 
 2. **Epics** — one per epic block in the spec, with full scope, acceptance criteria, and Pickup Directive
 3. **Sub-issues** — each linked to its parent epic via GitHub's sub-issue relationship
 4. **Solo tasks** — standalone issues with no parent
-5. **Project fields** — Size, Estimate, Priority, and Sequence set on every issue via GitHub Projects V2 API
-6. **Kanban state** — every issue lands in Backlog, ready to work
+5. **Project tethering** — every issue is verified from the Project V2 side before orchestration continues; issue-side `projectItems` metadata alone is not trusted
+6. **Project fields** — Size, Estimate, Priority, and Sequence set on every issue via GitHub Projects V2 API
+7. **Kanban state** — every issue lands in Backlog, ready to work
 
 All of this runs automatically. You watch the progress stream and review the summary table at the end.
 
@@ -577,6 +578,7 @@ The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped.
 
 | Script | Description |
 |---|---|
+| `scripts/gh/project-tether.mjs --issue <N> ...` | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
 | `scripts/gh/move-state.sh <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/ready/in-progress/in-review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID. |
 | `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too. |
 

@@ -9,13 +9,12 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import {
-  addIssueToProject,
   fieldOptionMap,
   gh,
-  projectItemForIssue,
   projectValuesForIssue,
   writeProjectFieldValue,
 } from './lib/github-projects.mjs';
+import { tetherIssueToProject } from './lib/project-tether.mjs';
 
 const pexec = promisify(execFile);
 const args = process.argv.slice(2);
@@ -72,8 +71,7 @@ async function main() {
     console.log(`#${issue.number} ${issue.title}: ${syncPlan.length} field value(s)`);
     if (dryRun) continue;
     if (ensured.changed) await writeIssueBody(cfg.repo, issue.number, ensured.body);
-    const existing = await projectItemForIssue({ repo: cfg.repo, projectId: cfg.projectId, issueNumber: issue.number });
-    const itemId = existing.itemId || await addIssueToProject(cfg.projectId, issue.id || existing.issueId);
+    const { itemId } = await tetherIssueToProject({ cfg, issueNumber: issue.number });
     for (const item of syncPlan) {
       await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId: item.fieldId, value: item.value, optionMap });
     }
