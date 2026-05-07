@@ -339,6 +339,53 @@ async function verbClose() {
       console.warn(`[task-tracker] Could not check issue body: ${err.message}`);
     }
   }
+  // ── Cascade close (epic) or parent guard (child) ──────────────────────────
+  if (!SKIP_NETWORK) {
+    const closeIssueNum = (s.active || target || '').replace(/^#/, '');
+    if (closeIssueNum) {
+      const subNums = await fetchSubIssues(closeIssueNum);
+
+      if (subNums.length > 0) {
+        // Epic: verify all children are R4R (or already Done)
+        const childStates = await Promise.all(
+          subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
+        );
+        const notReady = childStates.filter(c => c.state !== 'r4r' && c.state !== 'done');
+        if (notReady.length > 0 && !force) {
+          console.error(`[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in R4R:`);
+          notReady.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
+          console.error('All sub-issues must reach R4R before the epic can close.');
+          process.exit(3);
+        }
+        // Cascade: close each R4R child
+        const r4rChildren = childStates.filter(c => c.state === 'r4r');
+        if (r4rChildren.length > 0) {
+          console.log(`[task-tracker] Cascade closing ${r4rChildren.length} child issue(s)...`);
+          for (const child of r4rChildren) {
+            try {
+              await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' } });
+              await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], { timeout: 10000 });
+              try { deregisterTask(projectDir, `#${child.num}`); } catch {}
+              console.log(`  ✓ #${child.num} closed`);
+            } catch (err) {
+              console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
+            }
+          }
+        }
+      } else {
+        // Solo or child: if it has a parent epic, parent must be R4R or Done
+        const parentNum = await fetchParentIssue(closeIssueNum);
+        if (parentNum) {
+          const parentState = await getIssueBoardState(parentNum);
+          if (parentState !== 'r4r' && parentState !== 'done' && !force) {
+            console.error(`[task-tracker] ⛔ Cannot close child #${closeIssueNum} — parent epic #${parentNum} is in state: ${parentState ?? 'unknown'}`);
+            console.error('Parent epic must be in R4R or Done before a child can close.');
+            process.exit(3);
+          }
+        }
+      }
+    }
+  }
   const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'close');
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   console.log(`Closed ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
