@@ -50,10 +50,20 @@ flowchart LR
 |---|---|---|
 | **Backlog** | Created, not yet scheduled | Orchestrator at issue creation |
 | **Ready** | Groomed, estimated, prioritized | Human or orchestrator |
-| **In Progress** | Agent actively working | `/task #N` (agent) |
+| **In Progress** | Work is active | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
 | **In Review** | Agent finished; verification running | `/task review` (orchestrator) |
 | **R4R** | All checks passed; awaiting human approval | `/task review` on success (auto) |
 | **Done** | Human approved and closed | `/task close` (human only) |
+
+**Who calls `/task #N` depends on the issue type:**
+
+| Issue type | Who calls `/task #N` | What happens |
+|---|---|---|
+| Single task | Human or agent in the main thread | Main thread works it directly, follows the pickup directive |
+| Epic | Human or orchestrator in the main thread | Main thread becomes the orchestrator — does deep dive, then fans out child agents |
+| Child sub-issue | The spawned **agent** in its own session/worktree | Agent calls `/task #child` itself on startup; orchestrator stays anchored to `/task #epic` |
+
+The orchestrator never calls `/task #child`. Doing so would switch the orchestrator's active task away from the epic and corrupt its timing session. Each agent calls `/task #N` for their own issue in their own isolated worktree session.
 
 ### State Gate Rules
 
@@ -68,35 +78,64 @@ flowchart LR
 
 ## Agent / Orchestrator / Human Boundaries
 
+### Single Task
+
 ```mermaid
 sequenceDiagram
-    participant A as Agent
-    participant O as Orchestrator
     participant H as Human
+    participant T as Main Thread
 
-    A->>A: /task #N — move to In Progress
-    A->>A: deep dive → implement → verify boxes
-    A->>O: CODE_COMPLETE (stops)
+    H->>T: /task #N
+    T->>T: deep dive → implement → verify boxes
+    T->>H: CODE_COMPLETE
 
     loop until /task review passes
-        O->>O: /task review #N
+        H->>T: /task review #N
         alt verification fails
-            O->>O: post comment on issue — failed criteria
-            O->>O: issue reverts to In Progress
-            O->>A: re-dispatch agent to fix
-            A->>O: CODE_COMPLETE (stops)
+            T->>T: post comment — failed criteria, revert to In Progress
+            T->>T: fix issues
+            T->>H: CODE_COMPLETE
         end
     end
 
-    O->>O: issue moves to R4R
-    O->>H: ISSUE_READY_FOR_REVIEW
+    T->>T: issue moves to R4R
+    T->>H: ISSUE_READY_FOR_REVIEW
+    H->>T: /task close #N
+```
 
-    H->>H: reviews code in R4R state
-    H->>O: /task close #N
-    O->>O: flush timing, write fields, move to Done
+### Epic with Agent Fan-Out
+
+```mermaid
+sequenceDiagram
+    participant H as Human
+    participant O as Orchestrator (main thread, /task #epic)
+    participant A1 as Agent 1 (worktree, /task #child-A)
+    participant A2 as Agent 2 (worktree, /task #child-B)
+
+    H->>O: /task #epic
+    O->>O: deep dive on epic, validate sub-issue sequencing
+    O->>O: post dependency map comment
+
+    par Sequence 1 fan-out
+        O->>A1: spawn — "work #child-A"
+        A1->>A1: /task #child-A (agent calls this itself)
+        A1->>A1: implement → verify → CODE_COMPLETE
+
+        O->>A2: spawn — "work #child-B"
+        A2->>A2: /task #child-B (agent calls this itself)
+        A2->>A2: implement → verify → CODE_COMPLETE
+    end
+
+    O->>O: /task review #child-A → R4R
+    O->>O: /task review #child-B → R4R
+    O->>H: ISSUE_READY_FOR_REVIEW (#child-A, #child-B)
+
+    H->>O: /task close #epic
+    O->>O: cascade — close each R4R child, then close epic
 ```
 
 **Hard rules:**
+- Each agent calls `/task #child` in its own session — the orchestrator never switches off `/task #epic`.
 - Agents MUST NOT call `/task review` or `/task close`.
 - Orchestrators MUST NOT call `/task close`.
 - `/task close` requires an explicit human instruction ("close #N", "mark #N done").
