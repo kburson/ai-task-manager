@@ -38,13 +38,12 @@ Prerequisites: Node.js 18+, GitHub CLI (`gh auth login`), `jq`.
 
 Every issue on the board moves through these states. The transitions are enforced — you cannot skip or reverse them without the audited bypass.
 
-```
-┌─────────┐    ┌───────┐    ┌─────────────┐    ┌───────────┐    ┌─────┐    ┌──────┐
-│ Backlog │───▶│ Ready │───▶│ In Progress │───▶│ In Review │───▶│ R4R │───▶│ Done │
-└─────────┘    └───────┘    └─────────────┘    └───────────┘    └─────┘    └──────┘
-                                    ▲                 │
-                                    └─────────────────┘
-                                    verification failed
+```mermaid
+flowchart LR
+    Backlog --> Ready --> InProgress["In Progress"] --> InReview["In Review"]
+    InReview -->|verification failed| InProgress
+    InReview -->|all checks pass| R4R
+    R4R -->|human approves| Done
 ```
 
 | State | What it means | Who moves the issue here |
@@ -69,35 +68,32 @@ Every issue on the board moves through these states. The transitions are enforce
 
 ## Agent / Orchestrator / Human Boundaries
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  AGENT                                                                      │
-│                                                                             │
-│  /task #N  →  deep dive  →  implement  →  verify boxes  →  CODE_COMPLETE   │
-│                                                                             │
-└────────────────────────────────────┬────────────────────────────────────────┘
-                                     │ reports CODE_COMPLETE, stops
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  ORCHESTRATOR                                                               │
-│                                                                             │
-│  calls /task review  ──────────────────────────────────────────────────┐   │
-│                                                                         │   │
-│         ┌── FAIL (exit 3): post comment, issue reverts to In Progress ──┘   │
-│         │   re-dispatch agent to fix, loop                                  │
-│         │                                                                   │
-│         └── PASS: issue moves to R4R automatically                         │
-│              report ISSUE_READY_FOR_REVIEW, notify human                   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                     │ ISSUE_READY_FOR_REVIEW
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  HUMAN                                                                      │
-│                                                                             │
-│  reviews code in R4R state  →  approves  →  /task close                    │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant O as Orchestrator
+    participant H as Human
+
+    A->>A: /task #N — move to In Progress
+    A->>A: deep dive → implement → verify boxes
+    A->>O: CODE_COMPLETE (stops)
+
+    loop until /task review passes
+        O->>O: /task review #N
+        alt verification fails
+            O->>O: post comment on issue — failed criteria
+            O->>O: issue reverts to In Progress
+            O->>A: re-dispatch agent to fix
+            A->>O: CODE_COMPLETE (stops)
+        end
+    end
+
+    O->>O: issue moves to R4R
+    O->>H: ISSUE_READY_FOR_REVIEW
+
+    H->>H: reviews code in R4R state
+    H->>O: /task close #N
+    O->>O: flush timing, write fields, move to Done
 ```
 
 **Hard rules:**
@@ -390,34 +386,22 @@ Once `Deep dive complete` is checked, every subsequent pickup skips straight to 
 
 ## Verification Loop
 
-```
-Agent checks all DoD and AC boxes with /task check "<label>"
-                    │
-                    │  reports CODE_COMPLETE
-                    ▼
-Orchestrator calls /task review #N
-                    │
-          ┌─────────┴─────────┐
-          │                   │
-         FAIL                PASS
-          │                   │
-          ▼                   ▼
-  Posts comment on      Issue moves to R4R
-  issue with failed      ┌─────────────────┐
-  criteria list          │ Orchestrator     │
-          │              │ notifies human   │
-          ▼              └────────┬─────────┘
-  Issue reverts to               │
-  In Progress (auto)             ▼
-          │              Human reviews code
-          │              in R4R state
-          ▼                      │
-  Orchestrator           ┌───────┴───────┐
-  re-dispatches          │               │
-  agent to fix           │  /task close  │
-          │              └───────────────┘
-          └──────────────────────┘
-            (loops until PASS)
+```mermaid
+flowchart TD
+    A([Agent checks all DoD and AC boxes]) --> B[reports CODE_COMPLETE]
+    B --> C[Orchestrator calls /task review #N]
+    C --> D{pass?}
+
+    D -->|FAIL| E[Post comment — failed criteria list]
+    E --> F[Issue reverts to In Progress]
+    F --> G[Orchestrator re-dispatches agent]
+    G --> A
+
+    D -->|PASS| H[Issue moves to R4R]
+    H --> I[Orchestrator notifies human]
+    I --> J[Human reviews code in R4R state]
+    J --> K[/task close]
+    K --> L([Done])
 ```
 
 ---
