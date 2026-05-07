@@ -20,7 +20,7 @@ AITM has three layers:
 
 ```bash
 # Add to your project
-npx ai-task-manager install --agent both
+npx ai-task-manager install
 
 # Connect to your GitHub Projects board (interactive)
 npx ai-task-manager init

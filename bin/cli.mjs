@@ -326,7 +326,7 @@ function cmdInstall(args) {
   const enableCodexSuperpowers = hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
   const globalCodexSuperpowers = hasFlag(args, '--codex-superpowers-global');
   if (!['claude', 'codex', 'both'].includes(agent)) {
-    err(`Unknown --agent ${agent}. Expected claude, codex, or both.`);
+    err(`Unknown --agent value "${agent}". Expected claude or codex.`);
     process.exit(1);
   }
   if (!['stub', 'symlink'].includes(linkMode)) {
@@ -351,7 +351,7 @@ function cmdInstall(args) {
   console.log(`     ${cyan(bold('npx ai-task-manager init'))}`);
   if ((agent === 'codex' || agent === 'both') && !enableCodexSuperpowers) {
     console.log('');
-    console.log(`  ${dim('Optional Codex workflow bootstrap:')} ${cyan('npx ai-task-manager install --agent codex --codex-superpowers')}`);
+    console.log(`  ${dim('Optional Codex workflow bootstrap:')} ${cyan('npx ai-task-manager install --codex-superpowers')}`);
   }
   console.log('');
 }
@@ -431,7 +431,7 @@ ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
   ${dim('Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow.')}
 
 ${bold('  Usage')}
-    ${cyan('npx ai-task-manager install')}    ${dim('[--agent both|claude|codex] [--link-mode stub|symlink] [--codex-superpowers] [--codex-superpowers-global] [--target <dir>]')}
+    ${cyan('npx ai-task-manager install')}    ${dim('[--agent claude|codex] [--link-mode stub|symlink] [--codex-superpowers] [--codex-superpowers-global] [--target <dir>]')}
     ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>] [--codex-superpowers] [--codex-superpowers-global]')}
     ${cyan('npx ai-task-manager statusline')} ${dim('Install Claude Code status line')}
     ${cyan('npx ai-task-manager version')}    ${dim('Print version')}
@@ -440,7 +440,7 @@ ${bold('  Compatibility')}
     ${cyan(`npx ${LEGACY_BIN} <command>`)} ${dim('continues to work as a bin alias for this release')}
 
 ${bold('  Quickstart')}
-    ${green('1.')} ${cyan('npx ai-task-manager install --agent both')}
+    ${green('1.')} ${cyan('npx ai-task-manager install')}
     ${green('2.')} ${cyan('npx ai-task-manager init')}
     ${green('3.')} ${dim('Claude Code:')} ${magenta('/task #<issue-number>')}
     ${green('4.')} ${dim('Codex:')} ${magenta('Use the task skill to start issue #<issue-number>.')}
