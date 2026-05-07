@@ -10,7 +10,7 @@ AI Task Manager lets Claude Code and Codex share the same GitHub issue/project w
 
 ```bash
 # 1. Install into your project
-npx ai-task-manager install --agent both
+npx ai-task-manager install
 
 # 2. Connect to your GitHub Project board (interactive)
 npx ai-task-manager init
@@ -62,12 +62,12 @@ The tool has three distinct capability layers:
 
 ## Install Targets
 
-Install for one agent or both:
+By default, install targets both Claude Code and Codex. Pass `--agent` to limit to one:
 
 ```bash
+npx ai-task-manager install               # both (default)
 npx ai-task-manager install --agent claude
 npx ai-task-manager install --agent codex
-npx ai-task-manager install --agent both
 ```
 
 The installer writes stable skill stubs by default:
@@ -81,7 +81,7 @@ The installer writes stable skill stubs by default:
 AITM can optionally mirror existing Claude Code Superpowers skills into Codex and add bootstrap instructions for new Codex sessions:
 
 ```bash
-npx ai-task-manager install --agent codex --codex-superpowers
+npx ai-task-manager install --codex-superpowers
 ```
 
 This is not an AITM dependency. The installer first looks for an existing Claude Code Superpowers cache at:
@@ -95,7 +95,7 @@ If found, AITM copies the supported skills into `~/.codex/skills` and appends an
 By default the bootstrap instructions are repo-local. To update global Codex instructions instead, opt in explicitly:
 
 ```bash
-npx ai-task-manager install --agent codex --codex-superpowers-global
+npx ai-task-manager install --codex-superpowers-global
 ```
 
 If Superpowers is missing, install continues normally and prints a follow-up command to rerun later. The AITM task skill remains separate at `.agents/skills/task/SKILL.md`.
@@ -146,10 +146,10 @@ The fundamental unit is a *task session*: Claude is working on one GitHub issue 
 Every start, pause, update, and close appends a row to a "⏱ Timing Log" comment on the GitHub issue:
 
 ```
-| Timestamp         | Event  | Active Min | Idle Min | Δ Words | Word Marker |
-| 2026-04-25T14:30Z | start  | 0          | 0        | 0       | 2,341       |
-| 2026-04-25T15:45Z | update | 72         | 3        | 1,204   | 3,545       |
-| 2026-04-25T17:10Z | end    | 67         | 5        | 890     | 4,435       |
+| Timestamp         | Event  | Active | Idle | Δ Words | Word Marker |
+| 2026-04-25T14:30Z | start  | 0      | 0    | 0       | 2,341       |
+| 2026-04-25T15:45Z | update | 72     | 3    | 1,204   | 3,545       |
+| 2026-04-25T17:10Z | end    | 67     | 5    | 890     | 4,435       |
 ```
 
 **Active Min** and **Idle Min** are deltas since the last baseline reset. **Idle** is any gap longer than `idleThresholdMinutes` (default: 5). Context words count the visible chat text — the conversation turns a human would read, review, and respond to. This excludes code, files, and references the AI loads into context internally. It's a measure of human review burden: the volume of AI output you're expected to engage with during the session. Reading long responses is also a common source of idle gaps — the clock sees silence while you're actually working through the output.
@@ -160,7 +160,7 @@ Hooks flush timing on every `/compact` and session start, so long sessions are n
 
 When you switch tasks or close an issue, the skill updates your board automatically:
 
-- **Kanban state** → moves the card (Backlog → Ready → In Progress → In Review → Done)
+- **Kanban state** → moves the card (Backlog → Ready → In Progress → In Review → R4R → Done)
 - **Engaged Time / Session Time** → measured minutes used by reports and board filters
 - **Context Length** → total context words across all sessions
 - **Sequence** → the issue's position in the fan-out order
@@ -513,7 +513,7 @@ Or set individual values:
 |---|---|
 | `projectId` | GitHub Projects V2 node ID |
 | `kanbanFieldId` | Status field ID |
-| `kanbanOption*` | Kanban state option IDs (Backlog/Ready/InProgress/InReview/Done) |
+| `kanbanOption*` | Kanban state option IDs (Backlog/Ready/InProgress/InReview/R4R/Done) |
 | `sizeFieldId` | Size field ID |
 | `sequenceFieldId` | Sequence field ID (numeric) |
 | `priorityFieldId` | Priority field ID |

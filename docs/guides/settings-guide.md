@@ -104,7 +104,7 @@ The plugin provides skills invoked via the `Skill` tool. Key skills for this wor
 Codex does not run Claude Code plugin startup hooks. AITM can opt in to a compatible setup by mirroring existing Claude Code Superpowers skills into `~/.codex/skills` and adding Codex bootstrap instructions:
 
 ```bash
-npx ai-task-manager install --agent codex --codex-superpowers
+npx ai-task-manager install --codex-superpowers
 ```
 
 AITM looks for Superpowers under `~/.claude/plugins/cache/claude-plugins-official/superpowers/<version>/skills`. If found, it mirrors the supported skills and appends a marked AITM block to the repo `AGENTS.md`; existing content is preserved and repeat runs update the same block. Use `--codex-superpowers-global` only when you explicitly want to update `~/.codex/AGENTS.md` instead.
