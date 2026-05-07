@@ -88,12 +88,34 @@ function patchSettingsJson(settingsPath) {
   }
 
   const autoAllowRules = [
+    // AITM scripts — ai-task-manager package name
     'Bash(node */ai-task-manager/scripts/task-tracker/task-tracker.mjs*)',
     'Bash(node */ai-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
+    'Bash(node */ai-task-manager/scripts/gh/project-tether.mjs*)',
+    'Bash(node */ai-task-manager/scripts/gh/log-issue-time.mjs*)',
     'Bash(*/ai-task-manager/scripts/gh/move-state.sh*)',
     'Bash(*/ai-task-manager/scripts/gh/set-priority.sh*)',
+    // AITM scripts — legacy package name
     'Bash(node */claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs*)',
     'Bash(node */claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
+    'Bash(node */claude-gh-task-manager/scripts/gh/project-tether.mjs*)',
+    'Bash(*/claude-gh-task-manager/scripts/gh/move-state.sh*)',
+    'Bash(*/claude-gh-task-manager/scripts/gh/set-priority.sh*)',
+    // GitHub CLI — issue and project operations
+    'Bash(gh issue create*)',
+    'Bash(gh issue view*)',
+    'Bash(gh issue edit*)',
+    'Bash(gh issue comment*)',
+    'Bash(gh issue close*)',
+    'Bash(gh issue list*)',
+    'Bash(gh api graphql*)',
+    'Bash(gh api repos*)',
+    'Bash(gh label create*)',
+    'Bash(gh label list*)',
+    'Bash(gh project item-edit*)',
+    'Bash(gh project item-list*)',
+    // Compound commands — Claude prefixes with `cd <project-dir> &&` to set working directory
+    'Bash(cd * && *)',
   ];
   if (!settings.permissions) settings.permissions = {};
   if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
