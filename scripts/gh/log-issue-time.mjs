@@ -75,7 +75,7 @@ function parseTimingComment(body) {
 
     // Header row
     if (cells.some(c => c.trim() === 'Timestamp')) {
-      activeMinCol = cells.findIndex(c => c.trim() === 'Active Min');
+      activeMinCol = cells.findIndex(c => c.trim() === 'Active' || c.trim() === 'Active Min');
       wordMarkerCol = cells.findIndex(c => c.trim() === 'Word Marker');
       continue;
     }

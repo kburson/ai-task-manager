@@ -8,7 +8,7 @@ const pexec = promisify(execFile);
 export const TIMING_HEADING = '⏱ Timing Log';
 
 const TABLE_HEADER = [
-  '| Timestamp | Event | Active Min | Idle Min | Δ Words | Word Marker | Description |',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |',
   '|---|---|---|---|---|---|---|',
 ].join('\n');
 
