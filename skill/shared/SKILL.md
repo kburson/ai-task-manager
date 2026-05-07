@@ -516,9 +516,11 @@ carry ambiguous semantics and cause orchestrators to advance sequences premature
 | Status | Meaning | Orchestrator action |
 |---|---|---|
 | `CODE_COMPLETE` | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly. | Do NOT advance the sequence. Inspect remaining items; resolve or reassign. |
-| `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is In Review. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
+| `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is in R4R. For epics: report this only after calling `/task review #<epic>` and the epic itself reaches R4R. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
 | `HUMAN_APPROVED` | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent. | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done. |
 | `BLOCKED` | Agent cannot proceed without orchestrator or human help. | Intervene, then redispatch or reassign. |
+
+**Epic review rule:** When all sub-issues in the current sequence reach R4R, the orchestrator must call `/task review #<epic>` on the parent epic **before** notifying the human. Running `/task review` on the epic is orchestrator work, not human work. The epic cannot move to R4R until all its sub-issues are already in R4R — the gate is enforced. Do not report `ISSUE_READY_FOR_REVIEW` or notify the human until the epic itself is in R4R.
 
 **Sequence-advance rule:** A sequence is complete only after every issue in that
 sequence reaches **Done** via the `/task review` → human approval → `/task close` path.

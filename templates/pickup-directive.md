@@ -128,7 +128,11 @@ required box is unchecked will be refused.
       Sequence 3 — after all Seq 2 close: #R
       ```
 
-   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `ISSUE_READY_FOR_REVIEW`: notify the human for review — do NOT run `/task close`; only after explicit human instruction should `/task close <N>` be run. For `CODE_COMPLETE`: resolve the listed unverified items before the human reviews. Only after **every** Sequence-N issue reaches Done via human-approved `/task close` should you spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
+   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: call `/task review #N` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to R4R. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in R4R — do NOT run `/task close`.
+
+   **When every sub-issue in the current sequence reaches R4R, the orchestrator must immediately call `/task review #<epic>` on the parent epic.** This is orchestrator work, not human work. Running `/task review` on the epic is what moves the epic to R4R and gates the human notification. Do not notify the human until the epic itself is in R4R.
+
+   Once the epic reaches R4R, report `ISSUE_READY_FOR_REVIEW` and notify the human: "Epic #X and sub-issues #A–#Z are in R4R awaiting your review and `/task close`." Do NOT run `/task close`. Only after **every** Sequence-N issue reaches Done via human-approved `/task close` should you spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
 
 6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
    injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
