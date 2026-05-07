@@ -27,18 +27,21 @@ required box is unchecked will be refused.
      Verification Commands checkbox has been checked.
    - Never bulk-check. Never check preemptively. "It looks done" is not verification.
 
-3. **All checkboxes must be checked before close.**
-   - Before `/task close` or moving the issue to Done, every `- [ ]` in the issue body
-     MUST be `- [x]`. This includes the Deep Dive checkpoint, every DoD item, every
-     Acceptance Criterion, and any checkpoints you added.
-   - The pre-close gate WILL refuse if any box is unchecked. Do not bypass.
+3. **All pre-close checkboxes must be checked before close.**
+   - Before `/task close` or moving the issue to Done, every user-verifiable `- [ ]`
+     in the issue body MUST be `- [x]`. This includes the Deep Dive checkpoint,
+     every Acceptance Criterion, every Verification Commands checkbox, and every
+     Definition of Done item.
+   - Close side effects such as moving to Done, writing the final timing row, and
+     updating Actuals are owned by `/task close`; they are not DoD checkboxes.
+   - The pre-close gate WILL refuse if any pre-close box is unchecked. Do not bypass.
    - The audited override `TASK_TRACKER_FORCE_DONE=1` exists for legitimate
      abandonment cases only (e.g., issue turned out invalid). It writes a visible
      bypass row to the timing log. Do not use it to skip verification.
 
 4. **Move to Done is gated.**
    - `move-state.sh <issue> done` will refuse if Deep Dive is unchecked or any other
-     box in the issue body is unchecked. Same audited override applies.
+     pre-close box in the issue body is unchecked. Same audited override applies.
    - Normal path: run `/task close` — it validates, flushes timing, then moves to Done.
 
 ## Required steps before writing any code
@@ -128,7 +131,7 @@ required box is unchecked will be refused.
    EPIC: #<parent-epic-#>
    ```
 
-## Before closing
+## Before review and close
 
 Review every item in the Definition of Done checklist in the issue body. For each item:
 - Verify it is genuinely complete (inspection + relevant test/command output).
@@ -137,6 +140,7 @@ Review every item in the Definition of Done checklist in the issue body. For eac
 - Mark it with `/task check "<label>"`.
 
 Then verify every Acceptance Criterion the same way. Do not check the related Acceptance
-Criterion or DoD item until the relevant Verification Commands checkbox is checked. Only
-run `/task close` once **every checkbox in the issue body** is checked. The pre-close gate
-will refuse otherwise; do not bypass it.
+Criterion or DoD item until the relevant Verification Commands checkbox is checked.
+Run `/task review <issue>` to move the issue to In Review and flush/pause timing. Only
+run `/task close <issue>` once every pre-close checkbox in the issue body is checked.
+The pre-close gate will refuse otherwise; do not bypass it.

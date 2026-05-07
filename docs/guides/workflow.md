@@ -16,7 +16,7 @@ gh issue create \
   --assignee <your-login>
 ```
 
-Immediately after creating, set **both** `Estimate` (hours) and `Size` on the GitHub Projects board — see `docs/ai-value-framework.md` for the GraphQL mutations. Never leave an issue without these two fields.
+Immediately after creating, set **both** `Estimate` (hours) and `Size` on the GitHub Projects board — see `docs/guides/ai-value-framework.md` for the GraphQL mutations. Never leave an issue without these two fields.
 
 ---
 
@@ -89,7 +89,7 @@ Every issue/sub-issue needs both fields set **before work starts**:
 
 Size options: **XS** (1–2h), **S** (3–4h), **M** (6–10h), **L** (12–20h), **XL** (24h+).
 
-See `docs/ai-value-framework.md` for the sizing guide, field IDs after `init`, and GraphQL mutation snippets.
+See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `init`, and GraphQL mutation snippets.
 
 **At `/task #N` activation**: if either field is missing, set both before touching any code.
 
@@ -113,7 +113,7 @@ When the user says **"cleanup"**, execute in order:
 
 1. **Update docs** — update any `docs/` files that reflect this session's work.
 
-2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/ai-value-framework.md`. Set `Actual Session Time` (minutes) and `Context Length` (words) fields on the board. Open follow-on issues; close completed ones with a resolution comment.
+2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Actual Session Time` (minutes) and `Context Length` (words) fields on the board. Open follow-on issues; close completed ones with a resolution comment.
 
 3. **Commit** — stage all changes and commit with a descriptive message referencing issue numbers.
 
@@ -124,7 +124,7 @@ When the user says **"cleanup"**, execute in order:
    - Move completed sub-issues to Done: `scripts/gh/move-state.sh <N> done`.
    - Update the parent issue body with progress; move parent to Done when all children are complete.
 
-5. **Feature value summary** — if a feature/epic completed this session, generate a value summary using the template in `docs/ai-value-framework.md`. Post it as a comment on the parent epic issue.
+5. **Feature value summary** — if a feature/epic completed this session, generate a value summary using the template in `docs/guides/ai-value-framework.md`. Post it as a comment on the parent epic issue.
 
 6. **Compact** — `/compact` to free context for the next phase.
 
@@ -137,7 +137,7 @@ At issue close, set these two fields on the GitHub Projects board:
 - **Actual Session Time** — total active AI session minutes across all sessions touching this issue.
 - **Context Length** — total reader-visible chat words across all sessions.
 
-The `/task end` command (or `scripts/gh/move-state.sh <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/ai-value-framework.md`.
+The `/task end` command (or `scripts/gh/move-state.sh <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/guides/ai-value-framework.md`.
 
 ---
 

@@ -22,25 +22,25 @@ An npm package that installs the `/task` Claude Code skill into any project. The
 
 ## GitHub Issues & Kanban Workflow
 
-Full rules in `docs/workflow.md`. Quick reference:
+Full rules in `docs/guides/workflow.md`. Quick reference:
 
 - **Always assign new issues to the configured assignee** — every `gh issue create` must include `--assignee <value>`, where `<value>` is the `assignee` key from `.claude/task-tracker.json` (defaults to `@me`, which resolves to the authenticated `gh` user).
 - Move issues through states: `scripts/gh/move-state.sh <issue#> <state>`
 - Set priority: `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]`
 - Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close. **Note:** GitHub Projects supports only one level of nesting — sub-issues cannot themselves have sub-issues.
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
-- At issue close: set `Actual Session Time` + `Context Length` on board. See `docs/ai-value-framework.md`.
+- At issue close: set `Actual Session Time` + `Context Length` on board. See `docs/guides/ai-value-framework.md`.
 
 ## Cleanup
 
-Full procedure in `docs/workflow.md` → Cleanup Procedure section.
+Full procedure in `docs/guides/workflow.md` → Cleanup Procedure section.
 Summary: update docs → update GitHub issues → commit → post-commit updates → value summary (if epic) → `/compact`.
 
 ---
 
 ## Recommended Claude Settings
 
-See [`docs/settings-guide.md`](docs/settings-guide.md) for full setup.
+See [`docs/guides/settings-guide.md`](docs/guides/settings-guide.md) for full setup.
 
 ## Recommended Skills (Superpowers)
 
@@ -73,9 +73,9 @@ See [`docs/settings-guide.md`](docs/settings-guide.md) for full setup.
 | `scripts/gh/set-priority.sh` | Set issue priority P0/P1/P2 |
 | `scripts/gh/init-project-config.sh` | Interactive setup: GH auth, project discovery, issue templates |
 | `docs/DESIGN.md` | Full design specification |
-| `docs/workflow.md` | GitHub Issues, Kanban, estimates, cleanup — full workflow rules |
-| `docs/settings-guide.md` | Recommended Claude Code settings |
-| `docs/ai-value-framework.md` | ROI measurement model, sizing guide, session log template |
+| `docs/guides/workflow.md` | GitHub Issues, Kanban, estimates, cleanup — full workflow rules |
+| `docs/guides/settings-guide.md` | Recommended Claude Code settings |
+| `docs/guides/ai-value-framework.md` | ROI measurement model, sizing guide, session log template |
 | `statusline/statusline.sh` | Status line script (CLI only) — installed to `~/.claude/` by `statusline` command |
 | `scripts/reports/generate-value-report.mjs` | Generates HTML/PDF value report from GitHub Projects data |
 | `scripts/reports/value-report-config.json` | Default config for report (region, role, WPM, output dir) |

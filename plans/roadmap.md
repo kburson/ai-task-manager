@@ -9,9 +9,9 @@
 - [x] Issue templates: `.github/ISSUE_TEMPLATE/task.yml` and `bug.yml` (written to target project by init)
 - [x] All 7 unit tests passing
 - [x] `move-state.sh` errors with `Run: npx claude-gh-task-manager init` when unconfigured
-- [x] `docs/workflow.md` — full GitHub/Kanban/sub-issues/cleanup rules (generalized)
-- [x] `docs/settings-guide.md` — autoCompactWindow, Superpowers plugin, statusLine, nvm hook, Ref MCP
-- [x] `docs/ai-value-framework.md` — ROI model, sizing guide, session log template, GraphQL mutations
+- [x] `docs/guides/workflow.md` — full GitHub/Kanban/sub-issues/cleanup rules (generalized)
+- [x] `docs/guides/settings-guide.md` — autoCompactWindow, Superpowers plugin, statusLine, nvm hook, Ref MCP
+- [x] `docs/guides/ai-value-framework.md` — ROI model, sizing guide, session log template, GraphQL mutations
 
 ## What's Next
 

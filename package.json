@@ -21,11 +21,12 @@
   "files": [
     "bin/",
     "codex/",
+    "config/",
     "skill/",
     "hooks/",
     "scripts/",
     "statusline/",
-    "docs/",
+    "docs/guides/",
     "templates/"
   ],
   "keywords": [

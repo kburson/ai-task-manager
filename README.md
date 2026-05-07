@@ -76,6 +76,30 @@ The installer writes stable skill stubs by default:
 - Codex: `.agents/skills/task/SKILL.md`
 - Shared templates and runtime state: `.ai-task-manager/`
 
+### Optional Codex Superpowers Bootstrap
+
+AITM can optionally mirror existing Claude Code Superpowers skills into Codex and add bootstrap instructions for new Codex sessions:
+
+```bash
+npx ai-task-manager install --agent codex --codex-superpowers
+```
+
+This is not an AITM dependency. The installer first looks for an existing Claude Code Superpowers cache at:
+
+```text
+~/.claude/plugins/cache/claude-plugins-official/superpowers/<version>/skills
+```
+
+If found, AITM copies the supported skills into `~/.codex/skills` and appends an AITM-managed block to the repo-local `AGENTS.md`. That block tells Codex to load `using-superpowers` at conversation start and to check relevant Superpowers skills before planning, debugging, testing, implementing, dispatching agents, using worktrees, finishing a branch, or handling review.
+
+By default the bootstrap instructions are repo-local. To update global Codex instructions instead, opt in explicitly:
+
+```bash
+npx ai-task-manager install --agent codex --codex-superpowers-global
+```
+
+If Superpowers is missing, install continues normally and prints a follow-up command to rerun later. The AITM task skill remains separate at `.agents/skills/task/SKILL.md`.
+
 The old `claude-gh-task-manager` bin remains as a compatibility alias for this release, but new installs should use `ai-task-manager`.
 
 ---
@@ -449,7 +473,7 @@ This makes AI productivity legible to stakeholders. Not "we used AI" — but "we
 | `--output ./path/report` | Output base path without extension |
 | `--project-id PVT_...` | Override GitHub Projects V2 node ID |
 
-See [docs/ai-value-framework.md](docs/ai-value-framework.md) for the full ROI methodology.
+See [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) for the full ROI methodology.
 
 ---
 
@@ -579,9 +603,9 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 | Document | Contents |
 |---|---|
 | [docs/DESIGN.md](docs/DESIGN.md) | Full design spec — data model, state file format, timing comment structure, hook behavior |
-| [docs/workflow.md](docs/workflow.md) | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules |
-| [docs/ai-value-framework.md](docs/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated |
-| [docs/settings-guide.md](docs/settings-guide.md) | Recommended Claude Code settings for this tool |
+| [docs/guides/workflow.md](docs/guides/workflow.md) | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules |
+| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated |
+| [docs/guides/settings-guide.md](docs/guides/settings-guide.md) | Recommended Claude Code settings for this tool |
 
 ---
 

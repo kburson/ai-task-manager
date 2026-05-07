@@ -85,13 +85,13 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     {"id":"L","name":"L","color":"PURPLE","description":""},
     {"id":"XL","name":"XL","color":"RED","description":""}
   ]},
-  {"id":"F_ESTIMATE","name":"Estimate","options":[
-    {"id":"E1","name":"1h","color":"GRAY","description":""}
-  ]},
-  {"id":"F_ACTUAL","name":"Actual","options":[
-    {"id":"A1","name":"1h","color":"GRAY","description":""}
-  ]},
-  {"id":"F_SEQUENCE","name":"Sequence"}
+  {"id":"F_ESTIMATE","name":"Estimate","dataType":"NUMBER"},
+  {"id":"F_ENGAGED","name":"Engaged Time","dataType":"NUMBER"},
+  {"id":"F_SESSION","name":"Session Time","dataType":"NUMBER"},
+  {"id":"F_CONTEXT","name":"Context Length","dataType":"NUMBER"},
+  {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
+  {"id":"F_START","name":"Start date","dataType":"DATE"},
+  {"id":"F_END","name":"End date","dataType":"DATE"}
 ]
 JSON
     exit 0

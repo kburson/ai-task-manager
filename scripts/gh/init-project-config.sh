@@ -346,12 +346,9 @@ create_project_field_if_missing() {
       '{query:"mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{proj:$proj,name:$name,opts:$opts}}' \
       | gh api graphql --input - --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
   else
-    created=$(gh api graphql -f query='
-mutation($proj:ID!,$name:String!){
-  createProjectV2Field(input:{projectId:$proj,dataType:NUMBER,name:$name}){
-    projectV2Field{...on ProjectV2Field{id}}
-  }
-}' -f proj="$PROJECT_NODE_ID" -f name="$name" \
+    created=$(gh api graphql \
+      -f query="mutation(\$proj:ID!,\$name:String!){createProjectV2Field(input:{projectId:\$proj,dataType:${data_type},name:\$name}){projectV2Field{...on ProjectV2Field{id}}}}" \
+      -f proj="$PROJECT_NODE_ID" -f name="$name" \
       --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
   fi
 
@@ -461,7 +458,20 @@ else
   fi
   echo ""
   info "Available GitHub Projects:"
-  echo "$PROJECTS_JSON" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.title) (#\(.value.number))  \((if .value.linked then "linked" else "not linked" end))"'
+  LINKED_COUNT=$(echo "$PROJECTS_JSON" | jq '[.[] | select(.linked == true)] | length')
+  UNLINKED_COUNT=$(echo "$PROJECTS_JSON" | jq '[.[] | select(.linked == false)] | length')
+  if [[ "$LINKED_COUNT" -gt 0 ]]; then
+    echo ""
+    echo "    ── Linked Projects ──────────────────────────"
+    echo "$PROJECTS_JSON" | jq -r 'to_entries[] | select(.value.linked == true) | "    [\(.key+1)] \(.value.title) (#\(.value.number))"'
+  fi
+  if [[ "$UNLINKED_COUNT" -gt 0 ]]; then
+    echo ""
+    echo "    ── Other Projects ──────────────────────────"
+    echo "$PROJECTS_JSON" | jq -r 'to_entries[] | select(.value.linked == false) | "    [\(.key+1)] \(.value.title) (#\(.value.number))"'
+  fi
+  echo ""
+  echo "    ── Manual Options ──────────────────────────"
   echo "    [url] Use an existing project URL or owner:number"
   echo "    [new] Create a new project"
   PROJECT_COUNT_DISPLAY=$(echo "$PROJECTS_JSON" | jq 'length')
@@ -790,65 +800,99 @@ map_or_create_select() {
   local create_opts_json="$2"
   local aliases_json="${3:-[]}"
 
-  local found
-  found=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" --argjson aliases "$aliases_json" \
+  # Check by name first (any type) to detect conflicts before the type-filtered lookup
+  local name_match name_match_type
+  name_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" --argjson aliases "$aliases_json" \
     '([$n] + $aliases | map(ascii_downcase)) as $names |
-     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName)) and has("options"))) // empty' \
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName) != null))) // empty' \
     2>/dev/null || echo '')
+  name_match_type=$(echo "$name_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end' 2>/dev/null || echo '')
 
-  if [[ -n "$found" ]]; then
+  if [[ -n "$name_match" && "$name_match_type" == "SINGLE_SELECT" ]]; then
     ok "Found field '$fname'."
-    RESULT_FIELD_ID=$(echo "$found" | jq -r '.id')
-    RESULT_FIELD_JSON="$found"
+    RESULT_FIELD_ID=$(echo "$name_match" | jq -r '.id')
+    RESULT_FIELD_JSON="$name_match"
     return
   fi
 
-  echo ""
-  info "Field '$fname' not found on project."
-  local select_fields count
-  select_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(has("options"))]')
-  count=$(echo "$select_fields" | jq 'length')
-  if [[ "$count" -gt 0 ]]; then
-    echo "$select_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
-  fi
-  echo "    [new] Create '$fname' with standard options (default)"
-  echo ""
+  local create_name="$fname"
 
-  while true; do
-    prompt "Choice for '$fname' [new]:"
-    read -r choice
-    [[ -z "$choice" ]] && choice="new"
-    if [[ "$choice" == "new" ]]; then
-      local new_id
-      new_id=$(jq -n \
-        --arg proj "$PROJECT_NODE_ID" \
-        --arg name "$fname" \
-        --argjson opts "$create_opts_json" \
-        '{query:"mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{proj:$proj,name:$name,opts:$opts}}' \
-        | gh api graphql --input - --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
-      if [[ -n "$new_id" ]]; then
-        ok "Created '$fname' field."
-        refresh_fields
-        RESULT_FIELD_ID="$new_id"
-        RESULT_FIELD_JSON=$(echo "$FIELDS_JSON" | jq -c --arg id "$new_id" \
-          'first(.[] | select(.id == $id)) // empty')
-      else
-        warn "Could not create '$fname'. Add it manually to your GitHub Project."
-        RESULT_FIELD_ID=""
-        RESULT_FIELD_JSON=""
+  if [[ -n "$name_match" ]]; then
+    echo ""
+    err "Field '$fname' exists on this project but is type ${name_match_type:-unknown}, not SINGLE_SELECT."
+    info "You must choose a different name for a new single-select field."
+    while true; do
+      prompt "New field name for '$fname' (SINGLE_SELECT):"; read -r create_name
+      [[ -z "$create_name" ]] && { err "Name required."; continue; }
+      local alt_match
+      alt_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$create_name" \
+        'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase))) // empty' \
+        2>/dev/null || echo '')
+      if [[ -n "$alt_match" ]]; then
+        local alt_type
+        alt_type=$(echo "$alt_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end')
+        if [[ "$alt_type" == "SINGLE_SELECT" ]]; then
+          ok "Using existing field '$create_name'."
+          RESULT_FIELD_ID=$(echo "$alt_match" | jq -r '.id')
+          RESULT_FIELD_JSON="$alt_match"
+          return
+        fi
+        err "Field '$create_name' also exists as type ${alt_type}. Choose a different name."
+        continue
       fi
-      return
-    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
-      local picked pname
-      picked=$(echo "$select_fields" | jq -c --argjson i "$((choice-1))" '.[$i]')
-      pname=$(echo "$picked" | jq -r '.name')
-      RESULT_FIELD_ID=$(echo "$picked" | jq -r '.id')
-      RESULT_FIELD_JSON="$picked"
-      ok "Mapped '$fname' → '$pname'"
-      return
+      break
+    done
+  fi
+
+  if [[ -z "$name_match" ]]; then
+    echo ""
+    info "Field '$fname' not found on project."
+    local select_fields count
+    select_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(has("options"))]')
+    count=$(echo "$select_fields" | jq 'length')
+    if [[ "$count" -gt 0 ]]; then
+      echo "$select_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
     fi
-    err "Enter a number 1-$count or 'new'."
-  done
+    echo "    [new] Create '$fname' with standard options (default)"
+    echo ""
+
+    while true; do
+      prompt "Choice for '$fname' [new]:"
+      read -r choice
+      [[ -z "$choice" ]] && choice="new"
+      if [[ "$choice" == "new" ]]; then
+        break
+      elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+        local picked pname
+        picked=$(echo "$select_fields" | jq -c --argjson i "$((choice-1))" '.[$i]')
+        pname=$(echo "$picked" | jq -r '.name')
+        RESULT_FIELD_ID=$(echo "$picked" | jq -r '.id')
+        RESULT_FIELD_JSON="$picked"
+        ok "Mapped '$fname' → '$pname'"
+        return
+      fi
+      err "Enter a number 1-$count or 'new'."
+    done
+  fi
+
+  local new_id
+  new_id=$(jq -n \
+    --arg proj "$PROJECT_NODE_ID" \
+    --arg name "$create_name" \
+    --argjson opts "$create_opts_json" \
+    '{query:"mutation($proj:ID!,$name:String!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){createProjectV2Field(input:{projectId:$proj,dataType:SINGLE_SELECT,name:$name,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{proj:$proj,name:$name,opts:$opts}}' \
+    | gh api graphql --input - --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  if [[ -n "$new_id" ]]; then
+    ok "Created '$create_name' field."
+    refresh_fields
+    RESULT_FIELD_ID="$new_id"
+    RESULT_FIELD_JSON=$(echo "$FIELDS_JSON" | jq -c --arg id "$new_id" \
+      'first(.[] | select(.id == $id)) // empty')
+  else
+    warn "Could not create '$create_name'. Add it manually to your GitHub Project."
+    RESULT_FIELD_ID=""
+    RESULT_FIELD_JSON=""
+  fi
 }
 
 # map_or_create_number <field-name>
@@ -858,123 +902,184 @@ map_or_create_number() {
   local fname="$1"
   local aliases_json="${2:-[]}"
 
-  local found_id
-  found_id=$(echo "$FIELDS_JSON" | jq -r --arg n "$fname" --argjson aliases "$aliases_json" \
+  local name_match name_match_type
+  name_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" --argjson aliases "$aliases_json" \
     '([$n] + $aliases | map(ascii_downcase)) as $names |
-     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName))
-      and (.options == null or (.options | length) == 0)
-      and (.dataType == null or .dataType == "NUMBER")) | .id) // empty' \
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName) != null))) // empty' \
     2>/dev/null || echo '')
+  name_match_type=$(echo "$name_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end' 2>/dev/null || echo '')
 
-  if [[ -n "$found_id" ]]; then
+  if [[ -n "$name_match" && ( "$name_match_type" == "NUMBER" || -z "$name_match_type" ) ]]; then
     ok "Found field '$fname'."
-    RESULT_FIELD_ID="$found_id"
+    RESULT_FIELD_ID=$(echo "$name_match" | jq -r '.id')
     return
   fi
 
-  echo ""
-  info "Field '$fname' not found on project."
-  local num_fields count
-  num_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(.dataType == "NUMBER")]')
-  count=$(echo "$num_fields" | jq 'length')
-  if [[ "$count" -gt 0 ]]; then
-    echo "$num_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
-  fi
-  echo "    [new] Create '$fname' number field (default)"
-  echo ""
+  local create_name="$fname"
 
-  while true; do
-    prompt "Choice for '$fname' [new]:"
-    read -r choice
-    [[ -z "$choice" ]] && choice="new"
-    if [[ "$choice" == "new" ]]; then
-      local new_id
-      new_id=$(gh api graphql -f query='
+  if [[ -n "$name_match" ]]; then
+    echo ""
+    err "Field '$fname' exists on this project but is type ${name_match_type:-unknown}, not NUMBER."
+    info "You must choose a different name for a new number field."
+    while true; do
+      prompt "New field name for '$fname' (NUMBER):"; read -r create_name
+      [[ -z "$create_name" ]] && { err "Name required."; continue; }
+      local alt_match
+      alt_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$create_name" \
+        'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase))) // empty' \
+        2>/dev/null || echo '')
+      if [[ -n "$alt_match" ]]; then
+        local alt_type
+        alt_type=$(echo "$alt_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end')
+        if [[ "$alt_type" == "NUMBER" || -z "$alt_type" ]]; then
+          ok "Using existing field '$create_name'."
+          RESULT_FIELD_ID=$(echo "$alt_match" | jq -r '.id')
+          return
+        fi
+        err "Field '$create_name' also exists as type ${alt_type}. Choose a different name."
+        continue
+      fi
+      break
+    done
+  fi
+
+  if [[ -z "$name_match" ]]; then
+    echo ""
+    info "Field '$fname' not found on project."
+    local num_fields count
+    num_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(.dataType == "NUMBER")]')
+    count=$(echo "$num_fields" | jq 'length')
+    if [[ "$count" -gt 0 ]]; then
+      echo "$num_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
+    fi
+    echo "    [new] Create '$fname' number field (default)"
+    echo ""
+
+    while true; do
+      prompt "Choice for '$fname' [new]:"
+      read -r choice
+      [[ -z "$choice" ]] && choice="new"
+      if [[ "$choice" == "new" ]]; then
+        break
+      elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+        RESULT_FIELD_ID=$(echo "$num_fields" | jq -r --argjson i "$((choice-1))" '.[$i].id')
+        local pname
+        pname=$(echo "$num_fields" | jq -r --argjson i "$((choice-1))" '.[$i].name')
+        ok "Mapped '$fname' → '$pname'"
+        return
+      fi
+      err "Enter a number 1-$count or 'new'."
+    done
+  fi
+
+  local new_id
+  new_id=$(gh api graphql -f query='
 mutation($proj:ID!,$name:String!){
   createProjectV2Field(input:{projectId:$proj,dataType:NUMBER,name:$name}){
     projectV2Field{...on ProjectV2Field{id}}
   }
-}' -f proj="$PROJECT_NODE_ID" -f name="$fname" \
-        --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
-      if [[ -n "$new_id" ]]; then
-        ok "Created '$fname' field."
-        refresh_fields
-        RESULT_FIELD_ID="$new_id"
-      else
-        warn "Could not create '$fname'. Add it manually to your GitHub Project."
-        RESULT_FIELD_ID=""
-      fi
-      return
-    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
-      RESULT_FIELD_ID=$(echo "$num_fields" | jq -r --argjson i "$((choice-1))" '.[$i].id')
-      local pname
-      pname=$(echo "$num_fields" | jq -r --argjson i "$((choice-1))" '.[$i].name')
-      ok "Mapped '$fname' → '$pname'"
-      return
-    fi
-    err "Enter a number 1-$count or 'new'."
-  done
+}' -f proj="$PROJECT_NODE_ID" -f name="$create_name" \
+    --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  if [[ -n "$new_id" ]]; then
+    ok "Created '$create_name' field."
+    refresh_fields
+    RESULT_FIELD_ID="$new_id"
+  else
+    warn "Could not create '$create_name'. Add it manually to your GitHub Project."
+    RESULT_FIELD_ID=""
+  fi
 }
 
 map_or_create_date() {
   local fname="$1"
   local aliases_json="${2:-[]}"
 
-  local found_id
-  found_id=$(echo "$FIELDS_JSON" | jq -r --arg n "$fname" --argjson aliases "$aliases_json" \
+  local name_match name_match_type
+  name_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" --argjson aliases "$aliases_json" \
     '([$n] + $aliases | map(ascii_downcase)) as $names |
-     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName))
-      and (.dataType == null or .dataType == "DATE")) | .id) // empty' \
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName) != null))) // empty' \
     2>/dev/null || echo '')
+  name_match_type=$(echo "$name_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end' 2>/dev/null || echo '')
 
-  if [[ -n "$found_id" ]]; then
+  if [[ -n "$name_match" && ( "$name_match_type" == "DATE" || -z "$name_match_type" ) ]]; then
     ok "Found field '$fname'."
-    RESULT_FIELD_ID="$found_id"
+    RESULT_FIELD_ID=$(echo "$name_match" | jq -r '.id')
     return
   fi
 
-  echo ""
-  info "Field '$fname' not found on project."
-  local date_fields count
-  date_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(.dataType == "DATE")]')
-  count=$(echo "$date_fields" | jq 'length')
-  if [[ "$count" -gt 0 ]]; then
-    echo "$date_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
-  fi
-  echo "    [new] Create '$fname' date field (default)"
-  echo ""
+  local create_name="$fname"
 
-  while true; do
-    prompt "Choice for '$fname' [new]:"
-    read -r choice
-    [[ -z "$choice" ]] && choice="new"
-    if [[ "$choice" == "new" ]]; then
-      local new_id
-      new_id=$(gh api graphql -f query='
+  if [[ -n "$name_match" ]]; then
+    echo ""
+    err "Field '$fname' exists on this project but is type ${name_match_type:-unknown}, not DATE."
+    info "You must choose a different name for a new date field."
+    while true; do
+      prompt "New field name for '$fname' (DATE):"; read -r create_name
+      [[ -z "$create_name" ]] && { err "Name required."; continue; }
+      local alt_match
+      alt_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$create_name" \
+        'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase))) // empty' \
+        2>/dev/null || echo '')
+      if [[ -n "$alt_match" ]]; then
+        local alt_type
+        alt_type=$(echo "$alt_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end')
+        if [[ "$alt_type" == "DATE" || -z "$alt_type" ]]; then
+          ok "Using existing field '$create_name'."
+          RESULT_FIELD_ID=$(echo "$alt_match" | jq -r '.id')
+          return
+        fi
+        err "Field '$create_name' also exists as type ${alt_type}. Choose a different name."
+        continue
+      fi
+      break
+    done
+  fi
+
+  if [[ -z "$name_match" ]]; then
+    echo ""
+    info "Field '$fname' not found on project."
+    local date_fields count
+    date_fields=$(echo "$FIELDS_JSON" | jq '[.[] | select(.dataType == "DATE")]')
+    count=$(echo "$date_fields" | jq 'length')
+    if [[ "$count" -gt 0 ]]; then
+      echo "$date_fields" | jq -r 'to_entries[] | "    [\(.key+1)] \(.value.name)"'
+    fi
+    echo "    [new] Create '$fname' date field (default)"
+    echo ""
+
+    while true; do
+      prompt "Choice for '$fname' [new]:"
+      read -r choice
+      [[ -z "$choice" ]] && choice="new"
+      if [[ "$choice" == "new" ]]; then
+        break
+      elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
+        RESULT_FIELD_ID=$(echo "$date_fields" | jq -r --argjson i "$((choice-1))" '.[$i].id')
+        local pname
+        pname=$(echo "$date_fields" | jq -r --argjson i "$((choice-1))" '.[$i].name')
+        ok "Mapped '$fname' → '$pname'"
+        return
+      fi
+      err "Enter a number 1-$count or 'new'."
+    done
+  fi
+
+  local new_id
+  new_id=$(gh api graphql -f query='
 mutation($proj:ID!,$name:String!){
   createProjectV2Field(input:{projectId:$proj,dataType:DATE,name:$name}){
     projectV2Field{...on ProjectV2Field{id}}
   }
-}' -f proj="$PROJECT_NODE_ID" -f name="$fname" \
-        --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
-      if [[ -n "$new_id" ]]; then
-        ok "Created '$fname' field."
-        refresh_fields
-        RESULT_FIELD_ID="$new_id"
-      else
-        warn "Could not create '$fname'. Add it manually to your GitHub Project."
-        RESULT_FIELD_ID=""
-      fi
-      return
-    elif [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "$count" ]]; then
-      RESULT_FIELD_ID=$(echo "$date_fields" | jq -r --argjson i "$((choice-1))" '.[$i].id')
-      local pname
-      pname=$(echo "$date_fields" | jq -r --argjson i "$((choice-1))" '.[$i].name')
-      ok "Mapped '$fname' → '$pname'"
-      return
-    fi
-    err "Enter a number 1-$count or 'new'."
-  done
+}' -f proj="$PROJECT_NODE_ID" -f name="$create_name" \
+    --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  if [[ -n "$new_id" ]]; then
+    ok "Created '$create_name' field."
+    refresh_fields
+    RESULT_FIELD_ID="$new_id"
+  else
+    warn "Could not create '$create_name'. Add it manually to your GitHub Project."
+    RESULT_FIELD_ID=""
+  fi
 }
 
 # ── Custom fields from definitions ─────────────────────────────────────────

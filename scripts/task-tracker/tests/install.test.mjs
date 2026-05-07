@@ -2,7 +2,7 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,24 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', '..', '..', 'bin', 'cli.mjs');
 
 const target = mkdtempSync(path.join(tmpdir(), 'install-test-'));
+const codexTarget = mkdtempSync(path.join(tmpdir(), 'install-codex-superpowers-test-'));
+const fakeHome = mkdtempSync(path.join(tmpdir(), 'install-codex-superpowers-home-'));
+
+function writeSkill(name) {
+  const dir = path.join(
+    fakeHome,
+    '.claude',
+    'plugins',
+    'cache',
+    'claude-plugins-official',
+    'superpowers',
+    '5.1.0',
+    'skills',
+    name
+  );
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, 'SKILL.md'), `# ${name}\n`, 'utf8');
+}
 
 try {
   await pexec('node', [CLI, 'install', '--target', target]);
@@ -50,7 +68,25 @@ try {
   assert.ok(!existsSync(path.join(target, 'scripts', 'task-tracker')), 'scripts/task-tracker must NOT be copied');
   assert.ok(!existsSync(path.join(target, 'scripts', 'gh')), 'scripts/gh must NOT be copied');
 
+  assert.ok(!existsSync(path.join(target, 'AGENTS.md')), 'default install must not create AGENTS.md');
+
+  writeSkill('using-superpowers');
+  writeSkill('brainstorming');
+  writeSkill('verification-before-completion');
+  await pexec('node', [CLI, 'install', '--agent', 'codex', '--codex-superpowers', '--target', codexTarget], {
+    env: { ...process.env, HOME: fakeHome },
+  });
+  assert.ok(
+    existsSync(path.join(fakeHome, '.codex', 'skills', 'using-superpowers', 'SKILL.md')),
+    'Codex Superpowers opt-in must mirror skills to ~/.codex/skills'
+  );
+  const agents = readFileSync(path.join(codexTarget, 'AGENTS.md'), 'utf8');
+  assert.match(agents, /ai-task-manager:codex-superpowers:start/, 'Codex Superpowers opt-in must update repo AGENTS.md');
+  assert.match(agents, /using-superpowers/, 'AGENTS.md bootstrap must mention using-superpowers');
+
   console.log('install.test.mjs: all assertions passed');
 } finally {
-  rmSync(target, { recursive: true });
+  rmSync(target, { recursive: true, force: true });
+  rmSync(codexTarget, { recursive: true, force: true });
+  rmSync(fakeHome, { recursive: true, force: true });
 }

@@ -7,6 +7,3 @@ test/build/command. Do not bulk-check. Do not preemptively check. See
 - [ ] Tests pass; new coverage committed
 - [ ] Pre-commit hooks pass
 - [ ] Issue body checkboxes ticked
-- [ ] Issue moved to Done
-- [ ] `/task close` run (writes Engaged Time, Session Time, and Context Length automatically)
-- [ ] If this completes the parent epic: update parent body; close parent if all siblings Done

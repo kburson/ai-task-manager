@@ -81,7 +81,7 @@ mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
 const noRepoEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase, TT_SKIP_NETWORK: '1' };
 
 // Blocked verbs exit non-zero with "not initialized" on stderr
-for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'check', 'log']) {
+for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'review', 'check', 'log']) {
   try {
     await pexec('node', [CLI, blockedVerb], { env: noRepoEnv });
     assert.fail(`Expected exit(1) for verb: ${blockedVerb}`);

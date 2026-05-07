@@ -93,7 +93,12 @@ REPO=$(read_config repo)
 if [[ "$STATE" == "done" ]]; then
   BODY=$(gh issue view "$ISSUE" -R "$REPO" --json body --jq '.body' 2>/dev/null || echo "")
   if [[ -n "$BODY" ]]; then
-    UNCHECKED=$(echo "$BODY" | grep -c '^- \[ \] ' || true)
+    UNCHECKED=$(echo "$BODY" \
+      | grep '^- \[ \] ' \
+      | grep -v '^- \[ \] Issue moved to Done$' \
+      | grep -v '^- \[ \] `/task close` run (writes Engaged Time, Session Time, and Context Length automatically)$' \
+      | grep -v '^- \[ \] If this completes the parent epic: update parent body; close parent if all siblings Done$' \
+      | wc -l | tr -d ' ' || true)
     HAS_DEEP_DIVE_DONE=$(echo "$BODY" | grep -c '^- \[x\] Deep dive complete' || true)
     HAS_DEEP_DIVE_LINE=$(echo "$BODY" | grep -c 'Deep dive complete' || true)
 

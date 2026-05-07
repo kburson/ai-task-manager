@@ -1,6 +1,6 @@
 ---
 name: task
-description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, close, log, check, fleet, or config.
+description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, review, close, log, check, fleet, or config.
 ---
 
 # Task Tracker
@@ -19,11 +19,12 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 2. **Verify the issue is in-progress** on the project board (the CLI does this automatically; if it failed, fix it before proceeding).
 3. **Follow the Pickup Directive** in the issue body. The deep-dive section MUST be appended to the body and the `Deep dive complete` checkbox ticked **before** any code edits.
 
-### Before closing any issue — ALL of these, in order:
+### Before reviewing and closing any issue — ALL of these, in order:
 
 1. **Verify every Acceptance Criteria checkbox** by inspection AND by running the relevant test/build/command. Tick each with `/task check "<label>"`.
 2. **Verify every Definition of Done checkbox** the same way. Tick each.
-3. **Run `/task close`.** This is the ONLY sanctioned way to close an issue. It atomically: writes the final timing-table row, updates Engaged Time + Session Time + Context Length on the project board, deregisters from the fleet, **and moves the issue to Done.** If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
+3. **Run `/task review #N`.** This moves the issue to In Review, flushes a review timing row, and pauses the task.
+4. **Run `/task close #N`.** This is the ONLY sanctioned way to close an issue. It atomically: writes the final timing-table row, updates Engaged Time + Session Time + Context Length on the project board, deregisters from the fleet, **and moves the issue to Done.** If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
 
 ### Forbidden — these break the contract:
 
@@ -47,7 +48,8 @@ If any of these are skipped: stop, restore the contract (re-register the task, c
 | `/task resume #N` | **Switch back to a specific paused task and display its body** |
 | `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude Code. |
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
-| `/task close` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
+| `/task review #N` | Move issue to In Review, flush a review timing row, and pause the task. |
+| `/task close [#N]` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
 | `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
 | `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
 | `/task migrate` | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
@@ -87,7 +89,7 @@ node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task
 ```
 Print stdout verbatim. On non-zero exit, print stderr and surface the error.
 
-**Exit code 3** from `/task close` means unchecked items were found — see Pre-Close Gate below.
+**Exit code 3** from `/task review` or `/task close` means unchecked items were found — see Pre-Close Gate below.
 
 ### Step 2: For `/task #N` and `/task resume #N` — ensure issue states are correct
 
@@ -177,14 +179,14 @@ Invoke the CLI and print output — no issue fetch needed.
 
 ### Pre-Close Gate (exit code 3)
 
-When `/task close` exits with code 3, the CLI has already printed the unchecked items to stderr. Claude must:
+When `/task review` or `/task close` exits with code 3, the CLI has already printed the unchecked items to stderr. Claude must:
 
 1. Show the unchecked item list to the user.
 2. Ask: **"Would you like me to verify and resolve these items first, or close anyway?"**
-3. **Default behavior is resolution** — work through each unchecked item: verify by inspection AND by running the relevant test/build/command, then check it off with `/task check "<label>"`. Only after every box is checked, run `/task close` again.
+3. **Default behavior is resolution** — work through each unchecked item: verify by inspection AND by running the relevant test/build/command, then check it off with `/task check "<label>"`. Only after every pre-close box is checked, run `/task review #N`, then `/task close #N`.
 4. If the user explicitly says close anyway (e.g., the issue is being abandoned) → run `TASK_TRACKER_FORCE_DONE=1 /task close`. This writes an audit comment to the issue noting which items were unverified at close. Do NOT use this to skip verification on a real fix — it's for legitimate-abandonment cases only.
 
-`/task close` is the ONLY sanctioned close path. It atomically: flushes timing, updates board fields, deregisters from the fleet, and invokes `move-state.sh <N> done` internally to move the issue to Done. The same pre-close gate applies whether triggered through `/task close` or (legacy) direct `move-state.sh done` — both refuse if the body has unchecked boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` audited override.
+`/task close` is the ONLY sanctioned close path. It atomically: flushes timing, updates board fields, deregisters from the fleet, and invokes `move-state.sh <N> done` internally to move the issue to Done. The same pre-close gate applies whether triggered through `/task close` or (legacy) direct `move-state.sh done` — both refuse if the body has unchecked pre-close boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` audited override.
 
 **Never run `gh issue close` or `move-state.sh <N> done` directly.** Both bypass the timing flush and corrupt the velocity ledger. If no task session is active and you need to mark an issue done, run `/task #N` first to register, complete any verification, then `/task close`.
 

@@ -26,7 +26,7 @@ const _argvClean = _roleIdx >= 0 ? argv.filter((_, i) => i !== _roleIdx && i !==
 // Normalize bare issue numbers only for verbs that accept issue operands.
 const rawVerb = _argvClean[0] || 'status';
 const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
-const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check']);
+const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review']);
 const rest = _argvClean.slice(1).map(a =>
   ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
 );
@@ -237,21 +237,50 @@ async function runMigrate(args) {
 // path for invoking move-state.sh done — direct invocation skips the timing
 // flush and corrupts the velocity ledger.
 async function runMoveStateDone(issue) {
+  await runMoveState(issue, 'done');
+}
+
+async function runMoveState(issue, state) {
   if (SKIP_NETWORK) return;
   const scriptPath = new URL('../gh/move-state.sh', import.meta.url).pathname;
   const issueNum = String(issue).replace(/^#/, '');
   try {
-    const { stdout } = await pexec(scriptPath, [issueNum, 'done'], { timeout: 15000 });
+    const { stdout } = await pexec(scriptPath, [issueNum, state], { timeout: 15000 });
     if (stdout.trim()) console.log(stdout.trim());
   } catch (err) {
-    console.warn(`[task-tracker] Could not move ${issue} to Done: ${err.message}`);
-    console.warn(`[task-tracker] Run manually: ${scriptPath} ${issueNum} done`);
+    console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
+    console.warn(`[task-tracker] Run manually: ${scriptPath} ${issueNum} ${state}`);
   }
+}
+
+const CLOSE_OWNED_CHECKBOXES = new Set([
+  'Issue moved to Done',
+  '`/task close` run (writes Engaged Time, Session Time, and Context Length automatically)',
+  'If this completes the parent epic: update parent body; close parent if all siblings Done',
+]);
+
+function uncheckedPreCloseCheckboxes(body) {
+  return [...body.matchAll(/^- \[ \] (.+)$/gm)]
+    .map(m => m[1])
+    .filter(label => !CLOSE_OWNED_CHECKBOXES.has(label))
+    .map(label => `- [ ] ${label}`);
 }
 
 async function verbClose() {
   await draiQueueIfAny();
-  const s = loadState(statePath);
+  const initialState = loadState(statePath);
+  const target = rest.find(a => /^#\d+$/.test(a));
+  let s = initialState;
+  if (!s.active && target) {
+    s = {
+      ...s,
+      active: target,
+      lastActive: target,
+      entryStartTs: nowIso(),
+      wordsAtEntryStart: 0,
+    };
+    saveState(s, statePath);
+  }
   if (!s.active) { console.log('no active task'); return; }
   if (s.active === 'plan') {
     console.log('Discarded planning bucket.');
@@ -274,7 +303,7 @@ async function verbClose() {
       ], { timeout: 10000 });
       const data = JSON.parse(stdout);
       const body = data.body ?? '';
-      const unchecked = [...body.matchAll(/^- \[ \] .+$/gm)].map(m => m[0]);
+      const unchecked = uncheckedPreCloseCheckboxes(body);
       const hasDeepDiveLine = /Deep dive complete/.test(body);
       const hasDeepDiveDone = /^- \[x\] Deep dive complete/m.test(body);
       const reasons = [];
@@ -381,6 +410,54 @@ async function verbPause() {
   }, statePath);
   try { setTaskStatus(projectDir, s.active, 'paused'); } catch {}
   console.log(`Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task start" to resume.`);
+}
+
+async function verbReview(args) {
+  await draiQueueIfAny();
+  const s = loadState(statePath);
+  const target = args.find(a => /^#\d+$/.test(a)) || (s.active && s.active !== 'plan' ? s.active : null);
+  if (!target) {
+    console.error('Usage: /task review #N');
+    process.exit(1);
+  }
+  if (s.active === target) {
+    const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'review', 'starting review');
+    const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
+    saveState({
+      ...s,
+      active: null,
+      entryStartTs: null,
+      wordsAtEntryStart: 0,
+      lastActive: target,
+    }, statePath);
+    try { setTaskStatus(projectDir, target, 'paused'); } catch {}
+    await runMoveState(target, 'in-review');
+    console.log(`Review ${target}: +${deltaMin} active min${wallNote}, +${deltaWords} words; task paused.`);
+  } else {
+    const ts = nowIso();
+    const row = (await import('./gh-timing-comment.mjs')).buildRow({
+      ts, event: 'review', activeMin: 0, idleMin: 0, deltaWords: 0,
+      wordMarker: 0, description: 'starting review',
+    });
+    await safePostTiming(target, row);
+    await runMoveState(target, 'in-review');
+    saveState({ ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target }, statePath);
+    console.log(`Review ${target}: task paused.`);
+  }
+  if (!SKIP_NETWORK) {
+    const issueNum = target.replace(/^#/, '');
+    const { stdout } = await pexec('gh', [
+      'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body',
+    ], { timeout: 10000 });
+    const body = JSON.parse(stdout).body ?? '';
+    const unchecked = uncheckedPreCloseCheckboxes(body);
+    if (unchecked.length > 0) {
+      await runMoveState(target, 'in-progress');
+      console.error(`[task-tracker] Review failed for ${target}:`);
+      unchecked.forEach(u => console.error(`   ${u}`));
+      process.exit(3);
+    }
+  }
 }
 
 async function verbStart() {
@@ -627,7 +704,8 @@ Task Tracker — available commands
   /task resume              Resume the last paused task
   /task resume #N           Switch back to a specific paused task
   /task update [msg]        Checkpoint — flush timing, reset counters, keep task active
-  /task close               Close the active task (runs pre-close gate)
+  /task review #N           Move issue to In Review, flush timing, and pause
+  /task close [#N]          Close the active or specified task (runs pre-close gate)
   /task close --force       Close even if unchecked items remain
   /task check "<label>"     Toggle a checkbox in the active issue body
   /task log #N              Re-compute and write Engaged/Session Time + Context Length
@@ -657,6 +735,7 @@ Aliases: start = resume, end = close
       case 'resume':  await verbResume(); break;
       case 'start':   await verbStart(); break;  // alias
       case 'update':  await verbUpdate(rest); break;
+      case 'review':  await verbReview(rest); break;
       case 'log': {
         const target = rest[0];
         if (!target) { console.error('Usage: /task log #N'); process.exit(1); }

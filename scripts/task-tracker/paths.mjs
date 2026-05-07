@@ -14,7 +14,7 @@ const LEGACY_RUNTIME_PATHS = new Map([
 ]);
 
 function normalizeRelative(p) {
-  return p.split(path.sep).join('/');
+  return p.split(path.sep).join('/').replace(/^\.\//, '');
 }
 
 export function legacyPathFor(runtimePath) {

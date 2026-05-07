@@ -11,6 +11,12 @@ import {
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
+import {
+  findSuperpowersSkillRoot,
+  mirrorSuperpowerSkills,
+  codexBootstrapBlock,
+  updateAgentsFile,
+} from '../scripts/task-tracker/codex-superpowers.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -54,6 +60,10 @@ function step(title) {
 function parseOption(args, name, fallback = null) {
   const idx = args.indexOf(name);
   return idx !== -1 && args[idx + 1] ? args[idx + 1] : fallback;
+}
+
+function hasFlag(args, name) {
+  return args.includes(name);
 }
 
 function patchSettingsJson(settingsPath) {
@@ -230,6 +240,33 @@ function installCodex(targetDir, linkMode) {
   }
 }
 
+function setupCodexSuperpowers(targetDir, { globalAgents = false } = {}) {
+  step('Codex Superpowers bootstrap');
+  const sourceRoot = findSuperpowersSkillRoot();
+  if (!sourceRoot) {
+    console.log(`  ${yellow('WARN')} Superpowers skills were not found in ${dim('~/.claude/plugins/cache/claude-plugins-official/superpowers/<version>/skills')}`);
+    console.log(`       AITM install/init will continue. Install Claude Code Superpowers first, then rerun with ${cyan('--codex-superpowers')}.`);
+    return;
+  }
+
+  const mirror = mirrorSuperpowerSkills({ sourceRoot });
+  const copied = mirror.copied.length ? mirror.copied.join(', ') : 'none';
+  const unchanged = mirror.unchanged.length ? mirror.unchanged.length : 0;
+  ok(`Mirrored Superpowers skills to ${dim('~/.codex/skills')} ${dim(`copied: ${copied}; unchanged: ${unchanged}`)}`);
+  if (mirror.missing.length) {
+    console.log(`  ${yellow('WARN')} Missing optional Superpowers skills: ${mirror.missing.join(', ')}`);
+  }
+
+  const agentsPath = globalAgents
+    ? join(homedir(), '.codex', 'AGENTS.md')
+    : join(targetDir, 'AGENTS.md');
+  const changed = updateAgentsFile(agentsPath, codexBootstrapBlock({ scope: globalAgents ? 'global' : 'repo' }));
+  ok(`Bootstrap ${dim(globalAgents ? '~/.codex/AGENTS.md' : relative(process.cwd(), agentsPath))}${changed ? '' : ` ${dim('(unchanged)')}`}`);
+  if (globalAgents) {
+    console.log(`  ${yellow('NOTE')} Updated global Codex instructions because ${cyan('--codex-superpowers-global')} was set.`);
+  }
+}
+
 function installTemplates(targetDir) {
   step('Shared templates and gitignore');
   const templateDest = join(targetDir, '.ai-task-manager');
@@ -286,6 +323,8 @@ function cmdInstall(args) {
 
   const agent = parseOption(args, '--agent', 'both');
   const linkMode = parseOption(args, '--link-mode', 'stub');
+  const enableCodexSuperpowers = hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
+  const globalCodexSuperpowers = hasFlag(args, '--codex-superpowers-global');
   if (!['claude', 'codex', 'both'].includes(agent)) {
     err(`Unknown --agent ${agent}. Expected claude, codex, or both.`);
     process.exit(1);
@@ -299,6 +338,9 @@ function cmdInstall(args) {
 
   if (agent === 'claude' || agent === 'both') installClaude(targetDir, linkMode);
   if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode);
+  if ((agent === 'codex' || agent === 'both') && enableCodexSuperpowers) {
+    setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
+  }
   installTemplates(targetDir);
 
   console.log('');
@@ -307,6 +349,10 @@ function cmdInstall(args) {
   console.log(`  ${bold('Next step')} ${dim('- configure your GitHub project:')}`);
   console.log('');
   console.log(`     ${cyan(bold('npx ai-task-manager init'))}`);
+  if ((agent === 'codex' || agent === 'both') && !enableCodexSuperpowers) {
+    console.log('');
+    console.log(`  ${dim('Optional Codex workflow bootstrap:')} ${cyan('npx ai-task-manager install --agent codex --codex-superpowers')}`);
+  }
   console.log('');
 }
 
@@ -343,6 +389,8 @@ function cmdInit(args) {
   const targetArg = parseOption(args, '--target');
   if (targetArg) targetDir = resolve(targetArg);
   const projectArg = parseOption(args, '--project') ?? parseOption(args, '--project-url');
+  const enableCodexSuperpowers = hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
+  const globalCodexSuperpowers = hasFlag(args, '--codex-superpowers-global');
 
   const initScript = join(PKG_ROOT, 'scripts', 'gh', 'init-project-config.sh');
 
@@ -350,6 +398,9 @@ function cmdInit(args) {
     const initArgs = [initScript, '--target', targetDir];
     if (projectArg) initArgs.push('--project', projectArg);
     execFileSync('bash', initArgs, { stdio: 'inherit' });
+    if (enableCodexSuperpowers) {
+      setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
+    }
   } catch (e) {
     err(`Init failed: ${e.message}`);
     process.exit(1);
@@ -380,8 +431,8 @@ ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
   ${dim('Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow.')}
 
 ${bold('  Usage')}
-    ${cyan('npx ai-task-manager install')}    ${dim('[--agent both|claude|codex] [--link-mode stub|symlink] [--target <dir>]')}
-    ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>]')}
+    ${cyan('npx ai-task-manager install')}    ${dim('[--agent both|claude|codex] [--link-mode stub|symlink] [--codex-superpowers] [--codex-superpowers-global] [--target <dir>]')}
+    ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>] [--codex-superpowers] [--codex-superpowers-global]')}
     ${cyan('npx ai-task-manager statusline')} ${dim('Install Claude Code status line')}
     ${cyan('npx ai-task-manager version')}    ${dim('Print version')}
 
