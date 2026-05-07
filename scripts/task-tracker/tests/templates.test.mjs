@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dir, '../../..');
 const body = readFileSync(path.join(root, 'templates', 'definition-of-done.md'), 'utf8');
+const taskIssueForm = readFileSync(path.join(root, '.github', 'ISSUE_TEMPLATE', 'task.yml'), 'utf8');
+const bugIssueForm = readFileSync(path.join(root, '.github', 'ISSUE_TEMPLATE', 'bug.yml'), 'utf8');
 
 for (const line of [
   '- [ ] Acceptance criteria met (including test additions from deep dive)',
@@ -20,5 +22,15 @@ for (const line of [
 assert.ok(!body.includes('Issue moved to Done'), 'template does not include close-action Done checkbox');
 assert.ok(!body.includes('/task close` run'), 'template does not include close-action task close checkbox');
 assert.ok(!body.includes('close parent if all siblings Done'), 'template does not include automatic parent close checkbox');
+
+for (const form of [taskIssueForm, bugIssueForm]) {
+  assert.ok(form.includes('id: acceptance-criteria'), 'manual issue form includes acceptance criteria');
+  assert.ok(form.includes('label: Estimate'), 'manual issue form exposes Estimate section for DB healing');
+  assert.ok(form.includes('label: Sequence'), 'manual issue form exposes Sequence section for DB healing');
+  assert.ok(!form.includes('Engaged Time'), 'manual issue form does not ask for task-event managed Engaged Time');
+  assert.ok(!form.includes('Session Time'), 'manual issue form does not ask for task-event managed Session Time');
+  assert.ok(!form.includes('Context Length'), 'manual issue form does not ask for task-event managed Context Length');
+  assert.ok(!form.includes('ai-task-manager:fields:start'), 'manual issue form leaves hidden field DB to AITM healer');
+}
 
 console.log('templates.test.mjs: all passed');

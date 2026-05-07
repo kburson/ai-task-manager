@@ -143,3 +143,13 @@ assert.doesNotMatch(result.stderr, /array .* and object .* cannot be added/);
 
 const config = readFileSync(join(targetDir, '.ai-task-manager/task-tracker.json'), 'utf8');
 assert.match(config, /"projectId": "PVT_LINKED"/);
+
+const generatedTaskTemplate = readFileSync(join(targetDir, '.github/ISSUE_TEMPLATE/task.yml'), 'utf8');
+const generatedBugTemplate = readFileSync(join(targetDir, '.github/ISSUE_TEMPLATE/bug.yml'), 'utf8');
+for (const template of [generatedTaskTemplate, generatedBugTemplate]) {
+  assert.match(template, /label: Estimate/);
+  assert.match(template, /label: Sequence/);
+  assert.doesNotMatch(template, /Engaged Time/);
+  assert.doesNotMatch(template, /Session Time/);
+  assert.doesNotMatch(template, /Context Length/);
+}

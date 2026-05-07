@@ -8,7 +8,9 @@ import {
 
 const defs = [
   { key: 'priority', name: 'Priority', type: 'single_select' },
+  { key: 'size', name: 'Size', type: 'single_select' },
   { key: 'estimate', name: 'Estimate', type: 'number' },
+  { key: 'sequence', name: 'Sequence', type: 'number' },
   { key: 'sessionTime', name: 'Session Time', aliases: ['Actual Session Time'], type: 'number' },
   { key: 'startDate', name: 'Start date', type: 'date' },
 ];
@@ -64,5 +66,38 @@ const defs = [
   assert.equal((ensured.body.match(new RegExp(FIELD_DB_START, 'g')) || []).length, 1);
 }
 
-console.log('issue-field-db.test.mjs: all passed');
+{
+  const body = [
+    '### Description',
+    '',
+    'Manual task created from the GitHub issue form.',
+    '',
+    '### Acceptance Criteria',
+    '',
+    '- [ ] It works',
+    '',
+    '### Priority',
+    '',
+    'P1 - High / this sprint',
+    '',
+    '### Size',
+    '',
+    'M - 6-10 hours',
+    '',
+    '### Estimate',
+    '',
+    '4h',
+    '',
+    '### Sequence',
+    '',
+    '2',
+  ].join('\n');
+  const ensured = ensureIssueFieldDb(body, defs);
+  assert.equal(ensured.healed, true);
+  assert.equal(ensured.values.priority, 'P1');
+  assert.equal(ensured.values.size, 'M');
+  assert.equal(ensured.values.estimate, 4);
+  assert.equal(ensured.values.sequence, 2);
+}
 
+console.log('issue-field-db.test.mjs: all passed');

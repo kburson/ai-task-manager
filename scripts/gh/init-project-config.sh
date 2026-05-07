@@ -1236,15 +1236,16 @@ mkdir -p "$TEMPLATE_DIR"
 # Task template
 cat > "$TEMPLATE_DIR/task.yml" <<'TMPL'
 name: Task
-description: A unit of work tracked by the AI task manager
+description: Manual task entry compatible with AI Task Manager
 title: "[Task] "
 labels: []
 body:
   - type: markdown
     attributes:
       value: |
-        Fill in the sections below. The AI assistant will track time and context words
-        for this issue automatically via the `/task` skill.
+        Fill in the planning fields below. AI Task Manager will create the hidden
+        field database and timing-log comment the first time an agent picks up
+        this issue with `/task #<issue-number>`.
 
   - type: textarea
     id: description
@@ -1270,9 +1271,9 @@ body:
     attributes:
       label: Priority
       options:
-        - P0 — Critical / blocking
-        - P1 — High / this sprint
-        - P2 — Normal / backlog
+        - P0 - Critical / blocking
+        - P1 - High / this sprint
+        - P2 - Normal / backlog
     validations:
       required: true
 
@@ -1282,31 +1283,56 @@ body:
       label: Size
       description: Estimated effort
       options:
-        - "XS — 1-2 hours"
-        - "S — 3-4 hours"
-        - "M — 6-10 hours"
-        - "L — 12-20 hours"
-        - "XL — 24+ hours"
+        - "XS - 1-2 hours"
+        - "S - 3-4 hours"
+        - "M - 6-10 hours"
+        - "L - 12-20 hours"
+        - "XL - 24+ hours"
     validations:
       required: true
 
   - type: input
     id: estimate
     attributes:
-      label: Estimate (hours)
-      description: Mid-point estimate in hours (used for ROI reporting)
+      label: Estimate
+      description: Mid-point estimate in hours, for example 4 or 4h.
       placeholder: "4"
     validations:
       required: true
+
+  - type: input
+    id: sequence
+    attributes:
+      label: Sequence
+      description: Optional fan-out/order number used by AITM orchestration.
+      placeholder: "1"
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Optional issue numbers or work items that should complete first.
+      placeholder: "#12, auth setup, database migration"
+    validations:
+      required: false
 TMPL
 
 # Bug template
 cat > "$TEMPLATE_DIR/bug.yml" <<'TMPL'
 name: Bug
-description: Something isn't working as expected
+description: Manual bug entry compatible with AI Task Manager
 title: "[Bug] "
 labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill in the planning fields below. AI Task Manager will create the hidden
+        field database and timing-log comment the first time an agent picks up
+        this issue with `/task #<issue-number>`.
+
   - type: textarea
     id: description
     attributes:
@@ -1324,14 +1350,25 @@ body:
         2.
         3.
 
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this fix is done?
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
   - type: dropdown
     id: priority
     attributes:
       label: Priority
       options:
-        - P0 — Critical / blocking
-        - P1 — High / this sprint
-        - P2 — Normal / backlog
+        - P0 - Critical / blocking
+        - P1 - High / this sprint
+        - P2 - Normal / backlog
     validations:
       required: true
 
@@ -1341,21 +1378,31 @@ body:
       label: Size
       description: Estimated fix effort
       options:
-        - "XS — 1-2 hours"
-        - "S — 3-4 hours"
-        - "M — 6-10 hours"
-        - "L — 12-20 hours"
-        - "XL — 24+ hours"
+        - "XS - 1-2 hours"
+        - "S - 3-4 hours"
+        - "M - 6-10 hours"
+        - "L - 12-20 hours"
+        - "XL - 24+ hours"
     validations:
       required: true
 
   - type: input
     id: estimate
     attributes:
-      label: Estimate (hours)
+      label: Estimate
+      description: Mid-point fix estimate in hours, for example 2 or 2h.
       placeholder: "2"
     validations:
       required: true
+
+  - type: input
+    id: sequence
+    attributes:
+      label: Sequence
+      description: Optional fan-out/order number used by AITM orchestration.
+      placeholder: "1"
+    validations:
+      required: false
 TMPL
 
 ok "Issue templates written: $TEMPLATE_DIR/"

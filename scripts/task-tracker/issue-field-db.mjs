@@ -49,12 +49,22 @@ export function stripIssueFieldDb(body) {
 function parseScalar(raw) {
   const value = raw.trim();
   if (!value) return null;
+  const selectPrefix = value.match(/^([A-Za-z0-9]+)\s+(?:-|--|—|:)\s+.+$/);
+  if (selectPrefix) return selectPrefix[1];
   const hours = value.match(/^([0-9]+(?:\.[0-9]+)?)\s*h(?:ours?)?$/i);
   if (hours) return Number(hours[1]);
   const minutes = value.match(/^([0-9]+(?:\.[0-9]+)?)\s*m(?:in(?:utes?)?)?$/i);
   if (minutes) return Number(minutes[1]);
   if (/^[0-9]+(?:\.[0-9]+)?$/.test(value)) return Number(value);
   return value;
+}
+
+function sectionValue(body, heading) {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^###\\s+${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|\\n<!--\\s*ai-task-manager:fields:start\\s*-->|$)`, 'im');
+  const match = body.match(re);
+  if (!match) return null;
+  return match[1].trim();
 }
 
 export function inferVisibleFieldValues(body, fieldDefs = []) {
@@ -67,6 +77,11 @@ export function inferVisibleFieldValues(body, fieldDefs = []) {
       const match = body.match(re);
       if (match) {
         values[def.key] = parseScalar(match[1]);
+        break;
+      }
+      const formValue = sectionValue(body, name);
+      if (formValue != null) {
+        values[def.key] = parseScalar(formValue.split('\n')[0]);
         break;
       }
     }
@@ -99,4 +114,3 @@ export function ensureIssueFieldDb(body, fieldDefs = [], projectValues = {}) {
     reason: parsed.ok ? null : parsed.reason,
   };
 }
-
