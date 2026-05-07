@@ -1,7 +1,7 @@
 #!/bin/bash
-# Move a GitHub issue through board states: Backlog → Ready → In Progress → In Review → Done
+# Move a GitHub issue through board states: Backlog → Ready → In Progress → In Review → R4R → Done
 # Usage: scripts/gh/move-state.sh <issue#> <state>
-# States: backlog | ready | in-progress | in-review | done
+# States: backlog | ready | in-progress | in-review | r4r | done
 #
 # Requires project config in .ai-task-manager/task-tracker.json (set by: npx ai-task-manager init)
 
@@ -23,13 +23,13 @@ done
 
 if [[ ! "$ISSUE" =~ ^[0-9]+$ ]]; then
   echo "Usage: scripts/gh/move-state.sh <issue#> <state> [--item-id <project-item-id>]"
-  echo "States: backlog | ready | in-progress | in-review | done"
+  echo "States: backlog | ready | in-progress | in-review | r4r | done"
   exit 1
 fi
 
 if [[ -z "$STATE" ]]; then
   echo "Usage: scripts/gh/move-state.sh <issue#> <state> [--item-id <project-item-id>]"
-  echo "States: backlog | ready | in-progress | in-review | done"
+  echo "States: backlog | ready | in-progress | in-review | r4r | done"
   exit 1
 fi
 
@@ -70,12 +70,15 @@ case "$STATE" in
   in-review|in_review)
     OPTION_ID=$(read_config kanbanOptionInReview)
     ;;
+  r4r|r_4_r|ready-for-release)
+    OPTION_ID=$(read_config kanbanOptionR4R)
+    ;;
   done)
     OPTION_ID=$(read_config kanbanOptionDone)
     ;;
   *)
     echo "Unknown state: $STATE"
-    echo "States: backlog | ready | in-progress | in-review | done"
+    echo "States: backlog | ready | in-progress | in-review | r4r | done"
     exit 1
     ;;
 esac
@@ -175,8 +178,8 @@ if [[ -f "$EVENT_FIELDS_SCRIPT" ]]; then
   node "$EVENT_FIELDS_SCRIPT" "$ISSUE" "$STATE" --item-id "$ITEM_ID" 2>/dev/null || true
 fi
 
-# End task tracking when an issue is marked done
-if [[ "$STATE" == "done" ]]; then
+# End task tracking when an issue is marked done — but not during cascade close
+if [[ "$STATE" == "done" && "${AITM_CASCADE:-}" != "1" ]]; then
   if [[ -n "$REPO_ROOT" ]]; then
     node "$REPO_ROOT/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
   fi
