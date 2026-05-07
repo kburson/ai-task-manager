@@ -19,15 +19,26 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 2. **Verify the issue is in-progress** on the project board (the CLI does this automatically; if it failed, fix it before proceeding).
 3. **Follow the Pickup Directive** in the issue body. The deep-dive section MUST be appended to the body and the `Deep dive complete` checkbox ticked **before** any code edits.
 
-### Before reviewing and closing any issue — ALL of these, in order:
+### Before moving an issue to In Review — agent steps, ALL of these, in order:
 
 1. **Verify every Acceptance Criteria checkbox** by inspection AND by running the relevant test/build/command. Tick each with `/task check "<label>"`.
 2. **Verify every Definition of Done checkbox** the same way. Tick each.
-3. **Run `/task review #N`.** This moves the issue to In Review, flushes a review timing row, and pauses the task.
-4. **Run `/task close #N`.** This is the ONLY sanctioned way to close an issue. It atomically: writes the final timing-table row, updates Engaged Time + Session Time + Context Length on the project board, deregisters from the fleet, **and moves the issue to Done.** If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
+3. **Run `/task review #N`.** This moves the issue to **R4R** (Ready For Release), flushes a review timing row, and pauses the task. **This is the terminal automation step. Stop here.**
+   - For epics: `/task review` will refuse if any sub-issues are not already in R4R. All sub-issues must reach R4R before the epic can.
+
+> ⛔ **All checkboxes checked means "ready for human review" — NOT permission to close.**
+> No agent or orchestrator may infer human approval from checked boxes, passing tests,
+> a completed self-review, or any automated signal. The issue stays In Review until a
+> human explicitly approves it.
+
+### Moving an issue to Done — human step only:
+
+4. **Run `/task close #N` only after explicit human instruction** — e.g., "close #N", "mark #N done", "review accepted, close it." This is NOT an automated step. It atomically: writes the final timing-table row, updates Engaged Time + Session Time + Context Length on the project board, deregisters from the fleet, and moves the issue to Done. If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
 
 ### Forbidden — these break the contract:
 
+- ❌ Running `/task close` without an explicit human instruction. "All checkboxes are checked" is not human approval.
+- ❌ Running `/task close` after implementation verification, even if every DoD item passes. The correct terminal step is `/task review`.
 - ❌ Running `move-state.sh <N> done` directly. `/task close` does this internally; calling it manually skips the timing flush.
 - ❌ Running `gh issue close` directly. Same reason.
 - ❌ Using `TASK_TRACKER_FORCE_DONE=1` for normal completion. It exists only for legitimate abandonment (the issue turned out invalid). Never use it to skip verification.
@@ -48,7 +59,7 @@ If any of these are skipped: stop, restore the contract (re-register the task, c
 | `/task resume #N` | **Switch back to a specific paused task and display its body** |
 | `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude Code. |
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
-| `/task review #N` | Move issue to In Review, flush a review timing row, and pause the task. |
+| `/task review #N` | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. |
 | `/task close [#N]` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
 | `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
 | `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
@@ -496,6 +507,25 @@ Then ask:
 
 ## AI Directives
 
+### Subagent completion semantics
+
+When a subagent returns from issue work, it MUST report one of these three statuses.
+**`DONE` and `DONE_WITH_CONCERNS` are not valid statuses for AITM issue work** — they
+carry ambiguous semantics and cause orchestrators to advance sequences prematurely.
+
+| Status | Meaning | Orchestrator action |
+|---|---|---|
+| `CODE_COMPLETE` | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly. | Do NOT advance the sequence. Inspect remaining items; resolve or reassign. |
+| `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is In Review. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
+| `HUMAN_APPROVED` | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent. | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done. |
+| `BLOCKED` | Agent cannot proceed without orchestrator or human help. | Intervene, then redispatch or reassign. |
+
+**Sequence-advance rule:** A sequence is complete only after every issue in that
+sequence reaches **Done** via the `/task review` → human approval → `/task close` path.
+`CODE_COMPLETE` and `ISSUE_READY_FOR_REVIEW` do not count. An orchestrator that fans out
+Sequence 2 while any Sequence 1 issue has not been closed by a human is violating the
+close contract.
+
 ### Task context — always match active task to the work happening now
 
 **Epic fan-out (epic + sub-issues):**
@@ -548,12 +578,20 @@ Then ask:
   - Unchecked → run the full deep dive **before writing any code**.
 - After completing the deep dive (step 3): `/task check "Deep dive complete"`.
 
-**Before `/task close` or moving to Done:**
+**Before moving an issue to In Review (agent terminal step):**
 - Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
 - Verification commands appended during pickup must be issue-body checkboxes under `### Verification Commands`, and each relevant command checkbox must be checked before checking the related Acceptance Criterion or Definition of Done box.
 - Mark each verified item: `/task check "<label>"`.
-- Only run `/task close` once **every** `- [ ]` in the issue body is `- [x]`.
-- The pre-close gate AND `move-state.sh done` will refuse if any box is unchecked or the Deep Dive checkpoint is unticked. The audited override is `TASK_TRACKER_FORCE_DONE=1` — it bypasses but writes a visible audit comment to the issue. Use only for legitimate abandonment (e.g., the issue turned out invalid), never to skip verification.
+- Once every `- [ ]` in the issue body is `- [x]`, run `/task review #N`. This is the terminal agent step — stop here.
+
+> ⛔ **All checkboxes checked means "ready for human review" — NOT permission to close.**
+> No agent or orchestrator may infer human approval from checked boxes, passing tests,
+> a completed self-review, or any other automated signal. The issue stays In Review until
+> a human explicitly instructs close.
+
+**Moving an issue to Done (human-only step):**
+- Only after a human has explicitly instructed close (e.g., "close #N", "mark #N done") should `/task close` be run.
+- The pre-close gate will refuse if any box is unchecked or the Deep Dive checkpoint is unticked. The audited override is `TASK_TRACKER_FORCE_DONE=1` — it bypasses but writes a visible audit comment to the issue. Use only for legitimate abandonment (e.g., the issue turned out invalid), never to skip verification.
 
 ### Issue lifecycle
 
