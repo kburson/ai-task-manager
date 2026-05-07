@@ -17,6 +17,7 @@ export const DEFAULTS = {
   kanbanOptionReady: '',
   kanbanOptionInProgress: '',
   kanbanOptionInReview: '',
+  kanbanOptionR4R: '',
   kanbanOptionDone: '',
   // Sequence field ID (set by init script) — numeric field on the project board
   sequenceFieldId: '',
@@ -59,6 +60,7 @@ const TYPES = {
   kanbanOptionReady: 'string',
   kanbanOptionInProgress: 'string',
   kanbanOptionInReview: 'string',
+  kanbanOptionR4R: 'string',
   kanbanOptionDone: 'string',
   sequenceFieldId: 'string',
   sizeFieldId: 'string',
@@ -182,7 +184,7 @@ const USER_KEYS = [
 
 const INTERNAL_KEYS = [
   'projectId',
-  'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionDone',
+  'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionR4R', 'kanbanOptionDone',
   'sequenceFieldId', 'sizeFieldId',
   'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartDate', 'fieldEndDate',
   'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
