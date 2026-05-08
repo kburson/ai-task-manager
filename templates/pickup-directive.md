@@ -5,7 +5,7 @@ checkbox. If the checkbox is already checked, skip to step 6.
 
 ## ⛔ Hard Rules — Do Not Skip
 
-These rules are enforced by `/task close` and by `move-state.sh <issue> done`. Bypassing
+These rules are enforced by `/task close` and by `move-state.mjs <issue> done`. Bypassing
 them is a process violation, not a shortcut. Closing or moving an issue to Done while any
 required box is unchecked will be refused.
 
@@ -40,28 +40,44 @@ required box is unchecked will be refused.
      bypass row to the timing log. Do not use it to skip verification.
 
 4. **Move to Done is gated.**
-   - `move-state.sh <issue> done` will refuse if Deep Dive is unchecked or any other
+   - `move-state.mjs <issue> done` will refuse if Deep Dive is unchecked or any other
      pre-close box in the issue body is unchecked. Same audited override applies.
    - Normal path: run `/task close` — it validates, flushes timing, then moves to Done.
 
 5. **Agents MUST NOT run `/task review` or `/task close`. The terminal agent action is reporting `CODE_COMPLETE`.**
-   - Once implementation is complete and all verifiable checkboxes are checked, report
-     `CODE_COMPLETE` and stop. The orchestrator calls `/task review`.
+   - Once implementation is complete and all verifiable checkboxes are checked, capture
+     exit word count, then report `CODE_COMPLETE` with `duration_minutes` and
+     `words_delta`. The orchestrator calls `/task review #N --duration-minutes M --words W`.
    - Checking all boxes means "orchestrator should now call `/task review`" — NOT
      permission for the agent to call `/task review` or `/task close`.
    - `/task review` is an orchestrator action. `/task close` is a human action.
      Agents running either is a process violation.
 
+6. **Epic AC/DoD checkboxes may not be checked before all sub-issues reach R4R.**
+   For issues whose title begins with `EPIC:`, no Acceptance Criterion or Definition of
+   Done checkbox may be ticked until every sub-issue linked to the epic has passed through
+   In Review verification and reached R4R status. Checking epic-level boxes during
+   deep-dive or mid-implementation is a process violation, even if the outcome appears
+   correct by inspection. The sub-issue lifecycle IS the verification.
+
+6. **On mistakes — stop and surface, do not self-correct.**
+   If you discover you have taken a wrong action (created a duplicate issue, used
+   `gh issue close` directly, skipped the deep dive, dispatched agents without
+   verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
+   Announce what happened, why it was wrong, and propose 2–3 resolution options.
+   Wait for explicit orchestrator or human instruction before proceeding.
+
 ## Required steps before writing any code
 
-1. **Move the issue to `in-progress`:**
+1. **Move the issue to `in-progress` and capture your entry word count:**
    ```bash
-   node_modules/ai-task-manager/scripts/gh/move-state.sh <this-issue-#> in-progress
+   node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress
+   node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
    ```
-
-   When implementation is complete, report `CODE_COMPLETE` and stop. The orchestrator
-   will call `/task review`, which moves the issue to In Review, runs the verification
-   gate, and promotes to R4R on success.
+   Record the output as `W_start` and the current wall-clock time as `T_start`. You will
+   use these at exit to compute `words_delta` and `duration_minutes` for your
+   `CODE_COMPLETE` report. When implementation is complete, report `CODE_COMPLETE` and
+   stop — the orchestrator calls `/task review #N --duration-minutes M --words W`.
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
    assumptions still hold, identify concrete files to edit, define the test approach,
@@ -74,9 +90,9 @@ required box is unchecked will be refused.
    > Always use `--body-file`.
 
    ```bash
-   gh issue view <this-issue-#> --json body --jq .body > /tmp/body.md
-   # Append "## Deep-Dive Analysis (YYYY-MM-DD)" section to /tmp/body.md
-   gh issue edit <this-issue-#> --body-file /tmp/body.md
+   gh issue view <this-issue-#> --json body --jq .body > ./tmp/body.md
+   # Append "## Deep-Dive Analysis (YYYY-MM-DD)" section to ./tmp/body.md
+   gh issue edit <this-issue-#> --body-file ./tmp/body.md
    ```
    Then flip the checkpoint: `/task check "Deep dive complete"`
 
@@ -128,7 +144,7 @@ required box is unchecked will be refused.
       Sequence 3 — after all Seq 2 close: #R
       ```
 
-   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: call `/task review #N` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to R4R. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in R4R — do NOT run `/task close`.
+   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: extract `duration_minutes` and `words_delta`, call `/task review #N --duration-minutes M --words W` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to R4R. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in R4R — do NOT run `/task close`.
 
    **When every sub-issue in the current sequence reaches R4R, the orchestrator must immediately call `/task review #<epic>` on the parent epic.** This is orchestrator work, not human work. Running `/task review` on the epic is what moves the epic to R4R and gates the human notification. Do not notify the human until the epic itself is in R4R.
 
@@ -156,15 +172,16 @@ sequence prematurely.
 
 | Status | Meaning | Required condition |
 |---|---|---|
-| `CODE_COMPLETE` | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review`. | List any unchecked items and why they could not be verified. Do NOT call `/task review`. |
+| `CODE_COMPLETE` | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review #N --duration-minutes M --words W` using values from this report. | List any unchecked items and why they could not be verified. Include `duration_minutes` and `words_delta`. Do NOT call `/task review`. |
 | `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches R4R. | Orchestrator notifies the human for approval. Do NOT run `/task close`. |
 | `BLOCKED` | Cannot proceed without orchestrator or human intervention. | Describe exactly what is needed. |
 
 **Rules for orchestrators:**
-- On receiving `CODE_COMPLETE` from an agent: call `/task review #N`. If it exits
-  non-zero (verification failed), post a comment on the issue listing the failed
-  criteria, confirm the issue has been reverted to In Progress, and re-dispatch the
-  agent to fix the failures. Loop until `/task review` succeeds.
+- On receiving `CODE_COMPLETE` from an agent: extract `duration_minutes` and
+  `words_delta` from the report, then call `/task review #N --duration-minutes M --words W`.
+  If it exits non-zero (verification failed), post a comment on the issue listing the
+  failed criteria, confirm the issue has been reverted to In Progress, and re-dispatch
+  the agent. Loop until `/task review` succeeds.
 - On `/task review` success (issue reaches R4R): report `ISSUE_READY_FOR_REVIEW` and
   notify the human. Do NOT run `/task close`.
 - A sub-issue sequence is complete only after all issues in that sequence reach **Done**
@@ -195,6 +212,15 @@ Review every item in the Definition of Done checklist in the issue body. For eac
 Then verify every Acceptance Criterion the same way. Do not check the related Acceptance
 Criterion or DoD item until the relevant Verification Commands checkbox is checked.
 
+**Word count — exit step (agent sessions only):**
+Before reporting `CODE_COMPLETE`, record your final word count:
+```
+node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
+```
+Compute `words_delta = W_end - W_start` (where `W_start` was captured at agent entry —
+see step 1). Include both values in your `CODE_COMPLETE` report.
+
 **Stop here. Report `CODE_COMPLETE`. Do NOT call `/task review`.**
-The orchestrator calls `/task review`, which moves the issue through In Review → R4R
-(or reverts to In Progress on failure and re-dispatches this agent).
+The orchestrator calls `/task review #N --duration-minutes M --words W`, which moves the
+issue through In Review → R4R (or reverts to In Progress on failure and re-dispatches
+this agent). Duration and word count come from the agent's `CODE_COMPLETE` report.

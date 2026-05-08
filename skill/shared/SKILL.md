@@ -39,7 +39,7 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 - ❌ Running `/task close` without an explicit human instruction. "All checkboxes are checked" is not human approval.
 - ❌ Running `/task close` after implementation verification, even if every DoD item passes. The correct terminal step is `/task review`.
-- ❌ Running `move-state.sh <N> done` directly. `/task close` does this internally; calling it manually skips the timing flush.
+- ❌ Running `move-state.mjs <N> done` directly. `/task close` does this internally; calling it manually skips the timing flush.
 - ❌ Running `gh issue close` directly. Same reason.
 - ❌ Using `TASK_TRACKER_FORCE_DONE=1` for normal completion. It exists only for legitimate abandonment (the issue turned out invalid). Never use it to skip verification.
 - ❌ Editing files for an issue without first running `/task #N`.
@@ -118,7 +118,7 @@ gh issue reopen <N>
 ```
 Move to in-progress:
 ```bash
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.sh" <N> in-progress
+"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.mjs" <N> in-progress
 ```
 
 #### 2c. If this is a sub-issue, ensure the parent is open and in-progress
@@ -197,9 +197,9 @@ When `/task review` or `/task close` exits with code 3, the CLI has already prin
 3. **Default behavior is resolution** — work through each unchecked item: verify by inspection AND by running the relevant test/build/command, then check it off with `/task check "<label>"`. Only after every pre-close box is checked, run `/task review #N`, then `/task close #N`.
 4. If the user explicitly says close anyway (e.g., the issue is being abandoned) → run `TASK_TRACKER_FORCE_DONE=1 /task close`. This writes an audit comment to the issue noting which items were unverified at close. Do NOT use this to skip verification on a real fix — it's for legitimate-abandonment cases only.
 
-`/task close` is the ONLY sanctioned close path. It atomically: flushes timing, updates board fields, deregisters from the fleet, and invokes `move-state.sh <N> done` internally to move the issue to Done. The same pre-close gate applies whether triggered through `/task close` or (legacy) direct `move-state.sh done` — both refuse if the body has unchecked pre-close boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` audited override.
+`/task close` is the ONLY sanctioned close path. It atomically: flushes timing, updates board fields, deregisters from the fleet, and invokes `move-state.mjs <N> done` internally to move the issue to Done. The same pre-close gate applies whether triggered through `/task close` or (legacy) direct `move-state.mjs done` — both refuse if the body has unchecked pre-close boxes or the Deep Dive checkpoint is unticked, with the same `TASK_TRACKER_FORCE_DONE=1` audited override.
 
-**Never run `gh issue close` or `move-state.sh <N> done` directly.** Both bypass the timing flush and corrupt the velocity ledger. If no task session is active and you need to mark an issue done, run `/task #N` first to register, complete any verification, then `/task close`.
+**Never run `gh issue close` or `move-state.mjs <N> done` directly.** Both bypass the timing flush and corrupt the velocity ledger. If no task session is active and you need to mark an issue done, run `/task #N` first to register, complete any verification, then `/task close`.
 
 ## Plan-Mode Backlog Orchestration
 
@@ -221,7 +221,7 @@ issues can be generated. Resume only after the user confirms the install complet
 
 The preflight verifies that `.ai-task-manager/pickup-directive.md` and
 `.ai-task-manager/definition-of-done.md` exist. These files encode the process
-contract the close gate and `move-state.sh done` gate enforce. Issues created without
+contract the close gate and `move-state.mjs done` gate enforce. Issues created without
 them will reference paths that do not resolve, and agents picking them up will have no
 authoritative directive to follow.
 
@@ -276,7 +276,22 @@ gh label create "data"           --color "#bfd4f2" --description "Analytics, exp
 | `security` | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation |
 | `data` | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3 |
 
-#### C. Look Up Size Option IDs
+#### C. Read Config Values
+
+Use the packaged helper to read values from `.ai-task-manager/task-tracker.json`. This produces a single clean `node` invocation instead of a `cat | python3` pipeline, which keeps the bash-guard hook happy and avoids shell-permission noise.
+
+```bash
+ROOT="$(git rev-parse --show-toplevel)"
+HELPER="$ROOT/node_modules/ai-task-manager/scripts/task-tracker/config-get.mjs"
+
+PROJECT_ID=$(node "$HELPER" projectId)
+ASSIGNEE=$(node   "$HELPER" assignee @me)
+REPO=$(node       "$HELPER" repo)
+```
+
+**Never** use `cat .ai-task-manager/task-tracker.json | python3 -c "..."` — use `config-get.mjs` instead.
+
+#### D. Look Up Size Option IDs
 
 The Size field is a single-select in GitHub Projects. Look up its option IDs once at the start of orchestration so you can set Size per issue without prompting:
 
@@ -296,7 +311,7 @@ gh api graphql -f query='
       }
     }
   }
-' -f projectId=<projectId-from-task-tracker.json>
+' -f projectId="$PROJECT_ID"
 ```
 
 From the result, find the field named `Size` and capture its option IDs for: `XS`, `S`, `M`, `L`, `XL`. Also capture the `Sequence` field ID (a number field) and store it as `SEQUENCE_FIELD_ID`. Store all as local variables for use in the steps below.
@@ -357,7 +372,7 @@ authoritative.
 gh issue create \
   --title "EPIC: <title>" \
   --body "<assembled-body>" \
-  --assignee <assignee from .ai-task-manager/task-tracker.json key "assignee", default "@me"> \
+  --assignee "$ASSIGNEE" \
   --label "plan:<slug>" \
   --label "<inferred1>" \
   [--label "<inferred2>" ...] \
@@ -376,7 +391,7 @@ Store as `EPIC_NODE_ID`.
 #### 4. Set Priority
 
 ```bash
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/set-priority.sh" <EPIC_N> <p0|p1|p2>
+"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/set-priority.mjs" <EPIC_N> <p0|p1|p2>
 ```
 Use the priority declared in the spec. Default: `p0` for epics.
 
@@ -431,7 +446,7 @@ The script's output already contains `<this-issue-#>` placeholders at the right 
 gh issue create \
   --title "<sub-issue-title>" \
   --body "<assembled-body>" \
-  --assignee <assignee from .ai-task-manager/task-tracker.json key "assignee", default "@me"> \
+  --assignee "$ASSIGNEE" \
   --label "plan:<slug>" \
   --label "<inferred1>" \
   [--label "<inferred2>" ...] \
@@ -580,11 +595,17 @@ close contract.
   - Unchecked → run the full deep dive **before writing any code**.
 - After completing the deep dive (step 3): `/task check "Deep dive complete"`.
 
+**For epics:** After appending the deep dive and ticking `Deep dive complete`, verify that no Acceptance Criterion or Definition of Done checkbox has been ticked. If any are found ticked, uncheck them immediately. Then confirm that the following AC is present in the epic body (add it if missing):
+
+> `- [ ] All sub-issues have passed through In Review to be verified and landed in R4R to await final human review.`
+
+Do NOT list specific issue numbers — discovered work may add sub-issues during implementation. This checkbox gates the epic close and may only be ticked by the orchestrator after the last sub-issue's `/task review` succeeds.
+
 **Before moving an issue to In Review (agent terminal step):**
 - Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
 - Verification commands appended during pickup must be issue-body checkboxes under `### Verification Commands`, and each relevant command checkbox must be checked before checking the related Acceptance Criterion or Definition of Done box.
 - Mark each verified item: `/task check "<label>"`.
-- Once every `- [ ]` in the issue body is `- [x]`, run `/task review #N`. This is the terminal agent step — stop here.
+- Once every `- [ ]` in the issue body is `- [x]`, record exit word count and stop — the orchestrator calls `/task review #N --duration-minutes M --words W` with values from the agent's `CODE_COMPLETE` report. This is the terminal agent step — stop here.
 
 > ⛔ **All checkboxes checked means "ready for human review" — NOT permission to close.**
 > No agent or orchestrator may infer human approval from checked boxes, passing tests,
@@ -598,7 +619,7 @@ close contract.
 ### Issue lifecycle
 
 - Every issue needs `Estimate` (hours) and `Size` set before work starts. No exceptions.
-- Move states via `scripts/gh/move-state.sh` — never set manually. **Exception: never invoke `move-state.sh <N> done` directly — only `/task close` does that, and it does so internally.**
+- Move states via `scripts/gh/move-state.mjs` — never set manually. **Exception: never invoke `move-state.mjs <N> done` directly — only `/task close` does that, and it does so internally.**
 - Sub-issues: one level only. Parent cannot close until all children are closed.
 - Always assign on create: `--assignee` from `.ai-task-manager/task-tracker.json` key `assignee` (default `@me`).
 
