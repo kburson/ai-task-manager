@@ -37,5 +37,51 @@ r = await pexec('node', [CLI, 'help'], { env });
 assert.match(r.stdout, /\/task review #N/);
 assert.match(r.stdout, /\/task close \[#N\]/);
 
+// Bug fix: `close #N` with a different active task closes the named issue,
+// not the active task, and does not clear the active session.
+{
+  const sandbox2 = mkdtempSync(path.join(tmpdir(), 'tt-close-target-'));
+  mkdirSync(path.join(sandbox2, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(sandbox2, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
+  );
+  const env2 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox2, TT_SKIP_NETWORK: '1' };
+
+  // Start active task #385 (epic)
+  await pexec('node', [CLI, '#385'], { env: env2 });
+  let st = JSON.parse(readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
+  assert.equal(st.active, '#385');
+
+  // Close #386 (a different issue)
+  const closeResult = await pexec('node', [CLI, 'close', '#386'], { env: env2 });
+  assert.match(closeResult.stdout, /Closed #386/, 'should report closing #386, not #385');
+
+  // Active session (#385) must still be intact
+  st = JSON.parse(readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
+  assert.equal(st.active, '#385', 'active session should remain #385 after closing a different issue');
+
+  rmSync(sandbox2, { recursive: true });
+}
+
+// Bug fix: `close #N` with no active task closes the named issue (existing behavior).
+{
+  const sandbox3 = mkdtempSync(path.join(tmpdir(), 'tt-close-noactive-'));
+  mkdirSync(path.join(sandbox3, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(sandbox3, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
+  );
+  const env3 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox3, TT_SKIP_NETWORK: '1' };
+
+  const closeResult = await pexec('node', [CLI, 'close', '#400'], { env: env3 });
+  assert.match(closeResult.stdout, /Closed #400/);
+
+  const st = JSON.parse(readFileSync(path.join(sandbox3, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
+  assert.equal(st.active, null, 'active should be cleared when closing the only/active issue');
+
+  rmSync(sandbox3, { recursive: true });
+}
+
 rmSync(sandbox, { recursive: true });
 console.log('lifecycle.test.mjs: all passed');

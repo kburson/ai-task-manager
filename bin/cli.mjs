@@ -34,8 +34,9 @@ function red(s)     { return `\x1b[31m${s}\x1b[0m`; }
 function yellow(s)  { return `\x1b[33m${s}\x1b[0m`; }
 function cyan(s)    { return `\x1b[36m${s}\x1b[0m`; }
 function magenta(s) { return `\x1b[35m${s}\x1b[0m`; }
-function bgBlue(s)  { return `\x1b[44m\x1b[97m${s}\x1b[0m`; }
-function bgGreen(s) { return `\x1b[42m\x1b[30m${s}\x1b[0m`; }
+function bgBlue(s)   { return `\x1b[44m\x1b[97m${s}\x1b[0m`; }
+function bgGreen(s)  { return `\x1b[42m\x1b[30m${s}\x1b[0m`; }
+function bgYellow(s) { return `\x1b[43m\x1b[30m${s}\x1b[0m`; }
 
 function ok(msg)   { console.log(`  ${green('OK')} ${msg}`); }
 function err(msg)  { console.error(`  ${red('ERR')} ${msg}`); }
@@ -74,54 +75,43 @@ function patchSettingsJson(settingsPath) {
 
   if (!settings.hooks) settings.hooks = {};
 
-  const hookScript = '.claude/hooks/task-tracker.sh';
-  const hookEntry = { matcher: '', hooks: [{ type: 'command', command: hookScript }] };
+  const hookCmd = 'node node_modules/ai-task-manager/hooks/hook-handler.mjs';
+  const hookEntry = { matcher: '', hooks: [{ type: 'command', command: hookCmd }] };
+  // Legacy bash stub command — remove if present (replaced by direct node invocation).
+  const legacyHookCmd = '.claude/hooks/task-tracker.sh';
 
   for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
     if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
+    // Remove legacy bash stub entries
+    settings.hooks[event] = settings.hooks[event].filter(
+      h => !(h.command === legacyHookCmd ||
+             (typeof h === 'string' && h === legacyHookCmd) ||
+             h.hooks?.some(inner => inner.command === legacyHookCmd))
+    );
     const alreadyRegistered = settings.hooks[event].some(
-      h => h.command === hookScript ||
-           (typeof h === 'string' && h === hookScript) ||
-           h.hooks?.some(inner => inner.command === hookScript)
+      h => h.command === hookCmd ||
+           (typeof h === 'string' && h === hookCmd) ||
+           h.hooks?.some(inner => inner.command === hookCmd)
     );
     if (!alreadyRegistered) settings.hooks[event].push(hookEntry);
   }
 
-  const autoAllowRules = [
-    // AITM scripts — ai-task-manager package name
-    'Bash(node */ai-task-manager/scripts/task-tracker/task-tracker.mjs*)',
-    'Bash(node */ai-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
-    'Bash(node */ai-task-manager/scripts/gh/project-tether.mjs*)',
-    'Bash(node */ai-task-manager/scripts/gh/log-issue-time.mjs*)',
-    'Bash(*/ai-task-manager/scripts/gh/move-state.sh*)',
-    'Bash(*/ai-task-manager/scripts/gh/set-priority.sh*)',
-    // AITM scripts — legacy package name
-    'Bash(node */claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs*)',
-    'Bash(node */claude-gh-task-manager/scripts/task-tracker/preflight-issue.mjs*)',
-    'Bash(node */claude-gh-task-manager/scripts/gh/project-tether.mjs*)',
-    'Bash(*/claude-gh-task-manager/scripts/gh/move-state.sh*)',
-    'Bash(*/claude-gh-task-manager/scripts/gh/set-priority.sh*)',
-    // GitHub CLI — issue and project operations
-    'Bash(gh issue create*)',
-    'Bash(gh issue view*)',
-    'Bash(gh issue edit*)',
-    'Bash(gh issue comment*)',
-    'Bash(gh issue close*)',
-    'Bash(gh issue list*)',
-    'Bash(gh api graphql*)',
-    'Bash(gh api repos*)',
-    'Bash(gh label create*)',
-    'Bash(gh label list*)',
-    'Bash(gh project item-edit*)',
-    'Bash(gh project item-list*)',
-    // Compound commands — Claude prefixes with `cd <project-dir> &&` to set working directory
-    'Bash(cd * && *)',
-  ];
+  // bash-guard: PreToolUse hook that blocks bash commands referencing paths outside
+  // the project tree. Allows all intra-project and system-binary paths; blocks anything
+  // pointing at home-dir dotfiles, other projects, or truly destructive patterns.
+  const guardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
+  const guardEntry = { matcher: 'Bash', hooks: [{ type: 'command', command: guardCmd }] };
+  if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
+  const guardRegistered = settings.hooks.PreToolUse.some(
+    h => h.hooks?.some(inner => inner.command === guardCmd)
+  );
+  if (!guardRegistered) settings.hooks.PreToolUse.push(guardEntry);
+
+  // Allow all Bash without prompting — the bash-guard hook above enforces path scope
+  // so per-command permission prompts add friction without meaningful security benefit.
   if (!settings.permissions) settings.permissions = {};
   if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
-  for (const rule of autoAllowRules) {
-    if (!settings.permissions.allow.includes(rule)) settings.permissions.allow.push(rule);
-  }
+  if (!settings.permissions.allow.includes('Bash')) settings.permissions.allow.push('Bash');
 
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
@@ -139,6 +129,7 @@ function patchGitignore(targetDir) {
     '.claude/task-tracker-state.json',
     '.claude/task-tracker-queue.json',
     '.claude/task-fleet.json',
+    'tmp/',
   ];
   const COMMENT = '# ai-task-manager — user configuration files (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
@@ -228,19 +219,7 @@ function installClaude(targetDir, linkMode) {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
 
-  const hookStubPath = join(targetDir, '.claude', 'hooks', 'task-tracker.sh');
-  const hookStub = [
-    '#!/usr/bin/env bash',
-    `# Generated by ${PKG_NAME} install - do not edit.`,
-    `PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"`,
-    `PKG="$PROJECT_ROOT/node_modules/${PKG_NAME}"`,
-    'export AI_TASK_MANAGER_PROJECT_DIR="$PROJECT_ROOT"',
-    'exec bash "$PKG/hooks/task-tracker.sh"',
-    '',
-  ].join('\n');
-  writeIfChanged(hookStubPath, hookStub);
-  try { execFileSync('chmod', ['+x', hookStubPath]); } catch { /* ignore on Windows */ }
-  ok(`Hook ${dim('.claude/hooks/task-tracker.sh (stub -> node_modules)')}`);
+  // Hook registered directly in settings.json via patchSettingsJson — no bash stub needed.
 
   installStub(
     join(targetDir, '.claude', 'commands', 'task.md'),
@@ -373,7 +352,11 @@ function cmdInstall(args) {
   console.log(`     ${cyan(bold('npx ai-task-manager init'))}`);
   if ((agent === 'codex' || agent === 'both') && !enableCodexSuperpowers) {
     console.log('');
-    console.log(`  ${dim('Optional Codex workflow bootstrap:')} ${cyan('npx ai-task-manager install --codex-superpowers')}`);
+    console.log(bgYellow(bold('  Optional: Codex workflow bootstrap                        ')));
+    console.log(bgYellow('  Enable Superpowers skills for Codex agents:               '));
+    console.log(bgYellow('                                                             '));
+    console.log(bgYellow(`  ${bold('npx ai-task-manager install --codex-superpowers')}            `));
+    console.log('');
   }
   console.log('');
 }

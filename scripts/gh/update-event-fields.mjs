@@ -2,8 +2,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { loadConfig } from '../task-tracker/config.mjs';
+import { projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { gh, gql, writeProjectFieldValue } from './lib/github-projects.mjs';
@@ -74,7 +74,7 @@ async function fetchIssueBody() {
 }
 
 async function writeIssueBody(body) {
-  const tmp = path.join(os.tmpdir(), `aitm-event-fields-${issue}-${Date.now()}.md`);
+  const tmp = path.join(projectTmpDir(projectDir()), `aitm-event-fields-${issue}-${Date.now()}.md`);
   try {
     writeFileSync(tmp, body, 'utf8');
     await gh(['issue', 'edit', issue, '-R', cfg.repo, '--body-file', tmp]);

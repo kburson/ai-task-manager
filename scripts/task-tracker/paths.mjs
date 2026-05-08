@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 export const SHARED_DIR = '.ai-task-manager';
@@ -35,4 +35,12 @@ export function existingRuntimePath(projectDir, runtimePath) {
   if (!legacy) return preferred;
   const legacyAbs = path.join(projectDir, legacy);
   return existsSync(legacyAbs) ? legacyAbs : preferred;
+}
+
+// Returns a project-local tmp directory, creating it if needed.
+// Keeps all ephemeral files inside the project tree.
+export function projectTmpDir(projDir) {
+  const dir = path.join(projDir, 'tmp');
+  mkdirSync(dir, { recursive: true });
+  return dir;
 }

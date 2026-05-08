@@ -31,10 +31,10 @@ Backlog → Ready → In Progress → In Review → Done
 Move issues using the helper script (reads all IDs from `.claude/task-tracker.json`):
 
 ```bash
-scripts/gh/move-state.sh <issue#> <state>
+scripts/gh/move-state.mjs <issue#> <state>
 # States: backlog | ready | in-progress | in-review | done
 
-scripts/gh/move-state.sh 42 in-progress
+scripts/gh/move-state.mjs 42 in-progress
 ```
 
 - Move to **In Progress** when `/task #N` activates an issue.
@@ -48,11 +48,11 @@ scripts/gh/move-state.sh 42 in-progress
 Use P0/P1/P2 only. Sub-issues must share the same Priority as their parent epic — mismatched priority causes sub-issues to appear in the wrong swim lane.
 
 ```bash
-scripts/gh/set-priority.sh <issue#> <priority> [--cascade]
+scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]
 # Priorities: p0 | p1 | p2
 
 # Always use --cascade when setting priority on an epic:
-scripts/gh/set-priority.sh 42 p1 --cascade
+scripts/gh/set-priority.mjs 42 p1 --cascade
 ```
 
 ---
@@ -121,7 +121,7 @@ When the user says **"cleanup"**, execute in order:
    - Check off completed acceptance criteria.
    - Post a comment with the SHA + what landed + what's deferred.
    - Open follow-on issues and cross-link them.
-   - Move completed sub-issues to Done: `scripts/gh/move-state.sh <N> done`.
+   - Move completed sub-issues to Done: `scripts/gh/move-state.mjs <N> done`.
    - Update the parent issue body with progress; move parent to Done when all children are complete.
 
 5. **Feature value summary** — if a feature/epic completed this session, generate a value summary using the template in `docs/guides/ai-value-framework.md`. Post it as a comment on the parent epic issue.
@@ -137,7 +137,7 @@ At issue close, set these two fields on the GitHub Projects board:
 - **Actual Session Time** — total active AI session minutes across all sessions touching this issue.
 - **Context Length** — total reader-visible chat words across all sessions.
 
-The `/task end` command (or `scripts/gh/move-state.sh <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/guides/ai-value-framework.md`.
+The `/task end` command (or `scripts/gh/move-state.mjs <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/guides/ai-value-framework.md`.
 
 ---
 

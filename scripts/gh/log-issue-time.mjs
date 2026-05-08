@@ -8,9 +8,9 @@
 // Usage: node log-issue-time.mjs <issue#> [--dry-run]
 
 import { writeFileSync, unlinkSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
+import { projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import {
@@ -31,6 +31,7 @@ if (!issueArg) {
 
 const issueNumber = issueArg.replace('#', '');
 const cfg = loadConfig();
+const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 if (!cfg.repo) { console.error('repo not configured. Run: /task config repo owner/repo'); process.exit(1); }
 if (!cfg.projectId) { console.error('projectId not configured. Run: npx ai-task-manager init'); process.exit(1); }
@@ -43,7 +44,7 @@ async function fetchIssueBody() {
 }
 
 async function writeIssueBody(body) {
-  const tmp = path.join(os.tmpdir(), `aitm-fields-${issueNumber}-${Date.now()}.md`);
+  const tmp = path.join(projectTmpDir(projectDir), `aitm-fields-${issueNumber}-${Date.now()}.md`);
   try {
     writeFileSync(tmp, body, 'utf8');
     await gh(['issue', 'edit', issueNumber, '-R', cfg.repo, '--body-file', tmp]);

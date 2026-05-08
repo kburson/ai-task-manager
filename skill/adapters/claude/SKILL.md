@@ -21,5 +21,5 @@ When the shared skill mentions command examples, prefer these package paths:
 
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.sh" <N> in-progress
+"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.mjs" <N> in-progress
 ```

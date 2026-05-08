@@ -3,11 +3,12 @@
 // Read design: .claude/skills/task-tracker/DESIGN.md
 
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
-import os from 'node:os';
 import { loadConfig, setConfigValue, formatConfig, DEFAULTS } from './config.mjs';
+import { projectTmpDir } from './paths.mjs';
 import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
 
 const pexec = promisify(execFile);
@@ -234,7 +235,7 @@ async function runMigrate(args) {
 }
 
 // Move issue to Done on the project board. /task close is the ONLY sanctioned
-// path for invoking move-state.sh done — direct invocation skips the timing
+// path for invoking move-state.mjs done — direct invocation skips the timing
 // flush and corrupts the velocity ledger.
 async function runMoveStateDone(issue) {
   await runMoveState(issue, 'done');
@@ -242,15 +243,15 @@ async function runMoveStateDone(issue) {
 
 async function runMoveState(issue, state, { env: envOverride } = {}) {
   if (SKIP_NETWORK) return;
-  const scriptPath = new URL('../gh/move-state.sh', import.meta.url).pathname;
+  const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
   const issueNum = String(issue).replace(/^#/, '');
   try {
     const mergedEnv = envOverride ? { ...process.env, ...envOverride } : process.env;
-    const { stdout } = await pexec(scriptPath, [issueNum, state], { timeout: 15000, env: mergedEnv });
+    const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], { timeout: 15000, env: mergedEnv });
     if (stdout.trim()) console.log(stdout.trim());
   } catch (err) {
     console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
-    console.warn(`[task-tracker] Run manually: ${scriptPath} ${issueNum} ${state}`);
+    console.warn(`[task-tracker] Run manually: node ${scriptPath} ${issueNum} ${state}`);
   }
 }
 
@@ -272,6 +273,15 @@ async function verbClose() {
   const initialState = loadState(statePath);
   const target = rest.find(a => /^#\d+$/.test(a));
   let s = initialState;
+
+  // closeTarget: explicit issue arg takes precedence over the active task.
+  // closingDifferentIssue: true when the caller names a specific issue that is
+  // not the current active session — in that case we close only the named issue
+  // and leave the active session running.
+  const closeTarget = target || s.active || '';
+  const closeIssueNum = closeTarget.replace(/^#/, '');
+  const closingDifferentIssue = !!(target && s.active && target !== s.active);
+
   if (!s.active && target) {
     s = {
       ...s,
@@ -282,25 +292,23 @@ async function verbClose() {
     };
     saveState(s, statePath);
   }
-  if (!s.active) { console.log('no active task'); return; }
-  if (s.active === 'plan') {
+  if (!closeTarget) { console.log('no active task'); return; }
+  if (closeTarget === 'plan') {
     console.log('Discarded planning bucket.');
     saveState({ ...s, active: null, planBucket: null }, statePath);
     return;
   }
-  // Pre-close gate: every checkbox in the body must be checked, AND if the body
-  // contains the Pickup Directive's "Deep dive complete" line, it must be ticked.
-  // Audited override: env var TASK_TRACKER_FORCE_DONE=1 bypasses but posts an
-  // audit comment to the issue. The legacy `--force` flag still works (maps to
-  // the same audited override path).
+  // Pre-close gate: every checkbox in the body of the issue being closed must be
+  // checked. Gate always inspects closeTarget (the explicitly named issue, or the
+  // active task when no issue is named). Audited override: TASK_TRACKER_FORCE_DONE=1
+  // bypasses but posts an audit comment to the issue.
   const forceFlag = rest.includes('--force');
   const forceEnv = process.env.TASK_TRACKER_FORCE_DONE === '1';
   const force = forceFlag || forceEnv;
   if (!SKIP_NETWORK) {
-    const issueNum = s.active.replace(/^#/, '');
     try {
       const { stdout } = await pexec('gh', [
-        'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body',
+        'issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body',
       ], { timeout: 10000 });
       const data = JSON.parse(stdout);
       const body = data.body ?? '';
@@ -316,16 +324,16 @@ async function verbClose() {
       }
       if (reasons.length > 0) {
         if (force) {
-          console.error(`[task-tracker] ⚠ ${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'} — bypassing close gate for ${s.active}`);
+          console.error(`[task-tracker] ⚠ ${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'} — bypassing close gate for ${closeTarget}`);
           reasons.forEach(r => console.error(`   • ${r}`));
           unchecked.forEach(u => console.error(`   ${u}`));
           try {
             const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
             const note = `⚠ **Close gate bypassed** via \`${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'}\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
-            await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body', note], { timeout: 10000 });
+            await pexec('gh', ['issue', 'comment', closeIssueNum, '-R', cfg.repo, '--body', note], { timeout: 10000 });
           } catch { /* audit comment is best-effort */ }
         } else {
-          console.error(`[task-tracker] ⛔ Refusing to close ${s.active}:`);
+          console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
           reasons.forEach(r => console.error(`   • ${r}`));
           unchecked.forEach(u => console.error(`   ${u}`));
           console.error('');
@@ -339,65 +347,60 @@ async function verbClose() {
       console.warn(`[task-tracker] Could not check issue body: ${err.message}`);
     }
   }
-  // ── Cascade close (epic) or parent guard (child) ──────────────────────────
-  if (!SKIP_NETWORK) {
-    const closeIssueNum = (s.active || target || '').replace(/^#/, '');
-    if (closeIssueNum) {
-      const subNums = await fetchSubIssues(closeIssueNum);
-
-      if (subNums.length > 0) {
-        // Epic: verify all children are R4R (or already Done)
-        const childStates = await Promise.all(
-          subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
-        );
-        const notReady = childStates.filter(c => c.state !== 'r4r' && c.state !== 'done');
-        if (notReady.length > 0 && !force) {
-          console.error(`[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in R4R:`);
-          notReady.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
-          console.error('All sub-issues must reach R4R before the epic can close.');
-          process.exit(3);
-        }
-        // Cascade: close each R4R child
-        const r4rChildren = childStates.filter(c => c.state === 'r4r');
-        if (r4rChildren.length > 0) {
-          console.log(`[task-tracker] Cascade closing ${r4rChildren.length} child issue(s)...`);
-          const { buildRow: br } = await import('./gh-timing-comment.mjs');
-          for (const child of r4rChildren) {
-            try {
-              await safePostTiming(`#${child.num}`, br({
-                ts: nowIso(), event: 'done', activeMin: 0, idleMin: 0, deltaWords: 0,
-                wordMarker: 0, description: 'cascade closed by epic',
-              }));
-              await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' } });
-              await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], { timeout: 10000 });
-              try { deregisterTask(projectDir, `#${child.num}`); } catch {}
-              console.log(`  ✓ #${child.num} closed`);
-            } catch (err) {
-              console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
-            }
-          }
-        }
-      } else {
-        // Solo or child: if it has a parent epic, parent must be R4R or Done
-        const parentNum = await fetchParentIssue(closeIssueNum);
-        if (parentNum) {
-          const parentState = await getIssueBoardState(parentNum);
-          if (parentState !== 'r4r' && parentState !== 'done' && !force) {
-            console.error(`[task-tracker] ⛔ Cannot close child #${closeIssueNum} — parent epic #${parentNum} is in state: ${parentState ?? 'unknown'}`);
-            console.error('Parent epic must be in R4R or Done before a child can close.');
-            process.exit(3);
+  // ── Cascade close (epic) ──────────────────────────────────────────────────
+  // Sub-issues need no parent-state precondition — they close before the epic
+  // reaches R4R. The epic gate (children must be R4R) lives here on the epic side.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    const subNums = await fetchSubIssues(closeIssueNum);
+    if (subNums.length > 0) {
+      // Epic: verify all children are R4R (or already Done)
+      const childStates = await Promise.all(
+        subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
+      );
+      const notReady = childStates.filter(c => c.state !== 'r4r' && c.state !== 'done');
+      if (notReady.length > 0 && !force) {
+        console.error(`[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in R4R:`);
+        notReady.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
+        console.error('All sub-issues must reach R4R before the epic can close.');
+        process.exit(3);
+      }
+      // Cascade: close each R4R child
+      const r4rChildren = childStates.filter(c => c.state === 'r4r');
+      if (r4rChildren.length > 0) {
+        console.log(`[task-tracker] Cascade closing ${r4rChildren.length} child issue(s)...`);
+        const { buildRow: br } = await import('./gh-timing-comment.mjs');
+        for (const child of r4rChildren) {
+          try {
+            await safePostTiming(`#${child.num}`, br({
+              ts: nowIso(), event: 'done', activeMin: 0, idleMin: 0, deltaWords: 0,
+              wordMarker: 0, description: 'cascade closed by epic',
+            }));
+            await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' } });
+            await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], { timeout: 10000 });
+            try { deregisterTask(projectDir, `#${child.num}`); } catch {}
+            console.log(`  ✓ #${child.num} closed`);
+          } catch (err) {
+            console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
           }
         }
       }
     }
   }
-  const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'close');
-  const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
-  console.log(`Closed ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
-  clearActive(statePath);
-  try { deregisterTask(projectDir, s.active); } catch {}
-  await runLogIssueTime(s.active);
-  await runMoveStateDone(s.active);
+  if (closingDifferentIssue) {
+    // Close only the named issue; leave the active session (s.active) running.
+    console.log(`Closed ${closeTarget}.`);
+    try { deregisterTask(projectDir, closeTarget); } catch {}
+    await runLogIssueTime(closeTarget);
+    await runMoveStateDone(closeTarget);
+  } else {
+    const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'close');
+    const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
+    console.log(`Closed ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
+    clearActive(statePath);
+    try { deregisterTask(projectDir, s.active); } catch {}
+    await runLogIssueTime(s.active);
+    await runMoveStateDone(s.active);
+  }
 }
 
 async function verbSwitch(target) {
@@ -537,7 +540,29 @@ async function verbReview(args) {
     console.error('Usage: /task review #N');
     process.exit(1);
   }
-  if (s.active === target) {
+
+  // Agent-provided timing: --duration-minutes N --words N
+  const durIdx = args.indexOf('--duration-minutes');
+  const wordsIdx = args.indexOf('--words');
+  const parseFlag = v => Math.round(Number.parseFloat(String(v).replace(/^#/, '')) || 0);
+  const agentDurationMin = durIdx >= 0 ? parseFlag(args[durIdx + 1]) : null;
+  const agentWords = wordsIdx >= 0 ? parseFlag(args[wordsIdx + 1]) : null;
+  const hasAgentTiming = agentDurationMin !== null || agentWords !== null;
+
+  if (hasAgentTiming) {
+    const ts = nowIso();
+    const activeMin = agentDurationMin ?? 0;
+    const deltaWords = agentWords ?? 0;
+    const row = (await import('./gh-timing-comment.mjs')).buildRow({
+      ts, event: 'review', activeMin, idleMin: 0, deltaWords,
+      wordMarker: s.wordsAtEntryStart + deltaWords, description: 'agent session — starting review',
+    });
+    await safePostTiming(target, row);
+    saveState({ ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target }, statePath);
+    try { setTaskStatus(projectDir, target, 'paused'); } catch {}
+    await runMoveState(target, 'in-review');
+    console.log(`Review ${target}: +${activeMin} active min (agent), +${deltaWords} words; task paused.`);
+  } else if (s.active === target) {
     const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'review', 'starting review');
     const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
     saveState({
@@ -566,9 +591,63 @@ async function verbReview(args) {
     const { stdout } = await pexec('gh', [
       'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body',
     ], { timeout: 10000 });
-    const body = JSON.parse(stdout).body ?? '';
-    const unchecked = uncheckedPreCloseCheckboxes(body);
-    if (unchecked.length > 0) {
+    const rawBody = JSON.parse(stdout).body ?? '';
+    const lines = rawBody.split('\n');
+
+    // Parse checkboxes; track which are Verification Commands (backtick-wrapped, under that heading)
+    let inVerifSection = false;
+    const checkboxes = []; // { lineIndex, checked, label, command }
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (/^#{1,6}\s+Verification Commands/.test(line)) { inVerifSection = true; continue; }
+      if (/^#{1,6}\s/.test(line) && inVerifSection) inVerifSection = false;
+      const m = line.match(/^- \[([ x])\] (.+)$/);
+      if (!m) continue;
+      const checked = m[1] === 'x';
+      const label = m[2].trim();
+      const cmdMatch = inVerifSection ? label.match(/^`(.+)`$/) : null;
+      checkboxes.push({ lineIndex: i, checked, label, command: cmdMatch ? cmdMatch[1] : null });
+    }
+
+    // Run each Verification Command; auto-check on pass, flag regression on fail
+    const failures = [];
+    const regressions = [];
+    for (const cb of checkboxes) {
+      if (cb.command) {
+        let passed = false;
+        try {
+          await pexec('bash', ['-c', cb.command], { cwd: projectDir, timeout: 60000 });
+          passed = true;
+        } catch {}
+        if (passed) {
+          if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
+        } else {
+          if (cb.checked) {
+            regressions.push(cb.label);
+            lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+          }
+          failures.push(cb.label);
+        }
+      } else if (!cb.checked && !CLOSE_OWNED_CHECKBOXES.has(cb.label)) {
+        failures.push(`- [ ] ${cb.label}`);
+      }
+    }
+
+    // Write updated body (checked/unchecked) back to GitHub
+    const tmpBody = path.join(projectTmpDir(projectDir), `task-review-body-${issueNum}.md`);
+    try {
+      writeFileSync(tmpBody, lines.join('\n'), 'utf8');
+      await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmpBody],
+        { timeout: 15000 });
+    } finally {
+      try { unlinkSync(tmpBody); } catch {}
+    }
+
+    if (failures.length > 0) {
+      if (regressions.length > 0) {
+        console.error(`[task-tracker] Regressions detected for ${target}:`);
+        regressions.forEach(r => console.error(`   REGRESSION: ${r}`));
+      }
       const { buildRow: br } = await import('./gh-timing-comment.mjs');
       await safePostTiming(target, br({
         ts: nowIso(), event: 'in-progress', activeMin: 0, idleMin: 0, deltaWords: 0,
@@ -576,7 +655,7 @@ async function verbReview(args) {
       }));
       await runMoveState(target, 'in-progress');
       console.error(`[task-tracker] Review failed for ${target}:`);
-      unchecked.forEach(u => console.error(`   ${u}`));
+      failures.forEach(f => console.error(`   ${f}`));
       process.exit(3);
     }
     // ── Epic sub-issue gate: all sub-issues must be R4R ───────────────────────
@@ -595,13 +674,22 @@ async function verbReview(args) {
       }
     }
     // ── All gates passed: promote to R4R ─────────────────────────────────────
+    // Commit any outstanding tracked changes left by the agent
+    const commitResult = spawnSync('git', [
+      'commit', '-a', '-m', `chore: verification complete for ${target} — moving to R4R`,
+    ], { cwd: projectDir, stdio: 'pipe' });
+    if (commitResult.status === 0) {
+      console.log(`[task-tracker] Committed outstanding changes for ${target}.`);
+    }
+    // Move board status → R4R, then flush timing + update board custom fields
     await runMoveState(target, 'r4r');
     const r4rTs = nowIso();
     const r4rRow = (await import('./gh-timing-comment.mjs')).buildRow({
       ts: r4rTs, event: 'r4r', activeMin: 0, idleMin: 0, deltaWords: 0,
-      wordMarker: 0, description: 'verification complete — moved to R4R',
+      wordMarker: 0, description: 'task is now R4R',
     });
     await safePostTiming(target, r4rRow);
+    await runLogIssueTime(target);
     console.log(`✓ ${target} moved to R4R — all verification passed.`);
   }
 }
@@ -797,7 +885,7 @@ async function verbCheck(args) {
   const updated = alreadyChecked
     ? body.replace(checkedLine, uncheckedLine)
     : body.replace(uncheckedLine, checkedLine);
-  const tmp = path.join(os.tmpdir(), `tt-check-${Date.now()}.md`);
+  const tmp = path.join(projectTmpDir(projectDir), `tt-check-${Date.now()}.md`);
   try {
     writeFileSync(tmp, updated, 'utf8');
     await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], { timeout: 10000 });
@@ -851,6 +939,8 @@ Task Tracker — available commands
   /task resume #N           Switch back to a specific paused task
   /task update [msg]        Checkpoint — flush timing, reset counters, keep task active
   /task review #N           Move issue to In Review, flush timing, and pause
+  /task review #N --duration-minutes N --words N  Agent-reported timing (skips JSONL read)
+  /task words-count         Print word count for the current session (agent use)
   /task close [#N]          Close the active or specified task (runs pre-close gate)
   /task close --force       Close even if unchecked items remain
   /task check "<label>"     Toggle a checkbox in the active issue body
@@ -882,6 +972,12 @@ Aliases: start = resume, end = close
       case 'start':   await verbStart(); break;  // alias
       case 'update':  await verbUpdate(rest); break;
       case 'review':  await verbReview(rest); break;
+      case 'words-count': {
+        const sid = currentSessionId();
+        const count = sid ? countWords(jsonlPath(sid), 0).count : 0;
+        console.log(count);
+        break;
+      }
       case 'log': {
         const target = rest[0];
         if (!target) { console.error('Usage: /task log #N'); process.exit(1); }

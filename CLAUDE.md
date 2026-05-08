@@ -25,8 +25,8 @@ An npm package that installs the `/task` Claude Code skill into any project. The
 Full rules in `docs/guides/workflow.md`. Quick reference:
 
 - **Always assign new issues to the configured assignee** — every `gh issue create` must include `--assignee <value>`, where `<value>` is the `assignee` key from `.claude/task-tracker.json` (defaults to `@me`, which resolves to the authenticated `gh` user).
-- Move issues through states: `scripts/gh/move-state.sh <issue#> <state>`
-- Set priority: `scripts/gh/set-priority.sh <issue#> <priority> [--cascade]`
+- Move issues through states: `scripts/gh/move-state.mjs <issue#> <state>`
+- Set priority: `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]`
 - Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close. **Note:** GitHub Projects supports only one level of nesting — sub-issues cannot themselves have sub-issues.
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
 - At issue close: set `Actual Session Time` + `Context Length` on board. See `docs/guides/ai-value-framework.md`.
@@ -69,8 +69,8 @@ See [`docs/guides/settings-guide.md`](docs/guides/settings-guide.md) for full se
 | `hooks/task-tracker.sh` | Hook dispatcher for SessionStart/PreCompact/PostCompact |
 | `scripts/task-tracker/task-tracker.mjs` | Main CLI entry, dispatches verbs |
 | `scripts/task-tracker/config.mjs` | Config loader (project > user > defaults) |
-| `scripts/gh/move-state.sh` | Move issue to Kanban state |
-| `scripts/gh/set-priority.sh` | Set issue priority P0/P1/P2 |
+| `scripts/gh/move-state.mjs` | Move issue to Kanban state |
+| `scripts/gh/set-priority.mjs` | Set issue priority P0/P1/P2 |
 | `scripts/gh/init-project-config.sh` | Interactive setup: GH auth, project discovery, issue templates |
 | `docs/DESIGN.md` | Full design specification |
 | `docs/guides/workflow.md` | GitHub Issues, Kanban, estimates, cleanup — full workflow rules |

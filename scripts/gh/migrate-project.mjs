@@ -4,8 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { loadConfig } from '../task-tracker/config.mjs';
+import { projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import {
@@ -30,7 +30,7 @@ async function run(cmd, args, opts = {}) {
 }
 
 async function writeIssueBody(repo, issueNumber, body) {
-  const tmp = path.join(os.tmpdir(), `aitm-migrate-${issueNumber}-${Date.now()}.md`);
+  const tmp = path.join(projectTmpDir(projectDir), `aitm-migrate-${issueNumber}-${Date.now()}.md`);
   try {
     writeFileSync(tmp, body, 'utf8');
     await gh(['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
