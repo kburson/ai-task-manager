@@ -672,6 +672,53 @@ When dispatching agents to parallel worktrees, every worktree MUST start from a 
 
 **Orchestrator state-isolation guard:** Before dispatching, snapshot `.ai-task-manager/task-tracker.json` and `.ai-task-manager/task-tracker-state.json` from the main repo. Agents are known to occasionally resolve git-root incorrectly from inside a worktree and write back into the main repo's shared runtime state. After all agents return (or are killed), diff the snapshots; if either file changed unexpectedly, restore from the snapshot before resuming orchestrator work.
 
+### Worktree Config Seeding — MANDATORY
+
+`.ai-task-manager/` is gitignored (it holds runtime state). `git worktree add` therefore creates a worktree **without** `task-tracker.json`, `pickup-directive.md`, or `definition-of-done.md`. An agent booting into an unseeded worktree will hit `config-not-found` and — under the fail-closed bootstrap rule — MUST `STATUS: BLOCKED` and stop. Work performed in an unseeded worktree is discarded.
+
+Orchestrators MUST run the seed helper **immediately after `git worktree add` and before the agent boots**:
+
+```bash
+node scripts/task-tracker/seed-worktree.mjs <worktree-path>
+# (or, when ai-task-manager is installed as a dep:)
+node node_modules/ai-task-manager/scripts/task-tracker/seed-worktree.mjs <worktree-path>
+```
+
+The helper copies `task-tracker.json`, `pickup-directive.md`, `definition-of-done.md` from the parent repo's `.ai-task-manager/` and creates an empty `task-tracker-state.json` so the agent has a clean session ledger. It refuses to overwrite a populated target.
+
+### Pre-dispatch board flip — orchestrator owns the transition
+
+Sub-issues that will be picked up immediately by an agent MUST be moved to `In Progress` **by the orchestrator, before the agent boots**, and the `start` timing row MUST be posted by the orchestrator at the same moment. Do not rely on the agent's bootstrap to flip the board status — that path is a silent dependency. If the agent's bootstrap fails for any reason, the board state lies (still `Backlog`) and the work is invisible to the rest of the system.
+
+For each sub-issue about to be dispatched:
+
+```bash
+node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/dispatch-prep.mjs" <SUB_N> --description "agent dispatch (sequence <S>)"
+```
+
+`dispatch-prep.mjs` runs `move-state.mjs <N> in-progress` then posts a `start` row to the issue's `⏱ Timing Log`. Both happen before the agent boots.
+
+The agent's own bootstrap will still call `move-state.mjs in-progress` and post its own `start` row — those are now idempotent confirmations rather than load-bearing transitions. If the agent never boots, the orchestrator's pre-dispatch state is correct and accountable; the agent's missing presence is what surfaces as a post-dispatch verification failure (no second `start` row, agent not in fleet) rather than as a silently-stalled `Backlog` issue.
+
+**At sub-issue creation time** (the loop in "Sub-Issue Creation Loop"), continue to tether at `--status backlog`. The flip happens at fan-out, not at creation, because not every created sub-issue is dispatched immediately (later sequences wait, deep-dives may land before pickup).
+
+### Orchestrator post-dispatch verification
+
+After dispatching each agent, the orchestrator MUST complete the following four checks within **60 seconds** of dispatch. If any check fails, kill the agent process, force-remove the worktree (`git worktree remove -f -f <path> && git worktree prune`), and re-dispatch.
+
+1. **Worktree config present:** `test -f <worktree>/.ai-task-manager/task-tracker.json` exits 0.
+2. **Agent registered in fleet:** `task-tracker.mjs fleet` lists the agent's session and issue.
+3. **Issue moved to In Progress:** `gh issue view <N> --json projectItems` shows the project board status as `In Progress` (not `Backlog`/`Ready`).
+4. **`start` timing row posted:** the issue's `⏱ Timing Log` comment contains a row with `event=start` whose timestamp is at or after the dispatch moment.
+
+A dispatch with no `start` row in 60s is a silent bootstrap failure. Treat it the same as an explicit `STATUS: BLOCKED` — the agent is not actually running the contract.
+
+### Canary before fan-out
+
+The first multi-agent dispatch in a repository, OR any dispatch following a change to the worktree/bootstrap pipeline (the seeding helper, the pickup directive Hard Rules, the agent prompt, or this section), MUST start with a **single-agent canary** on the smallest available sub-issue.
+
+The fan-out is gated on the canary's `start` row landing in the issue's timing log. If the canary fails the post-dispatch verification, do not fan out — fix the pipeline first. Parallel dispatch amplifies a broken pipeline into N units of discarded work; a canary contains the blast radius to one.
+
 ## Error Handling
 
 If GH API fails, the event is queued. Next successful `/task` call drains the queue.

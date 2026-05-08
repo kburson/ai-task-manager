@@ -9,6 +9,11 @@ These rules are enforced by `/task close` and by `move-state.mjs <issue> done`. 
 them is a process violation, not a shortcut. Closing or moving an issue to Done while any
 required box is unchecked will be refused.
 
+0. **Bootstrap is fail-closed. If steps 1–7 of "Required steps before writing any code" do not all succeed, STOP.**
+   - If `task-tracker.mjs <issue> --role agent` reports `config-not-found`, if `move-state.mjs` cannot move the issue to `in-progress`, if `words-count` returns no value, or if any other bootstrap step exits non-zero — you MUST report `STATUS: BLOCKED` with the failing step name (`bootstrap-step-<N>: <reason>`) and stop before editing any source file.
+   - "It printed a warning but I kept going" is a process violation. The bootstrap is the contract that registers your session, moves the issue, and posts the `start` timing row. If the contract did not complete, your work cannot be accounted for and will be discarded.
+   - The most common cause is a worktree that was created without `.ai-task-manager/` (the directory is gitignored, so `git worktree add` doesn't carry it). The orchestrator must seed it via `scripts/task-tracker/seed-worktree.mjs <worktree>` BEFORE booting you. If you hit this, BLOCK — do not try to recreate the config yourself.
+
 1. **Deep Dive is mandatory before any code changes.**
    - You MUST complete the deep-dive analysis (step 2 below) and append it to the issue
      body (step 3) BEFORE editing any source file in service of this issue.

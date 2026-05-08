@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { loadConfig, setConfigValue, formatConfig, DEFAULTS } from './config.mjs';
 import { projectTmpDir } from './paths.mjs';
 import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
@@ -67,6 +67,20 @@ const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet'
 
 function checkInit(cfg, verb) {
   if (INIT_EXEMPT.has(verb)) return;
+  // Fail-closed for agent bootstrap: when --role agent is in play, the worktree
+  // MUST already have .ai-task-manager/task-tracker.json (seeded by the orchestrator
+  // via scripts/task-tracker/seed-worktree.mjs). A missing config file here means
+  // the worktree pipeline broke; never silently no-op.
+  const cfgPath = path.join(projectDir, '.ai-task-manager', 'task-tracker.json');
+  if (!existsSync(cfgPath)) {
+    process.stderr.write(
+      `task-tracker: config-not-found at ${cfgPath}\n` +
+      '  This worktree was not seeded with .ai-task-manager/. The orchestrator must run:\n' +
+      '    node scripts/task-tracker/seed-worktree.mjs <worktree-path>\n' +
+      '  before booting an agent. Agents MUST report STATUS: BLOCKED and stop.\n'
+    );
+    process.exit(2);
+  }
   if (!cfg.repo) {
     process.stderr.write(
       'task-tracker: not initialized — no repo configured.\n' +

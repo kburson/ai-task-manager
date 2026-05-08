@@ -76,17 +76,18 @@ assert.match(r5.stdout, /Active: #999/);
 rmSync(sandbox, { recursive: true });
 
 // ---- Uninitialized guard tests ----
+// Dir has .ai-task-manager/ but no task-tracker.json — fail-closed `config-not-found`.
 const noRepoDirBase = mkdtempSync(path.join(tmpdir(), 'tt-norepo-'));
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
 const noRepoEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase, TT_SKIP_NETWORK: '1' };
 
-// Blocked verbs exit non-zero with "not initialized" on stderr
 for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'review', 'check', 'log']) {
   try {
     await pexec('node', [CLI, blockedVerb], { env: noRepoEnv });
-    assert.fail(`Expected exit(1) for verb: ${blockedVerb}`);
+    assert.fail(`Expected non-zero exit for verb: ${blockedVerb}`);
   } catch (err) {
-    assert.match(err.stderr, /not initialized/i, `verb "${blockedVerb}" should print "not initialized"`);
+    assert.match(err.stderr, /config-not-found|not initialized/i,
+      `verb "${blockedVerb}" should fail-closed with config-not-found or not initialized`);
   }
 }
 
@@ -97,4 +98,19 @@ for (const exemptVerb of ['status', 'config', 'help', '?']) {
 }
 
 rmSync(noRepoDirBase, { recursive: true });
+
+// ---- Fail-closed bootstrap: --role agent with no .ai-task-manager/ ----
+// Worktree pipeline regression guard. Must exit non-zero with "config-not-found at <path>"
+// when an agent boots into a worktree that wasn't seeded with .ai-task-manager/.
+const bareWorktree = mkdtempSync(path.join(tmpdir(), 'tt-bare-wt-'));
+const bareEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: bareWorktree, TT_SKIP_NETWORK: '1' };
+try {
+  await pexec('node', [CLI, '#42', '--role', 'agent'], { env: bareEnv });
+  assert.fail('Expected non-zero exit for --role agent in unseeded worktree');
+} catch (err) {
+  assert.match(err.stderr, /config-not-found at/, 'agent bootstrap must report config-not-found path');
+  assert.match(err.stderr, /\.ai-task-manager[\\/]task-tracker\.json/, 'error must name the missing config file');
+  assert.match(err.stderr, /seed-worktree\.mjs/, 'error must point to the seeding helper');
+}
+rmSync(bareWorktree, { recursive: true });
 console.log('cli.test.mjs: status/config/end passed');
