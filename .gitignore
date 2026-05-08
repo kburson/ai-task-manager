@@ -2,12 +2,6 @@ node_modules/
 
 *.tgz
 
-# Runtime state files (generated per-project, not committed here)
-.claude/
-.agents/
-.ai-task-manager/
-codex/
-
 /reports/
 .DS_Store
 
