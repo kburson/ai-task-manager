@@ -257,7 +257,7 @@ async function runMoveState(issue, state, { env: envOverride } = {}) {
 
 const CLOSE_OWNED_CHECKBOXES = new Set([
   'Issue moved to Done',
-  '`/task close` run (writes Engaged Time, Session Time, and Context Length automatically)',
+  '`/task close` run (moves to Done, deregisters from fleet)',
   'If this completes the parent epic: update parent body; close parent if all siblings Done',
 ]);
 
@@ -386,20 +386,27 @@ async function verbClose() {
       }
     }
   }
+  // Timing and board fields were flushed at R4R (/task review). Close only moves
+  // to Done, deregisters from fleet, and writes a +0 close marker row.
+  const { buildRow: closeBr } = await import('./gh-timing-comment.mjs');
   if (closingDifferentIssue) {
     // Close only the named issue; leave the active session (s.active) running.
-    console.log(`Closed ${closeTarget}.`);
+    await safePostTiming(closeTarget, closeBr({
+      ts: nowIso(), event: 'done', activeMin: 0, idleMin: 0, deltaWords: 0,
+      wordMarker: 0, description: 'closed',
+    }));
     try { deregisterTask(projectDir, closeTarget); } catch {}
-    await runLogIssueTime(closeTarget);
     await runMoveStateDone(closeTarget);
+    console.log(`Closed ${closeTarget}.`);
   } else {
-    const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'close');
-    const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
-    console.log(`Closed ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words logged.`);
+    await safePostTiming(closeTarget, closeBr({
+      ts: nowIso(), event: 'done', activeMin: 0, idleMin: 0, deltaWords: 0,
+      wordMarker: 0, description: 'closed — timing flushed at R4R',
+    }));
     clearActive(statePath);
     try { deregisterTask(projectDir, s.active); } catch {}
-    await runLogIssueTime(s.active);
     await runMoveStateDone(s.active);
+    console.log(`Closed ${s.active}.`);
   }
 }
 

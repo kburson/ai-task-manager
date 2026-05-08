@@ -33,7 +33,7 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 ### Moving an issue to Done — human step only:
 
-4. **Run `/task close #N` only after explicit human instruction** — e.g., "close #N", "mark #N done", "review accepted, close it." This is NOT an automated step. It atomically: writes the final timing-table row, updates Engaged Time + Session Time + Context Length on the project board, deregisters from the fleet, and moves the issue to Done. If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
+4. **Run `/task close #N` only after explicit human instruction** — e.g., "close #N", "mark #N done", "review accepted, close it." This is NOT an automated step. It writes a `+0` close marker row, deregisters from the fleet, and moves the issue to Done. (Engaged Time, Session Time, and Context Length are flushed to the project board at `/task review` — not at close.) If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
 
 ### Forbidden — these break the contract:
 
