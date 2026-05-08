@@ -4,7 +4,7 @@
   "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
   "type": "module",
   "license": "MIT",
-  "author": "Kendrick Burson <kpburson@pm.me>",
+  "author": "Kendrick Burson <spam.kpb@gmail.com>",
   "homepage": "https://github.com/kburson/ai-task-manager",
   "engines": {
     "node": ">=18"

@@ -22,3 +22,4 @@ codex/
 .claude/task-tracker-state.json
 .claude/task-tracker-queue.json
 .claude/task-fleet.json
+tmp/
