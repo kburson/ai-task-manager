@@ -664,7 +664,7 @@ async function verbReview(args) {
       const childStates = await Promise.all(
         subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
       );
-      const notR4R = childStates.filter(c => c.state !== 'r4r');
+      const notR4R = childStates.filter(c => c.state !== 'r4r' && c.state !== 'done');
       if (notR4R.length > 0) {
         // Stay in In Review — the epic's own boxes pass but children aren't ready
         console.error(`[task-tracker] ⛔ Epic ${target} cannot move to R4R — ${notR4R.length} child issue(s) not in R4R:`);
