@@ -4,6 +4,8 @@
   "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
   "type": "module",
   "license": "MIT",
+  "author": "Kendrick Burson <kpburson@pm.me>",
+  "homepage": "https://github.com/kburson/ai-task-manager",
   "engines": {
     "node": ">=18"
   },
@@ -20,7 +22,6 @@
   },
   "files": [
     "bin/",
-    "codex/",
     "config/",
     "skill/",
     "hooks/",
@@ -49,7 +50,6 @@
     "url": "https://github.com/kburson/ai-task-manager/issues"
   },
   "devDependencies": {
-    "ai-task-manager": "file:ai-task-manager-1.0.0.tgz",
     "puppeteer": "^24.42.0"
   }
 }
