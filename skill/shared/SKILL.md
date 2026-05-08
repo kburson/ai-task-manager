@@ -52,11 +52,11 @@ If any of these are skipped: stop, restore the contract (re-register the task, c
 | Command | Action |
 |---|---|
 | `/task` | Print active task, elapsed, words since last marker |
-| `/task #N` | **Start/switch to issue #N and display its full body** |
+| `/task #N` | **Start/switch to issue #N** (read body silently for context; do not print it) |
 | `/task new [title]` | Create a new issue and start working on it. In plan mode: optionally orchestrate full epic + sub-issue backlog from a spec in context. |
 | `/task plan` | Open an untracked planning bucket |
 | `/task resume` | Resume the last paused task (no body reload — context still warm) |
-| `/task resume #N` | **Switch back to a specific paused task and display its body** |
+| `/task resume #N` | **Switch back to a specific paused task** (read body silently for context; do not print it) |
 | `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude Code. |
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
 | `/task review #N` | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. |
@@ -104,7 +104,7 @@ Print stdout verbatim. On non-zero exit, print stderr and surface the error.
 
 ### Step 2: For `/task #N` and `/task resume #N` — ensure issue states are correct
 
-After the CLI succeeds, perform these checks before displaying the issue.
+After the CLI succeeds, perform these checks. Read the issue body silently — do not print it to the chat.
 
 #### 2a. Fetch full issue metadata
 ```bash
@@ -136,11 +136,11 @@ If parent is closed → reopen and move to in-progress.
 If parent is open but not in-progress → move to in-progress.
 Report any state changes; skip silently if already correct.
 
-#### 2d. Display the issue
+#### 2d. Read the issue (silently)
 ```bash
 gh issue view <N> --json title,body,state
 ```
-Show: **title** (h2), full body, current state. This tells Claude what work needs doing.
+Read title, body, and state for context. **Do not print the body to the chat** — the user reads it in the GitHub UI. Acknowledge with one line: issue title and current state.
 
 ### Step 2b: For `/task config init` — run the configuration interview
 
