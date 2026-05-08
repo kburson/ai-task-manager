@@ -293,6 +293,18 @@ async function verbClose() {
     saveState(s, statePath);
   }
   if (!closeTarget) { console.log('no active task'); return; }
+
+  // Idempotency guard: if already Done, just clean up local state and fleet.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    const currentState = await getIssueBoardState(closeIssueNum);
+    if (currentState === 'done') {
+      clearActive(statePath);
+      try { deregisterTask(projectDir, closeTarget); } catch {}
+      console.log(`${closeTarget} is already Done — local state and fleet cleaned up.`);
+      return;
+    }
+  }
+
   if (closeTarget === 'plan') {
     console.log('Discarded planning bucket.');
     saveState({ ...s, active: null, planBucket: null }, statePath);
