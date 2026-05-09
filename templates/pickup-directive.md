@@ -69,6 +69,7 @@ required box is unchecked will be refused.
    - Any time you must stop work to ask the user a clarification, design choice, missing-info, or scope-confirmation question and wait for an answer, run `/task pause "pause for question"` BEFORE asking. Run `/task start "question answered"` AFTER they answer, before any further tool calls. The reason strings are positional args and land in the `description` column of the issue's `⏱ Timing Log`.
    - Does NOT apply to rhetorical or in-flight prose questions you answer yourself.
    - Why: the timer measures focused engagement. Idle time waiting for a human answer corrupts `engagedTime`/`sessionTime` and the value report.
+   - Pause→resume gaps ≤ `reviewPauseThresholdMin` (default 5 min, configurable in `.ai-task-manager/task-tracker.json`) count as **Review Time** and roll into **Engaged Time**; longer gaps are excluded as idle.
 
 8. **On mistakes — stop and surface, do not self-correct.**
    If you discover you have taken a wrong action (created a duplicate issue, used

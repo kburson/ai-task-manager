@@ -64,7 +64,12 @@ Example:
 > User: "Both."
 > Assistant: Running `/task start "question answered"`. Proceeding to verify both suites.
 
-The clock should reflect focused work only. Idle time waiting for a human answer is not engaged time.
+The clock should reflect focused work only. Pause→resume gaps are classified at rollup time:
+
+- **≤ `reviewPauseThresholdMin` minutes** (default 5): counted as **Review Time** and folded into **Engaged Time**. Use this for short blocking questions, intentional review beats, or quick context checks.
+- **> threshold**: treated as idle/break and excluded from engaged totals. Long human-away gaps don't inflate the metrics.
+
+The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresholdMin`). Override with `/task config reviewPauseThresholdMin <minutes>`.
 
 ## Commands
 

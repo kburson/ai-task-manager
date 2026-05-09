@@ -1,5 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildFieldSyncPlan, valueForProjectField } from '../project-fields.mjs';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const defaultDefs = JSON.parse(readFileSync(path.join(here, '../../../config/project-fields.default.json'), 'utf8'));
+const keys = defaultDefs.map(d => d.key);
+assert.ok(keys.includes('reviewTime'), 'default field defs include reviewTime');
+assert.ok(!keys.includes('contextLength'), 'default field defs no longer include contextLength');
 
 assert.deepEqual(valueForProjectField(12, 'number'), { number: 12 });
 assert.deepEqual(valueForProjectField('2026-05-06', 'date'), { date: '2026-05-06' });

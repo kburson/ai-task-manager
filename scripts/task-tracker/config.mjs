@@ -46,6 +46,7 @@ export const DEFAULTS = {
   queuePath: '.ai-task-manager/task-tracker-queue.json',
   statePath: '.ai-task-manager/task-tracker-state.json',
   idleThresholdMinutes: 5,
+  reviewPauseThresholdMin: 5,
   recordWallClock: true,
   pickupDirective: true,
 };
@@ -83,6 +84,7 @@ const TYPES = {
   queuePath: 'string',
   statePath: 'string',
   idleThresholdMinutes: 'number',
+  reviewPauseThresholdMin: 'number',
   recordWallClock: 'boolean',
   pickupDirective: 'boolean',
 };
@@ -174,7 +176,7 @@ export function setConfigValue(key, rawValue, paths = {}) {
 
 const USER_KEYS = [
   'repo', 'assignee', 'defaultLabels',
-  'wpm', 'autoEndOnSwitch', 'idleThresholdMinutes', 'recordWallClock', 'hookNetworkTimeoutMs',
+  'wpm', 'autoEndOnSwitch', 'idleThresholdMinutes', 'reviewPauseThresholdMin', 'recordWallClock', 'hookNetworkTimeoutMs',
   'pickupDirective',
   'statePath', 'queuePath',
 ];

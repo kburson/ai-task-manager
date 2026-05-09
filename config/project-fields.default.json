@@ -45,10 +45,10 @@
     "aliases": ["Actual Session Time"]
   },
   {
-    "key": "contextLength",
-    "name": "Context Length",
+    "key": "reviewTime",
+    "name": "Review Time",
     "type": "number",
-    "unit": "words",
+    "unit": "minutes",
     "aliases": []
   },
   {

@@ -11,6 +11,7 @@ import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/projec
 import {
   fieldOptionMap,
   gh,
+  gql,
   projectValuesForIssue,
   writeProjectFieldValue,
 } from './lib/github-projects.mjs';
@@ -21,6 +22,37 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const skipInit = args.includes('--skip-init');
 const includeClosed = args.includes('--closed') || args.includes('--all');
+const keepRetired = args.includes('--keep-retired');
+
+// Fields previously written by the board sync that have since been retired.
+// Migration deletes these from the project unless --keep-retired is passed.
+const RETIRED_FIELDS = ['Context Length'];
+
+async function deleteRetiredFields(projectId) {
+  const data = await gql(`
+    query($project: ID!) {
+      node(id: $project) {
+        ... on ProjectV2 {
+          fields(first: 100) {
+            nodes { ... on ProjectV2FieldCommon { id name } }
+          }
+        }
+      }
+    }`,
+    { project: projectId }
+  );
+  const targets = (data.node.fields.nodes || []).filter(f => f?.name && RETIRED_FIELDS.includes(f.name));
+  for (const f of targets) {
+    if (dryRun) { console.log(`Would delete retired field: ${f.name}`); continue; }
+    await gql(`
+      mutation($field: ID!) {
+        deleteProjectV2Field(input: { fieldId: $field }) { projectV2Field { ... on ProjectV2FieldCommon { id } } }
+      }`,
+      { field: f.id }
+    );
+    console.log(`Deleted retired field: ${f.name}`);
+  }
+}
 
 const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
@@ -59,6 +91,8 @@ async function main() {
   const raw = await gh(['issue', 'list', '-R', cfg.repo, '--state', state, '--limit', '1000', '--json', 'number,id,body,title']);
   const issues = JSON.parse(raw);
   const optionMap = dryRun ? {} : await fieldOptionMap(cfg.projectId);
+
+  if (!keepRetired) await deleteRetiredFields(cfg.projectId);
 
   console.log(`Migrating ${issues.length} ${state} issue(s) into configured project.`);
   let healed = 0;

@@ -76,5 +76,15 @@ writeFileSync(projectPath, JSON.stringify({ fieldIds: { size: 'SIZE_FIELD_FROM_M
 cfg = loadConfig({ projectPath, userPath });
 assert.equal(cfg.sizeFieldId, 'SIZE_FIELD_FROM_MAP');
 
+// Test 13: reviewPauseThresholdMin default + override
+writeFileSync(projectPath, JSON.stringify({}));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.reviewPauseThresholdMin, 5, 'default review threshold is 5 min');
+assert.equal(DEFAULTS.reviewPauseThresholdMin, 5);
+setConfigValue('reviewPauseThresholdMin', '10', { projectPath, userPath });
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.reviewPauseThresholdMin, 10);
+assert.equal(cfg._sources.reviewPauseThresholdMin, 'project');
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

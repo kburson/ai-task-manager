@@ -410,7 +410,7 @@ apply_project_template() {
     create_project_field_if_missing "Estimate" "NUMBER"
     create_project_field_if_missing "Engaged Time" "NUMBER"
     create_project_field_if_missing "Session Time" "NUMBER"
-    create_project_field_if_missing "Context Length" "NUMBER"
+    create_project_field_if_missing "Review Time" "NUMBER"
     create_project_field_if_missing "Sequence" "NUMBER"
     create_project_field_if_missing "Start date" "DATE"
     create_project_field_if_missing "End date" "DATE"

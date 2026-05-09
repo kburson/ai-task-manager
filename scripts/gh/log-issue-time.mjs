@@ -12,7 +12,8 @@ import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
-import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
+import { buildFieldSyncPlan, fieldIdFor, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
+import { parseTimingRows, rollupTotals } from '../task-tracker/timing-rollup.mjs';
 import {
   gh,
   gql,
@@ -51,48 +52,6 @@ async function writeIssueBody(body) {
   } finally {
     try { unlinkSync(tmp); } catch {}
   }
-}
-
-// ---- Parse timing table ----
-
-function parseNum(cell) {
-  const s = cell.trim().replace(/,/g, '');
-  if (s === '—' || s === '') return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-function parseTimingComment(body) {
-  const lines = body.split('\n');
-  let activeMinCol = -1;
-  let wordMarkerCol = -1;
-  let totalActiveMin = 0;
-  let lastWordMarker = null;
-  let rowCount = 0;
-
-  for (const line of lines) {
-    if (!line.startsWith('|')) continue;
-    const cells = line.split('|').slice(1, -1);
-
-    // Header row
-    if (cells.some(c => c.trim() === 'Timestamp')) {
-      activeMinCol = cells.findIndex(c => c.trim() === 'Active' || c.trim() === 'Active Min');
-      wordMarkerCol = cells.findIndex(c => c.trim() === 'Word Marker');
-      continue;
-    }
-    // Separator row
-    if (cells.every(c => /^[-: ]+$/.test(c.trim()))) continue;
-    // Data row
-    if (activeMinCol === -1 || wordMarkerCol === -1) continue;
-
-    const activeMin = parseNum(cells[activeMinCol]);
-    const wordMarker = parseNum(cells[wordMarkerCol]);
-    if (activeMin != null) totalActiveMin += activeMin;
-    if (wordMarker != null) lastWordMarker = wordMarker;
-    rowCount++;
-  }
-
-  return { totalActiveMin, totalContextWords: lastWordMarker, rowCount };
 }
 
 // ---- GitHub queries ----
@@ -139,17 +98,16 @@ async function fetchProjectMeta() {
   const sessionField = cfg.fieldSessionTime
     ? { id: cfg.fieldSessionTime }
     : fieldByName('Session Time', 'Actual Session Time');
-  const contextField = cfg.fieldContextWords
-    ? { id: cfg.fieldContextWords }
-    : fieldByName('Context Length');
+  const reviewField = fieldIdFor(cfg, 'reviewTime')
+    ? { id: fieldIdFor(cfg, 'reviewTime') }
+    : fieldByName('Review Time');
   if (!sessionField) throw new Error('Field "Session Time" not found on project');
-  if (!contextField) throw new Error('Field "Context Length" not found on project');
 
   return {
     itemId: itemNode.id,
     engagedFieldId: engagedField?.id || '',
     sessionFieldId: sessionField.id,
-    contextFieldId: contextField.id,
+    reviewFieldId: reviewField?.id || '',
   };
 }
 
@@ -166,7 +124,9 @@ async function writeNumberField(itemId, fieldId, value) {
     process.exit(1);
   }
 
-  const { totalActiveMin, totalContextWords, rowCount } = parseTimingComment(comment.body);
+  const rows = parseTimingRows(comment.body);
+  const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
+  const { rowCount, totalActiveMin, reviewMin, engagedMin } = rollupTotals(rows, thresholdMin);
 
   if (rowCount === 0) {
     console.error('Timing comment found but contains no data rows');
@@ -174,28 +134,28 @@ async function writeNumberField(itemId, fieldId, value) {
   }
 
   console.log(`Issue #${issueNumber}: ${rowCount} timing rows`);
-  console.log(`  Engaged Time        : ${totalActiveMin} min`);
+  console.log(`  Engaged Time        : ${engagedMin} min  (active ${totalActiveMin} + review ${reviewMin})`);
   console.log(`  Session Time        : ${totalActiveMin} min`);
-  console.log(`  Context Length      : ${(totalContextWords ?? 0).toLocaleString('en-US')} words`);
+  console.log(`  Review Time         : ${reviewMin} min  (threshold ${thresholdMin} min)`);
 
   if (dryRun) {
     console.log('Dry run — no writes performed.');
     process.exit(0);
   }
 
-  const { itemId, engagedFieldId, sessionFieldId, contextFieldId } = await fetchProjectMeta();
+  const { itemId, engagedFieldId, sessionFieldId, reviewFieldId } = await fetchProjectMeta();
   const fieldDefs = loadProjectFieldDefs();
   const issueBody = await fetchIssueBody();
   const ensured = ensureIssueFieldDb(issueBody, fieldDefs, {
-    engagedTime: totalActiveMin,
+    engagedTime: engagedMin,
     sessionTime: totalActiveMin,
-    contextLength: totalContextWords ?? 0,
+    reviewTime: reviewMin,
   });
   const values = {
     ...ensured.values,
-    engagedTime: totalActiveMin,
+    engagedTime: engagedMin,
     sessionTime: totalActiveMin,
-    contextLength: totalContextWords ?? 0,
+    reviewTime: reviewMin,
   };
   const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
   if (updated.changed) await writeIssueBody(updated.body);
@@ -206,9 +166,9 @@ async function writeNumberField(itemId, fieldId, value) {
       await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId: item.fieldId, value: item.value });
     }
   } else {
-    if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, totalActiveMin);
+    if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, engagedMin);
     await writeNumberField(itemId, sessionFieldId, totalActiveMin);
-    await writeNumberField(itemId, contextFieldId, totalContextWords ?? 0);
+    if (reviewFieldId) await writeNumberField(itemId, reviewFieldId, reviewMin);
   }
 
   console.log('Fields updated on GitHub Projects board.');
