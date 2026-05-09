@@ -17,3 +17,4 @@ node_modules/
 .claude/task-tracker-queue.json
 .claude/task-fleet.json
 tmp/
+.worktrees/
