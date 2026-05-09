@@ -14,11 +14,16 @@ export const DEFAULTS = {
   // Kanban board field + state option IDs (set by init script)
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
+  kanbanOptionGrooming: '',
+  kanbanOptionAnalysis: '',
+  kanbanOptionDevelopment: '',
+  kanbanOptionReview: '',
+  kanbanOptionR4R: '',
+  kanbanOptionDone: '',
+  // Deprecated aliases — same option IDs as the renamed columns. Kept for one release.
   kanbanOptionReady: '',
   kanbanOptionInProgress: '',
   kanbanOptionInReview: '',
-  kanbanOptionR4R: '',
-  kanbanOptionDone: '',
   // Sequence field ID (set by init script) — numeric field on the project board
   sequenceFieldId: '',
   // Size field ID (set by init script) — single-select field on the project board
@@ -57,11 +62,15 @@ const TYPES = {
   projectId: 'string',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
+  kanbanOptionGrooming: 'string',
+  kanbanOptionAnalysis: 'string',
+  kanbanOptionDevelopment: 'string',
+  kanbanOptionReview: 'string',
+  kanbanOptionR4R: 'string',
+  kanbanOptionDone: 'string',
   kanbanOptionReady: 'string',
   kanbanOptionInProgress: 'string',
   kanbanOptionInReview: 'string',
-  kanbanOptionR4R: 'string',
-  kanbanOptionDone: 'string',
   sequenceFieldId: 'string',
   sizeFieldId: 'string',
   fieldIds: 'object',
@@ -183,7 +192,9 @@ const USER_KEYS = [
 
 const INTERNAL_KEYS = [
   'projectId',
-  'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionR4R', 'kanbanOptionDone',
+  'kanbanFieldId',
+  'kanbanOptionBacklog', 'kanbanOptionGrooming', 'kanbanOptionAnalysis', 'kanbanOptionDevelopment', 'kanbanOptionReview', 'kanbanOptionR4R', 'kanbanOptionDone',
+  'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview',
   'sequenceFieldId', 'sizeFieldId',
   'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartTime',
   'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
