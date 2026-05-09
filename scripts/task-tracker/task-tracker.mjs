@@ -19,6 +19,7 @@ import { enqueue, drain } from './queue.mjs';
 import { registerTask, deregisterTask, setTaskStatus, currentBranch,
          findMainWorktreePath, fleetRegistryPath, readFleet } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { validateVerificationCommand } from './lib/verification-allowlist.mjs';
 
 const argv = process.argv.slice(2);
 // Extract --role flag before parsing verb/rest (agent | orchestrator | solo)
@@ -660,9 +661,19 @@ async function verbReview(args) {
     const regressions = [];
     for (const cb of checkboxes) {
       if (cb.command) {
+        const validation = validateVerificationCommand(cb.command, { projectDir });
+        if (!validation.ok) {
+          console.log(`[task-tracker] rejected: ${validation.reason}`);
+          if (cb.checked) {
+            regressions.push(cb.label);
+            lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+          }
+          failures.push(`${cb.label} (rejected: ${validation.reason})`);
+          continue;
+        }
         let passed = false;
         try {
-          await pexec('bash', ['-c', cb.command], { cwd: projectDir, timeout: 60000 });
+          await pexec(validation.argv[0], validation.argv.slice(1), { cwd: projectDir, timeout: 60000 });
           passed = true;
         } catch {}
         if (passed) {
