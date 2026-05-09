@@ -24,3 +24,7 @@ node_modules/
 AGENTS.md
 tmp/
 .worktrees/
+.claude/task-tracker.json
+.claude/task-tracker-state.json
+.claude/task-tracker-queue.json
+.claude/task-fleet.json
