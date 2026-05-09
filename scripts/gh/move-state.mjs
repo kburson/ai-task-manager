@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
+import { validateBody, DEFAULT_GATES } from '../task-tracker/lib/body-gates.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -74,8 +75,13 @@ if (!SKIP_NETWORK && !optionId) {
   process.exit(1);
 }
 
-// Done gate
-if (stateArg === 'done' && !SKIP_NETWORK) {
+// Structural body gate: applies to in-review, r4r, and done.
+// - For all three states: verify "evidence-required" ticked boxes have supporting body content
+//   (Deep-Dive Analysis section, Dependency Map section, Verification Commands all-checked).
+//   Note: verification-commands rule fires only at r4r/done — at in-review the auto-runner ticks them.
+// - For done only: also enforce "no unchecked checkboxes" and "Deep dive line is checked".
+const GATED_STATES = new Set(['in-review', 'in_review', 'r4r', 'r_4_r', 'ready-for-release', 'done']);
+if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   let body = '';
   try {
     body = await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body']);
@@ -83,33 +89,63 @@ if (stateArg === 'done' && !SKIP_NETWORK) {
   } catch { /* ignore — missing body is not a gate failure */ }
 
   if (body) {
-    const lines = body.split('\n');
-    const unchecked = lines.filter(l =>
-      l.startsWith('- [ ] ') &&
-      !CLOSE_SIDE_EFFECT_PATTERNS.some(p => p.test(l))
-    );
-    const hasDeepDiveLine = lines.some(l => l.includes('Deep dive complete'));
-    const deepDiveChecked = lines.some(l => /^- \[x\] Deep dive complete/.test(l));
-
     const reasons = [];
-    if (unchecked.length > 0) reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
-    if (hasDeepDiveLine && !deepDiveChecked) reasons.push('Deep dive checkpoint is not checked off');
+    const refusedRuleNames = [];
+
+    // Structural gates (all gated states). At in-review, skip verification-commands
+    // because verbReview's auto-runner is what ticks those boxes.
+    const activeGates = stateArg === 'done' || stateArg === 'r4r' || stateArg === 'r_4_r' || stateArg === 'ready-for-release'
+      ? DEFAULT_GATES
+      : DEFAULT_GATES.filter(g => g.name !== 'verification-commands');
+    const gateResult = validateBody(body, { gates: activeGates });
+    if (!gateResult.ok) {
+      for (const r of gateResult.refusedRules) {
+        reasons.push(`${r.rule}: ${r.reason}`);
+        refusedRuleNames.push(r.rule);
+      }
+    }
+
+    // Done-only legacy checks
+    if (stateArg === 'done') {
+      const lines = body.split('\n');
+      const unchecked = lines.filter(l =>
+        l.startsWith('- [ ] ') &&
+        !CLOSE_SIDE_EFFECT_PATTERNS.some(p => p.test(l))
+      );
+      const hasDeepDiveLine = lines.some(l => l.includes('Deep dive complete'));
+      const deepDiveChecked = lines.some(l => /^- \[x\] Deep dive complete/.test(l));
+      if (unchecked.length > 0) reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
+      if (hasDeepDiveLine && !deepDiveChecked) reasons.push('Deep dive checkpoint is not checked off');
+    }
 
     if (reasons.length > 0) {
       if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
-        process.stderr.write(`⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing done gate for #${issueArg}\n`);
+        process.stderr.write(`⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing ${stateArg} gate for #${issueArg}\n`);
         reasons.forEach(r => process.stderr.write(`   • ${r}\n`));
-        gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body',
-          `⚠ **Done gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${reasons.join(', ')}.`
-        ]).catch(() => {});
+        const bypassMsg = `⚠ **${stateArg} gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${reasons.join(', ')}.`;
+        try { await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]); } catch {}
       } else {
+        // Append a gate-refused row to the timing log (fire-and-forget).
+        if (refusedRuleNames.length > 0) {
+          try {
+            const { buildRow, postTimingEvent } = await import('../task-tracker/gh-timing-comment.mjs');
+            const row = buildRow({
+              ts: new Date().toISOString(),
+              event: 'gate-refused',
+              activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
+              description: `→ ${stateArg}: ${refusedRuleNames.join(', ')}`,
+            });
+            await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+          } catch { /* fire-and-forget */ }
+        }
         process.stderr.write('\n');
-        process.stderr.write(`⛔ Refusing to move #${issueArg} to Done:\n`);
-        reasons.forEach(r => process.stderr.write(`   • ${r}\n`));
+        process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+        reasons.forEach(r => process.stderr.write(`   BLOCKED: ${r}\n`));
         process.stderr.write('\n');
         process.stderr.write('See .ai-task-manager/pickup-directive.md Hard Rules.\n');
-        process.stderr.write(`Verify each item, check its box, then retry. Legitimate-abandonment override:\n`);
-        process.stderr.write(`   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} done${itemIdOverride ? ` --item-id ${itemIdOverride}` : ''}\n\n`);
+        const itemIdSuffix = itemIdOverride ? ` --item-id ${itemIdOverride}` : '';
+        process.stderr.write('Verify each item, check its box, then retry. Legitimate-abandonment override:\n');
+        process.stderr.write(`   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} ${stateArg}${itemIdSuffix}\n\n`);
         process.exit(4);
       }
     }

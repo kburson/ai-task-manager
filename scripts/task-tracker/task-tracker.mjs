@@ -20,6 +20,7 @@ import { registerTask, deregisterTask, setTaskStatus, currentBranch,
          findMainWorktreePath, fleetRegistryPath, readFleet } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { validateVerificationCommand } from './lib/verification-allowlist.mjs';
+import { validateBody, DEFAULT_GATES } from './lib/body-gates.mjs';
 
 const argv = process.argv.slice(2);
 // Extract --role flag before parsing verb/rest (agent | orchestrator | solo)
@@ -586,6 +587,49 @@ async function verbReview(args) {
   if (!target) {
     console.error('Usage: /task review #N');
     process.exit(1);
+  }
+
+  // Structural body gate: refuse to move to In Review if evidence-required boxes are
+  // ticked without the required supporting body content. Bypass with TASK_TRACKER_FORCE_DONE=1.
+  // Skip the verification-commands rule here — verbReview's own auto-runner ticks those boxes.
+  if (!SKIP_NETWORK) {
+    const issueNum = String(target).replace(/^#/, '');
+    let body = '';
+    try {
+      const { stdout } = await pexec('gh', [
+        'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body',
+      ], { timeout: 10000 });
+      body = (stdout || '').trim();
+    } catch { /* missing body is not a gate failure */ }
+    if (body) {
+      const activeGates = DEFAULT_GATES.filter(g => g.name !== 'verification-commands');
+      const result = validateBody(body, { gates: activeGates });
+      if (!result.ok) {
+        if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
+          process.stderr.write(`⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing review gate for ${target}\n`);
+          for (const r of result.refusedRules) process.stderr.write(`   • ${r.rule}: ${r.reason}\n`);
+          try {
+            await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body',
+              `⚠ **review gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${result.refusedRules.map(r => r.rule).join(', ')}.`,
+            ], { timeout: 5000 });
+          } catch {}
+        } else {
+          try {
+            const ts = new Date().toISOString();
+            const row = (await import('./gh-timing-comment.mjs')).buildRow({
+              ts, event: 'gate-refused', activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
+              description: `→ in-review: ${result.refusedRules.map(r => r.rule).join(', ')}`,
+            });
+            await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
+          } catch {}
+          process.stderr.write('\n');
+          process.stderr.write(`⛔ Refusing to move ${target} to In Review:\n`);
+          for (const r of result.refusedRules) process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
+          process.stderr.write('\nSee .ai-task-manager/pickup-directive.md Hard Rules.\n\n');
+          process.exit(4);
+        }
+      }
+    }
   }
 
   // Agent-provided timing: --duration-minutes N --words N
