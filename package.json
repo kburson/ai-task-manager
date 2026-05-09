@@ -15,6 +15,7 @@
     "github-project-report": "scripts/reports/generate-value-report.mjs"
   },
   "scripts": {
+    "test": "node scripts/run-tests.mjs",
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs --html",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
