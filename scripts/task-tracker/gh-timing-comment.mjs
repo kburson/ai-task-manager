@@ -12,7 +12,7 @@ const TABLE_HEADER = [
   '|---|---|---|---|---|---|---|',
 ].join('\n');
 
-function fmtTs(iso) {
+export function fmtTs(iso) {
   const d = new Date(iso);
   const pad = n => String(n).padStart(2, '0');
   const offsetMin = -d.getTimezoneOffset();
@@ -20,6 +20,24 @@ function fmtTs(iso) {
   const abs = Math.abs(offsetMin);
   const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} ${offset}`;
+}
+
+const TS_PATTERN = /\d{4}-\d{2}-\d{2} \d{2}:\d{2} [+-]\d{2}:\d{2}/;
+
+export function firstStartTimestamp(commentBody) {
+  if (!commentBody) return null;
+  const lines = commentBody.split('\n');
+  for (const line of lines) {
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|').map(s => s.trim());
+    if (cells.length < 3) continue;
+    const ts = cells[1];
+    const event = cells[2];
+    if (event?.toLowerCase() === 'start' && TS_PATTERN.test(ts)) {
+      return ts.match(TS_PATTERN)[0];
+    }
+  }
+  return null;
 }
 function fmtNum(n)  { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
 

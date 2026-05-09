@@ -121,6 +121,10 @@ export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber }) {
                     date
                     field { ... on ProjectV2FieldCommon { id } }
                   }
+                  ... on ProjectV2ItemFieldTextValue {
+                    text
+                    field { ... on ProjectV2FieldCommon { id } }
+                  }
                   ... on ProjectV2ItemFieldSingleSelectValue {
                     name
                     field { ... on ProjectV2FieldCommon { id } }
@@ -144,6 +148,7 @@ export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber }) {
     if (!node) continue;
     if (node.number !== undefined && node.number !== null) values[def.key] = node.number;
     else if (node.date) values[def.key] = node.date;
+    else if (node.text) values[def.key] = node.text;
     else if (node.name) values[def.key] = node.name;
   }
   return values;
@@ -163,6 +168,13 @@ export async function writeProjectFieldValue({ projectId, itemId, fieldId, value
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { date: $val } }) { projectV2Item { id } }
       }`,
       { project: projectId, item: itemId, field: fieldId, val: value.date }
+    );
+  } else if (value.text !== undefined) {
+    await gql(`
+      mutation($project: ID!, $item: ID!, $field: ID!, $val: String!) {
+        updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { text: $val } }) { projectV2Item { id } }
+      }`,
+      { project: projectId, item: itemId, field: fieldId, val: value.text }
     );
   } else if (value.singleSelectOptionName !== undefined) {
     const optionId = optionMap[fieldId]?.[value.singleSelectOptionName];

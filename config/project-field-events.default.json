@@ -1,9 +1,6 @@
 {
   "moveToInProgress": [
-    { "field": "startDate", "value": "today", "mode": "set_once" }
-  ],
-  "moveToDone": [
-    { "field": "endDate", "value": "today", "mode": "set" }
+    { "field": "startTime", "value": "now", "mode": "set_once" }
   ],
   "logTime": [
     { "field": "engagedTime", "value": "computed.engagedMinutes", "mode": "set" },

@@ -12,7 +12,7 @@ const defs = [
   { key: 'estimate', name: 'Estimate', type: 'number' },
   { key: 'sequence', name: 'Sequence', type: 'number' },
   { key: 'sessionTime', name: 'Session Time', aliases: ['Actual Session Time'], type: 'number' },
-  { key: 'startDate', name: 'Start date', type: 'date' },
+  { key: 'startTime', name: 'Start time', type: 'text' },
 ];
 
 {
@@ -39,7 +39,7 @@ const defs = [
     '',
     FIELD_DB_START,
     '```json',
-    '{"schema":1,"values":{"priority":"P2","estimate":3,"sessionTime":12,"startDate":null}}',
+    '{"schema":1,"values":{"priority":"P2","estimate":3,"sessionTime":12,"startDate":"2026-05-08","endDate":null,"startTime":null}}',
     '```',
     FIELD_DB_END,
   ].join('\n');
@@ -48,6 +48,9 @@ const defs = [
   const ensured = ensureIssueFieldDb(body, defs, { sessionTime: 20 });
   assert.equal(ensured.healed, false);
   assert.equal(ensured.values.sessionTime, 12, 'valid DB wins over project value');
+  assert.equal(ensured.values.startDate, undefined, 'legacy startDate dropped on round-trip');
+  assert.equal(ensured.values.endDate, undefined, 'legacy endDate dropped on round-trip');
+  assert.ok('startTime' in ensured.values, 'new startTime key present');
 }
 
 {

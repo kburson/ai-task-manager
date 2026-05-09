@@ -29,8 +29,7 @@ export const DEFAULTS = {
   fieldSessionTime: '',
   fieldContextWords: '',
   fieldSequence: '',
-  fieldStartDate: '',
-  fieldEndDate: '',
+  fieldStartTime: '',
   // Legacy aliases retained for older scripts/config files.
   fieldActualHours: '',
   fieldActualMinutes: '',
@@ -70,8 +69,7 @@ const TYPES = {
   fieldSessionTime: 'string',
   fieldContextWords: 'string',
   fieldSequence: 'string',
-  fieldStartDate: 'string',
-  fieldEndDate: 'string',
+  fieldStartTime: 'string',
   fieldActualHours: 'string',
   fieldActualMinutes: 'string',
   priorityFieldId: 'string',
@@ -126,8 +124,7 @@ export function loadConfig(paths = {}) {
     merged.fieldSequence ||= merged.fieldIds.sequence || '';
     merged.sequenceFieldId ||= merged.fieldIds.sequence || '';
     merged.sizeFieldId ||= merged.fieldIds.size || '';
-    merged.fieldStartDate ||= merged.fieldIds.startDate || '';
-    merged.fieldEndDate ||= merged.fieldIds.endDate || '';
+    merged.fieldStartTime ||= merged.fieldIds.startTime || '';
   }
   merged.fieldEngagedTime ||= merged.fieldActualHours || '';
   merged.fieldSessionTime ||= merged.fieldActualMinutes || '';
@@ -186,7 +183,7 @@ const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId', 'kanbanOptionBacklog', 'kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview', 'kanbanOptionR4R', 'kanbanOptionDone',
   'sequenceFieldId', 'sizeFieldId',
-  'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartDate', 'fieldEndDate',
+  'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartTime',
   'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
 ];
 

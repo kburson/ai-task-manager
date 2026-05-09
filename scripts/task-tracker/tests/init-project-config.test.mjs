@@ -90,8 +90,7 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   {"id":"F_SESSION","name":"Session Time","dataType":"NUMBER"},
   {"id":"F_CONTEXT","name":"Context Length","dataType":"NUMBER"},
   {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
-  {"id":"F_START","name":"Start date","dataType":"DATE"},
-  {"id":"F_END","name":"End date","dataType":"DATE"}
+  {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
 ]
 JSON
     exit 0
@@ -122,8 +121,7 @@ const input = [
   '', // session time field default
   '', // context length field default
   '', // sequence field default
-  '', // start date field default
-  '', // end date field default
+  '', // start time field default
   '', // spare prompt response
   '', // spare prompt response
   '', // spare prompt response

@@ -6,7 +6,8 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
-import { gh, gql, writeProjectFieldValue } from './lib/github-projects.mjs';
+import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
+import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
 const issue = args.find(a => /^#?\d+$/.test(a))?.replace('#', '');
@@ -41,31 +42,23 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function currentDateValue(fieldId) {
-  const data = await gql(`
-    query($item: ID!) {
-      node(id: $item) {
-        ... on ProjectV2Item {
-          fieldValues(first: 50) {
-            nodes {
-              ... on ProjectV2ItemFieldDateValue {
-                date
-                field { ... on ProjectV2FieldCommon { id } }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { item: itemId }
-  );
-  const values = data.node?.fieldValues?.nodes ?? [];
-  return values.find(v => v.field?.id === fieldId)?.date || '';
+function nowText() {
+  return fmtTs(new Date());
 }
 
-async function writeDate(fieldId, value) {
+function fieldTypeForKey(fieldDefs, key) {
+  return fieldDefs.find(d => d.key === key)?.type || '';
+}
+
+async function writeFieldValue(fieldId, type, value) {
   if (!fieldId) return;
-  await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { date: value } });
+  if (type === 'date') {
+    await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { date: value } });
+  } else if (type === 'text') {
+    await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { text: value } });
+  } else {
+    await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { number: Number(value) } });
+  }
 }
 
 async function fetchIssueBody() {
@@ -94,13 +87,17 @@ try {
   for (const binding of bindings) {
     const fieldKey = binding.field;
     const fieldId = cfg.fieldIds?.[fieldKey] || cfg[`field${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`] || '';
-    if (binding.value !== 'today') continue;
+    const fieldType = fieldTypeForKey(fieldDefs, fieldKey);
+    let resolved;
+    if (binding.value === 'today') resolved = today();
+    else if (binding.value === 'now') resolved = nowText();
+    else continue;
     if (binding.mode === 'set_once' && values[fieldKey]) {
       continue;
     }
-    values[fieldKey] = today();
+    values[fieldKey] = resolved;
     issueDbChanged = true;
-    if (fieldId) await writeDate(fieldId, values[fieldKey]);
+    if (fieldId) await writeFieldValue(fieldId, fieldType, resolved);
     console.log(`✓ ${fieldKey} set for #${issue}`);
   }
   if (issueDbChanged && issueBody) {

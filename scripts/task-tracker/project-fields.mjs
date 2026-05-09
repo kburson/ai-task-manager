@@ -33,6 +33,9 @@ export function valueForProjectField(value, type) {
   if (type === 'date') {
     return /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? { date: String(value) } : null;
   }
+  if (type === 'text') {
+    return { text: String(value) };
+  }
   if (type === 'single_select') {
     return { singleSelectOptionName: String(value) };
   }

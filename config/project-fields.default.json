@@ -58,15 +58,9 @@
     "aliases": []
   },
   {
-    "key": "startDate",
-    "name": "Start date",
-    "type": "date",
-    "aliases": ["Start Date"]
-  },
-  {
-    "key": "endDate",
-    "name": "End date",
-    "type": "date",
-    "aliases": ["End Date"]
+    "key": "startTime",
+    "name": "Start time",
+    "type": "text",
+    "aliases": ["Start Time", "Start date", "Start Date"]
   }
 ]

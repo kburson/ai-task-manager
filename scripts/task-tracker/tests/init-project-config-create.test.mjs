@@ -95,8 +95,7 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   {"id":"F_SESSION","name":"Actual Session Time","dataType":"NUMBER"},
   {"id":"F_CONTEXT","name":"Context Length","dataType":"NUMBER"},
   {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
-  {"id":"F_START","name":"Start date","dataType":"DATE"},
-  {"id":"F_END","name":"End date","dataType":"DATE"}
+  {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
 ]
 JSON
     exit 0

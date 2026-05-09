@@ -1114,6 +1114,68 @@ mutation($proj:ID!,$name:String!){
   fi
 }
 
+map_or_create_text() {
+  local fname="$1"
+  local aliases_json="${2:-[]}"
+
+  local name_match name_match_type
+  name_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$fname" --argjson aliases "$aliases_json" \
+    '([$n] + $aliases | map(ascii_downcase)) as $names |
+     first(.[] | select((.name | ascii_downcase) as $fieldName | ($names | index($fieldName) != null))) // empty' \
+    2>/dev/null || echo '')
+  name_match_type=$(echo "$name_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end' 2>/dev/null || echo '')
+
+  if [[ -n "$name_match" && ( "$name_match_type" == "TEXT" || -z "$name_match_type" ) ]]; then
+    ok "Found field '$fname'."
+    RESULT_FIELD_ID=$(echo "$name_match" | jq -r '.id')
+    return
+  fi
+
+  local create_name="$fname"
+  if [[ -n "$name_match" ]]; then
+    echo ""
+    err "Field '$fname' exists on this project but is type ${name_match_type:-unknown}, not TEXT."
+    info "You must choose a different name for a new text field."
+    while true; do
+      prompt "New field name for '$fname' (TEXT):"; read -r create_name
+      [[ -z "$create_name" ]] && { err "Name required."; continue; }
+      local alt_match
+      alt_match=$(echo "$FIELDS_JSON" | jq -c --arg n "$create_name" \
+        'first(.[] | select((.name | ascii_downcase) == ($n | ascii_downcase))) // empty' \
+        2>/dev/null || echo '')
+      if [[ -n "$alt_match" ]]; then
+        local alt_type
+        alt_type=$(echo "$alt_match" | jq -r 'if has("options") then "SINGLE_SELECT" elif .dataType then .dataType else "" end')
+        if [[ "$alt_type" == "TEXT" || -z "$alt_type" ]]; then
+          ok "Using existing field '$create_name'."
+          RESULT_FIELD_ID=$(echo "$alt_match" | jq -r '.id')
+          return
+        fi
+        err "Field '$create_name' also exists as type ${alt_type}. Choose a different name."
+        continue
+      fi
+      break
+    done
+  fi
+
+  local new_id
+  new_id=$(gh api graphql -f query='
+mutation($proj:ID!,$name:String!){
+  createProjectV2Field(input:{projectId:$proj,dataType:TEXT,name:$name}){
+    projectV2Field{...on ProjectV2Field{id}}
+  }
+}' -f proj="$PROJECT_NODE_ID" -f name="$create_name" \
+    --jq '.data.createProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+  if [[ -n "$new_id" ]]; then
+    ok "Created '$create_name' field."
+    refresh_fields
+    RESULT_FIELD_ID="$new_id"
+  else
+    warn "Could not create '$create_name'. Add it manually to your GitHub Project."
+    RESULT_FIELD_ID=""
+  fi
+}
+
 # ── Custom fields from definitions ─────────────────────────────────────────
 
 info "Custom fields from .ai-task-manager/project-fields.json..."
@@ -1126,8 +1188,7 @@ FIELD_ENGAGED_TIME=""
 FIELD_SESSION_TIME=""
 FIELD_CONTEXT_LENGTH=""
 FIELD_SEQUENCE=""
-FIELD_START_DATE=""
-FIELD_END_DATE=""
+FIELD_START_TIME=""
 
 set_field_id_json() {
   FIELD_IDS_JSON=$(printf '%s\n' "$FIELD_IDS_JSON" | jq -c --arg key "$1" --arg val "$2" '. + {($key): $val}')
@@ -1154,6 +1215,10 @@ while IFS= read -r FIELD_DEF <&3; do
       info "$FIELD_NAME (date)..."
       map_or_create_date "$FIELD_NAME" "$FIELD_ALIASES"
       ;;
+    text)
+      info "$FIELD_NAME (text)..."
+      map_or_create_text "$FIELD_NAME" "$FIELD_ALIASES"
+      ;;
     *)
       warn "Skipping unsupported field type '$FIELD_TYPE' for '$FIELD_NAME'."
       ;;
@@ -1178,8 +1243,7 @@ while IFS= read -r FIELD_DEF <&3; do
       sessionTime) FIELD_SESSION_TIME="$RESULT_FIELD_ID" ;;
       contextLength) FIELD_CONTEXT_LENGTH="$RESULT_FIELD_ID" ;;
       sequence) FIELD_SEQUENCE="$RESULT_FIELD_ID" ;;
-      startDate) FIELD_START_DATE="$RESULT_FIELD_ID" ;;
-      endDate) FIELD_END_DATE="$RESULT_FIELD_ID" ;;
+      startTime) FIELD_START_TIME="$RESULT_FIELD_ID" ;;
     esac
   fi
   echo ""
@@ -1211,8 +1275,7 @@ FIELD_ENGAGED_TIME="$FIELD_ENGAGED_TIME" \
 FIELD_SESSION_TIME="$FIELD_SESSION_TIME" \
 FIELD_CONTEXT_LENGTH="$FIELD_CONTEXT_LENGTH" \
 FIELD_SEQUENCE="$FIELD_SEQUENCE" \
-FIELD_START_DATE="$FIELD_START_DATE" \
-FIELD_END_DATE="$FIELD_END_DATE" \
+FIELD_START_TIME="$FIELD_START_TIME" \
 FIELD_IDS_JSON="$FIELD_IDS_JSON" \
 node -e "
 const fs = require('fs');
@@ -1249,8 +1312,7 @@ const optional = {
   fieldContextWords:      process.env.FIELD_CONTEXT_LENGTH,
   fieldSequence:          process.env.FIELD_SEQUENCE,
   sequenceFieldId:        process.env.FIELD_SEQUENCE,
-  fieldStartDate:         process.env.FIELD_START_DATE,
-  fieldEndDate:           process.env.FIELD_END_DATE,
+  fieldStartTime:         process.env.FIELD_START_TIME,
 };
 for (const [k, v] of Object.entries(optional)) { if (v) updates[k] = v; }
 try {
