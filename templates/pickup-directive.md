@@ -65,7 +65,12 @@ required box is unchecked will be refused.
    deep-dive or mid-implementation is a process violation, even if the outcome appears
    correct by inspection. The sub-issue lifecycle IS the verification.
 
-6. **On mistakes — stop and surface, do not self-correct.**
+7. **Pause the timer before asking the user a blocking question; resume after they answer.**
+   - Any time you must stop work to ask the user a clarification, design choice, missing-info, or scope-confirmation question and wait for an answer, run `/task pause "pause for question"` BEFORE asking. Run `/task start "question answered"` AFTER they answer, before any further tool calls. The reason strings are positional args and land in the `description` column of the issue's `⏱ Timing Log`.
+   - Does NOT apply to rhetorical or in-flight prose questions you answer yourself.
+   - Why: the timer measures focused engagement. Idle time waiting for a human answer corrupts `engagedTime`/`sessionTime` and the value report.
+
+8. **On mistakes — stop and surface, do not self-correct.**
    If you discover you have taken a wrong action (created a duplicate issue, used
    `gh issue close` directly, skipped the deep dive, dispatched agents without
    verifying state), STOP immediately. Do not attempt to fix the mistake yourself.

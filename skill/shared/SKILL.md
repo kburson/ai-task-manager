@@ -44,8 +44,27 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 - ❌ Using `TASK_TRACKER_FORCE_DONE=1` for normal completion. It exists only for legitimate abandonment (the issue turned out invalid). Never use it to skip verification.
 - ❌ Editing files for an issue without first running `/task #N`.
 - ❌ Skipping the deep-dive checkpoint because "the scope seems clear."
+- ❌ Asking the user a blocking question while the timer is running. Pause first (see Pause-on-Question below).
 
 If any of these are skipped: stop, restore the contract (re-register the task, complete the missed step), then continue.
+
+### Pause-on-Question
+
+Whenever you must stop and wait for the user to answer a **blocking question** — a clarification, design choice, ambiguous spec, missing info, scope confirmation — the timer MUST be paused first, and resumed only after the user answers.
+
+- Before asking: `/task pause "pause for question"`
+- After the user answers: `/task start "question answered"`
+
+Both verbs accept a free-text reason as positional args; the reason is written to the `description` column of the next row in the issue's `⏱ Timing Log`. This applies to any blocking question — not to rhetorical or in-flight prose questions you answer yourself.
+
+Example:
+
+> User: "/task #42"
+> Assistant: *(reads body, sees ambiguous AC)* Running `/task pause "pause for question"`. The AC says "tests pass" but doesn't list which suite — should I run the unit tests, the integration tests, or both?
+> User: "Both."
+> Assistant: Running `/task start "question answered"`. Proceeding to verify both suites.
+
+The clock should reflect focused work only. Idle time waiting for a human answer is not engaged time.
 
 ## Commands
 

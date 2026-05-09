@@ -494,7 +494,8 @@ async function verbPause() {
     console.log('nothing to pause');
     return;
   }
-  const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'pause');
+  const reason = rest.join(' ').trim() || undefined;
+  const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'pause', reason);
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   saveState({
     ...s,
@@ -906,7 +907,7 @@ async function verbReview(args) {
   }
 }
 
-async function verbStart() {
+async function verbStart(reasonOverride) {
   await draiQueueIfAny();
   const s = loadState(statePath);
   if (s.active) { console.log(`already active: ${s.active}`); return; }
@@ -914,6 +915,7 @@ async function verbStart() {
     console.log('no previous task. Use "/task #N" or "/task plan".');
     return;
   }
+  const reason = (reasonOverride ?? rest.join(' ').trim()) || undefined;
   const ts = nowIso();
   const sid = currentSessionId();
   let wordsAtStart = 0;
@@ -931,7 +933,7 @@ async function verbStart() {
   try { setTaskStatus(projectDir, s.lastActive, 'active'); } catch {}
   const row = (await import('./gh-timing-comment.mjs')).buildRow({
     ts, event: 'resume', activeMin: 0, idleMin: 0, deltaWords: 0,
-    wordMarker: wordsAtStart, description: 'task resumed',
+    wordMarker: wordsAtStart, description: reason ?? 'task resumed',
   });
   await safePostTiming(s.lastActive, row);
   console.log(`Resumed ${s.lastActive}.`);
@@ -1109,16 +1111,13 @@ async function verbCheck(args) {
 }
 
 async function verbResume() {
-  const target = rest[0]; // '#N' or undefined
-  if (target) {
-    if (!/^#\d+$/.test(target)) {
-      console.error(`invalid issue ref: ${target}`);
-      process.exit(1);
-    }
+  const target = rest[0]; // '#N' or undefined or reason text
+  if (target && /^#\d+$/.test(target)) {
     // Switching to a specific task — body reload handled by SKILL.md Step 2
     await verbSwitch(target);
   } else {
-    // Resume lastActive — context still warm, no body reload
+    // Resume lastActive — context still warm, no body reload.
+    // Any positional args become the reason string for the timing log.
     await verbStart();
   }
 }
