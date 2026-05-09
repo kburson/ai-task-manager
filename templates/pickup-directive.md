@@ -94,9 +94,19 @@ required box is unchecked will be refused.
    > ⚠️ **Never use `gh issue edit --body "..."`** — it replaces the entire body.
    > Always use `--body-file`.
 
+   > 📐 **Placement is mandatory.** Append the `## Deep-Dive Analysis (YYYY-MM-DD)`
+   > section AFTER the `## Pickup Directive` heading block (after its trailing
+   > `- [ ] Deep dive complete` checkbox) and BEFORE the
+   > `<!-- ai-task-manager:fields:start -->` marker. The canonical body order is
+   > Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive
+   > Analysis → fields-block. The `deep-dive-placement` body gate refuses
+   > in-review/r4r/done moves when the Deep-Dive heading is present in any other
+   > position.
+
    ```bash
    gh issue view <this-issue-#> --json body --jq .body > ./tmp/body.md
    # Append "## Deep-Dive Analysis (YYYY-MM-DD)" section to ./tmp/body.md
+   # — placed AFTER the Pickup Directive block and BEFORE the fields-block start marker.
    gh issue edit <this-issue-#> --body-file ./tmp/body.md
    ```
    Then flip the checkpoint: `/task check "Deep dive complete"`

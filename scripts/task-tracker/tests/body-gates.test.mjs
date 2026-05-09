@@ -45,7 +45,13 @@ function deepDiveSection(lines = 25) {
     '## Acceptance Criteria',
     '- [x] Deep dive complete',
     '',
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
     deepDiveSection(25),
+    '',
+    '<!-- ai-task-manager:fields:start -->',
+    '<!-- ai-task-manager:fields:end -->',
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, true, `expected ok, refused: ${JSON.stringify(r.refusedRules)}`);
@@ -129,6 +135,79 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, true, JSON.stringify(r));
+}
+
+// 10. deep-dive-placement: correctly-ordered body (Pickup → Deep-Dive → fields-block) passes
+{
+  const body = [
+    '## Scope',
+    'stuff',
+    '',
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    deepDiveSection(25),
+    '',
+    '<!-- ai-task-manager:fields:start -->',
+    '<!-- ai-task-manager:fields:end -->',
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, true, `expected ok, refused: ${JSON.stringify(r.refusedRules)}`);
+}
+
+// 11. deep-dive-placement: Deep-Dive heading BEFORE Pickup Directive refuses
+{
+  const body = [
+    '## Scope',
+    'stuff',
+    '',
+    deepDiveSection(25),
+    '',
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    '<!-- ai-task-manager:fields:start -->',
+    '<!-- ai-task-manager:fields:end -->',
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, false);
+  const dp = r.refusedRules.find(x => x.rule === 'deep-dive-placement');
+  assert.ok(dp, `expected deep-dive-placement refusal, got: ${r.refusedRules.map(x => x.rule).join(',')}`);
+  assert.match(dp.reason, /AFTER/);
+}
+
+// 12. deep-dive-placement: Deep-Dive heading AFTER fields-block start marker refuses
+{
+  const body = [
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    '<!-- ai-task-manager:fields:start -->',
+    '<!-- ai-task-manager:fields:end -->',
+    '',
+    deepDiveSection(25),
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, false);
+  const dp = r.refusedRules.find(x => x.rule === 'deep-dive-placement');
+  assert.ok(dp, `expected deep-dive-placement refusal, got: ${r.refusedRules.map(x => x.rule).join(',')}`);
+  assert.match(dp.reason, /BEFORE/);
+}
+
+// 13. deep-dive-placement: vacuous pass when no Deep-Dive heading present
+{
+  const body = [
+    '## Scope',
+    'stuff',
+    '',
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    '<!-- ai-task-manager:fields:start -->',
+    '<!-- ai-task-manager:fields:end -->',
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, true, `expected ok, refused: ${JSON.stringify(r.refusedRules)}`);
 }
 
 console.log('body-gates.test.mjs: all passed');

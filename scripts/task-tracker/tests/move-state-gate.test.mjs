@@ -21,8 +21,15 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.resolve(__dir, '../../gh/move-state.mjs');
 
 function deepDiveAdequate() {
-  const lines = ['## Deep-Dive Analysis (2026-05-08)', ''];
+  const lines = [
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    '## Deep-Dive Analysis (2026-05-08)',
+    '',
+  ];
   for (let i = 0; i < 25; i++) lines.push(`line ${i + 1}`);
+  lines.push('', '<!-- ai-task-manager:fields:start -->', '<!-- ai-task-manager:fields:end -->');
   return lines.join('\n');
 }
 
