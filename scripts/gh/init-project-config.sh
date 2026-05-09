@@ -684,7 +684,7 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
   ok "New states added."
 
   # Re-fetch the field to get fresh option IDs
-  KANBAN_FIELD_JSON=$(gh api graphql -f query="
+  _REFETCH_RAW=$(gh api graphql -f query="
 {
   node(id: \"$PROJECT_NODE_ID\") {
     ... on ProjectV2 {
@@ -695,8 +695,11 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
       }
     }
   }
-}" --jq --arg fid "$KANBAN_FIELD_ID" \
-    '[.data.node.fields.nodes[] | select(.id == $fid)] | first' 2>/dev/null || echo '')
+}" 2>/dev/null || echo '{}')
+  KANBAN_FIELD_JSON=$(echo "$_REFETCH_RAW" | jq --arg fid "$KANBAN_FIELD_ID" '
+    (if type == "array" then . else (.data.node.fields.nodes // []) end)
+    | map(select(.id == $fid)) | first // empty
+  ' 2>/dev/null || echo '')
 
   # Resolve __NEW__ sentinels to actual option IDs from updated field
   remap_state() {
