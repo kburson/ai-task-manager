@@ -75,14 +75,13 @@ function patchSettingsJson(settingsPath) {
 
   if (!settings.hooks) settings.hooks = {};
 
-  const hookCmd = 'node node_modules/ai-task-manager/hooks/hook-handler.mjs';
+  const hookCmd = '.claude/hooks/task-tracker.sh';
   const hookEntry = { matcher: '', hooks: [{ type: 'command', command: hookCmd }] };
-  // Legacy bash stub command — remove if present (replaced by direct node invocation).
-  const legacyHookCmd = '.claude/hooks/task-tracker.sh';
+  // Prior install used a non-existent handler path; remove if present.
+  const legacyHookCmd = 'node node_modules/ai-task-manager/hooks/hook-handler.mjs';
 
   for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
     if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
-    // Remove legacy bash stub entries
     settings.hooks[event] = settings.hooks[event].filter(
       h => !(h.command === legacyHookCmd ||
              (typeof h === 'string' && h === legacyHookCmd) ||
@@ -170,6 +169,42 @@ function replaceWithSymlink(dest, src, label) {
   ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
 }
 
+function hookStub() {
+  return [
+    '#!/usr/bin/env bash',
+    '# Routes Claude Code hook events to the bundled handler in node_modules.',
+    'set -euo pipefail',
+    '',
+    'INPUT=$(cat)',
+    '',
+    'NODE_BIN=""',
+    'if [ -f "$HOME/.nvm/nvm.sh" ]; then',
+    '  export NVM_DIR="$HOME/.nvm"',
+    '  # shellcheck source=/dev/null',
+    '  source "$NVM_DIR/nvm.sh" --no-use 2>/dev/null || true',
+    '  NODE_BIN=$(nvm which current 2>/dev/null || echo "")',
+    'fi',
+    'if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then',
+    '  NODE_BIN=$(command -v node 2>/dev/null || echo "")',
+    'fi',
+    'if [ -z "$NODE_BIN" ]; then',
+    '  echo "[task-tracker] node not found — skipping" >&2',
+    '  exit 0',
+    'fi',
+    '',
+    'SCRIPT="node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"',
+    'if [ ! -f "$SCRIPT" ]; then',
+    '  echo "[task-tracker] handler not found at $SCRIPT — skipping" >&2',
+    '  exit 0',
+    'fi',
+    '',
+    'echo "$INPUT" | "$NODE_BIN" "$SCRIPT"',
+    '',
+    'exit 0',
+    '',
+  ].join('\n');
+}
+
 function claudeStub() {
   return [
     '---',
@@ -219,7 +254,9 @@ function installClaude(targetDir, linkMode) {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
 
-  // Hook registered directly in settings.json via patchSettingsJson — no bash stub needed.
+  const hookPath = join(targetDir, '.claude', 'hooks', 'task-tracker.sh');
+  installStub(hookPath, hookStub(), 'Hook');
+  try { execFileSync('chmod', ['+x', hookPath]); } catch { /* ignore on Windows */ }
 
   installStub(
     join(targetDir, '.claude', 'commands', 'task.md'),
