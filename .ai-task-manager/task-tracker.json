@@ -30,8 +30,14 @@
     "sessionTime": "PVTF_lAHOABCEY84BW3z6zhSIrBI",
     "contextLength": "PVTF_lAHOABCEY84BW3z6zhSIrBM",
     "sequence": "PVTF_lAHOABCEY84BW3z6zhSIrBU",
-    "startDate": "PVTF_lAHOABCEY84BW3z6zhSJ9es",
-    "endDate": "PVTF_lAHOABCEY84BW3z6zhSJ9iA"
+    "startTime": "PVTF_lAHOABCEY84BW3z6zhSb-zU"
   },
-  "kanbanOptionR4R": "e21699f1"
+  "kanbanOptionR4R": "e21699f1",
+  "defaultLabels": [
+    "epic",
+    "bug",
+    "cleanup",
+    "refactor"
+  ],
+  "fieldStartTime": "PVTF_lAHOABCEY84BW3z6zhSb-zU"
 }
