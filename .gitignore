@@ -12,9 +12,15 @@ node_modules/
 .ai-task-manager/task-fleet.json
 .ai-task-manager/pickup-directive.md.bak
 .ai-task-manager/definition-of-done.md.bak
-.claude/task-tracker.json
-.claude/task-tracker-state.json
-.claude/task-tracker-queue.json
-.claude/task-fleet.json
+# Install-output copies of templates/ (regenerable; templates/ is the source)
+.ai-task-manager/pickup-directive.md
+.ai-task-manager/definition-of-done.md
+# Runtime project-field caches (ephemeral)
+.ai-task-manager/project-fields.json
+.ai-task-manager/project-field-events.json
+# Per-host install artifacts (Claude Code / Codex / Agents — regenerable from skill/)
+.claude/
+.agents/
+AGENTS.md
 tmp/
 .worktrees/
