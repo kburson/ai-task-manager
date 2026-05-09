@@ -88,6 +88,29 @@ if [[ ! -f "$FIELD_EVENTS_FILE" && -f "$PKG_ROOT/config/project-field-events.def
   cp "$PKG_ROOT/config/project-field-events.default.json" "$FIELD_EVENTS_FILE"
 fi
 
+check_field_defs_drift() {
+  local local_file="$1"
+  local default_file="$2"
+  local label="$3"
+  if [[ ! -f "$local_file" || ! -f "$default_file" ]]; then return 0; fi
+  local drift
+  drift=$(node "$SCRIPT_DIR/lib/field-defs-drift.mjs" "$local_file" "$default_file" 2>/dev/null || echo '')
+  if [[ -z "$drift" || "$drift" == "in-sync" ]]; then return 0; fi
+  echo ""
+  warn "$label drift detected — $drift"
+  local ans
+  printf "Refresh %s from package default? [y/N]: " "$label" >&2
+  read -r ans </dev/tty || ans=""
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    cp -f "$default_file" "$local_file"
+    ok "Refreshed $label."
+  else
+    info "Keeping existing $label. Re-run after manual reconciliation if needed."
+  fi
+}
+
+check_field_defs_drift "$FIELD_DEFS_FILE" "$PKG_ROOT/config/project-fields.default.json" "project-fields.json"
+
 # ── banner ─────────────────────────────────────────────────────────────────
 
 banner "🎯" "ai-task-manager — Project Setup" "Target: $TARGET_DIR"
