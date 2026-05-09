@@ -1,17 +1,39 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 
 const pexec = promisify(execFile);
 
 export async function gh(args, options = {}) {
-  const { stdout } = await pexec('gh', args, { timeout: 15000, ...options });
-  return stdout;
+  const { input, ...rest } = options;
+  if (input === undefined) {
+    const { stdout } = await pexec('gh', args, { timeout: 15000, ...rest });
+    return stdout;
+  }
+  return new Promise((resolve, reject) => {
+    const child = spawn('gh', args, { timeout: 15000, ...rest });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', d => { stdout += d.toString(); });
+    child.stderr.on('data', d => { stderr += d.toString(); });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code === 0) resolve(stdout);
+      else {
+        const err = new Error(`gh exited ${code}: ${stderr}`);
+        err.code = code;
+        err.stderr = stderr;
+        err.stdout = stdout;
+        reject(err);
+      }
+    });
+    child.stdin.end(input);
+  });
 }
 
 export async function gql(query, variables = {}, options = {}) {
-  const varArgs = Object.entries(variables).flatMap(([k, v]) => ['-F', `${k}=${v}`]);
-  const out = await gh(['api', 'graphql', '-f', `query=${query}`, ...varArgs], options);
+  const payload = JSON.stringify({ query, variables });
+  const out = await gh(['api', 'graphql', '--input', '-'], { ...options, input: payload });
   const parsed = JSON.parse(out);
   if (parsed.errors) throw new Error(parsed.errors.map(e => e.message).join('; '));
   return parsed.data;
