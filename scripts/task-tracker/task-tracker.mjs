@@ -18,6 +18,7 @@ import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-ti
 import { enqueue, drain } from './queue.mjs';
 import { registerTask, deregisterTask, setTaskStatus, currentBranch,
          findMainWorktreePath, fleetRegistryPath, readFleet } from './fleet-registry.mjs';
+import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 
 const argv = process.argv.slice(2);
 // Extract --role flag before parsing verb/rest (agent | orchestrator | solo)
@@ -514,51 +515,63 @@ function buildStateOptionMap() {
 
 async function fetchSubIssues(issueNum) {
   if (SKIP_NETWORK) return [];
-  const [owner, repoName] = cfg.repo.split('/');
   try {
-    const { stdout } = await pexec('gh', ['api', 'graphql', '-f', `query={
-      repository(owner:"${owner}",name:"${repoName}") {
-        issue(number:${issueNum}) {
-          subIssues(first:100) { nodes { number } }
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(
+      `query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            subIssues(first: 100) { nodes { number } }
+          }
         }
-      }
-    }`], { timeout: 10000 });
-    return JSON.parse(stdout).data?.repository?.issue?.subIssues?.nodes?.map(n => n.number) ?? [];
+      }`,
+      { owner, repo: repoName, issue: Number(issueNum) },
+      { timeout: 10000 }
+    );
+    return data?.repository?.issue?.subIssues?.nodes?.map(n => n.number) ?? [];
   } catch { return []; }
 }
 
 async function fetchParentIssue(issueNum) {
   if (SKIP_NETWORK) return null;
-  const [owner, repoName] = cfg.repo.split('/');
   try {
-    const { stdout } = await pexec('gh', ['api', 'graphql', '-f', `query={
-      repository(owner:"${owner}",name:"${repoName}") {
-        issue(number:${issueNum}) { parent { number } }
-      }
-    }`], { timeout: 10000 });
-    return JSON.parse(stdout).data?.repository?.issue?.parent?.number ?? null;
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(
+      `query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) { parent { number } }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNum) },
+      { timeout: 10000 }
+    );
+    return data?.repository?.issue?.parent?.number ?? null;
   } catch { return null; }
 }
 
 async function getIssueBoardState(issueNum) {
   if (SKIP_NETWORK) return null;
-  const [owner, repoName] = cfg.repo.split('/');
   try {
-    const { stdout } = await pexec('gh', ['api', 'graphql', '-f', `query={
-      repository(owner:"${owner}",name:"${repoName}") {
-        issue(number:${issueNum}) {
-          projectItems(first:10) {
-            nodes {
-              project { id }
-              fieldValueByName(name:"Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(
+      `query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            projectItems(first: 10) {
+              nodes {
+                project { id }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+                }
               }
             }
           }
         }
-      }
-    }`], { timeout: 10000 });
-    const nodes = JSON.parse(stdout).data?.repository?.issue?.projectItems?.nodes ?? [];
+      }`,
+      { owner, repo: repoName, issue: Number(issueNum) },
+      { timeout: 10000 }
+    );
+    const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
     const node = nodes.find(n => n.project?.id === cfg.projectId);
     const optionId = node?.fieldValueByName?.optionId;
     return optionId ? (buildStateOptionMap()[optionId] ?? null) : null;
@@ -991,7 +1004,17 @@ Aliases: start = resume, end = close
 
 // ---- Dispatch ----
 
-(async () => {
+// Exported for tests. Keep these after definitions; the CLI dispatch IIFE
+// below only runs when the file is invoked directly, not when imported.
+export { fetchSubIssues, fetchParentIssue, getIssueBoardState };
+
+const _isMain = (() => {
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch { return true; }
+})();
+
+if (_isMain) (async () => {
   checkRepoMismatch();
   checkInit(cfg, verb);
   try {
