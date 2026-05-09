@@ -15,7 +15,7 @@ const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> --body-file <path> [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--assignee <a>] [--no-tether] [--no-placeholder-substitution]`;
+  return `Usage: create-issue.mjs --title <t> --body-file <path> [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|ready|in-progress] [--assignee <a>] [--no-tether] [--no-placeholder-substitution]`;
 }
 
 function parseArgs(argv) {
@@ -87,7 +87,8 @@ function ghCreate(args, assignee) {
 }
 
 function buildTetherArgs(issueNumber, args, priority) {
-  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', 'backlog'];
+  const status = typeof args.status === 'string' ? args.status : 'backlog';
+  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', status];
   if (priority) tArgs.push('--priority', priority);
   if (typeof args.size === 'string') tArgs.push('--size', args.size);
   if (typeof args.estimate === 'string') tArgs.push('--estimate', args.estimate);

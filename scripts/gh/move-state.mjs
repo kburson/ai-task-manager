@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
 import { validateBody, DEFAULT_GATES } from '../task-tracker/lib/body-gates.mjs';
+import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
+import { backlogMoveWarning } from './lib/project-tether.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -150,6 +152,22 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
       }
     }
   }
+}
+
+// Backlog warning: moving a sized + estimated issue to Backlog is suspicious.
+// Backlog is for unvetted ideas; sized work belongs in the Ready column. Non-blocking.
+if (stateArg === 'backlog' && !SKIP_NETWORK) {
+  try {
+    const body = (await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])).trim();
+    if (body) {
+      const parsed = parseIssueFieldDb(body);
+      const warn = backlogMoveWarning({
+        targetState: 'backlog',
+        fieldValues: parsed.ok ? parsed.values : null,
+      });
+      if (warn) process.stderr.write(`${warn}\n`);
+    }
+  } catch { /* fire-and-forget */ }
 }
 
 // Resolve project item ID

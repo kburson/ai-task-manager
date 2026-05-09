@@ -258,6 +258,32 @@ function failureMessage({ cfg, issueNumber, project, phantomItems }) {
   ].join(' ');
 }
 
+// Backlog is for unvetted ideas; sized + estimated work belongs in the Ready column.
+// Returns the warning string when the rule is violated, otherwise null. Pure helper.
+export function backlogSizingWarning({ status, size, estimate } = {}) {
+  if (status !== 'backlog') return null;
+  if (!size) return null;
+  if (estimate === undefined || estimate === null || estimate === '' || estimate === true) return null;
+  return (
+    '⚠ warning: tethering a sized + estimated issue to Backlog. ' +
+    'Backlog is for unvetted ideas; sized work belongs in the Ready column. ' +
+    'Use --status ready instead, or override.'
+  );
+}
+
+// Same rule for move-state: warn when moving a body-with-sized-fields issue to Backlog.
+// Takes the parsed fields object from parseIssueFieldDb. Returns warning string or null.
+export function backlogMoveWarning({ targetState, fieldValues } = {}) {
+  if (targetState !== 'backlog') return null;
+  if (!fieldValues) return null;
+  if (fieldValues.size == null) return null;
+  if (typeof fieldValues.estimate !== 'number') return null;
+  return (
+    '⚠ warning: moving a sized + estimated issue to Backlog. ' +
+    'Backlog is for unvetted ideas; sized work belongs in the Ready column.'
+  );
+}
+
 export async function tetherIssueToProject({
   cfg,
   issueNumber,

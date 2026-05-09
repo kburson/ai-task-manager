@@ -35,6 +35,7 @@ function makeSandbox(body) {
       repo: 'o/r',
       projectId: 'PVT_x',
       kanbanFieldId: 'PVTF_x',
+      kanbanOptionBacklog: 'OP_b',
       kanbanOptionInProgress: 'OP_ip',
       kanbanOptionInReview: 'OP_ir',
       kanbanOptionR4R: 'OP_r4',
@@ -132,6 +133,26 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   const r = await runMove(sandbox, binDir, ['100', 'in-review'], { TASK_TRACKER_FORCE_DONE: '1' });
   assert.match(r.stderr, /bypassing in-review gate/);
   assert.match(r.stdout, /moved to: in-review/);
+  rmSync(sandbox, { recursive: true });
+}
+
+// 6. backlog warning fires when moving a sized + estimated issue to backlog
+{
+  const body = '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S","estimate":3}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+  const { sandbox, binDir } = makeSandbox(body);
+  const r = await runMove(sandbox, binDir, ['100', 'backlog']);
+  assert.match(r.stderr, /sized \+ estimated issue to Backlog/);
+  assert.match(r.stdout, /moved to: backlog/);
+  rmSync(sandbox, { recursive: true });
+}
+
+// 7. backlog warning does NOT fire when fields-block has null size/estimate
+{
+  const body = '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":null,"estimate":null}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+  const { sandbox, binDir } = makeSandbox(body);
+  const r = await runMove(sandbox, binDir, ['100', 'backlog']);
+  assert.doesNotMatch(r.stderr, /sized \+ estimated issue to Backlog/);
+  assert.match(r.stdout, /moved to: backlog/);
   rmSync(sandbox, { recursive: true });
 }
 

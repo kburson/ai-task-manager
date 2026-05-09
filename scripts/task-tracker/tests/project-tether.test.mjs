@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { tetherIssueToProject } from '../../gh/lib/project-tether.mjs';
+import { tetherIssueToProject, backlogSizingWarning, backlogMoveWarning } from '../../gh/lib/project-tether.mjs';
 
 const cfg = {
   repo: 'kburson/ai-task-manager',
@@ -219,6 +219,52 @@ async function testSizeOptionMissingFailsLoudly() {
   );
 }
 
+function testBacklogSizingWarning() {
+  // Fires: backlog + size + estimate
+  assert.match(
+    backlogSizingWarning({ status: 'backlog', size: 'S', estimate: 3 }) || '',
+    /sized.+Backlog/i,
+  );
+  // No warning: backlog + size only (no estimate)
+  assert.equal(backlogSizingWarning({ status: 'backlog', size: 'S' }), null);
+  // No warning: backlog + estimate only (no size)
+  assert.equal(backlogSizingWarning({ status: 'backlog', estimate: 3 }), null);
+  // No warning: ready + size + estimate
+  assert.equal(backlogSizingWarning({ status: 'ready', size: 'S', estimate: 3 }), null);
+  // Treat estimate=true (boolean flag without value) as missing
+  assert.equal(backlogSizingWarning({ status: 'backlog', size: 'S', estimate: true }), null);
+  // estimate=0 is a real number — counts as "estimated"
+  assert.match(
+    backlogSizingWarning({ status: 'backlog', size: 'XS', estimate: 0 }) || '',
+    /Backlog/,
+  );
+}
+
+function testBacklogMoveWarning() {
+  // Fires: target=backlog with sized + estimated body fields
+  assert.match(
+    backlogMoveWarning({ targetState: 'backlog', fieldValues: { size: 'M', estimate: 5 } }) || '',
+    /sized.+Backlog/i,
+  );
+  // No warning: target is something other than backlog
+  assert.equal(
+    backlogMoveWarning({ targetState: 'ready', fieldValues: { size: 'M', estimate: 5 } }),
+    null,
+  );
+  // No warning: size missing
+  assert.equal(
+    backlogMoveWarning({ targetState: 'backlog', fieldValues: { size: null, estimate: 5 } }),
+    null,
+  );
+  // No warning: estimate missing or non-numeric
+  assert.equal(
+    backlogMoveWarning({ targetState: 'backlog', fieldValues: { size: 'M', estimate: null } }),
+    null,
+  );
+  // No warning: no fields parsed at all
+  assert.equal(backlogMoveWarning({ targetState: 'backlog', fieldValues: null }), null);
+}
+
 await testExistingProjectSideItemIsReused();
 await testMissingItemIsAddedAndVerifiedFromProjectSide();
 await testPhantomItemIsDeletedAndRetried();
@@ -227,5 +273,7 @@ await testParentLinksAfterProjectVerification();
 await testLooseLeafDoesNotLinkParent();
 await testSizeFieldMissingFailsLoudly();
 await testSizeOptionMissingFailsLoudly();
+testBacklogSizingWarning();
+testBacklogMoveWarning();
 
 console.log('project-tether.test.mjs: all passed');

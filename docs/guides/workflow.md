@@ -41,6 +41,17 @@ scripts/gh/move-state.mjs 42 in-progress
 - Move to **In Review** when a PR is open.
 - Move to **Done** only when all acceptance criteria are checked off.
 
+### Backlog vs Todo (Ready)
+
+Backlog and Todo (Ready) are not interchangeable — they encode different states of issue readiness:
+
+- **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
+- **Todo (Ready)** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Todo never requires additional shaping.
+
+When an agent or human files a new issue with full ACs and sizing already set, tether it to `--status ready`, not `backlog`. Plan-mode sub-issue creation is the one exception: those tether to `backlog` and flip to `ready`/`in-progress` at fan-out time, because not every planned sub-issue is dispatched immediately.
+
+`scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
+
 ---
 
 ## Priority Tiers

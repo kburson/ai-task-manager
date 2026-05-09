@@ -343,6 +343,12 @@ after project-side visibility is confirmed, repairs issue-side phantom items whe
 possible, and fails closed if the story cannot be made visible in the project.
 For loose leaf tasks, omit `--parent`. For epic child issues, pass `--parent`.
 
+#### Backlog vs Todo (Ready) at tether time
+
+- **Plan-mode sub-issues:** keep `--status backlog`. The flip to `ready`/`in-progress` happens at fan-out (see "Mid-epic pickup" / `dispatch-prep.mjs`). Not every planned sub-issue is dispatched immediately, so Backlog is correct.
+- **Ad-hoc issues created with full ACs and sizing** (e.g. an agent files a follow-on issue from a deep dive, or a human files a sized story): pass `--status ready` to `create-issue.mjs` / `project-tether.mjs`. Backlog is the unvetted-ideas inbox; sized + AC'd work belongs in Todo.
+- The tether and move-state scripts emit a non-blocking warning when `--status backlog` is paired with both `--size` and `--estimate`, or when an already-sized issue is moved back to `backlog`. The warning is informational; the operation proceeds.
+
 ### Epic Creation
 
 #### 1. Assemble the epic body

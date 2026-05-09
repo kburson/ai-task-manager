@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { loadConfig } from '../task-tracker/config.mjs';
 import { fieldOptionMap } from './lib/github-projects.mjs';
-import { tetherIssueToProject } from './lib/project-tether.mjs';
+import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
 
 function usage() {
   return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|ready|in-progress|in-review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
@@ -38,6 +38,9 @@ async function main() {
     console.error(usage());
     process.exit(2);
   }
+
+  const sizingWarn = backlogSizingWarning({ status: args.status, size: args.size, estimate: args.estimate });
+  if (sizingWarn) process.stderr.write(`${sizingWarn}\n`);
 
   const cfg = loadConfig();
   if (args.size) {
