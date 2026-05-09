@@ -92,7 +92,7 @@ If `active === "plan"` → ask the user:
 > **yes** / **no** (no creates a single blank issue and starts tracking)"
 
 - **no** → skip to Step 1c (run the CLI normally).
-- **yes** → proceed to **Plan-Mode Backlog Orchestration** below. **Do not call the CLI** — orchestration creates issues directly via `gh issue create`.
+- **yes** → proceed to **Plan-Mode Backlog Orchestration** below. **Do not call the CLI** — orchestration creates issues via the `create-issue.mjs` helper (which wraps `gh issue create` + project tether + sub-issue link + placeholder substitution into one atomic step).
 
 ### Step 1c: Run the CLI (all verbs except `new` in plan mode)
 ```bash
@@ -366,20 +366,30 @@ Append `$DIRECTIVE_BLOCK` after Plan Metadata and Acceptance Criteria. Do not ha
 script reads from `.ai-task-manager/definition-of-done.md` so the output stays
 authoritative.
 
-#### 2. Create the epic issue
+#### 2. Create + tether the epic atomically
+
+Write the assembled body to a temp file, then call the helper. It runs `gh issue create`, tethers the issue to the project Backlog with priority/size/estimate/sequence, and substitutes the `<this-issue-#>` / `<parent-epic-#>` placeholders in one step.
 
 ```bash
-gh issue create \
+BODY_FILE=$(mktemp)
+printf '%s' "<assembled-body>" > "$BODY_FILE"
+
+URL=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/create-issue.mjs" \
   --title "EPIC: <title>" \
-  --body "<assembled-body>" \
+  --body-file "$BODY_FILE" \
+  --priority <p0|p1|p2 from spec> \
+  --size <XS|S|M|L|XL from spec> \
+  --estimate <estimate-hours as float> \
+  --sequence <sequence-number> \
   --assignee "$ASSIGNEE" \
   --label "plan:<slug>" \
   --label "<inferred1>" \
-  [--label "<inferred2>" ...] \
-  [--label "<defaultLabel>" ...]
+  [--label "<inferred2>" ...])
 ```
 
-Capture the URL returned; extract the issue number from it (e.g., `https://github.com/owner/repo/issues/42` → `42`). Store as `EPIC_N`.
+The helper prints the issue URL on stdout. Extract the number (e.g., `https://github.com/owner/repo/issues/42` → `42`) and store as `EPIC_N`. Default priority for epics: `p0`.
+
+If the helper exits non-zero, STOP. Either the issue was never created (gh failure) or it was created but not tethered — the helper prints the exact recovery command in the latter case.
 
 #### 3. Get the epic's node ID (needed for sub-issue linking)
 
@@ -387,36 +397,6 @@ Capture the URL returned; extract the issue number from it (e.g., `https://githu
 gh issue view <EPIC_N> --json id --jq '.id'
 ```
 Store as `EPIC_NODE_ID`.
-
-#### 4. Set Priority
-
-```bash
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/set-priority.mjs" <EPIC_N> <p0|p1|p2>
-```
-Use the priority declared in the spec. Default: `p0` for epics.
-
-#### 5. Tether to Project Backlog
-
-```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
-  --issue <EPIC_N> \
-  --status backlog \
-  --priority <p0|p1|p2 from spec> \
-  --size <XS|S|M|L|XL from spec> \
-  --estimate <estimate-hours as float> \
-  --sequence <sequence-number>
-```
-
-#### 6. Replace placeholder issue numbers in body
-
-```bash
-BODY=$(gh issue view <EPIC_N> --json body --jq '.body')
-gh api repos/<owner>/<repo>/issues/<EPIC_N> \
-  --method PATCH \
-  --field body="$(echo "$BODY" | sed "s/<this-issue-#>/${EPIC_N}/g; s/<parent-epic-#>/none — this is the epic/g")"
-```
-
-Note: use double-quotes around the sed expression so shell variables (`$EPIC_N`) expand correctly.
 
 ### Sub-Issue Creation Loop
 
@@ -438,55 +418,42 @@ DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-ma
 # If this command exits non-zero, STOP — do not create any issues.
 ```
 
-The script's output already contains `<this-issue-#>` placeholders at the right spots — replace after creation in step 7.
+The script's output already contains `<this-issue-#>` and `<parent-epic-#>` placeholders at the right spots — `create-issue.mjs` substitutes them automatically in the next step.
 
-#### 3. Create the sub-issue
-
-```bash
-gh issue create \
-  --title "<sub-issue-title>" \
-  --body "<assembled-body>" \
-  --assignee "$ASSIGNEE" \
-  --label "plan:<slug>" \
-  --label "<inferred1>" \
-  [--label "<inferred2>" ...] \
-  [--label "<defaultLabel>" ...]
-```
-
-Capture the issue number as `SUB_N`. Get the node ID:
-```bash
-gh issue view <SUB_N> --json id --jq '.id'
-```
-Store as `SUB_NODE_ID`.
-
-#### 4. Tether to Project Backlog
+#### 3. Create + tether the sub-issue atomically
 
 Priority default for sub-issues: inherit from parent epic if not declared in spec.
 
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
-  --issue <SUB_N> \
+BODY_FILE=$(mktemp)
+printf '%s' "<assembled-body>" > "$BODY_FILE"
+
+URL=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/create-issue.mjs" \
+  --title "<sub-issue-title>" \
+  --body-file "$BODY_FILE" \
   --parent <EPIC_N> \
-  --status backlog \
   --priority <p0|p1|p2 from spec or parent> \
   --size <XS|S|M|L|XL from spec> \
   --estimate <estimate-hours as float> \
-  --sequence <sequence-number>
+  --sequence <sequence-number> \
+  --assignee "$ASSIGNEE" \
+  --label "plan:<slug>" \
+  --label "<inferred1>" \
+  [--label "<inferred2>" ...])
 ```
 
-The helper links the issue to the epic as a GitHub sub-issue after project-side
-visibility is verified.
+The helper prints the issue URL on stdout. Extract the number and store as `SUB_N`. It also:
+- Tethers the issue to the project Backlog and sets priority/size/estimate/sequence.
+- Links the issue to the epic as a GitHub sub-issue after project-side visibility is verified.
+- Substitutes `<this-issue-#>` → `#SUB_N` and `<parent-epic-#>` → `#EPIC_N` in the body.
 
-#### 5. Replace placeholder issue numbers in body
+If the helper exits non-zero, STOP and follow its recovery instructions before continuing the loop.
 
+Get the node ID (still needed for any downstream linking):
 ```bash
-BODY=$(gh issue view <SUB_N> --json body --jq '.body')
-gh api repos/<owner>/<repo>/issues/<SUB_N> \
-  --method PATCH \
-  --field body="$(echo "$BODY" | sed "s/<this-issue-#>/${SUB_N}/g; s/<parent-epic-#>/${EPIC_N}/g")"
+gh issue view <SUB_N> --json id --jq '.id'
 ```
-
-Note: use double-quotes around the sed expression so shell variables (`$SUB_N`, `$EPIC_N`) expand correctly.
+Store as `SUB_NODE_ID`.
 
 #### 8. Print progress line
 
@@ -586,7 +553,7 @@ close contract.
    ---
    ```
 3. Append `$DIRECTIVE_BLOCK` after Acceptance Criteria and Plan Metadata so the issue order is Scope, Plan Metadata, Acceptance Criteria, Definition of Done, Pickup Directive, then any hidden AITM field DB.
-4. Replace `<this-issue-#>` and `<parent-epic-#>` placeholders in the body with actual numbers after `gh issue create` returns.
+4. Placeholder substitution (`<this-issue-#>`, `<parent-epic-#>`) is handled automatically by `create-issue.mjs`. Direct callers using bare `gh issue create` (rare, untethered) must do this themselves with a follow-up `gh api PATCH`.
 
 **At issue pickup** (`/task #N` or `/task resume #N`):
 - Read `.ai-task-manager/pickup-directive.md` — start with the "Hard Rules" section, then follow the step-by-step instructions.
