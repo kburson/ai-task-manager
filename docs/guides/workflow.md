@@ -93,6 +93,18 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 **At `/task #N` activation**: if either field is missing, set both before touching any code.
 
+### Post-Deep-Dive re-estimate
+
+When `/task review #N` runs and the body gates pass, the harness re-evaluates `Size` and `Estimate` from the Deep-Dive Analysis section before moving the issue to In Review:
+
+- Signals: count of files-to-edit, plan steps, identified risks, and `Depends on:` dependencies.
+- Score → bucket → median hours. Constants live in `scripts/task-tracker/lib/reevaluate-estimate.mjs`.
+- If the new (size, estimate) match the current values, the re-estimate is a silent no-op.
+- If they differ within one tier, the project fields and body fields-block are updated and a `### 🔁 Post-Deep-Dive re-estimate` audit comment is posted.
+- If they differ by **≥2 size tiers**, no fields are mutated — instead a `⚠ HUMAN ATTENTION` comment is posted under the same header so a human can resolve the scope question.
+
+Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the field writes. The bypass still posts an audit comment so the gap is visible per-issue.
+
 ---
 
 ## Inline Update Cadence
