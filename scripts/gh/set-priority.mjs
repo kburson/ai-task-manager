@@ -55,19 +55,20 @@ if (!SKIP_NETWORK && !optionId) {
 const [owner, repoName] = (cfg.repo || '/').split('/');
 const priorityLabel = priority.toUpperCase();
 
-async function getFirstProjectItemId(issueNum) {
+async function getProjectItemId(issueNum, projectId) {
   const data = await gql(`
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
-          projectItems(first: 5) { nodes { id } }
+          projectItems(first: 20) { nodes { id project { id } } }
         }
       }
     }`,
     { owner, repo: repoName, issue: Number(issueNum) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-  return nodes[0]?.id || '';
+  const match = nodes.find(n => n?.project?.id === projectId);
+  return match?.id || '';
 }
 
 async function setPriority(issueNum) {
@@ -75,7 +76,7 @@ async function setPriority(issueNum) {
     console.log(`  ✓ #${issueNum} → ${priorityLabel}`);
     return;
   }
-  const itemId = await getFirstProjectItemId(issueNum);
+  const itemId = await getProjectItemId(issueNum, cfg.projectId);
   if (!itemId) {
     console.log(`  Issue #${issueNum} not found in project — skipping`);
     return;
