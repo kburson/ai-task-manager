@@ -362,7 +362,8 @@ apply_project_template() {
     {"name":"Backlog","color":"GRAY","description":"List of ungroomed features and ideas."},
     {"name":"Ready","color":"BLUE","description":"List of items ready to implement."},
     {"name":"In Progress","color":"YELLOW","description":""},
-    {"name":"In Review","color":"ORANGE","description":"Code complete awaiting verification."},
+    {"name":"In Review","color":"ORANGE","description":"Agent verification in progress."},
+    {"name":"R4R","color":"PURPLE","description":"All checks passed; awaiting human approval."},
     {"name":"Done","color":"GREEN","description":""}
   ]'
   priority_opts='[
@@ -750,6 +751,29 @@ if [[ "$TOTAL_OPTIONS" -eq 6 ]]; then
   fi
 else
   info "Project has $TOTAL_OPTIONS status columns — column order not changed (arrange manually in GitHub)."
+fi
+echo ""
+
+# ── verify a Board view exists (view config is not writable via API) ──────
+
+BOARD_VIEW_NAME=$(gh api graphql -f query="
+{
+  node(id: \"$PROJECT_NODE_ID\") {
+    ... on ProjectV2 {
+      views(first: 20) { nodes { name layout } }
+    }
+  }
+}" --jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT")][0].name' 2>/dev/null || echo '')
+
+if [[ -n "$BOARD_VIEW_NAME" && "$BOARD_VIEW_NAME" != "null" ]]; then
+  ok "Board view exists: '$BOARD_VIEW_NAME' (R4R column visible once Status options are populated)."
+else
+  warn "No Board-layout view found on this project."
+  info "GitHub Projects v2 does not expose view configuration via API. Create one manually:"
+  info "  1. Open the project in the GitHub web UI"
+  info "  2. Click 'New view' → choose 'Board' layout"
+  info "  3. Group by 'Status'"
+  info "  4. Confirm columns: Backlog → Ready → In Progress → In Review → R4R → Done"
 fi
 echo ""
 

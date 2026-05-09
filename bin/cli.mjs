@@ -412,6 +412,23 @@ function cmdInit(args) {
   }
 }
 
+function cmdRepair(args) {
+  let targetDir = process.cwd();
+  const targetArg = parseOption(args, '--target');
+  if (targetArg) targetDir = resolve(targetArg);
+  const repairScript = join(PKG_ROOT, 'scripts', 'gh', 'init-repair.mjs');
+  banner('Repairing task-tracker config', `target: ${targetDir}`);
+  try {
+    execFileSync('node', [repairScript], {
+      stdio: 'inherit',
+      env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: targetDir },
+    });
+  } catch (e) {
+    err(`Repair failed: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 const [,, command = 'help', ...rest] = process.argv;
 
 switch (command) {
@@ -426,6 +443,9 @@ switch (command) {
   case 'init':
     cmdInit(rest);
     break;
+  case 'repair':
+    cmdRepair(rest);
+    break;
   case 'statusline':
     cmdStatusline();
     break;
@@ -438,6 +458,7 @@ ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
 ${bold('  Usage')}
     ${cyan('npx ai-task-manager install')}    ${dim('[--agent claude|codex] [--link-mode stub|symlink] [--codex-superpowers] [--codex-superpowers-global] [--target <dir>]')}
     ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>] [--codex-superpowers] [--codex-superpowers-global]')}
+    ${cyan('npx ai-task-manager repair')}     ${dim('[--target <dir>] Backfill empty kanbanOption* fields in existing config')}
     ${cyan('npx ai-task-manager statusline')} ${dim('Install Claude Code status line')}
     ${cyan('npx ai-task-manager version')}    ${dim('Print version')}
 
