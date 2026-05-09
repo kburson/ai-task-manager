@@ -11,11 +11,11 @@ import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
 const issue = args.find(a => /^#?\d+$/.test(a))?.replace('#', '');
-const state = args.find(a => ['in-progress', 'in_progress', 'done'].includes(a));
+const state = args.find(a => ['development', 'done'].includes(a));
 const itemId = args[args.indexOf('--item-id') + 1] || '';
 
 if (!issue || !state || !itemId) {
-  console.error('Usage: update-event-fields.mjs <issue#> <in-progress|done> --item-id <project-item-id>');
+  console.error('Usage: update-event-fields.mjs <issue#> <development|done> --item-id <project-item-id>');
   process.exit(1);
 }
 
@@ -77,7 +77,7 @@ async function writeIssueBody(body) {
 }
 
 try {
-  const eventName = (state === 'in-progress' || state === 'in_progress') ? 'moveToInProgress' : 'moveToDone';
+  const eventName = state === 'development' ? 'moveToDevelopment' : 'moveToDone';
   const bindings = loadEventBindings()[eventName] || [];
   const fieldDefs = loadProjectFieldDefs(projectDir());
   const issueBody = cfg.repo ? await fetchIssueBody() : '';

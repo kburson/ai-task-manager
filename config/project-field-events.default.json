@@ -1,5 +1,5 @@
 {
-  "moveToInProgress": [
+  "moveToDevelopment": [
     { "field": "startTime", "value": "now", "mode": "set_once" }
   ],
   "logTime": [

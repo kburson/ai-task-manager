@@ -6,9 +6,11 @@ const cfg = {
   projectId: 'PROJECT_1',
   kanbanFieldId: 'STATUS_FIELD',
   kanbanOptionBacklog: 'STATUS_BACKLOG',
-  kanbanOptionReady: 'STATUS_READY',
-  kanbanOptionInProgress: 'STATUS_PROGRESS',
-  kanbanOptionInReview: 'STATUS_REVIEW',
+  kanbanOptionGroom: 'STATUS_GROOM',
+  kanbanOptionAnalyze: 'STATUS_ANALYZE',
+  kanbanOptionDevelopment: 'STATUS_DEVELOPMENT',
+  kanbanOptionValidate: 'STATUS_VALIDATE',
+  kanbanOptionReview: 'STATUS_REVIEW',
   kanbanOptionDone: 'STATUS_DONE',
   priorityFieldId: 'PRIORITY_FIELD',
   priorityOptionP0: 'PRIORITY_P0',
@@ -114,7 +116,7 @@ async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
   const result = await tetherIssueToProject({
     cfg,
     issueNumber: 13,
-    status: 'ready',
+    status: 'groom',
     priority: 'P1',
     size: 'S',
     estimate: 1,
@@ -229,8 +231,8 @@ function testBacklogSizingWarning() {
   assert.equal(backlogSizingWarning({ status: 'backlog', size: 'S' }), null);
   // No warning: backlog + estimate only (no size)
   assert.equal(backlogSizingWarning({ status: 'backlog', estimate: 3 }), null);
-  // No warning: ready + size + estimate
-  assert.equal(backlogSizingWarning({ status: 'ready', size: 'S', estimate: 3 }), null);
+  // No warning: groom + size + estimate
+  assert.equal(backlogSizingWarning({ status: 'groom', size: 'S', estimate: 3 }), null);
   // Treat estimate=true (boolean flag without value) as missing
   assert.equal(backlogSizingWarning({ status: 'backlog', size: 'S', estimate: true }), null);
   // estimate=0 is a real number — counts as "estimated"
@@ -248,7 +250,7 @@ function testBacklogMoveWarning() {
   );
   // No warning: target is something other than backlog
   assert.equal(
-    backlogMoveWarning({ targetState: 'ready', fieldValues: { size: 'M', estimate: 5 } }),
+    backlogMoveWarning({ targetState: 'groom', fieldValues: { size: 'M', estimate: 5 } }),
     null,
   );
   // No warning: size missing

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Move a GitHub issue through board states: Backlog → Ready → In Progress → In Review → R4R → Done
+# Move a GitHub issue through board states: Backlog → Groom → Analyze → Development → Validate → Review → Done
 # Usage: scripts/gh/move-state.sh <issue#> <state>
-# States: backlog | ready | in-progress | in-review | r4r | done
+# States: backlog | groom | analyze | development | validate | review | done
 #
 # Requires project config in .ai-task-manager/task-tracker.json (set by: npx ai-task-manager init)
 
@@ -23,13 +23,13 @@ done
 
 if [[ ! "$ISSUE" =~ ^[0-9]+$ ]]; then
   echo "Usage: scripts/gh/move-state.sh <issue#> <state> [--item-id <project-item-id>]"
-  echo "States: backlog | ready | in-progress | in-review | r4r | done"
+  echo "States: backlog | groom | analyze | development | validate | review | done"
   exit 1
 fi
 
 if [[ -z "$STATE" ]]; then
   echo "Usage: scripts/gh/move-state.sh <issue#> <state> [--item-id <project-item-id>]"
-  echo "States: backlog | ready | in-progress | in-review | r4r | done"
+  echo "States: backlog | groom | analyze | development | validate | review | done"
   exit 1
 fi
 
@@ -61,24 +61,27 @@ case "$STATE" in
   backlog)
     OPTION_ID=$(read_config kanbanOptionBacklog)
     ;;
-  ready)
-    OPTION_ID=$(read_config kanbanOptionReady)
+  groom)
+    OPTION_ID=$(read_config kanbanOptionGroom)
     ;;
-  in-progress|in_progress)
-    OPTION_ID=$(read_config kanbanOptionInProgress)
+  analyze)
+    OPTION_ID=$(read_config kanbanOptionAnalyze)
     ;;
-  in-review|in_review)
-    OPTION_ID=$(read_config kanbanOptionInReview)
+  development)
+    OPTION_ID=$(read_config kanbanOptionDevelopment)
     ;;
-  r4r|r_4_r|ready-for-release)
-    OPTION_ID=$(read_config kanbanOptionR4R)
+  validate)
+    OPTION_ID=$(read_config kanbanOptionValidate)
+    ;;
+  review)
+    OPTION_ID=$(read_config kanbanOptionReview)
     ;;
   done)
     OPTION_ID=$(read_config kanbanOptionDone)
     ;;
   *)
     echo "Unknown state: $STATE"
-    echo "States: backlog | ready | in-progress | in-review | r4r | done"
+    echo "States: backlog | groom | analyze | development | validate | review | done"
     exit 1
     ;;
 esac

@@ -43,9 +43,9 @@ async function main() {
     process.exit(2);
   }
 
-  // 1. Flip board to In Progress (orchestrator-owned transition).
+  // 1. Flip board to Development (orchestrator-owned transition).
   const moveScript = path.join(__dir, 'move-state.mjs');
-  await pexec('node', [moveScript, args.issue, 'in-progress'], { timeout: 15000 });
+  await pexec('node', [moveScript, args.issue, 'development'], { timeout: 15000 });
 
   // 2. Post a `start` row so the issue's timing log shows the dispatch moment
   //    even if the agent's bootstrap never lands. The agent's own subsequent

@@ -381,27 +381,27 @@ async function verbClose() {
   }
   // ── Cascade close (epic) ──────────────────────────────────────────────────
   // Sub-issues need no parent-state precondition — they close before the epic
-  // reaches R4R. The epic gate (children must be R4R) lives here on the epic side.
+  // reaches Review. The epic gate (children must be in Review) lives here on the epic side.
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);
     if (subNums.length > 0) {
-      // Epic: verify all children are R4R (or already Done)
+      // Epic: verify all children are in Review (or already Done)
       const childStates = await Promise.all(
         subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
       );
-      const notReady = childStates.filter(c => c.state !== 'r4r' && c.state !== 'done');
+      const notReady = childStates.filter(c => c.state !== 'review' && c.state !== 'done');
       if (notReady.length > 0 && !force) {
-        console.error(`[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in R4R:`);
+        console.error(`[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in Review:`);
         notReady.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
-        console.error('All sub-issues must reach R4R before the epic can close.');
+        console.error('All sub-issues must reach Review before the epic can close.');
         process.exit(3);
       }
-      // Cascade: close each R4R child
-      const r4rChildren = childStates.filter(c => c.state === 'r4r');
-      if (r4rChildren.length > 0) {
-        console.log(`[task-tracker] Cascade closing ${r4rChildren.length} child issue(s)...`);
+      // Cascade: close each Review child
+      const reviewChildren = childStates.filter(c => c.state === 'review');
+      if (reviewChildren.length > 0) {
+        console.log(`[task-tracker] Cascade closing ${reviewChildren.length} child issue(s)...`);
         const { buildRow: br } = await import('./gh-timing-comment.mjs');
-        for (const child of r4rChildren) {
+        for (const child of reviewChildren) {
           try {
             await safePostTiming(`#${child.num}`, br({
               ts: nowIso(), event: 'done', activeMin: 0, idleMin: 0, deltaWords: 0,
@@ -418,7 +418,7 @@ async function verbClose() {
       }
     }
   }
-  // Timing and board fields were flushed at R4R (/task review). Close only moves
+  // Timing and board fields were flushed at Review (/task review). Close only moves
   // to Done, deregisters from fleet, and writes a +0 close marker row.
   const { buildRow: closeBr } = await import('./gh-timing-comment.mjs');
   if (closingDifferentIssue) {
@@ -510,12 +510,13 @@ async function verbPause() {
 
 function buildStateOptionMap() {
   return Object.fromEntries([
-    [cfg.kanbanOptionBacklog,    'backlog'],
-    [cfg.kanbanOptionReady,      'ready'],
-    [cfg.kanbanOptionInProgress, 'in-progress'],
-    [cfg.kanbanOptionInReview,   'in-review'],
-    [cfg.kanbanOptionR4R,        'r4r'],
-    [cfg.kanbanOptionDone,       'done'],
+    [cfg.kanbanOptionBacklog,     'backlog'],
+    [cfg.kanbanOptionGroom,       'groom'],
+    [cfg.kanbanOptionAnalyze,     'analyze'],
+    [cfg.kanbanOptionDevelopment, 'development'],
+    [cfg.kanbanOptionValidate,    'validate'],
+    [cfg.kanbanOptionReview,      'review'],
+    [cfg.kanbanOptionDone,        'done'],
   ].filter(([k]) => k));
 }
 
@@ -763,7 +764,7 @@ async function verbReview(args) {
     await safePostTiming(target, row);
     saveState({ ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target }, statePath);
     try { setTaskStatus(projectDir, target, 'paused'); } catch {}
-    await runMoveState(target, 'in-review');
+    await runMoveState(target, 'validate');
     console.log(`Review ${target}: +${activeMin} active min (agent), +${deltaWords} words; task paused.`);
   } else if (s.active === target) {
     const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'review', 'starting review');
@@ -776,7 +777,7 @@ async function verbReview(args) {
       lastActive: target,
     }, statePath);
     try { setTaskStatus(projectDir, target, 'paused'); } catch {}
-    await runMoveState(target, 'in-review');
+    await runMoveState(target, 'validate');
     console.log(`Review ${target}: +${deltaMin} active min${wallNote}, +${deltaWords} words; task paused.`);
   } else {
     const ts = nowIso();
@@ -785,7 +786,7 @@ async function verbReview(args) {
       wordMarker: 0, description: 'starting review',
     });
     await safePostTiming(target, row);
-    await runMoveState(target, 'in-review');
+    await runMoveState(target, 'validate');
     saveState({ ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target }, statePath);
     console.log(`Review ${target}: task paused.`);
   }
@@ -863,47 +864,47 @@ async function verbReview(args) {
       }
       const { buildRow: br } = await import('./gh-timing-comment.mjs');
       await safePostTiming(target, br({
-        ts: nowIso(), event: 'in-progress', activeMin: 0, idleMin: 0, deltaWords: 0,
-        wordMarker: 0, description: 'verification failed — reverted to In Progress',
+        ts: nowIso(), event: 'development', activeMin: 0, idleMin: 0, deltaWords: 0,
+        wordMarker: 0, description: 'verification failed — reverted to Development',
       }));
-      await runMoveState(target, 'in-progress');
+      await runMoveState(target, 'development');
       console.error(`[task-tracker] Review failed for ${target}:`);
       failures.forEach(f => console.error(`   ${f}`));
       process.exit(3);
     }
-    // ── Epic sub-issue gate: all sub-issues must be R4R ───────────────────────
+    // ── Epic sub-issue gate: all sub-issues must be in Review ─────────────────
     const subNums = await fetchSubIssues(issueNum);
     if (subNums.length > 0) {
       const childStates = await Promise.all(
         subNums.map(async n => ({ num: n, state: await getIssueBoardState(n) }))
       );
-      const notR4R = childStates.filter(c => c.state !== 'r4r' && c.state !== 'done');
-      if (notR4R.length > 0) {
-        // Stay in In Review — the epic's own boxes pass but children aren't ready
-        console.error(`[task-tracker] ⛔ Epic ${target} cannot move to R4R — ${notR4R.length} child issue(s) not in R4R:`);
-        notR4R.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
-        console.error('Wait for all sub-issues to reach R4R, then run `/task review` again.');
+      const notReview = childStates.filter(c => c.state !== 'review' && c.state !== 'done');
+      if (notReview.length > 0) {
+        // Stay in Validate — the epic's own boxes pass but children aren't ready
+        console.error(`[task-tracker] ⛔ Epic ${target} cannot move to Review — ${notReview.length} child issue(s) not in Review:`);
+        notReview.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
+        console.error('Wait for all sub-issues to reach Review, then run `/task review` again.');
         process.exit(3);
       }
     }
-    // ── All gates passed: promote to R4R ─────────────────────────────────────
+    // ── All gates passed: promote to Review ──────────────────────────────────
     // Commit any outstanding tracked changes left by the agent
     const commitResult = spawnSync('git', [
-      'commit', '-a', '-m', `chore: verification complete for ${target} — moving to R4R`,
+      'commit', '-a', '-m', `chore: verification complete for ${target} — moving to Review`,
     ], { cwd: projectDir, stdio: 'pipe' });
     if (commitResult.status === 0) {
       console.log(`[task-tracker] Committed outstanding changes for ${target}.`);
     }
-    // Move board status → R4R, then flush timing + update board custom fields
-    await runMoveState(target, 'r4r');
-    const r4rTs = nowIso();
-    const r4rRow = (await import('./gh-timing-comment.mjs')).buildRow({
-      ts: r4rTs, event: 'r4r', activeMin: 0, idleMin: 0, deltaWords: 0,
-      wordMarker: 0, description: 'task is now R4R',
+    // Move board status → Review, then flush timing + update board custom fields
+    await runMoveState(target, 'review');
+    const reviewTs = nowIso();
+    const reviewRow = (await import('./gh-timing-comment.mjs')).buildRow({
+      ts: reviewTs, event: 'review-ready', activeMin: 0, idleMin: 0, deltaWords: 0,
+      wordMarker: 0, description: 'task is now in Review',
     });
-    await safePostTiming(target, r4rRow);
+    await safePostTiming(target, reviewRow);
     await runLogIssueTime(target);
-    console.log(`✓ ${target} moved to R4R — all verification passed.`);
+    console.log(`✓ ${target} moved to Review — all verification passed.`);
   }
 }
 

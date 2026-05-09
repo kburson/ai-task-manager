@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Move a GitHub issue through board states: Backlog → Ready → In Progress → In Review → R4R → Done
+// Move a GitHub issue through board states: Backlog → Groom → Analyze → Development → Validate → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
-// States: backlog | ready | in-progress | in-review | r4r | done
+// States: backlog | groom | analyze | development | validate | review | done
 
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -19,16 +19,13 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
 const STATE_TO_CONFIG_KEY = {
-  'backlog':           'kanbanOptionBacklog',
-  'ready':             'kanbanOptionReady',
-  'in-progress':       'kanbanOptionInProgress',
-  'in_progress':       'kanbanOptionInProgress',
-  'in-review':         'kanbanOptionInReview',
-  'in_review':         'kanbanOptionInReview',
-  'r4r':               'kanbanOptionR4R',
-  'r_4_r':             'kanbanOptionR4R',
-  'ready-for-release': 'kanbanOptionR4R',
-  'done':              'kanbanOptionDone',
+  'backlog':     'kanbanOptionBacklog',
+  'groom':       'kanbanOptionGroom',
+  'analyze':     'kanbanOptionAnalyze',
+  'development': 'kanbanOptionDevelopment',
+  'validate':    'kanbanOptionValidate',
+  'review':      'kanbanOptionReview',
+  'done':        'kanbanOptionDone',
 };
 
 // Checkboxes that are close-side-effects, not user-verifiable items
@@ -41,7 +38,7 @@ const CLOSE_SIDE_EFFECT_PATTERNS = [
 function usage() {
   process.stderr.write(
     'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]\n' +
-    'States: backlog | ready | in-progress | in-review | r4r | done\n'
+    'States: backlog | groom | analyze | development | validate | review | done\n'
   );
   process.exit(1);
 }
@@ -60,7 +57,7 @@ if (!/^\d+$/.test(issueArg)) usage();
 
 const configKey = STATE_TO_CONFIG_KEY[stateArg];
 if (!configKey) {
-  process.stderr.write(`Unknown state: ${stateArg}\nStates: backlog | ready | in-progress | in-review | r4r | done\n`);
+  process.stderr.write(`Unknown state: ${stateArg}\nStates: backlog | groom | analyze | development | validate | review | done\n`);
   process.exit(1);
 }
 
@@ -77,12 +74,12 @@ if (!SKIP_NETWORK && !optionId) {
   process.exit(1);
 }
 
-// Structural body gate: applies to in-review, r4r, and done.
+// Structural body gate: applies to validate, review, and done.
 // - For all three states: verify "evidence-required" ticked boxes have supporting body content
 //   (Deep-Dive Analysis section, Dependency Map section, Verification Commands all-checked).
-//   Note: verification-commands rule fires only at r4r/done — at in-review the auto-runner ticks them.
+//   Note: verification-commands rule fires only at review/done — at validate the auto-runner ticks them.
 // - For done only: also enforce "no unchecked checkboxes" and "Deep dive line is checked".
-const GATED_STATES = new Set(['in-review', 'in_review', 'r4r', 'r_4_r', 'ready-for-release', 'done']);
+const GATED_STATES = new Set(['validate', 'review', 'done']);
 if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   let body = '';
   try {
@@ -94,9 +91,9 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
     const reasons = [];
     const refusedRuleNames = [];
 
-    // Structural gates (all gated states). At in-review, skip verification-commands
-    // because verbReview's auto-runner is what ticks those boxes.
-    const activeGates = stateArg === 'done' || stateArg === 'r4r' || stateArg === 'r_4_r' || stateArg === 'ready-for-release'
+    // Structural gates (all gated states). At validate, skip verification-commands
+    // because the auto-runner is what ticks those boxes.
+    const activeGates = stateArg === 'done' || stateArg === 'review'
       ? DEFAULT_GATES
       : DEFAULT_GATES.filter(g => g.name !== 'verification-commands');
     const gateResult = validateBody(body, { gates: activeGates });

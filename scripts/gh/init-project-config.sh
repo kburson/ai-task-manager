@@ -382,11 +382,12 @@ apply_project_template() {
   local template="$1"
   local status_opts priority_opts size_opts
   status_opts='[
-    {"name":"Backlog","color":"GRAY","description":"List of ungroomed features and ideas."},
-    {"name":"Ready","color":"BLUE","description":"List of items ready to implement."},
-    {"name":"In Progress","color":"YELLOW","description":""},
-    {"name":"In Review","color":"ORANGE","description":"Agent verification in progress."},
-    {"name":"R4R","color":"PURPLE","description":"All checks passed; awaiting human approval."},
+    {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
+    {"name":"Groom","color":"BLUE","description":"Items being shaped: AC, sizing, estimates."},
+    {"name":"Analyze","color":"PURPLE","description":"Items being deep-dived: design + caller analysis."},
+    {"name":"Development","color":"YELLOW","description":"Implementation in progress."},
+    {"name":"Validate","color":"ORANGE","description":"Agent verification in progress."},
+    {"name":"Review","color":"PURPLE","description":"All checks passed; awaiting human approval."},
     {"name":"Done","color":"GREEN","description":""}
   ]'
   priority_opts='[
@@ -660,23 +661,25 @@ auto_or_pick() {
   done
 }
 
-# Backlog only auto-matches "backlog" — not "todo" (that belongs to Ready)
-auto_or_pick "Backlog"     "backlog"                               "required"; OPTION_BACKLOG="$PICKED_ID"
-auto_or_pick "Ready"       "ready,refined,groomed,todo,to do"      "required"; OPTION_READY="$PICKED_ID"
-auto_or_pick "In Progress" "in progress,in-progress,doing,wip"     "required"; OPTION_IN_PROGRESS="$PICKED_ID"
-auto_or_pick "Done"        "done,closed,complete,completed"        "required"; OPTION_DONE="$PICKED_ID"
-auto_or_pick "In Review"   "in review,in-review,review,reviewing"  "required"; OPTION_IN_REVIEW="$PICKED_ID"
-auto_or_pick "R4R"         "r4r,ready for release,ready-for-release" "required"; OPTION_R4R="$PICKED_ID"
+# Backlog only auto-matches "backlog" — not "todo" (that belongs to Groom)
+auto_or_pick "Backlog"     "backlog"                                  "required"; OPTION_BACKLOG="$PICKED_ID"
+auto_or_pick "Groom"       "groom,grooming,refined,ready,todo,to do"  "required"; OPTION_GROOM="$PICKED_ID"
+auto_or_pick "Analyze"     "analyze,analysis"                         "required"; OPTION_ANALYZE="$PICKED_ID"
+auto_or_pick "Development" "development,in progress,in-progress,doing,wip" "required"; OPTION_DEVELOPMENT="$PICKED_ID"
+auto_or_pick "Validate"    "validate,in review,in-review,reviewing"   "required"; OPTION_VALIDATE="$PICKED_ID"
+auto_or_pick "Review"      "review,r4r,ready for release,ready-for-release" "required"; OPTION_REVIEW="$PICKED_ID"
+auto_or_pick "Done"        "done,closed,complete,completed"           "required"; OPTION_DONE="$PICKED_ID"
 
 
 # Build list of options that need to be created
 STATES_TO_CREATE=()
 [[ "$OPTION_BACKLOG" == "__NEW__" ]]     && STATES_TO_CREATE+=("Backlog:GRAY")
-[[ "$OPTION_READY" == "__NEW__" ]]       && STATES_TO_CREATE+=("Ready:BLUE")
-[[ "$OPTION_IN_PROGRESS" == "__NEW__" ]] && STATES_TO_CREATE+=("In Progress:YELLOW")
-[[ "$OPTION_IN_REVIEW" == "__NEW__" ]]   && STATES_TO_CREATE+=("In Review:ORANGE")
-[[ "$OPTION_R4R" == "__NEW__" ]]              && STATES_TO_CREATE+=("R4R:PURPLE")
-[[ "$OPTION_DONE" == "__NEW__" ]]        && STATES_TO_CREATE+=("Done:GREEN")
+[[ "$OPTION_GROOM" == "__NEW__" ]]       && STATES_TO_CREATE+=("Groom:GREEN")
+[[ "$OPTION_ANALYZE" == "__NEW__" ]]     && STATES_TO_CREATE+=("Analyze:BLUE")
+[[ "$OPTION_DEVELOPMENT" == "__NEW__" ]] && STATES_TO_CREATE+=("Development:YELLOW")
+[[ "$OPTION_VALIDATE" == "__NEW__" ]]    && STATES_TO_CREATE+=("Validate:ORANGE")
+[[ "$OPTION_REVIEW" == "__NEW__" ]]      && STATES_TO_CREATE+=("Review:PURPLE")
+[[ "$OPTION_DONE" == "__NEW__" ]]        && STATES_TO_CREATE+=("Done:PURPLE")
 
 # If any new options needed, append them via updateProjectV2Field
 if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
@@ -729,35 +732,38 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
     echo "$KANBAN_FIELD_JSON" | jq -r --arg n "$1" '.options[] | select(.name == $n) | .id'
   }
   [[ "$OPTION_BACKLOG" == "__NEW__" ]]     && OPTION_BACKLOG=$(remap_state "Backlog")
-  [[ "$OPTION_READY" == "__NEW__" ]]       && OPTION_READY=$(remap_state "Ready")
-  [[ "$OPTION_IN_PROGRESS" == "__NEW__" ]] && OPTION_IN_PROGRESS=$(remap_state "In Progress")
-  [[ "$OPTION_IN_REVIEW" == "__NEW__" ]]   && OPTION_IN_REVIEW=$(remap_state "In Review")
-  [[ "$OPTION_R4R" == "__NEW__" ]]              && OPTION_R4R=$(remap_state "R4R")
+  [[ "$OPTION_GROOM" == "__NEW__" ]]       && OPTION_GROOM=$(remap_state "Groom")
+  [[ "$OPTION_ANALYZE" == "__NEW__" ]]     && OPTION_ANALYZE=$(remap_state "Analyze")
+  [[ "$OPTION_DEVELOPMENT" == "__NEW__" ]] && OPTION_DEVELOPMENT=$(remap_state "Development")
+  [[ "$OPTION_VALIDATE" == "__NEW__" ]]    && OPTION_VALIDATE=$(remap_state "Validate")
+  [[ "$OPTION_REVIEW" == "__NEW__" ]]      && OPTION_REVIEW=$(remap_state "Review")
   [[ "$OPTION_DONE" == "__NEW__" ]]        && OPTION_DONE=$(remap_state "Done")
 fi
 
 # ── Reorder columns if only the 6 standard states exist ───────────────────
 
 TOTAL_OPTIONS=$(echo "$KANBAN_FIELD_JSON" | jq '.options | length' 2>/dev/null || echo '0')
-if [[ "$TOTAL_OPTIONS" -eq 6 ]]; then
-  info "Setting column order: Backlog → Ready → In Progress → In Review → R4R → Done"
+if [[ "$TOTAL_OPTIONS" -eq 7 ]]; then
+  info "Setting column order: Backlog → Groom → Analyze → Development → Validate → Review → Done"
   ORDERED_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq -c \
-    --arg b  "$OPTION_BACKLOG" \
-    --arg r  "$OPTION_READY" \
-    --arg ip "$OPTION_IN_PROGRESS" \
-    --arg ir "$OPTION_IN_REVIEW" \
-    --arg r4 "$OPTION_R4R" \
-    --arg d  "$OPTION_DONE" \
+    --arg b   "$OPTION_BACKLOG" \
+    --arg g   "$OPTION_GROOM" \
+    --arg a   "$OPTION_ANALYZE" \
+    --arg dev "$OPTION_DEVELOPMENT" \
+    --arg v   "$OPTION_VALIDATE" \
+    --arg rv  "$OPTION_REVIEW" \
+    --arg d   "$OPTION_DONE" \
     --argjson desc '{
       "Backlog":     "List of ungroomed features and ideas.",
-      "Ready":       "List of items ready to implement.",
-      "In Progress": "",
-      "In Review":   "Agent verification in progress.",
-      "R4R":         "All checks passed; awaiting human approval.",
+      "Groom":       "Items being shaped: AC, sizing, estimates.",
+      "Analyze":     "Items being deep-dived: design + caller analysis.",
+      "Development": "",
+      "Validate":    "Agent verification in progress.",
+      "Review":      "All checks passed; awaiting human approval.",
       "Done":        ""
     }' \
     '.options as $opts |
-     [$b,$r,$ip,$ir,$r4,$d] |
+     [$b,$g,$a,$dev,$v,$rv,$d] |
      map(. as $id | $opts[] | select(.id == $id) | {id, name, color, description: ($desc[.name] // .description)})' \
     2>/dev/null || echo '')
 
@@ -770,7 +776,7 @@ if [[ "$TOTAL_OPTIONS" -eq 6 ]]; then
     if [[ -n "$REORDER_OK" ]]; then
       ok "Column order and descriptions set."
       info "WIP limits cannot be set via API — set them manually in the GitHub Project board:"
-      info "  In Progress: 3   |   In Review: 5   |   R4R: 10"
+      info "  Development: 3   |   Validate: 5   |   Review: 10"
     else
       warn "Could not reorder columns — arrange manually in the GitHub Project board."
     fi
@@ -1283,10 +1289,11 @@ REPO="$REPO" \
 PROJECT_NODE_ID="$PROJECT_NODE_ID" \
 KANBAN_FIELD_ID="$KANBAN_FIELD_ID" \
 OPTION_BACKLOG="$OPTION_BACKLOG" \
-OPTION_READY="$OPTION_READY" \
-OPTION_IN_PROGRESS="$OPTION_IN_PROGRESS" \
-OPTION_IN_REVIEW="$OPTION_IN_REVIEW" \
-OPTION_R4R="$OPTION_R4R" \
+OPTION_GROOM="$OPTION_GROOM" \
+OPTION_ANALYZE="$OPTION_ANALYZE" \
+OPTION_DEVELOPMENT="$OPTION_DEVELOPMENT" \
+OPTION_VALIDATE="$OPTION_VALIDATE" \
+OPTION_REVIEW="$OPTION_REVIEW" \
 OPTION_DONE="$OPTION_DONE" \
 PRIORITY_FIELD_ID="$PRIORITY_FIELD_ID" \
 OPTION_P0="$OPTION_P0" \
@@ -1313,12 +1320,13 @@ const updates = {
   repo:                   process.env.REPO,
   projectId:              process.env.PROJECT_NODE_ID,
   kanbanFieldId:          process.env.KANBAN_FIELD_ID,
-  kanbanOptionBacklog:    process.env.OPTION_BACKLOG,
-  kanbanOptionReady:      process.env.OPTION_READY,
-  kanbanOptionInProgress: process.env.OPTION_IN_PROGRESS,
-  kanbanOptionInReview:   process.env.OPTION_IN_REVIEW,
-  kanbanOptionR4R:        process.env.OPTION_R4R,
-  kanbanOptionDone:       process.env.OPTION_DONE,
+  kanbanOptionBacklog:     process.env.OPTION_BACKLOG,
+  kanbanOptionGroom:       process.env.OPTION_GROOM,
+  kanbanOptionAnalyze:     process.env.OPTION_ANALYZE,
+  kanbanOptionDevelopment: process.env.OPTION_DEVELOPMENT,
+  kanbanOptionValidate:    process.env.OPTION_VALIDATE,
+  kanbanOptionReview:      process.env.OPTION_REVIEW,
+  kanbanOptionDone:        process.env.OPTION_DONE,
   priorityFieldId:        process.env.PRIORITY_FIELD_ID,
   priorityOptionP0:       process.env.OPTION_P0,
   priorityOptionP1:       process.env.OPTION_P1,

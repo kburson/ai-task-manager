@@ -16,10 +16,11 @@ const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
 const OPTION_KEYS = {
   kanbanOptionBacklog: 'backlog',
-  kanbanOptionReady: 'ready',
-  kanbanOptionInProgress: 'in progress',
-  kanbanOptionInReview: 'in review',
-  kanbanOptionR4R: 'r4r',
+  kanbanOptionGroom: 'groom',
+  kanbanOptionAnalyze: 'analyze',
+  kanbanOptionDevelopment: 'development',
+  kanbanOptionValidate: 'validate',
+  kanbanOptionReview: 'review',
   kanbanOptionDone: 'done',
 };
 

@@ -2,9 +2,9 @@
 // Integration tests for the structural body gate in scripts/gh/move-state.mjs.
 // Drives move-state.mjs against a sandboxed config + fake `gh` shim that returns
 // a body we control. Asserts:
-//   - in-review with ticked Deep dive + missing section → exit 4 + BLOCKED:
-//   - in-review with ticked Deep dive + adequate section → exit 0
-//   - r4r with same missing-section body → exit 4
+//   - validate with ticked Deep dive + missing section → exit 4 + BLOCKED:
+//   - validate with ticked Deep dive + adequate section → exit 0
+//   - review with same missing-section body → exit 4
 //   - done with same missing-section body → exit 4 (Done gate fires)
 //   - TASK_TRACKER_FORCE_DONE=1 bypasses
 
@@ -43,10 +43,12 @@ function makeSandbox(body) {
       projectId: 'PVT_x',
       kanbanFieldId: 'PVTF_x',
       kanbanOptionBacklog: 'OP_b',
-      kanbanOptionInProgress: 'OP_ip',
-      kanbanOptionInReview: 'OP_ir',
-      kanbanOptionR4R: 'OP_r4',
-      kanbanOptionDone: 'OP_d',
+      kanbanOptionGroom: 'OP_g',
+      kanbanOptionAnalyze: 'OP_a',
+      kanbanOptionDevelopment: 'OP_d',
+      kanbanOptionValidate: 'OP_v',
+      kanbanOptionReview: 'OP_r',
+      kanbanOptionDone: 'OP_done',
     }, null, 2)
   );
 
@@ -93,30 +95,30 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   }
 }
 
-// 1. in-review with ticked Deep dive but no section → blocked
+// 1. validate with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n- [x] Deep dive complete\n';
   const { sandbox, binDir } = makeSandbox(body);
-  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'in-review']);
+  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'validate']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
   rmSync(sandbox, { recursive: true });
 }
 
-// 2. in-review with ticked Deep dive + adequate section → success
+// 2. validate with ticked Deep dive + adequate section → success
 {
   const body = `## Acceptance Criteria\n- [x] Deep dive complete\n\n${deepDiveAdequate()}\n`;
   const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'in-review']);
-  assert.match(r.stdout, /moved to: in-review/);
+  const r = await runMove(sandbox, binDir, ['100', 'validate']);
+  assert.match(r.stdout, /moved to: validate/);
   rmSync(sandbox, { recursive: true });
 }
 
-// 3. r4r with ticked Deep dive but no section → blocked
+// 3. review with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n- [x] Deep dive complete\n';
   const { sandbox, binDir } = makeSandbox(body);
-  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'r4r']);
+  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'review']);
   assert.equal(e.code, 4);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
   rmSync(sandbox, { recursive: true });
@@ -137,9 +139,9 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body = '## Acceptance Criteria\n- [x] Deep dive complete\n';
   const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'in-review'], { TASK_TRACKER_FORCE_DONE: '1' });
-  assert.match(r.stderr, /bypassing in-review gate/);
-  assert.match(r.stdout, /moved to: in-review/);
+  const r = await runMove(sandbox, binDir, ['100', 'validate'], { TASK_TRACKER_FORCE_DONE: '1' });
+  assert.match(r.stderr, /bypassing validate gate/);
+  assert.match(r.stdout, /moved to: validate/);
   rmSync(sandbox, { recursive: true });
 }
 

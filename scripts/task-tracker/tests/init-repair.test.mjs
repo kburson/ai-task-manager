@@ -3,7 +3,7 @@
 //   - fills empty kanbanOption* keys via case-insensitive name match
 //   - never overwrites populated keys
 //   - reports unmatched options (column missing on Status field)
-//   - static parse: init-project-config.sh status_opts has 6 entries in expected order
+//   - static parse: init-project-config.sh status_opts has 7 entries in expected order
 
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -43,36 +43,42 @@ async function runRepair(sandbox, fakeOptions) {
   });
 }
 
+const EMPTY_CFG = {
+  repo: 'o/r',
+  projectId: 'PVT_x',
+  kanbanFieldId: 'PVTSSF_status',
+  kanbanOptionBacklog: '',
+  kanbanOptionGroom: '',
+  kanbanOptionAnalyze: '',
+  kanbanOptionDevelopment: '',
+  kanbanOptionValidate: '',
+  kanbanOptionReview: '',
+  kanbanOptionDone: '',
+};
+
+const FULL_OPTS = [
+  { id: 'OP_b',  name: 'Backlog' },
+  { id: 'OP_g',  name: 'Groom' },
+  { id: 'OP_a',  name: 'Analyze' },
+  { id: 'OP_d',  name: 'Development' },
+  { id: 'OP_v',  name: 'Validate' },
+  { id: 'OP_r',  name: 'Review' },
+  { id: 'OP_done', name: 'Done' },
+];
+
 // Test 1: backfills all empty kanbanOption* by name match (case-insensitive)
 {
-  const sandbox = makeSandbox({
-    repo: 'o/r',
-    projectId: 'PVT_x',
-    kanbanFieldId: 'PVTSSF_status',
-    kanbanOptionBacklog: '',
-    kanbanOptionReady: '',
-    kanbanOptionInProgress: '',
-    kanbanOptionInReview: '',
-    kanbanOptionR4R: '',
-    kanbanOptionDone: '',
-  });
-  const opts = [
-    { id: 'OP_b',  name: 'Backlog' },
-    { id: 'OP_r',  name: 'Ready' },
-    { id: 'OP_ip', name: 'In Progress' },
-    { id: 'OP_ir', name: 'In Review' },
-    { id: 'OP_r4', name: 'R4R' },
-    { id: 'OP_d',  name: 'Done' },
-  ];
-  const r = await runRepair(sandbox, opts);
-  assert.match(r.stdout, /Filled:.*kanbanOptionR4R/);
+  const sandbox = makeSandbox(EMPTY_CFG);
+  const r = await runRepair(sandbox, FULL_OPTS);
+  assert.match(r.stdout, /Filled:.*kanbanOptionGroom/);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'OP_b');
-  assert.equal(cfg.kanbanOptionReady, 'OP_r');
-  assert.equal(cfg.kanbanOptionInProgress, 'OP_ip');
-  assert.equal(cfg.kanbanOptionInReview, 'OP_ir');
-  assert.equal(cfg.kanbanOptionR4R, 'OP_r4');
-  assert.equal(cfg.kanbanOptionDone, 'OP_d');
+  assert.equal(cfg.kanbanOptionGroom, 'OP_g');
+  assert.equal(cfg.kanbanOptionAnalyze, 'OP_a');
+  assert.equal(cfg.kanbanOptionDevelopment, 'OP_d');
+  assert.equal(cfg.kanbanOptionValidate, 'OP_v');
+  assert.equal(cfg.kanbanOptionReview, 'OP_r');
+  assert.equal(cfg.kanbanOptionDone, 'OP_done');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -83,51 +89,34 @@ async function runRepair(sandbox, fakeOptions) {
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'EXISTING_B',
-    kanbanOptionReady: 'EXISTING_R',
-    kanbanOptionInProgress: 'EXISTING_IP',
-    kanbanOptionInReview: 'EXISTING_IR',
-    kanbanOptionR4R: '',
-    kanbanOptionDone: 'EXISTING_D',
+    kanbanOptionGroom: 'EXISTING_G',
+    kanbanOptionAnalyze: 'EXISTING_A',
+    kanbanOptionDevelopment: 'EXISTING_D',
+    kanbanOptionValidate: '',
+    kanbanOptionReview: 'EXISTING_R',
+    kanbanOptionDone: 'EXISTING_DONE',
   });
-  const opts = [
-    { id: 'NEW_B',  name: 'Backlog' },
-    { id: 'NEW_R',  name: 'Ready' },
-    { id: 'OP_r4',  name: 'R4R' },
-  ];
-  await runRepair(sandbox, opts);
+  await runRepair(sandbox, [
+    { id: 'NEW_B', name: 'Backlog' },
+    { id: 'OP_v',  name: 'Validate' },
+  ]);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'EXISTING_B', 'must not overwrite populated keys');
-  assert.equal(cfg.kanbanOptionReady, 'EXISTING_R');
-  assert.equal(cfg.kanbanOptionDone, 'EXISTING_D');
-  assert.equal(cfg.kanbanOptionR4R, 'OP_r4', 'must fill empty key');
+  assert.equal(cfg.kanbanOptionGroom, 'EXISTING_G');
+  assert.equal(cfg.kanbanOptionDone, 'EXISTING_DONE');
+  assert.equal(cfg.kanbanOptionValidate, 'OP_v', 'must fill empty key');
   rmSync(sandbox, { recursive: true });
 }
 
 // Test 3: unmatched columns reported, config not corrupted
 {
-  const sandbox = makeSandbox({
-    repo: 'o/r',
-    projectId: 'PVT_x',
-    kanbanFieldId: 'PVTSSF_status',
-    kanbanOptionBacklog: '',
-    kanbanOptionReady: '',
-    kanbanOptionInProgress: '',
-    kanbanOptionInReview: '',
-    kanbanOptionR4R: '',
-    kanbanOptionDone: '',
-  });
-  // Missing R4R column
-  const opts = [
-    { id: 'OP_b',  name: 'Backlog' },
-    { id: 'OP_r',  name: 'Ready' },
-    { id: 'OP_ip', name: 'In Progress' },
-    { id: 'OP_ir', name: 'In Review' },
-    { id: 'OP_d',  name: 'Done' },
-  ];
+  const sandbox = makeSandbox(EMPTY_CFG);
+  // Missing Validate column
+  const opts = FULL_OPTS.filter(o => o.name !== 'Validate');
   const r = await runRepair(sandbox, opts);
-  assert.match(r.stdout, /Unmatched.*kanbanOptionR4R/);
+  assert.match(r.stdout, /Unmatched.*kanbanOptionValidate/);
   const cfg = readCfg(sandbox);
-  assert.equal(cfg.kanbanOptionR4R, '', 'unmatched key stays empty');
+  assert.equal(cfg.kanbanOptionValidate, '', 'unmatched key stays empty');
   assert.equal(cfg.kanbanOptionBacklog, 'OP_b');
   rmSync(sandbox, { recursive: true });
 }
@@ -139,26 +128,27 @@ async function runRepair(sandbox, fakeOptions) {
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'OP_b',
-    kanbanOptionReady: 'OP_r',
-    kanbanOptionInProgress: 'OP_ip',
-    kanbanOptionInReview: 'OP_ir',
-    kanbanOptionR4R: 'OP_r4',
-    kanbanOptionDone: 'OP_d',
+    kanbanOptionGroom: 'OP_g',
+    kanbanOptionAnalyze: 'OP_a',
+    kanbanOptionDevelopment: 'OP_d',
+    kanbanOptionValidate: 'OP_v',
+    kanbanOptionReview: 'OP_r',
+    kanbanOptionDone: 'OP_done',
   });
   const r = await runRepair(sandbox, []);
   assert.match(r.stdout, /Nothing to repair/i);
   rmSync(sandbox, { recursive: true });
 }
 
-// Test 5: static parse — init-project-config.sh status_opts contains 6 columns in order
+// Test 5: static parse — init-project-config.sh status_opts contains 7 columns in order
 {
   const sh = readFileSync(INIT_SH, 'utf8');
   const m = sh.match(/status_opts='(\[[\s\S]*?\])'/);
   assert.ok(m, 'should find status_opts assignment in init-project-config.sh');
   const arr = JSON.parse(m[1]);
-  assert.equal(arr.length, 6, `status_opts must have 6 entries, got ${arr.length}`);
+  assert.equal(arr.length, 7, `status_opts must have 7 entries, got ${arr.length}`);
   const names = arr.map(o => o.name);
-  assert.deepEqual(names, ['Backlog', 'Ready', 'In Progress', 'In Review', 'R4R', 'Done'],
+  assert.deepEqual(names, ['Backlog', 'Groom', 'Analyze', 'Development', 'Validate', 'Review', 'Done'],
     'status_opts names must be in canonical order');
 }
 

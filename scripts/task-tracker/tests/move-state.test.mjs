@@ -34,7 +34,7 @@ async function runExpectFail(args, env = {}) {
 
 // Test: non-numeric issue number prints usage and exits non-zero
 {
-  const e = await runExpectFail(['abc', 'in-progress'], { TT_SKIP_NETWORK: '1' });
+  const e = await runExpectFail(['abc', 'development'], { TT_SKIP_NETWORK: '1' });
   assert.match(e.stderr + e.stdout, /Usage/i, 'non-numeric issue should print usage');
 }
 
@@ -44,9 +44,15 @@ async function runExpectFail(args, env = {}) {
   assert.match(e.stderr + e.stdout, /Unknown state/i, 'invalid state should print error');
 }
 
-// Test: valid state with TT_SKIP_NETWORK prints success without hitting GH
-{
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ms-'));
+// Test: legacy state names are no longer accepted (hard cut)
+for (const legacy of ['in-progress', 'in-review', 'r4r', 'ready']) {
+  const e = await runExpectFail(['123', legacy], { TT_SKIP_NETWORK: '1' });
+  assert.match(e.stderr + e.stdout, /Unknown state/i, `legacy state ${legacy} should be rejected`);
+}
+
+// Test: each new state with TT_SKIP_NETWORK prints success without hitting GH
+for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done']) {
+  const sandbox = mkdtempSync(path.join(tmpdir(), `tt-ms-${state}-`));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -54,45 +60,20 @@ async function runExpectFail(args, env = {}) {
       repo: 'test-owner/test-repo',
       projectId: 'PVT_test123',
       kanbanFieldId: 'PVTF_test',
-      kanbanOptionInProgress: 'PVTO_test',
+      kanbanOptionBacklog: 'PVTO_b',
+      kanbanOptionGroom: 'PVTO_g',
+      kanbanOptionAnalyze: 'PVTO_a',
+      kanbanOptionDevelopment: 'PVTO_d',
+      kanbanOptionValidate: 'PVTO_v',
+      kanbanOptionReview: 'PVTO_r',
+      kanbanOptionDone: 'PVTO_done',
     }, null, 2)
   );
-  const r = await run(['123', 'in-progress'], {
+  const r = await run(['123', state], {
     TT_SKIP_NETWORK: '1',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
-  assert.match(r.stdout, /moved to: in-progress/, 'should print success message');
-  rmSync(sandbox, { recursive: true });
-}
-
-// Test: alias forms resolve (in_progress, r4r, in-review)
-for (const alias of ['in_progress', 'in-review', 'r4r']) {
-  const e = await runExpectFail([alias, 'in-progress'], { TT_SKIP_NETWORK: '1' });
-  // non-numeric first arg → usage (not "Unknown state")
-  assert.match(e.stderr + e.stdout, /Usage/i);
-}
-// Proper alias: valid issue, alias state
-{
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ms-alias-'));
-  mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
-  writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test123',
-      kanbanFieldId: 'PVTF_test',
-      kanbanOptionInProgress: 'PVTO_inprog',
-      kanbanOptionInReview: 'PVTO_inrev',
-      kanbanOptionR4R: 'PVTO_r4r',
-    }, null, 2)
-  );
-  for (const [alias, label] of [['in_progress', 'in_progress'], ['in-review', 'in-review'], ['r4r', 'r4r']]) {
-    const r = await run(['456', alias], {
-      TT_SKIP_NETWORK: '1',
-      AI_TASK_MANAGER_PROJECT_DIR: sandbox,
-    });
-    assert.match(r.stdout, new RegExp(`moved to: ${alias}`), `alias ${alias} should work`);
-  }
+  assert.match(r.stdout, new RegExp(`moved to: ${state}`), `state ${state} should succeed`);
   rmSync(sandbox, { recursive: true });
 }
 

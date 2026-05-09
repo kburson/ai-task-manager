@@ -5,11 +5,11 @@ const DEFAULT_RETRY_DELAY_MS = 1500;
 
 const STATUS_CONFIG_KEYS = {
   backlog: 'kanbanOptionBacklog',
-  ready: 'kanbanOptionReady',
-  'in-progress': 'kanbanOptionInProgress',
-  in_progress: 'kanbanOptionInProgress',
-  'in-review': 'kanbanOptionInReview',
-  in_review: 'kanbanOptionInReview',
+  groom: 'kanbanOptionGroom',
+  analyze: 'kanbanOptionAnalyze',
+  development: 'kanbanOptionDevelopment',
+  validate: 'kanbanOptionValidate',
+  review: 'kanbanOptionReview',
   done: 'kanbanOptionDone',
 };
 
@@ -258,7 +258,7 @@ function failureMessage({ cfg, issueNumber, project, phantomItems }) {
   ].join(' ');
 }
 
-// Backlog is for unvetted ideas; sized + estimated work belongs in the Ready column.
+// Backlog is for unvetted ideas; sized + estimated work belongs in the Groom column.
 // Returns the warning string when the rule is violated, otherwise null. Pure helper.
 export function backlogSizingWarning({ status, size, estimate } = {}) {
   if (status !== 'backlog') return null;
@@ -266,8 +266,8 @@ export function backlogSizingWarning({ status, size, estimate } = {}) {
   if (estimate === undefined || estimate === null || estimate === '' || estimate === true) return null;
   return (
     '⚠ warning: tethering a sized + estimated issue to Backlog. ' +
-    'Backlog is for unvetted ideas; sized work belongs in the Ready column. ' +
-    'Use --status ready instead, or override.'
+    'Backlog is for unvetted ideas; sized work belongs in the Groom column. ' +
+    'Use --status groom instead, or override.'
   );
 }
 
@@ -280,7 +280,7 @@ export function backlogMoveWarning({ targetState, fieldValues } = {}) {
   if (typeof fieldValues.estimate !== 'number') return null;
   return (
     '⚠ warning: moving a sized + estimated issue to Backlog. ' +
-    'Backlog is for unvetted ideas; sized work belongs in the Ready column.'
+    'Backlog is for unvetted ideas; sized work belongs in the Groom column.'
   );
 }
 
