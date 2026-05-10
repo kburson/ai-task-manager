@@ -96,6 +96,24 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 `start` and `end` are accepted as aliases for `resume` and `close`.
 
+### State Transition Verb Map (7-state model)
+
+- `/task groom` — Backlog → Groom
+- `/task analyze` — Groom → Analyze
+- `/task approve` — Analyze → Development
+- `/task review` — Development → Validate (CODE_COMPLETE handoff)
+- `/task close` — Review → Done
+
+Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and moves the issue.
+
+#### Deprecated state slugs (one-release sunset)
+
+| Old slug | Replacement |
+|---|---|
+| `ready` | `groom` |
+| `in-progress` | `approve` (or `move-state.mjs <N> development`) |
+| `in-review` | `review` |
+
 ## Implementation
 
 ### Step 1: For `/task new` — check plan mode BEFORE calling the CLI

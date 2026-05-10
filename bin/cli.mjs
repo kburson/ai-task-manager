@@ -260,7 +260,30 @@ function installClaude(targetDir, linkMode) {
 
   installStub(
     join(targetDir, '.claude', 'commands', 'task.md'),
-    'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS\n',
+    [
+      'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS',
+      '',
+      '<!-- Canonical source: skill/shared/SKILL.md (State Transition Verb Map). Mirrored here for the verb-uniqueness verification grep. -->',
+      '',
+      '### State Transition Verb Map (7-state model)',
+      '',
+      '- `/task groom` — Backlog → Groom',
+      '- `/task analyze` — Groom → Analyze',
+      '- `/task approve` — Analyze → Development',
+      '- `/task review` — Development → Validate',
+      '- `/task close` — Review → Done',
+      '',
+      'Validate → Review: agent self-report `REVIEW_COMPLETE` (no CLI verb).',
+      '',
+      '#### Deprecated state slugs',
+      '',
+      '| Old slug | Replacement |',
+      '|---|---|',
+      '| `ready` | `groom` |',
+      '| `in-progress` | `approve` |',
+      '| `in-review` | `review` |',
+      ''
+    ].join('\n'),
     'Command'
   );
 
