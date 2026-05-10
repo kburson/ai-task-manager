@@ -15,7 +15,7 @@ const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> --body-file <path> [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|ready|in-progress] [--assignee <a>] [--no-tether] [--no-placeholder-substitution]`;
+  return `Usage: create-issue.mjs --title <t> --body-file <path> [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--assignee <a>] [--no-tether] [--no-placeholder-substitution]`;
 }
 
 function parseArgs(argv) {

@@ -109,7 +109,7 @@ function makeDeps(overrides = {}) {
       isEpic: true,
     }),
     fetchSubIssueStates: async () => [
-      { number: 200, state: 'grooming' },
+      { number: 200, state: 'groom' },
       { number: 201, state: 'backlog' },
     ],
   });
@@ -117,9 +117,9 @@ function makeDeps(overrides = {}) {
   assert.equal(r.ok, false, 'cascade-grooming with backlog sub should refuse');
   assert.ok(r.blockers.some(b => b.kind === 'cascade-grooming' && /#201/.test(b.message)),
     `expected cascade-grooming blocker for #201, got ${JSON.stringify(r.blockers)}`);
-  // Sibling already in grooming should NOT be a blocker.
+  // Sibling already in groom should NOT be a blocker.
   assert.ok(!r.blockers.some(b => /#200/.test(b.message)),
-    `#200 (grooming) should not block, got ${JSON.stringify(r.blockers)}`);
+    `#200 (groom) should not block, got ${JSON.stringify(r.blockers)}`);
 }
 
 // 5. Solo issue (no parent) bypasses wave + cascade gates and passes

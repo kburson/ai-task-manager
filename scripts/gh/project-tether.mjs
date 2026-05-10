@@ -4,7 +4,7 @@ import { fieldOptionMap } from './lib/github-projects.mjs';
 import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
 
 function usage() {
-  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|ready|in-progress|in-review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
+  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
 }
 
 function parseArgs(args) {

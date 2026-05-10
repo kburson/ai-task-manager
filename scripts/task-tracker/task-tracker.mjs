@@ -724,12 +724,12 @@ async function verbReview(args) {
             const ts = new Date().toISOString();
             const row = (await import('./gh-timing-comment.mjs')).buildRow({
               ts, event: 'gate-refused', activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
-              description: `→ in-review: ${result.refusedRules.map(r => r.rule).join(', ')}`,
+              description: `→ validate: ${result.refusedRules.map(r => r.rule).join(', ')}`,
             });
             await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
           } catch {}
           process.stderr.write('\n');
-          process.stderr.write(`⛔ Refusing to move ${target} to In Review:\n`);
+          process.stderr.write(`⛔ Refusing to move ${target} to Validate:\n`);
           for (const r of result.refusedRules) process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
           process.stderr.write('\nSee .ai-task-manager/pickup-directive.md Hard Rules.\n\n');
           process.exit(4);

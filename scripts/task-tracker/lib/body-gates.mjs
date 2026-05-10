@@ -170,7 +170,7 @@ export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, pro
 }
 
 const CASCADE_OK_STATES = new Set([
-  'grooming', 'analyze', 'analysis', 'development', 'validate', 'review', 'r4r', 'done',
+  'groom', 'analyze', 'development', 'validate', 'review', 'done',
 ]);
 
 export async function checkCascadeGrooming({ isEpic, epicNumber, repo, projectId, fetchSubIssueStates }) {

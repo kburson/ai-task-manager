@@ -18,11 +18,11 @@
 //   wave advance independently.
 // - **Higher-Sequence siblings.** Never block (they are the next wave).
 // - **Backlog siblings.** Excluded — backlog is unvetted ideas; not in flight.
-// - **R4R / Done siblings.** Excluded — terminal states never block.
+// - **Review / Done siblings.** Excluded — terminal states never block.
 //
 // `fetchSiblings({ parentEpicNumber, repo, projectId })` must return an array
 // of sibling descriptors `{ number, sequence, state }` where `state` is one
-// of the lower-cased state slugs above (or `'backlog'`, `'r4r'`, `'done'`).
+// of the lower-cased 7-state slugs (or `'backlog'`, `'review'`, `'done'`).
 
 import { gql, splitRepo } from './github-projects.mjs';
 
