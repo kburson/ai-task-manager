@@ -22,33 +22,45 @@ Immediately after creating, set **both** `Estimate` (hours) and `Size` on the Gi
 
 ## Kanban Board States
 
-Issues move through five states:
+Issues move through seven states:
 
 ```
-Backlog → Ready → In Progress → In Review → Done
+Backlog → Groom → Analyze → Development → Validate → Review → Done
 ```
 
-Move issues using the helper script (reads all IDs from `.claude/task-tracker.json`):
+Move issues using the helper script (reads all IDs from `.ai-task-manager/task-tracker.json`):
 
 ```bash
 scripts/gh/move-state.mjs <issue#> <state>
-# States: backlog | ready | in-progress | in-review | done
+# States: backlog | groom | analyze | development | validate | review | done
 
-scripts/gh/move-state.mjs 42 in-progress
+scripts/gh/move-state.mjs 42 development
 ```
 
-- Move to **In Progress** when `/task #N` activates an issue.
-- Move to **In Review** when a PR is open.
-- Move to **Done** only when all acceptance criteria are checked off.
+- Move to **Groom** when an issue is being shaped (sized, AC drafted).
+- Move to **Analyze** after the deep-dive analysis is posted.
+- Move to **Development** when `/task #N` activates an issue and code work begins.
+- **Validate** is entered automatically by `/task review` while the verification gate runs.
+- Move to **Review** automatically when verification passes (ready-for-review).
+- Move to **Done** only by `/task close` after a human approves.
 
-### Backlog vs Todo (Ready)
+### Sequence-as-wave-id
 
-Backlog and Todo (Ready) are not interchangeable — they encode different states of issue readiness:
+Sequence is a numeric field on each issue. Sub-issues sharing the same Sequence
+form a wave: they may be dispatched in parallel, but a sub-issue at Sequence
+N+1 cannot start until every Sequence-N sibling reaches Done. The
+`wave-admission` gate enforces this on `/task analyze`. Solo issues with no
+parent epic bypass the gate. See [DESIGN.md](../DESIGN.md) for the
+discovered-sub-issue and same-wave-newcomer semantics.
+
+### Backlog vs Todo (Groom)
+
+Backlog and Todo (Groom) are not interchangeable — they encode different states of issue readiness:
 
 - **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
-- **Todo (Ready)** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Todo never requires additional shaping.
+- **Todo (Groom)** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Groom never requires additional shaping.
 
-When an agent or human files a new issue with full ACs and sizing already set, tether it to `--status ready`, not `backlog`. Plan-mode sub-issue creation is the one exception: those tether to `backlog` and flip to `ready`/`in-progress` at fan-out time, because not every planned sub-issue is dispatched immediately.
+When an agent or human files a new issue with full ACs and sizing already set, tether it to `--status groom`, not `backlog`. Plan-mode sub-issue creation is the one exception: those tether to `backlog` and flip to `groom`/`development` at fan-out time, because not every planned sub-issue is dispatched immediately.
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 
@@ -106,7 +118,7 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 ### Post-Deep-Dive re-estimate
 
-When `/task review #N` runs and the body gates pass, the harness re-evaluates `Size` and `Estimate` from the Deep-Dive Analysis section before moving the issue to In Review:
+When `/task review #N` runs and the body gates pass, the harness re-evaluates `Size` and `Estimate` from the Deep-Dive Analysis section before moving the issue to Validate:
 
 - Signals: count of files-to-edit, plan steps, identified risks, and `Depends on:` dependencies.
 - Score → bucket → median hours. Constants live in `scripts/task-tracker/lib/reevaluate-estimate.mjs`.

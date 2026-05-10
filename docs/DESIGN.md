@@ -132,7 +132,7 @@ Precedence: project-local > user-global > hardcoded defaults.
 |-----|---------|
 | `projectId` | GH Projects V2 project node ID |
 | `kanbanFieldId` | Kanban single-select field ID |
-| `kanbanOptionBacklog` / `Ready` / `InProgress` / `InReview` / `Done` | Kanban option IDs |
+| `kanbanOptionBacklog` / `Groom` / `Analyze` / `Development` / `Validate` / `Review` / `Done` | Kanban option IDs |
 | `sequenceFieldId` | Numeric Sequence field ID (fan-out ordering) |
 | `priorityFieldId` | Priority single-select field ID |
 | `priorityOptionP0` / `P1` / `P2` | Priority option IDs |

@@ -40,19 +40,18 @@ Every issue on the board moves through these states. The transitions are enforce
 
 ```mermaid
 flowchart LR
-    Backlog --> Ready --> InProgress["In Progress"] --> InReview["In Review"]
-    InReview -->|verification failed| InProgress
-    InReview -->|all checks pass| R4R
-    R4R -->|human approves| Done
+    Backlog --> Groom --> Analyze --> Development --> Validate --> Review --> Done
+    Validate -->|verification failed| Development
 ```
 
 | State | What it means | Who moves the issue here |
 |---|---|---|
 | **Backlog** | Created, not yet scheduled | Orchestrator at issue creation |
-| **Ready** | Groomed, estimated, prioritized | Human or orchestrator |
-| **In Progress** | Work is active | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
-| **In Review** | Agent finished; verification running | `/task review` (orchestrator) |
-| **R4R** | All checks passed; awaiting human approval | `/task review` on success (auto) |
+| **Groom** | Triage queue: sized, AC drafted | Human or orchestrator (`/task groom`) |
+| **Analyze** | Deep-dive complete, plan posted | Orchestrator (`/task analyze`) |
+| **Development** | Work is active | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
+| **Validate** | Agent reported `CODE_COMPLETE`; verification running | `/task review` (orchestrator) |
+| **Review** | All checks passed; awaiting human approval | `/task review` on success (auto) |
 | **Done** | Human approved and closed | `/task close` (human only) |
 
 **Who calls `/task #N` depends on the issue type:**
@@ -67,12 +66,12 @@ The orchestrator never calls `/task #child`. Doing so would switch the orchestra
 
 ### State Gate Rules
 
-- **In Progress → In Review**: triggered by orchestrator calling `/task review` after agent reports `CODE_COMPLETE`.
-- **In Review → In Progress**: automatic revert if any unchecked boxes are found during verification. Orchestrator posts a comment on the issue, then re-dispatches the agent.
-- **In Review → R4R**: automatic promotion when all verification gates pass.
-- **R4R → Done**: human-only. No agent or automated signal can trigger this.
-- **Epic R4R gate**: an epic cannot move to R4R until ALL its child issues are already in R4R.
-- **Epic cascade close**: `/task close` on an epic closes all R4R children first (board move + GitHub close + fleet deregister), then closes the epic.
+- **Development → Validate**: triggered by orchestrator calling `/task review` after agent reports `CODE_COMPLETE`.
+- **Validate → Development**: automatic revert if any unchecked boxes are found during verification. Orchestrator posts a comment on the issue, then re-dispatches the agent.
+- **Validate → Review**: automatic promotion when all verification gates pass.
+- **Review → Done**: human-only. No agent or automated signal can trigger this.
+- **Epic Review gate**: an epic cannot move to Review until ALL its child issues are already in Review.
+- **Epic cascade close**: `/task close` on an epic closes all Review children first (board move + GitHub close + fleet deregister), then closes the epic.
 
 ---
 
@@ -92,13 +91,13 @@ sequenceDiagram
     loop until /task review passes
         H->>T: /task review #N
         alt verification fails
-            T->>T: post comment — failed criteria, revert to In Progress
+            T->>T: post comment — failed criteria, revert to Development
             T->>T: fix issues
             T->>H: CODE_COMPLETE
         end
     end
 
-    T->>T: issue moves to R4R
+    T->>T: issue moves to Review
     T->>H: ISSUE_READY_FOR_REVIEW
     H->>T: /task close #N
 ```
@@ -126,12 +125,12 @@ sequenceDiagram
         A2->>A2: implement → verify → CODE_COMPLETE
     end
 
-    O->>O: /task review #child-A → R4R
-    O->>O: /task review #child-B → R4R
+    O->>O: /task review #child-A → Review
+    O->>O: /task review #child-B → Review
     O->>H: ISSUE_READY_FOR_REVIEW (#child-A, #child-B)
 
     H->>O: /task close #epic
-    O->>O: cascade — close each R4R child, then close epic
+    O->>O: cascade — close each Review child, then close epic
 ```
 
 **Hard rules:**
@@ -153,7 +152,7 @@ Developer:  /task #42
 ```
 
 AITM:
-1. Moves issue #42 to **In Progress** on the board
+1. Moves issue #42 to **Development** on the board
 2. Displays the issue title, body, and Pickup Directive
 3. Starts the timer — every minute of AI-engaged time is now logged
 
@@ -226,14 +225,14 @@ The orchestrator picks up Epic #10 and fans out sub-agent to issue #11.
 **Orchestrator (picks up epic):**
 ```bash
 /task #10                    # start epic timer
-move-state.sh 10 in-progress # epic moves to In Progress
+move-state.sh 10 development # epic moves to Development
 ```
 
 Orchestrator reads the Pickup Directive, validates sub-issue sequencing, posts dependency map, and fans out Sequence-1 issues.
 
 **Agent (works #11):**
 ```bash
-/task #11                    # start sub-issue timer, moves to In Progress
+/task #11                    # start sub-issue timer, moves to Development
 # ... runs deep dive, appends to issue body, checks Deep dive complete ...
 # ... implements code, runs tests, checks each DoD/AC checkbox ...
 ```
@@ -242,20 +241,20 @@ Agent reports `CODE_COMPLETE` and stops.
 
 **Orchestrator (receives CODE_COMPLETE):**
 ```bash
-/task review #11             # moves to In Review → runs verification gate
+/task review #11             # moves to Validate → runs verification gate
 ```
 
 **If verification fails** (exit 3):
 - Orchestrator posts a comment on #11 listing the failed criteria
-- Issue automatically reverts to In Progress
+- Issue automatically reverts to Development
 - Orchestrator re-dispatches the agent to fix
 
 **If verification passes:**
-- Issue moves to **R4R** automatically
+- Issue moves to **Review** automatically
 - Orchestrator reports `ISSUE_READY_FOR_REVIEW` and notifies the developer
 
 **Developer (reviews):**
-- Inspects code in the R4R state
+- Inspects code in the Review state
 - Instructs: "close #11"
 - AITM flushes timing, writes fields, moves to **Done**
 
@@ -263,27 +262,27 @@ Agent reports `CODE_COMPLETE` and stops.
 
 ### Scenario 4 — Epic Close with Cascade
 
-All 3 sub-issues of Epic #10 are in R4R. Developer closes the epic.
+All 3 sub-issues of Epic #10 are in Review. Developer closes the epic.
 
 ```
 Developer:  /task close #10
 ```
 
 AITM:
-1. Verifies all child issues (#11, #12, #13) are in R4R
-2. For each R4R child:
+1. Verifies all child issues (#11, #12, #13) are in Review
+2. For each Review child:
    - Posts a `done` timing row to the child's timing log
    - Moves child to **Done** on the board
    - Closes the GitHub issue
    - Deregisters from fleet
 3. Closes Epic #10: flushes timing, writes fields, moves to **Done**
 
-If any child is not in R4R, the command refuses:
+If any child is not in Review, the command refuses:
 ```
-⛔ Cannot close epic #10 — 2 child issue(s) not in R4R:
-   #12: in-progress
-   #13: in-review
-All sub-issues must reach R4R before the epic can close.
+⛔ Cannot close epic #10 — 2 child issue(s) not in Review:
+   #12: development
+   #13: validate
+All sub-issues must reach Review before the epic can close.
 ```
 
 ---
@@ -432,13 +431,13 @@ flowchart TD
     C --> D{pass?}
 
     D -->|FAIL| E[Post comment — failed criteria list]
-    E --> F[Issue reverts to In Progress]
+    E --> F[Issue reverts to Development]
     F --> G[Orchestrator re-dispatches agent]
     G --> A
 
-    D -->|PASS| H[Issue moves to R4R]
+    D -->|PASS| H[Issue moves to Review]
     H --> I[Orchestrator notifies human]
-    I --> J[Human reviews code in R4R state]
+    I --> J[Human reviews code in Review state]
     J --> K[/task close]
     K --> L([Done])
 ```
@@ -449,14 +448,14 @@ flowchart TD
 
 | Command | Who runs it | What it does |
 |---|---|---|
-| `/task #N` | Agent | Switch to issue, move to In Progress, display brief |
+| `/task #N` | Agent | Switch to issue, move to Development, display brief |
 | `/task new` | Human/Agent | Create issue (or orchestrate full backlog from spec) |
 | `/task plan` | Human | Open untracked planning bucket |
 | `/task update` | Agent | Checkpoint — flush timing, keep task active |
 | `/task pause` | Agent | Flush timing, keep last-active. Run before `/clear`. |
 | `/task resume #N` | Agent | Resume a paused task |
 | `/task check "<label>"` | Agent | Check off a DoD/AC checkbox |
-| `/task review #N` | Orchestrator | Move to In Review, verify gates, promote to R4R or revert |
+| `/task review #N` | Orchestrator | Move to Validate, verify gates, promote to Review or revert |
 | `/task fleet` | Orchestrator | Show all active tasks across worktrees |
 | `/task close` | Human | Flush, write fields, move to Done. Explicit instruction only. |
 | `/task log #N` | Human/Agent | Re-compute and write board fields for any issue |
