@@ -176,4 +176,23 @@ function makeDeps(overrides = {}) {
   assert.equal(calls.moveStateCalls, 0);
 }
 
+// 12. Regression — label appearing in prose/backticks must NOT match;
+// verb appends a real checkbox under Acceptance Criteria.
+{
+  const prose = [
+    '## Acceptance Criteria',
+    '',
+    '- [x] On `yes`, the verb ticks a `- [ ] Plan approved by human` checkbox.',
+    '',
+    '## Other',
+    '',
+  ].join('\n');
+  const out = tickApprovalCheckbox(prose);
+  // Must contain a real top-of-line checked checkbox, not just the prose mention.
+  const realCheckbox = /^- \[x\] Plan approved by human\s*$/m;
+  assert.match(out, realCheckbox);
+  // Prose line preserved.
+  assert.match(out, /On `yes`, the verb ticks a `- \[ \] Plan approved by human`/);
+}
+
 console.log(`approve.test.mjs: all passed (label=${APPROVAL_CHECKBOX_LABEL})`);

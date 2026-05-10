@@ -111,9 +111,13 @@ export function extractDeepDive(body) {
 // Criteria" if missing. Returns the updated body.
 export function tickApprovalCheckbox(body) {
   const src = String(body || '');
-  if (src.includes(APPROVAL_LINE_CHECKED)) return src; // already ticked
-  if (src.includes(APPROVAL_LINE_UNCHECKED)) {
-    return src.replace(APPROVAL_LINE_UNCHECKED, APPROVAL_LINE_CHECKED);
+  // Match only standalone checkbox bullets at the start of a line — not the
+  // label appearing inside backticks/prose elsewhere in the body.
+  const checkedRe = new RegExp(`^- \\[x\\] ${APPROVAL_CHECKBOX_LABEL}\\s*$`, 'mi');
+  const uncheckedRe = new RegExp(`^- \\[ \\] ${APPROVAL_CHECKBOX_LABEL}\\s*$`, 'm');
+  if (checkedRe.test(src)) return src; // already ticked
+  if (uncheckedRe.test(src)) {
+    return src.replace(uncheckedRe, APPROVAL_LINE_CHECKED);
   }
   // Insert under Acceptance Criteria — append at end of that section.
   const lines = src.split('\n');
