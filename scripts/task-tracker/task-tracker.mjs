@@ -892,14 +892,9 @@ async function verbReview(args) {
       }
     }
     // ── All gates passed: promote to Review ──────────────────────────────────
-    // Commit any outstanding tracked changes left by the agent
-    const commitResult = spawnSync('git', [
-      'commit', '-a', '-m', `chore: verification complete for ${target} — moving to Review`,
-    ], { cwd: projectDir, stdio: 'pipe' });
-    if (commitResult.status === 0) {
-      console.log(`[task-tracker] Committed outstanding changes for ${target}.`);
-    }
-    // Move board status → Review, then flush timing + update board custom fields
+    // Agents commit their own work during development; do not sweep tracked
+    // changes here — `git commit -a` would capture unrelated WIP from other
+    // worktrees/agents (see #8).
     await runMoveState(target, 'review');
     const reviewTs = nowIso();
     const reviewRow = (await import('./gh-timing-comment.mjs')).buildRow({
