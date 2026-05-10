@@ -1150,7 +1150,7 @@ Task Tracker — available commands
   /task resume              Resume the last paused task
   /task resume #N           Switch back to a specific paused task
   /task update [msg]        Checkpoint — flush timing, reset counters, keep task active
-  /task review #N           Move issue to In Review, flush timing, and pause
+  /task review #N           Move issue through Validate to Review, flush timing, and pause
   /task review #N --duration-minutes N --words N  Agent-reported timing (skips JSONL read)
   /task words-count         Print word count for the current session (agent use)
   /task close [#N]          Close the active or specified task (runs pre-close gate)
