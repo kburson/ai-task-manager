@@ -5,27 +5,41 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dir, '..');
 const testsDir = path.resolve(__dir, 'task-tracker', 'tests');
+const integrationDir = path.resolve(repoRoot, 'tests', 'integration');
 // Tests skipped due to unrelated tracked bugs. Each entry must reference an issue.
 const SKIP = new Map([]);
 
-const files = readdirSync(testsDir).filter(f => f.endsWith('.test.mjs')).sort();
+function safeReaddir(dir) {
+  try { return readdirSync(dir); } catch { return []; }
+}
+
+const unitFiles = readdirSync(testsDir)
+  .filter(f => f.endsWith('.test.mjs'))
+  .sort()
+  .map(f => ({ label: f, full: path.join(testsDir, f) }));
+const integrationFiles = safeReaddir(integrationDir)
+  .filter(f => f.endsWith('.test.mjs'))
+  .sort()
+  .map(f => ({ label: `integration/${f}`, full: path.join(integrationDir, f) }));
+const files = [...unitFiles, ...integrationFiles];
 
 let failed = 0;
 const failures = [];
-for (const f of files) {
-  if (SKIP.has(f)) {
-    console.log(`▶ ${f} ... SKIP (${SKIP.get(f)})`);
+for (const entry of files) {
+  const { label, full } = entry;
+  if (SKIP.has(label)) {
+    console.log(`▶ ${label} ... SKIP (${SKIP.get(label)})`);
     continue;
   }
-  const full = path.join(testsDir, f);
-  process.stdout.write(`▶ ${f} ... `);
+  process.stdout.write(`▶ ${label} ... `);
   const res = spawnSync('node', [full], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 60000 });
   if (res.status === 0) {
     console.log('ok');
   } else {
     failed++;
-    failures.push({ file: f, stdout: res.stdout, stderr: res.stderr, status: res.status });
+    failures.push({ file: label, stdout: res.stdout, stderr: res.stderr, status: res.status });
     console.log(`FAIL (exit ${res.status})`);
   }
 }
