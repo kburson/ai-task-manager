@@ -33,7 +33,7 @@ const _argvClean = _roleIdx >= 0 ? argv.filter((_, i) => i !== _roleIdx && i !==
 // Normalize bare issue numbers only for verbs that accept issue operands.
 const rawVerb = _argvClean[0] || 'status';
 const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
-const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review']);
+const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review', 'analyze']);
 const rest = _argvClean.slice(1).map(a =>
   ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
 );
@@ -1213,6 +1213,11 @@ if (_isMain) (async () => {
       case 'new':     await verbNew(rest); break;
       case 'check':   await verbCheck(rest); break;
       case 'fleet':   await verbFleet(); break;
+      case 'analyze': {
+        const { verbAnalyze } = await import('./verbs/analyze.mjs');
+        await verbAnalyze(rest, cfg);
+        break;
+      }
       case 'help':
       case '?':       verbHelp(); break;
       default:

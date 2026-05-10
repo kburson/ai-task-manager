@@ -105,6 +105,97 @@ function evaluatePlacementRule(body, lines, rule) {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Analyze-gate predicates (Grooming → Analysis transition).
+//
+// These three "gate kinds" — `field-required`, `wave-admission`,
+// `cascade-grooming` — fire only when the target state is `analyze`.
+// `body-section-required` is a fourth helper that covers the AC's "required
+// body sections" check (rough AC, DoD, Pickup Directive, fields-block marker).
+// They are exported as discrete predicates so the `analyze` verb can compose
+// them and return one blocker line per refusal.
+//
+// Each predicate returns either `null` (pass) or
+// `{ kind, message }` (refusal).
+// ---------------------------------------------------------------------------
+
+const REQUIRED_FIELD_KEYS = ['estimate', 'size', 'priority'];
+
+export function checkRequiredFields(fieldValues = {}, labels = []) {
+  const missing = [];
+  for (const key of REQUIRED_FIELD_KEYS) {
+    const v = fieldValues[key];
+    if (v === null || v === undefined || v === '') missing.push(key);
+  }
+  if (!Array.isArray(labels) || labels.length === 0) missing.push('labels');
+  if (missing.length === 0) return [];
+  return missing.map(name => ({
+    kind: 'field-required',
+    message: `field-required: ${name} is empty`,
+  }));
+}
+
+const REQUIRED_BODY_SECTIONS = [
+  { name: 'Acceptance Criteria',  re: /^##\s+Acceptance Criteria\b/im },
+  { name: 'Definition of Done',   re: /^#{2,3}\s+Definition of Done\b/im },
+  { name: 'Pickup Directive',     re: /^##\s+Pickup Directive\b/im },
+  { name: 'fields-block marker',  re: /<!--\s*ai-task-manager:fields:start\s*-->/i },
+];
+
+export function checkRequiredBodySections(body = '') {
+  const refusals = [];
+  for (const sec of REQUIRED_BODY_SECTIONS) {
+    if (!sec.re.test(body)) {
+      refusals.push({
+        kind: 'body-section-required',
+        message: `body-section-required: missing "${sec.name}"`,
+      });
+    }
+  }
+  return refusals;
+}
+
+// `waveAdmission` and `cascadeGrooming` are async. The `analyze` verb composes
+// them with the sync predicates above and emits one stderr line per blocker.
+
+export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, projectId, admit }) {
+  // Solo bypass: no parent epic.
+  if (parentEpicNumber == null) return [];
+  const result = await admit({ parentEpicNumber, sequence, repo, projectId });
+  if (result.ok) return [];
+  return result.blockers.map(b => ({
+    kind: 'wave-admission',
+    message: `wave-admission: sibling #${b.issue} (sequence ${b.sequence}, state ${b.state}) blocks lower-Sequence wait`,
+  }));
+}
+
+const CASCADE_OK_STATES = new Set([
+  'grooming', 'analyze', 'analysis', 'development', 'validate', 'review', 'r4r', 'done',
+]);
+
+export async function checkCascadeGrooming({ isEpic, epicNumber, repo, projectId, fetchSubIssueStates }) {
+  // Non-epic bypass.
+  if (!isEpic) return [];
+  if (typeof fetchSubIssueStates !== 'function') {
+    return [{
+      kind: 'cascade-grooming',
+      message: 'cascade-grooming: no sub-issue fetcher configured',
+    }];
+  }
+  const subs = await fetchSubIssueStates({ epicNumber, repo, projectId });
+  const refusals = [];
+  for (const s of subs || []) {
+    const state = String(s.state || '').toLowerCase();
+    if (!CASCADE_OK_STATES.has(state)) {
+      refusals.push({
+        kind: 'cascade-grooming',
+        message: `cascade-grooming: sub-issue #${s.number} is in ${state || 'unknown'} (must be Grooming or beyond)`,
+      });
+    }
+  }
+  return refusals;
+}
+
 export function validateBody(body, { gates = DEFAULT_GATES } = {}) {
   if (typeof body !== 'string' || body.length === 0) return { ok: true };
   const lines = body.split('\n');
