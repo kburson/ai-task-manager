@@ -151,6 +151,63 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   }
 }
 
+// Approval gate: analyze -> development requires explicit human approval
+// recorded as `- [x] Plan approved by human` in the issue body. Fires only
+// when the *current* board state is `analyze` so transitions back from
+// validate/review do not require a fresh approval.
+if (stateArg === 'development' && !SKIP_NETWORK) {
+  let body = '';
+  try {
+    body = (await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])).trim();
+  } catch { /* ignore — missing body falls through */ }
+
+  const approved = /^- \[x\] Plan approved by human\b/m.test(body);
+
+  // Resolve current state (single-select option name) via the project item.
+  let currentStateName = '';
+  try {
+    const { gql, splitRepo } = await import('./lib/github-projects.mjs');
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(`
+      query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            projectItems(first: 10) {
+              nodes {
+                project { id }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
+            }
+          }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueArg) }
+    );
+    const nodes = data?.repository?.issue?.projectItems?.nodes || [];
+    const node = nodes.find(n => n?.project?.id === cfg.projectId);
+    currentStateName = String(node?.fieldValueByName?.name || '').toLowerCase();
+  } catch { /* offline: fall back to body-only check below */ }
+
+  const fromAnalyze = currentStateName === '' || currentStateName === 'analyze';
+
+  if (fromAnalyze && !approved) {
+    if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
+      process.stderr.write(`⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing analyze->development approval gate for #${issueArg}\n`);
+      const bypassMsg = `⚠ **analyze->development approval gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}.`;
+      try { await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]); } catch {}
+    } else {
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move #${issueArg} to development:\n`);
+      process.stderr.write('   BLOCKED: analyze -> development requires - [x] Plan approved by human (run the approve verb to solicit human approval)\n');
+      process.stderr.write('\nResolve the blocker, then retry. Legitimate-abandonment override:\n');
+      process.stderr.write(`   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} development\n\n`);
+      process.exit(4);
+    }
+  }
+}
+
 // Backlog warning: moving a sized + estimated issue to Backlog is suspicious.
 // Backlog is for unvetted ideas; sized work belongs in the Ready column. Non-blocking.
 if (stateArg === 'backlog' && !SKIP_NETWORK) {
