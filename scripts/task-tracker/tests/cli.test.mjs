@@ -73,6 +73,39 @@ const envNew = { ...env, TT_FAKE_NEW_ISSUE: '#999' };
 r5 = await pexec('node', [CLI, 'new', 'Fake Title'], { env: envNew });
 assert.match(r5.stdout, /Active: #999/);
 
+// ---- Regression: /task start #N must switch (not resume lastActive) ----
+// Bug: case 'start' previously called verbStart() directly, which ignores
+// positional #N and always resumes lastActive. Routing through verbResume
+// makes `start #N` switch like `resume #N`.
+const startSwitchSandbox = mkdtempSync(path.join(tmpdir(), 'tt-start-switch-'));
+mkdirSync(path.join(startSwitchSandbox, '.ai-task-manager'), { recursive: true });
+writeFileSync(
+  path.join(startSwitchSandbox, '.ai-task-manager', 'task-tracker.json'),
+  JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
+);
+const switchEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: startSwitchSandbox, TT_SKIP_NETWORK: '1' };
+
+// Bind #200, pause it so lastActive=#200 and active=null.
+await pexec('node', [CLI, '#200'], { env: switchEnv });
+await pexec('node', [CLI, 'pause'], { env: switchEnv });
+
+// `/task start #201` must start #201, not resume #200.
+let rs = await pexec('node', [CLI, 'start', '#201'], { env: switchEnv });
+assert.match(rs.stdout, /Active: #201/, '/task start #N should switch to #N');
+assert.doesNotMatch(rs.stdout, /Resumed #200/, '/task start #N must not resume lastActive');
+
+// Regression guard: `/task resume #N` continues to switch.
+await pexec('node', [CLI, 'pause'], { env: switchEnv });
+rs = await pexec('node', [CLI, 'resume', '#202'], { env: switchEnv });
+assert.match(rs.stdout, /Active: #202/, '/task resume #N should switch to #N');
+
+// `/task start` with no arg and no active still resumes lastActive.
+await pexec('node', [CLI, 'pause'], { env: switchEnv });
+rs = await pexec('node', [CLI, 'start'], { env: switchEnv });
+assert.match(rs.stdout, /Resumed #202/, '/task start (no arg) should resume lastActive');
+
+rmSync(startSwitchSandbox, { recursive: true });
+
 rmSync(sandbox, { recursive: true });
 
 // ---- Uninitialized guard tests ----

@@ -372,6 +372,8 @@ async function verbClose() {
           console.error('See .ai-task-manager/pickup-directive.md Hard Rules.');
           console.error('Verify each item, check its box (`/task check "<label>"`), then retry.');
           console.error('Legitimate-abandonment override: TASK_TRACKER_FORCE_DONE=1 /task close');
+          // Intentional: leave `active` set so the user can fix blockers and
+          // retry without re-binding via /task #N. Don't "fix" by clearing.
           process.exit(3);
         }
       }
@@ -394,6 +396,8 @@ async function verbClose() {
         console.error(`[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${notReady.length} child issue(s) not in Review:`);
         notReady.forEach(c => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
         console.error('All sub-issues must reach Review before the epic can close.');
+        // Intentional: leave `active` set so the user can drive children to
+        // Review and retry. Don't "fix" by clearing.
         process.exit(3);
       }
       // Cascade: close each Review child
@@ -1191,7 +1195,7 @@ if (_isMain) (async () => {
       case 'end':     await verbClose(); break;  // alias
       case 'pause':   await verbPause(); break;
       case 'resume':  await verbResume(); break;
-      case 'start':   await verbStart(); break;  // alias
+      case 'start':   await verbResume(); break;  // alias — route through verbResume so `/task start #N` switches
       case 'update':  await verbUpdate(rest); break;
       case 'review':  await verbReview(rest); break;
       case 'words-count': {
