@@ -42,6 +42,7 @@ function makeDeps(overrides = {}) {
       estimate: 2, size: 'M', priority: 'P1', sequence: 3,
     }),
     admit: async () => ({ ok: true, blockers: [] }),
+    readParentStatus: async () => 'development', // parent admitted by default
     moveState: async () => 0,
     ...overrides,
   };

@@ -158,6 +158,39 @@ export function checkRequiredBodySections(body = '') {
 // `waveAdmission` and `cascadeGrooming` are async. The `analyze` verb composes
 // them with the sync predicates above and emits one stderr line per blocker.
 
+// Parent-admission gate. Refuses a sub-issue state advance past `Groom` when
+// the parent epic's live Status is not yet `Development` or beyond. Refuse-only
+// — never auto-moves the parent.
+//
+// `readParentStatus({ parentEpicNumber, repo, projectId })` must return the
+// parent's lowercase state slug (one of `STATES`), or `null` when the parent
+// is not on the configured project board.
+//
+// Solo issues (`parentEpicNumber == null`) bypass the gate without invoking
+// the reader.
+
+import { STATES as STATE_MACHINE_STATES } from '../state-machine.mjs';
+
+const PARENT_ADMIT_INDEX = STATE_MACHINE_STATES.indexOf('development');
+
+export async function checkParentAdmission({ parentEpicNumber, repo, projectId, readParentStatus }) {
+  if (parentEpicNumber == null) return [];
+  const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
+  const state = raw == null ? null : String(raw).toLowerCase();
+  if (state == null) {
+    return [{
+      kind: 'parent-admission',
+      message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to Development first`,
+    }];
+  }
+  const idx = STATE_MACHINE_STATES.indexOf(state);
+  if (idx >= 0 && idx >= PARENT_ADMIT_INDEX) return [];
+  return [{
+    kind: 'parent-admission',
+    message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to Development first`,
+  }];
+}
+
 export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, projectId, admit }) {
   // Solo bypass: no parent epic.
   if (parentEpicNumber == null) return [];
