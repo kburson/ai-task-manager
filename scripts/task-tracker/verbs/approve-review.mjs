@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
+import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 
 const pexec = promisify(execFile);
 
@@ -28,15 +29,18 @@ export function hasApprovalMarker(body) {
   return MARKER_RE.test(String(body || ''));
 }
 
-// Insert marker on its own line immediately before the fields-block, or at
-// the end of the body if no fields-block is present.
+// Insert marker on its own line immediately before the field-DB block, or at
+// the end of the body if no field-DB block is present. Field-DB is always
+// re-emitted in canonical (HTML-comment) encoding; legacy fenced blocks get
+// normalized as a side effect.
 export function insertApprovalMarker(body, ts) {
   const src = String(body || '');
   if (MARKER_RE.test(src)) return src;
   const marker = buildMarker(ts);
-  const fieldsRe = /<!--\s*ai-task-manager:fields:start\s*-->/i;
-  if (fieldsRe.test(src)) {
-    return src.replace(fieldsRe, `${marker}\n\n<!-- ai-task-manager:fields:start -->`);
+  const parsed = parseIssueFieldDb(src);
+  if (parsed.ok) {
+    const stripped = stripIssueFieldDb(src);
+    return `${stripped}\n\n${marker}\n\n${formatIssueFieldDb(parsed.values)}\n`;
   }
   return `${src.trimEnd()}\n\n${marker}\n`;
 }
