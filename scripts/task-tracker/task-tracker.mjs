@@ -243,6 +243,13 @@ async function runLogIssueTime(issue) {
   }
 }
 
+function handleMigrateResult(result, { stderr = process.stderr, exit = process.exit } = {}) {
+  if (result.status === 0) return;
+  if (result.error) stderr.write(`[task-tracker] migrate spawn error: ${result.error.message}\n`);
+  if (result.signal) stderr.write(`[task-tracker] migrate killed by signal: ${result.signal}\n`);
+  exit(result.status || 1);
+}
+
 async function runMigrate(args) {
   if (SKIP_NETWORK) return;
   const scriptPath = new URL('../gh/migrate-project.mjs', import.meta.url).pathname;
@@ -251,7 +258,7 @@ async function runMigrate(args) {
     stdio: 'inherit',
     env: process.env,
   });
-  if (result.status !== 0) process.exit(result.status || 1);
+  handleMigrateResult(result);
 }
 
 // Move issue to Done on the project board. /task close is the ONLY sanctioned
@@ -1171,7 +1178,7 @@ Aliases: start = resume, end = close
 
 // Exported for tests. Keep these after definitions; the CLI dispatch IIFE
 // below only runs when the file is invoked directly, not when imported.
-export { fetchSubIssues, fetchParentIssue, getIssueBoardState };
+export { fetchSubIssues, fetchParentIssue, getIssueBoardState, handleMigrateResult };
 
 const _isMain = (() => {
   try {
