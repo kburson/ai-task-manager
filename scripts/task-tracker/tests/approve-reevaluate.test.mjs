@@ -66,6 +66,8 @@ function buildDeps(body) {
       postComment: async ({ body }) => { state.comments.push(body); },
       moveState: async () => 0,
       isHeadless: () => false,
+      fetchParentEpicNumber: async () => null,
+      readParentStatus: async () => 'development',
       applyReevaluate: (args) => applyReevaluate({
         ...args,
         deps: {

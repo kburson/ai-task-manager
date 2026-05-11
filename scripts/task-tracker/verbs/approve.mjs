@@ -27,6 +27,8 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
+import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
 
 const pexec = promisify(execFile);
@@ -56,6 +58,19 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
   const issue = data?.repository?.issue;
   if (!issue) throw new Error(`approve: issue #${issueNumber} not found in ${repo}`);
   return { title: issue.title || '', body: issue.body || '' };
+}
+
+async function defaultFetchParentEpicNumber({ issueNumber, repo }) {
+  const { owner, repoName } = splitRepo(repo);
+  const data = await gql(`
+    query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) { parent { number } }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) }
+  );
+  return data?.repository?.issue?.parent?.number ?? null;
 }
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
@@ -150,6 +165,27 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   const moveState      = deps.moveState      || defaultMoveState;
   const isHeadless     = deps.isHeadless     || defaultIsHeadless;
   const reeval         = deps.applyReevaluate || applyReevaluate;
+  const fetchParentEpicNumber = deps.fetchParentEpicNumber || defaultFetchParentEpicNumber;
+  const readParentStatus      = deps.readParentStatus      || defaultReadParentStatus;
+
+  // Parent-admission gate: refuse analyze→development when the parent epic is
+  // not yet in Development or beyond. Runs BEFORE any body mutation or
+  // move-state so a refused transition leaves no side effects.
+  async function runParentAdmissionGate() {
+    const parentEpicNumber = await fetchParentEpicNumber({ issueNumber, repo: cfg.repo });
+    const refusals = await checkParentAdmission({
+      parentEpicNumber,
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      readParentStatus,
+    });
+    if (refusals.length === 0) return null;
+    return {
+      status: 'parent-admission-refused',
+      blockers: refusals,
+      message: refusals.map(r => r.message).join('\n'),
+    };
+  }
 
   async function runReevalHook(postTickBody) {
     try {
@@ -163,6 +199,8 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   // and auto-approves. Caller still receives a structured result so the
   // orchestrator can log a gate-bypass audit row. See #58.
   if (cfg.gateAnalysisToDevelopment === false && (answer === undefined || answer === null)) {
+    const refused = await runParentAdmissionGate();
+    if (refused) return refused;
     const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
     const updated = writePlanApprovedMarker(body);
     if (updated !== body) {
@@ -209,6 +247,8 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   const norm = String(answer).toLowerCase();
 
   if (norm === 'yes' || norm === 'y') {
+    const refused = await runParentAdmissionGate();
+    if (refused) return refused;
     const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
     const updated = writePlanApprovedMarker(body);
     if (updated !== body) {
@@ -310,6 +350,14 @@ export async function verbApprove(rest, cfg) {
     }
     case 'rejected': {
       process.stdout.write(`✗ Approval refused — comment posted on #${issueNumber}. Revise the deep-dive and re-run approve.\n`);
+      process.exit(4);
+    }
+    case 'parent-admission-refused': {
+      process.stderr.write(`\n⛔ Refusing to move #${issueNumber} to development:\n`);
+      for (const b of result.blockers) {
+        process.stderr.write(`   BLOCKED: ${b.message}\n`);
+      }
+      process.stderr.write('\nAdvance the parent epic to Development first, then retry.\n');
       process.exit(4);
     }
     case 'error': {

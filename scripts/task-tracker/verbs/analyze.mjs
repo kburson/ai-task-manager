@@ -15,11 +15,13 @@ import { fileURLToPath } from 'node:url';
 
 import { gh, gql, splitRepo, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { admit as defaultAdmit } from '../../gh/lib/wave-admission.mjs';
+import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import {
   checkRequiredFields,
   checkRequiredBodySections,
   checkWaveAdmission,
   checkCascadeGrooming,
+  checkParentAdmission,
 } from '../lib/body-gates.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 
@@ -144,6 +146,7 @@ export async function runAnalyze({ issueNumber, cfg, deps = {} } = {}) {
   const fetchSubIssueStates = deps.fetchSubIssueStates || defaultFetchSubIssueStates;
   const resolveFieldValues  = deps.resolveFieldValues  || defaultResolveFieldValues;
   const admit               = deps.admit               || defaultAdmit;
+  const readParentStatus    = deps.readParentStatus    || defaultReadParentStatus;
   const moveState           = deps.moveState           || runMoveState;
 
   const ctx = await fetchIssueContext({ issueNumber, repo: cfg.repo });
@@ -153,6 +156,13 @@ export async function runAnalyze({ issueNumber, cfg, deps = {} } = {}) {
   const refusals = [];
   refusals.push(...checkRequiredFields(fieldValues, ctx.labels));
   refusals.push(...checkRequiredBodySections(ctx.body));
+
+  refusals.push(...await checkParentAdmission({
+    parentEpicNumber: ctx.parentEpicNumber,
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    readParentStatus,
+  }));
 
   refusals.push(...await checkWaveAdmission({
     parentEpicNumber: ctx.parentEpicNumber,

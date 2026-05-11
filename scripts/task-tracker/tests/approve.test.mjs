@@ -53,6 +53,8 @@ function makeDeps(overrides = {}) {
       postComment: async ({ body }) => { calls.comments.push(body); },
       moveState: async () => { calls.moveStateCalls++; return 0; },
       isHeadless: () => false,
+      fetchParentEpicNumber: async () => null,
+      readParentStatus: async () => 'development',
       ...overrides,
     },
   };
