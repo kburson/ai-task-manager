@@ -14,10 +14,27 @@ import { validateBody, DEFAULT_GATES } from '../task-tracker/lib/body-gates.mjs'
 import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
+import { validateTransition } from '../task-tracker/state-machine.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
+
+// Internal-only gate. move-state.mjs is the chokepoint script for state changes;
+// agents must reach it through `/task` verbs, not by shelling out directly. The
+// /task chokepoint sets AITM_INTERNAL=1 before spawning this script. A human at
+// a TTY may run the script directly. Anything else (non-TTY, no env var) is an
+// agent trying to bypass the gates — refuse with a clear pointer.
+const AITM_INTERNAL = process.env.AITM_INTERNAL === '1';
+const IS_TTY = Boolean(process.stdin.isTTY);
+if (!AITM_INTERNAL && !IS_TTY) {
+  process.stderr.write(
+    'move-state.mjs is internal. Agents must use /task move <state>.\n' +
+    'If you are running this manually from a non-TTY shell (CI, pipe, redirect),\n' +
+    'set AITM_INTERNAL=1 to confirm.\n'
+  );
+  process.exit(3);
+}
 
 const STATE_TO_CONFIG_KEY = {
   'backlog':     'kanbanOptionBacklog',
@@ -38,7 +55,7 @@ const CLOSE_SIDE_EFFECT_PATTERNS = [
 
 function usage() {
   process.stderr.write(
-    'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]\n' +
+    'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>]\n' +
     'States: backlog | groom | analyze | development | validate | review | done\n'
   );
   process.exit(1);
@@ -48,9 +65,11 @@ const cliArgs = process.argv.slice(2);
 const issueArg = cliArgs[0];
 const stateArg = cliArgs[1];
 let itemIdOverride = '';
+let fromOverride = '';
 
 for (let i = 2; i < cliArgs.length; i++) {
   if (cliArgs[i] === '--item-id' && cliArgs[i + 1]) { itemIdOverride = cliArgs[i + 1]; i++; }
+  else if (cliArgs[i] === '--from' && cliArgs[i + 1]) { fromOverride = cliArgs[i + 1]; i++; }
 }
 
 if (!issueArg || !stateArg) usage();
@@ -73,6 +92,60 @@ const optionId = cfg[configKey];
 if (!SKIP_NETWORK && !optionId) {
   process.stderr.write(`Error: option ID for state '${stateArg}' not configured. Run: npx ai-task-manager init\n`);
   process.exit(1);
+}
+
+// State-machine matrix gate. Refuse illegal transitions (sequence-skip class from
+// epic #61). From-state resolution: --from flag first (chokepoint can pass the
+// recorded lastKnownState and skip the GraphQL roundtrip), then live Status field
+// via GraphQL. If neither source is available (e.g. TT_SKIP_NETWORK with no
+// --from), the matrix check is skipped — same fall-through behaviour as the
+// analyze->development approval gate.
+async function resolveLiveStateName(issueNumber) {
+  if (SKIP_NETWORK) return '';
+  try {
+    const { gql, splitRepo } = await import('./lib/github-projects.mjs');
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(`
+      query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            projectItems(first: 10) {
+              nodes {
+                project { id }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
+            }
+          }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNumber) }
+    );
+    const nodes = data?.repository?.issue?.projectItems?.nodes || [];
+    const node = nodes.find(n => n?.project?.id === cfg.projectId);
+    return String(node?.fieldValueByName?.name || '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+let resolvedFromState = '';
+if (fromOverride) {
+  resolvedFromState = String(fromOverride).toLowerCase();
+} else if (!SKIP_NETWORK) {
+  resolvedFromState = await resolveLiveStateName(issueArg);
+}
+
+if (resolvedFromState) {
+  const v = validateTransition(resolvedFromState, stateArg);
+  if (!v.ok) {
+    process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+    process.stderr.write(`   BLOCKED: ${v.reason}\n`);
+    process.stderr.write('\nThe 7-state kanban only permits one-step forward moves plus validate->development\n');
+    process.stderr.write('and review->development rework. See scripts/task-tracker/state-machine.mjs.\n\n');
+    process.exit(5);
+  }
 }
 
 // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.

@@ -12,8 +12,13 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.resolve(__dir, '../../gh/move-state.mjs');
 
 async function run(args, env = {}) {
+  // Tests spawn move-state.mjs via execFile — no TTY. The internal-only gate
+  // (see W2.3 / issue #66) refuses non-TTY callers without AITM_INTERNAL=1.
+  // All existing assertions exercise script behaviour, not the gate, so default
+  // to AITM_INTERNAL=1; individual tests can override by passing
+  // `AITM_INTERNAL: ''` in the env.
   return pexec('node', [SCRIPT, ...args], {
-    env: { ...process.env, ...env },
+    env: { AITM_INTERNAL: '1', ...process.env, ...env },
   });
 }
 
