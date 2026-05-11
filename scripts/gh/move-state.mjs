@@ -13,6 +13,7 @@ import { gh, projectItemForIssue } from './lib/github-projects.mjs';
 import { validateBody, DEFAULT_GATES } from '../task-tracker/lib/body-gates.mjs';
 import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
+import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +73,20 @@ const optionId = cfg[configKey];
 if (!SKIP_NETWORK && !optionId) {
   process.stderr.write(`Error: option ID for state '${stateArg}' not configured. Run: npx ai-task-manager init\n`);
   process.exit(1);
+}
+
+// Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
+if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
+  try {
+    const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueArg}`, projectDir });
+    const result = await checkDirty({ cwd });
+    if (result.dirty) {
+      process.stderr.write(`⚠ Workspace is dirty (${result.total} path(s)) on move to Review for #${issueArg}:\n`);
+      process.stderr.write(formatSummary(result) + '\n');
+      process.stderr.write('Consider running the cleanup flow (docs/guides/workflow.md → Cleanup Procedure) before close.\n');
+    }
+  } catch { /* warning is best-effort */ }
 }
 
 // Structural body gate: applies to validate, review, and done.

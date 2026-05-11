@@ -260,6 +260,33 @@ When `/task review` or `/task close` exits with code 3, the CLI has already prin
 
 **Never run `gh issue close` or `move-state.mjs <N> done` directly.** Both bypass the timing flush and corrupt the velocity ledger. If no task session is active and you need to mark an issue done, run `/task #N` first to register, complete any verification, then `/task close`.
 
+### Dirty-Workspace Gate
+
+Two checkpoints inspect `git status --porcelain` in the issue's bound workspace (fleet-registered worktree path; falls back to project dir) so uncommitted work cannot bleed across issue boundaries.
+
+**Gate 1 — `/task review` / `move-state.mjs <N> review` (warning only):**
+- Dirty workspace prints a stderr warning summarizing the dirty paths (capped at 10 entries + `… +N more`). The move still proceeds.
+- Disable with `TT_SKIP_DIRTY_CHECK=1` only in test contexts.
+
+**Gate 2 — `/task close` (blocking, prompts for decision):**
+- Clean → proceeds to the existing pre-close checkbox gate as today.
+- Dirty + `--answer yes` → refuses close with exit 6 and prints the cleanup-flow guidance. Clean up manually (commit issue-relevant changes, stash unrelated WIP), then re-run `/task close <id>`.
+- Dirty + `--answer no` → closes anyway and appends a `closed-with-dirty-tree` audit row to the Timing Log with a summarized dirty-path description (capped at 5 entries).
+- Dirty + `--answer cancel` → aborts close (exit 0, no board change, no timing row); issue stays in Review.
+- Dirty + no `--answer` + `CI=1` (or otherwise headless) → exits 5 and refuses; **headless callers must pass `--answer`**.
+- Dirty + no `--answer` + interactive → emits `PROMPT_REQUIRED: dirty-close-confirm #<N>` on stdout and exits 0 without changing state; the agent surfaces the prompt to the human, then re-invokes `/task close #<N> --answer yes|no|cancel`.
+
+**Cleanup flow (printed on `--answer yes`):**
+
+```
+1. Inspect: git status
+2. Stage + commit issue-relevant changes for this issue ONLY.
+3. For unrelated changes: stash (`git stash push -m "…"`) or move to a separate branch.
+4. Re-run: /task close <id>
+```
+
+**Known limitation:** the fleet registry stores one `worktreePath` per issue. If multiple worktrees are bound to the same issue, only the last-registered path is checked. Hoist manually if you need a stricter sweep.
+
 ## Plan-Mode Backlog Orchestration
 
 When the user confirms "yes" in Step 1b, execute the following sections in order. **Process ALL epics in the spec in document order — do not stop between epics.** Solo tasks (issues with no sub-issues) are created the same way as epic issues but skipped for the sub-issue loop.

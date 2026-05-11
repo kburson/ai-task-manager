@@ -23,6 +23,7 @@ import { validateVerificationCommand } from './lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from './lib/body-gates.mjs';
 import { reevaluateEstimate, buildRationale } from './lib/reevaluate-estimate.mjs';
 import { parseIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
+import { checkDirty, formatSummary, shortAuditDescription, resolveWorkspaceForIssue, CLEANUP_GUIDANCE } from '../gh/lib/dirty-workspace.mjs';
 import { loadProjectFieldDefs, fieldIdFor } from './project-fields.mjs';
 
 const argv = process.argv.slice(2);
@@ -337,6 +338,59 @@ async function verbClose() {
     saveState({ ...s, active: null, planBucket: null }, statePath);
     return;
   }
+
+  // Gate 2: dirty-workspace check on close. Decides BEFORE the body checkbox gate.
+  // Resolution: --answer yes => refuse close, print cleanup guidance.
+  //             --answer no  => proceed; append closed-with-dirty-tree audit row.
+  //             --answer cancel => abort, no board change.
+  // No --answer + CI=1            => refuse (exit 5).
+  // No --answer + interactive     => emit PROMPT_REQUIRED marker, exit 0 (no change).
+  let dirtyAuditRow = null;
+  if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
+    const answerIdx = rest.indexOf('--answer');
+    const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
+    const cwd = resolveWorkspaceForIssue({ issueRef: closeTarget, projectDir });
+    const dirty = await checkDirty({ cwd });
+    if (dirty.dirty) {
+      if (!answerArg) {
+        if (process.env.CI === '1') {
+          console.error(`⛔ Refusing to close ${closeTarget} — workspace is dirty (${dirty.total} path(s)) and running headless.`);
+          console.error(formatSummary(dirty));
+          console.error('');
+          console.error('Headless mode requires --answer yes|no|cancel.');
+          console.error('   yes    — refuse close, show cleanup flow (recommended)');
+          console.error('   no     — close with `closed-with-dirty-tree` audit row');
+          console.error('   cancel — abort, leave in Review');
+          process.exit(5);
+        } else {
+          console.error(`⚠ Workspace is dirty (${dirty.total} path(s)) for ${closeTarget}:`);
+          console.error(formatSummary(dirty));
+          console.log(`PROMPT_REQUIRED: dirty-close-confirm ${closeTarget}`);
+          return;
+        }
+      } else if (answerArg === 'yes') {
+        console.error(`⛔ Refusing to close ${closeTarget} — workspace is dirty (${dirty.total} path(s)).`);
+        console.error(formatSummary(dirty));
+        console.error('');
+        console.error(CLEANUP_GUIDANCE);
+        process.exit(6);
+      } else if (answerArg === 'cancel') {
+        console.log(`Cancelled close of ${closeTarget}; left in Review (workspace dirty: ${dirty.total} path(s)).`);
+        return;
+      } else if (answerArg === 'no') {
+        console.warn(`[task-tracker] Closing ${closeTarget} with dirty workspace (${dirty.total} path(s)) — appending audit row.`);
+        const { buildRow: dbr } = await import('./gh-timing-comment.mjs');
+        dirtyAuditRow = dbr({
+          ts: nowIso(), event: 'closed-with-dirty-tree', activeMin: 0, idleMin: 0,
+          deltaWords: 0, wordMarker: 0, description: shortAuditDescription(dirty),
+        });
+      } else {
+        console.error(`Invalid --answer "${answerArg}". Expected yes|no|cancel.`);
+        process.exit(1);
+      }
+    }
+  }
+
   // Pre-close gate: every checkbox in the body of the issue being closed must be
   // checked. Gate always inspects closeTarget (the explicitly named issue, or the
   // active task when no issue is named). Audited override: TASK_TRACKER_FORCE_DONE=1
@@ -431,6 +485,9 @@ async function verbClose() {
   }
   // Timing and board fields were flushed at Review (/task review). Close only moves
   // to Done, deregisters from fleet, and writes a +0 close marker row.
+  if (dirtyAuditRow) {
+    await safePostTiming(closeTarget, dirtyAuditRow);
+  }
   const { buildRow: closeBr } = await import('./gh-timing-comment.mjs');
   if (closingDifferentIssue) {
     // Close only the named issue; leave the active session (s.active) running.
