@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { legacyPathFor } from './paths.mjs';
 
@@ -17,7 +17,9 @@ function read(queuePath) {
 
 function write(items, queuePath) {
   mkdirSync(path.dirname(queuePath), { recursive: true });
-  writeFileSync(queuePath, JSON.stringify(items, null, 2) + '\n', 'utf8');
+  const tmp = queuePath + '.tmp';
+  writeFileSync(tmp, JSON.stringify(items, null, 2) + '\n', 'utf8');
+  renameSync(tmp, queuePath);
 }
 
 export function peek(queuePath) { return read(queuePath); }
