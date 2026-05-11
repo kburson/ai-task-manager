@@ -5,8 +5,9 @@
 ## Plan
 
 1. Add an embedded machine field DB at the bottom of issue bodies.
-   - Use start/end HTML sentinels.
-   - Store compact JSON inside a fenced block.
+   - Encoded as a single-line HTML comment: `<!-- aitm-fields: {"schema":1,"values":{...}} -->`.
+   - The legacy fenced encoding (`<!-- ai-task-manager:fields:start -->` … `<!-- ai-task-manager:fields:end -->` wrapping a ```json fence) is still parsed for backward compatibility; on any write, the block is rewritten in the new HTML-comment form and any prior blocks are stripped.
+   - For in-flight issues, migrate with `node scripts/task-tracker/migrate-fields-encoding.mjs <issue#> [...] [--scan] [--dry-run]`.
    - Keep canonical AITM keys only; do not store project-specific field aliases.
 
 2. Add healing logic.

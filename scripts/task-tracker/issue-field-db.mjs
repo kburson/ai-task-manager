@@ -1,8 +1,10 @@
 export const FIELD_DB_START = '<!-- ai-task-manager:fields:start -->';
 export const FIELD_DB_END = '<!-- ai-task-manager:fields:end -->';
+export const FIELDS_COMMENT_PREFIX = '<!-- aitm-fields:';
 
-const FENCE_START = '```json';
-const FENCE_END = '```';
+const LEGACY_BLOCK_RE = /^[ \t]*<!--\s*ai-task-manager:fields:start\s*-->[\s\S]*?<!--\s*ai-task-manager:fields:end\s*-->/gm;
+const NEW_BLOCK_RE = /^[ \t]*<!--\s*aitm-fields:\s*(\{[\s\S]*?\})\s*-->/gm;
+const FENCE_INNER_RE = /```json\s*([\s\S]*?)\s*```/;
 
 export function defaultFieldValues(fieldDefs = []) {
   const values = {};
@@ -10,40 +12,57 @@ export function defaultFieldValues(fieldDefs = []) {
   return values;
 }
 
-export function parseIssueFieldDb(body) {
-  const start = body.indexOf(FIELD_DB_START);
-  const end = body.indexOf(FIELD_DB_END);
-  if (start === -1 || end === -1 || end < start) {
-    return { ok: false, reason: 'missing' };
-  }
-  const block = body.slice(start + FIELD_DB_START.length, end).trim();
-  const jsonStart = block.indexOf(FENCE_START);
-  const jsonEnd = block.lastIndexOf(FENCE_END);
-  if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
-    return { ok: false, reason: 'invalid-fence', start, end: end + FIELD_DB_END.length };
-  }
-  const raw = block.slice(jsonStart + FENCE_START.length, jsonEnd).trim();
+function tryParseValues(rawJson) {
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(rawJson);
     const values = parsed.values && typeof parsed.values === 'object' ? parsed.values : parsed;
-    if (!values || typeof values !== 'object' || Array.isArray(values)) {
-      return { ok: false, reason: 'invalid-values', start, end: end + FIELD_DB_END.length };
-    }
-    return { ok: true, values, raw: parsed, start, end: end + FIELD_DB_END.length };
+    if (!values || typeof values !== 'object' || Array.isArray(values)) return null;
+    return { values, raw: parsed };
   } catch {
-    return { ok: false, reason: 'invalid-json', start, end: end + FIELD_DB_END.length };
+    return null;
   }
+}
+
+function collectMatches(body) {
+  const out = [];
+  for (const m of body.matchAll(NEW_BLOCK_RE)) {
+    out.push({ kind: 'new', start: m.index, end: m.index + m[0].length, json: m[1] });
+  }
+  for (const m of body.matchAll(LEGACY_BLOCK_RE)) {
+    const inner = m[0];
+    const fence = inner.match(FENCE_INNER_RE);
+    out.push({ kind: 'legacy', start: m.index, end: m.index + m[0].length, json: fence ? fence[1] : null });
+  }
+  out.sort((a, b) => a.start - b.start);
+  return out;
+}
+
+export function parseIssueFieldDb(body) {
+  const matches = collectMatches(body);
+  if (matches.length === 0) return { ok: false, reason: 'missing' };
+  const last = matches[matches.length - 1];
+  if (last.json == null) {
+    return { ok: false, reason: last.kind === 'legacy' ? 'invalid-fence' : 'invalid-json', start: last.start, end: last.end };
+  }
+  const parsed = tryParseValues(last.json);
+  if (!parsed) {
+    return { ok: false, reason: 'invalid-json', start: last.start, end: last.end };
+  }
+  return { ok: true, values: parsed.values, raw: parsed.raw, start: last.start, end: last.end };
 }
 
 export function formatIssueFieldDb(values) {
   const compact = JSON.stringify({ schema: 1, values });
-  return `${FIELD_DB_START}\n${FENCE_START}\n${compact}\n${FENCE_END}\n${FIELD_DB_END}`;
+  return `<!-- aitm-fields: ${compact} -->`;
 }
 
 export function stripIssueFieldDb(body) {
-  const parsed = parseIssueFieldDb(body);
-  if (parsed.start == null || parsed.end == null) return body.trimEnd();
-  return `${body.slice(0, parsed.start)}${body.slice(parsed.end)}`.trimEnd();
+  const stripped = body
+    .replace(NEW_BLOCK_RE, '')
+    .replace(LEGACY_BLOCK_RE, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd();
+  return stripped;
 }
 
 function parseScalar(raw) {
@@ -61,7 +80,10 @@ function parseScalar(raw) {
 
 function sectionValue(body, heading) {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`^###\\s+${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|\\n<!--\\s*ai-task-manager:fields:start\\s*-->|$)`, 'im');
+  const re = new RegExp(
+    `^###\\s+${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|\\n<!--\\s*ai-task-manager:fields:start\\s*-->|\\n<!--\\s*aitm-fields:|$)`,
+    'im',
+  );
   const match = body.match(re);
   if (!match) return null;
   return match[1].trim();

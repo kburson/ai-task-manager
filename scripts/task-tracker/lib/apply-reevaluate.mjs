@@ -13,7 +13,7 @@ import path from 'node:path';
 
 import { projectValuesForIssue, writeProjectFieldValue, fieldOptionMap, projectItemForIssue } from '../../gh/lib/github-projects.mjs';
 import { reevaluateEstimate, buildAuditCommentBody, AUDIT_HEADER } from './reevaluate-estimate.mjs';
-import { parseIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
+import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
 
 const pexec = promisify(execFile);
@@ -109,7 +109,7 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
 
   if (dbParsed.ok) {
     const nextValues = { ...dbParsed.values, size: result.size, estimate: result.estimate };
-    const nextBody = `${body.slice(0, dbParsed.start)}${formatIssueFieldDb(nextValues)}${body.slice(dbParsed.end)}`;
+    const nextBody = `${stripIssueFieldDb(body)}\n\n${formatIssueFieldDb(nextValues)}\n`;
     try {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: nextBody, scratchDir });
     } catch (err) {
