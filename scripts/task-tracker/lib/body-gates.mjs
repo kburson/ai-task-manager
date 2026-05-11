@@ -16,7 +16,7 @@ export const DEFAULT_GATES = [
     kind: PLACEMENT_RULE,
     trigger: /^##\s+Deep[- ]Dive Analysis\b/im,
     mustComeAfter: /^##\s+Pickup Directive\b/im,
-    mustComeBefore: /<!--\s*ai-task-manager:fields:start\s*-->/i,
+    mustComeBefore: /<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/i,
   },
   {
     name: 'deep-dive-complete',
@@ -139,7 +139,7 @@ const REQUIRED_BODY_SECTIONS = [
   { name: 'Acceptance Criteria',  re: /^##\s+Acceptance Criteria\b/im },
   { name: 'Definition of Done',   re: /^#{2,3}\s+Definition of Done\b/im },
   { name: 'Pickup Directive',     re: /^##\s+Pickup Directive\b/im },
-  { name: 'fields-block marker',  re: /<!--\s*ai-task-manager:fields:start\s*-->/i },
+  { name: 'fields-block marker',  re: /<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/i },
 ];
 
 export function checkRequiredBodySections(body = '') {
