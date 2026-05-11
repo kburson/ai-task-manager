@@ -12,6 +12,7 @@ import {
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue } from './queue.mjs';
+import { seedMissingTemplates, findMainWorktree } from './seed-worktree.mjs';
 
 const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const cfg = loadConfig();
@@ -69,7 +70,25 @@ async function onPostCompact(sid) {
   await safePost(s.active, row);
 }
 
+// Self-heal a fresh worktree: Claude Code's `isolation: "worktree"` Agent mode
+// runs `git worktree add`, which doesn't carry gitignored files. The pickup
+// directive + definition-of-done templates live in .ai-task-manager/ (gitignored)
+// and their absence breaks preflight-issue.mjs + templates.test.mjs.
+function selfHealTemplates() {
+  try {
+    const main = findMainWorktree(projectDir);
+    if (!main || path.resolve(main) === path.resolve(projectDir)) return;
+    const r = seedMissingTemplates({ source: main, target: projectDir });
+    if (r.copied && r.copied.length > 0) {
+      console.log(`[task-tracker] Seeded missing templates from main worktree: ${r.copied.join(', ')}`);
+    }
+  } catch (err) {
+    console.error(`[task-tracker] template self-heal failed: ${err.message}`);
+  }
+}
+
 async function onSessionStart(sid) {
+  selfHealTemplates();
   const s = loadState(statePath);
 
   // Nothing active and nothing paused
