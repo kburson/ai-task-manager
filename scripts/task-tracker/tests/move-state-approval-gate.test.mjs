@@ -128,9 +128,9 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   rmSync(sandbox, { recursive: true });
 }
 
-// 2. Body WITH approval line -> success
+// 2. Body WITH approval marker -> success
 {
-  const body = `## Acceptance Criteria\n- [ ] AC\n- [x] Plan approved by human\n\n${deepDiveAdequate()}\n`;
+  const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
   const { sandbox, binDir } = makeSandbox(body, { currentState: 'Analyze' });
   const r = await runMove(sandbox, binDir, ['100', 'development']);
   assert.match(r.stdout, /moved to: development/);

@@ -7,8 +7,9 @@
 //                                           to render via AskUserQuestion. In
 //                                           headless mode (CI=1 or no TTY),
 //                                           refuse with a clear message.
-//   approve <N> --answer yes             -> tick `- [ ] Plan approved by human`
-//                                           in the issue body and run
+//   approve <N> --answer yes             -> append the procedural-gate marker
+//                                           `<!-- aitm-plan-approved: <ISO> -->`
+//                                           to the issue body and run
 //                                           `move-state.mjs <N> development`.
 //   approve <N> --answer no --reason "x" -> refuse transition and post the
 //                                           free-text reason as a comment so
@@ -33,9 +34,10 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
-export const APPROVAL_CHECKBOX_LABEL = 'Plan approved by human';
-const APPROVAL_LINE_UNCHECKED = `- [ ] ${APPROVAL_CHECKBOX_LABEL}`;
-const APPROVAL_LINE_CHECKED = `- [x] ${APPROVAL_CHECKBOX_LABEL}`;
+export const APPROVAL_MARKER_RE = /<!--\s*aitm-plan-approved:\s*[^>]+-->/i;
+export function approvalMarker(ts) {
+  return `<!-- aitm-plan-approved: ${ts} -->`;
+}
 
 // ---------------------------------------------------------------------------
 // Default I/O — extracted so tests can inject stubs.
@@ -108,36 +110,17 @@ export function extractDeepDive(body) {
   return lines.slice(start, end).join('\n').trimEnd();
 }
 
-// Tick the canonical approval checkbox; insert it under "## Acceptance
-// Criteria" if missing. Returns the updated body.
-export function tickApprovalCheckbox(body) {
+// Append the procedural-gate marker for analyze→development approval.
+// Idempotent: if a marker is already present, returns body unchanged.
+// The marker lives outside any user-facing section (no AC mutation) and
+// mirrors the existing aitm-review-approved precedent.
+export function writePlanApprovedMarker(body, { now = () => new Date().toISOString() } = {}) {
   const src = String(body || '');
-  // Match only standalone checkbox bullets at the start of a line — not the
-  // label appearing inside backticks/prose elsewhere in the body.
-  const checkedRe = new RegExp(`^- \\[x\\] ${APPROVAL_CHECKBOX_LABEL}\\s*$`, 'mi');
-  const uncheckedRe = new RegExp(`^- \\[ \\] ${APPROVAL_CHECKBOX_LABEL}\\s*$`, 'm');
-  if (checkedRe.test(src)) return src; // already ticked
-  if (uncheckedRe.test(src)) {
-    return src.replace(uncheckedRe, APPROVAL_LINE_CHECKED);
-  }
-  // Insert under Acceptance Criteria — append at end of that section.
-  const lines = src.split('\n');
-  let acStart = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (/^##\s+Acceptance Criteria\b/i.test(lines[i])) { acStart = i; break; }
-  }
-  if (acStart === -1) {
-    // No AC section — append a new one near the top (after first blank line).
-    return `${src.trimEnd()}\n\n## Acceptance Criteria\n\n${APPROVAL_LINE_CHECKED}\n`;
-  }
-  let insertAt = lines.length;
-  for (let i = acStart + 1; i < lines.length; i++) {
-    if (/^##\s+/.test(lines[i]) || /^###\s+/.test(lines[i])) { insertAt = i; break; }
-  }
-  // Walk back over trailing blank lines so the new entry sits inside the section.
-  while (insertAt > acStart + 1 && lines[insertAt - 1].trim() === '') insertAt--;
-  lines.splice(insertAt, 0, APPROVAL_LINE_CHECKED);
-  return lines.join('\n');
+  if (APPROVAL_MARKER_RE.test(src)) return src;
+  const ts = typeof now === 'function' ? now() : String(now);
+  const marker = approvalMarker(ts);
+  const trimmed = src.replace(/\s+$/, '');
+  return trimmed ? `${trimmed}\n\n${marker}\n` : `${marker}\n`;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +151,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   // orchestrator can log a gate-bypass audit row. See #58.
   if (cfg.gateAnalysisToDevelopment === false && (answer === undefined || answer === null)) {
     const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-    const updated = tickApprovalCheckbox(body);
+    const updated = writePlanApprovedMarker(body);
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
     }
@@ -214,7 +197,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
 
   if (norm === 'yes' || norm === 'y') {
     const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-    const updated = tickApprovalCheckbox(body);
+    const updated = writePlanApprovedMarker(body);
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
     }

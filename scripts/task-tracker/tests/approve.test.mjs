@@ -5,14 +5,26 @@
 //   1. Headless refusal when no --answer is passed and CI/no-TTY is true.
 //   2. needs-prompt path emits the deep-dive section as the question context.
 //   3. Missing Deep-Dive Analysis section -> error.
-//   4. --answer yes ticks the checkbox (replacement) and calls moveState.
-//   5. --answer yes inserts the checkbox under Acceptance Criteria when absent.
+//   4. --answer yes appends the aitm-plan-approved marker and calls moveState.
+//   5. AC section is byte-identical before/after approve (marker placement
+//      must never mutate Acceptance Criteria).
 //   6. --answer no with reason posts a comment and does NOT call moveState.
 //   7. --answer no with empty reason -> error, no comment posted.
 //   8. Unrecognised --answer -> error.
+//   9. extractDeepDive helper edge cases.
+//  10. writePlanApprovedMarker idempotent on already-marked body.
+//  11. Revision loop — repeated rejections post distinct comments.
+//  12. Marker regex is strict: prose mentions of the marker shape inside
+//      backticks/code do not satisfy the gate (so we don't accidentally
+//      auto-approve from docs).
 
 import { strict as assert } from 'node:assert';
-import { runApprove, extractDeepDive, tickApprovalCheckbox, APPROVAL_CHECKBOX_LABEL } from '../verbs/approve.mjs';
+import {
+  runApprove,
+  extractDeepDive,
+  writePlanApprovedMarker,
+  APPROVAL_MARKER_RE,
+} from '../verbs/approve.mjs';
 
 const cfg = { repo: 'o/r' };
 
@@ -28,18 +40,6 @@ const BODY_WITH_DEEPDIVE = [
   '',
   '## Dependency Map',
   'none',
-  '',
-].join('\n');
-
-const BODY_WITH_PRE_INSERTED_CHECKBOX = [
-  '## Acceptance Criteria',
-  '',
-  '- [ ] do the thing',
-  '- [ ] Plan approved by human',
-  '',
-  '## Deep-Dive Analysis (2026-05-09)',
-  '',
-  'content',
   '',
 ].join('\n');
 
@@ -89,34 +89,40 @@ function makeDeps(overrides = {}) {
   assert.match(r.message, /no Deep-Dive Analysis section/);
 }
 
-// 4. --answer yes ticks an existing checkbox and calls moveState
-{
-  const { deps, calls } = makeDeps({
-    fetchIssueBody: async () => ({ title: 'x', body: BODY_WITH_PRE_INSERTED_CHECKBOX }),
-  });
-  const r = await runApprove({ issueNumber: 50, cfg, answer: 'yes', deps });
-  assert.equal(r.status, 'approved');
-  assert.equal(calls.moveStateCalls, 1, 'moveState must be called on approve');
-  assert.equal(calls.writes.length, 1, 'body must be written exactly once');
-  assert.match(calls.writes[0], /^- \[x\] Plan approved by human$/m);
-  assert.doesNotMatch(calls.writes[0], /^- \[ \] Plan approved by human$/m);
-}
-
-// 5. --answer yes inserts the checkbox under Acceptance Criteria when absent
+// 4. --answer yes appends the marker and calls moveState
 {
   const { deps, calls } = makeDeps();
   const r = await runApprove({ issueNumber: 50, cfg, answer: 'yes', deps });
   assert.equal(r.status, 'approved');
-  assert.equal(calls.writes.length, 1);
-  // The new checkbox must be inside the AC section, before the next ## heading.
+  assert.equal(calls.moveStateCalls, 1, 'moveState must be called on approve');
+  assert.equal(calls.writes.length, 1, 'body must be written exactly once');
+  assert.match(calls.writes[0], APPROVAL_MARKER_RE);
+}
+
+// 5. AC section is byte-identical before/after approve.
+{
+  const { deps, calls } = makeDeps();
+  await runApprove({ issueNumber: 50, cfg, answer: 'yes', deps });
   const written = calls.writes[0];
-  const acIdx = written.indexOf('## Acceptance Criteria');
-  const nextHeadingIdx = written.indexOf('## Deep-Dive Analysis');
-  const checkboxIdx = written.indexOf('- [x] Plan approved by human');
-  assert.ok(acIdx >= 0 && nextHeadingIdx > acIdx);
-  assert.ok(checkboxIdx > acIdx && checkboxIdx < nextHeadingIdx,
-    `approval checkbox must sit inside AC section; got idx ${checkboxIdx}, AC ${acIdx}, next ${nextHeadingIdx}`);
-  assert.equal(calls.moveStateCalls, 1);
+
+  function extractAC(src) {
+    const lines = String(src).split('\n');
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^##\s+Acceptance Criteria\b/i.test(lines[i])) { start = i; break; }
+    }
+    if (start === -1) return null;
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^##\s+/.test(lines[i])) { end = i; break; }
+    }
+    return lines.slice(start, end).join('\n');
+  }
+
+  const before = extractAC(BODY_WITH_DEEPDIVE);
+  const after = extractAC(written);
+  assert.equal(after, before, 'AC section must be byte-identical before and after approve');
+  assert.doesNotMatch(after, /Plan approved by human/, 'no legacy checkbox text in AC');
 }
 
 // 6. --answer no with reason posts a comment and does NOT call moveState
@@ -159,10 +165,10 @@ function makeDeps(overrides = {}) {
   assert.doesNotMatch(got, /## Next/);
 }
 
-// 10. tickApprovalCheckbox idempotent on already-checked body
+// 10. writePlanApprovedMarker idempotent on already-marked body
 {
-  const already = `## AC\n\n- [x] Plan approved by human\n`;
-  assert.equal(tickApprovalCheckbox(already), already);
+  const already = `## AC\n\nstuff\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
+  assert.equal(writePlanApprovedMarker(already), already);
 }
 
 // 11. Revision loop — caller can repeatedly reject with different reasons.
@@ -176,23 +182,17 @@ function makeDeps(overrides = {}) {
   assert.equal(calls.moveStateCalls, 0);
 }
 
-// 12. Regression — label appearing in prose/backticks must NOT match;
-// verb appends a real checkbox under Acceptance Criteria.
+// 12. Marker placement appends at end with deterministic timestamp.
 {
-  const prose = [
-    '## Acceptance Criteria',
-    '',
-    '- [x] On `yes`, the verb ticks a `- [ ] Plan approved by human` checkbox.',
-    '',
-    '## Other',
-    '',
-  ].join('\n');
-  const out = tickApprovalCheckbox(prose);
-  // Must contain a real top-of-line checked checkbox, not just the prose mention.
-  const realCheckbox = /^- \[x\] Plan approved by human\s*$/m;
-  assert.match(out, realCheckbox);
-  // Prose line preserved.
-  assert.match(out, /On `yes`, the verb ticks a `- \[ \] Plan approved by human`/);
+  const out = writePlanApprovedMarker('## AC\n\n- [ ] x\n', { now: () => '2026-05-11T12:00:00.000Z' });
+  assert.match(out, /<!-- aitm-plan-approved: 2026-05-11T12:00:00\.000Z -->/);
+  // Marker sits at the end of the body, after the AC content.
+  const markerIdx = out.indexOf('<!-- aitm-plan-approved:');
+  const acIdx = out.indexOf('## AC');
+  assert.ok(markerIdx > acIdx);
+  // Empty body still gets a marker.
+  const empty = writePlanApprovedMarker('', { now: () => '2026-05-11T12:00:00.000Z' });
+  assert.match(empty, APPROVAL_MARKER_RE);
 }
 
-console.log(`approve.test.mjs: all passed (label=${APPROVAL_CHECKBOX_LABEL})`);
+console.log('approve.test.mjs: all passed');

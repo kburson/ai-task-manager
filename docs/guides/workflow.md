@@ -50,8 +50,10 @@ Two transitions require explicit human approval. Both are toggleable via config;
 
 | Gate | Config key | Default | Bypass behavior when `false` |
 |---|---|---|---|
-| Analyze → Development | `gateAnalysisToDevelopment` | `true` | `/task approve #N` auto-ticks the approval checkbox and moves the issue; emits a `gate-bypassed` status. |
+| Analyze → Development | `gateAnalysisToDevelopment` | `true` | `/task approve #N` auto-writes the approval marker and moves the issue; emits a `gate-bypassed` status. |
 | Review → Done         | `gateReviewToDone`         | `true` | `/task close` posts a `gate-bypassed` timing-log row instead of refusing. |
+
+The Analyze → Development gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Analyze. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
 
 The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve-review #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
 

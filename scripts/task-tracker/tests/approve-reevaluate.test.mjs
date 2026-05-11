@@ -14,7 +14,7 @@ import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
 // Body scoring to M: 3 files, 4 steps, 2 risks, 2 deps → score 11.5 → M (8h).
 const FIXTURE_BODY_M = `## Acceptance Criteria
 
-- [ ] Plan approved by human
+- [ ] do the thing
 
 ## Deep-Dive Analysis
 

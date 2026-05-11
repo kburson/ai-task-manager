@@ -167,16 +167,16 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
 }
 
 // Approval gate: analyze -> development requires explicit human approval
-// recorded as `- [x] Plan approved by human` in the issue body. Fires only
-// when the *current* board state is `analyze` so transitions back from
-// validate/review do not require a fresh approval.
+// recorded as a `<!-- aitm-plan-approved: <ts> -->` marker in the issue body.
+// Fires only when the *current* board state is `analyze` so transitions back
+// from validate/review do not require a fresh approval.
 if (stateArg === 'development' && !SKIP_NETWORK) {
   let body = '';
   try {
     body = (await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])).trim();
   } catch { /* ignore — missing body falls through */ }
 
-  const approved = /^- \[x\] Plan approved by human\b/m.test(body);
+  const approved = /<!--\s*aitm-plan-approved:\s*[^>]+-->/i.test(body);
 
   // Resolve current state (single-select option name) via the project item.
   let currentStateName = '';
@@ -215,7 +215,7 @@ if (stateArg === 'development' && !SKIP_NETWORK) {
     } else {
       process.stderr.write('\n');
       process.stderr.write(`⛔ Refusing to move #${issueArg} to development:\n`);
-      process.stderr.write('   BLOCKED: analyze -> development requires - [x] Plan approved by human (run the approve verb to solicit human approval)\n');
+      process.stderr.write('   BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)\n');
       process.stderr.write('\nResolve the blocker, then retry. Legitimate-abandonment override:\n');
       process.stderr.write(`   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} development\n\n`);
       process.exit(4);
