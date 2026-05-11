@@ -14,6 +14,8 @@ import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { evaluateGhEdit } from './lib/gh-edit-guard.mjs';
+
 let input = {};
 try {
   input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
@@ -113,6 +115,21 @@ for (const p of allPaths) {
     block(`Access to path outside allowed scope: ${p}\n  (reads permitted in project root, /tmp/, and ~/.claude/)`);
   }
 }
+
+// --- gh issue edit body protection ---
+// Refuses writes that would reintroduce deprecated visible-checkbox lines or
+// drop hidden verb-completion markers. Diff-based: safe wholesale rewrites of
+// bodies that never had the legacy lines or markers pass through.
+const ghEditResult = evaluateGhEdit({
+  command,
+  readBodyFile: (p) => readFileSync(p, 'utf8'),
+  fetchCurrentBody: (n) => execSync(`gh issue view ${Number(n)} --json body --jq .body`, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: 10000,
+  }),
+});
+if (ghEditResult.block) block(ghEditResult.reason);
 
 // All checks passed.
 process.exit(0);
