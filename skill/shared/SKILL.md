@@ -17,7 +17,7 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 1. **Run `/task #N`** to start the timer and register the active task. **NEVER touch source files, run tests, edit issue bodies, or take any action against an issue without an active timer.** "The work is small" is not a valid reason. "The session was resumed and there's no active task" is not a valid reason — re-run `/task #N` to re-register.
 2. **Verify the issue is in-progress** on the project board (the CLI does this automatically; if it failed, fix it before proceeding).
-3. **Follow the Pickup Directive** in the issue body. The deep-dive section MUST be appended to the body and the `Deep dive complete` checkbox ticked **before** any code edits.
+3. **Follow the Pickup Directive** in the issue body. The deep-dive section MUST be appended to the body and the hidden `<!-- aitm-deep-dive-complete -->` marker written (via `/task check`) **before** any code edits.
 
 ### Before moving an issue to In Review — agent steps, ALL of these, in order:
 
@@ -680,8 +680,6 @@ close contract.
    ## Pickup Directive — MANDATORY, DO NOT SKIP
    > Follow: `.ai-task-manager/pickup-directive.md`
 
-   - [ ] Deep dive complete
-
    ---
    ```
 3. Append `$DIRECTIVE_BLOCK` after Acceptance Criteria and Plan Metadata so the issue order is Scope, Plan Metadata, Acceptance Criteria, Definition of Done, Pickup Directive, then any hidden AITM field DB.
@@ -695,9 +693,9 @@ close contract.
   - Evidence present → skip analysis steps; proceed to implementation (step 7 in the directive).
   - Evidence absent → run the full deep dive **before writing any code**.
 - After completing the deep dive (step 3): `/task check "Deep dive complete"` writes the hidden marker.
-- **Deep-Dive placement is canonical.** The `## Deep-Dive Analysis (YYYY-MM-DD)` section is an appendix — it MUST appear AFTER the `## Pickup Directive` heading block (after its trailing `- [ ] Deep dive complete` checkbox) and BEFORE the `<!-- ai-task-manager:fields:start -->` marker. Body order: Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive Analysis → fields-block. The `deep-dive-placement` body gate refuses in-review/r4r/done moves when the heading is present in any other position.
+- **Deep-Dive placement is canonical.** The `## Deep-Dive Analysis (YYYY-MM-DD)` section is an appendix — it MUST appear AFTER the `## Pickup Directive` heading block and BEFORE the `<!-- ai-task-manager:fields:start -->` marker. Body order: Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive Analysis → fields-block. The `deep-dive-placement` body gate refuses in-review/r4r/done moves when the heading is present in any other position.
 
-**For epics:** After appending the deep dive and ticking `Deep dive complete`, verify that no Acceptance Criterion or Definition of Done checkbox has been ticked. If any are found ticked, uncheck them immediately. Then confirm that the following AC is present in the epic body (add it if missing):
+**For epics:** After appending the deep dive and running `/task check "Deep dive complete"` to write the hidden marker, verify that no Acceptance Criterion or Definition of Done checkbox has been ticked. If any are found ticked, uncheck them immediately. Then confirm that the following AC is present in the epic body (add it if missing):
 
 > `- [ ] All sub-issues have passed through In Review to be verified and landed in R4R to await final human review.`
 

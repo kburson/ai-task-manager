@@ -6,8 +6,11 @@
 import { strict as assert } from 'node:assert';
 import {
   parseGhIssueEdit,
+  parseGhIssueCreate,
   checkBodyChange,
+  checkNewBody,
   evaluateGhEdit,
+  evaluateGhCreate,
 } from '../lib/gh-edit-guard.mjs';
 
 // ── parseGhIssueEdit ─────────────────────────────────────────────────────────
@@ -199,6 +202,137 @@ import {
   // legacy-line introduction is still caught even when current body is unknown
   // (treated as empty → legacy line is "introduced")
   assert.equal(r.block, true);
+}
+
+// ── checkBodyChange: deep-dive heading must come with marker ─────────────────
+{
+  const MARKER = '<!-- aitm-deep-dive-complete: 2026-05-11T20:00:00Z -->';
+
+  // Adding heading without marker → block
+  let r = checkBodyChange({
+    newBody:     '## AC\n## Deep-Dive Analysis (2026-05-11)\nstuff\n',
+    currentBody: '## AC\n',
+    issueNumber: 99,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /Deep-Dive Analysis/);
+  assert.match(r.reason, /aitm-deep-dive-complete/);
+
+  // Adding heading WITH marker → pass
+  r = checkBodyChange({
+    newBody:     `## AC\n## Deep-Dive Analysis (2026-05-11)\nstuff\n${MARKER}\n`,
+    currentBody: '## AC\n',
+    issueNumber: 99,
+  });
+  assert.equal(r.block, false);
+
+  // Heading already present in current → not "introducing", pass even without marker
+  r = checkBodyChange({
+    newBody:     '## AC\n## Deep-Dive Analysis\nrevised\n',
+    currentBody: '## AC\n## Deep-Dive Analysis\noriginal\n',
+    issueNumber: 99,
+  });
+  assert.equal(r.block, false);
+}
+
+// ── checkNewBody: deep-dive heading must come with marker on create ──────────
+{
+  const MARKER = '<!-- aitm-deep-dive-complete: 2026-05-11T20:00:00Z -->';
+
+  let r = checkNewBody({ newBody: '## AC\n## Deep-Dive Analysis\nx\n' });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-deep-dive-complete/);
+
+  r = checkNewBody({ newBody: `## AC\n## Deep-Dive Analysis\nx\n${MARKER}\n` });
+  assert.equal(r.block, false);
+}
+
+// ── parseGhIssueCreate ───────────────────────────────────────────────────────
+{
+  assert.deepEqual(
+    parseGhIssueCreate('gh issue create --title T --body-file /tmp/x.md'),
+    { source: 'file', path: '/tmp/x.md' },
+  );
+  assert.deepEqual(
+    parseGhIssueCreate('gh issue create --title T --body "hi"'),
+    { source: 'inline', body: 'hi' },
+  );
+  assert.deepEqual(
+    parseGhIssueCreate('gh issue create --title T'),
+    { source: 'none' },
+  );
+  assert.equal(parseGhIssueCreate('gh issue edit 1 --body x'), null);
+  assert.equal(parseGhIssueCreate('echo hi'), null);
+}
+
+// ── checkNewBody: legacy-line introduction on create ─────────────────────────
+{
+  let r = checkNewBody({ newBody: '## AC\n- [ ] Plan approved by human\n' });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /Plan approved by human/);
+
+  r = checkNewBody({ newBody: '## AC\n- [ ] Deep dive complete\n' });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /Deep dive complete/);
+
+  r = checkNewBody({ newBody: '## AC\n- [ ] do thing\n' });
+  assert.equal(r.block, false);
+}
+
+// ── evaluateGhCreate: end-to-end ─────────────────────────────────────────────
+{
+  const fileBody = {
+    '/tmp/clean.md':  '## AC\n- [ ] x\n',
+    '/tmp/legacy.md': '## AC\n- [ ] Deep dive complete\n',
+  };
+  const readBodyFile = (p) => {
+    if (!(p in fileBody)) throw new Error(`no such file: ${p}`);
+    return fileBody[p];
+  };
+
+  // Legacy line in created body → block
+  let r = evaluateGhCreate({
+    command: 'gh issue create --title T --body-file /tmp/legacy.md',
+    readBodyFile,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /Deep dive complete/);
+
+  // Clean body → pass
+  r = evaluateGhCreate({
+    command: 'gh issue create --title T --body-file /tmp/clean.md',
+    readBodyFile,
+  });
+  assert.equal(r.block, false);
+
+  // Inline legacy body → block
+  r = evaluateGhCreate({
+    command: 'gh issue create --title T --body "- [x] Plan approved by human"',
+    readBodyFile,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /Plan approved by human/);
+
+  // Non-create command → pass
+  r = evaluateGhCreate({
+    command: 'gh issue view 1',
+    readBodyFile,
+  });
+  assert.equal(r.block, false);
+
+  // Create without body flag → pass
+  r = evaluateGhCreate({
+    command: 'gh issue create --title T',
+    readBodyFile,
+  });
+  assert.equal(r.block, false);
+
+  // File read error → don't block (gh CLI will surface it)
+  r = evaluateGhCreate({
+    command: 'gh issue create --title T --body-file /tmp/missing.md',
+    readBodyFile,
+  });
+  assert.equal(r.block, false);
 }
 
 console.log('gh-edit-guard.test.mjs: all passed');

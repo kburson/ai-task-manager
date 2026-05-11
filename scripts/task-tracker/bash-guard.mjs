@@ -14,7 +14,7 @@ import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { evaluateGhEdit } from './lib/gh-edit-guard.mjs';
+import { evaluateGhEdit, evaluateGhCreate } from './lib/gh-edit-guard.mjs';
 
 let input = {};
 try {
@@ -130,6 +130,15 @@ const ghEditResult = evaluateGhEdit({
   }),
 });
 if (ghEditResult.block) block(ghEditResult.reason);
+
+// --- gh issue create body protection ---
+// Mirrors the edit guard for create: refuses bodies that contain deprecated
+// visible-checkbox lines at creation time.
+const ghCreateResult = evaluateGhCreate({
+  command,
+  readBodyFile: (p) => readFileSync(p, 'utf8'),
+});
+if (ghCreateResult.block) block(ghCreateResult.reason);
 
 // All checks passed.
 process.exit(0);
