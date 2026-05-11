@@ -27,7 +27,12 @@ import {
 import { loadProjectFieldDefs } from './project-fields.mjs';
 import { parseTimingRows, rollupTotals } from './timing-rollup.mjs';
 import { migratePlanApprovedBody } from './migrate-plan-approved.mjs';
-import { hasPlanApprovedMarker, hasDeepDiveCompleteMarker } from './lib/markers.mjs';
+import {
+  hasPlanApprovedMarker,
+  hasDeepDiveCompleteMarker,
+  hasDeepDiveHeading,
+  insertDeepDiveCompleteMarker,
+} from './lib/markers.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
@@ -56,13 +61,22 @@ const CANONICAL_STATUS_OPTIONS = ['Backlog', 'Groom', 'Analyze', 'Development', 
 
 // ----- Pure helpers (unit-tested) -----
 
-export function healIssue({ body, timingCommentBody, fieldDefs, now = () => new Date().toISOString(), thresholdMin = 5 }) {
+export function healIssue({ body, timingCommentBody, fieldDefs, now = () => new Date().toISOString(), thresholdMin = 5, deepDiveBackfillTs = null }) {
   const result = { changedBody: false, deltas: [], skipped: false, skipReason: null, action: [] };
 
   // 1. Plan-approved migration
   const migrated = migratePlanApprovedBody(body, { now });
   if (migrated.changed) result.action.push(migrated.action);
   let workingBody = migrated.body;
+
+  // 1a. Deep-dive marker backfill — legacy issues with a `## Deep-Dive
+  // Analysis` heading but no `aitm-deep-dive-complete` marker get the marker
+  // inserted using the issue's closedAt/createdAt timestamp. Keeps pickup
+  // logic from re-authoring the section on these issues.
+  if (deepDiveBackfillTs && hasDeepDiveHeading(workingBody) && !hasDeepDiveCompleteMarker(workingBody)) {
+    workingBody = insertDeepDiveCompleteMarker(workingBody, deepDiveBackfillTs);
+    result.action.push('backfill-deep-dive-marker');
+  }
 
   // 1b. Vestigial AC bullet strip (marker-gated; never strips without a marker).
   const afterStrip = stripVestigialAcBullets(workingBody);
@@ -144,6 +158,12 @@ function sameValue(a, b) {
   if (a == null && b == null) return true;
   if (typeof a === 'number' && typeof b === 'number') return a === b;
   return String(a) === String(b);
+}
+
+// Normalize a GitHub ISO timestamp to the marker's canonical form (no ms).
+export function normalizeMarkerTs(iso) {
+  if (!iso) return null;
+  return String(iso).replace(/\.\d+Z$/, 'Z');
 }
 
 function formatStartTime(tsMs) {
@@ -321,11 +341,18 @@ async function fetchAllIssueNumbers({ repo, state, projectId }) {
 }
 
 async function fetchIssueBundle(issueNumber, repo) {
-  const out = await gh(['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body,comments,state']);
+  const out = await gh(['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body,comments,state,createdAt,closedAt']);
   const parsed = JSON.parse(out);
   const timing = (parsed.comments || []).find(c => c.body && c.body.includes('⏱ Timing Log')) ?? null;
   const priorHeal = (parsed.comments || []).some(c => isHealComment(c.body));
-  return { body: parsed.body ?? '', timing, state: parsed.state, priorHeal };
+  return {
+    body: parsed.body ?? '',
+    timing,
+    state: parsed.state,
+    priorHeal,
+    createdAt: parsed.createdAt ?? null,
+    closedAt: parsed.closedAt ?? null,
+  };
 }
 
 async function writeIssueBody(issueNumber, repo, body, projectDir) {
@@ -424,12 +451,14 @@ async function main() {
   for (const n of numbers) {
     let row = { encodingChanged: false, deltas: [], skipped: false, skipReason: null, error: null };
     try {
-      const { body, timing, priorHeal } = await fetchIssueBundle(n, cfg.repo);
+      const { body, timing, priorHeal, closedAt, createdAt } = await fetchIssueBundle(n, cfg.repo);
+      const backfillTs = normalizeMarkerTs(closedAt || createdAt);
       const heal = healIssue({
         body,
         timingCommentBody: timing?.body ?? null,
         fieldDefs,
         thresholdMin,
+        deepDiveBackfillTs: backfillTs,
       });
       row.encodingChanged = heal.changedBody && heal.deltas.length === 0;
       row.deltas = heal.deltas;

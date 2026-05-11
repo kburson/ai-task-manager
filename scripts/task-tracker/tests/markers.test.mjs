@@ -18,6 +18,9 @@ import {
   buildDeepDiveCompleteMarker,
   hasDeepDiveCompleteMarker,
   insertDeepDiveCompleteMarker,
+  hasDeepDiveHeading,
+  hasDeepDiveEvidence,
+  backfillDeepDiveCompleteMarker,
 } from '../lib/markers.mjs';
 
 const TS = '2026-05-11T12:00:00Z';
@@ -104,6 +107,29 @@ const TS = '2026-05-11T12:00:00Z';
   const markerIdx = out.search(REVIEW_APPROVED_RE);
   const fieldsIdx = out.indexOf('<!-- aitm-fields:');
   assert.ok(markerIdx < fieldsIdx, 'marker placed before canonical fields block');
+}
+
+// ── deep-dive evidence + heading + backfill (legacy-issue fallback) ──────────
+{
+  // Heading detection: matches plain heading and dated variant.
+  assert.ok(hasDeepDiveHeading('## Deep-Dive Analysis\n\ntext'));
+  assert.ok(hasDeepDiveHeading('## Deep-Dive Analysis (2026-05-11)\n\ntext'));
+  assert.ok(!hasDeepDiveHeading('## Some Other Section'));
+
+  // Evidence = marker OR heading.
+  assert.ok(hasDeepDiveEvidence(`prose\n${buildDeepDiveCompleteMarker(TS)}\n`));
+  assert.ok(hasDeepDiveEvidence('## Deep-Dive Analysis\n\nwork'));
+  assert.ok(!hasDeepDiveEvidence('plain prose'));
+
+  // Backfill: heading present, marker absent → marker inserted.
+  const legacy = '## AC\n- [ ] x\n\n## Deep-Dive Analysis\n\nold notes\n';
+  const filled = backfillDeepDiveCompleteMarker(legacy, TS);
+  assert.match(filled, DEEP_DIVE_COMPLETE_RE);
+  // Idempotent on already-marked body.
+  assert.equal(backfillDeepDiveCompleteMarker(filled, TS), filled);
+  // No-op on body with no heading.
+  const noHeading = '## AC\n- [ ] x\n';
+  assert.equal(backfillDeepDiveCompleteMarker(noHeading, TS), noHeading);
 }
 
 console.log('markers.test.mjs: all passed');

@@ -689,10 +689,12 @@ close contract.
 
 **At issue pickup** (`/task #N` or `/task resume #N`):
 - Read `.ai-task-manager/pickup-directive.md` — start with the "Hard Rules" section, then follow the step-by-step instructions.
-- Check if `- [x] Deep dive complete` is present in the issue body.
-  - Checked → skip analysis steps; proceed to implementation (step 7 in the directive).
-  - Unchecked → run the full deep dive **before writing any code**.
-- After completing the deep dive (step 3): `/task check "Deep dive complete"`.
+- Check whether deep-dive evidence is present in the issue body. Evidence is **either**:
+  - The hidden marker `<!-- aitm-deep-dive-complete: <ts> -->`, OR
+  - A `## Deep-Dive Analysis` heading (legacy issues authored before the marker existed).
+  - Evidence present → skip analysis steps; proceed to implementation (step 7 in the directive).
+  - Evidence absent → run the full deep dive **before writing any code**.
+- After completing the deep dive (step 3): `/task check "Deep dive complete"` writes the hidden marker.
 - **Deep-Dive placement is canonical.** The `## Deep-Dive Analysis (YYYY-MM-DD)` section is an appendix — it MUST appear AFTER the `## Pickup Directive` heading block (after its trailing `- [ ] Deep dive complete` checkbox) and BEFORE the `<!-- ai-task-manager:fields:start -->` marker. Body order: Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive Analysis → fields-block. The `deep-dive-placement` body gate refuses in-review/r4r/done moves when the heading is present in any other position.
 
 **For epics:** After appending the deep dive and ticking `Deep dive complete`, verify that no Acceptance Criterion or Definition of Done checkbox has been ticked. If any are found ticked, uncheck them immediately. Then confirm that the following AC is present in the epic body (add it if missing):

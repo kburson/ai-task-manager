@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
-import { hasDeepDiveCompleteMarker } from '../lib/markers.mjs';
+import { hasDeepDiveEvidence } from '../lib/markers.mjs';
 import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
 
 const pexec = promisify(execFile);
@@ -192,7 +192,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   // fires in both human-answered and auto-approve branches. Refuse-only; never
   // forges the marker.
   function checkDeepDiveRequired(body) {
-    if (hasDeepDiveCompleteMarker(body)) return null;
+    if (hasDeepDiveEvidence(body)) return null;
     return {
       status: 'deep-dive-required',
       blockers: [{

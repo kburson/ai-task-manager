@@ -306,4 +306,58 @@ const TIMING_LOG_3_ROWS = [
   assert.match(outNone, /Deep dive complete/, 'deep-dive bullet preserved when marker absent');
 })();
 
+// ---------- 8. Deep-dive marker backfill (legacy-issue fallback) ----------
+
+(function deepDiveBackfill() {
+  // Heading present + no marker + ts provided → marker inserted.
+  const legacy = [
+    '## Acceptance Criteria',
+    '- [ ] AC',
+    '',
+    '## Deep-Dive Analysis',
+    '',
+    'historical notes',
+    '',
+  ].join('\n');
+  const r = healIssue({
+    body: legacy,
+    timingCommentBody: null,
+    fieldDefs,
+    deepDiveBackfillTs: '2026-01-15T00:00:00Z',
+  });
+  assert.match(r.body, /<!--\s*aitm-deep-dive-complete: 2026-01-15T00:00:00Z\s*-->/);
+  assert.ok(r.action.includes('backfill-deep-dive-marker'));
+
+  // No heading → no backfill, no action.
+  const plain = '## AC\n- [ ] AC\n';
+  const r2 = healIssue({
+    body: plain,
+    timingCommentBody: null,
+    fieldDefs,
+    deepDiveBackfillTs: '2026-01-15T00:00:00Z',
+  });
+  assert.doesNotMatch(r2.body, /aitm-deep-dive-complete/);
+  assert.ok(!r2.action.includes('backfill-deep-dive-marker'));
+
+  // Heading + ts omitted → no backfill (default behavior unchanged).
+  const r3 = healIssue({
+    body: legacy,
+    timingCommentBody: null,
+    fieldDefs,
+  });
+  assert.doesNotMatch(r3.body, /aitm-deep-dive-complete/);
+
+  // Already-marked body → idempotent (no second marker).
+  const marked = legacy + '\n<!-- aitm-deep-dive-complete: 2025-12-01T00:00:00Z -->\n';
+  const r4 = healIssue({
+    body: marked,
+    timingCommentBody: null,
+    fieldDefs,
+    deepDiveBackfillTs: '2026-01-15T00:00:00Z',
+  });
+  const count = (r4.body.match(/aitm-deep-dive-complete/g) || []).length;
+  assert.equal(count, 1, 'no duplicate marker');
+  assert.match(r4.body, /2025-12-01T00:00:00Z/, 'original ts preserved');
+})();
+
 console.log('ok: heal-backlog.test.mjs');

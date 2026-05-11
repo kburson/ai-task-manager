@@ -212,4 +212,34 @@ function makeDeps(overrides = {}) {
   }
 }
 
+// 14. Legacy fallback — heading present, marker absent → gate passes.
+{
+  const LEGACY = [
+    '## Acceptance Criteria',
+    '- [ ] AC',
+    '',
+    '## Deep-Dive Analysis (2025-12-01)',
+    '',
+    'historical content',
+    '',
+  ].join('\n');
+  const { deps, calls } = makeDeps({
+    fetchIssueBody: async () => ({ title: 'legacy', body: LEGACY }),
+  });
+  const r = await runApprove({ issueNumber: 83, cfg, answer: 'yes', deps });
+  assert.equal(r.status, 'approved', 'heading-only legacy body must satisfy the deep-dive gate');
+  assert.equal(calls.moveStateCalls, 1);
+}
+
+// 15. Gate refusal — neither heading nor marker → deep-dive-required.
+{
+  const NONE = '## Acceptance Criteria\n- [ ] AC\n';
+  const { deps, calls } = makeDeps({
+    fetchIssueBody: async () => ({ title: 'bare', body: NONE }),
+  });
+  const r = await runApprove({ issueNumber: 99, cfg, answer: 'yes', deps });
+  assert.equal(r.status, 'deep-dive-required');
+  assert.equal(calls.moveStateCalls, 0);
+}
+
 console.log('approve.test.mjs: all passed');

@@ -62,6 +62,30 @@ export function insertDeepDiveCompleteMarker(body, ts) {
   return insertMarkerBeforeFieldDb(body, DEEP_DIVE_COMPLETE_RE, buildDeepDiveCompleteMarker(ts));
 }
 
+// Heading-fallback for legacy issues authored before the marker existed. A
+// `## Deep-Dive Analysis` heading in the body is treated as equivalent
+// evidence that the deep-dive was performed, so pickup logic and the
+// analyze→development gate do not re-author the section.
+export const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/mi;
+
+export function hasDeepDiveHeading(body) {
+  return DEEP_DIVE_HEADING_RE.test(String(body || ''));
+}
+
+export function hasDeepDiveEvidence(body) {
+  return hasDeepDiveCompleteMarker(body) || hasDeepDiveHeading(body);
+}
+
+// Backfill the marker on a legacy issue: if the heading is present and the
+// marker is absent, insert the marker at `ts`. Returns the (possibly
+// unchanged) body. Idempotent.
+export function backfillDeepDiveCompleteMarker(body, ts) {
+  const src = String(body || '');
+  if (hasDeepDiveCompleteMarker(src)) return src;
+  if (!hasDeepDiveHeading(src)) return src;
+  return insertDeepDiveCompleteMarker(src, ts);
+}
+
 // ---------------------------------------------------------------------------
 // Shared insertion logic.
 //
