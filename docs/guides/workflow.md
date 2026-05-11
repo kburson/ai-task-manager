@@ -203,6 +203,43 @@ When the user says **"cleanup"**, execute in order:
 
 ---
 
+## Backlog healing
+
+`scripts/task-tracker/heal-backlog.mjs` walks every issue in the project board and performs three jobs in one pass:
+
+1. **Encoding normalization** — strips legacy fenced `<!-- ai-task-manager:fields:start/end -->` blocks and emits a single `<!-- aitm-fields: ... -->` HTML comment; converts visible "Plan approved by human" checkboxes into `<!-- aitm-plan-approved: <ts> -->` markers.
+2. **Timing reconciliation** — parses the `⏱ Timing Log` comment, recomputes `engagedTime` / `sessionTime` / `reviewTime` / `startTime` from the rollup, rewrites the fields-DB if they disagree, and posts a `### 🛠 Backlog heal` comment with a deltas table. Static fields (`priority`, `size`, `estimate`, `sequence`) are never touched.
+3. **Schema validation** — fetches the project's GraphQL field schema and diffs against the canonical set; reports missing / extra fields, type mismatches, and option drift (including Status column options). Exit code 3 on drift.
+
+### Usage
+
+```bash
+# Dry run, all issues (default) — writes report to tmp/heal-backlog-<ISO>.md
+node scripts/task-tracker/heal-backlog.mjs
+
+# Apply changes for real
+node scripts/task-tracker/heal-backlog.mjs --apply
+
+# Scope to specific issues
+node scripts/task-tracker/heal-backlog.mjs --scope 41,87 --apply
+
+# Filter by state
+node scripts/task-tracker/heal-backlog.mjs --state open
+node scripts/task-tracker/heal-backlog.mjs --state closed
+
+# Skip schema validation
+node scripts/task-tracker/heal-backlog.mjs --no-schema-check
+
+# Run apply despite schema drift (not recommended)
+node scripts/task-tracker/heal-backlog.mjs --apply --ignore-schema-drift
+```
+
+### Idempotence
+
+Re-running on a healed body is a no-op: encoding is already canonical, timing fields already match the rollup, plan-approved marker is already in place. The heal comment is only posted when there are deltas to surface.
+
+---
+
 ## Close Tracking (required)
 
 At issue close, set these two fields on the GitHub Projects board:
