@@ -5,6 +5,8 @@ import {
   scoreSignals,
   bucketSize,
   reevaluateEstimate,
+  buildAuditCommentBody,
+  AUDIT_HEADER,
   ESTIMATE_HOURS,
   SIZE_BUCKETS,
 } from '../lib/reevaluate-estimate.mjs';
@@ -128,6 +130,72 @@ Blocks: #99
 {
   const r = reevaluateEstimate(undefined, {});
   assert.equal(r.size, 'XS');
+}
+
+// buildAuditCommentBody — auto-apply path (single-tier jump).
+{
+  const result = reevaluateEstimate(
+    `## Deep-Dive Analysis
+### Files to edit
+- a.mjs
+- b.mjs
+- c.mjs
+- d.mjs
+### Step-by-step plan
+1. one
+2. two
+3. three
+4. four
+5. five
+6. six
+### Identified risks
+- r1
+`,
+    { size: 'M', estimate: 8 },
+  );
+  const body = buildAuditCommentBody(result);
+  assert.ok(body.startsWith(AUDIT_HEADER), 'header line first');
+  assert.ok(!/HUMAN ATTENTION/.test(body), 'auto-apply path has no human-attention banner');
+  assert.match(body, /\| Size \| M \| L \|/, 'size before/after row');
+  assert.match(body, /\| Estimate \(h\) \| 8 \| 16 \|/, 'estimate before/after row');
+  assert.match(body, /Deep dive surfaced/, 'rationale line present');
+}
+
+// buildAuditCommentBody — ≥2-tier path (human attention required, no mutation).
+{
+  const result = reevaluateEstimate(
+    `## Deep-Dive Analysis
+### Files to edit
+- a.mjs
+- b.mjs
+- c.mjs
+- d.mjs
+- e.mjs
+### Step-by-step plan
+1. one
+2. two
+3. three
+4. four
+5. five
+6. six
+7. seven
+8. eight
+9. nine
+10. ten
+### Identified risks
+- r1
+- r2
+- r3
+- r4
+- r5
+`,
+    { size: 'XS', estimate: 1.5 },
+  );
+  assert.equal(result.requiresHuman, true, 'fixture must trip the 2-tier gate');
+  const body = buildAuditCommentBody(result);
+  assert.ok(body.startsWith(AUDIT_HEADER));
+  assert.match(body, /⚠ \*\*HUMAN ATTENTION\*\*/, 'human-attention banner present');
+  assert.match(body, /\| Size \| XS \|/, 'before-size XS in table');
 }
 
 console.log('reevaluate-estimate.test.mjs: all passed');

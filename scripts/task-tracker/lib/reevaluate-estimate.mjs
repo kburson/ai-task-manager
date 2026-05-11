@@ -130,3 +130,29 @@ export function buildRationale(result) {
   const human = requiresHuman ? ' ⚠ ≥2-tier jump — human review required before applying.' : '';
   return `Deep dive surfaced ${sigText}; bucket ${fromTo}.${human}`;
 }
+
+export const AUDIT_HEADER = '### 🔁 Analysis re-estimate';
+
+export function buildAuditCommentBody(result) {
+  const beforeSize = result.current?.size ?? '—';
+  const beforeEst = result.current?.estimate ?? '—';
+  const tableLines = [
+    '| Field | Before | After |',
+    '|---|---|---|',
+    `| Size | ${beforeSize} | ${result.size} |`,
+    `| Estimate (h) | ${beforeEst} | ${result.estimate} |`,
+  ];
+  const rationale = buildRationale(result);
+  if (result.requiresHuman) {
+    return [
+      AUDIT_HEADER,
+      '',
+      '⚠ **HUMAN ATTENTION** — proposed change spans ≥2 size tiers; not auto-applied.',
+      '',
+      ...tableLines,
+      '',
+      rationale,
+    ].join('\n');
+  }
+  return [AUDIT_HEADER, '', ...tableLines, '', rationale].join('\n');
+}
