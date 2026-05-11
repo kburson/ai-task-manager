@@ -136,17 +136,33 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 **At `/task #N` activation**: if either field is missing, set both before touching any code.
 
-### Post-Deep-Dive re-estimate
+### Three-stage estimation
 
-When `/task review #N` runs and the body gates pass, the harness re-evaluates `Size` and `Estimate` from the Deep-Dive Analysis section before moving the issue to Validate:
+Size and Estimate move through three distinct stages. Only the first two ever mutate fields; the third is read-only.
+
+| Stage | Verb that fires it | Mutates fields? | Comment surface |
+|---|---|---|---|
+| Grooming | (manual at issue creation / groom) | Yes — initial set | n/a |
+| Analysis | `/task approve <N>` (analyze → development boundary) | Yes — rebucket from Deep Dive | `### 🔁 Analysis re-estimate` |
+| Review | `/task close <N>` (review → done) | **No** — read-only delta | `### 📊 Review delta` |
+
+**Analysis re-estimate.** When `/task approve <N>` advances an issue from Analyze to Development, the harness re-evaluates Size + Estimate from the Deep-Dive Analysis section:
 
 - Signals: count of files-to-edit, plan steps, identified risks, and `Depends on:` dependencies.
 - Score → bucket → median hours. Constants live in `scripts/task-tracker/lib/reevaluate-estimate.mjs`.
 - If the new (size, estimate) match the current values, the re-estimate is a silent no-op.
-- If they differ within one tier, the project fields and body fields-block are updated and a `### 🔁 Post-Deep-Dive re-estimate` audit comment is posted.
+- If they differ within one tier, the project fields and body fields-block are updated and a `### 🔁 Analysis re-estimate` audit comment is posted with a from→to table.
 - If they differ by **≥2 size tiers**, no fields are mutated — instead a `⚠ HUMAN ATTENTION` comment is posted under the same header so a human can resolve the scope question.
 
-Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the field writes. The bypass still posts an audit comment so the gap is visible per-issue.
+Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the analyze-stage hook. The bypass still posts a one-line audit comment so the gap is visible per-issue.
+
+**Review delta.** When `/task close <N>` advances an issue to Done, the harness posts a read-only retrospective comment recording Estimate vs. Actual:
+
+- Reads `Estimate` (hours) and `engagedTime` (hours, the "Actual Hours" board field) from the project board.
+- Posts a `### 📊 Review delta` comment with the Δ percentage and a footer noting that Size/Estimate are not modified.
+- If `Actual` is missing, the cells render as `—` and a fallback note is included; no crash.
+
+Override: set `TASK_TRACKER_SKIP_DELTA=1` to skip the close-stage hook. The bypass still posts a one-line note so the gap is visible per-issue.
 
 ---
 

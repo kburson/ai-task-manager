@@ -127,6 +127,13 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and moves the issue.
 
+#### Estimation comment surfaces
+
+Two verbs emit comments tied to the three-stage estimation model (see `docs/guides/workflow.md` → Three-stage estimation):
+
+- `/task approve <N>` — if the Deep-Dive Analysis shifts the bucket, posts a `### 🔁 Analysis re-estimate` comment with a from→to table and updates Size + Estimate on the board. A ≥2-tier jump posts a `⚠ HUMAN ATTENTION` variant and skips the writes. Set `TASK_TRACKER_SKIP_REEVAL=1` to bypass the hook.
+- `/task close <N>` — posts a `### 📊 Review delta` comment recording Estimate vs. Actual hours. This comment is **read-only**: Size and Estimate are not changed at close. Set `TASK_TRACKER_SKIP_DELTA=1` to bypass the hook.
+
 #### Deprecated state slugs (one-release sunset)
 
 | Old slug | Replacement |

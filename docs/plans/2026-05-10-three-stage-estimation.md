@@ -46,7 +46,7 @@ The boundary chosen for Review is review→done (`verbClose`), not validate→re
 Deep dive surfaced 6 file(s) to edit, 9-step plan, 3 risk(s), 2 dependency(ies) (score 14.5); bucket M→L.
 ```
 
-≥2-tier jump path uses the existing `⚠ HUMAN ATTENTION` header and skips the auto-mutation, identical to today's `requiresHuman` path. Header text changes from `### 🔁 Post-Deep-Dive re-estimate` to `### 🔁 Analysis re-estimate`.
+≥2-tier jump path uses the existing `⚠ HUMAN ATTENTION` header and skips the auto-mutation, identical to today's `requiresHuman` path. Header text is `### 🔁 Analysis re-estimate` (renamed from the prior post-deep-dive label).
 
 ### Delta comment format (review→done)
 
