@@ -195,4 +195,17 @@ function makeDeps(overrides = {}) {
   assert.match(empty, APPROVAL_MARKER_RE);
 }
 
+// 13. Legacy strip — approve on a body with `- [ ] Plan approved by human`
+//     (or its ticked variant) cleans up the checkbox and writes the marker.
+{
+  for (const variant of ['- [ ]', '- [x]']) {
+    const out = writePlanApprovedMarker(
+      `## Acceptance Criteria\n\n- [ ] do thing\n${variant} Plan approved by human\n\n## Next\n`,
+      { now: () => '2026-05-11T12:00:00.000Z' },
+    );
+    assert.doesNotMatch(out, /Plan approved by human/, `legacy ${variant} line must be stripped`);
+    assert.match(out, APPROVAL_MARKER_RE, 'marker must be appended');
+  }
+}
+
 console.log('approve.test.mjs: all passed');

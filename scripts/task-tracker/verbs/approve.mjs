@@ -111,15 +111,28 @@ export function extractDeepDive(body) {
 }
 
 // Append the procedural-gate marker for analyze→development approval.
-// Idempotent: if a marker is already present, returns body unchanged.
-// The marker lives outside any user-facing section (no AC mutation) and
-// mirrors the existing aitm-review-approved precedent.
+// Strips any legacy `- [ ]` / `- [x] Plan approved by human` line so an
+// approve on an unmigrated body cleans up its own AC noise. Idempotent: if
+// a marker is already present and no legacy line exists, returns body
+// unchanged. Mirrors the existing aitm-review-approved precedent.
+const LEGACY_CHECKBOX_LINE_RE = /^[ \t]*- \[[ x]\] Plan approved by human\s*\r?\n?/gmi;
+
 export function writePlanApprovedMarker(body, { now = () => new Date().toISOString() } = {}) {
   const src = String(body || '');
-  if (APPROVAL_MARKER_RE.test(src)) return src;
+  const hasLegacy = LEGACY_CHECKBOX_LINE_RE.test(src);
+  LEGACY_CHECKBOX_LINE_RE.lastIndex = 0;
+  const hasMarker = APPROVAL_MARKER_RE.test(src);
+  if (hasMarker && !hasLegacy) return src;
+
+  let next = src;
+  if (hasLegacy) {
+    next = next.replace(LEGACY_CHECKBOX_LINE_RE, '').replace(/\n{3,}/g, '\n\n');
+  }
+  if (hasMarker) return next;
+
   const ts = typeof now === 'function' ? now() : String(now);
   const marker = approvalMarker(ts);
-  const trimmed = src.replace(/\s+$/, '');
+  const trimmed = next.replace(/\s+$/, '');
   return trimmed ? `${trimmed}\n\n${marker}\n` : `${marker}\n`;
 }
 
