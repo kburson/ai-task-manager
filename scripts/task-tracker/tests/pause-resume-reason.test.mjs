@@ -4,7 +4,7 @@ import { buildRow } from '../gh-timing-comment.mjs';
 // Pause row carries free-text reason in description column.
 {
   const row = buildRow({
-    ts: '2026-05-09T10:00:00Z',
+    ts: new Date().toISOString(),
     event: 'pause',
     activeMin: 5,
     idleMin: 0,
@@ -19,7 +19,7 @@ import { buildRow } from '../gh-timing-comment.mjs';
 // Resume row carries the answered-question reason.
 {
   const row = buildRow({
-    ts: '2026-05-09T10:05:00Z',
+    ts: new Date(Date.now() - 5000).toISOString(),
     event: 'resume',
     activeMin: 0,
     idleMin: 0,
@@ -35,7 +35,7 @@ import { buildRow } from '../gh-timing-comment.mjs';
 // the verb layer is responsible for choosing fallback strings; buildRow itself just renders).
 {
   const row = buildRow({
-    ts: '2026-05-09T10:10:00Z',
+    ts: new Date(Date.now() - 10000).toISOString(),
     event: 'pause',
     activeMin: 1,
     idleMin: 0,

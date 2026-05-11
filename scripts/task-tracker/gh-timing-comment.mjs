@@ -41,8 +41,79 @@ export function firstStartTimestamp(commentBody) {
 }
 function fmtNum(n)  { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
 
+// Maximum allowed skew (ms) between a caller-supplied `ts` and `Date.now()`.
+// Beyond this window in either direction, `buildRow` refuses to construct a
+// row. This closes the data-fabrication hole where a caller backdates an
+// event to claim work happened earlier than it did. No flag, no env var,
+// no argument bypasses this check.
+const RETROACTIVE_TS_WINDOW_MS = 60_000;
+
+export const RETROACTIVE_TS_ERROR =
+  'retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated';
+
+function tsToMs(ts) {
+  if (ts == null) return NaN;
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts === 'number') return ts;
+  if (typeof ts === 'string') return Date.parse(ts);
+  return NaN;
+}
+
 export function buildRow({ ts, event, activeMin, idleMin, deltaWords, wordMarker, description = '' }) {
+  const tsMs = tsToMs(ts);
+  if (!Number.isFinite(tsMs)) {
+    throw new Error(`${RETROACTIVE_TS_ERROR} (received non-parseable ts: ${String(ts)})`);
+  }
+  if (Math.abs(tsMs - Date.now()) > RETROACTIVE_TS_WINDOW_MS) {
+    throw new Error(RETROACTIVE_TS_ERROR);
+  }
   return `| ${fmtTs(ts)} | ${event} | ${fmtNum(activeMin)} | ${fmtNum(idleMin)} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |`;
+}
+
+// ---- lastKnownState metadata helpers ---------------------------------------
+//
+// Stored as HTML-comment metadata at the top of the issue body (cross-worktree
+// authoritative — local state files don't sync, the issue body does).
+//
+//   <!-- aitm-last-known-state: development -->
+//   <!-- aitm-last-known-state-ts: 2026-05-10T14:32:11Z -->
+//
+// `writeLastKnownState` stamps its own ISO timestamp; callers cannot inject
+// a retroactive ts here either.
+
+const LAST_KNOWN_STATE_RE      = /<!--\s*aitm-last-known-state:\s*([A-Za-z0-9_-]+)\s*-->/;
+const LAST_KNOWN_STATE_TS_RE   = /<!--\s*aitm-last-known-state-ts:\s*([^\s>][^>]*?)\s*-->/;
+const LAST_KNOWN_STATE_PAIR_RE =
+  /<!--\s*aitm-last-known-state:\s*[A-Za-z0-9_-]+\s*-->\s*\n?<!--\s*aitm-last-known-state-ts:\s*[^>]+?\s*-->\s*\n?/;
+
+export function readLastKnownState(body) {
+  if (!body || typeof body !== 'string') return { state: null, ts: null };
+  const stateMatch = body.match(LAST_KNOWN_STATE_RE);
+  const tsMatch    = body.match(LAST_KNOWN_STATE_TS_RE);
+  return {
+    state: stateMatch ? stateMatch[1] : null,
+    ts:    tsMatch ? tsMatch[1].trim() : null,
+  };
+}
+
+export function writeLastKnownState(body, state) {
+  if (typeof state !== 'string' || !state.trim()) {
+    throw new Error('writeLastKnownState: state must be a non-empty string');
+  }
+  const normalized = state.trim();
+  const ts = new Date().toISOString();
+  const block = `<!-- aitm-last-known-state: ${normalized} -->\n<!-- aitm-last-known-state-ts: ${ts} -->\n`;
+  const src = typeof body === 'string' ? body : '';
+
+  if (LAST_KNOWN_STATE_PAIR_RE.test(src)) {
+    return src.replace(LAST_KNOWN_STATE_PAIR_RE, block);
+  }
+  // Fallback for half-written bodies (state without ts or vice versa) — strip
+  // any stragglers before prepending the fresh pair to avoid duplicates.
+  const stripped = src
+    .replace(new RegExp(LAST_KNOWN_STATE_RE.source + '\\s*\\n?', 'g'), '')
+    .replace(new RegExp(LAST_KNOWN_STATE_TS_RE.source + '\\s*\\n?', 'g'), '');
+  return `${block}${stripped}`;
 }
 
 export function buildInitialComment() {
