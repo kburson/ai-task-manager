@@ -315,9 +315,10 @@ async function writeIssueBody(issueNumber, repo, body, projectDir) {
   }
 }
 
-async function postHealComment(issueNumber, repo, comment) {
-  const tmp = path.join(projectTmpDir(), `aitm-heal-comment-${issueNumber}-${Date.now()}.md`);
-  mkdirSync(path.dirname(tmp), { recursive: true });
+async function postHealComment(issueNumber, repo, comment, projectDir) {
+  const dir = projectTmpDir(projectDir);
+  mkdirSync(dir, { recursive: true });
+  const tmp = path.join(dir, `aitm-heal-comment-${issueNumber}-${Date.now()}.md`);
   writeFileSync(tmp, comment, 'utf8');
   try {
     await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body-file', tmp]);
@@ -416,7 +417,7 @@ async function main() {
           row.encodingChanged = true;
         }
         if (heal.deltas.length && !priorHeal) {
-          await postHealComment(n, cfg.repo, renderHealComment({ deltas: heal.deltas }));
+          await postHealComment(n, cfg.repo, renderHealComment({ deltas: heal.deltas }), projectDir);
         }
       }
       if (heal.deltas.length) issuesWithDeltaCount++;
