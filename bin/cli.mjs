@@ -106,6 +106,16 @@ function patchSettingsJson(settingsPath) {
   );
   if (!guardRegistered) settings.hooks.PreToolUse.push(guardEntry);
 
+  // agent-guard: PreToolUse hook on the `Agent` tool — refuses sub-agent
+  // spawns when the orchestrator is running in the main git worktree.
+  // Closes the spawn-class failure (epic #61): no override, no flag.
+  const agentGuardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/agent-guard.mjs';
+  const agentGuardEntry = { matcher: 'Agent', hooks: [{ type: 'command', command: agentGuardCmd }] };
+  const agentGuardRegistered = settings.hooks.PreToolUse.some(
+    h => h.hooks?.some(inner => inner.command === agentGuardCmd)
+  );
+  if (!agentGuardRegistered) settings.hooks.PreToolUse.push(agentGuardEntry);
+
   // commit-trail: PostToolUse hook that appends a row to the bound issue's
   // `### 🔗 Commits` comment after each successful `git commit`.
   const trailCmd = '.claude/hooks/commit-trail.sh';
