@@ -287,6 +287,35 @@ Two checkpoints inspect `git status --porcelain` in the issue's bound workspace 
 
 **Known limitation:** the fleet registry stores one `worktreePath` per issue. If multiple worktrees are bound to the same issue, only the last-registered path is checked. Hoist manually if you need a stricter sweep.
 
+### Commit Trail (per-commit hook)
+
+Every successful `git commit` made while an issue is bound (`/task start <#N>`) is captured into a single rolling `### 🔗 Commits` comment on that issue. This closes the traceability gap between "issue is Done" and "which commits implemented it."
+
+**Hook:** PostToolUse on `Bash` → `.claude/hooks/commit-trail.sh` → `commit-trail-handler.mjs`. Installed automatically by `bin/cli.mjs install`.
+
+**Behavior:**
+- Fires only on **successful** `git commit` (bash tool exit 0).
+- Skips `git commit --amend` (amend rewrites SHA; v1 drops these).
+- No active bound issue → silent no-op.
+- `gh` failure → one-line stderr warning, hook exits 0; never propagates to the bash tool result.
+- Idempotent: a hidden `<!-- aitm-commits: SHA1,SHA2,... -->` marker dedups re-fires.
+
+**Comment shape:**
+
+```
+### 🔗 Commits
+
+<!-- aitm-commits: abc1234...,def5678... -->
+
+| SHA | Subject | Author | When |
+|---|---|---|---|
+| `abc1234` | feat(x): … | kendrick burson | 2026-05-10T14:32:11Z |
+```
+
+When the commit happens in a secondary worktree (git-dir ≠ git-common-dir), `Branch` and `Worktree` columns are added. If the existing comment is already 4-col, the 4-col schema is preserved to avoid mixing column counts.
+
+**Out of scope (v1):** boundary-snapshot path at `development → validate` (depends on `/task promote`); squash/rebase reconciliation; amend handling.
+
 ## Plan-Mode Backlog Orchestration
 
 When the user confirms "yes" in Step 1b, execute the following sections in order. **Process ALL epics in the spec in document order — do not stop between epics.** Solo tasks (issues with no sub-issues) are created the same way as epic issues but skipped for the sub-issue loop.

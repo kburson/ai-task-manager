@@ -106,6 +106,16 @@ function patchSettingsJson(settingsPath) {
   );
   if (!guardRegistered) settings.hooks.PreToolUse.push(guardEntry);
 
+  // commit-trail: PostToolUse hook that appends a row to the bound issue's
+  // `### 🔗 Commits` comment after each successful `git commit`.
+  const trailCmd = '.claude/hooks/commit-trail.sh';
+  const trailEntry = { matcher: 'Bash', hooks: [{ type: 'command', command: trailCmd }] };
+  if (!Array.isArray(settings.hooks.PostToolUse)) settings.hooks.PostToolUse = [];
+  const trailRegistered = settings.hooks.PostToolUse.some(
+    h => h.hooks?.some(inner => inner.command === trailCmd)
+  );
+  if (!trailRegistered) settings.hooks.PostToolUse.push(trailEntry);
+
   // Allow all Bash without prompting — the bash-guard hook above enforces path scope
   // so per-command permission prompts add friction without meaningful security benefit.
   if (!settings.permissions) settings.permissions = {};
@@ -205,6 +215,39 @@ function hookStub() {
   ].join('\n');
 }
 
+function commitTrailHookStub() {
+  return [
+    '#!/usr/bin/env bash',
+    '# PostToolUse hook — appends commit SHA rows to the bound issue\'s `### 🔗 Commits` comment.',
+    'set -uo pipefail',
+    '',
+    'INPUT=$(cat)',
+    '',
+    'NODE_BIN=""',
+    'if [ -f "$HOME/.nvm/nvm.sh" ]; then',
+    '  export NVM_DIR="$HOME/.nvm"',
+    '  # shellcheck source=/dev/null',
+    '  source "$NVM_DIR/nvm.sh" --no-use 2>/dev/null || true',
+    '  NODE_BIN=$(nvm which current 2>/dev/null || echo "")',
+    'fi',
+    'if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then',
+    '  NODE_BIN=$(command -v node 2>/dev/null || echo "")',
+    'fi',
+    'if [ -z "$NODE_BIN" ]; then',
+    '  exit 0',
+    'fi',
+    '',
+    'SCRIPT="node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs"',
+    'if [ ! -f "$SCRIPT" ]; then',
+    '  exit 0',
+    'fi',
+    '',
+    'echo "$INPUT" | "$NODE_BIN" "$SCRIPT" 2>/dev/null || true',
+    'exit 0',
+    '',
+  ].join('\n');
+}
+
 function claudeStub() {
   return [
     '---',
@@ -257,6 +300,10 @@ function installClaude(targetDir, linkMode) {
   const hookPath = join(targetDir, '.claude', 'hooks', 'task-tracker.sh');
   installStub(hookPath, hookStub(), 'Hook');
   try { execFileSync('chmod', ['+x', hookPath]); } catch { /* ignore on Windows */ }
+
+  const trailHookPath = join(targetDir, '.claude', 'hooks', 'commit-trail.sh');
+  installStub(trailHookPath, commitTrailHookStub(), 'Hook');
+  try { execFileSync('chmod', ['+x', trailHookPath]); } catch { /* ignore on Windows */ }
 
   installStub(
     join(targetDir, '.claude', 'commands', 'task.md'),
