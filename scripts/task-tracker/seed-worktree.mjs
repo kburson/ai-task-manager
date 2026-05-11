@@ -9,10 +9,12 @@
 // before booting the agent.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
 const SRC_FILES = ['task-tracker.json', 'pickup-directive.md', 'definition-of-done.md'];
 const EMPTY_FILES = ['task-tracker-state.json'];
+const TEMPLATE_FILES = ['pickup-directive.md', 'definition-of-done.md'];
 
 export function seedWorktree({ source, target }) {
   if (!source || typeof source !== 'string') {
@@ -47,6 +49,44 @@ export function seedWorktree({ source, target }) {
     if (!existsSync(p)) writeFileSync(p, '{}\n', 'utf8');
   }
   return { ok: true, target: tgtDir, copied: [...SRC_FILES, ...EMPTY_FILES] };
+}
+
+// Self-heal: copy any missing template .md files from source → target.
+// Unlike seedWorktree, this is idempotent and silent when target is already populated.
+// Used by SessionStart hook to fix worktrees provisioned by Claude Code's
+// `isolation: "worktree"` mode, which doesn't carry gitignored files across.
+export function seedMissingTemplates({ source, target }) {
+  if (!source || !target) return { ok: false, copied: [] };
+  const srcDir = path.resolve(source, '.ai-task-manager');
+  const tgtDir = path.resolve(target, '.ai-task-manager');
+  if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
+    return { ok: false, copied: [], reason: 'source missing' };
+  }
+  mkdirSync(tgtDir, { recursive: true });
+  const copied = [];
+  for (const f of TEMPLATE_FILES) {
+    const tgt = path.join(tgtDir, f);
+    if (existsSync(tgt)) continue;
+    const src = path.join(srcDir, f);
+    if (!existsSync(src)) continue;
+    writeFileSync(tgt, readFileSync(src));
+    copied.push(f);
+  }
+  return { ok: true, copied };
+}
+
+// Find the main worktree for the current repo. Returns null on failure.
+// The first `worktree` line in `git worktree list --porcelain` is always the main one.
+export function findMainWorktree(cwd = process.cwd()) {
+  try {
+    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const m = out.match(/^worktree (.+)$/m);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseArgs(argv) {
