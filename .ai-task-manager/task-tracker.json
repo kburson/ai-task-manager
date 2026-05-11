@@ -40,5 +40,7 @@
   "kanbanOptionGroom": "f75ad846",
   "kanbanOptionAnalyze": "aa084acb",
   "kanbanOptionValidate": "5dd53ef2",
-  "kanbanOptionReview": "e21699f1"
+  "kanbanOptionReview": "e21699f1",
+  "gateAnalysisToDevelopment": false,
+  "gateReviewToDone": false
 }

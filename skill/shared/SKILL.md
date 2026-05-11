@@ -118,12 +118,23 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 ### State Transition Verb Map (7-state model)
 
+Two directional verbs are the canonical state-change interface (see #61 / #81). Humans and agents track *direction* (forward / back) rather than naming stages. The per-stage verbs below are retained as discoverable aliases that delegate to `promote`.
+
+- `/task promote [#N]` — advance one state in the kanban sequence (`Backlog → Groom → Analyze → Development → Validate → Review → Done`). Fires all gates for the target state. Refuses on `Done` ("already in done"). Subsumes `/task close` when advancing from `Review`.
+- `/task demote [#N]` — return to `Development`. Only valid from `Validate` or `Review`; refuses elsewhere.
+- `/task next [#N]` — alias of `/task promote` (see #79).
+- `/task reconcile <accept-live|revert-to-recorded>` — recover from drift (board vs. recorded state).
+
+Stage aliases (all delegate to `promote`):
+
 - `/task groom` — Backlog → Groom
 - `/task analyze` — Groom → Analyze
 - `/task approve` — Analyze → Development
 - `/task review` — Development → Validate (CODE_COMPLETE handoff)
-- `/task approve-review` — Review → Review (records human approval marker; gates `/task close`)
-- `/task close` — Review → Done
+- `/task approve-review` — records human approval marker in Review (gates `promote → Done`)
+- `/task close` — Review → Done (deprecated alias for `promote` from Review)
+
+There is no user-facing `/task move <state>` verb; running it returns "verb not found, did you mean `promote`/`demote`?". The internal chokepoint `scripts/gh/move-state.mjs` is gated by `AITM_INTERNAL=1`.
 
 Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and moves the issue.
 
