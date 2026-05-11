@@ -1,7 +1,40 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { legacyPathFor } from './paths.mjs';
+
+const LOCK_STALE_MS = 30_000;
+const LOCK_RETRY_MS = 25;
+const LOCK_MAX_WAIT_MS = 5_000;
+
+export function withLock(registryPath, fn) {
+  const lockDir = registryPath + '.lock';
+  mkdirSync(path.dirname(registryPath), { recursive: true });
+  const deadline = Date.now() + LOCK_MAX_WAIT_MS;
+  let held = false;
+  while (!held) {
+    try {
+      mkdirSync(lockDir);
+      held = true;
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+      try {
+        const age = Date.now() - statSync(lockDir).mtimeMs;
+        if (age > LOCK_STALE_MS) {
+          try { rmdirSync(lockDir); } catch {}
+          continue;
+        }
+      } catch {}
+      if (Date.now() > deadline) throw new Error(`fleet-registry: lock timeout on ${lockDir}`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, LOCK_RETRY_MS);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try { rmdirSync(lockDir); } catch {}
+  }
+}
 
 export function findMainWorktreePath(projectDir) {
   try {
@@ -51,30 +84,36 @@ export function writeFleet(registryPath, data) {
 export function registerTask(projectDir, issueRef, worktreePath, branch) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);
-  const fleet = readFleet(rPath);
-  const existing = fleet[issueRef];
-  fleet[issueRef] = {
-    worktreePath,
-    branch,
-    startedAt: existing?.startedAt ?? new Date().toISOString(),
-    status: 'active',
-  };
-  writeFleet(rPath, fleet);
+  withLock(rPath, () => {
+    const fleet = readFleet(rPath);
+    const existing = fleet[issueRef];
+    fleet[issueRef] = {
+      worktreePath,
+      branch,
+      startedAt: existing?.startedAt ?? new Date().toISOString(),
+      status: 'active',
+    };
+    writeFleet(rPath, fleet);
+  });
 }
 
 export function deregisterTask(projectDir, issueRef) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);
-  const fleet = readFleet(rPath);
-  delete fleet[issueRef];
-  writeFleet(rPath, fleet);
+  withLock(rPath, () => {
+    const fleet = readFleet(rPath);
+    delete fleet[issueRef];
+    writeFleet(rPath, fleet);
+  });
 }
 
 export function setTaskStatus(projectDir, issueRef, status) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);
-  const fleet = readFleet(rPath);
-  if (!fleet[issueRef]) return;
-  fleet[issueRef].status = status;
-  writeFleet(rPath, fleet);
+  withLock(rPath, () => {
+    const fleet = readFleet(rPath);
+    if (!fleet[issueRef]) return;
+    fleet[issueRef].status = status;
+    writeFleet(rPath, fleet);
+  });
 }
