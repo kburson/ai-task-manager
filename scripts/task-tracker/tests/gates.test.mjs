@@ -210,7 +210,7 @@ function writeState(sandbox, issueNum) {
 {
   const calls = { writes: 0, moves: 0 };
   const deps = {
-    fetchIssueBody: async () => ({ title: 't', body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n' }),
+    fetchIssueBody: async () => ({ title: 't', body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n\n<!-- aitm-deep-dive-complete: 2026-05-10T00:00:00Z -->\n' }),
     writeIssueBody: async () => { calls.writes++; },
     moveState: async () => { calls.moves++; return 0; },
     postComment: async () => {},

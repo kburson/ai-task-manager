@@ -16,11 +16,11 @@ function deepDiveSection(lines = 25) {
   return body.join('\n');
 }
 
-// 1. ticked Deep dive without section refuses
+// 1. deep-dive-complete marker without section refuses
 {
   const body = [
     '## Acceptance Criteria',
-    '- [x] Deep dive complete',
+    '<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->',
     '- [ ] Implement thing',
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
@@ -74,11 +74,11 @@ function deepDiveSection(lines = 25) {
   assert.equal(r.ok, true, `expected ok with new encoding, refused: ${JSON.stringify(r.refusedRules)}`);
 }
 
-// 4. ticked Deep dive with section below minimum lines refuses
+// 4. deep-dive-complete marker with section below minimum lines refuses
 {
   const body = [
     '## Acceptance Criteria',
-    '- [x] Deep dive complete',
+    '<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->',
     '',
     deepDiveSection(5),
   ].join('\n');
@@ -93,7 +93,7 @@ function deepDiveSection(lines = 25) {
 {
   const body = [
     '## Acceptance Criteria',
-    '- [x] Deep dive complete',
+    '<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->',
     '- [x] Dependency Map',
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });

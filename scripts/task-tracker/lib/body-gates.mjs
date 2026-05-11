@@ -21,7 +21,7 @@ export const DEFAULT_GATES = [
   {
     name: 'deep-dive-complete',
     kind: SECTION_RULE,
-    trigger: /^- \[x\] Deep dive complete\b/im,
+    trigger: /<!--\s*aitm-deep-dive-complete:\s*[^>]+-->/i,
     requireSection: /^##\s+Deep[- ]Dive Analysis\b/im,
     minNonEmptyLines: 20,
   },

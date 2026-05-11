@@ -27,7 +27,25 @@ import {
 import { loadProjectFieldDefs } from './project-fields.mjs';
 import { parseTimingRows, rollupTotals } from './timing-rollup.mjs';
 import { migratePlanApprovedBody } from './migrate-plan-approved.mjs';
+import { hasPlanApprovedMarker, hasDeepDiveCompleteMarker } from './lib/markers.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
+
+// Vestigial visible AC bullets that are now driven by hidden markers. Stripped
+// only when the corresponding marker is present; otherwise left alone to
+// preserve historical readability for pre-marker issues.
+const VESTIGIAL_AC_PATTERNS = [
+  { re: /^[ \t]*- \[[ x]\] approved by Human\s*\r?\n?/gmi,    requires: hasPlanApprovedMarker },
+  { re: /^[ \t]*- \[[ x]\] Deep dive complete\s*\r?\n?/gmi,    requires: hasDeepDiveCompleteMarker },
+];
+
+export function stripVestigialAcBullets(body) {
+  let out = String(body || '');
+  for (const { re, requires } of VESTIGIAL_AC_PATTERNS) {
+    if (!requires(out)) continue;
+    out = out.replace(re, '');
+  }
+  return out.replace(/\n{3,}/g, '\n\n');
+}
 
 const HEAL_COMMENT_HEADER = '### 🛠 Backlog heal';
 const HEAL_COMMENT_MARKER_PREFIX = '<!-- aitm-heal:';
@@ -45,6 +63,13 @@ export function healIssue({ body, timingCommentBody, fieldDefs, now = () => new 
   const migrated = migratePlanApprovedBody(body, { now });
   if (migrated.changed) result.action.push(migrated.action);
   let workingBody = migrated.body;
+
+  // 1b. Vestigial AC bullet strip (marker-gated; never strips without a marker).
+  const afterStrip = stripVestigialAcBullets(workingBody);
+  if (afterStrip !== workingBody) {
+    result.action.push('strip-vestigial-ac');
+    workingBody = afterStrip;
+  }
 
   // 2. Parse existing fields-DB (if any)
   const parsed = parseIssueFieldDb(workingBody);

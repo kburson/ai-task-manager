@@ -41,6 +41,8 @@ const BODY_WITH_DEEPDIVE = [
   '## Dependency Map',
   'none',
   '',
+  '<!-- aitm-deep-dive-complete: 2026-05-09T00:00:00Z -->',
+  '',
 ].join('\n');
 
 function makeDeps(overrides = {}) {

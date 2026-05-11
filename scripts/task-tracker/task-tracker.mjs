@@ -433,14 +433,9 @@ async function verbClose() {
       }
 
       const unchecked = uncheckedPreCloseCheckboxes(body);
-      const hasDeepDiveLine = /Deep dive complete/.test(body);
-      const hasDeepDiveDone = /^- \[x\] Deep dive complete/m.test(body);
       const reasons = [];
       if (unchecked.length > 0) {
         reasons.push(`${unchecked.length} unchecked checkbox${unchecked.length === 1 ? '' : 'es'} in issue body`);
-      }
-      if (hasDeepDiveLine && !hasDeepDiveDone) {
-        reasons.push('Deep dive checkpoint is not checked off');
       }
       if (reasons.length > 0) {
         if (force) {
@@ -1122,6 +1117,22 @@ async function verbCheck(args) {
     'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body',
   ], { timeout: 10000 });
   const body = stdout;
+
+  // Special-case: "Deep dive complete" is no longer a visible checkbox — it
+  // is recorded as a hidden `<!-- aitm-deep-dive-complete: <ts> -->` marker.
+  // Delegate to the canonical helper in verbs/analyze.mjs so there is exactly
+  // one place that writes this marker.
+  if (/^deep[- ]?dive complete$/i.test(label)) {
+    const { markDeepDiveComplete } = await import('./verbs/analyze.mjs');
+    const res = await markDeepDiveComplete({ issueNumber: issueNum, cfg });
+    if (!res.changed) {
+      console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${s.active}`);
+    } else {
+      console.log(`[task-tracker] ✓ Marked deep-dive-complete on ${s.active} at ${res.ts}`);
+    }
+    return;
+  }
+
   const uncheckedLine = `- [ ] ${label}`;
   const checkedLine   = `- [x] ${label}`;
   const alreadyChecked = body.includes(checkedLine);

@@ -71,8 +71,6 @@ const block = [
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '> Follow: `.ai-task-manager/pickup-directive.md`',
   '',
-  '- [ ] Deep dive complete',
-  '',
   '---',
   '',
 ].join('\n');

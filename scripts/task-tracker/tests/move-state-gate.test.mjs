@@ -97,7 +97,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 1. validate with ticked Deep dive but no section → blocked
 {
-  const body = '## Acceptance Criteria\n- [x] Deep dive complete\n';
+  const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
   const { sandbox, binDir } = makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'validate']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
@@ -107,7 +107,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 2. validate with ticked Deep dive + adequate section → success
 {
-  const body = `## Acceptance Criteria\n- [x] Deep dive complete\n\n${deepDiveAdequate()}\n`;
+  const body = `## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n\n${deepDiveAdequate()}\n`;
   const { sandbox, binDir } = makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'validate']);
   assert.match(r.stdout, /moved to: validate/);
@@ -116,7 +116,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 3. review with ticked Deep dive but no section → blocked
 {
-  const body = '## Acceptance Criteria\n- [x] Deep dive complete\n';
+  const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
   const { sandbox, binDir } = makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'review']);
   assert.equal(e.code, 4);
@@ -126,7 +126,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 4. done with same missing-section body → blocked (also catches Done-gate legacy rules)
 {
-  const body = '## Acceptance Criteria\n- [x] Deep dive complete\n- [ ] something else\n';
+  const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n- [ ] something else\n';
   const { sandbox, binDir } = makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'done']);
   assert.equal(e.code, 4);
@@ -137,7 +137,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 5. TASK_TRACKER_FORCE_DONE=1 bypasses with visible warning
 {
-  const body = '## Acceptance Criteria\n- [x] Deep dive complete\n';
+  const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
   const { sandbox, binDir } = makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'validate'], { TASK_TRACKER_FORCE_DONE: '1' });
   assert.match(r.stderr, /bypassing validate gate/);

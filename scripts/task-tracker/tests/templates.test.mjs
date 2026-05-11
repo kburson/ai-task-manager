@@ -78,6 +78,7 @@ const pickupIdx = preflightBlock.indexOf('## Pickup Directive');
 assert.ok(dodIdx !== -1, 'preflight block includes Definition of Done');
 assert.ok(pickupIdx !== -1, 'preflight block includes Pickup Directive after DoD');
 assert.ok(dodIdx < pickupIdx, 'Definition of Done appears before Pickup Directive');
-assert.ok(preflightBlock.includes('- [ ] Deep dive complete'), 'preflight block includes deep dive checkbox');
+assert.ok(!preflightBlock.includes('- [ ] Deep dive complete'),
+  'preflight block must NOT include the visible Deep dive checkbox — completion is recorded via the <!-- aitm-deep-dive-complete: <ts> --> marker');
 
 console.log('templates.test.mjs: all passed');

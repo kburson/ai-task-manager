@@ -29,6 +29,7 @@ import { tmpdir } from 'node:os';
 import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
+import { hasDeepDiveCompleteMarker } from '../lib/markers.mjs';
 import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
 
 const pexec = promisify(execFile);
@@ -187,6 +188,21 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     };
   }
 
+  // Deep-dive-complete is a structural prerequisite for analyze→development —
+  // fires in both human-answered and auto-approve branches. Refuse-only; never
+  // forges the marker.
+  function checkDeepDiveRequired(body) {
+    if (hasDeepDiveCompleteMarker(body)) return null;
+    return {
+      status: 'deep-dive-required',
+      blockers: [{
+        kind: 'deep-dive-required',
+        message: 'deep-dive-required: run /task analyze and complete the Deep-Dive Analysis appendix before approving',
+      }],
+      message: 'deep-dive-required: run /task analyze and complete the Deep-Dive Analysis appendix before approving',
+    };
+  }
+
   async function runReevalHook(postTickBody) {
     try {
       await reeval({ cfg, issueNumber, body: postTickBody, scratchDir: tmpdir() });
@@ -202,6 +218,8 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     const refused = await runParentAdmissionGate();
     if (refused) return refused;
     const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    const ddRefused = checkDeepDiveRequired(body);
+    if (ddRefused) return ddRefused;
     const updated = writePlanApprovedMarker(body);
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
@@ -250,6 +268,8 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     const refused = await runParentAdmissionGate();
     if (refused) return refused;
     const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    const ddRefused = checkDeepDiveRequired(body);
+    if (ddRefused) return ddRefused;
     const updated = writePlanApprovedMarker(body);
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
@@ -350,6 +370,14 @@ export async function verbApprove(rest, cfg) {
     }
     case 'rejected': {
       process.stdout.write(`✗ Approval refused — comment posted on #${issueNumber}. Revise the deep-dive and re-run approve.\n`);
+      process.exit(4);
+    }
+    case 'deep-dive-required': {
+      process.stderr.write(`\n⛔ Refusing to move #${issueNumber} to development:\n`);
+      for (const b of result.blockers) {
+        process.stderr.write(`   BLOCKED: ${b.message}\n`);
+      }
+      process.stderr.write('\nRun /task analyze and write the Deep-Dive Analysis appendix first, then retry.\n');
       process.exit(4);
     }
     case 'parent-admission-refused': {

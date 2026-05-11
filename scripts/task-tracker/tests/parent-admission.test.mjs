@@ -136,7 +136,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     answer: 'yes',
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
-      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n' }),
+      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n' }),
       writeIssueBody: async () => { writeCalled = true; },
       moveState: async () => { moveCalled = true; return 0; },
       postComment: async () => {},
@@ -161,7 +161,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     answer: 'yes',
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
-      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n' }),
+      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n' }),
       writeIssueBody: async () => {},
       moveState: async () => { moveCalled = true; return 0; },
       postComment: async () => {},
@@ -184,7 +184,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     answer: 'yes',
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
-      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n' }),
+      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n' }),
       writeIssueBody: async () => {},
       moveState: async () => { moveCalled = true; return 0; },
       postComment: async () => {},

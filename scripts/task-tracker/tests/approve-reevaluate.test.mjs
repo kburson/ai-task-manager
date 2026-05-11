@@ -40,6 +40,8 @@ const FIXTURE_BODY_M = `## Acceptance Criteria
 
 Depends on: #11, #12
 
+<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->
+
 <!-- ai-task-manager:fields:start -->
 \`\`\`json
 {"schema":1,"values":{"size":"S","estimate":3.5}}

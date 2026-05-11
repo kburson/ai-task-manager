@@ -4,6 +4,7 @@ import {
   diffSchema,
   renderHealComment,
   isHealComment,
+  stripVestigialAcBullets,
 } from '../heal-backlog.mjs';
 import {
   FIELD_DB_START,
@@ -262,6 +263,47 @@ const TIMING_LOG_3_ROWS = [
   assert.match(comment, /<!--\s*aitm-heal:/);
   assert.equal(isHealComment(comment), true);
   assert.equal(isHealComment('### Some other comment'), false);
+})();
+
+// ---------- 7. stripVestigialAcBullets — marker-gated ----------
+
+(function vestigialStrip() {
+  // Plan-approved variant: marker present → bullet stripped.
+  const withPlan = [
+    '## Acceptance Criteria',
+    '- [ ] AC item',
+    '- [x] approved by Human',
+    '',
+    '<!-- aitm-plan-approved: 2026-05-11T00:00:00Z -->',
+    '',
+  ].join('\n');
+  const outPlan = stripVestigialAcBullets(withPlan);
+  assert.equal(outPlan.includes('approved by Human'), false, 'bullet stripped when marker present');
+  assert.match(outPlan, /<!-- aitm-plan-approved:/, 'marker preserved');
+
+  // Deep-dive variant: marker present → bullet stripped.
+  const withDeep = [
+    '## Acceptance Criteria',
+    '- [ ] AC item',
+    '- [x] Deep dive complete',
+    '',
+    '<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->',
+    '',
+  ].join('\n');
+  const outDeep = stripVestigialAcBullets(withDeep);
+  assert.equal(outDeep.includes('Deep dive complete'), false, 'deep-dive bullet stripped when marker present');
+
+  // No marker → bullet preserved (don't forge history).
+  const noMarker = [
+    '## Acceptance Criteria',
+    '- [ ] AC item',
+    '- [x] approved by Human',
+    '- [x] Deep dive complete',
+    '',
+  ].join('\n');
+  const outNone = stripVestigialAcBullets(noMarker);
+  assert.match(outNone, /approved by Human/, 'plan bullet preserved when marker absent');
+  assert.match(outNone, /Deep dive complete/, 'deep-dive bullet preserved when marker absent');
 })();
 
 console.log('ok: heal-backlog.test.mjs');

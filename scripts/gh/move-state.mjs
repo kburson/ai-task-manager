@@ -126,10 +126,7 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
         l.startsWith('- [ ] ') &&
         !CLOSE_SIDE_EFFECT_PATTERNS.some(p => p.test(l))
       );
-      const hasDeepDiveLine = lines.some(l => l.includes('Deep dive complete'));
-      const deepDiveChecked = lines.some(l => /^- \[x\] Deep dive complete/.test(l));
       if (unchecked.length > 0) reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
-      if (hasDeepDiveLine && !deepDiveChecked) reasons.push('Deep dive checkpoint is not checked off');
     }
 
     if (reasons.length > 0) {

@@ -23,6 +23,10 @@ import {
   checkCascadeGrooming,
   checkParentAdmission,
 } from '../lib/body-gates.mjs';
+import {
+  hasDeepDiveCompleteMarker,
+  insertDeepDiveCompleteMarker,
+} from '../lib/markers.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 
 const pexec = promisify(execFile);
@@ -186,6 +190,44 @@ export async function runAnalyze({ issueNumber, cfg, deps = {} } = {}) {
 
   const code = await moveState(issueNumber);
   return code === 0 ? { ok: true, blockers: [] } : { ok: false, blockers: [{ kind: 'move-state', message: `move-state.mjs exited ${code}` }] };
+}
+
+// Record the hidden deep-dive-complete marker on the issue body after the
+// deep-dive appendix has been written. Idempotent: a re-run on a body that
+// already carries the marker is a no-op (returns { changed: false }).
+//
+// Pure-ish: I/O is fully injectable via `deps` for tests. The default
+// implementation reads/writes via `gh issue view/edit`.
+export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } = {}) {
+  if (!issueNumber) throw new Error('markDeepDiveComplete: issueNumber is required');
+  if (!cfg?.repo) throw new Error('markDeepDiveComplete: cfg.repo is required');
+
+  const fetchBody = deps.fetchBody || (async () => {
+    const { stdout } = await pexec('gh', [
+      'issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body',
+    ], { timeout: 10000 });
+    return stdout;
+  });
+  const writeBody = deps.writeBody || (async (body) => {
+    const { writeFileSync, unlinkSync } = await import('node:fs');
+    const os = await import('node:os');
+    const tmp = path.join(os.tmpdir(), `tt-deep-dive-${Date.now()}.md`);
+    try {
+      writeFileSync(tmp, body, 'utf8');
+      await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', cfg.repo, '--body-file', tmp], { timeout: 10000 });
+    } finally {
+      try { unlinkSync(tmp); } catch {}
+    }
+  });
+
+  const body = await fetchBody();
+  if (hasDeepDiveCompleteMarker(body)) {
+    return { changed: false, ts: null };
+  }
+  const ts = (typeof now === 'function' ? now() : new Date().toISOString()).replace(/\.\d+Z$/, 'Z');
+  const updated = insertDeepDiveCompleteMarker(body, ts);
+  await writeBody(updated);
+  return { changed: true, ts };
 }
 
 // CLI entrypoint when invoked from task-tracker.mjs verb dispatch.
