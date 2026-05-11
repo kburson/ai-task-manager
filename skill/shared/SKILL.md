@@ -719,6 +719,37 @@ node node_modules/ai-task-manager/scripts/task-tracker/seed-worktree.mjs <worktr
 
 The helper copies `task-tracker.json`, `pickup-directive.md`, `definition-of-done.md` from the parent repo's `.ai-task-manager/` and creates an empty `task-tracker-state.json` so the agent has a clean session ledger. It refuses to overwrite a populated target.
 
+### Wave parent — required for any solo fan-out of ≥2
+
+**Before** the per-child `dispatch-prep.mjs` loop, when the planned fan-out spans **2 or more candidate children**, the orchestrator MUST run:
+
+```bash
+node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/ensure-wave-parent.mjs" \
+  --children <N1>,<N2>,<N3> \
+  --purpose "<one-line summary of the wave>"
+```
+
+The helper classifies the candidates via `lib/wave-detect.mjs` (batched GraphQL parent query) and behaves as follows:
+
+| Classification | Behaviour |
+|---|---|
+| single child (`len==1`) | no-op; prints `NO_WAVE_PARENT_NEEDED`; exits 0 |
+| all solo (no parent), `len ≥ 2` | creates a new parent issue at `Status=Development`, links each child via `addSubIssue`, posts an orchestration `start` row to the new parent's `⏱ Timing Log`, prints `PARENT: #<N>` |
+| all share one existing parent | prints the existing `PARENT: #<N>` so the orchestrator can switch active task to it; no new issue created |
+| **mixed** (some solo, some parented) | **REFUSES** — exits 2 with `wave-detect: mixed-fanout — …`. Orchestrator must hoist the solos under the existing parent (or detach the parented child) before retrying. |
+| **multi-parent** (children of different parents) | **REFUSES** — exits 2 with `wave-detect: multi-parent — …`. These are two waves, not one. |
+
+After a successful `PARENT: #<N>`:
+
+1. **Switch active task to the parent** — `/task #<N>` (orchestrator's session is now bound to the parent, not to any child).
+2. **Then** run the per-child `dispatch-prep.mjs` loop as before.
+
+Children continue to log their own time on their own issues. The parent's `⏱ Timing Log` accumulates orchestration time only (dispatch, coordination, merge). The parent's `Size` and `Estimate` start blank — leave them for human grooming rather than auto-summing children.
+
+**Idempotency.** The parent body carries a `<!-- wave-id: ... -->` marker derived from the sorted child list. On retry mid-dispatch, the helper queries open issues for a matching marker and reuses the existing parent rather than creating a duplicate.
+
+**Exception.** A single solo issue (no fan-out, or fan-out of 1) does NOT require a parent. The classifier handles this and emits `NO_WAVE_PARENT_NEEDED`.
+
 ### Pre-dispatch board flip — orchestrator owns the transition
 
 Sub-issues that will be picked up immediately by an agent MUST be moved to `In Progress` **by the orchestrator, before the agent boots**, and the `start` timing row MUST be posted by the orchestrator at the same moment. Do not rely on the agent's bootstrap to flip the board status — that path is a silent dependency. If the agent's bootstrap fails for any reason, the board state lies (still `Backlog`) and the work is invisible to the rest of the system.
