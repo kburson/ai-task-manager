@@ -911,7 +911,47 @@ async function verbReview(args) {
     await safePostTiming(target, reviewRow);
     await runLogIssueTime(target);
     console.log(`✓ ${target} moved to Review — all verification passed.`);
+    console.log(`PROMPT_REQUIRED: review-approval ${target}`);
   }
+}
+
+async function verbReject(args) {
+  const target = args.find(a => /^#\d+$/.test(a)) || (loadState(statePath).lastActive ?? null);
+  if (!target) {
+    console.error('Usage: /task reject #N --reason "..."');
+    process.exit(1);
+  }
+  const reasonIdx = args.indexOf('--reason');
+  const reason = reasonIdx >= 0 ? args[reasonIdx + 1] : null;
+  if (!reason || !reason.trim()) {
+    console.error('Usage: /task reject #N --reason "..."  (reason is required)');
+    process.exit(1);
+  }
+  const issueNum = String(target).replace(/^#/, '');
+  if (!SKIP_NETWORK) {
+    const state = await getIssueBoardState(issueNum);
+    if (state !== 'review') {
+      console.error(`⛔ /task reject refused: #${issueNum} is in '${state ?? 'unknown'}', expected 'review'.`);
+      process.exit(1);
+    }
+    const ts = nowIso();
+    const commentBody = `### ❌ Review rejected\n\n${reason.trim()}\n\n— rejected at ${ts}`;
+    try {
+      await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body', commentBody],
+        { timeout: 10000 });
+    } catch (err) {
+      console.error(`⚠ failed to post rejection comment: ${err.message}`);
+      process.exit(1);
+    }
+  }
+  await runMoveState(target, 'development');
+  const { buildRow: br } = await import('./gh-timing-comment.mjs');
+  const descReason = reason.trim().slice(0, 40);
+  await safePostTiming(target, br({
+    ts: nowIso(), event: 'development', activeMin: 0, idleMin: 0, deltaWords: 0,
+    wordMarker: 0, description: `review rejected: ${descReason}`,
+  }));
+  console.log(`✓ ${target} rejected — moved back to Development.`);
 }
 
 async function verbStart(reasonOverride) {
@@ -1200,6 +1240,7 @@ if (_isMain) (async () => {
       case 'start':   await verbResume(); break;  // alias — route through verbResume so `/task start #N` switches
       case 'update':  await verbUpdate(rest); break;
       case 'review':  await verbReview(rest); break;
+      case 'reject':  await verbReject(rest); break;
       case 'words-count': {
         const sid = currentSessionId();
         const count = sid ? countWords(jsonlPath(sid), 0).count : 0;

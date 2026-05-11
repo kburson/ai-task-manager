@@ -31,6 +31,22 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 > a completed self-review, or any automated signal. The issue stays In Review until a
 > human explicitly approves it.
 
+### Review-approval prompt — required after every `/task review`
+
+After a successful `/task review #N`, the CLI emits a marker line to stdout:
+
+```
+PROMPT_REQUIRED: review-approval #N
+```
+
+When you see that marker, you MUST surface a structured human decision before doing anything else. In Claude Code, invoke `AskUserQuestion` with options **Approve** and **Reject**:
+
+- **Approve** → run `/task close #N`. Inherits the existing close path (pre-close gate, timing flush, fleet deregister).
+- **Reject** → ask a follow-up question for the rejection reason, then run `/task reject #N --reason "<reason>"`. The verb posts a `### ❌ Review rejected` comment on the issue and moves it back to Development.
+- **Dismiss / no choice** → run `/task pause "review-prompt-dismissed"`. The issue stays in R4R; the human will revisit.
+
+The marker fires for every issue type — leaf, sub-issue, epic — and only on the successful path. If `/task review` exits non-zero (cascade gate, verification gate), the marker is not emitted and no prompt is required.
+
 ### Moving an issue to Done — human step only:
 
 4. **Run `/task close #N` only after explicit human instruction** — e.g., "close #N", "mark #N done", "review accepted, close it." This is NOT an automated step. It writes a `+0` close marker row, deregisters from the fleet, and moves the issue to Done. (Engaged Time, Session Time, and Context Length are flushed to the project board at `/task review` — not at close.) If the pre-close gate fires (exit 3), resolve the unchecked items — do not bypass.
@@ -83,7 +99,8 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 | `/task resume #N` | **Switch back to a specific paused task** (read body silently for context; do not print it) |
 | `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude Code. |
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
-| `/task review #N` | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. |
+| `/task review #N` | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human. |
+| `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Development. |
 | `/task close [#N]` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
 | `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
 | `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
