@@ -395,6 +395,7 @@ async function verbClose() {
   const forceFlag = rest.includes('--force');
   const forceEnv = process.env.TASK_TRACKER_FORCE_DONE === '1';
   const force = forceFlag || forceEnv;
+  let closeBody = '';
   if (!SKIP_NETWORK) {
     try {
       const { stdout } = await pexec('gh', [
@@ -402,6 +403,7 @@ async function verbClose() {
       ], { timeout: 10000 });
       const data = JSON.parse(stdout);
       const body = data.body ?? '';
+      closeBody = body;
 
       // Human-gate: review-approval. Marker is written by `/task approve-review`.
       // `--answer yes|no` cannot satisfy this gate — only the marker or
@@ -506,6 +508,16 @@ async function verbClose() {
           }
         }
       }
+    }
+  }
+  // Review delta hook (#75): post the read-only Δ comment between the cascade
+  // close and the final timing row. Failure must not block the close.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    try {
+      const { applyReviewDelta } = await import('./lib/apply-review-delta.mjs');
+      await applyReviewDelta({ cfg, issueNumber: closeIssueNum, body: closeBody });
+    } catch (err) {
+      process.stderr.write(`⚠ review-delta hook failed: ${err.message}\n`);
     }
   }
   // Timing and board fields were flushed at Review (/task review). Close only moves
