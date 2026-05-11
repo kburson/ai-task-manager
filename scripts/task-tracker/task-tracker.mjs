@@ -271,7 +271,9 @@ async function runMoveState(issue, state, { env: envOverride } = {}) {
   const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
   const issueNum = String(issue).replace(/^#/, '');
   try {
-    const mergedEnv = envOverride ? { ...process.env, ...envOverride } : process.env;
+    // AITM_INTERNAL=1 marks this as a chokepoint-driven invocation so move-state.mjs
+    // permits the call. Direct CLI invocation without this var is refused for agents.
+    const mergedEnv = { ...process.env, ...(envOverride || {}), AITM_INTERNAL: '1' };
     const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], { timeout: 15000, env: mergedEnv });
     if (stdout.trim()) console.log(stdout.trim());
   } catch (err) {

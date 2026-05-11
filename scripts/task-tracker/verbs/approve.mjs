@@ -93,6 +93,7 @@ async function defaultMoveState({ issueNumber }) {
   return new Promise(resolve => {
     const child = spawn(process.execPath, [script, String(issueNumber), 'development'], {
       stdio: ['ignore', 'inherit', 'inherit'],
+      env: { ...process.env, AITM_INTERNAL: '1' },
     });
     child.on('exit', code => resolve(code ?? 1));
     child.on('error', () => resolve(1));

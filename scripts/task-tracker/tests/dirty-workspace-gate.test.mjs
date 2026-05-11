@@ -60,6 +60,7 @@ async function runNode(script, args, { sandbox, binDir, env = {}, expectExit = 0
     cwd: sandbox,
     env: {
       ...process.env,
+      AITM_INTERNAL: '1',
       PATH: `${binDir}:${process.env.PATH}`,
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
       TT_SKIP_NETWORK: '1',

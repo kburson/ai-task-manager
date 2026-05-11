@@ -102,6 +102,7 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
     env: {
       ...process.env,
+      AITM_INTERNAL: '1',
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
       PATH: `${binDir}:${process.env.PATH}`,
       ...extraEnv,
