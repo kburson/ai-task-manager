@@ -106,6 +106,30 @@ function patchSettingsJson(settingsPath) {
   );
   if (!guardRegistered) settings.hooks.PreToolUse.push(guardEntry);
 
+  // activity-guard: PreToolUse hook that refuses tool calls whose activity
+  // class is not permitted in the current Kanban state (epic #61, W2.2 / #65).
+  // Two entries — Edit/Write/NotebookEdit matcher and a separate Bash matcher
+  // chained after bash-guard. Either guard blocking is sufficient.
+  const activityGuardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs';
+  const activityEditEntry = {
+    matcher: 'Edit|Write|NotebookEdit',
+    hooks: [{ type: 'command', command: activityGuardCmd }],
+  };
+  const activityBashEntry = {
+    matcher: 'Bash',
+    hooks: [{ type: 'command', command: activityGuardCmd }],
+  };
+  const activityEditRegistered = settings.hooks.PreToolUse.some(
+    h => h.matcher === 'Edit|Write|NotebookEdit' &&
+         h.hooks?.some(inner => inner.command === activityGuardCmd)
+  );
+  if (!activityEditRegistered) settings.hooks.PreToolUse.push(activityEditEntry);
+  const activityBashRegistered = settings.hooks.PreToolUse.some(
+    h => h.matcher === 'Bash' &&
+         h.hooks?.some(inner => inner.command === activityGuardCmd)
+  );
+  if (!activityBashRegistered) settings.hooks.PreToolUse.push(activityBashEntry);
+
   // commit-trail: PostToolUse hook that appends a row to the bound issue's
   // `### 🔗 Commits` comment after each successful `git commit`.
   const trailCmd = '.claude/hooks/commit-trail.sh';
