@@ -153,6 +153,25 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   const moveState      = deps.moveState      || defaultMoveState;
   const isHeadless     = deps.isHeadless     || defaultIsHeadless;
 
+  // Full-auto bypass: gateAnalysisToDevelopment=false skips the prompt entirely
+  // and auto-approves. Caller still receives a structured result so the
+  // orchestrator can log a gate-bypass audit row. See #58.
+  if (cfg.gateAnalysisToDevelopment === false && (answer === undefined || answer === null)) {
+    const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    const updated = tickApprovalCheckbox(body);
+    if (updated !== body) {
+      await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
+    }
+    const code = await moveState({ issueNumber });
+    if (code !== 0) {
+      return {
+        status: 'error',
+        message: `move-state.mjs exited ${code} during gateAnalysisToDevelopment=false auto-approve`,
+      };
+    }
+    return { status: 'gate-bypassed', moveStateExitCode: code };
+  }
+
   // No answer provided -> prompt mode (headless or interactive).
   if (answer === undefined || answer === null) {
     if (isHeadless()) {
@@ -274,6 +293,11 @@ export async function verbApprove(rest, cfg) {
     }
     case 'approved': {
       process.stdout.write(`✓ Approved. Issue #${issueNumber} moved: analyze -> development\n`);
+      return;
+    }
+    case 'gate-bypassed': {
+      process.stdout.write(`⚠ gateAnalysisToDevelopment=false — auto-approved #${issueNumber} without human review.\n`);
+      process.stdout.write(`✓ Issue #${issueNumber} moved: analyze -> development\n`);
       return;
     }
     case 'rejected': {

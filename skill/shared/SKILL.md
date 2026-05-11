@@ -41,11 +41,13 @@ PROMPT_REQUIRED: review-approval #N
 
 When you see that marker, you MUST surface a structured human decision before doing anything else. In Claude Code, invoke `AskUserQuestion` with options **Approve** and **Reject**:
 
-- **Approve** → run `/task close #N`. Inherits the existing close path (pre-close gate, timing flush, fleet deregister).
+- **Approve** → run `/task approve-review #N` (records the human approval marker in the issue body), then run `/task close #N`. The close verb refuses (exit 7) if the approval marker is missing and `gateReviewToDone=true`; `--answer yes` does NOT satisfy this gate (exit 8).
 - **Reject** → ask a follow-up question for the rejection reason, then run `/task reject #N --reason "<reason>"`. The verb posts a `### ❌ Review rejected` comment on the issue and moves it back to Development.
 - **Dismiss / no choice** → run `/task pause "review-prompt-dismissed"`. The issue stays in R4R; the human will revisit.
 
 The marker fires for every issue type — leaf, sub-issue, epic — and only on the successful path. If `/task review` exits non-zero (cascade gate, verification gate), the marker is not emitted and no prompt is required.
+
+**Full-auto bypass.** Setting `gateReviewToDone false` in `.ai-task-manager/task-tracker.json` lets `/task close` proceed without the marker; the bypass is recorded as a `gate-bypassed` timing-log row. The companion key `gateAnalysisToDevelopment` toggles the analyze → development prompt the same way. Defaults preserve today's human-required behavior. See `docs/guides/workflow.md` → Human Gates.
 
 ### Moving an issue to Done — human step only:
 
@@ -101,7 +103,8 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 | `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
 | `/task review #N` | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human. |
 | `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Development. |
-| `/task close [#N]` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. |
+| `/task approve-review #N` | Record explicit human review approval on a R4R issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent. |
+| `/task close [#N]` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. Refuses (exit 7) if the review-approval marker is missing; `--answer yes` cannot satisfy this gate (exit 8). |
 | `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
 | `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
 | `/task migrate` | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
@@ -119,6 +122,7 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 - `/task analyze` — Groom → Analyze
 - `/task approve` — Analyze → Development
 - `/task review` — Development → Validate (CODE_COMPLETE handoff)
+- `/task approve-review` — Review → Review (records human approval marker; gates `/task close`)
 - `/task close` — Review → Done
 
 Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and moves the issue.

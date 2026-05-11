@@ -50,6 +50,10 @@ export const DEFAULTS = {
   reviewPauseThresholdMin: 5,
   recordWallClock: true,
   pickupDirective: true,
+  // Human-gate flags (true = human required; false = full-auto bypass).
+  // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
+  gateAnalysisToDevelopment: true,
+  gateReviewToDone: true,
 };
 
 const TYPES = {
@@ -89,6 +93,8 @@ const TYPES = {
   reviewPauseThresholdMin: 'number',
   recordWallClock: 'boolean',
   pickupDirective: 'boolean',
+  gateAnalysisToDevelopment: 'boolean',
+  gateReviewToDone: 'boolean',
 };
 
 function defaultPaths() {
@@ -180,6 +186,7 @@ const USER_KEYS = [
   'repo', 'assignee', 'defaultLabels',
   'wpm', 'autoEndOnSwitch', 'idleThresholdMinutes', 'reviewPauseThresholdMin', 'recordWallClock', 'hookNetworkTimeoutMs',
   'pickupDirective',
+  'gateAnalysisToDevelopment', 'gateReviewToDone',
   'statePath', 'queuePath',
 ];
 

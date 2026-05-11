@@ -44,6 +44,26 @@ scripts/gh/move-state.mjs 42 development
 - Move to **Review** automatically when verification passes (ready-for-review).
 - Move to **Done** only by `/task close` after a human approves.
 
+### Human Gates
+
+Two transitions require explicit human approval. Both are toggleable via config; defaults preserve today's behavior (human required).
+
+| Gate | Config key | Default | Bypass behavior when `false` |
+|---|---|---|---|
+| Analyze → Development | `gateAnalysisToDevelopment` | `true` | `/task approve #N` auto-ticks the approval checkbox and moves the issue; emits a `gate-bypassed` status. |
+| Review → Done         | `gateReviewToDone`         | `true` | `/task close` posts a `gate-bypassed` timing-log row instead of refusing. |
+
+The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve-review #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
+
+**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve-review #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
+
+Toggle a gate:
+
+```bash
+/task config gateAnalysisToDevelopment false   # full-auto Analyze → Development
+/task config gateReviewToDone false            # full-auto Review → Done
+```
+
 ### Sequence-as-wave-id
 
 Sequence is a numeric field on each issue. Sub-issues sharing the same Sequence

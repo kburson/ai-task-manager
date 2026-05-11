@@ -34,7 +34,7 @@ const _argvClean = _roleIdx >= 0 ? argv.filter((_, i) => i !== _roleIdx && i !==
 // Normalize bare issue numbers only for verbs that accept issue operands.
 const rawVerb = _argvClean[0] || 'status';
 const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
-const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review', 'analyze', 'approve']);
+const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review', 'analyze', 'approve', 'approve-review']);
 const rest = _argvClean.slice(1).map(a =>
   ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
 );
@@ -405,6 +405,34 @@ async function verbClose() {
       ], { timeout: 10000 });
       const data = JSON.parse(stdout);
       const body = data.body ?? '';
+
+      // Human-gate: review-approval. Marker is written by `/task approve-review`.
+      // `--answer yes|no` cannot satisfy this gate — only the marker or
+      // `gateReviewToDone=false` does. See #58.
+      if (cfg.gateReviewToDone && !force) {
+        const hasApprovalMarker = /<!--\s*aitm-review-approved:/i.test(body);
+        if (!hasApprovalMarker) {
+          const answerIdx = rest.indexOf('--answer');
+          const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
+          if (answerArg === 'yes' || answerArg === 'no') {
+            console.error(`⛔ \`--answer ${answerArg}\` cannot satisfy a human-gate prompt (review-approval).`);
+            console.error(`Run \`/task approve-review ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`);
+            process.exit(8);
+          }
+          console.error(`⛔ Refusing to close ${closeTarget} — no human review approval recorded.`);
+          console.log(`PROMPT_REQUIRED: review-approval ${closeTarget}`);
+          console.error(`Run \`/task approve-review ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`);
+          process.exit(7);
+        }
+      } else if (!cfg.gateReviewToDone) {
+        const { buildRow: gbr } = await import('./gh-timing-comment.mjs');
+        await safePostTiming(closeTarget, gbr({
+          ts: nowIso(), event: 'gate-bypassed', activeMin: 0, idleMin: 0,
+          deltaWords: 0, wordMarker: 0,
+          description: 'gateReviewToDone=false in config — bypassing human review',
+        }));
+      }
+
       const unchecked = uncheckedPreCloseCheckboxes(body);
       const hasDeepDiveLine = /Deep dive complete/.test(body);
       const hasDeepDiveDone = /^- \[x\] Deep dive complete/m.test(body);
@@ -1325,6 +1353,11 @@ if (_isMain) (async () => {
       case 'approve': {
         const { verbApprove } = await import('./verbs/approve.mjs');
         await verbApprove(rest, cfg);
+        break;
+      }
+      case 'approve-review': {
+        const { verbApproveReview } = await import('./verbs/approve-review.mjs');
+        await verbApproveReview(rest, cfg);
         break;
       }
       case 'help':
