@@ -81,11 +81,17 @@ export function writeFleet(registryPath, data) {
   renameSync(tmp, registryPath);
 }
 
+function testRmwDelay() {
+  const ms = Number(process.env.FLEET_REGISTRY_TEST_DELAY_MS || 0);
+  if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 export function registerTask(projectDir, issueRef, worktreePath, branch) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);
   withLock(rPath, () => {
     const fleet = readFleet(rPath);
+    testRmwDelay();
     const existing = fleet[issueRef];
     fleet[issueRef] = {
       worktreePath,
@@ -102,6 +108,7 @@ export function deregisterTask(projectDir, issueRef) {
   const rPath = fleetRegistryPath(mainPath);
   withLock(rPath, () => {
     const fleet = readFleet(rPath);
+    testRmwDelay();
     delete fleet[issueRef];
     writeFleet(rPath, fleet);
   });
@@ -112,6 +119,7 @@ export function setTaskStatus(projectDir, issueRef, status) {
   const rPath = fleetRegistryPath(mainPath);
   withLock(rPath, () => {
     const fleet = readFleet(rPath);
+    testRmwDelay();
     if (!fleet[issueRef]) return;
     fleet[issueRef].status = status;
     writeFleet(rPath, fleet);
