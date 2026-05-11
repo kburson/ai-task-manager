@@ -16,7 +16,7 @@ export const DEFAULT_GATES = [
     kind: PLACEMENT_RULE,
     trigger: /^##\s+Deep[- ]Dive Analysis\b/im,
     mustComeAfter: /^##\s+Pickup Directive\b/im,
-    mustComeBefore: /<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/i,
+    mustComeBefore: /^[ \t]*<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/im,
   },
   {
     name: 'deep-dive-complete',
