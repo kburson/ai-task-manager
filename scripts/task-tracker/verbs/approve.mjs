@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -152,6 +153,15 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
   const postComment    = deps.postComment    || defaultPostComment;
   const moveState      = deps.moveState      || defaultMoveState;
   const isHeadless     = deps.isHeadless     || defaultIsHeadless;
+  const reeval         = deps.applyReevaluate || applyReevaluate;
+
+  async function runReevalHook(postTickBody) {
+    try {
+      await reeval({ cfg, issueNumber, body: postTickBody, scratchDir: tmpdir() });
+    } catch (err) {
+      process.stderr.write(`⚠ re-eval skipped: ${err.message}\n`);
+    }
+  }
 
   // Full-auto bypass: gateAnalysisToDevelopment=false skips the prompt entirely
   // and auto-approves. Caller still receives a structured result so the
@@ -162,6 +172,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
     }
+    await runReevalHook(updated);
     const code = await moveState({ issueNumber });
     if (code !== 0) {
       return {
@@ -207,6 +218,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
     }
+    await runReevalHook(updated);
     const code = await moveState({ issueNumber });
     if (code !== 0) {
       return {

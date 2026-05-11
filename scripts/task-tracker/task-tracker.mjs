@@ -18,13 +18,10 @@ import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-ti
 import { enqueue, drain } from './queue.mjs';
 import { registerTask, deregisterTask, setTaskStatus, currentBranch,
          findMainWorktreePath, fleetRegistryPath, readFleet } from './fleet-registry.mjs';
-import { gql, splitRepo, projectValuesForIssue, writeProjectFieldValue, fieldOptionMap, projectItemForIssue } from '../gh/lib/github-projects.mjs';
+import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { validateVerificationCommand } from './lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from './lib/body-gates.mjs';
-import { reevaluateEstimate, buildRationale } from './lib/reevaluate-estimate.mjs';
-import { parseIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
 import { checkDirty, formatSummary, shortAuditDescription, resolveWorkspaceForIssue, CLEANUP_GUIDANCE } from '../gh/lib/dirty-workspace.mjs';
-import { loadProjectFieldDefs, fieldIdFor } from './project-fields.mjs';
 
 const argv = process.argv.slice(2);
 // Extract --role flag before parsing verb/rest (agent | orchestrator | solo)
@@ -681,107 +678,6 @@ async function getIssueBoardState(issueNum) {
   } catch { return null; }
 }
 
-const REEVAL_HEADER = '### 🔁 Post-Deep-Dive re-estimate';
-
-async function applyReevaluate({ issueNum, body }) {
-  const ts = new Date().toISOString();
-  if (process.env.TASK_TRACKER_SKIP_REEVAL === '1') {
-    try {
-      await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body',
-        `${REEVAL_HEADER}\n\n_Bypassed via \`TASK_TRACKER_SKIP_REEVAL=1\` at ${ts}._`,
-      ], { timeout: 5000 });
-    } catch {}
-    return;
-  }
-
-  const fieldDefs = loadProjectFieldDefs();
-  const dbParsed = parseIssueFieldDb(body);
-  let currentSize = dbParsed.ok ? dbParsed.values?.size ?? null : null;
-  let currentEstimate = dbParsed.ok && typeof dbParsed.values?.estimate === 'number'
-    ? dbParsed.values.estimate : null;
-
-  if ((currentSize == null || currentEstimate == null) && cfg.projectId) {
-    try {
-      const projVals = await projectValuesForIssue({ cfg, fieldDefs, issueNumber: issueNum });
-      if (currentSize == null && projVals.size != null) currentSize = projVals.size;
-      if (currentEstimate == null && typeof projVals.estimate === 'number') currentEstimate = projVals.estimate;
-    } catch {}
-  }
-
-  const result = reevaluateEstimate(body, { size: currentSize, estimate: currentEstimate });
-  if (!result.changed) return;
-
-  const beforeSize = result.current.size ?? '—';
-  const beforeEst = result.current.estimate ?? '—';
-  const tableLines = [
-    '| Field | Before | After |',
-    '|---|---|---|',
-    `| Size | ${beforeSize} | ${result.size} |`,
-    `| Estimate (h) | ${beforeEst} | ${result.estimate} |`,
-  ];
-  const rationale = buildRationale(result);
-
-  if (result.requiresHuman) {
-    const commentBody = [
-      REEVAL_HEADER,
-      '',
-      '⚠ **HUMAN ATTENTION** — proposed change spans ≥2 size tiers; not auto-applied.',
-      '',
-      ...tableLines,
-      '',
-      rationale,
-    ].join('\n');
-    try {
-      await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body', commentBody], { timeout: 5000 });
-    } catch {}
-    return;
-  }
-
-  if (cfg.projectId) {
-    try {
-      const { itemId } = await projectItemForIssue({ repo: cfg.repo, projectId: cfg.projectId, issueNumber: issueNum });
-      if (itemId) {
-        const sizeFieldId = fieldIdFor(cfg, 'size');
-        const estimateFieldId = fieldIdFor(cfg, 'estimate');
-        const optionMap = sizeFieldId ? await fieldOptionMap(cfg.projectId) : {};
-        if (estimateFieldId) {
-          await writeProjectFieldValue({
-            projectId: cfg.projectId, itemId, fieldId: estimateFieldId,
-            value: { number: result.estimate },
-          });
-        }
-        if (sizeFieldId) {
-          await writeProjectFieldValue({
-            projectId: cfg.projectId, itemId, fieldId: sizeFieldId,
-            value: { singleSelectOptionName: result.size }, optionMap,
-          });
-        }
-      }
-    } catch (err) {
-      process.stderr.write(`⚠ re-eval: project field write failed: ${err.message}\n`);
-    }
-  }
-
-  if (dbParsed.ok) {
-    const nextValues = { ...dbParsed.values, size: result.size, estimate: result.estimate };
-    const nextBody = `${body.slice(0, dbParsed.start)}${formatIssueFieldDb(nextValues)}${body.slice(dbParsed.end)}`;
-    const tmpFile = path.join(projectDir, '.ai-task-manager', `reeval-${issueNum}.md`);
-    try {
-      writeFileSync(tmpFile, nextBody);
-      await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmpFile], { timeout: 10000 });
-    } catch (err) {
-      process.stderr.write(`⚠ re-eval: body patch failed: ${err.message}\n`);
-    } finally {
-      try { unlinkSync(tmpFile); } catch {}
-    }
-  }
-
-  const commentBody = [REEVAL_HEADER, '', ...tableLines, '', rationale].join('\n');
-  try {
-    await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body', commentBody], { timeout: 5000 });
-  } catch {}
-}
-
 async function verbReview(args) {
   await draiQueueIfAny();
   const s = loadState(statePath);
@@ -831,13 +727,8 @@ async function verbReview(args) {
           process.exit(4);
         }
       }
-      // Body gate passed (or bypassed). Re-evaluate Size/Estimate from the Deep-Dive
-      // section before moving to In Review. Failures here must NOT block the review.
-      try {
-        await applyReevaluate({ issueNum, body });
-      } catch (err) {
-        process.stderr.write(`⚠ re-eval skipped: ${err.message}\n`);
-      }
+      // Body gate passed (or bypassed). Size/Estimate re-evaluation now fires at the
+      // analyze→development boundary (verbs/approve.mjs), not here. See #74.
     }
   }
 
