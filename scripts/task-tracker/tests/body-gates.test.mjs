@@ -57,6 +57,23 @@ function deepDiveSection(lines = 25) {
   assert.equal(r.ok, true, `expected ok, refused: ${JSON.stringify(r.refusedRules)}`);
 }
 
+// 3b. new-encoding marker also satisfies the deep-dive-placement boundary
+{
+  const body = [
+    '## Acceptance Criteria',
+    '- [x] Deep dive complete',
+    '',
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    deepDiveSection(25),
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, true, `expected ok with new encoding, refused: ${JSON.stringify(r.refusedRules)}`);
+}
+
 // 4. ticked Deep dive with section below minimum lines refuses
 {
   const body = [
