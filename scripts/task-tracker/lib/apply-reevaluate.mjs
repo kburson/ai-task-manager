@@ -22,6 +22,24 @@ async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], { timeout: 5000 });
 }
 
+async function defaultHasSubIssues({ issueNumber, repo }) {
+  try {
+    const [owner, repoName] = repo.split('/');
+    const { stdout } = await pexec('gh', [
+      'api', 'graphql',
+      '-f', `query=query($owner:String!,$repo:String!,$issue:Int!){repository(owner:$owner,name:$repo){issue(number:$issue){subIssues(first:1){totalCount}}}}`,
+      '-F', `owner=${owner}`,
+      '-F', `repo=${repoName}`,
+      '-F', `issue=${Number(issueNumber)}`,
+    ], { timeout: 10000 });
+    const data = JSON.parse(stdout);
+    const count = data?.data?.repository?.issue?.subIssues?.totalCount ?? 0;
+    return { hasSubIssues: count > 0, count };
+  } catch {
+    return { hasSubIssues: false, count: 0 };
+  }
+}
+
 async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   const tmpFile = path.join(scratchDir, `reeval-${issueNumber}.md`);
   writeFileSync(tmpFile, body);
@@ -43,6 +61,7 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
   const fetchProjectItem = deps.projectItemForIssue || projectItemForIssue;
   const writeField = deps.writeProjectFieldValue || writeProjectFieldValue;
   const optionMapFor = deps.fieldOptionMap || fieldOptionMap;
+  const hasSubIssues = deps.hasSubIssues || defaultHasSubIssues;
 
   const ts = new Date().toISOString();
   if (process.env.TASK_TRACKER_SKIP_REEVAL === '1') {
@@ -54,6 +73,18 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
       });
     } catch {}
     return { status: 'skipped' };
+  }
+
+  const subInfo = await hasSubIssues({ issueNumber, repo: cfg.repo });
+  if (subInfo.hasSubIssues) {
+    try {
+      await postComment({
+        issueNumber,
+        repo: cfg.repo,
+        body: `${AUDIT_HEADER}\n\n_Skipped: epic with ${subInfo.count} sub-issue(s); Size/Estimate is the sum of children, set at Groom time._`,
+      });
+    } catch {}
+    return { status: 'skipped-epic', subIssueCount: subInfo.count };
   }
 
   const fieldDefs = fieldDefsLoader();

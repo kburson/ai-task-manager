@@ -58,7 +58,7 @@ const CFG = {
   fieldIds: { size: 'F_size', estimate: 'F_estimate' },
 };
 
-function buildDeps(body) {
+function buildDeps(body, extraReevalDeps = {}) {
   const state = { body, comments: [], fieldWrites: [] };
   return {
     state,
@@ -83,6 +83,8 @@ function buildDeps(body) {
           projectItemForIssue: async () => ({ itemId: 'PVTI_test' }),
           writeProjectFieldValue: async (w) => { state.fieldWrites.push(w); },
           fieldOptionMap: async () => ({ M: 'O_m', L: 'O_l', XS: 'O_xs', S: 'O_s', XL: 'O_xl' }),
+          hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
+          ...extraReevalDeps,
         },
       }),
     },
@@ -154,6 +156,31 @@ function buildDeps(body) {
   assert.ok(bypass, 'expected bypass comment');
   assert.match(state.body, /"size":"S"/, 'body unchanged when reeval skipped');
   assert.equal(state.fieldWrites.length, 0, 'no field writes on bypass');
+}
+
+// Test 6 (#92): epic with sub-issues — re-eval skipped, no field writes, audit comment posted.
+{
+  const { state, deps } = buildDeps(FIXTURE_BODY_HUMAN, {
+    hasSubIssues: async () => ({ hasSubIssues: true, count: 4 }),
+  });
+  const result = await runApprove({ issueNumber: 13, answer: 'yes', cfg: CFG, deps });
+  assert.equal(result.status, 'approved', 'epic must promote despite scorer divergence');
+  assert.equal(state.fieldWrites.length, 0, 'no field writes on epic-skip path');
+  assert.match(state.body, /"size":"XS"/, 'epic body unchanged on skip');
+  const audit = state.comments.find(c => /Skipped: epic with 4 sub-issue/.test(c));
+  assert.ok(audit, 'expected epic-skip audit comment');
+  assert.ok(!state.comments.some(c => /HUMAN ATTENTION/.test(c)), 'no human-attention comment on epic-skip path');
+}
+
+// Test 7 (#92): non-epic regression — existing scorer behaviour preserved.
+{
+  const { state, deps } = buildDeps(FIXTURE_BODY_M, {
+    hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
+  });
+  const result = await runApprove({ issueNumber: 999, answer: 'yes', cfg: CFG, deps });
+  assert.equal(result.status, 'approved');
+  assert.equal(state.fieldWrites.length, 2, 'non-epic still mutates board');
+  assert.match(state.body, /"size":"M"/, 'non-epic body re-bucketed');
 }
 
 console.log('approve-reevaluate.test.mjs: all passed');
