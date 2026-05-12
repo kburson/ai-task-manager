@@ -12,7 +12,7 @@ const lockedHelper = new URL('./fleet-registry-concurrent-helper.mjs', import.me
 const unlockedHelper = new URL('./fleet-registry-unlocked-helper.mjs', import.meta.url).pathname;
 
 const N = 8;
-const DELAY_MS = '75'; // forces RMW windows to overlap across all N procs
+const DELAY_MS = '500'; // long enough that all N procs complete read() before any write() — node proc spawn alone can exceed 75ms under load
 
 async function runConcurrent(helper, projectDir) {
   const env = { ...process.env, FLEET_REGISTRY_TEST_DELAY_MS: DELAY_MS };
