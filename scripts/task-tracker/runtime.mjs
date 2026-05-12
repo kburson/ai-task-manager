@@ -27,18 +27,8 @@ export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
 }
 
-export const CLOSE_OWNED_CHECKBOXES = new Set([
-  'Issue moved to Done',
-  '`/task close` run (moves to Done, deregisters from fleet)',
-  'If this completes the parent epic: update parent body; close parent if all siblings Done',
-]);
-
-export function uncheckedPreCloseCheckboxes(body) {
-  return [...body.matchAll(/^- \[ \] (.+)$/gm)]
-    .map(m => m[1])
-    .filter(label => !CLOSE_OWNED_CHECKBOXES.has(label))
-    .map(label => `- [ ] ${label}`);
-}
+import { CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes } from './close-gate.mjs';
+export { CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes };
 
 export function handleMigrateResult(result, { stderr = process.stderr, exit = process.exit } = {}) {
   if (result.status === 0) return;

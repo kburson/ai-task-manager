@@ -15,6 +15,7 @@ import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition } from '../task-tracker/state-machine.mjs';
+import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -45,13 +46,6 @@ const STATE_TO_CONFIG_KEY = {
   'review':      'kanbanOptionReview',
   'done':        'kanbanOptionDone',
 };
-
-// Checkboxes that are close-side-effects, not user-verifiable items
-const CLOSE_SIDE_EFFECT_PATTERNS = [
-  /^- \[ \] Issue moved to Done$/,
-  /^- \[ \] `\/task close` run \(writes Engaged Time/,
-  /^- \[ \] If this completes the parent epic:/,
-];
 
 function usage() {
   process.stderr.write(
@@ -194,11 +188,7 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
 
     // Done-only legacy checks
     if (stateArg === 'done') {
-      const lines = body.split('\n');
-      const unchecked = lines.filter(l =>
-        l.startsWith('- [ ] ') &&
-        !CLOSE_SIDE_EFFECT_PATTERNS.some(p => p.test(l))
-      );
+      const unchecked = uncheckedPreCloseCheckboxes(body);
       if (unchecked.length > 0) reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
     }
 
