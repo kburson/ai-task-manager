@@ -89,6 +89,12 @@ if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') 
 // Decision
 // ---------------------------------------------------------------------------
 
+// Active task bound but no kanban state recorded → drift. Refuse all write
+// activity classes and point at reconcile. READ_* still passes.
+if (activeIssue && state == null && activityClass !== 'READ_*') {
+  block(buildReason({ activityClass, target, state, activeIssue, toolName }));
+}
+
 if (isAllowed(state, activityClass)) {
   process.exit(0);
 }
@@ -111,8 +117,6 @@ function readState(root) {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return { activeIssue: null, state: null };
     const activeIssue = typeof parsed.active === 'string' ? parsed.active : null;
-    // `state` field is forward-compatible: not yet written by any verb (epic #61 W3).
-    // Treat missing as null → no-active-task policy.
     const stateRaw = typeof parsed.state === 'string' ? parsed.state : null;
     const state = stateRaw && Object.prototype.hasOwnProperty.call(STATE_MATRIX, stateRaw)
       ? stateRaw
@@ -147,6 +151,16 @@ function buildReason({ activityClass, target, state, activeIssue, toolName }) {
   const issueLabel = activeIssue ?? 'none';
 
   if (state == null) {
+    if (activeIssue) {
+      // Active task is set but no kanban state recorded — drift between
+      // tracker-state and the board. Tell the user how to repair.
+      const id = activeIssue.replace(/^#/, '');
+      return [
+        `activity refused: ${activityClass} on ${targetLabel} — active task ${activeIssue} has no recorded kanban state.`,
+        `  Active task: ${activeIssue}`,
+        `  To proceed: Run \`/task reconcile accept-live ${id}\` to sync local state with the board.`,
+      ].join('\n');
+    }
     // No-active-task message
     return [
       `activity refused: ${activityClass} on ${targetLabel} is not permitted with no active task.`,

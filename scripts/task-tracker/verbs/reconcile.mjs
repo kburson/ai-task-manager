@@ -28,6 +28,8 @@ import {
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { loadState, saveState } from '../state.mjs';
+import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -104,6 +106,18 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
   await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
 }
 
+function defaultPersistTrackerState({ issueNumber, state }) {
+  try {
+    const projectDir = getProjectDir();
+    const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
+    const s = loadState(sp);
+    if (s.active === `#${issueNumber}`) {
+      s.state = state;
+      saveState(s, sp);
+    }
+  } catch { /* best-effort */ }
+}
+
 // ---------------------------------------------------------------------------
 // Pure core.
 // ---------------------------------------------------------------------------
@@ -129,6 +143,7 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
   const getLiveState   = deps.getLiveState   || defaultGetLiveState;
   const runMoveState   = deps.runMoveState   || defaultRunMoveState;
   const postTimingRow  = deps.postTimingRow  || defaultPostTimingRow;
+  const persistTrackerState = deps.persistTrackerState || defaultPersistTrackerState;
 
   const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: recorded } = readLastKnownState(body);
@@ -152,6 +167,7 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
     }
     const stamped = writeLastKnownState(body, live);
     await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
+    persistTrackerState({ issueNumber, state: live });
     try {
       const row = buildRow({
         ts: now(),

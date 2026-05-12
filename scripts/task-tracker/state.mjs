@@ -9,6 +9,7 @@ export const EMPTY_STATE = {
   wordsAtEntryStart: 0,
   totalActiveMinutes: 0,
   planBucket: null,
+  state: null,
 };
 
 export function loadState(statePath) {
@@ -37,6 +38,7 @@ export function clearActive(statePath) {
   s.entryStartTs = null;
   s.wordsAtEntryStart = 0;
   s.planBucket = null;
+  s.state = null;
   // keep lastActive
   saveState(s, statePath);
 }

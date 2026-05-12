@@ -9,7 +9,7 @@ import { runReconcile } from '../verbs/reconcile.mjs';
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
-  const calls = { writes: [], timings: [], moves: [] };
+  const calls = { writes: [], timings: [], moves: [], persists: [] };
   return {
     calls,
     deps: {
@@ -18,6 +18,7 @@ function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
       getLiveState: async () => live,
       runMoveState: async ({ issueNumber, target }) => { calls.moves.push({ issueNumber, target }); return moveCode; },
       postTimingRow: async ({ row }) => { calls.timings.push(row); },
+      persistTrackerState: ({ issueNumber, state }) => { calls.persists.push({ issueNumber, state }); },
     },
   };
 }
@@ -39,6 +40,7 @@ test('reconcile accept-live: drifted issue writes new state + drift-reconcile ro
   assert.match(calls.timings[0], /drift-reconcile/);
   assert.match(calls.timings[0], /analyze.*development/);
   assert.equal(calls.moves.length, 0);
+  assert.deepEqual(calls.persists, [{ issueNumber: 300, state: 'development' }]);
 });
 
 test('reconcile revert-to-recorded: drifted issue pushes board back + drift-revert row', async () => {

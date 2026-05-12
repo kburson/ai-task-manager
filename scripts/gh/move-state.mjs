@@ -16,7 +16,8 @@ import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition } from '../task-tracker/state-machine.mjs';
 import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
-import { getProjectDir } from '../task-tracker/paths.mjs';
+import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../task-tracker/paths.mjs';
+import { loadState, saveState } from '../task-tracker/state.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -322,6 +323,19 @@ if (!SKIP_NETWORK) {
 }
 
 console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
+
+// Persist new kanban state to tracker-state if this issue is the active task.
+// activity-guard reads `state` to gate write activity classes; without this,
+// every bound issue falls through to the no-active-task policy.
+try {
+  const projectDir = getProjectDir();
+  const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
+  const s = loadState(sp);
+  if (s.active === `#${issueArg}`) {
+    s.state = stateArg;
+    saveState(s, sp);
+  }
+} catch { /* best-effort */ }
 
 // Update event fields (fire-and-forget)
 if (!SKIP_NETWORK) {

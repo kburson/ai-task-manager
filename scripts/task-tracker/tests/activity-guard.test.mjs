@@ -237,7 +237,7 @@ test('Bash git commit in groom → block (COMMIT_CODE)', () => {
 // No-active-task policy
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts with no state field → block (no-active-task)', () => {
+test('Edit src/foo.ts with active issue but no state field → block; suggest reconcile', () => {
   const dir = makeRepo({ /* no state */ });
   try {
     const r = runGuard({
@@ -246,8 +246,9 @@ test('Edit src/foo.ts with no state field → block (no-active-task)', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /no active task/i);
-    assert.match(r.decision.reason, /\/task start/);
+    assert.match(r.decision.reason, /no recorded kanban state/);
+    assert.match(r.decision.reason, /Active task: #65/);
+    assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
   } finally { cleanup(dir); }
 });
 
@@ -264,12 +265,27 @@ test('Edit src/foo.ts with no state file at all → block (no-active-task)', () 
   } finally { cleanup(dir); }
 });
 
-test('Edit docs/notes.md with no state → pass (no-active-task allows WRITE_DOCS)', () => {
+test('Edit docs/notes.md with active issue but no state → block; suggest reconcile', () => {
   const dir = makeRepo({ /* no state */ });
   try {
     const r = runGuard({
       cwd: dir,
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /no recorded kanban state/);
+    assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
+  } finally { cleanup(dir); }
+});
+
+test('Read with no active task is universally allowed; no state file → pass', () => {
+  // Sanity check that READ_* still bypasses the no-state branch.
+  const dir = makeRepoNoState();
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Bash', tool_input: { command: 'cat package.json' } },
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
@@ -329,7 +345,7 @@ test('Edit with absolute path inside project root → normalized + blocked in gr
   } finally { cleanup(dir); }
 });
 
-test('invalid state value in state file → falls back to no-active-task', () => {
+test('invalid state value in state file with active issue → block; suggest reconcile', () => {
   const dir = makeRepo({ state: 'bogus-state' });
   try {
     const r = runGuard({
@@ -338,6 +354,7 @@ test('invalid state value in state file → falls back to no-active-task', () =>
     });
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /no active task/i);
+    assert.match(r.decision.reason, /no recorded kanban state/);
+    assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
   } finally { cleanup(dir); }
 });

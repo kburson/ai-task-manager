@@ -2,7 +2,7 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,6 +79,42 @@ for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', '
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   assert.match(r.stdout, new RegExp(`moved to: ${state}`), `state ${state} should succeed`);
+  rmSync(sandbox, { recursive: true });
+}
+
+// Test: tracker-state `state` field is updated when issue matches active task
+{
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ms-state-write-'));
+  mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({
+      repo: 'o/r',
+      projectId: 'P',
+      kanbanFieldId: 'F',
+      kanbanOptionDevelopment: 'D',
+      kanbanOptionValidate: 'V',
+    }, null, 2)
+  );
+  const sp = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
+  writeFileSync(sp, JSON.stringify({ active: '#777', lastActive: '#777', state: 'development' }, null, 2));
+
+  await run(['777', 'validate'], {
+    TT_SKIP_NETWORK: '1',
+    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+  });
+  const after = JSON.parse(readFileSync(sp, 'utf8'));
+  assert.equal(after.state, 'validate', 'state field should be updated on transition');
+  assert.equal(after.active, '#777', 'active should be preserved');
+
+  // Now test: non-active issue does NOT mutate state
+  await run(['888', 'review'], {
+    TT_SKIP_NETWORK: '1',
+    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+  });
+  const after2 = JSON.parse(readFileSync(sp, 'utf8'));
+  assert.equal(after2.state, 'validate', 'state field should not be touched when issue is not the active task');
+
   rmSync(sandbox, { recursive: true });
 }
 
