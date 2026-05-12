@@ -118,14 +118,30 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 ### State Transition Verb Map (7-state model)
 
-- `/task groom` — Backlog → Groom
-- `/task analyze` — Groom → Analyze
-- `/task approve` — Analyze → Development
-- `/task review` — Development → Validate (CODE_COMPLETE handoff)
-- `/task approve-review` — Review → Review (records human approval marker; gates `/task close`)
-- `/task close` — Review → Done
+The canonical verb surface is `promote` / `demote` / `next` / `reconcile`. The single-purpose verbs `analyze`, `approve`, `review`, and `close` are deprecated aliases retained for one-release compatibility — they delegate to `/task promote` internally and emit no new behaviour.
 
-Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and moves the issue.
+**Canonical verbs:**
+
+- `/task promote [<N>]` — Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Walks: Backlog → Groom → Analyze → Development → Validate → Review → Done.
+- `/task next [<N>]` — Alias of `/task promote`.
+- `/task demote [<N>]` — Back to `Development` from any forward state (Validate / Review). Records the demotion in the timing log.
+- `/task reconcile <N> <accept-live|revert-to-recorded>` — Drift recovery only. Use when the project board and the local field-DB disagree. `accept-live` treats GitHub Projects as source of truth; `revert-to-recorded` pushes the local recorded state back to the board. Do not run any other verb on a drifted issue first.
+
+**Deprecated aliases (delegate to `promote`):**
+
+| Deprecated | Equivalent |
+|---|---|
+| `/task groom` | `/task promote` from Backlog |
+| `/task analyze` | `/task promote` from Groom |
+| `/task approve` | `/task promote` from Analyze |
+| `/task review` | `/task promote` from Development (CODE_COMPLETE handoff) |
+| `/task close` | `/task promote` from Review |
+
+`/task approve-review` (records human approval marker; gates the Review → Done promotion) and `/task reject #N --reason "..."` (Review → Development with rejection reason) remain first-class — they are not state-walking verbs.
+
+There is no user-facing `/task move <state>` verb. Direct invocations of `scripts/gh/move-state.mjs` are forbidden in agent and user surfaces — `/task promote` calls it internally so timing flush, fleet update, and field-DB write all happen atomically.
+
+Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and runs `/task promote` to move the issue.
 
 #### Estimation comment surfaces
 
@@ -139,7 +155,7 @@ Two verbs emit comments tied to the three-stage estimation model (see `docs/guid
 | Old slug | Replacement |
 |---|---|
 | `ready` | `groom` |
-| `in-progress` | `approve` (or `move-state.mjs <N> development`) |
+| `in-progress` | `/task promote` (lands at Development) |
 | `in-review` | `review` |
 
 ## Implementation
