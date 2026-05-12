@@ -3,6 +3,8 @@ name: task
 description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, close, log, check, fleet, or config.
 ---
 
+<!-- aitm-skill-version: 0.0.0 -->
+
 # Task For Claude Code
 
 Load and follow the canonical shared task workflow:

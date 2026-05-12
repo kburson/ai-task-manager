@@ -1,3 +1,5 @@
+<!-- aitm-skill-version: 0.0.0 -->
+
 # Pickup Directive — Agent Instructions
 
 These steps apply on first pickup of any issue with an unchecked `- [ ] Deep dive complete`

@@ -3,6 +3,8 @@ name: task
 description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, review, close, log, check, fleet, or config.
 ---
 
+<!-- aitm-skill-version: 0.0.0 -->
+
 # Task Tracker
 
 Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment on the target GitHub issue; keeps minimal local state in `.ai-task-manager/task-tracker-state.json`.
