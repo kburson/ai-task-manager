@@ -31,7 +31,7 @@ const _argvClean = _roleIdx >= 0 ? argv.filter((_, i) => i !== _roleIdx && i !==
 // Normalize bare issue numbers only for verbs that accept issue operands.
 const rawVerb = _argvClean[0] || 'status';
 const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
-const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review', 'analyze', 'approve', 'approve-review']);
+const ISSUE_ARG_VERBS = new Set(['log', 'resume', 'start', 'check', 'close', 'review', 'analyze', 'approve', 'approve-review', 'promote', 'demote', 'next', 'reconcile']);
 const rest = _argvClean.slice(1).map(a =>
   ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
 );
@@ -135,7 +135,18 @@ async function draiQueueIfAny() {
 
 // ---- Verbs ----
 
+function worktreeLabel() {
+  try {
+    const main = findMainWorktreePath(projectDir);
+    if (path.resolve(main) === path.resolve(projectDir)) return 'main';
+    return `${currentBranch(projectDir)}@${projectDir}`;
+  } catch {
+    return 'unknown';
+  }
+}
+
 async function verbStatus() {
+  console.log(`worktree: ${worktreeLabel()}`);
   const s = loadState(statePath);
   if (!s.active) {
     if (s.lastActive) console.log(`No active task. Last active: ${s.lastActive}. Use "/task start" to resume.`);
@@ -1276,6 +1287,25 @@ if (_isMain) (async () => {
         await verbApproveReview(rest, cfg);
         break;
       }
+      case 'promote':
+      case 'next': {
+        const { verbPromote } = await import('./verbs/promote.mjs');
+        await verbPromote(rest, cfg);
+        break;
+      }
+      case 'demote': {
+        const { verbDemote } = await import('./verbs/demote.mjs');
+        await verbDemote(rest, cfg);
+        break;
+      }
+      case 'reconcile': {
+        const { verbReconcile } = await import('./verbs/reconcile.mjs');
+        await verbReconcile(rest, cfg);
+        break;
+      }
+      case 'move':
+        console.error(`unknown verb: move — did you mean \`/task promote\` or \`/task demote\`?`);
+        process.exit(2);
       case 'help':
       case '?':       verbHelp(); break;
       default:

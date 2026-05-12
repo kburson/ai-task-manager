@@ -13,6 +13,7 @@ import {
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue } from './queue.mjs';
 import { seedMissingTemplates, findMainWorktree } from './seed-worktree.mjs';
+import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 
 const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const cfg = loadConfig();
@@ -87,7 +88,19 @@ function selfHealTemplates() {
   }
 }
 
+function emitWorktreeBanner() {
+  try {
+    const main = findMainWorktreePath(projectDir);
+    if (path.resolve(main) === path.resolve(projectDir)) {
+      console.log('[task-tracker] WORKSPACE: MAIN — Agent tool spawns will be BLOCKED. Create a worktree first.');
+    } else {
+      console.log(`[task-tracker] WORKTREE: ✓ ${currentBranch(projectDir)} @ ${projectDir}`);
+    }
+  } catch {}
+}
+
 async function onSessionStart(sid) {
+  emitWorktreeBanner();
   selfHealTemplates();
   const s = loadState(statePath);
 

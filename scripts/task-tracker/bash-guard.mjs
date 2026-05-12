@@ -55,6 +55,18 @@ for (const { pattern, label } of ALWAYS_BLOCK) {
   }
 }
 
+// Direct invocation of move-state.{mjs,sh} is reserved for internal callers
+// (promote/demote/reconcile). Agent-context Bash always runs through this hook,
+// so the block applies to every spawn from a Claude session. Internal callers
+// set AITM_INTERNAL=1 in env (not the command string), so this regex won't see
+// it — they bypass the hook by being spawned with execFile/spawn, not Bash.
+if (/\bmove-state\.(mjs|sh)\b/.test(command)) {
+  block(
+    'Direct invocation of move-state is reserved for internal use.\n' +
+    '  Use `/task promote` (forward), `/task demote` (back to development), or `/task reconcile` (drift recovery).'
+  );
+}
+
 // Write-allowed prefixes — project root only (./tmp/ lives inside it).
 const WRITE_ALLOWED = [
   projectRoot + '/',
