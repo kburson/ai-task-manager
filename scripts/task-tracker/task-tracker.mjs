@@ -1222,7 +1222,13 @@ Task Tracker — available commands
   /task config init         Run the interactive configuration interview
   /task help | ?            Show this help message
 
-Aliases: start = resume, end = close
+State transitions (7-state kanban):
+  /task promote [#N]        Advance one forward state (Backlog→Groom→Analyze→Development→Validate→Review→Done)
+  /task next [#N]           Alias of /task promote
+  /task demote [#N]         Return to Development (from Validate or Review)
+  /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded
+
+Aliases: start = resume, end = close, next = promote
 `.trim());
 }
 
