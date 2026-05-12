@@ -450,6 +450,18 @@ function installTemplates(targetDir) {
     writeFileSync(sidecar, bundled, 'utf8');
     ok(`Config ${dim('.ai-task-manager/' + name)} ${yellow('(kept; new default written beside it)')}`);
   }
+  // activity-policy.json — write the bundled default only when absent. Existing
+  // project policies are never overwritten (#70: idempotent + user-edit-preserving).
+  {
+    const policySrc = join(PKG_ROOT, 'config', 'activity-policy.default.json');
+    const policyOut = join(templateDest, 'activity-policy.json');
+    if (!existsSync(policyOut)) {
+      copyFileSync(policySrc, policyOut);
+      ok(`Config ${dim('.ai-task-manager/activity-policy.json')}`);
+    } else {
+      ok(`Config ${dim('.ai-task-manager/activity-policy.json')} ${dim('(unchanged)')}`);
+    }
+  }
   patchGitignore(targetDir);
   ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
 }
