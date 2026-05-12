@@ -17,9 +17,16 @@
   "scripts": {
     "test": "node scripts/run-tests.mjs",
     "log-time": "node scripts/gh/log-issue-time.mjs",
-    "report:value": "node scripts/reports/generate-value-report.mjs --html",
+    "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
-    "release": "npm publish --access public"
+    "release": "npm publish --access public",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:js": "eslint .",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:spell": "cspell --no-progress --gitignore \"**/*.{md,mjs,js,json}\"",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell",
+    "quality": "npm run format:check && npm run lint && npm test"
   },
   "files": [
     "bin/",
@@ -41,7 +48,10 @@
     "task-tracker",
     "time-tracking",
     "ai",
-    "anthropic"
+    "anthropic",
+    "agile",
+    "scrum",
+    "kanban"
   ],
   "repository": {
     "type": "git",
@@ -51,6 +61,11 @@
     "url": "https://github.com/kburson/ai-task-manager/issues"
   },
   "devDependencies": {
+    "cspell": "^8.19.4",
+    "eslint": "^9.39.4",
+    "globals": "^17.6.0",
+    "markdownlint-cli2": "^0.13.0",
+    "prettier": "^3.8.3",
     "puppeteer": "^24.42.0"
   }
 }

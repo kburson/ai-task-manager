@@ -1,0 +1,9 @@
+node_modules/
+tmp/
+.worktrees/
+.claude/worktrees/
+reports/
+coverage/
+*.tgz
+package-lock.json
+docs/postmortems/

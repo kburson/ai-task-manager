@@ -1,0 +1,27 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "useGitignore": true,
+  "dictionaryDefinitions": [
+    {
+      "name": "project",
+      "path": "./cspell-dictionary.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": ["project"],
+  "ignorePaths": [
+    "node_modules/**",
+    "tmp/**",
+    ".git/**",
+    ".worktrees/**",
+    ".claude/worktrees/**",
+    "reports/**",
+    "coverage/**",
+    "package-lock.json",
+    "*.tgz",
+    "docs/postmortems/**",
+    "scripts/reports/regional-rates.json",
+    "cspell-dictionary.txt"
+  ]
+}
