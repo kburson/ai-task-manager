@@ -174,14 +174,14 @@ assert.throws(
 // Test 12: readLastKnownState parses both pair members.
 {
   const body = [
-    '<!-- aitm-last-known-state: development -->',
+    '<!-- aitm-last-known-state: develop -->',
     '<!-- aitm-last-known-state-ts: 2026-05-10T14:32:11Z -->',
     '',
     '## Title',
     'rest',
   ].join('\n');
   const out = readLastKnownState(body);
-  assert.equal(out.state, 'development', 'state parsed');
+  assert.equal(out.state, 'develop', 'state parsed');
   assert.equal(out.ts, '2026-05-10T14:32:11Z', 'ts parsed');
 }
 
@@ -198,8 +198,8 @@ assert.throws(
 // Test 14: writeLastKnownState updates existing pair in place — no duplicates.
 {
   let body = '## Title\n\nbody\n';
-  body = writeLastKnownState(body, 'analyze');
-  body = writeLastKnownState(body, 'development');
+  body = writeLastKnownState(body, 'plan');
+  body = writeLastKnownState(body, 'develop');
   body = writeLastKnownState(body, 'review');
   const stateMatches = body.match(/aitm-last-known-state:/g) || [];
   const tsMatches = body.match(/aitm-last-known-state-ts:/g) || [];

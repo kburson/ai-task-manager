@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Integration tests for the analyze -> development approval gate in
+// Integration tests for the plan -> develop approval gate in
 // scripts/gh/move-state.mjs. Mirrors the harness in move-state-gate.test.mjs.
 //
 // Asserts:
 //   1. Body without the ticked approval line, current state Analyze -> exit 4
-//      with `BLOCKED: analyze -> development requires`.
-//   2. Body WITH the ticked approval line -> exit 0 + `moved to: development`.
+//      with `BLOCKED: plan -> develop requires`.
+//   2. Body WITH the ticked approval line -> exit 0 + `moved to: develop`.
 //   3. TASK_TRACKER_FORCE_DONE=1 bypasses with audible warning.
-//   4. Current state != analyze (e.g. validate) -> gate does NOT fire even
+//   4. Current state != plan (e.g. test) -> gate does NOT fire even
 //      without the approval line, so backwards transitions still work.
 
 import { strict as assert } from 'node:assert';
@@ -126,42 +126,42 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 1. Body without approval line, current state = Analyze -> blocked
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Analyze' });
-  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'development']);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
-  assert.match(e.stderr, /BLOCKED: analyze -> development requires/);
+  assert.match(e.stderr, /BLOCKED: plan -> develop requires/);
   rmSync(sandbox, { recursive: true });
 }
 
 // 2. Body WITH approval marker -> success
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Analyze' });
-  const r = await runMove(sandbox, binDir, ['100', 'development']);
-  assert.match(r.stdout, /moved to: development/);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const r = await runMove(sandbox, binDir, ['100', 'develop']);
+  assert.match(r.stdout, /moved to: develop/);
   rmSync(sandbox, { recursive: true });
 }
 
 // 3. TASK_TRACKER_FORCE_DONE=1 bypasses the gate even when not approved
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Analyze' });
-  const r = await runMove(sandbox, binDir, ['100', 'development'], {
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const r = await runMove(sandbox, binDir, ['100', 'develop'], {
     TASK_TRACKER_FORCE_DONE: '1',
   });
-  assert.match(r.stderr, /bypassing analyze->development approval gate/);
-  assert.match(r.stdout, /moved to: development/);
+  assert.match(r.stderr, /bypassing plan->develop approval gate/);
+  assert.match(r.stdout, /moved to: develop/);
   rmSync(sandbox, { recursive: true });
 }
 
-// 4. Current state != analyze (e.g. validate) -> gate does NOT fire
-//    so a transition back to development from validate succeeds without approval line.
+// 4. Current state != plan (e.g. test) -> gate does NOT fire
+//    so a transition back to develop from test succeeds without approval line.
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Validate' });
-  const r = await runMove(sandbox, binDir, ['100', 'development']);
-  assert.match(r.stdout, /moved to: development/);
-  assert.doesNotMatch(r.stderr, /BLOCKED: analyze -> development/);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Test' });
+  const r = await runMove(sandbox, binDir, ['100', 'develop']);
+  assert.match(r.stdout, /moved to: develop/);
+  assert.doesNotMatch(r.stderr, /BLOCKED: plan -> develop/);
   rmSync(sandbox, { recursive: true });
 }
 

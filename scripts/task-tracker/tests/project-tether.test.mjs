@@ -133,7 +133,7 @@ async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
   const result = await tetherIssueToProject({
     cfg,
     issueNumber: 13,
-    status: 'groom',
+    status: 'refine',
     priority: 'P1',
     size: 'S',
     estimate: 1,
@@ -252,7 +252,7 @@ function testBacklogSizingWarning() {
   // No warning: backlog + estimate only (no size)
   assert.equal(backlogSizingWarning({ status: 'backlog', estimate: 3 }), null);
   // No warning: groom + size + estimate
-  assert.equal(backlogSizingWarning({ status: 'groom', size: 'S', estimate: 3 }), null);
+  assert.equal(backlogSizingWarning({ status: 'refine', size: 'S', estimate: 3 }), null);
   // Treat estimate=true (boolean flag without value) as missing
   assert.equal(backlogSizingWarning({ status: 'backlog', size: 'S', estimate: true }), null);
   // estimate=0 is a real number — counts as "estimated"
@@ -270,7 +270,7 @@ function testBacklogMoveWarning() {
   );
   // No warning: target is something other than backlog
   assert.equal(
-    backlogMoveWarning({ targetState: 'groom', fieldValues: { size: 'M', estimate: 5 } }),
+    backlogMoveWarning({ targetState: 'refine', fieldValues: { size: 'M', estimate: 5 } }),
     null
   );
   // No warning: size missing

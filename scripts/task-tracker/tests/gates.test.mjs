@@ -259,7 +259,7 @@ function writeState(sandbox, issueNum) {
     postComment: async () => {},
     isHeadless: () => true, // would refuse without bypass
     fetchParentEpicNumber: async () => null,
-    readParentStatus: async () => 'development',
+    readParentStatus: async () => 'develop',
   };
   const r = await runApprove({
     issueNumber: 205,
@@ -283,7 +283,7 @@ function writeState(sandbox, issueNum) {
     postComment: async () => {},
     isHeadless: () => false,
     fetchParentEpicNumber: async () => null,
-    readParentStatus: async () => 'development',
+    readParentStatus: async () => 'develop',
   };
   const r = await runApprove({
     issueNumber: 206,

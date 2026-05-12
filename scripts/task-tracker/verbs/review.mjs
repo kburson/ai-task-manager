@@ -124,7 +124,7 @@ export async function verbReview(ctx) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
-    await runMoveState(target, 'validate');
+    await runMoveState(target, 'test');
     console.log(
       `Review ${target}: +${activeMin} active min (agent), +${deltaWords} words; task paused.`
     );
@@ -148,7 +148,7 @@ export async function verbReview(ctx) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
-    await runMoveState(target, 'validate');
+    await runMoveState(target, 'test');
     console.log(
       `Review ${target}: +${deltaMin} active min${wallNote}, +${deltaWords} words; task paused.`
     );
@@ -165,7 +165,7 @@ export async function verbReview(ctx) {
       description: 'starting review',
     });
     await safePostTiming(target, row);
-    await runMoveState(target, 'validate');
+    await runMoveState(target, 'test');
     saveState(
       { ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target },
       statePath
@@ -258,15 +258,15 @@ export async function verbReview(ctx) {
         target,
         br({
           ts: nowIso(),
-          event: 'development',
+          event: 'develop',
           activeMin: 0,
           idleMin: 0,
           deltaWords: 0,
           wordMarker: 0,
-          description: 'verification failed — reverted to Development',
+          description: 'verification failed — reverted to Develop',
         })
       );
-      await runMoveState(target, 'development');
+      await runMoveState(target, 'develop');
       console.error(`[task-tracker] Review failed for ${target}:`);
       failures.forEach((f) => console.error(`   ${f}`));
       process.exit(3);

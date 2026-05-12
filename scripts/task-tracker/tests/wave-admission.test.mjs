@@ -30,7 +30,7 @@ function stub(siblings) {
     sequence: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'development' }]),
+    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'develop' }]),
   });
   assert.equal(r.ok, false);
   assert.equal(r.blockers.length, 1);
@@ -80,7 +80,7 @@ function stub(siblings) {
     sequence: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 50, sequence: 3, state: 'development' }]),
+    fetchSiblings: stub([{ number: 50, sequence: 3, state: 'develop' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -92,7 +92,7 @@ function stub(siblings) {
     sequence: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 51, sequence: 4, state: 'development' }]),
+    fetchSiblings: stub([{ number: 51, sequence: 4, state: 'develop' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -107,8 +107,8 @@ function stub(siblings) {
     fetchSiblings: stub([
       { number: 47, sequence: 1, state: 'done' }, // ignored
       { number: 48, sequence: 2, state: 'review' }, // BLOCKS (in-flight, lower)
-      { number: 50, sequence: 3, state: 'development' }, // same wave, ignored
-      { number: 51, sequence: 4, state: 'grooming' }, // higher, ignored
+      { number: 50, sequence: 3, state: 'develop' }, // same wave, ignored
+      { number: 51, sequence: 4, state: 'refine' }, // higher, ignored
       { number: 52, sequence: 1, state: 'backlog' }, // backlog, ignored
     ]),
   });
@@ -125,22 +125,22 @@ function stub(siblings) {
     sequence: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 99, sequence: null, state: 'development' }]),
+    fetchSiblings: stub([{ number: 99, sequence: null, state: 'develop' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
 
-// 10. analyze and analysis are both treated as in-flight
+// 10. plan state is treated as in-flight
 {
   const r = await admit({
     parentEpicNumber: 41,
     sequence: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'analyze' }]),
+    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'plan' }]),
   });
   assert.equal(r.ok, false);
-  assert.equal(r.blockers[0].state, 'analyze');
+  assert.equal(r.blockers[0].state, 'plan');
 }
 
 console.log('wave-admission.test.mjs: all passed');

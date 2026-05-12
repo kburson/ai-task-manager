@@ -17,7 +17,7 @@ import { writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { BACKWARD, STATES, validateTransition } from '../state-machine.mjs';
+import { BACKWARD, STATES, validateTransition, normalizeStateSlug } from '../state-machine.mjs';
 import {
   readLastKnownState,
   writeLastKnownState,
@@ -29,8 +29,8 @@ import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
-const DEMOTE_TARGET = 'development';
-const LEGAL_FROM = new Set(['validate', 'review']);
+const DEMOTE_TARGET = 'develop';
+const LEGAL_FROM = new Set(['test', 'review']);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -88,8 +88,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  const name = node?.fieldValueByName?.name;
-  return name ? String(name).toLowerCase() : null;
+  return normalizeStateSlug(node?.fieldValueByName?.name);
 }
 
 function defaultRunMoveState({ issueNumber, target }) {
@@ -166,11 +165,11 @@ export async function runDemote({
     return {
       status: 'invalid-source-refused',
       from: recorded,
-      message: 'demote only valid from validate or review',
+      message: 'demote only valid from test or review',
     };
   }
 
-  // Matrix sanity check — both legal sources have BACKWARD[from] === 'development'.
+  // Matrix sanity check — both legal sources have BACKWARD[from] === 'develop'.
   if (BACKWARD[recorded] !== DEMOTE_TARGET) {
     return {
       status: 'error',

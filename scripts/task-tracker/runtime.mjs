@@ -222,10 +222,10 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     Object.fromEntries(
       [
         [cfg.kanbanOptionBacklog, 'backlog'],
-        [cfg.kanbanOptionGroom, 'groom'],
-        [cfg.kanbanOptionAnalyze, 'analyze'],
-        [cfg.kanbanOptionDevelopment, 'development'],
-        [cfg.kanbanOptionValidate, 'validate'],
+        [cfg.kanbanOptionGroom, 'refine'],
+        [cfg.kanbanOptionAnalyze, 'plan'],
+        [cfg.kanbanOptionDevelopment, 'develop'],
+        [cfg.kanbanOptionValidate, 'test'],
         [cfg.kanbanOptionReview, 'review'],
         [cfg.kanbanOptionDone, 'done'],
       ].filter(([k]) => k)

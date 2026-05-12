@@ -60,10 +60,10 @@ const EMPTY_CFG = {
 
 const FULL_OPTS = [
   { id: 'OP_b', name: 'Backlog' },
-  { id: 'OP_g', name: 'Groom' },
-  { id: 'OP_a', name: 'Analyze' },
-  { id: 'OP_d', name: 'Development' },
-  { id: 'OP_v', name: 'Validate' },
+  { id: 'OP_g', name: 'Refine' },
+  { id: 'OP_a', name: 'Plan' },
+  { id: 'OP_d', name: 'Develop' },
+  { id: 'OP_v', name: 'Test' },
   { id: 'OP_r', name: 'Review' },
   { id: 'OP_done', name: 'Done' },
 ];
@@ -100,7 +100,7 @@ const FULL_OPTS = [
   });
   await runRepair(sandbox, [
     { id: 'NEW_B', name: 'Backlog' },
-    { id: 'OP_v', name: 'Validate' },
+    { id: 'OP_v', name: 'Test' },
   ]);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'EXISTING_B', 'must not overwrite populated keys');
@@ -114,7 +114,7 @@ const FULL_OPTS = [
 {
   const sandbox = makeSandbox(EMPTY_CFG);
   // Missing Validate column
-  const opts = FULL_OPTS.filter((o) => o.name !== 'Validate');
+  const opts = FULL_OPTS.filter((o) => o.name !== 'Test');
   const r = await runRepair(sandbox, opts);
   assert.match(r.stdout, /Unmatched.*kanbanOptionValidate/);
   const cfg = readCfg(sandbox);
@@ -152,7 +152,7 @@ const FULL_OPTS = [
   const names = arr.map((o) => o.name);
   assert.deepEqual(
     names,
-    ['Backlog', 'Groom', 'Analyze', 'Development', 'Validate', 'Review', 'Done'],
+    ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'],
     'status_opts names must be in canonical order'
   );
 }

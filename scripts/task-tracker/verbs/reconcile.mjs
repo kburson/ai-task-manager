@@ -29,6 +29,7 @@ import {
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { loadState, saveState } from '../state.mjs';
+import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
 
 const pexec = promisify(execFile);
@@ -92,8 +93,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  const name = node?.fieldValueByName?.name;
-  return name ? String(name).toLowerCase() : null;
+  return normalizeStateSlug(node?.fieldValueByName?.name);
 }
 
 function defaultRunMoveState({ issueNumber, target }) {

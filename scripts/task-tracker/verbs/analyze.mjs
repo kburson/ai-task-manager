@@ -131,7 +131,7 @@ async function runMoveState(issueNumber) {
   const candidates = [path.resolve(__dir, '../../gh/move-state.mjs')];
   const script = candidates.find(Boolean);
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), 'analyze'], {
+    const child = spawn(process.execPath, [script, String(issueNumber), 'plan'], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });

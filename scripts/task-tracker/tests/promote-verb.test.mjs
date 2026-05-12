@@ -51,39 +51,39 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
 }
 
-test('promote: happy path forward chain — groom→analyze delegates to /task analyze', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('groom'), live: 'groom' });
+test('promote: happy path forward chain — refine→plan delegates to /task analyze', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('refine'), live: 'refine' });
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.from, 'groom');
-  assert.equal(r.to, 'analyze');
+  assert.equal(r.from, 'refine');
+  assert.equal(r.to, 'plan');
   assert.equal(r.via, 'alias:analyze');
   assert.deepEqual(calls.spawns, [{ verb: 'analyze', issueNumber: 100 }]);
   assert.equal(calls.moves.length, 0);
   assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /move:analyze/);
+  assert.match(calls.timings[0], /move:plan/);
 });
 
-test('promote: analyze→development delegates to /task approve', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('analyze'), live: 'analyze' });
+test('promote: plan→develop delegates to /task approve', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
   const r = await runPromote({ issueNumber: 101, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.to, 'development');
+  assert.equal(r.to, 'develop');
   assert.equal(r.via, 'alias:approve');
   assert.deepEqual(calls.spawns, [{ verb: 'approve', issueNumber: 101 }]);
 });
 
-test('promote: development→validate delegates to /task review', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('development'), live: 'development' });
+test('promote: develop→test delegates to /task review', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('develop'), live: 'develop' });
   const r = await runPromote({ issueNumber: 102, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.to, 'validate');
+  assert.equal(r.to, 'test');
   assert.equal(r.via, 'alias:review');
   assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 102 }]);
 });
 
-test('promote: validate→review is a direct move-state call (no alias verb exists)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('validate'), live: 'validate' });
+test('promote: test→review is a direct move-state call (no alias verb exists)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
   const r = await runPromote({ issueNumber: 103, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'review');
@@ -101,7 +101,7 @@ test('promote: review→done delegates to /task close', async () => {
   assert.deepEqual(calls.spawns, [{ verb: 'close', issueNumber: 104 }]);
 });
 
-test('promote: backlog→groom is a direct move-state call (with groom-estimate hook)', async () => {
+test('promote: backlog→refine is a direct move-state call (with groom-estimate hook)', async () => {
   const rationale = '<!-- aitm-groom-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const body = `${bodyWithState('backlog')}\n${rationale}\n`;
   const { deps, calls } = makeDeps({ body, live: 'backlog' });
@@ -115,11 +115,11 @@ test('promote: backlog→groom is a direct move-state call (with groom-estimate 
   const r = await runPromote({ issueNumber: 105, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'direct');
-  assert.deepEqual(calls.moves, [{ issueNumber: 105, target: 'groom' }]);
+  assert.deepEqual(calls.moves, [{ issueNumber: 105, target: 'refine' }]);
   assert.equal(r.groomPost.status, 'posted');
 });
 
-test('promote: backlog→groom refused when groom-estimate signals are missing', async () => {
+test('promote: backlog→refine refused when groom-estimate signals are missing', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   deps.groomEstimate = {
     loadProjectFieldDefs: () => [],
@@ -141,11 +141,11 @@ test('promote: terminal refusal on done', async () => {
 });
 
 test('promote: drift refused when live ≠ recorded', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('analyze'), live: 'development' });
+  const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });
   const r = await runPromote({ issueNumber: 107, cfg, deps });
   assert.equal(r.status, 'drift-refused');
-  assert.equal(r.live, 'development');
-  assert.equal(r.recorded, 'analyze');
+  assert.equal(r.live, 'develop');
+  assert.equal(r.recorded, 'plan');
   assert.match(r.message, /drift detected/);
   assert.match(r.message, /\/task reconcile/);
   assert.equal(calls.spawns.length, 0);
@@ -153,22 +153,22 @@ test('promote: drift refused when live ≠ recorded', async () => {
 });
 
 test('promote: bootstrap when lastKnownState absent — syncs to live, then promotes', async () => {
-  const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'analyze' });
+  const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'plan' });
   const r = await runPromote({ issueNumber: 108, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.bootstrapped, true);
-  assert.equal(r.from, 'analyze');
-  assert.equal(r.to, 'development');
+  assert.equal(r.from, 'plan');
+  assert.equal(r.to, 'develop');
   // The bootstrap write happens before the transition; the post-transition
   // re-stamp may also write. At minimum the bootstrap write was made.
   assert.ok(calls.writes.length >= 1);
-  assert.match(calls.writes[0], /aitm-last-known-state: analyze/);
+  assert.match(calls.writes[0], /aitm-last-known-state: plan/);
 });
 
 test('promote: transition-failed when alias verb exits non-zero — no metadata update', async () => {
   const { deps, calls } = makeDeps({
-    body: bodyWithState('analyze'),
-    live: 'analyze',
+    body: bodyWithState('plan'),
+    live: 'plan',
     spawnCode: 4,
   });
   const r = await runPromote({ issueNumber: 109, cfg, deps });
@@ -190,7 +190,7 @@ test('promote: error when recorded state is unknown', async () => {
 });
 
 test('promote: writes move:<target> audit row with current ts (within retroactive-ts window)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('validate'), live: 'validate' });
+  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
   await runPromote({ issueNumber: 111, cfg, deps });
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /\| move:review \|/);

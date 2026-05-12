@@ -76,7 +76,7 @@ function buildDeps(body, extraReevalDeps = {}) {
       moveState: async () => 0,
       isHeadless: () => false,
       fetchParentEpicNumber: async () => null,
-      readParentStatus: async () => 'development',
+      readParentStatus: async () => 'develop',
       applyReevaluate: (args) =>
         applyReevaluate({
           ...args,

@@ -12,7 +12,7 @@ import {
   checkWaveAdmission,
 } from '../../scripts/task-tracker/lib/body-gates.mjs';
 
-const STATES = ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done'];
+const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 
 function makeProject() {
   const issues = new Map();
@@ -74,7 +74,7 @@ async function cascadeFor(proj, epicNumber) {
 // -----------------------------------------------------------------------
 async function testFullFlow() {
   const p = makeProject();
-  p.add(100, { status: 'groom' });
+  p.add(100, { status: 'refine' });
   p.add(101, { sequence: 1, parent: 100 });
   p.add(102, { sequence: 1, parent: 100 });
   p.add(103, { sequence: 2, parent: 100 });
@@ -84,13 +84,13 @@ async function testFullFlow() {
   let refusals = await cascadeFor(p, 100);
   assert.equal(refusals.length, 4, 'all 4 sub-issues should block cascade-grooming');
 
-  for (const n of [101, 102, 103, 104]) p.move(n, 'groom');
+  for (const n of [101, 102, 103, 104]) p.move(n, 'refine');
   refusals = await cascadeFor(p, 100);
   assert.equal(refusals.length, 0, 'cascade-grooming clears once all sub-issues are groom+');
 
   // Epic moves through Analyze → Development.
-  p.move(100, 'analyze');
-  p.move(100, 'development');
+  p.move(100, 'plan');
+  p.move(100, 'develop');
 
   // Wave-1 (Sequence=1) admission: S1 and S2 are admitted.
   for (const n of [101, 102]) {
@@ -99,8 +99,8 @@ async function testFullFlow() {
   }
 
   // Wave-2 (Sequence=2) admission: blocked while wave-1 is in flight.
-  p.move(101, 'analyze');
-  p.move(102, 'analyze');
+  p.move(101, 'plan');
+  p.move(102, 'plan');
   for (const n of [103, 104]) {
     const r = await admitFor(p, p.read(n));
     assert.equal(r.ok, false, `wave-2 sub-issue #${n} must be blocked while wave-1 is in flight`);
@@ -108,13 +108,13 @@ async function testFullFlow() {
   }
 
   // Run S1 to Done independently of S2.
-  for (const target of ['development', 'validate', 'review', 'done']) p.move(101, target);
+  for (const target of ['develop', 'test', 'review', 'done']) p.move(101, target);
   // S2 still in flight → wave-2 still blocked.
   let r = await admitFor(p, p.read(103));
   assert.equal(r.ok, false, 'wave-2 still blocked while S2 is in flight');
 
   // Finish S2.
-  for (const target of ['development', 'validate', 'review', 'done']) p.move(102, target);
+  for (const target of ['develop', 'test', 'review', 'done']) p.move(102, target);
 
   // Wave-2 now admits.
   for (const n of [103, 104]) {
@@ -130,13 +130,13 @@ async function testFullFlow() {
 // -----------------------------------------------------------------------
 async function testSameWaveNewcomer() {
   const p = makeProject();
-  p.add(200, { status: 'development' });
-  p.add(201, { sequence: 1, parent: 200, status: 'development' });
+  p.add(200, { status: 'develop' });
+  p.add(201, { sequence: 1, parent: 200, status: 'develop' });
   p.add(202, { sequence: 1, parent: 200, status: 'review' });
   p.add(203, { sequence: 2, parent: 200, status: 'backlog' });
 
   // Newcomer S5 joins wave-1 mid-flight.
-  p.add(205, { sequence: 1, parent: 200, status: 'analyze' });
+  p.add(205, { sequence: 1, parent: 200, status: 'plan' });
 
   // Existing wave-1 members are NOT blocked by the newcomer (same-wave rule).
   for (const n of [201, 202]) {
@@ -150,7 +150,7 @@ async function testSameWaveNewcomer() {
 
   // Wave-2 admission: must wait for newcomer too.
   // Drive S1 + S2 to Done.
-  p.move(201, 'validate');
+  p.move(201, 'test');
   p.move(201, 'review');
   p.move(201, 'done');
   p.move(202, 'done');
@@ -160,7 +160,7 @@ async function testSameWaveNewcomer() {
   assert.equal(r.ok, false, 'wave-2 blocked while newcomer not yet Done');
 
   // Drive newcomer to Done; wave-2 now admits.
-  for (const target of ['development', 'validate', 'review', 'done']) p.move(205, target);
+  for (const target of ['develop', 'test', 'review', 'done']) p.move(205, target);
   r = await admitFor(p, p.read(203));
   assert.equal(r.ok, true, 'wave-2 admits once newcomer reaches Done');
 }
@@ -193,9 +193,9 @@ async function testSoloIssue() {
   assert.deepEqual(cascade, [], 'checkWaveAdmission solo bypass returns []');
 
   // Drive solo through Backlog → Groom → Analyze without any gate firing.
-  p.move(300, 'groom');
-  p.move(300, 'analyze');
-  assert.equal(p.read(300).status, 'analyze');
+  p.move(300, 'refine');
+  p.move(300, 'plan');
+  assert.equal(p.read(300).status, 'plan');
 }
 
 // -----------------------------------------------------------------------

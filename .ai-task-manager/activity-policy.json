@@ -1,7 +1,7 @@
 {
   "codeGlobs": ["src/**", "lib/**", "bin/**", "scripts/**"],
-  "codeGlobExcludes": ["scripts/task-tracker/**", "scripts/gh/**"],
-  "codeGlobReincludes": ["scripts/task-tracker/tests/**", "scripts/gh/tests/**"],
+  "codeGlobExcludes": [],
+  "codeGlobReincludes": [],
   "docGlobs": ["docs/**", ".claude/plans/**", "docs/plans/**", "**/*.md", "CLAUDE.md"],
   "testRunners": ["npm test", "npm run test", "node --test", "pytest", "cargo test", "go test"],
   "buildCommands": ["npm run build", "tsc", "cargo build", "go build"]

@@ -74,13 +74,13 @@ export function saveSession(
 //   reset   -> clear override (null) + clear lastPromptedParent
 const CHOICE_GATES = {
   both: { analysisToDevelopment: false, reviewToDone: false },
-  analyze: { analysisToDevelopment: false, reviewToDone: true },
+  plan: { analysisToDevelopment: false, reviewToDone: true },
   review: { analysisToDevelopment: true, reviewToDone: false },
   off: { analysisToDevelopment: true, reviewToDone: true },
 };
 
 export function VALID_CHOICES() {
-  return ['both', 'analyze', 'review', 'off', 'reset'];
+  return ['both', 'plan', 'review', 'off', 'reset'];
 }
 
 export function applyChoice(state, choice, { parent = null } = {}) {

@@ -192,7 +192,7 @@ export function checkRequiredBodySections(body = '') {
 
 import { STATES as STATE_MACHINE_STATES } from '../state-machine.mjs';
 
-const PARENT_ADMIT_INDEX = STATE_MACHINE_STATES.indexOf('development');
+const PARENT_ADMIT_INDEX = STATE_MACHINE_STATES.indexOf('develop');
 
 export async function checkParentAdmission({
   parentEpicNumber,
@@ -233,10 +233,10 @@ export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, pro
 }
 
 const CASCADE_OK_STATES = new Set([
-  'groom',
-  'analyze',
-  'development',
-  'validate',
+  'refine',
+  'plan',
+  'develop',
+  'test',
   'review',
   'done',
 ]);

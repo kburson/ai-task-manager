@@ -53,10 +53,10 @@ function makeDeps(overrides = {}) {
 
 // 1. wrong-state when not in review
 {
-  const { deps, calls } = makeDeps({ state: 'development' });
+  const { deps, calls } = makeDeps({ state: 'develop' });
   const r = await runApproveReview({ issueNumber: 58, cfg, deps });
   assert.equal(r.status, 'wrong-state');
-  assert.match(r.message, /development/);
+  assert.match(r.message, /develop/);
   assert.equal(calls.writes.length, 0);
 }
 

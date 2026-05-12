@@ -56,7 +56,7 @@ async function main() {
 
   // 1. Flip board to Development (orchestrator-owned transition).
   const moveScript = path.join(__dir, 'move-state.mjs');
-  await pexec('node', [moveScript, args.issue, 'development'], {
+  await pexec('node', [moveScript, args.issue, 'develop'], {
     timeout: 15000,
     env: { ...process.env, AITM_INTERNAL: '1' },
   });

@@ -39,45 +39,45 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\nbody.\n`;
 }
 
-test('demote: validate→development happy path', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('validate'), live: 'validate' });
+test('demote: test→develop happy path', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
   const r = await runDemote({ issueNumber: 200, cfg, deps });
   assert.equal(r.status, 'demoted');
-  assert.equal(r.from, 'validate');
-  assert.equal(r.to, 'development');
-  assert.deepEqual(calls.moves, [{ issueNumber: 200, target: 'development' }]);
+  assert.equal(r.from, 'test');
+  assert.equal(r.to, 'develop');
+  assert.deepEqual(calls.moves, [{ issueNumber: 200, target: 'develop' }]);
   assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /move:development/);
-  assert.match(calls.timings[0], /demote from validate/);
+  assert.match(calls.timings[0], /move:develop/);
+  assert.match(calls.timings[0], /demote from test/);
 });
 
-test('demote: review→development happy path', async () => {
+test('demote: review→develop happy path', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('review'), live: 'review' });
   const r = await runDemote({ issueNumber: 201, cfg, deps });
   assert.equal(r.status, 'demoted');
   assert.equal(r.from, 'review');
-  assert.equal(r.to, 'development');
-  assert.deepEqual(calls.moves, [{ issueNumber: 201, target: 'development' }]);
+  assert.equal(r.to, 'develop');
+  assert.deepEqual(calls.moves, [{ issueNumber: 201, target: 'develop' }]);
 });
 
-test('demote: refused from every non-{validate,review} source', async () => {
-  for (const from of ['backlog', 'groom', 'analyze', 'development', 'done']) {
+test('demote: refused from every non-{test,review} source', async () => {
+  for (const from of ['backlog', 'refine', 'plan', 'develop', 'done']) {
     const { deps, calls } = makeDeps({ body: bodyWithState(from), live: from });
     const r = await runDemote({ issueNumber: 202, cfg, deps });
     assert.equal(r.status, 'invalid-source-refused', `from=${from} expected refusal`);
     assert.equal(r.from, from);
-    assert.match(r.message, /demote only valid from validate or review/);
+    assert.match(r.message, /demote only valid from test or review/);
     assert.equal(calls.moves.length, 0);
     assert.equal(calls.timings.length, 0);
   }
 });
 
 test('demote: drift refused when live ≠ recorded', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('validate'), live: 'review' });
+  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'review' });
   const r = await runDemote({ issueNumber: 203, cfg, deps });
   assert.equal(r.status, 'drift-refused');
   assert.equal(r.live, 'review');
-  assert.equal(r.recorded, 'validate');
+  assert.equal(r.recorded, 'test');
   assert.match(r.message, /drift detected/);
   assert.match(r.message, /\/task reconcile/);
   assert.equal(calls.moves.length, 0);
@@ -85,8 +85,8 @@ test('demote: drift refused when live ≠ recorded', async () => {
 
 test('demote: transition-failed when move-state exits non-zero', async () => {
   const { deps, calls } = makeDeps({
-    body: bodyWithState('validate'),
-    live: 'validate',
+    body: bodyWithState('test'),
+    live: 'test',
     moveCode: 3,
   });
   const r = await runDemote({ issueNumber: 204, cfg, deps });
@@ -96,19 +96,19 @@ test('demote: transition-failed when move-state exits non-zero', async () => {
   assert.equal(calls.timings.length, 0);
 });
 
-test('demote: bootstrap when lastKnownState absent — syncs to live, then refuses if live is not validate/review', async () => {
-  const { deps } = makeDeps({ body: '## just a body\n', live: 'analyze' });
+test('demote: bootstrap when lastKnownState absent — syncs to live, then refuses if live is not test/review', async () => {
+  const { deps } = makeDeps({ body: '## just a body\n', live: 'plan' });
   const r = await runDemote({ issueNumber: 205, cfg, deps });
   assert.equal(r.status, 'invalid-source-refused');
-  assert.equal(r.from, 'analyze');
+  assert.equal(r.from, 'plan');
 });
 
-test('demote: bootstrap then demote from validate succeeds', async () => {
-  const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'validate' });
+test('demote: bootstrap then demote from test succeeds', async () => {
+  const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'test' });
   const r = await runDemote({ issueNumber: 206, cfg, deps });
   assert.equal(r.status, 'demoted');
   assert.equal(r.bootstrapped, true);
-  assert.equal(r.from, 'validate');
-  assert.equal(r.to, 'development');
-  assert.deepEqual(calls.moves, [{ issueNumber: 206, target: 'development' }]);
+  assert.equal(r.from, 'test');
+  assert.equal(r.to, 'develop');
+  assert.deepEqual(calls.moves, [{ issueNumber: 206, target: 'develop' }]);
 });

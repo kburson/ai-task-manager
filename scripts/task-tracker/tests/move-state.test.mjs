@@ -39,7 +39,7 @@ async function runExpectFail(args, env = {}) {
 
 // Test: non-numeric issue number prints usage and exits non-zero
 {
-  const e = await runExpectFail(['abc', 'development'], { TT_SKIP_NETWORK: '1' });
+  const e = await runExpectFail(['abc', 'develop'], { TT_SKIP_NETWORK: '1' });
   assert.match(e.stderr + e.stdout, /Usage/i, 'non-numeric issue should print usage');
 }
 
@@ -56,7 +56,7 @@ for (const legacy of ['in-progress', 'in-review', 'r4r', 'ready']) {
 }
 
 // Test: each new state with TT_SKIP_NETWORK prints success without hitting GH
-for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done']) {
+for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
   const sandbox = mkdtempSync(path.join(tmpdir(), `tt-ms-${state}-`));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
@@ -107,15 +107,15 @@ for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', '
   const sp = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
   writeFileSync(
     sp,
-    JSON.stringify({ active: '#777', lastActive: '#777', state: 'development' }, null, 2)
+    JSON.stringify({ active: '#777', lastActive: '#777', state: 'develop' }, null, 2)
   );
 
-  await run(['777', 'validate'], {
+  await run(['777', 'test'], {
     TT_SKIP_NETWORK: '1',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   const after = JSON.parse(readFileSync(sp, 'utf8'));
-  assert.equal(after.state, 'validate', 'state field should be updated on transition');
+  assert.equal(after.state, 'test', 'state field should be updated on transition');
   assert.equal(after.active, '#777', 'active should be preserved');
 
   // Now test: non-active issue does NOT mutate state
@@ -126,7 +126,7 @@ for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', '
   const after2 = JSON.parse(readFileSync(sp, 'utf8'));
   assert.equal(
     after2.state,
-    'validate',
+    'test',
     'state field should not be touched when issue is not the active task'
   );
 

@@ -30,11 +30,8 @@ import path from 'node:path';
 
 export const DEFAULT_POLICY = Object.freeze({
   codeGlobs: ['src/**', 'lib/**', 'bin/**', 'scripts/**'],
-  codeGlobExcludes: ['scripts/task-tracker/**', 'scripts/gh/**'],
-  // Re-include carve-outs that override codeGlobExcludes. Test files under the
-  // excluded runtime paths are still code — they don't mutate runtime behavior
-  // and need to be writable during normal development of the task-tracker.
-  codeGlobReincludes: ['scripts/task-tracker/tests/**', 'scripts/gh/tests/**'],
+  codeGlobExcludes: [],
+  codeGlobReincludes: [],
   docGlobs: ['docs/**', '.claude/plans/**', 'docs/plans/**', '**/*.md', 'CLAUDE.md'],
   testRunners: ['npm test', 'npm run test', 'node --test', 'pytest', 'cargo test', 'go test'],
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
@@ -42,9 +39,9 @@ export const DEFAULT_POLICY = Object.freeze({
 
 export const STATE_MATRIX = Object.freeze({
   backlog: ['WRITE_ISSUE', 'READ_*'],
-  groom: ['WRITE_ISSUE', 'READ_*'],
-  analyze: ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
-  development: [
+  refine: ['WRITE_ISSUE', 'READ_*'],
+  plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
+  develop: [
     'WRITE_CODE',
     'COMMIT_CODE',
     'WRITE_DOCS',
@@ -53,7 +50,7 @@ export const STATE_MATRIX = Object.freeze({
     'RUN_BUILD',
     'READ_*',
   ],
-  validate: ['RUN_TESTS', 'RUN_BUILD', 'WRITE_ISSUE', 'READ_*'],
+  test: ['RUN_TESTS', 'RUN_BUILD', 'WRITE_ISSUE', 'READ_*'],
   review: ['WRITE_ISSUE', 'WRITE_DOCS', 'READ_*'],
   done: ['READ_*'],
 });

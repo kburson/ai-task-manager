@@ -20,7 +20,7 @@ function stubReader(value) {
   let called = false;
   const reader = async () => {
     called = true;
-    return 'groom';
+    return 'refine';
   };
   const r = await checkParentAdmission({
     parentEpicNumber: null,
@@ -33,7 +33,7 @@ function stubReader(value) {
 }
 
 // 2. Refuse for each pre-Development parent state.
-for (const state of ['backlog', 'groom', 'analyze']) {
+for (const state of ['backlog', 'refine', 'plan']) {
   const r = await checkParentAdmission({
     parentEpicNumber: 61,
     repo: 'o/r',
@@ -52,7 +52,7 @@ for (const state of ['backlog', 'groom', 'analyze']) {
 }
 
 // 3. Pass for each Development-or-later parent state.
-for (const state of ['development', 'validate', 'review', 'done']) {
+for (const state of ['develop', 'test', 'review', 'done']) {
   const r = await checkParentAdmission({
     parentEpicNumber: 61,
     repo: 'o/r',
@@ -99,9 +99,9 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     parentEpicNumber: 61,
     repo: 'o/r',
     projectId: 'P',
-    readParentStatus: stubReader('Development'),
+    readParentStatus: stubReader('Develop'),
   });
-  assert.deepEqual(r, [], 'Development (capitalised) should pass');
+  assert.deepEqual(r, [], 'Develop (capitalised) should pass');
 }
 
 // 7. Wire-up: analyze verb refuses when parent is in pre-Development state.
@@ -122,7 +122,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
       resolveFieldValues: async () => ({ estimate: 1, size: 'S', priority: 'P1', sequence: 1.3 }),
       admit: async () => ({ ok: true, blockers: [] }),
       fetchSubIssueStates: async () => [],
-      readParentStatus: stubReader('groom'),
+      readParentStatus: stubReader('refine'),
       moveState: async () => {
         moveCalled = true;
         return 0;
@@ -155,7 +155,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
       resolveFieldValues: async () => ({ estimate: 1, size: 'S', priority: 'P1', sequence: 1.3 }),
       admit: async () => ({ ok: true, blockers: [] }),
       fetchSubIssueStates: async () => [],
-      readParentStatus: stubReader('development'),
+      readParentStatus: stubReader('develop'),
       moveState: async () => {
         moveCalled = true;
         return 0;
@@ -195,7 +195,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
       applyReevaluate: async () => {},
       isHeadless: () => false,
       fetchParentEpicNumber: async () => 61,
-      readParentStatus: stubReader('analyze'),
+      readParentStatus: stubReader('plan'),
     },
   });
   assert.equal(
@@ -205,7 +205,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
   );
   assert.equal(writeCalled, false, 'body must not be mutated when gate refuses');
   assert.equal(moveCalled, false, 'move-state must not be invoked when gate refuses');
-  assert.match(result.message, /parent #61 is in analyze/);
+  assert.match(result.message, /parent #61 is in plan/);
 }
 
 // 10. Wire-up: approve verb passes when parent is in Development.
@@ -230,7 +230,7 @@ for (const state of ['development', 'validate', 'review', 'done']) {
       applyReevaluate: async () => {},
       isHeadless: () => false,
       fetchParentEpicNumber: async () => 61,
-      readParentStatus: stubReader('development'),
+      readParentStatus: stubReader('develop'),
     },
   });
   assert.equal(result.status, 'approved', `expected approved, got ${JSON.stringify(result)}`);

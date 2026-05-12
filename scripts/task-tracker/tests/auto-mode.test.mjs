@@ -87,7 +87,7 @@ test('case 4: different parent on subsequent bind triggers re-prompt', () => {
   const fs = memFs();
   const dir = '.claude';
   let state = loadSession('sid-A', { fs, dir });
-  state = applyChoice(state, 'analyze', { parent: '61' });
+  state = applyChoice(state, 'plan', { parent: '61' });
   saveSession(state, { fs, dir });
   const reloaded = loadSession('sid-A', { fs, dir });
   assert.notEqual(reloaded.lastPromptedParent, '99'); // prompt fires for #99

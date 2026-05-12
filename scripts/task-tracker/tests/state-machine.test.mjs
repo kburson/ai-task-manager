@@ -6,10 +6,10 @@ import { STATES, FORWARD, BACKWARD, validateTransition } from '../state-machine.
 test('STATES is the canonical 7-state chain in order', () => {
   assert.deepEqual(STATES, [
     'backlog',
-    'groom',
-    'analyze',
-    'development',
-    'validate',
+    'refine',
+    'plan',
+    'develop',
+    'test',
     'review',
     'done',
   ]);
@@ -17,11 +17,11 @@ test('STATES is the canonical 7-state chain in order', () => {
 
 test('FORWARD covers every adjacent forward pair', () => {
   const pairs = [
-    ['backlog', 'groom'],
-    ['groom', 'analyze'],
-    ['analyze', 'development'],
-    ['development', 'validate'],
-    ['validate', 'review'],
+    ['backlog', 'refine'],
+    ['refine', 'plan'],
+    ['plan', 'develop'],
+    ['develop', 'test'],
+    ['test', 'review'],
     ['review', 'done'],
   ];
   for (const [from, to] of pairs) {
@@ -30,11 +30,11 @@ test('FORWARD covers every adjacent forward pair', () => {
   }
 });
 
-test('BACKWARD allows validate→development and review→development', () => {
-  assert.equal(BACKWARD.validate, 'development');
-  assert.equal(BACKWARD.review, 'development');
-  assert.deepEqual(validateTransition('validate', 'development'), { ok: true });
-  assert.deepEqual(validateTransition('review', 'development'), { ok: true });
+test('BACKWARD allows test→develop and review→develop', () => {
+  assert.equal(BACKWARD.test, 'develop');
+  assert.equal(BACKWARD.review, 'develop');
+  assert.deepEqual(validateTransition('test', 'develop'), { ok: true });
+  assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
 });
 
 test('same-state transitions refuse', () => {
@@ -47,12 +47,12 @@ test('same-state transitions refuse', () => {
 
 test('skip-forward transitions refuse', () => {
   const cases = [
-    ['backlog', 'development'],
+    ['backlog', 'develop'],
     ['backlog', 'done'],
-    ['groom', 'development'],
-    ['analyze', 'validate'],
-    ['development', 'review'],
-    ['development', 'done'],
+    ['refine', 'develop'],
+    ['plan', 'test'],
+    ['develop', 'review'],
+    ['develop', 'done'],
   ];
   for (const [from, to] of cases) {
     const r = validateTransition(from, to);
@@ -64,11 +64,11 @@ test('skip-forward transitions refuse', () => {
 test('illegal backward transitions refuse', () => {
   const cases = [
     ['done', 'review'],
-    ['done', 'development'],
-    ['analyze', 'groom'],
-    ['groom', 'backlog'],
-    ['validate', 'analyze'],
-    ['review', 'validate'],
+    ['done', 'develop'],
+    ['plan', 'refine'],
+    ['refine', 'backlog'],
+    ['test', 'plan'],
+    ['review', 'test'],
   ];
   for (const [from, to] of cases) {
     const r = validateTransition(from, to);
@@ -78,11 +78,11 @@ test('illegal backward transitions refuse', () => {
 });
 
 test('unknown state strings refuse with unknown-state message', () => {
-  const r1 = validateTransition('bogus', 'groom');
+  const r1 = validateTransition('bogus', 'refine');
   assert.equal(r1.ok, false);
   assert.match(r1.reason, /unknown state: bogus/);
 
-  const r2 = validateTransition('groom', 'shipped');
+  const r2 = validateTransition('refine', 'shipped');
   assert.equal(r2.ok, false);
   assert.match(r2.reason, /unknown state: shipped/);
 
@@ -93,11 +93,11 @@ test('unknown state strings refuse with unknown-state message', () => {
 
 test('refusal message lists allowed next states', () => {
   // forward + backward both available
-  const r1 = validateTransition('validate', 'backlog');
-  assert.match(r1.reason, /Allowed: review, development/);
+  const r1 = validateTransition('test', 'backlog');
+  assert.match(r1.reason, /Allowed: review, develop/);
   // forward only (no backward defined)
-  const r2 = validateTransition('groom', 'validate');
-  assert.match(r2.reason, /Allowed: analyze/);
+  const r2 = validateTransition('refine', 'test');
+  assert.match(r2.reason, /Allowed: plan/);
   // terminal state (no forward, no backward)
   const r3 = validateTransition('done', 'review');
   assert.match(r3.reason, /Allowed: none/);

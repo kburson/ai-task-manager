@@ -11,7 +11,7 @@ Task Tracker — available commands
   /task resume              Resume the last paused task
   /task resume #N           Switch back to a specific paused task
   /task update [msg]        Checkpoint — flush timing, reset counters, keep task active
-  /task review #N           Move issue through Validate to Review, flush timing, and pause
+  /task review #N           Move issue through Test to Review, flush timing, and pause
   /task review #N --duration-minutes N --words N  Agent-reported timing (skips JSONL read)
   /task words-count         Print word count for the current session (agent use)
   /task close [#N]          Close the active or specified task (runs pre-close gate)
@@ -26,9 +26,9 @@ Task Tracker — available commands
   /task help | ?            Show this help message
 
 State transitions (7-state kanban):
-  /task promote [#N]        Advance one forward state (Backlog→Groom→Analyze→Development→Validate→Review→Done)
+  /task promote [#N]        Advance one forward state (Backlog→Refine→Plan→Develop→Test→Review→Done)
   /task next [#N]           Alias of /task promote
-  /task demote [#N]         Return to Development (from Validate or Review)
+  /task demote [#N]         Return to Develop (from Test or Review)
   /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded
 
 Aliases: start = resume, end = close, next = promote

@@ -5,10 +5,10 @@ const DEFAULT_RETRY_DELAY_MS = 1500;
 
 const STATUS_CONFIG_KEYS = {
   backlog: 'kanbanOptionBacklog',
-  groom: 'kanbanOptionGroom',
-  analyze: 'kanbanOptionAnalyze',
-  development: 'kanbanOptionDevelopment',
-  validate: 'kanbanOptionValidate',
+  refine: 'kanbanOptionGroom',
+  plan: 'kanbanOptionAnalyze',
+  develop: 'kanbanOptionDevelopment',
+  test: 'kanbanOptionValidate',
   review: 'kanbanOptionReview',
   done: 'kanbanOptionDone',
 };

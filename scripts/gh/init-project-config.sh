@@ -383,10 +383,10 @@ apply_project_template() {
   local status_opts priority_opts size_opts
   status_opts='[
     {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
-    {"name":"Groom","color":"BLUE","description":"Items being shaped: AC, sizing, estimates."},
-    {"name":"Analyze","color":"PURPLE","description":"Items being deep-dived: design + caller analysis."},
-    {"name":"Development","color":"YELLOW","description":"Implementation in progress."},
-    {"name":"Validate","color":"ORANGE","description":"Agent verification in progress."},
+    {"name":"Refine","color":"BLUE","description":"Items being shaped: AC, sizing, estimates."},
+    {"name":"Plan","color":"PURPLE","description":"Items being deep-dived: design + caller analysis."},
+    {"name":"Develop","color":"YELLOW","description":"Implementation in progress."},
+    {"name":"Test","color":"ORANGE","description":"Agent verification in progress."},
     {"name":"Review","color":"PURPLE","description":"All checks passed; awaiting human approval."},
     {"name":"Done","color":"GREEN","description":""}
   ]'

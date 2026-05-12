@@ -81,8 +81,8 @@ function cleanup(dir) {
 // Pass cases
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts in development → pass', () => {
-  const dir = makeRepo({ state: 'development' });
+test('Edit src/foo.ts in develop → pass', () => {
+  const dir = makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -95,11 +95,11 @@ test('Edit src/foo.ts in development → pass', () => {
   }
 });
 
-test('Edit docs/notes.md in analyze → pass', () => {
+test('Edit docs/notes.md in plan → pass', () => {
   // STATE_MATRIX: analyze allows WRITE_DOCS; groom does NOT (matrix shipped in W1.2).
   // The "Groom + docs" AC item in the issue body was aspirational; the matrix
-  // ultimately frozen at #63 only admits WRITE_ISSUE + READ_* in groom.
-  const dir = makeRepo({ state: 'analyze' });
+  // ultimately frozen at #63 only admits WRITE_ISSUE + READ_* in refine.
+  const dir = makeRepo({ state: 'plan' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -112,8 +112,8 @@ test('Edit docs/notes.md in analyze → pass', () => {
   }
 });
 
-test('Edit docs/notes.md in groom → block per STATE_MATRIX', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Edit docs/notes.md in refine → block per STATE_MATRIX', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -122,14 +122,14 @@ test('Edit docs/notes.md in groom → block per STATE_MATRIX', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_DOCS/);
-    assert.match(r.decision.reason, /\/task move 65 analyze/);
+    assert.match(r.decision.reason, /\/task move 65 plan/);
   } finally {
     cleanup(dir);
   }
 });
 
-test('Edit .github/ISSUE_TEMPLATE/bug.md in groom → pass', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -145,8 +145,8 @@ test('Edit .github/ISSUE_TEMPLATE/bug.md in groom → pass', () => {
   }
 });
 
-test('Bash npm test in validate → pass', () => {
-  const dir = makeRepo({ state: 'validate' });
+test('Bash npm test in test → pass', () => {
+  const dir = makeRepo({ state: 'test' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -173,8 +173,8 @@ test('Bash READ command (cat README.md) in done → pass', () => {
   }
 });
 
-test('Write tmp/foo.txt in development → pass (scratch carve-out)', () => {
-  const dir = makeRepo({ state: 'development' });
+test('Write tmp/foo.txt in develop → pass (scratch carve-out)', () => {
+  const dir = makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -187,8 +187,8 @@ test('Write tmp/foo.txt in development → pass (scratch carve-out)', () => {
   }
 });
 
-test('Write tmp/draft.md in groom → pass (scratch carve-out)', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Write tmp/draft.md in refine → pass (scratch carve-out)', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -222,8 +222,8 @@ test('Write absolute tmp/ path → pass (scratch carve-out)', () => {
 // Block cases
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts in groom → block; suggests development', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Edit src/foo.ts in refine → block; suggests develop', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -232,16 +232,16 @@ test('Edit src/foo.ts in groom → block; suggests development', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
-    assert.match(r.decision.reason, /groom/);
-    assert.match(r.decision.reason, /\/task move 65 development/);
+    assert.match(r.decision.reason, /refine/);
+    assert.match(r.decision.reason, /\/task move 65 develop/);
     assert.match(r.decision.reason, /Active task: #65/);
   } finally {
     cleanup(dir);
   }
 });
 
-test('Edit src/foo.ts in validate → block; suggests development', () => {
-  const dir = makeRepo({ state: 'validate' });
+test('Edit src/foo.ts in test → block; suggests develop', () => {
+  const dir = makeRepo({ state: 'test' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -250,14 +250,14 @@ test('Edit src/foo.ts in validate → block; suggests development', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
-    assert.match(r.decision.reason, /\/task move 65 development/);
+    assert.match(r.decision.reason, /\/task move 65 develop/);
   } finally {
     cleanup(dir);
   }
 });
 
-test('Bash heredoc to src/ in groom → block', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Bash heredoc to src/ in refine → block', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -274,8 +274,8 @@ test('Bash heredoc to src/ in groom → block', () => {
   }
 });
 
-test('Bash npm run build in groom → block', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Bash npm run build in refine → block', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -289,8 +289,8 @@ test('Bash npm run build in groom → block', () => {
   }
 });
 
-test('Bash git commit in groom → block (COMMIT_CODE)', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Bash git commit in refine → block (COMMIT_CODE)', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -380,7 +380,7 @@ test('Read with no active task is universally allowed; no state file → pass', 
 // ---------------------------------------------------------------------------
 
 test("malformed stdin JSON → pass (don't deadlock)", () => {
-  const dir = makeRepo({ state: 'groom' });
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({ cwd: dir, stdinRaw: 'not-json{' });
     assert.equal(r.code, 0);
@@ -391,7 +391,7 @@ test("malformed stdin JSON → pass (don't deadlock)", () => {
 });
 
 test('unknown tool_name → pass-through', () => {
-  const dir = makeRepo({ state: 'groom' });
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -405,7 +405,7 @@ test('unknown tool_name → pass-through', () => {
 });
 
 test('Edit with missing file_path → pass (avoid false-positive)', () => {
-  const dir = makeRepo({ state: 'groom' });
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -418,8 +418,8 @@ test('Edit with missing file_path → pass (avoid false-positive)', () => {
   }
 });
 
-test('Edit with absolute path inside project root → normalized + blocked in groom', () => {
-  const dir = makeRepo({ state: 'groom' });
+test('Edit with absolute path inside project root → normalized + blocked in refine', () => {
+  const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,

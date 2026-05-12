@@ -41,10 +41,10 @@ assert.ok(
 assert.equal(EMPTY_STATE.state, null);
 
 // Test 3b: state field round-trips through save/load
-saveState({ active: '#400', lastActive: '#400', state: 'development' }, statePath);
+saveState({ active: '#400', lastActive: '#400', state: 'develop' }, statePath);
 s = loadState(statePath);
 assert.equal(s.active, '#400');
-assert.equal(s.state, 'development');
+assert.equal(s.state, 'develop');
 
 // Test 3c: clearActive clears state along with active
 clearActive(statePath);

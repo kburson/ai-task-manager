@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Move a GitHub issue through board states: Backlog → Groom → Analyze → Development → Validate → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
-// States: backlog | groom | analyze | development | validate | review | done
+// States: backlog | refine | plan | develop | test | review | done
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -14,7 +14,7 @@ import { validateBody, DEFAULT_GATES } from '../task-tracker/lib/body-gates.mjs'
 import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
-import { validateTransition } from '../task-tracker/state-machine.mjs';
+import { validateTransition, normalizeStateSlug } from '../task-tracker/state-machine.mjs';
 import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../task-tracker/paths.mjs';
 import { loadState, saveState } from '../task-tracker/state.mjs';
@@ -41,10 +41,10 @@ if (!AITM_INTERNAL && !IS_TTY) {
 
 const STATE_TO_CONFIG_KEY = {
   backlog: 'kanbanOptionBacklog',
-  groom: 'kanbanOptionGroom',
-  analyze: 'kanbanOptionAnalyze',
-  development: 'kanbanOptionDevelopment',
-  validate: 'kanbanOptionValidate',
+  refine: 'kanbanOptionGroom',
+  plan: 'kanbanOptionAnalyze',
+  develop: 'kanbanOptionDevelopment',
+  test: 'kanbanOptionValidate',
   review: 'kanbanOptionReview',
   done: 'kanbanOptionDone',
 };
@@ -52,7 +52,7 @@ const STATE_TO_CONFIG_KEY = {
 function usage() {
   process.stderr.write(
     'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>]\n' +
-      'States: backlog | groom | analyze | development | validate | review | done\n'
+      'States: backlog | refine | plan | develop | test | review | done\n'
   );
   process.exit(1);
 }
@@ -79,7 +79,7 @@ if (!/^\d+$/.test(issueArg)) usage();
 const configKey = STATE_TO_CONFIG_KEY[stateArg];
 if (!configKey) {
   process.stderr.write(
-    `Unknown state: ${stateArg}\nStates: backlog | groom | analyze | development | validate | review | done\n`
+    `Unknown state: ${stateArg}\nStates: backlog | refine | plan | develop | test | review | done\n`
   );
   process.exit(1);
 }
@@ -104,7 +104,7 @@ if (!SKIP_NETWORK && !optionId) {
 // recorded lastKnownState and skip the GraphQL roundtrip), then live Status field
 // via GraphQL. If neither source is available (e.g. TT_SKIP_NETWORK with no
 // --from), the matrix check is skipped — same fall-through behaviour as the
-// analyze->development approval gate.
+// plan->develop approval gate.
 async function resolveLiveStateName(issueNumber) {
   if (SKIP_NETWORK) return '';
   try {
@@ -130,7 +130,7 @@ async function resolveLiveStateName(issueNumber) {
     );
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
     const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-    return String(node?.fieldValueByName?.name || '').toLowerCase();
+    return normalizeStateSlug(String(node?.fieldValueByName?.name || '').toLowerCase()) || '';
   } catch {
     return '';
   }
@@ -149,10 +149,10 @@ if (resolvedFromState) {
     process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
     process.stderr.write(`   BLOCKED: ${v.reason}\n`);
     process.stderr.write(
-      '\nThe 7-state kanban only permits one-step forward moves plus validate->development\n'
+      '\nThe 7-state kanban only permits one-step forward moves plus test->develop\n'
     );
     process.stderr.write(
-      'and review->development rework. See scripts/task-tracker/state-machine.mjs.\n\n'
+      'and review->develop rework. See scripts/task-tracker/state-machine.mjs.\n\n'
     );
     process.exit(5);
   }
@@ -178,12 +178,12 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
   }
 }
 
-// Structural body gate: applies to validate, review, and done.
+// Structural body gate: applies to test, review, and done.
 // - For all three states: verify "evidence-required" ticked boxes have supporting body content
 //   (Deep-Dive Analysis section, Dependency Map section, Verification Commands all-checked).
-//   Note: verification-commands rule fires only at review/done — at validate the auto-runner ticks them.
+//   Note: verification-commands rule fires only at review/done — at test the auto-runner ticks them.
 // - For done only: also enforce "no unchecked checkboxes" and "Deep dive line is checked".
-const GATED_STATES = new Set(['validate', 'review', 'done']);
+const GATED_STATES = new Set(['test', 'review', 'done']);
 if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   let body = '';
   try {
@@ -266,11 +266,11 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   }
 }
 
-// Approval gate: analyze -> development requires explicit human approval
+// Approval gate: plan -> develop requires explicit human approval
 // recorded as a `<!-- aitm-plan-approved: <ts> -->` marker in the issue body.
-// Fires only when the *current* board state is `analyze` so transitions back
-// from validate/review do not require a fresh approval.
-if (stateArg === 'development' && !SKIP_NETWORK) {
+// Fires only when the *current* board state is `plan` so transitions back
+// from test/review do not require a fresh approval.
+if (stateArg === 'develop' && !SKIP_NETWORK) {
   let body = '';
   try {
     body = (
@@ -307,31 +307,32 @@ if (stateArg === 'development' && !SKIP_NETWORK) {
     );
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
     const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-    currentStateName = String(node?.fieldValueByName?.name || '').toLowerCase();
+    const rawName = String(node?.fieldValueByName?.name || '').toLowerCase();
+    currentStateName = normalizeStateSlug(rawName) || '';
   } catch {
     /* offline: fall back to body-only check below */
   }
 
-  const fromAnalyze = currentStateName === '' || currentStateName === 'analyze';
+  const fromAnalyze = currentStateName === '' || currentStateName === 'plan';
 
   if (fromAnalyze && !approved) {
     if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
       process.stderr.write(
-        `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing analyze->development approval gate for #${issueArg}\n`
+        `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing plan->develop approval gate for #${issueArg}\n`
       );
-      const bypassMsg = `⚠ **analyze->development approval gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}.`;
+      const bypassMsg = `⚠ **plan->develop approval gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}.`;
       try {
         await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]);
       } catch {}
     } else {
       process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move #${issueArg} to development:\n`);
+      process.stderr.write(`⛔ Refusing to move #${issueArg} to develop:\n`);
       process.stderr.write(
-        '   BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)\n'
+        '   BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)\n'
       );
       process.stderr.write('\nResolve the blocker, then retry. Legitimate-abandonment override:\n');
       process.stderr.write(
-        `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} development\n\n`
+        `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} develop\n\n`
       );
       process.exit(4);
     }

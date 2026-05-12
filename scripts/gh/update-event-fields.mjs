@@ -11,7 +11,7 @@ import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
 const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
-const state = args.find((a) => ['development', 'done'].includes(a));
+const state = args.find((a) => ['develop', 'done'].includes(a));
 const itemId = args[args.indexOf('--item-id') + 1] || '';
 
 if (!issue || !state || !itemId) {
@@ -96,7 +96,7 @@ async function writeIssueBody(body) {
 }
 
 try {
-  const eventName = state === 'development' ? 'moveToDevelopment' : 'moveToDone';
+  const eventName = state === 'develop' ? 'moveToDevelopment' : 'moveToDone';
   const bindings = loadEventBindings()[eventName] || [];
   const fieldDefs = loadProjectFieldDefs(projectDir());
   const issueBody = cfg.repo ? await fetchIssueBody() : '';

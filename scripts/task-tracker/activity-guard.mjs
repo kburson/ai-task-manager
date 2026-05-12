@@ -192,7 +192,7 @@ function suggestTransition(activityClass, currentState, activeIssue) {
 
   // Find the canonical state that allows this activity class. Pick the
   // earliest in the kanban flow that grants it.
-  const order = ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done'];
+  const order = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
   for (const s of order) {
     if (s === currentState) continue;
     const allowed = STATE_MATRIX[s] ?? [];

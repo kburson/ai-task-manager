@@ -9,7 +9,7 @@
 //   3. Invalid transition with --from and AITM_INTERNAL=1 → refused with the
 //      state-machine matrix reason; exit code 5.
 //   4. Valid forward transition with --from → permitted.
-//   5. Valid backward rework transition (validate→development) with --from →
+//   5. Valid backward rework transition (test→develop) with --from →
 //      permitted.
 
 import { strict as assert } from 'node:assert';
@@ -78,7 +78,7 @@ async function runExpectFail(args, env) {
 // 1. No AITM_INTERNAL, non-TTY (execFile child has no TTY) → refused.
 {
   const sandbox = makeSandbox();
-  const e = await runExpectFail(['123', 'groom'], cleanEnv(sandbox));
+  const e = await runExpectFail(['123', 'refine'], cleanEnv(sandbox));
   assert.match(
     String(e.stderr || ''),
     /move-state\.mjs is internal/,
@@ -91,8 +91,8 @@ async function runExpectFail(args, env) {
 // 2. AITM_INTERNAL=1 → permitted; transition succeeds under TT_SKIP_NETWORK.
 {
   const sandbox = makeSandbox();
-  const r = await run(['123', 'groom'], cleanEnv(sandbox, { AITM_INTERNAL: '1' }));
-  assert.match(r.stdout, /moved to: groom/, 'chokepoint-driven call should succeed');
+  const r = await run(['123', 'refine'], cleanEnv(sandbox, { AITM_INTERNAL: '1' }));
+  assert.match(r.stdout, /moved to: refine/, 'chokepoint-driven call should succeed');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -100,12 +100,12 @@ async function runExpectFail(args, env) {
 {
   const sandbox = makeSandbox();
   const e = await runExpectFail(
-    ['123', 'development', '--from', 'backlog'],
+    ['123', 'develop', '--from', 'backlog'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
   assert.match(
     String(e.stderr || ''),
-    /illegal transition: backlog → development/,
+    /illegal transition: backlog → develop/,
     'matrix refusal must surface the state-machine reason'
   );
   assert.equal(e.code, 5, `expected exit code 5 for matrix refusal, got ${e.code}`);
@@ -116,21 +116,21 @@ async function runExpectFail(args, env) {
 {
   const sandbox = makeSandbox();
   const r = await run(
-    ['123', 'analyze', '--from', 'groom'],
+    ['123', 'plan', '--from', 'refine'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
-  assert.match(r.stdout, /moved to: analyze/, 'forward groom->analyze should succeed');
+  assert.match(r.stdout, /moved to: plan/, 'forward refine->plan should succeed');
   rmSync(sandbox, { recursive: true });
 }
 
-// 5. Valid backward rework transition (validate -> development) → permitted.
+// 5. Valid backward rework transition (test -> develop) → permitted.
 {
   const sandbox = makeSandbox();
   const r = await run(
-    ['123', 'development', '--from', 'validate'],
+    ['123', 'develop', '--from', 'test'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
-  assert.match(r.stdout, /moved to: development/, 'validate->development rework should succeed');
+  assert.match(r.stdout, /moved to: develop/, 'test->develop rework should succeed');
   rmSync(sandbox, { recursive: true });
 }
 

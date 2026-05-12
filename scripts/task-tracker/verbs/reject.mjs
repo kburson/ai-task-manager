@@ -43,14 +43,14 @@ export async function verbReject(ctx) {
       process.exit(1);
     }
   }
-  await runMoveState(target, 'development');
+  await runMoveState(target, 'develop');
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const descReason = reason.trim().slice(0, 40);
   await safePostTiming(
     target,
     buildRow({
       ts: nowIso(),
-      event: 'development',
+      event: 'develop',
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
@@ -58,5 +58,5 @@ export async function verbReject(ctx) {
       description: `review rejected: ${descReason}`,
     })
   );
-  console.log(`✓ ${target} rejected — moved back to Development.`);
+  console.log(`✓ ${target} rejected — moved back to Develop.`);
 }

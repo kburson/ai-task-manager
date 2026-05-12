@@ -27,11 +27,10 @@
 import { gql, splitRepo } from './github-projects.mjs';
 
 const IN_FLIGHT_STATES = new Set([
-  'grooming',
-  'analyze', // current naming in this repo's option config
-  'analysis', // alias used in the AC text
-  'development',
-  'validate',
+  'refine',
+  'plan',
+  'develop',
+  'test',
   'review',
 ]);
 

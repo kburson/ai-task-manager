@@ -66,7 +66,7 @@ function makeDeps(overrides = {}) {
       },
       isHeadless: () => false,
       fetchParentEpicNumber: async () => null,
-      readParentStatus: async () => 'development',
+      readParentStatus: async () => 'develop',
       ...overrides,
     },
   };

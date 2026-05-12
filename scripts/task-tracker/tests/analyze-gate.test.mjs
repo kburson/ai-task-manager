@@ -45,7 +45,7 @@ function makeDeps(overrides = {}) {
       sequence: 3,
     }),
     admit: async () => ({ ok: true, blockers: [] }),
-    readParentStatus: async () => 'development', // parent admitted by default
+    readParentStatus: async () => 'develop', // parent admitted by default
     moveState: async () => 0,
     ...overrides,
   };
@@ -102,7 +102,7 @@ function makeDeps(overrides = {}) {
     }),
     admit: async () => ({
       ok: false,
-      blockers: [{ issue: 47, sequence: 1, state: 'development' }],
+      blockers: [{ issue: 47, sequence: 1, state: 'develop' }],
     }),
   });
   const r = await runAnalyze({ issueNumber: 102, cfg, deps });
@@ -124,7 +124,7 @@ function makeDeps(overrides = {}) {
       isEpic: true,
     }),
     fetchSubIssueStates: async () => [
-      { number: 200, state: 'groom' },
+      { number: 200, state: 'refine' },
       { number: 201, state: 'backlog' },
     ],
   });

@@ -136,7 +136,7 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
     '--body-file',
     bodyFile,
     '--status',
-    'development',
+    'develop',
     '--no-placeholder-substitution',
   ];
   if (priority) args.push('--priority', priority);

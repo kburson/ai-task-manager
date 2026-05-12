@@ -23,7 +23,7 @@ import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { FORWARD, STATES } from '../state-machine.mjs';
+import { FORWARD, STATES, normalizeStateSlug } from '../state-machine.mjs';
 import {
   readLastKnownState,
   writeLastKnownState,
@@ -37,12 +37,12 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 // Map source state → stage alias verb. Promote delegates to the alias so its
-// gate stack runs unchanged. States with no alias (`backlog`, `validate`) fall
+// gate stack runs unchanged. States with no alias (`backlog`, `test`) fall
 // through to a direct internal move-state call.
 const ALIAS_VERB = {
-  groom: 'analyze',
-  analyze: 'approve',
-  development: 'review',
+  refine: 'analyze',
+  plan: 'approve',
+  develop: 'review',
   review: 'close',
 };
 
@@ -102,8 +102,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  const name = node?.fieldValueByName?.name;
-  return name ? String(name).toLowerCase() : null;
+  return normalizeStateSlug(node?.fieldValueByName?.name);
 }
 
 function defaultSpawnVerb({ verb, issueNumber }) {
@@ -209,7 +208,7 @@ export async function runPromote({
   // the move if either is missing, so the post-success hook can safely
   // assume both signals are present (AC4 of #95).
   let groomPlan = null;
-  if (target === 'groom') {
+  if (target === 'refine') {
     const planResult = await planGroomEstimate({
       cfg,
       issueNumber,
@@ -268,7 +267,7 @@ export async function runPromote({
   // strip the rationale marker from the body. Best-effort — failures here do
   // not roll back the board move.
   let groomPost = null;
-  if (target === 'groom' && groomPlan) {
+  if (target === 'refine' && groomPlan) {
     try {
       groomPost = await applyGroomEstimate({
         cfg,

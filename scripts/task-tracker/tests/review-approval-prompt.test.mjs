@@ -346,7 +346,7 @@ async function run(sandbox, binDir, args) {
       'scope creep — split before merge',
     ]);
     assert.equal(r.code, 0, `expected exit 0; stderr:\n${r.stderr}`);
-    assert.match(r.stdout, /rejected — moved back to Development/, `stdout:\n${r.stdout}`);
+    assert.match(r.stdout, /rejected — moved back to Develop/, `stdout:\n${r.stdout}`);
     // Verify a `gh issue comment` was made with the rejection marker
     const calls = readFileSync(callsLog, 'utf8')
       .split('\n')

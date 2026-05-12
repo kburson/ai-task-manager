@@ -34,15 +34,31 @@ test('classifyEdit: code globs', () => {
   assert.equal(classifyEdit('scripts/nested/deep/file.js'), 'WRITE_CODE');
 });
 
-test('classifyEdit: codeGlobExcludes honored (task-tracker itself)', () => {
-  assert.equal(classifyEdit('scripts/task-tracker/foo.mjs'), 'WRITE_OTHER');
-  assert.equal(classifyEdit('scripts/task-tracker/lib/bar.mjs'), 'WRITE_OTHER');
-  assert.equal(classifyEdit('scripts/gh/baz.mjs'), 'WRITE_OTHER');
+test('classifyEdit: codeGlobExcludes honored when configured', () => {
+  const policy = {
+    codeGlobs: ['scripts/**'],
+    codeGlobExcludes: ['scripts/task-tracker/**', 'scripts/gh/**'],
+    codeGlobReincludes: [],
+    docGlobs: [],
+    testRunners: [],
+    buildCommands: [],
+  };
+  assert.equal(classifyEdit('scripts/task-tracker/foo.mjs', policy), 'WRITE_OTHER');
+  assert.equal(classifyEdit('scripts/task-tracker/lib/bar.mjs', policy), 'WRITE_OTHER');
+  assert.equal(classifyEdit('scripts/gh/baz.mjs', policy), 'WRITE_OTHER');
 });
 
 test('classifyEdit: codeGlobReincludes carve-out for tests under excluded paths', () => {
-  assert.equal(classifyEdit('scripts/task-tracker/tests/foo.test.mjs'), 'WRITE_CODE');
-  assert.equal(classifyEdit('scripts/gh/tests/bar.test.mjs'), 'WRITE_CODE');
+  const policy = {
+    codeGlobs: ['scripts/**'],
+    codeGlobExcludes: ['scripts/task-tracker/**', 'scripts/gh/**'],
+    codeGlobReincludes: ['scripts/task-tracker/tests/**', 'scripts/gh/tests/**'],
+    docGlobs: [],
+    testRunners: [],
+    buildCommands: [],
+  };
+  assert.equal(classifyEdit('scripts/task-tracker/tests/foo.test.mjs', policy), 'WRITE_CODE');
+  assert.equal(classifyEdit('scripts/gh/tests/bar.test.mjs', policy), 'WRITE_CODE');
 });
 
 test('classifyEdit: doc globs', () => {
@@ -148,13 +164,13 @@ test('classifyBash: touch/mkdir code path', () => {
 
 test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
   assert.deepEqual([...STATE_MATRIX.backlog].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.groom].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
+  assert.deepEqual([...STATE_MATRIX.refine].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
   assert.deepEqual(
-    [...STATE_MATRIX.analyze].sort(),
+    [...STATE_MATRIX.plan].sort(),
     ['READ_*', 'RUN_TESTS', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
   );
   assert.deepEqual(
-    [...STATE_MATRIX.development].sort(),
+    [...STATE_MATRIX.develop].sort(),
     [
       'COMMIT_CODE',
       'READ_*',
@@ -166,7 +182,7 @@ test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
     ].sort()
   );
   assert.deepEqual(
-    [...STATE_MATRIX.validate].sort(),
+    [...STATE_MATRIX.test].sort(),
     ['READ_*', 'RUN_BUILD', 'RUN_TESTS', 'WRITE_ISSUE'].sort()
   );
   assert.deepEqual([...STATE_MATRIX.review].sort(), ['READ_*', 'WRITE_DOCS', 'WRITE_ISSUE'].sort());
@@ -174,12 +190,12 @@ test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
 });
 
 test('isAllowed: every state allows READ_*', () => {
-  for (const s of ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done']) {
+  for (const s of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
     assert.equal(isAllowed(s, 'READ_*'), true, `${s} should allow READ_*`);
   }
 });
 
-test('isAllowed: development allows everything', () => {
+test('isAllowed: develop allows everything', () => {
   for (const c of [
     'WRITE_CODE',
     'COMMIT_CODE',
@@ -189,25 +205,25 @@ test('isAllowed: development allows everything', () => {
     'RUN_BUILD',
     'READ_*',
   ]) {
-    assert.equal(isAllowed('development', c), true);
+    assert.equal(isAllowed('develop', c), true);
   }
 });
 
-test('isAllowed: groom refuses WRITE_CODE / COMMIT_CODE / RUN_TESTS / RUN_BUILD', () => {
-  assert.equal(isAllowed('groom', 'WRITE_CODE'), false);
-  assert.equal(isAllowed('groom', 'COMMIT_CODE'), false);
-  assert.equal(isAllowed('groom', 'WRITE_DOCS'), false);
-  assert.equal(isAllowed('groom', 'RUN_TESTS'), false);
-  assert.equal(isAllowed('groom', 'RUN_BUILD'), false);
+test('isAllowed: refine refuses WRITE_CODE / COMMIT_CODE / RUN_TESTS / RUN_BUILD', () => {
+  assert.equal(isAllowed('refine', 'WRITE_CODE'), false);
+  assert.equal(isAllowed('refine', 'COMMIT_CODE'), false);
+  assert.equal(isAllowed('refine', 'WRITE_DOCS'), false);
+  assert.equal(isAllowed('refine', 'RUN_TESTS'), false);
+  assert.equal(isAllowed('refine', 'RUN_BUILD'), false);
 });
 
-test('isAllowed: validate refuses WRITE_CODE; allows tests/build', () => {
-  assert.equal(isAllowed('validate', 'WRITE_CODE'), false);
-  assert.equal(isAllowed('validate', 'COMMIT_CODE'), false);
-  assert.equal(isAllowed('validate', 'WRITE_DOCS'), false);
-  assert.equal(isAllowed('validate', 'RUN_TESTS'), true);
-  assert.equal(isAllowed('validate', 'RUN_BUILD'), true);
-  assert.equal(isAllowed('validate', 'WRITE_ISSUE'), true);
+test('isAllowed: test refuses WRITE_CODE; allows tests/build', () => {
+  assert.equal(isAllowed('test', 'WRITE_CODE'), false);
+  assert.equal(isAllowed('test', 'COMMIT_CODE'), false);
+  assert.equal(isAllowed('test', 'WRITE_DOCS'), false);
+  assert.equal(isAllowed('test', 'RUN_TESTS'), true);
+  assert.equal(isAllowed('test', 'RUN_BUILD'), true);
+  assert.equal(isAllowed('test', 'WRITE_ISSUE'), true);
 });
 
 test('isAllowed: review allows docs + issues only (no code)', () => {

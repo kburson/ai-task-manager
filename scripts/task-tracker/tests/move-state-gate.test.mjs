@@ -2,8 +2,8 @@
 // Integration tests for the structural body gate in scripts/gh/move-state.mjs.
 // Drives move-state.mjs against a sandboxed config + fake `gh` shim that returns
 // a body we control. Asserts:
-//   - validate with ticked Deep dive + missing section → exit 4 + BLOCKED:
-//   - validate with ticked Deep dive + adequate section → exit 0
+//   - test with ticked Deep dive + missing section → exit 4 + BLOCKED:
+//   - test with ticked Deep dive + adequate section → exit 0
 //   - review with same missing-section body → exit 4
 //   - done with same missing-section body → exit 4 (Done gate fires)
 //   - TASK_TRACKER_FORCE_DONE=1 bypasses
@@ -100,22 +100,22 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   }
 }
 
-// 1. validate with ticked Deep dive but no section → blocked
+// 1. test with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
   const { sandbox, binDir } = makeSandbox(body);
-  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'validate']);
+  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'test']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
   rmSync(sandbox, { recursive: true });
 }
 
-// 2. validate with ticked Deep dive + adequate section → success
+// 2. test with ticked Deep dive + adequate section → success
 {
   const body = `## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n\n${deepDiveAdequate()}\n`;
   const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'validate']);
-  assert.match(r.stdout, /moved to: validate/);
+  const r = await runMove(sandbox, binDir, ['100', 'test']);
+  assert.match(r.stdout, /moved to: test/);
   rmSync(sandbox, { recursive: true });
 }
 
@@ -145,9 +145,9 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
   const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'validate'], { TASK_TRACKER_FORCE_DONE: '1' });
-  assert.match(r.stderr, /bypassing validate gate/);
-  assert.match(r.stdout, /moved to: validate/);
+  const r = await runMove(sandbox, binDir, ['100', 'test'], { TASK_TRACKER_FORCE_DONE: '1' });
+  assert.match(r.stderr, /bypassing test gate/);
+  assert.match(r.stdout, /moved to: test/);
   rmSync(sandbox, { recursive: true });
 }
 

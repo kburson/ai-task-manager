@@ -104,7 +104,7 @@ async function defaultPostComment({ issueNumber, repo, body }) {
 async function defaultMoveState({ issueNumber }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), 'development'], {
+    const child = spawn(process.execPath, [script, String(issueNumber), 'develop'], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });
