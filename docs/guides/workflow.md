@@ -48,10 +48,10 @@ scripts/gh/move-state.mjs 42 development
 
 Two transitions require explicit human approval. Both are toggleable via config; defaults preserve today's behavior (human required).
 
-| Gate | Config key | Default | Bypass behavior when `false` |
-|---|---|---|---|
-| Analyze → Development | `gateAnalysisToDevelopment` | `true` | `/task approve #N` auto-writes the approval marker and moves the issue; emits a `gate-bypassed` status. |
-| Review → Done         | `gateReviewToDone`         | `true` | `/task close` posts a `gate-bypassed` timing-log row instead of refusing. |
+| Gate                  | Config key                  | Default | Bypass behavior when `false`                                                                            |
+| --------------------- | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| Analyze → Development | `gateAnalysisToDevelopment` | `true`  | `/task approve #N` auto-writes the approval marker and moves the issue; emits a `gate-bypassed` status. |
+| Review → Done         | `gateReviewToDone`          | `true`  | `/task close` posts a `gate-bypassed` timing-log row instead of refusing.                               |
 
 The Analyze → Development gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Analyze. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
 
@@ -82,7 +82,7 @@ For one-off parallel batches (e.g., dispatching several sub-issues without pausi
 
 **Precedence**: session override > project config > built-in defaults (both gates ON).
 
-**Per-parent prompt**: when both `gateAnalysisToDevelopment` and `gateReviewToDone` are *not* explicitly set in project config, the first `/task #N` bind under a new parent emits a `PROMPT_REQUIRED: auto-mode #<rootKey>` line so the skill can ask the user which gates to toggle. The `lastPromptedParent` field is keyed by `parentOf(#N) || #N`, so further binds under the same parent do not re-prompt; switching to a different epic does.
+**Per-parent prompt**: when both `gateAnalysisToDevelopment` and `gateReviewToDone` are _not_ explicitly set in project config, the first `/task #N` bind under a new parent emits a `PROMPT_REQUIRED: auto-mode #<rootKey>` line so the skill can ask the user which gates to toggle. The `lastPromptedParent` field is keyed by `parentOf(#N) || #N`, so further binds under the same parent do not re-prompt; switching to a different epic does.
 
 **Orphan GC**: on `SessionStart`, override files older than `deadSessionMaxAgeMs` (default 7 days) are swept. Tunable via `/task config deadSessionMaxAgeMs <ms>`.
 
@@ -147,10 +147,10 @@ Cross-link in issue bodies: use "Parent: #N" and "Blocked by: #M" in the issue d
 
 Every issue/sub-issue needs both fields set **before work starts**:
 
-| Field | Type | Purpose |
-|-------|------|---------|
+| Field      | Type           | Purpose                                                |
+| ---------- | -------------- | ------------------------------------------------------ |
 | `Estimate` | Number (hours) | Mid-level human-equivalent hours — the ROI denominator |
-| `Size` | Single select | XS/S/M/L/XL — coarse sizing for swim-lane views |
+| `Size`     | Single select  | XS/S/M/L/XL — coarse sizing for swim-lane views        |
 
 Size options: **XS** (1–2h), **S** (3–4h), **M** (6–10h), **L** (12–20h), **XL** (24h+).
 
@@ -162,11 +162,11 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 Size and Estimate move through three distinct stages. Only the first two ever mutate fields; the third is read-only.
 
-| Stage | Verb that fires it | Mutates fields? | Comment surface |
-|---|---|---|---|
-| Grooming | (manual at issue creation / groom) | Yes — initial set | n/a |
+| Stage    | Verb that fires it                                   | Mutates fields?               | Comment surface               |
+| -------- | ---------------------------------------------------- | ----------------------------- | ----------------------------- |
+| Grooming | (manual at issue creation / groom)                   | Yes — initial set             | n/a                           |
 | Analysis | `/task approve <N>` (analyze → development boundary) | Yes — rebucket from Deep Dive | `### 🔁 Analysis re-estimate` |
-| Review | `/task close <N>` (review → done) | **No** — read-only delta | `### 📊 Review delta` |
+| Review   | `/task close <N>` (review → done)                    | **No** — read-only delta      | `### 📊 Review delta`         |
 
 **Analysis re-estimate.** When `/task approve <N>` advances an issue from Analyze to Development, the harness re-evaluates Size + Estimate from the Deep-Dive Analysis section:
 
@@ -296,3 +296,31 @@ Frequently-loaded skill detail files (`skill/adapters/claude/SKILL.md`, `skill/s
 3. Skip the full read when the sentinel is present; otherwise read fully and emit the sentinel.
 
 After `/clear`, `/compact`, or `npm update ai-task-manager`, the sentinel/marker mismatches and a reload happens automatically. v1 is text-instruction only — no hook enforces the contract. The `AITM_FORCE_STAMP=1` env var makes install stamp dev checkouts (otherwise stamping skips when `.git` is present at the package root).
+
+---
+
+## Quality Gates
+
+Code/docs/spelling are gated by four tools wired through `package.json` scripts.
+
+| Script                 | Tool                     | Scope                                  |
+| ---------------------- | ------------------------ | -------------------------------------- |
+| `npm run format:check` | Prettier                 | All files (write via `npm run format`) |
+| `npm run lint:js`      | ESLint (flat config, v9) | `**/*.{mjs,js}`                        |
+| `npm run lint:md`      | markdownlint-cli2        | `**/*.md`                              |
+| `npm run lint:spell`   | CSpell                   | `**/*.{md,mjs,js,json}`                |
+| `npm run lint`         | composite                | js + md + spell                        |
+| `npm run quality`      | composite                | `format:check && lint && test`         |
+
+Config files (all at repo root):
+
+- `.prettierrc.json` + `.prettierignore`
+- `eslint.config.mjs` (flat config; uses `@eslint/js` + `globals`)
+- `.markdownlint-cli2.jsonc` + `.markdownlintignore`
+- `cspell.json` + `cspell-dictionary.txt`
+
+Ignored paths in every tool include `node_modules/`, `tmp/`, `.worktrees/`, `.claude/worktrees/`, `reports/`, `coverage/`, `docs/postmortems/`.
+
+When CSpell flags a legitimate token (project jargon, library name, person name), add it to `cspell-dictionary.txt` — keep the file sorted (`sort -u -o cspell-dictionary.txt cspell-dictionary.txt`). Don't disable spell-check inline.
+
+`npm run quality` must exit 0 before close. CI runs the same script.
