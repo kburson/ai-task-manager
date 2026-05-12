@@ -16,9 +16,11 @@ export async function verbCheck(ctx) {
     process.exit(1);
   }
   const issueNum = s.active.replace(/^#/, '');
-  const { stdout } = await pexec('gh', [
-    'issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body',
-  ], { timeout: 10000 });
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+    { timeout: 10000 }
+  );
   const body = stdout;
 
   if (/^deep[- ]?dive complete$/i.test(label)) {
@@ -33,11 +35,13 @@ export async function verbCheck(ctx) {
   }
 
   const uncheckedLine = `- [ ] ${label}`;
-  const checkedLine   = `- [x] ${label}`;
+  const checkedLine = `- [x] ${label}`;
   const alreadyChecked = body.includes(checkedLine);
   if (!alreadyChecked && !body.includes(uncheckedLine)) {
-    const found = [...body.matchAll(/^- \[[ x]\] (.+)$/gm)].map(m => `  "${m[1]}"`);
-    const list = found.length ? `\nCheckboxes found:\n${found.join('\n')}` : '\n(no checkboxes found in issue body)';
+    const found = [...body.matchAll(/^- \[[ x]\] (.+)$/gm)].map((m) => `  "${m[1]}"`);
+    const list = found.length
+      ? `\nCheckboxes found:\n${found.join('\n')}`
+      : '\n(no checkboxes found in issue body)';
     console.error(`[task-tracker] checkbox "${label}" not found in ${s.active}${list}`);
     process.exit(1);
   }
@@ -47,9 +51,13 @@ export async function verbCheck(ctx) {
   const tmp = path.join(projectTmpDir(projectDir), `tt-check-${Date.now()}.md`);
   try {
     writeFileSync(tmp, updated, 'utf8');
-    await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], { timeout: 10000 });
+    await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], {
+      timeout: 10000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
   const action = alreadyChecked ? 'Unchecked' : 'Checked';
   console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}`);

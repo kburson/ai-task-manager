@@ -1,5 +1,11 @@
 import { loadState, saveState, EMPTY_STATE } from '../state.mjs';
-import { currentSessionId, jsonlPath, markerPathFor, saveMarker, countWords } from '../word-counter.mjs';
+import {
+  currentSessionId,
+  jsonlPath,
+  markerPathFor,
+  saveMarker,
+  countWords,
+} from '../word-counter.mjs';
 
 export async function verbPlan(ctx) {
   const { cfg, statePath, drainQueueIfAny, flushActiveToGH, nowIso } = ctx;
@@ -21,15 +27,18 @@ export async function verbPlan(ctx) {
     saveMarker(markerPathFor(sid), totalLines, count, 'plan');
     wordsAtStart = count;
   }
-  saveState({
-    ...EMPTY_STATE,
-    active: 'plan',
-    lastActive: s.lastActive,
-    planBucket: {
-      startedAt: ts,
-      wordsAtStart,
-      entries: [{ ts, event: 'plan-start', deltaMin: null, deltaWords: null }],
+  saveState(
+    {
+      ...EMPTY_STATE,
+      active: 'plan',
+      lastActive: s.lastActive,
+      planBucket: {
+        startedAt: ts,
+        wordsAtStart,
+        entries: [{ ts, event: 'plan-start', deltaMin: null, deltaWords: null }],
+      },
     },
-  }, statePath);
+    statePath
+  );
   console.log(`Started planning bucket.${previousNote} Use "/task new [title]" to promote.`);
 }

@@ -7,12 +7,17 @@ export function verbConfig(ctx) {
     return;
   }
   if (rest[0] === 'init') {
-    console.log('Run /task config init from a Claude session to start the configuration interview.');
+    console.log(
+      'Run /task config init from a Claude session to start the configuration interview.'
+    );
     return;
   }
   if (rest.length === 1) {
     const [k] = rest;
-    if (!(k in DEFAULTS)) { console.error(`unknown config key: ${k}`); process.exit(1); }
+    if (!(k in DEFAULTS)) {
+      console.error(`unknown config key: ${k}`);
+      process.exit(1);
+    }
     console.log(`${k} = ${JSON.stringify(cfg[k])} (source: ${cfg._sources[k]})`);
     return;
   }

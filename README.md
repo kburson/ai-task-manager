@@ -21,6 +21,7 @@ git commit -m "chore: add ai-task-manager"
 ```
 
 Then in Claude Code:
+
 ```
 /task #42          → switch to issue #42, move board to In Progress, display the brief
 /task new          → create a new issue and start tracking
@@ -42,7 +43,7 @@ Use the task skill to start issue #42.
 
 Most AI coding tools give you a chat. This gives you an **engineering system**.
 
-The gap between "I've been using AI coding agents for a few weeks" and "here's what we shipped, what it cost, and what we got for it" is exactly what this tool fills. Every session is bound to a GitHub issue. Every issue is tracked on a Kanban board. Every hour of AI engagement is measured and compared against your original estimate. At the end of a sprint — or a project — you can generate a report that answers the only question leadership actually cares about: *what did this cost versus what would it have cost without AI?*
+The gap between "I've been using AI coding agents for a few weeks" and "here's what we shipped, what it cost, and what we got for it" is exactly what this tool fills. Every session is bound to a GitHub issue. Every issue is tracked on a Kanban board. Every hour of AI engagement is measured and compared against your original estimate. At the end of a sprint — or a project — you can generate a report that answers the only question leadership actually cares about: _what did this cost versus what would it have cost without AI?_
 
 The tool has three distinct capability layers:
 
@@ -108,7 +109,7 @@ The old `claude-gh-task-manager` bin remains as a compatibility alias for this r
 
 ### The Core Loop
 
-The fundamental unit is a *task session*: Claude is working on one GitHub issue at a time. You switch issues with `/task #N`, and the skill handles the rest — moving the Kanban card, logging the start event, and watching for idle time.
+The fundamental unit is a _task session_: Claude is working on one GitHub issue at a time. You switch issues with `/task #N`, and the skill handles the rest — moving the Kanban card, logging the start event, and watching for idle time.
 
 ```
 /task #42          → switch to issue #42
@@ -120,26 +121,26 @@ The fundamental unit is a *task session*: Claude is working on one GitHub issue 
 
 ### Commands
 
-| Command | Action |
-|---|---|
-| `/task` | Show active task, elapsed minutes, context words since last marker |
-| `/task #N` | Switch to issue #N — display the brief, move board to In Progress |
-| `/task new [title]` | Create a new issue and start tracking it |
-| `/task plan` | Open an untracked planning bucket before an issue exists |
-| `/task resume` | Resume the last paused task (no body reload) |
-| `/task resume #N` | Switch back to a paused task and display its body |
-| `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing an agent session |
-| `/task update [msg]` | Checkpoint — flush and reset counters, keep task active |
-| `/task close` | Hard-stop — flush, update board fields, move to Done |
+| Command                                 | Action                                                                                                            |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/task`                                 | Show active task, elapsed minutes, context words since last marker                                                |
+| `/task #N`                              | Switch to issue #N — display the brief, move board to In Progress                                                 |
+| `/task new [title]`                     | Create a new issue and start tracking it                                                                          |
+| `/task plan`                            | Open an untracked planning bucket before an issue exists                                                          |
+| `/task resume`                          | Resume the last paused task (no body reload)                                                                      |
+| `/task resume #N`                       | Switch back to a paused task and display its body                                                                 |
+| `/task pause`                           | Flush timing, keep last-active. Run before `/clear` or closing an agent session                                   |
+| `/task update [msg]`                    | Checkpoint — flush and reset counters, keep task active                                                           |
+| `/task close`                           | Hard-stop — flush, update board fields, move to Done                                                              |
 | `TASK_TRACKER_FORCE_DONE=1 /task close` | Audited bypass for legitimate abandonment — posts an audit comment to the issue. Do not use to skip verification. |
-| `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
-| `/task migrate` | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
-| `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
-| `/task fleet` | Show all active tasks across parallel agent worktrees |
-| `/task config` | List all config values with sources |
-| `/task config <key> <value>` | Set a config value project-locally |
-| `/task config init` | Interactive interview — review and set all config values |
-| `/task help` | Print command reference |
+| `/task log #N`                          | Re-compute and write Engaged Time, Session Time, and Context Length for any issue                                 |
+| `/task migrate`                         | Select/configure a project, import repo issues, heal field DBs, and sync project fields                           |
+| `/task check "<label>"`                 | Toggle a checkbox in the active issue body (exact label match)                                                    |
+| `/task fleet`                           | Show all active tasks across parallel agent worktrees                                                             |
+| `/task config`                          | List all config values with sources                                                                               |
+| `/task config <key> <value>`            | Set a config value project-locally                                                                                |
+| `/task config init`                     | Interactive interview — review and set all config values                                                          |
+| `/task help`                            | Print command reference                                                                                           |
 
 ### How Timing Works
 
@@ -178,9 +179,11 @@ The embedded block is intentionally terse and machine-owned:
 
 ````md
 <!-- ai-task-manager:fields:start -->
+
 ```json
-{"schema":1,"values":{"priority":"P1","estimate":6,"sessionTime":42}}
+{ "schema": 1, "values": { "priority": "P1", "estimate": 6, "sessionTime": 42 } }
 ```
+
 <!-- ai-task-manager:fields:end -->
 ````
 
@@ -230,9 +233,11 @@ Every issue in the spec should include a `**Sequence:** N` field. Issues with th
 
 ```markdown
 #### E1-S1 — Implement email/password registration
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1
 
 #### E1-S2 — Add Google OAuth integration
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S1 (JWT infrastructure)
 ```
 
@@ -249,6 +254,7 @@ Include a sequencing key and epic execution order at the top of your spec:
 **Epic execution order:** Epic 1 (Auth) → Epic 2 (Billing) → Epic 3 (Dashboard)
 
 ### S1 — Set up CI pipeline
+
 **Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Model:** sonnet
 ```
 
@@ -285,12 +291,14 @@ Every issue created from a master plan gets this block appended:
 
 ```markdown
 ### Definition of Done
+
 - [ ] Acceptance criteria met (including test additions from deep dive)
 - [ ] Tests pass; new coverage committed
 - [ ] Pre-commit hooks pass
 - [ ] Issue body checkboxes ticked
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
+
 > Follow: `.ai-task-manager/pickup-directive.md`
 
 - [ ] Deep dive complete
@@ -303,6 +311,7 @@ The issue body stays lean. The detailed agent instructions live in `.ai-task-man
 ### Hard Rules — Enforced by the Gates
 
 The `/task close` pre-close gate AND `move-state.sh <issue> done` both refuse if:
+
 - any `- [ ]` remains in the issue body (Deep Dive checkpoint, DoD, acceptance criteria), or
 - the line `- [x] Deep dive complete` is not present when the body contains a Pickup Directive block.
 
@@ -318,15 +327,19 @@ On first pickup, the agent runs a just-in-time analysis against the current repo
 - Step-by-step implementation plan
 - Test additions (each test file with a one-line description)
 - Verification Commands as enforceable checkboxes:
+
   ```markdown
   ### Verification Commands
 
   - [ ] `node scripts/task-tracker/tests/config.test.mjs`
   - [ ] `node scripts/task-tracker/tests/state.test.mjs`
   ```
+
   Do not add words like `PASS`; a checked box means the exact command was run successfully and output was read.
+
 - Identified risks beyond the original scope
 - **Dependency map** — always required:
+
   ```
   ## Dependency Map
   Depends on: #12 (JWT model), #14 (refresh token schema)
@@ -348,10 +361,10 @@ When an epic is picked up, before fanning out sub-agents:
 
 Two files are installed to `.ai-task-manager/` and can be edited per project:
 
-| File | Purpose |
-|---|---|
-| `pickup-directive.md` | Agent instructions — deep dive steps, implementation pattern, fan-out rules |
-| `definition-of-done.md` | DoD checklist inlined into every new issue body at creation |
+| File                    | Purpose                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `pickup-directive.md`   | Agent instructions — deep dive steps, implementation pattern, fan-out rules |
+| `definition-of-done.md` | DoD checklist inlined into every new issue body at creation                 |
 
 If a local edit differs from the bundled template, reinstall saves the previous file as `.bak` before refreshing it.
 
@@ -361,11 +374,11 @@ If a local edit differs from the bundled template, reinstall saves the previous 
 
 When work fans out to parallel sub-agents, the **active task should always be the issue whose work is being performed in this session right now**.
 
-| What you're doing | Active task |
-|---|---|
-| Dispatching sub-agents, reviewing output, orchestrating | `/task #epic` |
+| What you're doing                                       | Active task    |
+| ------------------------------------------------------- | -------------- |
+| Dispatching sub-agents, reviewing output, orchestrating | `/task #epic`  |
 | Performing a child issue's work directly (no sub-agent) | `/task #child` |
-| Returned to orchestration after agent completes | `/task #epic` |
+| Returned to orchestration after agent completes         | `/task #epic`  |
 
 The fleet command shows all active tasks across parallel worktrees:
 
@@ -435,15 +448,18 @@ It reads three fields from your board — `Estimate` (pre-work hours), `Session 
 A branded header (title, generated date, region, project/repo/filters) followed by a plain-English summary of the report's structure and methodology — designed as a clean cover page for stakeholder distribution.
 
 **Page 2 — Agentic AI Accelerator + Comparison Rows**
+
 - Side-by-side cost view: Human Engineering Cost vs. AI-Assisted Cost with acceleration multiples (cost efficiency and calendar speed)
 - Six comparison rows: Budget Baseline · Solo Senior Engineer · Enterprise Team · AI-Assisted Actual · Agentic AI Accelerator (human leverage only) · AI Leverage summary
 
 **Pages 3+ — Supporting Detail**
+
 - **Product Backlog** — per-issue table with estimate, session time, context words, engaged hours, and acceleration ratio; epics roll up their sub-issues; column definitions and interpretation notes follow the table
 - **Engineering Cost by US Region** — the same acceleration math at every regional rate, with savings vs. estimate
 - **Timeline Analysis** — calendar view of created → started → closed per issue; pre-work lag and in-flight duration; detailed methodology notes on epic vs. sub-issue timing and parallel fan-out leverage
 
 **Key metrics:**
+
 - **Engaged Hours** = session minutes + human review time (visible chat words ÷ WPM × overlap factor)
 - **Acceleration ratio** = Estimate ÷ Engaged Hours
 - **Human Leverage** = Estimate ÷ human-only engagement time (orchestrator + solo sessions, agent time excluded)
@@ -455,21 +471,21 @@ This makes AI productivity legible to stakeholders. Not "we used AI" — but "we
 
 ### All Flags
 
-| Flag | Description |
-|---|---|
-| `--html` | Emit HTML only, skip PDF (no puppeteer required) |
-| `--state closed\|open\|all` | Filter by issue state (default: `all`) |
-| `--from YYYY-MM-DD` | Only issues closed on or after this date |
-| `--to YYYY-MM-DD` | Only issues closed on or before this date |
-| `--issues 10,11,12` | Limit to specific issue numbers |
-| `--role mid\|senior\|staff` | Engineer level for cost table (default: `mid`) |
-| `--solo-role mid\|senior\|staff` | Role for solo-engineer baseline (default: `senior`) |
-| `--region <id>` | Region ID from `regional-rates.json` (default: `national`) |
-| `--reading-wpm N` | Override reading WPM for context-word time (default: `180`) |
-| `--chat-words N` | Add extra context words not yet logged to any issue |
-| `--title "..."` | Custom report heading |
-| `--output ./path/report` | Output base path without extension |
-| `--project-id PVT_...` | Override GitHub Projects V2 node ID |
+| Flag                             | Description                                                 |
+| -------------------------------- | ----------------------------------------------------------- |
+| `--html`                         | Emit HTML only, skip PDF (no puppeteer required)            |
+| `--state closed\|open\|all`      | Filter by issue state (default: `all`)                      |
+| `--from YYYY-MM-DD`              | Only issues closed on or after this date                    |
+| `--to YYYY-MM-DD`                | Only issues closed on or before this date                   |
+| `--issues 10,11,12`              | Limit to specific issue numbers                             |
+| `--role mid\|senior\|staff`      | Engineer level for cost table (default: `mid`)              |
+| `--solo-role mid\|senior\|staff` | Role for solo-engineer baseline (default: `senior`)         |
+| `--region <id>`                  | Region ID from `regional-rates.json` (default: `national`)  |
+| `--reading-wpm N`                | Override reading WPM for context-word time (default: `180`) |
+| `--chat-words N`                 | Add extra context words not yet logged to any issue         |
+| `--title "..."`                  | Custom report heading                                       |
+| `--output ./path/report`         | Output base path without extension                          |
+| `--project-id PVT_...`           | Override GitHub Projects V2 node ID                         |
 
 See [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) for the full ROI methodology.
 
@@ -495,30 +511,30 @@ Or set individual values:
 
 ### User Settings
 
-| Key | Default | Description |
-|---|---|---|
-| `repo` | `''` | GitHub repo (`owner/repo` format) — required |
-| `assignee` | `'@me'` | Assignee for issues created via `/task new` |
-| `defaultLabels` | `[]` | Labels applied to every new issue |
-| `wpm` | `180` | Your reading speed — used for context-word time calculation |
-| `autoEndOnSwitch` | `true` | Auto-close previous task when switching |
-| `idleThresholdMinutes` | `5` | Gap length before time stops counting as active |
-| `recordWallClock` | `true` | Record wall-clock time in addition to active time |
-| `pickupDirective` | `true` | Inject Pickup Directive block into new issues |
-| `hookNetworkTimeoutMs` | `2000` | GitHub API timeout from hooks |
+| Key                    | Default | Description                                                 |
+| ---------------------- | ------- | ----------------------------------------------------------- |
+| `repo`                 | `''`    | GitHub repo (`owner/repo` format) — required                |
+| `assignee`             | `'@me'` | Assignee for issues created via `/task new`                 |
+| `defaultLabels`        | `[]`    | Labels applied to every new issue                           |
+| `wpm`                  | `180`   | Your reading speed — used for context-word time calculation |
+| `autoEndOnSwitch`      | `true`  | Auto-close previous task when switching                     |
+| `idleThresholdMinutes` | `5`     | Gap length before time stops counting as active             |
+| `recordWallClock`      | `true`  | Record wall-clock time in addition to active time           |
+| `pickupDirective`      | `true`  | Inject Pickup Directive block into new issues               |
+| `hookNetworkTimeoutMs` | `2000`  | GitHub API timeout from hooks                               |
 
 ### Internal Settings (set by `init`)
 
-| Key | Description |
-|---|---|
-| `projectId` | GitHub Projects V2 node ID |
-| `kanbanFieldId` | Status field ID |
-| `kanbanOption*` | Kanban state option IDs (Backlog/Ready/InProgress/InReview/R4R/Done) |
-| `sizeFieldId` | Size field ID |
-| `sequenceFieldId` | Sequence field ID (numeric) |
-| `priorityFieldId` | Priority field ID |
-| `priorityOption*` | Priority option IDs (P0/P1/P2) |
-| `fieldEstimate` | Estimate field ID |
+| Key               | Description                                                          |
+| ----------------- | -------------------------------------------------------------------- |
+| `projectId`       | GitHub Projects V2 node ID                                           |
+| `kanbanFieldId`   | Status field ID                                                      |
+| `kanbanOption*`   | Kanban state option IDs (Backlog/Ready/InProgress/InReview/R4R/Done) |
+| `sizeFieldId`     | Size field ID                                                        |
+| `sequenceFieldId` | Sequence field ID (numeric)                                          |
+| `priorityFieldId` | Priority field ID                                                    |
+| `priorityOption*` | Priority option IDs (P0/P1/P2)                                       |
+| `fieldEstimate`   | Estimate field ID                                                    |
 
 ---
 
@@ -526,16 +542,16 @@ Or set individual values:
 
 `install` adds auto-allow rules to `.claude/settings.json` so orchestration runs hands-free. During backlog creation, every shell command executes without a prompt:
 
-| Rule | What it covers |
-|---|---|
-| `Bash(gh issue create*)` | Issue creation |
-| `Bash(gh api graphql*)` | Project field mutations, sub-issue linking |
-| `Bash(gh label create*)` | Label setup |
-| `Bash(gh project item-edit*)` | Size, Sequence, Estimate, Priority fields |
-| `Bash(cat > /tmp/*)` | Issue body temp files |
-| `Bash(node */task-tracker.mjs*)` | All `/task` verbs |
-| `Bash(*/move-state.sh*)` | Kanban state transitions |
-| `Bash(*/set-priority.sh*)` | Priority setting |
+| Rule                             | What it covers                             |
+| -------------------------------- | ------------------------------------------ |
+| `Bash(gh issue create*)`         | Issue creation                             |
+| `Bash(gh api graphql*)`          | Project field mutations, sub-issue linking |
+| `Bash(gh label create*)`         | Label setup                                |
+| `Bash(gh project item-edit*)`    | Size, Sequence, Estimate, Priority fields  |
+| `Bash(cat > /tmp/*)`             | Issue body temp files                      |
+| `Bash(node */task-tracker.mjs*)` | All `/task` verbs                          |
+| `Bash(*/move-state.sh*)`         | Kanban state transitions                   |
+| `Bash(*/set-priority.sh*)`       | Priority setting                           |
 
 All mutations are scoped to the issues being created or updated in the current project. Nothing reaches outside your configured repo and project board.
 
@@ -549,12 +565,12 @@ To review each invocation manually, remove the rules from `.claude/settings.json
 
 Default to `/compact`. It summarizes your session, keeps hooks active, and costs ~25× fewer tokens than a cold reload.
 
-| | `/compact` | `/clear` |
-|---|---|---|
-| Token cost | ~2k (summary) | ~50k (full reload) |
-| Hooks | Fires PreCompact + PostCompact | Bypasses all hooks |
-| Timing data | Flushed automatically | Lost if not manually paused |
-| When to use | Same task, same thread | Completely different context |
+|             | `/compact`                     | `/clear`                     |
+| ----------- | ------------------------------ | ---------------------------- |
+| Token cost  | ~2k (summary)                  | ~50k (full reload)           |
+| Hooks       | Fires PreCompact + PostCompact | Bypasses all hooks           |
+| Timing data | Flushed automatically          | Lost if not manually paused  |
+| When to use | Same task, same thread         | Completely different context |
 
 **Before `/clear`,** always flush first:
 
@@ -573,11 +589,11 @@ The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped.
 
 ## Helper Scripts
 
-| Script | Description |
-|---|---|
-| `scripts/gh/project-tether.mjs --issue <N> ...` | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
-| `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/ready/in-progress/in-review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID. |
-| `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too. |
+| Script                                                        | Description                                                                                                                                                                                                       |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/gh/project-tether.mjs --issue <N> ...`               | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
+| `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/ready/in-progress/in-review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                                     |
+| `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too.                                                                                                                                                 |
 
 Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual ID management.
 
@@ -599,12 +615,12 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 
 ## Design and References
 
-| Document | Contents |
-|---|---|
-| [docs/DESIGN.md](docs/DESIGN.md) | Full design spec — data model, state file format, timing comment structure, hook behavior |
-| [docs/guides/workflow.md](docs/guides/workflow.md) | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules |
-| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated |
-| [docs/guides/settings-guide.md](docs/guides/settings-guide.md) | Recommended Claude Code settings for this tool |
+| Document                                                               | Contents                                                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [docs/DESIGN.md](docs/DESIGN.md)                                       | Full design spec — data model, state file format, timing comment structure, hook behavior |
+| [docs/guides/workflow.md](docs/guides/workflow.md)                     | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                       |
+| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated         |
+| [docs/guides/settings-guide.md](docs/guides/settings-guide.md)         | Recommended Claude Code settings for this tool                                            |
 
 ---
 

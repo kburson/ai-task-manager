@@ -1,5 +1,6 @@
 export function verbHelp() {
-  console.log(`
+  console.log(
+    `
 Task Tracker — available commands
 
   /task                     Show active task, elapsed time, words since last marker
@@ -31,5 +32,6 @@ State transitions (7-state kanban):
   /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded
 
 Aliases: start = resume, end = close, next = promote
-`.trim());
+`.trim()
+  );
 }

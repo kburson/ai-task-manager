@@ -63,20 +63,16 @@ const defs = [
 
 // 3. Invalid JSON in legacy block — heals from visible fields, exactly one new-encoding block.
 {
-  const body = [
-    'Body',
-    '',
-    FIELD_DB_START,
-    '```json',
-    '{nope',
-    '```',
-    FIELD_DB_END,
-  ].join('\n');
+  const body = ['Body', '', FIELD_DB_START, '```json', '{nope', '```', FIELD_DB_END].join('\n');
   const ensured = ensureIssueFieldDb(body, defs, { priority: 'P0' });
   assert.equal(ensured.healed, true);
   assert.equal(ensured.values.priority, 'P0');
   assert.equal((ensured.body.match(/<!--\s*aitm-fields:/g) || []).length, 1);
-  assert.equal((ensured.body.match(new RegExp(FIELD_DB_START, 'g')) || []).length, 0, 'legacy block stripped');
+  assert.equal(
+    (ensured.body.match(new RegExp(FIELD_DB_START, 'g')) || []).length,
+    0,
+    'legacy block stripped'
+  );
 }
 
 // 4. Form-style body inference still works.
@@ -116,7 +112,17 @@ const defs = [
 
 // 5. New encoding round-trip — parse, ensure (no change), strip.
 {
-  const inner = JSON.stringify({ schema: 1, values: { priority: 'P0', size: 'S', estimate: 2, sessionTime: 5, startTime: '2026-05-11T10:00Z', sequence: 1 } });
+  const inner = JSON.stringify({
+    schema: 1,
+    values: {
+      priority: 'P0',
+      size: 'S',
+      estimate: 2,
+      sessionTime: 5,
+      startTime: '2026-05-11T10:00Z',
+      sequence: 1,
+    },
+  });
   const body = `Hello.\n\n<!-- aitm-fields: ${inner} -->\n`;
   const parsed = parseIssueFieldDb(body);
   assert.equal(parsed.ok, true);
@@ -131,9 +137,18 @@ const defs = [
 //    surrounding content (incl. aitm-plan-approved marker) preserved.
 {
   const v1 = JSON.stringify({ schema: 1, values: { priority: 'P2', estimate: 1, sessionTime: 0 } });
-  const v2 = JSON.stringify({ schema: 1, values: { priority: 'P2', estimate: 1, sessionTime: 11, startTime: '2026-05-11 07:00 -05:00' } });
-  const v3New = JSON.stringify({ schema: 1, values: { priority: 'P1', estimate: 2, sessionTime: 11, startTime: '2026-05-11 07:10 -05:00' } });
-  const v4New = JSON.stringify({ schema: 1, values: { priority: 'P1', estimate: 2, sessionTime: 13 } });
+  const v2 = JSON.stringify({
+    schema: 1,
+    values: { priority: 'P2', estimate: 1, sessionTime: 11, startTime: '2026-05-11 07:00 -05:00' },
+  });
+  const v3New = JSON.stringify({
+    schema: 1,
+    values: { priority: 'P1', estimate: 2, sessionTime: 11, startTime: '2026-05-11 07:10 -05:00' },
+  });
+  const v4New = JSON.stringify({
+    schema: 1,
+    values: { priority: 'P1', estimate: 2, sessionTime: 13 },
+  });
   const body = [
     '# Title',
     '',
@@ -163,17 +178,32 @@ const defs = [
   assert.equal(parsed.values.sessionTime, 13, 'newest (last) wins on parse');
 
   const stripped = stripIssueFieldDb(body);
-  assert.equal((stripped.match(new RegExp(FIELD_DB_START, 'g')) || []).length, 0, 'all legacy blocks stripped');
+  assert.equal(
+    (stripped.match(new RegExp(FIELD_DB_START, 'g')) || []).length,
+    0,
+    'all legacy blocks stripped'
+  );
   assert.equal((stripped.match(/<!--\s*aitm-fields:/g) || []).length, 0, 'all new blocks stripped');
   assert.ok(stripped.includes('aitm-plan-approved'), 'plan-approved marker preserved');
   assert.ok(stripped.includes('Scope text.'), 'scope preserved');
   assert.ok(!/\n{3,}/.test(stripped), 'no triple newlines after strip');
 
   const ensured = ensureIssueFieldDb(body, defs);
-  assert.equal((ensured.body.match(/<!--\s*aitm-fields:/g) || []).length, 1, 'exactly one new-encoding block after ensure');
-  assert.equal((ensured.body.match(new RegExp(FIELD_DB_START, 'g')) || []).length, 0, 'no legacy blocks after ensure');
+  assert.equal(
+    (ensured.body.match(/<!--\s*aitm-fields:/g) || []).length,
+    1,
+    'exactly one new-encoding block after ensure'
+  );
+  assert.equal(
+    (ensured.body.match(new RegExp(FIELD_DB_START, 'g')) || []).length,
+    0,
+    'no legacy blocks after ensure'
+  );
   assert.equal(ensured.values.sessionTime, 13, 'ensure preserved latest values');
-  assert.ok(ensured.body.includes('aitm-plan-approved'), 'plan-approved marker still present after ensure');
+  assert.ok(
+    ensured.body.includes('aitm-plan-approved'),
+    'plan-approved marker still present after ensure'
+  );
 }
 
 // 7. formatIssueFieldDb shape — single-line HTML comment, parseable.

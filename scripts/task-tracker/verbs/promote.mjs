@@ -30,7 +30,7 @@ import {
   buildRow,
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
-import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -39,10 +39,10 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 // gate stack runs unchanged. States with no alias (`backlog`, `validate`) fall
 // through to a direct internal move-state call.
 const ALIAS_VERB = {
-  groom:       'analyze',
-  analyze:     'approve',
+  groom: 'analyze',
+  analyze: 'approve',
   development: 'review',
-  review:      'close',
+  review: 'close',
 };
 
 // ---------------------------------------------------------------------------
@@ -51,7 +51,8 @@ const ALIAS_VERB = {
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) { body }
@@ -68,15 +69,20 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-promote-${process.pid}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: 15000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -94,31 +100,31 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find(n => n.project?.id === cfg.projectId) ?? nodes[0];
+  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
   const name = node?.fieldValueByName?.name;
   return name ? String(name).toLowerCase() : null;
 }
 
 function defaultSpawnVerb({ verb, issueNumber }) {
   const script = path.resolve(__dir, '../task-tracker.mjs');
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, verb, String(issueNumber)], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env },
     });
-    child.on('exit', code => resolve(code ?? 1));
+    child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
 
 function defaultRunMoveState({ issueNumber, target }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, String(issueNumber), target], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });
-    child.on('exit', code => resolve(code ?? 1));
+    child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
@@ -131,16 +137,21 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runPromote({ issueNumber, cfg, deps = {}, now = () => new Date().toISOString() } = {}) {
+export async function runPromote({
+  issueNumber,
+  cfg,
+  deps = {},
+  now = () => new Date().toISOString(),
+} = {}) {
   if (!issueNumber) throw new Error('promote: issueNumber is required');
   if (!cfg) throw new Error('promote: cfg is required');
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
-  const getLiveState   = deps.getLiveState   || defaultGetLiveState;
-  const spawnVerb      = deps.spawnVerb      || defaultSpawnVerb;
-  const runMoveState   = deps.runMoveState   || defaultRunMoveState;
-  const postTimingRow  = deps.postTimingRow  || defaultPostTimingRow;
+  const getLiveState = deps.getLiveState || defaultGetLiveState;
+  const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
+  const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
 
   const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);
@@ -175,10 +186,16 @@ export async function runPromote({ issueNumber, cfg, deps = {}, now = () => new 
   }
 
   if (recorded === 'done') {
-    return { status: 'terminal-refused', message: `already in done (#${issueNumber}); promote is forward-only.` };
+    return {
+      status: 'terminal-refused',
+      message: `already in done (#${issueNumber}); promote is forward-only.`,
+    };
   }
   if (!STATES.includes(recorded)) {
-    return { status: 'error', message: `promote: unknown recorded state "${recorded}" for #${issueNumber}` };
+    return {
+      status: 'error',
+      message: `promote: unknown recorded state "${recorded}" for #${issueNumber}`,
+    };
   }
   const target = FORWARD[recorded];
   if (!target) {
@@ -187,7 +204,11 @@ export async function runPromote({ issueNumber, cfg, deps = {}, now = () => new 
 
   const aliasVerb = ALIAS_VERB[recorded] || null;
   const transitionResult = aliasVerb
-    ? { kind: 'alias', verb: aliasVerb, exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }) }
+    ? {
+        kind: 'alias',
+        verb: aliasVerb,
+        exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
+      }
     : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
 
   if (transitionResult.exitCode !== 0) {
@@ -195,10 +216,11 @@ export async function runPromote({ issueNumber, cfg, deps = {}, now = () => new 
       status: 'transition-failed',
       transitionResult,
       message:
-        `promote: ${transitionResult.kind === 'alias'
-          ? `delegate /task ${transitionResult.verb}`
-          : `move-state.mjs ${target}`} exited ${transitionResult.exitCode}; ` +
-        `recorded state left at "${recorded}".`,
+        `promote: ${
+          transitionResult.kind === 'alias'
+            ? `delegate /task ${transitionResult.verb}`
+            : `move-state.mjs ${target}`
+        } exited ${transitionResult.exitCode}; ` + `recorded state left at "${recorded}".`,
     };
   }
 
@@ -207,14 +229,14 @@ export async function runPromote({ issueNumber, cfg, deps = {}, now = () => new 
   let bodyAfter;
   try {
     ({ body: bodyAfter } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
-  } catch (err) {
+  } catch {
     bodyAfter = body;
   }
   const stamped = writeLastKnownState(bodyAfter, target);
   if (stamped !== bodyAfter) {
     try {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
-    } catch (err) {
+    } catch {
       // Best-effort. Transition is already committed on the board.
     }
   }
@@ -222,11 +244,15 @@ export async function runPromote({ issueNumber, cfg, deps = {}, now = () => new 
     const row = buildRow({
       ts: now(),
       event: `move:${target}`,
-      activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
-      description: transitionResult.kind === 'alias' ? `via /task ${transitionResult.verb}` : 'direct move',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 0,
+      description:
+        transitionResult.kind === 'alias' ? `via /task ${transitionResult.verb}` : 'direct move',
     });
     await postTimingRow({ issueNumber, repo: cfg.repo, row });
-  } catch (err) {
+  } catch {
     // Audit row is best-effort; transition is the source of truth.
   }
 
@@ -270,13 +296,15 @@ export async function verbPromote(rest, cfg) {
     case 'promoted': {
       process.stdout.write(
         `✓ #${issueNumber} promoted: ${result.from} → ${result.to}` +
-        (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
-        ` (${result.via})\n`
+          (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
+          ` (${result.via})\n`
       );
       return;
     }
     case 'drift-refused': {
-      process.stderr.write(`\n⛔ Refusing to promote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`);
+      process.stderr.write(
+        `\n⛔ Refusing to promote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`
+      );
       process.exit(4);
     }
     case 'terminal-refused': {
@@ -299,8 +327,11 @@ export async function verbPromote(rest, cfg) {
 }
 
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

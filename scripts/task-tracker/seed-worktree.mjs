@@ -35,7 +35,9 @@ export function seedWorktree({ source, target }) {
   }
 
   if (existsSync(path.join(tgtDir, 'task-tracker.json'))) {
-    throw new Error(`seed-worktree: refusing to overwrite populated target ${tgtDir} (already has task-tracker.json)`);
+    throw new Error(
+      `seed-worktree: refusing to overwrite populated target ${tgtDir} (already has task-tracker.json)`
+    );
   }
 
   mkdirSync(tgtDir, { recursive: true });
@@ -80,7 +82,9 @@ export function seedMissingTemplates({ source, target }) {
 export function findMainWorktree(cwd = process.cwd()) {
   try {
     const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
-      cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
     });
     const m = out.match(/^worktree (.+)$/m);
     return m ? m[1] : null;
@@ -93,9 +97,18 @@ function parseArgs(argv) {
   const out = { target: null, source: process.cwd() };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--source') { out.source = argv[++i]; continue; }
-    if (a === '-h' || a === '--help') { out.help = true; continue; }
-    if (!out.target) { out.target = a; continue; }
+    if (a === '--source') {
+      out.source = argv[++i];
+      continue;
+    }
+    if (a === '-h' || a === '--help') {
+      out.help = true;
+      continue;
+    }
+    if (!out.target) {
+      out.target = a;
+      continue;
+    }
   }
   return out;
 }
@@ -105,7 +118,9 @@ function isMain() {
   try {
     const url = new URL(import.meta.url);
     return path.resolve(url.pathname) === path.resolve(process.argv[1]);
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 if (isMain()) {

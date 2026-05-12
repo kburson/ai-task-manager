@@ -1,15 +1,28 @@
 import { saveState, loadState, EMPTY_STATE } from '../state.mjs';
 import { registerTask, deregisterTask, currentBranch } from '../fleet-registry.mjs';
-import { currentSessionId, jsonlPath, markerPathFor, saveMarker, countWords } from '../word-counter.mjs';
+import {
+  currentSessionId,
+  jsonlPath,
+  markerPathFor,
+  saveMarker,
+  countWords,
+} from '../word-counter.mjs';
 import { loadSession } from '../lib/session-store.mjs';
 import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
-    cfg, statePath, projectDir, role,
-    drainQueueIfAny, safePostTiming, flushActiveToGH,
-    runLogIssueTime, fetchParentIssue, nowIso,
+    cfg,
+    statePath,
+    projectDir,
+    role,
+    drainQueueIfAny,
+    safePostTiming,
+    flushActiveToGH,
+    runLogIssueTime,
+    fetchParentIssue,
+    nowIso,
   } = ctx;
   if (!/^#\d+$/.test(target)) {
     console.error(`invalid issue ref: ${target}`);
@@ -23,7 +36,9 @@ export async function verbSwitch(ctx, target) {
     const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
     previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
     await runLogIssueTime(previous);
-    try { deregisterTask(projectDir, previous); } catch {}
+    try {
+      deregisterTask(projectDir, previous);
+    } catch {}
   } else if (s.active === 'plan') {
     console.log('Discarding planning bucket (switch to concrete issue).');
   }
@@ -58,12 +73,21 @@ export async function verbSwitch(ctx, target) {
         saveState(s2, statePath);
       }
     }
-  } catch { /* best-effort — bind must not fail on GraphQL */ }
-  try { registerTask(projectDir, target, projectDir, currentBranch(projectDir)); } catch {}
+  } catch {
+    /* best-effort — bind must not fail on GraphQL */
+  }
+  try {
+    registerTask(projectDir, target, projectDir, currentBranch(projectDir));
+  } catch {}
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const row = buildRow({
-    ts, event: 'start', activeMin: 0, idleMin: 0, deltaWords: 0,
-    wordMarker: wordsAtStart, description: role,
+    ts,
+    event: 'start',
+    activeMin: 0,
+    idleMin: 0,
+    deltaWords: 0,
+    wordMarker: wordsAtStart,
+    description: role,
   });
   await safePostTiming(target, row);
   console.log(`Active: ${target}.${previousNote}`);

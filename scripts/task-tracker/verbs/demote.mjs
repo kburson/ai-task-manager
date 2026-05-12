@@ -24,7 +24,7 @@ import {
   buildRow,
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
-import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +38,8 @@ const LEGAL_FROM = new Set(['validate', 'review']);
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) { body }
@@ -55,15 +56,20 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-demote-${process.pid}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: 15000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -81,19 +87,19 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find(n => n.project?.id === cfg.projectId) ?? nodes[0];
+  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
   const name = node?.fieldValueByName?.name;
   return name ? String(name).toLowerCase() : null;
 }
 
 function defaultRunMoveState({ issueNumber, target }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, String(issueNumber), target], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });
-    child.on('exit', code => resolve(code ?? 1));
+    child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
@@ -106,15 +112,20 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runDemote({ issueNumber, cfg, deps = {}, now = () => new Date().toISOString() } = {}) {
+export async function runDemote({
+  issueNumber,
+  cfg,
+  deps = {},
+  now = () => new Date().toISOString(),
+} = {}) {
   if (!issueNumber) throw new Error('demote: issueNumber is required');
   if (!cfg) throw new Error('demote: cfg is required');
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
-  const getLiveState   = deps.getLiveState   || defaultGetLiveState;
-  const runMoveState   = deps.runMoveState   || defaultRunMoveState;
-  const postTimingRow  = deps.postTimingRow  || defaultPostTimingRow;
+  const getLiveState = deps.getLiveState || defaultGetLiveState;
+  const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
 
   const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);
@@ -146,7 +157,10 @@ export async function runDemote({ issueNumber, cfg, deps = {}, now = () => new D
   }
 
   if (!STATES.includes(recorded)) {
-    return { status: 'error', message: `demote: unknown recorded state "${recorded}" for #${issueNumber}` };
+    return {
+      status: 'error',
+      message: `demote: unknown recorded state "${recorded}" for #${issueNumber}`,
+    };
   }
   if (!LEGAL_FROM.has(recorded)) {
     return {
@@ -185,13 +199,18 @@ export async function runDemote({ issueNumber, cfg, deps = {}, now = () => new D
   }
   const stamped = writeLastKnownState(bodyAfter, DEMOTE_TARGET);
   if (stamped !== bodyAfter) {
-    try { await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped }); } catch {}
+    try {
+      await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
+    } catch {}
   }
   try {
     const row = buildRow({
       ts: now(),
       event: `move:${DEMOTE_TARGET}`,
-      activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 0,
       description: `demote from ${recorded}`,
     });
     await postTimingRow({ issueNumber, repo: cfg.repo, row });
@@ -231,17 +250,21 @@ export async function verbDemote(rest, cfg) {
     case 'demoted': {
       process.stdout.write(
         `✓ #${issueNumber} demoted: ${result.from} → ${result.to}` +
-        (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
-        '\n'
+          (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
+          '\n'
       );
       return;
     }
     case 'drift-refused': {
-      process.stderr.write(`\n⛔ Refusing to demote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`);
+      process.stderr.write(
+        `\n⛔ Refusing to demote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`
+      );
       process.exit(4);
     }
     case 'invalid-source-refused': {
-      process.stderr.write(`\n⛔ Refusing to demote #${issueNumber} from ${result.from}:\n   BLOCKED: ${result.message}\n\n`);
+      process.stderr.write(
+        `\n⛔ Refusing to demote #${issueNumber} from ${result.from}:\n   BLOCKED: ${result.message}\n\n`
+      );
       process.exit(4);
     }
     case 'transition-failed': {
@@ -260,8 +283,11 @@ export async function verbDemote(rest, cfg) {
 }
 
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

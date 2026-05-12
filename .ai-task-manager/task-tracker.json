@@ -30,12 +30,7 @@
     "sequence": "PVTF_lAHOABCEY84BW3z6zhSIrBU",
     "startTime": "PVTF_lAHOABCEY84BW3z6zhSb-zU"
   },
-  "defaultLabels": [
-    "epic",
-    "bug",
-    "cleanup",
-    "refactor"
-  ],
+  "defaultLabels": ["epic", "bug", "cleanup", "refactor"],
   "fieldStartTime": "PVTF_lAHOABCEY84BW3z6zhSb-zU",
   "kanbanOptionGroom": "f75ad846",
   "kanbanOptionAnalyze": "aa084acb",

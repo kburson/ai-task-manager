@@ -55,6 +55,7 @@ Create the baseline package structure, package metadata, shared path model, and 
 ### Sub-Issues
 
 #### E1-S1 - Rename package metadata and bins
+
 **Priority:** P0 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Labels:** packaging, dx
 
 Update `package.json`, `package-lock.json`, README quickstart references, repository URLs, keywords, and package description. Keep `claude-gh-task-manager` as a bin alias.
@@ -67,6 +68,7 @@ Acceptance Criteria:
 - [ ] Package files include future `codex/` artifact directory.
 
 #### E1-S2 - Add runtime path helper module
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** backend, migration
 
 Create path utilities that know preferred shared paths and legacy Claude fallback paths.
@@ -79,6 +81,7 @@ Acceptance Criteria:
 - [ ] Helper is covered by unit tests or exercised through config/state tests.
 
 #### E1-S3 - Migrate config defaults and fallback reads
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S2 | **Labels:** backend, migration
 
 Update config loading to prefer `.ai-task-manager/task-tracker.json` and `~/.ai-task-manager/task-tracker-config.json`, with fallback reads from legacy `.claude` locations.
@@ -92,6 +95,7 @@ Acceptance Criteria:
 - [ ] `setConfigValue` writes only to preferred project config path.
 
 #### E1-S4 - Migrate state and queue reads with write-forward behavior
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S2 | **Labels:** backend, migration
 
 Update state and queue helpers so existing legacy state is readable, but new writes go to `.ai-task-manager/`.
@@ -104,6 +108,7 @@ Acceptance Criteria:
 - [ ] Queue writes preferred queue path after drain/enqueue.
 
 #### E1-S5 - Fix CLI numeric argument normalization
+
 **Priority:** P1 | **Size:** S | **Estimate:** 1h | **Sequence:** 2 | **Labels:** bug, test
 
 Fix the baseline parser bug where `config wpm 175` is rewritten to `config wpm #175`.
@@ -116,6 +121,7 @@ Acceptance Criteria:
 - [ ] Existing CLI tests pass.
 
 #### E1-S6 - Add migration-focused tests
+
 **Priority:** P0 | **Size:** M | **Estimate:** 2h | **Sequence:** 3 | **Depends on:** E1-S3, E1-S4, E1-S5 | **Labels:** test
 
 Expand config, state, queue, and CLI tests for migration behavior.
@@ -147,6 +153,7 @@ Build the task-tracker command surface and session state engine.
 ### Sub-Issues
 
 #### E2-S1 - Implement state model and command dispatcher
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Labels:** backend
 
 Acceptance Criteria:
@@ -157,6 +164,7 @@ Acceptance Criteria:
 - [ ] `status` reports active, paused, and empty states.
 
 #### E2-S2 - Implement active-time calculation
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** backend
 
 Acceptance Criteria:
@@ -166,6 +174,7 @@ Acceptance Criteria:
 - [ ] Tests cover continuous work, idle gaps, and empty event streams.
 
 #### E2-S3 - Implement word counter and session markers
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Labels:** backend
 
 Acceptance Criteria:
@@ -176,6 +185,7 @@ Acceptance Criteria:
 - [ ] Tests cover marker load/save and count behavior.
 
 #### E2-S4 - Implement start/switch/pause/update/close flows
+
 **Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 2 | **Depends on:** E2-S1, E2-S2, E2-S3 | **Labels:** backend
 
 Acceptance Criteria:
@@ -187,6 +197,7 @@ Acceptance Criteria:
 - [ ] Close flushes timing, clears active state, and preserves last active issue.
 
 #### E2-S5 - Implement plan mode and new issue handoff
+
 **Priority:** P1 | **Size:** M | **Estimate:** 4h | **Sequence:** 2 | **Depends on:** E2-S1 | **Labels:** orchestration
 
 Acceptance Criteria:
@@ -197,6 +208,7 @@ Acceptance Criteria:
 - [ ] Plan bucket is cleared after promotion.
 
 #### E2-S6 - Implement close gate and checkbox helper
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 3 | **Depends on:** E2-S4 | **Labels:** safety, github
 
 Acceptance Criteria:
@@ -225,6 +237,7 @@ Build GitHub issue comments, project field updates, Kanban movement, priority up
 ### Sub-Issues
 
 #### E3-S1 - Implement timing comment module
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Labels:** github, backend
 
 Acceptance Criteria:
@@ -235,6 +248,7 @@ Acceptance Criteria:
 - [ ] Unit tests cover row formatting and comment updates.
 
 #### E3-S2 - Implement queue for failed GitHub posts
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** resilience
 
 Acceptance Criteria:
@@ -245,6 +259,7 @@ Acceptance Criteria:
 - [ ] Tests cover enqueue, peek, drain success, and drain failure.
 
 #### E3-S3 - Implement project field actuals updater
+
 **Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 2 | **Depends on:** E3-S1 | **Labels:** github, reporting
 
 Acceptance Criteria:
@@ -255,6 +270,7 @@ Acceptance Criteria:
 - [ ] Supports `--dry-run`.
 
 #### E3-S4 - Implement Kanban state movement helper
+
 **Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 2 | **Labels:** github, workflow
 
 Acceptance Criteria:
@@ -265,6 +281,7 @@ Acceptance Criteria:
 - [ ] Refuses direct Done movement when close gate conditions fail.
 
 #### E3-S5 - Implement priority helper
+
 **Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Labels:** github, workflow
 
 Acceptance Criteria:
@@ -274,6 +291,7 @@ Acceptance Criteria:
 - [ ] Skips issues not found in project with clear output.
 
 #### E3-S6 - Implement interactive project initialization
+
 **Priority:** P0 | **Size:** XL | **Estimate:** 6h | **Sequence:** 3 | **Depends on:** E3-S3, E3-S4, E3-S5 | **Labels:** github, dx
 
 Acceptance Criteria:
@@ -304,6 +322,7 @@ Package the workflow for Claude Code and Codex through agent-specific skill adap
 ### Sub-Issues
 
 #### E4-S1 - Split shared skill and agent adapters
+
 **Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 1 | **Labels:** skill, docs
 
 Acceptance Criteria:
@@ -314,6 +333,7 @@ Acceptance Criteria:
 - [ ] Legacy `skill/SKILL.md` remains as a compatibility pointer.
 
 #### E4-S2 - Implement agent-aware installer
+
 **Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 1 | **Labels:** cli, install
 
 Acceptance Criteria:
@@ -325,6 +345,7 @@ Acceptance Criteria:
 - [ ] Installer is idempotent.
 
 #### E4-S3 - Implement stub and symlink link modes
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E4-S1, E4-S2 | **Labels:** install
 
 Acceptance Criteria:
@@ -335,6 +356,7 @@ Acceptance Criteria:
 - [ ] Install output prints what was created and what it points to.
 
 #### E4-S4 - Install Claude hooks and slash command
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E4-S2 | **Labels:** claude, hooks
 
 Acceptance Criteria:
@@ -345,6 +367,7 @@ Acceptance Criteria:
 - [ ] Claude permission allow rules include new package paths.
 
 #### E4-S5 - Install shared templates and preflight gate
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E4-S2 | **Labels:** workflow, safety
 
 Acceptance Criteria:
@@ -355,6 +378,7 @@ Acceptance Criteria:
 - [ ] Preflight requires both templates before issue creation.
 
 #### E4-S6 - Add Codex plugin artifact
+
 **Priority:** P2 | **Size:** S | **Estimate:** 2h | **Sequence:** 3 | **Depends on:** E4-S1 | **Labels:** codex, packaging
 
 Acceptance Criteria:
@@ -365,6 +389,7 @@ Acceptance Criteria:
 - [ ] Package `files` includes `codex/`.
 
 #### E4-S7 - Installer tests
+
 **Priority:** P0 | **Size:** S | **Estimate:** 1h | **Sequence:** 3 | **Depends on:** E4-S2, E4-S3, E4-S4, E4-S5 | **Labels:** test
 
 Acceptance Criteria:
@@ -394,6 +419,7 @@ Define and enforce backlog orchestration rules, fan-out discipline, dependency v
 ### Sub-Issues
 
 #### E5-S1 - Define pickup directive contract
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** workflow
 
 Acceptance Criteria:
@@ -404,6 +430,7 @@ Acceptance Criteria:
 - [ ] Directive references `.ai-task-manager/` paths.
 
 #### E5-S2 - Implement preflight block generation
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** workflow, safety
 
 Acceptance Criteria:
@@ -414,6 +441,7 @@ Acceptance Criteria:
 - [ ] Generated block references `.ai-task-manager/pickup-directive.md`.
 
 #### E5-S3 - Implement fleet registry
+
 **Priority:** P1 | **Size:** M | **Estimate:** 4h | **Sequence:** 2 | **Labels:** multi-agent
 
 Acceptance Criteria:
@@ -424,6 +452,7 @@ Acceptance Criteria:
 - [ ] `/task fleet` shows active tasks.
 
 #### E5-S4 - Add orchestrator state-isolation guard
+
 **Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Labels:** multi-agent, safety
 
 Acceptance Criteria:
@@ -433,6 +462,7 @@ Acceptance Criteria:
 - [ ] Recovery guidance is documented.
 
 #### E5-S5 - Add backlog spec parsing guidance
+
 **Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 3 | **Depends on:** E5-S1, E5-S2 | **Labels:** docs, orchestration
 
 Acceptance Criteria:
@@ -442,6 +472,7 @@ Acceptance Criteria:
 - [ ] Shared skill explains same-sequence fan-out and higher-sequence blocking.
 
 #### E5-S6 - Add orchestration acceptance tests or manual smoke script
+
 **Priority:** P2 | **Size:** S | **Estimate:** 2h | **Sequence:** 3 | **Depends on:** E5-S3, E5-S5 | **Labels:** test
 
 Acceptance Criteria:
@@ -469,6 +500,7 @@ Complete value reporting, status line support, docs, package artifact verificati
 ### Sub-Issues
 
 #### E6-S1 - Implement value report generator
+
 **Priority:** P1 | **Size:** L | **Estimate:** 5h | **Sequence:** 1 | **Labels:** reporting
 
 Acceptance Criteria:
@@ -479,6 +511,7 @@ Acceptance Criteria:
 - [ ] Report emits HTML and optionally PDF.
 
 #### E6-S2 - Implement Claude status line helper
+
 **Priority:** P2 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Labels:** claude, dx
 
 Acceptance Criteria:
@@ -488,6 +521,7 @@ Acceptance Criteria:
 - [ ] Installer can configure Claude user settings for status line.
 
 #### E6-S3 - Update README and design docs
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Labels:** docs
 
 Acceptance Criteria:
@@ -498,6 +532,7 @@ Acceptance Criteria:
 - [ ] Design doc reflects agent-neutral architecture.
 
 #### E6-S4 - Verify package contents
+
 **Priority:** P0 | **Size:** S | **Estimate:** 1h | **Sequence:** 2 | **Labels:** release
 
 Acceptance Criteria:
@@ -507,6 +542,7 @@ Acceptance Criteria:
 - [ ] Package lock no longer includes old package as a dev dependency.
 
 #### E6-S5 - Full test and smoke validation
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 3 | **Depends on:** E6-S3, E6-S4 | **Labels:** test, release
 
 Acceptance Criteria:
@@ -518,6 +554,7 @@ Acceptance Criteria:
 - [ ] `install --agent both --link-mode symlink` smoke test passes.
 
 #### E6-S6 - Prepare prerelease checklist
+
 **Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 3 | **Depends on:** E6-S5 | **Labels:** release
 
 Acceptance Criteria:
@@ -565,6 +602,7 @@ engagedMinutes = wallMinutes - trueIdleMinutes
 ### Sub-Issues
 
 #### E7-S1 - Research official Codex observability surfaces
+
 **Priority:** P0 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Labels:** research, codex
 
 Determine what OpenAI officially documents for Codex session persistence, hooks, logs, transcript access, and token/session metadata.
@@ -577,6 +615,7 @@ Acceptance Criteria:
 - [ ] Gaps and unsupported assumptions are recorded in a design note.
 
 #### E7-S2 - Inspect local Codex rollout/session file schema
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Labels:** research, codex, metrics
 
 Analyze local `~/.codex/sessions/**/*.jsonl` rollout files without exposing transcript contents. Build a schema map for timestamps, message roles, visible assistant text, user messages, tool events, command output, token-count events, and session metadata.
@@ -590,6 +629,7 @@ Acceptance Criteria:
 - [ ] Privacy constraints are documented so tests use synthetic fixtures, not real transcripts.
 
 #### E7-S3 - Research Codex hooks for real-time capture
+
 **Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** research, codex, hooks
 
 Determine whether Codex hooks can capture session events in real time, and whether they expose enough data to count visible output words and timestamps.
@@ -602,6 +642,7 @@ Acceptance Criteria:
 - [ ] Hook approach is compared against rollout-file parsing for reliability, latency, and installation complexity.
 
 #### E7-S4 - Determine active Codex session discovery strategy
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E7-S2 | **Labels:** research, codex
 
 Find the safest way to map the current project/thread to the active Codex rollout file.
@@ -615,6 +656,7 @@ Acceptance Criteria:
 - [ ] Failure mode is defined when no active session can be confidently selected.
 
 #### E7-S5 - Decide source of truth for Codex metrics
+
 **Priority:** P0 | **Size:** S | **Estimate:** 2h | **Sequence:** 2 | **Depends on:** E7-S1, E7-S2, E7-S3, E7-S4 | **Labels:** design, codex, metrics
 
 Write a short architecture decision record choosing the initial Codex metrics source and fallback order.
@@ -628,6 +670,7 @@ Acceptance Criteria:
 - [ ] Test fixture strategy is documented.
 
 #### E7-S6 - Define metrics schema and quality flags
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 1 | **Labels:** backend, metrics
 
 Define a durable schema for session metrics that can represent measured Claude metrics, estimated Codex metrics, and unsupported fields without conflating unknown values with zero.
@@ -640,6 +683,7 @@ Acceptance Criteria:
 - [ ] Unknown word metrics are not displayed as real zero values unless zero was actually measured.
 
 #### E7-S7 - Add agent metrics adapter boundary
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 2 | **Depends on:** E7-S5, E7-S6 | **Labels:** architecture, metrics
 
 Introduce an adapter boundary so Claude and Codex metrics collection can differ without tangling the task tracker core.
@@ -652,6 +696,7 @@ Acceptance Criteria:
 - [ ] Tests can inject fake adapters without relying on real agent session files.
 
 #### E7-S8 - Build Codex rollout parser fixture and extractor
+
 **Priority:** P0 | **Size:** L | **Estimate:** 5h | **Sequence:** 3 | **Depends on:** E7-S5, E7-S7 | **Labels:** codex, metrics, test
 
 Implement a parser for the selected Codex rollout JSONL fields using synthetic fixtures modeled on observed schema.
@@ -665,6 +710,7 @@ Acceptance Criteria:
 - [ ] Tests cover synthetic assistant/user/tool/token-count events.
 
 #### E7-S9 - Implement Codex no-source fallback semantics
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 3 | **Depends on:** E7-S6, E7-S7 | **Labels:** codex, metrics
 
 Make the current Codex limitation explicit instead of writing misleading zeros.
@@ -677,6 +723,7 @@ Acceptance Criteria:
 - [ ] README and design docs state the fallback behavior.
 
 #### E7-S10 - Add visible-output review budget tracking
+
 **Priority:** P1 | **Size:** L | **Estimate:** 5h | **Sequence:** 4 | **Depends on:** E7-S8, E7-S9 | **Labels:** codex, metrics
 
 Track visible assistant output words so human review time can be estimated even when raw Codex transcript events are not available.
@@ -689,6 +736,7 @@ Acceptance Criteria:
 - [ ] Multiple pending assistant outputs accumulate review budget without double-counting.
 
 #### E7-S11 - Compute engaged time versus true idle time
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 5 | **Depends on:** E7-S10 | **Labels:** metrics
 
 Use review budget to split response gaps into human review time and true idle time.
@@ -701,6 +749,7 @@ Acceptance Criteria:
 - [ ] Tests cover short review, exact budget, and one-hour walk-away scenarios.
 
 #### E7-S12 - Update timing rows and reports for metric quality
+
 **Priority:** P1 | **Size:** M | **Estimate:** 3h | **Sequence:** 6 | **Depends on:** E7-S11 | **Labels:** reporting, metrics
 
 Expose metric quality clearly in issue timing logs and value reports.
@@ -713,6 +762,7 @@ Acceptance Criteria:
 - [ ] Existing timing comments remain parseable.
 
 #### E7-S13 - Document Codex engagement metric behavior
+
 **Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 6 | **Depends on:** E7-S11 | **Labels:** docs, codex
 
 Document how Codex timing differs from Claude timing and how human review time is estimated.

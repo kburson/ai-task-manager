@@ -25,14 +25,25 @@ const FIXED_TS = '2026-05-10T00:00:00Z';
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0 };
-  const initialBody = overrides.initialBody ?? '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+  const initialBody =
+    overrides.initialBody ??
+    '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
   let body = initialBody;
   return {
     calls,
     deps: {
-      fetchIssueBody: async () => { calls.bodies.push(body); return body; },
-      writeIssueBody: async ({ body: b }) => { calls.writes.push(b); body = b; },
-      getBoardState: async () => { calls.stateLookups++; return overrides.state ?? 'review'; },
+      fetchIssueBody: async () => {
+        calls.bodies.push(body);
+        return body;
+      },
+      writeIssueBody: async ({ body: b }) => {
+        calls.writes.push(b);
+        body = b;
+      },
+      getBoardState: async () => {
+        calls.stateLookups++;
+        return overrides.state ?? 'review';
+      },
       nowIso: () => FIXED_TS,
       ...overrides.deps,
     },
@@ -75,10 +86,14 @@ function makeDeps(overrides = {}) {
   const body = getBody();
   const markerIdx = body.indexOf('<!-- aitm-review-approved:');
   const fieldsIdx = body.indexOf('<!-- aitm-fields:');
-  assert.ok(markerIdx >= 0 && fieldsIdx > markerIdx,
-    `marker must appear before field-DB; markerIdx=${markerIdx}, fieldsIdx=${fieldsIdx}`);
-  assert.ok(!body.includes('<!-- ai-task-manager:fields:start -->'),
-    'legacy fields-start marker must not survive an approve-review write');
+  assert.ok(
+    markerIdx >= 0 && fieldsIdx > markerIdx,
+    `marker must appear before field-DB; markerIdx=${markerIdx}, fieldsIdx=${fieldsIdx}`
+  );
+  assert.ok(
+    !body.includes('<!-- ai-task-manager:fields:start -->'),
+    'legacy fields-start marker must not survive an approve-review write'
+  );
 }
 
 // 5. marker appended at end when no fields-block
@@ -104,24 +119,32 @@ function makeDeps(overrides = {}) {
   const newBody = '## AC\n- [x] x\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->\n';
   const out = insertApprovalMarker(newBody, FIXED_TS);
   assert.ok(out.includes('<!-- aitm-fields:'), 'output must contain new-encoded field-DB');
-  assert.ok(!out.includes('ai-task-manager:fields:start'),
-    'output must NOT contain legacy fields-start marker');
+  assert.ok(
+    !out.includes('ai-task-manager:fields:start'),
+    'output must NOT contain legacy fields-start marker'
+  );
   const markerIdx = out.indexOf('<!-- aitm-review-approved:');
   const fieldsIdx = out.indexOf('<!-- aitm-fields:');
-  assert.ok(markerIdx >= 0 && fieldsIdx > markerIdx,
-    'approval marker must precede field-DB');
+  assert.ok(markerIdx >= 0 && fieldsIdx > markerIdx, 'approval marker must precede field-DB');
 }
 
 // 8. legacy-encoded body is normalized to new encoding
 {
-  const legacy = '## AC\n- [x] x\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"M"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+  const legacy =
+    '## AC\n- [x] x\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"M"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
   const out = insertApprovalMarker(legacy, FIXED_TS);
-  assert.ok(!out.includes('ai-task-manager:fields:start'),
-    'legacy fields-start marker must be stripped');
-  assert.ok(!out.includes('ai-task-manager:fields:end'),
-    'legacy fields-end marker must be stripped');
-  assert.ok(out.includes('<!-- aitm-fields: {"schema":1,"values":{"size":"M"}} -->'),
-    'output must contain canonical re-emission of parsed values');
+  assert.ok(
+    !out.includes('ai-task-manager:fields:start'),
+    'legacy fields-start marker must be stripped'
+  );
+  assert.ok(
+    !out.includes('ai-task-manager:fields:end'),
+    'legacy fields-end marker must be stripped'
+  );
+  assert.ok(
+    out.includes('<!-- aitm-fields: {"schema":1,"values":{"size":"M"}} -->'),
+    'output must contain canonical re-emission of parsed values'
+  );
 }
 
 console.log('approve-review.test.mjs: all passed');

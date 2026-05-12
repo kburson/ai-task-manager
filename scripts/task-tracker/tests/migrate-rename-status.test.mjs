@@ -27,17 +27,31 @@ import {
   ];
   const { changed, options } = rewriteOptions(before);
   assert.equal(changed, true);
-  assert.deepEqual(options.map(o => o.name), TARGET_NAMES);
+  assert.deepEqual(
+    options.map((o) => o.name),
+    TARGET_NAMES
+  );
   // IDs preserved
-  assert.deepEqual(options.map(o => o.id), ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
+  assert.deepEqual(
+    options.map((o) => o.id),
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+  );
 }
 
 // rewriteOptions: idempotent — second run on already-target names is a no-op
 {
-  const after = TARGET_NAMES.map((name, i) => ({ id: `ID_${i}`, name, color: 'GRAY', description: '' }));
+  const after = TARGET_NAMES.map((name, i) => ({
+    id: `ID_${i}`,
+    name,
+    color: 'GRAY',
+    description: '',
+  }));
   const { changed, options } = rewriteOptions(after);
   assert.equal(changed, false, 'already-migrated board should be no-op');
-  assert.deepEqual(options.map(o => o.name), TARGET_NAMES);
+  assert.deepEqual(
+    options.map((o) => o.name),
+    TARGET_NAMES
+  );
 }
 
 // rewriteJson: pre-migration JSON → renamed keys, deprecated dropped
@@ -61,7 +75,11 @@ import {
   // Renames applied
   assert.equal(json.kanbanOptionGroom, 'OP_grm');
   assert.equal(json.kanbanOptionAnalyze, 'OP_anl');
-  assert.equal(json.kanbanOptionValidate, 'OP_rev', 'old kanbanOptionReview value moves to Validate');
+  assert.equal(
+    json.kanbanOptionValidate,
+    'OP_rev',
+    'old kanbanOptionReview value moves to Validate'
+  );
   assert.equal(json.kanbanOptionReview, 'OP_r4r', 'old R4R value becomes new kanbanOptionReview');
   // Old keys removed (except kanbanOptionReview, which is also a target — gets
   // repopulated by the kanbanOptionR4R → kanbanOptionReview rename in the same pass)
@@ -89,7 +107,7 @@ import {
     kanbanOptionAnalyze: 'OP_anl',
     kanbanOptionDevelopment: 'OP_dev',
     kanbanOptionValidate: 'OP_val',
-    kanbanOptionReview: 'OP_rev',  // post-migration value (was R4R)
+    kanbanOptionReview: 'OP_rev', // post-migration value (was R4R)
     kanbanOptionDone: 'OP_done',
   };
   const { changed, json } = rewriteJson(after);
@@ -110,12 +128,16 @@ import {
     kanbanOptionValidate: 'OP_val',
     kanbanOptionReview: 'OP_rev',
     kanbanOptionDone: 'OP_done',
-    kanbanOptionInProgress: 'STALE',  // leftover deprecated key
+    kanbanOptionInProgress: 'STALE', // leftover deprecated key
   };
   const { changed, json } = rewriteJson(partial);
   assert.equal(changed, true);
   assert.equal('kanbanOptionInProgress' in json, false);
-  assert.equal(json.kanbanOptionReview, 'OP_rev', 'should not clobber post-migration kanbanOptionReview');
+  assert.equal(
+    json.kanbanOptionReview,
+    'OP_rev',
+    'should not clobber post-migration kanbanOptionReview'
+  );
 }
 
 // TARGET_KANBAN_KEYS exposed for downstream callers

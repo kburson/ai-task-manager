@@ -45,18 +45,22 @@ function makeSandbox(body, { currentState = 'Analyze' } = {}) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'o/r',
-      projectId: PROJECT_ID,
-      kanbanFieldId: 'PVTF_x',
-      kanbanOptionBacklog: 'OP_b',
-      kanbanOptionGroom: 'OP_g',
-      kanbanOptionAnalyze: 'OP_a',
-      kanbanOptionDevelopment: 'OP_d',
-      kanbanOptionValidate: 'OP_v',
-      kanbanOptionReview: 'OP_r',
-      kanbanOptionDone: 'OP_done',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'o/r',
+        projectId: PROJECT_ID,
+        kanbanFieldId: 'PVTF_x',
+        kanbanOptionBacklog: 'OP_b',
+        kanbanOptionGroom: 'OP_g',
+        kanbanOptionAnalyze: 'OP_a',
+        kanbanOptionDevelopment: 'OP_d',
+        kanbanOptionValidate: 'OP_v',
+        kanbanOptionReview: 'OP_r',
+        kanbanOptionDone: 'OP_done',
+      },
+      null,
+      2
+    )
   );
 
   // Fake gh shim. Responds to:
@@ -142,7 +146,9 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
   const { sandbox, binDir } = makeSandbox(body, { currentState: 'Analyze' });
-  const r = await runMove(sandbox, binDir, ['100', 'development'], { TASK_TRACKER_FORCE_DONE: '1' });
+  const r = await runMove(sandbox, binDir, ['100', 'development'], {
+    TASK_TRACKER_FORCE_DONE: '1',
+  });
   assert.match(r.stderr, /bypassing analyze->development approval gate/);
   assert.match(r.stdout, /moved to: development/);
   rmSync(sandbox, { recursive: true });

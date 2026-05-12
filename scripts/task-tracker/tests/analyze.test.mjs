@@ -29,7 +29,10 @@ const BARE_BODY = [
   const state = { body: BARE_BODY, writes: 0 };
   const deps = {
     fetchBody: async () => state.body,
-    writeBody: async (b) => { state.body = b; state.writes++; },
+    writeBody: async (b) => {
+      state.body = b;
+      state.writes++;
+    },
   };
   const res = await markDeepDiveComplete({ issueNumber: 123, cfg: CFG, now: NOW, deps });
   assert.equal(res.changed, true, 'first call must report changed=true');
@@ -45,7 +48,10 @@ const BARE_BODY = [
   const state = { body: seeded, writes: 0 };
   const deps = {
     fetchBody: async () => state.body,
-    writeBody: async (b) => { state.body = b; state.writes++; },
+    writeBody: async (b) => {
+      state.body = b;
+      state.writes++;
+    },
   };
   const res = await markDeepDiveComplete({ issueNumber: 123, cfg: CFG, now: NOW, deps });
   assert.equal(res.changed, false, 'second call must report changed=false');
@@ -57,14 +63,8 @@ const BARE_BODY = [
 
 // ── Test 3: argument validation ──────────────────────────────────────────────
 {
-  await assert.rejects(
-    () => markDeepDiveComplete({ cfg: CFG }),
-    /issueNumber is required/,
-  );
-  await assert.rejects(
-    () => markDeepDiveComplete({ issueNumber: 1 }),
-    /cfg\.repo is required/,
-  );
+  await assert.rejects(() => markDeepDiveComplete({ cfg: CFG }), /issueNumber is required/);
+  await assert.rejects(() => markDeepDiveComplete({ issueNumber: 1 }), /cfg\.repo is required/);
 }
 
 console.log('analyze.test.mjs: all passed');

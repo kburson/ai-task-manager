@@ -34,7 +34,15 @@ import { gql, splitRepo } from './lib/github-projects.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.join(__dir, '..', '..', 'skill', 'shared', 'templates', 'wave-parent.md');
+const TEMPLATE_PATH = path.join(
+  __dir,
+  '..',
+  '..',
+  'skill',
+  'shared',
+  'templates',
+  'wave-parent.md'
+);
 const CREATE_ISSUE = path.join(__dir, 'create-issue.mjs');
 
 function parseArgs(argv) {
@@ -43,7 +51,10 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === '--children') {
       const v = argv[++i] || '';
-      out.children = v.split(',').map(s => s.trim()).filter(Boolean);
+      out.children = v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     } else if (a === '--child') {
       out.children.push(argv[++i]);
     } else if (a === '--purpose') out.purpose = argv[++i];
@@ -60,14 +71,17 @@ function usage() {
 }
 
 function waveId(children) {
-  const sorted = [...children].map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  const sorted = [...children]
+    .map(Number)
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
   const h = createHash('sha1').update(sorted.join(',')).digest('hex').slice(0, 10);
   return `${sorted.join('-')}.${h}`;
 }
 
 function renderTemplate({ purpose, children, waveIdValue }) {
   const tpl = readFileSync(TEMPLATE_PATH, 'utf8');
-  const childList = children.map(n => `- [ ] #${n}`).join('\n');
+  const childList = children.map((n) => `- [ ] #${n}`).join('\n');
   return tpl
     .replaceAll('{{purpose}}', purpose)
     .replaceAll('{{children}}', childList)
@@ -86,7 +100,9 @@ async function findExistingParentByWaveId({ repo, waveIdValue, assignee }) {
     for (const row of rows) {
       if (typeof row.body === 'string' && row.body.includes(marker)) return Number(row.number);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
@@ -94,7 +110,7 @@ async function getIssueNodeId({ repo, issueNumber }) {
   const { owner, repoName } = splitRepo(repo);
   const data = await gql(
     `query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name){issue(number:$n){id}}}`,
-    { owner, name: repoName, n: Number(issueNumber) },
+    { owner, name: repoName, n: Number(issueNumber) }
   );
   return data?.repository?.issue?.id || null;
 }
@@ -102,7 +118,7 @@ async function getIssueNodeId({ repo, issueNumber }) {
 async function addSubIssue({ parentId, childId }) {
   await gql(
     `mutation($parent:ID!,$child:ID!){addSubIssue(input:{issueId:$parent,subIssueId:$child}){issue{id} subIssue{id}}}`,
-    { parent: parentId, child: childId },
+    { parent: parentId, child: childId }
   );
 }
 
@@ -113,7 +129,16 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
   writeFileSync(bodyFile, body, 'utf8');
   const title = `Wave: ${purpose}`.slice(0, 200);
 
-  const args = [CREATE_ISSUE, '--title', title, '--body-file', bodyFile, '--status', 'development', '--no-placeholder-substitution'];
+  const args = [
+    CREATE_ISSUE,
+    '--title',
+    title,
+    '--body-file',
+    bodyFile,
+    '--status',
+    'development',
+    '--no-placeholder-substitution',
+  ];
   if (priority) args.push('--priority', priority);
   if (sequence) args.push('--sequence', String(sequence));
   if (cfg.assignee) args.push('--assignee', cfg.assignee);
@@ -124,17 +149,27 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
     throw new Error(`create-issue failed (exit ${r.status})`);
   }
   const m = /\/issues\/(\d+)/.exec(r.stdout || '');
-  if (!m) throw new Error(`could not parse new parent number from create-issue stdout: ${r.stdout}`);
+  if (!m)
+    throw new Error(`could not parse new parent number from create-issue stdout: ${r.stdout}`);
   return Number(m[1]);
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.help) { process.stdout.write(usage() + '\n'); process.exit(0); }
-  if (args.children.length === 0) { process.stderr.write(`ensure-wave-parent: --children is required\n${usage()}\n`); process.exit(2); }
+  if (args.help) {
+    process.stdout.write(usage() + '\n');
+    process.exit(0);
+  }
+  if (args.children.length === 0) {
+    process.stderr.write(`ensure-wave-parent: --children is required\n${usage()}\n`);
+    process.exit(2);
+  }
 
   const cfg = loadConfig();
-  if (!cfg.repo) { process.stderr.write('ensure-wave-parent: no repo configured\n'); process.exit(2); }
+  if (!cfg.repo) {
+    process.stderr.write('ensure-wave-parent: no repo configured\n');
+    process.exit(2);
+  }
 
   const result = await classify({ candidates: args.children, repo: cfg.repo });
 
@@ -152,15 +187,27 @@ async function main() {
     process.exit(2);
   }
   // all-solo, >=2
-  if (!args.purpose) { process.stderr.write('ensure-wave-parent: --purpose is required for solo fan-out\n'); process.exit(2); }
-  if (args.dryRun) { process.stdout.write(`DRY_RUN: would create parent for [${result.solos.join(',')}]\n`); return; }
+  if (!args.purpose) {
+    process.stderr.write('ensure-wave-parent: --purpose is required for solo fan-out\n');
+    process.exit(2);
+  }
+  if (args.dryRun) {
+    process.stdout.write(`DRY_RUN: would create parent for [${result.solos.join(',')}]\n`);
+    return;
+  }
 
   const waveIdValue = waveId(result.solos);
-  const existing = await findExistingParentByWaveId({ repo: cfg.repo, waveIdValue, assignee: cfg.assignee });
+  const existing = await findExistingParentByWaveId({
+    repo: cfg.repo,
+    waveIdValue,
+    assignee: cfg.assignee,
+  });
   let parentNumber;
   if (existing) {
     parentNumber = existing;
-    process.stderr.write(`ensure-wave-parent: reusing existing parent #${parentNumber} (wave-id ${waveIdValue})\n`);
+    process.stderr.write(
+      `ensure-wave-parent: reusing existing parent #${parentNumber} (wave-id ${waveIdValue})\n`
+    );
   } else {
     parentNumber = createParentIssue({
       purpose: args.purpose,
@@ -206,7 +253,7 @@ async function main() {
   process.stdout.write(`PARENT: #${parentNumber}\n`);
 }
 
-main().catch(err => {
+main().catch((err) => {
   process.stderr.write(`ensure-wave-parent error: ${err.message}\n`);
   process.exit(1);
 });

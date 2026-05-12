@@ -16,7 +16,11 @@ import {
   for (const b of SIZE_BUCKETS) {
     if (b.max === Infinity) continue;
     assert.equal(bucketSize(b.max), b.size, `score ${b.max} should bucket as ${b.size}`);
-    assert.notEqual(bucketSize(b.max + 0.01), b.size, `score ${b.max + 0.01} should escape ${b.size}`);
+    assert.notEqual(
+      bucketSize(b.max + 0.01),
+      b.size,
+      `score ${b.max + 0.01} should escape ${b.size}`
+    );
   }
 }
 
@@ -151,7 +155,7 @@ Blocks: #99
 ### Identified risks
 - r1
 `,
-    { size: 'M', estimate: 8 },
+    { size: 'M', estimate: 8 }
   );
   const body = buildAuditCommentBody(result);
   assert.ok(body.startsWith(AUDIT_HEADER), 'header line first');
@@ -189,7 +193,7 @@ Blocks: #99
 - r4
 - r5
 `,
-    { size: 'XS', estimate: 1.5 },
+    { size: 'XS', estimate: 1.5 }
   );
   assert.equal(result.requiresHuman, true, 'fixture must trip the 2-tier gate');
   const body = buildAuditCommentBody(result);

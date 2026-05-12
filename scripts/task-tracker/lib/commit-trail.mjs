@@ -7,10 +7,7 @@
 export const TRAIL_HEADING = '### 🔗 Commits';
 export const MARKER_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
 
-const TABLE_HEADER_4 = [
-  '| SHA | Subject | Author | When |',
-  '|---|---|---|---|',
-].join('\n');
+const TABLE_HEADER_4 = ['| SHA | Subject | Author | When |', '|---|---|---|---|'].join('\n');
 
 const TABLE_HEADER_6 = [
   '| SHA | Subject | Author | When | Branch | Worktree |',
@@ -21,7 +18,10 @@ export function parseMarker(body) {
   if (!body) return { shas: new Set(), index: -1, raw: '' };
   const m = body.match(MARKER_RE);
   if (!m) return { shas: new Set(), index: -1, raw: '' };
-  const list = m[1].split(',').map(s => s.trim()).filter(Boolean);
+  const list = m[1]
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   return { shas: new Set(list), index: m.index, raw: m[0] };
 }
 
@@ -40,16 +40,16 @@ function shortSha(sha) {
 }
 
 function escapePipe(s) {
-  return String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(s == null ? '' : s)
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
-export function buildRow({ sha, subject, author, ts, branch, worktree }, { worktreeCols = false } = {}) {
-  const cols = [
-    `\`${shortSha(sha)}\``,
-    escapePipe(subject),
-    escapePipe(author),
-    escapePipe(ts),
-  ];
+export function buildRow(
+  { sha, subject, author, ts, branch, worktree },
+  { worktreeCols = false } = {}
+) {
+  const cols = [`\`${shortSha(sha)}\``, escapePipe(subject), escapePipe(author), escapePipe(ts)];
   if (worktreeCols) {
     cols.push(escapePipe(branch || '-'));
     cols.push(escapePipe(worktree || '-'));
@@ -62,13 +62,19 @@ export function appendCommitRow(body, row) {
   let lastTableIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
-    if (l.startsWith('| `') || (l.startsWith('| ') && !l.startsWith('| SHA') && !l.startsWith('|---'))) {
+    if (
+      l.startsWith('| `') ||
+      (l.startsWith('| ') && !l.startsWith('| SHA') && !l.startsWith('|---'))
+    ) {
       lastTableIdx = i;
     }
   }
   if (lastTableIdx === -1) {
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('|---')) { lastTableIdx = i; break; }
+      if (lines[i].startsWith('|---')) {
+        lastTableIdx = i;
+        break;
+      }
     }
   }
   if (lastTableIdx === -1) {
@@ -88,7 +94,7 @@ export function updateMarker(body, sha) {
   if (parsed.index === -1) {
     // Insert marker just after the heading line.
     const lines = body.split('\n');
-    const hIdx = lines.findIndex(l => l.startsWith(TRAIL_HEADING));
+    const hIdx = lines.findIndex((l) => l.startsWith(TRAIL_HEADING));
     if (hIdx === -1) return `${next}\n${body}`;
     lines.splice(hIdx + 1, 0, '', next);
     return lines.join('\n');
@@ -116,7 +122,9 @@ export function detectGitCommit(cmd) {
     const trimmed = seg.trim();
     if (!trimmed) continue;
     // Allow leading env-var assignments and `cd path && ...` already handled by split.
-    const m = trimmed.match(/^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*git\b(?:\s+-[cC]\s+\S+)*\s+(?:[a-z\-]+\s+)*commit\b/);
+    const m = trimmed.match(
+      /^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*git\b(?:\s+-[cC]\s+\S+)*\s+(?:[a-z\-]+\s+)*commit\b/
+    );
     if (!m) continue;
     const isAmend = /\s--amend\b/.test(trimmed);
     return { isCommit: true, isAmend };

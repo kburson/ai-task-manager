@@ -16,19 +16,14 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import {
-  parseIssueFieldDb,
-  stripIssueFieldDb,
-  formatIssueFieldDb,
-  FIELD_DB_START,
-  FIELDS_COMMENT_PREFIX,
-} from './issue-field-db.mjs';
+import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
 import { loadConfig } from './config.mjs';
 
 const pexec = promisify(execFile);
 
 export function transformBody(body) {
-  const legacyCount = (body.match(/^[ \t]*<!--\s*ai-task-manager:fields:start\s*-->/gm) || []).length;
+  const legacyCount = (body.match(/^[ \t]*<!--\s*ai-task-manager:fields:start\s*-->/gm) || [])
+    .length;
   const newCount = (body.match(/^[ \t]*<!--\s*aitm-fields:/gm) || []).length;
 
   if (legacyCount === 0 && newCount <= 1) {
@@ -40,11 +35,21 @@ export function transformBody(body) {
     return { changed: false, body, legacyCount, newCount, reason: parsed.reason };
   }
   const nextBody = `${stripIssueFieldDb(body)}\n\n${formatIssueFieldDb(parsed.values)}\n`;
-  return { changed: nextBody !== body, body: nextBody, legacyCount, newCount, values: parsed.values };
+  return {
+    changed: nextBody !== body,
+    body: nextBody,
+    legacyCount,
+    newCount,
+    values: parsed.values,
+  };
 }
 
 async function fetchBody({ repo, issueNumber }) {
-  const { stdout } = await pexec('gh', ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'], { timeout: 10000 });
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
+    { timeout: 10000 }
+  );
   return stdout;
 }
 
@@ -53,7 +58,9 @@ async function writeBody({ repo, issueNumber, body }) {
   const file = path.join(dir, 'body.md');
   try {
     writeFileSync(file, body);
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', file], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', file], {
+      timeout: 15000,
+    });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -62,7 +69,23 @@ async function writeBody({ repo, issueNumber, body }) {
 async function scanOpenIssues({ repo }) {
   // gh search issues; falls back to scanning open issues if search is restricted.
   try {
-    const { stdout } = await pexec('gh', ['search', 'issues', 'ai-task-manager:fields:start', '--repo', repo, '--state', 'open', '--json', 'number', '--limit', '500'], { timeout: 15000 });
+    const { stdout } = await pexec(
+      'gh',
+      [
+        'search',
+        'issues',
+        'ai-task-manager:fields:start',
+        '--repo',
+        repo,
+        '--state',
+        'open',
+        '--json',
+        'number',
+        '--limit',
+        '500',
+      ],
+      { timeout: 15000 }
+    );
     return JSON.parse(stdout).map((x) => x.number);
   } catch (err) {
     process.stderr.write(`scan failed: ${err.message}\n`);
@@ -75,22 +98,30 @@ async function migrateOne({ repo, issueNumber, dry }) {
   const result = transformBody(body);
   const label = `#${issueNumber}`;
   if (!result.changed) {
-    process.stdout.write(`${label}: no change (legacy=${result.legacyCount}, new=${result.newCount})\n`);
+    process.stdout.write(
+      `${label}: no change (legacy=${result.legacyCount}, new=${result.newCount})\n`
+    );
     return;
   }
   if (dry) {
-    process.stdout.write(`${label}: would migrate (legacy=${result.legacyCount}, new=${result.newCount})\n`);
+    process.stdout.write(
+      `${label}: would migrate (legacy=${result.legacyCount}, new=${result.newCount})\n`
+    );
     return;
   }
   await writeBody({ repo, issueNumber, body: result.body });
-  process.stdout.write(`${label}: migrated (legacy=${result.legacyCount}, new=${result.newCount})\n`);
+  process.stdout.write(
+    `${label}: migrated (legacy=${result.legacyCount}, new=${result.newCount})\n`
+  );
 }
 
 async function main(argv) {
   const args = argv.slice(2);
   const dry = args.includes('--dry-run');
   const scan = args.includes('--scan');
-  const numbers = args.filter((a) => /^\d+$/.test(a) || /^#\d+$/.test(a)).map((a) => Number(a.replace(/^#/, '')));
+  const numbers = args
+    .filter((a) => /^\d+$/.test(a) || /^#\d+$/.test(a))
+    .map((a) => Number(a.replace(/^#/, '')));
 
   const cfg = loadConfig();
   const repo = cfg.repo;
@@ -106,7 +137,9 @@ async function main(argv) {
   }
 
   if (targets.length === 0) {
-    process.stderr.write('usage: migrate-fields-encoding.mjs <issue#> [...] [--dry-run] [--scan]\n');
+    process.stderr.write(
+      'usage: migrate-fields-encoding.mjs <issue#> [...] [--dry-run] [--scan]\n'
+    );
     process.exit(2);
   }
 

@@ -12,7 +12,9 @@ const targetDir = join(temp, 'target');
 spawnSync('mkdir', ['-p', binDir, targetDir], { check: true });
 
 const ghMock = join(binDir, 'gh');
-writeFileSync(ghMock, `#!/bin/bash
+writeFileSync(
+  ghMock,
+  `#!/bin/bash
 set -euo pipefail
 echo "$*" >> "${temp}/gh-calls.log"
 
@@ -109,23 +111,25 @@ fi
 
 echo "unexpected gh call: $*" >&2
 exit 1
-`);
+`
+);
 chmodSync(ghMock, 0o755);
 
-const input = [
-  '', // use detected repo
-  '1', // select linked project
-  '', // status field default
-  '', // estimate field default
-  '', // engaged time field default
-  '', // session time field default
-  '', // context length field default
-  '', // sequence field default
-  '', // start time field default
-  '', // spare prompt response
-  '', // spare prompt response
-  '', // spare prompt response
-].join('\n') + '\n';
+const input =
+  [
+    '', // use detected repo
+    '1', // select linked project
+    '', // status field default
+    '', // estimate field default
+    '', // engaged time field default
+    '', // session time field default
+    '', // context length field default
+    '', // sequence field default
+    '', // start time field default
+    '', // spare prompt response
+    '', // spare prompt response
+    '', // spare prompt response
+  ].join('\n') + '\n';
 
 const result = spawnSync('bash', [script, '--target', targetDir], {
   input,
@@ -142,8 +146,14 @@ assert.doesNotMatch(result.stderr, /array .* and object .* cannot be added/);
 const config = readFileSync(join(targetDir, '.ai-task-manager/task-tracker.json'), 'utf8');
 assert.match(config, /"projectId": "PVT_LINKED"/);
 
-const generatedTaskTemplate = readFileSync(join(targetDir, '.github/ISSUE_TEMPLATE/task.yml'), 'utf8');
-const generatedBugTemplate = readFileSync(join(targetDir, '.github/ISSUE_TEMPLATE/bug.yml'), 'utf8');
+const generatedTaskTemplate = readFileSync(
+  join(targetDir, '.github/ISSUE_TEMPLATE/task.yml'),
+  'utf8'
+);
+const generatedBugTemplate = readFileSync(
+  join(targetDir, '.github/ISSUE_TEMPLATE/bug.yml'),
+  'utf8'
+);
 for (const template of [generatedTaskTemplate, generatedBugTemplate]) {
   assert.match(template, /label: Estimate/);
   assert.match(template, /label: Sequence/);

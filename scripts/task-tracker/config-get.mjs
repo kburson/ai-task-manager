@@ -17,7 +17,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const [,, key, defaultValue = ''] = process.argv;
+const [, , key, defaultValue = ''] = process.argv;
 
 if (!key) {
   process.stderr.write('Usage: config-get.mjs <key> [default]\n');
@@ -35,9 +35,13 @@ try {
     try {
       config = JSON.parse(readFileSync(p, 'utf8'));
       break;
-    } catch { /* try next */ }
+    } catch {
+      /* try next */
+    }
   }
-} catch { /* config not found — use defaults */ }
+} catch {
+  /* config not found — use defaults */
+}
 
 const value = config[key] ?? defaultValue;
 process.stdout.write(String(value));

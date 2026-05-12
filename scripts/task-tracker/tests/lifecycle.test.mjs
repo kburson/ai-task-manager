@@ -26,7 +26,9 @@ r = await pexec('node', [CLI, 'review', '#321'], { env });
 assert.match(r.stdout, /Review #321/);
 assert.match(r.stdout, /paused/i);
 
-let state = JSON.parse(readFileSync(path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
+let state = JSON.parse(
+  readFileSync(path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+);
 assert.equal(state.active, null);
 assert.equal(state.lastActive, '#321');
 
@@ -50,7 +52,9 @@ assert.match(r.stdout, /\/task close \[#N\]/);
 
   // Start active task #385 (epic)
   await pexec('node', [CLI, '#385'], { env: env2 });
-  let st = JSON.parse(readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
+  let st = JSON.parse(
+    readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+  );
   assert.equal(st.active, '#385');
 
   // Close #386 (a different issue)
@@ -58,8 +62,14 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   assert.match(closeResult.stdout, /Closed #386/, 'should report closing #386, not #385');
 
   // Active session (#385) must still be intact
-  st = JSON.parse(readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
-  assert.equal(st.active, '#385', 'active session should remain #385 after closing a different issue');
+  st = JSON.parse(
+    readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+  );
+  assert.equal(
+    st.active,
+    '#385',
+    'active session should remain #385 after closing a different issue'
+  );
 
   rmSync(sandbox2, { recursive: true });
 }
@@ -77,7 +87,9 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   const closeResult = await pexec('node', [CLI, 'close', '#400'], { env: env3 });
   assert.match(closeResult.stdout, /Closed #400/);
 
-  const st = JSON.parse(readFileSync(path.join(sandbox3, '.ai-task-manager', 'task-tracker-state.json'), 'utf8'));
+  const st = JSON.parse(
+    readFileSync(path.join(sandbox3, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+  );
   assert.equal(st.active, null, 'active should be cleared when closing the only/active issue');
 
   rmSync(sandbox3, { recursive: true });

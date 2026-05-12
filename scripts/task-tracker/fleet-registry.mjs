@@ -1,4 +1,12 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmdirSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  renameSync,
+  rmdirSync,
+  statSync,
+} from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { legacyPathFor } from './paths.mjs';
@@ -21,7 +29,9 @@ export function withLock(registryPath, fn) {
       try {
         const age = Date.now() - statSync(lockDir).mtimeMs;
         if (age > LOCK_STALE_MS) {
-          try { rmdirSync(lockDir); } catch {}
+          try {
+            rmdirSync(lockDir);
+          } catch {}
           continue;
         }
       } catch {}
@@ -32,14 +42,19 @@ export function withLock(registryPath, fn) {
   try {
     return fn();
   } finally {
-    try { rmdirSync(lockDir); } catch {}
+    try {
+      rmdirSync(lockDir);
+    } catch {}
   }
 }
 
 export function findMainWorktreePath(projectDir) {
   try {
-    const out = execFileSync('git', ['worktree', 'list', '--porcelain'],
-      { cwd: projectDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: projectDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
     const firstBlock = out.split(/\n\n/)[0];
     const match = firstBlock.match(/^worktree (.+)$/m);
     if (match) return match[1].trim();
@@ -53,8 +68,11 @@ export function fleetRegistryPath(mainWorktreePath) {
 
 export function currentBranch(projectDir) {
   try {
-    return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'],
-      { cwd: projectDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: projectDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
   } catch {
     return 'unknown';
   }

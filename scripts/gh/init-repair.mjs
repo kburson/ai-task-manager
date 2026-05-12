@@ -30,7 +30,8 @@ function configPath() {
 }
 
 async function fetchStatusOptions(projectId, kanbanFieldId) {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($proj: ID!) {
       node(id: $proj) {
         ... on ProjectV2 {
@@ -45,8 +46,9 @@ async function fetchStatusOptions(projectId, kanbanFieldId) {
     { proj: projectId }
   );
   const fields = data?.node?.fields?.nodes || [];
-  const statusField = fields.find(f => f && f.id === kanbanFieldId)
-    || fields.find(f => f && (f.name || '').toLowerCase() === 'status');
+  const statusField =
+    fields.find((f) => f && f.id === kanbanFieldId) ||
+    fields.find((f) => f && (f.name || '').toLowerCase() === 'status');
   return statusField?.options || [];
 }
 
@@ -64,11 +66,13 @@ export async function runRepair() {
   }
   const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
   if (!cfg.projectId || !cfg.kanbanFieldId) {
-    process.stderr.write('Config is missing projectId or kanbanFieldId. Run: npx ai-task-manager init\n');
+    process.stderr.write(
+      'Config is missing projectId or kanbanFieldId. Run: npx ai-task-manager init\n'
+    );
     process.exit(1);
   }
 
-  const empties = Object.keys(OPTION_KEYS).filter(k => !cfg[k]);
+  const empties = Object.keys(OPTION_KEYS).filter((k) => !cfg[k]);
   if (empties.length === 0) {
     console.log('All kanbanOption* fields already populated. Nothing to repair.');
     return { filled: [], alreadySet: Object.keys(OPTION_KEYS), unmatched: [] };
@@ -81,13 +85,15 @@ export async function runRepair() {
     options = await fetchStatusOptions(cfg.projectId, cfg.kanbanFieldId);
   }
 
-  const byName = new Map(options.map(o => [String(o.name || '').toLowerCase(), o.id]));
+  const byName = new Map(options.map((o) => [String(o.name || '').toLowerCase(), o.id]));
   const filled = [];
   const unmatched = [];
   for (const key of empties) {
     const id = byName.get(OPTION_KEYS[key]);
-    if (id) { cfg[key] = id; filled.push(key); }
-    else unmatched.push(key);
+    if (id) {
+      cfg[key] = id;
+      filled.push(key);
+    } else unmatched.push(key);
   }
 
   if (filled.length > 0) {
@@ -96,18 +102,22 @@ export async function runRepair() {
   }
 
   console.log(`Filled: ${filled.length === 0 ? '(none)' : filled.join(', ')}`);
-  const alreadySet = Object.keys(OPTION_KEYS).filter(k => !empties.includes(k));
+  const alreadySet = Object.keys(OPTION_KEYS).filter((k) => !empties.includes(k));
   if (alreadySet.length) console.log(`Already set: ${alreadySet.join(', ')}`);
   if (unmatched.length) {
-    console.log(`Unmatched (no option named ${unmatched.map(k => `"${OPTION_KEYS[k]}"`).join(', ')} on Status field): ${unmatched.join(', ')}`);
-    console.log('  → Add the missing column(s) to the GitHub Project Status field, then re-run repair.');
+    console.log(
+      `Unmatched (no option named ${unmatched.map((k) => `"${OPTION_KEYS[k]}"`).join(', ')} on Status field): ${unmatched.join(', ')}`
+    );
+    console.log(
+      '  → Add the missing column(s) to the GitHub Project Status field, then re-run repair.'
+    );
   }
   return { filled, alreadySet, unmatched };
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  runRepair().catch(e => {
+  runRepair().catch((e) => {
     process.stderr.write(`Repair failed: ${e.message}\n`);
     process.exit(1);
   });

@@ -30,14 +30,14 @@ export function parseTimingRows(body) {
   for (const line of lines) {
     if (!line.startsWith('|')) continue;
     const cells = line.split('|').slice(1, -1);
-    if (cells.some(c => c.trim() === 'Timestamp')) {
-      tsCol = cells.findIndex(c => c.trim() === 'Timestamp');
-      eventCol = cells.findIndex(c => c.trim() === 'Event');
-      activeCol = cells.findIndex(c => ['Active', 'Active Min'].includes(c.trim()));
-      wordMarkerCol = cells.findIndex(c => c.trim() === 'Word Marker');
+    if (cells.some((c) => c.trim() === 'Timestamp')) {
+      tsCol = cells.findIndex((c) => c.trim() === 'Timestamp');
+      eventCol = cells.findIndex((c) => c.trim() === 'Event');
+      activeCol = cells.findIndex((c) => ['Active', 'Active Min'].includes(c.trim()));
+      wordMarkerCol = cells.findIndex((c) => c.trim() === 'Word Marker');
       continue;
     }
-    if (cells.every(c => /^[-: ]+$/.test(c.trim()))) continue;
+    if (cells.every((c) => /^[-: ]+$/.test(c.trim()))) continue;
     if (tsCol === -1 || eventCol === -1) continue;
     rows.push({
       tsMs: parseTs(cells[tsCol] ?? ''),

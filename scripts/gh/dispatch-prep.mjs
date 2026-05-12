@@ -19,9 +19,18 @@ function parseArgs(argv) {
   const out = { issue: null, description: 'orchestrator dispatch — agent boot pending' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--description') { out.description = argv[++i]; continue; }
-    if (a === '-h' || a === '--help') { out.help = true; continue; }
-    if (!out.issue) { out.issue = a.replace(/^#/, ''); continue; }
+    if (a === '--description') {
+      out.description = argv[++i];
+      continue;
+    }
+    if (a === '-h' || a === '--help') {
+      out.help = true;
+      continue;
+    }
+    if (!out.issue) {
+      out.issue = a.replace(/^#/, '');
+      continue;
+    }
   }
   return out;
 }
@@ -39,7 +48,9 @@ async function main() {
 
   const cfg = loadConfig();
   if (!cfg.repo) {
-    process.stderr.write('dispatch-prep: config-not-found — no repo configured. Run /task config init.\n');
+    process.stderr.write(
+      'dispatch-prep: config-not-found — no repo configured. Run /task config init.\n'
+    );
     process.exit(2);
   }
 
@@ -71,10 +82,12 @@ async function main() {
     });
   }
 
-  process.stdout.write(`dispatch-prep: #${args.issue} flipped to In Progress and start row posted\n`);
+  process.stdout.write(
+    `dispatch-prep: #${args.issue} flipped to In Progress and start row posted\n`
+  );
 }
 
-main().catch(err => {
+main().catch((err) => {
   process.stderr.write(`dispatch-prep error: ${err.message}\n`);
   process.exit(1);
 });

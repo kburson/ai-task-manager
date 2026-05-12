@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-import { execFile } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
-import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
@@ -17,7 +15,6 @@ import {
 } from './lib/github-projects.mjs';
 import { tetherIssueToProject } from './lib/project-tether.mjs';
 
-const pexec = promisify(execFile);
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const skipInit = args.includes('--skip-init');
@@ -29,7 +26,8 @@ const keepRetired = args.includes('--keep-retired');
 const RETIRED_FIELDS = ['Context Length'];
 
 async function deleteRetiredFields(projectId) {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($project: ID!) {
       node(id: $project) {
         ... on ProjectV2 {
@@ -41,10 +39,16 @@ async function deleteRetiredFields(projectId) {
     }`,
     { project: projectId }
   );
-  const targets = (data.node.fields.nodes || []).filter(f => f?.name && RETIRED_FIELDS.includes(f.name));
+  const targets = (data.node.fields.nodes || []).filter(
+    (f) => f?.name && RETIRED_FIELDS.includes(f.name)
+  );
   for (const f of targets) {
-    if (dryRun) { console.log(`Would delete retired field: ${f.name}`); continue; }
-    await gql(`
+    if (dryRun) {
+      console.log(`Would delete retired field: ${f.name}`);
+      continue;
+    }
+    await gql(
+      `
       mutation($field: ID!) {
         deleteProjectV2Field(input: { fieldId: $field }) { projectV2Field { ... on ProjectV2FieldCommon { id } } }
       }`,
@@ -56,18 +60,15 @@ async function deleteRetiredFields(projectId) {
 
 const projectDir = getProjectDir();
 
-async function run(cmd, args, opts = {}) {
-  const { stdout } = await pexec(cmd, args, { cwd: projectDir, timeout: 60000, ...opts });
-  return stdout;
-}
-
 async function writeIssueBody(repo, issueNumber, body) {
   const tmp = path.join(projectTmpDir(projectDir), `aitm-migrate-${issueNumber}-${Date.now()}.md`);
   try {
     writeFileSync(tmp, body, 'utf8');
     await gh(['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -88,7 +89,18 @@ async function main() {
   if (!cfg.projectId) throw new Error('projectId not configured');
   const fieldDefs = loadProjectFieldDefs(projectDir);
   const state = includeClosed ? 'all' : 'open';
-  const raw = await gh(['issue', 'list', '-R', cfg.repo, '--state', state, '--limit', '1000', '--json', 'number,id,body,title']);
+  const raw = await gh([
+    'issue',
+    'list',
+    '-R',
+    cfg.repo,
+    '--state',
+    state,
+    '--limit',
+    '1000',
+    '--json',
+    'number,id,body,title',
+  ]);
   const issues = JSON.parse(raw);
   const optionMap = dryRun ? {} : await fieldOptionMap(cfg.projectId);
 
@@ -98,7 +110,11 @@ async function main() {
   let healed = 0;
   let synced = 0;
   for (const issue of issues) {
-    const oldProjectValues = await projectValuesForIssue({ cfg: oldCfg, fieldDefs, issueNumber: issue.number });
+    const oldProjectValues = await projectValuesForIssue({
+      cfg: oldCfg,
+      fieldDefs,
+      issueNumber: issue.number,
+    });
     const ensured = ensureIssueFieldDb(issue.body || '', fieldDefs, oldProjectValues);
     if (ensured.healed || ensured.changed) healed++;
     const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values: ensured.values });
@@ -107,17 +123,25 @@ async function main() {
     if (ensured.changed) await writeIssueBody(cfg.repo, issue.number, ensured.body);
     const { itemId } = await tetherIssueToProject({ cfg, issueNumber: issue.number });
     for (const item of syncPlan) {
-      await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId: item.fieldId, value: item.value, optionMap });
+      await writeProjectFieldValue({
+        projectId: cfg.projectId,
+        itemId,
+        fieldId: item.fieldId,
+        value: item.value,
+        optionMap,
+      });
     }
     synced++;
   }
 
-  console.log(dryRun
-    ? `Dry run complete. ${healed} issue body DB(s) would be healed.`
-    : `Migration complete. ${synced} issue(s) synced; ${healed} issue body DB(s) healed.`);
+  console.log(
+    dryRun
+      ? `Dry run complete. ${healed} issue body DB(s) would be healed.`
+      : `Migration complete. ${synced} issue(s) synced; ${healed} issue body DB(s) healed.`
+  );
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(`migrate-project: ${err.message}`);
   process.exit(1);
 });

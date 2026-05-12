@@ -6,7 +6,7 @@ This document defines how to estimate, record, and report the economic value of 
 
 ## Why This Matters
 
-Enterprise software teams rarely measure the *cost of the work itself* — they measure headcount and budget. When AI delivers the same output at a fraction of the cost, the value is invisible unless you translate it into the language finance and management understand: **dollars and hours**.
+Enterprise software teams rarely measure the _cost of the work itself_ — they measure headcount and budget. When AI delivers the same output at a fraction of the cost, the value is invisible unless you translate it into the language finance and management understand: **dollars and hours**.
 
 This framework does that translation — honestly. We cannot prove what a human engineer would have actually taken; we can only compare the pre-execution estimate against what we measured. The acceleration ratio is therefore labeled "estimated" and treated as directionally correct, not exact.
 
@@ -16,14 +16,14 @@ This framework does that translation — honestly. We cannot prove what a human 
 
 These are fully-burdened costs — salary + benefits + equity + tooling + management overhead — not just raw salary.
 
-| Region | Mid ($/hr) | Senior ($/hr) | Staff ($/hr) |
-|--------|-----------|--------------|-------------|
-| SF Bay Area / Silicon Valley | `$210` | `$275` | `$340` |
-| New York City / Boston | `$190` | `$250` | `$315` |
-| Seattle / Denver / Austin | `$170` | `$225` | `$285` |
-| Chicago / D.C. / Los Angeles | `$160` | `$210` | `$265` |
-| South / Midwest / Mountain | `$135` | `$180` | `$230` |
-| **National Average (US)** | **`$150`** | **`$200`** | **`$255`** |
+| Region                       | Mid ($/hr) | Senior ($/hr) | Staff ($/hr) |
+| ---------------------------- | ---------- | ------------- | ------------ |
+| SF Bay Area / Silicon Valley | `$210`     | `$275`        | `$340`       |
+| New York City / Boston       | `$190`     | `$250`        | `$315`       |
+| Seattle / Denver / Austin    | `$170`     | `$225`        | `$285`       |
+| Chicago / D.C. / Los Angeles | `$160`     | `$210`        | `$265`       |
+| South / Midwest / Mountain   | `$135`     | `$180`        | `$230`       |
+| **National Average (US)**    | **`$150`** | **`$200`**    | **`$255`**   |
 
 All estimates use **mid-level engineer hours** as the baseline — what a developer with 3–6 years of experience would take. This is the value denominator.
 
@@ -32,11 +32,11 @@ All estimates use **mid-level engineer hours** as the baseline — what a develo
 A team of engineers is not N times as productive as one engineer. Coordination costs compound:
 
 | Team size | Effective productivity per engineer |
-|-----------|-------------------------------------|
-| 1 | 100% |
-| 3–5 | 75–85% |
-| 10–15 | 60–70% |
-| 50+ | 40–55% |
+| --------- | ----------------------------------- |
+| 1         | 100%                                |
+| 3–5       | 75–85%                              |
+| 10–15     | 60–70%                              |
+| 50+       | 40–55%                              |
 
 The enterprise cost scenario models a large team at 50% efficiency (2× hours billed) with 30% coordination overhead on top.
 
@@ -46,31 +46,31 @@ The enterprise cost scenario models a large team at 50% efficiency (2× hours bi
 
 Use these reference points when estimating hours for a GitHub issue. Estimates represent what a **mid-level human engineer** would take. Be honest — estimates are for value reporting, not commitments.
 
-| Task type | Human hours | Notes |
-|-----------|------------|-------|
-| Bug fix (isolated, well-understood) | 2–4h | Includes investigation |
-| Bug fix (systemic, cross-file) | 6–16h | Includes regression testing |
-| New API endpoint (CRUD) | 4–8h | Schema + route + validation |
-| New API endpoint (complex logic) | 8–24h | Aggregation, joins, business rules |
-| New UI page (simple) | 6–12h | Layout + data fetch + basic state |
-| New UI page (interactive, real-time) | 16–40h | WebSocket, charts, complex state |
-| Schema migration | 4–12h | Includes backfill script + rollback |
-| Refactor: rename/move (mechanical) | 1–4h per file | Import fixes, rename cascades |
-| New service + data layer | 6–12h | Schema read, method design, type safety |
-| Documentation (architecture) | 4–8h | Per major doc |
-| CI script / guardrail | 2–6h | Script + integration into pipeline |
-| Full feature (design → test → ship) | 40–120h | Small feature; includes review cycles |
-| Epic (multi-week, multi-file) | 160–400h | Includes planning + coordination |
+| Task type                            | Human hours   | Notes                                   |
+| ------------------------------------ | ------------- | --------------------------------------- |
+| Bug fix (isolated, well-understood)  | 2–4h          | Includes investigation                  |
+| Bug fix (systemic, cross-file)       | 6–16h         | Includes regression testing             |
+| New API endpoint (CRUD)              | 4–8h          | Schema + route + validation             |
+| New API endpoint (complex logic)     | 8–24h         | Aggregation, joins, business rules      |
+| New UI page (simple)                 | 6–12h         | Layout + data fetch + basic state       |
+| New UI page (interactive, real-time) | 16–40h        | WebSocket, charts, complex state        |
+| Schema migration                     | 4–12h         | Includes backfill script + rollback     |
+| Refactor: rename/move (mechanical)   | 1–4h per file | Import fixes, rename cascades           |
+| New service + data layer             | 6–12h         | Schema read, method design, type safety |
+| Documentation (architecture)         | 4–8h          | Per major doc                           |
+| CI script / guardrail                | 2–6h          | Script + integration into pipeline      |
+| Full feature (design → test → ship)  | 40–120h       | Small feature; includes review cycles   |
+| Epic (multi-week, multi-file)        | 160–400h      | Includes planning + coordination        |
 
 Size buckets for the GitHub Projects `Size` field:
 
-| Size | Hours | Single-select option |
-|------|-------|---------------------|
-| XS | 1–2h | Set in init config |
-| S | 3–4h | Set in init config |
-| M | 6–10h | Set in init config |
-| L | 12–20h | Set in init config |
-| XL | 24h+ | Set in init config |
+| Size | Hours  | Single-select option |
+| ---- | ------ | -------------------- |
+| XS   | 1–2h   | Set in init config   |
+| S    | 3–4h   | Set in init config   |
+| M    | 6–10h  | Set in init config   |
+| L    | 12–20h | Set in init config   |
+| XL   | 24h+   | Set in init config   |
 
 ---
 
@@ -80,10 +80,10 @@ Size buckets for the GitHub Projects `Size` field:
 
 Two fields are recorded per issue on the GitHub Projects board:
 
-| Field | Type | What it captures |
-|-------|------|-----------------|
-| **Actual Session Time** | Number (minutes) | Active AI-assisted session minutes |
-| **Context Length** | Number (words) | Reader-visible chat words accumulated across all sessions for this issue |
+| Field                   | Type             | What it captures                                                         |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------ |
+| **Actual Session Time** | Number (minutes) | Active AI-assisted session minutes                                       |
+| **Context Length**      | Number (words)   | Reader-visible chat words accumulated across all sessions for this issue |
 
 ### Engaged Hours formula
 
@@ -258,6 +258,7 @@ node scripts/reports/generate-value-report.mjs --html --state closed --from 2026
 ```
 
 The report produces a multi-page landscape document:
+
 - **Page 1** — branded header + executive summary with methodology note
 - **Page 2** — Agentic AI Accelerator section (human vs. AI cost side-by-side) and all six comparison rows (Budget Baseline, Solo Senior, Enterprise Team, AI-Assisted Actual, Human Leverage, AI Leverage)
 - **Pages 3+** — Product Backlog per-issue table with rollup epics, Engineering Cost by US Region, Timeline Analysis with pre-work lag and in-flight duration

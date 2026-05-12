@@ -28,11 +28,13 @@ function buildDeps({ estimate = 16, engagedTime = 22.5 } = {}) {
   return {
     state,
     deps: {
-      postComment: async ({ body }) => { state.comments.push(body); },
-      loadProjectFieldDefs: () => ([
+      postComment: async ({ body }) => {
+        state.comments.push(body);
+      },
+      loadProjectFieldDefs: () => [
         { key: 'estimate', name: 'Estimate', type: 'number' },
         { key: 'engagedTime', name: 'Actual Hours', type: 'number' },
-      ]),
+      ],
       projectValuesForIssue: async () => {
         const out = {};
         if (estimate != null) out.estimate = estimate;

@@ -11,7 +11,15 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  chmodSync,
+  rmSync,
+  existsSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,18 +35,22 @@ function writeConfig(sandbox) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test',
-      kanbanFieldId: 'PVTF_x',
-      kanbanOptionBacklog: 'OPT_backlog',
-      kanbanOptionGroom: 'OPT_groom',
-      kanbanOptionAnalyze: 'OPT_analyze',
-      kanbanOptionDevelopment: OPT_DEV,
-      kanbanOptionValidate: 'OPT_validate',
-      kanbanOptionReview: OPT_REVIEW,
-      kanbanOptionDone: 'OPT_done',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test',
+        kanbanFieldId: 'PVTF_x',
+        kanbanOptionBacklog: 'OPT_backlog',
+        kanbanOptionGroom: 'OPT_groom',
+        kanbanOptionAnalyze: 'OPT_analyze',
+        kanbanOptionDevelopment: OPT_DEV,
+        kanbanOptionValidate: 'OPT_validate',
+        kanbanOptionReview: OPT_REVIEW,
+        kanbanOptionDone: 'OPT_done',
+      },
+      null,
+      2
+    )
   );
   mkdirSync(path.join(sandbox, 'scripts'), { recursive: true });
 }
@@ -55,7 +67,9 @@ function makeGhShim(sandbox, { bodyOnView, stateOptionId, recordedBodyPath }) {
   mkdirSync(binDir, { recursive: true });
   const callsLog = path.join(sandbox, 'gh-calls.log');
   const ghShim = path.join(binDir, 'gh');
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 // Only read stdin for graphql (which uses --input -); otherwise it would hang
@@ -127,7 +141,8 @@ if (argv[0] === 'project' && argv[1] === 'item-edit') {
   process.exit(0);
 }
 process.exit(0);
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
   return { binDir, callsLog };
 }
@@ -154,7 +169,12 @@ async function run(sandbox, binDir, args) {
     writeConfig(sandbox);
     writeFileSync(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
-      JSON.stringify({ active: '#101', lastActive: '#101', entryStartTs: null, wordsAtEntryStart: 0 })
+      JSON.stringify({
+        active: '#101',
+        lastActive: '#101',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
     );
     const fixtureBody = [
       '## Pickup Directive',
@@ -173,12 +193,17 @@ async function run(sandbox, binDir, args) {
     ].join('\n');
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
     const { binDir } = makeGhShim(sandbox, {
-      bodyOnView: fixtureBody, stateOptionId: OPT_REVIEW, recordedBodyPath,
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
     });
     const r = await run(sandbox, binDir, ['review', '#101']);
     assert.equal(r.code, 0, `expected exit 0; stderr:\n${r.stderr}`);
-    assert.match(r.stdout, /PROMPT_REQUIRED: review-approval #101/,
-      `expected marker in stdout; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    assert.match(
+      r.stdout,
+      /PROMPT_REQUIRED: review-approval #101/,
+      `expected marker in stdout; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`
+    );
     console.log('test 1 passed: verbReview emits marker on success');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -192,7 +217,12 @@ async function run(sandbox, binDir, args) {
     writeConfig(sandbox);
     writeFileSync(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
-      JSON.stringify({ active: '#102', lastActive: '#102', entryStartTs: null, wordsAtEntryStart: 0 })
+      JSON.stringify({
+        active: '#102',
+        lastActive: '#102',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
     );
     const fixtureBody = [
       '## Pickup Directive',
@@ -211,12 +241,17 @@ async function run(sandbox, binDir, args) {
     ].join('\n');
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
     const { binDir } = makeGhShim(sandbox, {
-      bodyOnView: fixtureBody, stateOptionId: OPT_REVIEW, recordedBodyPath,
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
     });
     const r = await run(sandbox, binDir, ['review', '#102']);
     assert.notEqual(r.code, 0, 'verbReview should exit non-zero on verification fail');
-    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/,
-      `marker must NOT be emitted on failure path; stdout:\n${r.stdout}`);
+    assert.doesNotMatch(
+      r.stdout,
+      /PROMPT_REQUIRED: review-approval/,
+      `marker must NOT be emitted on failure path; stdout:\n${r.stdout}`
+    );
     console.log('test 2 passed: verbReview does NOT emit marker on verification fail');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -231,7 +266,8 @@ async function run(sandbox, binDir, args) {
     // No shim needed — verbReject exits on missing reason before any network call
     // when SKIP_NETWORK is on; we set it explicitly to keep this test hermetic.
     const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
-    let code = 0, stderr = '';
+    let code = 0,
+      stderr = '';
     try {
       await pexec('node', [CLI, 'reject', '#103'], { env, timeout: 10000 });
     } catch (err) {
@@ -239,7 +275,11 @@ async function run(sandbox, binDir, args) {
       stderr = err.stderr || '';
     }
     assert.notEqual(code, 0, 'expected non-zero exit when --reason is missing');
-    assert.match(stderr, /reason is required/, `expected "reason is required" in stderr; got:\n${stderr}`);
+    assert.match(
+      stderr,
+      /reason is required/,
+      `expected "reason is required" in stderr; got:\n${stderr}`
+    );
     console.log('test 3 passed: /task reject without --reason exits non-zero');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -253,21 +293,35 @@ async function run(sandbox, binDir, args) {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
     const { binDir, callsLog } = makeGhShim(sandbox, {
-      bodyOnView: '', stateOptionId: OPT_DEV, recordedBodyPath,
+      bodyOnView: '',
+      stateOptionId: OPT_DEV,
+      recordedBodyPath,
     });
     const r = await run(sandbox, binDir, ['reject', '#104', '--reason', 'not ready']);
     assert.notEqual(r.code, 0, 'expected non-zero exit when issue is not in review');
-    assert.match(r.stderr, /expected 'review'/,
-      `expected wrong-state message; stderr:\n${r.stderr}`);
+    assert.match(
+      r.stderr,
+      /expected 'review'/,
+      `expected wrong-state message; stderr:\n${r.stderr}`
+    );
     // No issue comment call should be in the log
     const calls = existsSync(callsLog) ? readFileSync(callsLog, 'utf8') : '';
-    const hadComment = calls.split('\n').filter(Boolean).some(line => {
-      try {
-        const { argv } = JSON.parse(line);
-        return argv[0] === 'issue' && argv[1] === 'comment';
-      } catch { return false; }
-    });
-    assert.equal(hadComment, false, `gh issue comment must not be called on wrong state; calls:\n${calls}`);
+    const hadComment = calls
+      .split('\n')
+      .filter(Boolean)
+      .some((line) => {
+        try {
+          const { argv } = JSON.parse(line);
+          return argv[0] === 'issue' && argv[1] === 'comment';
+        } catch {
+          return false;
+        }
+      });
+    assert.equal(
+      hadComment,
+      false,
+      `gh issue comment must not be called on wrong state; calls:\n${calls}`
+    );
     console.log('test 4 passed: /task reject refuses wrong state');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -281,19 +335,40 @@ async function run(sandbox, binDir, args) {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
     const { binDir, callsLog } = makeGhShim(sandbox, {
-      bodyOnView: '', stateOptionId: OPT_REVIEW, recordedBodyPath,
+      bodyOnView: '',
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
     });
-    const r = await run(sandbox, binDir, ['reject', '#105', '--reason', 'scope creep — split before merge']);
+    const r = await run(sandbox, binDir, [
+      'reject',
+      '#105',
+      '--reason',
+      'scope creep — split before merge',
+    ]);
     assert.equal(r.code, 0, `expected exit 0; stderr:\n${r.stderr}`);
     assert.match(r.stdout, /rejected — moved back to Development/, `stdout:\n${r.stdout}`);
     // Verify a `gh issue comment` was made with the rejection marker
-    const calls = readFileSync(callsLog, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
-    const commentCall = calls.find(c => c.argv[0] === 'issue' && c.argv[1] === 'comment');
-    assert.ok(commentCall, `expected a gh issue comment call; calls:\n${JSON.stringify(calls, null, 2)}`);
+    const calls = readFileSync(callsLog, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const commentCall = calls.find((c) => c.argv[0] === 'issue' && c.argv[1] === 'comment');
+    assert.ok(
+      commentCall,
+      `expected a gh issue comment call; calls:\n${JSON.stringify(calls, null, 2)}`
+    );
     const bodyIdx = commentCall.argv.indexOf('--body');
     const commentBody = bodyIdx >= 0 ? commentCall.argv[bodyIdx + 1] : '';
-    assert.match(commentBody, /### ❌ Review rejected/, `comment body missing header; body:\n${commentBody}`);
-    assert.match(commentBody, /scope creep — split before merge/, `comment body missing reason; body:\n${commentBody}`);
+    assert.match(
+      commentBody,
+      /### ❌ Review rejected/,
+      `comment body missing header; body:\n${commentBody}`
+    );
+    assert.match(
+      commentBody,
+      /scope creep — split before merge/,
+      `comment body missing reason; body:\n${commentBody}`
+    );
     console.log('test 5 passed: /task reject happy path posts rejection comment');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });

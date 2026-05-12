@@ -12,7 +12,7 @@ import {
 
 function localMinuteWithOffset(iso) {
   const d = new Date(iso);
-  const pad = n => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, '0');
   const offsetMin = -d.getTimezoneOffset();
   const sign = offsetMin >= 0 ? '+' : '-';
   const abs = Math.abs(offsetMin);
@@ -23,7 +23,7 @@ function localMinuteWithOffset(iso) {
 // All "now-ish" timestamps used below — buildRow refuses retroactive entries
 // outside a ±60s window, so tests must use current time anchors.
 const tsNow1 = new Date().toISOString();
-const tsNow2 = new Date(Date.now() - 30_000).toISOString();  // 30 s ago, within window
+const tsNow2 = new Date(Date.now() - 30_000).toISOString(); // 30 s ago, within window
 const tsNow3 = new Date(Date.now() - 5_000).toISOString();
 
 // Test 1: buildRow formats correctly
@@ -86,55 +86,75 @@ assert.ok(!withTwo.includes('Session total:'));
 
 // Test 6: backdated ts (5 min ago) throws with the documented error.
 assert.throws(
-  () => buildRow({
-    ts: Date.now() - 5 * 60_000,
-    event: 'start',
-    activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 1,
-  }),
-  err => err.message.startsWith(RETROACTIVE_TS_ERROR),
-  'backdated ts must throw retroactive-ts error',
+  () =>
+    buildRow({
+      ts: Date.now() - 5 * 60_000,
+      event: 'start',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 1,
+    }),
+  (err) => err.message.startsWith(RETROACTIVE_TS_ERROR),
+  'backdated ts must throw retroactive-ts error'
 );
 
 // Test 7: current ts (Date.now()) succeeds.
 assert.doesNotThrow(
-  () => buildRow({
-    ts: Date.now(),
-    event: 'start',
-    activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 1,
-  }),
-  'current ts must succeed',
+  () =>
+    buildRow({
+      ts: Date.now(),
+      event: 'start',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 1,
+    }),
+  'current ts must succeed'
 );
 
 // Test 8: 30s-old ts succeeds (within ±60s window).
 assert.doesNotThrow(
-  () => buildRow({
-    ts: Date.now() - 30_000,
-    event: 'start',
-    activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 1,
-  }),
-  '30s-old ts must succeed within window',
+  () =>
+    buildRow({
+      ts: Date.now() - 30_000,
+      event: 'start',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 1,
+    }),
+  '30s-old ts must succeed within window'
 );
 
 // Test 9: future ts (5 min ahead) throws — no asymmetry.
 assert.throws(
-  () => buildRow({
-    ts: Date.now() + 5 * 60_000,
-    event: 'start',
-    activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 1,
-  }),
-  err => err.message.startsWith(RETROACTIVE_TS_ERROR),
-  'future ts must throw retroactive-ts error',
+  () =>
+    buildRow({
+      ts: Date.now() + 5 * 60_000,
+      event: 'start',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 1,
+    }),
+  (err) => err.message.startsWith(RETROACTIVE_TS_ERROR),
+  'future ts must throw retroactive-ts error'
 );
 
 // Test 10: non-parseable ts throws.
 assert.throws(
-  () => buildRow({
-    ts: 'not-a-date',
-    event: 'start',
-    activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 1,
-  }),
-  err => err.message.startsWith(RETROACTIVE_TS_ERROR),
-  'non-parseable ts must throw retroactive-ts error',
+  () =>
+    buildRow({
+      ts: 'not-a-date',
+      event: 'start',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 1,
+    }),
+  (err) => err.message.startsWith(RETROACTIVE_TS_ERROR),
+  'non-parseable ts must throw retroactive-ts error'
 );
 
 // ---- lastKnownState helpers ------------------------------------------------
@@ -144,7 +164,11 @@ assert.throws(
   const empty = readLastKnownState('## Title\n\nbody body body\n');
   assert.deepEqual(empty, { state: null, ts: null }, 'absent markers -> nulls');
   assert.deepEqual(readLastKnownState(''), { state: null, ts: null }, 'empty body -> nulls');
-  assert.deepEqual(readLastKnownState(undefined), { state: null, ts: null }, 'undefined body -> nulls');
+  assert.deepEqual(
+    readLastKnownState(undefined),
+    { state: null, ts: null },
+    'undefined body -> nulls'
+  );
 }
 
 // Test 12: readLastKnownState parses both pair members.
@@ -178,7 +202,7 @@ assert.throws(
   body = writeLastKnownState(body, 'development');
   body = writeLastKnownState(body, 'review');
   const stateMatches = body.match(/aitm-last-known-state:/g) || [];
-  const tsMatches    = body.match(/aitm-last-known-state-ts:/g) || [];
+  const tsMatches = body.match(/aitm-last-known-state-ts:/g) || [];
   assert.equal(stateMatches.length, 1, 'exactly one state marker');
   assert.equal(tsMatches.length, 1, 'exactly one ts marker');
   assert.equal(readLastKnownState(body).state, 'review', 'last write wins');

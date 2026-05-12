@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { buildFieldSyncPlan, valueForProjectField } from '../project-fields.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const defaultDefs = JSON.parse(readFileSync(path.join(here, '../../../config/project-fields.default.json'), 'utf8'));
-const keys = defaultDefs.map(d => d.key);
+const defaultDefs = JSON.parse(
+  readFileSync(path.join(here, '../../../config/project-fields.default.json'), 'utf8')
+);
+const keys = defaultDefs.map((d) => d.key);
 assert.ok(keys.includes('reviewTime'), 'default field defs include reviewTime');
 assert.ok(!keys.includes('contextLength'), 'default field defs no longer include contextLength');
 
@@ -33,8 +35,12 @@ const plan = buildFieldSyncPlan({
 });
 assert.deepEqual(plan, [
   { key: 'estimate', type: 'number', fieldId: 'F_EST', value: { number: 4 } },
-  { key: 'priority', type: 'single_select', fieldId: 'F_PRI', value: { singleSelectOptionName: 'P2' } },
+  {
+    key: 'priority',
+    type: 'single_select',
+    fieldId: 'F_PRI',
+    value: { singleSelectOptionName: 'P2' },
+  },
 ]);
 
 console.log('project-fields.test.mjs: all passed');
-

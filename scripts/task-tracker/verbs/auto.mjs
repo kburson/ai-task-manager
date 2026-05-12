@@ -13,20 +13,26 @@ import {
 import { currentSessionId } from '../word-counter.mjs';
 
 const SUMMARIES = {
-  both:    'both gates OFF (full auto)',
+  both: 'both gates OFF (full auto)',
   analyze: 'analyze→dev OFF, review→done ON',
-  review:  'analyze→dev ON, review→done OFF',
-  off:     'both gates ON (safe default)',
-  reset:   'session override cleared (falls back to project config)',
+  review: 'analyze→dev ON, review→done OFF',
+  off: 'both gates ON (safe default)',
+  reset: 'session override cleared (falls back to project config)',
 };
 
 export async function runAuto({ choice, sessionId, deps = {} } = {}) {
   const valid = VALID_CHOICES();
   if (!valid.includes(choice)) {
-    return { status: 'invalid', message: `unknown choice "${choice}". Use one of: ${valid.join(', ')}` };
+    return {
+      status: 'invalid',
+      message: `unknown choice "${choice}". Use one of: ${valid.join(', ')}`,
+    };
   }
   if (!sessionId) {
-    return { status: 'no-session', message: 'no active session id; cannot persist auto-mode override' };
+    return {
+      status: 'no-session',
+      message: 'no active session id; cannot persist auto-mode override',
+    };
   }
   const loadSession = deps.loadSession || realLoad;
   const saveSession = deps.saveSession || realSave;

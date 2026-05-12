@@ -26,7 +26,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { gh, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { hasDeepDiveEvidence } from '../lib/markers.mjs';
@@ -53,7 +53,8 @@ export function approvalMarker(ts) {
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) { title body }
@@ -68,7 +69,8 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 async function defaultFetchParentEpicNumber({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) { parent { number } }
@@ -83,24 +85,30 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-approve-${process.pid}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: 15000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
 async function defaultPostComment({ issueNumber, repo, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], { timeout: 15000 });
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+    timeout: 15000,
+  });
 }
 
 async function defaultMoveState({ issueNumber }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, String(issueNumber), 'development'], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });
-    child.on('exit', code => resolve(code ?? 1));
+    child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
@@ -122,12 +130,18 @@ export function extractDeepDive(body) {
   const lines = String(body || '').split('\n');
   let start = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (/^##\s+Deep[- ]Dive Analysis\b/i.test(lines[i])) { start = i; break; }
+    if (/^##\s+Deep[- ]Dive Analysis\b/i.test(lines[i])) {
+      start = i;
+      break;
+    }
   }
   if (start === -1) return null;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    if (/^##\s+/.test(lines[i])) { end = i; break; }
+    if (/^##\s+/.test(lines[i])) {
+      end = i;
+      break;
+    }
   }
   return lines.slice(start, end).join('\n').trimEnd();
 }
@@ -137,7 +151,7 @@ export function extractDeepDive(body) {
 // approve on an unmigrated body cleans up its own AC noise. Idempotent: if
 // a marker is already present and no legacy line exists, returns body
 // unchanged. Mirrors the existing aitm-review-approved precedent.
-const LEGACY_CHECKBOX_LINE_RE = /^[ \t]*- \[[ x]\] Plan approved by human\s*\r?\n?/gmi;
+const LEGACY_CHECKBOX_LINE_RE = /^[ \t]*- \[[ x]\] Plan approved by human\s*\r?\n?/gim;
 
 export function writePlanApprovedMarker(body, { now = () => new Date().toISOString() } = {}) {
   const src = String(body || '');
@@ -168,12 +182,12 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
-  const postComment    = deps.postComment    || defaultPostComment;
-  const moveState      = deps.moveState      || defaultMoveState;
-  const isHeadless     = deps.isHeadless     || defaultIsHeadless;
-  const reeval         = deps.applyReevaluate || applyReevaluate;
+  const postComment = deps.postComment || defaultPostComment;
+  const moveState = deps.moveState || defaultMoveState;
+  const isHeadless = deps.isHeadless || defaultIsHeadless;
+  const reeval = deps.applyReevaluate || applyReevaluate;
   const fetchParentEpicNumber = deps.fetchParentEpicNumber || defaultFetchParentEpicNumber;
-  const readParentStatus      = deps.readParentStatus      || defaultReadParentStatus;
+  const readParentStatus = deps.readParentStatus || defaultReadParentStatus;
 
   // Parent-admission gate: refuse analyze→development when the parent epic is
   // not yet in Development or beyond. Runs BEFORE any body mutation or
@@ -190,7 +204,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     return {
       status: 'parent-admission-refused',
       blockers: refusals,
-      message: refusals.map(r => r.message).join('\n'),
+      message: refusals.map((r) => r.message).join('\n'),
     };
   }
 
@@ -201,11 +215,15 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (hasDeepDiveEvidence(body)) return null;
     return {
       status: 'deep-dive-required',
-      blockers: [{
-        kind: 'deep-dive-required',
-        message: 'deep-dive-required: run /task analyze and complete the Deep-Dive Analysis appendix before approving',
-      }],
-      message: 'deep-dive-required: run /task analyze and complete the Deep-Dive Analysis appendix before approving',
+      blockers: [
+        {
+          kind: 'deep-dive-required',
+          message:
+            'deep-dive-required: run /task analyze and complete the Deep-Dive Analysis appendix before approving',
+        },
+      ],
+      message:
+        'deep-dive-required: run /task analyze and complete the Deep-Dive Analysis appendix before approving',
     };
   }
 
@@ -220,14 +238,15 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
 
   function buildSequencePrompt(body) {
     const parsed = parseIssueFieldDb(body);
-    const seq = parsed.ok ? parsed.values?.sequence ?? null : null;
+    const seq = parsed.ok ? (parsed.values?.sequence ?? null) : null;
     return {
       kind: 'sequence-revision-prompt',
       issueNumber,
       currentSequence: seq,
-      message: seq == null
-        ? `No sequence set for #${issueNumber}. Confirm one is not needed or post a \`### 🔢 Sequence revision\` comment with a value + rationale.`
-        : `Current sequence for #${issueNumber} is ${seq}. Confirm it is still appropriate, or post a \`### 🔢 Sequence revision\` comment with the new value + rationale.`,
+      message:
+        seq == null
+          ? `No sequence set for #${issueNumber}. Confirm one is not needed or post a \`### 🔢 Sequence revision\` comment with a value + rationale.`
+          : `Current sequence for #${issueNumber} is ${seq}. Confirm it is still appropriate, or post a \`### 🔢 Sequence revision\` comment with the new value + rationale.`,
     };
   }
 
@@ -268,7 +287,8 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (isHeadless()) {
       return {
         status: 'headless-refused',
-        message: 'headless mode cannot answer (CI=1 or no TTY) — re-run from an interactive Claude session and pass the human answer via --answer yes|no',
+        message:
+          'headless mode cannot answer (CI=1 or no TTY) — re-run from an interactive Claude session and pass the human answer via --answer yes|no',
       };
     }
     // Fetch deep-dive section for the prompt.
@@ -326,7 +346,8 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (!trimmed) {
       return {
         status: 'error',
-        message: '--answer no requires --reason "<free-text reason>" so the orchestrator can revise the deep-dive',
+        message:
+          '--answer no requires --reason "<free-text reason>" so the orchestrator can revise the deep-dive',
       };
     }
     const ts = new Date().toISOString().slice(0, 10);
@@ -350,9 +371,18 @@ function parseArgs(rest) {
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     const m = String(a).match(/^#?(\d+)$/);
-    if (m && out.issueNumber === null) { out.issueNumber = Number(m[1]); continue; }
-    if (a === '--answer' && rest[i + 1]) { out.answer = rest[++i]; continue; }
-    if (a === '--reason' && rest[i + 1]) { out.reason = rest[++i]; continue; }
+    if (m && out.issueNumber === null) {
+      out.issueNumber = Number(m[1]);
+      continue;
+    }
+    if (a === '--answer' && rest[i + 1]) {
+      out.answer = rest[++i];
+      continue;
+    }
+    if (a === '--reason' && rest[i + 1]) {
+      out.reason = rest[++i];
+      continue;
+    }
   }
   return out;
 }
@@ -393,11 +423,17 @@ export async function verbApprove(rest, cfg) {
       // Emit a structured prompt for the Claude orchestrator. The skill layer
       // reads this JSON, calls AskUserQuestion, then re-invokes the verb with
       // --answer yes|no [--reason "..."].
-      process.stdout.write(JSON.stringify({
-        kind: 'approve-prompt',
-        issueNumber,
-        ...result.prompt,
-      }, null, 2));
+      process.stdout.write(
+        JSON.stringify(
+          {
+            kind: 'approve-prompt',
+            issueNumber,
+            ...result.prompt,
+          },
+          null,
+          2
+        )
+      );
       process.stdout.write('\n');
       return;
     }
@@ -412,7 +448,9 @@ export async function verbApprove(rest, cfg) {
       return;
     }
     case 'gate-bypassed': {
-      process.stdout.write(`⚠ gateAnalysisToDevelopment=false — auto-approved #${issueNumber} without human review.\n`);
+      process.stdout.write(
+        `⚠ gateAnalysisToDevelopment=false — auto-approved #${issueNumber} without human review.\n`
+      );
       process.stdout.write(`✓ Issue #${issueNumber} moved: analyze -> development\n`);
       if (result.sequencePrompt) process.stdout.write(`ℹ ${result.sequencePrompt.message}\n`);
       return;
@@ -423,7 +461,9 @@ export async function verbApprove(rest, cfg) {
       process.exit(4);
     }
     case 'rejected': {
-      process.stdout.write(`✗ Approval refused — comment posted on #${issueNumber}. Revise the deep-dive and re-run approve.\n`);
+      process.stdout.write(
+        `✗ Approval refused — comment posted on #${issueNumber}. Revise the deep-dive and re-run approve.\n`
+      );
       process.exit(4);
     }
     case 'deep-dive-required': {
@@ -431,7 +471,9 @@ export async function verbApprove(rest, cfg) {
       for (const b of result.blockers) {
         process.stderr.write(`   BLOCKED: ${b.message}\n`);
       }
-      process.stderr.write('\nRun /task analyze and write the Deep-Dive Analysis appendix first, then retry.\n');
+      process.stderr.write(
+        '\nRun /task analyze and write the Deep-Dive Analysis appendix first, then retry.\n'
+      );
       process.exit(4);
     }
     case 'parent-admission-refused': {
@@ -454,8 +496,11 @@ export async function verbApprove(rest, cfg) {
 }
 
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

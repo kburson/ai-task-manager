@@ -71,7 +71,9 @@ const NOW = () => '2026-05-11T12:00:00.000Z';
   const writes = [];
   const deps = {
     fetchIssueBody: async () => ({ body: '## AC\n\n- [ ] do thing\n' }),
-    writeIssueBody: async ({ body }) => { writes.push(body); },
+    writeIssueBody: async ({ body }) => {
+      writes.push(body);
+    },
   };
   const r = await runMigrate({ issueNumber: 1, cfg: { repo: 'o/r' }, deps });
   assert.equal(r.changed, false);
@@ -80,7 +82,9 @@ const NOW = () => '2026-05-11T12:00:00.000Z';
   const writes2 = [];
   const deps2 = {
     fetchIssueBody: async () => ({ body: '## AC\n\n- [x] Plan approved by human\n' }),
-    writeIssueBody: async ({ body }) => { writes2.push(body); },
+    writeIssueBody: async ({ body }) => {
+      writes2.push(body);
+    },
   };
   const r2 = await runMigrate({ issueNumber: 1, cfg: { repo: 'o/r' }, deps: deps2 });
   assert.equal(r2.changed, true);

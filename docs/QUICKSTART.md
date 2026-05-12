@@ -8,11 +8,11 @@ AI Task Manager (AITM) binds every AI coding session to a GitHub issue, tracks t
 
 AITM has three layers:
 
-| Layer | What it gives you |
-|---|---|
-| **Session Tracking** | Every agent session tied to a GitHub issue. Time and context words logged automatically to a timing comment on the issue. |
+| Layer                     | What it gives you                                                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Session Tracking**      | Every agent session tied to a GitHub issue. Time and context words logged automatically to a timing comment on the issue.                 |
 | **Backlog Orchestration** | Generate a full GitHub Projects backlog from a spec document — epics, sub-issues, sizing, sequencing, pickup directives, all in one pass. |
-| **ROI Reporting** | Financial report comparing estimated effort against measured AI-engaged hours. Answers: *what did this actually cost vs. without AI?* |
+| **ROI Reporting**         | Financial report comparing estimated effort against measured AI-engaged hours. Answers: _what did this actually cost vs. without AI?_     |
 
 ---
 
@@ -44,22 +44,22 @@ flowchart LR
     Validate -->|verification failed| Development
 ```
 
-| State | What it means | Who moves the issue here |
-|---|---|---|
-| **Backlog** | Created, not yet scheduled | Orchestrator at issue creation |
-| **Groom** | Triage queue: sized, AC drafted | Human or orchestrator (`/task groom`) |
-| **Analyze** | Deep-dive complete, plan posted | Orchestrator (`/task analyze`) |
-| **Development** | Work is active | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
-| **Validate** | Agent reported `CODE_COMPLETE`; verification running | `/task review` (orchestrator) |
-| **Review** | All checks passed; awaiting human approval | `/task review` on success (auto) |
-| **Done** | Human approved and closed | `/task close` (human only) |
+| State           | What it means                                        | Who moves the issue here                                                  |
+| --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Backlog**     | Created, not yet scheduled                           | Orchestrator at issue creation                                            |
+| **Groom**       | Triage queue: sized, AC drafted                      | Human or orchestrator (`/task groom`)                                     |
+| **Analyze**     | Deep-dive complete, plan posted                      | Orchestrator (`/task analyze`)                                            |
+| **Development** | Work is active                                       | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
+| **Validate**    | Agent reported `CODE_COMPLETE`; verification running | `/task review` (orchestrator)                                             |
+| **Review**      | All checks passed; awaiting human approval           | `/task review` on success (auto)                                          |
+| **Done**        | Human approved and closed                            | `/task close` (human only)                                                |
 
 **Who calls `/task #N` depends on the issue type:**
 
-| Issue type | Who calls `/task #N` | What happens |
-|---|---|---|
-| Single task | Human or agent in the main thread | Main thread works it directly, follows the pickup directive |
-| Epic | Human or orchestrator in the main thread | Main thread becomes the orchestrator — does deep dive, then fans out child agents |
+| Issue type      | Who calls `/task #N`                              | What happens                                                                               |
+| --------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Single task     | Human or agent in the main thread                 | Main thread works it directly, follows the pickup directive                                |
+| Epic            | Human or orchestrator in the main thread          | Main thread becomes the orchestrator — does deep dive, then fans out child agents          |
 | Child sub-issue | The spawned **agent** in its own session/worktree | Agent calls `/task #child` itself on startup; orchestrator stays anchored to `/task #epic` |
 
 The orchestrator never calls `/task #child`. Doing so would switch the orchestrator's active task away from the epic and corrupt its timing session. Each agent calls `/task #N` for their own issue in their own isolated worktree session.
@@ -134,6 +134,7 @@ sequenceDiagram
 ```
 
 **Hard rules:**
+
 - Each agent calls `/task #child` in its own session — the orchestrator never switches off `/task #epic`.
 - Agents MUST NOT call `/task review` or `/task close`.
 - Orchestrators MUST NOT call `/task close`.
@@ -152,6 +153,7 @@ Developer:  /task #42
 ```
 
 AITM:
+
 1. Moves issue #42 to **Development** on the board
 2. Displays the issue title, body, and Pickup Directive
 3. Starts the timer — every minute of AI-engaged time is now logged
@@ -162,11 +164,13 @@ Developer:  /task close
 ```
 
 AITM:
+
 1. Flushes the timing log (appends a row to the ⏱ Timing Log comment on the issue)
 2. Writes Engaged Time, Session Time, and Context Length to GitHub Projects fields
 3. Moves the issue to **Done**
 
 **Timing log on the issue:**
+
 ```
 | Timestamp            | Event  | Active | Idle | Δ Words | Word Marker | Description |
 | 2026-05-07 09:00 +00 | start  | 0      | 0    | 0       | 2,341       |             |
@@ -190,6 +194,7 @@ Developer:  /task new
 ```
 
 AITM prompts:
+
 > "I see a spec in context — use it to build out the full backlog? I'll create all epics and sub-issues, set sizing/priority/sequence, and inject pickup directives across the entire plan — no stopping between epics. **yes / no**"
 
 ```
@@ -197,6 +202,7 @@ Developer:  yes
 ```
 
 AITM automatically:
+
 1. Creates labels (`plan:<slug>`, purpose labels like `backend`, `auth`, `data`)
 2. Creates each **Epic** issue with full scope + acceptance criteria + Pickup Directive
 3. Creates each **Sub-issue** linked to its parent epic
@@ -223,6 +229,7 @@ Epic 2 — Dashboard            [Backlog, P1, Seq:2]
 The orchestrator picks up Epic #10 and fans out sub-agent to issue #11.
 
 **Orchestrator (picks up epic):**
+
 ```bash
 /task #10                    # start epic timer
 move-state.sh 10 development # epic moves to Development
@@ -231,6 +238,7 @@ move-state.sh 10 development # epic moves to Development
 Orchestrator reads the Pickup Directive, validates sub-issue sequencing, posts dependency map, and fans out Sequence-1 issues.
 
 **Agent (works #11):**
+
 ```bash
 /task #11                    # start sub-issue timer, moves to Development
 # ... runs deep dive, appends to issue body, checks Deep dive complete ...
@@ -240,20 +248,24 @@ Orchestrator reads the Pickup Directive, validates sub-issue sequencing, posts d
 Agent reports `CODE_COMPLETE` and stops.
 
 **Orchestrator (receives CODE_COMPLETE):**
+
 ```bash
 /task review #11             # moves to Validate → runs verification gate
 ```
 
 **If verification fails** (exit 3):
+
 - Orchestrator posts a comment on #11 listing the failed criteria
 - Issue automatically reverts to Development
 - Orchestrator re-dispatches the agent to fix
 
 **If verification passes:**
+
 - Issue moves to **Review** automatically
 - Orchestrator reports `ISSUE_READY_FOR_REVIEW` and notifies the developer
 
 **Developer (reviews):**
+
 - Inspects code in the Review state
 - Instructs: "close #11"
 - AITM flushes timing, writes fields, moves to **Done**
@@ -269,6 +281,7 @@ Developer:  /task close #10
 ```
 
 AITM:
+
 1. Verifies all child issues (#11, #12, #13) are in Review
 2. For each Review child:
    - Posts a `done` timing row to the child's timing log
@@ -278,6 +291,7 @@ AITM:
 3. Closes Epic #10: flushes timing, writes fields, moves to **Done**
 
 If any child is not in Review, the command refuses:
+
 ```
 ⛔ Cannot close epic #10 — 2 child issue(s) not in Review:
    #12: development
@@ -303,12 +317,14 @@ You work for an hour, need to take a break, and return later.
 ```
 
 Before `/clear` (which bypasses timing hooks), always pause first:
+
 ```
 /task pause
 /clear
 ```
 
 To checkpoint without stopping:
+
 ```
 /task update "finished auth middleware"
 ```
@@ -322,18 +338,21 @@ This flushes timing and resets word counters but keeps the task active.
 Multiple agents working in parallel git worktrees, each on a different sub-issue.
 
 **Orchestrator session:**
+
 ```bash
 /task #10          # epic is the active task for the orchestrator
 /task fleet        # shows all active tasks across worktrees
 ```
 
 **Each agent session (separate worktrees):**
+
 ```bash
 /task #11          # agent 1 works sub-issue 11
 /task #12          # agent 2 works sub-issue 12
 ```
 
 Fleet output:
+
 ```
 Active tasks:
   #10   Epic: Auth System       [orchestrator]   12 min, 890 words
@@ -352,39 +371,48 @@ For backlog orchestration, your spec should follow this structure:
 **Epic execution order:** Epic 1 (Auth) → Epic 2 (Dashboard)
 
 ## Epic 1 — Auth System
+
 **Priority:** P0 | **Size:** XL | **Estimate:** 18h | **Sequence:** 1
 
 Build user authentication with email/password and Google OAuth.
 
 ### Acceptance Criteria
+
 - [ ] Users can register with email and password
 - [ ] Users can sign in with Google
 - [ ] Sessions expire after 24 hours of inactivity
 
 ### E1-S1 — Registration flow
+
 **Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1 | **Model:** sonnet
 
 #### Scope
+
 Implement /register endpoint, bcrypt hashing, JWT issuance.
 
 #### Acceptance Criteria
+
 - [ ] POST /register returns 201 with signed JWT
 - [ ] Duplicate email returns 409
 - [ ] Password is never stored in plaintext
 
 ### E1-S2 — Google OAuth integration
+
 **Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2
 **Depends on:** E1-S1 (JWT infrastructure)
 
 #### Scope
+
 Add Google OAuth 2.0 flow. Reuse JWT issuance from E1-S1.
 
 #### Acceptance Criteria
+
 - [ ] /auth/google redirects to Google consent screen
 - [ ] Callback creates or logs in user, returns JWT
 ```
 
 Key fields on each issue:
+
 - `**Priority:**` P0 / P1 / P2
 - `**Size:**` XS / S / M / L / XL
 - `**Estimate:**` hours
@@ -399,12 +427,14 @@ Every issue created from a spec gets a self-contained pickup block injected auto
 
 ```markdown
 ### Definition of Done
+
 - [ ] Acceptance criteria met (including test additions from deep dive)
 - [ ] Tests pass; new coverage committed
 - [ ] Pre-commit hooks pass
 - [ ] Issue body checkboxes ticked
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
+
 > Follow: `.ai-task-manager/pickup-directive.md`
 
 - [ ] Deep dive complete
@@ -446,20 +476,20 @@ flowchart TD
 
 ## Key Commands Reference
 
-| Command | Who runs it | What it does |
-|---|---|---|
-| `/task #N` | Agent | Switch to issue, move to Development, display brief |
-| `/task new` | Human/Agent | Create issue (or orchestrate full backlog from spec) |
-| `/task plan` | Human | Open untracked planning bucket |
-| `/task update` | Agent | Checkpoint — flush timing, keep task active |
-| `/task pause` | Agent | Flush timing, keep last-active. Run before `/clear`. |
-| `/task resume #N` | Agent | Resume a paused task |
-| `/task check "<label>"` | Agent | Check off a DoD/AC checkbox |
-| `/task review #N` | Orchestrator | Move to Validate, verify gates, promote to Review or revert |
-| `/task fleet` | Orchestrator | Show all active tasks across worktrees |
-| `/task close` | Human | Flush, write fields, move to Done. Explicit instruction only. |
-| `/task log #N` | Human/Agent | Re-compute and write board fields for any issue |
-| `/task config` | Human | Show or set configuration values |
+| Command                 | Who runs it  | What it does                                                  |
+| ----------------------- | ------------ | ------------------------------------------------------------- |
+| `/task #N`              | Agent        | Switch to issue, move to Development, display brief           |
+| `/task new`             | Human/Agent  | Create issue (or orchestrate full backlog from spec)          |
+| `/task plan`            | Human        | Open untracked planning bucket                                |
+| `/task update`          | Agent        | Checkpoint — flush timing, keep task active                   |
+| `/task pause`           | Agent        | Flush timing, keep last-active. Run before `/clear`.          |
+| `/task resume #N`       | Agent        | Resume a paused task                                          |
+| `/task check "<label>"` | Agent        | Check off a DoD/AC checkbox                                   |
+| `/task review #N`       | Orchestrator | Move to Validate, verify gates, promote to Review or revert   |
+| `/task fleet`           | Orchestrator | Show all active tasks across worktrees                        |
+| `/task close`           | Human        | Flush, write fields, move to Done. Explicit instruction only. |
+| `/task log #N`          | Human/Agent  | Re-compute and write board fields for any issue               |
+| `/task config`          | Human        | Show or set configuration values                              |
 
 ---
 
@@ -502,9 +532,9 @@ Config lives in `.ai-task-manager/task-tracker.json` (project, committed) and `~
 
 ## Design References
 
-| Document | Contents |
-|---|---|
-| [DESIGN.md](DESIGN.md) | Full data model, state file format, timing structure, hook behavior |
-| [guides/workflow.md](guides/workflow.md) | Kanban, estimates, cleanup procedure |
-| [guides/ai-value-framework.md](guides/ai-value-framework.md) | ROI methodology |
-| [guides/settings-guide.md](guides/settings-guide.md) | Recommended Claude Code settings |
+| Document                                                     | Contents                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| [DESIGN.md](DESIGN.md)                                       | Full data model, state file format, timing structure, hook behavior |
+| [guides/workflow.md](guides/workflow.md)                     | Kanban, estimates, cleanup procedure                                |
+| [guides/ai-value-framework.md](guides/ai-value-framework.md) | ROI methodology                                                     |
+| [guides/settings-guide.md](guides/settings-guide.md)         | Recommended Claude Code settings                                    |

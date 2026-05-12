@@ -172,4 +172,3 @@ These tasks complete the feature.
 ## Recommended Initial Direction
 
 Start with research, but expect rollout JSONL parsing plus explicit unsupported fallback to be the likely first implementation path. It appears to require no network service, can be tested with synthetic JSONL fixtures, and can degrade cleanly when Codex changes its local storage. Treat rollout parsing as an observed implementation detail unless official documentation confirms it as stable.
-

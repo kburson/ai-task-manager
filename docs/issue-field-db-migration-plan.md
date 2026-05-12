@@ -33,4 +33,3 @@
    - `.ai-task-manager/project-fields.json` owns canonical fields and aliases.
    - `.ai-task-manager/task-tracker.json` owns active project field IDs/names.
    - Issue body DB owns only canonical values.
-

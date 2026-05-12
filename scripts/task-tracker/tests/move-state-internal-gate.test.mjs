@@ -29,18 +29,22 @@ function makeSandbox() {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test123',
-      kanbanFieldId: 'PVTF_test',
-      kanbanOptionBacklog: 'PVTO_b',
-      kanbanOptionGroom: 'PVTO_g',
-      kanbanOptionAnalyze: 'PVTO_a',
-      kanbanOptionDevelopment: 'PVTO_d',
-      kanbanOptionValidate: 'PVTO_v',
-      kanbanOptionReview: 'PVTO_r',
-      kanbanOptionDone: 'PVTO_done',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test123',
+        kanbanFieldId: 'PVTF_test',
+        kanbanOptionBacklog: 'PVTO_b',
+        kanbanOptionGroom: 'PVTO_g',
+        kanbanOptionAnalyze: 'PVTO_a',
+        kanbanOptionDevelopment: 'PVTO_d',
+        kanbanOptionValidate: 'PVTO_v',
+        kanbanOptionReview: 'PVTO_r',
+        kanbanOptionDone: 'PVTO_done',
+      },
+      null,
+      2
+    )
   );
   return sandbox;
 }

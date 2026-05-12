@@ -29,9 +29,13 @@ try {
   await runConcurrent(unlockedHelper, ctlDir);
   const fleet = readFleet(fleetRegistryPath(ctlDir));
   const survivors = Object.keys(fleet).length;
-  assert.ok(survivors < N,
-    `control: expected lost entries to prove race exists, but all ${N} survived (test setup is not exercising the race)`);
-  console.log(`fleet-registry-concurrent.test.mjs: control proved race exists — ${survivors}/${N} survived without lock`);
+  assert.ok(
+    survivors < N,
+    `control: expected lost entries to prove race exists, but all ${N} survived (test setup is not exercising the race)`
+  );
+  console.log(
+    `fleet-registry-concurrent.test.mjs: control proved race exists — ${survivors}/${N} survived without lock`
+  );
 } finally {
   rmSync(ctlDir, { recursive: true });
 }
@@ -53,7 +57,9 @@ try {
   const ancient = new Date(Date.now() - 60_000);
   utimesSync(lockDir, ancient, ancient);
   let acquired = false;
-  withLock(rPath, () => { acquired = true; });
+  withLock(rPath, () => {
+    acquired = true;
+  });
   assert.equal(acquired, true, 'stale lock must be force-cleared');
 
   console.log('fleet-registry-concurrent.test.mjs: all passed');

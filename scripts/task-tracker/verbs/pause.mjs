@@ -12,13 +12,20 @@ export async function verbPause(ctx) {
   const reason = rest.join(' ').trim() || undefined;
   const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'pause', reason);
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
-  saveState({
-    ...s,
-    active: null,
-    entryStartTs: null,
-    wordsAtEntryStart: 0,
-    lastActive: s.active,
-  }, statePath);
-  try { setTaskStatus(projectDir, s.active, 'paused'); } catch {}
-  console.log(`Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task start" to resume.`);
+  saveState(
+    {
+      ...s,
+      active: null,
+      entryStartTs: null,
+      wordsAtEntryStart: 0,
+      lastActive: s.active,
+    },
+    statePath
+  );
+  try {
+    setTaskStatus(projectDir, s.active, 'paused');
+  } catch {}
+  console.log(
+    `Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task start" to resume.`
+  );
 }

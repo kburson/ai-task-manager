@@ -33,13 +33,13 @@ const PROJECT_ID = 'PVT_kwHOABCEY84BVBBe';
 // the order of keys in the body fields-block (via fieldDefs passed to
 // ensureIssueFieldDb), keeping diffs readable.
 const FIELD_DEFS = [
-  { key: 'priority',      name: 'Priority',            type: 'single_select' },
-  { key: 'size',          name: 'Size',                type: 'single_select' },
-  { key: 'estimate',      name: 'Estimate',            type: 'number' },
-  { key: 'engagedTime',   name: 'Actual Hours',        type: 'number' },
-  { key: 'sessionTime',   name: 'Actual Session Time', type: 'number' },
-  { key: 'contextLength', name: 'Context Length',     type: 'number' },
-  { key: 'sequence',      name: 'Sequence',            type: 'number' },
+  { key: 'priority', name: 'Priority', type: 'single_select' },
+  { key: 'size', name: 'Size', type: 'single_select' },
+  { key: 'estimate', name: 'Estimate', type: 'number' },
+  { key: 'engagedTime', name: 'Actual Hours', type: 'number' },
+  { key: 'sessionTime', name: 'Actual Session Time', type: 'number' },
+  { key: 'contextLength', name: 'Context Length', type: 'number' },
+  { key: 'sequence', name: 'Sequence', type: 'number' },
 ];
 
 const args = process.argv.slice(2);
@@ -48,7 +48,8 @@ const limitIdx = args.indexOf('--limit');
 const limit = limitIdx >= 0 ? Number(args[limitIdx + 1]) : Infinity;
 
 async function fetchProjectFieldIds() {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($id: ID!) {
       node(id: $id) {
         ... on ProjectV2 {
@@ -57,7 +58,9 @@ async function fetchProjectFieldIds() {
           }
         }
       }
-    }`, { id: PROJECT_ID });
+    }`,
+    { id: PROJECT_ID }
+  );
   const map = {};
   for (const f of data.node.fields.nodes || []) {
     if (f?.name && f.id) map[f.name] = f.id;
@@ -114,7 +117,7 @@ function projectValuesFor(item, fieldNameToId) {
   for (const def of FIELD_DEFS) {
     const fieldId = fieldNameToId[def.name];
     if (!fieldId) continue;
-    const node = item.fieldValues.nodes.find(v => v.field?.id === fieldId);
+    const node = item.fieldValues.nodes.find((v) => v.field?.id === fieldId);
     if (!node) continue;
     if (node.number !== undefined && node.number !== null) values[def.key] = node.number;
     else if (node.text) values[def.key] = node.text;
@@ -130,20 +133,22 @@ async function writeIssueBody(issueNumber, body) {
     writeFileSync(file, body, 'utf8');
     await gh(['issue', 'edit', String(issueNumber), '-R', REPO, '--body-file', file]);
   } finally {
-    try { unlinkSync(file); } catch {}
+    try {
+      unlinkSync(file);
+    } catch {}
   }
 }
 
 async function main() {
   const fieldNameToId = await fetchProjectFieldIds();
-  const missing = FIELD_DEFS.filter(d => !fieldNameToId[d.name]);
+  const missing = FIELD_DEFS.filter((d) => !fieldNameToId[d.name]);
   if (missing.length) {
     console.warn('warning: project missing fields, those keys will be null in bodies:');
     for (const m of missing) console.warn(`  - ${m.name} (${m.key})`);
   }
 
   const items = await fetchAllItems();
-  const issues = items.filter(it => it.content?.number);
+  const issues = items.filter((it) => it.content?.number);
   console.log(`fetched ${issues.length} issues from project`);
 
   let writes = 0;
@@ -157,11 +162,15 @@ async function main() {
     const issue = it.content;
     const projectValues = projectValuesFor(it, fieldNameToId);
     const result = ensureIssueFieldDb(issue.body || '', FIELD_DEFS, projectValues);
-    if (!result.changed) { skipped++; continue; }
+    if (!result.changed) {
+      skipped++;
+      continue;
+    }
     writes++;
     const summary = Object.entries(result.values)
       .filter(([, v]) => v !== null && v !== undefined)
-      .map(([k, v]) => `${k}=${v}`).join(' ');
+      .map(([k, v]) => `${k}=${v}`)
+      .join(' ');
     console.log(`  #${issue.number} [${issue.state}] ${summary || '(all null)'}`);
     if (dryRun) continue;
     try {
@@ -173,7 +182,9 @@ async function main() {
   }
 
   console.log('');
-  console.log(`Summary: ${writes} ${dryRun ? 'planned' : 'written'}, ${skipped} idempotent skips, ${errors} errors${processed < issues.length ? `, ${issues.length - processed} skipped via --limit` : ''}`);
+  console.log(
+    `Summary: ${writes} ${dryRun ? 'planned' : 'written'}, ${skipped} idempotent skips, ${errors} errors${processed < issues.length ? `, ${issues.length - processed} skipped via --limit` : ''}`
+  );
   if (errors > 0) process.exit(2);
 }
 

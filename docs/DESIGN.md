@@ -39,6 +39,7 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 ## Semantics
 
 ### `/task #N`
+
 - If a task is currently active → flush its pending entry to its issue's timing comment (auto-end behavior, controlled by `autoEndOnSwitch` config, default `true`).
 - Validate issue #N exists via `gh issue view`.
 - Write `start` entry to #N's timing comment: `YYYY-MM-DDTHH:MMZ  start  words=<cumulative>`.
@@ -46,6 +47,7 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 - Report to user: `Active: #N. Previous: #M ended (+X min, +Y words).`
 
 ### `/task new [title]`
+
 - If `/task plan` bucket is active → this is the **promotion path**:
   - Determine title: (a) `[title]` arg if given, (b) first H1 of most recent spec doc if exists, (c) prompt inline with a suggestion pulled from recent conversation.
   - Create issue via `gh issue create --assignee kburson --label needs-triage`.
@@ -55,17 +57,20 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 - Follow same auto-end-previous logic as `/task #N`.
 
 ### `/task plan`
+
 - Does NOT require a prior `/task end`. Implicitly ends any active task (same semantics as `/task #N`).
 - Creates a plan bucket in local state: `{ active: "plan", startedAt, wordsAtStart, entries: [] }`.
 - No GitHub activity until `/task new` promotes it.
 - If another `/task plan` is called while one is active, the old plan bucket is discarded with a warning.
 
 ### `/task start`
+
 - Reads `lastActive` from state. Errors if none.
 - Does NOT end any current active task (would be redundant — `start` only makes sense if nothing is active).
 - Writes `resume` entry to the issue's timing comment.
 
 ### `/task log #N`
+
 - Reads the issue's `⏱ Timing Log` comment, sums all `Active Min` deltas for `Actual Session Time`, takes the last `Word Marker` for `Context Length`.
 - Writes both to the GitHub Projects V2 board via `updateProjectV2ItemFieldValue` mutation.
 - Field IDs are looked up by name at runtime — no extra config required.
@@ -73,6 +78,7 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 - Supports `--dry-run` to print computed values without writing.
 
 ### `/task update [message]`
+
 - Flush current entry: compute active minutes, idle minutes, and word delta since last marker; append a row to the timing comment.
 - Reset `entryStartTs` and `wordsAtEntryStart` to current values — next measurement starts from this point.
 - Accumulates `totalActiveMinutes` in state across checkpoints.
@@ -80,21 +86,25 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 - Prints: `Update #N: +X active min, +Y idle min, +Z words. Total: A active min, B words.`
 
 ### `/task pause` / `/task end`
+
 - Flush current task's entry: compute minutes since `entryStartTs` and words since `wordsAtLastEvent`, post to the issue's timing comment.
 - `pause`: leaves `lastActive` set for future `/task start`.
 - `end`: clears `lastActive`. If a plan bucket is active, discards it.
 
 ### `/task status`
+
 - Prints active task (or plan bucket or none), elapsed minutes since entry start, words since last marker.
 - Also prints `lastActive` if nothing is currently active.
 
 ### `/task fleet`
+
 - Reads `.ai-task-manager/task-fleet.json` from the main worktree (located via `git worktree list --porcelain` — first entry is always the main worktree), with legacy `.claude/task-fleet.json` fallback.
 - Displays all registered tasks: issue ref, status (`active`|`paused`), branch, and age since `startedAt`.
 - If the file is missing or empty: prints `No fleet tasks registered.`
 - Read-only from any worktree — only the owning agent writes its own entry.
 
 ### `/task config` and `/task config <key> <value>`
+
 - `/task config` → print all effective config values with source annotations (`*` for project-local overrides).
 - `/task config <key> <value>` → validate type, write to project-local `.ai-task-manager/task-tracker.json`, echo back the new value.
 - Validation:
@@ -112,30 +122,30 @@ Precedence: project-local > user-global > hardcoded defaults.
 
 **User-settable keys** (`/task config <key> <value>` or `~/.ai-task-manager/task-tracker-config.json`):
 
-| Key | Type | Default | Purpose |
-|-----|------|---------|---------|
-| `wpm` | number | `180` | Reading speed for context-hours conversion in value reports |
-| `repo` | string | `''` | Repo slug (`owner/repo`) for `gh` commands — required |
-| `assignee` | string | `'@me'` | Assignee for issues created via `/task new` |
-| `defaultLabels` | string[] | `[]` | Labels applied on `/task new` |
-| `autoEndOnSwitch` | boolean | `true` | `/task #X` while another active → auto-end previous |
-| `idleThresholdMinutes` | number | `5` | Gap length (minutes) before time stops counting as active |
-| `recordWallClock` | boolean | `true` | Record wall-clock time in addition to active time |
-| `hookNetworkTimeoutMs` | number | `2000` | PreCompact GH API timeout before queue-fallback |
-| `pickupDirective` | boolean | `true` | Inject Pickup Directive block into issues created via `/task new` |
-| `queuePath` | string | `.ai-task-manager/task-tracker-queue.json` | Where failed hook posts get queued |
-| `statePath` | string | `.ai-task-manager/task-tracker-state.json` | Active-task state file |
+| Key                    | Type     | Default                                    | Purpose                                                           |
+| ---------------------- | -------- | ------------------------------------------ | ----------------------------------------------------------------- |
+| `wpm`                  | number   | `180`                                      | Reading speed for context-hours conversion in value reports       |
+| `repo`                 | string   | `''`                                       | Repo slug (`owner/repo`) for `gh` commands — required             |
+| `assignee`             | string   | `'@me'`                                    | Assignee for issues created via `/task new`                       |
+| `defaultLabels`        | string[] | `[]`                                       | Labels applied on `/task new`                                     |
+| `autoEndOnSwitch`      | boolean  | `true`                                     | `/task #X` while another active → auto-end previous               |
+| `idleThresholdMinutes` | number   | `5`                                        | Gap length (minutes) before time stops counting as active         |
+| `recordWallClock`      | boolean  | `true`                                     | Record wall-clock time in addition to active time                 |
+| `hookNetworkTimeoutMs` | number   | `2000`                                     | PreCompact GH API timeout before queue-fallback                   |
+| `pickupDirective`      | boolean  | `true`                                     | Inject Pickup Directive block into issues created via `/task new` |
+| `queuePath`            | string   | `.ai-task-manager/task-tracker-queue.json` | Where failed hook posts get queued                                |
+| `statePath`            | string   | `.ai-task-manager/task-tracker-state.json` | Active-task state file                                            |
 
 **Internal keys** (managed by `npx ai-task-manager init` — do not set manually):
 
-| Key | Purpose |
-|-----|---------|
-| `projectId` | GH Projects V2 project node ID |
-| `kanbanFieldId` | Kanban single-select field ID |
-| `kanbanOptionBacklog` / `Groom` / `Analyze` / `Development` / `Validate` / `Review` / `Done` | Kanban option IDs |
-| `sequenceFieldId` | Numeric Sequence field ID (fan-out ordering) |
-| `priorityFieldId` | Priority single-select field ID |
-| `priorityOptionP0` / `P1` / `P2` | Priority option IDs |
+| Key                                                                                          | Purpose                                      |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `projectId`                                                                                  | GH Projects V2 project node ID               |
+| `kanbanFieldId`                                                                              | Kanban single-select field ID                |
+| `kanbanOptionBacklog` / `Groom` / `Analyze` / `Development` / `Validate` / `Review` / `Done` | Kanban option IDs                            |
+| `sequenceFieldId`                                                                            | Numeric Sequence field ID (fan-out ordering) |
+| `priorityFieldId`                                                                            | Priority single-select field ID              |
+| `priorityOptionP0` / `P1` / `P2`                                                             | Priority option IDs                          |
 
 ## State File
 
@@ -152,6 +162,7 @@ Location: `.ai-task-manager/task-tracker-state.json` (gitignored).
 ```
 
 When a plan bucket is active:
+
 ```json
 {
   "active": "plan",
@@ -199,18 +210,19 @@ Append-only format. Each row captures a point-in-time measurement; deltas are re
 ```markdown
 ⏱ Timing Log
 
-| Timestamp | Event | Active Min | Idle Min | Δ Words | Word Marker | Description |
-|---|---|---|---|---|---|---|
-| 2026-04-24T14:02Z | start | 0 | 0 | 0 | 8,541 | task opened |
-| 2026-04-24T14:47Z | pre-compact-flush | 38 | 7 | 12,400 | 20,941 | context compacted |
-| 2026-04-24T14:48Z | post-compact-resume | 0 | 0 | 0 | 20,941 | resumed after compact |
-| 2026-04-24T15:30Z | update | 40 | 2 | 6,800 | 27,741 | checkpoint |
-| 2026-04-24T15:30Z | pause | 4 | 0 | 312 | 28,053 | task paused |
-| 2026-04-24T16:10Z | resume | 0 | 0 | 0 | 28,053 | task resumed |
-| 2026-04-24T16:55Z | end | 45 | 3 | 9,200 | 37,253 | task ended |
+| Timestamp         | Event               | Active Min | Idle Min | Δ Words | Word Marker | Description           |
+| ----------------- | ------------------- | ---------- | -------- | ------- | ----------- | --------------------- |
+| 2026-04-24T14:02Z | start               | 0          | 0        | 0       | 8,541       | task opened           |
+| 2026-04-24T14:47Z | pre-compact-flush   | 38         | 7        | 12,400  | 20,941      | context compacted     |
+| 2026-04-24T14:48Z | post-compact-resume | 0          | 0        | 0       | 20,941      | resumed after compact |
+| 2026-04-24T15:30Z | update              | 40         | 2        | 6,800   | 27,741      | checkpoint            |
+| 2026-04-24T15:30Z | pause               | 4          | 0        | 312     | 28,053      | task paused           |
+| 2026-04-24T16:10Z | resume              | 0          | 0        | 0       | 28,053      | task resumed          |
+| 2026-04-24T16:55Z | end                 | 45         | 3        | 9,200   | 37,253      | task ended            |
 ```
 
 Column semantics:
+
 - **Active Min** / **Idle Min** — minutes in this window where Claude was engaged vs. idle (gap > `idleThresholdMinutes`). Deltas since the last baseline reset.
 - **Δ Words** — context words added since the last baseline reset.
 - **Word Marker** — absolute word-count position in the session JSONL at the time of this row; useful as a reference point for manual inspection.
@@ -225,6 +237,7 @@ When a task `end` fires, the skill also updates the Projects V2 fields (`Actual 
 Three hooks, all project-local, all routing through `.claude/hooks/task-tracker.sh`:
 
 ### PreCompact
+
 1. Read state. If no active task (and no plan bucket), exit 0.
 2. Count words from marker line to current EOF of session JSONL.
 3. Compute minutes since `entryStartTs`.
@@ -233,11 +246,13 @@ Three hooks, all project-local, all routing through `.claude/hooks/task-tracker.
 6. On network failure: write the event to `queuePath`, exit 0. Next successful `/task` invocation drains the queue first.
 
 ### PostCompact
+
 1. Read state. If no active task (and no plan bucket), exit 0.
 2. Marker is reset to the new (shorter) JSONL's EOF by `tally-chat-words.mjs` — reuse existing logic.
 3. Post `post-compact-resume` row to the active task's timing comment.
 
 ### SessionStart
+
 1. If state shows an active task AND the previous session's JSONL exists on disk:
    - Count any unlogged words from the last marker to previous session's EOF.
    - Post `session-end-recovery` row to the active task's timing comment (covers forgot-to-pause-before-clear case).
@@ -284,6 +299,7 @@ scripts/reports/
 ## Migration from Current Setup
 
 Current state (must be preserved during migration):
+
 - `.claude/hooks/chat-word-count.sh` → replaced by `task-tracker.sh`
 - `.claude/settings.json` PreCompact/PostCompact entries → updated to call `task-tracker.sh`
 - `scripts/reports/tally-chat-words.mjs` → logic extracted to module, script kept as thin wrapper for backward compat
@@ -291,6 +307,7 @@ Current state (must be preserved during migration):
 - Existing `<session-id>.word-marker` files → read as-is, extended with `task` field on next write
 
 Migration steps (executed during implementation):
+
 1. Add new `scripts/task-tracker/` module files.
 2. Refactor `tally-chat-words.mjs` to delegate to `word-counter.mjs`.
 3. Add `task-tracker.sh` hook.
@@ -318,6 +335,7 @@ Migration steps (executed during implementation):
 ## Testing Strategy
 
 No formal test framework in this repo — follow project conventions:
+
 - **Unit-ish:** small `.mjs` scripts under `scripts/task-tracker/tests/` invoked via `node <file>` that exercise state/config/queue modules with temp files.
 - **Integration:** a manual smoke-test checklist in `docs/task-tracker-smoke-test.md` covering all 10 command patterns + the 3 hooks.
 - **Hook dry-run:** `task-tracker.sh --dry-run` mode that prints what it would do without touching GH.
@@ -351,9 +369,11 @@ Every issue created from a master plan (and optionally single issues when `picku
 
 ```markdown
 ### Definition of Done
+
 <contents of definition-of-done.md>
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
+
 > Follow: `.ai-task-manager/pickup-directive.md`
 
 - [ ] Deep dive complete

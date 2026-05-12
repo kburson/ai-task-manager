@@ -16,7 +16,8 @@ export async function readParentStatus({ parentEpicNumber, repo, projectId } = {
   if (!repo) throw new Error('parent-status: repo is required');
   if (!projectId) throw new Error('parent-status: projectId is required');
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -39,7 +40,7 @@ export async function readParentStatus({ parentEpicNumber, repo, projectId } = {
     { owner, repo: repoName, issue: Number(parentEpicNumber) }
   );
   const items = data?.repository?.issue?.projectItems?.nodes || [];
-  const item = items.find(n => n?.project?.id === projectId);
+  const item = items.find((n) => n?.project?.id === projectId);
   if (!item) return null;
   for (const fv of item.fieldValues?.nodes || []) {
     const fname = fv?.field?.name;

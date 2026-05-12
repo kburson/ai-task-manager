@@ -7,7 +7,7 @@ Review / Done`).
 
 This repo's own board was migrated in place by
 [`scripts/migrate/rename-status-2026-05.mjs`](../../scripts/migrate/rename-status-2026-05.mjs)
-which renamed Status option *labels* without touching IDs. That script is the
+which renamed Status option _labels_ without touching IDs. That script is the
 right tool **only** when you control the same ProjectV2 instance and option
 IDs. Downstream projects with separate boards must remap items by option ID —
 that is what `migrate-to-7-state.mjs` does.
@@ -25,14 +25,14 @@ that is what `migrate-to-7-state.mjs` does.
 
 ## Mapping table
 
-| Source label (6-state) | Target label (7-state) |
-|---|---|
-| `Backlog` | `Backlog` (no-op) |
-| `Ready` | `Groom` |
-| `In Progress` | `Development` |
-| `In Review` | `Review` |
-| `R4R` | `Review` (deprecated alias collapse) |
-| `Done` | `Done` (no-op) |
+| Source label (6-state) | Target label (7-state)               |
+| ---------------------- | ------------------------------------ |
+| `Backlog`              | `Backlog` (no-op)                    |
+| `Ready`                | `Groom`                              |
+| `In Progress`          | `Development`                        |
+| `In Review`            | `Review`                             |
+| `R4R`                  | `Review` (deprecated alias collapse) |
+| `Done`                 | `Done` (no-op)                       |
 
 `Analyze` and `Validate` are **new** states. No legacy label maps to them.
 After migration both will be empty — this is expected. Operators curate which
@@ -43,9 +43,11 @@ items advance into those gates manually.
 1. `gh auth status` — confirm authenticated and have `repo` + `project` scopes.
 2. `gh project list --owner <owner>` — confirm target project exists.
 3. Snapshot current board state for rollback:
+
    ```
    gh api graphql -f query='query{ node(id:"<projectId>"){ ... on ProjectV2 { items(first:100){ nodes { id fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name } } content{ ... on Issue { number } } } } } } }' > /tmp/board-snapshot.json
    ```
+
 4. Confirm `.ai-task-manager/task-tracker.json` has `projectId` and
    `kanbanFieldId`.
 
@@ -60,6 +62,7 @@ table of `(item #, title, from → to)` for every item that would move. No
 writes. Re-runnable without effect.
 
 Sane output for an already-migrated board:
+
 ```
 0 items to migrate (board already on 7-state vocabulary).
 ```

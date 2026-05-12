@@ -10,12 +10,14 @@ import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
-const issue = args.find(a => /^#?\d+$/.test(a))?.replace('#', '');
-const state = args.find(a => ['development', 'done'].includes(a));
+const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
+const state = args.find((a) => ['development', 'done'].includes(a));
 const itemId = args[args.indexOf('--item-id') + 1] || '';
 
 if (!issue || !state || !itemId) {
-  console.error('Usage: update-event-fields.mjs <issue#> <development|done> --item-id <project-item-id>');
+  console.error(
+    'Usage: update-event-fields.mjs <issue#> <development|done> --item-id <project-item-id>'
+  );
   process.exit(1);
 }
 
@@ -47,17 +49,32 @@ function nowText() {
 }
 
 function fieldTypeForKey(fieldDefs, key) {
-  return fieldDefs.find(d => d.key === key)?.type || '';
+  return fieldDefs.find((d) => d.key === key)?.type || '';
 }
 
 async function writeFieldValue(fieldId, type, value) {
   if (!fieldId) return;
   if (type === 'date') {
-    await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { date: value } });
+    await writeProjectFieldValue({
+      projectId: cfg.projectId,
+      itemId,
+      fieldId,
+      value: { date: value },
+    });
   } else if (type === 'text') {
-    await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { text: value } });
+    await writeProjectFieldValue({
+      projectId: cfg.projectId,
+      itemId,
+      fieldId,
+      value: { text: value },
+    });
   } else {
-    await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { number: Number(value) } });
+    await writeProjectFieldValue({
+      projectId: cfg.projectId,
+      itemId,
+      fieldId,
+      value: { number: Number(value) },
+    });
   }
 }
 
@@ -72,7 +89,9 @@ async function writeIssueBody(body) {
     writeFileSync(tmp, body, 'utf8');
     await gh(['issue', 'edit', issue, '-R', cfg.repo, '--body-file', tmp]);
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -86,7 +105,10 @@ try {
   let issueDbChanged = ensured.changed;
   for (const binding of bindings) {
     const fieldKey = binding.field;
-    const fieldId = cfg.fieldIds?.[fieldKey] || cfg[`field${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`] || '';
+    const fieldId =
+      cfg.fieldIds?.[fieldKey] ||
+      cfg[`field${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`] ||
+      '';
     const fieldType = fieldTypeForKey(fieldDefs, fieldKey);
     let resolved;
     if (binding.value === 'today') resolved = today();

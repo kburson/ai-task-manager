@@ -14,7 +14,9 @@ import { gql, splitRepo } from './github-projects.mjs';
 const BATCH_SIZE = 20;
 
 export async function classify({ candidates, repo, runQuery = defaultRunQuery } = {}) {
-  const nums = (candidates || []).map(n => Number(String(n).replace(/^#/, ''))).filter(Number.isFinite);
+  const nums = (candidates || [])
+    .map((n) => Number(String(n).replace(/^#/, '')))
+    .filter(Number.isFinite);
   if (nums.length === 0) {
     return { solos: [], parented: [], multiParent: false, parents: new Set(), kind: 'empty' };
   }
@@ -36,7 +38,10 @@ export async function classify({ candidates, repo, runQuery = defaultRunQuery } 
   for (const n of nums) {
     const p = lookups.get(n);
     if (p == null) solos.push(n);
-    else { parented.push({ child: n, parent: p }); parents.add(p); }
+    else {
+      parented.push({ child: n, parent: p });
+      parents.add(p);
+    }
   }
 
   let kind;
@@ -50,7 +55,9 @@ export async function classify({ candidates, repo, runQuery = defaultRunQuery } 
 }
 
 export function buildBatchQuery(batch) {
-  const aliases = batch.map((_, i) => `i${i}: issue(number:$n${i}){ number parent{ number } }`).join('\n      ');
+  const aliases = batch
+    .map((_, i) => `i${i}: issue(number:$n${i}){ number parent{ number } }`)
+    .join('\n      ');
   const vars = batch.map((_, i) => `$n${i}:Int!`).join(', ');
   return `
     query($owner:String!, $name:String!, ${vars}) {
@@ -63,7 +70,9 @@ export function buildBatchQuery(batch) {
 export async function defaultRunQuery({ owner, repoName, batch }) {
   const query = buildBatchQuery(batch);
   const variables = { owner, name: repoName };
-  batch.forEach((n, i) => { variables[`n${i}`] = Number(n); });
+  batch.forEach((n, i) => {
+    variables[`n${i}`] = Number(n);
+  });
   const data = await gql(query, variables);
   const repo = data?.repository || {};
   const out = [];
@@ -77,11 +86,11 @@ export async function defaultRunQuery({ owner, repoName, batch }) {
 export function rejectionMessage(result) {
   if (result.kind === 'mixed') {
     const solo = result.solos.join(', ');
-    const par = result.parented.map(p => `#${p.child}→#${p.parent}`).join(', ');
+    const par = result.parented.map((p) => `#${p.child}→#${p.parent}`).join(', ');
     return `wave-detect: mixed-fanout — solo [${solo}] and parented [${par}]. Hoist solos under the existing parent, or detach the parented child, before retrying.`;
   }
   if (result.kind === 'multi-parent') {
-    const groups = result.parented.map(p => `#${p.child}→#${p.parent}`).join(', ');
+    const groups = result.parented.map((p) => `#${p.child}→#${p.parent}`).join(', ');
     return `wave-detect: multi-parent — ${groups}. Dispatch these as separate waves.`;
   }
   return null;

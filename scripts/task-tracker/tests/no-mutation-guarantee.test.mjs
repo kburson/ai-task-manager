@@ -28,7 +28,10 @@ function assertNoMutation(label, source, banned) {
 {
   const src = readFileSync(path.join(root, 'lib/apply-review-delta.mjs'), 'utf8');
   // Strip comments so the header docs that mention the banned symbols don't false-positive.
-  const stripped = src.split('\n').filter(line => !line.trim().startsWith('//')).join('\n');
+  const stripped = src
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('//'))
+    .join('\n');
   assertNoMutation('apply-review-delta.mjs', stripped, [
     'writeProjectFieldValue(',
     "'issue', 'edit'",
@@ -39,7 +42,10 @@ function assertNoMutation(label, source, banned) {
 // 2. verbClose body must contain no writeProjectFieldValue call.
 {
   const src = readFileSync(path.join(root, 'verbs/close.mjs'), 'utf8');
-  assert.ok(/export async function verbClose\b/.test(src), 'verbClose export not found in verbs/close.mjs');
+  assert.ok(
+    /export async function verbClose\b/.test(src),
+    'verbClose export not found in verbs/close.mjs'
+  );
   assertNoMutation('verbClose', src, ['writeProjectFieldValue(']);
 }
 

@@ -3,10 +3,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import {
-  CLOSE_OWNED_CHECKBOXES,
-  uncheckedPreCloseCheckboxes,
-} from '../close-gate.mjs';
+import { CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
 
 test('returns [] when body has no checkboxes', () => {
   assert.deepEqual(uncheckedPreCloseCheckboxes('## Title\nNo boxes here.'), []);
@@ -19,7 +16,7 @@ test('returns [] when body has only checked boxes', () => {
 
 test('excludes close-owned labels even when unchecked', () => {
   const owned = [...CLOSE_OWNED_CHECKBOXES];
-  const body = owned.map(l => `- [ ] ${l}`).join('\n');
+  const body = owned.map((l) => `- [ ] ${l}`).join('\n');
   assert.deepEqual(uncheckedPreCloseCheckboxes(body), []);
 });
 

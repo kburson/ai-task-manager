@@ -4,7 +4,6 @@
 // Priorities: p0 | p1 | p2
 // --cascade: also set the same priority on all direct sub-issues
 
-import { existsSync } from 'node:fs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, gql } from './lib/github-projects.mjs';
 
@@ -19,7 +18,7 @@ const PRIORITY_TO_CONFIG_KEY = {
 function usage() {
   process.stderr.write(
     'Usage: node scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]\n' +
-    'Priorities: p0 | p1 | p2\n'
+      'Priorities: p0 | p1 | p2\n'
   );
   process.exit(1);
 }
@@ -48,7 +47,9 @@ if (!SKIP_NETWORK && (!cfg.projectId || !cfg.priorityFieldId)) {
 
 const optionId = cfg[configKey];
 if (!SKIP_NETWORK && !optionId) {
-  process.stderr.write(`Error: option ID for priority '${priority}' not configured. Run: npx ai-task-manager init\n`);
+  process.stderr.write(
+    `Error: option ID for priority '${priority}' not configured. Run: npx ai-task-manager init\n`
+  );
   process.exit(1);
 }
 
@@ -56,7 +57,8 @@ const [owner, repoName] = (cfg.repo || '/').split('/');
 const priorityLabel = priority.toUpperCase();
 
 async function getProjectItemId(issueNum, projectId) {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -67,7 +69,7 @@ async function getProjectItemId(issueNum, projectId) {
     { owner, repo: repoName, issue: Number(issueNum) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-  const match = nodes.find(n => n?.project?.id === projectId);
+  const match = nodes.find((n) => n?.project?.id === projectId);
   return match?.id || '';
 }
 
@@ -81,11 +83,17 @@ async function setPriority(issueNum) {
     console.log(`  Issue #${issueNum} not found in project — skipping`);
     return;
   }
-  await gh(['project', 'item-edit',
-    '--project-id', cfg.projectId,
-    '--id', itemId,
-    '--field-id', cfg.priorityFieldId,
-    '--single-select-option-id', optionId,
+  await gh([
+    'project',
+    'item-edit',
+    '--project-id',
+    cfg.projectId,
+    '--id',
+    itemId,
+    '--field-id',
+    cfg.priorityFieldId,
+    '--single-select-option-id',
+    optionId,
   ]);
   console.log(`  ✓ #${issueNum} → ${priorityLabel}`);
 }
@@ -97,7 +105,8 @@ if (cascade && !SKIP_NETWORK) {
   console.log(`Cascading to sub-issues of #${issueArg}...`);
   let subNums = [];
   try {
-    const data = await gql(`
+    const data = await gql(
+      `
       query($owner: String!, $repo: String!, $issue: Int!) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issue) {
@@ -107,8 +116,10 @@ if (cascade && !SKIP_NETWORK) {
       }`,
       { owner, repo: repoName, issue: Number(issueArg) }
     );
-    subNums = (data?.repository?.issue?.subIssues?.nodes || []).map(n => n.number);
-  } catch { /* subIssues may not be available on all GH plans */ }
+    subNums = (data?.repository?.issue?.subIssues?.nodes || []).map((n) => n.number);
+  } catch {
+    /* subIssues may not be available on all GH plans */
+  }
 
   if (subNums.length === 0) {
     console.log('  No sub-issues found');

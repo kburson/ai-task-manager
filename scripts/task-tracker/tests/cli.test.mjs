@@ -83,7 +83,11 @@ writeFileSync(
   path.join(startSwitchSandbox, '.ai-task-manager', 'task-tracker.json'),
   JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
 );
-const switchEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: startSwitchSandbox, TT_SKIP_NETWORK: '1' };
+const switchEnv = {
+  ...process.env,
+  AI_TASK_MANAGER_PROJECT_DIR: startSwitchSandbox,
+  TT_SKIP_NETWORK: '1',
+};
 
 // Bind #200, pause it so lastActive=#200 and active=null.
 await pexec('node', [CLI, '#200'], { env: switchEnv });
@@ -112,22 +116,42 @@ rmSync(sandbox, { recursive: true });
 // Dir has .ai-task-manager/ but no task-tracker.json — fail-closed `config-not-found`.
 const noRepoDirBase = mkdtempSync(path.join(tmpdir(), 'tt-norepo-'));
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
-const noRepoEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase, TT_SKIP_NETWORK: '1' };
+const noRepoEnv = {
+  ...process.env,
+  AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase,
+  TT_SKIP_NETWORK: '1',
+};
 
-for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'review', 'check', 'log']) {
+for (const blockedVerb of [
+  '#42',
+  'close',
+  'pause',
+  'plan',
+  'new',
+  'update',
+  'review',
+  'check',
+  'log',
+]) {
   try {
     await pexec('node', [CLI, blockedVerb], { env: noRepoEnv });
     assert.fail(`Expected non-zero exit for verb: ${blockedVerb}`);
   } catch (err) {
-    assert.match(err.stderr, /config-not-found|not initialized/i,
-      `verb "${blockedVerb}" should fail-closed with config-not-found or not initialized`);
+    assert.match(
+      err.stderr,
+      /config-not-found|not initialized/i,
+      `verb "${blockedVerb}" should fail-closed with config-not-found or not initialized`
+    );
   }
 }
 
 // Exempt verbs succeed without repo
 for (const exemptVerb of ['status', 'config', 'help', '?']) {
   const er = await pexec('node', [CLI, exemptVerb], { env: noRepoEnv });
-  assert.ok(er.stdout.length > 0 || er.stderr.length === 0, `exempt verb "${exemptVerb}" should not error`);
+  assert.ok(
+    er.stdout.length > 0 || er.stderr.length === 0,
+    `exempt verb "${exemptVerb}" should not error`
+  );
 }
 
 rmSync(noRepoDirBase, { recursive: true });
@@ -141,8 +165,16 @@ try {
   await pexec('node', [CLI, '#42', '--role', 'agent'], { env: bareEnv });
   assert.fail('Expected non-zero exit for --role agent in unseeded worktree');
 } catch (err) {
-  assert.match(err.stderr, /config-not-found at/, 'agent bootstrap must report config-not-found path');
-  assert.match(err.stderr, /\.ai-task-manager[\\/]task-tracker\.json/, 'error must name the missing config file');
+  assert.match(
+    err.stderr,
+    /config-not-found at/,
+    'agent bootstrap must report config-not-found path'
+  );
+  assert.match(
+    err.stderr,
+    /\.ai-task-manager[\\/]task-tracker\.json/,
+    'error must name the missing config file'
+  );
   assert.match(err.stderr, /seed-worktree\.mjs/, 'error must point to the seeding helper');
 }
 rmSync(bareWorktree, { recursive: true });

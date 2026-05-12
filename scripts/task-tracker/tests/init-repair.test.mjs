@@ -29,7 +29,9 @@ function makeSandbox(cfg) {
 }
 
 function readCfg(sandbox) {
-  return JSON.parse(readFileSync(path.join(sandbox, '.ai-task-manager', 'task-tracker.json'), 'utf8'));
+  return JSON.parse(
+    readFileSync(path.join(sandbox, '.ai-task-manager', 'task-tracker.json'), 'utf8')
+  );
 }
 
 async function runRepair(sandbox, fakeOptions) {
@@ -57,12 +59,12 @@ const EMPTY_CFG = {
 };
 
 const FULL_OPTS = [
-  { id: 'OP_b',  name: 'Backlog' },
-  { id: 'OP_g',  name: 'Groom' },
-  { id: 'OP_a',  name: 'Analyze' },
-  { id: 'OP_d',  name: 'Development' },
-  { id: 'OP_v',  name: 'Validate' },
-  { id: 'OP_r',  name: 'Review' },
+  { id: 'OP_b', name: 'Backlog' },
+  { id: 'OP_g', name: 'Groom' },
+  { id: 'OP_a', name: 'Analyze' },
+  { id: 'OP_d', name: 'Development' },
+  { id: 'OP_v', name: 'Validate' },
+  { id: 'OP_r', name: 'Review' },
   { id: 'OP_done', name: 'Done' },
 ];
 
@@ -98,7 +100,7 @@ const FULL_OPTS = [
   });
   await runRepair(sandbox, [
     { id: 'NEW_B', name: 'Backlog' },
-    { id: 'OP_v',  name: 'Validate' },
+    { id: 'OP_v', name: 'Validate' },
   ]);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'EXISTING_B', 'must not overwrite populated keys');
@@ -112,7 +114,7 @@ const FULL_OPTS = [
 {
   const sandbox = makeSandbox(EMPTY_CFG);
   // Missing Validate column
-  const opts = FULL_OPTS.filter(o => o.name !== 'Validate');
+  const opts = FULL_OPTS.filter((o) => o.name !== 'Validate');
   const r = await runRepair(sandbox, opts);
   assert.match(r.stdout, /Unmatched.*kanbanOptionValidate/);
   const cfg = readCfg(sandbox);
@@ -147,9 +149,12 @@ const FULL_OPTS = [
   assert.ok(m, 'should find status_opts assignment in init-project-config.sh');
   const arr = JSON.parse(m[1]);
   assert.equal(arr.length, 7, `status_opts must have 7 entries, got ${arr.length}`);
-  const names = arr.map(o => o.name);
-  assert.deepEqual(names, ['Backlog', 'Groom', 'Analyze', 'Development', 'Validate', 'Review', 'Done'],
-    'status_opts names must be in canonical order');
+  const names = arr.map((o) => o.name);
+  assert.deepEqual(
+    names,
+    ['Backlog', 'Groom', 'Analyze', 'Development', 'Validate', 'Review', 'Done'],
+    'status_opts names must be in canonical order'
+  );
 }
 
 console.log('init-repair.test.mjs: all passed');

@@ -12,7 +12,9 @@ function read(queuePath) {
   try {
     const parsed = JSON.parse(readFileSync(readPath, 'utf8'));
     return Array.isArray(parsed) ? parsed : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function write(items, queuePath) {
@@ -22,7 +24,9 @@ function write(items, queuePath) {
   renameSync(tmp, queuePath);
 }
 
-export function peek(queuePath) { return read(queuePath); }
+export function peek(queuePath) {
+  return read(queuePath);
+}
 
 export function enqueue(event, queuePath) {
   const items = read(queuePath);
@@ -39,7 +43,7 @@ export async function drain(handler, queuePath) {
     }
     write([], queuePath);
     return true;
-  } catch (err) {
+  } catch {
     write(items.slice(i), queuePath);
     return false;
   }

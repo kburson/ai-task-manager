@@ -19,11 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from './config.mjs';
 import { getProjectDir, projectTmpDir } from './paths.mjs';
-import {
-  parseIssueFieldDb,
-  stripIssueFieldDb,
-  formatIssueFieldDb,
-} from './issue-field-db.mjs';
+import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
 import { loadProjectFieldDefs } from './project-fields.mjs';
 import { parseTimingRows, rollupTotals } from './timing-rollup.mjs';
 import { migratePlanApprovedBody } from './migrate-plan-approved.mjs';
@@ -39,8 +35,8 @@ import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
 // only when the corresponding marker is present; otherwise left alone to
 // preserve historical readability for pre-marker issues.
 const VESTIGIAL_AC_PATTERNS = [
-  { re: /^[ \t]*- \[[ x]\] approved by Human\s*\r?\n?/gmi,    requires: hasPlanApprovedMarker },
-  { re: /^[ \t]*- \[[ x]\] Deep dive complete\s*\r?\n?/gmi,    requires: hasDeepDiveCompleteMarker },
+  { re: /^[ \t]*- \[[ x]\] approved by Human\s*\r?\n?/gim, requires: hasPlanApprovedMarker },
+  { re: /^[ \t]*- \[[ x]\] Deep dive complete\s*\r?\n?/gim, requires: hasDeepDiveCompleteMarker },
 ];
 
 export function stripVestigialAcBullets(body) {
@@ -57,11 +53,26 @@ const HEAL_COMMENT_MARKER_PREFIX = '<!-- aitm-heal:';
 const HEAL_COMMENT_MARKER_RE = /<!--\s*aitm-heal:\s*[^>]+-->/i;
 const RECONCILE_KEYS = ['engagedTime', 'sessionTime', 'reviewTime', 'startTime'];
 const STATIC_KEYS = ['priority', 'size', 'estimate', 'sequence'];
-const CANONICAL_STATUS_OPTIONS = ['Backlog', 'Groom', 'Analyze', 'Development', 'Validate', 'Review', 'Done'];
+const CANONICAL_STATUS_OPTIONS = [
+  'Backlog',
+  'Groom',
+  'Analyze',
+  'Development',
+  'Validate',
+  'Review',
+  'Done',
+];
 
 // ----- Pure helpers (unit-tested) -----
 
-export function healIssue({ body, timingCommentBody, fieldDefs, now = () => new Date().toISOString(), thresholdMin = 5, deepDiveBackfillTs = null }) {
+export function healIssue({
+  body,
+  timingCommentBody,
+  fieldDefs,
+  now = () => new Date().toISOString(),
+  thresholdMin = 5,
+  deepDiveBackfillTs = null,
+}) {
   const result = { changedBody: false, deltas: [], skipped: false, skipReason: null, action: [] };
 
   // 1. Plan-approved migration
@@ -73,7 +84,11 @@ export function healIssue({ body, timingCommentBody, fieldDefs, now = () => new 
   // Analysis` heading but no `aitm-deep-dive-complete` marker get the marker
   // inserted using the issue's closedAt/createdAt timestamp. Keeps pickup
   // logic from re-authoring the section on these issues.
-  if (deepDiveBackfillTs && hasDeepDiveHeading(workingBody) && !hasDeepDiveCompleteMarker(workingBody)) {
+  if (
+    deepDiveBackfillTs &&
+    hasDeepDiveHeading(workingBody) &&
+    !hasDeepDiveCompleteMarker(workingBody)
+  ) {
     workingBody = insertDeepDiveCompleteMarker(workingBody, deepDiveBackfillTs);
     result.action.push('backfill-deep-dive-marker');
   }
@@ -96,7 +111,7 @@ export function healIssue({ body, timingCommentBody, fieldDefs, now = () => new 
     if (rows.length > 0) {
       const totals = rollupTotals(rows, thresholdMin);
       // startTime: earliest row's timestamp formatted as the canonical text.
-      const firstWithTs = rows.find(r => r.tsMs != null);
+      const firstWithTs = rows.find((r) => r.tsMs != null);
       const startTimeText = firstWithTs ? formatStartTime(firstWithTs.tsMs) : null;
       recomputedTiming = {
         engagedTime: totals.engagedMin,
@@ -169,7 +184,7 @@ export function normalizeMarkerTs(iso) {
 function formatStartTime(tsMs) {
   // Mirrors the format used by task-tracker.mjs: "YYYY-MM-DD HH:MM ±HH:MM".
   const d = new Date(tsMs);
-  const pad = n => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, '0');
   const offMin = -d.getTimezoneOffset();
   const sign = offMin >= 0 ? '+' : '-';
   const oh = pad(Math.floor(Math.abs(offMin) / 60));
@@ -178,26 +193,37 @@ function formatStartTime(tsMs) {
 }
 
 export function diffSchema(projectFields, fieldDefs, statusOptions = CANONICAL_STATUS_OPTIONS) {
-  const drift = { missing: [], extra: [], typeMismatch: [], optionDrift: [], statusOptionDrift: [] };
-  const byName = new Map(projectFields.map(f => [f.name, f]));
+  const drift = {
+    missing: [],
+    extra: [],
+    typeMismatch: [],
+    optionDrift: [],
+    statusOptionDrift: [],
+  };
+  const byName = new Map(projectFields.map((f) => [f.name, f]));
   const canonicalNames = new Set();
 
   for (const def of fieldDefs) {
     const names = [def.name, ...(def.aliases || [])];
     canonicalNames.add(def.name);
-    const found = names.map(n => byName.get(n)).find(Boolean);
+    const found = names.map((n) => byName.get(n)).find(Boolean);
     if (!found) {
       drift.missing.push({ key: def.key, name: def.name });
       continue;
     }
     canonicalNames.add(found.name);
     if (def.type === 'single_select') {
-      const projectOpts = new Set((found.options || []).map(o => o.name));
-      const expectedOpts = new Set((def.options || []).map(o => o.name));
-      const missingOpts = [...expectedOpts].filter(o => !projectOpts.has(o));
-      const extraOpts = [...projectOpts].filter(o => !expectedOpts.has(o));
+      const projectOpts = new Set((found.options || []).map((o) => o.name));
+      const expectedOpts = new Set((def.options || []).map((o) => o.name));
+      const missingOpts = [...expectedOpts].filter((o) => !projectOpts.has(o));
+      const extraOpts = [...projectOpts].filter((o) => !expectedOpts.has(o));
       if (missingOpts.length || extraOpts.length) {
-        drift.optionDrift.push({ key: def.key, name: def.name, missing: missingOpts, extra: extraOpts });
+        drift.optionDrift.push({
+          key: def.key,
+          name: def.name,
+          missing: missingOpts,
+          extra: extraOpts,
+        });
       }
     }
   }
@@ -206,10 +232,10 @@ export function diffSchema(projectFields, fieldDefs, statusOptions = CANONICAL_S
   const statusField = byName.get('Status');
   if (statusField) {
     canonicalNames.add('Status');
-    const projectOpts = new Set((statusField.options || []).map(o => o.name.toLowerCase()));
-    const expectedOpts = new Set(statusOptions.map(o => o.toLowerCase()));
-    const missing = [...expectedOpts].filter(o => !projectOpts.has(o));
-    const extra = [...projectOpts].filter(o => !expectedOpts.has(o));
+    const projectOpts = new Set((statusField.options || []).map((o) => o.name.toLowerCase()));
+    const expectedOpts = new Set(statusOptions.map((o) => o.toLowerCase()));
+    const missing = [...expectedOpts].filter((o) => !projectOpts.has(o));
+    const extra = [...projectOpts].filter((o) => !expectedOpts.has(o));
     if (missing.length || extra.length) {
       drift.statusOptionDrift.push({ missing, extra });
     }
@@ -218,18 +244,31 @@ export function diffSchema(projectFields, fieldDefs, statusOptions = CANONICAL_S
   }
 
   // Always-present GitHub built-ins that aren't drift.
-  const builtIns = new Set(['Title', 'Assignees', 'Labels', 'Linked pull requests', 'Reviewers', 'Repository', 'Milestone', 'Tracks', 'Tracked by', 'Sub-issues progress', 'Parent issue']);
+  const builtIns = new Set([
+    'Title',
+    'Assignees',
+    'Labels',
+    'Linked pull requests',
+    'Reviewers',
+    'Repository',
+    'Milestone',
+    'Tracks',
+    'Tracked by',
+    'Sub-issues progress',
+    'Parent issue',
+  ]);
   for (const f of projectFields) {
     if (canonicalNames.has(f.name)) continue;
     if (builtIns.has(f.name)) continue;
     drift.extra.push({ name: f.name });
   }
 
-  drift.hasDrift = drift.missing.length > 0
-    || drift.extra.length > 0
-    || drift.typeMismatch.length > 0
-    || drift.optionDrift.length > 0
-    || drift.statusOptionDrift.length > 0;
+  drift.hasDrift =
+    drift.missing.length > 0 ||
+    drift.extra.length > 0 ||
+    drift.typeMismatch.length > 0 ||
+    drift.optionDrift.length > 0 ||
+    drift.statusOptionDrift.length > 0;
   return drift;
 }
 
@@ -260,18 +299,34 @@ export function isHealComment(commentBody) {
 // ----- Orchestrator (CLI entry) -----
 
 function parseArgs(argv) {
-  const args = { state: 'all', apply: false, scope: null, schemaCheck: true, ignoreSchemaDrift: false };
+  const args = {
+    state: 'all',
+    apply: false,
+    scope: null,
+    schemaCheck: true,
+    ignoreSchemaDrift: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
     else if (a === '--no-schema-check') args.schemaCheck = false;
     else if (a === '--ignore-schema-drift') args.ignoreSchemaDrift = true;
     else if (a === '--state') args.state = argv[++i];
-    else if (a === '--scope') args.scope = argv[++i].split(',').map(s => Number(s.replace(/^#/, ''))).filter(Number.isFinite);
+    else if (a === '--scope')
+      args.scope = argv[++i]
+        .split(',')
+        .map((s) => Number(s.replace(/^#/, '')))
+        .filter(Number.isFinite);
     else if (a.startsWith('--state=')) args.state = a.slice('--state='.length);
-    else if (a.startsWith('--scope=')) args.scope = a.slice('--scope='.length).split(',').map(s => Number(s.replace(/^#/, ''))).filter(Number.isFinite);
+    else if (a.startsWith('--scope='))
+      args.scope = a
+        .slice('--scope='.length)
+        .split(',')
+        .map((s) => Number(s.replace(/^#/, '')))
+        .filter(Number.isFinite);
     else if (a === '--help' || a === '-h') {
-      printUsage(); process.exit(0);
+      printUsage();
+      process.exit(0);
     }
   }
   if (!['open', 'closed', 'all'].includes(args.state)) {
@@ -288,7 +343,8 @@ function printUsage() {
 }
 
 async function fetchProjectFields(projectId) {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($projectId: ID!) {
       node(id: $projectId) {
         ... on ProjectV2 {
@@ -302,7 +358,9 @@ async function fetchProjectFields(projectId) {
         }
       }
     }
-  `, { projectId });
+  `,
+    { projectId }
+  );
   return data.node?.fields?.nodes ?? [];
 }
 
@@ -312,7 +370,8 @@ async function fetchAllIssueNumbers({ repo, state, projectId }) {
   const numbers = [];
   let cursor = null;
   for (let page = 0; page < 50; page++) {
-    const data = await gql(`
+    const data = await gql(
+      `
       query($owner: String!, $repo: String!, $cursor: String) {
         repository(owner: $owner, name: $repo) {
           issues(first: 100, after: $cursor, states: [OPEN, CLOSED], orderBy: {field: CREATED_AT, direction: ASC}) {
@@ -325,10 +384,12 @@ async function fetchAllIssueNumbers({ repo, state, projectId }) {
           }
         }
       }
-    `, { owner, repo: repoName, cursor });
+    `,
+      { owner, repo: repoName, cursor }
+    );
     const issues = data.repository.issues.nodes;
     for (const i of issues) {
-      const onProject = i.projectItems.nodes.some(n => n.project?.id === projectId);
+      const onProject = i.projectItems.nodes.some((n) => n.project?.id === projectId);
       if (!onProject) continue;
       if (state === 'open' && i.state !== 'OPEN') continue;
       if (state === 'closed' && i.state !== 'CLOSED') continue;
@@ -341,10 +402,19 @@ async function fetchAllIssueNumbers({ repo, state, projectId }) {
 }
 
 async function fetchIssueBundle(issueNumber, repo) {
-  const out = await gh(['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body,comments,state,createdAt,closedAt']);
+  const out = await gh([
+    'issue',
+    'view',
+    String(issueNumber),
+    '-R',
+    repo,
+    '--json',
+    'body,comments,state,createdAt,closedAt',
+  ]);
   const parsed = JSON.parse(out);
-  const timing = (parsed.comments || []).find(c => c.body && c.body.includes('⏱ Timing Log')) ?? null;
-  const priorHeal = (parsed.comments || []).some(c => isHealComment(c.body));
+  const timing =
+    (parsed.comments || []).find((c) => c.body && c.body.includes('⏱ Timing Log')) ?? null;
+  const priorHeal = (parsed.comments || []).some((c) => isHealComment(c.body));
   return {
     body: parsed.body ?? '',
     timing,
@@ -363,7 +433,9 @@ async function writeIssueBody(issueNumber, repo, body, projectDir) {
   try {
     await gh(['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -375,7 +447,9 @@ async function postHealComment(issueNumber, repo, comment, projectDir) {
   try {
     await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body-file', tmp]);
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -390,8 +464,14 @@ function summaryRow(n, r) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const cfg = loadConfig();
-  if (!cfg.repo) { process.stderr.write('heal-backlog: repo not configured\n'); process.exit(1); }
-  if (!cfg.projectId) { process.stderr.write('heal-backlog: projectId not configured\n'); process.exit(1); }
+  if (!cfg.repo) {
+    process.stderr.write('heal-backlog: repo not configured\n');
+    process.exit(1);
+  }
+  if (!cfg.projectId) {
+    process.stderr.write('heal-backlog: projectId not configured\n');
+    process.exit(1);
+  }
   const projectDir = getProjectDir();
   const fieldDefs = loadProjectFieldDefs(projectDir);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
@@ -417,16 +497,22 @@ async function main() {
       if (!drift.hasDrift) {
         reportLines.push('No drift detected.');
       } else {
-        if (drift.missing.length) reportLines.push(`- missing: ${drift.missing.map(d => d.name).join(', ')}`);
-        if (drift.extra.length) reportLines.push(`- extra: ${drift.extra.map(d => d.name).join(', ')}`);
+        if (drift.missing.length)
+          reportLines.push(`- missing: ${drift.missing.map((d) => d.name).join(', ')}`);
+        if (drift.extra.length)
+          reportLines.push(`- extra: ${drift.extra.map((d) => d.name).join(', ')}`);
         if (drift.optionDrift.length) {
           for (const d of drift.optionDrift) {
-            reportLines.push(`- option drift in **${d.name}** — missing: [${d.missing.join(', ')}], extra: [${d.extra.join(', ')}]`);
+            reportLines.push(
+              `- option drift in **${d.name}** — missing: [${d.missing.join(', ')}], extra: [${d.extra.join(', ')}]`
+            );
           }
         }
         if (drift.statusOptionDrift.length) {
           for (const d of drift.statusOptionDrift) {
-            reportLines.push(`- Status options drift — missing: [${d.missing.join(', ')}], extra: [${d.extra.join(', ')}]`);
+            reportLines.push(
+              `- Status options drift — missing: [${d.missing.join(', ')}], extra: [${d.extra.join(', ')}]`
+            );
           }
         }
       }
@@ -437,7 +523,9 @@ async function main() {
   }
 
   // 2. Enumerate issues
-  const numbers = args.scope ?? await fetchAllIssueNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId });
+  const numbers =
+    args.scope ??
+    (await fetchAllIssueNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
   reportLines.push(`## Per-issue heal (${numbers.length} issues)`);
   reportLines.push('');
   reportLines.push('```');
@@ -471,7 +559,12 @@ async function main() {
           row.encodingChanged = true;
         }
         if (heal.deltas.length && !priorHeal) {
-          await postHealComment(n, cfg.repo, renderHealComment({ deltas: heal.deltas }), projectDir);
+          await postHealComment(
+            n,
+            cfg.repo,
+            renderHealComment({ deltas: heal.deltas }),
+            projectDir
+          );
         }
       }
       if (heal.deltas.length) issuesWithDeltaCount++;
@@ -496,10 +589,15 @@ async function main() {
 
   const reportDir = projectTmpDir(projectDir);
   mkdirSync(reportDir, { recursive: true });
-  const reportPath = path.join(reportDir, `heal-backlog-${new Date().toISOString().replace(/[:.]/g, '-')}.md`);
+  const reportPath = path.join(
+    reportDir,
+    `heal-backlog-${new Date().toISOString().replace(/[:.]/g, '-')}.md`
+  );
   writeFileSync(reportPath, reportLines.join('\n'), 'utf8');
   process.stdout.write(`Report written: ${reportPath}\n`);
-  process.stdout.write(`Scanned ${numbers.length} issues. body-changed=${healedCount} delta=${issuesWithDeltaCount} skipped=${skippedCount} errors=${errorCount} schemaDrift=${schemaDriftFound}\n`);
+  process.stdout.write(
+    `Scanned ${numbers.length} issues. body-changed=${healedCount} delta=${issuesWithDeltaCount} skipped=${skippedCount} errors=${errorCount} schemaDrift=${schemaDriftFound}\n`
+  );
 
   if (schemaDriftFound && !args.ignoreSchemaDrift) {
     process.exit(3);
@@ -508,12 +606,15 @@ async function main() {
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {
-  main().catch(err => {
+  main().catch((err) => {
     process.stderr.write(`heal-backlog: ${err.stack || err.message}\n`);
     process.exit(1);
   });

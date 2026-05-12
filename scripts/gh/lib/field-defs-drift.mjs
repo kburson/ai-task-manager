@@ -6,10 +6,10 @@
 import { readFileSync } from 'node:fs';
 
 export function detectFieldDefsDrift(localArr, defaultArr) {
-  const localKeys = new Set(localArr.map(d => d.key));
-  const defaultKeys = new Set(defaultArr.map(d => d.key));
-  const added = [...defaultKeys].filter(k => !localKeys.has(k));
-  const removed = [...localKeys].filter(k => !defaultKeys.has(k));
+  const localKeys = new Set(localArr.map((d) => d.key));
+  const defaultKeys = new Set(defaultArr.map((d) => d.key));
+  const added = [...defaultKeys].filter((k) => !localKeys.has(k));
+  const removed = [...localKeys].filter((k) => !defaultKeys.has(k));
   return { added, removed, inSync: added.length === 0 && removed.length === 0 };
 }
 

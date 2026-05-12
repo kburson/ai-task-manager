@@ -34,7 +34,10 @@ assert.equal(s.active, null);
 assert.equal(s.lastActive, '#107');
 
 // Test 3a: EMPTY_STATE includes `state` field; default null
-assert.ok(Object.prototype.hasOwnProperty.call(EMPTY_STATE, 'state'), 'EMPTY_STATE should declare state field');
+assert.ok(
+  Object.prototype.hasOwnProperty.call(EMPTY_STATE, 'state'),
+  'EMPTY_STATE should declare state field'
+);
 assert.equal(EMPTY_STATE.state, null);
 
 // Test 3b: state field round-trips through save/load
@@ -51,11 +54,14 @@ assert.equal(s.state, null);
 assert.equal(s.lastActive, '#400');
 
 // Test 4: plan bucket round-trip
-saveState({
-  active: 'plan',
-  lastActive: '#107',
-  planBucket: { startedAt: 'x', wordsAtStart: 0, entries: [{ ts: 'y', event: 'start' }] },
-}, statePath);
+saveState(
+  {
+    active: 'plan',
+    lastActive: '#107',
+    planBucket: { startedAt: 'x', wordsAtStart: 0, entries: [{ ts: 'y', event: 'start' }] },
+  },
+  statePath
+);
 s = loadState(statePath);
 assert.equal(s.active, 'plan');
 assert.equal(s.planBucket.entries.length, 1);

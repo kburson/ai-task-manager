@@ -9,4 +9,3 @@ assert.deepEqual(splitRepo('kburson/ai-task-manager'), {
 assert.throws(() => splitRepo('not-a-repo'), /invalid repo/);
 
 console.log('github-projects.test.mjs: all passed');
-

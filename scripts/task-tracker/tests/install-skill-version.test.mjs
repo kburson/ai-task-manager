@@ -15,9 +15,10 @@ function makeFixture() {
   for (const f of SKILL_DETAIL_FILES) {
     const abs = path.join(root, f.pkgRelPath);
     mkdirSync(path.dirname(abs), { recursive: true });
-    const body = f.id === 'pickup'
-      ? `# ${f.id}\n\nhello\n`
-      : `---\nname: task\ndescription: x\n---\n\n# ${f.id}\n\nhello\n`;
+    const body =
+      f.id === 'pickup'
+        ? `# ${f.id}\n\nhello\n`
+        : `---\nname: task\ndescription: x\n---\n\n# ${f.id}\n\nhello\n`;
     writeFileSync(abs, body, 'utf8');
   }
   return root;
@@ -125,7 +126,7 @@ function makeFixture() {
       const abs = path.join(root, f.pkgRelPath);
       assert.match(readFileSync(abs, 'utf8'), /<!-- aitm-skill-version: 4\.5\.6 -->/);
     }
-    assert.ok(events.every(e => e.kind === 'stamped'));
+    assert.ok(events.every((e) => e.kind === 'stamped'));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

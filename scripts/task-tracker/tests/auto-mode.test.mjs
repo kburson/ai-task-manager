@@ -11,7 +11,11 @@ import { test } from 'node:test';
 import path from 'node:path';
 
 import {
-  loadSession, saveSession, applyChoice, sweepOrphans, sessionFilePath,
+  loadSession,
+  saveSession,
+  applyChoice,
+  sweepOrphans,
+  sessionFilePath,
 } from '../lib/session-store.mjs';
 import { resolveGate, bothGatesExplicit } from '../lib/gate-resolve.mjs';
 
@@ -32,14 +36,16 @@ function memFs(initial = {}) {
     readdirSync: (dir) => {
       const prefix = dir.endsWith('/') ? dir : dir + '/';
       return [...files.keys()]
-        .filter(k => k.startsWith(prefix))
-        .map(k => k.slice(prefix.length));
+        .filter((k) => k.startsWith(prefix))
+        .map((k) => k.slice(prefix.length));
     },
     statSync: (p) => {
       if (!files.has(p)) throw new Error(`ENOENT: ${p}`);
       return { mtimeMs: files.get(p).mtimeMs };
     },
-    unlinkSync: (p) => { files.delete(p); },
+    unlinkSync: (p) => {
+      files.delete(p);
+    },
   };
 }
 
@@ -84,7 +90,7 @@ test('case 4: different parent on subsequent bind triggers re-prompt', () => {
   state = applyChoice(state, 'analyze', { parent: '61' });
   saveSession(state, { fs, dir });
   const reloaded = loadSession('sid-A', { fs, dir });
-  assert.notEqual(reloaded.lastPromptedParent, '99');  // prompt fires for #99
+  assert.notEqual(reloaded.lastPromptedParent, '99'); // prompt fires for #99
 });
 
 // Case 5 — /task auto reset clears override AND lastPromptedParent.
@@ -102,16 +108,19 @@ test('case 5: applyChoice("reset") clears gates and lastPromptedParent', () => {
   assert.equal(reloaded.gates.reviewToDone, null);
   assert.equal(reloaded.lastPromptedParent, null);
   // After reset, resolveGate falls back to project / default.
-  assert.equal(resolveGate('analysisToDevelopment', { session: reloaded, projectConfig: {} }), true);
+  assert.equal(
+    resolveGate('analysisToDevelopment', { session: reloaded, projectConfig: {} }),
+    true
+  );
 });
 
 // Case 6 — concurrent sessions: separate IDs each get their own file; no cross-read.
-test('case 6: two session IDs do not see each other\'s overrides', () => {
+test("case 6: two session IDs do not see each other's overrides", () => {
   const fs = memFs();
   const dir = '.claude';
   let a = applyChoice(loadSession('sid-A', { fs, dir }), 'both', { parent: '61' });
   saveSession(a, { fs, dir });
-  let b = applyChoice(loadSession('sid-B', { fs, dir }), 'off',  { parent: '70' });
+  let b = applyChoice(loadSession('sid-B', { fs, dir }), 'off', { parent: '70' });
   saveSession(b, { fs, dir });
   const reA = loadSession('sid-A', { fs, dir });
   const reB = loadSession('sid-B', { fs, dir });
@@ -131,8 +140,8 @@ test('case 7: sweepOrphans deletes files older than maxAgeMs and leaves younger 
   const stalePath = sessionFilePath('stale', dir);
   const freshPath = sessionFilePath('fresh', dir);
   const fs = memFs({
-    [stalePath]: { content: '{}', mtimeMs: now - 5000 },  // older than maxAgeMs
-    [freshPath]: { content: '{}', mtimeMs: now - 500 },   // younger
+    [stalePath]: { content: '{}', mtimeMs: now - 5000 }, // older than maxAgeMs
+    [freshPath]: { content: '{}', mtimeMs: now - 500 }, // younger
     [path.join(dir, 'unrelated.json')]: { content: '{}', mtimeMs: now - 9999 },
   });
   const deleted = sweepOrphans({ now, maxAgeMs, fs, dir });
@@ -157,8 +166,10 @@ test('case 8: no session file present yields fresh state and unprompted (prompt 
 // Bonus — session override beats project config (precedence: session > project > default).
 test('precedence: session override takes precedence over project config', () => {
   const session = {
-    sessionId: 'x', lastPromptedParent: null,
-    gates: { analysisToDevelopment: true, reviewToDone: false }, updatedAt: '',
+    sessionId: 'x',
+    lastPromptedParent: null,
+    gates: { analysisToDevelopment: true, reviewToDone: false },
+    updatedAt: '',
   };
   const proj = { gateAnalysisToDevelopment: false, gateReviewToDone: true };
   assert.equal(resolveGate('analysisToDevelopment', { session, projectConfig: proj }), true);

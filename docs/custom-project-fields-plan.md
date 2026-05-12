@@ -50,4 +50,3 @@
 - `Session Time` replaces `Actual Session Time`.
 - Existing old field names are aliases during mapping.
 - Existing config keys remain populated where possible.
-

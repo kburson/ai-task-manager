@@ -1,6 +1,6 @@
 name: Task
 description: Manual task entry compatible with AI Task Manager
-title: "[Task] "
+title: '[Task] '
 labels: []
 body:
   - type: markdown
@@ -46,11 +46,11 @@ body:
       label: Size
       description: Estimated effort
       options:
-        - "XS - 1-2 hours"
-        - "S - 3-4 hours"
-        - "M - 6-10 hours"
-        - "L - 12-20 hours"
-        - "XL - 24+ hours"
+        - 'XS - 1-2 hours'
+        - 'S - 3-4 hours'
+        - 'M - 6-10 hours'
+        - 'L - 12-20 hours'
+        - 'XL - 24+ hours'
     validations:
       required: true
 
@@ -59,7 +59,7 @@ body:
     attributes:
       label: Estimate
       description: Mid-point estimate in hours, for example 4 or 4h.
-      placeholder: "4"
+      placeholder: '4'
     validations:
       required: true
 
@@ -68,7 +68,7 @@ body:
     attributes:
       label: Sequence
       description: Optional fan-out/order number used by AITM orchestration.
-      placeholder: "1"
+      placeholder: '1'
     validations:
       required: false
 
@@ -77,6 +77,6 @@ body:
     attributes:
       label: Dependencies
       description: Optional issue numbers or work items that should complete first.
-      placeholder: "#12, auth setup, database migration"
+      placeholder: '#12, auth setup, database migration'
     validations:
       required: false

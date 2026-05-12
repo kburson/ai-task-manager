@@ -65,8 +65,6 @@ const ttCfg = loadConfig({
   legacyProjectPath: path.join(projectRoot, '.claude', 'task-tracker.json'),
 });
 
-const [ttOwner] = (ttCfg.repo ?? '').split('/');
-
 const argv = process.argv.slice(2);
 const flag = (f, def = null) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : def; };
 const has  = f => argv.includes(f);

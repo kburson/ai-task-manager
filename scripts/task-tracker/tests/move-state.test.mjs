@@ -61,18 +61,22 @@ for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', '
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test123',
-      kanbanFieldId: 'PVTF_test',
-      kanbanOptionBacklog: 'PVTO_b',
-      kanbanOptionGroom: 'PVTO_g',
-      kanbanOptionAnalyze: 'PVTO_a',
-      kanbanOptionDevelopment: 'PVTO_d',
-      kanbanOptionValidate: 'PVTO_v',
-      kanbanOptionReview: 'PVTO_r',
-      kanbanOptionDone: 'PVTO_done',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test123',
+        kanbanFieldId: 'PVTF_test',
+        kanbanOptionBacklog: 'PVTO_b',
+        kanbanOptionGroom: 'PVTO_g',
+        kanbanOptionAnalyze: 'PVTO_a',
+        kanbanOptionDevelopment: 'PVTO_d',
+        kanbanOptionValidate: 'PVTO_v',
+        kanbanOptionReview: 'PVTO_r',
+        kanbanOptionDone: 'PVTO_done',
+      },
+      null,
+      2
+    )
   );
   const r = await run(['123', state], {
     TT_SKIP_NETWORK: '1',
@@ -88,16 +92,23 @@ for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', '
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'o/r',
-      projectId: 'P',
-      kanbanFieldId: 'F',
-      kanbanOptionDevelopment: 'D',
-      kanbanOptionValidate: 'V',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'o/r',
+        projectId: 'P',
+        kanbanFieldId: 'F',
+        kanbanOptionDevelopment: 'D',
+        kanbanOptionValidate: 'V',
+      },
+      null,
+      2
+    )
   );
   const sp = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
-  writeFileSync(sp, JSON.stringify({ active: '#777', lastActive: '#777', state: 'development' }, null, 2));
+  writeFileSync(
+    sp,
+    JSON.stringify({ active: '#777', lastActive: '#777', state: 'development' }, null, 2)
+  );
 
   await run(['777', 'validate'], {
     TT_SKIP_NETWORK: '1',
@@ -113,7 +124,11 @@ for (const state of ['backlog', 'groom', 'analyze', 'development', 'validate', '
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   const after2 = JSON.parse(readFileSync(sp, 'utf8'));
-  assert.equal(after2.state, 'validate', 'state field should not be touched when issue is not the active task');
+  assert.equal(
+    after2.state,
+    'validate',
+    'state field should not be touched when issue is not the active task'
+  );
 
   rmSync(sandbox, { recursive: true });
 }

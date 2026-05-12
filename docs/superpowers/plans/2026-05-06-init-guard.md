@@ -20,9 +20,10 @@
 ### Task 1: Write failing tests for uninitialized behavior
 
 **Files:**
+
 - Modify: `scripts/task-tracker/tests/cli.test.mjs`
 
-The new tests must run *without* a repo configured in the sandbox. Append them after the existing `rmSync` cleanup so they use a fresh sandbox. The `pexec` calls are expected to reject (non-zero exit) for blocked verbs.
+The new tests must run _without_ a repo configured in the sandbox. Append them after the existing `rmSync` cleanup so they use a fresh sandbox. The `pexec` calls are expected to reject (non-zero exit) for blocked verbs.
 
 - [ ] **Step 1: Append the uninitialized tests to cli.test.mjs**
 
@@ -41,7 +42,11 @@ rmSync(sandbox, { recursive: true });
 // ---- Uninitialized guard tests ----
 const noRepoDirBase = mkdtempSync(path.join(tmpdir(), 'tt-norepo-'));
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
-const noRepoEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase, TT_SKIP_NETWORK: '1' };
+const noRepoEnv = {
+  ...process.env,
+  AI_TASK_MANAGER_PROJECT_DIR: noRepoDirBase,
+  TT_SKIP_NETWORK: '1',
+};
 
 // Blocked verbs exit non-zero with "not initialized" on stderr
 for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'check', 'log']) {
@@ -49,14 +54,21 @@ for (const blockedVerb of ['#42', 'close', 'pause', 'plan', 'new', 'update', 'ch
     await pexec('node', [CLI, blockedVerb], { env: noRepoEnv });
     assert.fail(`Expected exit(1) for verb: ${blockedVerb}`);
   } catch (err) {
-    assert.match(err.stderr, /not initialized/i, `verb "${blockedVerb}" should print "not initialized"`);
+    assert.match(
+      err.stderr,
+      /not initialized/i,
+      `verb "${blockedVerb}" should print "not initialized"`
+    );
   }
 }
 
 // Exempt verbs succeed without repo
 for (const exemptVerb of ['status', 'config', 'help', '?']) {
   const er = await pexec('node', [CLI, exemptVerb], { env: noRepoEnv });
-  assert.ok(er.stdout.length > 0 || er.stderr.length === 0, `exempt verb "${exemptVerb}" should not error`);
+  assert.ok(
+    er.stdout.length > 0 || er.stderr.length === 0,
+    `exempt verb "${exemptVerb}" should not error`
+  );
 }
 
 rmSync(noRepoDirBase, { recursive: true });
@@ -79,6 +91,7 @@ Expected: the blocked-verb assertions fail because `checkInit` doesn't exist yet
 Without this, the existing tests (`#107`, `pause`, `start`, etc.) will break once `checkInit` is added in Task 3.
 
 **Files:**
+
 - Modify: `scripts/task-tracker/tests/cli.test.mjs`
 
 - [ ] **Step 1: Add repo config to the existing sandbox setup**
@@ -120,6 +133,7 @@ Expected: The existing tests (Tests 1–11) pass. The uninitialized guard tests 
 ### Task 3: Add `checkInit` to task-tracker.mjs and call it
 
 **Files:**
+
 - Modify: `scripts/task-tracker/task-tracker.mjs`
 
 - [ ] **Step 1: Add the `checkInit` function**
@@ -134,15 +148,15 @@ function checkInit(cfg, verb) {
   if (!cfg.repo) {
     process.stderr.write(
       'task-tracker: not initialized — no repo configured.\n' +
-      '  npx ai-task-manager init   (recommended — sets up repo, project, and board fields)\n' +
-      '  /task config init          (from a Claude session — interactive config interview)\n'
+        '  npx ai-task-manager init   (recommended — sets up repo, project, and board fields)\n' +
+        '  /task config init          (from a Claude session — interactive config interview)\n'
     );
     process.exit(1);
   }
   if (!cfg.projectId || !cfg.kanbanFieldId) {
     process.stderr.write(
       '[task-tracker] Board features unavailable: project not configured (projectId missing).\n' +
-      '  Run: npx ai-task-manager init   or   /task config init\n'
+        '  Run: npx ai-task-manager init   or   /task config init\n'
     );
   }
 }
@@ -184,6 +198,7 @@ AI_TASK_MANAGER_PROJECT_DIR=/tmp/tt-smoke node /Users/kpburson/projects/Vibe-Cod
 ```
 
 Expected stderr:
+
 ```
 task-tracker: not initialized — no repo configured.
   npx ai-task-manager init   (recommended — sets up repo, project, and board fields)

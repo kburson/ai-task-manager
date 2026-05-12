@@ -55,6 +55,7 @@ Derive a short slug from the epic title (lowercase, hyphenated, max 30 chars). P
 Wait for confirmation. If the user provides a replacement, use that instead.
 
 Create the label in the repo if it doesn't already exist:
+
 ```bash
 gh label create "plan/<slug>" --color "#0075ca" --description "Plan: <full title>" 2>/dev/null || true
 ```
@@ -65,19 +66,20 @@ All issues (epic and sub-issues) receive this label.
 
 Standard set — create any that are missing before the first issue:
 
-| Label | Color | When to apply |
-|-------|-------|--------------|
+| Label                    | Color     | When to apply                                              |
+| ------------------------ | --------- | ---------------------------------------------------------- |
 | `purpose/infrastructure` | `#e4e669` | CI/CD, env setup, secrets, deployment, database migrations |
-| `purpose/backend` | `#0e8a16` | API endpoints, business logic, data models, auth |
-| `purpose/client` | `#1d76db` | UI components, pages, frontend state, CSS |
-| `purpose/test` | `#f9d0c4` | Test suites, fixtures, coverage, quality tooling |
-| `purpose/dx` | `#c5def5` | Developer experience: tooling, scripts, docs, onboarding |
-| `purpose/security` | `#d93f0b` | Auth hardening, audits, vulnerability remediation |
-| `purpose/data` | `#bfd4f2` | Analytics, exports, aggregations, reporting |
+| `purpose/backend`        | `#0e8a16` | API endpoints, business logic, data models, auth           |
+| `purpose/client`         | `#1d76db` | UI components, pages, frontend state, CSS                  |
+| `purpose/test`           | `#f9d0c4` | Test suites, fixtures, coverage, quality tooling           |
+| `purpose/dx`             | `#c5def5` | Developer experience: tooling, scripts, docs, onboarding   |
+| `purpose/security`       | `#d93f0b` | Auth hardening, audits, vulnerability remediation          |
+| `purpose/data`           | `#bfd4f2` | Analytics, exports, aggregations, reporting                |
 
 Claude assigns one or more purpose labels per issue by reading the scope. Apply all that fit — an issue can carry multiple purpose labels.
 
 **Inference examples:**
+
 - "Set up GitHub Actions CI" → `purpose/infrastructure`, `purpose/dx`
 - "Implement MFA (TOTP)" → `purpose/backend`, `purpose/security`
 - "Dashboard charts and visualizations" → `purpose/client`, `purpose/data`
@@ -86,6 +88,7 @@ Claude assigns one or more purpose labels per issue by reading the scope. Apply 
 - "Write user onboarding documentation" → `purpose/dx`
 
 Create missing labels before the first `gh issue create`:
+
 ```bash
 gh label create "purpose/<name>" --color "<hex>" --description "<description>" 2>/dev/null || true
 ```
@@ -109,6 +112,7 @@ gh issue create \
 Capture the returned issue number as `<EPIC_N>`.
 
 Immediately set fields on the project board:
+
 - Size (XL for epics — or as declared in spec)
 - Estimate (roll-up hours from spec)
 - Priority (P0 unless spec says otherwise)
@@ -124,6 +128,7 @@ For each sub-issue section in the spec (in order):
    - Append the Pickup Directive block (see Pickup Directive Injection below)
 
 2. Create the issue:
+
    ```bash
    gh issue create \
      --title "<sub-issue-title>" \
@@ -134,6 +139,7 @@ For each sub-issue section in the spec (in order):
      [--label "purpose/<inferred2>" ...] \
      [--label <defaultLabels-from-config> ...]
    ```
+
    Capture the returned number as `<SUB_N>`.
 
 3. Set fields: Size, Estimate, Priority from spec values.
@@ -141,6 +147,7 @@ For each sub-issue section in the spec (in order):
 4. Move to Backlog: `move-state.sh <SUB_N> backlog`
 
 5. Link to epic via GraphQL `addSubIssue` mutation:
+
    ```bash
    gh api graphql -f query='
      mutation($parentId:ID!, $childId:ID!) {
@@ -150,6 +157,7 @@ For each sub-issue section in the spec (in order):
      }
    ' -f parentId=<EPIC_NODE_ID> -f childId=<SUB_NODE_ID>
    ```
+
    Get node IDs via `gh issue view <N> --json id`.
 
 ### Step 3 — Report the Issue Map
@@ -165,6 +173,7 @@ Epic:  #42  EPIC: User Authentication & Identity
 ```
 
 Then ask: "Switch the plan bucket to track against the epic (#42), or keep it untracked?"
+
 - If yes → run `/task #42` to attach to the epic.
 - If no → leave plan mode active.
 
@@ -178,11 +187,13 @@ Template to append to every sub-issue body:
 
 ```markdown
 ## ⚡ Pickup Directive
+
 > Follow: `.claude/task-tracker/pickup-directive.md`
 
 - [ ] Deep dive complete
 
 ### Definition of Done
+
 <contents of definition-of-done.md — each line verbatim>
 
 ---
@@ -196,15 +207,15 @@ Because `gh issue edit --body` replaces the entire body, build the complete body
 
 The spec is in conversation context — Claude reads it directly. Structure expectations (based on the spec format produced by the brainstorming skill):
 
-| Element | Identified by |
-|---------|--------------|
-| Epic title | Passed as the `/task new <title>` argument |
-| Epic scope | First `### Epic Scope` or `## Scope` section under the epic heading |
-| Epic estimate | `**Estimate:**` or table cell labeled `Roll-up Estimate` |
-| Epic priority | `**Priority:**` field or table |
-| Sub-issue sections | `#### <Title>` headings under the epic, or rows in a sub-issue table |
-| Sub-issue size/estimate/priority | `**Size:**`, `**Estimate:**`, `**Priority:**` inline fields |
-| Acceptance criteria | Content under `##### Acceptance Criteria` or `#### Acceptance Criteria` |
+| Element                          | Identified by                                                           |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| Epic title                       | Passed as the `/task new <title>` argument                              |
+| Epic scope                       | First `### Epic Scope` or `## Scope` section under the epic heading     |
+| Epic estimate                    | `**Estimate:**` or table cell labeled `Roll-up Estimate`                |
+| Epic priority                    | `**Priority:**` field or table                                          |
+| Sub-issue sections               | `#### <Title>` headings under the epic, or rows in a sub-issue table    |
+| Sub-issue size/estimate/priority | `**Size:**`, `**Estimate:**`, `**Priority:**` inline fields             |
+| Acceptance criteria              | Content under `##### Acceptance Criteria` or `#### Acceptance Criteria` |
 
 If the spec has multiple epics (like the Nexus test fixture), `/task new <title>` creates **one epic at a time** — the title argument disambiguates which section to use. After creating one epic, Claude asks if the user wants to continue with the next epic.
 
@@ -214,13 +225,13 @@ If the spec has multiple epics (like the Nexus test fixture), `/task new <title>
 
 If the spec doesn't declare a value for a field, apply these defaults rather than prompting:
 
-| Field | Default |
-|-------|---------|
-| Epic Size | XL |
-| Sub-issue Size | M |
-| Epic Priority | P0 |
-| Sub-issue Priority | Inherit from parent epic |
-| Estimate | Required — surface as a warning if missing, do not skip |
+| Field              | Default                                                 |
+| ------------------ | ------------------------------------------------------- |
+| Epic Size          | XL                                                      |
+| Sub-issue Size     | M                                                       |
+| Epic Priority      | P0                                                      |
+| Sub-issue Priority | Inherit from parent epic                                |
+| Estimate           | Required — surface as a warning if missing, do not skip |
 
 ---
 

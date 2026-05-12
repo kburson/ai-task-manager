@@ -21,10 +21,19 @@ const FORBIDDEN = [
 ];
 
 const BIN_ALLOWLIST = new Set([
-  'node', 'npm', 'npx', 'pnpm', 'yarn',
-  'bash', 'sh',
-  'python', 'python3', 'pytest',
-  'gh', 'git', 'make',
+  'node',
+  'npm',
+  'npx',
+  'pnpm',
+  'yarn',
+  'bash',
+  'sh',
+  'python',
+  'python3',
+  'pytest',
+  'gh',
+  'git',
+  'make',
 ]);
 
 // Tokenize on whitespace, respecting balanced single/double quotes. We do NOT
@@ -37,13 +46,22 @@ function tokenize(raw) {
   for (let i = 0; i < raw.length; i++) {
     const ch = raw[i];
     if (quote) {
-      if (ch === quote) { quote = null; continue; }
+      if (ch === quote) {
+        quote = null;
+        continue;
+      }
       buf += ch;
       continue;
     }
-    if (ch === '\'' || ch === '"') { quote = ch; continue; }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
     if (ch === ' ' || ch === '\t') {
-      if (buf.length) { tokens.push(buf); buf = ''; }
+      if (buf.length) {
+        tokens.push(buf);
+        buf = '';
+      }
       continue;
     }
     buf += ch;

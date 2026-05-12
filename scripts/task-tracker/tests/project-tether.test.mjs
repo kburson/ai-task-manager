@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { tetherIssueToProject, backlogSizingWarning, backlogMoveWarning } from '../../gh/lib/project-tether.mjs';
+import {
+  tetherIssueToProject,
+  backlogSizingWarning,
+  backlogMoveWarning,
+} from '../../gh/lib/project-tether.mjs';
 
 const cfg = {
   repo: 'kburson/ai-task-manager',
@@ -63,12 +67,20 @@ function makeRunner({
       return { updateProjectV2ItemFieldValue: { projectV2Item: { id: variables.item } } };
     }
     if (query.includes('addSubIssue')) {
-      return { addSubIssue: { issue: { id: variables.parent }, subIssue: { id: variables.child } } };
+      return {
+        addSubIssue: { issue: { id: variables.parent }, subIssue: { id: variables.child } },
+      };
     }
     if (query.includes('node(id:') && query.includes('... on ProjectV2')) {
       projectChecks += 1;
       if (throwProjectItems) {
-        return { node: { title: 'AITM Board', url: 'https://github.com/users/kburson/projects/1', items: { totalCount: 0, nodes: [] } } };
+        return {
+          node: {
+            title: 'AITM Board',
+            url: 'https://github.com/users/kburson/projects/1',
+            items: { totalCount: 0, nodes: [] },
+          },
+        };
       }
       const visible = projectChecks >= projectItemOnAttempt;
       return {
@@ -105,9 +117,14 @@ async function testExistingProjectSideItemIsReused() {
   });
 
   assert.equal(result.itemId, 'VISIBLE_ITEM');
-  assert.equal(calls.some(c => c.query.includes('addProjectV2ItemById')), false);
-  assert.equal(calls.filter(c => c.query.includes('updateProjectV2ItemFieldValue')).length, 5);
-  const sizeCall = calls.find(c => c.query.includes('updateProjectV2ItemFieldValue') && c.variables.field === 'SIZE_FIELD');
+  assert.equal(
+    calls.some((c) => c.query.includes('addProjectV2ItemById')),
+    false
+  );
+  assert.equal(calls.filter((c) => c.query.includes('updateProjectV2ItemFieldValue')).length, 5);
+  const sizeCall = calls.find(
+    (c) => c.query.includes('updateProjectV2ItemFieldValue') && c.variables.field === 'SIZE_FIELD'
+  );
   assert.equal(sizeCall.variables.option, 'SIZE_M');
 }
 
@@ -126,7 +143,7 @@ async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
   });
 
   assert.equal(result.itemId, 'VISIBLE_ITEM');
-  assert.equal(calls.filter(c => c.query.includes('addProjectV2ItemById')).length, 1);
+  assert.equal(calls.filter((c) => c.query.includes('addProjectV2ItemById')).length, 1);
 }
 
 async function testPhantomItemIsDeletedAndRetried() {
@@ -143,8 +160,8 @@ async function testPhantomItemIsDeletedAndRetried() {
 
   assert.equal(result.itemId, 'VISIBLE_ITEM');
   assert.deepEqual(
-    calls.filter(c => c.query.includes('deleteProjectV2Item')).map(c => c.variables.item),
-    ['PHANTOM_1'],
+    calls.filter((c) => c.query.includes('deleteProjectV2Item')).map((c) => c.variables.item),
+    ['PHANTOM_1']
   );
 }
 
@@ -159,7 +176,7 @@ async function testRetryExhaustionMentionsProjectSideVerification() {
       runGql,
       sleep: async () => {},
     }),
-    /ProjectV2\.items/,
+    /ProjectV2\.items/
   );
 }
 
@@ -173,11 +190,11 @@ async function testParentLinksAfterProjectVerification() {
     sleep: async () => {},
   });
 
-  const subIssueCall = calls.find(c => c.query.includes('addSubIssue'));
+  const subIssueCall = calls.find((c) => c.query.includes('addSubIssue'));
   assert.equal(subIssueCall.variables.parent, 'PARENT_1');
   assert.equal(subIssueCall.variables.child, 'ISSUE_16');
-  const subIssueIndex = calls.findIndex(c => c.query.includes('addSubIssue'));
-  const projectVerifyIndex = calls.findIndex(c => c.query.includes('... on ProjectV2'));
+  const subIssueIndex = calls.findIndex((c) => c.query.includes('addSubIssue'));
+  const projectVerifyIndex = calls.findIndex((c) => c.query.includes('... on ProjectV2'));
   assert.ok(subIssueIndex > projectVerifyIndex);
 }
 
@@ -190,7 +207,10 @@ async function testLooseLeafDoesNotLinkParent() {
     sleep: async () => {},
   });
 
-  assert.equal(calls.some(c => c.query.includes('addSubIssue')), false);
+  assert.equal(
+    calls.some((c) => c.query.includes('addSubIssue')),
+    false
+  );
 }
 
 async function testSizeFieldMissingFailsLoudly() {
@@ -203,7 +223,7 @@ async function testSizeFieldMissingFailsLoudly() {
       runGql,
       sleep: async () => {},
     }),
-    /sizeFieldId/i,
+    /sizeFieldId/i
   );
 }
 
@@ -217,7 +237,7 @@ async function testSizeOptionMissingFailsLoudly() {
       runGql,
       sleep: async () => {},
     }),
-    /Size option.*XL/i,
+    /Size option.*XL/i
   );
 }
 
@@ -225,7 +245,7 @@ function testBacklogSizingWarning() {
   // Fires: backlog + size + estimate
   assert.match(
     backlogSizingWarning({ status: 'backlog', size: 'S', estimate: 3 }) || '',
-    /sized.+Backlog/i,
+    /sized.+Backlog/i
   );
   // No warning: backlog + size only (no estimate)
   assert.equal(backlogSizingWarning({ status: 'backlog', size: 'S' }), null);
@@ -238,7 +258,7 @@ function testBacklogSizingWarning() {
   // estimate=0 is a real number — counts as "estimated"
   assert.match(
     backlogSizingWarning({ status: 'backlog', size: 'XS', estimate: 0 }) || '',
-    /Backlog/,
+    /Backlog/
   );
 }
 
@@ -246,22 +266,22 @@ function testBacklogMoveWarning() {
   // Fires: target=backlog with sized + estimated body fields
   assert.match(
     backlogMoveWarning({ targetState: 'backlog', fieldValues: { size: 'M', estimate: 5 } }) || '',
-    /sized.+Backlog/i,
+    /sized.+Backlog/i
   );
   // No warning: target is something other than backlog
   assert.equal(
     backlogMoveWarning({ targetState: 'groom', fieldValues: { size: 'M', estimate: 5 } }),
-    null,
+    null
   );
   // No warning: size missing
   assert.equal(
     backlogMoveWarning({ targetState: 'backlog', fieldValues: { size: null, estimate: 5 } }),
-    null,
+    null
   );
   // No warning: estimate missing or non-numeric
   assert.equal(
     backlogMoveWarning({ targetState: 'backlog', fieldValues: { size: 'M', estimate: null } }),
-    null,
+    null
   );
   // No warning: no fields parsed at all
   assert.equal(backlogMoveWarning({ targetState: 'backlog', fieldValues: null }), null);

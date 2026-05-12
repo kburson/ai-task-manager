@@ -4,7 +4,12 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
-  fleetRegistryPath, readFleet, writeFleet, registerTask, deregisterTask, setTaskStatus,
+  fleetRegistryPath,
+  readFleet,
+  writeFleet,
+  registerTask,
+  deregisterTask,
+  setTaskStatus,
 } from '../fleet-registry.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-fleet-'));

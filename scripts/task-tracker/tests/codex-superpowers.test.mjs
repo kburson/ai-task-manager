@@ -58,17 +58,34 @@ try {
     ['using-superpowers', 'brainstorming', 'verification-before-completion'],
     'reports requested skills that are present in source order'
   );
-  assert.ok(available.missing.includes('systematic-debugging'), 'reports requested skills that are absent');
-  assert.ok(SUPERPOWER_SKILLS.includes('receiving-code-review'), 'keeps review skills in the default list');
+  assert.ok(
+    available.missing.includes('systematic-debugging'),
+    'reports requested skills that are absent'
+  );
+  assert.ok(
+    SUPERPOWER_SKILLS.includes('receiving-code-review'),
+    'keeps review skills in the default list'
+  );
 
   const codexRoot = path.join(sandbox, '.codex', 'skills');
   const firstMirror = mirrorSuperpowerSkills({ sourceRoot: root, destRoot: codexRoot });
-  assert.deepEqual(firstMirror.copied, ['using-superpowers', 'brainstorming', 'verification-before-completion']);
-  assert.ok(existsSync(path.join(codexRoot, 'brainstorming', 'SKILL.md')), 'copies skill directories');
+  assert.deepEqual(firstMirror.copied, [
+    'using-superpowers',
+    'brainstorming',
+    'verification-before-completion',
+  ]);
+  assert.ok(
+    existsSync(path.join(codexRoot, 'brainstorming', 'SKILL.md')),
+    'copies skill directories'
+  );
 
   const secondMirror = mirrorSuperpowerSkills({ sourceRoot: root, destRoot: codexRoot });
   assert.deepEqual(secondMirror.copied, [], 'does not recopy unchanged skills');
-  assert.deepEqual(secondMirror.unchanged, ['using-superpowers', 'brainstorming', 'verification-before-completion']);
+  assert.deepEqual(secondMirror.unchanged, [
+    'using-superpowers',
+    'brainstorming',
+    'verification-before-completion',
+  ]);
 
   const userContent = '# Existing Project Instructions\n\nKeep this line.\n';
   const block = codexBootstrapBlock({ scope: 'repo' });
@@ -76,13 +93,21 @@ try {
   const twice = upsertManagedBlock(once, block);
   assert.equal(twice, once, 'managed AGENTS block is idempotent');
   assert.ok(twice.startsWith(userContent), 'preserves existing AGENTS.md content');
-  assert.equal((twice.match(/ai-task-manager:codex-superpowers:start/g) ?? []).length, 1, 'writes one start marker');
+  assert.equal(
+    (twice.match(/ai-task-manager:codex-superpowers:start/g) ?? []).length,
+    1,
+    'writes one start marker'
+  );
   assert.match(twice, /using-superpowers/, 'bootstrap block names using-superpowers');
   assert.match(twice, /\.agents\/skills\/task\/SKILL\.md/, 'keeps the AITM task skill separate');
 
   const missingHome = mkdtempSync(path.join(tmpdir(), 'aitm-codex-superpowers-missing-'));
   try {
-    assert.equal(findSuperpowersSkillRoot({ home: missingHome }), null, 'missing Superpowers cache is a normal fallback');
+    assert.equal(
+      findSuperpowersSkillRoot({ home: missingHome }),
+      null,
+      'missing Superpowers cache is a normal fallback'
+    );
   } finally {
     rmSync(missingHome, { recursive: true, force: true });
   }

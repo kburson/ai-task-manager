@@ -10,7 +10,8 @@ import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const TETHER_SCRIPT = process.env.CREATE_ISSUE_TETHER_SCRIPT || path.join(SCRIPT_DIR, 'project-tether.mjs');
+const TETHER_SCRIPT =
+  process.env.CREATE_ISSUE_TETHER_SCRIPT || path.join(SCRIPT_DIR, 'project-tether.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 
@@ -73,7 +74,16 @@ function readBody(file) {
 }
 
 function ghCreate(args, assignee) {
-  const ghArgs = ['issue', 'create', '--title', args.title, '--body-file', args['body-file'], '--assignee', assignee];
+  const ghArgs = [
+    'issue',
+    'create',
+    '--title',
+    args.title,
+    '--body-file',
+    args['body-file'],
+    '--assignee',
+    assignee,
+  ];
   for (const lbl of args.label) ghArgs.push('--label', lbl);
   const created = run('gh', ghArgs);
   if (created.status !== 0) {
@@ -110,18 +120,25 @@ function tether(issueNumber, args, priority) {
 }
 
 function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
-  const parentLabel = typeof args.parent === 'string' ? `#${args.parent}` : 'none — this is the epic';
+  const parentLabel =
+    typeof args.parent === 'string' ? `#${args.parent}` : 'none — this is the epic';
   const newBody = bodyContent
     .replaceAll('<this-issue-#>', `#${issueNumber}`)
     .replaceAll('<parent-epic-#>', parentLabel);
 
-  const patch = spawnSync('gh', ['api', '-X', 'PATCH', `/repos/${repo}/issues/${issueNumber}`, '--input', '-'], {
-    input: JSON.stringify({ body: newBody }),
-    encoding: 'utf8',
-  });
+  const patch = spawnSync(
+    'gh',
+    ['api', '-X', 'PATCH', `/repos/${repo}/issues/${issueNumber}`, '--input', '-'],
+    {
+      input: JSON.stringify({ body: newBody }),
+      encoding: 'utf8',
+    }
+  );
   if (patch.status !== 0) {
     process.stderr.write(patch.stderr ?? '');
-    console.error(`✗ placeholder substitution PATCH failed for #${issueNumber} (issue exists, body not substituted)`);
+    console.error(
+      `✗ placeholder substitution PATCH failed for #${issueNumber} (issue exists, body not substituted)`
+    );
     process.exit(patch.status || 1);
   }
   console.error(`✓ placeholders substituted in #${issueNumber}`);
@@ -135,7 +152,10 @@ function main() {
   const cfg = loadConfig();
   const skipTether = args['no-tether'] === true;
   if (!skipTether && !cfg.projectId) {
-    die('no projectId in task-tracker.json — run /task init, or pass --no-tether for an untethered issue', 2);
+    die(
+      'no projectId in task-tracker.json — run /task init, or pass --no-tether for an untethered issue',
+      2
+    );
   }
   if (!cfg.repo) die('no repo in task-tracker.json — run /task init', 2);
 

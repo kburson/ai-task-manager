@@ -39,7 +39,10 @@ function makeDeps(overrides = {}) {
     }),
     fetchSubIssueStates: async () => [],
     resolveFieldValues: async () => ({
-      estimate: 2, size: 'M', priority: 'P1', sequence: 3,
+      estimate: 2,
+      size: 'M',
+      priority: 'P1',
+      sequence: 3,
     }),
     admit: async () => ({ ok: true, blockers: [] }),
     readParentStatus: async () => 'development', // parent admitted by default
@@ -52,13 +55,18 @@ function makeDeps(overrides = {}) {
 {
   const deps = makeDeps({
     resolveFieldValues: async () => ({
-      estimate: 2, size: null, priority: 'P1', sequence: 3,
+      estimate: 2,
+      size: null,
+      priority: 'P1',
+      sequence: 3,
     }),
   });
   const r = await runAnalyze({ issueNumber: 100, cfg, deps });
   assert.equal(r.ok, false, 'missing size should refuse');
-  assert.ok(r.blockers.some(b => b.kind === 'field-required' && /size/.test(b.message)),
-    `expected field-required size blocker, got ${JSON.stringify(r.blockers)}`);
+  assert.ok(
+    r.blockers.some((b) => b.kind === 'field-required' && /size/.test(b.message)),
+    `expected field-required size blocker, got ${JSON.stringify(r.blockers)}`
+  );
 }
 
 // 2. Missing required body section (no Acceptance Criteria)
@@ -74,8 +82,12 @@ function makeDeps(overrides = {}) {
   });
   const r = await runAnalyze({ issueNumber: 101, cfg, deps });
   assert.equal(r.ok, false, 'missing body sections should refuse');
-  assert.ok(r.blockers.some(b => b.kind === 'body-section-required' && /Acceptance Criteria/.test(b.message)),
-    `expected body-section-required AC, got ${JSON.stringify(r.blockers)}`);
+  assert.ok(
+    r.blockers.some(
+      (b) => b.kind === 'body-section-required' && /Acceptance Criteria/.test(b.message)
+    ),
+    `expected body-section-required AC, got ${JSON.stringify(r.blockers)}`
+  );
 }
 
 // 3. Wave-admission blocker: lower-Sequence sibling in-flight
@@ -95,8 +107,10 @@ function makeDeps(overrides = {}) {
   });
   const r = await runAnalyze({ issueNumber: 102, cfg, deps });
   assert.equal(r.ok, false, 'wave-admission lower-seq sibling should refuse');
-  assert.ok(r.blockers.some(b => b.kind === 'wave-admission' && /#47/.test(b.message)),
-    `expected wave-admission blocker, got ${JSON.stringify(r.blockers)}`);
+  assert.ok(
+    r.blockers.some((b) => b.kind === 'wave-admission' && /#47/.test(b.message)),
+    `expected wave-admission blocker, got ${JSON.stringify(r.blockers)}`
+  );
 }
 
 // 4. Cascade-grooming: epic with sub-issue in backlog
@@ -116,18 +130,25 @@ function makeDeps(overrides = {}) {
   });
   const r = await runAnalyze({ issueNumber: 41, cfg, deps });
   assert.equal(r.ok, false, 'cascade-grooming with backlog sub should refuse');
-  assert.ok(r.blockers.some(b => b.kind === 'cascade-grooming' && /#201/.test(b.message)),
-    `expected cascade-grooming blocker for #201, got ${JSON.stringify(r.blockers)}`);
+  assert.ok(
+    r.blockers.some((b) => b.kind === 'cascade-grooming' && /#201/.test(b.message)),
+    `expected cascade-grooming blocker for #201, got ${JSON.stringify(r.blockers)}`
+  );
   // Sibling already in groom should NOT be a blocker.
-  assert.ok(!r.blockers.some(b => /#200/.test(b.message)),
-    `#200 (groom) should not block, got ${JSON.stringify(r.blockers)}`);
+  assert.ok(
+    !r.blockers.some((b) => /#200/.test(b.message)),
+    `#200 (groom) should not block, got ${JSON.stringify(r.blockers)}`
+  );
 }
 
 // 5. Solo issue (no parent) bypasses wave + cascade gates and passes
 {
   let moveCalled = 0;
   const deps = makeDeps({
-    moveState: async () => { moveCalled++; return 0; },
+    moveState: async () => {
+      moveCalled++;
+      return 0;
+    },
   });
   const r = await runAnalyze({ issueNumber: 103, cfg, deps });
   assert.equal(r.ok, true, `solo issue should pass: ${JSON.stringify(r.blockers)}`);
@@ -148,7 +169,10 @@ function makeDeps(overrides = {}) {
     }),
     // admit() with same-Sequence sibling returns ok=true (newcomer rule)
     admit: async () => ({ ok: true, blockers: [] }),
-    moveState: async () => { moveCalled++; return 0; },
+    moveState: async () => {
+      moveCalled++;
+      return 0;
+    },
   });
   const r = await runAnalyze({ issueNumber: 104, cfg, deps });
   assert.equal(r.ok, true, `same-wave newcomer should pass: ${JSON.stringify(r.blockers)}`);
@@ -162,8 +186,10 @@ function makeDeps(overrides = {}) {
   });
   const r = await runAnalyze({ issueNumber: 105, cfg, deps });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some(b => b.kind === 'move-state'),
-    `expected move-state blocker, got ${JSON.stringify(r.blockers)}`);
+  assert.ok(
+    r.blockers.some((b) => b.kind === 'move-state'),
+    `expected move-state blocker, got ${JSON.stringify(r.blockers)}`
+  );
 }
 
 console.log('analyze-gate.test.mjs: all passed');

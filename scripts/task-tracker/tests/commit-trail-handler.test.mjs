@@ -6,14 +6,20 @@
 import { strict as assert } from 'node:assert';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  chmodSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  postCommitTrail,
-} from '../commit-trail-handler.mjs';
+import { postCommitTrail } from '../commit-trail-handler.mjs';
 import { TRAIL_HEADING } from '../lib/commit-trail.mjs';
 
 const pexec = promisify(execFile);
@@ -58,7 +64,8 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 
 // 2. Second commit → updates existing comment
 {
-  const initial = '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc1234` | s1 | a | t1 |\n';
+  const initial =
+    '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc1234` | s1 | a | t1 |\n';
   const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
   const info = { sha: 'def56780000000', subject: 's2', author: 'a', ts: 't2', isWorktree: false };
   const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
@@ -72,7 +79,8 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 
 // 3. Re-fire with same SHA → noop
 {
-  const initial = '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc1234` | s1 | a | t1 |\n';
+  const initial =
+    '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc1234` | s1 | a | t1 |\n';
   const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
   const info = { sha: 'abc12340000000', subject: 's1', author: 'a', ts: 't1', isWorktree: false };
   const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
@@ -83,7 +91,15 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 // 4. Worktree fire on first commit → 6-col table
 {
   const fake = makeFakeGh();
-  const info = { sha: 'abc', subject: 's', author: 'a', ts: 't', branch: 'feat/x', worktree: '/tmp/wt', isWorktree: true };
+  const info = {
+    sha: 'abc',
+    subject: 's',
+    author: 'a',
+    ts: 't',
+    branch: 'feat/x',
+    worktree: '/tmp/wt',
+    isWorktree: true,
+  };
   await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
   const body = fake.calls.create[0].body;
   assert.match(body, /Branch \| Worktree/);
@@ -92,9 +108,18 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 
 // 5. Worktree fire on existing 4-col table → preserves 4-col schema
 {
-  const initial = '### 🔗 Commits\n\n<!-- aitm-commits: aaa -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `aaa` | s1 | a | t1 |\n';
+  const initial =
+    '### 🔗 Commits\n\n<!-- aitm-commits: aaa -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `aaa` | s1 | a | t1 |\n';
   const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
-  const info = { sha: 'bbb', subject: 's2', author: 'a', ts: 't2', branch: 'b', worktree: '/w', isWorktree: true };
+  const info = {
+    sha: 'bbb',
+    subject: 's2',
+    author: 'a',
+    ts: 't2',
+    branch: 'b',
+    worktree: '/w',
+    isWorktree: true,
+  };
   await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
   const body = fake.calls.update[0].body;
   assert.doesNotMatch(body, /Branch \| Worktree/);
@@ -112,7 +137,12 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
   if (active) {
     writeFileSync(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
-      JSON.stringify({ active, lastActive: active, entryStartTs: new Date().toISOString(), wordsAtEntryStart: 0 })
+      JSON.stringify({
+        active,
+        lastActive: active,
+        entryStartTs: new Date().toISOString(),
+        wordsAtEntryStart: 0,
+      })
     );
   }
   return sandbox;
@@ -126,7 +156,9 @@ function makeShim(sandbox, { gitOutputs = {}, ghBehavior = 'success' } = {}) {
   writeFileSync(logPath, '');
 
   const gitShim = path.join(binDir, 'git');
-  writeFileSync(gitShim, `#!/usr/bin/env node
+  writeFileSync(
+    gitShim,
+    `#!/usr/bin/env node
 const fs = require('node:fs');
 const args = process.argv.slice(2).join(' ');
 fs.appendFileSync(${JSON.stringify(logPath)}, 'git ' + args + '\\n');
@@ -138,11 +170,14 @@ for (const [pattern, output] of Object.entries(outputs)) {
   }
 }
 process.exit(0);
-`);
+`
+  );
   chmodSync(gitShim, 0o755);
 
   const ghShim = path.join(binDir, 'gh');
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 fs.appendFileSync(${JSON.stringify(logPath)}, 'gh ' + args.join(' ') + '\\n');
@@ -157,7 +192,8 @@ if (args[0] === 'issue' && args[1] === 'view') {
   process.exit(0);
 }
 process.exit(0);
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
 
   return { binDir, logPath };
@@ -178,10 +214,11 @@ async function runHandler(payload, { sandbox, binDir, env = {} }) {
         ...env,
       },
     });
-    let stdout = '', stderr = '';
-    child.stdout.on('data', d => stdout += d);
-    child.stderr.on('data', d => stderr += d);
-    child.on('close', code => resolve({ code, stdout, stderr }));
+    let stdout = '',
+      stderr = '';
+    child.stdout.on('data', (d) => (stdout += d));
+    child.stderr.on('data', (d) => (stderr += d));
+    child.on('close', (code) => resolve({ code, stdout, stderr }));
     child.stdin.write(JSON.stringify(payload));
     child.stdin.end();
   });
@@ -192,7 +229,8 @@ const cleanups = [];
 try {
   // E2E-1: successful git commit → triggers git + gh calls
   {
-    const sandbox = setupSandbox(); cleanups.push(sandbox);
+    const sandbox = setupSandbox();
+    cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox, {
       gitOutputs: {
         'rev-parse HEAD': 'abc1234fffffffff0000000000000000000\n',
@@ -219,7 +257,8 @@ try {
 
   // E2E-2: exit_code != 0 → no git/gh calls
   {
-    const sandbox = setupSandbox(); cleanups.push(sandbox);
+    const sandbox = setupSandbox();
+    cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
       tool_name: 'Bash',
@@ -233,7 +272,8 @@ try {
 
   // E2E-3: --amend → no git/gh calls
   {
-    const sandbox = setupSandbox(); cleanups.push(sandbox);
+    const sandbox = setupSandbox();
+    cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
       tool_name: 'Bash',
@@ -247,7 +287,8 @@ try {
 
   // E2E-4: no active issue → no git/gh calls
   {
-    const sandbox = setupSandbox({ active: null }); cleanups.push(sandbox);
+    const sandbox = setupSandbox({ active: null });
+    cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
       tool_name: 'Bash',
@@ -261,7 +302,8 @@ try {
 
   // E2E-5: non-Bash tool → no calls
   {
-    const sandbox = setupSandbox(); cleanups.push(sandbox);
+    const sandbox = setupSandbox();
+    cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
       tool_name: 'Edit',
@@ -275,7 +317,8 @@ try {
 
   // E2E-6: gh failure → handler still exits 0 (silent)
   {
-    const sandbox = setupSandbox(); cleanups.push(sandbox);
+    const sandbox = setupSandbox();
+    cleanups.push(sandbox);
     const { binDir } = makeShim(sandbox, {
       gitOutputs: {
         'rev-parse HEAD': 'abc1234\n',
@@ -299,7 +342,8 @@ try {
 
   // E2E-7: not a git commit → no calls
   {
-    const sandbox = setupSandbox(); cleanups.push(sandbox);
+    const sandbox = setupSandbox();
+    cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
       tool_name: 'Bash',
@@ -314,6 +358,8 @@ try {
   console.log('commit-trail-handler: ok');
 } finally {
   for (const s of cleanups) {
-    try { rmSync(s, { recursive: true, force: true }); } catch {}
+    try {
+      rmSync(s, { recursive: true, force: true });
+    } catch {}
   }
 }

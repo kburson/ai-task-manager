@@ -3,7 +3,7 @@
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
 // States: backlog | groom | analyze | development | validate | review | done
 
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -33,26 +33,26 @@ const IS_TTY = Boolean(process.stdin.isTTY);
 if (!AITM_INTERNAL && !IS_TTY) {
   process.stderr.write(
     'move-state.mjs is internal. Agents must use /task move <state>.\n' +
-    'If you are running this manually from a non-TTY shell (CI, pipe, redirect),\n' +
-    'set AITM_INTERNAL=1 to confirm.\n'
+      'If you are running this manually from a non-TTY shell (CI, pipe, redirect),\n' +
+      'set AITM_INTERNAL=1 to confirm.\n'
   );
   process.exit(3);
 }
 
 const STATE_TO_CONFIG_KEY = {
-  'backlog':     'kanbanOptionBacklog',
-  'groom':       'kanbanOptionGroom',
-  'analyze':     'kanbanOptionAnalyze',
-  'development': 'kanbanOptionDevelopment',
-  'validate':    'kanbanOptionValidate',
-  'review':      'kanbanOptionReview',
-  'done':        'kanbanOptionDone',
+  backlog: 'kanbanOptionBacklog',
+  groom: 'kanbanOptionGroom',
+  analyze: 'kanbanOptionAnalyze',
+  development: 'kanbanOptionDevelopment',
+  validate: 'kanbanOptionValidate',
+  review: 'kanbanOptionReview',
+  done: 'kanbanOptionDone',
 };
 
 function usage() {
   process.stderr.write(
     'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>]\n' +
-    'States: backlog | groom | analyze | development | validate | review | done\n'
+      'States: backlog | groom | analyze | development | validate | review | done\n'
   );
   process.exit(1);
 }
@@ -64,8 +64,13 @@ let itemIdOverride = '';
 let fromOverride = '';
 
 for (let i = 2; i < cliArgs.length; i++) {
-  if (cliArgs[i] === '--item-id' && cliArgs[i + 1]) { itemIdOverride = cliArgs[i + 1]; i++; }
-  else if (cliArgs[i] === '--from' && cliArgs[i + 1]) { fromOverride = cliArgs[i + 1]; i++; }
+  if (cliArgs[i] === '--item-id' && cliArgs[i + 1]) {
+    itemIdOverride = cliArgs[i + 1];
+    i++;
+  } else if (cliArgs[i] === '--from' && cliArgs[i + 1]) {
+    fromOverride = cliArgs[i + 1];
+    i++;
+  }
 }
 
 if (!issueArg || !stateArg) usage();
@@ -73,7 +78,9 @@ if (!/^\d+$/.test(issueArg)) usage();
 
 const configKey = STATE_TO_CONFIG_KEY[stateArg];
 if (!configKey) {
-  process.stderr.write(`Unknown state: ${stateArg}\nStates: backlog | groom | analyze | development | validate | review | done\n`);
+  process.stderr.write(
+    `Unknown state: ${stateArg}\nStates: backlog | groom | analyze | development | validate | review | done\n`
+  );
   process.exit(1);
 }
 
@@ -86,7 +93,9 @@ if (!SKIP_NETWORK && (!cfg.projectId || !cfg.kanbanFieldId)) {
 
 const optionId = cfg[configKey];
 if (!SKIP_NETWORK && !optionId) {
-  process.stderr.write(`Error: option ID for state '${stateArg}' not configured. Run: npx ai-task-manager init\n`);
+  process.stderr.write(
+    `Error: option ID for state '${stateArg}' not configured. Run: npx ai-task-manager init\n`
+  );
   process.exit(1);
 }
 
@@ -101,7 +110,8 @@ async function resolveLiveStateName(issueNumber) {
   try {
     const { gql, splitRepo } = await import('./lib/github-projects.mjs');
     const { owner, repoName } = splitRepo(cfg.repo);
-    const data = await gql(`
+    const data = await gql(
+      `
       query($owner: String!, $repo: String!, $issue: Int!) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issue) {
@@ -119,7 +129,7 @@ async function resolveLiveStateName(issueNumber) {
       { owner, repo: repoName, issue: Number(issueNumber) }
     );
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-    const node = nodes.find(n => n?.project?.id === cfg.projectId);
+    const node = nodes.find((n) => n?.project?.id === cfg.projectId);
     return String(node?.fieldValueByName?.name || '').toLowerCase();
   } catch {
     return '';
@@ -138,8 +148,12 @@ if (resolvedFromState) {
   if (!v.ok) {
     process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
     process.stderr.write(`   BLOCKED: ${v.reason}\n`);
-    process.stderr.write('\nThe 7-state kanban only permits one-step forward moves plus validate->development\n');
-    process.stderr.write('and review->development rework. See scripts/task-tracker/state-machine.mjs.\n\n');
+    process.stderr.write(
+      '\nThe 7-state kanban only permits one-step forward moves plus validate->development\n'
+    );
+    process.stderr.write(
+      'and review->development rework. See scripts/task-tracker/state-machine.mjs.\n\n'
+    );
     process.exit(5);
   }
 }
@@ -151,11 +165,17 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueArg}`, projectDir });
     const result = await checkDirty({ cwd });
     if (result.dirty) {
-      process.stderr.write(`⚠ Workspace is dirty (${result.total} path(s)) on move to Review for #${issueArg}:\n`);
+      process.stderr.write(
+        `⚠ Workspace is dirty (${result.total} path(s)) on move to Review for #${issueArg}:\n`
+      );
       process.stderr.write(formatSummary(result) + '\n');
-      process.stderr.write('Consider running the cleanup flow (docs/guides/workflow.md → Cleanup Procedure) before close.\n');
+      process.stderr.write(
+        'Consider running the cleanup flow (docs/guides/workflow.md → Cleanup Procedure) before close.\n'
+      );
     }
-  } catch { /* warning is best-effort */ }
+  } catch {
+    /* warning is best-effort */
+  }
 }
 
 // Structural body gate: applies to validate, review, and done.
@@ -169,7 +189,9 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   try {
     body = await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body']);
     body = body.trim();
-  } catch { /* ignore — missing body is not a gate failure */ }
+  } catch {
+    /* ignore — missing body is not a gate failure */
+  }
 
   if (body) {
     const reasons = [];
@@ -177,9 +199,10 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
 
     // Structural gates (all gated states). At validate, skip verification-commands
     // because the auto-runner is what ticks those boxes.
-    const activeGates = stateArg === 'done' || stateArg === 'review'
-      ? DEFAULT_GATES
-      : DEFAULT_GATES.filter(g => g.name !== 'verification-commands');
+    const activeGates =
+      stateArg === 'done' || stateArg === 'review'
+        ? DEFAULT_GATES
+        : DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
     const gateResult = validateBody(body, { gates: activeGates });
     if (!gateResult.ok) {
       for (const r of gateResult.refusedRules) {
@@ -191,37 +214,52 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
     // Done-only legacy checks
     if (stateArg === 'done') {
       const unchecked = uncheckedPreCloseCheckboxes(body);
-      if (unchecked.length > 0) reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
+      if (unchecked.length > 0)
+        reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
     }
 
     if (reasons.length > 0) {
       if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
-        process.stderr.write(`⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing ${stateArg} gate for #${issueArg}\n`);
-        reasons.forEach(r => process.stderr.write(`   • ${r}\n`));
+        process.stderr.write(
+          `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing ${stateArg} gate for #${issueArg}\n`
+        );
+        reasons.forEach((r) => process.stderr.write(`   • ${r}\n`));
         const bypassMsg = `⚠ **${stateArg} gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${reasons.join(', ')}.`;
-        try { await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]); } catch {}
+        try {
+          await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]);
+        } catch {}
       } else {
         // Append a gate-refused row to the timing log (fire-and-forget).
         if (refusedRuleNames.length > 0) {
           try {
-            const { buildRow, postTimingEvent } = await import('../task-tracker/gh-timing-comment.mjs');
+            const { buildRow, postTimingEvent } =
+              await import('../task-tracker/gh-timing-comment.mjs');
             const row = buildRow({
               ts: new Date().toISOString(),
               event: 'gate-refused',
-              activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
+              activeMin: 0,
+              idleMin: 0,
+              deltaWords: 0,
+              wordMarker: 0,
               description: `→ ${stateArg}: ${refusedRuleNames.join(', ')}`,
             });
             await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-          } catch { /* fire-and-forget */ }
+          } catch {
+            /* fire-and-forget */
+          }
         }
         process.stderr.write('\n');
         process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
-        reasons.forEach(r => process.stderr.write(`   BLOCKED: ${r}\n`));
+        reasons.forEach((r) => process.stderr.write(`   BLOCKED: ${r}\n`));
         process.stderr.write('\n');
         process.stderr.write('See .ai-task-manager/pickup-directive.md Hard Rules.\n');
         const itemIdSuffix = itemIdOverride ? ` --item-id ${itemIdOverride}` : '';
-        process.stderr.write('Verify each item, check its box, then retry. Legitimate-abandonment override:\n');
-        process.stderr.write(`   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} ${stateArg}${itemIdSuffix}\n\n`);
+        process.stderr.write(
+          'Verify each item, check its box, then retry. Legitimate-abandonment override:\n'
+        );
+        process.stderr.write(
+          `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} ${stateArg}${itemIdSuffix}\n\n`
+        );
         process.exit(4);
       }
     }
@@ -235,8 +273,12 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
 if (stateArg === 'development' && !SKIP_NETWORK) {
   let body = '';
   try {
-    body = (await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])).trim();
-  } catch { /* ignore — missing body falls through */ }
+    body = (
+      await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
+    ).trim();
+  } catch {
+    /* ignore — missing body falls through */
+  }
 
   const approved = /<!--\s*aitm-plan-approved:\s*[^>]+-->/i.test(body);
 
@@ -245,7 +287,8 @@ if (stateArg === 'development' && !SKIP_NETWORK) {
   try {
     const { gql, splitRepo } = await import('./lib/github-projects.mjs');
     const { owner, repoName } = splitRepo(cfg.repo);
-    const data = await gql(`
+    const data = await gql(
+      `
       query($owner: String!, $repo: String!, $issue: Int!) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issue) {
@@ -263,23 +306,33 @@ if (stateArg === 'development' && !SKIP_NETWORK) {
       { owner, repo: repoName, issue: Number(issueArg) }
     );
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-    const node = nodes.find(n => n?.project?.id === cfg.projectId);
+    const node = nodes.find((n) => n?.project?.id === cfg.projectId);
     currentStateName = String(node?.fieldValueByName?.name || '').toLowerCase();
-  } catch { /* offline: fall back to body-only check below */ }
+  } catch {
+    /* offline: fall back to body-only check below */
+  }
 
   const fromAnalyze = currentStateName === '' || currentStateName === 'analyze';
 
   if (fromAnalyze && !approved) {
     if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
-      process.stderr.write(`⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing analyze->development approval gate for #${issueArg}\n`);
+      process.stderr.write(
+        `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing analyze->development approval gate for #${issueArg}\n`
+      );
       const bypassMsg = `⚠ **analyze->development approval gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}.`;
-      try { await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]); } catch {}
+      try {
+        await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]);
+      } catch {}
     } else {
       process.stderr.write('\n');
       process.stderr.write(`⛔ Refusing to move #${issueArg} to development:\n`);
-      process.stderr.write('   BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)\n');
+      process.stderr.write(
+        '   BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)\n'
+      );
       process.stderr.write('\nResolve the blocker, then retry. Legitimate-abandonment override:\n');
-      process.stderr.write(`   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} development\n\n`);
+      process.stderr.write(
+        `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} development\n\n`
+      );
       process.exit(4);
     }
   }
@@ -289,7 +342,9 @@ if (stateArg === 'development' && !SKIP_NETWORK) {
 // Backlog is for unvetted ideas; sized work belongs in the Ready column. Non-blocking.
 if (stateArg === 'backlog' && !SKIP_NETWORK) {
   try {
-    const body = (await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])).trim();
+    const body = (
+      await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
+    ).trim();
     if (body) {
       const parsed = parseIssueFieldDb(body);
       const warn = backlogMoveWarning({
@@ -298,27 +353,41 @@ if (stateArg === 'backlog' && !SKIP_NETWORK) {
       });
       if (warn) process.stderr.write(`${warn}\n`);
     }
-  } catch { /* fire-and-forget */ }
+  } catch {
+    /* fire-and-forget */
+  }
 }
 
 // Resolve project item ID
 let itemId = itemIdOverride;
 if (!itemId && !SKIP_NETWORK) {
-  const result = await projectItemForIssue({ repo: cfg.repo, projectId: cfg.projectId, issueNumber: issueArg });
+  const result = await projectItemForIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber: issueArg,
+  });
   itemId = result.itemId;
   if (!itemId) {
-    process.stderr.write(`Issue #${issueArg} not found in project (repo: ${cfg.repo}, projectId: ${cfg.projectId})\n`);
+    process.stderr.write(
+      `Issue #${issueArg} not found in project (repo: ${cfg.repo}, projectId: ${cfg.projectId})\n`
+    );
     process.exit(1);
   }
 }
 
 // Update the kanban board field
 if (!SKIP_NETWORK) {
-  await gh(['project', 'item-edit',
-    '--project-id', cfg.projectId,
-    '--id', itemId,
-    '--field-id', cfg.kanbanFieldId,
-    '--single-select-option-id', optionId,
+  await gh([
+    'project',
+    'item-edit',
+    '--project-id',
+    cfg.projectId,
+    '--id',
+    itemId,
+    '--field-id',
+    cfg.kanbanFieldId,
+    '--single-select-option-id',
+    optionId,
   ]);
 }
 
@@ -335,7 +404,9 @@ try {
     s.state = stateArg;
     saveState(s, sp);
   }
-} catch { /* best-effort */ }
+} catch {
+  /* best-effort */
+}
 
 // Update event fields (fire-and-forget)
 if (!SKIP_NETWORK) {
@@ -344,7 +415,7 @@ if (!SKIP_NETWORK) {
     path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
     path.resolve(__dir, 'update-event-fields.mjs'),
   ];
-  const eventScript = eventScriptCandidates.find(s => existsSync(s));
+  const eventScript = eventScriptCandidates.find((s) => existsSync(s));
   if (eventScript) {
     const args = [eventScript, issueArg, stateArg];
     if (itemId) args.push('--item-id', itemId);
@@ -359,6 +430,6 @@ if (stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK) {
     path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs'),
     path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
   ];
-  const ttScript = ttScriptCandidates.find(s => existsSync(s));
+  const ttScript = ttScriptCandidates.find((s) => existsSync(s));
   if (ttScript) pexec(process.execPath, [ttScript, 'end']).catch(() => {});
 }

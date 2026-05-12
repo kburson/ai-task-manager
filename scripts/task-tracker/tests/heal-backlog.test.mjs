@@ -14,8 +14,18 @@ import {
 } from '../issue-field-db.mjs';
 
 const fieldDefs = [
-  { key: 'priority', name: 'Priority', type: 'single_select', options: [{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }] },
-  { key: 'size', name: 'Size', type: 'single_select', options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }] },
+  {
+    key: 'priority',
+    name: 'Priority',
+    type: 'single_select',
+    options: [{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }],
+  },
+  {
+    key: 'size',
+    name: 'Size',
+    type: 'single_select',
+    options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }],
+  },
   { key: 'estimate', name: 'Estimate', type: 'number' },
   { key: 'sequence', name: 'Sequence', type: 'number' },
   { key: 'engagedTime', name: 'Engaged Time', type: 'number' },
@@ -78,7 +88,7 @@ const TIMING_LOG_3_ROWS = [
   assert.match(r.body, /<!--\s*aitm-plan-approved:/);
   assert.equal(r.body.includes('- [x] Plan approved by human'), false);
   // Deltas surfaced for changed timing fields
-  const keys = r.deltas.map(d => d.key).sort();
+  const keys = r.deltas.map((d) => d.key).sort();
   assert.deepEqual(keys, ['engagedTime', 'reviewTime', 'sessionTime', 'startTime'].sort());
   // Re-parse the new body to confirm it round-trips
   const reparsed = parseIssueFieldDb(r.body);
@@ -112,7 +122,7 @@ const TIMING_LOG_3_ROWS = [
   assert.equal(r.values.estimate, 8);
   assert.equal(r.values.sequence, 2);
   // Deltas list shows the four changed fields
-  const changedKeys = new Set(r.deltas.map(d => d.key));
+  const changedKeys = new Set(r.deltas.map((d) => d.key));
   assert.ok(changedKeys.has('engagedTime'));
   assert.ok(changedKeys.has('sessionTime'));
   assert.ok(changedKeys.has('reviewTime'));
@@ -126,12 +136,7 @@ const TIMING_LOG_3_ROWS = [
 // ---------- 3. Idempotent re-run ----------
 
 (function idempotent() {
-  const body = [
-    '# Item',
-    '',
-    'Body.',
-    '',
-  ].join('\n');
+  const body = ['# Item', '', 'Body.', ''].join('\n');
 
   const first = healIssue({
     body,
@@ -177,24 +182,48 @@ const TIMING_LOG_3_ROWS = [
 (function schemaDriftDetected() {
   // Synthesize a project that's missing Estimate, has an extra "Foo" field, and is missing the "L" Size option.
   const projectFields = [
-    { name: 'Priority', dataType: 'SINGLE_SELECT', options: [{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }] },
-    { name: 'Size', dataType: 'SINGLE_SELECT', options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'XL' }] }, // missing L
+    {
+      name: 'Priority',
+      dataType: 'SINGLE_SELECT',
+      options: [{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }],
+    },
+    {
+      name: 'Size',
+      dataType: 'SINGLE_SELECT',
+      options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'XL' }],
+    }, // missing L
     // missing Estimate
     { name: 'Sequence', dataType: 'NUMBER' },
     { name: 'Engaged Time', dataType: 'NUMBER' },
     { name: 'Session Time', dataType: 'NUMBER' },
     { name: 'Review Time', dataType: 'NUMBER' },
     { name: 'Start time', dataType: 'TEXT' },
-    { name: 'Status', dataType: 'SINGLE_SELECT', options: [
-      { name: 'Backlog' }, { name: 'Groom' }, { name: 'Analyze' }, { name: 'Development' }, { name: 'Validate' }, { name: 'Review' }, { name: 'Done' },
-    ] },
+    {
+      name: 'Status',
+      dataType: 'SINGLE_SELECT',
+      options: [
+        { name: 'Backlog' },
+        { name: 'Groom' },
+        { name: 'Analyze' },
+        { name: 'Development' },
+        { name: 'Validate' },
+        { name: 'Review' },
+        { name: 'Done' },
+      ],
+    },
     { name: 'Foo', dataType: 'TEXT' }, // extra
     { name: 'Title', dataType: 'TITLE' }, // built-in, ignored
   ];
   const drift = diffSchema(projectFields, fieldDefs);
   assert.equal(drift.hasDrift, true);
-  assert.deepEqual(drift.missing.map(d => d.name), ['Estimate']);
-  assert.deepEqual(drift.extra.map(d => d.name), ['Foo']);
+  assert.deepEqual(
+    drift.missing.map((d) => d.name),
+    ['Estimate']
+  );
+  assert.deepEqual(
+    drift.extra.map((d) => d.name),
+    ['Foo']
+  );
   assert.equal(drift.optionDrift.length, 1);
   assert.equal(drift.optionDrift[0].name, 'Size');
   assert.deepEqual(drift.optionDrift[0].missing, ['L']);
@@ -203,17 +232,35 @@ const TIMING_LOG_3_ROWS = [
 
 (function schemaCleanNoDrift() {
   const projectFields = [
-    { name: 'Priority', dataType: 'SINGLE_SELECT', options: [{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }] },
-    { name: 'Size', dataType: 'SINGLE_SELECT', options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }] },
+    {
+      name: 'Priority',
+      dataType: 'SINGLE_SELECT',
+      options: [{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }],
+    },
+    {
+      name: 'Size',
+      dataType: 'SINGLE_SELECT',
+      options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }],
+    },
     { name: 'Estimate', dataType: 'NUMBER' },
     { name: 'Sequence', dataType: 'NUMBER' },
     { name: 'Engaged Time', dataType: 'NUMBER' },
     { name: 'Session Time', dataType: 'NUMBER' },
     { name: 'Review Time', dataType: 'NUMBER' },
     { name: 'Start time', dataType: 'TEXT' },
-    { name: 'Status', dataType: 'SINGLE_SELECT', options: [
-      { name: 'Backlog' }, { name: 'Groom' }, { name: 'Analyze' }, { name: 'Development' }, { name: 'Validate' }, { name: 'Review' }, { name: 'Done' },
-    ] },
+    {
+      name: 'Status',
+      dataType: 'SINGLE_SELECT',
+      options: [
+        { name: 'Backlog' },
+        { name: 'Groom' },
+        { name: 'Analyze' },
+        { name: 'Development' },
+        { name: 'Validate' },
+        { name: 'Review' },
+        { name: 'Done' },
+      ],
+    },
     { name: 'Title', dataType: 'TITLE' },
     { name: 'Assignees', dataType: 'ASSIGNEES' },
   ];
@@ -291,7 +338,11 @@ const TIMING_LOG_3_ROWS = [
     '',
   ].join('\n');
   const outDeep = stripVestigialAcBullets(withDeep);
-  assert.equal(outDeep.includes('Deep dive complete'), false, 'deep-dive bullet stripped when marker present');
+  assert.equal(
+    outDeep.includes('Deep dive complete'),
+    false,
+    'deep-dive bullet stripped when marker present'
+  );
 
   // No marker → bullet preserved (don't forge history).
   const noMarker = [

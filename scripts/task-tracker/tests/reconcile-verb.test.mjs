@@ -14,11 +14,20 @@ function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
     calls,
     deps: {
       fetchIssueBody: async () => ({ body }),
-      writeIssueBody: async ({ body: b }) => { calls.writes.push(b); },
+      writeIssueBody: async ({ body: b }) => {
+        calls.writes.push(b);
+      },
       getLiveState: async () => live,
-      runMoveState: async ({ issueNumber, target }) => { calls.moves.push({ issueNumber, target }); return moveCode; },
-      postTimingRow: async ({ row }) => { calls.timings.push(row); },
-      persistTrackerState: ({ issueNumber, state }) => { calls.persists.push({ issueNumber, state }); },
+      runMoveState: async ({ issueNumber, target }) => {
+        calls.moves.push({ issueNumber, target });
+        return moveCode;
+      },
+      postTimingRow: async ({ row }) => {
+        calls.timings.push(row);
+      },
+      persistTrackerState: ({ issueNumber, state }) => {
+        calls.persists.push({ issueNumber, state });
+      },
     },
   };
 }
@@ -97,7 +106,11 @@ test('reconcile accept-live: no live state → error', async () => {
 });
 
 test('reconcile revert: transition-failed when move-state exits non-zero', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('analyze'), live: 'development', moveCode: 7 });
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('analyze'),
+    live: 'development',
+    moveCode: 7,
+  });
   const r = await runReconcile({ issueNumber: 307, mode: 'revert-to-recorded', cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.exitCode, 7);

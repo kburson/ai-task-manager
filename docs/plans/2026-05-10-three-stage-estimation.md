@@ -6,11 +6,11 @@ The repo currently runs `applyReevaluate(...)` inside `verbReview` ([scripts/tas
 
 This conflates two separate stages of the estimation lifecycle. Per the three-stage model:
 
-| Stage | When | Mutates fields? | Audit |
-|---|---|---|---|
-| **Grooming** | Issue created with high-level estimate from story description, minimal repo inspection. | YES — initial set. | n/a (initial values) |
+| Stage                    | When                                                                                     | Mutates fields?                                           | Audit                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Grooming**             | Issue created with high-level estimate from story description, minimal repo inspection.  | YES — initial set.                                        | n/a (initial values)                                                                   |
 | **Analysis (Deep Dive)** | JIT analysis against current repo state uncovers real work + challenges grooming missed. | YES — update Size/Estimate to reflect deep-dive findings. | Comment recording `from → to` + reason. Audit trail feeds future grooming calibration. |
-| **Review / Validation** | Retrospective AFTER code-complete + tests pass. 20/20 hindsight on actual effort. | **NO — never mutate.** | Comment on delta (estimated vs. actual) for future-calibration data only. |
+| **Review / Validation**  | Retrospective AFTER code-complete + tests pass. 20/20 hindsight on actual effort.        | **NO — never mutate.**                                    | Comment on delta (estimated vs. actual) for future-calibration data only.              |
 
 Conflating Analysis and Review destroys the calibration signal: if Review mutates the estimate, the "we were wrong" data point that future grooming would learn from is erased. Review is a post-mortem; post-mortems describe what happened, they don't rewrite history.
 
@@ -22,13 +22,14 @@ Conflating Analysis and Review destroys the calibration signal: if Review mutate
 
 ### Stage → boundary mapping
 
-| Stage | Verb / boundary | Action |
-|---|---|---|
-| Grooming | issue create / `/task new` / human-set fields in Backlog→Groom | Initial Size + Estimate written. No automation change. |
+| Stage         | Verb / boundary                                                                                                            | Action                                                                                                                                                                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Grooming      | issue create / `/task new` / human-set fields in Backlog→Groom                                                             | Initial Size + Estimate written. No automation change.                                                                                                                                                                                                                                      |
 | Analysis exit | `verbApprove` (analyze→development gate, [scripts/task-tracker/verbs/approve.mjs](scripts/task-tracker/verbs/approve.mjs)) | Run `reevaluateEstimate` against the Deep-Dive section. If `changed`, mutate Size + Estimate on the project board AND issue body field-DB, AND post an **audit comment** with the from→to delta and rationale. ≥2-tier jump still requires human attention (existing `requiresHuman` path). |
-| Review | `verbClose` / review→done ([scripts/task-tracker/task-tracker.mjs:291](scripts/task-tracker/task-tracker.mjs#L291)) | Run a NEW read-only routine that compares the (now-final) Estimate against `Actual Session Time` from the project board and posts a **delta comment**. **Never** writes to project fields or issue body. |
+| Review        | `verbClose` / review→done ([scripts/task-tracker/task-tracker.mjs:291](scripts/task-tracker/task-tracker.mjs#L291))        | Run a NEW read-only routine that compares the (now-final) Estimate against `Actual Session Time` from the project board and posts a **delta comment**. **Never** writes to project fields or issue body.                                                                                    |
 
 The boundary chosen for Review is review→done (`verbClose`), not validate→review, because:
+
 - `Actual Session Time` is set at close (per `docs/guides/ai-value-framework.md`) — earlier boundaries don't have actual-effort data yet.
 - Closing is the natural retrospective moment: tests passed, review approved, work shipped.
 - It's a single chokepoint (today's `/task close`); future `/task move done` (epic #61) will inherit it.
@@ -62,6 +63,7 @@ This comment is read-only — Size and Estimate fields are not modified.
 ```
 
 Delta routine reads:
+
 - `Estimate` from project board (or issue body field-DB).
 - `Actual Session Time` from project board, set at close per `docs/guides/ai-value-framework.md`.
 - Issue body for any "Drivers" section (optional).
@@ -83,11 +85,13 @@ Epic #61 (parallel-agent guardrails) introduces `/task move <state>` as the chok
 ## Critical Files
 
 ### New
+
 - `scripts/task-tracker/lib/review-delta.mjs` — pure compute + comment builder for the review-time delta. Imports `ESTIMATE_HOURS` and `SIZE_TIERS` from `reevaluate-estimate.mjs`.
 - `tests/review-delta.test.mjs` — coverage: estimate present + actual present, actual missing, percent calculation, no-mutation guarantee (assert no `gh issue edit` or `writeProjectFieldValue` call in the path).
 - `tests/analyze-mutation.test.mjs` — coverage: verbApprove runs reevaluate, mutates fields, posts audit comment with new header; ≥2-tier still gates to human.
 
 ### Modified
+
 - `scripts/task-tracker/lib/reevaluate-estimate.mjs` — rename `buildRationale` output to use the audit-comment header context; add `buildAuditCommentBody(result)` helper that returns the full markdown block. Pure function, no I/O. Existing exports unchanged.
 - `scripts/task-tracker/task-tracker.mjs` — remove `applyReevaluate` call from `verbReview` (lines 740-744 + surrounding comment); remove the now-unused import if no other caller; add `applyReviewDelta` invocation inside `verbClose` (after the cascade-close check, before the final close so the comment lands on the still-open issue). Update `REEVAL_HEADER` constant to `### 🔁 Analysis re-estimate`.
 - `scripts/task-tracker/verbs/approve.mjs` — after the human-approval gate passes and before the actual `move-state.mjs` invocation, run `applyReevaluate({ issueNum, body })`. Mutation + audit-comment behavior identical to today's review-time path; the only change is the boundary.
@@ -95,6 +99,7 @@ Epic #61 (parallel-agent guardrails) introduces `/task move <state>` as the chok
 - `skill/SKILL.md` (or `skill/shared/SKILL.md`) — document the audit comment + delta comment surfaces so agents know what to expect at each boundary.
 
 ### Reused (do not modify)
+
 - `reevaluateEstimate`, `buildRationale`, `parseDeepDiveSignals`, `scoreSignals`, `bucketSize` — all stay pure and exported as today.
 - `applyReevaluate` function body in `task-tracker.mjs` — relocate as-is; it's already stage-agnostic. (Or move it into `verbs/approve.mjs` and import the lib; cleaner long-term.)
 

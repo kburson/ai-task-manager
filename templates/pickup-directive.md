@@ -83,10 +83,12 @@ required box is unchecked will be refused.
 ## Required steps before writing any code
 
 1. **Move the issue to `in-progress` and capture your entry word count:**
+
    ```bash
    node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress
    node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
    ```
+
    Record the output as `W_start` and the current wall-clock time as `T_start`. You will
    use these at exit to compute `words_delta` and `duration_minutes` for your
    `CODE_COMPLETE` report. When implementation is complete, report `CODE_COMPLETE` and
@@ -117,6 +119,7 @@ required box is unchecked will be refused.
    # — placed AFTER the Pickup Directive block and BEFORE the fields-block start marker.
    gh issue edit <this-issue-#> --body-file ./tmp/body.md
    ```
+
    Then flip the checkpoint: `/task check "Deep dive complete"`
 
    The deep-dive section must include:
@@ -125,16 +128,20 @@ required box is unchecked will be refused.
    - **Test additions** — list each test file with a one-line description; append as new acceptance-criteria checkboxes
    - **Verification Commands** — exact commands to prove each criterion, appended
      as checkboxes and checked only after successful execution and output review:
+
      ```markdown
      ### Verification Commands
 
      - [ ] `node scripts/task-tracker/tests/config.test.mjs`
      - [ ] `node scripts/task-tracker/tests/state.test.mjs`
      ```
+
      Do not add words like `PASS`; the checked box is the proof.
+
    - **Identified risks** beyond the Scope
    - **Sibling sub-issues to spawn** (if any)
    - **Dependency map** (always include, even if no dependencies):
+
      ```
      ## Dependency Map
      Depends on: #N (reason), #M (reason)   ← or "none"
@@ -151,21 +158,24 @@ required box is unchecked will be refused.
    a. Fetch all open sub-issues and read their Scope sections.
 
    b. Validate each sub-issue's `Sequence` field against actual code dependencies found in the deep dive. If a value is wrong, update it:
-      ```bash
-      gh project item-edit \
-        --project-id <projectId> \
-        --id <item-id> \
-        --field-id <sequenceFieldId from .ai-task-manager/task-tracker.json> \
-        --number <N>
-      ```
+
+   ```bash
+   gh project item-edit \
+     --project-id <projectId> \
+     --id <item-id> \
+     --field-id <sequenceFieldId from .ai-task-manager/task-tracker.json> \
+     --number <N>
+   ```
 
    c. Post a validated dependency map comment on the epic:
-      ```markdown
-      ## Dependency Map (validated YYYY-MM-DD)
-      Sequence 1 — start immediately, parallel: #N, #M
-      Sequence 2 — after all Seq 1 close: #P, #Q
-      Sequence 3 — after all Seq 2 close: #R
-      ```
+
+   ```markdown
+   ## Dependency Map (validated YYYY-MM-DD)
+
+   Sequence 1 — start immediately, parallel: #N, #M
+   Sequence 2 — after all Seq 1 close: #P, #Q
+   Sequence 3 — after all Seq 2 close: #R
+   ```
 
    d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: extract `duration_minutes` and `words_delta`, call `/task review #N --duration-minutes M --words W` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to R4R. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in R4R — do NOT run `/task close`.
 
@@ -193,13 +203,14 @@ of these statuses. Do not use `DONE` or `DONE_WITH_CONCERNS` — those terms are
 ambiguous under the AITM close contract and will cause orchestrators to advance the
 sequence prematurely.
 
-| Status | Meaning | Required condition |
-|---|---|---|
-| `CODE_COMPLETE` | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review #N --duration-minutes M --words W` using values from this report. | List any unchecked items and why they could not be verified. Include `duration_minutes` and `words_delta`. Do NOT call `/task review`. |
-| `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches R4R. | Orchestrator notifies the human for approval. Do NOT run `/task close`. |
-| `BLOCKED` | Cannot proceed without orchestrator or human intervention. | Describe exactly what is needed. |
+| Status                   | Meaning                                                                                                                                                                                                                                       | Required condition                                                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `CODE_COMPLETE`          | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review #N --duration-minutes M --words W` using values from this report. | List any unchecked items and why they could not be verified. Include `duration_minutes` and `words_delta`. Do NOT call `/task review`. |
+| `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches R4R.                                                                                                                                                            | Orchestrator notifies the human for approval. Do NOT run `/task close`.                                                                |
+| `BLOCKED`                | Cannot proceed without orchestrator or human intervention.                                                                                                                                                                                    | Describe exactly what is needed.                                                                                                       |
 
 **Rules for orchestrators:**
+
 - On receiving `CODE_COMPLETE` from an agent: extract `duration_minutes` and
   `words_delta` from the report, then call `/task review #N --duration-minutes M --words W`.
   If it exits non-zero (verification failed), post a comment on the issue listing the
@@ -224,6 +235,7 @@ actually verify.
 > The agent's terminal action is reporting `CODE_COMPLETE` and stopping.
 
 Review every item in the Definition of Done checklist in the issue body. For each item:
+
 - Verify it is genuinely complete (inspection + relevant test/command output).
 - Run pre-commit hooks and verify they pass — this is a real DoD item, not a formality.
 - Verify every relevant command in `### Verification Commands` has been run
@@ -237,9 +249,11 @@ Criterion or DoD item until the relevant Verification Commands checkbox is check
 
 **Word count — exit step (agent sessions only):**
 Before reporting `CODE_COMPLETE`, record your final word count:
+
 ```
 node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
 ```
+
 Compute `words_delta = W_end - W_start` (where `W_start` was captured at agent entry —
 see step 1). Include both values in your `CODE_COMPLETE` report.
 

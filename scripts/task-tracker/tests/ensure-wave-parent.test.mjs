@@ -12,7 +12,15 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  chmodSync,
+  rmSync,
+  existsSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,19 +33,23 @@ function writeConfig(sandbox) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test',
-      kanbanFieldId: 'PVTF_x',
-      kanbanOptionBacklog: 'OPT_backlog',
-      kanbanOptionGroom: 'OPT_groom',
-      kanbanOptionAnalyze: 'OPT_analyze',
-      kanbanOptionDevelopment: 'OPT_dev',
-      kanbanOptionValidate: 'OPT_validate',
-      kanbanOptionReview: 'OPT_review',
-      kanbanOptionDone: 'OPT_done',
-      assignee: '@me',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test',
+        kanbanFieldId: 'PVTF_x',
+        kanbanOptionBacklog: 'OPT_backlog',
+        kanbanOptionGroom: 'OPT_groom',
+        kanbanOptionAnalyze: 'OPT_analyze',
+        kanbanOptionDevelopment: 'OPT_dev',
+        kanbanOptionValidate: 'OPT_validate',
+        kanbanOptionReview: 'OPT_review',
+        kanbanOptionDone: 'OPT_done',
+        assignee: '@me',
+      },
+      null,
+      2
+    )
   );
 }
 
@@ -51,7 +63,9 @@ function makeGhShim(sandbox, fixture) {
   const ghShim = path.join(binDir, 'gh');
   const stateFile = path.join(sandbox, 'shim-state.json');
   writeFileSync(stateFile, JSON.stringify({ added: false }));
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 function loadState() { try { return JSON.parse(readFileSync(${JSON.stringify(stateFile)}, 'utf8')); } catch { return {}; } }
 function saveState(s) { writeFileSync(${JSON.stringify(stateFile)}, JSON.stringify(s)); }
@@ -179,7 +193,8 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
 }
 
 process.exit(0);
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
   return { binDir, callsLog };
 }
@@ -201,7 +216,11 @@ async function runHelper(sandbox, binDir, args) {
 
 function readCalls(callsLog) {
   if (!existsSync(callsLog)) return [];
-  return readFileSync(callsLog, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+  return readFileSync(callsLog, 'utf8')
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
 }
 
 // ─── Test 1: Solo-wave happy path ─────────────────────────────────────────────
@@ -210,20 +229,27 @@ function readCalls(callsLog) {
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
-      parents: { '10': null, '11': null, '12': null },
+      parents: { 10: null, 11: null, 12: null },
       searchIssues: [],
       newIssueNumber: 500,
     });
-    const r = await runHelper(sandbox, binDir, ['--children', '10,11,12', '--purpose', 'wave for X']);
+    const r = await runHelper(sandbox, binDir, [
+      '--children',
+      '10,11,12',
+      '--purpose',
+      'wave for X',
+    ]);
     assert.equal(r.code, 0, `exit non-zero; stderr:\n${r.stderr}`);
     assert.match(r.stdout, /PARENT: #500/, `expected PARENT: #500; got:\n${r.stdout}`);
     const calls = readCalls(callsLog);
-    const created = calls.filter(c => c.argv[0] === 'issue' && c.argv[1] === 'create');
+    const created = calls.filter((c) => c.argv[0] === 'issue' && c.argv[1] === 'create');
     assert.equal(created.length, 1, 'should create exactly one parent issue');
-    const addSubs = calls.filter(c => /addSubIssue/.test(c.stdinBody || ''));
+    const addSubs = calls.filter((c) => /addSubIssue/.test(c.stdinBody || ''));
     assert.equal(addSubs.length, 3, `expected 3 addSubIssue mutations; saw ${addSubs.length}`);
     console.log('test 1 passed: solo-wave creates parent + 3 addSubIssue calls');
-  } finally { rmSync(sandbox, { recursive: true, force: true }); }
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 }
 
 // ─── Test 2: All-parented passthrough ─────────────────────────────────────────
@@ -232,19 +258,27 @@ function readCalls(callsLog) {
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
-      parents: { '20': 99, '21': 99 },
+      parents: { 20: 99, 21: 99 },
       searchIssues: [],
     });
     const r = await runHelper(sandbox, binDir, ['--children', '20,21', '--purpose', 'irrelevant']);
     assert.equal(r.code, 0, `exit non-zero; stderr:\n${r.stderr}`);
     assert.match(r.stdout, /PARENT: #99/);
     const calls = readCalls(callsLog);
-    assert.equal(calls.filter(c => c.argv[0] === 'issue' && c.argv[1] === 'create').length, 0,
-      'should NOT create a new parent');
-    assert.equal(calls.filter(c => /addSubIssue/.test(c.stdinBody || '')).length, 0,
-      'should NOT addSubIssue');
+    assert.equal(
+      calls.filter((c) => c.argv[0] === 'issue' && c.argv[1] === 'create').length,
+      0,
+      'should NOT create a new parent'
+    );
+    assert.equal(
+      calls.filter((c) => /addSubIssue/.test(c.stdinBody || '')).length,
+      0,
+      'should NOT addSubIssue'
+    );
     console.log('test 2 passed: all-parented passthrough emits existing parent, no creation');
-  } finally { rmSync(sandbox, { recursive: true, force: true }); }
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 }
 
 // ─── Test 3: Mixed fan-out rejection ──────────────────────────────────────────
@@ -253,15 +287,17 @@ function readCalls(callsLog) {
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
-      parents: { '30': null, '31': 99 },
+      parents: { 30: null, 31: 99 },
     });
     const r = await runHelper(sandbox, binDir, ['--children', '30,31', '--purpose', 'mixed']);
     assert.equal(r.code, 2, `expected exit 2; got ${r.code}; stderr:\n${r.stderr}`);
     assert.match(r.stderr, /mixed-fanout/);
     const calls = readCalls(callsLog);
-    assert.equal(calls.filter(c => c.argv[0] === 'issue' && c.argv[1] === 'create').length, 0);
+    assert.equal(calls.filter((c) => c.argv[0] === 'issue' && c.argv[1] === 'create').length, 0);
     console.log('test 3 passed: mixed-fanout rejection');
-  } finally { rmSync(sandbox, { recursive: true, force: true }); }
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 }
 
 // ─── Test 4: Multi-parent rejection ───────────────────────────────────────────
@@ -270,13 +306,15 @@ function readCalls(callsLog) {
   try {
     writeConfig(sandbox);
     const { binDir } = makeGhShim(sandbox, {
-      parents: { '40': 99, '41': 100 },
+      parents: { 40: 99, 41: 100 },
     });
     const r = await runHelper(sandbox, binDir, ['--children', '40,41', '--purpose', 'multi']);
     assert.equal(r.code, 2, `expected exit 2; got ${r.code}; stderr:\n${r.stderr}`);
     assert.match(r.stderr, /multi-parent/);
     console.log('test 4 passed: multi-parent rejection');
-  } finally { rmSync(sandbox, { recursive: true, force: true }); }
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 }
 
 // ─── Test 5: Single-issue passthrough ─────────────────────────────────────────
@@ -284,14 +322,16 @@ function readCalls(callsLog) {
   const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-5-'));
   try {
     writeConfig(sandbox);
-    const { binDir, callsLog } = makeGhShim(sandbox, { parents: { '50': null } });
+    const { binDir, callsLog } = makeGhShim(sandbox, { parents: { 50: null } });
     const r = await runHelper(sandbox, binDir, ['--children', '50', '--purpose', 'singleton']);
     assert.equal(r.code, 0, `exit non-zero; stderr:\n${r.stderr}`);
     assert.match(r.stdout, /NO_WAVE_PARENT_NEEDED/);
     const calls = readCalls(callsLog);
-    assert.equal(calls.filter(c => c.argv[0] === 'issue' && c.argv[1] === 'create').length, 0);
+    assert.equal(calls.filter((c) => c.argv[0] === 'issue' && c.argv[1] === 'create').length, 0);
     console.log('test 5 passed: single-issue passthrough');
-  } finally { rmSync(sandbox, { recursive: true, force: true }); }
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 }
 
 // ─── Test 6: Idempotency — existing wave-id reused ────────────────────────────
@@ -306,17 +346,26 @@ function readCalls(callsLog) {
     const waveIdValue = `${sorted.join('-')}.${h}`;
     const fakeParentBody = `prelude\n<!-- wave-id: ${waveIdValue} -->\nepilog`;
     const { binDir, callsLog } = makeGhShim(sandbox, {
-      parents: { '60': null, '61': null },
+      parents: { 60: null, 61: null },
       searchIssues: [{ number: 777, body: fakeParentBody }],
     });
     const r = await runHelper(sandbox, binDir, ['--children', '60,61', '--purpose', 'idempotent']);
     assert.equal(r.code, 0, `exit non-zero; stderr:\n${r.stderr}`);
-    assert.match(r.stdout, /PARENT: #777/, `expected reused parent #777; got:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    assert.match(
+      r.stdout,
+      /PARENT: #777/,
+      `expected reused parent #777; got:\n${r.stdout}\nstderr:\n${r.stderr}`
+    );
     const calls = readCalls(callsLog);
-    assert.equal(calls.filter(c => c.argv[0] === 'issue' && c.argv[1] === 'create').length, 0,
-      'should NOT create a duplicate parent');
+    assert.equal(
+      calls.filter((c) => c.argv[0] === 'issue' && c.argv[1] === 'create').length,
+      0,
+      'should NOT create a duplicate parent'
+    );
     console.log('test 6 passed: idempotent retry reuses parent #777');
-  } finally { rmSync(sandbox, { recursive: true, force: true }); }
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 }
 
 console.log('ensure-wave-parent: all tests passed');

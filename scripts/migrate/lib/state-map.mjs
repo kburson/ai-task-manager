@@ -23,14 +23,18 @@ export const SOURCE_TO_TARGET = Object.freeze({
 export function mapOption(currentName, optionsByName) {
   if (!currentName) return null;
   if (!Object.prototype.hasOwnProperty.call(SOURCE_TO_TARGET, currentName)) {
-    throw new Error(`migrate-to-7-state: unknown source Status "${currentName}" — not in mapping table`);
+    throw new Error(
+      `migrate-to-7-state: unknown source Status "${currentName}" — not in mapping table`
+    );
   }
   const target = SOURCE_TO_TARGET[currentName];
   if (target == null) return null;
   if (currentName === target) return null;
   const targetId = optionsByName?.[target];
   if (!targetId) {
-    throw new Error(`migrate-to-7-state: target option "${target}" is not present on the board — rename Status options first (see scripts/migrate/rename-status-2026-05.mjs)`);
+    throw new Error(
+      `migrate-to-7-state: target option "${target}" is not present on the board — rename Status options first (see scripts/migrate/rename-status-2026-05.mjs)`
+    );
   }
   return { targetOptionId: targetId, targetOptionName: target };
 }

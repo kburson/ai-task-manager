@@ -41,13 +41,21 @@ export const DEFAULT_POLICY = Object.freeze({
 });
 
 export const STATE_MATRIX = Object.freeze({
-  backlog:     ['WRITE_ISSUE', 'READ_*'],
-  groom:       ['WRITE_ISSUE', 'READ_*'],
-  analyze:     ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
-  development: ['WRITE_CODE', 'COMMIT_CODE', 'WRITE_DOCS', 'WRITE_ISSUE', 'RUN_TESTS', 'RUN_BUILD', 'READ_*'],
-  validate:    ['RUN_TESTS', 'RUN_BUILD', 'WRITE_ISSUE', 'READ_*'],
-  review:      ['WRITE_ISSUE', 'WRITE_DOCS', 'READ_*'],
-  done:        ['READ_*'],
+  backlog: ['WRITE_ISSUE', 'READ_*'],
+  groom: ['WRITE_ISSUE', 'READ_*'],
+  analyze: ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
+  development: [
+    'WRITE_CODE',
+    'COMMIT_CODE',
+    'WRITE_DOCS',
+    'WRITE_ISSUE',
+    'RUN_TESTS',
+    'RUN_BUILD',
+    'READ_*',
+  ],
+  validate: ['RUN_TESTS', 'RUN_BUILD', 'WRITE_ISSUE', 'READ_*'],
+  review: ['WRITE_ISSUE', 'WRITE_DOCS', 'READ_*'],
+  done: ['READ_*'],
 });
 
 // ---------------------------------------------------------------------------
@@ -163,7 +171,10 @@ function stripQuotedRegions(command) {
         out += ' ';
         i += 1;
       }
-      if (i < command.length) { out += ' '; i += 1; }
+      if (i < command.length) {
+        out += ' ';
+        i += 1;
+      }
     } else {
       out += c;
       i += 1;
@@ -266,12 +277,20 @@ export function loadPolicy(cwd) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return DEFAULT_POLICY;
     // Shallow merge: keys present override defaults; absent keys keep defaults.
     return {
-      codeGlobs:          Array.isArray(parsed.codeGlobs)          ? parsed.codeGlobs          : DEFAULT_POLICY.codeGlobs,
-      codeGlobExcludes:   Array.isArray(parsed.codeGlobExcludes)   ? parsed.codeGlobExcludes   : DEFAULT_POLICY.codeGlobExcludes,
-      codeGlobReincludes: Array.isArray(parsed.codeGlobReincludes) ? parsed.codeGlobReincludes : DEFAULT_POLICY.codeGlobReincludes,
-      docGlobs:           Array.isArray(parsed.docGlobs)           ? parsed.docGlobs           : DEFAULT_POLICY.docGlobs,
-      testRunners:        Array.isArray(parsed.testRunners)        ? parsed.testRunners        : DEFAULT_POLICY.testRunners,
-      buildCommands:      Array.isArray(parsed.buildCommands)      ? parsed.buildCommands      : DEFAULT_POLICY.buildCommands,
+      codeGlobs: Array.isArray(parsed.codeGlobs) ? parsed.codeGlobs : DEFAULT_POLICY.codeGlobs,
+      codeGlobExcludes: Array.isArray(parsed.codeGlobExcludes)
+        ? parsed.codeGlobExcludes
+        : DEFAULT_POLICY.codeGlobExcludes,
+      codeGlobReincludes: Array.isArray(parsed.codeGlobReincludes)
+        ? parsed.codeGlobReincludes
+        : DEFAULT_POLICY.codeGlobReincludes,
+      docGlobs: Array.isArray(parsed.docGlobs) ? parsed.docGlobs : DEFAULT_POLICY.docGlobs,
+      testRunners: Array.isArray(parsed.testRunners)
+        ? parsed.testRunners
+        : DEFAULT_POLICY.testRunners,
+      buildCommands: Array.isArray(parsed.buildCommands)
+        ? parsed.buildCommands
+        : DEFAULT_POLICY.buildCommands,
     };
   } catch {
     return DEFAULT_POLICY;

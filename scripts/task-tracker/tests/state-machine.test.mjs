@@ -5,7 +5,13 @@ import { STATES, FORWARD, BACKWARD, validateTransition } from '../state-machine.
 
 test('STATES is the canonical 7-state chain in order', () => {
   assert.deepEqual(STATES, [
-    'backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done',
+    'backlog',
+    'groom',
+    'analyze',
+    'development',
+    'validate',
+    'review',
+    'done',
   ]);
 });
 

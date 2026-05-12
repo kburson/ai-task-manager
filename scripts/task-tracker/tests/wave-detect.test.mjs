@@ -5,7 +5,8 @@ import { strict as assert } from 'node:assert';
 import { classify, buildBatchQuery, rejectionMessage } from '../../gh/lib/wave-detect.mjs';
 
 function stub(parentsByChild) {
-  return async ({ batch }) => batch.map(n => ({ child: Number(n), parent: parentsByChild[n] ?? null }));
+  return async ({ batch }) =>
+    batch.map((n) => ({ child: Number(n), parent: parentsByChild[n] ?? null }));
 }
 
 // 1. Empty candidates
@@ -30,7 +31,11 @@ function stub(parentsByChild) {
 
 // 4. All parented sharing one parent → kind=all-parented-shared
 {
-  const r = await classify({ candidates: [10, 11], repo: 'o/r', runQuery: stub({ 10: 99, 11: 99 }) });
+  const r = await classify({
+    candidates: [10, 11],
+    repo: 'o/r',
+    runQuery: stub({ 10: 99, 11: 99 }),
+  });
   assert.equal(r.kind, 'all-parented-shared');
   assert.deepEqual([...r.parents], [99]);
 }
@@ -47,7 +52,11 @@ function stub(parentsByChild) {
 
 // 6. Multi-parent → kind=multi-parent
 {
-  const r = await classify({ candidates: [10, 11], repo: 'o/r', runQuery: stub({ 10: 99, 11: 100 }) });
+  const r = await classify({
+    candidates: [10, 11],
+    repo: 'o/r',
+    runQuery: stub({ 10: 99, 11: 100 }),
+  });
   assert.equal(r.kind, 'multi-parent');
   assert.equal(r.multiParent, true);
   const msg = rejectionMessage(r);
@@ -71,7 +80,10 @@ function stub(parentsByChild) {
   const r = await classify({
     candidates: ids,
     repo: 'o/r',
-    runQuery: async ({ batch }) => { calls += 1; return batch.map(n => ({ child: Number(n), parent: null })); },
+    runQuery: async ({ batch }) => {
+      calls += 1;
+      return batch.map((n) => ({ child: Number(n), parent: null }));
+    },
   });
   assert.equal(calls, 2, 'should chunk into 2 calls for 25 candidates');
   assert.equal(r.kind, 'all-solo');

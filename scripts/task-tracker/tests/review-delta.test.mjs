@@ -78,7 +78,9 @@ import {
 // buildDeltaCommentBody — provided drivers list rendered as bullets.
 {
   const r = computeReviewDelta({ estimate: 4, actual: 6 });
-  const body = buildDeltaCommentBody(r, { drivers: ['scope creep on tests', 'docs took longer than expected'] });
+  const body = buildDeltaCommentBody(r, {
+    drivers: ['scope creep on tests', 'docs took longer than expected'],
+  });
   assert.match(body, /Drivers:\n- scope creep on tests\n- docs took longer than expected/);
 }
 

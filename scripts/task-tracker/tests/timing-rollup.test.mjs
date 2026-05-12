@@ -3,8 +3,13 @@ import { parseTimingRows, computeReviewMin, rollupTotals } from '../timing-rollu
 
 function buildLog(rows) {
   const header = '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |';
-  const sep    = '|---|---|---|---|---|---|---|';
-  const body = rows.map(r => `| ${r.ts} | ${r.event} | ${r.active ?? '—'} | ${r.idle ?? '—'} | ${r.dw ?? '—'} | ${r.wm ?? '—'} | ${r.desc ?? ''} |`).join('\n');
+  const sep = '|---|---|---|---|---|---|---|';
+  const body = rows
+    .map(
+      (r) =>
+        `| ${r.ts} | ${r.event} | ${r.active ?? '—'} | ${r.idle ?? '—'} | ${r.dw ?? '—'} | ${r.wm ?? '—'} | ${r.desc ?? ''} |`
+    )
+    .join('\n');
   return ['⏱ Timing Log', '', header, sep, body, ''].join('\n');
 }
 

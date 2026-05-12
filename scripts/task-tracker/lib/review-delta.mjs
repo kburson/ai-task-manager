@@ -15,9 +15,7 @@ export function computeReviewDelta({ estimate, actual } = {}) {
   const hasActual = actNum !== null;
   const hasEstimate = estNum !== null;
   const deltaHours = hasActual && hasEstimate ? actNum - estNum : null;
-  const deltaPct = hasActual && hasEstimate && estNum > 0
-    ? (deltaHours / estNum) * 100
-    : null;
+  const deltaPct = hasActual && hasEstimate && estNum > 0 ? (deltaHours / estNum) * 100 : null;
   return {
     estimate: estNum,
     actual: actNum,
@@ -50,9 +48,10 @@ export function buildDeltaCommentBody(result, { drivers } = {}) {
     `| Hours | ${estCell} | ${actCell} | ${deltaCell} |`,
   ];
 
-  const driversLine = Array.isArray(drivers) && drivers.length > 0
-    ? 'Drivers:\n' + drivers.map(d => `- ${d}`).join('\n')
-    : 'Drivers: see review notes.';
+  const driversLine =
+    Array.isArray(drivers) && drivers.length > 0
+      ? 'Drivers:\n' + drivers.map((d) => `- ${d}`).join('\n')
+      : 'Drivers: see review notes.';
 
   const lines = [DELTA_HEADER, '', ...tableLines, '', driversLine];
 

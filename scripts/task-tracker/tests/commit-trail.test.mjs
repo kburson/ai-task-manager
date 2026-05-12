@@ -3,8 +3,13 @@
 
 import { strict as assert } from 'node:assert';
 import {
-  detectGitCommit, parseMarker, buildInitialTrail, buildRow,
-  appendCommitRow, updateMarker, hasWorktreeCols,
+  detectGitCommit,
+  parseMarker,
+  buildInitialTrail,
+  buildRow,
+  appendCommitRow,
+  updateMarker,
+  hasWorktreeCols,
 } from '../lib/commit-trail.mjs';
 
 // --- detectGitCommit ---
@@ -128,10 +133,17 @@ import {
 
 // Worktree columns
 {
-  const r = buildRow({
-    sha: 'abcdef1', subject: 's', author: 'a', ts: 't',
-    branch: 'feat/x', worktree: '/tmp/wt',
-  }, { worktreeCols: true });
+  const r = buildRow(
+    {
+      sha: 'abcdef1',
+      subject: 's',
+      author: 'a',
+      ts: 't',
+      branch: 'feat/x',
+      worktree: '/tmp/wt',
+    },
+    { worktreeCols: true }
+  );
   assert.match(r, /feat\/x/);
   assert.match(r, /\/tmp\/wt/);
 }

@@ -32,7 +32,8 @@ function loadCfg() {
 }
 
 async function fetchStatusOptions(projectId, fieldId) {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($project: ID!) {
       node(id: $project) {
         ... on ProjectV2 {
@@ -47,16 +48,18 @@ async function fetchStatusOptions(projectId, fieldId) {
     { project: projectId }
   );
   const fields = data?.node?.fields?.nodes || [];
-  const statusField = fields.find(f => f && f.id === fieldId)
-    || fields.find(f => f && (f.name || '').toLowerCase() === 'status');
+  const statusField =
+    fields.find((f) => f && f.id === fieldId) ||
+    fields.find((f) => f && (f.name || '').toLowerCase() === 'status');
   const opts = statusField?.options || [];
-  return Object.fromEntries(opts.map(o => [o.name, o.id]));
+  return Object.fromEntries(opts.map((o) => [o.name, o.id]));
 }
 
-async function* iterateItems(projectId, fieldId) {
+async function* iterateItems(projectId, _fieldId) {
   let cursor = null;
   while (true) {
-    const data = await gql(`
+    const data = await gql(
+      `
       query($project: ID!, $cursor: String) {
         node(id: $project) {
           ... on ProjectV2 {
@@ -86,7 +89,8 @@ async function* iterateItems(projectId, fieldId) {
 }
 
 async function writeStatus({ projectId, itemId, fieldId, optionId }) {
-  await gql(`
+  await gql(
+    `
     mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
       updateProjectV2ItemFieldValue(input: {
         projectId: $project, itemId: $item, fieldId: $field,
@@ -126,7 +130,14 @@ async function main() {
       continue;
     }
     if (!mapping) continue;
-    planned.push({ itemId: item.id, num, title, from: currentName, to: mapping.targetOptionName, optionId: mapping.targetOptionId });
+    planned.push({
+      itemId: item.id,
+      num,
+      title,
+      from: currentName,
+      to: mapping.targetOptionName,
+      optionId: mapping.targetOptionId,
+    });
   }
 
   if (errors.length) {
@@ -149,9 +160,14 @@ async function main() {
 
   console.log('\nApplying...');
   for (const p of planned) {
-    await writeStatus({ projectId, itemId: p.itemId, fieldId: kanbanFieldId, optionId: p.optionId });
+    await writeStatus({
+      projectId,
+      itemId: p.itemId,
+      fieldId: kanbanFieldId,
+      optionId: p.optionId,
+    });
     console.log(`  ✓ #${p.num} → ${p.to}`);
-    await new Promise(r => setTimeout(r, THROTTLE_MS));
+    await new Promise((r) => setTimeout(r, THROTTLE_MS));
   }
   console.log(`\nMigrated ${planned.length} item(s).`);
   process.exit(errors.length ? 1 : 0);
@@ -159,5 +175,8 @@ async function main() {
 
 const isMain = import.meta.url.endsWith(process.argv[1].replace(/^.*?(scripts\/migrate\/)/, '$1'));
 if (isMain || process.argv[1].endsWith('migrate-to-7-state.mjs')) {
-  main().catch(err => { console.error(err.stack || err.message); process.exit(1); });
+  main().catch((err) => {
+    console.error(err.stack || err.message);
+    process.exit(1);
+  });
 }

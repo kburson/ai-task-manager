@@ -12,19 +12,20 @@
 
 ## File Map
 
-| File | Change |
-|---|---|
-| `bin/cli.mjs` | Remove `copyDir`; remove script-copy blocks; replace hook copy with stub writer; add `patchGitignore`; fix `cmdInit` to use `PKG_ROOT` |
-| `hooks/task-tracker.sh` | Resolve `SCRIPT` relative to the hook file itself (it lives in `node_modules`) |
-| `scripts/gh/move-state.sh` | Fix one `task-tracker.mjs` reference to use `node_modules` path |
-| `skill/SKILL.md` | Update 4 script path references |
-| `scripts/task-tracker/tests/install.test.mjs` | New — verifies install output and absence of copied scripts |
+| File                                          | Change                                                                                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `bin/cli.mjs`                                 | Remove `copyDir`; remove script-copy blocks; replace hook copy with stub writer; add `patchGitignore`; fix `cmdInit` to use `PKG_ROOT` |
+| `hooks/task-tracker.sh`                       | Resolve `SCRIPT` relative to the hook file itself (it lives in `node_modules`)                                                         |
+| `scripts/gh/move-state.sh`                    | Fix one `task-tracker.mjs` reference to use `node_modules` path                                                                        |
+| `skill/SKILL.md`                              | Update 4 script path references                                                                                                        |
+| `scripts/task-tracker/tests/install.test.mjs` | New — verifies install output and absence of copied scripts                                                                            |
 
 ---
 
 ## Task 1: Write failing install test
 
 **Files:**
+
 - Create: `scripts/task-tracker/tests/install.test.mjs`
 
 - [ ] **Step 1: Create the test file**
@@ -49,19 +50,31 @@ try {
   await pexec('node', [CLI, 'install', '--target', target]);
 
   // Skill files copied
-  assert.ok(existsSync(path.join(target, '.claude', 'skills', 'task', 'SKILL.md')), 'SKILL.md missing');
-  assert.ok(existsSync(path.join(target, '.claude', 'skills', 'task', 'DESIGN.md')), 'DESIGN.md missing');
+  assert.ok(
+    existsSync(path.join(target, '.claude', 'skills', 'task', 'SKILL.md')),
+    'SKILL.md missing'
+  );
+  assert.ok(
+    existsSync(path.join(target, '.claude', 'skills', 'task', 'DESIGN.md')),
+    'DESIGN.md missing'
+  );
 
   // Stub written, not the original hook
   const stub = path.join(target, '.claude', 'hooks', 'task-tracker.sh');
   assert.ok(existsSync(stub), 'hook stub missing');
   const stubContent = readFileSync(stub, 'utf8');
   assert.ok(stubContent.includes('node_modules'), 'stub must reference node_modules');
-  assert.ok(!stubContent.includes('CLAUDE_PROJECT_DIR'), 'stub must not reference CLAUDE_PROJECT_DIR');
+  assert.ok(
+    !stubContent.includes('CLAUDE_PROJECT_DIR'),
+    'stub must not reference CLAUDE_PROJECT_DIR'
+  );
 
   // settings.json patched
   const settings = JSON.parse(readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'));
-  assert.ok(settings.hooks?.SessionStart?.some(h => h.command?.includes('task-tracker.sh')), 'SessionStart hook missing');
+  assert.ok(
+    settings.hooks?.SessionStart?.some((h) => h.command?.includes('task-tracker.sh')),
+    'SessionStart hook missing'
+  );
 
   // .gitignore entries written
   const gitignore = readFileSync(path.join(target, '.gitignore'), 'utf8');
@@ -69,7 +82,10 @@ try {
   assert.ok(gitignore.includes('.claude/task-tracker-queue.json'), 'queue gitignore missing');
 
   // scripts NOT copied to project
-  assert.ok(!existsSync(path.join(target, 'scripts', 'task-tracker')), 'scripts/task-tracker must NOT be copied');
+  assert.ok(
+    !existsSync(path.join(target, 'scripts', 'task-tracker')),
+    'scripts/task-tracker must NOT be copied'
+  );
   assert.ok(!existsSync(path.join(target, 'scripts', 'gh')), 'scripts/gh must NOT be copied');
 
   console.log('install.test.mjs: all assertions passed');
@@ -93,11 +109,13 @@ Expected: assertion failure — either `scripts/task-tracker` is found (because 
 The hook will live at `node_modules/@burson.kendrick/claude-gh-task-manager/hooks/task-tracker.sh`. It currently resolves `hook-handler.mjs` via `$CLAUDE_PROJECT_DIR/scripts/task-tracker/` — that path won't exist after this change. Use the hook file's own directory instead.
 
 **Files:**
+
 - Modify: `hooks/task-tracker.sh:23-27`
 
 - [ ] **Step 1: Replace the SCRIPT line**
 
 Find:
+
 ```bash
 SCRIPT="$CLAUDE_PROJECT_DIR/scripts/task-tracker/hook-handler.mjs"
 if [ ! -f "$SCRIPT" ]; then
@@ -107,6 +125,7 @@ fi
 ```
 
 Replace with:
+
 ```bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$SCRIPT_DIR/../scripts/task-tracker/hook-handler.mjs"
@@ -123,6 +142,7 @@ grep -n "SCRIPT" hooks/task-tracker.sh
 ```
 
 Expected output:
+
 ```
 8:SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 9:SCRIPT="$SCRIPT_DIR/../scripts/task-tracker/hook-handler.mjs"
@@ -146,16 +166,19 @@ git commit -m "fix(hooks): resolve hook-handler.mjs relative to hook file, not C
 One line at the bottom calls `task-tracker.mjs` via the project's `scripts/` path.
 
 **Files:**
+
 - Modify: `scripts/gh/move-state.sh:93`
 
 - [ ] **Step 1: Replace the node call**
 
 Find (near the bottom of the file):
+
 ```bash
     node "$REPO_ROOT/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
 ```
 
 Replace with:
+
 ```bash
     node "$REPO_ROOT/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
 ```
@@ -167,6 +190,7 @@ grep -n "task-tracker.mjs" scripts/gh/move-state.sh
 ```
 
 Expected:
+
 ```
 93:    node "$REPO_ROOT/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" end 2>/dev/null || true
 ```
@@ -185,16 +209,19 @@ git commit -m "fix(gh): call task-tracker.mjs from node_modules, not project scr
 Four lines reference `$CLAUDE_PROJECT_DIR/scripts/...`. Update them all.
 
 **Files:**
+
 - Modify: `skill/SKILL.md` lines 33, 55, 78, 83
 
 - [ ] **Step 1: Update the task-tracker CLI invocation (line 33)**
 
 Find:
+
 ```
 node "$CLAUDE_PROJECT_DIR/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
 ```
 
 Replace with:
+
 ```
 node "$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
 ```
@@ -202,11 +229,13 @@ node "$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/s
 - [ ] **Step 2: Update the three move-state.sh invocations (lines 55, 78, 83)**
 
 Find all occurrences of:
+
 ```
 "$CLAUDE_PROJECT_DIR/scripts/gh/move-state.sh"
 ```
 
 Replace with:
+
 ```
 "$CLAUDE_PROJECT_DIR/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/move-state.sh"
 ```
@@ -233,6 +262,7 @@ git commit -m "fix(skill): update script paths to reference node_modules"
 This is the largest change. Remove script copying, add stub writer, add gitignore patcher, fix `cmdInit`.
 
 **Files:**
+
 - Modify: `bin/cli.mjs`
 
 - [ ] **Step 1: Remove `copyDir` and the two script-copy blocks**
@@ -240,29 +270,34 @@ This is the largest change. Remove script copying, add stub writer, add gitignor
 Delete the entire `copyDir` function (lines 28–39).
 
 In `cmdInstall`, delete:
-```js
-  // 4. Scripts — task-tracker
-  const ttSrc = join(PKG_ROOT, 'scripts', 'task-tracker');
-  const ttDest = join(targetDir, 'scripts', 'task-tracker');
-  copyDir(ttSrc, ttDest);
-  ok(`Scripts:  scripts/task-tracker/`);
 
-  // 5. Scripts — gh helpers
-  const ghSrc = join(PKG_ROOT, 'scripts', 'gh');
-  const ghDest = join(targetDir, 'scripts', 'gh');
-  mkdirSync(ghDest, { recursive: true });
-  for (const f of readdirSync(ghSrc)) {
-    const src = join(ghSrc, f);
-    const dest = join(ghDest, f);
-    // Don't overwrite existing user-customised gh scripts
-    if (!existsSync(dest)) {
-      copyFileSync(src, dest);
-      try { execFileSync('chmod', ['+x', dest]); } catch { /* ignore */ }
-    } else {
-      console.log(`  ${dim('○')}  Skipped (exists): scripts/gh/${f}`);
+```js
+// 4. Scripts — task-tracker
+const ttSrc = join(PKG_ROOT, 'scripts', 'task-tracker');
+const ttDest = join(targetDir, 'scripts', 'task-tracker');
+copyDir(ttSrc, ttDest);
+ok(`Scripts:  scripts/task-tracker/`);
+
+// 5. Scripts — gh helpers
+const ghSrc = join(PKG_ROOT, 'scripts', 'gh');
+const ghDest = join(targetDir, 'scripts', 'gh');
+mkdirSync(ghDest, { recursive: true });
+for (const f of readdirSync(ghSrc)) {
+  const src = join(ghSrc, f);
+  const dest = join(ghDest, f);
+  // Don't overwrite existing user-customised gh scripts
+  if (!existsSync(dest)) {
+    copyFileSync(src, dest);
+    try {
+      execFileSync('chmod', ['+x', dest]);
+    } catch {
+      /* ignore */
     }
+  } else {
+    console.log(`  ${dim('○')}  Skipped (exists): scripts/gh/${f}`);
   }
-  ok(`Scripts:  scripts/gh/ (move-state.sh, set-priority.sh, init-project-config.sh)`);
+}
+ok(`Scripts:  scripts/gh/ (move-state.sh, set-priority.sh, init-project-config.sh)`);
 ```
 
 Also remove unused imports: `readdirSync`, `statSync` from the `fs` import line.
@@ -270,33 +305,43 @@ Also remove unused imports: `readdirSync`, `statSync` from the `fs` import line.
 - [ ] **Step 2: Replace hook copy with stub writer**
 
 Delete:
+
 ```js
-  // 3. Hook
-  const hookDest = join(targetDir, '.claude', 'hooks');
-  mkdirSync(hookDest, { recursive: true });
-  copyFileSync(join(PKG_ROOT, 'hooks', 'task-tracker.sh'), join(hookDest, 'task-tracker.sh'));
-  // Ensure executable
-  try { execFileSync('chmod', ['+x', join(hookDest, 'task-tracker.sh')]); } catch { /* ignore on Windows */ }
-  ok(`Hook:     .claude/hooks/task-tracker.sh`);
+// 3. Hook
+const hookDest = join(targetDir, '.claude', 'hooks');
+mkdirSync(hookDest, { recursive: true });
+copyFileSync(join(PKG_ROOT, 'hooks', 'task-tracker.sh'), join(hookDest, 'task-tracker.sh'));
+// Ensure executable
+try {
+  execFileSync('chmod', ['+x', join(hookDest, 'task-tracker.sh')]);
+} catch {
+  /* ignore on Windows */
+}
+ok(`Hook:     .claude/hooks/task-tracker.sh`);
 ```
 
 Replace with:
+
 ```js
-  // 3. Hook stub — delegates to node_modules package
-  const hookDest = join(targetDir, '.claude', 'hooks');
-  mkdirSync(hookDest, { recursive: true });
-  const hookStubPath = join(hookDest, 'task-tracker.sh');
-  const PKG_NAME = '@burson.kendrick/claude-gh-task-manager';
-  const hookStub = [
-    '#!/usr/bin/env bash',
-    `# Generated by ${PKG_NAME} install — do not edit.`,
-    `PKG="$(cd "$(dirname "$0")/../.." && pwd)/node_modules/${PKG_NAME}"`,
-    'exec bash "$PKG/hooks/task-tracker.sh"',
-    '',
-  ].join('\n');
-  writeFileSync(hookStubPath, hookStub, 'utf8');
-  try { execFileSync('chmod', ['+x', hookStubPath]); } catch { /* ignore on Windows */ }
-  ok(`Hook:     .claude/hooks/task-tracker.sh (stub → node_modules)`);
+// 3. Hook stub — delegates to node_modules package
+const hookDest = join(targetDir, '.claude', 'hooks');
+mkdirSync(hookDest, { recursive: true });
+const hookStubPath = join(hookDest, 'task-tracker.sh');
+const PKG_NAME = '@burson.kendrick/claude-gh-task-manager';
+const hookStub = [
+  '#!/usr/bin/env bash',
+  `# Generated by ${PKG_NAME} install — do not edit.`,
+  `PKG="$(cd "$(dirname "$0")/../.." && pwd)/node_modules/${PKG_NAME}"`,
+  'exec bash "$PKG/hooks/task-tracker.sh"',
+  '',
+].join('\n');
+writeFileSync(hookStubPath, hookStub, 'utf8');
+try {
+  execFileSync('chmod', ['+x', hookStubPath]);
+} catch {
+  /* ignore on Windows */
+}
+ok(`Hook:     .claude/hooks/task-tracker.sh (stub → node_modules)`);
 ```
 
 - [ ] **Step 3: Add `patchGitignore` function**
@@ -306,10 +351,7 @@ Add this function after `patchSettingsJson`:
 ```js
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
-  const entries = [
-    '.claude/task-tracker-state.json',
-    '.claude/task-tracker-queue.json',
-  ];
+  const entries = ['.claude/task-tracker-state.json', '.claude/task-tracker-queue.json'];
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
   for (const entry of entries) {
@@ -327,25 +369,27 @@ function patchGitignore(targetDir) {
 After the `patchSettingsJson` call and its `ok(...)` line, add:
 
 ```js
-  patchGitignore(targetDir);
-  ok(`Gitignore: .claude/task-tracker-state.json, .claude/task-tracker-queue.json`);
+patchGitignore(targetDir);
+ok(`Gitignore: .claude/task-tracker-state.json, .claude/task-tracker-queue.json`);
 ```
 
 - [ ] **Step 5: Fix `cmdInit` to use `PKG_ROOT`**
 
 Replace:
+
 ```js
-  const initScript = join(targetDir, 'scripts', 'gh', 'init-project-config.sh');
-  if (!existsSync(initScript)) {
-    err(`init script not found at: ${initScript}`);
-    err('Run "npx claude-gh-task-manager install" first.');
-    process.exit(1);
-  }
+const initScript = join(targetDir, 'scripts', 'gh', 'init-project-config.sh');
+if (!existsSync(initScript)) {
+  err(`init script not found at: ${initScript}`);
+  err('Run "npx claude-gh-task-manager install" first.');
+  process.exit(1);
+}
 ```
 
 With:
+
 ```js
-  const initScript = join(PKG_ROOT, 'scripts', 'gh', 'init-project-config.sh');
+const initScript = join(PKG_ROOT, 'scripts', 'gh', 'init-project-config.sh');
 ```
 
 (Remove the existence check — the script is always present in the package.)
@@ -353,6 +397,7 @@ With:
 - [ ] **Step 6: Verify the fs import line only imports what's used**
 
 The updated import should be:
+
 ```js
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 ```
@@ -377,6 +422,7 @@ node scripts/task-tracker/tests/install.test.mjs
 ```
 
 Expected:
+
 ```
 install.test.mjs: all assertions passed
 ```
@@ -414,6 +460,7 @@ node bin/cli.mjs install --target "$TMPDIR"
 ```
 
 Expected output (approximately):
+
 ```
 Installing claude-gh-task-manager
   → /tmp/...
@@ -436,6 +483,7 @@ cat "$TMPDIR/.claude/hooks/task-tracker.sh"
 ```
 
 Expected stub:
+
 ```bash
 #!/usr/bin/env bash
 # Generated by @burson.kendrick/claude-gh-task-manager install — do not edit.
@@ -450,6 +498,7 @@ cat "$TMPDIR/.gitignore"
 ```
 
 Expected to contain:
+
 ```
 .claude/task-tracker-state.json
 .claude/task-tracker-queue.json

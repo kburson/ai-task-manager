@@ -113,8 +113,11 @@ function defaultPaths() {
 
 function readJson(p) {
   if (!existsSync(p)) return {};
-  try { return JSON.parse(readFileSync(p, 'utf8')); }
-  catch { return {}; }
+  try {
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch {
+    return {};
+  }
 }
 
 // Return the raw project-config JSON without merging defaults. Used by the
@@ -122,7 +125,8 @@ function readJson(p) {
 export function rawProjectConfig(paths = {}) {
   const defaults = defaultPaths();
   const projectPath = paths.projectPath ?? defaults.projectPath;
-  const legacyProjectPath = paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
+  const legacyProjectPath =
+    paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
   if (existsSync(projectPath)) return readJson(projectPath);
   if (legacyProjectPath && existsSync(legacyProjectPath)) return readJson(legacyProjectPath);
   return {};
@@ -131,16 +135,35 @@ export function rawProjectConfig(paths = {}) {
 export function loadConfig(paths = {}) {
   const defaults = defaultPaths();
   const projectPath = paths.projectPath ?? defaults.projectPath;
-  const legacyProjectPath = paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
+  const legacyProjectPath =
+    paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
   const userPath = paths.userPath ?? defaults.userPath;
   const legacyUserPath = paths.legacyUserPath ?? (paths.userPath ? null : defaults.legacyUserPath);
-  const user = existsSync(userPath) ? readJson(userPath) : (legacyUserPath ? readJson(legacyUserPath) : {});
-  const project = existsSync(projectPath) ? readJson(projectPath) : (legacyProjectPath ? readJson(legacyProjectPath) : {});
+  const user = existsSync(userPath)
+    ? readJson(userPath)
+    : legacyUserPath
+      ? readJson(legacyUserPath)
+      : {};
+  const project = existsSync(projectPath)
+    ? readJson(projectPath)
+    : legacyProjectPath
+      ? readJson(legacyProjectPath)
+      : {};
   const merged = { ...DEFAULTS };
   const sources = {};
   for (const k of Object.keys(DEFAULTS)) sources[k] = 'default';
-  for (const [k, v] of Object.entries(user)) { if (k in DEFAULTS) { merged[k] = v; sources[k] = 'user'; } }
-  for (const [k, v] of Object.entries(project)) { if (k in DEFAULTS) { merged[k] = v; sources[k] = 'project'; } }
+  for (const [k, v] of Object.entries(user)) {
+    if (k in DEFAULTS) {
+      merged[k] = v;
+      sources[k] = 'user';
+    }
+  }
+  for (const [k, v] of Object.entries(project)) {
+    if (k in DEFAULTS) {
+      merged[k] = v;
+      sources[k] = 'project';
+    }
+  }
   if (merged.fieldIds && typeof merged.fieldIds === 'object') {
     merged.fieldEstimate ||= merged.fieldIds.estimate || '';
     merged.fieldEngagedTime ||= merged.fieldIds.engagedTime || merged.fieldIds.actualHours || '';
@@ -171,7 +194,10 @@ function coerce(key, raw) {
     throw new Error(`value for ${key} must be boolean, got: ${raw}`);
   }
   if (t === 'array') {
-    return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+    return String(raw)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
   if (t === 'object') {
     if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) return raw;
@@ -198,21 +224,46 @@ export function setConfigValue(key, rawValue, paths = {}) {
 }
 
 const USER_KEYS = [
-  'repo', 'assignee', 'defaultLabels',
-  'wpm', 'autoEndOnSwitch', 'idleThresholdMinutes', 'reviewPauseThresholdMin', 'recordWallClock', 'hookNetworkTimeoutMs',
+  'repo',
+  'assignee',
+  'defaultLabels',
+  'wpm',
+  'autoEndOnSwitch',
+  'idleThresholdMinutes',
+  'reviewPauseThresholdMin',
+  'recordWallClock',
+  'hookNetworkTimeoutMs',
   'pickupDirective',
-  'gateAnalysisToDevelopment', 'gateReviewToDone',
+  'gateAnalysisToDevelopment',
+  'gateReviewToDone',
   'deadSessionMaxAgeMs',
-  'statePath', 'queuePath',
+  'statePath',
+  'queuePath',
 ];
 
 const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId',
-  'kanbanOptionBacklog', 'kanbanOptionGroom', 'kanbanOptionAnalyze', 'kanbanOptionDevelopment', 'kanbanOptionValidate', 'kanbanOptionReview', 'kanbanOptionDone',
-  'sequenceFieldId', 'sizeFieldId',
-  'fieldIds', 'fieldEstimate', 'fieldEngagedTime', 'fieldSessionTime', 'fieldContextWords', 'fieldSequence', 'fieldStartTime',
-  'priorityFieldId', 'priorityOptionP0', 'priorityOptionP1', 'priorityOptionP2',
+  'kanbanOptionBacklog',
+  'kanbanOptionGroom',
+  'kanbanOptionAnalyze',
+  'kanbanOptionDevelopment',
+  'kanbanOptionValidate',
+  'kanbanOptionReview',
+  'kanbanOptionDone',
+  'sequenceFieldId',
+  'sizeFieldId',
+  'fieldIds',
+  'fieldEstimate',
+  'fieldEngagedTime',
+  'fieldSessionTime',
+  'fieldContextWords',
+  'fieldSequence',
+  'fieldStartTime',
+  'priorityFieldId',
+  'priorityOptionP0',
+  'priorityOptionP1',
+  'priorityOptionP2',
 ];
 
 function marker(src) {
@@ -228,9 +279,12 @@ function formatUserRow(cfg, k) {
 
 function formatInternalRow(cfg, k) {
   const raw = cfg[k];
-  const val = raw && typeof raw === 'object'
-    ? `${Object.keys(raw).length} mapped`
-    : raw ? String(raw).slice(0, 8) + '…' : '(not set)';
+  const val =
+    raw && typeof raw === 'object'
+      ? `${Object.keys(raw).length} mapped`
+      : raw
+        ? String(raw).slice(0, 8) + '…'
+        : '(not set)';
   return `  ${marker(cfg._sources[k])} ${k.padEnd(24)} ${val}`;
 }
 
@@ -238,8 +292,8 @@ export function formatConfig(cfg) {
   return [
     'Task Tracker Config (* = project-local override, ^ = user-global override)\n',
     'Settings  (edit with: /task config <key> <value>)',
-    ...USER_KEYS.map(k => formatUserRow(cfg, k)),
+    ...USER_KEYS.map((k) => formatUserRow(cfg, k)),
     '\nInternal  (managed by: npx ai-task-manager init)',
-    ...INTERNAL_KEYS.map(k => formatInternalRow(cfg, k)),
+    ...INTERNAL_KEYS.map((k) => formatInternalRow(cfg, k)),
   ].join('\n');
 }

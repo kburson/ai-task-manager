@@ -11,9 +11,7 @@ This guide documents the Claude Code settings that work well with `claude-gh-tas
   "autoCompactWindow": 150000,
   "outputStyle": "Concise",
   "model": "claude-sonnet-4-6",
-  "plugins": [
-    "/Users/<you>/.claude/plugins/claude-plugins-official/superpowers"
-  ],
+  "plugins": ["/Users/<you>/.claude/plugins/claude-plugins-official/superpowers"],
   "statusLine": "/Users/<you>/.claude/statusline.sh",
   "hooks": {
     "Notification": [
@@ -85,19 +83,19 @@ Install the [Superpowers plugin](https://github.com/anthropics/claude-code-super
 
 The plugin provides skills invoked via the `Skill` tool. Key skills for this workflow:
 
-| Skill | When to use |
-|---|---|
-| `superpowers:brainstorming` | Before any creative or architectural work |
-| `superpowers:writing-plans` | Before implementation — get to 95% confidence first |
-| `superpowers:executing-plans` | Execute an approved implementation plan step by step |
-| `superpowers:subagent-driven-development` | Parallel implementation with multiple agents |
-| `superpowers:dispatching-parallel-agents` | Independent tasks that can run concurrently |
-| `superpowers:systematic-debugging` | Any bug or test failure |
-| `superpowers:verification-before-completion` | Before claiming work is done |
-| `superpowers:requesting-code-review` | After completing a logical chunk |
-| `superpowers:finishing-a-development-branch` | After all tasks complete — wrap up the branch |
-| `superpowers:using-git-worktrees` | Feature work that needs isolation |
-| `superpowers:test-driven-development` | When implementing testable features |
+| Skill                                        | When to use                                          |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `superpowers:brainstorming`                  | Before any creative or architectural work            |
+| `superpowers:writing-plans`                  | Before implementation — get to 95% confidence first  |
+| `superpowers:executing-plans`                | Execute an approved implementation plan step by step |
+| `superpowers:subagent-driven-development`    | Parallel implementation with multiple agents         |
+| `superpowers:dispatching-parallel-agents`    | Independent tasks that can run concurrently          |
+| `superpowers:systematic-debugging`           | Any bug or test failure                              |
+| `superpowers:verification-before-completion` | Before claiming work is done                         |
+| `superpowers:requesting-code-review`         | After completing a logical chunk                     |
+| `superpowers:finishing-a-development-branch` | After all tasks complete — wrap up the branch        |
+| `superpowers:using-git-worktrees`            | Feature work that needs isolation                    |
+| `superpowers:test-driven-development`        | When implementing testable features                  |
 
 ### Codex Bootstrap
 

@@ -39,7 +39,11 @@ async function main() {
     process.exit(2);
   }
 
-  const sizingWarn = backlogSizingWarning({ status: args.status, size: args.size, estimate: args.estimate });
+  const sizingWarn = backlogSizingWarning({
+    status: args.status,
+    size: args.size,
+    estimate: args.estimate,
+  });
   if (sizingWarn) process.stderr.write(`${sizingWarn}\n`);
 
   const cfg = loadConfig();
@@ -59,11 +63,12 @@ async function main() {
     sequence: numberFlag(args.sequence, '--sequence'),
   });
 
-  console.log(`✓ #${issueNumber} tethered to ${result.projectTitle || cfg.projectId}: ${result.itemId}`);
+  console.log(
+    `✓ #${issueNumber} tethered to ${result.projectTitle || cfg.projectId}: ${result.itemId}`
+  );
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(`project-tether: ${err.message}`);
   process.exit(1);
 });
-

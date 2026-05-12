@@ -12,7 +12,9 @@ mkdirSync(binDir);
 mkdirSync(targetDir);
 
 const ghMock = join(binDir, 'gh');
-writeFileSync(ghMock, `#!/bin/bash
+writeFileSync(
+  ghMock,
+  `#!/bin/bash
 set -euo pipefail
 echo "$*" >> "${temp}/gh-calls.log"
 
@@ -110,24 +112,26 @@ fi
 
 echo "unexpected gh call: $*" >&2
 exit 1
-`);
+`
+);
 chmodSync(ghMock, 0o755);
 
-const input = [
-  '', // use detected repo
-  '', // default to new project
-  '', // default title
-  '', // default Feature Release template
-  '', // status field default
-  '', // R4R missing — accept default [new] to create it
-  '', // spare prompt response
-  '', // spare prompt response
-  '', // spare prompt response
-  '', // spare prompt response
-  '', // spare prompt response
-  '', // spare prompt response
-  '', // spare prompt response
-].join('\n') + '\n';
+const input =
+  [
+    '', // use detected repo
+    '', // default to new project
+    '', // default title
+    '', // default Feature Release template
+    '', // status field default
+    '', // R4R missing — accept default [new] to create it
+    '', // spare prompt response
+    '', // spare prompt response
+    '', // spare prompt response
+    '', // spare prompt response
+    '', // spare prompt response
+    '', // spare prompt response
+    '', // spare prompt response
+  ].join('\n') + '\n';
 
 const result = spawnSync('bash', [script, '--target', targetDir], {
   input,

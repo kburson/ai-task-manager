@@ -12,18 +12,32 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import {
-  detectGitCommit, parseMarker, buildInitialTrail, buildRow, appendCommitRow,
-  updateMarker, hasWorktreeCols, TRAIL_HEADING,
+  detectGitCommit,
+  parseMarker,
+  buildInitialTrail,
+  buildRow,
+  appendCommitRow,
+  updateMarker,
+  hasWorktreeCols,
+  TRAIL_HEADING,
 } from './lib/commit-trail.mjs';
 
 const pexec = promisify(execFile);
 
 function readStdin() {
-  try { return readFileSync(0, 'utf8'); } catch { return ''; }
+  try {
+    return readFileSync(0, 'utf8');
+  } catch {
+    return '';
+  }
 }
 
 function parsePayload(raw) {
-  try { return JSON.parse(raw); } catch { return null; }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function findProjectDir(startDir) {
@@ -47,7 +61,9 @@ function loadActiveIssue(projectDir) {
     if (!active || active === 'plan') return null;
     const m = String(active).match(/^#?(\d+)$/);
     return m ? m[1] : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function loadRepo(projectDir) {
@@ -56,7 +72,9 @@ function loadRepo(projectDir) {
   try {
     const c = JSON.parse(readFileSync(cfgPath, 'utf8'));
     return c.repo || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 async function gitInfo(cwd) {
@@ -85,9 +103,11 @@ async function ghJson(args, { timeoutMs = 5000 } = {}) {
 }
 
 export async function findTrailComment(issueNumber, repo, { timeoutMs } = {}) {
-  const out = await ghJson(['issue', 'view', issueNumber, '-R', repo, '--json', 'comments'], { timeoutMs });
+  const out = await ghJson(['issue', 'view', issueNumber, '-R', repo, '--json', 'comments'], {
+    timeoutMs,
+  });
   const { comments } = JSON.parse(out);
-  const hit = comments.find(c => c.body && c.body.startsWith(TRAIL_HEADING));
+  const hit = comments.find((c) => c.body && c.body.startsWith(TRAIL_HEADING));
   return hit ? { id: hit.id, url: hit.url, body: hit.body } : null;
 }
 
@@ -100,7 +120,10 @@ export async function updateTrailComment(commentId, body, { timeoutMs } = {}) {
     mutation($id: ID!, $body: String!) {
       updateIssueComment(input: { id: $id, body: $body }) { issueComment { id } }
     }`;
-  await ghJson(['api', 'graphql', '-f', `query=${mutation}`, '-f', `id=${commentId}`, '-f', `body=${body}`], { timeoutMs });
+  await ghJson(
+    ['api', 'graphql', '-f', `query=${mutation}`, '-f', `id=${commentId}`, '-f', `body=${body}`],
+    { timeoutMs }
+  );
 }
 
 export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 5000, deps = {} }) {
@@ -148,7 +171,9 @@ async function main() {
   if (!repo) return;
 
   let info;
-  try { info = await gitInfo(cwd); } catch (err) {
+  try {
+    info = await gitInfo(cwd);
+  } catch (err) {
     process.stderr.write(`[commit-trail] git error: ${err.message}\n`);
     return;
   }
@@ -161,9 +186,11 @@ async function main() {
   }
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('commit-trail-handler.mjs');
+const isMain =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith('commit-trail-handler.mjs');
 if (isMain) {
-  main().catch(err => {
+  main().catch((err) => {
     process.stderr.write(`[commit-trail] ${err.message}\n`);
     process.exit(0);
   });

@@ -25,9 +25,9 @@ import { APPROVAL_MARKER_RE, approvalMarker } from './verbs/approve.mjs';
 
 const pexec = promisify(execFile);
 
-const LEGACY_CHECKED_RE   = /^- \[x\] Plan approved by human\s*$/m;
+const LEGACY_CHECKED_RE = /^- \[x\] Plan approved by human\s*$/m;
 const LEGACY_UNCHECKED_RE = /^- \[ \] Plan approved by human\s*$/m;
-const LEGACY_ANY_LINE_RE  = /^[ \t]*- \[[ x]\] Plan approved by human\s*\r?\n?/gmi;
+const LEGACY_ANY_LINE_RE = /^[ \t]*- \[[ x]\] Plan approved by human\s*\r?\n?/gim;
 
 export function migratePlanApprovedBody(body, { now = () => new Date().toISOString() } = {}) {
   const src = String(body || '');
@@ -57,7 +57,11 @@ export function migratePlanApprovedBody(body, { now = () => new Date().toISOStri
 }
 
 async function fetchBody(issueNumber, repo) {
-  const { stdout } = await pexec('gh', ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'], { timeout: 15000 });
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
+    { timeout: 15000 }
+  );
   return stdout.replace(/\r\n/g, '\n');
 }
 
@@ -65,16 +69,21 @@ async function writeBody(issueNumber, repo, body) {
   const tmp = path.join(tmpdir(), `aitm-migrate-plan-${process.pid}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: 15000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
 export async function runMigrate({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('migrate-plan-approved: issueNumber is required');
   if (!cfg) throw new Error('migrate-plan-approved: cfg is required');
-  const read  = deps.fetchIssueBody || (async () => ({ body: await fetchBody(issueNumber, cfg.repo) }));
+  const read =
+    deps.fetchIssueBody || (async () => ({ body: await fetchBody(issueNumber, cfg.repo) }));
   const write = deps.writeIssueBody || (async ({ body }) => writeBody(issueNumber, cfg.repo, body));
 
   const { body } = await read({ issueNumber, repo: cfg.repo });
@@ -87,8 +96,11 @@ export async function runMigrate({ issueNumber, cfg, deps = {} } = {}) {
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

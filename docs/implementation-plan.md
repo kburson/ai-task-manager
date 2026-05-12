@@ -41,45 +41,54 @@ claude-gh-task-manager/
 
 Copy from `ocp-services`:
 
-| Source | Destination in target repo |
-|---|---|
-| `.claude/skills/task/SKILL.md` | `skill/SKILL.md` |
-| `.claude/hooks/task-tracker.sh` | `hooks/task-tracker.sh` |
-| `scripts/task-tracker/*.mjs` | `scripts/task-tracker/` |
-| `scripts/task-tracker/tests/` | `scripts/task-tracker/tests/` |
-| `scripts/gh/move-state.sh` | `scripts/gh/move-state.sh` |
-| `scripts/gh/set-priority.sh` | `scripts/gh/set-priority.sh` |
-| `.claude/skills/task-tracker/DESIGN.md` | `docs/DESIGN.md` |
+| Source                                  | Destination in target repo    |
+| --------------------------------------- | ----------------------------- |
+| `.claude/skills/task/SKILL.md`          | `skill/SKILL.md`              |
+| `.claude/hooks/task-tracker.sh`         | `hooks/task-tracker.sh`       |
+| `scripts/task-tracker/*.mjs`            | `scripts/task-tracker/`       |
+| `scripts/task-tracker/tests/`           | `scripts/task-tracker/tests/` |
+| `scripts/gh/move-state.sh`              | `scripts/gh/move-state.sh`    |
+| `scripts/gh/set-priority.sh`            | `scripts/gh/set-priority.sh`  |
+| `.claude/skills/task-tracker/DESIGN.md` | `docs/DESIGN.md`              |
 
 ## Specific Code Changes
 
 ### 1. `scripts/task-tracker/config.mjs` — clear hardcoded defaults
+
 - Change DEFAULTS: `projectId: ''`, `fieldActualMinutes: ''`, `fieldContextWords: ''`, `fieldActualHours: ''`, `repo: ''`
 - Add `assignee: '@me'` (replaces hardcoded `kburson`)
 - Add new keys: `kanbanFieldId: ''`, `kanbanOptionBacklog: ''`, `kanbanOptionReady: ''`, `kanbanOptionInProgress: ''`, `kanbanOptionInReview: ''`, `kanbanOptionDone: ''`
 
 ### 2. `scripts/task-tracker/task-tracker.mjs` — one line change
+
 - `createNewIssue`: replace `'--assignee', 'kburson'` → `'--assignee', cfg.assignee || '@me'`
 
 ### 3. `skill/SKILL.md` — generalize the GraphQL query
+
 - Replace the hardcoded `-f owner=kburson -f repo=options-co-pilot` with dynamic extraction from `cfg.repo` (which is `owner/repo` format). Instruction: parse with `const [owner, repo] = cfg.repo.split('/')`.
 - Remove the hardcoded path reference to `docs/superpowers/specs/...` — point to `docs/DESIGN.md` in the package instead.
 
 ### 4. `scripts/gh/move-state.sh` — read IDs from config
+
 Replace hardcoded `PROJECT_ID`, `FIELD_ID`, and all `OPTION_ID` assignments with config reads using python3:
+
 ```bash
 CONFIG_FILE="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/task-tracker.json"
 read_config() { python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print(d.get('$1',''))" 2>/dev/null; }
 PROJECT_ID=$(read_config projectId)
 FIELD_ID=$(read_config kanbanFieldId)
 ```
+
 Map each state to `kanbanOption<State>` config key. Error with `"Run: npx claude-gh-task-manager init"` if any ID is empty.
 
 ### 5. `scripts/gh/set-priority.sh` — same pattern
+
 Read `projectId` and priority field/option IDs from config. (Currently also has hardcoded IDs.)
 
 ### 6. NEW: `scripts/gh/init-project-config.sh`
+
 Interactive shell script that:
+
 1. Prompts for `repo` (e.g. `owner/my-project`) and GitHub Project number
 2. Queries GH API for project node ID: `gh project list --owner <owner> --format json`
 3. Queries project fields to find Status field ID + all option IDs
@@ -87,19 +96,23 @@ Interactive shell script that:
 5. Prints a summary of what was written
 
 ### 7. NEW: `bin/cli.mjs` — npm package CLI entry
+
 ES module. Supports two commands:
 
 **`install [--target <dir>]`** (default target: `process.cwd()`):
+
 1. Copy `skill/SKILL.md` → `<target>/.claude/skills/task/SKILL.md`
-2. Copy `hooks/task-tracker.sh` → `<target>/.claude/hooks/task-tracker.sh`  
+2. Copy `hooks/task-tracker.sh` → `<target>/.claude/hooks/task-tracker.sh`
 3. Copy `scripts/` → `<target>/scripts/task-tracker/` and `<target>/scripts/gh/`
 4. Patch `<target>/.claude/settings.json`: add hook registrations for SessionStart, PreCompact, PostCompact pointing to `task-tracker.sh`
 5. Print next step: "Run `npx claude-gh-task-manager init` to configure your GitHub project."
 
 **`init [--target <dir>]`**:
+
 - Shell out to `scripts/gh/init-project-config.sh` in the installed location
 
 ### 8. NEW: `package.json`
+
 ```json
 {
   "name": "claude-gh-task-manager",
@@ -113,12 +126,15 @@ ES module. Supports two commands:
 ```
 
 ### 9. NEW: `README.md`
+
 Sections: Overview, Prerequisites (`node >=18`, `gh` CLI authenticated), Quick Start (3 commands: npx install, npx init, /task #N), Config reference, Kanban setup details, Troubleshooting.
 
 ### 10. `docs/DESIGN.md`
+
 Copy of the design doc with:
+
 - Remove the `<!-- copy of ... -->` header comment
-- Remove "Parent issue: #107" reference  
+- Remove "Parent issue: #107" reference
 - Replace `kburson/options-co-pilot` with placeholder `owner/repo`
 
 ## Critical Files to Edit (in target repo after copy)

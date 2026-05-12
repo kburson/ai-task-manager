@@ -57,12 +57,18 @@ function evaluateSectionRule(body, lines, rule) {
   if (!rule.trigger.test(body)) return null; // gate doesn't fire
   const headingIdx = findHeadingIndex(lines, rule.requireSection);
   if (headingIdx === -1) {
-    return { rule: rule.name, reason: `ticked but no section matching ${rule.requireSection} found` };
+    return {
+      rule: rule.name,
+      reason: `ticked but no section matching ${rule.requireSection} found`,
+    };
   }
   const end = nextSectionEnd(lines, headingIdx);
-  const nonEmpty = lines.slice(headingIdx + 1, end).filter(l => l.trim().length > 0).length;
+  const nonEmpty = lines.slice(headingIdx + 1, end).filter((l) => l.trim().length > 0).length;
   if (nonEmpty < rule.minNonEmptyLines) {
-    return { rule: rule.name, reason: `section has ${nonEmpty} non-empty line(s); minimum ${rule.minNonEmptyLines}` };
+    return {
+      rule: rule.name,
+      reason: `section has ${nonEmpty} non-empty line(s); minimum ${rule.minNonEmptyLines}`,
+    };
   }
   return null;
 }
@@ -77,7 +83,10 @@ function evaluateAllCheckedRule(lines, rule) {
     if (m && m[1] === ' ') unchecked.push(m[2].trim());
   }
   if (unchecked.length > 0) {
-    return { rule: rule.name, reason: `${unchecked.length} unchecked item(s) under heading: ${unchecked.slice(0, 3).join('; ')}${unchecked.length > 3 ? '; …' : ''}` };
+    return {
+      rule: rule.name,
+      reason: `${unchecked.length} unchecked item(s) under heading: ${unchecked.slice(0, 3).join('; ')}${unchecked.length > 3 ? '; …' : ''}`,
+    };
   }
   return null;
 }
@@ -87,20 +96,32 @@ function evaluatePlacementRule(body, lines, rule) {
   if (triggerIdx === -1) return null; // vacuous: rule only fires when trigger heading is present
   const afterIdx = findHeadingIndex(lines, rule.mustComeAfter);
   if (afterIdx === -1) {
-    return { rule: rule.name, reason: `trigger heading present but anchor heading matching ${rule.mustComeAfter} is missing` };
+    return {
+      rule: rule.name,
+      reason: `trigger heading present but anchor heading matching ${rule.mustComeAfter} is missing`,
+    };
   }
   if (triggerIdx <= afterIdx) {
-    return { rule: rule.name, reason: `trigger heading at line ${triggerIdx + 1} must appear AFTER anchor heading at line ${afterIdx + 1}` };
+    return {
+      rule: rule.name,
+      reason: `trigger heading at line ${triggerIdx + 1} must appear AFTER anchor heading at line ${afterIdx + 1}`,
+    };
   }
   const beforeMatch = body.match(rule.mustComeBefore);
   if (!beforeMatch) {
-    return { rule: rule.name, reason: `trigger heading present but boundary marker matching ${rule.mustComeBefore} is missing` };
+    return {
+      rule: rule.name,
+      reason: `trigger heading present but boundary marker matching ${rule.mustComeBefore} is missing`,
+    };
   }
   const beforeOffset = beforeMatch.index;
   let triggerOffset = 0;
   for (let i = 0; i < triggerIdx; i++) triggerOffset += lines[i].length + 1;
   if (triggerOffset >= beforeOffset) {
-    return { rule: rule.name, reason: `trigger heading must appear BEFORE boundary marker ${rule.mustComeBefore}` };
+    return {
+      rule: rule.name,
+      reason: `trigger heading must appear BEFORE boundary marker ${rule.mustComeBefore}`,
+    };
   }
   return null;
 }
@@ -129,17 +150,17 @@ export function checkRequiredFields(fieldValues = {}, labels = []) {
   }
   if (!Array.isArray(labels) || labels.length === 0) missing.push('labels');
   if (missing.length === 0) return [];
-  return missing.map(name => ({
+  return missing.map((name) => ({
     kind: 'field-required',
     message: `field-required: ${name} is empty`,
   }));
 }
 
 const REQUIRED_BODY_SECTIONS = [
-  { name: 'Acceptance Criteria',  re: /^##\s+Acceptance Criteria\b/im },
-  { name: 'Definition of Done',   re: /^#{2,3}\s+Definition of Done\b/im },
-  { name: 'Pickup Directive',     re: /^##\s+Pickup Directive\b/im },
-  { name: 'fields-block marker',  re: /<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/i },
+  { name: 'Acceptance Criteria', re: /^##\s+Acceptance Criteria\b/im },
+  { name: 'Definition of Done', re: /^#{2,3}\s+Definition of Done\b/im },
+  { name: 'Pickup Directive', re: /^##\s+Pickup Directive\b/im },
+  { name: 'fields-block marker', re: /<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/i },
 ];
 
 export function checkRequiredBodySections(body = '') {
@@ -173,22 +194,31 @@ import { STATES as STATE_MACHINE_STATES } from '../state-machine.mjs';
 
 const PARENT_ADMIT_INDEX = STATE_MACHINE_STATES.indexOf('development');
 
-export async function checkParentAdmission({ parentEpicNumber, repo, projectId, readParentStatus }) {
+export async function checkParentAdmission({
+  parentEpicNumber,
+  repo,
+  projectId,
+  readParentStatus,
+}) {
   if (parentEpicNumber == null) return [];
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
   const state = raw == null ? null : String(raw).toLowerCase();
   if (state == null) {
-    return [{
-      kind: 'parent-admission',
-      message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to Development first`,
-    }];
+    return [
+      {
+        kind: 'parent-admission',
+        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to Development first`,
+      },
+    ];
   }
   const idx = STATE_MACHINE_STATES.indexOf(state);
   if (idx >= 0 && idx >= PARENT_ADMIT_INDEX) return [];
-  return [{
-    kind: 'parent-admission',
-    message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to Development first`,
-  }];
+  return [
+    {
+      kind: 'parent-admission',
+      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to Development first`,
+    },
+  ];
 }
 
 export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, projectId, admit }) {
@@ -196,24 +226,37 @@ export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, pro
   if (parentEpicNumber == null) return [];
   const result = await admit({ parentEpicNumber, sequence, repo, projectId });
   if (result.ok) return [];
-  return result.blockers.map(b => ({
+  return result.blockers.map((b) => ({
     kind: 'wave-admission',
     message: `wave-admission: sibling #${b.issue} (sequence ${b.sequence}, state ${b.state}) blocks lower-Sequence wait`,
   }));
 }
 
 const CASCADE_OK_STATES = new Set([
-  'groom', 'analyze', 'development', 'validate', 'review', 'done',
+  'groom',
+  'analyze',
+  'development',
+  'validate',
+  'review',
+  'done',
 ]);
 
-export async function checkCascadeGrooming({ isEpic, epicNumber, repo, projectId, fetchSubIssueStates }) {
+export async function checkCascadeGrooming({
+  isEpic,
+  epicNumber,
+  repo,
+  projectId,
+  fetchSubIssueStates,
+}) {
   // Non-epic bypass.
   if (!isEpic) return [];
   if (typeof fetchSubIssueStates !== 'function') {
-    return [{
-      kind: 'cascade-grooming',
-      message: 'cascade-grooming: no sub-issue fetcher configured',
-    }];
+    return [
+      {
+        kind: 'cascade-grooming',
+        message: 'cascade-grooming: no sub-issue fetcher configured',
+      },
+    ];
   }
   const subs = await fetchSubIssueStates({ epicNumber, repo, projectId });
   const refusals = [];

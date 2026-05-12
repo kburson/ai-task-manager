@@ -63,7 +63,12 @@ mkdirSync(path.dirname(writeLegacyPath), { recursive: true });
 writeFileSync(writeLegacyPath, JSON.stringify({ wpm: 111 }));
 setConfigValue('wpm', '222', { projectPath: writeProjectPath, legacyProjectPath: writeLegacyPath });
 assert.ok(existsSync(writeProjectPath), 'preferred config path should be written');
-cfg = loadConfig({ projectPath: writeProjectPath, legacyProjectPath: writeLegacyPath, userPath, legacyUserPath });
+cfg = loadConfig({
+  projectPath: writeProjectPath,
+  legacyProjectPath: writeLegacyPath,
+  userPath,
+  legacyUserPath,
+});
 assert.equal(cfg.wpm, 222);
 
 // Test 11: sizeFieldId survives loadConfig

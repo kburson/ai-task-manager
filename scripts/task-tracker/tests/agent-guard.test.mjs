@@ -48,8 +48,14 @@ test('blocks when cwd === main worktree', () => {
     const decision = JSON.parse(r.stdout);
     assert.equal(decision.decision, 'block');
     assert.match(decision.reason, /Agent tool spawns are forbidden in the main worktree/);
-    assert.ok(decision.reason.includes(`cwd=${main}`), `reason missing cwd path: ${decision.reason}`);
-    assert.ok(decision.reason.includes(`main=${main}`), `reason missing main path: ${decision.reason}`);
+    assert.ok(
+      decision.reason.includes(`cwd=${main}`),
+      `reason missing cwd path: ${decision.reason}`
+    );
+    assert.ok(
+      decision.reason.includes(`main=${main}`),
+      `reason missing main path: ${decision.reason}`
+    );
     assert.match(decision.reason, /No override exists/);
   } finally {
     rmSync(main, { recursive: true, force: true });
@@ -65,7 +71,9 @@ test('passes when cwd is a linked worktree (cwd !== main)', () => {
     assert.equal(r.status, 0, `stderr: ${r.stderr}`);
     assert.equal(r.stdout, '', `expected empty stdout in linked worktree, got: ${r.stdout}`);
   } finally {
-    try { git(main, 'worktree', 'remove', '--force', linked); } catch {}
+    try {
+      git(main, 'worktree', 'remove', '--force', linked);
+    } catch {}
     rmSync(main, { recursive: true, force: true });
     rmSync(linked, { recursive: true, force: true });
   }
@@ -83,7 +91,9 @@ test('safe-passes on malformed stdin (does not block)', () => {
     assert.equal(r.status, 0, `stderr: ${r.stderr}`);
     assert.equal(r.stdout, '', `malformed stdin must not produce a decision, got: ${r.stdout}`);
   } finally {
-    try { git(main, 'worktree', 'remove', '--force', linked); } catch {}
+    try {
+      git(main, 'worktree', 'remove', '--force', linked);
+    } catch {}
     rmSync(main, { recursive: true, force: true });
     rmSync(linked, { recursive: true, force: true });
   }

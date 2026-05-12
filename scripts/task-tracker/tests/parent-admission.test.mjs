@@ -18,8 +18,16 @@ function stubReader(value) {
 // 1. Solo bypass — no parentEpicNumber, reader is never called.
 {
   let called = false;
-  const reader = async () => { called = true; return 'groom'; };
-  const r = await checkParentAdmission({ parentEpicNumber: null, repo: 'o/r', projectId: 'P', readParentStatus: reader });
+  const reader = async () => {
+    called = true;
+    return 'groom';
+  };
+  const r = await checkParentAdmission({
+    parentEpicNumber: null,
+    repo: 'o/r',
+    projectId: 'P',
+    readParentStatus: reader,
+  });
   assert.deepEqual(r, [], 'solo issue should produce no refusals');
   assert.equal(called, false, 'reader must not be called when parent is null');
 }
@@ -27,20 +35,28 @@ function stubReader(value) {
 // 2. Refuse for each pre-Development parent state.
 for (const state of ['backlog', 'groom', 'analyze']) {
   const r = await checkParentAdmission({
-    parentEpicNumber: 61, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 61,
+    repo: 'o/r',
+    projectId: 'P',
     readParentStatus: stubReader(state),
   });
   assert.equal(r.length, 1, `expected one refusal for parent state ${state}`);
   assert.equal(r[0].kind, 'parent-admission');
   assert.match(r[0].message, /parent #61/, `message must name parent #61, got: ${r[0].message}`);
-  assert.match(r[0].message, new RegExp(state), `message must name parent state ${state}, got: ${r[0].message}`);
+  assert.match(
+    r[0].message,
+    new RegExp(state),
+    `message must name parent state ${state}, got: ${r[0].message}`
+  );
   assert.match(r[0].message, /advance the epic to Development first/);
 }
 
 // 3. Pass for each Development-or-later parent state.
 for (const state of ['development', 'validate', 'review', 'done']) {
   const r = await checkParentAdmission({
-    parentEpicNumber: 61, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 61,
+    repo: 'o/r',
+    projectId: 'P',
     readParentStatus: stubReader(state),
   });
   assert.deepEqual(r, [], `parent in ${state} should produce no refusals`);
@@ -49,7 +65,9 @@ for (const state of ['development', 'validate', 'review', 'done']) {
 // 4. Unknown parent state (reader returns null) refuses with 'unknown' message.
 {
   const r = await checkParentAdmission({
-    parentEpicNumber: 61, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 61,
+    repo: 'o/r',
+    projectId: 'P',
     readParentStatus: stubReader(null),
   });
   assert.equal(r.length, 1);
@@ -60,9 +78,17 @@ for (const state of ['development', 'validate', 'review', 'done']) {
 
 // 5. Reader throws -> error propagates (fail-closed).
 {
-  const reader = async () => { throw new Error('graphql down'); };
+  const reader = async () => {
+    throw new Error('graphql down');
+  };
   await assert.rejects(
-    () => checkParentAdmission({ parentEpicNumber: 61, repo: 'o/r', projectId: 'P', readParentStatus: reader }),
+    () =>
+      checkParentAdmission({
+        parentEpicNumber: 61,
+        repo: 'o/r',
+        projectId: 'P',
+        readParentStatus: reader,
+      }),
     /graphql down/
   );
 }
@@ -70,7 +96,9 @@ for (const state of ['development', 'validate', 'review', 'done']) {
 // 6. Case-insensitive parent state matching (defensive — board may return mixed case).
 {
   const r = await checkParentAdmission({
-    parentEpicNumber: 61, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 61,
+    repo: 'o/r',
+    projectId: 'P',
     readParentStatus: stubReader('Development'),
   });
   assert.deepEqual(r, [], 'Development (capitalised) should pass');
@@ -85,20 +113,26 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
       fetchIssueContext: async () => ({
-        title: 'sub-issue', body: '## Acceptance Criteria\n## Definition of Done\n## Pickup Directive\n<!-- aitm-fields: -->',
-        labels: ['x'], parentEpicNumber: 61, isEpic: false,
+        title: 'sub-issue',
+        body: '## Acceptance Criteria\n## Definition of Done\n## Pickup Directive\n<!-- aitm-fields: -->',
+        labels: ['x'],
+        parentEpicNumber: 61,
+        isEpic: false,
       }),
       resolveFieldValues: async () => ({ estimate: 1, size: 'S', priority: 'P1', sequence: 1.3 }),
       admit: async () => ({ ok: true, blockers: [] }),
       fetchSubIssueStates: async () => [],
       readParentStatus: stubReader('groom'),
-      moveState: async () => { moveCalled = true; return 0; },
+      moveState: async () => {
+        moveCalled = true;
+        return 0;
+      },
     },
   });
   assert.equal(result.ok, false, 'analyze must refuse when parent is in groom');
   assert.equal(moveCalled, false, 'move-state must not be invoked on refusal');
   assert.ok(
-    result.blockers.some(b => b.kind === 'parent-admission' && /#61/.test(b.message)),
+    result.blockers.some((b) => b.kind === 'parent-admission' && /#61/.test(b.message)),
     `expected parent-admission blocker, got ${JSON.stringify(result.blockers)}`
   );
 }
@@ -112,17 +146,27 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
       fetchIssueContext: async () => ({
-        title: 'sub-issue', body: '## Acceptance Criteria\n## Definition of Done\n## Pickup Directive\n<!-- aitm-fields: -->',
-        labels: ['x'], parentEpicNumber: 61, isEpic: false,
+        title: 'sub-issue',
+        body: '## Acceptance Criteria\n## Definition of Done\n## Pickup Directive\n<!-- aitm-fields: -->',
+        labels: ['x'],
+        parentEpicNumber: 61,
+        isEpic: false,
       }),
       resolveFieldValues: async () => ({ estimate: 1, size: 'S', priority: 'P1', sequence: 1.3 }),
       admit: async () => ({ ok: true, blockers: [] }),
       fetchSubIssueStates: async () => [],
       readParentStatus: stubReader('development'),
-      moveState: async () => { moveCalled = true; return 0; },
+      moveState: async () => {
+        moveCalled = true;
+        return 0;
+      },
     },
   });
-  assert.equal(result.ok, true, `analyze must pass when parent is in development; got ${JSON.stringify(result)}`);
+  assert.equal(
+    result.ok,
+    true,
+    `analyze must pass when parent is in development; got ${JSON.stringify(result)}`
+  );
   assert.equal(moveCalled, true, 'move-state should be invoked when gates pass');
 }
 
@@ -136,9 +180,17 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     answer: 'yes',
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
-      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n' }),
-      writeIssueBody: async () => { writeCalled = true; },
-      moveState: async () => { moveCalled = true; return 0; },
+      fetchIssueBody: async () => ({
+        title: 't',
+        body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n',
+      }),
+      writeIssueBody: async () => {
+        writeCalled = true;
+      },
+      moveState: async () => {
+        moveCalled = true;
+        return 0;
+      },
       postComment: async () => {},
       applyReevaluate: async () => {},
       isHeadless: () => false,
@@ -146,7 +198,11 @@ for (const state of ['development', 'validate', 'review', 'done']) {
       readParentStatus: stubReader('analyze'),
     },
   });
-  assert.equal(result.status, 'parent-admission-refused', `expected parent-admission-refused, got ${result.status}`);
+  assert.equal(
+    result.status,
+    'parent-admission-refused',
+    `expected parent-admission-refused, got ${result.status}`
+  );
   assert.equal(writeCalled, false, 'body must not be mutated when gate refuses');
   assert.equal(moveCalled, false, 'move-state must not be invoked when gate refuses');
   assert.match(result.message, /parent #61 is in analyze/);
@@ -161,9 +217,15 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     answer: 'yes',
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
-      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n' }),
+      fetchIssueBody: async () => ({
+        title: 't',
+        body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n',
+      }),
       writeIssueBody: async () => {},
-      moveState: async () => { moveCalled = true; return 0; },
+      moveState: async () => {
+        moveCalled = true;
+        return 0;
+      },
       postComment: async () => {},
       applyReevaluate: async () => {},
       isHeadless: () => false,
@@ -184,14 +246,22 @@ for (const state of ['development', 'validate', 'review', 'done']) {
     answer: 'yes',
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
-      fetchIssueBody: async () => ({ title: 't', body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n' }),
+      fetchIssueBody: async () => ({
+        title: 't',
+        body: '## Deep-Dive Analysis\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n',
+      }),
       writeIssueBody: async () => {},
-      moveState: async () => { moveCalled = true; return 0; },
+      moveState: async () => {
+        moveCalled = true;
+        return 0;
+      },
       postComment: async () => {},
       applyReevaluate: async () => {},
       isHeadless: () => false,
       fetchParentEpicNumber: async () => null,
-      readParentStatus: async () => { throw new Error('reader must not be called for solo issue'); },
+      readParentStatus: async () => {
+        throw new Error('reader must not be called for solo issue');
+      },
     },
   });
   assert.equal(result.status, 'approved');

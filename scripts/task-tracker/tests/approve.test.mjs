@@ -50,10 +50,20 @@ function makeDeps(overrides = {}) {
   return {
     calls,
     deps: {
-      fetchIssueBody: async () => { calls.fetched++; return { title: 'sub', body: BODY_WITH_DEEPDIVE }; },
-      writeIssueBody: async ({ body }) => { calls.writes.push(body); },
-      postComment: async ({ body }) => { calls.comments.push(body); },
-      moveState: async () => { calls.moveStateCalls++; return 0; },
+      fetchIssueBody: async () => {
+        calls.fetched++;
+        return { title: 'sub', body: BODY_WITH_DEEPDIVE };
+      },
+      writeIssueBody: async ({ body }) => {
+        calls.writes.push(body);
+      },
+      postComment: async ({ body }) => {
+        calls.comments.push(body);
+      },
+      moveState: async () => {
+        calls.moveStateCalls++;
+        return 0;
+      },
       isHeadless: () => false,
       fetchParentEpicNumber: async () => null,
       readParentStatus: async () => 'development',
@@ -113,12 +123,18 @@ function makeDeps(overrides = {}) {
     const lines = String(src).split('\n');
     let start = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (/^##\s+Acceptance Criteria\b/i.test(lines[i])) { start = i; break; }
+      if (/^##\s+Acceptance Criteria\b/i.test(lines[i])) {
+        start = i;
+        break;
+      }
     }
     if (start === -1) return null;
     let end = lines.length;
     for (let i = start + 1; i < lines.length; i++) {
-      if (/^##\s+/.test(lines[i])) { end = i; break; }
+      if (/^##\s+/.test(lines[i])) {
+        end = i;
+        break;
+      }
     }
     return lines.slice(start, end).join('\n');
   }
@@ -133,7 +149,11 @@ function makeDeps(overrides = {}) {
 {
   const { deps, calls } = makeDeps();
   const r = await runApprove({
-    issueNumber: 50, cfg, answer: 'no', reason: 'plan misses the cache invalidation step', deps,
+    issueNumber: 50,
+    cfg,
+    answer: 'no',
+    reason: 'plan misses the cache invalidation step',
+    deps,
   });
   assert.equal(r.status, 'rejected');
   assert.equal(calls.moveStateCalls, 0, 'moveState must NOT run when rejected');
@@ -188,7 +208,9 @@ function makeDeps(overrides = {}) {
 
 // 12. Marker placement appends at end with deterministic timestamp.
 {
-  const out = writePlanApprovedMarker('## AC\n\n- [ ] x\n', { now: () => '2026-05-11T12:00:00.000Z' });
+  const out = writePlanApprovedMarker('## AC\n\n- [ ] x\n', {
+    now: () => '2026-05-11T12:00:00.000Z',
+  });
   assert.match(out, /<!-- aitm-plan-approved: 2026-05-11T12:00:00\.000Z -->/);
   // Marker sits at the end of the body, after the AC content.
   const markerIdx = out.indexOf('<!-- aitm-plan-approved:');
@@ -205,7 +227,7 @@ function makeDeps(overrides = {}) {
   for (const variant of ['- [ ]', '- [x]']) {
     const out = writePlanApprovedMarker(
       `## Acceptance Criteria\n\n- [ ] do thing\n${variant} Plan approved by human\n\n## Next\n`,
-      { now: () => '2026-05-11T12:00:00.000Z' },
+      { now: () => '2026-05-11T12:00:00.000Z' }
     );
     assert.doesNotMatch(out, /Plan approved by human/, `legacy ${variant} line must be stripped`);
     assert.match(out, APPROVAL_MARKER_RE, 'marker must be appended');

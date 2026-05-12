@@ -6,11 +6,7 @@
 // encoding via parseIssueFieldDb/formatIssueFieldDb, ensuring legacy fenced
 // blocks are normalized as a side-effect of any marker write.
 
-import {
-  parseIssueFieldDb,
-  stripIssueFieldDb,
-  formatIssueFieldDb,
-} from '../issue-field-db.mjs';
+import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 
 // ---------------------------------------------------------------------------
 // plan-approved (analyze → development human gate)
@@ -66,7 +62,7 @@ export function insertDeepDiveCompleteMarker(body, ts) {
 // `## Deep-Dive Analysis` heading in the body is treated as equivalent
 // evidence that the deep-dive was performed, so pickup logic and the
 // analyze→development gate do not re-author the section.
-export const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/mi;
+export const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
 
 export function hasDeepDiveHeading(body) {
   return DEEP_DIVE_HEADING_RE.test(String(body || ''));

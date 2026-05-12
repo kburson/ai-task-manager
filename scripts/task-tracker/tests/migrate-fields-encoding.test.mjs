@@ -34,14 +34,28 @@ import { FIELD_DB_START, FIELD_DB_END } from '../issue-field-db.mjs';
 {
   const v1 = JSON.stringify({ schema: 1, values: { priority: 'P2', estimate: 1 } });
   const v2 = JSON.stringify({ schema: 1, values: { priority: 'P2', estimate: 1, sessionTime: 5 } });
-  const v3 = JSON.stringify({ schema: 1, values: { priority: 'P1', estimate: 2, sessionTime: 11 } });
-  const v4 = JSON.stringify({ schema: 1, values: { priority: 'P1', estimate: 2, sessionTime: 13 } });
+  const v3 = JSON.stringify({
+    schema: 1,
+    values: { priority: 'P1', estimate: 2, sessionTime: 11 },
+  });
+  const v4 = JSON.stringify({
+    schema: 1,
+    values: { priority: 'P1', estimate: 2, sessionTime: 13 },
+  });
   const body = [
     '# Header',
     '',
-    FIELD_DB_START, '```json', v1, '```', FIELD_DB_END,
+    FIELD_DB_START,
+    '```json',
+    v1,
+    '```',
+    FIELD_DB_END,
     '',
-    FIELD_DB_START, '```json', v2, '```', FIELD_DB_END,
+    FIELD_DB_START,
+    '```json',
+    v2,
+    '```',
+    FIELD_DB_END,
     '',
     '<!-- aitm-plan-approved: 2026-05-11T07:05:00Z -->',
     '',
@@ -62,7 +76,11 @@ import { FIELD_DB_START, FIELD_DB_END } from '../issue-field-db.mjs';
   const body = [
     '# Header',
     '',
-    FIELD_DB_START, '```json', '{"schema":1,"values":{"priority":"P1"}}', '```', FIELD_DB_END,
+    FIELD_DB_START,
+    '```json',
+    '{"schema":1,"values":{"priority":"P1"}}',
+    '```',
+    FIELD_DB_END,
   ].join('\n');
   const first = transformBody(body);
   const second = transformBody(first.body);

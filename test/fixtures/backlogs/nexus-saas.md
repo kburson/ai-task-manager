@@ -13,20 +13,20 @@
 ## Sizing Key
 
 | Size | Estimate Range |
-|------|---------------|
-| XS   | < 1h          |
-| S    | 1–3h          |
-| M    | 3–6h          |
-| L    | 6–12h         |
-| XL   | 12h+          |
+| ---- | -------------- |
+| XS   | < 1h           |
+| S    | 1–3h           |
+| M    | 3–6h           |
+| L    | 6–12h          |
+| XL   | 12h+           |
 
 ## Priority Key
 
-| Priority | Meaning |
-|----------|---------|
-| P0 | Blocking — must ship before launch |
-| P1 | High — ships in current milestone |
-| P2 | Normal — ships when capacity allows |
+| Priority | Meaning                             |
+| -------- | ----------------------------------- |
+| P0       | Blocking — must ship before launch  |
+| P1       | High — ships in current milestone   |
+| P2       | Normal — ships when capacity allows |
 
 ---
 
@@ -413,12 +413,12 @@ Implement workspace team management. Roles: `owner`, `admin`, `member`. Invitati
 
 ## Summary
 
-| Type | Count | Total Estimate |
-|------|-------|---------------|
-| Solo tasks | 4 | 9h |
-| Epics | 3 | — (roll-up) |
-| Sub-issues | 12 | 58h |
-| **Total** | **19 issues** | **67h** |
+| Type       | Count         | Total Estimate |
+| ---------- | ------------- | -------------- |
+| Solo tasks | 4             | 9h             |
+| Epics      | 3             | — (roll-up)    |
+| Sub-issues | 12            | 58h            |
+| **Total**  | **19 issues** | **67h**        |
 
 ### Issue Creation Order
 

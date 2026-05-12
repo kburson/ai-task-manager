@@ -24,7 +24,6 @@
 //   node scripts/migrate/rename-status-2026-05.mjs --config <path> # override config path
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { gql } from '../gh/lib/github-projects.mjs';
 
 export const NAME_RENAMES = {
@@ -41,9 +40,21 @@ export const KEY_RENAMES = {
   kanbanOptionR4R: 'kanbanOptionReview',
 };
 
-export const DEPRECATED_KEYS = ['kanbanOptionReady', 'kanbanOptionInProgress', 'kanbanOptionInReview'];
+export const DEPRECATED_KEYS = [
+  'kanbanOptionReady',
+  'kanbanOptionInProgress',
+  'kanbanOptionInReview',
+];
 
-export const TARGET_NAMES = ['Backlog', 'Groom', 'Analyze', 'Development', 'Validate', 'Review', 'Done'];
+export const TARGET_NAMES = [
+  'Backlog',
+  'Groom',
+  'Analyze',
+  'Development',
+  'Validate',
+  'Review',
+  'Done',
+];
 
 // Pure helper: returns { changed: bool, options: [...] } where options preserve
 // id/color/description, only names rewritten via NAME_RENAMES. Idempotent — if
@@ -51,14 +62,14 @@ export const TARGET_NAMES = ['Backlog', 'Groom', 'Analyze', 'Development', 'Vali
 // guards against the second-run case where "Review" exists as the new column
 // name and would otherwise be re-renamed to "Validate").
 export function rewriteOptions(options) {
-  const currentNames = options.map(o => o.name);
+  const currentNames = options.map((o) => o.name);
   const alreadyMigrated =
     currentNames.length === TARGET_NAMES.length &&
     currentNames.every((n, i) => n === TARGET_NAMES[i]);
-  if (alreadyMigrated) return { changed: false, options: options.map(o => ({ ...o })) };
+  if (alreadyMigrated) return { changed: false, options: options.map((o) => ({ ...o })) };
 
   let changed = false;
-  const out = options.map(o => {
+  const out = options.map((o) => {
     const newName = NAME_RENAMES[o.name];
     if (newName && newName !== o.name) {
       changed = true;
@@ -88,9 +99,13 @@ export const TARGET_KANBAN_KEYS = [
 // `hasSource` check fires post-migration and re-renames the already-migrated
 // `kanbanOptionReview` to `kanbanOptionValidate`, losing data.
 export function rewriteJson(json) {
-  const POST_MIGRATION_MARKERS = ['kanbanOptionGroom', 'kanbanOptionAnalyze', 'kanbanOptionValidate'];
-  const isPostMigration = POST_MIGRATION_MARKERS.some(k => k in json);
-  const hasDeprecated = DEPRECATED_KEYS.some(k => k in json);
+  const POST_MIGRATION_MARKERS = [
+    'kanbanOptionGroom',
+    'kanbanOptionAnalyze',
+    'kanbanOptionValidate',
+  ];
+  const isPostMigration = POST_MIGRATION_MARKERS.some((k) => k in json);
+  const hasDeprecated = DEPRECATED_KEYS.some((k) => k in json);
   if (isPostMigration && !hasDeprecated) {
     return { changed: false, json: { ...json } };
   }
@@ -102,7 +117,10 @@ export function rewriteJson(json) {
   // as a source key and delete it.
   if (isPostMigration) {
     for (const k of DEPRECATED_KEYS) {
-      if (k in out) { delete out[k]; changed = true; }
+      if (k in out) {
+        delete out[k];
+        changed = true;
+      }
     }
     return { changed, json: out };
   }
@@ -126,7 +144,8 @@ export function rewriteJson(json) {
 }
 
 async function fetchStatusField(projectId) {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($id: ID!) {
       node(id: $id) {
         ... on ProjectV2 {
@@ -139,25 +158,30 @@ async function fetchStatusField(projectId) {
         }
       }
     }
-  `, { id: projectId });
+  `,
+    { id: projectId }
+  );
   return data?.node?.field;
 }
 
 async function updateStatusOptions(fieldId, options) {
-  const sanitized = options.map(o => ({
+  const sanitized = options.map((o) => ({
     id: o.id,
     name: o.name,
     color: o.color || 'GRAY',
     description: o.description || '',
   }));
-  await gql(`
+  await gql(
+    `
     mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
       updateProjectV2Field(input: {
         fieldId: $fieldId
         singleSelectOptions: $options
       }) { projectV2Field { ... on ProjectV2SingleSelectField { id } } }
     }
-  `, { fieldId, options: sanitized });
+  `,
+    { fieldId, options: sanitized }
+  );
 }
 
 function arg(name, fallback = null) {
@@ -215,7 +239,7 @@ async function main() {
       if (!dryRun) {
         await updateStatusOptions(field.id, options);
         const verify = await fetchStatusField(projectId);
-        const names = verify.options.map(o => o.name);
+        const names = verify.options.map((o) => o.name);
         console.log(`board: post-rename order = [${names.join(', ')}]`);
       } else {
         console.log('board: --dry-run, skipping mutation');
@@ -247,5 +271,8 @@ async function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(e => { console.error(e); process.exit(1); });
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 }

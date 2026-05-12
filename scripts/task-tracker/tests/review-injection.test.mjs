@@ -17,7 +17,15 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  chmodSync,
+  rmSync,
+  existsSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,7 +76,9 @@ try {
   mkdirSync(binDir, { recursive: true });
   const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
   const ghShim = path.join(binDir, 'gh');
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 const log = ${JSON.stringify(path.join(sandbox, 'gh-calls.log'))};
@@ -99,7 +109,8 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
 }
 // Default benign success
 process.exit(0);
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
 
   const env = {
@@ -110,23 +121,33 @@ process.exit(0);
     TT_SKIP_NETWORK: '',
   };
 
-  let stdout = '', stderr = '', exitCode = 0;
+  let stdout = '',
+    stderr = '',
+    exitCode = 0;
   try {
     const r = await pexec('node', [CLI, 'review', '#999'], { env, timeout: 30000 });
-    stdout = r.stdout; stderr = r.stderr;
+    stdout = r.stdout;
+    stderr = r.stderr;
   } catch (err) {
-    stdout = err.stdout || ''; stderr = err.stderr || '';
+    stdout = err.stdout || '';
+    stderr = err.stderr || '';
     exitCode = err.code ?? 1;
   }
 
   // 1. Marker file MUST NOT exist — the payload was never executed.
-  assert.equal(existsSync(pwnedMarker), false,
-    `SECURITY FAIL: malicious payload created marker at ${pwnedMarker}`);
+  assert.equal(
+    existsSync(pwnedMarker),
+    false,
+    `SECURITY FAIL: malicious payload created marker at ${pwnedMarker}`
+  );
 
   // 2. Rejection log line emitted, naming the offending construct.
   const combined = stdout + stderr;
-  assert.match(combined, /\[task-tracker\] rejected: forbidden semicolon/,
-    `expected rejection log; combined output:\n${combined}`);
+  assert.match(
+    combined,
+    /\[task-tracker\] rejected: forbidden semicolon/,
+    `expected rejection log; combined output:\n${combined}`
+  );
 
   // 3. CLI exited non-zero (failures present → exit 3 path).
   assert.notEqual(exitCode, 0, 'review should fail when verification command is rejected');
@@ -135,11 +156,17 @@ process.exit(0);
   assert.ok(existsSync(recordedBodyPath), 'gh issue edit was never called');
   const written = readFileSync(recordedBodyPath, 'utf8');
   // Malicious line: still '- [ ]'
-  assert.match(written, /- \[ \] `node x; touch /,
-    `malicious checkbox should remain unchecked; body was:\n${written}`);
+  assert.match(
+    written,
+    /- \[ \] `node x; touch /,
+    `malicious checkbox should remain unchecked; body was:\n${written}`
+  );
   // Clean line: now '- [x]'
-  assert.match(written, /- \[x\] `node --version`/,
-    `clean checkbox should be auto-checked; body was:\n${written}`);
+  assert.match(
+    written,
+    /- \[x\] `node --version`/,
+    `clean checkbox should be auto-checked; body was:\n${written}`
+  );
 
   console.log('review-injection.test.mjs: all passed');
 } finally {

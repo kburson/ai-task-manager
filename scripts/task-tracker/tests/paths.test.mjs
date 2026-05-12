@@ -1,19 +1,9 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import {
-  existingRuntimePath,
-  getProjectDir,
-  legacyPathFor,
-} from '../paths.mjs';
+import { existingRuntimePath, getProjectDir, legacyPathFor } from '../paths.mjs';
 
 const mappings = [
   ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json'],
@@ -31,7 +21,7 @@ for (const [preferred, legacy] of mappings) {
 assert.equal(
   legacyPathFor('./.ai-task-manager/task-tracker.json'),
   '.claude/task-tracker.json',
-  'leading ./ is normalized before mapping',
+  'leading ./ is normalized before mapping'
 );
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-paths-'));
@@ -45,7 +35,7 @@ writeFileSync(legacyAbs, '{}\n');
 assert.equal(
   existingRuntimePath(tmp, preferred),
   legacyAbs,
-  'legacy path is returned when preferred path is absent',
+  'legacy path is returned when preferred path is absent'
 );
 
 mkdirSync(path.dirname(preferredAbs), { recursive: true });
@@ -53,14 +43,14 @@ writeFileSync(preferredAbs, '{}\n');
 assert.equal(
   existingRuntimePath(tmp, preferred),
   preferredAbs,
-  'preferred path wins when both preferred and legacy files exist',
+  'preferred path wins when both preferred and legacy files exist'
 );
 
 const missingPreferred = path.join(tmp, '.ai-task-manager/missing.json');
 assert.equal(
   existingRuntimePath(tmp, '.ai-task-manager/missing.json'),
   missingPreferred,
-  'unmapped paths return the preferred location',
+  'unmapped paths return the preferred location'
 );
 assert.equal(existsSync(missingPreferred), false, 'unmapped paths are not created by lookup');
 
@@ -70,18 +60,18 @@ rmSync(tmp, { recursive: true });
 assert.equal(
   getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '/a', CLAUDE_PROJECT_DIR: '/b' }, '/c'),
   '/a',
-  'AI_TASK_MANAGER_PROJECT_DIR wins',
+  'AI_TASK_MANAGER_PROJECT_DIR wins'
 );
 assert.equal(
   getProjectDir({ CLAUDE_PROJECT_DIR: '/b' }, '/c'),
   '/b',
-  'CLAUDE_PROJECT_DIR wins when AI_TASK_MANAGER_PROJECT_DIR unset',
+  'CLAUDE_PROJECT_DIR wins when AI_TASK_MANAGER_PROJECT_DIR unset'
 );
 assert.equal(getProjectDir({}, '/c'), '/c', 'falls back to cwd when env unset');
 assert.equal(
   getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '', CLAUDE_PROJECT_DIR: '' }, '/c'),
   '/c',
-  'empty-string env values are treated as unset',
+  'empty-string env values are treated as unset'
 );
 
 console.log('paths.test.mjs: all passed');

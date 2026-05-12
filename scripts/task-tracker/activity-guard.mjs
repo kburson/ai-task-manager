@@ -122,9 +122,8 @@ function readState(root) {
     if (!parsed || typeof parsed !== 'object') return { activeIssue: null, state: null };
     const activeIssue = typeof parsed.active === 'string' ? parsed.active : null;
     const stateRaw = typeof parsed.state === 'string' ? parsed.state : null;
-    const state = stateRaw && Object.prototype.hasOwnProperty.call(STATE_MATRIX, stateRaw)
-      ? stateRaw
-      : null;
+    const state =
+      stateRaw && Object.prototype.hasOwnProperty.call(STATE_MATRIX, stateRaw) ? stateRaw : null;
     return { activeIssue, state };
   } catch {
     return { activeIssue: null, state: null };
@@ -135,7 +134,11 @@ function normalizePath(filePath, root) {
   // Resolve symlinks on root so /var/... and /private/var/... unify on macOS.
   // (filePath may not exist yet, so don't realpath it.)
   const roots = new Set([root]);
-  try { roots.add(realpathSync(root)); } catch { /* noop */ }
+  try {
+    roots.add(realpathSync(root));
+  } catch {
+    /* noop */
+  }
   // On macOS /var → /private/var; map both directions to widen the prefix set.
   for (const r of [...roots]) {
     if (r.startsWith('/private/')) roots.add(r.slice('/private'.length));

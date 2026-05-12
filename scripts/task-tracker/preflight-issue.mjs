@@ -33,29 +33,33 @@ const dodPath = existingRuntimePath(root, '.ai-task-manager/definition-of-done.m
 
 const missing = [];
 if (!existsSync(pickupPath)) missing.push('.ai-task-manager/pickup-directive.md');
-if (!existsSync(dodPath))    missing.push('.ai-task-manager/definition-of-done.md');
+if (!existsSync(dodPath)) missing.push('.ai-task-manager/definition-of-done.md');
 
 if (missing.length > 0) {
-  process.stderr.write([
-    '',
-    'STOP - ai-task-manager templates are missing:',
-    ...missing.map(p => `   - ${p}`),
-    '',
-    'No GitHub issues will be created until the skill is (re)installed in this',
-    'project. Run:',
-    '',
-    '   npx ai-task-manager install',
-    '',
-    'Then retry. If the install completes but files are still missing, check that',
-    'you ran the command from the project root.',
-    '',
-  ].join('\n'));
+  process.stderr.write(
+    [
+      '',
+      'STOP - ai-task-manager templates are missing:',
+      ...missing.map((p) => `   - ${p}`),
+      '',
+      'No GitHub issues will be created until the skill is (re)installed in this',
+      'project. Run:',
+      '',
+      '   npx ai-task-manager install',
+      '',
+      'Then retry. If the install completes but files are still missing, check that',
+      'you ran the command from the project root.',
+      '',
+    ].join('\n')
+  );
   process.exit(2);
 }
 
 const checkOnly = process.argv.includes('--check-only');
 if (checkOnly) {
-  process.stderr.write('[task-tracker] preflight ok — pickup-directive.md and definition-of-done.md present\n');
+  process.stderr.write(
+    '[task-tracker] preflight ok — pickup-directive.md and definition-of-done.md present\n'
+  );
   process.exit(0);
 }
 

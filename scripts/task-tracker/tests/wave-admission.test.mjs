@@ -26,7 +26,10 @@ function stub(siblings) {
 // 2. Lower-Sequence sibling in development → blocker
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 47, sequence: 1, state: 'development' }]),
   });
   assert.equal(r.ok, false);
@@ -37,7 +40,10 @@ function stub(siblings) {
 // 3. Lower-Sequence sibling in backlog → not a blocker
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 47, sequence: 1, state: 'backlog' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -46,7 +52,10 @@ function stub(siblings) {
 // 4. Lower-Sequence sibling in R4R → not a blocker
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 47, sequence: 1, state: 'r4r' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -55,7 +64,10 @@ function stub(siblings) {
 // 5. Lower-Sequence sibling in Done → not a blocker
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 47, sequence: 1, state: 'done' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -64,7 +76,10 @@ function stub(siblings) {
 // 6. Same-Sequence sibling in development → not a blocker (newcomer rule)
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 50, sequence: 3, state: 'development' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -73,7 +88,10 @@ function stub(siblings) {
 // 7. Higher-Sequence sibling in development → not a blocker
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 51, sequence: 4, state: 'development' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -82,13 +100,16 @@ function stub(siblings) {
 // 8. Mixed siblings — only lower in-flight ones block
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([
-      { number: 47, sequence: 1, state: 'done' },           // ignored
-      { number: 48, sequence: 2, state: 'review' },         // BLOCKS (in-flight, lower)
-      { number: 50, sequence: 3, state: 'development' },    // same wave, ignored
-      { number: 51, sequence: 4, state: 'grooming' },       // higher, ignored
-      { number: 52, sequence: 1, state: 'backlog' },        // backlog, ignored
+      { number: 47, sequence: 1, state: 'done' }, // ignored
+      { number: 48, sequence: 2, state: 'review' }, // BLOCKS (in-flight, lower)
+      { number: 50, sequence: 3, state: 'development' }, // same wave, ignored
+      { number: 51, sequence: 4, state: 'grooming' }, // higher, ignored
+      { number: 52, sequence: 1, state: 'backlog' }, // backlog, ignored
     ]),
   });
   assert.equal(r.ok, false);
@@ -100,7 +121,10 @@ function stub(siblings) {
 // 9. Sequence values that aren't numbers are skipped (no crash)
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 99, sequence: null, state: 'development' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -109,7 +133,10 @@ function stub(siblings) {
 // 10. analyze and analysis are both treated as in-flight
 {
   const r = await admit({
-    parentEpicNumber: 41, sequence: 3, repo: 'o/r', projectId: 'P',
+    parentEpicNumber: 41,
+    sequence: 3,
+    repo: 'o/r',
+    projectId: 'P',
     fetchSiblings: stub([{ number: 47, sequence: 1, state: 'analyze' }]),
   });
   assert.equal(r.ok, false);

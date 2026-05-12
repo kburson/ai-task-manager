@@ -31,7 +31,7 @@ const START_MARKER = '<!-- ai-task-manager:codex-superpowers:start -->';
 const END_MARKER = '<!-- ai-task-manager:codex-superpowers:end -->';
 
 function versionParts(version) {
-  return version.split('.').map(part => {
+  return version.split('.').map((part) => {
     const match = part.match(/^\d+/);
     return match ? Number(match[0]) : 0;
   });
@@ -69,7 +69,7 @@ export function findSuperpowersSkillRoot({ home = homedir() } = {}) {
   const base = join(home, '.claude', 'plugins', 'cache', 'claude-plugins-official', 'superpowers');
   if (!existsSync(base)) return null;
   const versions = readdirSync(base)
-    .filter(name => {
+    .filter((name) => {
       const skillsRoot = join(base, name, 'skills');
       return existsSync(join(skillsRoot, 'using-superpowers', 'SKILL.md'));
     })

@@ -8,7 +8,8 @@ function makeCaptures() {
   return {
     stderr: { write: (s) => writes.push(String(s)) },
     exit: (code) => exits.push(code),
-    writes, exits,
+    writes,
+    exits,
   };
 }
 

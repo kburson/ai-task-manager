@@ -32,7 +32,8 @@ export const insertApprovalMarker = insertReviewApprovedMarker;
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) { body }
@@ -47,13 +48,17 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-approve-review-${process.pid}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: 15000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
-async function defaultGetBoardState({ issueNumber, projectDir }) {
+async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
   const mod = await import('../task-tracker.mjs');
   return mod.getIssueBoardState(String(issueNumber).replace(/^#/, ''));
 }
@@ -64,8 +69,8 @@ export async function runApproveReview({ issueNumber, cfg, projectDir, deps = {}
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
-  const getBoardState  = deps.getBoardState  || defaultGetBoardState;
-  const nowIso         = deps.nowIso         || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
+  const getBoardState = deps.getBoardState || defaultGetBoardState;
+  const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
 
   const state = await getBoardState({ issueNumber, projectDir });
   if (state !== 'review') {
@@ -114,7 +119,9 @@ export async function verbApproveReview(rest, cfg) {
   }
   switch (result.status) {
     case 'approved':
-      process.stdout.write(`✓ Review approved for #${issueNumber} at ${result.ts}. \`/task close #${issueNumber}\` may now proceed.\n`);
+      process.stdout.write(
+        `✓ Review approved for #${issueNumber} at ${result.ts}. \`/task close #${issueNumber}\` may now proceed.\n`
+      );
       return;
     case 'already-approved':
       process.stdout.write(`#${issueNumber} already has a review-approval marker — no change.\n`);
@@ -129,8 +136,11 @@ export async function verbApproveReview(rest, cfg) {
 }
 
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

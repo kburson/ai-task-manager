@@ -43,10 +43,10 @@ const claudeDir = join(homeDir, '.claude');
 // Unconditionally dangerous patterns — block regardless of path.
 const ALWAYS_BLOCK = [
   { pattern: 'rm -rf /', label: 'recursive delete from root' },
-  { pattern: 'sudo ',    label: 'sudo elevation' },
-  { pattern: '> /dev/',  label: 'device write' },
-  { pattern: 'mkfs',     label: 'filesystem format' },
-  { pattern: 'dd if=',   label: 'raw disk write (dd)' },
+  { pattern: 'sudo ', label: 'sudo elevation' },
+  { pattern: '> /dev/', label: 'device write' },
+  { pattern: 'mkfs', label: 'filesystem format' },
+  { pattern: 'dd if=', label: 'raw disk write (dd)' },
 ];
 
 for (const { pattern, label } of ALWAYS_BLOCK) {
@@ -63,14 +63,12 @@ for (const { pattern, label } of ALWAYS_BLOCK) {
 if (/\bmove-state\.(mjs|sh)\b/.test(command)) {
   block(
     'Direct invocation of move-state is reserved for internal use.\n' +
-    '  Use `/task promote` (forward), `/task demote` (back to development), or `/task reconcile` (drift recovery).'
+      '  Use `/task promote` (forward), `/task demote` (back to development), or `/task reconcile` (drift recovery).'
   );
 }
 
 // Write-allowed prefixes — project root only (./tmp/ lives inside it).
-const WRITE_ALLOWED = [
-  projectRoot + '/',
-];
+const WRITE_ALLOWED = [projectRoot + '/'];
 
 // Read-allowed prefixes — project root, temp, ~/.claude, and system paths.
 const READ_ALLOWED = [
@@ -100,8 +98,14 @@ function stripQuotedRegions(s) {
       const q = c;
       out += ' ';
       i += 1;
-      while (i < s.length && s[i] !== q) { out += ' '; i += 1; }
-      if (i < s.length) { out += ' '; i += 1; }
+      while (i < s.length && s[i] !== q) {
+        out += ' ';
+        i += 1;
+      }
+      if (i < s.length) {
+        out += ' ';
+        i += 1;
+      }
     } else {
       out += c;
       i += 1;
@@ -136,8 +140,10 @@ const allPaths = new Set(scanned.match(absPathRe) ?? []);
 
 // --- Validate write targets ---
 for (const p of writePaths) {
-  if (!WRITE_ALLOWED.some(prefix => p.startsWith(prefix))) {
-    block(`Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside project root and /tmp/)`);
+  if (!WRITE_ALLOWED.some((prefix) => p.startsWith(prefix))) {
+    block(
+      `Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside project root and /tmp/)`
+    );
   }
   // Explicit check: ~/.claude writes are blocked even if path somehow matched
   if (p.startsWith(claudeDir + '/') || p === claudeDir) {
@@ -148,8 +154,10 @@ for (const p of writePaths) {
 // --- Validate read/exec paths (everything not identified as a write target) ---
 for (const p of allPaths) {
   if (writePaths.has(p)) continue; // already validated above
-  if (!READ_ALLOWED.some(prefix => p.startsWith(prefix))) {
-    block(`Access to path outside allowed scope: ${p}\n  (reads permitted in project root, /tmp/, and ~/.claude/)`);
+  if (!READ_ALLOWED.some((prefix) => p.startsWith(prefix))) {
+    block(
+      `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, /tmp/, and ~/.claude/)`
+    );
   }
 }
 
@@ -160,11 +168,12 @@ for (const p of allPaths) {
 const ghEditResult = evaluateGhEdit({
   command,
   readBodyFile: (p) => readFileSync(p, 'utf8'),
-  fetchCurrentBody: (n) => execSync(`gh issue view ${Number(n)} --json body --jq .body`, {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore'],
-    timeout: 10000,
-  }),
+  fetchCurrentBody: (n) =>
+    execSync(`gh issue view ${Number(n)} --json body --jq .body`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 10000,
+    }),
 });
 if (ghEditResult.block) block(ghEditResult.reason);
 

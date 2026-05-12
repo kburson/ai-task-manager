@@ -54,7 +54,10 @@ export function loadSession(sessionId, { fs = realFs, dir = DEFAULT_DIR } = {}) 
   }
 }
 
-export function saveSession(state, { fs = realFs, dir = DEFAULT_DIR, now = () => new Date() } = {}) {
+export function saveSession(
+  state,
+  { fs = realFs, dir = DEFAULT_DIR, now = () => new Date() } = {}
+) {
   if (!state?.sessionId) return;
   const p = sessionFilePath(state.sessionId, dir);
   const next = { ...state, updatedAt: now().toISOString() };
@@ -70,10 +73,10 @@ export function saveSession(state, { fs = realFs, dir = DEFAULT_DIR, now = () =>
 //   off     -> both gates ON
 //   reset   -> clear override (null) + clear lastPromptedParent
 const CHOICE_GATES = {
-  both:    { analysisToDevelopment: false, reviewToDone: false },
+  both: { analysisToDevelopment: false, reviewToDone: false },
   analyze: { analysisToDevelopment: false, reviewToDone: true },
-  review:  { analysisToDevelopment: true,  reviewToDone: false },
-  off:     { analysisToDevelopment: true,  reviewToDone: true },
+  review: { analysisToDevelopment: true, reviewToDone: false },
+  off: { analysisToDevelopment: true, reviewToDone: true },
 };
 
 export function VALID_CHOICES() {
@@ -101,14 +104,18 @@ export function applyChoice(state, choice, { parent = null } = {}) {
 export function sweepOrphans({ now = Date.now(), maxAgeMs, fs = realFs, dir = DEFAULT_DIR } = {}) {
   if (!Number.isFinite(maxAgeMs) || maxAgeMs <= 0) return 0;
   let names;
-  try { names = fs.readdirSync(dir); } catch { return 0; }
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return 0;
+  }
   let count = 0;
   for (const n of names) {
     if (!n.startsWith(FILE_PREFIX) || !n.endsWith(FILE_SUFFIX)) continue;
     const p = path.join(dir, n);
     try {
       const st = fs.statSync(p);
-      if ((now - st.mtimeMs) > maxAgeMs) {
+      if (now - st.mtimeMs > maxAgeMs) {
         fs.unlinkSync(p);
         count++;
       }

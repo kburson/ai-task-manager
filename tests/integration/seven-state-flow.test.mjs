@@ -7,7 +7,10 @@
 
 import assert from 'node:assert/strict';
 import { admit } from '../../scripts/gh/lib/wave-admission.mjs';
-import { checkCascadeGrooming, checkWaveAdmission } from '../../scripts/task-tracker/lib/body-gates.mjs';
+import {
+  checkCascadeGrooming,
+  checkWaveAdmission,
+} from '../../scripts/task-tracker/lib/body-gates.mjs';
 
 const STATES = ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done'];
 
@@ -22,18 +25,26 @@ function makeProject() {
       assert.ok(STATES.includes(target), `unknown target ${target}`);
       issues.get(n).status = target;
     },
-    setSequence(n, s) { issues.get(n).sequence = s; },
-    read(n) { return issues.get(n); },
-    childrenOf(parent) { return issues.get(parent).children.map(c => issues.get(c)); },
+    setSequence(n, s) {
+      issues.get(n).sequence = s;
+    },
+    read(n) {
+      return issues.get(n);
+    },
+    childrenOf(parent) {
+      return issues.get(parent).children.map((c) => issues.get(c));
+    },
     fetchSiblings({ parentEpicNumber }) {
-      return issues.get(parentEpicNumber).children
-        .map(c => issues.get(c))
-        .map(c => ({ number: c.number, sequence: c.sequence, state: c.status }));
+      return issues
+        .get(parentEpicNumber)
+        .children.map((c) => issues.get(c))
+        .map((c) => ({ number: c.number, sequence: c.sequence, state: c.status }));
     },
     fetchSubIssueStates({ epicNumber }) {
-      return issues.get(epicNumber).children
-        .map(c => issues.get(c))
-        .map(c => ({ number: c.number, state: c.status }));
+      return issues
+        .get(epicNumber)
+        .children.map((c) => issues.get(c))
+        .map((c) => ({ number: c.number, state: c.status }));
     },
   };
 }
@@ -139,7 +150,9 @@ async function testSameWaveNewcomer() {
 
   // Wave-2 admission: must wait for newcomer too.
   // Drive S1 + S2 to Done.
-  p.move(201, 'validate'); p.move(201, 'review'); p.move(201, 'done');
+  p.move(201, 'validate');
+  p.move(201, 'review');
+  p.move(201, 'done');
   p.move(202, 'done');
 
   // Newcomer still in analyze → wave-2 stays blocked.
@@ -164,14 +177,18 @@ async function testSoloIssue() {
   const r = await admit({
     parentEpicNumber: child.parent, // null
     sequence: child.sequence,
-    fetchSiblings: () => { throw new Error('solo must not call fetchSiblings'); },
+    fetchSiblings: () => {
+      throw new Error('solo must not call fetchSiblings');
+    },
   });
   assert.equal(r.ok, true, 'solo issue admits without invoking fetchSiblings');
 
   const cascade = await checkWaveAdmission({
     parentEpicNumber: null,
     sequence: null,
-    admit: () => { throw new Error('solo must not call admit'); },
+    admit: () => {
+      throw new Error('solo must not call admit');
+    },
   });
   assert.deepEqual(cascade, [], 'checkWaveAdmission solo bypass returns []');
 
@@ -189,4 +206,7 @@ async function main() {
   console.log('seven-state-flow integration: ok');
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -50,7 +50,10 @@ Depends on: #11, #12
 `;
 
 // Same body but starting from XS so size delta is XS→M (≥2 tiers).
-const FIXTURE_BODY_HUMAN = FIXTURE_BODY_M.replace('"size":"S","estimate":3.5', '"size":"XS","estimate":1.5');
+const FIXTURE_BODY_HUMAN = FIXTURE_BODY_M.replace(
+  '"size":"S","estimate":3.5',
+  '"size":"XS","estimate":1.5'
+);
 
 const CFG = {
   repo: 'test/repo',
@@ -64,29 +67,40 @@ function buildDeps(body, extraReevalDeps = {}) {
     state,
     deps: {
       fetchIssueBody: async () => ({ title: 't', body: state.body }),
-      writeIssueBody: async ({ body }) => { state.body = body; },
-      postComment: async ({ body }) => { state.comments.push(body); },
+      writeIssueBody: async ({ body }) => {
+        state.body = body;
+      },
+      postComment: async ({ body }) => {
+        state.comments.push(body);
+      },
       moveState: async () => 0,
       isHeadless: () => false,
       fetchParentEpicNumber: async () => null,
       readParentStatus: async () => 'development',
-      applyReevaluate: (args) => applyReevaluate({
-        ...args,
-        deps: {
-          postComment: async ({ body }) => { state.comments.push(body); },
-          writeIssueBody: async ({ body }) => { state.body = body; },
-          loadProjectFieldDefs: () => ([
-            { key: 'size', name: 'Size', type: 'single_select' },
-            { key: 'estimate', name: 'Estimate', type: 'number' },
-          ]),
-          projectValuesForIssue: async () => ({}),
-          projectItemForIssue: async () => ({ itemId: 'PVTI_test' }),
-          writeProjectFieldValue: async (w) => { state.fieldWrites.push(w); },
-          fieldOptionMap: async () => ({ M: 'O_m', L: 'O_l', XS: 'O_xs', S: 'O_s', XL: 'O_xl' }),
-          hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
-          ...extraReevalDeps,
-        },
-      }),
+      applyReevaluate: (args) =>
+        applyReevaluate({
+          ...args,
+          deps: {
+            postComment: async ({ body }) => {
+              state.comments.push(body);
+            },
+            writeIssueBody: async ({ body }) => {
+              state.body = body;
+            },
+            loadProjectFieldDefs: () => [
+              { key: 'size', name: 'Size', type: 'single_select' },
+              { key: 'estimate', name: 'Estimate', type: 'number' },
+            ],
+            projectValuesForIssue: async () => ({}),
+            projectItemForIssue: async () => ({ itemId: 'PVTI_test' }),
+            writeProjectFieldValue: async (w) => {
+              state.fieldWrites.push(w);
+            },
+            fieldOptionMap: async () => ({ M: 'O_m', L: 'O_l', XS: 'O_xs', S: 'O_s', XL: 'O_xl' }),
+            hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
+            ...extraReevalDeps,
+          },
+        }),
     },
   };
 }
@@ -98,7 +112,7 @@ function buildDeps(body, extraReevalDeps = {}) {
   assert.equal(result.status, 'approved');
   assert.match(state.body, /"size":"M"/, 'body fields-block patched to M');
   assert.match(state.body, /"estimate":8/, 'body fields-block patched to estimate 8');
-  const audit = state.comments.find(c => c.startsWith('### 🔁 Analysis re-estimate'));
+  const audit = state.comments.find((c) => c.startsWith('### 🔁 Analysis re-estimate'));
   assert.ok(audit, 'expected audit comment with new header');
   assert.match(audit, /\| Size \| S \| M \|/, 'audit table shows S→M');
   assert.ok(!/HUMAN ATTENTION/.test(audit), 'auto-apply must not include human-attention banner');
@@ -109,11 +123,14 @@ function buildDeps(body, extraReevalDeps = {}) {
 {
   const { state, deps } = buildDeps(FIXTURE_BODY_HUMAN);
   let moveCalled = false;
-  deps.moveState = async () => { moveCalled = true; return 0; };
+  deps.moveState = async () => {
+    moveCalled = true;
+    return 0;
+  };
   const result = await runApprove({ issueNumber: 999, answer: 'yes', cfg: CFG, deps });
   assert.equal(result.status, 'reeval-human-attention', 'must refuse transition on ≥2-tier jump');
   assert.equal(moveCalled, false, 'moveState must NOT run when reeval flags human-attention');
-  const audit = state.comments.find(c => c.includes('HUMAN ATTENTION'));
+  const audit = state.comments.find((c) => c.includes('HUMAN ATTENTION'));
   assert.ok(audit, 'expected human-attention comment');
   assert.match(audit, /\| Size \| XS \| M \|/, 'audit table shows XS→M');
   assert.equal(state.fieldWrites.length, 0, 'no field writes on human-attention path');
@@ -152,7 +169,7 @@ function buildDeps(body, extraReevalDeps = {}) {
   const result = await runApprove({ issueNumber: 999, answer: 'yes', cfg: CFG, deps });
   delete process.env.TASK_TRACKER_SKIP_REEVAL;
   assert.equal(result.status, 'approved');
-  const bypass = state.comments.find(c => /Bypassed via `TASK_TRACKER_SKIP_REEVAL=1`/.test(c));
+  const bypass = state.comments.find((c) => /Bypassed via `TASK_TRACKER_SKIP_REEVAL=1`/.test(c));
   assert.ok(bypass, 'expected bypass comment');
   assert.match(state.body, /"size":"S"/, 'body unchanged when reeval skipped');
   assert.equal(state.fieldWrites.length, 0, 'no field writes on bypass');
@@ -167,9 +184,12 @@ function buildDeps(body, extraReevalDeps = {}) {
   assert.equal(result.status, 'approved', 'epic must promote despite scorer divergence');
   assert.equal(state.fieldWrites.length, 0, 'no field writes on epic-skip path');
   assert.match(state.body, /"size":"XS"/, 'epic body unchanged on skip');
-  const audit = state.comments.find(c => /Skipped: epic with 4 sub-issue/.test(c));
+  const audit = state.comments.find((c) => /Skipped: epic with 4 sub-issue/.test(c));
   assert.ok(audit, 'expected epic-skip audit comment');
-  assert.ok(!state.comments.some(c => /HUMAN ATTENTION/.test(c)), 'no human-attention comment on epic-skip path');
+  assert.ok(
+    !state.comments.some((c) => /HUMAN ATTENTION/.test(c)),
+    'no human-attention comment on epic-skip path'
+  );
 }
 
 // Test 7 (#92): non-epic regression — existing scorer behaviour preserved.

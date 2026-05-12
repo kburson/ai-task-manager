@@ -21,7 +21,9 @@ import { loadProjectFieldDefs } from '../project-fields.mjs';
 const pexec = promisify(execFile);
 
 async function defaultPostComment({ issueNumber, repo, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], { timeout: 5000 });
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+    timeout: 5000,
+  });
 }
 
 export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {}) {

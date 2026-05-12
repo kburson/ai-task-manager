@@ -14,11 +14,23 @@ function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
   return {
     calls,
     deps: {
-      fetchIssueBody: async () => { calls.fetches++; if (secondFetch) return { body }; secondFetch = true; return { body }; },
-      writeIssueBody: async ({ body: b }) => { calls.writes.push(b); },
+      fetchIssueBody: async () => {
+        calls.fetches++;
+        if (secondFetch) return { body };
+        secondFetch = true;
+        return { body };
+      },
+      writeIssueBody: async ({ body: b }) => {
+        calls.writes.push(b);
+      },
       getLiveState: async () => live,
-      runMoveState: async ({ issueNumber, target }) => { calls.moves.push({ issueNumber, target }); return moveCode; },
-      postTimingRow: async ({ row }) => { calls.timings.push(row); },
+      runMoveState: async ({ issueNumber, target }) => {
+        calls.moves.push({ issueNumber, target });
+        return moveCode;
+      },
+      postTimingRow: async ({ row }) => {
+        calls.timings.push(row);
+      },
     },
   };
 }
@@ -72,7 +84,11 @@ test('demote: drift refused when live ≠ recorded', async () => {
 });
 
 test('demote: transition-failed when move-state exits non-zero', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('validate'), live: 'validate', moveCode: 3 });
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('validate'),
+    live: 'validate',
+    moveCode: 3,
+  });
   const r = await runDemote({ issueNumber: 204, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.exitCode, 3);

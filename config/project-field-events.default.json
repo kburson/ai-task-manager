@@ -1,7 +1,5 @@
 {
-  "moveToDevelopment": [
-    { "field": "startTime", "value": "now", "mode": "set_once" }
-  ],
+  "moveToDevelopment": [{ "field": "startTime", "value": "now", "mode": "set_once" }],
   "logTime": [
     { "field": "engagedTime", "value": "computed.engagedMinutes", "mode": "set" },
     { "field": "sessionTime", "value": "computed.sessionMinutes", "mode": "set" },

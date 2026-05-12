@@ -20,7 +20,7 @@ const PRIORITY_CONFIG_KEYS = {
 };
 
 export function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function defaultRunGql(query, variables) {
@@ -36,12 +36,13 @@ function normalizeSize(size) {
 }
 
 function issueSideProjectItems(issue, projectId) {
-  return (issue?.projectItems?.nodes || []).filter(item => item.project?.id === projectId);
+  return (issue?.projectItems?.nodes || []).filter((item) => item.project?.id === projectId);
 }
 
 async function fetchIssue({ cfg, issueNumber, runGql }) {
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await runGql(`
+  const data = await runGql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         id
@@ -59,7 +60,7 @@ async function fetchIssue({ cfg, issueNumber, runGql }) {
         }
       }
     }`,
-    { owner, repo: repoName, issue: Number(issueNumber) },
+    { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const repository = data.repository;
   if (!repository?.issue) throw new Error(`issue #${issueNumber} not found in ${cfg.repo}`);
@@ -69,13 +70,14 @@ async function fetchIssue({ cfg, issueNumber, runGql }) {
 async function ensureProjectLinked({ cfg, repositoryId, runGql }) {
   if (!cfg.projectId || !repositoryId) return;
   try {
-    await runGql(`
+    await runGql(
+      `
       mutation($project: ID!, $repo: ID!) {
         linkProjectV2ToRepository(input: { projectId: $project, repositoryId: $repo }) {
           repository { nameWithOwner }
         }
       }`,
-      { project: cfg.projectId, repo: repositoryId },
+      { project: cfg.projectId, repo: repositoryId }
     );
   } catch {
     // GitHub errors when the project is already linked or linkage is unavailable
@@ -87,7 +89,8 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
   let after = null;
   let projectInfo = null;
   do {
-    const data = await runGql(`
+    const data = await runGql(
+      `
       query($project: ID!, $after: String) {
         node(id: $project) {
           ... on ProjectV2 {
@@ -111,12 +114,12 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
           }
         }
       }`,
-      { project: cfg.projectId, after },
+      { project: cfg.projectId, after }
     );
     const project = data.node;
     projectInfo = project;
-    const item = (project?.items?.nodes || []).find(node =>
-      !node.isArchived && Number(node.content?.number) === Number(issueNumber)
+    const item = (project?.items?.nodes || []).find(
+      (node) => !node.isArchived && Number(node.content?.number) === Number(issueNumber)
     );
     if (item) return { project, item };
     after = project?.items?.pageInfo?.hasNextPage ? project.items.pageInfo.endCursor : null;
@@ -125,59 +128,64 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
 }
 
 async function addIssueToProject({ cfg, issueId, runGql }) {
-  const data = await runGql(`
+  const data = await runGql(
+    `
     mutation($project: ID!, $content: ID!) {
       addProjectV2ItemById(input: { projectId: $project, contentId: $content }) {
         item { id }
       }
     }`,
-    { project: cfg.projectId, content: issueId },
+    { project: cfg.projectId, content: issueId }
   );
   return data.addProjectV2ItemById.item.id;
 }
 
 async function deleteProjectItem({ cfg, itemId, runGql }) {
-  await runGql(`
+  await runGql(
+    `
     mutation($project: ID!, $item: ID!) {
       deleteProjectV2Item(input: { projectId: $project, itemId: $item }) {
         deletedItemId
       }
     }`,
-    { project: cfg.projectId, item: itemId },
+    { project: cfg.projectId, item: itemId }
   );
 }
 
 async function linkSubIssue({ parentId, childId, runGql }) {
-  await runGql(`
+  await runGql(
+    `
     mutation($parent: ID!, $child: ID!) {
       addSubIssue(input: { issueId: $parent, subIssueId: $child }) {
         issue { id }
         subIssue { id }
       }
     }`,
-    { parent: parentId, child: childId },
+    { parent: parentId, child: childId }
   );
 }
 
 async function writeField({ cfg, itemId, fieldId, value, runGql }) {
   if (!fieldId) return;
   if (value?.singleSelectOptionId) {
-    await runGql(`
+    await runGql(
+      `
       mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) {
           projectV2Item { id }
         }
       }`,
-      { project: cfg.projectId, item: itemId, field: fieldId, option: value.singleSelectOptionId },
+      { project: cfg.projectId, item: itemId, field: fieldId, option: value.singleSelectOptionId }
     );
   } else if (value?.number !== undefined) {
-    await runGql(`
+    await runGql(
+      `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: Float!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { number: $val } }) {
           projectV2Item { id }
         }
       }`,
-      { project: cfg.projectId, item: itemId, field: fieldId, val: value.number },
+      { project: cfg.projectId, item: itemId, field: fieldId, val: value.number }
     );
   }
 }
@@ -208,11 +216,14 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, sequ
   const sizeValue = normalizeSize(size);
   if (sizeValue) {
     if (!cfg.sizeFieldId) {
-      throw new Error(`Size field is not configured (sizeFieldId missing); cannot write Size ${sizeValue}`);
+      throw new Error(
+        `Size field is not configured (sizeFieldId missing); cannot write Size ${sizeValue}`
+      );
     }
-    const sizeOptionId = cfg.sizeOptions?.[sizeValue]
-      || cfg.sizeOptionMap?.[sizeValue]
-      || cfg.sizeOptionMap?.[cfg.sizeFieldId]?.[sizeValue];
+    const sizeOptionId =
+      cfg.sizeOptions?.[sizeValue] ||
+      cfg.sizeOptionMap?.[sizeValue] ||
+      cfg.sizeOptionMap?.[cfg.sizeFieldId]?.[sizeValue];
     if (!sizeOptionId) {
       throw new Error(`Size option ${sizeValue} not found for field ${cfg.sizeFieldId}`);
     }
@@ -263,7 +274,8 @@ function failureMessage({ cfg, issueNumber, project, phantomItems }) {
 export function backlogSizingWarning({ status, size, estimate } = {}) {
   if (status !== 'backlog') return null;
   if (!size) return null;
-  if (estimate === undefined || estimate === null || estimate === '' || estimate === true) return null;
+  if (estimate === undefined || estimate === null || estimate === '' || estimate === true)
+    return null;
   return (
     '⚠ warning: tethering a sized + estimated issue to Backlog. ' +
     'Backlog is for unvetted ideas; sized work belongs in the Groom column. ' +
@@ -313,7 +325,16 @@ export async function tetherIssueToProject({
     const verified = await projectItemForIssue({ cfg, issueNumber, runGql });
     lastProject = verified.project;
     if (verified.item?.id) {
-      await writeFields({ cfg, itemId: verified.item.id, status, priority, size, estimate, sequence, runGql });
+      await writeFields({
+        cfg,
+        itemId: verified.item.id,
+        status,
+        priority,
+        size,
+        estimate,
+        sequence,
+        runGql,
+      });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
         await linkSubIssue({ parentId: parent.issue.id, childId: issue.id, runGql });

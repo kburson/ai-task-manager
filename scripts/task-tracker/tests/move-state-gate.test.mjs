@@ -38,18 +38,22 @@ function makeSandbox(body) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'o/r',
-      projectId: 'PVT_x',
-      kanbanFieldId: 'PVTF_x',
-      kanbanOptionBacklog: 'OP_b',
-      kanbanOptionGroom: 'OP_g',
-      kanbanOptionAnalyze: 'OP_a',
-      kanbanOptionDevelopment: 'OP_d',
-      kanbanOptionValidate: 'OP_v',
-      kanbanOptionReview: 'OP_r',
-      kanbanOptionDone: 'OP_done',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'o/r',
+        projectId: 'PVT_x',
+        kanbanFieldId: 'PVTF_x',
+        kanbanOptionBacklog: 'OP_b',
+        kanbanOptionGroom: 'OP_g',
+        kanbanOptionAnalyze: 'OP_a',
+        kanbanOptionDevelopment: 'OP_d',
+        kanbanOptionValidate: 'OP_v',
+        kanbanOptionReview: 'OP_r',
+        kanbanOptionDone: 'OP_done',
+      },
+      null,
+      2
+    )
   );
 
   // Fake gh shim: returns the body we want for `issue view`, swallows everything else.
@@ -127,7 +131,8 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 4. done with same missing-section body → blocked (also catches Done-gate legacy rules)
 {
-  const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n- [ ] something else\n';
+  const body =
+    '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n- [ ] something else\n';
   const { sandbox, binDir } = makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'done']);
   assert.equal(e.code, 4);
@@ -148,7 +153,8 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 6. backlog warning fires when moving a sized + estimated issue to backlog
 {
-  const body = '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S","estimate":3}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+  const body =
+    '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S","estimate":3}}\n```\n<!-- ai-task-manager:fields:end -->\n';
   const { sandbox, binDir } = makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'backlog']);
   assert.match(r.stderr, /sized \+ estimated issue to Backlog/);
@@ -158,7 +164,8 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 7. backlog warning does NOT fire when fields-block has null size/estimate
 {
-  const body = '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":null,"estimate":null}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+  const body =
+    '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":null,"estimate":null}}\n```\n<!-- ai-task-manager:fields:end -->\n';
   const { sandbox, binDir } = makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'backlog']);
   assert.doesNotMatch(r.stderr, /sized \+ estimated issue to Backlog/);

@@ -7,32 +7,34 @@
 //
 // Pure logic — caller injects body sources so this is fully unit-testable.
 
-const ISSUE_EDIT_RE   = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
+const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
-const BODY_FILE_RE  = /--body-file\s+(\S+)/;
+const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
 
 const LEGACY_PATTERNS = [
   {
     name: 'Plan approved by human checkbox',
-    re: /^[ \t]*- \[[ x]\] Plan approved by human\s*$/mi,
-    advice: 'Replaced by hidden <!-- aitm-plan-approved: ... --> marker. Let the /task approve verb manage it.',
+    re: /^[ \t]*- \[[ x]\] Plan approved by human\s*$/im,
+    advice:
+      'Replaced by hidden <!-- aitm-plan-approved: ... --> marker. Let the /task approve verb manage it.',
   },
   {
     name: 'Deep dive complete checkbox',
-    re: /^[ \t]*- \[[ x]\] Deep dive complete\s*$/mi,
-    advice: 'Replaced by hidden <!-- aitm-deep-dive-complete: ... --> marker. Let the /task check verb manage it.',
+    re: /^[ \t]*- \[[ x]\] Deep dive complete\s*$/im,
+    advice:
+      'Replaced by hidden <!-- aitm-deep-dive-complete: ... --> marker. Let the /task check verb manage it.',
   },
 ];
 
 const MARKER_PATTERNS = [
-  { name: 'aitm-plan-approved',      re: /<!--\s*aitm-plan-approved:/i },
+  { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved:/i },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete:/i },
-  { name: 'aitm-review-approved',    re: /<!--\s*aitm-review-approved:/i },
+  { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved:/i },
 ];
 
-const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/mi;
-const DEEP_DIVE_MARKER_RE  = /<!--\s*aitm-deep-dive-complete:/i;
+const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
+const DEEP_DIVE_MARKER_RE = /<!--\s*aitm-deep-dive-complete:/i;
 
 export function parseGhIssueEdit(command) {
   const m = String(command || '').match(ISSUE_EDIT_RE);
@@ -109,7 +111,11 @@ export function checkBodyChange({ newBody, currentBody, issueNumber }) {
   // Adding a `## Deep-Dive Analysis` section without the corresponding hidden
   // marker leaves a re-open vulnerability: the next pickup would not detect
   // marker presence and would regenerate the deep dive.
-  if (DEEP_DIVE_HEADING_RE.test(src) && !DEEP_DIVE_HEADING_RE.test(cur) && !DEEP_DIVE_MARKER_RE.test(src)) {
+  if (
+    DEEP_DIVE_HEADING_RE.test(src) &&
+    !DEEP_DIVE_HEADING_RE.test(cur) &&
+    !DEEP_DIVE_MARKER_RE.test(src)
+  ) {
     return {
       block: true,
       reason:
@@ -131,14 +137,22 @@ export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody }) {
 
   let newBody;
   if (parsed.source === 'file') {
-    try { newBody = readBodyFile(parsed.path); } catch { return { block: false }; }
+    try {
+      newBody = readBodyFile(parsed.path);
+    } catch {
+      return { block: false };
+    }
   } else {
     newBody = parsed.body;
   }
   if (newBody == null) return { block: false };
 
   let currentBody = '';
-  try { currentBody = fetchCurrentBody(parsed.issueNumber) ?? ''; } catch { currentBody = ''; }
+  try {
+    currentBody = fetchCurrentBody(parsed.issueNumber) ?? '';
+  } catch {
+    currentBody = '';
+  }
 
   return checkBodyChange({ newBody, currentBody, issueNumber: parsed.issueNumber });
 }
@@ -151,7 +165,11 @@ export function evaluateGhCreate({ command, readBodyFile }) {
 
   let newBody;
   if (parsed.source === 'file') {
-    try { newBody = readBodyFile(parsed.path); } catch { return { block: false }; }
+    try {
+      newBody = readBodyFile(parsed.path);
+    } catch {
+      return { block: false };
+    }
   } else {
     newBody = parsed.body;
   }

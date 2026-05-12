@@ -2,7 +2,8 @@ export const FIELD_DB_START = '<!-- ai-task-manager:fields:start -->';
 export const FIELD_DB_END = '<!-- ai-task-manager:fields:end -->';
 export const FIELDS_COMMENT_PREFIX = '<!-- aitm-fields:';
 
-const LEGACY_BLOCK_RE = /^[ \t]*<!--\s*ai-task-manager:fields:start\s*-->[\s\S]*?<!--\s*ai-task-manager:fields:end\s*-->/gm;
+const LEGACY_BLOCK_RE =
+  /^[ \t]*<!--\s*ai-task-manager:fields:start\s*-->[\s\S]*?<!--\s*ai-task-manager:fields:end\s*-->/gm;
 const NEW_BLOCK_RE = /^[ \t]*<!--\s*aitm-fields:\s*(\{[\s\S]*?\})\s*-->/gm;
 const FENCE_INNER_RE = /```json\s*([\s\S]*?)\s*```/;
 
@@ -31,7 +32,12 @@ function collectMatches(body) {
   for (const m of body.matchAll(LEGACY_BLOCK_RE)) {
     const inner = m[0];
     const fence = inner.match(FENCE_INNER_RE);
-    out.push({ kind: 'legacy', start: m.index, end: m.index + m[0].length, json: fence ? fence[1] : null });
+    out.push({
+      kind: 'legacy',
+      start: m.index,
+      end: m.index + m[0].length,
+      json: fence ? fence[1] : null,
+    });
   }
   out.sort((a, b) => a.start - b.start);
   return out;
@@ -42,7 +48,12 @@ export function parseIssueFieldDb(body) {
   if (matches.length === 0) return { ok: false, reason: 'missing' };
   const last = matches[matches.length - 1];
   if (last.json == null) {
-    return { ok: false, reason: last.kind === 'legacy' ? 'invalid-fence' : 'invalid-json', start: last.start, end: last.end };
+    return {
+      ok: false,
+      reason: last.kind === 'legacy' ? 'invalid-fence' : 'invalid-json',
+      start: last.start,
+      end: last.end,
+    };
   }
   const parsed = tryParseValues(last.json);
   if (!parsed) {
@@ -82,7 +93,7 @@ function sectionValue(body, heading) {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(
     `^###\\s+${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s+|\\n<!--\\s*ai-task-manager:fields:start\\s*-->|\\n<!--\\s*aitm-fields:|$)`,
-    'im',
+    'im'
   );
   const match = body.match(re);
   if (!match) return null;

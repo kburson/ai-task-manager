@@ -70,7 +70,10 @@ function makeTarget() {
 {
   const src = mkdtempSync(path.join(tmpdir(), 'seed-empty-'));
   const tgt = makeTarget();
-  assert.throws(() => seedWorktree({ source: src, target: tgt }), /source \.ai-task-manager not found/);
+  assert.throws(
+    () => seedWorktree({ source: src, target: tgt }),
+    /source \.ai-task-manager not found/
+  );
   rmSync(src, { recursive: true, force: true });
   rmSync(tgt, { recursive: true, force: true });
 }
@@ -110,9 +113,15 @@ function makeTarget() {
   assert.equal(r.ok, true);
   assert.deepEqual(r.copied.sort(), ['definition-of-done.md', 'pickup-directive.md']);
   // existing task-tracker.json untouched
-  assert.match(readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8'), /"repo":"keep\/me"/);
+  assert.match(
+    readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8'),
+    /"repo":"keep\/me"/
+  );
   // markdown files seeded
-  assert.match(readFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), 'utf8'), /# directive/);
+  assert.match(
+    readFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), 'utf8'),
+    /# directive/
+  );
   rmSync(src, { recursive: true, force: true });
   rmSync(tgt, { recursive: true, force: true });
 }
@@ -127,7 +136,10 @@ function makeTarget() {
   const r = seedMissingTemplates({ source: src, target: tgt });
   assert.equal(r.ok, true);
   assert.deepEqual(r.copied, []);
-  assert.match(readFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), 'utf8'), /# user version/);
+  assert.match(
+    readFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), 'utf8'),
+    /# user version/
+  );
   rmSync(src, { recursive: true, force: true });
   rmSync(tgt, { recursive: true, force: true });
 }

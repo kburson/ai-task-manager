@@ -17,7 +17,7 @@ import url from 'node:url';
 const GUARD = path.resolve(
   url.fileURLToPath(new URL('.', import.meta.url)),
   '..',
-  'activity-guard.mjs',
+  'activity-guard.mjs'
 );
 
 // ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ function makeRepo({ state } = {}) {
   if (state !== undefined) stateObj.state = state;
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'task-tracker-state.json'),
-    JSON.stringify(stateObj),
+    JSON.stringify(stateObj)
   );
   return dir;
 }
@@ -70,7 +70,11 @@ function parseDecision(stdout) {
 }
 
 function cleanup(dir) {
-  try { rmSync(dir, { recursive: true, force: true }); } catch { /* noop */ }
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* noop */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +90,9 @@ test('Edit src/foo.ts in development → pass', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit docs/notes.md in analyze → pass', () => {
@@ -101,7 +107,9 @@ test('Edit docs/notes.md in analyze → pass', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit docs/notes.md in groom → block per STATE_MATRIX', () => {
@@ -115,7 +123,9 @@ test('Edit docs/notes.md in groom → block per STATE_MATRIX', () => {
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_DOCS/);
     assert.match(r.decision.reason, /\/task move 65 analyze/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit .github/ISSUE_TEMPLATE/bug.md in groom → pass', () => {
@@ -130,7 +140,9 @@ test('Edit .github/ISSUE_TEMPLATE/bug.md in groom → pass', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Bash npm test in validate → pass', () => {
@@ -142,7 +154,9 @@ test('Bash npm test in validate → pass', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Bash READ command (cat README.md) in done → pass', () => {
@@ -154,7 +168,9 @@ test('Bash READ command (cat README.md) in done → pass', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Write tmp/foo.txt in development → pass (scratch carve-out)', () => {
@@ -166,7 +182,9 @@ test('Write tmp/foo.txt in development → pass (scratch carve-out)', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Write tmp/draft.md in groom → pass (scratch carve-out)', () => {
@@ -178,7 +196,9 @@ test('Write tmp/draft.md in groom → pass (scratch carve-out)', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Write absolute tmp/ path → pass (scratch carve-out)', () => {
@@ -193,7 +213,9 @@ test('Write absolute tmp/ path → pass (scratch carve-out)', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -213,7 +235,9 @@ test('Edit src/foo.ts in groom → block; suggests development', () => {
     assert.match(r.decision.reason, /groom/);
     assert.match(r.decision.reason, /\/task move 65 development/);
     assert.match(r.decision.reason, /Active task: #65/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit src/foo.ts in validate → block; suggests development', () => {
@@ -227,7 +251,9 @@ test('Edit src/foo.ts in validate → block; suggests development', () => {
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
     assert.match(r.decision.reason, /\/task move 65 development/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Bash heredoc to src/ in groom → block', () => {
@@ -243,7 +269,9 @@ test('Bash heredoc to src/ in groom → block', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Bash npm run build in groom → block', () => {
@@ -256,7 +284,9 @@ test('Bash npm run build in groom → block', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /RUN_BUILD/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Bash git commit in groom → block (COMMIT_CODE)', () => {
@@ -269,7 +299,9 @@ test('Bash git commit in groom → block (COMMIT_CODE)', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /COMMIT_CODE/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -277,7 +309,9 @@ test('Bash git commit in groom → block (COMMIT_CODE)', () => {
 // ---------------------------------------------------------------------------
 
 test('Edit src/foo.ts with active issue but no state field → block; suggest reconcile', () => {
-  const dir = makeRepo({ /* no state */ });
+  const dir = makeRepo({
+    /* no state */
+  });
   try {
     const r = runGuard({
       cwd: dir,
@@ -288,7 +322,9 @@ test('Edit src/foo.ts with active issue but no state field → block; suggest re
     assert.match(r.decision.reason, /no recorded kanban state/);
     assert.match(r.decision.reason, /Active task: #65/);
     assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit src/foo.ts with no state file at all → block (no-active-task)', () => {
@@ -301,11 +337,15 @@ test('Edit src/foo.ts with no state file at all → block (no-active-task)', () 
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /no active task/i);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit docs/notes.md with active issue but no state → block; suggest reconcile', () => {
-  const dir = makeRepo({ /* no state */ });
+  const dir = makeRepo({
+    /* no state */
+  });
   try {
     const r = runGuard({
       cwd: dir,
@@ -315,7 +355,9 @@ test('Edit docs/notes.md with active issue but no state → block; suggest recon
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /no recorded kanban state/);
     assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Read with no active task is universally allowed; no state file → pass', () => {
@@ -328,20 +370,24 @@ test('Read with no active task is universally allowed; no state file → pass', 
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 // ---------------------------------------------------------------------------
 // Protocol / malformed input
 // ---------------------------------------------------------------------------
 
-test('malformed stdin JSON → pass (don\'t deadlock)', () => {
+test("malformed stdin JSON → pass (don't deadlock)", () => {
   const dir = makeRepo({ state: 'groom' });
   try {
     const r = runGuard({ cwd: dir, stdinRaw: 'not-json{' });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('unknown tool_name → pass-through', () => {
@@ -353,7 +399,9 @@ test('unknown tool_name → pass-through', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit with missing file_path → pass (avoid false-positive)', () => {
@@ -365,7 +413,9 @@ test('Edit with missing file_path → pass (avoid false-positive)', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('Edit with absolute path inside project root → normalized + blocked in groom', () => {
@@ -381,7 +431,9 @@ test('Edit with absolute path inside project root → normalized + blocked in gr
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });
 
 test('invalid state value in state file with active issue → block; suggest reconcile', () => {
@@ -395,5 +447,7 @@ test('invalid state value in state file with active issue → block; suggest rec
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /no recorded kanban state/);
     assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
-  } finally { cleanup(dir); }
+  } finally {
+    cleanup(dir);
+  }
 });

@@ -26,7 +26,8 @@ try {
 
   // 2. checkDirty: dirty with multiple porcelain entry types
   {
-    const out = ' M scripts/foo.mjs\n?? tmp/scratch.md\n D src/old.ts\nA  src/new.ts\nR  src/a.ts -> src/b.ts\n';
+    const out =
+      ' M scripts/foo.mjs\n?? tmp/scratch.md\n D src/old.ts\nA  src/new.ts\nR  src/a.ts -> src/b.ts\n';
     const r = await checkDirty({ cwd: tmp, runner: async () => out });
     assert.equal(r.dirty, true);
     assert.equal(r.total, 5);
@@ -36,14 +37,22 @@ try {
 
   // 3. checkDirty: missing cwd returns skipped
   {
-    const r = await checkDirty({ cwd: '/nonexistent/path/zzz-aitm', runner: async () => 'should not run' });
+    const r = await checkDirty({
+      cwd: '/nonexistent/path/zzz-aitm',
+      runner: async () => 'should not run',
+    });
     assert.equal(r.dirty, false);
     assert.equal(r.skipped, true);
   }
 
   // 4. checkDirty: runner throws -> skipped (best-effort)
   {
-    const r = await checkDirty({ cwd: tmp, runner: async () => { throw new Error('git missing'); } });
+    const r = await checkDirty({
+      cwd: tmp,
+      runner: async () => {
+        throw new Error('git missing');
+      },
+    });
     assert.equal(r.dirty, false);
     assert.equal(r.skipped, true);
   }

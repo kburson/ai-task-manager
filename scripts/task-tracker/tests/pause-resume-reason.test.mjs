@@ -43,7 +43,7 @@ import { buildRow } from '../gh-timing-comment.mjs';
     wordMarker: 0,
     description: '',
   });
-  assert.match(row, /\|  \|$/);
+  assert.match(row, /\| {2}\|$/);
 }
 
 console.log('pause-resume-reason.test.mjs: all passed');

@@ -12,9 +12,9 @@
 
 ## File Map
 
-| File | Change |
-|------|--------|
-| `skill/SKILL.md` | Primary source — all new instructions added here |
+| File                           | Change                                                    |
+| ------------------------------ | --------------------------------------------------------- |
+| `skill/SKILL.md`               | Primary source — all new instructions added here          |
 | `.claude/skills/task/SKILL.md` | Local installed copy — synced from source after each task |
 
 ---
@@ -22,15 +22,19 @@
 ### Task 1: Update command table and add plan-mode branch to Step 1
 
 **Files:**
+
 - Modify: `skill/SKILL.md` (commands table + Step 1 block)
 
 - [ ] **Step 1: Update the `/task new` row in the commands table**
 
 In `skill/SKILL.md`, replace:
+
 ```markdown
 | `/task new [title]` | Create a new issue and start working on it |
 ```
+
 With:
+
 ```markdown
 | `/task new [title]` | Create a new issue and start working on it. In plan mode: optionally orchestrate full epic + sub-issue backlog from a spec in context. |
 ```
@@ -39,13 +43,16 @@ With:
 
 In `skill/SKILL.md`, after the paragraph ending `**Exit code 3** from \`/task close\` means unchecked items were found — see Pre-Close Gate below.`, add:
 
-```markdown
+````markdown
 ### Step 1b: For `/task new` — check for plan mode
 
 After the CLI returns, read `.claude/task-tracker-state.json`:
+
 ```bash
 cat "$(git rev-parse --show-toplevel)/.claude/task-tracker-state.json"
 ```
+````
+
 If `active` is **not** `"plan"` → proceed to Step 3 (standard flow).
 
 If `active === "plan"` → ask the user:
@@ -56,19 +63,21 @@ If `active === "plan"` → ask the user:
 
 - **no** → proceed to Step 3.
 - **yes** → proceed to **Plan-Mode Backlog Orchestration** below.
-```
+
+````
 
 - [ ] **Step 3: Sync to local installed copy**
 
 ```bash
 cp skill/SKILL.md .claude/skills/task/SKILL.md
-```
+````
 
 - [ ] **Step 4: Verify the branch reads correctly**
 
 ```bash
 grep -n "plan mode\|Step 1b\|active.*plan" skill/SKILL.md
 ```
+
 Expected: at least 3 matching lines including "Step 1b" and `active === "plan"`.
 
 - [ ] **Step 5: Commit**
@@ -83,13 +92,14 @@ git commit -m "feat(skill): add plan-mode detection branch to /task new"
 ### Task 2: Add Label Setup section
 
 **Files:**
+
 - Modify: `skill/SKILL.md` (new section before the Backlog Orchestration section)
 
 - [ ] **Step 1: Add the full Label Setup section**
 
 In `skill/SKILL.md`, locate the `## AI Directives` heading. Insert the following block **before** it:
 
-```markdown
+````markdown
 ## Plan-Mode Backlog Orchestration
 
 When the user confirms "yes" in Step 1b, execute the following sections in order.
@@ -104,21 +114,25 @@ Derive a slug from the title argument: lowercase, spaces → hyphens, strip spec
 Example: "User Authentication & Identity" → `nexus-auth` (or use the full plan title if shorter).
 
 Present to the user:
+
 > "I'll tag all issues in this plan with **`plan/<slug>`**. Accept or replace?"
 
 Wait for the response. Use whatever label text the user confirms.
 
 Create the label if it doesn't exist:
+
 ```bash
 gh label create "plan/<slug>" \
   --color "#0075ca" \
   --description "Plan: <full title>" \
   2>/dev/null || true
 ```
+````
 
 #### B. Purpose Labels
 
 Create the standard purpose label set (skip any that already exist):
+
 ```bash
 gh label create "purpose/infrastructure" --color "#e4e669" --description "CI/CD, env, deployment, migrations" 2>/dev/null || true
 gh label create "purpose/backend"        --color "#0e8a16" --description "APIs, business logic, data models, auth" 2>/dev/null || true
@@ -131,15 +145,15 @@ gh label create "purpose/data"           --color "#bfd4f2" --description "Analyt
 
 **Purpose label inference — apply all that fit per issue:**
 
-| Label | Apply when the scope mentions... |
-|-------|----------------------------------|
+| Label                    | Apply when the scope mentions...                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `purpose/infrastructure` | CI/CD, pipelines, env vars, secrets, deployment, Docker, Railway, cron jobs, database migrations, cleanup scripts |
-| `purpose/backend` | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions |
-| `purpose/client` | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright |
-| `purpose/test` | test suites, fixtures, coverage, integration tests, unit tests, quality tooling |
-| `purpose/dx` | developer experience, documentation, onboarding, scripts, tooling, README, internal guides |
-| `purpose/security` | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation |
-| `purpose/data` | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3 |
+| `purpose/backend`        | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions                 |
+| `purpose/client`         | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright                             |
+| `purpose/test`           | test suites, fixtures, coverage, integration tests, unit tests, quality tooling                                   |
+| `purpose/dx`             | developer experience, documentation, onboarding, scripts, tooling, README, internal guides                        |
+| `purpose/security`       | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation                                  |
+| `purpose/data`           | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3                                   |
 
 #### C. Look Up Size Option IDs
 
@@ -165,19 +179,21 @@ gh api graphql -f query='
 ```
 
 From the result, find the field named `Size` and capture its option IDs for: `XS`, `S`, `M`, `L`, `XL`. Store them as local variables for use in the steps below.
-```
+
+````
 
 - [ ] **Step 2: Sync**
 
 ```bash
 cp skill/SKILL.md .claude/skills/task/SKILL.md
-```
+````
 
 - [ ] **Step 3: Verify**
 
 ```bash
 grep -n "Label Setup\|Master Plan Label\|Purpose Labels\|purpose/infrastructure\|Size Option" skill/SKILL.md
 ```
+
 Expected: 8+ matching lines covering all subsections.
 
 - [ ] **Step 4: Commit**
@@ -192,18 +208,20 @@ git commit -m "feat(skill): add label setup section to plan-mode orchestration"
 ### Task 3: Add Epic Creation instructions
 
 **Files:**
+
 - Modify: `skill/SKILL.md` (new subsection inside Plan-Mode Backlog Orchestration)
 
 - [ ] **Step 1: Add the Epic Creation section immediately after Label Setup**
 
 Append the following inside the `## Plan-Mode Backlog Orchestration` section, after the Label Setup block:
 
-```markdown
+````markdown
 ### Epic Creation
 
 #### 1. Assemble the epic body
 
 From the spec in context, extract:
+
 - The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
 - The **Epic Acceptance Criteria** checkboxes
 
@@ -211,15 +229,18 @@ If `pickupDirective` is `true` in config, read `.claude/task-tracker/definition-
 
 ```markdown
 ## ⚡ Pickup Directive
+
 > Follow: `.claude/task-tracker/pickup-directive.md`
 
 - [ ] Deep dive complete
 
 ### Definition of Done
+
 <contents of definition-of-done.md verbatim>
 
 ---
 ```
+````
 
 #### 2. Create the epic issue
 
@@ -241,6 +262,7 @@ Capture the URL returned; extract the issue number from it (e.g., `https://githu
 ```bash
 gh issue view <EPIC_N> --json id --jq '.id'
 ```
+
 Store as `EPIC_NODE_ID`.
 
 #### 4. Set Priority
@@ -248,6 +270,7 @@ Store as `EPIC_NODE_ID`.
 ```bash
 "$(git rev-parse --show-toplevel)/node_modules/@burson.kendrick/claude-gh-task-manager/scripts/gh/set-priority.sh" <EPIC_N> <p0|p1|p2>
 ```
+
 Use the priority declared in the spec. Default: `p0` for epics.
 
 #### 5. Set Size
@@ -261,6 +284,7 @@ gh project item-edit \
 ```
 
 Get the project item ID first:
+
 ```bash
 gh api graphql -f query='
   query($owner:String!,$repo:String!,$number:Int!) {
@@ -304,19 +328,21 @@ gh api repos/<owner>/<repo>/issues/<EPIC_N> \
   --method PATCH \
   --field body="$(echo "$BODY" | sed 's/<this-issue-#>/<EPIC_N>/g; s/<parent-epic-#>/none — this is the epic/g')"
 ```
-```
+
+````
 
 - [ ] **Step 2: Sync**
 
 ```bash
 cp skill/SKILL.md .claude/skills/task/SKILL.md
-```
+````
 
 - [ ] **Step 3: Verify**
 
 ```bash
 grep -n "Epic Creation\|EPIC_N\|EPIC_NODE_ID\|Set Priority\|Set Size\|Set Estimate\|Move to Backlog" skill/SKILL.md
 ```
+
 Expected: 7+ matching lines, each heading present.
 
 - [ ] **Step 4: Commit**
@@ -331,13 +357,14 @@ git commit -m "feat(skill): add epic creation steps to plan-mode orchestration"
 ### Task 4: Add Sub-Issue Creation Loop instructions
 
 **Files:**
+
 - Modify: `skill/SKILL.md` (new subsection inside Plan-Mode Backlog Orchestration)
 
 - [ ] **Step 1: Add Sub-Issue Loop section after Epic Creation**
 
 Append inside `## Plan-Mode Backlog Orchestration`, after the Epic Creation block:
 
-```markdown
+````markdown
 ### Sub-Issue Creation Loop
 
 Repeat the following for each sub-issue in the spec, in document order.
@@ -349,21 +376,25 @@ Read the sub-issue's Scope. Apply all matching `purpose/*` labels from the infer
 #### 2. Assemble the sub-issue body
 
 Combine in order:
+
 1. The **Scope** section text
 2. The **Acceptance Criteria** checkboxes
 3. The Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it):
 
 ```markdown
 ## ⚡ Pickup Directive
+
 > Follow: `.claude/task-tracker/pickup-directive.md`
 
 - [ ] Deep dive complete
 
 ### Definition of Done
+
 <contents of .claude/task-tracker/definition-of-done.md verbatim>
 
 ---
 ```
+````
 
 Use placeholder text `<this-issue-#>` and `<parent-epic-#>` for now — replace after creation in step 6.
 
@@ -381,9 +412,11 @@ gh issue create \
 ```
 
 Capture the issue number as `SUB_N`. Get the node ID:
+
 ```bash
 gh issue view <SUB_N> --json id --jq '.id'
 ```
+
 Store as `SUB_NODE_ID`.
 
 #### 4. Set Priority, Size, Estimate
@@ -424,22 +457,25 @@ gh api repos/<owner>/<repo>/issues/<SUB_N> \
 #### 8. Print progress line
 
 After each sub-issue:
+
 ```
   Created #<SUB_N>  <title>  [purpose/backend, purpose/security]  S  3h  P0  → linked to #<EPIC_N>
 ```
-```
+
+````
 
 - [ ] **Step 2: Sync**
 
 ```bash
 cp skill/SKILL.md .claude/skills/task/SKILL.md
-```
+````
 
 - [ ] **Step 3: Verify**
 
 ```bash
 grep -n "Sub-Issue Creation Loop\|SUB_N\|SUB_NODE_ID\|addSubIssue\|placeholder issue numbers" skill/SKILL.md
 ```
+
 Expected: 5+ matching lines.
 
 - [ ] **Step 4: Commit**
@@ -454,6 +490,7 @@ git commit -m "feat(skill): add sub-issue creation loop to plan-mode orchestrati
 ### Task 5: Add Summary Report and Tracking Offer
 
 **Files:**
+
 - Modify: `skill/SKILL.md` (closing section of Plan-Mode Backlog Orchestration)
 
 - [ ] **Step 1: Add Summary Report section after Sub-Issue Loop**
@@ -464,15 +501,16 @@ Append inside `## Plan-Mode Backlog Orchestration`, at the end:
 ### Summary Report
 
 After all issues are created, print the full issue map:
-
 ```
-Plan: <plan-slug>   label: plan/<slug>
 
-Epic:  #<EPIC_N>  EPIC: <title>                              <Size>  <Estimate>h  <Priority>
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
-  Sub: #<N>       <sub-title>                                <Size>  <Estimate>h  <Priority>  [purpose/...]
+Plan: <plan-slug> label: plan/<slug>
+
+Epic: #<EPIC_N> EPIC: <title> <Size> <Estimate>h <Priority>
+Sub: #<N> <sub-title> <Size> <Estimate>h <Priority> [purpose/...]
+Sub: #<N> <sub-title> <Size> <Estimate>h <Priority> [purpose/...]
+Sub: #<N> <sub-title> <Size> <Estimate>h <Priority> [purpose/...]
+Sub: #<N> <sub-title> <Size> <Estimate>h <Priority> [purpose/...]
+
 ```
 
 Then ask:
@@ -502,6 +540,7 @@ cp skill/SKILL.md .claude/skills/task/SKILL.md
 ```bash
 grep -n "Summary Report\|Multiple Epics\|Switch.*planning\|next-epic-title" skill/SKILL.md
 ```
+
 Expected: 4+ matching lines.
 
 - [ ] **Step 4: Commit**
@@ -516,6 +555,7 @@ git commit -m "feat(skill): add summary report and tracking offer to plan-mode o
 ### Task 6: Self-review and smoke test against Nexus fixture
 
 **Files:**
+
 - Read: `skill/SKILL.md`
 - Read: `test/fixtures/backlogs/nexus-saas.md`
 
@@ -544,6 +584,7 @@ Read both files. Mentally walk through Epic 1 ("User Authentication & Identity")
 10. Tracking offer → user switches to `#EPIC_N`
 
 Check for gaps:
+
 - [ ] Verify Step 1b reads the correct state file path (uses `git rev-parse --show-toplevel`)
 - [ ] Verify purpose label inference examples in Label Setup B cover all 12 Nexus sub-issues
 - [ ] Verify placeholder replacement step handles `<this-issue-#>` and `<parent-epic-#>` correctly

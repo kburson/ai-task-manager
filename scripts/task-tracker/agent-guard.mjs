@@ -19,8 +19,11 @@ import path from 'node:path';
 import { findMainWorktreePath } from './fleet-registry.mjs';
 
 function canon(p) {
-  try { return realpathSync(path.resolve(p)); }
-  catch { return path.resolve(p); }
+  try {
+    return realpathSync(path.resolve(p));
+  } catch {
+    return path.resolve(p);
+  }
 }
 
 let input = {};

@@ -13,7 +13,11 @@ import { loadConfig } from './config.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
 import { enqueue, drain } from './queue.mjs';
 import {
-  currentSessionId, jsonlPath, markerPathFor, loadMarker, countWords,
+  currentSessionId,
+  jsonlPath,
+  markerPathFor,
+  loadMarker,
+  countWords,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
@@ -22,7 +26,9 @@ import { getProjectDir } from './paths.mjs';
 
 const pexec = promisify(execFile);
 
-export function nowIso() { return new Date().toISOString(); }
+export function nowIso() {
+  return new Date().toISOString();
+}
 
 export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
@@ -39,28 +45,38 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
 }
 
 const EVENT_DESCRIPTIONS = {
-  'created':    'task created',
-  'pause':      'task paused',
-  'close':      'task closed',
-  'end':        'task closed',
+  created: 'task created',
+  pause: 'task paused',
+  close: 'task closed',
+  end: 'task closed',
   'switch-end': 'switched to next task',
 };
 
 export function buildContext(rawArgv = process.argv.slice(2)) {
   const _roleIdx = rawArgv.indexOf('--role');
   const role = _roleIdx >= 0 && _roleIdx + 1 < rawArgv.length ? rawArgv[_roleIdx + 1] : 'solo';
-  const _argvClean = _roleIdx >= 0
-    ? rawArgv.filter((_, i) => i !== _roleIdx && i !== _roleIdx + 1)
-    : rawArgv;
+  const _argvClean =
+    _roleIdx >= 0 ? rawArgv.filter((_, i) => i !== _roleIdx && i !== _roleIdx + 1) : rawArgv;
   const rawVerb = _argvClean[0] || 'status';
   const verb = /^\d+$/.test(rawVerb) ? `#${rawVerb}` : rawVerb;
   const ISSUE_ARG_VERBS = new Set([
-    'log', 'resume', 'start', 'check', 'close', 'review',
-    'analyze', 'approve', 'approve-review', 'promote', 'demote', 'next', 'reconcile',
+    'log',
+    'resume',
+    'start',
+    'check',
+    'close',
+    'review',
+    'analyze',
+    'approve',
+    'approve-review',
+    'promote',
+    'demote',
+    'next',
+    'reconcile',
   ]);
-  const rest = _argvClean.slice(1).map(a =>
-    ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
-  );
+  const rest = _argvClean
+    .slice(1)
+    .map((a) => (ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a));
 
   const projectDir = getProjectDir();
   const cfg = loadConfig();
@@ -69,16 +85,28 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
   const ctx = {
-    cfg, projectDir, statePath, queuePath, SKIP_NETWORK, role, rest, verb,
-    pexec, nowIso, minutesBetween,
-    CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes,
+    cfg,
+    projectDir,
+    statePath,
+    queuePath,
+    SKIP_NETWORK,
+    role,
+    rest,
+    verb,
+    pexec,
+    nowIso,
+    minutesBetween,
+    CLOSE_OWNED_CHECKBOXES,
+    uncheckedPreCloseCheckboxes,
   };
 
   ctx.safePostTiming = async (issue, row) => {
     if (SKIP_NETWORK) return { ok: true, skipped: true };
     try {
       await postTimingEvent({
-        issueNumber: issue, repo: cfg.repo, row,
+        issueNumber: issue,
+        repo: cfg.repo,
+        row,
         timeoutMs: cfg.hookNetworkTimeoutMs,
       });
       return { ok: true };
@@ -93,7 +121,9 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     await drain(async (evt) => {
       if (evt.kind === 'timing') {
         await postTimingEvent({
-          issueNumber: evt.issue, repo: cfg.repo, row: evt.row,
+          issueNumber: evt.issue,
+          repo: cfg.repo,
+          row: evt.row,
           timeoutMs: cfg.hookNetworkTimeoutMs,
         });
       }
@@ -116,15 +146,22 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     if (sid) {
       const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
       ({ activeMin, idleMin } = computeActiveAndIdleMinutes({
-        startMs, endMs, events,
+        startMs,
+        endMs,
+        events,
         idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
       }));
     }
     const wordMarker = state.wordsAtEntryStart + deltaWords;
     const { buildRow } = await import('./gh-timing-comment.mjs');
     const row = buildRow({
-      ts, event, activeMin, idleMin, deltaWords,
-      wordMarker, description: description ?? EVENT_DESCRIPTIONS[event] ?? event,
+      ts,
+      event,
+      activeMin,
+      idleMin,
+      deltaWords,
+      wordMarker,
+      description: description ?? EVENT_DESCRIPTIONS[event] ?? event,
     });
     await ctx.safePostTiming(state.active, row);
     return { ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
@@ -158,7 +195,10 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     const issueNum = String(issue).replace(/^#/, '');
     try {
       const mergedEnv = { ...process.env, ...(envOverride || {}), AITM_INTERNAL: '1' };
-      const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], { timeout: 15000, env: mergedEnv });
+      const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], {
+        timeout: 15000,
+        env: mergedEnv,
+      });
       if (stdout.trim()) console.log(stdout.trim());
     } catch (err) {
       console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
@@ -178,15 +218,18 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
   };
 
-  ctx.buildStateOptionMap = () => Object.fromEntries([
-    [cfg.kanbanOptionBacklog,     'backlog'],
-    [cfg.kanbanOptionGroom,       'groom'],
-    [cfg.kanbanOptionAnalyze,     'analyze'],
-    [cfg.kanbanOptionDevelopment, 'development'],
-    [cfg.kanbanOptionValidate,    'validate'],
-    [cfg.kanbanOptionReview,      'review'],
-    [cfg.kanbanOptionDone,        'done'],
-  ].filter(([k]) => k));
+  ctx.buildStateOptionMap = () =>
+    Object.fromEntries(
+      [
+        [cfg.kanbanOptionBacklog, 'backlog'],
+        [cfg.kanbanOptionGroom, 'groom'],
+        [cfg.kanbanOptionAnalyze, 'analyze'],
+        [cfg.kanbanOptionDevelopment, 'development'],
+        [cfg.kanbanOptionValidate, 'validate'],
+        [cfg.kanbanOptionReview, 'review'],
+        [cfg.kanbanOptionDone, 'done'],
+      ].filter(([k]) => k)
+    );
 
   ctx.fetchSubIssues = async (issueNum) => {
     if (SKIP_NETWORK) return [];
@@ -203,8 +246,10 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         { owner, repo: repoName, issue: Number(issueNum) },
         { timeout: 10000 }
       );
-      return data?.repository?.issue?.subIssues?.nodes?.map(n => n.number) ?? [];
-    } catch { return []; }
+      return data?.repository?.issue?.subIssues?.nodes?.map((n) => n.number) ?? [];
+    } catch {
+      return [];
+    }
   };
 
   ctx.fetchParentIssue = async (issueNum) => {
@@ -221,7 +266,9 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         { timeout: 10000 }
       );
       return data?.repository?.issue?.parent?.number ?? null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   };
 
   ctx.getIssueBoardState = async (issueNum) => {
@@ -247,10 +294,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         { timeout: 10000 }
       );
       const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-      const node = nodes.find(n => n.project?.id === cfg.projectId);
+      const node = nodes.find((n) => n.project?.id === cfg.projectId);
       const optionId = node?.fieldValueByName?.optionId;
       return optionId ? (ctx.buildStateOptionMap()[optionId] ?? null) : null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   };
 
   return ctx;

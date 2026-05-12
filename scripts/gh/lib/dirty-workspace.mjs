@@ -15,12 +15,16 @@ export const DEFAULT_TRUNCATE_LINES = 10;
 export const DEFAULT_AUDIT_LINES = 5;
 
 const defaultRunner = async (cwd) => {
-  const { stdout } = await pexec('git', ['-c', 'core.quotepath=false', 'status', '--porcelain=v1'], {
-    cwd,
-    timeout: 5000,
-    encoding: 'utf8',
-    maxBuffer: 2 * 1024 * 1024,
-  });
+  const { stdout } = await pexec(
+    'git',
+    ['-c', 'core.quotepath=false', 'status', '--porcelain=v1'],
+    {
+      cwd,
+      timeout: 5000,
+      encoding: 'utf8',
+      maxBuffer: 2 * 1024 * 1024,
+    }
+  );
   return stdout;
 };
 
@@ -34,7 +38,10 @@ export async function checkDirty({ cwd, runner = defaultRunner } = {}) {
   } catch {
     return { dirty: false, lines: [], total: 0, skipped: true };
   }
-  const lines = stdout.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.length > 0);
+  const lines = stdout
+    .split('\n')
+    .map((l) => l.replace(/\r$/, ''))
+    .filter((l) => l.length > 0);
   return { dirty: lines.length > 0, lines, total: lines.length, skipped: false };
 }
 
@@ -48,7 +55,7 @@ export function formatSummary({ lines, total }, { max = DEFAULT_TRUNCATE_LINES }
 }
 
 export function shortAuditDescription({ lines, total }, { max = DEFAULT_AUDIT_LINES } = {}) {
-  const shown = lines.slice(0, max).map(l => l.trim());
+  const shown = lines.slice(0, max).map((l) => l.trim());
   const tail = total > shown.length ? `; +${total - shown.length} more` : '';
   return `dirty=${total}: ${shown.join('; ')}${tail}`;
 }
@@ -65,7 +72,9 @@ export function resolveWorkspaceForIssue({ issueRef, projectDir }) {
         return resolvePath(entry.worktreePath);
       }
     }
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
   return resolvePath(projectDir);
 }
 

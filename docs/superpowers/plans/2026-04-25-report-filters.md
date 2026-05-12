@@ -23,6 +23,7 @@
 ### Task 1: Add new flags to the `cfg` object
 
 **Files:**
+
 - Modify: `scripts/reports/generate-value-report.mjs:10-82`
 
 - [ ] **Step 1: Update the usage comment (lines 10–21)**
@@ -52,23 +53,28 @@ Full `cfg` block after the edit (lines 67–82 become):
 
 ```js
 const cfg = {
-  projectId:     flag('--project-id', ttCfg.projectId ?? ''),
-  owner:         ttOwner || null,
-  repo:          ttCfg.repo ?? '',
-  title:         flag('--title', 'AI Engineering Value Report'),
-  output:        flag('--output') ?? path.join(fileCfg.outputDir ?? './reports', 'value-report'),
-  issues:        flag('--issues')?.split(',').map(Number) ?? null,
-  role:          flag('--role')         ?? fileCfg.role                   ?? 'mid',
-  soloRole:      flag('--solo-role')    ?? fileCfg.soloRole               ?? 'senior',
-  seniorFactor:  +(flag('--senior-factor') ?? fileCfg.seniorEfficiencyFactor ?? 0.70),
-  region:        flag('--region')       ?? fileCfg.region                 ?? 'national',
-  focusHours:    +(flag('--focus-hours') ?? fileCfg.focusHoursPerDay ?? RATES.workday?.focusedCodingHoursPerDay ?? 5),
-  readingWpm:    +(flag('--reading-wpm') ?? fileCfg.readingWpm ?? 180),
-  chatWords:     +(flag('--chat-words') ?? 0),
-  fromDate:      flag('--from') ? new Date(flag('--from') + 'T00:00:00') : null,
-  toDate:        flag('--to')   ? new Date(flag('--to')   + 'T23:59:59') : null,
-  state:         (flag('--state') ?? 'all').toLowerCase(),
-  htmlOnly:      has('--html'),
+  projectId: flag('--project-id', ttCfg.projectId ?? ''),
+  owner: ttOwner || null,
+  repo: ttCfg.repo ?? '',
+  title: flag('--title', 'AI Engineering Value Report'),
+  output: flag('--output') ?? path.join(fileCfg.outputDir ?? './reports', 'value-report'),
+  issues: flag('--issues')?.split(',').map(Number) ?? null,
+  role: flag('--role') ?? fileCfg.role ?? 'mid',
+  soloRole: flag('--solo-role') ?? fileCfg.soloRole ?? 'senior',
+  seniorFactor: +(flag('--senior-factor') ?? fileCfg.seniorEfficiencyFactor ?? 0.7),
+  region: flag('--region') ?? fileCfg.region ?? 'national',
+  focusHours: +(
+    flag('--focus-hours') ??
+    fileCfg.focusHoursPerDay ??
+    RATES.workday?.focusedCodingHoursPerDay ??
+    5
+  ),
+  readingWpm: +(flag('--reading-wpm') ?? fileCfg.readingWpm ?? 180),
+  chatWords: +(flag('--chat-words') ?? 0),
+  fromDate: flag('--from') ? new Date(flag('--from') + 'T00:00:00') : null,
+  toDate: flag('--to') ? new Date(flag('--to') + 'T23:59:59') : null,
+  state: (flag('--state') ?? 'all').toLowerCase(),
+  htmlOnly: has('--html'),
 };
 ```
 
@@ -85,11 +91,13 @@ Expected: starts fetching (no parse error), may print "0 items" — that's fine,
 ### Task 2: Apply filters in `processItems`
 
 **Files:**
+
 - Modify: `scripts/reports/generate-value-report.mjs:160-183`
 
 - [ ] **Step 1: Replace the `.filter` at the bottom of `processItems` (lines 179–182)**
 
 Current code (lines 179–182):
+
 ```js
     .filter(i => cfg.issues
       ? cfg.issues.includes(i.number)
@@ -98,6 +106,7 @@ Current code (lines 179–182):
 ```
 
 Replace with:
+
 ```js
     .filter(i => {
       // --issues overrides all other filters
@@ -121,21 +130,27 @@ Replace with:
 - [ ] **Step 2: Verify filters work end-to-end**
 
 Run with `--state closed`:
+
 ```bash
 node scripts/reports/generate-value-report.mjs --html --state closed 2>&1
 ```
+
 Expected: "N issues found." where N ≤ total. All issues in the table should show status "Done" or "Closed".
 
 Run with a date range that covers recent months:
+
 ```bash
 node scripts/reports/generate-value-report.mjs --html --from 2025-01-01 2>&1
 ```
+
 Expected: only issues closed on or after Jan 1 2025 appear.
 
 Run with both:
+
 ```bash
 node scripts/reports/generate-value-report.mjs --html --state closed --from 2025-06-01 --to 2025-12-31 2>&1
 ```
+
 Expected: only closed issues with closedAt in that range.
 
 ---
@@ -143,6 +158,7 @@ Expected: only closed issues with closedAt in that range.
 ### Task 3: Show active filters in the report header
 
 **Files:**
+
 - Modify: `scripts/reports/generate-value-report.mjs:358-367`
 
 - [ ] **Step 1: Build a filter summary string and inject it into the header meta**
@@ -150,38 +166,42 @@ Expected: only closed issues with closedAt in that range.
 In `buildHtml`, right after `const now = ...` (line 217), add:
 
 ```js
-  const filterParts = [];
-  if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
-  if (cfg.fromDate) filterParts.push(`From: ${cfg.fromDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
-  if (cfg.toDate)   filterParts.push(`To: ${cfg.toDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
-  const filterLabel = filterParts.length ? filterParts.join(' · ') : null;
+const filterParts = [];
+if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
+if (cfg.fromDate)
+  filterParts.push(`From: ${cfg.fromDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
+if (cfg.toDate)
+  filterParts.push(`To: ${cfg.toDate.toLocaleDateString('en-US', { dateStyle: 'medium' })}`);
+const filterLabel = filterParts.length ? filterParts.join(' · ') : null;
 ```
 
 - [ ] **Step 2: Render the filter label in the header meta block (lines 358–367)**
 
 Current header meta block:
+
 ```html
-  <div class="meta">
-    <span>Project: ${project.title}</span>
-    <span>Generated: ${now}</span>
-    <span>Issues: ${items.length}</span>
-    <span>Repo: ${cfg.repo || 'unknown'}</span>
-    <span>Role baseline: ${cfg.role}</span>
-    <span>Region: ${reg.label}</span>
-  </div>
+<div class="meta">
+  <span>Project: ${project.title}</span>
+  <span>Generated: ${now}</span>
+  <span>Issues: ${items.length}</span>
+  <span>Repo: ${cfg.repo || 'unknown'}</span>
+  <span>Role baseline: ${cfg.role}</span>
+  <span>Region: ${reg.label}</span>
+</div>
 ```
 
 Replace with:
+
 ```html
-  <div class="meta">
-    <span>Project: ${project.title}</span>
-    <span>Generated: ${now}</span>
-    <span>Issues: ${items.length}</span>
-    <span>Repo: ${cfg.repo || 'unknown'}</span>
-    <span>Role baseline: ${cfg.role}</span>
-    <span>Region: ${reg.label}</span>
-    ${filterLabel ? `<span style="color:#fbbf24;font-weight:600">Filters: ${filterLabel}</span>` : ''}
-  </div>
+<div class="meta">
+  <span>Project: ${project.title}</span>
+  <span>Generated: ${now}</span>
+  <span>Issues: ${items.length}</span>
+  <span>Repo: ${cfg.repo || 'unknown'}</span>
+  <span>Role baseline: ${cfg.role}</span>
+  <span>Region: ${reg.label}</span>
+  ${filterLabel ? `<span style="color:#fbbf24;font-weight:600">Filters: ${filterLabel}</span>` : ''}
+</div>
 ```
 
 - [ ] **Step 3: Final end-to-end test — open the report and visually confirm the filter chip**
@@ -205,6 +225,7 @@ git commit -m "feat(reports): add --from, --to, --state filters to value report"
 ## Verification
 
 All three tests from Task 2 Step 2 pass. Visual check: open the HTML report and confirm:
+
 1. No state mismatch in the issue table when `--state closed` is used.
 2. No out-of-range `closedAt` dates when `--from`/`--to` are set.
 3. Filter chip appears in amber in the report header when any filter is active.

@@ -12,17 +12,16 @@ import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
-import { buildFieldSyncPlan, fieldIdFor, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
-import { parseTimingRows, rollupTotals } from '../task-tracker/timing-rollup.mjs';
 import {
-  gh,
-  gql,
-  splitRepo,
-  writeProjectFieldValue,
-} from './lib/github-projects.mjs';
+  buildFieldSyncPlan,
+  fieldIdFor,
+  loadProjectFieldDefs,
+} from '../task-tracker/project-fields.mjs';
+import { parseTimingRows, rollupTotals } from '../task-tracker/timing-rollup.mjs';
+import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
-const issueArg = args.find(a => /^#?\d+$/.test(a));
+const issueArg = args.find((a) => /^#?\d+$/.test(a));
 const dryRun = args.includes('--dry-run');
 
 if (!issueArg) {
@@ -34,8 +33,14 @@ const issueNumber = issueArg.replace('#', '');
 const cfg = loadConfig();
 const projectDir = getProjectDir();
 
-if (!cfg.repo) { console.error('repo not configured. Run: /task config repo owner/repo'); process.exit(1); }
-if (!cfg.projectId) { console.error('projectId not configured. Run: npx ai-task-manager init'); process.exit(1); }
+if (!cfg.repo) {
+  console.error('repo not configured. Run: /task config repo owner/repo');
+  process.exit(1);
+}
+if (!cfg.projectId) {
+  console.error('projectId not configured. Run: npx ai-task-manager init');
+  process.exit(1);
+}
 
 const { owner, repoName } = splitRepo(cfg.repo);
 
@@ -50,7 +55,9 @@ async function writeIssueBody(body) {
     writeFileSync(tmp, body, 'utf8');
     await gh(['issue', 'edit', issueNumber, '-R', cfg.repo, '--body-file', tmp]);
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -59,11 +66,12 @@ async function writeIssueBody(body) {
 async function fetchTimingComment() {
   const out = await gh(['issue', 'view', issueNumber, '-R', cfg.repo, '--json', 'comments']);
   const { comments } = JSON.parse(out);
-  return comments.find(c => c.body.includes('⏱ Timing Log')) ?? null;
+  return comments.find((c) => c.body.includes('⏱ Timing Log')) ?? null;
 }
 
 async function fetchProjectMeta() {
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!, $project: ID!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -86,11 +94,11 @@ async function fetchProjectMeta() {
   );
 
   const projectItems = data.repository.issue.projectItems.nodes;
-  const itemNode = projectItems.find(n => n.project?.id === cfg.projectId) ?? projectItems[0];
+  const itemNode = projectItems.find((n) => n.project?.id === cfg.projectId) ?? projectItems[0];
   if (!itemNode) throw new Error(`Issue #${issueNumber} is not on project ${cfg.projectId}`);
 
   const fields = data.node.fields.nodes;
-  const fieldByName = (...names) => fields.find(f => names.includes(f.name));
+  const fieldByName = (...names) => fields.find((f) => names.includes(f.name));
 
   const engagedField = cfg.fieldEngagedTime
     ? { id: cfg.fieldEngagedTime }
@@ -112,7 +120,12 @@ async function fetchProjectMeta() {
 }
 
 async function writeNumberField(itemId, fieldId, value) {
-  await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId, value: { number: value } });
+  await writeProjectFieldValue({
+    projectId: cfg.projectId,
+    itemId,
+    fieldId,
+    value: { number: value },
+  });
 }
 
 // ---- Main ----
@@ -134,7 +147,9 @@ async function writeNumberField(itemId, fieldId, value) {
   }
 
   console.log(`Issue #${issueNumber}: ${rowCount} timing rows`);
-  console.log(`  Engaged Time        : ${engagedMin} min  (active ${totalActiveMin} + review ${reviewMin})`);
+  console.log(
+    `  Engaged Time        : ${engagedMin} min  (active ${totalActiveMin} + review ${reviewMin})`
+  );
   console.log(`  Session Time        : ${totalActiveMin} min`);
   console.log(`  Review Time         : ${reviewMin} min  (threshold ${thresholdMin} min)`);
 
@@ -163,7 +178,12 @@ async function writeNumberField(itemId, fieldId, value) {
   const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values });
   if (syncPlan.length) {
     for (const item of syncPlan) {
-      await writeProjectFieldValue({ projectId: cfg.projectId, itemId, fieldId: item.fieldId, value: item.value });
+      await writeProjectFieldValue({
+        projectId: cfg.projectId,
+        itemId,
+        fieldId: item.fieldId,
+        value: item.value,
+      });
     }
   } else {
     if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, engagedMin);
@@ -172,7 +192,7 @@ async function writeNumberField(itemId, fieldId, value) {
   }
 
   console.log('Fields updated on GitHub Projects board.');
-})().catch(err => {
+})().catch((err) => {
   console.error(`log-issue-time: ${err.message}`);
   process.exit(1);
 });

@@ -42,7 +42,8 @@ const MODES = new Set(['accept-live', 'revert-to-recorded']);
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) { body }
@@ -59,15 +60,20 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-reconcile-${process.pid}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], { timeout: 15000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: 15000,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -85,19 +91,19 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find(n => n.project?.id === cfg.projectId) ?? nodes[0];
+  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
   const name = node?.fieldValueByName?.name;
   return name ? String(name).toLowerCase() : null;
 }
 
 function defaultRunMoveState({ issueNumber, target }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, String(issueNumber), target], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });
-    child.on('exit', code => resolve(code ?? 1));
+    child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
@@ -115,14 +121,22 @@ function defaultPersistTrackerState({ issueNumber, state }) {
       s.state = state;
       saveState(s, sp);
     }
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = () => new Date().toISOString() } = {}) {
+export async function runReconcile({
+  issueNumber,
+  mode,
+  cfg,
+  deps = {},
+  now = () => new Date().toISOString(),
+} = {}) {
   if (!issueNumber) throw new Error('reconcile: issueNumber is required');
   if (!cfg) throw new Error('reconcile: cfg is required');
   if (!mode) {
@@ -140,9 +154,9 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
-  const getLiveState   = deps.getLiveState   || defaultGetLiveState;
-  const runMoveState   = deps.runMoveState   || defaultRunMoveState;
-  const postTimingRow  = deps.postTimingRow  || defaultPostTimingRow;
+  const getLiveState = deps.getLiveState || defaultGetLiveState;
+  const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
   const persistTrackerState = deps.persistTrackerState || defaultPersistTrackerState;
 
   const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
@@ -163,7 +177,10 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
 
   if (mode === 'accept-live') {
     if (!live) {
-      return { status: 'error', message: `reconcile accept-live: no live state for #${issueNumber}` };
+      return {
+        status: 'error',
+        message: `reconcile accept-live: no live state for #${issueNumber}`,
+      };
     }
     const stamped = writeLastKnownState(body, live);
     await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
@@ -172,7 +189,10 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
       const row = buildRow({
         ts: now(),
         event: 'drift-reconcile',
-        activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
+        activeMin: 0,
+        idleMin: 0,
+        deltaWords: 0,
+        wordMarker: 0,
         description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}"`,
       });
       await postTimingRow({ issueNumber, repo: cfg.repo, row });
@@ -182,7 +202,10 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
 
   // revert-to-recorded
   if (!recorded) {
-    return { status: 'error', message: `reconcile revert-to-recorded: no recorded state for #${issueNumber}` };
+    return {
+      status: 'error',
+      message: `reconcile revert-to-recorded: no recorded state for #${issueNumber}`,
+    };
   }
   const exitCode = await runMoveState({ issueNumber, target: recorded, cfg });
   if (exitCode !== 0) {
@@ -196,7 +219,10 @@ export async function runReconcile({ issueNumber, mode, cfg, deps = {}, now = ()
     const row = buildRow({
       ts: now(),
       event: 'drift-revert',
-      activeMin: 0, idleMin: 0, deltaWords: 0, wordMarker: 0,
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 0,
       description: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
     });
     await postTimingRow({ issueNumber, repo: cfg.repo, row });
@@ -213,8 +239,14 @@ function parseArgs(rest) {
   let mode = null;
   for (const a of rest) {
     const m = String(a).match(/^#?(\d+)$/);
-    if (m) { issueNumber = Number(m[1]); continue; }
-    if (MODES.has(a)) { mode = a; continue; }
+    if (m) {
+      issueNumber = Number(m[1]);
+      continue;
+    }
+    if (MODES.has(a)) {
+      mode = a;
+      continue;
+    }
   }
   return { issueNumber, mode };
 }
@@ -236,7 +268,9 @@ export async function verbReconcile(rest, cfg) {
 
   switch (result.status) {
     case 'reconciled': {
-      process.stdout.write(`✓ #${issueNumber} reconciled (${result.mode}): ${result.from ?? '∅'} → ${result.to}\n`);
+      process.stdout.write(
+        `✓ #${issueNumber} reconciled (${result.mode}): ${result.from ?? '∅'} → ${result.to}\n`
+      );
       return;
     }
     case 'no-drift-refused': {
@@ -259,8 +293,11 @@ export async function verbReconcile(rest, cfg) {
 }
 
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

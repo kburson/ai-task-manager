@@ -25,6 +25,8 @@ export function resolveGate(name, { session = null, projectConfig = {} } = {}) {
 // project JSON. Used by the prompt trigger: when both are set the user has
 // already declared a policy and the prompt is skipped.
 export function bothGatesExplicit(rawProjectConfig = {}) {
-  return Object.prototype.hasOwnProperty.call(rawProjectConfig, PROJECT_KEY.analysisToDevelopment)
-    && Object.prototype.hasOwnProperty.call(rawProjectConfig, PROJECT_KEY.reviewToDone);
+  return (
+    Object.prototype.hasOwnProperty.call(rawProjectConfig, PROJECT_KEY.analysisToDevelopment) &&
+    Object.prototype.hasOwnProperty.call(rawProjectConfig, PROJECT_KEY.reviewToDone)
+  );
 }

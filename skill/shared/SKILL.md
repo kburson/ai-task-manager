@@ -80,7 +80,7 @@ Both verbs accept a free-text reason as positional args; the reason is written t
 Example:
 
 > User: "/task #42"
-> Assistant: *(reads body, sees ambiguous AC)* Running `/task pause "pause for question"`. The AC says "tests pass" but doesn't list which suite — should I run the unit tests, the integration tests, or both?
+> Assistant: _(reads body, sees ambiguous AC)_ Running `/task pause "pause for question"`. The AC says "tests pass" but doesn't list which suite — should I run the unit tests, the integration tests, or both?
 > User: "Both."
 > Assistant: Running `/task start "question answered"`. Proceeding to verify both suites.
 
@@ -93,28 +93,28 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 ## Commands
 
-| Command | Action |
-|---|---|
-| `/task` | Print active task, elapsed, words since last marker |
-| `/task #N` | **Start/switch to issue #N** (read body silently for context; do not print it) |
-| `/task new [title]` | Create a new issue and start working on it. In plan mode: optionally orchestrate full epic + sub-issue backlog from a spec in context. |
-| `/task plan` | Open an untracked planning bucket |
-| `/task resume` | Resume the last paused task (no body reload — context still warm) |
-| `/task resume #N` | **Switch back to a specific paused task** (read body silently for context; do not print it) |
-| `/task pause` | Flush timing, keep last-active. Run before `/clear` or closing Claude Code. |
-| `/task update [msg]` | Checkpoint — flush timing and reset counters, keep task active |
-| `/task review #N` | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human. |
-| `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Development. |
-| `/task approve-review #N` | Record explicit human review approval on a R4R issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent. |
-| `/task close [#N]` | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. Refuses (exit 7) if the review-approval marker is missing; `--answer yes` cannot satisfy this gate (exit 8). |
-| `/task close --force` | Close even if unchecked items remain (audited; for legitimate abandonment only) |
-| `/task log #N` | Re-compute and write Engaged Time, Session Time, and Context Length for any issue |
-| `/task migrate` | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
-| `/task check "<label>"` | Toggle a checkbox in the active issue body (exact label match) |
-| `/task fleet` | Show all active tasks across parallel agent worktrees |
-| `/task config` | List all config values |
-| `/task config <key> <value>` | Set a config value (project-local) |
-| `/task config init` | Interactive interview — review and set all config values |
+| Command                          | Action                                                                                                                                                                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/task`                          | Print active task, elapsed, words since last marker                                                                                                                                                                                                |
+| `/task #N`                       | **Start/switch to issue #N** (read body silently for context; do not print it)                                                                                                                                                                     |
+| `/task new [title]`              | Create a new issue and start working on it. In plan mode: optionally orchestrate full epic + sub-issue backlog from a spec in context.                                                                                                             |
+| `/task plan`                     | Open an untracked planning bucket                                                                                                                                                                                                                  |
+| `/task resume`                   | Resume the last paused task (no body reload — context still warm)                                                                                                                                                                                  |
+| `/task resume #N`                | **Switch back to a specific paused task** (read body silently for context; do not print it)                                                                                                                                                        |
+| `/task pause`                    | Flush timing, keep last-active. Run before `/clear` or closing Claude Code.                                                                                                                                                                        |
+| `/task update [msg]`             | Checkpoint — flush timing and reset counters, keep task active                                                                                                                                                                                     |
+| `/task review #N`                | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human.                  |
+| `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Development.                                                                                                                                 |
+| `/task approve-review #N`        | Record explicit human review approval on a R4R issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent.                                                                             |
+| `/task close [#N]`               | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. Refuses (exit 7) if the review-approval marker is missing; `--answer yes` cannot satisfy this gate (exit 8). |
+| `/task close --force`            | Close even if unchecked items remain (audited; for legitimate abandonment only)                                                                                                                                                                    |
+| `/task log #N`                   | Re-compute and write Engaged Time, Session Time, and Context Length for any issue                                                                                                                                                                  |
+| `/task migrate`                  | Select/configure a project, import repo issues, heal field DBs, and sync project fields                                                                                                                                                            |
+| `/task check "<label>"`          | Toggle a checkbox in the active issue body (exact label match)                                                                                                                                                                                     |
+| `/task fleet`                    | Show all active tasks across parallel agent worktrees                                                                                                                                                                                              |
+| `/task config`                   | List all config values                                                                                                                                                                                                                             |
+| `/task config <key> <value>`     | Set a config value (project-local)                                                                                                                                                                                                                 |
+| `/task config init`              | Interactive interview — review and set all config values                                                                                                                                                                                           |
 
 `start` and `end` are accepted as aliases for `resume` and `close`.
 
@@ -131,13 +131,13 @@ The canonical verb surface is `promote` / `demote` / `next` / `reconcile`. The s
 
 **Deprecated aliases (delegate to `promote`):**
 
-| Deprecated | Equivalent |
-|---|---|
-| `/task groom` | `/task promote` from Backlog |
-| `/task analyze` | `/task promote` from Groom |
-| `/task approve` | `/task promote` from Analyze |
-| `/task review` | `/task promote` from Development (CODE_COMPLETE handoff) |
-| `/task close` | `/task promote` from Review |
+| Deprecated      | Equivalent                                               |
+| --------------- | -------------------------------------------------------- |
+| `/task groom`   | `/task promote` from Backlog                             |
+| `/task analyze` | `/task promote` from Groom                               |
+| `/task approve` | `/task promote` from Analyze                             |
+| `/task review`  | `/task promote` from Development (CODE_COMPLETE handoff) |
+| `/task close`   | `/task promote` from Review                              |
 
 `/task approve-review` (records human approval marker; gates the Review → Done promotion) and `/task reject #N --reason "..."` (Review → Development with rejection reason) remain first-class — they are not state-walking verbs.
 
@@ -154,11 +154,11 @@ Two verbs emit comments tied to the three-stage estimation model (see `docs/guid
 
 #### Deprecated state slugs (one-release sunset)
 
-| Old slug | Replacement |
-|---|---|
-| `ready` | `groom` |
+| Old slug      | Replacement                            |
+| ------------- | -------------------------------------- |
+| `ready`       | `groom`                                |
 | `in-progress` | `/task promote` (lands at Development) |
-| `in-review` | `review` |
+| `in-review`   | `review`                               |
 
 ## Implementation
 
@@ -167,6 +167,7 @@ Two verbs emit comments tied to the three-stage estimation model (see `docs/guid
 **Do this before anything else when the verb is `new`.**
 
 Read the state file:
+
 ```bash
 cat "$(git rev-parse --show-toplevel)/.ai-task-manager/task-tracker-state.json"
 ```
@@ -183,9 +184,11 @@ If `active === "plan"` → ask the user:
 - **yes** → proceed to **Plan-Mode Backlog Orchestration** below. **Do not call the CLI** — orchestration creates issues via the `create-issue.mjs` helper (which wraps `gh issue create` + project tether + sub-issue link + placeholder substitution into one atomic step).
 
 ### Step 1c: Run the CLI (all verbs except `new` in plan mode)
+
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
 ```
+
 Print stdout verbatim. On non-zero exit, print stderr and surface the error.
 
 **Exit code 3** from `/task review` or `/task close` means unchecked items were found — see Pre-Close Gate below.
@@ -195,22 +198,29 @@ Print stdout verbatim. On non-zero exit, print stderr and surface the error.
 After the CLI succeeds, perform these checks. Read the issue body silently — do not print it to the chat.
 
 #### 2a. Fetch full issue metadata
+
 ```bash
 gh issue view <N> --json title,body,state,projectItems,parent
 ```
 
 #### 2b. Ensure the issue is open and in-progress
+
 If closed, reopen it:
+
 ```bash
 gh issue reopen <N>
 ```
+
 Move to in-progress:
+
 ```bash
 "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.mjs" <N> in-progress
 ```
 
 #### 2c. If this is a sub-issue, ensure the parent is open and in-progress
+
 Query via GraphQL (read repo owner/name from `.ai-task-manager/task-tracker.json` key `repo`):
+
 ```bash
 gh api graphql -f query='
   query($owner:String!,$repo:String!,$number:Int!) {
@@ -220,14 +230,17 @@ gh api graphql -f query='
   }
 ' -f owner=<owner> -f repo=<repo> -F number=<N>
 ```
+
 If parent is closed → reopen and move to in-progress.
 If parent is open but not in-progress → move to in-progress.
 Report any state changes; skip silently if already correct.
 
 #### 2d. Read the issue (silently)
+
 ```bash
 gh issue view <N> --json title,body,state
 ```
+
 Read title, body, and state for context. **Do not print the body to the chat** — the user reads it in the GitHub UI. Acknowledge with one line: issue title and current state.
 
 ### Step 2b: For `/task config init` — run the configuration interview
@@ -240,32 +253,32 @@ Do not pass `config init` to the CLI. Conduct the interview directly:
 
 **GitHub setup**
 
-| Key | Question |
-|---|---|
-| `repo` | What is the GitHub repo? (`owner/repo` format) |
-| `assignee` | Who should new issues be assigned to? (default: `@me`) |
+| Key             | Question                                                             |
+| --------------- | -------------------------------------------------------------------- |
+| `repo`          | What is the GitHub repo? (`owner/repo` format)                       |
+| `assignee`      | Who should new issues be assigned to? (default: `@me`)               |
 | `defaultLabels` | Any default labels for new issues? (comma-separated, or leave empty) |
 
 **Behavior**
 
-| Key | Question |
-|---|---|
-| `wpm` | Your estimated reading/coding speed in words per minute? (default: 180) |
-| `autoEndOnSwitch` | Auto-close the previous task when switching to a new one? (true/false) |
+| Key                    | Question                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `wpm`                  | Your estimated reading/coding speed in words per minute? (default: 180)        |
+| `autoEndOnSwitch`      | Auto-close the previous task when switching to a new one? (true/false)         |
 | `idleThresholdMinutes` | How many idle minutes before a gap stops counting as active time? (default: 5) |
-| `recordWallClock` | Record wall-clock time in addition to active time? (true/false) |
-| `hookNetworkTimeoutMs` | GitHub API timeout in milliseconds? (default: 2000) |
+| `recordWallClock`      | Record wall-clock time in addition to active time? (true/false)                |
+| `hookNetworkTimeoutMs` | GitHub API timeout in milliseconds? (default: 2000)                            |
 
 **Features**
 
-| Key | Question |
-|---|---|
+| Key               | Question                                                                                                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pickupDirective` | Enable the Pickup Directive pattern for sub-issues? Inserts a structured deep-dive + Definition of Done block into each sub-issue body during epic planning. Recommended for multi-agent workflows. (true/false) |
 
 **Internal paths** (show current values; only ask if the user wants to change them)
 
-| Key | Default |
-|---|---|
+| Key         | Default                                    |
+| ----------- | ------------------------------------------ |
 | `statePath` | `.ai-task-manager/task-tracker-state.json` |
 | `queuePath` | `.ai-task-manager/task-tracker-queue.json` |
 
@@ -274,6 +287,7 @@ Do not pass `config init` to the CLI. Conduct the interview directly:
 After all keys are set, run `/task config` and display the final config.
 
 ### Step 3: For all other commands
+
 Invoke the CLI and print output — no issue fetch needed.
 
 ### Pre-Close Gate (exit code 3)
@@ -294,10 +308,12 @@ When `/task review` or `/task close` exits with code 3, the CLI has already prin
 Two checkpoints inspect `git status --porcelain` in the issue's bound workspace (fleet-registered worktree path; falls back to project dir) so uncommitted work cannot bleed across issue boundaries.
 
 **Gate 1 — `/task review` / `move-state.mjs <N> review` (warning only):**
+
 - Dirty workspace prints a stderr warning summarizing the dirty paths (capped at 10 entries + `… +N more`). The move still proceeds.
 - Disable with `TT_SKIP_DIRTY_CHECK=1` only in test contexts.
 
 **Gate 2 — `/task close` (blocking, prompts for decision):**
+
 - Clean → proceeds to the existing pre-close checkbox gate as today.
 - Dirty + `--answer yes` → refuses close with exit 6 and prints the cleanup-flow guidance. Clean up manually (commit issue-relevant changes, stash unrelated WIP), then re-run `/task close <id>`.
 - Dirty + `--answer no` → closes anyway and appends a `closed-with-dirty-tree` audit row to the Timing Log with a summarized dirty-path description (capped at 5 entries).
@@ -323,6 +339,7 @@ Every successful `git commit` made while an issue is bound (`/task start <#N>`) 
 **Hook:** PostToolUse on `Bash` → `.claude/hooks/commit-trail.sh` → `commit-trail-handler.mjs`. Installed automatically by `bin/cli.mjs install`.
 
 **Behavior:**
+
 - Fires only on **successful** `git commit` (bash tool exit 0).
 - Skips `git commit --amend` (amend rewrites SHA; v1 drops these).
 - No active bound issue → silent no-op.
@@ -385,9 +402,11 @@ Derive a slug from the title argument (`/task new <title>`): lowercase, treat `&
 Example: "Nexus SaaS" → `nexus-saas`.
 
 Announce the slug and proceed immediately — no confirmation needed:
+
 > "Creating backlog with label **`plan:<slug>`**..."
 
 Create the label if it doesn't exist:
+
 ```bash
 gh label create "plan:<slug>" \
   --color "#0075ca" \
@@ -398,6 +417,7 @@ gh label create "plan:<slug>" \
 #### B. Purpose Labels
 
 Create the standard purpose label set (skip any that already exist):
+
 ```bash
 gh label create "infrastructure" --color "#e4e669" --description "CI/CD, env, deployment, migrations" 2>/dev/null || true
 gh label create "backend"        --color "#0e8a16" --description "APIs, business logic, data models, auth" 2>/dev/null || true
@@ -410,15 +430,15 @@ gh label create "data"           --color "#bfd4f2" --description "Analytics, exp
 
 **Purpose label inference — apply all that fit per issue:**
 
-| Label | Apply when the scope mentions... |
-|-------|----------------------------------|
+| Label            | Apply when the scope mentions...                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `infrastructure` | CI/CD, pipelines, env vars, secrets, deployment, Docker, Railway, cron jobs, database migrations, cleanup scripts |
-| `backend` | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions |
-| `client` | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright |
-| `test` | test suites, fixtures, coverage, integration tests, unit tests, quality tooling |
-| `dx` | developer experience, documentation, onboarding, scripts, tooling, README, internal guides |
-| `security` | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation |
-| `data` | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3 |
+| `backend`        | API endpoints, REST, GraphQL, business logic, data models, ORM, auth middleware, tokens, sessions                 |
+| `client`         | React, UI, components, pages, CSS, charts, visualizations, frontend state, Playwright                             |
+| `test`           | test suites, fixtures, coverage, integration tests, unit tests, quality tooling                                   |
+| `dx`             | developer experience, documentation, onboarding, scripts, tooling, README, internal guides                        |
+| `security`       | auth hardening, MFA, rate limiting, CVE, audit, encryption, CSRF, token rotation                                  |
+| `data`           | analytics, metrics, exports, aggregations, reporting, dashboards, CSV, JSON, S3                                   |
 
 #### C. Read Config Values
 
@@ -498,6 +518,7 @@ For loose leaf tasks, omit `--parent`. For epic child issues, pass `--parent`.
 #### 1. Assemble the epic body
 
 From the spec in context, extract:
+
 - The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
 - The **Epic Acceptance Criteria** checkboxes
 
@@ -546,6 +567,7 @@ If the helper exits non-zero, STOP. Either the issue was never created (gh failu
 ```bash
 gh issue view <EPIC_N> --json id --jq '.id'
 ```
+
 Store as `EPIC_NODE_ID`.
 
 ### Sub-Issue Creation Loop
@@ -559,6 +581,7 @@ Read the sub-issue's Scope. Apply all matching labels from the inference table i
 #### 2. Assemble the sub-issue body
 
 Combine in order:
+
 1. The **Scope** section text
 2. The **Acceptance Criteria** checkboxes
 3. The Definition of Done and Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Generate via the preflight script:
@@ -593,6 +616,7 @@ URL=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/script
 ```
 
 The helper prints the issue URL on stdout. Extract the number and store as `SUB_N`. It also:
+
 - Tethers the issue to the project Backlog and sets priority/size/estimate/sequence.
 - Links the issue to the epic as a GitHub sub-issue after project-side visibility is verified.
 - Substitutes `<this-issue-#>` → `#SUB_N` and `<parent-epic-#>` → `#EPIC_N` in the body.
@@ -600,14 +624,17 @@ The helper prints the issue URL on stdout. Extract the number and store as `SUB_
 If the helper exits non-zero, STOP and follow its recovery instructions before continuing the loop.
 
 Get the node ID (still needed for any downstream linking):
+
 ```bash
 gh issue view <SUB_N> --json id --jq '.id'
 ```
+
 Store as `SUB_NODE_ID`.
 
 #### 8. Print progress line
 
 After each sub-issue:
+
 ```
   Created #<SUB_N>  <title>  [backend, security]  S  3h  P0  Seq:<N>  → linked to #<EPIC_N>
 ```
@@ -645,12 +672,12 @@ When a subagent returns from issue work, it MUST report one of these three statu
 **`DONE` and `DONE_WITH_CONCERNS` are not valid statuses for AITM issue work** — they
 carry ambiguous semantics and cause orchestrators to advance sequences prematurely.
 
-| Status | Meaning | Orchestrator action |
-|---|---|---|
-| `CODE_COMPLETE` | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly. | Do NOT advance the sequence. Inspect remaining items; resolve or reassign. |
+| Status                   | Meaning                                                                                                                                                                                                                         | Orchestrator action                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `CODE_COMPLETE`          | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly.                                                                                                    | Do NOT advance the sequence. Inspect remaining items; resolve or reassign.                                                       |
 | `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is in R4R. For epics: report this only after calling `/task review #<epic>` and the epic itself reaches R4R. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
-| `HUMAN_APPROVED` | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent. | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done. |
-| `BLOCKED` | Agent cannot proceed without orchestrator or human help. | Intervene, then redispatch or reassign. |
+| `HUMAN_APPROVED`         | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent.                                                                                        | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done.                 |
+| `BLOCKED`                | Agent cannot proceed without orchestrator or human help.                                                                                                                                                                        | Intervene, then redispatch or reassign.                                                                                          |
 
 **Epic review rule:** When all sub-issues in the current sequence reach R4R, the orchestrator must call `/task review #<epic>` on the parent epic **before** notifying the human. Running `/task review` on the epic is orchestrator work, not human work. The epic cannot move to R4R until all its sub-issues are already in R4R — the gate is enforced. Do not report `ISSUE_READY_FOR_REVIEW` or notify the human until the epic itself is in R4R.
 
@@ -663,6 +690,7 @@ close contract.
 ### Task context — always match active task to the work happening now
 
 **Epic fan-out (epic + sub-issues):**
+
 - `/task #epic` when dispatching agents, reviewing output, orchestrating, or deciding what to fan out next.
 - `/task #child` when performing that child's work directly in this session (no sub-agent).
 - Switch back to `/task #epic` the moment work is handed to a sub-agent or you return to orchestration.
@@ -671,6 +699,7 @@ close contract.
 - When starting the epic session for fan-out, pass `--role orchestrator`: `/task #<epic> --role orchestrator`. This records your session as the human engagement cost in the value report.
 
 **Solo fan-out (a set of independent issues with no parent epic):**
+
 - The currently active task is the engagement anchor — stay on it while agents work the others. Its time records the orchestration cost.
 - **If no task is active when the fan-out is requested, you MUST ask the user which issue should serve as the anchor before dispatching any agents.** Do not fan out without an anchor — orchestration time would be lost entirely.
 - The anchor task must NOT itself be dispatched to an agent. The anchor's timing log is written exclusively by the orchestrator. If an agent also wrote to it, the session accounting would be corrupted.
@@ -679,10 +708,10 @@ close contract.
 
 **Role flag reference:**
 
-| Situation | Flag |
-|---|---|
-| Picking up a solo issue in your own session | (omit — defaults to `solo`) |
-| Starting an epic you will fan out to agents | `--role orchestrator` |
+| Situation                                         | Flag                                               |
+| ------------------------------------------------- | -------------------------------------------------- |
+| Picking up a solo issue in your own session       | (omit — defaults to `solo`)                        |
+| Starting an epic you will fan out to agents       | `--role orchestrator`                              |
 | Agent picking up a sub-issue via Pickup Directive | `--role agent` (set in pickup-directive.md step 1) |
 
 ### Pickup Directive
@@ -691,19 +720,24 @@ close contract.
 
 1. Run preflight (see "Preflight — MANDATORY" above). If it fails, STOP — do not create the issue.
 2. Capture preflight stdout as `$DIRECTIVE_BLOCK`. It is the canonical tail block:
+
    ```markdown
    ### Definition of Done
+
    <DoD lines from template>
 
    ## Pickup Directive — MANDATORY, DO NOT SKIP
+
    > Follow: `.ai-task-manager/pickup-directive.md`
 
    ---
    ```
+
 3. Append `$DIRECTIVE_BLOCK` after Acceptance Criteria and Plan Metadata so the issue order is Scope, Plan Metadata, Acceptance Criteria, Definition of Done, Pickup Directive, then any hidden AITM field DB.
 4. Placeholder substitution (`<this-issue-#>`, `<parent-epic-#>`) is handled automatically by `create-issue.mjs`. Direct callers using bare `gh issue create` (rare, untethered) must do this themselves with a follow-up `gh api PATCH`.
 
 **At issue pickup** (`/task #N` or `/task resume #N`):
+
 - Read `.ai-task-manager/pickup-directive.md` — start with the "Hard Rules" section, then follow the step-by-step instructions.
 - Check whether deep-dive evidence is present in the issue body. Evidence is **either**:
   - The hidden marker `<!-- aitm-deep-dive-complete: <ts> -->`, OR
@@ -720,6 +754,7 @@ close contract.
 Do NOT list specific issue numbers — discovered work may add sub-issues during implementation. This checkbox gates the epic close and may only be ticked by the orchestrator after the last sub-issue's `/task review` succeeds.
 
 **Before moving an issue to In Review (agent terminal step):**
+
 - Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
 - Verification commands appended during pickup must be issue-body checkboxes under `### Verification Commands`, and each relevant command checkbox must be checked before checking the related Acceptance Criterion or Definition of Done box.
 - Mark each verified item: `/task check "<label>"`.
@@ -731,6 +766,7 @@ Do NOT list specific issue numbers — discovered work may add sub-issues during
 > a human explicitly instructs close.
 
 **Moving an issue to Done (human-only step):**
+
 - Only after a human has explicitly instructed close (e.g., "close #N", "mark #N done") should `/task close` be run.
 - The pre-close gate will refuse if any box is unchecked or the Deep Dive checkpoint is unticked. The audited override is `TASK_TRACKER_FORCE_DONE=1` — it bypasses but writes a visible audit comment to the issue. Use only for legitimate abandonment (e.g., the issue turned out invalid), never to skip verification.
 
@@ -753,6 +789,7 @@ Do NOT list specific issue numbers — discovered work may add sub-issues during
 PreCompact, PostCompact, and SessionStart hooks (in `.claude/settings.json`) call the hook handler automatically. The skill does not need to handle compaction/session events.
 
 **SessionStart behavior:**
+
 - No active task, nothing paused → `[task-tracker] No active task.`
 - Task paused → `[task-tracker] #N is paused. Use /task resume to continue.`
 - Task was active when session closed → posts `session-end-recovery` row, then fresh `session-start` row, prints recovered minutes.
@@ -816,13 +853,13 @@ node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/e
 
 The helper classifies the candidates via `lib/wave-detect.mjs` (batched GraphQL parent query) and behaves as follows:
 
-| Classification | Behaviour |
-|---|---|
-| single child (`len==1`) | no-op; prints `NO_WAVE_PARENT_NEEDED`; exits 0 |
-| all solo (no parent), `len ≥ 2` | creates a new parent issue at `Status=Development`, links each child via `addSubIssue`, posts an orchestration `start` row to the new parent's `⏱ Timing Log`, prints `PARENT: #<N>` |
-| all share one existing parent | prints the existing `PARENT: #<N>` so the orchestrator can switch active task to it; no new issue created |
-| **mixed** (some solo, some parented) | **REFUSES** — exits 2 with `wave-detect: mixed-fanout — …`. Orchestrator must hoist the solos under the existing parent (or detach the parented child) before retrying. |
-| **multi-parent** (children of different parents) | **REFUSES** — exits 2 with `wave-detect: multi-parent — …`. These are two waves, not one. |
+| Classification                                   | Behaviour                                                                                                                                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| single child (`len==1`)                          | no-op; prints `NO_WAVE_PARENT_NEEDED`; exits 0                                                                                                                                       |
+| all solo (no parent), `len ≥ 2`                  | creates a new parent issue at `Status=Development`, links each child via `addSubIssue`, posts an orchestration `start` row to the new parent's `⏱ Timing Log`, prints `PARENT: #<N>` |
+| all share one existing parent                    | prints the existing `PARENT: #<N>` so the orchestrator can switch active task to it; no new issue created                                                                            |
+| **mixed** (some solo, some parented)             | **REFUSES** — exits 2 with `wave-detect: mixed-fanout — …`. Orchestrator must hoist the solos under the existing parent (or detach the parented child) before retrying.              |
+| **multi-parent** (children of different parents) | **REFUSES** — exits 2 with `wave-detect: multi-parent — …`. These are two waves, not one.                                                                                            |
 
 After a successful `PARENT: #<N>`:
 

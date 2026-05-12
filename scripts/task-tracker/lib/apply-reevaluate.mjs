@@ -11,7 +11,12 @@ import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
-import { projectValuesForIssue, writeProjectFieldValue, fieldOptionMap, projectItemForIssue } from '../../gh/lib/github-projects.mjs';
+import {
+  projectValuesForIssue,
+  writeProjectFieldValue,
+  fieldOptionMap,
+  projectItemForIssue,
+} from '../../gh/lib/github-projects.mjs';
 import { reevaluateEstimate, buildAuditCommentBody, AUDIT_HEADER } from './reevaluate-estimate.mjs';
 import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
@@ -19,19 +24,30 @@ import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
 const pexec = promisify(execFile);
 
 async function defaultPostComment({ issueNumber, repo, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], { timeout: 5000 });
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+    timeout: 5000,
+  });
 }
 
 async function defaultHasSubIssues({ issueNumber, repo }) {
   try {
     const [owner, repoName] = repo.split('/');
-    const { stdout } = await pexec('gh', [
-      'api', 'graphql',
-      '-f', `query=query($owner:String!,$repo:String!,$issue:Int!){repository(owner:$owner,name:$repo){issue(number:$issue){subIssues(first:1){totalCount}}}}`,
-      '-F', `owner=${owner}`,
-      '-F', `repo=${repoName}`,
-      '-F', `issue=${Number(issueNumber)}`,
-    ], { timeout: 10000 });
+    const { stdout } = await pexec(
+      'gh',
+      [
+        'api',
+        'graphql',
+        '-f',
+        `query=query($owner:String!,$repo:String!,$issue:Int!){repository(owner:$owner,name:$repo){issue(number:$issue){subIssues(first:1){totalCount}}}}`,
+        '-F',
+        `owner=${owner}`,
+        '-F',
+        `repo=${repoName}`,
+        '-F',
+        `issue=${Number(issueNumber)}`,
+      ],
+      { timeout: 10000 }
+    );
     const data = JSON.parse(stdout);
     const count = data?.data?.repository?.issue?.subIssues?.totalCount ?? 0;
     return { hasSubIssues: count > 0, count };
@@ -44,9 +60,13 @@ async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   const tmpFile = path.join(scratchDir, `reeval-${issueNumber}.md`);
   writeFileSync(tmpFile, body);
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmpFile], { timeout: 10000 });
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmpFile], {
+      timeout: 10000,
+    });
   } finally {
-    try { unlinkSync(tmpFile); } catch {}
+    try {
+      unlinkSync(tmpFile);
+    } catch {}
   }
 }
 
@@ -89,15 +109,16 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
 
   const fieldDefs = fieldDefsLoader();
   const dbParsed = parseIssueFieldDb(body);
-  let currentSize = dbParsed.ok ? dbParsed.values?.size ?? null : null;
-  let currentEstimate = dbParsed.ok && typeof dbParsed.values?.estimate === 'number'
-    ? dbParsed.values.estimate : null;
+  let currentSize = dbParsed.ok ? (dbParsed.values?.size ?? null) : null;
+  let currentEstimate =
+    dbParsed.ok && typeof dbParsed.values?.estimate === 'number' ? dbParsed.values.estimate : null;
 
   if ((currentSize == null || currentEstimate == null) && cfg.projectId) {
     try {
       const projVals = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
       if (currentSize == null && projVals.size != null) currentSize = projVals.size;
-      if (currentEstimate == null && typeof projVals.estimate === 'number') currentEstimate = projVals.estimate;
+      if (currentEstimate == null && typeof projVals.estimate === 'number')
+        currentEstimate = projVals.estimate;
     } catch {}
   }
 
@@ -115,21 +136,30 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
 
   if (cfg.projectId) {
     try {
-      const { itemId } = await fetchProjectItem({ repo: cfg.repo, projectId: cfg.projectId, issueNumber });
+      const { itemId } = await fetchProjectItem({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber,
+      });
       if (itemId) {
         const sizeFieldId = fieldIdFor(cfg, 'size');
         const estimateFieldId = fieldIdFor(cfg, 'estimate');
         const optionMap = sizeFieldId ? await optionMapFor(cfg.projectId) : {};
         if (estimateFieldId) {
           await writeField({
-            projectId: cfg.projectId, itemId, fieldId: estimateFieldId,
+            projectId: cfg.projectId,
+            itemId,
+            fieldId: estimateFieldId,
             value: { number: result.estimate },
           });
         }
         if (sizeFieldId) {
           await writeField({
-            projectId: cfg.projectId, itemId, fieldId: sizeFieldId,
-            value: { singleSelectOptionName: result.size }, optionMap,
+            projectId: cfg.projectId,
+            itemId,
+            fieldId: sizeFieldId,
+            value: { singleSelectOptionName: result.size },
+            optionMap,
           });
         }
       }

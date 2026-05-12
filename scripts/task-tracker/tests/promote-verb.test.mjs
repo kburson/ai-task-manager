@@ -28,7 +28,9 @@ function makeDeps({ body = '', live = null, spawnCode = 0, moveCode = 0, fetchSe
         secondFetch = true;
         return { body };
       },
-      writeIssueBody: async ({ body: b }) => { calls.writes.push(b); },
+      writeIssueBody: async ({ body: b }) => {
+        calls.writes.push(b);
+      },
       getLiveState: async () => live,
       spawnVerb: async ({ verb, issueNumber }) => {
         calls.spawns.push({ verb, issueNumber });
@@ -38,7 +40,9 @@ function makeDeps({ body = '', live = null, spawnCode = 0, moveCode = 0, fetchSe
         calls.moves.push({ issueNumber, target });
         return moveCode;
       },
-      postTimingRow: async ({ row }) => { calls.timings.push(row); },
+      postTimingRow: async ({ row }) => {
+        calls.timings.push(row);
+      },
     },
   };
 }
@@ -140,7 +144,11 @@ test('promote: bootstrap when lastKnownState absent — syncs to live, then prom
 });
 
 test('promote: transition-failed when alias verb exits non-zero — no metadata update', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('analyze'), live: 'analyze', spawnCode: 4 });
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('analyze'),
+    live: 'analyze',
+    spawnCode: 4,
+  });
   const r = await runPromote({ issueNumber: 109, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.transitionResult.exitCode, 4);
@@ -150,7 +158,10 @@ test('promote: transition-failed when alias verb exits non-zero — no metadata 
 });
 
 test('promote: error when recorded state is unknown', async () => {
-  const { deps } = makeDeps({ body: '<!-- aitm-last-known-state: bogus -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n', live: 'bogus' });
+  const { deps } = makeDeps({
+    body: '<!-- aitm-last-known-state: bogus -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n',
+    live: 'bogus',
+  });
   const r = await runPromote({ issueNumber: 110, cfg, deps });
   assert.equal(r.status, 'error');
   assert.match(r.message, /unknown recorded state/);

@@ -126,18 +126,15 @@ test('classifyBash: shell metachars inside quoted args do not trigger write dete
   // markers.
   assert.equal(
     classifyBash("node scripts/task-tracker/task-tracker.mjs check 'marker <pkg-version> stamped'"),
-    'READ_*',
+    'READ_*'
   );
   // Double-quoted variant.
   assert.equal(
     classifyBash('node scripts/task-tracker/task-tracker.mjs check "label with > and >> inside"'),
-    'READ_*',
+    'READ_*'
   );
   // Real redirect outside quotes still detected.
-  assert.equal(
-    classifyBash("echo 'inside > quotes' > src/real.ts"),
-    'WRITE_CODE',
-  );
+  assert.equal(classifyBash("echo 'inside > quotes' > src/real.ts"), 'WRITE_CODE');
 });
 
 test('classifyBash: touch/mkdir code path', () => {
@@ -150,14 +147,30 @@ test('classifyBash: touch/mkdir code path', () => {
 // ---------------------------------------------------------------------------
 
 test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
-  assert.deepEqual([...STATE_MATRIX.backlog].sort(),    ['READ_*', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.groom].sort(),      ['READ_*', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.analyze].sort(),    ['READ_*', 'RUN_TESTS', 'WRITE_DOCS', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.development].sort(),
-    ['COMMIT_CODE', 'READ_*', 'RUN_BUILD', 'RUN_TESTS', 'WRITE_CODE', 'WRITE_DOCS', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.validate].sort(),   ['READ_*', 'RUN_BUILD', 'RUN_TESTS', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.review].sort(),     ['READ_*', 'WRITE_DOCS', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.done].sort(),       ['READ_*'].sort());
+  assert.deepEqual([...STATE_MATRIX.backlog].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
+  assert.deepEqual([...STATE_MATRIX.groom].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
+  assert.deepEqual(
+    [...STATE_MATRIX.analyze].sort(),
+    ['READ_*', 'RUN_TESTS', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
+  );
+  assert.deepEqual(
+    [...STATE_MATRIX.development].sort(),
+    [
+      'COMMIT_CODE',
+      'READ_*',
+      'RUN_BUILD',
+      'RUN_TESTS',
+      'WRITE_CODE',
+      'WRITE_DOCS',
+      'WRITE_ISSUE',
+    ].sort()
+  );
+  assert.deepEqual(
+    [...STATE_MATRIX.validate].sort(),
+    ['READ_*', 'RUN_BUILD', 'RUN_TESTS', 'WRITE_ISSUE'].sort()
+  );
+  assert.deepEqual([...STATE_MATRIX.review].sort(), ['READ_*', 'WRITE_DOCS', 'WRITE_ISSUE'].sort());
+  assert.deepEqual([...STATE_MATRIX.done].sort(), ['READ_*'].sort());
 });
 
 test('isAllowed: every state allows READ_*', () => {
@@ -167,7 +180,15 @@ test('isAllowed: every state allows READ_*', () => {
 });
 
 test('isAllowed: development allows everything', () => {
-  for (const c of ['WRITE_CODE', 'COMMIT_CODE', 'WRITE_DOCS', 'WRITE_ISSUE', 'RUN_TESTS', 'RUN_BUILD', 'READ_*']) {
+  for (const c of [
+    'WRITE_CODE',
+    'COMMIT_CODE',
+    'WRITE_DOCS',
+    'WRITE_ISSUE',
+    'RUN_TESTS',
+    'RUN_BUILD',
+    'READ_*',
+  ]) {
     assert.equal(isAllowed('development', c), true);
   }
 });
@@ -199,7 +220,14 @@ test('isAllowed: review allows docs + issues only (no code)', () => {
 
 test('isAllowed: done allows READ_* only', () => {
   assert.equal(isAllowed('done', 'READ_*'), true);
-  for (const c of ['WRITE_CODE', 'COMMIT_CODE', 'WRITE_DOCS', 'WRITE_ISSUE', 'RUN_TESTS', 'RUN_BUILD']) {
+  for (const c of [
+    'WRITE_CODE',
+    'COMMIT_CODE',
+    'WRITE_DOCS',
+    'WRITE_ISSUE',
+    'RUN_TESTS',
+    'RUN_BUILD',
+  ]) {
     assert.equal(isAllowed('done', c), false, `done should refuse ${c}`);
   }
 });

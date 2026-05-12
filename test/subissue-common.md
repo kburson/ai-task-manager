@@ -1,10 +1,11 @@
-
 ## ⚡ Pickup Directive
+
 > Follow: `.claude/task-tracker/pickup-directive.md`
 
 - [ ] Deep dive complete
 
 ### Definition of Done
+
 - [ ] Acceptance criteria met (including test additions from deep dive)
 - [ ] Tests pass; new coverage committed
 - [ ] Pre-commit hooks pass

@@ -14,7 +14,7 @@ export const CLOSE_OWNED_CHECKBOXES = new Set([
 
 export function uncheckedPreCloseCheckboxes(body) {
   return [...String(body ?? '').matchAll(/^- \[ \] (.+)$/gm)]
-    .map(m => m[1])
-    .filter(label => !CLOSE_OWNED_CHECKBOXES.has(label))
-    .map(label => `- [ ] ${label}`);
+    .map((m) => m[1])
+    .filter((label) => !CLOSE_OWNED_CHECKBOXES.has(label))
+    .map((label) => `- [ ] ${label}`);
 }

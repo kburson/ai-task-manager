@@ -13,7 +13,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { gh, gql, splitRepo, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
+import { gql, splitRepo, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { admit as defaultAdmit } from '../../gh/lib/wave-admission.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import {
@@ -23,10 +23,7 @@ import {
   checkCascadeGrooming,
   checkParentAdmission,
 } from '../lib/body-gates.mjs';
-import {
-  hasDeepDiveCompleteMarker,
-  insertDeepDiveCompleteMarker,
-} from '../lib/markers.mjs';
+import { hasDeepDiveCompleteMarker, insertDeepDiveCompleteMarker } from '../lib/markers.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 
 const pexec = promisify(execFile);
@@ -39,7 +36,8 @@ const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
 async function defaultFetchIssueContext({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -58,7 +56,7 @@ async function defaultFetchIssueContext({ issueNumber, repo }) {
   return {
     title: issue.title || '',
     body: issue.body || '',
-    labels: (issue.labels?.nodes || []).map(l => l.name),
+    labels: (issue.labels?.nodes || []).map((l) => l.name),
     parentEpicNumber: issue.parent?.number ?? null,
     isEpic,
   };
@@ -66,7 +64,8 @@ async function defaultFetchIssueContext({ issueNumber, repo }) {
 
 async function defaultFetchSubIssueStates({ epicNumber, repo, projectId }) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -98,7 +97,7 @@ async function defaultFetchSubIssueStates({ epicNumber, repo, projectId }) {
   const out = [];
   for (const sub of subs) {
     if (!sub) continue;
-    const item = (sub.projectItems?.nodes || []).find(n => n?.project?.id === projectId);
+    const item = (sub.projectItems?.nodes || []).find((n) => n?.project?.id === projectId);
     let state = '';
     if (item) {
       for (const fv of item.fieldValues.nodes || []) {
@@ -129,16 +128,14 @@ async function defaultResolveFieldValues({ cfg, issueNumber }) {
 
 // Spawn move-state.mjs <N> analyze and forward exit code.
 async function runMoveState(issueNumber) {
-  const candidates = [
-    path.resolve(__dir, '../../gh/move-state.mjs'),
-  ];
+  const candidates = [path.resolve(__dir, '../../gh/move-state.mjs')];
   const script = candidates.find(Boolean);
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, String(issueNumber), 'analyze'], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
     });
-    child.on('exit', code => resolve(code ?? 1));
+    child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
@@ -147,12 +144,12 @@ export async function runAnalyze({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('analyze: issueNumber is required');
   if (!cfg) throw new Error('analyze: cfg is required');
 
-  const fetchIssueContext   = deps.fetchIssueContext   || defaultFetchIssueContext;
+  const fetchIssueContext = deps.fetchIssueContext || defaultFetchIssueContext;
   const fetchSubIssueStates = deps.fetchSubIssueStates || defaultFetchSubIssueStates;
-  const resolveFieldValues  = deps.resolveFieldValues  || defaultResolveFieldValues;
-  const admit               = deps.admit               || defaultAdmit;
-  const readParentStatus    = deps.readParentStatus    || defaultReadParentStatus;
-  const moveState           = deps.moveState           || runMoveState;
+  const resolveFieldValues = deps.resolveFieldValues || defaultResolveFieldValues;
+  const admit = deps.admit || defaultAdmit;
+  const readParentStatus = deps.readParentStatus || defaultReadParentStatus;
+  const moveState = deps.moveState || runMoveState;
 
   const ctx = await fetchIssueContext({ issueNumber, repo: cfg.repo });
   const fieldValues = await resolveFieldValues({ cfg, issueNumber });
@@ -162,35 +159,43 @@ export async function runAnalyze({ issueNumber, cfg, deps = {} } = {}) {
   refusals.push(...checkRequiredFields(fieldValues, ctx.labels));
   refusals.push(...checkRequiredBodySections(ctx.body));
 
-  refusals.push(...await checkParentAdmission({
-    parentEpicNumber: ctx.parentEpicNumber,
-    repo: cfg.repo,
-    projectId: cfg.projectId,
-    readParentStatus,
-  }));
+  refusals.push(
+    ...(await checkParentAdmission({
+      parentEpicNumber: ctx.parentEpicNumber,
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      readParentStatus,
+    }))
+  );
 
-  refusals.push(...await checkWaveAdmission({
-    parentEpicNumber: ctx.parentEpicNumber,
-    sequence,
-    repo: cfg.repo,
-    projectId: cfg.projectId,
-    admit,
-  }));
+  refusals.push(
+    ...(await checkWaveAdmission({
+      parentEpicNumber: ctx.parentEpicNumber,
+      sequence,
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      admit,
+    }))
+  );
 
-  refusals.push(...await checkCascadeGrooming({
-    isEpic: ctx.isEpic,
-    epicNumber: issueNumber,
-    repo: cfg.repo,
-    projectId: cfg.projectId,
-    fetchSubIssueStates,
-  }));
+  refusals.push(
+    ...(await checkCascadeGrooming({
+      isEpic: ctx.isEpic,
+      epicNumber: issueNumber,
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      fetchSubIssueStates,
+    }))
+  );
 
   if (refusals.length > 0) {
     return { ok: false, blockers: refusals };
   }
 
   const code = await moveState(issueNumber);
-  return code === 0 ? { ok: true, blockers: [] } : { ok: false, blockers: [{ kind: 'move-state', message: `move-state.mjs exited ${code}` }] };
+  return code === 0
+    ? { ok: true, blockers: [] }
+    : { ok: false, blockers: [{ kind: 'move-state', message: `move-state.mjs exited ${code}` }] };
 }
 
 // Record the hidden deep-dive-complete marker on the issue body after the
@@ -203,23 +208,35 @@ export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } 
   if (!issueNumber) throw new Error('markDeepDiveComplete: issueNumber is required');
   if (!cfg?.repo) throw new Error('markDeepDiveComplete: cfg.repo is required');
 
-  const fetchBody = deps.fetchBody || (async () => {
-    const { stdout } = await pexec('gh', [
-      'issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body',
-    ], { timeout: 10000 });
-    return stdout;
-  });
-  const writeBody = deps.writeBody || (async (body) => {
-    const { writeFileSync, unlinkSync } = await import('node:fs');
-    const os = await import('node:os');
-    const tmp = path.join(os.tmpdir(), `tt-deep-dive-${Date.now()}.md`);
-    try {
-      writeFileSync(tmp, body, 'utf8');
-      await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', cfg.repo, '--body-file', tmp], { timeout: 10000 });
-    } finally {
-      try { unlinkSync(tmp); } catch {}
-    }
-  });
+  const fetchBody =
+    deps.fetchBody ||
+    (async () => {
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+        { timeout: 10000 }
+      );
+      return stdout;
+    });
+  const writeBody =
+    deps.writeBody ||
+    (async (body) => {
+      const { writeFileSync, unlinkSync } = await import('node:fs');
+      const os = await import('node:os');
+      const tmp = path.join(os.tmpdir(), `tt-deep-dive-${Date.now()}.md`);
+      try {
+        writeFileSync(tmp, body, 'utf8');
+        await pexec(
+          'gh',
+          ['issue', 'edit', String(issueNumber), '-R', cfg.repo, '--body-file', tmp],
+          { timeout: 10000 }
+        );
+      } finally {
+        try {
+          unlinkSync(tmp);
+        } catch {}
+      }
+    });
 
   const body = await fetchBody();
   if (hasDeepDiveCompleteMarker(body)) {
@@ -271,8 +288,11 @@ export async function verbAnalyze(rest, cfg) {
 
 // Allow direct invocation: `node scripts/task-tracker/verbs/analyze.mjs #N`
 const _isMain = (() => {
-  try { return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]); }
-  catch { return false; }
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
 })();
 
 if (_isMain) {

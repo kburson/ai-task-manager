@@ -2,15 +2,7 @@
 // Consumers: move-state.mjs hardening (W2.3), /task move verb (W3.1),
 // parent-admission gate (W1.3), activity-policy lookup (W1.2).
 
-export const STATES = [
-  'backlog',
-  'groom',
-  'analyze',
-  'development',
-  'validate',
-  'review',
-  'done',
-];
+export const STATES = ['backlog', 'groom', 'analyze', 'development', 'validate', 'review', 'done'];
 
 export const FORWARD = {
   backlog: 'groom',

@@ -24,12 +24,15 @@ export function markerPathFor(sid) {
 export function currentSessionId() {
   try {
     const dir = sessionDir();
-    const files = readdirSync(dir).filter(f => f.endsWith('.jsonl'));
+    const files = readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
     if (!files.length) return null;
     return files
-      .map(f => ({ f, mtime: statSync(path.join(dir, f)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime)[0].f.replace('.jsonl', '');
-  } catch { return null; }
+      .map((f) => ({ f, mtime: statSync(path.join(dir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime)[0]
+      .f.replace('.jsonl', '');
+  } catch {
+    return null;
+  }
 }
 
 export function loadMarker(markerPath) {
@@ -91,7 +94,11 @@ export function countWords(filePath, fromLine = 0) {
   let count = 0;
   for (let i = fromLine; i < lines.length; i++) {
     let obj;
-    try { obj = JSON.parse(lines[i]); } catch { continue; }
+    try {
+      obj = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
     if (obj.type !== 'user' && obj.type !== 'assistant') continue;
     // Skip meta/sidechain entries — tool output piped as user turns, hook injections, etc.
     if (obj.isMeta || obj.isSidechain) continue;

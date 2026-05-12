@@ -25,16 +25,16 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, false);
-  const names = r.refusedRules.map(x => x.rule);
-  assert.ok(names.includes('deep-dive-complete'), `expected deep-dive-complete refusal, got: ${names.join(',')}`);
+  const names = r.refusedRules.map((x) => x.rule);
+  assert.ok(
+    names.includes('deep-dive-complete'),
+    `expected deep-dive-complete refusal, got: ${names.join(',')}`
+  );
 }
 
 // 2. unticked Deep dive is allowed (gate doesn't fire)
 {
-  const body = [
-    '## Acceptance Criteria',
-    '- [ ] Deep dive complete',
-  ].join('\n');
+  const body = ['## Acceptance Criteria', '- [ ] Deep dive complete'].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -71,7 +71,11 @@ function deepDiveSection(lines = 25) {
     '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
-  assert.equal(r.ok, true, `expected ok with new encoding, refused: ${JSON.stringify(r.refusedRules)}`);
+  assert.equal(
+    r.ok,
+    true,
+    `expected ok with new encoding, refused: ${JSON.stringify(r.refusedRules)}`
+  );
 }
 
 // 4. deep-dive-complete marker with section below minimum lines refuses
@@ -84,7 +88,7 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, false);
-  const dd = r.refusedRules.find(x => x.rule === 'deep-dive-complete');
+  const dd = r.refusedRules.find((x) => x.rule === 'deep-dive-complete');
   assert.ok(dd, 'expected deep-dive-complete refusal');
   assert.match(dd.reason, /line/i);
 }
@@ -98,17 +102,14 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, false);
-  const names = r.refusedRules.map(x => x.rule);
+  const names = r.refusedRules.map((x) => x.rule);
   assert.ok(names.includes('deep-dive-complete'));
   assert.ok(names.includes('dependency-map'));
 }
 
 // 6. verification-commands: vacuous-pass when no heading
 {
-  const body = [
-    '## Acceptance Criteria',
-    '- [ ] Implement thing',
-  ].join('\n');
+  const body = ['## Acceptance Criteria', '- [ ] Implement thing'].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, true);
 }
@@ -125,7 +126,7 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, false);
-  const vc = r.refusedRules.find(x => x.rule === 'verification-commands');
+  const vc = r.refusedRules.find((x) => x.rule === 'verification-commands');
   assert.ok(vc, 'expected verification-commands refusal');
 }
 
@@ -188,8 +189,11 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, false);
-  const dp = r.refusedRules.find(x => x.rule === 'deep-dive-placement');
-  assert.ok(dp, `expected deep-dive-placement refusal, got: ${r.refusedRules.map(x => x.rule).join(',')}`);
+  const dp = r.refusedRules.find((x) => x.rule === 'deep-dive-placement');
+  assert.ok(
+    dp,
+    `expected deep-dive-placement refusal, got: ${r.refusedRules.map((x) => x.rule).join(',')}`
+  );
   assert.match(dp.reason, /AFTER/);
 }
 
@@ -206,8 +210,11 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, false);
-  const dp = r.refusedRules.find(x => x.rule === 'deep-dive-placement');
-  assert.ok(dp, `expected deep-dive-placement refusal, got: ${r.refusedRules.map(x => x.rule).join(',')}`);
+  const dp = r.refusedRules.find((x) => x.rule === 'deep-dive-placement');
+  assert.ok(
+    dp,
+    `expected deep-dive-placement refusal, got: ${r.refusedRules.map((x) => x.rule).join(',')}`
+  );
   assert.match(dp.reason, /BEFORE/);
 }
 

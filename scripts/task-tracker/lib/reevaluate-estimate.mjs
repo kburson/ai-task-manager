@@ -8,9 +8,9 @@ export const SIZE_TIERS = ['XS', 'S', 'M', 'L', 'XL'];
 // Bucket upper bounds (inclusive) on the score below.
 export const SIZE_BUCKETS = [
   { size: 'XS', max: 3 },
-  { size: 'S',  max: 6 },
-  { size: 'M',  max: 12 },
-  { size: 'L',  max: 20 },
+  { size: 'S', max: 6 },
+  { size: 'M', max: 12 },
+  { size: 'L', max: 20 },
   { size: 'XL', max: Infinity },
 ];
 
@@ -30,7 +30,10 @@ function extractSection(body, headingRe) {
   let depth = 2;
   let inFence = false;
   for (let i = 0; i < lines.length; i++) {
-    if (FENCE_RE.test(lines[i])) { inFence = !inFence; continue; }
+    if (FENCE_RE.test(lines[i])) {
+      inFence = !inFence;
+      continue;
+    }
     if (inFence) continue;
     if (headingRe.test(lines[i])) {
       start = i + 1;
@@ -44,21 +47,27 @@ function extractSection(body, headingRe) {
   let end = lines.length;
   inFence = false;
   for (let i = start; i < lines.length; i++) {
-    if (FENCE_RE.test(lines[i])) { inFence = !inFence; continue; }
+    if (FENCE_RE.test(lines[i])) {
+      inFence = !inFence;
+      continue;
+    }
     if (inFence) continue;
-    if (stopRe.test(lines[i])) { end = i; break; }
+    if (stopRe.test(lines[i])) {
+      end = i;
+      break;
+    }
   }
   return lines.slice(start, end).join('\n');
 }
 
 function countBullets(section) {
   if (!section) return 0;
-  return section.split('\n').filter(l => /^\s*-\s+\S/.test(l)).length;
+  return section.split('\n').filter((l) => /^\s*-\s+\S/.test(l)).length;
 }
 
 function countNumberedSteps(section) {
   if (!section) return 0;
-  return section.split('\n').filter(l => /^\s*\d+\.\s+\S/.test(l)).length;
+  return section.split('\n').filter((l) => /^\s*\d+\.\s+\S/.test(l)).length;
 }
 
 function countDependencies(section) {
@@ -76,7 +85,10 @@ export function parseDeepDiveSignals(body) {
   }
   const dd = extractSection(body, /^##\s+Deep[- ]Dive Analysis\b/i);
   const files = countBullets(extractSection(dd ?? body, /^###\s+Files to edit\b/i));
-  const stepsSection = extractSection(dd ?? body, /^###\s+Step-by-step (?:implementation )?plan\b/i);
+  const stepsSection = extractSection(
+    dd ?? body,
+    /^###\s+Step-by-step (?:implementation )?plan\b/i
+  );
   const steps = countNumberedSteps(stepsSection);
   const risks = countBullets(extractSection(dd ?? body, /^###\s+Identified risks\b/i));
   const depMap = extractSection(body, /^##\s+Dependency Map\b/i);
@@ -106,9 +118,8 @@ export function reevaluateEstimate(body, current = {}) {
   const currentEstimate = typeof current.estimate === 'number' ? current.estimate : null;
 
   const sizeChanged = currentSize !== size;
-  const estimateChanged = currentEstimate === null
-    ? true
-    : Math.abs(currentEstimate - estimate) > 0.01;
+  const estimateChanged =
+    currentEstimate === null ? true : Math.abs(currentEstimate - estimate) > 0.01;
   const changed = sizeChanged || estimateChanged;
 
   const tierJump = currentSize ? Math.abs(sizeIndex(size) - sizeIndex(currentSize)) : 0;
@@ -131,9 +142,7 @@ export function reevaluateEstimate(body, current = {}) {
 export function buildRationale(result) {
   const { signals, score, size, current, requiresHuman } = result;
   const sigText = `${signals.files} file(s) to edit, ${signals.steps}-step plan, ${signals.risks} risk(s), ${signals.deps} dependency(ies) (score ${score})`;
-  const fromTo = current.size
-    ? `${current.size}→${size}`
-    : `→${size}`;
+  const fromTo = current.size ? `${current.size}→${size}` : `→${size}`;
   const human = requiresHuman ? ' ⚠ ≥2-tier jump — human review required before applying.' : '';
   return `Deep dive surfaced ${sigText}; bucket ${fromTo}.${human}`;
 }

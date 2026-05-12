@@ -6,8 +6,14 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, relative } from 'node:path';
 import {
-  existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync,
-  symlinkSync, rmSync, lstatSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  symlinkSync,
+  rmSync,
+  lstatSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -28,19 +34,43 @@ const pkg = require('../package.json');
 const PKG_NAME = 'ai-task-manager';
 const LEGACY_BIN = 'claude-gh-task-manager';
 
-function bold(s)    { return `\x1b[1m${s}\x1b[0m`; }
-function dim(s)     { return `\x1b[2m${s}\x1b[0m`; }
-function green(s)   { return `\x1b[32m${s}\x1b[0m`; }
-function red(s)     { return `\x1b[31m${s}\x1b[0m`; }
-function yellow(s)  { return `\x1b[33m${s}\x1b[0m`; }
-function cyan(s)    { return `\x1b[36m${s}\x1b[0m`; }
-function magenta(s) { return `\x1b[35m${s}\x1b[0m`; }
-function bgBlue(s)   { return `\x1b[44m\x1b[97m${s}\x1b[0m`; }
-function bgGreen(s)  { return `\x1b[42m\x1b[30m${s}\x1b[0m`; }
-function bgYellow(s) { return `\x1b[43m\x1b[30m${s}\x1b[0m`; }
+function bold(s) {
+  return `\x1b[1m${s}\x1b[0m`;
+}
+function dim(s) {
+  return `\x1b[2m${s}\x1b[0m`;
+}
+function green(s) {
+  return `\x1b[32m${s}\x1b[0m`;
+}
+function red(s) {
+  return `\x1b[31m${s}\x1b[0m`;
+}
+function yellow(s) {
+  return `\x1b[33m${s}\x1b[0m`;
+}
+function cyan(s) {
+  return `\x1b[36m${s}\x1b[0m`;
+}
+function magenta(s) {
+  return `\x1b[35m${s}\x1b[0m`;
+}
+function bgBlue(s) {
+  return `\x1b[44m\x1b[97m${s}\x1b[0m`;
+}
+function bgGreen(s) {
+  return `\x1b[42m\x1b[30m${s}\x1b[0m`;
+}
+function bgYellow(s) {
+  return `\x1b[43m\x1b[30m${s}\x1b[0m`;
+}
 
-function ok(msg)   { console.log(`  ${green('OK')} ${msg}`); }
-function err(msg)  { console.error(`  ${red('ERR')} ${msg}`); }
+function ok(msg) {
+  console.log(`  ${green('OK')} ${msg}`);
+}
+function err(msg) {
+  console.error(`  ${red('ERR')} ${msg}`);
+}
 
 function banner(title, subtitle) {
   const inner = `  ${title.padEnd(58)}`;
@@ -71,7 +101,11 @@ function hasFlag(args, name) {
 function patchSettingsJson(settingsPath) {
   let settings = {};
   if (existsSync(settingsPath)) {
-    try { settings = JSON.parse(readFileSync(settingsPath, 'utf8')); } catch { /* ignore */ }
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    } catch {
+      /* ignore */
+    }
   }
 
   if (!settings.hooks) settings.hooks = {};
@@ -84,14 +118,18 @@ function patchSettingsJson(settingsPath) {
   for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
     if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
     settings.hooks[event] = settings.hooks[event].filter(
-      h => !(h.command === legacyHookCmd ||
-             (typeof h === 'string' && h === legacyHookCmd) ||
-             h.hooks?.some(inner => inner.command === legacyHookCmd))
+      (h) =>
+        !(
+          h.command === legacyHookCmd ||
+          (typeof h === 'string' && h === legacyHookCmd) ||
+          h.hooks?.some((inner) => inner.command === legacyHookCmd)
+        )
     );
     const alreadyRegistered = settings.hooks[event].some(
-      h => h.command === hookCmd ||
-           (typeof h === 'string' && h === hookCmd) ||
-           h.hooks?.some(inner => inner.command === hookCmd)
+      (h) =>
+        h.command === hookCmd ||
+        (typeof h === 'string' && h === hookCmd) ||
+        h.hooks?.some((inner) => inner.command === hookCmd)
     );
     if (!alreadyRegistered) settings.hooks[event].push(hookEntry);
   }
@@ -102,8 +140,8 @@ function patchSettingsJson(settingsPath) {
   const guardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
   const guardEntry = { matcher: 'Bash', hooks: [{ type: 'command', command: guardCmd }] };
   if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
-  const guardRegistered = settings.hooks.PreToolUse.some(
-    h => h.hooks?.some(inner => inner.command === guardCmd)
+  const guardRegistered = settings.hooks.PreToolUse.some((h) =>
+    h.hooks?.some((inner) => inner.command === guardCmd)
   );
   if (!guardRegistered) settings.hooks.PreToolUse.push(guardEntry);
 
@@ -111,9 +149,12 @@ function patchSettingsJson(settingsPath) {
   // spawns when the orchestrator is running in the main git worktree.
   // Closes the spawn-class failure (epic #61): no override, no flag.
   const agentGuardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/agent-guard.mjs';
-  const agentGuardEntry = { matcher: 'Agent', hooks: [{ type: 'command', command: agentGuardCmd }] };
-  const agentGuardRegistered = settings.hooks.PreToolUse.some(
-    h => h.hooks?.some(inner => inner.command === agentGuardCmd)
+  const agentGuardEntry = {
+    matcher: 'Agent',
+    hooks: [{ type: 'command', command: agentGuardCmd }],
+  };
+  const agentGuardRegistered = settings.hooks.PreToolUse.some((h) =>
+    h.hooks?.some((inner) => inner.command === agentGuardCmd)
   );
   if (!agentGuardRegistered) settings.hooks.PreToolUse.push(agentGuardEntry);
 
@@ -121,7 +162,8 @@ function patchSettingsJson(settingsPath) {
   // class is not permitted in the current Kanban state (epic #61, W2.2 / #65).
   // Two entries — Edit/Write/NotebookEdit matcher and a separate Bash matcher
   // chained after bash-guard. Either guard blocking is sufficient.
-  const activityGuardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs';
+  const activityGuardCmd =
+    'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs';
   const activityEditEntry = {
     matcher: 'Edit|Write|NotebookEdit',
     hooks: [{ type: 'command', command: activityGuardCmd }],
@@ -131,13 +173,13 @@ function patchSettingsJson(settingsPath) {
     hooks: [{ type: 'command', command: activityGuardCmd }],
   };
   const activityEditRegistered = settings.hooks.PreToolUse.some(
-    h => h.matcher === 'Edit|Write|NotebookEdit' &&
-         h.hooks?.some(inner => inner.command === activityGuardCmd)
+    (h) =>
+      h.matcher === 'Edit|Write|NotebookEdit' &&
+      h.hooks?.some((inner) => inner.command === activityGuardCmd)
   );
   if (!activityEditRegistered) settings.hooks.PreToolUse.push(activityEditEntry);
   const activityBashRegistered = settings.hooks.PreToolUse.some(
-    h => h.matcher === 'Bash' &&
-         h.hooks?.some(inner => inner.command === activityGuardCmd)
+    (h) => h.matcher === 'Bash' && h.hooks?.some((inner) => inner.command === activityGuardCmd)
   );
   if (!activityBashRegistered) settings.hooks.PreToolUse.push(activityBashEntry);
 
@@ -146,8 +188,8 @@ function patchSettingsJson(settingsPath) {
   const trailCmd = '.claude/hooks/commit-trail.sh';
   const trailEntry = { matcher: 'Bash', hooks: [{ type: 'command', command: trailCmd }] };
   if (!Array.isArray(settings.hooks.PostToolUse)) settings.hooks.PostToolUse = [];
-  const trailRegistered = settings.hooks.PostToolUse.some(
-    h => h.hooks?.some(inner => inner.command === trailCmd)
+  const trailRegistered = settings.hooks.PostToolUse.some((h) =>
+    h.hooks?.some((inner) => inner.command === trailCmd)
   );
   if (!trailRegistered) settings.hooks.PostToolUse.push(trailEntry);
 
@@ -205,10 +247,17 @@ function installStub(file, content, label) {
 function replaceWithSymlink(dest, src, label) {
   mkdirSync(dirname(dest), { recursive: true });
   let existing = null;
-  try { existing = lstatSync(dest); } catch { /* absent */ }
+  try {
+    existing = lstatSync(dest);
+  } catch {
+    /* absent */
+  }
   if (existing) {
     if (existing.isSymbolicLink()) rmSync(dest);
-    else throw new Error(`${dest} exists and is not a symlink; rerun with --link-mode stub or remove it manually`);
+    else
+      throw new Error(
+        `${dest} exists and is not a symlink; rerun with --link-mode stub or remove it manually`
+      );
   }
   symlinkSync(src, dest, 'dir');
   ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
@@ -253,7 +302,7 @@ function hookStub() {
 function commitTrailHookStub() {
   return [
     '#!/usr/bin/env bash',
-    '# PostToolUse hook — appends commit SHA rows to the bound issue\'s `### 🔗 Commits` comment.',
+    "# PostToolUse hook — appends commit SHA rows to the bound issue's `### 🔗 Commits` comment.",
     'set -uo pipefail',
     '',
     'INPUT=$(cat)',
@@ -354,11 +403,19 @@ function installClaude(targetDir, linkMode) {
 
   const hookPath = join(targetDir, '.claude', 'hooks', 'task-tracker.sh');
   installStub(hookPath, hookStub(), 'Hook');
-  try { execFileSync('chmod', ['+x', hookPath]); } catch { /* ignore on Windows */ }
+  try {
+    execFileSync('chmod', ['+x', hookPath]);
+  } catch {
+    /* ignore on Windows */
+  }
 
   const trailHookPath = join(targetDir, '.claude', 'hooks', 'commit-trail.sh');
   installStub(trailHookPath, commitTrailHookStub(), 'Hook');
-  try { execFileSync('chmod', ['+x', trailHookPath]); } catch { /* ignore on Windows */ }
+  try {
+    execFileSync('chmod', ['+x', trailHookPath]);
+  } catch {
+    /* ignore on Windows */
+  }
 
   installStub(
     join(targetDir, '.claude', 'commands', 'task.md'),
@@ -384,7 +441,7 @@ function installClaude(targetDir, linkMode) {
       '| `ready` | `groom` |',
       '| `in-progress` | `approve` |',
       '| `in-review` | `review` |',
-      ''
+      '',
     ].join('\n'),
     'Command'
   );
@@ -407,26 +464,41 @@ function setupCodexSuperpowers(targetDir, { globalAgents = false } = {}) {
   step('Codex Superpowers bootstrap');
   const sourceRoot = findSuperpowersSkillRoot();
   if (!sourceRoot) {
-    console.log(`  ${yellow('WARN')} Superpowers skills were not found in ${dim('~/.claude/plugins/cache/claude-plugins-official/superpowers/<version>/skills')}`);
-    console.log(`       AITM install/init will continue. Install Claude Code Superpowers first, then rerun with ${cyan('--codex-superpowers')}.`);
+    console.log(
+      `  ${yellow('WARN')} Superpowers skills were not found in ${dim('~/.claude/plugins/cache/claude-plugins-official/superpowers/<version>/skills')}`
+    );
+    console.log(
+      `       AITM install/init will continue. Install Claude Code Superpowers first, then rerun with ${cyan('--codex-superpowers')}.`
+    );
     return;
   }
 
   const mirror = mirrorSuperpowerSkills({ sourceRoot });
   const copied = mirror.copied.length ? mirror.copied.join(', ') : 'none';
   const unchanged = mirror.unchanged.length ? mirror.unchanged.length : 0;
-  ok(`Mirrored Superpowers skills to ${dim('~/.codex/skills')} ${dim(`copied: ${copied}; unchanged: ${unchanged}`)}`);
+  ok(
+    `Mirrored Superpowers skills to ${dim('~/.codex/skills')} ${dim(`copied: ${copied}; unchanged: ${unchanged}`)}`
+  );
   if (mirror.missing.length) {
-    console.log(`  ${yellow('WARN')} Missing optional Superpowers skills: ${mirror.missing.join(', ')}`);
+    console.log(
+      `  ${yellow('WARN')} Missing optional Superpowers skills: ${mirror.missing.join(', ')}`
+    );
   }
 
   const agentsPath = globalAgents
     ? join(homedir(), '.codex', 'AGENTS.md')
     : join(targetDir, 'AGENTS.md');
-  const changed = updateAgentsFile(agentsPath, codexBootstrapBlock({ scope: globalAgents ? 'global' : 'repo' }));
-  ok(`Bootstrap ${dim(globalAgents ? '~/.codex/AGENTS.md' : relative(process.cwd(), agentsPath))}${changed ? '' : ` ${dim('(unchanged)')}`}`);
+  const changed = updateAgentsFile(
+    agentsPath,
+    codexBootstrapBlock({ scope: globalAgents ? 'global' : 'repo' })
+  );
+  ok(
+    `Bootstrap ${dim(globalAgents ? '~/.codex/AGENTS.md' : relative(process.cwd(), agentsPath))}${changed ? '' : ` ${dim('(unchanged)')}`}`
+  );
   if (globalAgents) {
-    console.log(`  ${yellow('NOTE')} Updated global Codex instructions because ${cyan('--codex-superpowers-global')} was set.`);
+    console.log(
+      `  ${yellow('NOTE')} Updated global Codex instructions because ${cyan('--codex-superpowers-global')} was set.`
+    );
   }
 }
 
@@ -469,7 +541,9 @@ function installTemplates(targetDir) {
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, 'Z');
     const sidecar = join(templateDest, name.replace('.json', `.default.${stamp}.json`));
     writeFileSync(sidecar, bundled, 'utf8');
-    ok(`Config ${dim('.ai-task-manager/' + name)} ${yellow('(kept; new default written beside it)')}`);
+    ok(
+      `Config ${dim('.ai-task-manager/' + name)} ${yellow('(kept; new default written beside it)')}`
+    );
   }
   // activity-policy.json — write the bundled default only when absent. Existing
   // project policies are never overwritten (#70: idempotent + user-edit-preserving).
@@ -498,7 +572,8 @@ function cmdInstall(args) {
 
   const agent = parseOption(args, '--agent', 'both');
   const linkMode = parseOption(args, '--link-mode', 'stub');
-  const enableCodexSuperpowers = hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
+  const enableCodexSuperpowers =
+    hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
   const globalCodexSuperpowers = hasFlag(args, '--codex-superpowers-global');
   if (!['claude', 'codex', 'both'].includes(agent)) {
     err(`Unknown --agent value "${agent}". Expected claude or codex.`);
@@ -529,9 +604,11 @@ function cmdInstall(args) {
   });
   // Surface a non-fatal warning if a target file is missing.
   if (!stampResult.skipped) {
-    const missing = stampResult.results.filter(r => r.reason === 'missing');
+    const missing = stampResult.results.filter((r) => r.reason === 'missing');
     if (missing.length) {
-      console.log(`  ${yellow('WARN')} ${missing.length} skill detail file(s) missing — install may be incomplete.`);
+      console.log(
+        `  ${yellow('WARN')} ${missing.length} skill detail file(s) missing — install may be incomplete.`
+      );
     }
   }
 
@@ -553,7 +630,9 @@ function cmdInstall(args) {
     console.log(bgYellow(bold('  Optional: Codex workflow bootstrap                        ')));
     console.log(bgYellow('  Enable Superpowers skills for Codex agents:               '));
     console.log(bgYellow('                                                             '));
-    console.log(bgYellow(`  ${bold('npx ai-task-manager install --codex-superpowers')}            `));
+    console.log(
+      bgYellow(`  ${bold('npx ai-task-manager install --codex-superpowers')}            `)
+    );
     console.log('');
   }
   console.log('');
@@ -571,13 +650,21 @@ function cmdStatusline() {
   const srcScript = join(PKG_ROOT, 'statusline', 'statusline.sh');
   mkdirSync(claudeDir, { recursive: true });
   copyFileSync(srcScript, destScript);
-  try { execFileSync('chmod', ['+x', destScript]); } catch { /* ignore on Windows */ }
+  try {
+    execFileSync('chmod', ['+x', destScript]);
+  } catch {
+    /* ignore on Windows */
+  }
   ok(`Installed ${dim('~/.claude/statusline.sh')}`);
 
   step('User settings');
   let settings = {};
   if (existsSync(destSettings)) {
-    try { settings = JSON.parse(readFileSync(destSettings, 'utf8')); } catch { /* ignore */ }
+    try {
+      settings = JSON.parse(readFileSync(destSettings, 'utf8'));
+    } catch {
+      /* ignore */
+    }
   }
   if (typeof settings.statusLine === 'string') {
     settings.statusLine = { type: 'command', command: settings.statusLine };
@@ -592,7 +679,8 @@ function cmdInit(args) {
   const targetArg = parseOption(args, '--target');
   if (targetArg) targetDir = resolve(targetArg);
   const projectArg = parseOption(args, '--project') ?? parseOption(args, '--project-url');
-  const enableCodexSuperpowers = hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
+  const enableCodexSuperpowers =
+    hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
   const globalCodexSuperpowers = hasFlag(args, '--codex-superpowers-global');
 
   const initScript = join(PKG_ROOT, 'scripts', 'gh', 'init-project-config.sh');
@@ -627,7 +715,7 @@ function cmdRepair(args) {
   }
 }
 
-const [,, command = 'help', ...rest] = process.argv;
+const [, , command = 'help', ...rest] = process.argv;
 
 switch (command) {
   case 'version':

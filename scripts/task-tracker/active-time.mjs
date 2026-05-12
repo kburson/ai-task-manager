@@ -19,7 +19,11 @@ export function collectEventTimestamps(filePath, startMs, endMs) {
   const out = [];
   for (const l of lines) {
     let o;
-    try { o = JSON.parse(l); } catch { continue; }
+    try {
+      o = JSON.parse(l);
+    } catch {
+      continue;
+    }
     if (!ACTIVITY_TYPES.has(o.type)) continue;
     if (o.isMeta || o.isSidechain) continue;
     if (!o.timestamp) continue;
@@ -46,7 +50,7 @@ export function computeActiveAndIdleMinutes({ startMs, endMs, events, idleThresh
     const gap = marks[i] - marks[i - 1];
     if (gap > idleThresholdMs) idleMs += gap - idleThresholdMs;
   }
-  const activeMs = (endMs - startMs) - idleMs;
+  const activeMs = endMs - startMs - idleMs;
   return {
     activeMin: Math.max(0, Math.round(activeMs / 60000)),
     idleMin: Math.max(0, Math.round(idleMs / 60000)),
@@ -64,7 +68,9 @@ export function activeMinutesForWindow({ filePath, startIso, endIso, idleThresho
   const endMs = new Date(endIso).getTime();
   const events = collectEventTimestamps(filePath, startMs, endMs);
   return computeActiveAndIdleMinutes({
-    startMs, endMs, events,
+    startMs,
+    endMs,
+    events,
     idleThresholdMs: idleThresholdMinutes * 60_000,
   }).activeMin;
 }

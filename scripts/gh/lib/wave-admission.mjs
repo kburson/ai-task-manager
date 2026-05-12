@@ -28,19 +28,25 @@ import { gql, splitRepo } from './github-projects.mjs';
 
 const IN_FLIGHT_STATES = new Set([
   'grooming',
-  'analyze',     // current naming in this repo's option config
-  'analysis',    // alias used in the AC text
+  'analyze', // current naming in this repo's option config
+  'analysis', // alias used in the AC text
   'development',
   'validate',
   'review',
 ]);
 
-export function admit({ parentEpicNumber, sequence, repo, projectId, fetchSiblings = defaultFetchSiblings } = {}) {
+export function admit({
+  parentEpicNumber,
+  sequence,
+  repo,
+  projectId,
+  fetchSiblings = defaultFetchSiblings,
+} = {}) {
   // Solo bypass — no parent epic, no wave.
   if (parentEpicNumber == null) {
     return Promise.resolve({ ok: true, blockers: [] });
   }
-  return Promise.resolve(fetchSiblings({ parentEpicNumber, repo, projectId })).then(siblings => {
+  return Promise.resolve(fetchSiblings({ parentEpicNumber, repo, projectId })).then((siblings) => {
     const blockers = [];
     const mySeq = Number(sequence);
     for (const sib of siblings || []) {
@@ -65,7 +71,8 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
   if (!repo) throw new Error('wave-admission: repo is required');
   if (!projectId) throw new Error('wave-admission: projectId is required');
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(`
+  const data = await gql(
+    `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
@@ -101,7 +108,7 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
   const out = [];
   for (const sub of subs) {
     if (!sub) continue;
-    const item = (sub.projectItems?.nodes || []).find(n => n?.project?.id === projectId);
+    const item = (sub.projectItems?.nodes || []).find((n) => n?.project?.id === projectId);
     let state = '';
     let sequence = null;
     if (item) {
@@ -109,7 +116,8 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
         const fname = fv?.field?.name;
         if (!fname) continue;
         if (fname.toLowerCase() === 'status' && fv.name) state = String(fv.name).toLowerCase();
-        else if (fname.toLowerCase() === 'sequence' && fv.number != null) sequence = Number(fv.number);
+        else if (fname.toLowerCase() === 'sequence' && fv.number != null)
+          sequence = Number(fv.number);
       }
     }
     // GitHub closed sub-issues that aren't on the board count as Done.

@@ -14,7 +14,7 @@ const TABLE_HEADER = [
 
 export function fmtTs(iso) {
   const d = new Date(iso);
-  const pad = n => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, '0');
   const offsetMin = -d.getTimezoneOffset();
   const sign = offsetMin >= 0 ? '+' : '-';
   const abs = Math.abs(offsetMin);
@@ -29,7 +29,7 @@ export function firstStartTimestamp(commentBody) {
   const lines = commentBody.split('\n');
   for (const line of lines) {
     if (!line.startsWith('|')) continue;
-    const cells = line.split('|').map(s => s.trim());
+    const cells = line.split('|').map((s) => s.trim());
     if (cells.length < 3) continue;
     const ts = cells[1];
     const event = cells[2];
@@ -39,7 +39,9 @@ export function firstStartTimestamp(commentBody) {
   }
   return null;
 }
-function fmtNum(n)  { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
+function fmtNum(n) {
+  return n == null ? '—' : Number(n).toLocaleString('en-US');
+}
 
 // Maximum allowed skew (ms) between a caller-supplied `ts` and `Date.now()`.
 // Beyond this window in either direction, `buildRow` refuses to construct a
@@ -59,7 +61,15 @@ function tsToMs(ts) {
   return NaN;
 }
 
-export function buildRow({ ts, event, activeMin, idleMin, deltaWords, wordMarker, description = '' }) {
+export function buildRow({
+  ts,
+  event,
+  activeMin,
+  idleMin,
+  deltaWords,
+  wordMarker,
+  description = '',
+}) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
     throw new Error(`${RETROACTIVE_TS_ERROR} (received non-parseable ts: ${String(ts)})`);
@@ -81,18 +91,18 @@ export function buildRow({ ts, event, activeMin, idleMin, deltaWords, wordMarker
 // `writeLastKnownState` stamps its own ISO timestamp; callers cannot inject
 // a retroactive ts here either.
 
-const LAST_KNOWN_STATE_RE      = /<!--\s*aitm-last-known-state:\s*([A-Za-z0-9_-]+)\s*-->/;
-const LAST_KNOWN_STATE_TS_RE   = /<!--\s*aitm-last-known-state-ts:\s*([^\s>][^>]*?)\s*-->/;
+const LAST_KNOWN_STATE_RE = /<!--\s*aitm-last-known-state:\s*([A-Za-z0-9_-]+)\s*-->/;
+const LAST_KNOWN_STATE_TS_RE = /<!--\s*aitm-last-known-state-ts:\s*([^\s>][^>]*?)\s*-->/;
 const LAST_KNOWN_STATE_PAIR_RE =
   /<!--\s*aitm-last-known-state:\s*[A-Za-z0-9_-]+\s*-->\s*\n?<!--\s*aitm-last-known-state-ts:\s*[^>]+?\s*-->\s*\n?/;
 
 export function readLastKnownState(body) {
   if (!body || typeof body !== 'string') return { state: null, ts: null };
   const stateMatch = body.match(LAST_KNOWN_STATE_RE);
-  const tsMatch    = body.match(LAST_KNOWN_STATE_TS_RE);
+  const tsMatch = body.match(LAST_KNOWN_STATE_TS_RE);
   return {
     state: stateMatch ? stateMatch[1] : null,
-    ts:    tsMatch ? tsMatch[1].trim() : null,
+    ts: tsMatch ? tsMatch[1].trim() : null,
   };
 }
 
@@ -124,13 +134,20 @@ export function appendRow(body, row) {
   const lines = body.split('\n');
   let lastTableIdx = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('| ') && !lines[i].startsWith('| Timestamp') && !lines[i].startsWith('|---')) {
+    if (
+      lines[i].startsWith('| ') &&
+      !lines[i].startsWith('| Timestamp') &&
+      !lines[i].startsWith('|---')
+    ) {
       lastTableIdx = i;
     }
   }
   if (lastTableIdx === -1) {
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('|---')) { lastTableIdx = i; break; }
+      if (lines[i].startsWith('|---')) {
+        lastTableIdx = i;
+        break;
+      }
     }
   }
   lines.splice(lastTableIdx + 1, 0, row);
@@ -146,22 +163,16 @@ async function ghExec(args, { timeoutMs = 2000 } = {}) {
 
 export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
   const num = issueNumber.replace('#', '');
-  const out = await ghExec(
-    ['issue', 'view', num, '-R', repo, '--json', 'comments'],
-    { timeoutMs }
-  );
+  const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
-  const hit = comments.find(c => c.body.includes(TIMING_HEADING));
+  const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
   return hit ? { id: hit.id, url: hit.url, body: hit.body } : null;
 }
 
 export async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
   const num = issueNumber.replace('#', '');
-  const out = await ghExec(
-    ['issue', 'comment', num, '-R', repo, '--body', body],
-    { timeoutMs }
-  );
-  return out.trim();  // URL of new comment
+  const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
+  return out.trim(); // URL of new comment
 }
 
 export async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
@@ -177,9 +188,7 @@ export async function updateTimingComment(commentId, repo, body, { timeoutMs } =
   );
 }
 
-export async function postTimingEvent({
-  issueNumber, repo, row, timeoutMs = 2000,
-}) {
+export async function postTimingEvent({ issueNumber, repo, row, timeoutMs = 2000 }) {
   const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
   if (existing) {
     const updated = appendRow(existing.body, row);

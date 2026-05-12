@@ -50,14 +50,18 @@ async function runExpectFail(args, env = {}) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test123',
-      priorityFieldId: 'PVTF_prio',
-      priorityOptionP0: 'PVTO_p0',
-      priorityOptionP1: 'PVTO_p1',
-      priorityOptionP2: 'PVTO_p2',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test123',
+        priorityFieldId: 'PVTF_prio',
+        priorityOptionP0: 'PVTO_p0',
+        priorityOptionP1: 'PVTO_p1',
+        priorityOptionP2: 'PVTO_p2',
+      },
+      null,
+      2
+    )
   );
   for (const priority of ['p0', 'p1', 'p2', 'P0', 'P1', 'P2']) {
     const r = await run(['123', priority], {
@@ -80,21 +84,27 @@ async function runExpectFail(args, env = {}) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: TARGET_PROJECT,
-      priorityFieldId: 'PVTF_prio',
-      priorityOptionP0: 'PVTO_p0',
-      priorityOptionP1: 'PVTO_p1',
-      priorityOptionP2: 'PVTO_p2',
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: TARGET_PROJECT,
+        priorityFieldId: 'PVTF_prio',
+        priorityOptionP0: 'PVTO_p0',
+        priorityOptionP1: 'PVTO_p1',
+        priorityOptionP2: 'PVTO_p2',
+      },
+      null,
+      2
+    )
   );
 
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir, { recursive: true });
   const argvLog = path.join(sandbox, 'gh-argv.log');
   const ghShim = path.join(binDir, 'gh');
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 import { appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 appendFileSync(${JSON.stringify(argvLog)}, JSON.stringify(argv) + '\\n');
@@ -106,7 +116,8 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
 } else {
   process.stdout.write('{}');
 }
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
 
   await run(['123', 'p1'], {
@@ -115,12 +126,20 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   });
 
   const lines = readFileSync(argvLog, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
-  const editCall = lines.find(a => a[0] === 'project' && a[1] === 'item-edit');
+  const editCall = lines.find((a) => a[0] === 'project' && a[1] === 'item-edit');
   assert.ok(editCall, 'expected a project item-edit call');
   const idIdx = editCall.indexOf('--id');
-  assert.equal(editCall[idIdx + 1], TARGET_ITEM, 'should select item from configured projectId, not the first one');
+  assert.equal(
+    editCall[idIdx + 1],
+    TARGET_ITEM,
+    'should select item from configured projectId, not the first one'
+  );
   const projIdx = editCall.indexOf('--project-id');
-  assert.equal(editCall[projIdx + 1], TARGET_PROJECT, '--project-id should match configured projectId');
+  assert.equal(
+    editCall[projIdx + 1],
+    TARGET_PROJECT,
+    '--project-id should match configured projectId'
+  );
 
   rmSync(sandbox, { recursive: true });
 }

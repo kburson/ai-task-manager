@@ -50,15 +50,12 @@ const FULL_OPTIONS = {
 
 // (e) unknown source throws
 {
-  assert.throws(
-    () => mapOption('Bogus', FULL_OPTIONS),
-    /unknown source Status/
-  );
+  assert.throws(() => mapOption('Bogus', FULL_OPTIONS), /unknown source Status/);
 }
 
 // (f) missing target on board raises a clear error
 {
-  const partial = { Backlog: 'OP_b', Done: 'OP_done' };  // no Groom present
+  const partial = { Backlog: 'OP_b', Done: 'OP_done' }; // no Groom present
   assert.throws(
     () => mapOption('Ready', partial),
     /target option "Groom" is not present on the board/

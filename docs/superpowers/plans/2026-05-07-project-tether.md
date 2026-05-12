@@ -13,6 +13,7 @@
 ### Task 1: Add Project Tether Module Tests
 
 **Files:**
+
 - Create: `scripts/task-tracker/tests/project-tether.test.mjs`
 
 - [ ] **Step 1: Write tests that fail because the module does not exist**
@@ -23,6 +24,7 @@ Expected: FAIL with module not found.
 - [ ] **Step 2: Cover behaviors**
 
 The test file must cover:
+
 - existing project-side item is reused;
 - missing item is added and verified from project side;
 - issue-side phantom item is deleted and retried;
@@ -33,6 +35,7 @@ The test file must cover:
 ### Task 2: Implement Project Tether Module
 
 **Files:**
+
 - Create: `scripts/gh/lib/project-tether.mjs`
 
 - [ ] **Step 1: Export `tetherIssueToProject(options)`**
@@ -58,6 +61,7 @@ Call `addSubIssue` only when `parentIssueNumber` is present.
 ### Task 3: Add CLI Wrapper
 
 **Files:**
+
 - Create: `scripts/gh/project-tether.mjs`
 
 - [ ] **Step 1: Parse flags**
@@ -71,6 +75,7 @@ Load `.ai-task-manager/task-tracker.json` through existing config code and print
 ### Task 4: Integrate Migration
 
 **Files:**
+
 - Modify: `scripts/gh/migrate-project.mjs`
 
 - [ ] **Step 1: Replace `projectItemForIssue || addIssueToProject`**
@@ -80,6 +85,7 @@ Call `tetherIssueToProject` and use its verified `itemId` before field writes.
 ### Task 5: Update Orchestration Instructions
 
 **Files:**
+
 - Modify: `skill/shared/SKILL.md`
 - Modify: `README.md`
 
@@ -94,12 +100,14 @@ State that `Issue.projectItems` is not sufficient; `ProjectV2.items` must contai
 ### Task 6: Verify
 
 **Files:**
+
 - Test: `scripts/task-tracker/tests/project-tether.test.mjs`
 - Test: `scripts/task-tracker/tests/github-projects.test.mjs`
 
 - [ ] **Step 1: Run focused tests**
 
 Run:
+
 ```bash
 node scripts/task-tracker/tests/project-tether.test.mjs
 node scripts/task-tracker/tests/github-projects.test.mjs

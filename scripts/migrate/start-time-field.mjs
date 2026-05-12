@@ -29,7 +29,9 @@ if (!cfg.projectId) {
 }
 const startTimeFieldId = cfg.fieldIds?.startTime || cfg.fieldStartTime || '';
 if (!startTimeFieldId && !deleteOldFields) {
-  console.error('error: cfg.fieldStartTime not set; run init-project-config to create the Start time field first');
+  console.error(
+    'error: cfg.fieldStartTime not set; run init-project-config to create the Start time field first'
+  );
   process.exit(1);
 }
 
@@ -78,7 +80,7 @@ function findTimingCommentBody(comments) {
 }
 
 function currentStartTime(item) {
-  const node = item.fieldValues.nodes.find(v => v.field?.id === startTimeFieldId);
+  const node = item.fieldValues.nodes.find((v) => v.field?.id === startTimeFieldId);
   return node?.text || '';
 }
 
@@ -86,7 +88,8 @@ async function deleteField(fieldId, label) {
   if (!fieldId) return;
   console.log(`  ✗ deleting ${label} field (${fieldId})`);
   if (dryRun) return;
-  await gql(`
+  await gql(
+    `
     mutation($field: ID!) {
       deleteProjectV2Field(input: { fieldId: $field }) { projectV2Field { ... on ProjectV2Field { id } } }
     }`,
@@ -130,7 +133,9 @@ async function main() {
   }
 
   console.log('');
-  console.log(`Summary: ${writes} ${dryRun ? 'planned' : 'written'}, ${skipped} idempotent skips, ${noTiming} no-timing-log`);
+  console.log(
+    `Summary: ${writes} ${dryRun ? 'planned' : 'written'}, ${skipped} idempotent skips, ${noTiming} no-timing-log`
+  );
 
   if (deleteOldFields) {
     console.log('');
@@ -140,7 +145,9 @@ async function main() {
     await deleteField(startDateId, 'Start date');
     await deleteField(endDateId, 'End date');
     if (!dryRun) {
-      console.log('NOTE: clear cfg.fieldIds.startDate / endDate from .ai-task-manager/task-tracker.json manually if still present.');
+      console.log(
+        'NOTE: clear cfg.fieldIds.startDate / endDate from .ai-task-manager/task-tracker.json manually if still present.'
+      );
     }
   }
 }

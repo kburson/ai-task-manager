@@ -26,18 +26,23 @@ try {
   mkdirSync(binDir, { recursive: true });
   const callsLog = path.join(sandbox, 'gh-calls.log');
   const ghShim = path.join(binDir, 'gh');
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 import { appendFileSync } from 'node:fs';
 let stdin = '';
 process.stdin.setEncoding('utf8');
 for await (const chunk of process.stdin) stdin += chunk;
 appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({ argv: process.argv.slice(2), stdin }) + '\\n');
 process.stdout.write(JSON.stringify({ data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: 'ITEM_1' } } } }));
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
 
   const driver = path.join(sandbox, 'driver.mjs');
-  writeFileSync(driver, `
+  writeFileSync(
+    driver,
+    `
 import { writeProjectFieldValue } from ${JSON.stringify(GH_LIB)};
 await writeProjectFieldValue({
   projectId: 'PVT_test',
@@ -57,7 +62,8 @@ await writeProjectFieldValue({
   fieldId: 'FIELD_1',
   value: { number: 2.25 },
 });
-`);
+`
+  );
 
   const env = {
     ...process.env,
@@ -72,15 +78,19 @@ await writeProjectFieldValue({
   const expected = [1.5, 0.5, 2.25];
   lines.forEach((line, i) => {
     const { argv, stdin } = JSON.parse(line);
-    assert.deepEqual(argv, ['api', 'graphql', '--input', '-'],
-      `call ${i}: argv must be JSON-on-stdin shape, got ${JSON.stringify(argv)}`);
+    assert.deepEqual(
+      argv,
+      ['api', 'graphql', '--input', '-'],
+      `call ${i}: argv must be JSON-on-stdin shape, got ${JSON.stringify(argv)}`
+    );
     const payload = JSON.parse(stdin);
-    assert.equal(typeof payload.variables.val, 'number',
-      `call ${i}: variables.val must be a JSON number, got ${typeof payload.variables.val}`);
-    assert.equal(payload.variables.val, expected[i],
-      `call ${i}: variables.val mismatch`);
-    assert.match(payload.query, /\$val:\s*Float!/,
-      `call ${i}: query must declare $val: Float!`);
+    assert.equal(
+      typeof payload.variables.val,
+      'number',
+      `call ${i}: variables.val must be a JSON number, got ${typeof payload.variables.val}`
+    );
+    assert.equal(payload.variables.val, expected[i], `call ${i}: variables.val mismatch`);
+    assert.match(payload.query, /\$val:\s*Float!/, `call ${i}: query must declare $val: Float!`);
   });
 
   console.log('graphql-float.test.mjs: all passed');

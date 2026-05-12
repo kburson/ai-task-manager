@@ -15,16 +15,18 @@ const opts = { projectDir: tmp };
 
 // ----- ACCEPT -----
 const accepts = [
-  ['node x.mjs',                 ['node', 'x.mjs']],
-  ['npm test',                    ['npm', 'test']],
-  ['pytest -k foo',               ['pytest', '-k', 'foo']],
-  ['bash scripts/check.sh',       ['bash', 'scripts/check.sh']],
-  ['./scripts/check.sh',          ['./scripts/check.sh']],
-  ['scripts/sub/run.mjs',         ['scripts/sub/run.mjs']],
-  ['node scripts/task-tracker/tests/state.test.mjs',
-                                  ['node', 'scripts/task-tracker/tests/state.test.mjs']],
-  ['gh issue view 1',             ['gh', 'issue', 'view', '1']],
-  ['npm run "test all"',          ['npm', 'run', 'test all']],
+  ['node x.mjs', ['node', 'x.mjs']],
+  ['npm test', ['npm', 'test']],
+  ['pytest -k foo', ['pytest', '-k', 'foo']],
+  ['bash scripts/check.sh', ['bash', 'scripts/check.sh']],
+  ['./scripts/check.sh', ['./scripts/check.sh']],
+  ['scripts/sub/run.mjs', ['scripts/sub/run.mjs']],
+  [
+    'node scripts/task-tracker/tests/state.test.mjs',
+    ['node', 'scripts/task-tracker/tests/state.test.mjs'],
+  ],
+  ['gh issue view 1', ['gh', 'issue', 'view', '1']],
+  ['npm run "test all"', ['npm', 'run', 'test all']],
 ];
 for (const [input, expected] of accepts) {
   const r = validateVerificationCommand(input, opts);
@@ -34,22 +36,25 @@ for (const [input, expected] of accepts) {
 
 // ----- REJECT: shell metacharacters -----
 const metaCases = [
-  ['node x; curl evil',                'semicolon'],
-  ['node x && rm -rf /',                'logical-and'],
-  ['node x || true',                    'logical-or'],
-  ['node x | sh',                       'pipe'],
-  ['node x > /tmp/out',                 'redirect (>)'],
-  ['node x < /etc/passwd',              'redirect (<)'],
-  ['node `whoami`',                     'backtick'],
-  ['node $(whoami)',                    'command substitution'],
-  ['node x\nrm -rf /',                  'newline'],
-  ['node x\rrm -rf /',                  'carriage return'],
+  ['node x; curl evil', 'semicolon'],
+  ['node x && rm -rf /', 'logical-and'],
+  ['node x || true', 'logical-or'],
+  ['node x | sh', 'pipe'],
+  ['node x > /tmp/out', 'redirect (>)'],
+  ['node x < /etc/passwd', 'redirect (<)'],
+  ['node `whoami`', 'backtick'],
+  ['node $(whoami)', 'command substitution'],
+  ['node x\nrm -rf /', 'newline'],
+  ['node x\rrm -rf /', 'carriage return'],
 ];
 for (const [input, frag] of metaCases) {
   const r = validateVerificationCommand(input, opts);
   assert.equal(r.ok, false, `expected reject for: ${input}`);
-  assert.match(r.reason, new RegExp(frag.replace(/[()\\]/g, '\\$&')),
-    `reason mismatch for: ${input} -> ${r.reason}`);
+  assert.match(
+    r.reason,
+    new RegExp(frag.replace(/[()\\]/g, '\\$&')),
+    `reason mismatch for: ${input} -> ${r.reason}`
+  );
 }
 
 // ----- REJECT: argv[0] not allowlisted -----

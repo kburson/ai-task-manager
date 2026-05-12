@@ -47,19 +47,19 @@ The state chain is: `Backlog → Groom → Analyze → Development → Validate 
 
 Forward transitions run through the verb surface — never through direct `move-state.mjs` calls (§5). Backward transitions are limited to two named paths:
 
-| Backward path | Verb | Trigger |
-|---|---|---|
-| `Review → Development` | `/task reject #N --reason "..."` | Reviewer rejected; reason posted as comment. |
-| any-forward → `Development` | `/task demote #N` | Generic step-back (e.g. ran `approve` prematurely). |
+| Backward path               | Verb                             | Trigger                                             |
+| --------------------------- | -------------------------------- | --------------------------------------------------- |
+| `Review → Development`      | `/task reject #N --reason "..."` | Reviewer rejected; reason posted as comment.        |
+| any-forward → `Development` | `/task demote #N`                | Generic step-back (e.g. ran `approve` prematurely). |
 
 ### Gates
 
 Two human gates exist between automation steps:
 
-| Gate | Config key | What it blocks |
-|---|---|---|
-| Groom→Analyze, Analyze→Development promotions | `gateAnalysisToDevelopment` | `/task promote` refuses without `--answer yes` when `true`. |
-| Review→Done close | `gateReviewToDone` | `/task close` refuses without the review-approval marker (written by `/task approve-review`) when `true`. |
+| Gate                                          | Config key                  | What it blocks                                                                                            |
+| --------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Groom→Analyze, Analyze→Development promotions | `gateAnalysisToDevelopment` | `/task promote` refuses without `--answer yes` when `true`.                                               |
+| Review→Done close                             | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve-review`) when `true`. |
 
 Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disable only for an approved parallel batch (§ Disabling gates for a batch) and restore both to `true` after.
 
@@ -69,7 +69,7 @@ Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disa
 // .ai-task-manager/task-tracker.json
 {
   "gateAnalysisToDevelopment": false,
-  "gateReviewToDone": false
+  "gateReviewToDone": false,
 }
 ```
 
@@ -81,12 +81,12 @@ After the batch returns and the orchestrator has merged the worktree branches, *
 
 The canonical user-facing surface for state transitions is:
 
-| Verb | Action |
-|---|---|
-| `/task promote [<N>]` | Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Applies to `groom`, `analyze`, `approve`, `review`, `close`. |
-| `/task next [<N>]` | Alias of `/task promote`. Use whichever reads better in the moment. |
-| `/task demote [<N>]` | Back to `Development` from any forward state. Records the demotion in the timing log. |
-| `/task reconcile <accept-live\|revert-to-recorded>` | Drift recovery only — see §7. |
+| Verb                                                | Action                                                                                                                                                             |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/task promote [<N>]`                               | Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Applies to `groom`, `analyze`, `approve`, `review`, `close`. |
+| `/task next [<N>]`                                  | Alias of `/task promote`. Use whichever reads better in the moment.                                                                                                |
+| `/task demote [<N>]`                                | Back to `Development` from any forward state. Records the demotion in the timing log.                                                                              |
+| `/task reconcile <accept-live\|revert-to-recorded>` | Drift recovery only — see §7.                                                                                                                                      |
 
 The single-purpose verbs `/task analyze`, `/task approve`, `/task review`, `/task close` are **deprecated aliases** that delegate to `/task promote`. New code, new docs, and new agent prompts use `promote` / `next` / `demote`.
 
@@ -114,10 +114,10 @@ State drift means the project board and the local field-DB disagree about an iss
 
 Recover with `/task reconcile`:
 
-| Mode | Behaviour |
-|---|---|
-| `/task reconcile <N> accept-live` | Treat GitHub Projects as source of truth. Rewrite local field-DB / timing log to match. |
-| `/task reconcile <N> revert-to-recorded` | Treat the local recorded state as source of truth. Push it back to the board. |
+| Mode                                     | Behaviour                                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| `/task reconcile <N> accept-live`        | Treat GitHub Projects as source of truth. Rewrite local field-DB / timing log to match. |
+| `/task reconcile <N> revert-to-recorded` | Treat the local recorded state as source of truth. Push it back to the board.           |
 
 Do not run any other verb on a drifted issue first — `reconcile` is the entry point. Forward verbs on a drifted issue can compound the drift (writing a partial update to whichever side was already lagging).
 

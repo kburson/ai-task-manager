@@ -16,30 +16,34 @@ import {
 // ── parseGhIssueEdit ─────────────────────────────────────────────────────────
 {
   // --body-file
-  assert.deepEqual(
-    parseGhIssueEdit('gh issue edit 64 --body-file /tmp/foo.md'),
-    { issueNumber: 64, source: 'file', path: '/tmp/foo.md' },
-  );
+  assert.deepEqual(parseGhIssueEdit('gh issue edit 64 --body-file /tmp/foo.md'), {
+    issueNumber: 64,
+    source: 'file',
+    path: '/tmp/foo.md',
+  });
   // Hash prefix and -R flag in between
-  assert.deepEqual(
-    parseGhIssueEdit('gh issue edit #64 -R owner/repo --body-file /tmp/x.md'),
-    { issueNumber: 64, source: 'file', path: '/tmp/x.md' },
-  );
+  assert.deepEqual(parseGhIssueEdit('gh issue edit #64 -R owner/repo --body-file /tmp/x.md'), {
+    issueNumber: 64,
+    source: 'file',
+    path: '/tmp/x.md',
+  });
   // --body inline (double-quoted)
-  assert.deepEqual(
-    parseGhIssueEdit('gh issue edit 7 --body "hello world"'),
-    { issueNumber: 7, source: 'inline', body: 'hello world' },
-  );
+  assert.deepEqual(parseGhIssueEdit('gh issue edit 7 --body "hello world"'), {
+    issueNumber: 7,
+    source: 'inline',
+    body: 'hello world',
+  });
   // --body inline (single-quoted)
-  assert.deepEqual(
-    parseGhIssueEdit("gh issue edit 7 --body 'a b'"),
-    { issueNumber: 7, source: 'inline', body: 'a b' },
-  );
+  assert.deepEqual(parseGhIssueEdit("gh issue edit 7 --body 'a b'"), {
+    issueNumber: 7,
+    source: 'inline',
+    body: 'a b',
+  });
   // No body flag → source: none
-  assert.deepEqual(
-    parseGhIssueEdit('gh issue edit 7 --add-label bug'),
-    { issueNumber: 7, source: 'none' },
-  );
+  assert.deepEqual(parseGhIssueEdit('gh issue edit 7 --add-label bug'), {
+    issueNumber: 7,
+    source: 'none',
+  });
   // Not an issue edit command
   assert.equal(parseGhIssueEdit('gh issue view 64'), null);
   assert.equal(parseGhIssueEdit('echo hello'), null);
@@ -71,11 +75,15 @@ import {
 
   // Body already had the legacy line → preservation passes (not adding)
   r = checkBodyChange({
-    newBody:     '## AC\n- [ ] do thing\n- [x] Plan approved by human\n## More\nstuff\n',
+    newBody: '## AC\n- [ ] do thing\n- [x] Plan approved by human\n## More\nstuff\n',
     currentBody: '## AC\n- [ ] do thing\n- [x] Plan approved by human\n',
     issueNumber: 99,
   });
-  assert.equal(r.block, false, 'preserving an already-present legacy line is OK (heal will normalise later)');
+  assert.equal(
+    r.block,
+    false,
+    'preserving an already-present legacy line is OK (heal will normalise later)'
+  );
 
   // Clean body → clean body: passes
   r = checkBodyChange({ newBody: cur, currentBody: cur, issueNumber: 1 });
@@ -86,11 +94,11 @@ import {
 {
   const PLAN = '<!-- aitm-plan-approved: 2026-05-11T20:00:00Z -->';
   const DEEP = '<!-- aitm-deep-dive-complete: 2026-05-11T20:00:00Z -->';
-  const REV  = '<!-- aitm-review-approved: 2026-05-11T20:00:00Z -->';
+  const REV = '<!-- aitm-review-approved: 2026-05-11T20:00:00Z -->';
 
   // Drop plan-approved → block
   let r = checkBodyChange({
-    newBody:     `## AC\n\n${DEEP}\n${REV}\n`,
+    newBody: `## AC\n\n${DEEP}\n${REV}\n`,
     currentBody: `## AC\n\n${PLAN}\n${DEEP}\n${REV}\n`,
     issueNumber: 64,
   });
@@ -99,7 +107,7 @@ import {
 
   // Drop deep-dive-complete → block
   r = checkBodyChange({
-    newBody:     `## AC\n\n${PLAN}\n${REV}\n`,
+    newBody: `## AC\n\n${PLAN}\n${REV}\n`,
     currentBody: `## AC\n\n${PLAN}\n${DEEP}\n${REV}\n`,
     issueNumber: 65,
   });
@@ -108,7 +116,7 @@ import {
 
   // Drop review-approved → block
   r = checkBodyChange({
-    newBody:     `## AC\n\n${PLAN}\n${DEEP}\n`,
+    newBody: `## AC\n\n${PLAN}\n${DEEP}\n`,
     currentBody: `## AC\n\n${PLAN}\n${DEEP}\n${REV}\n`,
     issueNumber: 67,
   });
@@ -117,7 +125,7 @@ import {
 
   // Preserve all markers (any ts change is fine — only presence is checked)
   r = checkBodyChange({
-    newBody:     `## AC\n${PLAN.replace('20:00:00Z','22:00:00Z')}\n${DEEP}\n${REV}\nappended\n`,
+    newBody: `## AC\n${PLAN.replace('20:00:00Z', '22:00:00Z')}\n${DEEP}\n${REV}\nappended\n`,
     currentBody: `## AC\n${PLAN}\n${DEEP}\n${REV}\n`,
     issueNumber: 1,
   });
@@ -125,7 +133,7 @@ import {
 
   // Add new markers to a body that had none: passes
   r = checkBodyChange({
-    newBody:     `## AC\n\n${PLAN}\n`,
+    newBody: `## AC\n\n${PLAN}\n`,
     currentBody: `## AC\n`,
     issueNumber: 2,
   });
@@ -135,9 +143,9 @@ import {
 // ── evaluateGhEdit: end-to-end wiring with injected deps ─────────────────────
 {
   const fileBody = {
-    '/tmp/good.md':       '## AC\n- [ ] x\n',
-    '/tmp/with-legacy.md':'## AC\n- [x] Plan approved by human\n',
-    '/tmp/drops-marker.md':'## AC\n- [ ] x\n',
+    '/tmp/good.md': '## AC\n- [ ] x\n',
+    '/tmp/with-legacy.md': '## AC\n- [x] Plan approved by human\n',
+    '/tmp/drops-marker.md': '## AC\n- [ ] x\n',
   };
   const readBodyFile = (p) => {
     if (!(p in fileBody)) throw new Error(`no such file: ${p}`);
@@ -152,7 +160,8 @@ import {
   // File body introduces legacy line → block
   let r = evaluateGhEdit({
     command: 'gh issue edit 65 --body-file /tmp/with-legacy.md',
-    readBodyFile, fetchCurrentBody,
+    readBodyFile,
+    fetchCurrentBody,
   });
   assert.equal(r.block, true);
   assert.match(r.reason, /Plan approved by human/);
@@ -160,7 +169,8 @@ import {
   // File body drops hidden marker → block
   r = evaluateGhEdit({
     command: 'gh issue edit 64 --body-file /tmp/drops-marker.md',
-    readBodyFile, fetchCurrentBody,
+    readBodyFile,
+    fetchCurrentBody,
   });
   assert.equal(r.block, true);
   assert.match(r.reason, /aitm-plan-approved/);
@@ -168,28 +178,32 @@ import {
   // Clean file body → pass
   r = evaluateGhEdit({
     command: 'gh issue edit 65 --body-file /tmp/good.md',
-    readBodyFile, fetchCurrentBody,
+    readBodyFile,
+    fetchCurrentBody,
   });
   assert.equal(r.block, false);
 
   // Non-edit command → pass
   r = evaluateGhEdit({
     command: 'gh issue view 64 --json body',
-    readBodyFile, fetchCurrentBody,
+    readBodyFile,
+    fetchCurrentBody,
   });
   assert.equal(r.block, false);
 
   // Edit without body flag (e.g., --add-label only) → pass
   r = evaluateGhEdit({
     command: 'gh issue edit 64 --add-label bug',
-    readBodyFile, fetchCurrentBody,
+    readBodyFile,
+    fetchCurrentBody,
   });
   assert.equal(r.block, false);
 
   // File read error → don't block (defensive: surface as gh CLI error instead)
   r = evaluateGhEdit({
     command: 'gh issue edit 65 --body-file /tmp/missing.md',
-    readBodyFile, fetchCurrentBody,
+    readBodyFile,
+    fetchCurrentBody,
   });
   assert.equal(r.block, false);
 
@@ -197,7 +211,9 @@ import {
   r = evaluateGhEdit({
     command: 'gh issue edit 65 --body-file /tmp/with-legacy.md',
     readBodyFile,
-    fetchCurrentBody: () => { throw new Error('network'); },
+    fetchCurrentBody: () => {
+      throw new Error('network');
+    },
   });
   // legacy-line introduction is still caught even when current body is unknown
   // (treated as empty → legacy line is "introduced")
@@ -210,7 +226,7 @@ import {
 
   // Adding heading without marker → block
   let r = checkBodyChange({
-    newBody:     '## AC\n## Deep-Dive Analysis (2026-05-11)\nstuff\n',
+    newBody: '## AC\n## Deep-Dive Analysis (2026-05-11)\nstuff\n',
     currentBody: '## AC\n',
     issueNumber: 99,
   });
@@ -220,7 +236,7 @@ import {
 
   // Adding heading WITH marker → pass
   r = checkBodyChange({
-    newBody:     `## AC\n## Deep-Dive Analysis (2026-05-11)\nstuff\n${MARKER}\n`,
+    newBody: `## AC\n## Deep-Dive Analysis (2026-05-11)\nstuff\n${MARKER}\n`,
     currentBody: '## AC\n',
     issueNumber: 99,
   });
@@ -228,7 +244,7 @@ import {
 
   // Heading already present in current → not "introducing", pass even without marker
   r = checkBodyChange({
-    newBody:     '## AC\n## Deep-Dive Analysis\nrevised\n',
+    newBody: '## AC\n## Deep-Dive Analysis\nrevised\n',
     currentBody: '## AC\n## Deep-Dive Analysis\noriginal\n',
     issueNumber: 99,
   });
@@ -249,18 +265,15 @@ import {
 
 // ── parseGhIssueCreate ───────────────────────────────────────────────────────
 {
-  assert.deepEqual(
-    parseGhIssueCreate('gh issue create --title T --body-file /tmp/x.md'),
-    { source: 'file', path: '/tmp/x.md' },
-  );
-  assert.deepEqual(
-    parseGhIssueCreate('gh issue create --title T --body "hi"'),
-    { source: 'inline', body: 'hi' },
-  );
-  assert.deepEqual(
-    parseGhIssueCreate('gh issue create --title T'),
-    { source: 'none' },
-  );
+  assert.deepEqual(parseGhIssueCreate('gh issue create --title T --body-file /tmp/x.md'), {
+    source: 'file',
+    path: '/tmp/x.md',
+  });
+  assert.deepEqual(parseGhIssueCreate('gh issue create --title T --body "hi"'), {
+    source: 'inline',
+    body: 'hi',
+  });
+  assert.deepEqual(parseGhIssueCreate('gh issue create --title T'), { source: 'none' });
   assert.equal(parseGhIssueCreate('gh issue edit 1 --body x'), null);
   assert.equal(parseGhIssueCreate('echo hi'), null);
 }
@@ -282,7 +295,7 @@ import {
 // ── evaluateGhCreate: end-to-end ─────────────────────────────────────────────
 {
   const fileBody = {
-    '/tmp/clean.md':  '## AC\n- [ ] x\n',
+    '/tmp/clean.md': '## AC\n- [ ] x\n',
     '/tmp/legacy.md': '## AC\n- [ ] Deep dive complete\n',
   };
   const readBodyFile = (p) => {

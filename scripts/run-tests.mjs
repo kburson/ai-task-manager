@@ -12,17 +12,21 @@ const integrationDir = path.resolve(repoRoot, 'tests', 'integration');
 const SKIP = new Map([]);
 
 function safeReaddir(dir) {
-  try { return readdirSync(dir); } catch { return []; }
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
 }
 
 const unitFiles = readdirSync(testsDir)
-  .filter(f => f.endsWith('.test.mjs'))
+  .filter((f) => f.endsWith('.test.mjs'))
   .sort()
-  .map(f => ({ label: f, full: path.join(testsDir, f) }));
+  .map((f) => ({ label: f, full: path.join(testsDir, f) }));
 const integrationFiles = safeReaddir(integrationDir)
-  .filter(f => f.endsWith('.test.mjs'))
+  .filter((f) => f.endsWith('.test.mjs'))
   .sort()
-  .map(f => ({ label: `integration/${f}`, full: path.join(integrationDir, f) }));
+  .map((f) => ({ label: `integration/${f}`, full: path.join(integrationDir, f) }));
 const files = [...unitFiles, ...integrationFiles];
 
 let failed = 0;
@@ -34,7 +38,11 @@ for (const entry of files) {
     continue;
   }
   process.stdout.write(`▶ ${label} ... `);
-  const res = spawnSync('node', [full], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 60000 });
+  const res = spawnSync('node', [full], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    timeout: 60000,
+  });
   if (res.status === 0) {
     console.log('ok');
   } else {

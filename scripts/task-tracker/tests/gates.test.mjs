@@ -12,7 +12,15 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  chmodSync,
+  rmSync,
+  existsSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,19 +38,23 @@ function writeConfig(sandbox, extra = {}) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({
-      repo: 'test-owner/test-repo',
-      projectId: 'PVT_test',
-      kanbanFieldId: 'PVTF_x',
-      kanbanOptionBacklog: 'OPT_backlog',
-      kanbanOptionGroom: 'OPT_groom',
-      kanbanOptionAnalyze: 'OPT_analyze',
-      kanbanOptionDevelopment: OPT_DEV,
-      kanbanOptionValidate: 'OPT_validate',
-      kanbanOptionReview: OPT_REVIEW,
-      kanbanOptionDone: 'OPT_done',
-      ...extra,
-    }, null, 2)
+    JSON.stringify(
+      {
+        repo: 'test-owner/test-repo',
+        projectId: 'PVT_test',
+        kanbanFieldId: 'PVTF_x',
+        kanbanOptionBacklog: 'OPT_backlog',
+        kanbanOptionGroom: 'OPT_groom',
+        kanbanOptionAnalyze: 'OPT_analyze',
+        kanbanOptionDevelopment: OPT_DEV,
+        kanbanOptionValidate: 'OPT_validate',
+        kanbanOptionReview: OPT_REVIEW,
+        kanbanOptionDone: 'OPT_done',
+        ...extra,
+      },
+      null,
+      2
+    )
   );
 }
 
@@ -51,7 +63,9 @@ function makeGhShim(sandbox, { bodyOnView, stateOptionId }) {
   mkdirSync(binDir, { recursive: true });
   const callsLog = path.join(sandbox, 'gh-calls.log');
   const ghShim = path.join(binDir, 'gh');
-  writeFileSync(ghShim, `#!/usr/bin/env node
+  writeFileSync(
+    ghShim,
+    `#!/usr/bin/env node
 import { writeFileSync, appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 let stdinBody = '';
@@ -90,7 +104,8 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   process.exit(0);
 }
 process.exit(0);
-`);
+`
+  );
   chmodSync(ghShim, 0o755);
   return { binDir, callsLog };
 }
@@ -124,7 +139,12 @@ const BODY_WITH_MARKER = BODY_NO_MARKER + '\n<!-- aitm-review-approved: 2026-05-
 function writeState(sandbox, issueNum) {
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
-    JSON.stringify({ active: `#${issueNum}`, lastActive: `#${issueNum}`, entryStartTs: null, wordsAtEntryStart: 0 })
+    JSON.stringify({
+      active: `#${issueNum}`,
+      lastActive: `#${issueNum}`,
+      entryStartTs: null,
+      wordsAtEntryStart: 0,
+    })
   );
 }
 
@@ -134,7 +154,10 @@ function writeState(sandbox, issueNum) {
   try {
     writeConfig(sandbox);
     writeState(sandbox, 201);
-    const { binDir } = makeGhShim(sandbox, { bodyOnView: BODY_NO_MARKER, stateOptionId: OPT_REVIEW });
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: BODY_NO_MARKER,
+      stateOptionId: OPT_REVIEW,
+    });
     const r = await run(sandbox, binDir, ['close', '#201']);
     assert.equal(r.code, 7, `expected exit 7; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
     assert.match(r.stdout, /PROMPT_REQUIRED: review-approval #201/);
@@ -151,7 +174,10 @@ function writeState(sandbox, issueNum) {
   try {
     writeConfig(sandbox);
     writeState(sandbox, 202);
-    const { binDir } = makeGhShim(sandbox, { bodyOnView: BODY_NO_MARKER, stateOptionId: OPT_REVIEW });
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: BODY_NO_MARKER,
+      stateOptionId: OPT_REVIEW,
+    });
     const r = await run(sandbox, binDir, ['close', '#202', '--answer', 'yes']);
     assert.equal(r.code, 8, `expected exit 8; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
     assert.match(r.stderr, /--answer yes.*cannot satisfy a human-gate prompt/);
@@ -167,7 +193,10 @@ function writeState(sandbox, issueNum) {
   try {
     writeConfig(sandbox, { gateReviewToDone: false });
     writeState(sandbox, 203);
-    const { binDir, callsLog } = makeGhShim(sandbox, { bodyOnView: BODY_NO_MARKER, stateOptionId: OPT_REVIEW });
+    const { binDir, callsLog } = makeGhShim(sandbox, {
+      bodyOnView: BODY_NO_MARKER,
+      stateOptionId: OPT_REVIEW,
+    });
     const r = await run(sandbox, binDir, ['close', '#203']);
     // Close may fail later for other reasons, but it must NOT exit 7 or 8.
     assert.notEqual(r.code, 7, `should bypass review-approval gate; stderr:\n${r.stderr}`);
@@ -179,9 +208,12 @@ function writeState(sandbox, issueNum) {
     const queuePath = path.join(sandbox, '.ai-task-manager', 'task-tracker-queue.json');
     const calls = existsSync(callsLog) ? readFileSync(callsLog, 'utf8') : '';
     const queueText = existsSync(queuePath) ? readFileSync(queuePath, 'utf8') : '';
-    const bypassEvidence = /gateReviewToDone=false/.test(calls) || /gateReviewToDone=false/.test(queueText);
-    assert.ok(bypassEvidence,
-      `expected gate-bypassed audit row to be posted or queued; calls:\n${calls}\nqueue:\n${queueText}`);
+    const bypassEvidence =
+      /gateReviewToDone=false/.test(calls) || /gateReviewToDone=false/.test(queueText);
+    assert.ok(
+      bypassEvidence,
+      `expected gate-bypassed audit row to be posted or queued; calls:\n${calls}\nqueue:\n${queueText}`
+    );
     console.log('test 3 passed: gateReviewToDone=false bypasses gate + posts audit row');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -194,7 +226,10 @@ function writeState(sandbox, issueNum) {
   try {
     writeConfig(sandbox);
     writeState(sandbox, 204);
-    const { binDir } = makeGhShim(sandbox, { bodyOnView: BODY_WITH_MARKER, stateOptionId: OPT_REVIEW });
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: BODY_WITH_MARKER,
+      stateOptionId: OPT_REVIEW,
+    });
     const r = await run(sandbox, binDir, ['close', '#204']);
     // The gate itself should not fire — exit 7/8 are reserved for the gate.
     assert.notEqual(r.code, 7, `marker present must pass gate; stderr:\n${r.stderr}`);
@@ -210,9 +245,17 @@ function writeState(sandbox, issueNum) {
 {
   const calls = { writes: 0, moves: 0 };
   const deps = {
-    fetchIssueBody: async () => ({ title: 't', body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n\n<!-- aitm-deep-dive-complete: 2026-05-10T00:00:00Z -->\n' }),
-    writeIssueBody: async () => { calls.writes++; },
-    moveState: async () => { calls.moves++; return 0; },
+    fetchIssueBody: async () => ({
+      title: 't',
+      body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n\n<!-- aitm-deep-dive-complete: 2026-05-10T00:00:00Z -->\n',
+    }),
+    writeIssueBody: async () => {
+      calls.writes++;
+    },
+    moveState: async () => {
+      calls.moves++;
+      return 0;
+    },
     postComment: async () => {},
     isHeadless: () => true, // would refuse without bypass
     fetchParentEpicNumber: async () => null,
@@ -231,7 +274,10 @@ function writeState(sandbox, issueNum) {
 // ─── Test 6: runApprove with gateAnalysisToDevelopment=true requires prompt ──
 {
   const deps = {
-    fetchIssueBody: async () => ({ title: 't', body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n' }),
+    fetchIssueBody: async () => ({
+      title: 't',
+      body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n',
+    }),
     writeIssueBody: async () => {},
     moveState: async () => 0,
     postComment: async () => {},
@@ -244,8 +290,7 @@ function writeState(sandbox, issueNum) {
     cfg: { repo: 'o/r', gateAnalysisToDevelopment: true },
     deps,
   });
-  assert.equal(r.status, 'needs-prompt',
-    `gate=true must require prompt; got ${JSON.stringify(r)}`);
+  assert.equal(r.status, 'needs-prompt', `gate=true must require prompt; got ${JSON.stringify(r)}`);
   console.log('test 6 passed: gateAnalysisToDevelopment=true still prompts');
 }
 

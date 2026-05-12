@@ -18,7 +18,9 @@ assert.equal(peek(qPath).length, 2);
 
 // Test 3: drain invokes handler for each, clears on success
 const delivered = [];
-const ok = await drain(async (evt) => { delivered.push(evt.row); }, qPath);
+const ok = await drain(async (evt) => {
+  delivered.push(evt.row);
+}, qPath);
 assert.equal(ok, true);
 assert.deepEqual(delivered, ['A', 'B']);
 assert.deepEqual(peek(qPath), []);
@@ -26,7 +28,9 @@ assert.deepEqual(peek(qPath), []);
 // Test 4: drain halts on handler failure, keeps remaining
 enqueue({ row: 'C' }, qPath);
 enqueue({ row: 'D' }, qPath);
-const ok2 = await drain(async (evt) => { if (evt.row === 'D') throw new Error('net down'); }, qPath);
+const ok2 = await drain(async (evt) => {
+  if (evt.row === 'D') throw new Error('net down');
+}, qPath);
 assert.equal(ok2, false);
 const remaining = peek(qPath);
 assert.equal(remaining.length, 1);

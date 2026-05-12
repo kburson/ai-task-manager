@@ -15,8 +15,8 @@ import { join } from 'node:path';
 
 export const SKILL_DETAIL_FILES = [
   { id: 'adapter', pkgRelPath: 'skill/adapters/claude/SKILL.md' },
-  { id: 'shared',  pkgRelPath: 'skill/shared/SKILL.md' },
-  { id: 'pickup',  pkgRelPath: 'templates/pickup-directive.md' },
+  { id: 'shared', pkgRelPath: 'skill/shared/SKILL.md' },
+  { id: 'pickup', pkgRelPath: 'templates/pickup-directive.md' },
 ];
 
 const MARKER_RE = /^<!-- aitm-skill-version:[^\n]*-->\n/m;
@@ -63,7 +63,13 @@ export function stampAllSkillVersions({ pkgRoot, version, logger = () => {} }) {
     const abs = join(pkgRoot, f.pkgRelPath);
     const r = stampSkillVersion(abs, version);
     results.push({ id: f.id, pkgRelPath: f.pkgRelPath, ...r });
-    logger({ kind: 'stamped', id: f.id, pkgRelPath: f.pkgRelPath, changed: r.changed, reason: r.reason });
+    logger({
+      kind: 'stamped',
+      id: f.id,
+      pkgRelPath: f.pkgRelPath,
+      changed: r.changed,
+      reason: r.reason,
+    });
   }
   return { skipped: false, results };
 }
