@@ -31,6 +31,7 @@ import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent
 import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { hasDeepDiveEvidence } from '../lib/markers.mjs';
 import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -206,10 +207,24 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
 
   async function runReevalHook(postTickBody) {
     try {
-      await reeval({ cfg, issueNumber, body: postTickBody, scratchDir: tmpdir() });
+      return await reeval({ cfg, issueNumber, body: postTickBody, scratchDir: tmpdir() });
     } catch (err) {
       process.stderr.write(`⚠ re-eval skipped: ${err.message}\n`);
+      return { status: 'skipped' };
     }
+  }
+
+  function buildSequencePrompt(body) {
+    const parsed = parseIssueFieldDb(body);
+    const seq = parsed.ok ? parsed.values?.sequence ?? null : null;
+    return {
+      kind: 'sequence-revision-prompt',
+      issueNumber,
+      currentSequence: seq,
+      message: seq == null
+        ? `No sequence set for #${issueNumber}. Confirm one is not needed or post a \`### 🔢 Sequence revision\` comment with a value + rationale.`
+        : `Current sequence for #${issueNumber} is ${seq}. Confirm it is still appropriate, or post a \`### 🔢 Sequence revision\` comment with the new value + rationale.`,
+    };
   }
 
   // Full-auto bypass: gateAnalysisToDevelopment=false skips the prompt entirely
@@ -225,7 +240,15 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
     }
-    await runReevalHook(updated);
+    const reevalResult = await runReevalHook(updated);
+    if (reevalResult && reevalResult.status === 'human-attention') {
+      return {
+        status: 'reeval-human-attention',
+        message: `re-evaluation flagged a ≥2-tier divergence on #${issueNumber}. HUMAN ATTENTION audit comment posted. Resolve via grooming before approving.`,
+        reevalResult,
+      };
+    }
+    const sequencePrompt = buildSequencePrompt(updated);
     const code = await moveState({ issueNumber });
     if (code !== 0) {
       return {
@@ -233,7 +256,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
         message: `move-state.mjs exited ${code} during gateAnalysisToDevelopment=false auto-approve`,
       };
     }
-    return { status: 'gate-bypassed', moveStateExitCode: code };
+    return { status: 'gate-bypassed', moveStateExitCode: code, sequencePrompt };
   }
 
   // No answer provided -> prompt mode (headless or interactive).
@@ -275,7 +298,15 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
     if (updated !== body) {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
     }
-    await runReevalHook(updated);
+    const reevalResult = await runReevalHook(updated);
+    if (reevalResult && reevalResult.status === 'human-attention') {
+      return {
+        status: 'reeval-human-attention',
+        message: `re-evaluation flagged a ≥2-tier divergence on #${issueNumber}. HUMAN ATTENTION audit comment posted. Resolve via grooming before approving.`,
+        reevalResult,
+      };
+    }
+    const sequencePrompt = buildSequencePrompt(updated);
     const code = await moveState({ issueNumber });
     if (code !== 0) {
       return {
@@ -283,7 +314,7 @@ export async function runApprove({ issueNumber, answer, reason, cfg, deps = {} }
         message: `move-state.mjs exited ${code} after approval; checkbox was ticked but transition did not complete`,
       };
     }
-    return { status: 'approved', moveStateExitCode: code };
+    return { status: 'approved', moveStateExitCode: code, sequencePrompt };
   }
 
   if (norm === 'no' || norm === 'n') {
@@ -362,12 +393,19 @@ export async function verbApprove(rest, cfg) {
     }
     case 'approved': {
       process.stdout.write(`✓ Approved. Issue #${issueNumber} moved: analyze -> development\n`);
+      if (result.sequencePrompt) process.stdout.write(`ℹ ${result.sequencePrompt.message}\n`);
       return;
     }
     case 'gate-bypassed': {
       process.stdout.write(`⚠ gateAnalysisToDevelopment=false — auto-approved #${issueNumber} without human review.\n`);
       process.stdout.write(`✓ Issue #${issueNumber} moved: analyze -> development\n`);
+      if (result.sequencePrompt) process.stdout.write(`ℹ ${result.sequencePrompt.message}\n`);
       return;
+    }
+    case 'reeval-human-attention': {
+      process.stderr.write(`\n⛔ Refusing to move #${issueNumber} to development:\n`);
+      process.stderr.write(`   BLOCKED: ${result.message}\n`);
+      process.exit(4);
     }
     case 'rejected': {
       process.stdout.write(`✗ Approval refused — comment posted on #${issueNumber}. Revise the deep-dive and re-run approve.\n`);

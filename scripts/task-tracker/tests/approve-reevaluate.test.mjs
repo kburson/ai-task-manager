@@ -103,16 +103,44 @@ function buildDeps(body) {
   assert.equal(state.fieldWrites.length, 2, 'two field writes (size + estimate)');
 }
 
-// Test 2: ≥2-tier jump — XS → M is 2 tiers; emits human-attention, skips writes.
+// Test 2: ≥2-tier jump — XS → M is 2 tiers; emits human-attention, refuses transition (#78 AC3).
 {
   const { state, deps } = buildDeps(FIXTURE_BODY_HUMAN);
+  let moveCalled = false;
+  deps.moveState = async () => { moveCalled = true; return 0; };
   const result = await runApprove({ issueNumber: 999, answer: 'yes', cfg: CFG, deps });
-  assert.equal(result.status, 'approved');
+  assert.equal(result.status, 'reeval-human-attention', 'must refuse transition on ≥2-tier jump');
+  assert.equal(moveCalled, false, 'moveState must NOT run when reeval flags human-attention');
   const audit = state.comments.find(c => c.includes('HUMAN ATTENTION'));
   assert.ok(audit, 'expected human-attention comment');
   assert.match(audit, /\| Size \| XS \| M \|/, 'audit table shows XS→M');
   assert.equal(state.fieldWrites.length, 0, 'no field writes on human-attention path');
   assert.match(state.body, /"size":"XS"/, 'body unchanged on human-attention path');
+}
+
+// Test 4 (#78 AC4): sequence-revision-prompt emitted on successful approve.
+{
+  const bodyWithSeq = FIXTURE_BODY_M.replace(
+    '"size":"S","estimate":3.5',
+    '"size":"S","estimate":3.5,"sequence":2'
+  );
+  const { deps } = buildDeps(bodyWithSeq);
+  const result = await runApprove({ issueNumber: 999, answer: 'yes', cfg: CFG, deps });
+  assert.equal(result.status, 'approved');
+  assert.ok(result.sequencePrompt, 'expected sequence-revision-prompt');
+  assert.equal(result.sequencePrompt.kind, 'sequence-revision-prompt');
+  assert.equal(result.sequencePrompt.currentSequence, 2, 'prompt carries current sequence value');
+  assert.match(result.sequencePrompt.message, /Current sequence for #999 is 2/);
+}
+
+// Test 5 (#78 AC4): sequence-revision-prompt with null sequence.
+{
+  const { deps } = buildDeps(FIXTURE_BODY_M);
+  const result = await runApprove({ issueNumber: 999, answer: 'yes', cfg: CFG, deps });
+  assert.equal(result.status, 'approved');
+  assert.ok(result.sequencePrompt, 'expected sequence-revision-prompt even when null');
+  assert.equal(result.sequencePrompt.currentSequence, null);
+  assert.match(result.sequencePrompt.message, /No sequence set/);
 }
 
 // Test 3: TASK_TRACKER_SKIP_REEVAL=1 bypass.
