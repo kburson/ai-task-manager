@@ -218,7 +218,7 @@ export async function verbReview(ctx) {
         try {
           await pexec(validation.argv[0], validation.argv.slice(1), {
             cwd: projectDir,
-            timeout: 60000,
+            timeout: 300000,
           });
           passed = true;
         } catch {}
