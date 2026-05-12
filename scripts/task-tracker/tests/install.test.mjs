@@ -53,6 +53,40 @@ try {
   const settings = JSON.parse(readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'));
   assert.ok(settings.hooks?.SessionStart?.some(h => h.hooks?.some(inner => inner.command?.includes('task-tracker.sh'))), 'SessionStart hook missing');
 
+  // #70: PreToolUse must include Agent and Edit|Write|NotebookEdit matchers.
+  const preToolUse = settings.hooks?.PreToolUse ?? [];
+  const hasAgentGuard = preToolUse.some(h =>
+    h.matcher === 'Agent' &&
+    h.hooks?.some(inner => inner.command?.includes('agent-guard.mjs')));
+  assert.ok(hasAgentGuard, 'PreToolUse Agent → agent-guard.mjs missing');
+  const hasActivityEdit = preToolUse.some(h =>
+    h.matcher === 'Edit|Write|NotebookEdit' &&
+    h.hooks?.some(inner => inner.command?.includes('activity-guard.mjs')));
+  assert.ok(hasActivityEdit, 'PreToolUse Edit|Write|NotebookEdit → activity-guard.mjs missing');
+
+  // #70: activity-policy.json written with shipped default on first install.
+  const policyPath = path.join(target, '.ai-task-manager', 'activity-policy.json');
+  assert.ok(existsSync(policyPath), 'activity-policy.json missing on first install');
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8'));
+  assert.ok(Array.isArray(policy.codeGlobs) && policy.codeGlobs.length > 0, 'activity-policy default must include codeGlobs');
+  assert.ok(Array.isArray(policy.docGlobs), 'activity-policy default must include docGlobs');
+
+  // #70: Idempotency — re-running install produces zero net change to settings
+  // or to activity-policy.json.
+  const settingsBefore = readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8');
+  const policyBefore = readFileSync(policyPath, 'utf8');
+  await pexec('node', [CLI, 'install', '--target', target]);
+  const settingsAfter = readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8');
+  const policyAfter = readFileSync(policyPath, 'utf8');
+  assert.equal(settingsAfter, settingsBefore, 'second install must be a no-op on settings.json');
+  assert.equal(policyAfter, policyBefore, 'second install must not touch activity-policy.json');
+
+  // #70: User edits to activity-policy.json must be preserved across re-install.
+  const customPolicy = JSON.stringify({ codeGlobs: ['custom/**'], docGlobs: [], testRunners: [], buildCommands: [], codeGlobExcludes: [] }, null, 2);
+  writeFileSync(policyPath, customPolicy, 'utf8');
+  await pexec('node', [CLI, 'install', '--target', target]);
+  assert.equal(readFileSync(policyPath, 'utf8'), customPolicy, 'install must not overwrite an existing activity-policy.json');
+
   // .gitignore entries written
   const gitignore = readFileSync(path.join(target, '.gitignore'), 'utf8');
   assert.ok(gitignore.includes('.ai-task-manager/task-tracker-state.json'), 'shared state gitignore entry missing');
