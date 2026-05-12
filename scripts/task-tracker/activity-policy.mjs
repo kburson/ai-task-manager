@@ -31,6 +31,10 @@ import path from 'node:path';
 export const DEFAULT_POLICY = Object.freeze({
   codeGlobs: ['src/**', 'lib/**', 'bin/**', 'scripts/**'],
   codeGlobExcludes: ['scripts/task-tracker/**', 'scripts/gh/**'],
+  // Re-include carve-outs that override codeGlobExcludes. Test files under the
+  // excluded runtime paths are still code — they don't mutate runtime behavior
+  // and need to be writable during normal development of the task-tracker.
+  codeGlobReincludes: ['scripts/task-tracker/tests/**', 'scripts/gh/tests/**'],
   docGlobs: ['docs/**', '.claude/plans/**', 'docs/plans/**', '**/*.md', 'CLAUDE.md'],
   testRunners: ['npm test', 'npm run test', 'node --test', 'pytest', 'cargo test', 'go test'],
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
@@ -112,7 +116,11 @@ export function classifyEdit(filePath, policy = DEFAULT_POLICY) {
   if (anyGlobMatch(p, policy.docGlobs)) return 'WRITE_DOCS';
 
   if (anyGlobMatch(p, policy.codeGlobs)) {
-    if (anyGlobMatch(p, policy.codeGlobExcludes)) return 'WRITE_OTHER';
+    if (anyGlobMatch(p, policy.codeGlobExcludes)) {
+      // Re-include carve-outs (e.g., tests under excluded runtime paths).
+      if (anyGlobMatch(p, policy.codeGlobReincludes)) return 'WRITE_CODE';
+      return 'WRITE_OTHER';
+    }
     return 'WRITE_CODE';
   }
 
@@ -137,21 +145,49 @@ function startsWithCommand(command, pattern) {
 // Extract write targets from a bash command line. Mirrors `bash-guard.mjs`
 // patterns (`redirectRe`, `teeRe`, `writeCommandRe`) but accepts relative
 // paths as well as absolute. Returns an array of target path strings.
+// Replace any single- or double-quoted substring with same-length spaces so
+// downstream regexes don't match shell metacharacters that appear inside
+// quoted arguments (e.g. `<pkg-version>` in a `/task check` label string,
+// which would otherwise look like a redirect). Preserves byte offsets and
+// keeps the rest of the command structure intact.
+function stripQuotedRegions(command) {
+  let out = '';
+  let i = 0;
+  while (i < command.length) {
+    const c = command[i];
+    if (c === "'" || c === '"') {
+      const quote = c;
+      out += ' ';
+      i += 1;
+      while (i < command.length && command[i] !== quote) {
+        out += ' ';
+        i += 1;
+      }
+      if (i < command.length) { out += ' '; i += 1; }
+    } else {
+      out += c;
+      i += 1;
+    }
+  }
+  return out;
+}
+
 function extractWriteTargets(command) {
   const targets = new Set();
+  const scanned = stripQuotedRegions(command);
 
   // Redirections: `> path` or `>> path` (not `>&`, not `2>`).
   const redirectRe = /(?<![0-9&])>>?\s*([^\s;|&<>]+)/g;
-  for (const [, p] of command.matchAll(redirectRe)) targets.add(p);
+  for (const [, p] of scanned.matchAll(redirectRe)) targets.add(p);
 
   // `tee [-a] path`
   const teeRe = /\btee\s+(?:-a\s+)?([^\s;|&<>]+)/g;
-  for (const [, p] of command.matchAll(teeRe)) targets.add(p);
+  for (const [, p] of scanned.matchAll(teeRe)) targets.add(p);
 
   // `touch|mkdir|rmdir|rm` — first non-flag argument is the target. Supports
   // multiple flags before the path (e.g., `mkdir -p`).
   const writeCommandRe = /\b(?:touch|mkdir|rmdir|rm)\s+((?:-[^\s]+\s+)*)([^\s;|&<>]+)/g;
-  for (const m of command.matchAll(writeCommandRe)) targets.add(m[2]);
+  for (const m of scanned.matchAll(writeCommandRe)) targets.add(m[2]);
 
   return [...targets];
 }
@@ -230,11 +266,12 @@ export function loadPolicy(cwd) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return DEFAULT_POLICY;
     // Shallow merge: keys present override defaults; absent keys keep defaults.
     return {
-      codeGlobs:        Array.isArray(parsed.codeGlobs)        ? parsed.codeGlobs        : DEFAULT_POLICY.codeGlobs,
-      codeGlobExcludes: Array.isArray(parsed.codeGlobExcludes) ? parsed.codeGlobExcludes : DEFAULT_POLICY.codeGlobExcludes,
-      docGlobs:         Array.isArray(parsed.docGlobs)         ? parsed.docGlobs         : DEFAULT_POLICY.docGlobs,
-      testRunners:      Array.isArray(parsed.testRunners)      ? parsed.testRunners      : DEFAULT_POLICY.testRunners,
-      buildCommands:    Array.isArray(parsed.buildCommands)    ? parsed.buildCommands    : DEFAULT_POLICY.buildCommands,
+      codeGlobs:          Array.isArray(parsed.codeGlobs)          ? parsed.codeGlobs          : DEFAULT_POLICY.codeGlobs,
+      codeGlobExcludes:   Array.isArray(parsed.codeGlobExcludes)   ? parsed.codeGlobExcludes   : DEFAULT_POLICY.codeGlobExcludes,
+      codeGlobReincludes: Array.isArray(parsed.codeGlobReincludes) ? parsed.codeGlobReincludes : DEFAULT_POLICY.codeGlobReincludes,
+      docGlobs:           Array.isArray(parsed.docGlobs)           ? parsed.docGlobs           : DEFAULT_POLICY.docGlobs,
+      testRunners:        Array.isArray(parsed.testRunners)        ? parsed.testRunners        : DEFAULT_POLICY.testRunners,
+      buildCommands:      Array.isArray(parsed.buildCommands)      ? parsed.buildCommands      : DEFAULT_POLICY.buildCommands,
     };
   } catch {
     return DEFAULT_POLICY;

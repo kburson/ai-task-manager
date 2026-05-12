@@ -40,6 +40,11 @@ test('classifyEdit: codeGlobExcludes honored (task-tracker itself)', () => {
   assert.equal(classifyEdit('scripts/gh/baz.mjs'), 'WRITE_OTHER');
 });
 
+test('classifyEdit: codeGlobReincludes carve-out for tests under excluded paths', () => {
+  assert.equal(classifyEdit('scripts/task-tracker/tests/foo.test.mjs'), 'WRITE_CODE');
+  assert.equal(classifyEdit('scripts/gh/tests/bar.test.mjs'), 'WRITE_CODE');
+});
+
 test('classifyEdit: doc globs', () => {
   assert.equal(classifyEdit('docs/notes.md'), 'WRITE_DOCS');
   assert.equal(classifyEdit('CLAUDE.md'), 'WRITE_DOCS');
@@ -113,6 +118,26 @@ test('classifyBash: tee write target', () => {
 test('classifyBash: heredoc write target', () => {
   // Heredoc-to-file with redirect operator.
   assert.equal(classifyBash("cat <<'EOF' > src/foo.ts\nbody\nEOF"), 'WRITE_CODE');
+});
+
+test('classifyBash: shell metachars inside quoted args do not trigger write detection', () => {
+  // `<pkg-version>` inside a single-quoted label looks like a redirect but
+  // must be ignored. Regression for /task check labels containing HTML-style
+  // markers.
+  assert.equal(
+    classifyBash("node scripts/task-tracker/task-tracker.mjs check 'marker <pkg-version> stamped'"),
+    'READ_*',
+  );
+  // Double-quoted variant.
+  assert.equal(
+    classifyBash('node scripts/task-tracker/task-tracker.mjs check "label with > and >> inside"'),
+    'READ_*',
+  );
+  // Real redirect outside quotes still detected.
+  assert.equal(
+    classifyBash("echo 'inside > quotes' > src/real.ts"),
+    'WRITE_CODE',
+  );
 });
 
 test('classifyBash: touch/mkdir code path', () => {

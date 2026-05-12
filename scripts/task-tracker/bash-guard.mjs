@@ -86,6 +86,31 @@ const READ_ALLOWED = [
   '/Applications/',
 ];
 
+// Replace single- and double-quoted regions with same-length spaces so the
+// extraction regexes below don't pick up shell metachars or path-like
+// substrings appearing inside argument strings (e.g. `/task` mentioned
+// inside a /task check label). ALWAYS_BLOCK patterns above still see the
+// raw command — quote stripping only affects path scanning.
+function stripQuotedRegions(s) {
+  let out = '';
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === "'" || c === '"') {
+      const q = c;
+      out += ' ';
+      i += 1;
+      while (i < s.length && s[i] !== q) { out += ' '; i += 1; }
+      if (i < s.length) { out += ' '; i += 1; }
+    } else {
+      out += c;
+      i += 1;
+    }
+  }
+  return out;
+}
+const scanned = stripQuotedRegions(command);
+
 // --- Extract write targets ---
 
 const writePaths = new Set();
@@ -93,21 +118,21 @@ const writePaths = new Set();
 // Output redirections: > /path or >> /path (not >&, 2>, etc.)
 // Lookbehind avoids matching >& or 2>
 const redirectRe = /(?<![0-9&])>>?\s*(\/[a-zA-Z0-9._~/-]+)/g;
-for (const [, p] of command.matchAll(redirectRe)) writePaths.add(p);
+for (const [, p] of scanned.matchAll(redirectRe)) writePaths.add(p);
 
 // tee [-a] /path
 const teeRe = /\btee\s+(?:-a\s+)?(\/[a-zA-Z0-9._~/-]+)/g;
-for (const [, p] of command.matchAll(teeRe)) writePaths.add(p);
+for (const [, p] of scanned.matchAll(teeRe)) writePaths.add(p);
 
 // touch, mkdir, rmdir, rm — first absolute path argument is the target
 const writeCommandRe = /\b(?:touch|mkdir|rmdir|rm)\s+(?:-[^\s]+\s+)*(\/[a-zA-Z0-9._~/-]+)/g;
-for (const [, p] of command.matchAll(writeCommandRe)) writePaths.add(p);
+for (const [, p] of scanned.matchAll(writeCommandRe)) writePaths.add(p);
 
 // --- Extract all absolute paths ---
 // Lookbehind ensures we match only boundary-anchored paths, not mid-segment slashes
 // inside relative paths like node_modules/pkg/sub.
 const absPathRe = /(?<=^|[\s='"(`])\/[a-zA-Z0-9._~-]+(?:\/[a-zA-Z0-9._~-]+)*/gm;
-const allPaths = new Set(command.match(absPathRe) ?? []);
+const allPaths = new Set(scanned.match(absPathRe) ?? []);
 
 // --- Validate write targets ---
 for (const p of writePaths) {
