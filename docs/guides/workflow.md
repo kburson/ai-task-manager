@@ -284,3 +284,15 @@ gh issue create \
 ```
 
 Use `/task plan` in Claude Code to open an untracked planning bucket; use `/task new <title>` to promote it to a real issue when the scope is clear.
+
+---
+
+## Load-Once Skill Files
+
+Frequently-loaded skill detail files (`skill/adapters/claude/SKILL.md`, `skill/shared/SKILL.md`, `templates/pickup-directive.md`) carry an `<!-- aitm-skill-version: X.Y.Z -->` marker stamped from `package.json#version` at `npm install` time. The installed Claude shim instructs the agent to:
+
+1. Read just the marker line from each file.
+2. Grep the current conversation context for `aitm-skill-loaded:<id>:<version>`.
+3. Skip the full read when the sentinel is present; otherwise read fully and emit the sentinel.
+
+After `/clear`, `/compact`, or `npm update ai-task-manager`, the sentinel/marker mismatches and a reload happens automatically. v1 is text-instruction only — no hook enforces the contract. The `AITM_FORCE_STAMP=1` env var makes install stamp dev checkouts (otherwise stamping skips when `.git` is present at the package root).

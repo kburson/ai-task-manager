@@ -17,6 +17,7 @@ import {
   codexBootstrapBlock,
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
+import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -291,6 +292,26 @@ function claudeStub() {
     '',
     '# Task',
     '',
+    '## Load-Once Procedure',
+    '',
+    'Frequently-loaded skill files carry an `<!-- aitm-skill-version: X.Y.Z -->` marker.',
+    'To avoid re-reading them every invocation:',
+    '',
+    '1. Read just the first ~10 lines of each file below to extract its marker version.',
+    '2. Grep your current context for `aitm-skill-loaded:<id>:<version>`. If found, skip step 3 for that file.',
+    '3. Read the full file. Then emit a single line in your reply: `aitm-skill-loaded:<id>:<version>` so future invocations in this conversation can detect the load.',
+    '',
+    'Files (id — path):',
+    '',
+    '- `adapter` — `node_modules/ai-task-manager/skill/adapters/claude/SKILL.md`',
+    '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
+    '- `pickup` — `.ai-task-manager/pickup-directive.md` (loaded on sub-issue pickup)',
+    '',
+    'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
+    'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
+    '',
+    '## Canonical Source',
+    '',
     'Load and follow the canonical Claude adapter instructions from:',
     '',
     '`node_modules/ai-task-manager/skill/adapters/claude/SKILL.md`',
@@ -489,6 +510,30 @@ function cmdInstall(args) {
   }
 
   banner(`Installing ${PKG_NAME} v${pkg.version}`, `target: ${targetDir}`);
+
+  step('Skill version markers');
+  const stampResult = stampAllSkillVersions({
+    pkgRoot: PKG_ROOT,
+    version: pkg.version,
+    logger: (e) => {
+      if (e.kind === 'skipped') {
+        ok(`${dim('skipped (dev package — would dirty source tree)')}`);
+      } else if (e.kind === 'stamped') {
+        if (e.reason === 'missing') {
+          err(`${e.pkgRelPath} ${dim('(missing — not stamped)')}`);
+        } else {
+          ok(`${e.id.padEnd(8)} ${dim(e.pkgRelPath)}${e.changed ? '' : ` ${dim('(unchanged)')}`}`);
+        }
+      }
+    },
+  });
+  // Surface a non-fatal warning if a target file is missing.
+  if (!stampResult.skipped) {
+    const missing = stampResult.results.filter(r => r.reason === 'missing');
+    if (missing.length) {
+      console.log(`  ${yellow('WARN')} ${missing.length} skill detail file(s) missing — install may be incomplete.`);
+    }
+  }
 
   if (agent === 'claude' || agent === 'both') installClaude(targetDir, linkMode);
   if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode);
