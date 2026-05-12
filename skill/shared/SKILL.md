@@ -118,25 +118,30 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 ### State Transition Verb Map (7-state model)
 
-Two directional verbs are the canonical state-change interface (see #61 / #81). Humans and agents track *direction* (forward / back) rather than naming stages. The per-stage verbs below are retained as discoverable aliases that delegate to `promote`.
+The canonical verb surface is `promote` / `demote` / `next` / `reconcile`. The single-purpose verbs `analyze`, `approve`, `review`, and `close` are deprecated aliases retained for one-release compatibility — they delegate to `/task promote` internally and emit no new behaviour.
 
-- `/task promote [#N]` — advance one state in the kanban sequence (`Backlog → Groom → Analyze → Development → Validate → Review → Done`). Fires all gates for the target state. Refuses on `Done` ("already in done"). Subsumes `/task close` when advancing from `Review`.
-- `/task demote [#N]` — return to `Development`. Only valid from `Validate` or `Review`; refuses elsewhere.
-- `/task next [#N]` — alias of `/task promote` (see #79).
-- `/task reconcile <accept-live|revert-to-recorded>` — recover from drift (board vs. recorded state).
+**Canonical verbs:**
 
-Stage aliases (all delegate to `promote`):
+- `/task promote [<N>]` — Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Walks: Backlog → Groom → Analyze → Development → Validate → Review → Done.
+- `/task next [<N>]` — Alias of `/task promote`.
+- `/task demote [<N>]` — Back to `Development` from any forward state (Validate / Review). Records the demotion in the timing log.
+- `/task reconcile <N> <accept-live|revert-to-recorded>` — Drift recovery only. Use when the project board and the local field-DB disagree. `accept-live` treats GitHub Projects as source of truth; `revert-to-recorded` pushes the local recorded state back to the board. Do not run any other verb on a drifted issue first.
 
-- `/task groom` — Backlog → Groom
-- `/task analyze` — Groom → Analyze
-- `/task approve` — Analyze → Development
-- `/task review` — Development → Validate (CODE_COMPLETE handoff)
-- `/task approve-review` — records human approval marker in Review (gates `promote → Done`)
-- `/task close` — Review → Done (deprecated alias for `promote` from Review)
+**Deprecated aliases (delegate to `promote`):**
 
-There is no user-facing `/task move <state>` verb; running it returns "verb not found, did you mean `promote`/`demote`?". The internal chokepoint `scripts/gh/move-state.mjs` is gated by `AITM_INTERNAL=1`.
+| Deprecated | Equivalent |
+|---|---|
+| `/task groom` | `/task promote` from Backlog |
+| `/task analyze` | `/task promote` from Groom |
+| `/task approve` | `/task promote` from Analyze |
+| `/task review` | `/task promote` from Development (CODE_COMPLETE handoff) |
+| `/task close` | `/task promote` from Review |
 
-Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and moves the issue.
+`/task approve-review` (records human approval marker; gates the Review → Done promotion) and `/task reject #N --reason "..."` (Review → Development with rejection reason) remain first-class — they are not state-walking verbs.
+
+There is no user-facing `/task move <state>` verb. Direct invocations of `scripts/gh/move-state.mjs` are forbidden in agent and user surfaces — `/task promote` calls it internally so timing flush, fleet update, and field-DB write all happen atomically.
+
+Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and runs `/task promote` to move the issue.
 
 #### Estimation comment surfaces
 
@@ -150,7 +155,7 @@ Two verbs emit comments tied to the three-stage estimation model (see `docs/guid
 | Old slug | Replacement |
 |---|---|
 | `ready` | `groom` |
-| `in-progress` | `approve` (or `move-state.mjs <N> development`) |
+| `in-progress` | `/task promote` (lands at Development) |
 | `in-review` | `review` |
 
 ## Implementation

@@ -14,9 +14,7 @@ An npm package that installs the `/task` Claude Code skill into any project. The
 
 ## Sub-Agents
 
-- Before repetitive independent work, ask if user wants parallel sub-agents — name candidates, estimate parallelism, flag shared files.
-- No spawning without approval.
-- Each agent gets a self-contained prompt with STOP conditions.
+Parallel sub-agent fan-out is an explicit, approved operation. Before any `Agent` spawn, name the candidates, estimate parallelism, flag shared files, and get user approval; every agent runs in its own git worktree with a self-contained prompt and explicit STOP conditions. Full rules — worktree requirements, state-machine transitions, gates, drift handling, and post-mortem procedure — in [`docs/guides/parallel-agents.md`](docs/guides/parallel-agents.md).
 
 ---
 
