@@ -190,7 +190,7 @@ export function checkRequiredBodySections(body = '') {
 // Solo issues (`parentEpicNumber == null`) bypass the gate without invoking
 // the reader.
 
-import { STATES as STATE_MACHINE_STATES } from '../state-machine.mjs';
+import { STATES as STATE_MACHINE_STATES, normalizeStateSlug } from '../state-machine.mjs';
 
 const PARENT_ADMIT_INDEX = STATE_MACHINE_STATES.indexOf('develop');
 
@@ -202,12 +202,12 @@ export async function checkParentAdmission({
 }) {
   if (parentEpicNumber == null) return [];
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
-  const state = raw == null ? null : String(raw).toLowerCase();
+  const state = raw == null ? null : normalizeStateSlug(String(raw).toLowerCase());
   if (state == null) {
     return [
       {
         kind: 'parent-admission',
-        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to Development first`,
+        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to Develop first`,
       },
     ];
   }
@@ -216,7 +216,7 @@ export async function checkParentAdmission({
   return [
     {
       kind: 'parent-admission',
-      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to Development first`,
+      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to Develop first`,
     },
   ];
 }

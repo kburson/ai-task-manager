@@ -477,11 +477,11 @@ export async function verbApprove(rest, cfg) {
       process.exit(4);
     }
     case 'parent-admission-refused': {
-      process.stderr.write(`\n⛔ Refusing to move #${issueNumber} to development:\n`);
+      process.stderr.write(`\n⛔ Refusing to move #${issueNumber} to develop:\n`);
       for (const b of result.blockers) {
         process.stderr.write(`   BLOCKED: ${b.message}\n`);
       }
-      process.stderr.write('\nAdvance the parent epic to Development first, then retry.\n');
+      process.stderr.write('\nAdvance the parent epic to Develop first, then retry.\n');
       process.exit(4);
     }
     case 'error': {

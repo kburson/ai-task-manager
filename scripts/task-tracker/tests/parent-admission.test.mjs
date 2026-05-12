@@ -48,7 +48,7 @@ for (const state of ['backlog', 'refine', 'plan']) {
     new RegExp(state),
     `message must name parent state ${state}, got: ${r[0].message}`
   );
-  assert.match(r[0].message, /advance the epic to Development first/);
+  assert.match(r[0].message, /advance the epic to Develop first/);
 }
 
 // 3. Pass for each Development-or-later parent state.

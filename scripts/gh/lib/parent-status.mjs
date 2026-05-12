@@ -10,6 +10,7 @@
 // in by default.
 
 import { gql, splitRepo } from './github-projects.mjs';
+import { normalizeStateSlug } from '../../task-tracker/state-machine.mjs';
 
 export async function readParentStatus({ parentEpicNumber, repo, projectId } = {}) {
   if (parentEpicNumber == null) return null;
@@ -45,7 +46,7 @@ export async function readParentStatus({ parentEpicNumber, repo, projectId } = {
   for (const fv of item.fieldValues?.nodes || []) {
     const fname = fv?.field?.name;
     if (fname && fname.toLowerCase() === 'status' && fv.name) {
-      return String(fv.name).toLowerCase();
+      return normalizeStateSlug(String(fv.name).toLowerCase());
     }
   }
   return null;
