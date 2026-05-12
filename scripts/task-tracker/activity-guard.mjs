@@ -74,6 +74,10 @@ if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') 
   const filePath = toolInput?.file_path ?? toolInput?.notebook_path ?? '';
   if (typeof filePath !== 'string' || !filePath) process.exit(0);
   target = normalizePath(filePath, projectRoot);
+  // Carve-out: tmp/** is the canonical scratch directory (gitignored,
+  // documented in CLAUDE.md "Tool Usage Rules"). Bypass classification so
+  // scratch writes are permitted in every kanban state.
+  if (target === 'tmp' || target.startsWith('tmp/')) process.exit(0);
   activityClass = classifyEdit(target, policy);
 } else if (toolName === 'Bash') {
   const command = toolInput?.command ?? '';

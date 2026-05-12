@@ -157,6 +157,45 @@ test('Bash READ command (cat README.md) in done → pass', () => {
   } finally { cleanup(dir); }
 });
 
+test('Write tmp/foo.txt in development → pass (scratch carve-out)', () => {
+  const dir = makeRepo({ state: 'development' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Write', tool_input: { file_path: 'tmp/foo.txt' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, '');
+  } finally { cleanup(dir); }
+});
+
+test('Write tmp/draft.md in groom → pass (scratch carve-out)', () => {
+  const dir = makeRepo({ state: 'groom' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Write', tool_input: { file_path: 'tmp/draft.md' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, '');
+  } finally { cleanup(dir); }
+});
+
+test('Write absolute tmp/ path → pass (scratch carve-out)', () => {
+  const dir = makeRepo({ state: 'done' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: {
+        tool_name: 'Write',
+        tool_input: { file_path: path.join(dir, 'tmp/issue-body.md') },
+      },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, '');
+  } finally { cleanup(dir); }
+});
+
 // ---------------------------------------------------------------------------
 // Block cases
 // ---------------------------------------------------------------------------
