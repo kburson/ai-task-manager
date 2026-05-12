@@ -61,12 +61,30 @@ The Analyze → Development gate also requires a hidden marker `<!-- aitm-deep-d
 
 **`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve-review #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
 
-Toggle a gate:
+Toggle a gate (project-wide, persisted to `.claude/task-tracker.json`):
 
 ```bash
 /task config gateAnalysisToDevelopment false   # full-auto Analyze → Development
 /task config gateReviewToDone false            # full-auto Review → Done
 ```
+
+### Session-scoped auto-mode (`/task auto`)
+
+For one-off parallel batches (e.g., dispatching several sub-issues without pausing on each human gate), prefer **session-scoped overrides** over editing project config. They live in `.claude/task-tracker.session.<session-id>.json` (gitignored) and apply only to the current Claude session.
+
+```bash
+/task auto both      # both gates OFF (full auto)
+/task auto analyze   # analyze→dev OFF, review→done ON
+/task auto review    # analyze→dev ON,  review→done OFF
+/task auto off       # both gates ON (safe default)
+/task auto reset     # clear session override → fall back to project config
+```
+
+**Precedence**: session override > project config > built-in defaults (both gates ON).
+
+**Per-parent prompt**: when both `gateAnalysisToDevelopment` and `gateReviewToDone` are *not* explicitly set in project config, the first `/task #N` bind under a new parent emits a `PROMPT_REQUIRED: auto-mode #<rootKey>` line so the skill can ask the user which gates to toggle. The `lastPromptedParent` field is keyed by `parentOf(#N) || #N`, so further binds under the same parent do not re-prompt; switching to a different epic does.
+
+**Orphan GC**: on `SessionStart`, override files older than `deadSessionMaxAgeMs` (default 7 days) are swept. Tunable via `/task config deadSessionMaxAgeMs <ms>`.
 
 ### Sequence-as-wave-id
 

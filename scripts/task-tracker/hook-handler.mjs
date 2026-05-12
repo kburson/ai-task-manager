@@ -102,6 +102,13 @@ function emitWorktreeBanner() {
 async function onSessionStart(sid) {
   emitWorktreeBanner();
   selfHealTemplates();
+  // (#89) Sweep orphaned session-override files older than the configured TTL.
+  try {
+    const { sweepOrphans } = await import('./lib/session-store.mjs');
+    const { loadConfig } = await import('./config.mjs');
+    const c = loadConfig();
+    sweepOrphans({ maxAgeMs: c.deadSessionMaxAgeMs });
+  } catch {}
   const s = loadState(statePath);
 
   // Nothing active and nothing paused

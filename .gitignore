@@ -28,3 +28,5 @@ tmp/
 .claude/task-tracker-state.json
 .claude/task-tracker-queue.json
 .claude/task-fleet.json
+# Session-scoped auto-mode overrides (#89) — per-chat, never committed
+.claude/task-tracker.session.*.json

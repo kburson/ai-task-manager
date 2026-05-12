@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync, existsSync } from 'node:fs';
-import { loadConfig, setConfigValue, formatConfig, DEFAULTS } from './config.mjs';
+import { loadConfig, setConfigValue, formatConfig, DEFAULTS, rawProjectConfig } from './config.mjs';
+import { loadSession } from './lib/session-store.mjs';
+import { resolveGate, bothGatesExplicit } from './lib/gate-resolve.mjs';
 import { projectTmpDir } from './paths.mjs';
 import { loadState, saveState, clearActive, EMPTY_STATE } from './state.mjs';
 
@@ -421,7 +423,12 @@ async function verbClose() {
       // Human-gate: review-approval. Marker is written by `/task approve-review`.
       // `--answer yes|no` cannot satisfy this gate — only the marker or
       // `gateReviewToDone=false` does. See #58.
-      if (cfg.gateReviewToDone && !force) {
+      // (#89) Resolve via precedence: session override > project config > built-in.
+      const _resolvedReviewGate = resolveGate('reviewToDone', {
+        session: loadSession(currentSessionId()),
+        projectConfig: rawProjectConfig(),
+      });
+      if (_resolvedReviewGate && !force) {
         const hasApprovalMarker = /<!--\s*aitm-review-approved:/i.test(body);
         if (!hasApprovalMarker) {
           const answerIdx = rest.indexOf('--answer');
@@ -436,12 +443,12 @@ async function verbClose() {
           console.error(`Run \`/task approve-review ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`);
           process.exit(7);
         }
-      } else if (!cfg.gateReviewToDone) {
+      } else if (!_resolvedReviewGate) {
         const { buildRow: gbr } = await import('./gh-timing-comment.mjs');
         await safePostTiming(closeTarget, gbr({
           ts: nowIso(), event: 'gate-bypassed', activeMin: 0, idleMin: 0,
           deltaWords: 0, wordMarker: 0,
-          description: 'gateReviewToDone=false in config — bypassing human review',
+          description: 'gateReviewToDone=false (session/project override) — bypassing human review',
         }));
       }
 
@@ -598,6 +605,27 @@ async function verbSwitch(target) {
   });
   await safePostTiming(target, row);
   console.log(`Active: ${target}.${previousNote}`);
+
+  // (#89) Auto-mode prompt trigger: per-parent/per-root, once per session.
+  // Skipped when project config explicitly sets BOTH gate keys (user has
+  // already declared a policy at the project level).
+  try {
+    const rawCfg = rawProjectConfig();
+    if (!bothGatesExplicit(rawCfg)) {
+      const sid = currentSessionId();
+      if (sid) {
+        const session = loadSession(sid);
+        const issueNumOnly = target.replace(/^#/, '');
+        const parentNum = await fetchParentIssue(issueNumOnly);
+        const rootKey = parentNum != null ? String(parentNum) : String(issueNumOnly);
+        if (session.lastPromptedParent !== rootKey) {
+          console.log(`PROMPT_REQUIRED: auto-mode #${rootKey}`);
+          const { saveSession } = await import('./lib/session-store.mjs');
+          saveSession({ ...session, lastPromptedParent: rootKey });
+        }
+      }
+    }
+  } catch {}
 }
 
 async function verbPause() {
@@ -1307,6 +1335,11 @@ if (_isMain) (async () => {
       case 'reconcile': {
         const { verbReconcile } = await import('./verbs/reconcile.mjs');
         await verbReconcile(rest, cfg);
+        break;
+      }
+      case 'auto': {
+        const { cli: autoCli } = await import('./verbs/auto.mjs');
+        await autoCli(rest);
         break;
       }
       case 'move':

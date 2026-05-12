@@ -54,6 +54,8 @@ export const DEFAULTS = {
   // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
   gateAnalysisToDevelopment: true,
   gateReviewToDone: true,
+  // Orphan GC threshold for `.claude/task-tracker.session.*.json`. (#89)
+  deadSessionMaxAgeMs: 604800000,
 };
 
 const TYPES = {
@@ -95,6 +97,7 @@ const TYPES = {
   pickupDirective: 'boolean',
   gateAnalysisToDevelopment: 'boolean',
   gateReviewToDone: 'boolean',
+  deadSessionMaxAgeMs: 'number',
 };
 
 function defaultPaths() {
@@ -111,6 +114,17 @@ function readJson(p) {
   if (!existsSync(p)) return {};
   try { return JSON.parse(readFileSync(p, 'utf8')); }
   catch { return {}; }
+}
+
+// Return the raw project-config JSON without merging defaults. Used by the
+// auto-mode prompt logic (#89) to detect "explicitly set" gate keys.
+export function rawProjectConfig(paths = {}) {
+  const defaults = defaultPaths();
+  const projectPath = paths.projectPath ?? defaults.projectPath;
+  const legacyProjectPath = paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
+  if (existsSync(projectPath)) return readJson(projectPath);
+  if (legacyProjectPath && existsSync(legacyProjectPath)) return readJson(legacyProjectPath);
+  return {};
 }
 
 export function loadConfig(paths = {}) {
@@ -187,6 +201,7 @@ const USER_KEYS = [
   'wpm', 'autoEndOnSwitch', 'idleThresholdMinutes', 'reviewPauseThresholdMin', 'recordWallClock', 'hookNetworkTimeoutMs',
   'pickupDirective',
   'gateAnalysisToDevelopment', 'gateReviewToDone',
+  'deadSessionMaxAgeMs',
   'statePath', 'queuePath',
 ];
 

@@ -32,6 +32,10 @@ import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { hasDeepDiveEvidence } from '../lib/markers.mjs';
 import { applyReevaluate } from '../lib/apply-reevaluate.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
+import { loadSession } from '../lib/session-store.mjs';
+import { resolveGate } from '../lib/gate-resolve.mjs';
+import { rawProjectConfig } from '../config.mjs';
+import { currentSessionId } from '../word-counter.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -365,9 +369,20 @@ export async function verbApprove(rest, cfg) {
     process.exit(1);
   }
 
+  // (#89) Resolve analysisToDevelopment gate via precedence chain:
+  // session override > project config > built-in default. Mutate a cfg copy
+  // so runApprove's existing `cfg.gateAnalysisToDevelopment === false` branch
+  // observes the resolved value without internal refactor.
+  const session = loadSession(currentSessionId());
+  const resolved = resolveGate('analysisToDevelopment', {
+    session,
+    projectConfig: rawProjectConfig(),
+  });
+  const resolvedCfg = { ...cfg, gateAnalysisToDevelopment: resolved };
+
   let result;
   try {
-    result = await runApprove({ issueNumber, answer, reason, cfg });
+    result = await runApprove({ issueNumber, answer, reason, cfg: resolvedCfg });
   } catch (err) {
     process.stderr.write(`approve: ${err.message}\n`);
     process.exit(1);
