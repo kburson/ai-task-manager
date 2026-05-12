@@ -16,6 +16,7 @@ import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition } from '../task-tracker/state-machine.mjs';
 import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -145,7 +146,7 @@ if (resolvedFromState) {
 // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
 if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
   try {
-    const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const projectDir = getProjectDir();
     const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueArg}`, projectDir });
     const result = await checkDirty({ cwd });
     if (result.dirty) {
@@ -324,9 +325,7 @@ console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
 
 // Update event fields (fire-and-forget)
 if (!SKIP_NETWORK) {
-  const repoRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR ||
-                   process.env.CLAUDE_PROJECT_DIR ||
-                   process.cwd();
+  const repoRoot = getProjectDir();
   const eventScriptCandidates = [
     path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
     path.resolve(__dir, 'update-event-fields.mjs'),
@@ -341,9 +340,7 @@ if (!SKIP_NETWORK) {
 
 // End task tracking when moving to done (unless during cascade close)
 if (stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK) {
-  const repoRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR ||
-                   process.env.CLAUDE_PROJECT_DIR ||
-                   process.cwd();
+  const repoRoot = getProjectDir();
   const ttScriptCandidates = [
     path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs'),
     path.resolve(__dir, '../task-tracker/task-tracker.mjs'),

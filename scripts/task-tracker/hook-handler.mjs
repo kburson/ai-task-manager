@@ -14,8 +14,9 @@ import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-ti
 import { enqueue } from './queue.mjs';
 import { seedMissingTemplates, findMainWorktree } from './seed-worktree.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
+import { getProjectDir } from './paths.mjs';
 
-const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const projectDir = getProjectDir();
 const cfg = loadConfig();
 const statePath = path.join(projectDir, cfg.statePath);
 const queuePath = path.join(projectDir, cfg.queuePath);

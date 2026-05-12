@@ -18,6 +18,7 @@ import {
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { getProjectDir } from './paths.mjs';
 
 const pexec = promisify(execFile);
 
@@ -61,9 +62,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a
   );
 
-  const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR
-    || process.env.CLAUDE_PROJECT_DIR
-    || process.cwd();
+  const projectDir = getProjectDir();
   const cfg = loadConfig();
   const statePath = path.join(projectDir, cfg.statePath);
   const queuePath = path.join(projectDir, cfg.queuePath);

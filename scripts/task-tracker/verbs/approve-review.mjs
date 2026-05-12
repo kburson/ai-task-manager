@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
+import { getProjectDir } from '../paths.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
@@ -103,7 +104,7 @@ export async function verbApproveReview(rest, cfg) {
     process.stderr.write('approve-review: TT_SKIP_NETWORK set — refusing to run gate offline\n');
     process.exit(1);
   }
-  const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectDir = getProjectDir();
   let result;
   try {
     result = await runApproveReview({ issueNumber, cfg, projectDir });

@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { projectTmpDir } from '../task-tracker/paths.mjs';
+import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
@@ -23,7 +23,7 @@ const cfg = loadConfig();
 if (!cfg.projectId) process.exit(0);
 
 function projectDir() {
-  return process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  return getProjectDir();
 }
 
 function loadEventBindings() {

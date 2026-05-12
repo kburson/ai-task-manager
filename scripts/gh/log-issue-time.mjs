@@ -10,7 +10,7 @@
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { projectTmpDir } from '../task-tracker/paths.mjs';
+import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { buildFieldSyncPlan, fieldIdFor, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { parseTimingRows, rollupTotals } from '../task-tracker/timing-rollup.mjs';
@@ -32,7 +32,7 @@ if (!issueArg) {
 
 const issueNumber = issueArg.replace('#', '');
 const cfg = loadConfig();
-const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const projectDir = getProjectDir();
 
 if (!cfg.repo) { console.error('repo not configured. Run: /task config repo owner/repo'); process.exit(1); }
 if (!cfg.projectId) { console.error('projectId not configured. Run: npx ai-task-manager init'); process.exit(1); }

@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from './config.mjs';
-import { projectTmpDir } from './paths.mjs';
+import { getProjectDir, projectTmpDir } from './paths.mjs';
 import {
   parseIssueFieldDb,
   stripIssueFieldDb,
@@ -392,7 +392,7 @@ async function main() {
   const cfg = loadConfig();
   if (!cfg.repo) { process.stderr.write('heal-backlog: repo not configured\n'); process.exit(1); }
   if (!cfg.projectId) { process.stderr.write('heal-backlog: projectId not configured\n'); process.exit(1); }
-  const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectDir = getProjectDir();
   const fieldDefs = loadProjectFieldDefs(projectDir);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
 

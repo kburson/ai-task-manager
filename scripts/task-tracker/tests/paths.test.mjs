@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   existingRuntimePath,
+  getProjectDir,
   legacyPathFor,
 } from '../paths.mjs';
 
@@ -64,4 +65,23 @@ assert.equal(
 assert.equal(existsSync(missingPreferred), false, 'unmapped paths are not created by lookup');
 
 rmSync(tmp, { recursive: true });
+
+// getProjectDir env-var precedence
+assert.equal(
+  getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '/a', CLAUDE_PROJECT_DIR: '/b' }, '/c'),
+  '/a',
+  'AI_TASK_MANAGER_PROJECT_DIR wins',
+);
+assert.equal(
+  getProjectDir({ CLAUDE_PROJECT_DIR: '/b' }, '/c'),
+  '/b',
+  'CLAUDE_PROJECT_DIR wins when AI_TASK_MANAGER_PROJECT_DIR unset',
+);
+assert.equal(getProjectDir({}, '/c'), '/c', 'falls back to cwd when env unset');
+assert.equal(
+  getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '', CLAUDE_PROJECT_DIR: '' }, '/c'),
+  '/c',
+  'empty-string env values are treated as unset',
+);
+
 console.log('paths.test.mjs: all passed');

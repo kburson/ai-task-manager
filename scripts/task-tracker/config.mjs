@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { getProjectDir } from './paths.mjs';
 
 export const DEFAULTS = {
   wpm: 180,
@@ -101,7 +102,7 @@ const TYPES = {
 };
 
 function defaultPaths() {
-  const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectDir = getProjectDir();
   return {
     projectPath: path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
     legacyProjectPath: path.join(projectDir, '.claude', 'task-tracker.json'),

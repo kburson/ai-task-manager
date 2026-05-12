@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { projectTmpDir } from '../task-tracker/paths.mjs';
+import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import {
@@ -54,7 +54,7 @@ async function deleteRetiredFields(projectId) {
   }
 }
 
-const projectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const projectDir = getProjectDir();
 
 async function run(cmd, args, opts = {}) {
   const { stdout } = await pexec(cmd, args, { cwd: projectDir, timeout: 60000, ...opts });

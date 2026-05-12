@@ -37,6 +37,11 @@ export function existingRuntimePath(projectDir, runtimePath) {
   return existsSync(legacyAbs) ? legacyAbs : preferred;
 }
 
+// Resolves the project root. Precedence: AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd.
+export function getProjectDir(env = process.env, cwd = process.cwd()) {
+  return env.AI_TASK_MANAGER_PROJECT_DIR || env.CLAUDE_PROJECT_DIR || cwd;
+}
+
 // Returns a project-local tmp directory, creating it if needed.
 // Keeps all ephemeral files inside the project tree.
 export function projectTmpDir(projDir) {

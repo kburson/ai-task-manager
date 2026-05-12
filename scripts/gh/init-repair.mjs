@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { gql } from './lib/github-projects.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
 
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
@@ -25,8 +26,7 @@ const OPTION_KEYS = {
 };
 
 function configPath() {
-  const dir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  return path.join(dir, '.ai-task-manager', 'task-tracker.json');
+  return path.join(getProjectDir(), '.ai-task-manager', 'task-tracker.json');
 }
 
 async function fetchStatusOptions(projectId, kanbanFieldId) {

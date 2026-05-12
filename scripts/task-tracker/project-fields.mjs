@@ -1,11 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { getProjectDir } from './paths.mjs';
 
-export function projectDir() {
-  return process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-}
-
-export function loadProjectFieldDefs(dir = projectDir()) {
+export function loadProjectFieldDefs(dir = getProjectDir()) {
   const local = path.join(dir, '.ai-task-manager', 'project-fields.json');
   const fallback = new URL('../../config/project-fields.default.json', import.meta.url);
   for (const file of [local, fallback]) {
