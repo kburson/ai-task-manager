@@ -31,6 +31,7 @@ import {
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { planGroomEstimate, applyGroomEstimate } from '../lib/apply-groom-estimate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -202,6 +203,29 @@ export async function runPromote({
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
   }
 
+  // Groom-stage pre-flight: when promoting Backlog → Groom, the agent must
+  // have set Size / Estimate / Priority on the board AND embedded a
+  // `<!-- aitm-groom-rationale: {...} -->` marker in the issue body. Refuse
+  // the move if either is missing, so the post-success hook can safely
+  // assume both signals are present (AC4 of #95).
+  let groomPlan = null;
+  if (target === 'groom') {
+    const planResult = await planGroomEstimate({
+      cfg,
+      issueNumber,
+      body,
+      deps: deps.groomEstimate,
+    });
+    if (!planResult.ok) {
+      return {
+        status: 'groom-gate-refused',
+        blockers: planResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Groom: missing groom-estimate signals.`,
+      };
+    }
+    groomPlan = planResult.plan;
+  }
+
   const aliasVerb = ALIAS_VERB[recorded] || null;
   const transitionResult = aliasVerb
     ? {
@@ -240,6 +264,23 @@ export async function runPromote({
       // Best-effort. Transition is already committed on the board.
     }
   }
+  // Groom-stage post-success hook: post the audit comment (idempotent) and
+  // strip the rationale marker from the body. Best-effort — failures here do
+  // not roll back the board move.
+  let groomPost = null;
+  if (target === 'groom' && groomPlan) {
+    try {
+      groomPost = await applyGroomEstimate({
+        cfg,
+        issueNumber,
+        plan: groomPlan,
+        deps: deps.groomEstimate,
+      });
+    } catch (err) {
+      groomPost = { status: 'post-failed', error: err.message };
+    }
+  }
+
   try {
     const row = buildRow({
       ts: now(),
@@ -262,6 +303,7 @@ export async function runPromote({
     to: target,
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
     bootstrapped,
+    groomPost,
   };
 }
 
@@ -299,7 +341,20 @@ export async function verbPromote(rest, cfg) {
           (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
           ` (${result.via})\n`
       );
+      if (result.groomPost?.status === 'posted') {
+        process.stdout.write(`  ↳ posted "### 🛠 Groom estimate" comment\n`);
+      } else if (result.groomPost?.status === 'duplicate') {
+        process.stdout.write(`  ↳ groom-estimate comment already present (idempotent skip)\n`);
+      } else if (result.groomPost?.status === 'post-failed') {
+        process.stderr.write(`  ⚠ groom-estimate comment post failed: ${result.groomPost.error}\n`);
+      }
       return;
+    }
+    case 'groom-gate-refused': {
+      process.stderr.write(`\n⛔ ${result.message}\n`);
+      for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
+      process.stderr.write('\n');
+      process.exit(4);
     }
     case 'drift-refused': {
       process.stderr.write(

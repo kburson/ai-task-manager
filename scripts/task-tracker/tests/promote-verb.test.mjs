@@ -101,12 +101,34 @@ test('promote: review→done delegates to /task close', async () => {
   assert.deepEqual(calls.spawns, [{ verb: 'close', issueNumber: 104 }]);
 });
 
-test('promote: backlog→groom is a direct move-state call', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
+test('promote: backlog→groom is a direct move-state call (with groom-estimate hook)', async () => {
+  const rationale = '<!-- aitm-groom-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
+  const body = `${bodyWithState('backlog')}\n${rationale}\n`;
+  const { deps, calls } = makeDeps({ body, live: 'backlog' });
+  deps.groomEstimate = {
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
+    listCommentBodies: async () => [],
+    postComment: async () => {},
+    writeIssueBody: async () => {},
+  };
   const r = await runPromote({ issueNumber: 105, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'direct');
   assert.deepEqual(calls.moves, [{ issueNumber: 105, target: 'groom' }]);
+  assert.equal(r.groomPost.status, 'posted');
+});
+
+test('promote: backlog→groom refused when groom-estimate signals are missing', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
+  deps.groomEstimate = {
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({}),
+  };
+  const r = await runPromote({ issueNumber: 1055, cfg, deps });
+  assert.equal(r.status, 'groom-gate-refused');
+  assert.ok(r.blockers.length >= 2);
+  assert.equal(calls.moves.length, 0);
 });
 
 test('promote: terminal refusal on done', async () => {

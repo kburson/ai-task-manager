@@ -164,9 +164,16 @@ Size and Estimate move through three distinct stages. Only the first two ever mu
 
 | Stage    | Verb that fires it                                   | Mutates fields?               | Comment surface               |
 | -------- | ---------------------------------------------------- | ----------------------------- | ----------------------------- |
-| Grooming | (manual at issue creation / groom)                   | Yes — initial set             | n/a                           |
+| Grooming | `/task promote <N>` (backlog → groom boundary)       | Yes — initial set (manual)    | `### 🛠 Groom estimate`       |
 | Analysis | `/task approve <N>` (analyze → development boundary) | Yes — rebucket from Deep Dive | `### 🔁 Analysis re-estimate` |
 | Review   | `/task close <N>` (review → done)                    | **No** — read-only delta      | `### 📊 Review delta`         |
+
+**Groom estimate.** When `/task promote <N>` advances an issue from Backlog to Groom, the harness pre-checks two signals and posts an audit comment:
+
+- **Board values.** Size, Estimate, and Priority must already be set on the project board. The agent/human sets these manually before invoking promote.
+- **Rationale marker.** The agent embeds a one-line hidden marker in the issue body before promoting: `<!-- aitm-groom-rationale: {"size":"...","estimate":"...","priority":"..."} -->`.
+- If either is missing, promote refuses with one `BLOCKED:` line per signal and exits non-zero — no board move happens.
+- Otherwise, the move proceeds and a `### 🛠 Groom estimate` comment is posted with a Size/Estimate/Priority table. A hidden `<!-- aitm-groom-estimate: <N> -->` marker makes the post idempotent; re-running promote will not duplicate it. The rationale marker is stripped from the body after a successful post.
 
 **Analysis re-estimate.** When `/task approve <N>` advances an issue from Analyze to Development, the harness re-evaluates Size + Estimate from the Deep-Dive Analysis section:
 
