@@ -38,15 +38,9 @@ function assertNoMutation(label, source, banned) {
 
 // 2. verbClose body must contain no writeProjectFieldValue call.
 {
-  const src = readFileSync(path.join(root, 'task-tracker.mjs'), 'utf8');
-  const start = src.indexOf('async function verbClose()');
-  assert.ok(start >= 0, 'verbClose function not found');
-  // End at the next top-level async function declaration after verbClose.
-  const tail = src.slice(start + 'async function verbClose()'.length);
-  const nextFn = tail.search(/\nasync function \w+/);
-  assert.ok(nextFn >= 0, 'verbClose end boundary not found');
-  const body = tail.slice(0, nextFn);
-  assertNoMutation('verbClose', body, ['writeProjectFieldValue(']);
+  const src = readFileSync(path.join(root, 'verbs/close.mjs'), 'utf8');
+  assert.ok(/export async function verbClose\b/.test(src), 'verbClose export not found in verbs/close.mjs');
+  assertNoMutation('verbClose', src, ['writeProjectFieldValue(']);
 }
 
 console.log('no-mutation-guarantee.test.mjs: all passed');
