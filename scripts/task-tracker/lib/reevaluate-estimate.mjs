@@ -22,11 +22,16 @@ export function sizeIndex(size) {
   return SIZE_TIERS.indexOf(size);
 }
 
+const FENCE_RE = /^\s*(```|~~~)/;
+
 function extractSection(body, headingRe) {
   const lines = body.split('\n');
   let start = -1;
   let depth = 2;
+  let inFence = false;
   for (let i = 0; i < lines.length; i++) {
+    if (FENCE_RE.test(lines[i])) { inFence = !inFence; continue; }
+    if (inFence) continue;
     if (headingRe.test(lines[i])) {
       start = i + 1;
       const m = lines[i].match(/^(#{2,6})\s/);
@@ -35,10 +40,12 @@ function extractSection(body, headingRe) {
     }
   }
   if (start === -1) return null;
-  // Terminate at the next heading of equal-or-shallower depth.
   const stopRe = new RegExp(String.raw`^#{2,${depth}}\s+`);
   let end = lines.length;
+  inFence = false;
   for (let i = start; i < lines.length; i++) {
+    if (FENCE_RE.test(lines[i])) { inFence = !inFence; continue; }
+    if (inFence) continue;
     if (stopRe.test(lines[i])) { end = i; break; }
   }
   return lines.slice(start, end).join('\n');

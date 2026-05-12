@@ -198,4 +198,90 @@ Blocks: #99
   assert.match(body, /\| Size \| XS \|/, 'before-size XS in table');
 }
 
+// Fence-aware extractSection: a fenced `## Foo` line inside the deep-dive must NOT
+// terminate the section. Regression for #91 (#13 hit this in production).
+{
+  const body = `## Deep-Dive Analysis
+
+\`\`\`
+## Dependency Map (validated 2026-05-12)
+ignored fenced heading
+\`\`\`
+
+### Files to edit
+- a.mjs
+- b.mjs
+
+### Step-by-step plan
+1. one
+2. two
+3. three
+4. four
+
+### Identified risks
+- r1
+- r2
+`;
+  const sig = parseDeepDiveSignals(body);
+  assert.equal(sig.files, 2, 'fenced ## must not truncate deep-dive before Files section');
+  assert.equal(sig.steps, 4, 'fenced ## must not truncate deep-dive before Step-by-step plan');
+  assert.equal(sig.risks, 2, 'fenced ## must not truncate deep-dive before Identified risks');
+}
+
+// Tilde-fence variant — same protection.
+{
+  const body = `## Deep-Dive Analysis
+
+~~~
+## fake heading
+~~~
+
+### Files to edit
+- one.mjs
+`;
+  const sig = parseDeepDiveSignals(body);
+  assert.equal(sig.files, 1, 'tilde-fenced ## must not truncate deep-dive');
+}
+
+// Regression: a fenced `### Files to edit` must NOT match as the section start.
+// The real later heading should win.
+{
+  const body = `## Deep-Dive Analysis
+
+\`\`\`
+### Files to edit
+- not-real.mjs
+\`\`\`
+
+### Files to edit
+- real.mjs
+- also-real.mjs
+`;
+  const sig = parseDeepDiveSignals(body);
+  assert.equal(sig.files, 2, 'real heading should win over fenced look-alike');
+}
+
+// Regression: fence-free deep-dive bodies extract identically (golden snapshot).
+{
+  const body = `## Deep-Dive Analysis (2026-05-09)
+
+### Files to edit
+
+- a.mjs
+- b.mjs
+- c.mjs
+
+### Step-by-step plan
+
+1. one
+2. two
+
+### Identified risks
+
+- r1
+`;
+  const sig = parseDeepDiveSignals(body);
+  assert.deepEqual(sig, { files: 3, steps: 2, risks: 1, deps: 0 });
+}
+
 console.log('reevaluate-estimate.test.mjs: all passed');
