@@ -41,6 +41,6 @@
   "kanbanOptionAnalyze": "aa084acb",
   "kanbanOptionValidate": "5dd53ef2",
   "kanbanOptionReview": "e21699f1",
-  "gateAnalysisToDevelopment": false,
-  "gateReviewToDone": false
+  "gateAnalysisToDevelopment": true,
+  "gateReviewToDone": true
 }
