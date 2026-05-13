@@ -5,6 +5,7 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, relative } from 'node:path';
+import { createInterface } from 'node:readline';
 import {
   existsSync,
   mkdirSync,
@@ -755,6 +756,111 @@ function cmdRepair(args) {
   }
 }
 
+async function cmdConfigurePreferences(args) {
+  let targetDir = process.cwd();
+  const targetArg = parseOption(args, '--target');
+  if (targetArg) targetDir = resolve(targetArg);
+  const templateDest = join(targetDir, '.ai-task-manager');
+  const cfgPath = join(templateDest, 'task-tracker.json');
+
+  let cfg = {};
+  if (existsSync(cfgPath)) {
+    try {
+      cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+    } catch {
+      cfg = {};
+    }
+  }
+  const current =
+    cfg.preferences && typeof cfg.preferences === 'object' ? { ...cfg.preferences } : {};
+
+  banner('Configure project preferences', `target: ${targetDir}`);
+  console.log(
+    `  ${dim('Answers are written to .ai-task-manager/task-tracker.json#preferences.')}`
+  );
+  console.log(
+    `  ${dim('Press Enter to keep the current value. These are team-shared and git-tracked.')}\n`
+  );
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (question) => new Promise((resolve) => rl.question(question, resolve));
+
+  function boolDefault(key) {
+    const val = key in current ? current[key] : PREFERENCE_DEFAULTS[key];
+    return val ? 'Y/n' : 'y/N';
+  }
+  function parseBool(input, key) {
+    const s = input.trim().toLowerCase();
+    if (!s) return key in current ? current[key] : PREFERENCE_DEFAULTS[key];
+    return ['y', 'yes', '1', 'true'].includes(s);
+  }
+  function strDefault(key, subKey) {
+    if (subKey) {
+      const sub = key in current ? current[key] : PREFERENCE_DEFAULTS[key];
+      return (sub && sub[subKey] !== undefined ? sub[subKey] : PREFERENCE_DEFAULTS[key][subKey]).toString();
+    }
+    return (key in current ? current[key] : PREFERENCE_DEFAULTS[key]).toString();
+  }
+
+  const updated = { ...PREFERENCE_DEFAULTS, ...current };
+  if (updated.formatting && typeof updated.formatting !== 'object') updated.formatting = {};
+  updated.formatting = { ...PREFERENCE_DEFAULTS.formatting, ...(current.formatting ?? {}) };
+
+  updated.noPushToOrigin = parseBool(
+    await ask(`  Solo project — never push to origin or open PRs? [${boolDefault('noPushToOrigin')}] `),
+    'noPushToOrigin'
+  );
+  updated.mainThreadOnly = parseBool(
+    await ask(`  Main-thread-only — commit straight to trunk, no feature branches? [${boolDefault('mainThreadOnly')}] `),
+    'mainThreadOnly'
+  );
+  updated.driveSubIssuesToR4R = parseBool(
+    await ask(`  Drive sub-issues end-to-end to R4R without per-step check-ins? [${boolDefault('driveSubIssuesToR4R')}] `),
+    'driveSubIssuesToR4R'
+  );
+  updated.pauseTimerOnBlockingQuestion = parseBool(
+    await ask(`  Pause timer before asking blocking questions? [${boolDefault('pauseTimerOnBlockingQuestion')}] `),
+    'pauseTimerOnBlockingQuestion'
+  );
+  updated.noConfirmAfterDeepDive = parseBool(
+    await ask(`  Skip "ready to proceed?" after deep dive? [${boolDefault('noConfirmAfterDeepDive')}] `),
+    'noConfirmAfterDeepDive'
+  );
+  updated.askGatesBeforeParallel = parseBool(
+    await ask(`  Prompt which human gates to toggle before parallel dispatch? [${boolDefault('askGatesBeforeParallel')}] `),
+    'askGatesBeforeParallel'
+  );
+  const curNoEmojis = current.formatting?.noEmojis ?? PREFERENCE_DEFAULTS.formatting.noEmojis;
+  const noEmojisInput = await ask(
+    `  No emojis in issue bodies, comments, commits? [${curNoEmojis ? 'Y/n' : 'y/N'}] `
+  );
+  updated.formatting.noEmojis = (() => {
+    const s = noEmojisInput.trim().toLowerCase();
+    if (!s) return curNoEmojis;
+    return ['y', 'yes', '1', 'true'].includes(s);
+  })();
+
+  const currInBt = current.formatting?.currencyInBackticks ?? PREFERENCE_DEFAULTS.formatting.currencyInBackticks;
+  const cibInput = await ask(
+    `  Wrap currency amounts in backticks (\`$200\`)? [${currInBt ? 'Y/n' : 'y/N'}] `
+  );
+  updated.formatting.currencyInBackticks = (() => {
+    const s = cibInput.trim().toLowerCase();
+    if (!s) return currInBt;
+    return ['y', 'yes', '1', 'true'].includes(s);
+  })();
+
+  const scratchInput = await ask(`  Scratch directory for transient files? [${strDefault('scratchDir')}] `);
+  updated.scratchDir = scratchInput.trim() || strDefault('scratchDir');
+
+  rl.close();
+
+  cfg.preferences = updated;
+  mkdirSync(templateDest, { recursive: true });
+  writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
+  console.log(`\n  ${green('✓')} Preferences saved to ${dim('.ai-task-manager/task-tracker.json')}`);
+}
+
 const [, , command = 'help', ...rest] = process.argv;
 
 switch (command) {
@@ -775,6 +881,17 @@ switch (command) {
   case 'statusline':
     cmdStatusline();
     break;
+  case 'configure':
+    if (rest[0] === 'preferences') {
+      cmdConfigurePreferences(rest.slice(1)).catch((e) => {
+        err(e.message);
+        process.exit(1);
+      });
+    } else {
+      err(`Unknown configure subcommand: ${rest[0] ?? '(none)'}. Try: npx ai-task-manager configure preferences`);
+      process.exit(1);
+    }
+    break;
   default:
     console.log(`
 ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
@@ -785,8 +902,9 @@ ${bold('  Usage')}
     ${cyan('npx ai-task-manager install')}    ${dim('[--agent claude|codex] [--link-mode stub|symlink] [--codex-superpowers] [--codex-superpowers-global] [--target <dir>]')}
     ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>] [--codex-superpowers] [--codex-superpowers-global]')}
     ${cyan('npx ai-task-manager repair')}     ${dim('[--target <dir>] Backfill empty kanbanOption* fields in existing config')}
-    ${cyan('npx ai-task-manager statusline')} ${dim('Install Claude Code status line')}
-    ${cyan('npx ai-task-manager version')}    ${dim('Print version')}
+    ${cyan('npx ai-task-manager statusline')}              ${dim('Install Claude Code status line')}
+    ${cyan('npx ai-task-manager configure preferences')}  ${dim('Interactive team-workflow preferences editor')}
+    ${cyan('npx ai-task-manager version')}                ${dim('Print version')}
 
 ${bold('  Compatibility')}
     ${cyan(`npx ${LEGACY_BIN} <command>`)} ${dim('continues to work as a bin alias for this release')}
