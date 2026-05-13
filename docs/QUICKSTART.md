@@ -232,7 +232,7 @@ The orchestrator picks up Epic #10 and fans out sub-agent to issue #11.
 
 ```bash
 /task #10                    # start epic timer
-move-state.sh 10 develop     # epic moves to Develop
+move-state.mjs 10 develop    # epic moves to Develop
 ```
 
 Orchestrator reads the Pickup Directive, validates sub-issue sequencing, posts dependency map, and fans out Sequence-1 issues.

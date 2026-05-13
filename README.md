@@ -310,7 +310,7 @@ The issue body stays lean. The detailed agent instructions live in `.ai-task-man
 
 ### Hard Rules — Enforced by the Gates
 
-The `/task close` pre-close gate AND `move-state.sh <issue> done` both refuse if:
+The `/task close` pre-close gate AND `move-state.mjs <issue> done` both refuse if:
 
 - any `- [ ]` remains in the issue body (Deep Dive checkpoint, DoD, acceptance criteria), or
 - the line `- [x] Deep dive complete` is not present when the body contains a Pickup Directive block.
@@ -550,8 +550,8 @@ Or set individual values:
 | `Bash(gh project item-edit*)`    | Size, Sequence, Estimate, Priority fields  |
 | `Bash(cat > /tmp/*)`             | Issue body temp files                      |
 | `Bash(node */task-tracker.mjs*)` | All `/task` verbs                          |
-| `Bash(*/move-state.sh*)`         | Kanban state transitions                   |
-| `Bash(*/set-priority.sh*)`       | Priority setting                           |
+| `Bash(*/move-state.mjs*)`        | Kanban state transitions                   |
+| `Bash(*/set-priority.mjs*)`      | Priority setting                           |
 
 All mutations are scoped to the issues being created or updated in the current project. Nothing reaches outside your configured repo and project board.
 

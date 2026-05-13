@@ -391,7 +391,7 @@ Blocks: #P (reason)       ← or "none"
 
 Full agent instructions live in `.ai-task-manager/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
 
-**Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.sh <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. The audited override `TASK_TRACKER_FORCE_DONE=1` bypasses but posts an audit comment listing the unverified items. The GitHub UI (drag a card, delete an issue) is not gated.
+**Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.mjs <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. The audited override `TASK_TRACKER_FORCE_DONE=1` bypasses but posts an audit comment listing the unverified items. The GitHub UI (drag a card, delete an issue) is not gated.
 
 ### Multi-Agent Orchestration
 
