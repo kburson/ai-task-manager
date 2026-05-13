@@ -6,7 +6,10 @@ import os from 'node:os';
 
 export function projectKey() {
   const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  return dir.replace(/\//g, '-');
+  // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive
+  // colon to `-` so the result matches the directory Claude Code creates
+  // under ~/.claude/projects/<key>/ across platforms.
+  return dir.replace(/[\\/:]/g, '-');
 }
 
 export function sessionDir() {
@@ -22,6 +25,12 @@ export function markerPathFor(sid) {
 }
 
 export function currentSessionId() {
+  // Prefer the authoritative session id Claude Code exports via env. The
+  // mtime-sort fallback is fragile (stale .jsonl touched by an editor or
+  // indexer can outrank the live session) and only runs when the env var
+  // is unset or empty.
+  const envSid = process.env.CLAUDE_SESSION_ID;
+  if (typeof envSid === 'string' && envSid.length > 0) return envSid;
   try {
     const dir = sessionDir();
     const files = readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
