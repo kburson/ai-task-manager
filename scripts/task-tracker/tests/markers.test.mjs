@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Unit tests for scripts/task-tracker/lib/markers.mjs — the hidden-marker
-// helpers used by approve / approve-review / check verbs and body-gates.
+// helpers used by approve / check verbs and body-gates.
 //
 // Covers: build, has, insert (where applicable), idempotency, and the
 // field-DB normalization side-effect.
