@@ -40,19 +40,19 @@ Every issue on the board moves through these states. The transitions are enforce
 
 ```mermaid
 flowchart LR
-    Backlog --> Groom --> Analyze --> Development --> Validate --> Review --> Done
-    Validate -->|verification failed| Development
+    Backlog --> Refine --> Plan --> Develop --> Test --> Review --> Done
+    Test -->|verification failed| Develop
 ```
 
-| State           | What it means                                        | Who moves the issue here                                                  |
-| --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Backlog**     | Created, not yet scheduled                           | Orchestrator at issue creation                                            |
-| **Groom**       | Triage queue: sized, AC drafted                      | Human or orchestrator (`/task groom`)                                     |
-| **Analyze**     | Deep-dive complete, plan posted                      | Orchestrator (`/task analyze`)                                            |
-| **Development** | Work is active                                       | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
-| **Validate**    | Agent reported `CODE_COMPLETE`; verification running | `/task review` (orchestrator)                                             |
-| **Review**      | All checks passed; awaiting human approval           | `/task review` on success (auto)                                          |
-| **Done**        | Human approved and closed                            | `/task close` (human only)                                                |
+| State       | What it means                                        | Who moves the issue here                                                  |
+| ----------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Backlog** | Created, not yet scheduled                           | Orchestrator at issue creation                                            |
+| **Refine**  | Triage queue: sized, AC drafted                      | Human or orchestrator (`/task promote`)                                   |
+| **Plan**    | Deep-dive complete, plan posted                      | Orchestrator (`/task promote`)                                            |
+| **Develop** | Work is active                                       | Human, orchestrator, or agent — whoever calls `/task #N` in their session |
+| **Test**    | Agent reported `CODE_COMPLETE`; verification running | `/task review` (orchestrator)                                             |
+| **Review**  | All checks passed; awaiting human approval           | `/task review` on success (auto)                                          |
+| **Done**    | Human approved and closed                            | `/task close` (human only)                                                |
 
 **Who calls `/task #N` depends on the issue type:**
 
@@ -66,9 +66,9 @@ The orchestrator never calls `/task #child`. Doing so would switch the orchestra
 
 ### State Gate Rules
 
-- **Development → Validate**: triggered by orchestrator calling `/task review` after agent reports `CODE_COMPLETE`.
-- **Validate → Development**: automatic revert if any unchecked boxes are found during verification. Orchestrator posts a comment on the issue, then re-dispatches the agent.
-- **Validate → Review**: automatic promotion when all verification gates pass.
+- **Develop → Test**: triggered by orchestrator calling `/task review` after agent reports `CODE_COMPLETE`.
+- **Test → Develop**: automatic revert if any unchecked boxes are found during verification. Orchestrator posts a comment on the issue, then re-dispatches the agent.
+- **Test → Review**: automatic promotion when all verification gates pass.
 - **Review → Done**: human-only. No agent or automated signal can trigger this.
 - **Epic Review gate**: an epic cannot move to Review until ALL its child issues are already in Review.
 - **Epic cascade close**: `/task close` on an epic closes all Review children first (board move + GitHub close + fleet deregister), then closes the epic.
@@ -91,7 +91,7 @@ sequenceDiagram
     loop until /task review passes
         H->>T: /task review #N
         alt verification fails
-            T->>T: post comment — failed criteria, revert to Development
+            T->>T: post comment — failed criteria, revert to Develop
             T->>T: fix issues
             T->>H: CODE_COMPLETE
         end
@@ -154,7 +154,7 @@ Developer:  /task #42
 
 AITM:
 
-1. Moves issue #42 to **Development** on the board
+1. Moves issue #42 to **Develop** on the board
 2. Displays the issue title, body, and Pickup Directive
 3. Starts the timer — every minute of AI-engaged time is now logged
 
@@ -232,7 +232,7 @@ The orchestrator picks up Epic #10 and fans out sub-agent to issue #11.
 
 ```bash
 /task #10                    # start epic timer
-move-state.sh 10 development # epic moves to Development
+move-state.sh 10 develop     # epic moves to Develop
 ```
 
 Orchestrator reads the Pickup Directive, validates sub-issue sequencing, posts dependency map, and fans out Sequence-1 issues.
@@ -240,7 +240,7 @@ Orchestrator reads the Pickup Directive, validates sub-issue sequencing, posts d
 **Agent (works #11):**
 
 ```bash
-/task #11                    # start sub-issue timer, moves to Development
+/task #11                    # start sub-issue timer, moves to Develop
 # ... runs deep dive, appends to issue body, checks Deep dive complete ...
 # ... implements code, runs tests, checks each DoD/AC checkbox ...
 ```
@@ -250,13 +250,13 @@ Agent reports `CODE_COMPLETE` and stops.
 **Orchestrator (receives CODE_COMPLETE):**
 
 ```bash
-/task review #11             # moves to Validate → runs verification gate
+/task review #11             # moves to Test → runs verification gate
 ```
 
 **If verification fails** (exit 3):
 
 - Orchestrator posts a comment on #11 listing the failed criteria
-- Issue automatically reverts to Development
+- Issue automatically reverts to Develop
 - Orchestrator re-dispatches the agent to fix
 
 **If verification passes:**
@@ -294,8 +294,8 @@ If any child is not in Review, the command refuses:
 
 ```
 ⛔ Cannot close epic #10 — 2 child issue(s) not in Review:
-   #12: development
-   #13: validate
+   #12: develop
+   #13: test
 All sub-issues must reach Review before the epic can close.
 ```
 
@@ -461,7 +461,7 @@ flowchart TD
     C --> D{pass?}
 
     D -->|FAIL| E[Post comment — failed criteria list]
-    E --> F[Issue reverts to Development]
+    E --> F[Issue reverts to Develop]
     F --> G[Orchestrator re-dispatches agent]
     G --> A
 
@@ -478,14 +478,14 @@ flowchart TD
 
 | Command                 | Who runs it  | What it does                                                  |
 | ----------------------- | ------------ | ------------------------------------------------------------- |
-| `/task #N`              | Agent        | Switch to issue, move to Development, display brief           |
+| `/task #N`              | Agent        | Switch to issue, move to Develop, display brief               |
 | `/task new`             | Human/Agent  | Create issue (or orchestrate full backlog from spec)          |
 | `/task plan`            | Human        | Open untracked planning bucket                                |
 | `/task update`          | Agent        | Checkpoint — flush timing, keep task active                   |
 | `/task pause`           | Agent        | Flush timing, keep last-active. Run before `/clear`.          |
 | `/task resume #N`       | Agent        | Resume a paused task                                          |
 | `/task check "<label>"` | Agent        | Check off a DoD/AC checkbox                                   |
-| `/task review #N`       | Orchestrator | Move to Validate, verify gates, promote to Review or revert   |
+| `/task review #N`       | Orchestrator | Move to Test, verify gates, promote to Review or revert       |
 | `/task fleet`           | Orchestrator | Show all active tasks across worktrees                        |
 | `/task close`           | Human        | Flush, write fields, move to Done. Explicit instruction only. |
 | `/task log #N`          | Human/Agent  | Re-compute and write board fields for any issue               |

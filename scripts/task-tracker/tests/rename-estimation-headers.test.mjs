@@ -39,10 +39,7 @@ import {
   assert.ok(after.includes('Initial provisional sizing at Refine (refined at Plan).'));
   assert.ok(after.includes('Provisional — Plan will re-evaluate'));
   assert.ok(after.includes('`### 🔁 Plan re-estimate`'));
-  assert.ok(
-    after.includes('<!-- aitm-groom-estimate: 5 -->'),
-    'hidden marker must NOT be touched'
-  );
+  assert.ok(after.includes('<!-- aitm-groom-estimate: 5 -->'), 'hidden marker must NOT be touched');
   assert.ok(!after.includes('Groom estimate'));
   assert.ok(!after.includes('Analysis re-estimate'));
   assert.ok(!after.includes('refined at Analyze'));
@@ -68,10 +65,7 @@ import {
 {
   const before = 'lead-in\n### 🛠 Groom estimate\nbetween\n### 🔁 Analysis re-estimate\ntrail';
   const after = rewriteCommentBody(before);
-  assert.equal(
-    after,
-    'lead-in\n### 🛠 Refine estimate\nbetween\n### 🔁 Plan re-estimate\ntrail'
-  );
+  assert.equal(after, 'lead-in\n### 🛠 Refine estimate\nbetween\n### 🔁 Plan re-estimate\ntrail');
 }
 
 console.log('rename-estimation-headers.test.mjs: all passed');

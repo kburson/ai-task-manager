@@ -14,7 +14,7 @@ Rewrites estimation-comment headers from the legacy vocab (`Groom estimate`, `An
   - `### 🛠 Groom estimate` → `### 🛠 Refine estimate`
   - `### 🔁 Analysis re-estimate` → `### 🔁 Plan re-estimate`
   - `Initial provisional sizing at Groom (refined at Analyze).` → `Initial provisional sizing at Refine (refined at Plan).`
-  - `` Provisional — Analyze will re-evaluate and post a `### 🔁 Analysis re-estimate` comment if the bucket shifts. `` → `` Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts. ``
+  - ``Provisional — Analyze will re-evaluate and post a `### 🔁 Analysis re-estimate` comment if the bucket shifts.`` → ``Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.``
 
 ### Usage
 

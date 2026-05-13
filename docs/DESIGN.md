@@ -138,14 +138,14 @@ Precedence: project-local > user-global > hardcoded defaults.
 
 **Internal keys** (managed by `npx ai-task-manager init` — do not set manually):
 
-| Key                                                                                          | Purpose                                      |
-| -------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `projectId`                                                                                  | GH Projects V2 project node ID               |
-| `kanbanFieldId`                                                                              | Kanban single-select field ID                |
-| `kanbanOptionBacklog` / `Groom` / `Analyze` / `Development` / `Validate` / `Review` / `Done` | Kanban option IDs                            |
-| `sequenceFieldId`                                                                            | Numeric Sequence field ID (fan-out ordering) |
-| `priorityFieldId`                                                                            | Priority single-select field ID              |
-| `priorityOptionP0` / `P1` / `P2`                                                             | Priority option IDs                          |
+| Key                                                                                                                                                             | Purpose                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `projectId`                                                                                                                                                     | GH Projects V2 project node ID               |
+| `kanbanFieldId`                                                                                                                                                 | Kanban single-select field ID                |
+| `kanbanOptionBacklog` / `Refine` / `Plan` / `Develop` / `Test` / `Review` / `Done` (legacy `Groom` / `Analyze` / `Development` / `Validate` keys still resolve) | Kanban option IDs                            |
+| `sequenceFieldId`                                                                                                                                               | Numeric Sequence field ID (fan-out ordering) |
+| `priorityFieldId`                                                                                                                                               | Priority single-select field ID              |
+| `priorityOptionP0` / `P1` / `P2`                                                                                                                                | Priority option IDs                          |
 
 ## State File
 

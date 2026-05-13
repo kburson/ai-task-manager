@@ -26,13 +26,7 @@
 
 import { gql, splitRepo } from './github-projects.mjs';
 
-const IN_FLIGHT_STATES = new Set([
-  'refine',
-  'plan',
-  'develop',
-  'test',
-  'review',
-]);
+const IN_FLIGHT_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review']);
 
 export function admit({
   parentEpicNumber,

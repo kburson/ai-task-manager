@@ -89,7 +89,9 @@ async function main() {
   const fieldDefs = loadProjectFieldDefs();
   const optionMap = await fieldOptionMap(projectId);
 
-  process.stdout.write(`Binding issues to ${projectId} on ${repo} (${dryRun ? 'DRY-RUN' : 'APPLY'})...\n`);
+  process.stdout.write(
+    `Binding issues to ${projectId} on ${repo} (${dryRun ? 'DRY-RUN' : 'APPLY'})...\n`
+  );
   const issues = await listAllIssues(repo);
   process.stdout.write(`  found ${issues.length} issues (open + closed)\n`);
 
@@ -142,7 +144,9 @@ async function main() {
             process.stdout.write(`  ✓ #${issue.number}: Status=${status}\n`);
           } else {
             errors++;
-            process.stderr.write(`  ⚠ #${issue.number}: option '${status}' not found on new board\n`);
+            process.stderr.write(
+              `  ⚠ #${issue.number}: option '${status}' not found on new board\n`
+            );
           }
         }
       } else if (!status) {
@@ -159,7 +163,9 @@ async function main() {
       const plan = buildFieldSyncPlan({ cfg, fieldDefs, values });
       for (const step of plan) {
         if (dryRun) {
-          process.stdout.write(`  [dry-run] #${issue.number}: ${step.key} → ${JSON.stringify(step.value)}\n`);
+          process.stdout.write(
+            `  [dry-run] #${issue.number}: ${step.key} → ${JSON.stringify(step.value)}\n`
+          );
           fieldsSet++;
           continue;
         }

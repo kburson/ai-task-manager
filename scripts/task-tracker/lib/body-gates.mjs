@@ -232,14 +232,7 @@ export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, pro
   }));
 }
 
-const CASCADE_OK_STATES = new Set([
-  'refine',
-  'plan',
-  'develop',
-  'test',
-  'review',
-  'done',
-]);
+const CASCADE_OK_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
 
 export async function checkCascadeGrooming({
   isEpic,

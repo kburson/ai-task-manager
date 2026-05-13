@@ -80,14 +80,7 @@ async function patchComment(repo, commentId, newBody) {
   try {
     await pexec(
       'gh',
-      [
-        'api',
-        '-X',
-        'PATCH',
-        `repos/${repo}/issues/comments/${commentId}`,
-        '-F',
-        `body=@${tmp}`,
-      ],
+      ['api', '-X', 'PATCH', `repos/${repo}/issues/comments/${commentId}`, '-F', `body=@${tmp}`],
       { timeout: 15000 }
     );
   } finally {
@@ -148,7 +141,9 @@ async function main() {
         process.stdout.write(`  ✓ #${issue.number} comment ${c.id}: patched\n`);
       } catch (err) {
         errors++;
-        process.stderr.write(`  ⚠ #${issue.number} comment ${c.id}: patch failed: ${err.message}\n`);
+        process.stderr.write(
+          `  ⚠ #${issue.number} comment ${c.id}: patch failed: ${err.message}\n`
+        );
       }
     }
   }

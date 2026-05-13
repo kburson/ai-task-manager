@@ -25,22 +25,22 @@ Immediately after creating, set **both** `Estimate` (hours) and `Size` on the Gi
 Issues move through seven states:
 
 ```
-Backlog → Groom → Analyze → Development → Validate → Review → Done
+Backlog → Refine → Plan → Develop → Test → Review → Done
 ```
 
 Move issues using the helper script (reads all IDs from `.ai-task-manager/task-tracker.json`):
 
 ```bash
 scripts/gh/move-state.mjs <issue#> <state>
-# States: backlog | groom | analyze | development | validate | review | done
+# States: backlog | refine | plan | develop | test | review | done
 
-scripts/gh/move-state.mjs 42 development
+scripts/gh/move-state.mjs 42 develop
 ```
 
-- Move to **Groom** when an issue is being shaped (sized, AC drafted).
-- Move to **Analyze** after the deep-dive analysis is posted.
-- Move to **Development** when `/task #N` activates an issue and code work begins.
-- **Validate** is entered automatically by `/task review` while the verification gate runs.
+- Move to **Refine** when an issue is being shaped (sized, AC drafted).
+- Move to **Plan** after the deep-dive analysis is posted.
+- Move to **Develop** when `/task #N` activates an issue and code work begins.
+- **Test** is entered automatically by `/task review` while the verification gate runs.
 - Move to **Review** automatically when verification passes (ready-for-review).
 - Move to **Done** only by `/task close` after a human approves.
 
@@ -48,23 +48,25 @@ scripts/gh/move-state.mjs 42 development
 
 Two transitions require explicit human approval. Both are toggleable via config; defaults preserve today's behavior (human required).
 
-| Gate                  | Config key                  | Default | Bypass behavior when `false`                                                                            |
-| --------------------- | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| Analyze → Development | `gateAnalysisToDevelopment` | `true`  | `/task approve #N` auto-writes the approval marker and moves the issue; emits a `gate-bypassed` status. |
-| Review → Done         | `gateReviewToDone`          | `true`  | `/task close` posts a `gate-bypassed` timing-log row instead of refusing.                               |
+| Gate           | Config key                  | Default | Bypass behavior when `false`                                                                            |
+| -------------- | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| Plan → Develop | `gateAnalysisToDevelopment` | `true`  | `/task promote #N` auto-writes the approval marker and moves the issue; emits a `gate-bypassed` status. |
+| Review → Done  | `gateReviewToDone`          | `true`  | `/task close` posts a `gate-bypassed` timing-log row instead of refusing.                               |
 
-The Analyze → Development gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: analyze -> development requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Analyze. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
+The config key `gateAnalysisToDevelopment` retains its legacy name for backward-compatibility with existing project configs; semantically it gates Plan → Develop.
 
-The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve-review #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
+The Plan → Develop gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Plan. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
 
-The Analyze → Development gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task analyze #N` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
+The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
 
-**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve-review #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
+The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task check "Deep dive complete"` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
+
+**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
 
 Toggle a gate (project-wide, persisted to `.claude/task-tracker.json`):
 
 ```bash
-/task config gateAnalysisToDevelopment false   # full-auto Analyze → Development
+/task config gateAnalysisToDevelopment false   # full-auto Plan → Develop
 /task config gateReviewToDone false            # full-auto Review → Done
 ```
 
@@ -91,18 +93,18 @@ For one-off parallel batches (e.g., dispatching several sub-issues without pausi
 Sequence is a numeric field on each issue. Sub-issues sharing the same Sequence
 form a wave: they may be dispatched in parallel, but a sub-issue at Sequence
 N+1 cannot start until every Sequence-N sibling reaches Done. The
-`wave-admission` gate enforces this on `/task analyze`. Solo issues with no
+`wave-admission` gate enforces this on `/task promote` (entering Plan). Solo issues with no
 parent epic bypass the gate. See [DESIGN.md](../DESIGN.md) for the
 discovered-sub-issue and same-wave-newcomer semantics.
 
-### Backlog vs Todo (Groom)
+### Backlog vs Refine
 
-Backlog and Todo (Groom) are not interchangeable — they encode different states of issue readiness:
+Backlog and Refine are not interchangeable — they encode different states of issue readiness:
 
 - **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
-- **Todo (Groom)** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Groom never requires additional shaping.
+- **Refine** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Refine never requires additional shaping.
 
-When an agent or human files a new issue with full ACs and sizing already set, tether it to `--status groom`, not `backlog`. Plan-mode sub-issue creation is the one exception: those tether to `backlog` and flip to `groom`/`development` at fan-out time, because not every planned sub-issue is dispatched immediately.
+When an agent or human files a new issue with full ACs and sizing already set, tether it to `--status refine`, not `backlog`. Plan-mode sub-issue creation is the one exception: those tether to `backlog` and flip to `refine`/`develop` at fan-out time, because not every planned sub-issue is dispatched immediately.
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 
@@ -162,11 +164,11 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 Size and Estimate move through three distinct stages. Only the first two ever mutate fields; the third is read-only.
 
-| Stage    | Verb that fires it                                   | Mutates fields?               | Comment surface               |
-| -------- | ---------------------------------------------------- | ----------------------------- | ----------------------------- |
-| Refine   | `/task promote <N>` (backlog → refine boundary)      | Yes — initial set (manual)    | `### 🛠 Refine estimate`      |
-| Plan     | `/task promote <N>` (plan → develop boundary)        | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate`     |
-| Review   | `/task close <N>` (review → done)                    | **No** — read-only delta      | `### 📊 Review delta`         |
+| Stage  | Verb that fires it                              | Mutates fields?               | Comment surface           |
+| ------ | ----------------------------------------------- | ----------------------------- | ------------------------- |
+| Refine | `/task promote <N>` (backlog → refine boundary) | Yes — initial set (manual)    | `### 🛠 Refine estimate`  |
+| Plan   | `/task promote <N>` (plan → develop boundary)   | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate` |
+| Review | `/task close <N>` (review → done)               | **No** — read-only delta      | `### 📊 Review delta`     |
 
 **Refine estimate.** When `/task promote <N>` advances an issue from Backlog to Refine, the harness pre-checks two signals and posts an audit comment:
 

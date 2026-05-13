@@ -4,15 +4,7 @@ import { test } from 'node:test';
 import { STATES, FORWARD, BACKWARD, validateTransition } from '../state-machine.mjs';
 
 test('STATES is the canonical 7-state chain in order', () => {
-  assert.deepEqual(STATES, [
-    'backlog',
-    'refine',
-    'plan',
-    'develop',
-    'test',
-    'review',
-    'done',
-  ]);
+  assert.deepEqual(STATES, ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
 });
 
 test('FORWARD covers every adjacent forward pair', () => {

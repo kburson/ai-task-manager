@@ -43,13 +43,13 @@ PROMPT_REQUIRED: review-approval #N
 
 When you see that marker, you MUST surface a structured human decision before doing anything else. In Claude Code, invoke `AskUserQuestion` with options **Approve** and **Reject**:
 
-- **Approve** → run `/task approve-review #N` (records the human approval marker in the issue body), then run `/task close #N`. The close verb refuses (exit 7) if the approval marker is missing and `gateReviewToDone=true`; `--answer yes` does NOT satisfy this gate (exit 8).
-- **Reject** → ask a follow-up question for the rejection reason, then run `/task reject #N --reason "<reason>"`. The verb posts a `### ❌ Review rejected` comment on the issue and moves it back to Development.
+- **Approve** → run `/task approve #N` (records the human approval marker in the issue body), then run `/task close #N`. The close verb refuses (exit 7) if the approval marker is missing and `gateReviewToDone=true`; `--answer yes` does NOT satisfy this gate (exit 8).
+- **Reject** → ask a follow-up question for the rejection reason, then run `/task reject #N --reason "<reason>"`. The verb posts a `### ❌ Review rejected` comment on the issue and moves it back to Develop.
 - **Dismiss / no choice** → run `/task pause "review-prompt-dismissed"`. The issue stays in R4R; the human will revisit.
 
 The marker fires for every issue type — leaf, sub-issue, epic — and only on the successful path. If `/task review` exits non-zero (cascade gate, verification gate), the marker is not emitted and no prompt is required.
 
-**Full-auto bypass.** Setting `gateReviewToDone false` in `.ai-task-manager/task-tracker.json` lets `/task close` proceed without the marker; the bypass is recorded as a `gate-bypassed` timing-log row. The companion key `gateAnalysisToDevelopment` toggles the analyze → development prompt the same way. Defaults preserve today's human-required behavior. See `docs/guides/workflow.md` → Human Gates.
+**Full-auto bypass.** Setting `gateReviewToDone false` in `.ai-task-manager/task-tracker.json` lets `/task close` proceed without the marker; the bypass is recorded as a `gate-bypassed` timing-log row. The companion key `gateAnalysisToDevelopment` (legacy name, retained for config-key stability) toggles the Plan → Develop prompt the same way. Defaults preserve today's human-required behavior. See `docs/guides/workflow.md` → Human Gates.
 
 ### Moving an issue to Done — human step only:
 
@@ -104,8 +104,8 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 | `/task pause`                    | Flush timing, keep last-active. Run before `/clear` or closing Claude Code.                                                                                                                                                                        |
 | `/task update [msg]`             | Checkpoint — flush timing and reset counters, keep task active                                                                                                                                                                                     |
 | `/task review #N`                | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human.                  |
-| `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Development.                                                                                                                                 |
-| `/task approve-review #N`        | Record explicit human review approval on a R4R issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent.                                                                             |
+| `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Develop.                                                                                                                                     |
+| `/task approve #N`               | Record explicit human review approval on a R4R issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent.                                                                             |
 | `/task close [#N]`               | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. Refuses (exit 7) if the review-approval marker is missing; `--answer yes` cannot satisfy this gate (exit 8). |
 | `/task close --force`            | Close even if unchecked items remain (audited; for legitimate abandonment only)                                                                                                                                                                    |
 | `/task log #N`                   | Re-compute and write Engaged Time, Session Time, and Context Length for any issue                                                                                                                                                                  |
@@ -120,45 +120,31 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 
 ### State Transition Verb Map (7-state model)
 
-The canonical verb surface is `promote` / `demote` / `next` / `reconcile`. The single-purpose verbs `analyze`, `approve`, `review`, and `close` are deprecated aliases retained for one-release compatibility — they delegate to `/task promote` internally and emit no new behaviour.
+The canonical verb surface is `promote` / `demote` / `next` / `reconcile`. The single-purpose verbs `review` and `close` remain first-class because they carry side effects (timing flush, board fields, fleet deregistration) beyond a board move.
 
 **Canonical verbs:**
 
-- `/task promote [<N>]` — Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Walks: Backlog → Groom → Analyze → Development → Validate → Review → Done.
+- `/task promote [<N>]` — Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Walks: Backlog → Refine → Plan → Develop → Test → Review → Done.
 - `/task next [<N>]` — Alias of `/task promote`.
-- `/task demote [<N>]` — Back to `Development` from any forward state (Validate / Review). Records the demotion in the timing log.
+- `/task demote [<N>]` — Back to `Develop` from any forward state (Test / Review). Records the demotion in the timing log.
 - `/task reconcile <N> <accept-live|revert-to-recorded>` — Drift recovery only. Use when the project board and the local field-DB disagree. `accept-live` treats GitHub Projects as source of truth; `revert-to-recorded` pushes the local recorded state back to the board. Do not run any other verb on a drifted issue first.
 
-**Deprecated aliases (delegate to `promote`):**
-
-| Deprecated      | Equivalent                                               |
-| --------------- | -------------------------------------------------------- |
-| `/task groom`   | `/task promote` from Backlog                             |
-| `/task analyze` | `/task promote` from Groom                               |
-| `/task approve` | `/task promote` from Analyze                             |
-| `/task review`  | `/task promote` from Development (CODE_COMPLETE handoff) |
-| `/task close`   | `/task promote` from Review                              |
-
-`/task approve-review` (records human approval marker; gates the Review → Done promotion) and `/task reject #N --reason "..."` (Review → Development with rejection reason) remain first-class — they are not state-walking verbs.
+`/task approve` (records human approval marker; gates the Review → Done promotion) and `/task reject #N --reason "..."` (Review → Develop with rejection reason) remain first-class — they are not state-walking verbs.
 
 There is no user-facing `/task move <state>` verb. Direct invocations of `scripts/gh/move-state.mjs` are forbidden in agent and user surfaces — `/task promote` calls it internally so timing flush, fleet update, and field-DB write all happen atomically.
 
-Validate → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and runs `/task promote` to move the issue.
+Test → Review has no CLI verb: it is the agent self-report `REVIEW_COMPLETE`. The orchestrator confirms the report and runs `/task promote` to move the issue.
 
 #### Estimation comment surfaces
 
 Two verbs emit comments tied to the three-stage estimation model (see `docs/guides/workflow.md` → Three-stage estimation):
 
-- `/task approve <N>` — if the Deep-Dive Analysis shifts the bucket, posts a `### 🔁 Analysis re-estimate` comment with a from→to table and updates Size + Estimate on the board. A ≥2-tier jump posts a `⚠ HUMAN ATTENTION` variant and skips the writes. Set `TASK_TRACKER_SKIP_REEVAL=1` to bypass the hook.
+- `/task promote <N>` (from Plan) — if the Deep-Dive Analysis shifts the bucket, posts a `### 🔁 Plan re-estimate` comment with a from→to table and updates Size + Estimate on the board. A ≥2-tier jump posts a `⚠ HUMAN ATTENTION` variant and skips the writes. Set `TASK_TRACKER_SKIP_REEVAL=1` to bypass the hook.
 - `/task close <N>` — posts a `### 📊 Review delta` comment recording Estimate vs. Actual hours. This comment is **read-only**: Size and Estimate are not changed at close. Set `TASK_TRACKER_SKIP_DELTA=1` to bypass the hook.
 
-#### Deprecated state slugs (one-release sunset)
+#### State-slug migration history
 
-| Old slug      | Replacement                            |
-| ------------- | -------------------------------------- |
-| `ready`       | `groom`                                |
-| `in-progress` | `/task promote` (lands at Development) |
-| `in-review`   | `review`                               |
+The 7-state Scrum vocabulary (`backlog` / `refine` / `plan` / `develop` / `test` / `review` / `done`) replaced the prior vocabulary (`groom` / `analyze` / `development` / `validate`) in epic #96. Old issues, comments, and project boards are migrated in-place by `scripts/maintenance/bind-issues-to-new-project.mjs` and `scripts/maintenance/rename-estimation-headers.mjs`. See [`docs/guides/migrations.md`](../../docs/guides/migrations.md) for the migration runbook. There is no slug shim — the renamed states are the only recognized inputs.
 
 ## Implementation
 
@@ -853,13 +839,13 @@ node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/e
 
 The helper classifies the candidates via `lib/wave-detect.mjs` (batched GraphQL parent query) and behaves as follows:
 
-| Classification                                   | Behaviour                                                                                                                                                                            |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| single child (`len==1`)                          | no-op; prints `NO_WAVE_PARENT_NEEDED`; exits 0                                                                                                                                       |
-| all solo (no parent), `len ≥ 2`                  | creates a new parent issue at `Status=Development`, links each child via `addSubIssue`, posts an orchestration `start` row to the new parent's `⏱ Timing Log`, prints `PARENT: #<N>` |
-| all share one existing parent                    | prints the existing `PARENT: #<N>` so the orchestrator can switch active task to it; no new issue created                                                                            |
-| **mixed** (some solo, some parented)             | **REFUSES** — exits 2 with `wave-detect: mixed-fanout — …`. Orchestrator must hoist the solos under the existing parent (or detach the parented child) before retrying.              |
-| **multi-parent** (children of different parents) | **REFUSES** — exits 2 with `wave-detect: multi-parent — …`. These are two waves, not one.                                                                                            |
+| Classification                                   | Behaviour                                                                                                                                                                        |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| single child (`len==1`)                          | no-op; prints `NO_WAVE_PARENT_NEEDED`; exits 0                                                                                                                                   |
+| all solo (no parent), `len ≥ 2`                  | creates a new parent issue at `Status=Develop`, links each child via `addSubIssue`, posts an orchestration `start` row to the new parent's `⏱ Timing Log`, prints `PARENT: #<N>` |
+| all share one existing parent                    | prints the existing `PARENT: #<N>` so the orchestrator can switch active task to it; no new issue created                                                                        |
+| **mixed** (some solo, some parented)             | **REFUSES** — exits 2 with `wave-detect: mixed-fanout — …`. Orchestrator must hoist the solos under the existing parent (or detach the parented child) before retrying.          |
+| **multi-parent** (children of different parents) | **REFUSES** — exits 2 with `wave-detect: multi-parent — …`. These are two waves, not one.                                                                                        |
 
 After a successful `PARENT: #<N>`:
 
