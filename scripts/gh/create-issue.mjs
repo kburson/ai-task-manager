@@ -3,9 +3,10 @@
 // `<this-issue-#>` placeholder substitution. Replaces the multi-step orchestration
 // pattern previously inlined in skill/shared/SKILL.md.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
@@ -13,11 +14,14 @@ import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TETHER_SCRIPT =
   process.env.CREATE_ISSUE_TETHER_SCRIPT || path.join(SCRIPT_DIR, 'project-tether.mjs');
+const PREFLIGHT_SCRIPT = path.resolve(SCRIPT_DIR, '..', 'task-tracker', 'preflight-issue.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
+const GROOM_LIKE_STATUSES = new Set(['groom', 'refine', 'ready']);
+const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> --body-file <path> [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--assignee <a>] [--no-tether] [--no-placeholder-substitution]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution]`;
 }
 
 function parseArgs(argv) {
@@ -26,7 +30,11 @@ function parseArgs(argv) {
     const a = argv[i];
     if (!a.startsWith('--')) continue;
     const key = a.slice(2);
-    if (key === 'no-tether' || key === 'no-placeholder-substitution') {
+    if (
+      key === 'no-tether' ||
+      key === 'no-placeholder-substitution' ||
+      key === 'dry-run'
+    ) {
       out[key] = true;
       continue;
     }
@@ -72,7 +80,42 @@ function extractIssueNumber(urlOrText) {
 
 function validateArgs(args) {
   if (!args.title || args.title === true) die(`missing --title\n${usage()}`, 2);
-  if (!args['body-file'] || args['body-file'] === true) die(`missing --body-file\n${usage()}`, 2);
+  const hasBody = typeof args['body-file'] === 'string';
+  const hasShape = typeof args.shape === 'string';
+  if (!hasBody && !hasShape) die(`missing --body-file or --shape\n${usage()}`, 2);
+  if (hasBody && hasShape) die(`--body-file and --shape are mutually exclusive`, 2);
+  if (hasShape) {
+    if (!VALID_SHAPES.has(args.shape)) {
+      die(`--shape must be one of: epic, sub-issue, solo (got: ${args.shape})`, 2);
+    }
+    for (const flag of ['scope-file', 'ac-file', 'plan-metadata-file']) {
+      if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`, 2);
+    }
+    if (args.shape === 'sub-issue' && typeof args.parent !== 'string') {
+      die('--parent <N> required with --shape sub-issue', 2);
+    }
+  }
+}
+
+function renderShapeBody(args) {
+  const flags = [
+    '--shape',
+    args.shape,
+    '--scope-file',
+    args['scope-file'],
+    '--ac-file',
+    args['ac-file'],
+    '--plan-metadata-file',
+    args['plan-metadata-file'],
+  ];
+  if (typeof args.parent === 'string') flags.push('--parent', args.parent);
+  if (typeof args['sub-issue-list-file'] === 'string') {
+    flags.push('--sub-issue-list-file', args['sub-issue-list-file']);
+  }
+  const result = run('node', [PREFLIGHT_SCRIPT, ...flags], { timeout: GH_API_TIMEOUT_MS });
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.status !== 0) die(`preflight-issue --shape failed (exit ${result.status})`, result.status || 1);
+  return result.stdout;
 }
 
 function readBody(file) {
@@ -158,34 +201,97 @@ function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
   console.error(`✓ placeholders substituted in #${issueNumber}`);
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  validateArgs(args);
-  const bodyContent = readBody(args['body-file']);
+function resolveAssignee(args, cfg) {
+  const explicit = typeof args.assignee === 'string' && args.assignee ? args.assignee : null;
+  if (explicit) return explicit;
+  if (cfg.assignee) return cfg.assignee;
+  die(
+    'assignee-required: no --assignee and no `assignee` in .ai-task-manager/task-tracker.json. ' +
+      'Pass --assignee <login|@me> or run /task init.',
+    2
+  );
+  return null;
+}
 
-  const cfg = loadConfig();
-  const skipTether = args['no-tether'] === true;
-  if (!skipTether && !cfg.projectId) {
+function enforcePriorityGate(args) {
+  const status = typeof args.status === 'string' ? args.status : null;
+  if (!status) return;
+  if (!GROOM_LIKE_STATUSES.has(status)) return;
+  if (typeof args.priority !== 'string' || !args.priority) {
     die(
-      'no projectId in task-tracker.json — run /task init, or pass --no-tether for an untethered issue',
+      `priority-required-at-groom: --priority is required when --status=${status} ` +
+        '(set p0|p1|p2 alongside size + estimate at Groom)',
       2
     );
   }
-  if (!cfg.repo) die('no repo in task-tracker.json — run /task init', 2);
+}
 
-  const assignee = (typeof args.assignee === 'string' && args.assignee) || cfg.assignee || '@me';
-  const priority = (typeof args.priority === 'string' && args.priority) || undefined;
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  validateArgs(args);
 
-  const issueNumber = ghCreate(args, assignee);
-
-  if (!skipTether) tether(issueNumber, args, priority);
-
-  const skipSub = args['no-placeholder-substitution'] === true;
-  if (!skipSub && PLACEHOLDER_RE.test(bodyContent)) {
-    substitutePlaceholders(issueNumber, bodyContent, args, cfg.repo);
+  const cfg = loadConfig();
+  const skipTether = args['no-tether'] === true;
+  const dryRun = args['dry-run'] === true;
+  if (!dryRun) {
+    if (!skipTether && !cfg.projectId) {
+      die(
+        'no projectId in task-tracker.json — run /task init, or pass --no-tether for an untethered issue',
+        2
+      );
+    }
+    if (!cfg.repo) die('no repo in task-tracker.json — run /task init', 2);
   }
 
-  console.log(`https://github.com/${cfg.repo}/issues/${issueNumber}`);
+  const assignee = dryRun
+    ? (typeof args.assignee === 'string' && args.assignee) || cfg.assignee || '@me'
+    : resolveAssignee(args, cfg);
+  const priority = (typeof args.priority === 'string' && args.priority) || undefined;
+  enforcePriorityGate(args);
+
+  // Materialize body: either provided --body-file, or render via preflight --shape.
+  let bodyFilePath = args['body-file'];
+  let tmpDir = null;
+  let bodyContent;
+  if (typeof args.shape === 'string') {
+    const rendered = renderShapeBody(args);
+    if (dryRun) {
+      process.stdout.write(rendered);
+      return;
+    }
+    tmpDir = mkdtempSync(path.join(tmpdir(), 'aitm-create-issue-'));
+    bodyFilePath = path.join(tmpDir, 'body.md');
+    writeFileSync(bodyFilePath, rendered, 'utf8');
+    bodyContent = rendered;
+  } else {
+    bodyContent = readBody(bodyFilePath);
+    if (dryRun) {
+      process.stdout.write(bodyContent);
+      return;
+    }
+  }
+
+  try {
+    const ghArgs = { ...args, 'body-file': bodyFilePath };
+    const issueNumber = ghCreate(ghArgs, assignee);
+
+    if (!skipTether) tether(issueNumber, args, priority);
+
+    const skipSub = args['no-placeholder-substitution'] === true;
+    if (!skipSub && PLACEHOLDER_RE.test(bodyContent)) {
+      substitutePlaceholders(issueNumber, bodyContent, args, cfg.repo);
+    }
+
+    console.log(`https://github.com/${cfg.repo}/issues/${issueNumber}`);
+  } finally {
+    if (tmpDir) {
+      try {
+        rmSync(tmpDir, { recursive: true, force: true });
+      } catch {
+        // best-effort cleanup
+      }
+    }
+  }
 }
 
 try {

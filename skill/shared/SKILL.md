@@ -501,39 +501,27 @@ For loose leaf tasks, omit `--parent`. For epic child issues, pass `--parent`.
 
 ### Epic Creation
 
-#### 1. Assemble the epic body
+#### 1. Stage the three content fragments
 
-From the spec in context, extract:
+Write the spec content into three files under `./tmp/`:
 
-- The **Epic Scope** section (everything under `### Epic Scope` or the first `## Scope` block for this epic)
-- The **Epic Acceptance Criteria** checkboxes
+- `./tmp/scope.md` — the **Epic Scope** prose.
+- `./tmp/acs.md` — the **Epic Acceptance Criteria** as `- [ ]` checkboxes (mandatory format; closes-gate parser requires it).
+- `./tmp/plan-meta.md` — the Plan Metadata block (`**Size:**`, `**Estimate:**`, `**Priority:**`, `**Sequence:**`).
 
-Generate the Definition of Done and Pickup Directive tail block by running the preflight script (stdout = the
-canonical tail block, with `<this-issue-#>` and `<parent-epic-#>` placeholders to be
-replaced after creation). This is unconditional in orchestration mode — all issues
-from a master plan are stubs; the deep dive happens at pickup time regardless of issue
-type:
-
-```bash
-DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs")
-# If this command exits non-zero, STOP — do not create any issues.
-```
-
-Append `$DIRECTIVE_BLOCK` after Plan Metadata and Acceptance Criteria. Do not hand-craft the block — the
-script reads from `.ai-task-manager/definition-of-done.md` so the output stays
-authoritative.
+Do not hand-assemble the issue body. The `--shape epic` flag below feeds these fragments through `templates/epic-body.md` and appends the canonical Definition of Done + Pickup Directive tail block. `.ai-task-manager/epic-body.md` (if present) overrides the packaged template, same precedence as pickup-directive.md.
 
 #### 2. Create + tether the epic atomically
 
-Write the assembled body to a temp file, then call the helper. It runs `gh issue create`, tethers the issue to the project Backlog with priority/size/estimate/sequence, and substitutes the `<this-issue-#>` / `<parent-epic-#>` placeholders in one step.
+`scripts/gh/create-issue.mjs --shape epic …` is the only sanctioned path. It calls `preflight-issue.mjs --shape epic` to render the body, runs `gh issue create`, tethers to the project Backlog with priority/size/estimate/sequence, and substitutes the `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic. **Never call `gh issue create` directly.**
 
 ```bash
-BODY_FILE=$(mktemp)
-printf '%s' "<assembled-body>" > "$BODY_FILE"
-
-URL=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/create-issue.mjs" \
+URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
+  --shape epic \
   --title "EPIC: <title>" \
-  --body-file "$BODY_FILE" \
+  --scope-file ./tmp/scope.md \
+  --ac-file ./tmp/acs.md \
+  --plan-metadata-file ./tmp/plan-meta.md \
   --priority <p0|p1|p2 from spec> \
   --size <XS|S|M|L|XL from spec> \
   --estimate <estimate-hours as float> \
@@ -543,6 +531,8 @@ URL=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/script
   --label "<inferred1>" \
   [--label "<inferred2>" ...])
 ```
+
+Use `--dry-run` to print the rendered body to stdout without calling `gh` (useful for inspection or diff against an existing issue).
 
 The helper prints the issue URL on stdout. Extract the number (e.g., `https://github.com/owner/repo/issues/42` → `42`) and store as `EPIC_N`. Default priority for epics: `p0`.
 
@@ -564,32 +554,27 @@ Repeat the following for each sub-issue in the spec, in document order.
 
 Read the sub-issue's Scope. Apply all matching labels from the inference table in Label Setup B.
 
-#### 2. Assemble the sub-issue body
+#### 2. Stage the three content fragments
 
-Combine in order:
+Same as Epic Creation step 1, but for the sub-issue:
 
-1. The **Scope** section text
-2. The **Acceptance Criteria** checkboxes
-3. The Definition of Done and Pickup Directive block (always inject — regardless of `pickupDirective` config — since the spec was built with it). Generate via the preflight script:
+- `./tmp/scope.md` — Scope prose
+- `./tmp/acs.md` — Acceptance Criteria as `- [ ]` checkboxes
+- `./tmp/plan-meta.md` — Plan Metadata block
 
-```bash
-DIRECTIVE_BLOCK=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs")
-# If this command exits non-zero, STOP — do not create any issues.
-```
-
-The script's output already contains `<this-issue-#>` and `<parent-epic-#>` placeholders at the right spots — `create-issue.mjs` substitutes them automatically in the next step.
+`--shape sub-issue` feeds these through `templates/sub-issue-body.md` (override: `.ai-task-manager/sub-issue-body.md`). Tail block (DoD + Pickup Directive) is appended by the preflight automatically. Do not hand-assemble.
 
 #### 3. Create + tether the sub-issue atomically
 
-Priority default for sub-issues: inherit from parent epic if not declared in spec.
+Priority default for sub-issues: inherit from parent epic if not declared in spec. `create-issue.mjs --shape sub-issue` is the only sanctioned path; never call `gh issue create` directly.
 
 ```bash
-BODY_FILE=$(mktemp)
-printf '%s' "<assembled-body>" > "$BODY_FILE"
-
-URL=$(node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/create-issue.mjs" \
+URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
+  --shape sub-issue \
   --title "<sub-issue-title>" \
-  --body-file "$BODY_FILE" \
+  --scope-file ./tmp/scope.md \
+  --ac-file ./tmp/acs.md \
+  --plan-metadata-file ./tmp/plan-meta.md \
   --parent <EPIC_N> \
   --priority <p0|p1|p2 from spec or parent> \
   --size <XS|S|M|L|XL from spec> \
@@ -649,6 +634,24 @@ Then ask:
 
 - User names an epic → run `/task #<EPIC_N>` to attach the session.
 - **none** → leave plan mode active.
+
+## Project Preferences
+
+Team-shared workflow preferences live in the git-tracked `.ai-task-manager/task-tracker.json` under `preferences`. Read them at session start via `getPreferences()` from `scripts/task-tracker/config.mjs`. Defaults preserve today's behavior; teams opt in by editing the file (or via `npx ai-task-manager configure preferences`). Reference keys by name when honoring them:
+
+| Key | Default | Effect when enabled |
+|---|---|---|
+| `noPushToOrigin` | `false` | Commit/merge to trunk locally only; never `git push`, never open PRs. |
+| `mainThreadOnly` | `false` | No feature branches, no worktrees; commit straight to trunk. Disables parallel dispatch. |
+| `driveSubIssuesToR4R` | `true` | Drive sub-issues end-to-end through dispatch/review/merge to R4R without per-step human check-ins. |
+| `pauseTimerOnBlockingQuestion` | `true` | `/task pause "pause for question"` before any blocking user prompt; `/task start "question answered"` on resume. |
+| `noConfirmAfterDeepDive` | `true` | After posting the deep-dive comment, proceed straight to implementation; do not ask "ready to proceed?". |
+| `askGatesBeforeParallel` | `true` | Before parallel sub-agent dispatch, prompt user which human gates to disable; encode into prompts; restore after. |
+| `formatting.noEmojis` | `true` | Issue bodies, comments, and commit messages contain no emojis. |
+| `formatting.currencyInBackticks` | `true` | Currency amounts wrap in backticks (`` `$200` ``). |
+| `scratchDir` | `"./tmp/"` | Canonical directory for transient files (issue body fragments, deep-dive staging). |
+
+Decision-point examples: if `mainThreadOnly` is true, skip worktree creation; if `noPushToOrigin` is true, never run `git push` and never open PRs; if `askGatesBeforeParallel` is true, prompt before dispatching parallel sub-agents.
 
 ## AI Directives
 

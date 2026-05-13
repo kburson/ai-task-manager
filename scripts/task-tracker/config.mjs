@@ -132,6 +132,52 @@ export function rawProjectConfig(paths = {}) {
   return {};
 }
 
+// Team-shared workflow preferences. Stored under `preferences` in the
+// git-tracked `.ai-task-manager/task-tracker.json`. Defaults preserve today's
+// behavior; teams opt in by editing the file (or via `configure preferences`).
+export const PREFERENCE_DEFAULTS = {
+  noPushToOrigin: false,
+  mainThreadOnly: false,
+  driveSubIssuesToR4R: true,
+  pauseTimerOnBlockingQuestion: true,
+  noConfirmAfterDeepDive: true,
+  askGatesBeforeParallel: true,
+  formatting: {
+    noEmojis: true,
+    currencyInBackticks: true,
+  },
+  scratchDir: './tmp/',
+};
+
+function mergePreferences(overrides) {
+  const merged = { ...PREFERENCE_DEFAULTS };
+  if (overrides && typeof overrides === 'object' && !Array.isArray(overrides)) {
+    for (const [k, v] of Object.entries(overrides)) {
+      if (!(k in PREFERENCE_DEFAULTS)) continue;
+      const def = PREFERENCE_DEFAULTS[k];
+      if (def && typeof def === 'object' && !Array.isArray(def)) {
+        merged[k] = { ...def, ...(v && typeof v === 'object' ? v : {}) };
+      } else {
+        merged[k] = v;
+      }
+    }
+  }
+  return merged;
+}
+
+export function getPreferences(paths = {}) {
+  const defaults = defaultPaths();
+  const projectPath = paths.projectPath ?? defaults.projectPath;
+  const legacyProjectPath =
+    paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
+  const project = existsSync(projectPath)
+    ? readJson(projectPath)
+    : legacyProjectPath
+      ? readJson(legacyProjectPath)
+      : {};
+  return mergePreferences(project.preferences);
+}
+
 export function loadConfig(paths = {}) {
   const defaults = defaultPaths();
   const projectPath = paths.projectPath ?? defaults.projectPath;

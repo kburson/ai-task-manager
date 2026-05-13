@@ -24,6 +24,7 @@ import {
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
+import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -505,7 +506,13 @@ function installTemplates(targetDir) {
   step('Shared templates and gitignore');
   const templateDest = join(targetDir, '.ai-task-manager');
   mkdirSync(templateDest, { recursive: true });
-  for (const name of ['pickup-directive.md', 'definition-of-done.md']) {
+  for (const name of [
+    'pickup-directive.md',
+    'definition-of-done.md',
+    'epic-body.md',
+    'sub-issue-body.md',
+    'solo-issue-body.md',
+  ]) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(templateDest, name);
     let suffix = '';
@@ -558,6 +565,40 @@ function installTemplates(targetDir) {
   }
   patchGitignore(targetDir);
   ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
+  mergeDefaultPreferences(templateDest);
+}
+
+function mergeDefaultPreferences(templateDest) {
+  const cfgPath = join(templateDest, 'task-tracker.json');
+  let cfg = {};
+  if (existsSync(cfgPath)) {
+    try {
+      cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+    } catch {
+      cfg = {};
+    }
+  }
+  const existing = cfg.preferences && typeof cfg.preferences === 'object' ? cfg.preferences : {};
+  const merged = { ...PREFERENCE_DEFAULTS };
+  for (const [k, v] of Object.entries(existing)) {
+    if (!(k in PREFERENCE_DEFAULTS)) continue;
+    const def = PREFERENCE_DEFAULTS[k];
+    if (def && typeof def === 'object' && !Array.isArray(def)) {
+      merged[k] = { ...def, ...(v && typeof v === 'object' ? v : {}) };
+    } else {
+      merged[k] = v;
+    }
+  }
+  const before = JSON.stringify(cfg.preferences ?? null);
+  cfg.preferences = merged;
+  const after = JSON.stringify(cfg.preferences);
+  if (before === after && existsSync(cfgPath)) {
+    ok(`Preferences ${dim('.ai-task-manager/task-tracker.json#preferences')} ${dim('(unchanged)')}`);
+    return;
+  }
+  mkdirSync(dirname(cfgPath), { recursive: true });
+  writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
+  ok(`Preferences ${dim('.ai-task-manager/task-tracker.json#preferences')}`);
 }
 
 function cmdVersion() {
