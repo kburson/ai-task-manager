@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');
@@ -41,7 +42,7 @@ for (const entry of files) {
   const res = spawnSync('node', [full], {
     stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
-    timeout: 60000,
+    timeout: TEST_RUNNER_TIMEOUT_MS,
   });
   if (res.status === 0) {
     console.log('ok');

@@ -10,6 +10,7 @@ import {
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { legacyPathFor } from './paths.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const LOCK_STALE_MS = 30_000;
 const LOCK_RETRY_MS = 25;
@@ -54,6 +55,7 @@ export function findMainWorktreePath(projectDir) {
       cwd: projectDir,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GIT_TIMEOUT_MS,
     });
     const firstBlock = out.split(/\n\n/)[0];
     const match = firstBlock.match(/^worktree (.+)$/m);
@@ -72,6 +74,7 @@ export function currentBranch(projectDir) {
       cwd: projectDir,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GIT_TIMEOUT_MS,
     }).trim();
   } catch {
     return 'unknown';

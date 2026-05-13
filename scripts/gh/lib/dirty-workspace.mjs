@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { findMainWorktreePath, fleetRegistryPath } from '../../task-tracker/fleet-registry.mjs';
 import { readFileSync } from 'node:fs';
+import { LOCAL_FAST_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -20,7 +21,7 @@ const defaultRunner = async (cwd) => {
     ['-c', 'core.quotepath=false', 'status', '--porcelain=v1'],
     {
       cwd,
-      timeout: 5000,
+      timeout: LOCAL_FAST_TIMEOUT_MS,
       encoding: 'utf8',
       maxBuffer: 2 * 1024 * 1024,
     }

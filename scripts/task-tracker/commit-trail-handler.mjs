@@ -21,6 +21,7 @@ import {
   hasWorktreeCols,
   TRAIL_HEADING,
 } from './lib/commit-trail.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -79,7 +80,7 @@ function loadRepo(projectDir) {
 
 async function gitInfo(cwd) {
   const run = async (args) => {
-    const { stdout } = await pexec('git', args, { cwd, timeout: 3000 });
+    const { stdout } = await pexec('git', args, { cwd, timeout: GIT_TIMEOUT_MS });
     return stdout.trim();
   };
   const sha = await run(['rev-parse', 'HEAD']);

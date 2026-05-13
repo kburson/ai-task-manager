@@ -28,6 +28,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { classify, rejectionMessage } from './lib/wave-detect.mjs';
 import { gql, splitRepo } from './lib/github-projects.mjs';
@@ -93,7 +94,7 @@ async function findExistingParentByWaveId({ repo, waveIdValue, assignee }) {
   const q = `"<!-- ${marker} -->" in:body repo:${repo} state:open`;
   const args = ['search', 'issues', q, '--json', 'number,body', '--limit', '20'];
   if (assignee) args.push('--author', assignee.replace(/^@/, ''));
-  const r = spawnSync('gh', args, { encoding: 'utf8' });
+  const r = spawnSync('gh', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS });
   if (r.status !== 0) return null;
   try {
     const rows = JSON.parse(r.stdout || '[]');
@@ -143,7 +144,8 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
   if (sequence) args.push('--sequence', String(sequence));
   if (cfg.assignee) args.push('--assignee', cfg.assignee);
 
-  const r = spawnSync('node', args, { encoding: 'utf8' });
+  // create-issue.mjs makes multiple gh calls; allow gh-class budget plus headroom.
+  const r = spawnSync('node', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS * 2 });
   if (r.status !== 0) {
     process.stderr.write(r.stderr || '');
     throw new Error(`create-issue failed (exit ${r.status})`);

@@ -17,12 +17,13 @@ import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { computeReviewDelta, buildDeltaCommentBody, DELTA_HEADER } from './review-delta.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
+import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
-    timeout: 5000,
+    timeout: GH_API_TIMEOUT_MS,
   });
 }
 

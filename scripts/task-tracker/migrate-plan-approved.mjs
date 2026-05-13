@@ -25,6 +25,7 @@ import {
   PLAN_APPROVED_RE as APPROVAL_MARKER_RE,
   buildPlanApprovedMarker as approvalMarker,
 } from './lib/markers.mjs';
+import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -63,7 +64,7 @@ async function fetchBody(issueNumber, repo) {
   const { stdout } = await pexec(
     'gh',
     ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
-    { timeout: 15000 }
+    { timeout: GH_API_TIMEOUT_MS }
   );
   return stdout.replace(/\r\n/g, '\n');
 }
@@ -73,7 +74,7 @@ async function writeBody(issueNumber, repo, body) {
   writeFileSync(tmp, body, 'utf8');
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: 15000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {

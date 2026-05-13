@@ -11,6 +11,7 @@ import {
   resolveWorkspaceForIssue,
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -139,7 +140,7 @@ export async function verbClose(ctx) {
       const { stdout } = await pexec(
         'gh',
         ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
-        { timeout: 10000 }
+        { timeout: GH_API_TIMEOUT_MS }
       );
       const data = JSON.parse(stdout);
       const body = data.body ?? '';
@@ -205,7 +206,7 @@ export async function verbClose(ctx) {
             const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
             const note = `⚠ **Close gate bypassed** via \`${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'}\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
             await pexec('gh', ['issue', 'comment', closeIssueNum, '-R', cfg.repo, '--body', note], {
-              timeout: 10000,
+              timeout: GH_API_TIMEOUT_MS,
             });
           } catch {}
         } else {
@@ -259,7 +260,7 @@ export async function verbClose(ctx) {
             );
             await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' } });
             await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
-              timeout: 10000,
+              timeout: GH_API_TIMEOUT_MS,
             });
             try {
               deregisterTask(projectDir, `#${child.num}`);

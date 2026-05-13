@@ -6,6 +6,7 @@ import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 export async function verbReview(ctx) {
   const {
@@ -40,7 +41,7 @@ export async function verbReview(ctx) {
       const { stdout } = await pexec(
         'gh',
         ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-        { timeout: 10000 }
+        { timeout: GH_API_TIMEOUT_MS }
       );
       body = (stdout || '').trim();
     } catch {}
@@ -66,7 +67,7 @@ export async function verbReview(ctx) {
                 '--body',
                 `⚠ **review gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${result.refusedRules.map((r) => r.rule).join(', ')}.`,
               ],
-              { timeout: 5000 }
+              { timeout: GH_API_TIMEOUT_MS }
             );
           } catch {}
         } else {
@@ -177,7 +178,7 @@ export async function verbReview(ctx) {
     const { stdout } = await pexec(
       'gh',
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body'],
-      { timeout: 10000 }
+      { timeout: GH_API_TIMEOUT_MS }
     );
     const rawBody = JSON.parse(stdout).body ?? '';
     const lines = rawBody.split('\n');
@@ -216,6 +217,9 @@ export async function verbReview(ctx) {
         }
         let passed = false;
         try {
+          // Verification command runner: 5min budget — these are user-defined
+          // suites (lint, typecheck, full test) that legitimately exceed
+          // TEST_RUNNER_TIMEOUT_MS. Kept inline; not a TIMEOUT_CLASSES member.
           await pexec(validation.argv[0], validation.argv.slice(1), {
             cwd: projectDir,
             timeout: 300000,
@@ -240,7 +244,7 @@ export async function verbReview(ctx) {
     try {
       writeFileSync(tmpBody, lines.join('\n'), 'utf8');
       await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmpBody], {
-        timeout: 15000,
+        timeout: GH_API_TIMEOUT_MS,
       });
     } finally {
       try {

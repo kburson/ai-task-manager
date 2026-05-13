@@ -11,6 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const SRC_FILES = ['task-tracker.json', 'pickup-directive.md', 'definition-of-done.md'];
 const EMPTY_FILES = ['task-tracker-state.json'];
@@ -85,6 +86,7 @@ export function findMainWorktree(cwd = process.cwd()) {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GIT_TIMEOUT_MS,
     });
     const m = out.match(/^worktree (.+)$/m);
     return m ? m[1] : null;

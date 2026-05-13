@@ -25,6 +25,7 @@ import {
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -57,7 +58,7 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   writeFileSync(tmp, body, 'utf8');
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: 15000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {
@@ -97,6 +98,7 @@ function defaultRunMoveState({ issueNumber, target }) {
     const child = spawn(process.execPath, [script, String(issueNumber), target], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1' },
+      timeout: GH_API_TIMEOUT_MS * 2,
     });
     child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));

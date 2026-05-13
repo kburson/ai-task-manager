@@ -21,6 +21,7 @@ import {
   hasReviewApprovedMarker,
   insertReviewApprovedMarker,
 } from '../lib/markers.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -49,7 +50,7 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   writeFileSync(tmp, body, 'utf8');
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: 15000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {

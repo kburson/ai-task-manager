@@ -20,12 +20,13 @@ import {
 import { reevaluateEstimate, buildAuditCommentBody, AUDIT_HEADER } from './reevaluate-estimate.mjs';
 import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
+import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
-    timeout: 5000,
+    timeout: GH_API_TIMEOUT_MS,
   });
 }
 
@@ -46,7 +47,7 @@ async function defaultHasSubIssues({ issueNumber, repo }) {
         '-F',
         `issue=${Number(issueNumber)}`,
       ],
-      { timeout: 10000 }
+      { timeout: GH_API_TIMEOUT_MS }
     );
     const data = JSON.parse(stdout);
     const count = data?.data?.repository?.issue?.subIssues?.totalCount ?? 0;
@@ -61,7 +62,7 @@ async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   writeFileSync(tmpFile, body);
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmpFile], {
-      timeout: 10000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {
