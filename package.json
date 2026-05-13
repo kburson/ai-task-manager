@@ -24,7 +24,7 @@
     "format:check": "prettier --check .",
     "lint:js": "eslint .",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
-    "lint:spell": "cspell --no-progress --gitignore \"**/*.{md,mjs,js,json}\"",
+    "lint:spell": "cspell --no-progress \"**/*.{md,mjs,js,json}\"",
     "lint": "npm run lint:js && npm run lint:md && npm run lint:spell",
     "quality": "npm run format:check && npm run lint && npm test"
   },
