@@ -23,7 +23,7 @@
 // stdout (on no-op): `NO_WAVE_PARENT_NEEDED`
 
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -94,10 +94,15 @@ async function findExistingParentByWaveId({ repo, waveIdValue, assignee }) {
   const q = `"<!-- ${marker} -->" in:body repo:${repo} state:open`;
   const args = ['search', 'issues', q, '--json', 'number,body', '--limit', '20'];
   if (assignee) args.push('--author', assignee.replace(/^@/, ''));
-  const r = spawnSync('gh', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS });
-  if (r.status !== 0) return null;
+  let stdout;
   try {
-    const rows = JSON.parse(r.stdout || '[]');
+    stdout = execFileSync('gh', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS });
+  } catch {
+    // gh search failure → caller treats this as "no existing parent found".
+    return null;
+  }
+  try {
+    const rows = JSON.parse(stdout || '[]');
     for (const row of rows) {
       if (typeof row.body === 'string' && row.body.includes(marker)) return Number(row.number);
     }
@@ -145,14 +150,15 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
   if (cfg.assignee) args.push('--assignee', cfg.assignee);
 
   // create-issue.mjs makes multiple gh calls; allow gh-class budget plus headroom.
-  const r = spawnSync('node', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS * 2 });
-  if (r.status !== 0) {
-    process.stderr.write(r.stderr || '');
-    throw new Error(`create-issue failed (exit ${r.status})`);
+  let stdout;
+  try {
+    stdout = execFileSync('node', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS * 2 });
+  } catch (err) {
+    if (err.stderr) process.stderr.write(String(err.stderr));
+    throw new Error(`create-issue failed (exit ${err.status ?? 1})`);
   }
-  const m = /\/issues\/(\d+)/.exec(r.stdout || '');
-  if (!m)
-    throw new Error(`could not parse new parent number from create-issue stdout: ${r.stdout}`);
+  const m = /\/issues\/(\d+)/.exec(stdout || '');
+  if (!m) throw new Error(`could not parse new parent number from create-issue stdout: ${stdout}`);
   return Number(m[1]);
 }
 

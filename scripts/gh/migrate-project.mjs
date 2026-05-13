@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
@@ -80,12 +80,17 @@ async function main() {
     // prompts. No `timeout:` here: a fixed budget would kill a slow human
     // typing answers. Sibling automated child-process calls in this file go
     // through `gh`/`gql` helpers which set their own GH_API_TIMEOUT_MS.
-    const res = spawnSync('bash', [initScript, '--target', projectDir], {
-      cwd: projectDir,
-      stdio: 'inherit',
-      env: process.env,
-    });
-    if (res.status !== 0) process.exit(res.status || 1);
+    // execFileSync throws on non-zero exit; with stdio:'inherit' the user has
+    // already seen any error output, so propagate the exit code unchanged.
+    try {
+      execFileSync('bash', [initScript, '--target', projectDir], {
+        cwd: projectDir,
+        stdio: 'inherit',
+        env: process.env,
+      });
+    } catch (err) {
+      process.exit(typeof err.status === 'number' && err.status ? err.status : 1);
+    }
   }
 
   const cfg = loadConfig();

@@ -4,7 +4,7 @@
 // pattern previously inlined in skill/shared/SKILL.md.
 
 import { readFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
@@ -48,8 +48,18 @@ function die(msg, code = 1) {
 }
 
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
-  return { status: r.status ?? 1, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+  // execFileSync throws on non-zero exit; capture err.status/stdout/stderr to
+  // preserve the non-throwing {status,stdout,stderr} contract this helper exposes.
+  try {
+    const stdout = execFileSync(cmd, args, { encoding: 'utf8', ...opts });
+    return { status: 0, stdout: stdout ?? '', stderr: '' };
+  } catch (err) {
+    return {
+      status: typeof err.status === 'number' ? err.status : 1,
+      stdout: err.stdout ? String(err.stdout) : '',
+      stderr: err.stderr ? String(err.stderr) : (err.message ?? ''),
+    };
+  }
 }
 
 function extractIssueNumber(urlOrText) {
@@ -128,21 +138,22 @@ function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
     .replaceAll('<this-issue-#>', `#${issueNumber}`)
     .replaceAll('<parent-epic-#>', parentLabel);
 
-  const patch = spawnSync(
-    'gh',
-    ['api', '-X', 'PATCH', `/repos/${repo}/issues/${issueNumber}`, '--input', '-'],
-    {
-      input: JSON.stringify({ body: newBody }),
-      encoding: 'utf8',
-      timeout: GH_API_TIMEOUT_MS,
-    }
-  );
-  if (patch.status !== 0) {
-    process.stderr.write(patch.stderr ?? '');
+  try {
+    execFileSync(
+      'gh',
+      ['api', '-X', 'PATCH', `/repos/${repo}/issues/${issueNumber}`, '--input', '-'],
+      {
+        input: JSON.stringify({ body: newBody }),
+        encoding: 'utf8',
+        timeout: GH_API_TIMEOUT_MS,
+      }
+    );
+  } catch (err) {
+    if (err.stderr) process.stderr.write(String(err.stderr));
     console.error(
       `✗ placeholder substitution PATCH failed for #${issueNumber} (issue exists, body not substituted)`
     );
-    process.exit(patch.status || 1);
+    process.exit(typeof err.status === 'number' && err.status ? err.status : 1);
   }
   console.error(`✓ placeholders substituted in #${issueNumber}`);
 }

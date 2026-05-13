@@ -7,7 +7,7 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFile, spawnSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
@@ -186,11 +186,23 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // setup wizard via inherited stdio. A fixed budget would kill a slow human
     // mid-prompt. Child gh calls inside the wizard each carry their own
     // GH_API_TIMEOUT_MS budgets.
-    const result = spawnSync(process.execPath, [scriptPath, ...args], {
-      cwd: projectDir,
-      stdio: 'inherit',
-      env: process.env,
-    });
+    // execFileSync throws on non-zero exit; reconstruct the {status,error,signal}
+    // shape handleMigrateResult expects so error reporting stays consistent.
+    let result;
+    try {
+      execFileSync(process.execPath, [scriptPath, ...args], {
+        cwd: projectDir,
+        stdio: 'inherit',
+        env: process.env,
+      });
+      result = { status: 0 };
+    } catch (err) {
+      result = {
+        status: typeof err.status === 'number' ? err.status : 1,
+        error: err.code && err.code !== 'ENOENT' ? null : err,
+        signal: err.signal || null,
+      };
+    }
     handleMigrateResult(result);
   };
 
