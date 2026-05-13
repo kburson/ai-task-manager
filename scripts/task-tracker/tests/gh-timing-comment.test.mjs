@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
+import { buildRow, readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import {
-  buildRow,
   appendRow,
   buildInitialComment,
   TIMING_HEADING,
   RETROACTIVE_TS_ERROR,
-  readLastKnownState,
-  writeLastKnownState,
-} from '../gh-timing-comment.mjs';
+} from '../gh-timing-comment.internals.mjs';
 
 function localMinuteWithOffset(iso) {
   const d = new Date(iso);

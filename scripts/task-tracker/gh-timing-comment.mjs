@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const pexec = promisify(execFile);
 
-export const TIMING_HEADING = '⏱ Timing Log';
+const TIMING_HEADING = '⏱ Timing Log';
 
 const TABLE_HEADER = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |',
@@ -50,7 +50,7 @@ function fmtNum(n) {
 // no argument bypasses this check.
 const RETROACTIVE_TS_WINDOW_MS = 60_000;
 
-export const RETROACTIVE_TS_ERROR =
+const RETROACTIVE_TS_ERROR =
   'retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated';
 
 function tsToMs(ts) {
@@ -126,11 +126,11 @@ export function writeLastKnownState(body, state) {
   return `${block}${stripped}`;
 }
 
-export function buildInitialComment() {
+function buildInitialComment() {
   return [TIMING_HEADING, '', TABLE_HEADER].join('\n');
 }
 
-export function appendRow(body, row) {
+function appendRow(body, row) {
   const lines = body.split('\n');
   let lastTableIdx = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -161,7 +161,7 @@ async function ghExec(args, { timeoutMs = 2000 } = {}) {
   return stdout;
 }
 
-export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
+async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
   const num = issueNumber.replace('#', '');
   const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
@@ -169,13 +169,13 @@ export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
   return hit ? { id: hit.id, url: hit.url, body: hit.body } : null;
 }
 
-export async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
+async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
   const num = issueNumber.replace('#', '');
   const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
   return out.trim(); // URL of new comment
 }
 
-export async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
+async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
   // gh doesn't have edit-comment by id for issues directly;
   // use GraphQL mutation.
   const mutation = `
@@ -198,3 +198,17 @@ export async function postTimingEvent({ issueNumber, repo, row, timeoutMs = 2000
     await createTimingComment(issueNumber, repo, initial, { timeoutMs });
   }
 }
+
+// Internal symbols — exported under a dedicated namespace strictly so the
+// sibling `gh-timing-comment.internals.mjs` module can re-export them for
+// tests. Production code MUST NOT import `__internals` directly; it is not
+// part of the public API and the names inside may change without notice.
+export const __internals = {
+  TIMING_HEADING,
+  RETROACTIVE_TS_ERROR,
+  buildInitialComment,
+  appendRow,
+  findTimingComment,
+  createTimingComment,
+  updateTimingComment,
+};
