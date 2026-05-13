@@ -25,6 +25,12 @@ export function markerPathFor(sid) {
 }
 
 export function currentSessionId() {
+  // Prefer the authoritative session id Claude Code exports via env. The
+  // mtime-sort fallback is fragile (stale .jsonl touched by an editor or
+  // indexer can outrank the live session) and only runs when the env var
+  // is unset or empty.
+  const envSid = process.env.CLAUDE_SESSION_ID;
+  if (typeof envSid === 'string' && envSid.length > 0) return envSid;
   try {
     const dir = sessionDir();
     const files = readdirSync(dir).filter((f) => f.endsWith('.jsonl'));

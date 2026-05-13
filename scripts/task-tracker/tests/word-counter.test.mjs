@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, mkdirSync, rmSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { countWords, loadMarker, projectKey, saveMarker } from '../word-counter.mjs';
+import {
+  currentSessionId,
+  countWords,
+  loadMarker,
+  projectKey,
+  saveMarker,
+} from '../word-counter.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-'));
 const jsonlPath = path.join(tmp, 'session.jsonl');
@@ -128,6 +134,63 @@ try {
 } finally {
   if (origProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR;
   else process.env.CLAUDE_PROJECT_DIR = origProjectDir;
+}
+
+// Test 7: currentSessionId() — env-first with mtime fallback (#15)
+// Redirect $HOME and $CLAUDE_PROJECT_DIR so sessionDir() points inside a tmp
+// scratch tree we control, then exercise all three return paths.
+const origHome = process.env.HOME;
+const origUserprofile = process.env.USERPROFILE;
+const origSid = process.env.CLAUDE_SESSION_ID;
+const origProjectDir2 = process.env.CLAUDE_PROJECT_DIR;
+const sidTmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-sid-'));
+try {
+  process.env.HOME = sidTmp;
+  process.env.USERPROFILE = sidTmp;
+  process.env.CLAUDE_PROJECT_DIR = '/proj/test';
+  const expectedKey = '-proj-test';
+  const sessDir = path.join(sidTmp, '.claude', 'projects', expectedKey);
+  mkdirSync(sessDir, { recursive: true });
+
+  // Path 1: env var set → returns env value verbatim, mtime not consulted.
+  process.env.CLAUDE_SESSION_ID = 'env-sid-xyz';
+  assert.equal(
+    currentSessionId(),
+    'env-sid-xyz',
+    'env var should win even when no jsonl files exist'
+  );
+
+  // Path 2: env unset, files present → newest mtime wins.
+  delete process.env.CLAUDE_SESSION_ID;
+  const oldFile = path.join(sessDir, 'old-session.jsonl');
+  const newFile = path.join(sessDir, 'new-session.jsonl');
+  writeFileSync(oldFile, '{}\n');
+  writeFileSync(newFile, '{}\n');
+  const oldT = new Date(Date.now() - 60_000);
+  const newT = new Date();
+  utimesSync(oldFile, oldT, oldT);
+  utimesSync(newFile, newT, newT);
+  assert.equal(currentSessionId(), 'new-session', 'newest mtime file should win when env unset');
+
+  // Path 2b: empty env string treated as unset.
+  process.env.CLAUDE_SESSION_ID = '';
+  assert.equal(currentSessionId(), 'new-session', 'empty env string should fall back to mtime');
+  delete process.env.CLAUDE_SESSION_ID;
+
+  // Path 3: env unset, no files → null.
+  rmSync(oldFile);
+  rmSync(newFile);
+  assert.equal(currentSessionId(), null, 'should return null when env unset and no jsonl files');
+} finally {
+  if (origHome === undefined) delete process.env.HOME;
+  else process.env.HOME = origHome;
+  if (origUserprofile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = origUserprofile;
+  if (origSid === undefined) delete process.env.CLAUDE_SESSION_ID;
+  else process.env.CLAUDE_SESSION_ID = origSid;
+  if (origProjectDir2 === undefined) delete process.env.CLAUDE_PROJECT_DIR;
+  else process.env.CLAUDE_PROJECT_DIR = origProjectDir2;
+  rmSync(sidTmp, { recursive: true, force: true });
 }
 
 rmSync(tmp, { recursive: true });
