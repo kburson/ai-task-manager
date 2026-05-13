@@ -34,35 +34,41 @@ const pkg = require('../package.json');
 const PKG_NAME = 'ai-task-manager';
 const LEGACY_BIN = 'claude-gh-task-manager';
 
-function bold(s) {
-  return `\x1b[1m${s}\x1b[0m`;
+// TTY gate: return raw string when stdout is not a TTY (pipe, file, CI log) so
+// downstream consumers don't see raw escape sequences as garbage characters.
+export function colorize(open, s, close = '\x1b[0m') {
+  if (!process.stdout.isTTY) return String(s);
+  return `${open}${s}${close}`;
 }
-function dim(s) {
-  return `\x1b[2m${s}\x1b[0m`;
+export function bold(s) {
+  return colorize('\x1b[1m', s);
 }
-function green(s) {
-  return `\x1b[32m${s}\x1b[0m`;
+export function dim(s) {
+  return colorize('\x1b[2m', s);
 }
-function red(s) {
-  return `\x1b[31m${s}\x1b[0m`;
+export function green(s) {
+  return colorize('\x1b[32m', s);
 }
-function yellow(s) {
-  return `\x1b[33m${s}\x1b[0m`;
+export function red(s) {
+  return colorize('\x1b[31m', s);
 }
-function cyan(s) {
-  return `\x1b[36m${s}\x1b[0m`;
+export function yellow(s) {
+  return colorize('\x1b[33m', s);
 }
-function magenta(s) {
-  return `\x1b[35m${s}\x1b[0m`;
+export function cyan(s) {
+  return colorize('\x1b[36m', s);
 }
-function bgBlue(s) {
-  return `\x1b[44m\x1b[97m${s}\x1b[0m`;
+export function magenta(s) {
+  return colorize('\x1b[35m', s);
 }
-function bgGreen(s) {
-  return `\x1b[42m\x1b[30m${s}\x1b[0m`;
+export function bgBlue(s) {
+  return colorize('\x1b[44m\x1b[97m', s);
 }
-function bgYellow(s) {
-  return `\x1b[43m\x1b[30m${s}\x1b[0m`;
+export function bgGreen(s) {
+  return colorize('\x1b[42m\x1b[30m', s);
+}
+export function bgYellow(s) {
+  return colorize('\x1b[43m\x1b[30m', s);
 }
 
 function ok(msg) {
