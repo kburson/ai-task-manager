@@ -6,7 +6,10 @@ import os from 'node:os';
 
 export function projectKey() {
   const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  return dir.replace(/\//g, '-');
+  // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive
+  // colon to `-` so the result matches the directory Claude Code creates
+  // under ~/.claude/projects/<key>/ across platforms.
+  return dir.replace(/[\\/:]/g, '-');
 }
 
 export function sessionDir() {

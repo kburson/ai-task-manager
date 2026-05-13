@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { countWords, loadMarker, saveMarker } from '../word-counter.mjs';
+import { countWords, loadMarker, projectKey, saveMarker } from '../word-counter.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-'));
 const jsonlPath = path.join(tmp, 'session.jsonl');
@@ -104,6 +104,31 @@ const injLines = [
 writeFileSync(injJsonl, injLines.join('\n') + '\n');
 const injResult = countWords(injJsonl, 0);
 assert.equal(injResult.count, 7, `injection filter: expected 4+3=7 words, got ${injResult.count}`);
+
+// Test 6: projectKey() cross-platform separator flattening (#14)
+// Uses CLAUDE_PROJECT_DIR override so the test is identical on POSIX & Windows.
+const origProjectDir = process.env.CLAUDE_PROJECT_DIR;
+try {
+  process.env.CLAUDE_PROJECT_DIR = '/Users/foo/bar';
+  assert.equal(projectKey(), '-Users-foo-bar', 'POSIX path should flatten forward slashes');
+
+  process.env.CLAUDE_PROJECT_DIR = 'C:\\Users\\foo\\bar';
+  assert.equal(
+    projectKey(),
+    'C--Users-foo-bar',
+    'Windows path should flatten backslashes and drive colon'
+  );
+
+  process.env.CLAUDE_PROJECT_DIR = 'C:\\Users/foo\\bar/baz';
+  assert.equal(
+    projectKey(),
+    'C--Users-foo-bar-baz',
+    'mixed separators should all flatten to single dashes'
+  );
+} finally {
+  if (origProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR;
+  else process.env.CLAUDE_PROJECT_DIR = origProjectDir;
+}
 
 rmSync(tmp, { recursive: true });
 console.log('word-counter.test.mjs: all passed');
