@@ -94,11 +94,15 @@ export function findMainWorktree(cwd = process.cwd()) {
 }
 
 function parseArgs(argv) {
-  const out = { target: null, source: process.cwd() };
+  const out = { target: null, source: process.cwd(), backfill: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--source') {
       out.source = argv[++i];
+      continue;
+    }
+    if (a === '--backfill') {
+      out.backfill = true;
       continue;
     }
     if (a === '-h' || a === '--help') {
@@ -111,6 +115,36 @@ function parseArgs(argv) {
     }
   }
   return out;
+}
+
+// Idempotent variant: backfill any of SRC_FILES + EMPTY_FILES missing from target.
+// Use when target is partially populated (e.g. Claude Code's `isolation: "worktree"`
+// copies task-tracker.json + activity-policy.json but not the gitignored templates).
+export function seedWorktreeBackfill({ source, target }) {
+  if (!source || !target) throw new Error('seed-worktree: source and target required');
+  const srcDir = path.resolve(source, '.ai-task-manager');
+  const tgtDir = path.resolve(target, '.ai-task-manager');
+  if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
+    throw new Error(`seed-worktree: source .ai-task-manager not found at ${srcDir}`);
+  }
+  mkdirSync(tgtDir, { recursive: true });
+  const copied = [];
+  for (const f of SRC_FILES) {
+    const tgt = path.join(tgtDir, f);
+    if (existsSync(tgt)) continue;
+    const src = path.join(srcDir, f);
+    if (!existsSync(src)) continue;
+    writeFileSync(tgt, readFileSync(src));
+    copied.push(f);
+  }
+  for (const f of EMPTY_FILES) {
+    const p = path.join(tgtDir, f);
+    if (!existsSync(p)) {
+      writeFileSync(p, '{}\n', 'utf8');
+      copied.push(f);
+    }
+  }
+  return { ok: true, target: tgtDir, copied };
 }
 
 function isMain() {
@@ -126,12 +160,20 @@ function isMain() {
 if (isMain()) {
   const args = parseArgs(process.argv.slice(2));
   if (args.help || !args.target) {
-    process.stdout.write('Usage: seed-worktree.mjs <worktree-path> [--source <parent-repo>]\n');
+    process.stdout.write(
+      'Usage: seed-worktree.mjs <worktree-path> [--source <parent-repo>] [--backfill]\n'
+    );
     process.exit(args.help ? 0 : 2);
   }
   try {
-    const r = seedWorktree({ source: args.source, target: args.target });
-    process.stdout.write(`seeded ${r.target} (${r.copied.join(', ')})\n`);
+    const r = args.backfill
+      ? seedWorktreeBackfill({ source: args.source, target: args.target })
+      : seedWorktree({ source: args.source, target: args.target });
+    process.stdout.write(
+      r.copied.length === 0
+        ? `seed: nothing to do for ${r.target}\n`
+        : `seeded ${r.target} (${r.copied.join(', ')})\n`
+    );
   } catch (err) {
     process.stderr.write(`${err.message}\n`);
     process.exit(1);
