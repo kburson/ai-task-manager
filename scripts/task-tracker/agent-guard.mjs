@@ -1,22 +1,32 @@
 #!/usr/bin/env node
-// PreToolUse hook — refuses `Agent` tool spawns in the main git worktree.
+// PreToolUse hook — gates `Agent` tool spawns from the main git worktree.
 //
-// Spawn-class failure (epic #61): an orchestrator running in the main worktree
-// invokes the Agent tool, sub-agents inherit the same cwd, concurrent edits
-// corrupt code + issue state. This hook makes that mechanically impossible.
+// Background (epic #61): an orchestrator running in the main worktree once
+// spawned sub-agents that inherited the same cwd; concurrent edits corrupted
+// code + issue state. The original rule was a flat block from the main
+// worktree with no override.
 //
-// Logic:
-//   1. Read tool input JSON from stdin (malformed → safe pass).
-//   2. cwd = process.env.PWD || process.cwd()
-//   3. main = findMainWorktreePath(cwd)   ← reused from fleet-registry
-//   4. If cwd === main → emit {decision:"block", reason: ...}
-//   5. Else → exit 0, no output.
+// Current rule: spawning from the main worktree is allowed **only** when
+//   (a) an orchestrator lock file is present at <main>/.ai-task-manager/orchestrator.lock,
+//   (b) the lock has not expired (now < startedAt + ttlMs, default 4h), and
+//   (c) the Agent tool input requests `isolation: "worktree"`.
 //
-// No env-var bypass. No override flag. By design.
+// (c) is the teeth: agents must run in their own worktree, so they can't
+// stomp on the orchestrator's checkout. Without (c) we fall back to the
+// original block, preserving the #61 protection.
+//
+// TTL exists because Claude Code's pid isn't reachable through the bash →
+// node lock-acquire chain; pid-liveness would mark every lock stale
+// immediately. The orchestrator is expected to release the lock when the
+// wave ends; the TTL is a forgotten-lock backstop.
+//
+// Acquire/release via `scripts/task-tracker/orchestrator-lock.mjs`.
 
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { findMainWorktreePath } from './fleet-registry.mjs';
+
+const DEFAULT_TTL_MS = 4 * 60 * 60 * 1000;
 
 function canon(p) {
   try {
@@ -26,27 +36,68 @@ function canon(p) {
   }
 }
 
+function readLock(mainPath) {
+  const lockPath = path.join(mainPath, '.ai-task-manager', 'orchestrator.lock');
+  if (!existsSync(lockPath)) return null;
+  try {
+    return JSON.parse(readFileSync(lockPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function lockExpired(lock) {
+  const ttl = Number.isFinite(lock.ttlMs) && lock.ttlMs > 0 ? lock.ttlMs : DEFAULT_TTL_MS;
+  const started = Date.parse(lock.startedAt);
+  if (!Number.isFinite(started)) return true;
+  return Date.now() - started > ttl;
+}
+
+function emitBlock(reason) {
+  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
+  process.exit(0);
+}
+
 let input = {};
 try {
   input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
 } catch {
-  process.exit(0); // malformed payload — don't block
+  process.exit(0);
 }
-
-// Defensive: tolerate missing tool_input but proceed; the hook key is cwd, not payload contents.
-void input;
 
 const cwd = canon(process.env.PWD || process.cwd());
 const main = canon(findMainWorktreePath(cwd));
 
-if (cwd === main) {
-  const reason =
+if (cwd !== main) process.exit(0);
+
+const lock = readLock(main);
+if (!lock) {
+  emitBlock(
     `Agent tool spawns are forbidden in the main worktree ` +
-    `(cwd=${cwd}, main=${main}). ` +
-    `Create a worktree first (see superpowers:using-git-worktrees). ` +
-    `No override exists.`;
-  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
-  process.exit(0);
+      `(cwd=${cwd}, main=${main}). ` +
+      `No orchestrator lock present. ` +
+      `Acquire via \`node scripts/task-tracker/orchestrator-lock.mjs acquire <epic>\` ` +
+      `or spawn from a linked worktree.`
+  );
+}
+
+if (lockExpired(lock)) {
+  emitBlock(
+    `Agent tool spawns are forbidden in the main worktree ` +
+      `(cwd=${cwd}, main=${main}). ` +
+      `Orchestrator lock expired (startedAt=${lock.startedAt}). ` +
+      `Release with \`node scripts/task-tracker/orchestrator-lock.mjs release\` and re-acquire.`
+  );
+}
+
+const isolation = input?.tool_input?.isolation;
+if (isolation !== 'worktree') {
+  emitBlock(
+    `Agent tool spawns from the main worktree must set \`isolation: "worktree"\` ` +
+      `(cwd=${cwd}, main=${main}, lock.epic=${lock.epic ?? '?'}). ` +
+      `Got isolation=${JSON.stringify(isolation)}. ` +
+      `This prevents sub-agents from inheriting the orchestrator's checkout (epic #61).`
+  );
 }
 
 process.exit(0);

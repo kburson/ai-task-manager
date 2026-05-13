@@ -4,7 +4,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -39,7 +39,13 @@ function makeRepo() {
   return root;
 }
 
-test('blocks when cwd === main worktree', () => {
+function writeLock(main, body) {
+  const dir = join(main, '.ai-task-manager');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'orchestrator.lock'), JSON.stringify(body));
+}
+
+test('blocks when cwd === main worktree and no orchestrator lock', () => {
   const main = makeRepo();
   try {
     const r = runGuard({ cwd: main, stdin: JSON.stringify({ tool_input: {} }) });
@@ -47,16 +53,67 @@ test('blocks when cwd === main worktree', () => {
     assert.ok(r.stdout.length > 0, `expected JSON decision on stdout, got empty`);
     const decision = JSON.parse(r.stdout);
     assert.equal(decision.decision, 'block');
-    assert.match(decision.reason, /Agent tool spawns are forbidden in the main worktree/);
-    assert.ok(
-      decision.reason.includes(`cwd=${main}`),
-      `reason missing cwd path: ${decision.reason}`
-    );
-    assert.ok(
-      decision.reason.includes(`main=${main}`),
-      `reason missing main path: ${decision.reason}`
-    );
-    assert.match(decision.reason, /No override exists/);
+    assert.match(decision.reason, /No orchestrator lock present/);
+    assert.ok(decision.reason.includes(`cwd=${main}`));
+    assert.ok(decision.reason.includes(`main=${main}`));
+  } finally {
+    rmSync(main, { recursive: true, force: true });
+  }
+});
+
+test('blocks when lock has expired (startedAt + ttlMs < now)', () => {
+  const main = makeRepo();
+  try {
+    writeLock(main, {
+      epic: '#13',
+      startedAt: '2000-01-01T00:00:00Z',
+      ttlMs: 1000,
+    });
+    const r = runGuard({
+      cwd: main,
+      stdin: JSON.stringify({ tool_input: { isolation: 'worktree' } }),
+    });
+    assert.equal(r.status, 0, `stderr: ${r.stderr}`);
+    const decision = JSON.parse(r.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /Orchestrator lock expired/);
+  } finally {
+    rmSync(main, { recursive: true, force: true });
+  }
+});
+
+test('blocks when lock is held but isolation !== "worktree"', () => {
+  const main = makeRepo();
+  try {
+    writeLock(main, {
+      epic: '#13',
+      startedAt: new Date().toISOString(),
+      ttlMs: 3_600_000,
+    });
+    const r = runGuard({ cwd: main, stdin: JSON.stringify({ tool_input: {} }) });
+    assert.equal(r.status, 0, `stderr: ${r.stderr}`);
+    const decision = JSON.parse(r.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /must set `isolation: "worktree"`/);
+  } finally {
+    rmSync(main, { recursive: true, force: true });
+  }
+});
+
+test('passes when lock is fresh and isolation === "worktree"', () => {
+  const main = makeRepo();
+  try {
+    writeLock(main, {
+      epic: '#13',
+      startedAt: new Date().toISOString(),
+      ttlMs: 3_600_000,
+    });
+    const r = runGuard({
+      cwd: main,
+      stdin: JSON.stringify({ tool_input: { isolation: 'worktree' } }),
+    });
+    assert.equal(r.status, 0, `stderr: ${r.stderr}`);
+    assert.equal(r.stdout, '', `expected silent pass, got: ${r.stdout}`);
   } finally {
     rmSync(main, { recursive: true, force: true });
   }

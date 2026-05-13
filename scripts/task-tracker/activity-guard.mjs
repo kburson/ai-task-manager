@@ -61,7 +61,14 @@ try {
 }
 
 const policy = loadPolicy(projectRoot);
-const { activeIssue, state } = readState(projectRoot);
+const { activeIssue, state: recordedState } = readState(projectRoot);
+// When no task is bound (paused or never started), ignore the residual
+// `state` field from the last active task. Otherwise editing infra/meta
+// files between tasks would be permanently blocked: WRITE_OTHER is excluded
+// from every kanban state's allow-list, so a stale `state=develop` left by
+// pause would refuse all non-code edits. The no-active-task policy (in
+// activity-policy.mjs) allows everything except WRITE_CODE/COMMIT_CODE.
+const state = activeIssue ? recordedState : null;
 
 // ---------------------------------------------------------------------------
 // Classify
