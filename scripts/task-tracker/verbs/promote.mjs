@@ -37,11 +37,14 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 // Map source state → stage alias verb. Promote delegates to the alias so its
-// gate stack runs unchanged. States with no alias (`backlog`, `test`) fall
-// through to a direct internal move-state call.
+// gate stack runs unchanged. States with no alias (`backlog`, `refine`, `plan`,
+// `test`) fall through to a direct internal move-state call.
+//
+// `refine` and `plan` previously delegated to `analyze` and `approve`
+// (plan→develop walker), both retired in #98 — they now use the direct-move
+// fall-through, same as `backlog` and `test`. The plan→develop gate that
+// required the `aitm-plan-approved` marker is enforced by move-state itself.
 const ALIAS_VERB = {
-  refine: 'analyze',
-  plan: 'approve',
   develop: 'review',
   review: 'close',
 };
@@ -341,7 +344,7 @@ export async function verbPromote(rest, cfg) {
           ` (${result.via})\n`
       );
       if (result.groomPost?.status === 'posted') {
-        process.stdout.write(`  ↳ posted "### 🛠 Groom estimate" comment\n`);
+        process.stdout.write(`  ↳ posted "### 🛠 Refine estimate" comment\n`);
       } else if (result.groomPost?.status === 'duplicate') {
         process.stdout.write(`  ↳ groom-estimate comment already present (idempotent skip)\n`);
       } else if (result.groomPost?.status === 'post-failed') {

@@ -2,7 +2,7 @@
 //
 // Symmetric to apply-reevaluate.mjs: reads the agent-authored rationale marker
 // from the issue body, combines it with the project board's Size / Estimate /
-// Priority values, and posts a `### 🛠 Groom estimate` audit comment. The post
+// Priority values, and posts a `### 🛠 Refine estimate` audit comment. The post
 // is idempotent via a hidden marker `<!-- aitm-groom-estimate: <N> -->`.
 //
 // Pure-ish core: all I/O is injectable for offline tests.
@@ -17,7 +17,7 @@ import { loadProjectFieldDefs } from '../project-fields.mjs';
 
 const pexec = promisify(execFile);
 
-export const GROOM_HEADER = '### 🛠 Groom estimate';
+export const GROOM_HEADER = '### 🛠 Refine estimate';
 export const RATIONALE_MARKER_RE = /<!--\s*aitm-groom-rationale:\s*(\{[\s\S]*?\})\s*-->/;
 export const COMMENT_MARKER_PREFIX = '<!-- aitm-groom-estimate:';
 
@@ -47,7 +47,7 @@ export function buildGroomCommentBody({ issueNumber, size, estimate, priority, r
     `<!-- aitm-groom-estimate: ${issueNumber} -->`,
     GROOM_HEADER,
     '',
-    'Initial provisional sizing at Groom (refined at Analyze).',
+    'Initial provisional sizing at Refine (refined at Plan).',
     '',
     '| Field | Value | Rationale |',
     '|---|---|---|',
@@ -55,7 +55,7 @@ export function buildGroomCommentBody({ issueNumber, size, estimate, priority, r
     `| Estimate | ${estimate}h | ${rationale.estimate} |`,
     `| Priority | ${priority} | ${rationale.priority} |`,
     '',
-    'Provisional — Analyze will re-evaluate and post a `### 🔁 Analysis re-estimate` comment if the bucket shifts.',
+    'Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.',
   ].join('\n');
 }
 

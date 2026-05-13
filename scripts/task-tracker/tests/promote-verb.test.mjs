@@ -51,26 +51,27 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
 }
 
-test('promote: happy path forward chain — refine→plan delegates to /task analyze', async () => {
+test('promote: refine→plan is a direct move-state call', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('refine'), live: 'refine' });
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.from, 'refine');
   assert.equal(r.to, 'plan');
-  assert.equal(r.via, 'alias:analyze');
-  assert.deepEqual(calls.spawns, [{ verb: 'analyze', issueNumber: 100 }]);
-  assert.equal(calls.moves.length, 0);
+  assert.equal(r.via, 'direct');
+  assert.equal(calls.spawns.length, 0);
+  assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'plan' }]);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /move:plan/);
 });
 
-test('promote: plan→develop delegates to /task approve', async () => {
+test('promote: plan→develop is a direct move-state call', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
   const r = await runPromote({ issueNumber: 101, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'develop');
-  assert.equal(r.via, 'alias:approve');
-  assert.deepEqual(calls.spawns, [{ verb: 'approve', issueNumber: 101 }]);
+  assert.equal(r.via, 'direct');
+  assert.equal(calls.spawns.length, 0);
+  assert.deepEqual(calls.moves, [{ issueNumber: 101, target: 'develop' }]);
 });
 
 test('promote: develop→test delegates to /task review', async () => {
@@ -167,8 +168,8 @@ test('promote: bootstrap when lastKnownState absent — syncs to live, then prom
 
 test('promote: transition-failed when alias verb exits non-zero — no metadata update', async () => {
   const { deps, calls } = makeDeps({
-    body: bodyWithState('plan'),
-    live: 'plan',
+    body: bodyWithState('develop'),
+    live: 'develop',
     spawnCode: 4,
   });
   const r = await runPromote({ issueNumber: 109, cfg, deps });

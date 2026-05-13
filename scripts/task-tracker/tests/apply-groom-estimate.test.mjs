@@ -78,7 +78,7 @@ function depsWithBoard(values = { size: 'S', estimate: 4, priority: 'P2' }) {
     rationale: { size: 'a', estimate: 'b', priority: 'c' },
   });
   assert.match(body, /<!-- aitm-groom-estimate: 95 -->/);
-  assert.match(body, /### 🛠 Groom estimate/);
+  assert.match(body, /### 🛠 Refine estimate/);
   assert.match(body, /\| Size \| S \| a \|/);
   assert.match(body, /\| Estimate \| 4h \| b \|/);
   assert.match(body, /\| Priority \| P2 \| c \|/);
@@ -97,7 +97,7 @@ function depsWithBoard(values = { size: 'S', estimate: 4, priority: 'P2' }) {
   assert.equal(result.plan.size, 'S');
   assert.equal(result.plan.estimate, 4);
   assert.equal(result.plan.priority, 'P2');
-  assert.match(result.plan.commentBody, /### 🛠 Groom estimate/);
+  assert.match(result.plan.commentBody, /### 🛠 Refine estimate/);
   assert.ok(!result.plan.strippedBody.includes('aitm-groom-rationale'));
 }
 
@@ -175,7 +175,7 @@ function depsWithBoard(values = { size: 'S', estimate: 4, priority: 'P2' }) {
     deps: {
       listCommentBodies: async () => [
         'some old comment',
-        '<!-- aitm-groom-estimate: 95 -->\n### 🛠 Groom estimate\n...',
+        '<!-- aitm-groom-estimate: 95 -->\n### 🛠 Refine estimate\n...',
       ],
       postComment: async ({ body }) => posts.push(body),
       writeIssueBody: async () => {},

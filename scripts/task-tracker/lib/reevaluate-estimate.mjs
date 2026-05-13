@@ -147,7 +147,7 @@ export function buildRationale(result) {
   return `Deep dive surfaced ${sigText}; bucket ${fromTo}.${human}`;
 }
 
-export const AUDIT_HEADER = '### 🔁 Analysis re-estimate';
+export const AUDIT_HEADER = '### 🔁 Plan re-estimate';
 
 export function buildAuditCommentBody(result) {
   const beforeSize = result.current?.size ?? '—';
