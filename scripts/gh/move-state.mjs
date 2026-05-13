@@ -270,7 +270,7 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
 // recorded as a `<!-- aitm-plan-approved: <ts> -->` marker in the issue body.
 // Fires only when the *current* board state is `plan` so transitions back
 // from test/review do not require a fresh approval.
-if (stateArg === 'develop' && !SKIP_NETWORK) {
+if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !== false) {
   let body = '';
   try {
     body = (
