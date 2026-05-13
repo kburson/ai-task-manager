@@ -149,8 +149,8 @@ try {
   process.env.USERPROFILE = sidTmp;
   process.env.CLAUDE_PROJECT_DIR = '/proj/test';
   const expectedKey = '-proj-test';
-  const sessDir = path.join(sidTmp, '.claude', 'projects', expectedKey);
-  mkdirSync(sessDir, { recursive: true });
+  const sessionDir = path.join(sidTmp, '.claude', 'projects', expectedKey);
+  mkdirSync(sessionDir, { recursive: true });
 
   // Path 1: env var set → returns env value verbatim, mtime not consulted.
   process.env.CLAUDE_SESSION_ID = 'env-sid-xyz';
@@ -162,8 +162,8 @@ try {
 
   // Path 2: env unset, files present → newest mtime wins.
   delete process.env.CLAUDE_SESSION_ID;
-  const oldFile = path.join(sessDir, 'old-session.jsonl');
-  const newFile = path.join(sessDir, 'new-session.jsonl');
+  const oldFile = path.join(sessionDir, 'old-session.jsonl');
+  const newFile = path.join(sessionDir, 'new-session.jsonl');
   writeFileSync(oldFile, '{}\n');
   writeFileSync(newFile, '{}\n');
   const oldT = new Date(Date.now() - 60_000);
