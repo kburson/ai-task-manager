@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
+import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TETHER_SCRIPT =
@@ -85,7 +86,7 @@ function ghCreate(args, assignee) {
     assignee,
   ];
   for (const lbl of args.label) ghArgs.push('--label', lbl);
-  const created = run('gh', ghArgs);
+  const created = run('gh', ghArgs, { timeout: GH_API_TIMEOUT_MS });
   if (created.status !== 0) {
     process.stderr.write(created.stderr);
     die(`gh issue create failed (exit ${created.status})`, created.status || 1);
@@ -109,7 +110,8 @@ function buildTetherArgs(issueNumber, args, priority) {
 
 function tether(issueNumber, args, priority) {
   const tArgs = buildTetherArgs(issueNumber, args, priority);
-  const result = run('node', tArgs);
+  // tether script makes its own gh calls; allow gh-class budget plus headroom.
+  const result = run('node', tArgs, { timeout: GH_API_TIMEOUT_MS * 2 });
   process.stderr.write(result.stderr);
   if (result.stdout) console.error(result.stdout.trim());
   if (result.status !== 0) {
@@ -132,6 +134,7 @@ function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
     {
       input: JSON.stringify({ body: newBody }),
       encoding: 'utf8',
+      timeout: GH_API_TIMEOUT_MS,
     }
   );
   if (patch.status !== 0) {

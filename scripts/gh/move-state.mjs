@@ -18,6 +18,7 @@ import { validateTransition, normalizeStateSlug } from '../task-tracker/state-ma
 import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../task-tracker/paths.mjs';
 import { loadState, saveState } from '../task-tracker/state.mjs';
+import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -420,7 +421,10 @@ if (!SKIP_NETWORK) {
   if (eventScript) {
     const args = [eventScript, issueArg, stateArg];
     if (itemId) args.push('--item-id', itemId);
-    pexec(process.execPath, args).catch(() => {});
+    // Fire-and-forget: side-effecting field write. Cap so a stuck child
+    // can't leak indefinitely; ignore ETIMEDOUT here — the GH-class call
+    // inside update-event-fields.mjs surfaces its own warnings.
+    pexec(process.execPath, args, { timeout: GH_API_TIMEOUT_MS * 2 }).catch(() => {});
   }
 }
 
@@ -432,5 +436,7 @@ if (stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK) {
     path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
   ];
   const ttScript = ttScriptCandidates.find((s) => existsSync(s));
-  if (ttScript) pexec(process.execPath, [ttScript, 'end']).catch(() => {});
+  // Fire-and-forget local task-tracker end. Local-fast budget; ignore failures.
+  if (ttScript)
+    pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS }).catch(() => {});
 }

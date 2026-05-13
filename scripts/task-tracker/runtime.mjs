@@ -23,6 +23,7 @@ import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-ti
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { getProjectDir } from './paths.mjs';
+import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -169,7 +170,9 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     if (SKIP_NETWORK) return;
     const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
     try {
-      const { stdout } = await pexec(process.execPath, [scriptPath, issue], { timeout: 15000 });
+      const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
+        timeout: GH_API_TIMEOUT_MS,
+      });
       if (stdout.trim()) console.log(stdout.trim());
     } catch (err) {
       console.warn(`[task-tracker] Could not update board fields: ${err.message}`);
@@ -179,6 +182,10 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   ctx.runMigrate = async (args) => {
     if (SKIP_NETWORK) return;
     const scriptPath = new URL('../gh/migrate-project.mjs', import.meta.url).pathname;
+    // No `timeout:` here: migrate-project.mjs proxies an interactive bash
+    // setup wizard via inherited stdio. A fixed budget would kill a slow human
+    // mid-prompt. Child gh calls inside the wizard each carry their own
+    // GH_API_TIMEOUT_MS budgets.
     const result = spawnSync(process.execPath, [scriptPath, ...args], {
       cwd: projectDir,
       stdio: 'inherit',
@@ -194,7 +201,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     try {
       const mergedEnv = { ...process.env, ...(envOverride || {}), AITM_INTERNAL: '1' };
       const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], {
-        timeout: 15000,
+        timeout: GH_API_TIMEOUT_MS,
         env: mergedEnv,
       });
       if (stdout.trim()) console.log(stdout.trim());
@@ -242,7 +249,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
           }
         }`,
         { owner, repo: repoName, issue: Number(issueNum) },
-        { timeout: 10000 }
+        { timeout: GH_API_TIMEOUT_MS }
       );
       return data?.repository?.issue?.subIssues?.nodes?.map((n) => n.number) ?? [];
     } catch {
@@ -261,7 +268,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
           }
         }`,
         { owner, repo: repoName, issue: Number(issueNum) },
-        { timeout: 10000 }
+        { timeout: GH_API_TIMEOUT_MS }
       );
       return data?.repository?.issue?.parent?.number ?? null;
     } catch {
@@ -289,7 +296,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
           }
         }`,
         { owner, repo: repoName, issue: Number(issueNum) },
-        { timeout: 10000 }
+        { timeout: GH_API_TIMEOUT_MS }
       );
       const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
       const node = nodes.find((n) => n.project?.id === cfg.projectId);

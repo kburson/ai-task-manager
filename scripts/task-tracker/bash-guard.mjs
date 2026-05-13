@@ -15,6 +15,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { evaluateGhEdit, evaluateGhCreate } from './lib/gh-edit-guard.mjs';
+import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 let input = {};
 try {
@@ -32,6 +33,7 @@ try {
   projectRoot = execSync('git rev-parse --show-toplevel', {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: GIT_TIMEOUT_MS,
   }).trim();
 } catch {
   projectRoot = process.cwd();
@@ -172,7 +174,7 @@ const ghEditResult = evaluateGhEdit({
     execSync(`gh issue view ${Number(n)} --json body --jq .body`, {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: 10000,
+      timeout: GH_API_TIMEOUT_MS,
     }),
 });
 if (ghEditResult.block) block(ghEditResult.reason);

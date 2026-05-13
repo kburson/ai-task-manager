@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { buildContext, handleMigrateResult } from './runtime.mjs';
 import { currentSessionId, jsonlPath, countWords } from './word-counter.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -25,6 +26,7 @@ function checkRepoMismatch(ctx) {
       cwd: ctx.projectDir,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: GIT_TIMEOUT_MS,
     }).trim();
     const remoteRepo = parseRepoFromRemote(remoteUrl);
     if (remoteRepo && remoteRepo !== ctx.cfg.repo) {

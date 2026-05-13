@@ -1,17 +1,18 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
+import { GH_API_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
 export async function gh(args, options = {}) {
   const { input, ...rest } = options;
   if (input === undefined) {
-    const { stdout } = await pexec('gh', args, { timeout: 15000, ...rest });
+    const { stdout } = await pexec('gh', args, { timeout: GH_API_TIMEOUT_MS, ...rest });
     return stdout;
   }
   return new Promise((resolve, reject) => {
-    const child = spawn('gh', args, { timeout: 15000, ...rest });
+    const child = spawn('gh', args, { timeout: GH_API_TIMEOUT_MS, ...rest });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => {

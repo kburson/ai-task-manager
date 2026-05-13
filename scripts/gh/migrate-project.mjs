@@ -76,6 +76,10 @@ async function main() {
   const oldCfg = loadConfig();
   if (!skipInit && !dryRun) {
     const initScript = new URL('./init-project-config.sh', import.meta.url).pathname;
+    // Interactive setup wizard — stdio is inherited so the user answers
+    // prompts. No `timeout:` here: a fixed budget would kill a slow human
+    // typing answers. Sibling automated child-process calls in this file go
+    // through `gh`/`gql` helpers which set their own GH_API_TIMEOUT_MS.
     const res = spawnSync('bash', [initScript, '--target', projectDir], {
       cwd: projectDir,
       stdio: 'inherit',

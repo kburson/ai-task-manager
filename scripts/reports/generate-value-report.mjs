@@ -48,6 +48,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
+import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -58,7 +59,7 @@ const fileCfg = existsSync(CONFIG_PATH) ? JSON.parse(readFileSync(CONFIG_PATH, '
 
 // Load task-tracker project config to get projectId and repo
 const projectRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR ?? process.env.CLAUDE_PROJECT_DIR
-  ?? execSync('git rev-parse --show-toplevel 2>/dev/null || echo ""', { encoding: 'utf8' }).trim()
+  ?? execSync('git rev-parse --show-toplevel 2>/dev/null || echo ""', { encoding: 'utf8', timeout: GIT_TIMEOUT_MS }).trim()
   ?? process.cwd();
 const ttCfg = loadConfig({
   projectPath: path.join(projectRoot, '.ai-task-manager', 'task-tracker.json'),
@@ -111,7 +112,7 @@ if (cfg.state === 'open' && (cfg.fromDate || cfg.toDate)) {
   cfg.toDate   = null;
 }
 
-const GH_TOKEN = execSync('gh auth token', { encoding: 'utf8' }).trim();
+const GH_TOKEN = execSync('gh auth token', { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }).trim();
 
 async function gql(query) {
   const r = await fetch('https://api.github.com/graphql', {

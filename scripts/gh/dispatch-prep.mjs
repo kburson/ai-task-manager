@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
+import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -57,7 +58,8 @@ async function main() {
   // 1. Flip board to Development (orchestrator-owned transition).
   const moveScript = path.join(__dir, 'move-state.mjs');
   await pexec('node', [moveScript, args.issue, 'develop'], {
-    timeout: 15000,
+    // move-state internally makes gh calls; gh-class budget is the right floor.
+    timeout: GH_API_TIMEOUT_MS,
     env: { ...process.env, AITM_INTERNAL: '1' },
   });
 

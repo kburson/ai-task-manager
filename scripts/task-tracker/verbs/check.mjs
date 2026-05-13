@@ -2,6 +2,7 @@ import path from 'node:path';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { loadState } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 export async function verbCheck(ctx) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
@@ -19,7 +20,7 @@ export async function verbCheck(ctx) {
   const { stdout } = await pexec(
     'gh',
     ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-    { timeout: 10000 }
+    { timeout: GH_API_TIMEOUT_MS }
   );
   const body = stdout;
 
@@ -52,7 +53,7 @@ export async function verbCheck(ctx) {
   try {
     writeFileSync(tmp, updated, 'utf8');
     await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], {
-      timeout: 10000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {

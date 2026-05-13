@@ -18,6 +18,7 @@ import path from 'node:path';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
 import { loadConfig } from './config.mjs';
+import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -48,7 +49,7 @@ async function fetchBody({ repo, issueNumber }) {
   const { stdout } = await pexec(
     'gh',
     ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
-    { timeout: 10000 }
+    { timeout: GH_API_TIMEOUT_MS }
   );
   return stdout;
 }
@@ -59,7 +60,7 @@ async function writeBody({ repo, issueNumber, body }) {
   try {
     writeFileSync(file, body);
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', file], {
-      timeout: 15000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -84,7 +85,7 @@ async function scanOpenIssues({ repo }) {
         '--limit',
         '500',
       ],
-      { timeout: 15000 }
+      { timeout: GH_API_TIMEOUT_MS }
     );
     return JSON.parse(stdout).map((x) => x.number);
   } catch (err) {

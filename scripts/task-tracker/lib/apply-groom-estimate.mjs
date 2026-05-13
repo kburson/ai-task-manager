@@ -14,6 +14,7 @@ import path from 'node:path';
 
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
+import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
@@ -61,7 +62,7 @@ export function buildGroomCommentBody({ issueNumber, size, estimate, priority, r
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
-    timeout: 5000,
+    timeout: GH_API_TIMEOUT_MS,
   });
 }
 
@@ -79,7 +80,7 @@ async function defaultListCommentBodies({ issueNumber, repo }) {
       '--jq',
       '.comments[].body',
     ],
-    { timeout: 10000 }
+    { timeout: GH_API_TIMEOUT_MS }
   );
   return String(stdout || '').split('\n');
 }
@@ -89,7 +90,7 @@ async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   writeFileSync(tmpFile, body);
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmpFile], {
-      timeout: 10000,
+      timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {

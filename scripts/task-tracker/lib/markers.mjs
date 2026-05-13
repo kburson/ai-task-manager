@@ -7,6 +7,7 @@
 // blocks are normalized as a side-effect of any marker write.
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
+import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
 // ---------------------------------------------------------------------------
 // plan-approved (analyze → development human gate)
@@ -100,7 +101,7 @@ export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } 
       const { stdout } = await pexec(
         'gh',
         ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-        { timeout: 10000 }
+        { timeout: GH_API_TIMEOUT_MS }
       );
       return stdout;
     });
@@ -115,7 +116,7 @@ export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } 
         await pexec(
           'gh',
           ['issue', 'edit', String(issueNumber), '-R', cfg.repo, '--body-file', tmp],
-          { timeout: 10000 }
+          { timeout: GH_API_TIMEOUT_MS }
         );
       } finally {
         try {

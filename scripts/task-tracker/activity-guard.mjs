@@ -29,6 +29,7 @@ import {
   loadPolicy,
   STATE_MATRIX,
 } from './activity-policy.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -55,6 +56,7 @@ try {
   projectRoot = execSync('git rev-parse --show-toplevel', {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: GIT_TIMEOUT_MS,
   }).trim();
 } catch {
   projectRoot = process.cwd();

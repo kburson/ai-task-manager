@@ -18,10 +18,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { existingRuntimePath } from './paths.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 function repoRoot() {
   try {
-    return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+    return execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      timeout: GIT_TIMEOUT_MS,
+    }).trim();
   } catch {
     return process.cwd();
   }

@@ -1,4 +1,5 @@
 import { loadState } from '../state.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 export async function verbReject(ctx) {
   const {
@@ -36,7 +37,7 @@ export async function verbReject(ctx) {
     const commentBody = `### ❌ Review rejected\n\n${reason.trim()}\n\n— rejected at ${ts}`;
     try {
       await pexec('gh', ['issue', 'comment', issueNum, '-R', cfg.repo, '--body', commentBody], {
-        timeout: 10000,
+        timeout: GH_API_TIMEOUT_MS,
       });
     } catch (err) {
       console.error(`⚠ failed to post rejection comment: ${err.message}`);
