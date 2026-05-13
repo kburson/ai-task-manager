@@ -1,8 +1,7 @@
 # Migration: 6-state → 7-state Kanban
 
-Runbook for upgrading a downstream project board from the legacy 6-state Status
-vocabulary (`Backlog / Ready / In Progress / In Review / R4R / Done`) to the
-new 7-state model (`Backlog / Groom / Analyze / Development / Validate /
+Runbook for upgrading a downstream project board from older Status vocabulary
+onto the canonical 7-state model (`Backlog / Refine / Plan / Develop / Test /
 Review / Done`).
 
 This repo's own board was migrated in place by
@@ -25,18 +24,21 @@ that is what `migrate-to-7-state.mjs` does.
 
 ## Mapping table
 
-| Source label (6-state) | Target label (7-state)               |
-| ---------------------- | ------------------------------------ |
-| `Backlog`              | `Backlog` (no-op)                    |
-| `Ready`                | `Groom`                              |
-| `In Progress`          | `Development`                        |
-| `In Review`            | `Review`                             |
-| `R4R`                  | `Review` (deprecated alias collapse) |
-| `Done`                 | `Done` (no-op)                       |
+| Source label (legacy) | Target label (current)               |
+| --------------------- | ------------------------------------ |
+| `Backlog`             | `Backlog` (no-op)                    |
+| `Ready`               | `Refine`                             |
+| `Groom`               | `Refine`                             |
+| `Analyze`             | `Plan`                               |
+| `In Progress`         | `Develop`                            |
+| `Development`         | `Develop`                            |
+| `Validate`            | `Test`                               |
+| `In Review`           | `Review`                             |
+| `R4R`                 | `Review` (deprecated alias collapse) |
+| `Done`                | `Done` (no-op)                       |
 
-`Analyze` and `Validate` are **new** states. No legacy label maps to them.
-After migration both will be empty — this is expected. Operators curate which
-items advance into those gates manually.
+`Plan` and `Test` may be empty immediately after a migration from older
+boards. Operators curate which items advance into those gates manually.
 
 ## Pre-flight
 

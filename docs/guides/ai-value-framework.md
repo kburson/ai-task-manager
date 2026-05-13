@@ -78,12 +78,13 @@ Size buckets for the GitHub Projects `Size` field:
 
 ### What we measure
 
-Two fields are recorded per issue on the GitHub Projects board:
+Three measurement fields are recorded per issue on the GitHub Projects board:
 
-| Field                   | Type             | What it captures                                                         |
-| ----------------------- | ---------------- | ------------------------------------------------------------------------ |
-| **Actual Session Time** | Number (minutes) | Active AI-assisted session minutes                                       |
-| **Context Length**      | Number (words)   | Reader-visible chat words accumulated across all sessions for this issue |
+| Field              | Type             | What it captures                                                         |
+| ------------------ | ---------------- | ------------------------------------------------------------------------ |
+| **Session Time**   | Number (minutes) | Active AI-assisted session minutes                                       |
+| **Engaged Time**   | Number (hours)   | Report-ready active/review engagement total                              |
+| **Context Length** | Number (words)   | Reader-visible chat words accumulated across all sessions for this issue |
 
 ### Engaged Hours formula
 
@@ -93,7 +94,7 @@ Engaged Hours = (session_minutes / 60) + (context_words / reading_wpm / 60)
 
 - **Session hours**: active AI compute time converted to hours
 - **Reading hours**: time the human spent reading AI output (`context_words ÷ reading_wpm ÷ 60`)
-- **reading_wpm default**: 180 (configurable via `wpm` in `.claude/task-tracker.json`)
+- **reading_wpm default**: 180 (configurable via `wpm` in `.ai-task-manager/task-tracker.json`)
 
 ### Estimated Acceleration
 
@@ -129,7 +130,7 @@ Claude Code uses a flat subscription — the only measurable human cost is time 
 
 ## Setting Board Fields via GraphQL
 
-After running `npx claude-gh-task-manager init`, your `.claude/task-tracker.json` will contain the project and field IDs for your board. Use them in these mutations:
+After running `npx ai-task-manager init`, your `.ai-task-manager/task-tracker.json` will contain the project and field IDs for your board. Use them in these mutations:
 
 ```bash
 # Get the project item ID for an issue
@@ -144,7 +145,7 @@ ITEM_ID=$(gh api graphql -f query='
   }
 }' --jq '.data.repository.issue.projectItems.nodes[0].id')
 
-PROJECT_ID=$(cat .claude/task-tracker.json | python3 -c "import json,sys; print(json.load(sys.stdin)['projectId'])")
+PROJECT_ID=$(cat .ai-task-manager/task-tracker.json | python3 -c "import json,sys; print(json.load(sys.stdin)['projectId'])")
 
 # Set Estimate (hours) — replace FIELD_ID with your fieldEstimate value
 gh api graphql -f query="mutation {
@@ -156,12 +157,12 @@ gh api graphql -f query="mutation {
   }) { projectV2Item { id } }
 }"
 
-# Set Actual Session Time (minutes) — replace FIELD_ID with fieldActualMinutes
+# Set Session Time (minutes) — replace FIELD_ID with fieldSessionTime
 gh api graphql -f query="mutation {
   updateProjectV2ItemFieldValue(input: {
     projectId: \"$PROJECT_ID\"
     itemId: \"$ITEM_ID\"
-    fieldId: \"<ACTUAL_MINUTES_FIELD_ID>\"
+    fieldId: \"<SESSION_TIME_FIELD_ID>\"
     value: { number: <minutes> }
   }) { projectV2Item { id } }
 }"
@@ -177,7 +178,7 @@ gh api graphql -f query="mutation {
 }"
 ```
 
-The `/task end` command handles these mutations automatically when the task skill is active.
+The `/task close` command and review/log helpers handle these mutations automatically when the task skill is active.
 
 ---
 
@@ -298,7 +299,7 @@ gh api graphql -f query='
       title: .content.title,
       state: .content.state,
       estimate: (.fieldValues.nodes[] | select(.field.name == "Estimate") | .number) // null,
-      sessionMin: (.fieldValues.nodes[] | select(.field.name == "Actual Session Time") | .number) // null,
+      sessionMin: (.fieldValues.nodes[] | select(.field.name == "Session Time") | .number) // null,
       contextWords: (.fieldValues.nodes[] | select(.field.name == "Context Length") | .number) // null,
       status: (.fieldValues.nodes[] | select(.field.name == "Status") | .name) // null
     }

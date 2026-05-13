@@ -35,7 +35,12 @@
     "hooks/",
     "scripts/",
     "statusline/",
+    "docs/README.md",
+    "docs/QUICKSTART.md",
+    "docs/DESIGN.md",
+    "docs/introduction/",
     "docs/guides/",
+    "docs/archive/",
     "templates/"
   ],
   "keywords": [

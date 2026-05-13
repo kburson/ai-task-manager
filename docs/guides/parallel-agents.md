@@ -56,10 +56,10 @@ Forward transitions run through the verb surface — never through direct `move-
 
 Two human gates exist between automation steps:
 
-| Gate                                 | Config key                  | What it blocks                                                                                     |
-| ------------------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------- |
-| Refine→Plan, Plan→Develop promotions | `gateAnalysisToDevelopment` | `/task promote` refuses without `--answer yes` when `true`. (config key retained for stability)    |
-| Review→Done close                    | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve`) when `true`. |
+| Gate                                 | Config key                  | What it blocks                                                                                                                 |
+| ------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Refine→Plan, Plan→Develop promotions | `gateAnalysisToDevelopment` | `/task promote` refuses unless the required issue-body approval marker exists when `true`. (config key retained for stability) |
+| Review→Done close                    | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve`) when `true`.                             |
 
 Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disable only for an approved parallel batch (§ Disabling gates for a batch) and restore both to `true` after.
 

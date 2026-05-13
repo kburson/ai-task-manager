@@ -25,7 +25,7 @@ A project-local AI agent skill that binds the active work session to a specific 
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
 /task close             Hard-stop — flush, update board fields, move to Done
 TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified items (legitimate abandonment only); posts an audit comment to the issue
-/task log #N            Re-compute and write Actual Session Time + Context Length to GitHub Projects
+/task log #N            Re-compute and write Engaged Time, Session Time, and Context Length to GitHub Projects
 /task check "<label>"   Toggle a checkbox in the active issue body (exact label match)
 /task fleet             Show all active tasks across parallel agent worktrees
 /task config            List all config values with sources
@@ -71,8 +71,8 @@ TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified
 
 ### `/task log #N`
 
-- Reads the issue's `⏱ Timing Log` comment, sums all `Active Min` deltas for `Actual Session Time`, takes the last `Word Marker` for `Context Length`.
-- Writes both to the GitHub Projects V2 board via `updateProjectV2ItemFieldValue` mutation.
+- Reads the issue's `⏱ Timing Log` comment, computes `Session Time` and `Engaged Time`, and takes the last `Word Marker` for `Context Length`.
+- Writes those values to the GitHub Projects V2 board via `updateProjectV2ItemFieldValue` mutation.
 - Field IDs are looked up by name at runtime — no extra config required.
 - Called automatically by `/task end`. Run manually for issues closed without the skill active.
 - Supports `--dry-run` to print computed values without writing.
@@ -230,7 +230,7 @@ Column semantics:
 
 On each event, the skill pulls the current comment, appends a row, and replaces via GraphQL mutation.
 
-When a task `end` fires, the skill also updates the Projects V2 fields (`Actual Session Time`, `Context Length`, `Actual Hours`) with the cumulative total.
+When a task review/log/close path flushes timing, the skill updates the Projects V2 fields (`Session Time`, `Engaged Time`, and `Context Length`) with the cumulative totals.
 
 ## Hook Behavior
 

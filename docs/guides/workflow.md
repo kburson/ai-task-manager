@@ -1,6 +1,6 @@
 # GitHub Issues & Kanban Workflow
 
-Full workflow rules for projects using `claude-gh-task-manager`. These rules are written into a project's `CLAUDE.md` by convention — they tell Claude Code exactly how to manage issues, move Kanban states, and handle cleanup.
+Full workflow rules for projects using `ai-task-manager`. These rules define how Claude Code, Codex, and human operators should manage issues, move Kanban states, and handle cleanup.
 
 ---
 
@@ -63,7 +63,7 @@ The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-com
 
 **`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
 
-Toggle a gate (project-wide, persisted to `.claude/task-tracker.json`):
+Toggle a gate (project-wide, persisted to `.ai-task-manager/task-tracker.json`):
 
 ```bash
 /task config gateAnalysisToDevelopment false   # full-auto Plan → Develop
@@ -72,12 +72,12 @@ Toggle a gate (project-wide, persisted to `.claude/task-tracker.json`):
 
 ### Session-scoped auto-mode (`/task auto`)
 
-For one-off parallel batches (e.g., dispatching several sub-issues without pausing on each human gate), prefer **session-scoped overrides** over editing project config. They live in `.claude/task-tracker.session.<session-id>.json` (gitignored) and apply only to the current Claude session.
+For one-off parallel batches (e.g., dispatching several sub-issues without pausing on each human gate), prefer **session-scoped overrides** over editing project config. They live in `.claude/task-tracker.session.<session-id>.json` when a session ID is available, are gitignored, and apply only to the current agent session.
 
 ```bash
 /task auto both      # both gates OFF (full auto)
-/task auto analyze   # analyze→dev OFF, review→done ON
-/task auto review    # analyze→dev ON,  review→done OFF
+/task auto plan      # Plan→Develop OFF, Review→Done ON
+/task auto review    # Plan→Develop ON,  Review→Done OFF
 /task auto off       # both gates ON (safe default)
 /task auto reset     # clear session override → fall back to project config
 ```
@@ -189,7 +189,7 @@ Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the analyze-stage hook. The b
 
 **Review delta.** When `/task close <N>` advances an issue to Done, the harness posts a read-only retrospective comment recording Estimate vs. Actual:
 
-- Reads `Estimate` (hours) and `engagedTime` (hours, the "Actual Hours" board field) from the project board.
+- Reads `Estimate` (hours) and `Engaged Time` (hours) from the project board.
 - Posts a `### 📊 Review delta` comment with the Δ percentage and a footer noting that Size/Estimate are not modified.
 - If `Actual` is missing, the cells render as `—` and a fallback note is included; no crash.
 
@@ -215,7 +215,7 @@ When the user says **"cleanup"**, execute in order:
 
 1. **Update docs** — update any `docs/` files that reflect this session's work.
 
-2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Actual Session Time` (minutes) and `Context Length` (words) fields on the board. Open follow-on issues; close completed ones with a resolution comment.
+2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Session Time`, `Engaged Time`, and `Context Length` fields on the board. Open follow-on issues; close completed ones with a resolution comment.
 
 3. **Commit** — stage all changes and commit with a descriptive message referencing issue numbers.
 
@@ -273,7 +273,8 @@ Re-running on a healed body is a no-op: encoding is already canonical, timing fi
 
 At issue close, set these two fields on the GitHub Projects board:
 
-- **Actual Session Time** — total active AI session minutes across all sessions touching this issue.
+- **Session Time** — total active AI session minutes across all sessions touching this issue.
+- **Engaged Time** — session time plus review-time adjustments used by reports.
 - **Context Length** — total reader-visible chat words across all sessions.
 
 The `/task end` command (or `scripts/gh/move-state.mjs <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/guides/ai-value-framework.md`.

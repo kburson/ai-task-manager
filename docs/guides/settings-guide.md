@@ -1,6 +1,6 @@
 # Recommended Claude Code Settings
 
-This guide documents the Claude Code settings that work well with `claude-gh-task-manager`. Most are optional but each has a specific reason.
+This guide documents the Claude Code settings that work well with `ai-task-manager`. Most are optional but each has a specific reason.
 
 ---
 
@@ -120,7 +120,7 @@ The status line shows the active `/task` issue number in the Claude Code CLI hea
 Install with one command:
 
 ```bash
-npx claude-gh-task-manager statusline
+npx ai-task-manager statusline
 ```
 
 This copies `statusline/statusline.sh` from the package to `~/.claude/statusline.sh` and sets the `statusLine` key in `~/.claude/settings.json` automatically.
@@ -137,7 +137,7 @@ When no task is active, the status line is blank (nothing is printed).
 
 ### How it works
 
-Claude Code pipes a JSON object containing the current workspace path to the status line script on each render. The script reads `.claude/task-tracker-state.json` from that workspace and prints the active issue number.
+Claude Code pipes a JSON object containing the current workspace path to the status line script on each render. The script reads `.ai-task-manager/task-tracker-state.json` from that workspace, with legacy `.claude/task-tracker-state.json` fallback, and prints the active issue number.
 
 Requires `jq` to be installed (`brew install jq` on macOS, `apt install jq` on Linux).
 
@@ -147,7 +147,7 @@ If you prefer to manage it yourself:
 
 ```bash
 # Copy the script
-cp node_modules/claude-gh-task-manager/statusline/statusline.sh ~/.claude/statusline.sh
+cp node_modules/ai-task-manager/statusline/statusline.sh ~/.claude/statusline.sh
 chmod +x ~/.claude/statusline.sh
 
 # Add to ~/.claude/settings.json

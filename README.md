@@ -23,7 +23,7 @@ git commit -m "chore: add ai-task-manager"
 Then in Claude Code:
 
 ```
-/task #42          → switch to issue #42, move board to In Progress, display the brief
+/task #42          → switch to issue #42, bind the active session, display the brief
 /task new          → create a new issue and start tracking
 /task              → show active task, elapsed time, word count
 /task close        → flush time, move board to Done, write actuals to project fields
@@ -124,7 +124,7 @@ The fundamental unit is a _task session_: Claude is working on one GitHub issue 
 | Command                                 | Action                                                                                                            |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `/task`                                 | Show active task, elapsed minutes, context words since last marker                                                |
-| `/task #N`                              | Switch to issue #N — display the brief, move board to In Progress                                                 |
+| `/task #N`                              | Switch to issue #N — bind the active session and display the brief                                                |
 | `/task new [title]`                     | Create a new issue and start tracking it                                                                          |
 | `/task plan`                            | Open an untracked planning bucket before an issue exists                                                          |
 | `/task resume`                          | Resume the last paused task (no body reload)                                                                      |
@@ -161,11 +161,11 @@ Hooks flush timing on every `/compact` and session start, so long sessions are n
 
 When you switch tasks or close an issue, the skill updates your board automatically:
 
-- **Kanban state** → moves the card (Backlog → Ready → In Progress → In Review → R4R → Done)
+- **Kanban state** → moves the card through the 7-state workflow (Backlog → Refine → Plan → Develop → Test → Review → Done)
 - **Engaged Time / Session Time** → measured minutes used by reports and board filters
 - **Context Length** → total context words across all sessions
 - **Sequence** → the issue's position in the fan-out order
-- **Start date / End date** → set automatically when work moves to In Progress or Done
+- **Start date / End date** → set automatically when work moves into active development or Done
 
 All board IDs are stored in `.ai-task-manager/task-tracker.json` and set once by `init`. You never manage IDs manually.
 
@@ -269,7 +269,7 @@ Ask naturally:
 ```
 "What's the status of the auth epic?"
 "Create a new issue for the rate-limiting bug we just found — P1, S estimate."
-"Move issue #34 to In Review."
+"Move issue #34 to Review."
 "Link #42 as a sub-issue of #38 and set sequence 2."
 "Show me all open P0 issues with no estimate."
 "Close the current task and log time."
@@ -525,16 +525,16 @@ Or set individual values:
 
 ### Internal Settings (set by `init`)
 
-| Key               | Description                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| `projectId`       | GitHub Projects V2 node ID                                           |
-| `kanbanFieldId`   | Status field ID                                                      |
-| `kanbanOption*`   | Kanban state option IDs (Backlog/Ready/InProgress/InReview/R4R/Done) |
-| `sizeFieldId`     | Size field ID                                                        |
-| `sequenceFieldId` | Sequence field ID (numeric)                                          |
-| `priorityFieldId` | Priority field ID                                                    |
-| `priorityOption*` | Priority option IDs (P0/P1/P2)                                       |
-| `fieldEstimate`   | Estimate field ID                                                    |
+| Key               | Description                                                            |
+| ----------------- | ---------------------------------------------------------------------- |
+| `projectId`       | GitHub Projects V2 node ID                                             |
+| `kanbanFieldId`   | Status field ID                                                        |
+| `kanbanOption*`   | Kanban state option IDs (Backlog/Refine/Plan/Develop/Test/Review/Done) |
+| `sizeFieldId`     | Size field ID                                                          |
+| `sequenceFieldId` | Sequence field ID (numeric)                                            |
+| `priorityFieldId` | Priority field ID                                                      |
+| `priorityOption*` | Priority option IDs (P0/P1/P2)                                         |
+| `fieldEstimate`   | Estimate field ID                                                      |
 
 ---
 
@@ -592,7 +592,7 @@ The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped.
 | Script                                                        | Description                                                                                                                                                                                                       |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/gh/project-tether.mjs --issue <N> ...`               | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
-| `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/ready/in-progress/in-review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                                     |
+| `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/refine/plan/develop/test/review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                                 |
 | `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too.                                                                                                                                                 |
 
 Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual ID management.
@@ -617,6 +617,8 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 
 | Document                                                               | Contents                                                                                  |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [docs/README.md](docs/README.md)                                       | Documentation table of contents and archive map                                           |
+| [docs/introduction/README.md](docs/introduction/README.md)             | Current onboarding guide and quickstart path                                              |
 | [docs/DESIGN.md](docs/DESIGN.md)                                       | Full design spec — data model, state file format, timing comment structure, hook behavior |
 | [docs/guides/workflow.md](docs/guides/workflow.md)                     | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                       |
 | [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated         |
