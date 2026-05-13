@@ -130,6 +130,10 @@ export function codexBootstrapBlock({ scope = 'repo' } = {}) {
     '- Before planning, debugging, testing, implementing, dispatching agents, using worktrees, finishing a branch, or handling review, check whether a matching Superpowers skill is available and follow it.',
     '- Treat Superpowers skills as optional mirrored Codex skills under `~/.codex/skills`; AITM does not install Superpowers as a package dependency.',
     '- Keep AI Task Manager task workflow instructions separate at `.agents/skills/task/SKILL.md`.',
+    '',
+    '**FORBIDDEN — breaks the issue workflow, must never be done:**',
+    '',
+    '- Never call `gh issue create` directly. Always use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`. Direct calls skip project tether, `aitm-fields` injection, placeholder substitution, and assignee/priority gates — the resulting issue cannot be closed via the normal workflow.',
     END_MARKER,
     '',
   ].join('\n');

@@ -65,6 +65,7 @@ The marker fires for every issue type — leaf, sub-issue, epic — and only on 
 - ❌ Editing files for an issue without first running `/task #N`.
 - ❌ Skipping the deep-dive checkpoint because "the scope seems clear."
 - ❌ Asking the user a blocking question while the timer is running. Pause first (see Pause-on-Question below).
+- ❌ Calling `gh issue create` directly. Always go through `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`. Direct calls skip the project tether, `aitm-fields` injection, placeholder substitution, and assignee/priority gate enforcement — producing a structurally non-conforming issue that cannot be closed via the normal workflow.
 
 If any of these are skipped: stop, restore the contract (re-register the task, complete the missed step), then continue.
 
