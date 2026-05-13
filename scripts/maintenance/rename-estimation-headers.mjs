@@ -18,6 +18,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { loadConfig } from '../task-tracker/config.mjs';
+import { listAllIssues } from '../gh/lib/list-issues.mjs';
 
 const pexec = promisify(execFile);
 
@@ -48,29 +49,6 @@ export function rewriteCommentBody(body) {
 
 export function commentNeedsRewrite(body) {
   return REPLACEMENTS.some(([from]) => String(body).includes(from));
-}
-
-async function listAllIssues(repo) {
-  const issues = [];
-  let page = 1;
-  while (true) {
-    const { stdout } = await pexec(
-      'gh',
-      [
-        'api',
-        `repos/${repo}/issues?state=all&per_page=100&page=${page}`,
-        '--jq',
-        '[.[] | select(.pull_request | not) | {number, title}]',
-      ],
-      { timeout: 30000 }
-    );
-    const batch = JSON.parse(stdout || '[]');
-    if (batch.length === 0) break;
-    issues.push(...batch);
-    if (batch.length < 100) break;
-    page++;
-  }
-  return issues;
 }
 
 async function listIssueComments(repo, issueNumber) {

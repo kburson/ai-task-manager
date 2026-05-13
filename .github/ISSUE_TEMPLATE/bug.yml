@@ -1,7 +1,7 @@
 name: Bug
 description: Manual bug entry compatible with AI Task Manager
-title: '[Bug] '
-labels: ['bug']
+title: "[Bug] "
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
@@ -55,11 +55,11 @@ body:
       label: Size
       description: Estimated fix effort
       options:
-        - 'XS - 1-2 hours'
-        - 'S - 3-4 hours'
-        - 'M - 6-10 hours'
-        - 'L - 12-20 hours'
-        - 'XL - 24+ hours'
+        - "XS - 1-2 hours"
+        - "S - 3-4 hours"
+        - "M - 6-10 hours"
+        - "L - 12-20 hours"
+        - "XL - 24+ hours"
     validations:
       required: true
 
@@ -68,7 +68,7 @@ body:
     attributes:
       label: Estimate
       description: Mid-point fix estimate in hours, for example 2 or 2h.
-      placeholder: '2'
+      placeholder: "2"
     validations:
       required: true
 
@@ -77,6 +77,6 @@ body:
     attributes:
       label: Sequence
       description: Optional fan-out/order number used by AITM orchestration.
-      placeholder: '1'
+      placeholder: "1"
     validations:
       required: false
