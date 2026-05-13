@@ -21,7 +21,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { APPROVAL_MARKER_RE, approvalMarker } from './verbs/approve.mjs';
+import {
+  PLAN_APPROVED_RE as APPROVAL_MARKER_RE,
+  buildPlanApprovedMarker as approvalMarker,
+} from './lib/markers.mjs';
 
 const pexec = promisify(execFile);
 

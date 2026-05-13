@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Unit tests for the deep-dive-complete marker write in verbs/analyze.mjs.
+// Unit tests for the deep-dive-complete marker write (markDeepDiveComplete).
 //
-// Covers AC #63 / #71 of issue #90: `markDeepDiveComplete` writes the hidden
-// `<!-- aitm-deep-dive-complete: <ts> -->` marker once and is idempotent on
-// re-run. I/O is injected via deps so the test does not touch network or fs.
+// Covers: writes the hidden `<!-- aitm-deep-dive-complete: <ts> -->` marker
+// once and is idempotent on re-run. I/O is injected via deps so the test
+// does not touch network or fs.
 
 import { strict as assert } from 'node:assert';
-import { markDeepDiveComplete } from '../verbs/analyze.mjs';
+import { markDeepDiveComplete } from '../lib/markers.mjs';
 import { hasDeepDiveCompleteMarker } from '../lib/markers.mjs';
 
 const CFG = { repo: 'test/repo' };

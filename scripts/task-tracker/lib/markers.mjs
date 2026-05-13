@@ -82,6 +82,58 @@ export function backfillDeepDiveCompleteMarker(body, ts) {
   return insertDeepDiveCompleteMarker(src, ts);
 }
 
+// Stamp the deep-dive-complete marker on a live issue body via `gh`.
+// Idempotent: returns `{ changed: false }` if the marker is already present.
+// Tests inject `deps.fetchBody` / `deps.writeBody` to avoid GitHub I/O.
+export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } = {}) {
+  if (!issueNumber) throw new Error('markDeepDiveComplete: issueNumber is required');
+  if (!cfg?.repo) throw new Error('markDeepDiveComplete: cfg.repo is required');
+
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const pathMod = await import('node:path');
+  const pexec = promisify(execFile);
+
+  const fetchBody =
+    deps.fetchBody ||
+    (async () => {
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+        { timeout: 10000 }
+      );
+      return stdout;
+    });
+  const writeBody =
+    deps.writeBody ||
+    (async (body) => {
+      const { writeFileSync, unlinkSync } = await import('node:fs');
+      const os = await import('node:os');
+      const tmp = pathMod.join(os.tmpdir(), `tt-deep-dive-${Date.now()}.md`);
+      try {
+        writeFileSync(tmp, body, 'utf8');
+        await pexec(
+          'gh',
+          ['issue', 'edit', String(issueNumber), '-R', cfg.repo, '--body-file', tmp],
+          { timeout: 10000 }
+        );
+      } finally {
+        try {
+          unlinkSync(tmp);
+        } catch {}
+      }
+    });
+
+  const body = await fetchBody();
+  if (hasDeepDiveCompleteMarker(body)) {
+    return { changed: false, ts: null };
+  }
+  const ts = (typeof now === 'function' ? now() : new Date().toISOString()).replace(/\.\d+Z$/, 'Z');
+  const updated = insertDeepDiveCompleteMarker(body, ts);
+  await writeBody(updated);
+  return { changed: true, ts };
+}
+
 // ---------------------------------------------------------------------------
 // Shared insertion logic.
 //

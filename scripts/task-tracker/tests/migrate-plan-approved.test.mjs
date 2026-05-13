@@ -11,7 +11,7 @@
 
 import { strict as assert } from 'node:assert';
 import { migratePlanApprovedBody, runMigrate } from '../migrate-plan-approved.mjs';
-import { APPROVAL_MARKER_RE } from '../verbs/approve.mjs';
+import { PLAN_APPROVED_RE as APPROVAL_MARKER_RE } from '../lib/markers.mjs';
 
 const NOW = () => '2026-05-11T12:00:00.000Z';
 

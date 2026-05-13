@@ -25,7 +25,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { runApprove } from '../verbs/approve.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -239,59 +238,6 @@ function writeState(sandbox, issueNum) {
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
-}
-
-// ─── Test 5: runApprove with gateAnalysisToDevelopment=false bypasses ────────
-{
-  const calls = { writes: 0, moves: 0 };
-  const deps = {
-    fetchIssueBody: async () => ({
-      title: 't',
-      body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n\n<!-- aitm-deep-dive-complete: 2026-05-10T00:00:00Z -->\n',
-    }),
-    writeIssueBody: async () => {
-      calls.writes++;
-    },
-    moveState: async () => {
-      calls.moves++;
-      return 0;
-    },
-    postComment: async () => {},
-    isHeadless: () => true, // would refuse without bypass
-    fetchParentEpicNumber: async () => null,
-    readParentStatus: async () => 'develop',
-  };
-  const r = await runApprove({
-    issueNumber: 205,
-    cfg: { repo: 'o/r', gateAnalysisToDevelopment: false },
-    deps,
-  });
-  assert.equal(r.status, 'gate-bypassed', `expected gate-bypassed; got ${JSON.stringify(r)}`);
-  assert.equal(calls.moves, 1, 'moveState must be called by the bypass path');
-  console.log('test 5 passed: gateAnalysisToDevelopment=false bypasses prompt');
-}
-
-// ─── Test 6: runApprove with gateAnalysisToDevelopment=true requires prompt ──
-{
-  const deps = {
-    fetchIssueBody: async () => ({
-      title: 't',
-      body: '## Acceptance Criteria\n\n- [ ] x\n\n## Deep-Dive Analysis (2026-05-10)\n\ncontent\n',
-    }),
-    writeIssueBody: async () => {},
-    moveState: async () => 0,
-    postComment: async () => {},
-    isHeadless: () => false,
-    fetchParentEpicNumber: async () => null,
-    readParentStatus: async () => 'develop',
-  };
-  const r = await runApprove({
-    issueNumber: 206,
-    cfg: { repo: 'o/r', gateAnalysisToDevelopment: true },
-    deps,
-  });
-  assert.equal(r.status, 'needs-prompt', `gate=true must require prompt; got ${JSON.stringify(r)}`);
-  console.log('test 6 passed: gateAnalysisToDevelopment=true still prompts');
 }
 
 console.log('gates.test.mjs: all passed');

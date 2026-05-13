@@ -24,7 +24,7 @@ export async function verbCheck(ctx) {
   const body = stdout;
 
   if (/^deep[- ]?dive complete$/i.test(label)) {
-    const { markDeepDiveComplete } = await import('./analyze.mjs');
+    const { markDeepDiveComplete } = await import('../lib/markers.mjs');
     const res = await markDeepDiveComplete({ issueNumber: issueNum, cfg });
     if (!res.changed) {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${s.active}`);

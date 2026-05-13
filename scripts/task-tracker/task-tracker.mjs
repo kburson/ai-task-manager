@@ -173,19 +173,9 @@ if (_isMain)
           await verbFleet(ctx);
           break;
         }
-        case 'analyze': {
-          const { verbAnalyze } = await import('./verbs/analyze.mjs');
-          await verbAnalyze(ctx.rest, ctx.cfg);
-          break;
-        }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
           await verbApprove(ctx.rest, ctx.cfg);
-          break;
-        }
-        case 'approve-review': {
-          const { verbApproveReview } = await import('./verbs/approve-review.mjs');
-          await verbApproveReview(ctx.rest, ctx.cfg);
           break;
         }
         case 'promote':

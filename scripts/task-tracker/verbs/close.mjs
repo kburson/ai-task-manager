@@ -159,14 +159,14 @@ export async function verbClose(ctx) {
               `⛔ \`--answer ${answerArg}\` cannot satisfy a human-gate prompt (review-approval).`
             );
             console.error(
-              `Run \`/task approve-review ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
+              `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
             );
             process.exit(8);
           }
           console.error(`⛔ Refusing to close ${closeTarget} — no human review approval recorded.`);
           console.log(`PROMPT_REQUIRED: review-approval ${closeTarget}`);
           console.error(
-            `Run \`/task approve-review ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
+            `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
           );
           process.exit(7);
         }
