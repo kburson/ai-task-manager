@@ -117,6 +117,27 @@ function stripQuotedRegions(s) {
 }
 const scanned = stripQuotedRegions(command);
 
+// gh issue mutation guards — checked against quote-stripped command so that
+// grep patterns containing "gh issue create" etc. don't trigger false positives.
+// Direct `gh issue create` bypasses the create-issue.mjs wrapper (project
+// tether, assignee/priority gates, template enforcement). Always use the wrapper.
+if (/\bgh\s+issue\s+create\b/.test(scanned)) {
+  block(
+    'Direct `gh issue create` is forbidden.\n' +
+      '  Use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>` — it enforces project tether, assignee/priority gates, and template structure.'
+  );
+}
+
+// Direct `gh issue close` bypasses the timing flush and DoD gate enforced by
+// `/task close`. Direct `gh issue reopen` similarly skips state reconciliation.
+if (/\bgh\s+issue\s+close\b/.test(scanned)) {
+  block(
+    'Direct `gh issue close` is forbidden.\n' +
+      '  Use `/task close` — it validates the DoD, flushes timing, and moves the issue to Done atomically.'
+  );
+}
+
+
 // --- Extract write targets ---
 
 const writePaths = new Set();

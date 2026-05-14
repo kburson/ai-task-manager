@@ -61,7 +61,8 @@ The marker fires for every issue type — leaf, sub-issue, epic — and only on 
 - ❌ Running `/task close` after implementation verification, even if every DoD item passes. The correct terminal step is `/task review`.
 - ❌ Running `move-state.mjs <N> done` directly. `/task close` does this internally; calling it manually skips the timing flush.
 - ❌ Calling `move-state.mjs <N> <state>` directly to jump to an arbitrary kanban state. Always use `/task promote` (or `next`) to advance one step and `/task demote` to step back — they enforce one-step-at-a-time movement and prevent stage-skipping (e.g., jumping from backlog straight to development).
-- ❌ Running `gh issue close` directly. Same reason.
+- ❌ Running `gh issue close` directly. Same reason. Use `/task close`.
+- ❌ Calling `gh issue create` directly — use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>` (already listed below; repeated here for completeness).
 - ❌ Using `TASK_TRACKER_FORCE_DONE=1` for normal completion. It exists only for legitimate abandonment (the issue turned out invalid). Never use it to skip verification.
 - ❌ Editing files for an issue without first running `/task #N`.
 - ❌ Skipping the deep-dive checkpoint because "the scope seems clear."
@@ -636,6 +637,21 @@ Then ask:
 
 - User names an epic → run `/task #<EPIC_N>` to attach the session.
 - **none** → leave plan mode active.
+
+## gh Issue Command Policy
+
+The bash-guard enforces a command policy on `gh issue` mutations. Use this table to know what is allowed without additional gates and what is always forbidden:
+
+| Command                                        | Policy      | Use instead                                                               |
+| ---------------------------------------------- | ----------- | ------------------------------------------------------------------------- |
+| `gh issue view`, `gh issue list`               | **Allowed** | —                                                                         |
+| `gh issue edit --add-label/--remove-label/...` | **Allowed** | —                                                                         |
+| `gh issue edit --body` / `--body-file`         | **Guarded** | Allowed only when hidden markers (`aitm-fields`, `aitm-plan-approved`, …) are preserved in the new body |
+| `gh issue comment`                             | **Allowed** | Use structured helpers (`task-tracker.mjs`, `gh-timing-comment.mjs`, etc.) for workflow comments |
+| `gh issue reopen`                              | **Allowed** | Permitted during session recovery (no task-tracker verb equivalent)       |
+| `gh issue create`                              | **BLOCKED** | `scripts/gh/create-issue.mjs --shape <epic\|sub-issue\|solo>`            |
+| `gh issue close`                               | **BLOCKED** | `/task close`                                                             |
+| `gh api graphql` (issue/project mutation)      | **Allowed** | Treat as exceptional; prefer structured helpers; document the mutation site |
 
 ## Project Preferences
 
