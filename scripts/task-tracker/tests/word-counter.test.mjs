@@ -6,13 +6,15 @@ import path from 'node:path';
 import {
   currentSessionId,
   countWords,
+  jsonlPath,
+  markerPathFor,
   loadMarker,
   projectKey,
   saveMarker,
 } from '../word-counter.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-'));
-const jsonlPath = path.join(tmp, 'session.jsonl');
+const sampleJsonlPath = path.join(tmp, 'session.jsonl');
 const markerPath = path.join(tmp, 'session.word-marker');
 
 // Write a fake JSONL transcript
@@ -25,15 +27,15 @@ const lines = [
   JSON.stringify({ type: 'tool_result', message: { content: 'ignored' } }), // not counted
   JSON.stringify({ type: 'user', message: { content: 'another message here' } }), // 3 words
 ];
-writeFileSync(jsonlPath, lines.join('\n') + '\n');
+writeFileSync(sampleJsonlPath, lines.join('\n') + '\n');
 
 // Test 1: count all from line 0
-let result = countWords(jsonlPath, 0);
+let result = countWords(sampleJsonlPath, 0);
 assert.equal(result.count, 10, 'should count 4+3+3 = 10 words');
 assert.equal(result.totalLines, 4);
 
 // Test 2: count from line 2
-result = countWords(jsonlPath, 2);
+result = countWords(sampleJsonlPath, 2);
 assert.equal(result.count, 3, 'should only count last user message');
 
 // Test 3: marker round-trip
@@ -136,24 +138,28 @@ try {
   else process.env.CLAUDE_PROJECT_DIR = origProjectDir;
 }
 
-// Test 7: currentSessionId() — env-first with mtime fallback (#15)
-// Redirect $HOME and $CLAUDE_PROJECT_DIR so sessionDir() points inside a tmp
-// scratch tree we control, then exercise all three return paths.
+// Test 7: currentSessionId() — env-first with project-local mtime fallback (#15)
+// Redirect project root so transcript lookup points inside a tmp scratch tree
+// we control, then exercise all three return paths.
 const origHome = process.env.HOME;
 const origUserprofile = process.env.USERPROFILE;
 const origSid = process.env.CLAUDE_SESSION_ID;
+const origAitmSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+const origAppName = process.env.AI_TASK_MANAGER_APP_NAME;
 const origProjectDir2 = process.env.CLAUDE_PROJECT_DIR;
+const origAitmProjectDir2 = process.env.AI_TASK_MANAGER_PROJECT_DIR;
 const sidTmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-sid-'));
 try {
   process.env.HOME = sidTmp;
   process.env.USERPROFILE = sidTmp;
-  process.env.CLAUDE_PROJECT_DIR = '/proj/test';
-  const expectedKey = '-proj-test';
-  const sessionDir = path.join(sidTmp, '.claude', 'projects', expectedKey);
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = sidTmp;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+  process.env.CLAUDE_PROJECT_DIR = '/ignored/claude/project';
+  const sessionDir = path.join(sidTmp, '.ai-task-manager', 'codex', 'session-transcripts');
   mkdirSync(sessionDir, { recursive: true });
 
   // Path 1: env var set → returns env value verbatim, mtime not consulted.
-  process.env.CLAUDE_SESSION_ID = 'env-sid-xyz';
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'env-sid-xyz';
   assert.equal(
     currentSessionId(),
     'env-sid-xyz',
@@ -161,6 +167,7 @@ try {
   );
 
   // Path 2: env unset, files present → newest mtime wins.
+  delete process.env.AI_TASK_MANAGER_SESSION_ID;
   delete process.env.CLAUDE_SESSION_ID;
   const oldFile = path.join(sessionDir, 'old-session.jsonl');
   const newFile = path.join(sessionDir, 'new-session.jsonl');
@@ -173,9 +180,9 @@ try {
   assert.equal(currentSessionId(), 'new-session', 'newest mtime file should win when env unset');
 
   // Path 2b: empty env string treated as unset.
-  process.env.CLAUDE_SESSION_ID = '';
+  process.env.AI_TASK_MANAGER_SESSION_ID = '';
   assert.equal(currentSessionId(), 'new-session', 'empty env string should fall back to mtime');
-  delete process.env.CLAUDE_SESSION_ID;
+  delete process.env.AI_TASK_MANAGER_SESSION_ID;
 
   // Path 3: env unset, no files → null.
   rmSync(oldFile);
@@ -188,9 +195,77 @@ try {
   else process.env.USERPROFILE = origUserprofile;
   if (origSid === undefined) delete process.env.CLAUDE_SESSION_ID;
   else process.env.CLAUDE_SESSION_ID = origSid;
+  if (origAitmSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+  else process.env.AI_TASK_MANAGER_SESSION_ID = origAitmSid;
+  if (origAppName === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+  else process.env.AI_TASK_MANAGER_APP_NAME = origAppName;
   if (origProjectDir2 === undefined) delete process.env.CLAUDE_PROJECT_DIR;
   else process.env.CLAUDE_PROJECT_DIR = origProjectDir2;
+  if (origAitmProjectDir2 === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = origAitmProjectDir2;
   rmSync(sidTmp, { recursive: true, force: true });
+}
+
+// Test 8: session paths live under project-local .ai-task-manager, not ~/.claude.
+const origAitmProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+const origClaudeProjectDir3 = process.env.CLAUDE_PROJECT_DIR;
+const origAppName3 = process.env.AI_TASK_MANAGER_APP_NAME;
+const markerProject = mkdtempSync(path.join(tmpdir(), 'tt-wc-marker-project-'));
+try {
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = markerProject;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+  process.env.CLAUDE_PROJECT_DIR = '/ignored/claude/project';
+  assert.equal(
+    markerPathFor('session-123'),
+    path.join(
+      markerProject,
+      '.ai-task-manager',
+      'codex',
+      'session-markers',
+      'session-123.word-marker'
+    ),
+    'word marker path must live under app-scoped project-local .ai-task-manager'
+  );
+  assert.equal(
+    jsonlPath('session-123'),
+    path.join(
+      markerProject,
+      '.ai-task-manager',
+      'codex',
+      'session-transcripts',
+      'session-123.jsonl'
+    ),
+    'transcript path must live under app-scoped project-local .ai-task-manager'
+  );
+
+  const oldHome = process.env.HOME;
+  const fakeHome = path.join(markerProject, 'home');
+  const legacyDir = path.join(fakeHome, '.claude', 'projects', '-ignored-claude-project');
+  mkdirSync(legacyDir, { recursive: true });
+  writeFileSync(path.join(legacyDir, 'legacy-only.jsonl'), '{}\n');
+  process.env.HOME = fakeHome;
+  assert.equal(
+    jsonlPath('legacy-only'),
+    path.join(
+      markerProject,
+      '.ai-task-manager',
+      'codex',
+      'session-transcripts',
+      'legacy-only.jsonl'
+    ),
+    'jsonlPath must not fall back to ~/.claude/projects'
+  );
+  assert.equal(currentSessionId(), null, 'currentSessionId must not scan ~/.claude/projects');
+  if (oldHome === undefined) delete process.env.HOME;
+  else process.env.HOME = oldHome;
+} finally {
+  if (origAitmProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = origAitmProjectDir;
+  if (origClaudeProjectDir3 === undefined) delete process.env.CLAUDE_PROJECT_DIR;
+  else process.env.CLAUDE_PROJECT_DIR = origClaudeProjectDir3;
+  if (origAppName3 === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+  else process.env.AI_TASK_MANAGER_APP_NAME = origAppName3;
+  rmSync(markerProject, { recursive: true, force: true });
 }
 
 rmSync(tmp, { recursive: true });

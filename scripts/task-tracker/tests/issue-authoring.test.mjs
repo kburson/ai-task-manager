@@ -73,10 +73,7 @@ function assertCanonicalOrder(body, label) {
   for (const re of CANONICAL_MARKERS) {
     const m = re.exec(body);
     assert.ok(m, `${label}: missing required marker ${re}`);
-    assert.ok(
-      m.index > prev,
-      `${label}: marker ${re} out of order (index ${m.index} <= ${prev})`
-    );
+    assert.ok(m.index > prev, `${label}: marker ${re} out of order (index ${m.index} <= ${prev})`);
     prev = m.index;
   }
 }

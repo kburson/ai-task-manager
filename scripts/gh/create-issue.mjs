@@ -30,11 +30,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (!a.startsWith('--')) continue;
     const key = a.slice(2);
-    if (
-      key === 'no-tether' ||
-      key === 'no-placeholder-substitution' ||
-      key === 'dry-run'
-    ) {
+    if (key === 'no-tether' || key === 'no-placeholder-substitution' || key === 'dry-run') {
       out[key] = true;
       continue;
     }
@@ -114,7 +110,8 @@ function renderShapeBody(args) {
   }
   const result = run('node', [PREFLIGHT_SCRIPT, ...flags], { timeout: GH_API_TIMEOUT_MS });
   if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status !== 0) die(`preflight-issue --shape failed (exit ${result.status})`, result.status || 1);
+  if (result.status !== 0)
+    die(`preflight-issue --shape failed (exit ${result.status})`, result.status || 1);
   return result.stdout;
 }
 

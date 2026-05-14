@@ -258,9 +258,174 @@ async function run(sandbox, binDir, args) {
   }
 }
 
-// ─── Test 3: /task reject without --reason → exit non-zero ───────────────────
+// ─── Test 3: verbReview refuses to auto-mark AC/DoD without evidence ─────────
 {
   const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-3-'));
+  try {
+    writeConfig(sandbox);
+    writeFileSync(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
+        active: '#103',
+        lastActive: '#103',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
+    );
+    const fixtureBody = [
+      '## Acceptance Criteria',
+      '',
+      '- [x] Fresh install registers direct Node hook commands.',
+      '- [ ] Existing installs migrate legacy shell hook commands.',
+      '',
+      '## Pickup Directive',
+      '- [x] Deep dive complete',
+      '',
+      '## Deep-Dive Analysis (2026-05-10)',
+      '',
+      ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
+      '',
+      '### Verification Commands',
+      '',
+      '- [ ] `node --version`',
+      '',
+      '## Definition of Done',
+      '',
+      '- [ ] Acceptance criteria met (including test additions from deep dive)',
+      '- [ ] Tests pass; new coverage committed',
+      '- [ ] Pre-commit hooks pass',
+      '- [ ] Issue body checkboxes ticked',
+      '',
+      '<!-- aitm-plan-approved: 2026-05-10T00:00:00.000Z -->',
+      '',
+      '<!-- ai-task-manager:fields:start -->',
+      '<!-- ai-task-manager:fields:end -->',
+    ].join('\n');
+    const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
+    });
+    const r = await run(sandbox, binDir, ['review', '#103']);
+    assert.notEqual(r.code, 0, 'review must fail when AC/DoD lacks automated evidence');
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/, `stdout:\n${r.stdout}`);
+    assert.match(
+      r.stderr,
+      /missing automated evidence/,
+      `expected missing evidence failure; stderr:\n${r.stderr}`
+    );
+    assert.match(
+      r.stderr,
+      /REGRESSION: Fresh install registers direct Node hook commands\./,
+      `expected checked item to be reported as a regression; stderr:\n${r.stderr}`
+    );
+    const written = readFileSync(recordedBodyPath, 'utf8');
+    for (const label of [
+      'Existing installs migrate legacy shell hook commands.',
+      'Acceptance criteria met (including test additions from deep dive)',
+      'Tests pass; new coverage committed',
+      'Pre-commit hooks pass',
+    ]) {
+      assert.match(
+        written,
+        new RegExp(`- \\[ \\] ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+      );
+    }
+    assert.match(written, /- \[ \] Issue body checkboxes ticked/);
+    console.log('test 3 passed: verbReview refuses AC/DoD without evidence');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
+// ─── Test 4: verbReview marks AC/DoD with passing evidence ───────────────────
+{
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-4-'));
+  try {
+    writeConfig(sandbox);
+    writeFileSync(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
+        active: '#104',
+        lastActive: '#104',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
+    );
+    writeFileSync(
+      path.join(sandbox, 'package.json'),
+      JSON.stringify({
+        scripts: {
+          test: 'node --version',
+          lint: 'node --version',
+          'format:check': 'node --version',
+        },
+      })
+    );
+    const fixtureBody = [
+      '## Acceptance Criteria',
+      '',
+      '- [ ] Fresh install registers direct Node hook commands. <!-- aitm-verified-by: `npm test` -->',
+      '- [ ] Existing installs migrate legacy shell hook commands. <!-- aitm-verified-by: `npm run lint` -->',
+      '',
+      '## Pickup Directive',
+      '- [x] Deep dive complete',
+      '',
+      '## Deep-Dive Analysis (2026-05-10)',
+      '',
+      ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
+      '',
+      '## Definition of Done',
+      '',
+      '- [ ] `npm test`',
+      '- [ ] `npm run lint`',
+      '- [ ] `npm run format:check`',
+      '- [ ] Acceptance criteria met',
+      '- [ ] Issue body checkboxes ticked',
+      '',
+      '<!-- aitm-plan-approved: 2026-05-10T00:00:00.000Z -->',
+      '',
+      '<!-- ai-task-manager:fields:start -->',
+      '<!-- ai-task-manager:fields:end -->',
+    ].join('\n');
+    const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
+    });
+    const r = await run(sandbox, binDir, ['review', '#104']);
+    assert.equal(r.code, 0, `expected exit 0; stderr:\n${r.stderr}`);
+    assert.match(
+      r.stdout,
+      /PROMPT_REQUIRED: review-approval #104/,
+      `expected marker in stdout; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`
+    );
+    const written = readFileSync(recordedBodyPath, 'utf8');
+    for (const label of [
+      'Fresh install registers direct Node hook commands.',
+      'Existing installs migrate legacy shell hook commands.',
+      '`npm test`',
+      '`npm run lint`',
+      '`npm run format:check`',
+      'Acceptance criteria met',
+      'Issue body checkboxes ticked',
+    ]) {
+      assert.match(
+        written,
+        new RegExp(`- \\[x\\] ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+      );
+    }
+    console.log('test 4 passed: verbReview marks AC/DoD with passing evidence');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
+// ─── Test 5: /task reject without --reason → exit non-zero ───────────────────
+{
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-5-'));
   try {
     writeConfig(sandbox);
     // No shim needed — verbReject exits on missing reason before any network call
@@ -269,7 +434,7 @@ async function run(sandbox, binDir, args) {
     let code = 0,
       stderr = '';
     try {
-      await pexec('node', [CLI, 'reject', '#103'], { env, timeout: 10000 });
+      await pexec('node', [CLI, 'reject', '#105'], { env, timeout: 10000 });
     } catch (err) {
       code = err.code ?? 1;
       stderr = err.stderr || '';
@@ -280,15 +445,15 @@ async function run(sandbox, binDir, args) {
       /reason is required/,
       `expected "reason is required" in stderr; got:\n${stderr}`
     );
-    console.log('test 3 passed: /task reject without --reason exits non-zero');
+    console.log('test 5 passed: /task reject without --reason exits non-zero');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
 }
 
-// ─── Test 4: /task reject when state != review → exit non-zero, no comment ───
+// ─── Test 6: /task reject when state != review → exit non-zero, no comment ───
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-4-'));
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-6-'));
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -322,15 +487,15 @@ async function run(sandbox, binDir, args) {
       false,
       `gh issue comment must not be called on wrong state; calls:\n${calls}`
     );
-    console.log('test 4 passed: /task reject refuses wrong state');
+    console.log('test 6 passed: /task reject refuses wrong state');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
 }
 
-// ─── Test 5: /task reject happy path → posts rejection comment ───────────────
+// ─── Test 7: /task reject happy path → posts rejection comment ───────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-5-'));
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-7-'));
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -369,7 +534,7 @@ async function run(sandbox, binDir, args) {
       /scope creep — split before merge/,
       `comment body missing reason; body:\n${commentBody}`
     );
-    console.log('test 5 passed: /task reject happy path posts rejection comment');
+    console.log('test 7 passed: /task reject happy path posts rejection comment');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

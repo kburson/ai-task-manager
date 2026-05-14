@@ -10,10 +10,10 @@ Canonical heading order (the parity test enforces this):
   <!-- aitm-fields: ... -->       (appended by project-tether)
 
 Placeholders (substituted by preflight-issue.mjs --shape solo):
-  {{title}}              Issue title (verbatim)
-  {{scope}}              Scope text from the spec (verbatim)
-  {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
-  {{plan_metadata}}      Plan Metadata block (Size, Estimate, Priority, Sequence)
+{{title}} Issue title (verbatim)
+{{scope}} Scope text from the spec (verbatim)
+{{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
+{{plan_metadata}} Plan Metadata block (Size, Estimate, Priority, Sequence)
 
 Stub policy — DO NOT include implementation plan, task breakdown, code snippets,
 file maps, or step-by-step instructions. The deep-dive happens at pickup time

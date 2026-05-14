@@ -137,8 +137,9 @@ Typical worker terminal path:
 
 ```text
 /task check "Acceptance criteria met"
-/task check "Tests pass; new coverage committed"
-/task check "Pre-commit hooks pass"
+/task check "`npm test`"
+/task check "`npm run lint`"
+/task check "`npm run format:check`"
 /task review #42
 ```
 

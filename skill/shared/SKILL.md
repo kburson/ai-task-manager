@@ -323,7 +323,7 @@ Two checkpoints inspect `git status --porcelain` in the issue's bound workspace 
 
 Every successful `git commit` made while an issue is bound (`/task start <#N>`) is captured into a single rolling `### 🔗 Commits` comment on that issue. This closes the traceability gap between "issue is Done" and "which commits implemented it."
 
-**Hook:** PostToolUse on `Bash` → `.claude/hooks/commit-trail.sh` → `commit-trail-handler.mjs`. Installed automatically by `bin/cli.mjs install`.
+**Hook:** PostToolUse on `Bash` runs the direct Node command for `commit-trail-handler.mjs`. Installed automatically by `bin/cli.mjs install`.
 
 **Behavior:**
 
@@ -640,17 +640,17 @@ Then ask:
 
 Team-shared workflow preferences live in the git-tracked `.ai-task-manager/task-tracker.json` under `preferences`. Read them at session start via `getPreferences()` from `scripts/task-tracker/config.mjs`. Defaults preserve today's behavior; teams opt in by editing the file (or via `npx ai-task-manager configure preferences`). Reference keys by name when honoring them:
 
-| Key | Default | Effect when enabled |
-|---|---|---|
-| `noPushToOrigin` | `false` | Commit/merge to trunk locally only; never `git push`, never open PRs. |
-| `mainThreadOnly` | `false` | No feature branches, no worktrees; commit straight to trunk. Disables parallel dispatch. |
-| `driveSubIssuesToR4R` | `true` | Drive sub-issues end-to-end through dispatch/review/merge to R4R without per-step human check-ins. |
-| `pauseTimerOnBlockingQuestion` | `true` | `/task pause "pause for question"` before any blocking user prompt; `/task start "question answered"` on resume. |
-| `noConfirmAfterDeepDive` | `true` | After posting the deep-dive comment, proceed straight to implementation; do not ask "ready to proceed?". |
-| `askGatesBeforeParallel` | `true` | Before parallel sub-agent dispatch, prompt user which human gates to disable; encode into prompts; restore after. |
-| `formatting.noEmojis` | `true` | Issue bodies, comments, and commit messages contain no emojis. |
-| `formatting.currencyInBackticks` | `true` | Currency amounts wrap in backticks (`` `$200` ``). |
-| `scratchDir` | `"./tmp/"` | Canonical directory for transient files (issue body fragments, deep-dive staging). |
+| Key                              | Default    | Effect when enabled                                                                                               |
+| -------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| `noPushToOrigin`                 | `false`    | Commit/merge to trunk locally only; never `git push`, never open PRs.                                             |
+| `mainThreadOnly`                 | `false`    | No feature branches, no worktrees; commit straight to trunk. Disables parallel dispatch.                          |
+| `driveSubIssuesToR4R`            | `true`     | Drive sub-issues end-to-end through dispatch/review/merge to R4R without per-step human check-ins.                |
+| `pauseTimerOnBlockingQuestion`   | `true`     | `/task pause "pause for question"` before any blocking user prompt; `/task start "question answered"` on resume.  |
+| `noConfirmAfterDeepDive`         | `true`     | After posting the deep-dive comment, proceed straight to implementation; do not ask "ready to proceed?".          |
+| `askGatesBeforeParallel`         | `true`     | Before parallel sub-agent dispatch, prompt user which human gates to disable; encode into prompts; restore after. |
+| `formatting.noEmojis`            | `true`     | Issue bodies, comments, and commit messages contain no emojis.                                                    |
+| `formatting.currencyInBackticks` | `true`     | Currency amounts wrap in backticks (`` `$200` ``).                                                                |
+| `scratchDir`                     | `"./tmp/"` | Canonical directory for transient files (issue body fragments, deep-dive staging).                                |
 
 Decision-point examples: if `mainThreadOnly` is true, skip worktree creation; if `noPushToOrigin` is true, never run `git push` and never open PRs; if `askGatesBeforeParallel` is true, prompt before dispatching parallel sub-agents.
 
@@ -746,7 +746,8 @@ Do NOT list specific issue numbers — discovered work may add sub-issues during
 **Before moving an issue to In Review (agent terminal step):**
 
 - Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
-- Verification commands appended during pickup must be issue-body checkboxes under `### Verification Commands`, and each relevant command checkbox must be checked before checking the related Acceptance Criterion or Definition of Done box.
+- The standard DoD command checkboxes are `npm test`, `npm run lint`, and `npm run format:check`. Do not duplicate those under the deep-dive `### Verification Commands` section.
+- Verification commands appended during pickup are for issue-specific checks not covered by the standard DoD. Each relevant command checkbox must be checked before checking the related Acceptance Criterion or prose Definition of Done box.
 - Mark each verified item: `/task check "<label>"`.
 - Once every `- [ ]` in the issue body is `- [x]`, record exit word count and stop — the orchestrator calls `/task review #N --duration-minutes M --words W` with values from the agent's `CODE_COMPLETE` report. This is the terminal agent step — stop here.
 

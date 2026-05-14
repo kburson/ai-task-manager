@@ -9,11 +9,43 @@ import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const CLI = path.resolve(__dir, '..', '..', '..', 'bin', 'cli.mjs');
+const ROOT = path.resolve(__dir, '..', '..', '..');
+const CLI = path.join(ROOT, 'bin', 'cli.mjs');
 
 const target = mkdtempSync(path.join(tmpdir(), 'install-test-'));
+const legacyTarget = mkdtempSync(path.join(tmpdir(), 'install-legacy-hooks-test-'));
 const codexTarget = mkdtempSync(path.join(tmpdir(), 'install-codex-superpowers-test-'));
 const fakeHome = mkdtempSync(path.join(tmpdir(), 'install-codex-superpowers-home-'));
+
+const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
+const COMMIT_TRAIL_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs';
+const LEGACY_TIMING_HOOK_CMD = '.claude/hooks/task-tracker.sh';
+const LEGACY_COMMIT_TRAIL_HOOK_CMD = '.claude/hooks/commit-trail.sh';
+const CANONICAL_DOCS = [
+  'README.md',
+  'docs/DESIGN.md',
+  'docs/guides/settings-guide.md',
+  'docs/introduction/install-and-setup.md',
+  'skill/adapters/claude/SKILL.md',
+  'skill/shared/SKILL.md',
+];
+
+function hookCommands(settings, event) {
+  return (settings.hooks?.[event] ?? []).flatMap((entry) => [
+    ...(typeof entry === 'string' ? [entry] : []),
+    ...(entry.command ? [entry.command] : []),
+    ...(entry.hooks ?? []).map((inner) => inner.command).filter(Boolean),
+  ]);
+}
+
+function hasHookCommand(settings, event, command) {
+  return hookCommands(settings, event).includes(command);
+}
+
+function hookCommandCount(settings, event, command) {
+  return hookCommands(settings, event).filter((value) => value === command).length;
+}
 
 function writeSkill(name) {
   const dir = path.join(
@@ -29,6 +61,22 @@ function writeSkill(name) {
   );
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'SKILL.md'), `# ${name}\n`, 'utf8');
+}
+
+function assertDocsDoNotDescribeLegacyHookStubs() {
+  for (const rel of CANONICAL_DOCS) {
+    const text = readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.doesNotMatch(
+      text,
+      /\.claude\/hooks\/task-tracker\.sh/,
+      `${rel} names legacy timing stub`
+    );
+    assert.doesNotMatch(
+      text,
+      /\.claude\/hooks\/commit-trail\.sh/,
+      `${rel} names legacy commit-trail stub`
+    );
+  }
 }
 
 try {
@@ -50,23 +98,36 @@ try {
     'Codex stub must point to adapter'
   );
 
-  // Stub written, not the original hook
-  const stub = path.join(target, '.claude', 'hooks', 'task-tracker.sh');
-  assert.ok(existsSync(stub), 'hook stub missing');
-  const stubContent = readFileSync(stub, 'utf8');
-  assert.ok(stubContent.includes('node_modules'), 'stub must reference node_modules');
-  assert.ok(
-    !stubContent.includes('CLAUDE_PROJECT_DIR'),
-    'stub must not reference CLAUDE_PROJECT_DIR'
+  // Timing and commit-trail hooks are direct Node settings commands, not installed shell stubs.
+  assert.equal(
+    existsSync(path.join(target, '.claude', 'hooks', 'task-tracker.sh')),
+    false,
+    'fresh install must not write .claude/hooks/task-tracker.sh'
+  );
+  assert.equal(
+    existsSync(path.join(target, '.claude', 'hooks', 'commit-trail.sh')),
+    false,
+    'fresh install must not write .claude/hooks/commit-trail.sh'
   );
 
   // settings.json patched
   const settings = JSON.parse(readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'));
+  for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
+    assert.ok(hasHookCommand(settings, event, TIMING_HOOK_CMD), `${event} timing hook missing`);
+    assert.equal(
+      hasHookCommand(settings, event, LEGACY_TIMING_HOOK_CMD),
+      false,
+      `${event} must not use legacy timing shell hook`
+    );
+  }
   assert.ok(
-    settings.hooks?.SessionStart?.some((h) =>
-      h.hooks?.some((inner) => inner.command?.includes('task-tracker.sh'))
-    ),
-    'SessionStart hook missing'
+    hasHookCommand(settings, 'PostToolUse', COMMIT_TRAIL_HOOK_CMD),
+    'PostToolUse commit-trail hook missing'
+  );
+  assert.equal(
+    hasHookCommand(settings, 'PostToolUse', LEGACY_COMMIT_TRAIL_HOOK_CMD),
+    false,
+    'PostToolUse must not use legacy commit-trail shell hook'
   );
 
   // #70: PreToolUse must include Agent and Edit|Write|NotebookEdit matchers.
@@ -158,6 +219,61 @@ try {
     'default install must not create AGENTS.md'
   );
 
+  mkdirSync(path.join(legacyTarget, '.claude'), { recursive: true });
+  writeFileSync(
+    path.join(legacyTarget, '.claude', 'settings.json'),
+    JSON.stringify(
+      {
+        hooks: {
+          SessionStart: [
+            { matcher: '', hooks: [{ type: 'command', command: LEGACY_TIMING_HOOK_CMD }] },
+          ],
+          PreCompact: [
+            { matcher: '', hooks: [{ type: 'command', command: LEGACY_TIMING_HOOK_CMD }] },
+          ],
+          PostCompact: [
+            { matcher: '', hooks: [{ type: 'command', command: LEGACY_TIMING_HOOK_CMD }] },
+          ],
+          PostToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [{ type: 'command', command: LEGACY_COMMIT_TRAIL_HOOK_CMD }],
+            },
+          ],
+        },
+      },
+      null,
+      2
+    ) + '\n',
+    'utf8'
+  );
+  await pexec('node', [CLI, 'install', '--target', legacyTarget]);
+  const migratedSettings = JSON.parse(
+    readFileSync(path.join(legacyTarget, '.claude', 'settings.json'), 'utf8')
+  );
+  for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
+    assert.equal(
+      hookCommandCount(migratedSettings, event, TIMING_HOOK_CMD),
+      1,
+      `${event} must have one direct timing hook after migration`
+    );
+    assert.equal(
+      hasHookCommand(migratedSettings, event, LEGACY_TIMING_HOOK_CMD),
+      false,
+      `${event} legacy timing hook must be migrated`
+    );
+  }
+  assert.equal(
+    hookCommandCount(migratedSettings, 'PostToolUse', COMMIT_TRAIL_HOOK_CMD),
+    1,
+    'PostToolUse must have one direct commit-trail hook after migration'
+  );
+  assert.equal(
+    hasHookCommand(migratedSettings, 'PostToolUse', LEGACY_COMMIT_TRAIL_HOOK_CMD),
+    false,
+    'PostToolUse legacy commit-trail hook must be migrated'
+  );
+
   writeSkill('using-superpowers');
   writeSkill('brainstorming');
   writeSkill('verification-before-completion');
@@ -180,9 +296,12 @@ try {
   );
   assert.match(agents, /using-superpowers/, 'AGENTS.md bootstrap must mention using-superpowers');
 
+  assertDocsDoNotDescribeLegacyHookStubs();
+
   console.log('install.test.mjs: all assertions passed');
 } finally {
   rmSync(target, { recursive: true, force: true });
+  rmSync(legacyTarget, { recursive: true, force: true });
   rmSync(codexTarget, { recursive: true, force: true });
   rmSync(fakeHome, { recursive: true, force: true });
 }

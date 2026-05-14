@@ -10,11 +10,11 @@ Canonical heading order (the parity test enforces this):
   <!-- aitm-fields: ... -->       (appended by project-tether)
 
 Placeholders (substituted by preflight-issue.mjs --shape sub-issue):
-  {{title}}              Sub-issue title (verbatim)
-  {{scope}}              Sub-issue Scope text from the spec (verbatim)
-  {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
-  {{plan_metadata}}      Plan Metadata block (Size, Estimate, Priority, Sequence, Parent)
-  {{parent_epic}}        Parent epic reference, e.g. `#42` — required for sub-issues
+{{title}} Sub-issue title (verbatim)
+{{scope}} Sub-issue Scope text from the spec (verbatim)
+{{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
+{{plan_metadata}} Plan Metadata block (Size, Estimate, Priority, Sequence, Parent)
+{{parent_epic}} Parent epic reference, e.g. `#42` — required for sub-issues
 
 Stub policy — DO NOT include implementation plan, task breakdown, code snippets,
 file maps, or step-by-step instructions. The deep-dive happens at pickup time

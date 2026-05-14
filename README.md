@@ -8,19 +8,34 @@ AI Task Manager lets Claude Code and Codex share the same GitHub issue/project w
 
 ## TL;DR — Up in 3 Minutes
 
+### Prerequisites
+
+- **Node.js 18+**
+- **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
+- **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
+- **Claude Code and/or Codex** — install whichever agent you plan to use
+- A **GitHub Projects V2** board. `init` can use an existing linked board, link an existing user/org board, or create a new board with AI Task Manager-compatible workflow fields.
+
+### Install & Configure
+
 ```bash
-# 1. Install into your project
+# 1. install the package into your project repo
+npm i -D ai-task-manager
+
+# 2. Install package configs into your project workspace
 npx ai-task-manager install
 
-# 2. Connect to your GitHub Project board (interactive)
+# 3. Connect to your GitHub Project board (interactive)
 npx ai-task-manager init
 
-# 3. Commit the generated config
+# 4. Commit the generated config
 git add .ai-task-manager/task-tracker.json .github/ISSUE_TEMPLATE/
 git commit -m "chore: add ai-task-manager"
 ```
 
-Then in Claude Code:
+### use skill commands in ai chat
+
+#### in Claude Code use the `/task` command word:
 
 ```
 /task #42          → switch to issue #42, bind the active session, display the brief
@@ -31,15 +46,17 @@ Then in Claude Code:
 
 That's it. Everything else is optional depth.
 
-In Codex, ask naturally:
+#### In Codex, ask naturally:
 
 ```text
 Use the task skill to start issue #42.
 ```
 
+Of course either ai chat interface will eventually learn your patterns and be able to call the `/task` command verbs from natural language inference in the chat.
+
 ---
 
-## What This Is
+## What This Is:
 
 Most AI coding tools give you a chat. This gives you an **engineering system**.
 
@@ -52,14 +69,6 @@ The tool has three distinct capability layers:
 3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
 
 ---
-
-## Prerequisites
-
-- **Node.js 18+**
-- **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
-- **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
-- **Claude Code and/or Codex** — install whichever agent you plan to use
-- A **GitHub Projects V2** board. `init` can use an existing linked board, link an existing user/org board, or create a new board with AI Task Manager-compatible workflow fields.
 
 ## Install Targets
 
@@ -292,9 +301,10 @@ Every issue created from a master plan gets this block appended:
 ```markdown
 ### Definition of Done
 
-- [ ] Acceptance criteria met (including test additions from deep dive)
-- [ ] Tests pass; new coverage committed
-- [ ] Pre-commit hooks pass
+- [ ] `npm test`
+- [ ] `npm run lint`
+- [ ] `npm run format:check`
+- [ ] Acceptance criteria met
 - [ ] Issue body checkboxes ticked
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
@@ -326,7 +336,8 @@ On first pickup, the agent runs a just-in-time analysis against the current repo
 - Files to edit (full repo-relative paths)
 - Step-by-step implementation plan
 - Test additions (each test file with a one-line description)
-- Verification Commands as enforceable checkboxes:
+- Verification Commands as enforceable checkboxes for issue-specific checks not
+  already covered by the standard DoD:
 
   ```markdown
   ### Verification Commands

@@ -30,15 +30,18 @@ required box is unchecked will be refused.
      relevant tests, builds, or commands**. Read the output. Then check the box.
    - Same rule for every Acceptance Criterion (including any added during the deep
      dive).
-   - Do not check a related Acceptance Criterion or DoD box until every relevant
-     Verification Commands checkbox has been checked.
+   - The standard DoD commands (`npm test`, `npm run lint`, and
+     `npm run format:check`) are DoD checkboxes. Do not duplicate them under the
+     deep-dive `### Verification Commands` section.
+   - Do not check a related Acceptance Criterion or DoD prose box until the
+     relevant command checkbox has been checked.
    - Never bulk-check. Never check preemptively. "It looks done" is not verification.
 
 3. **All pre-close checkboxes must be checked before close.**
    - Before `/task close` or moving the issue to Done, every user-verifiable `- [ ]`
      in the issue body MUST be `- [x]`. This includes the Deep Dive checkpoint,
-     every Acceptance Criterion, every Verification Commands checkbox, and every
-     Definition of Done item.
+     every Acceptance Criterion, every issue-specific Verification Commands checkbox,
+     and every Definition of Done item.
    - Close side effects such as moving to Done, writing the final timing row, and
      updating Actuals are owned by `/task close`; they are not DoD checkboxes.
    - The pre-close gate WILL refuse if any pre-close box is unchecked. Do not bypass.
@@ -96,8 +99,8 @@ required box is unchecked will be refused.
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
    assumptions still hold, identify concrete files to edit, define the test approach,
-   surface new risks. Cross-reference `docs/agent-context/file-index.yaml` and any
-   relevant `AGENTS.md` files.
+   surface new risks. Use `rg`, `rg --files`, repository docs, and any relevant
+   `AGENTS.md` files to build the file map from the current checkout.
 
 3. **Append the deep dive to the issue body**, then flip the checkpoint checkbox.
 
@@ -126,8 +129,9 @@ required box is unchecked will be refused.
    - **Files to edit** (full repo-relative paths)
    - **Step-by-step implementation plan**
    - **Test additions** — list each test file with a one-line description; append as new acceptance-criteria checkboxes
-   - **Verification Commands** — exact commands to prove each criterion, appended
-     as checkboxes and checked only after successful execution and output review:
+   - **Verification Commands** — issue-specific commands to prove criteria that are
+     not already covered by the standard DoD commands. Append them as checkboxes and
+     check them only after successful execution and output review:
 
      ```markdown
      ### Verification Commands
@@ -237,15 +241,16 @@ actually verify.
 Review every item in the Definition of Done checklist in the issue body. For each item:
 
 - Verify it is genuinely complete (inspection + relevant test/command output).
-- Run pre-commit hooks and verify they pass — this is a real DoD item, not a formality.
-- Verify every relevant command in `### Verification Commands` has been run
-  successfully, its output read, and its checkbox checked.
+- Run the standard DoD command checkboxes: `npm test`, `npm run lint`, and
+  `npm run format:check`.
+- Verify every relevant issue-specific command in `### Verification Commands` has been
+  run successfully, its output read, and its checkbox checked.
 - Verify that all issue body checkboxes are ticked — this item is self-referential and
   must be the last box checked.
 - Mark each verified item with `/task check "<label>"`.
 
 Then verify every Acceptance Criterion the same way. Do not check the related Acceptance
-Criterion or DoD item until the relevant Verification Commands checkbox is checked.
+Criterion or DoD item until the relevant command checkbox is checked.
 
 **Word count — exit step (agent sessions only):**
 Before reporting `CODE_COMPLETE`, record your final word count:

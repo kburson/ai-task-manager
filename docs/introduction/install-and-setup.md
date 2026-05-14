@@ -60,13 +60,13 @@ The installer writes stable, project-local files so every developer and agent in
 
 Common generated paths:
 
-| Path                           | Purpose                                                                     |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| `.ai-task-manager/`            | Project config, runtime templates, Pickup Directive, and Definition of Done |
-| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                 |
-| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                       |
-| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable               |
-| `.claude/hooks/`               | Claude Code hook stubs for timing, guards, and commit trail support         |
+| Path                           | Purpose                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `.ai-task-manager/`            | Project config, runtime templates, Pickup Directive, and Definition of Done                    |
+| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                                    |
+| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                                          |
+| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable                                  |
+| `.claude/hooks/`               | Optional project-local helper hooks; timing and commit trail use direct Node settings commands |
 
 ```mermaid
 flowchart TB
@@ -168,7 +168,7 @@ When publishing this package to npm, include the introduction docs in `package.j
 - `docs/guides/`
 - `skill/`
 - `scripts/`
-- `hooks/`
+- `hooks/` for legacy compatibility assets
 - `templates/`
 - `config/`
 

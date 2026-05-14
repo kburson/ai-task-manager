@@ -106,11 +106,12 @@ Issues created through AI Task Manager include a Definition of Done and a Pickup
 Typical required checks include:
 
 - Acceptance criteria met.
-- Tests pass and new coverage is committed.
-- Pre-commit hooks pass.
+- `npm test`.
+- `npm run lint`.
+- `npm run format:check`.
 - Issue body checkboxes are ticked.
 - Deep dive is complete.
-- Verification commands were run successfully.
+- Issue-specific verification commands were run successfully.
 
 The close and review gates inspect issue checkboxes. If unchecked items remain, the command refuses to proceed unless an audited abandonment path is explicitly used.
 

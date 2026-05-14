@@ -28,7 +28,7 @@ This guide documents the Claude Code settings that work well with `ai-task-manag
 
 Auto-compacts the conversation at 150,000 tokens. Without this, long sessions bloat until Claude Code prompts you manually — by that point you've already lost fast retrieval. 150k is the sweet spot: large enough for multi-hour sessions, small enough that compaction happens before quality degrades.
 
-The `task-tracker.sh` hook fires on `PreCompact` and `PostCompact` to flush timing data automatically, so compactions are lossless for issue tracking.
+The direct Node task-tracker hook fires on `PreCompact` and `PostCompact` to flush timing data automatically, so compactions are lossless for issue tracking.
 
 ### `outputStyle: "Concise"`
 
@@ -50,30 +50,26 @@ The `install` command creates these automatically. Shown here for reference:
     "SessionStart": [
       {
         "type": "command",
-        "command": ".claude/hooks/setup-nvm.sh"
-      },
-      {
-        "type": "command",
-        "command": ".claude/hooks/task-tracker.sh"
+        "command": "node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
       }
     ],
     "PreCompact": [
       {
         "type": "command",
-        "command": ".claude/hooks/task-tracker.sh"
+        "command": "node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
       }
     ],
     "PostCompact": [
       {
         "type": "command",
-        "command": ".claude/hooks/task-tracker.sh"
+        "command": "node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"
       }
     ]
   }
 }
 ```
 
-The `setup-nvm.sh` hook is optional — include it if your project uses nvm. The three `task-tracker.sh` hook entries are required for timing data to survive compactions and session restarts.
+The timing hook commands are direct Node invocations so installed hook execution does not require POSIX shell support. If your project still needs an optional `setup-nvm.sh` hook, register it before the direct Node timing hook.
 
 ---
 
@@ -192,7 +188,7 @@ if [[ -f "$CLAUDE_PROJECT_DIR/.nvmrc" ]]; then
 fi
 ```
 
-Make it executable and register it in `.claude/settings.json` before the `task-tracker.sh` entry.
+Make it executable and register it in `.claude/settings.json` before the direct Node task-tracker entry.
 
 ---
 

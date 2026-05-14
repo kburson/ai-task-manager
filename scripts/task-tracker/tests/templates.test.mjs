@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,13 +21,23 @@ const preflightBlock = execFileSync(
 );
 
 for (const line of [
-  '- [ ] Acceptance criteria met (including test additions from deep dive)',
-  '- [ ] Tests pass; new coverage committed',
-  '- [ ] Pre-commit hooks pass',
+  '- [ ] `npm test`',
+  '- [ ] `npm run lint`',
+  '- [ ] `npm run format:check`',
+  '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
 ]) {
   assert.ok(body.includes(line), `template includes ${line}`);
 }
+
+assert.ok(
+  !body.includes('Tests pass; new coverage committed'),
+  'standard DoD uses the concrete npm test command instead of prose'
+);
+assert.ok(
+  !body.includes('Pre-commit hooks pass'),
+  'standard DoD uses concrete lint/format commands instead of prose'
+);
 
 // ── pickup directive: status contract ──────────────────────────────────────
 for (const status of ['CODE_COMPLETE', 'ISSUE_READY_FOR_REVIEW', 'BLOCKED']) {
@@ -62,6 +72,25 @@ assert.ok(
     pickupDirective.includes('terminal agent action is `/task review`'),
   'pickup directive contains Hard Rule 5: agents must not run /task close'
 );
+assert.doesNotMatch(
+  pickupDirective,
+  /docs\/agent-context\/file-index\.yaml/,
+  'pickup directive must not reference the removed/nonexistent file-index.yaml'
+);
+
+const referencedRepoPaths = [
+  ...pickupDirective.matchAll(
+    /`((?:\.\/)?(?:docs|templates|scripts|skill|\.ai-task-manager)\/[^`\s]+)`/g
+  ),
+]
+  .map((match) => match[1].replace(/^\.\//, ''))
+  .filter((repoPath) => !repoPath.startsWith('.ai-task-manager/'));
+for (const repoPath of referencedRepoPaths) {
+  assert.ok(
+    existsSync(path.join(root, repoPath)),
+    `pickup directive references missing repo path: ${repoPath}`
+  );
+}
 
 assert.ok(
   !body.includes('Issue moved to Done'),

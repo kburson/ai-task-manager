@@ -1,38 +1,57 @@
 // Word counter — extracted from tally-chat-words.mjs for reuse.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 
 export function projectKey() {
-  const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive
-  // colon to `-` so the result matches the directory Claude Code creates
-  // under ~/.claude/projects/<key>/ across platforms.
+  const dir = projectDir();
+  // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive colon.
   return dir.replace(/[\\/:]/g, '-');
 }
 
-export function sessionDir() {
-  return path.join(os.homedir(), '.claude', 'projects', projectKey());
+export function projectDir() {
+  return process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+}
+
+export function aiAppName() {
+  const explicit = process.env.AI_TASK_MANAGER_APP_NAME?.trim().toLowerCase();
+  if (explicit === 'claude' || explicit === 'codex') return explicit;
+  if (process.env.CODEX_SESSION_ID || process.env.CODEX_HOME) return 'codex';
+  return 'claude';
+}
+
+export function appStateDir() {
+  return path.join(projectDir(), '.ai-task-manager', aiAppName());
+}
+
+export function transcriptDir() {
+  if (process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR) return process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
+  return path.join(appStateDir(), 'session-transcripts');
+}
+
+export function markerDir() {
+  return path.join(appStateDir(), 'session-markers');
 }
 
 export function jsonlPath(sid) {
-  return path.join(sessionDir(), `${sid}.jsonl`);
+  return path.join(transcriptDir(), `${sid}.jsonl`);
 }
 
 export function markerPathFor(sid) {
-  return path.join(sessionDir(), `${sid}.word-marker`);
+  return path.join(markerDir(), `${sid}.word-marker`);
 }
 
 export function currentSessionId() {
-  // Prefer the authoritative session id Claude Code exports via env. The
+  // Prefer the authoritative session id exported via env. The
   // mtime-sort fallback is fragile (stale .jsonl touched by an editor or
   // indexer can outrank the live session) and only runs when the env var
   // is unset or empty.
-  const envSid = process.env.CLAUDE_SESSION_ID;
-  if (typeof envSid === 'string' && envSid.length > 0) return envSid;
+  for (const key of ['AI_TASK_MANAGER_SESSION_ID', 'CODEX_SESSION_ID', 'CLAUDE_SESSION_ID']) {
+    const envSid = process.env[key];
+    if (typeof envSid === 'string' && envSid.length > 0) return envSid;
+  }
   try {
-    const dir = sessionDir();
+    const dir = transcriptDir();
     const files = readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
     if (!files.length) return null;
     return files
@@ -55,6 +74,7 @@ export function loadMarker(markerPath) {
 }
 
 export function saveMarker(markerPath, line, words, task = null) {
+  mkdirSync(path.dirname(markerPath), { recursive: true });
   writeFileSync(
     markerPath,
     JSON.stringify({ line, words, task, ts: new Date().toISOString() }, null, 2),

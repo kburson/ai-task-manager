@@ -234,7 +234,7 @@ When a task review/log/close path flushes timing, the skill updates the Projects
 
 ## Hook Behavior
 
-Three hooks, all project-local, all routing through `.claude/hooks/task-tracker.sh`:
+Three hooks, all project-local, all routing directly to `node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs`:
 
 ### PreCompact
 
@@ -277,8 +277,6 @@ All hooks: best-effort. Timeout = `hookNetworkTimeoutMs`. Never block the user.
 ├── skills/
 │   └── task/
 │       └── SKILL.md               # Claude adapter stub or symlink
-├── hooks/
-│   └── task-tracker.sh            # Stub dispatching to package hook
 └── settings.json                  # Hook registrations and permissions
 
 scripts/task-tracker/
@@ -300,8 +298,8 @@ scripts/reports/
 
 Current state (must be preserved during migration):
 
-- `.claude/hooks/chat-word-count.sh` → replaced by `task-tracker.sh`
-- `.claude/settings.json` PreCompact/PostCompact entries → updated to call `task-tracker.sh`
+- `.claude/hooks/chat-word-count.sh` → replaced by direct Node task-tracker hook commands
+- `.claude/settings.json` PreCompact/PostCompact entries → updated to call `node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs`
 - `scripts/reports/tally-chat-words.mjs` → logic extracted to module, script kept as thin wrapper for backward compat
 - `scripts/reports/chat-word-tally.json` → kept; `generate-value-report.mjs` still reads it as fallback when no task state exists
 - Existing `<session-id>.word-marker` files → read as-is, extended with `task` field on next write
@@ -310,8 +308,8 @@ Migration steps (executed during implementation):
 
 1. Add new `scripts/task-tracker/` module files.
 2. Refactor `tally-chat-words.mjs` to delegate to `word-counter.mjs`.
-3. Add `task-tracker.sh` hook.
-4. Update `.claude/settings.json` to call new hook.
+3. Add direct Node task-tracker hook registrations.
+4. Update `.claude/settings.json` to call the packaged hook handler.
 5. Remove `chat-word-count.sh`.
 6. Create `.claude/skills/task-tracker/SKILL.md`.
 7. Create default `.ai-task-manager/task-tracker.json` with this repo's GH field IDs.
@@ -338,7 +336,7 @@ No formal test framework in this repo — follow project conventions:
 
 - **Unit-ish:** small `.mjs` scripts under `scripts/task-tracker/tests/` invoked via `node <file>` that exercise state/config/queue modules with temp files.
 - **Integration:** a manual smoke-test checklist in `docs/task-tracker-smoke-test.md` covering all 10 command patterns + the 3 hooks.
-- **Hook dry-run:** `task-tracker.sh --dry-run` mode that prints what it would do without touching GH.
+- **Hook dry-run:** hook-handler dry-run mode that prints what it would do without touching GH.
 
 ## Backlog Orchestration
 

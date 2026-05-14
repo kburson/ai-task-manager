@@ -184,9 +184,13 @@ export async function verbReview(ctx) {
     const lines = rawBody.split('\n');
 
     let inVerifSection = false;
+    let currentSection = '';
     const checkboxes = [];
+    const evidencePattern = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
+      if (headingMatch) currentSection = headingMatch[1].trim().toLowerCase();
       if (/^#{1,6}\s+Verification Commands/.test(line)) {
         inVerifSection = true;
         continue;
@@ -196,17 +200,33 @@ export async function verbReview(ctx) {
       if (!m) continue;
       const checked = m[1] === 'x';
       const label = m[2].trim();
-      const cmdMatch = inVerifSection ? label.match(/^`(.+)`$/) : null;
-      checkboxes.push({ lineIndex: i, checked, label, command: cmdMatch ? cmdMatch[1] : null });
+      const canRunCommand = inVerifSection || currentSection === 'definition of done';
+      const cmdMatch = canRunCommand ? label.match(/^`(.+)`$/) : null;
+      const evidenceMatch = !cmdMatch ? label.match(evidencePattern) : null;
+      const evidenceCommands = evidenceMatch
+        ? [...evidenceMatch[1].matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1])
+        : [];
+      const cleanLabel = label.replace(evidencePattern, '').trim();
+      checkboxes.push({
+        lineIndex: i,
+        checked,
+        label: cleanLabel,
+        command: cmdMatch ? cmdMatch[1] : null,
+        evidenceCommands,
+        section: currentSection,
+      });
     }
 
     const failures = [];
     const regressions = [];
+    const commandResults = new Map();
+    const proseCheckboxes = [];
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
     for (const cb of checkboxes) {
       if (cb.command) {
         const validation = validateVerificationCommand(cb.command, { projectDir });
         if (!validation.ok) {
+          commandResults.set(cb.command, false);
           console.log(`[task-tracker] rejected: ${validation.reason}`);
           if (cb.checked) {
             regressions.push(cb.label);
@@ -226,6 +246,7 @@ export async function verbReview(ctx) {
           });
           passed = true;
         } catch {}
+        commandResults.set(cb.command, passed);
         if (passed) {
           if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
         } else {
@@ -235,8 +256,91 @@ export async function verbReview(ctx) {
           }
           failures.push(cb.label);
         }
-      } else if (!cb.checked && !CLOSE_OWNED_CHECKBOXES.has(cb.label)) {
-        failures.push(`- [ ] ${cb.label}`);
+      } else if (
+        !CLOSE_OWNED_CHECKBOXES.has(cb.label) &&
+        (cb.section === 'acceptance criteria' || cb.section === 'definition of done')
+      ) {
+        proseCheckboxes.push(cb);
+      }
+    }
+
+    const issueBodyCheckbox = proseCheckboxes.find(
+      (cb) => cb.label === 'Issue body checkboxes ticked'
+    );
+    const acceptanceCriteriaCheckbox = proseCheckboxes.find(
+      (cb) => cb.label === 'Acceptance criteria met'
+    );
+    const evidenceCheckboxes = proseCheckboxes.filter(
+      (cb) => cb.label !== 'Issue body checkboxes ticked' && cb.label !== 'Acceptance criteria met'
+    );
+
+    for (const cb of evidenceCheckboxes) {
+      if (cb.evidenceCommands.length === 0) {
+        if (cb.checked) {
+          regressions.push(cb.label);
+          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+        }
+        failures.push(`${cb.label} (missing automated evidence)`);
+        continue;
+      }
+      const missingCommands = cb.evidenceCommands.filter((cmd) => !commandResults.has(cmd));
+      if (missingCommands.length > 0) {
+        if (cb.checked) {
+          regressions.push(cb.label);
+          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+        }
+        failures.push(`${cb.label} (unknown evidence command: ${missingCommands.join(', ')})`);
+        continue;
+      }
+      const failedCommands = cb.evidenceCommands.filter((cmd) => commandResults.get(cmd) !== true);
+      if (failedCommands.length > 0) {
+        if (cb.checked) {
+          regressions.push(cb.label);
+          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+        }
+        failures.push(`${cb.label} (evidence failed: ${failedCommands.join(', ')})`);
+        continue;
+      }
+      if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
+    }
+
+    if (acceptanceCriteriaCheckbox) {
+      if (failures.length === 0) {
+        if (!acceptanceCriteriaCheckbox.checked) {
+          lines[acceptanceCriteriaCheckbox.lineIndex] = lines[
+            acceptanceCriteriaCheckbox.lineIndex
+          ].replace('- [ ]', '- [x]');
+        }
+      } else {
+        if (acceptanceCriteriaCheckbox.checked) {
+          regressions.push(acceptanceCriteriaCheckbox.label);
+          lines[acceptanceCriteriaCheckbox.lineIndex] = lines[
+            acceptanceCriteriaCheckbox.lineIndex
+          ].replace('- [x]', '- [ ]');
+        }
+        failures.push(
+          `${acceptanceCriteriaCheckbox.label} (blocked by unchecked/unverified items)`
+        );
+      }
+    }
+
+    if (issueBodyCheckbox) {
+      if (failures.length === 0) {
+        if (!issueBodyCheckbox.checked) {
+          lines[issueBodyCheckbox.lineIndex] = lines[issueBodyCheckbox.lineIndex].replace(
+            '- [ ]',
+            '- [x]'
+          );
+        }
+      } else {
+        if (issueBodyCheckbox.checked) {
+          regressions.push(issueBodyCheckbox.label);
+          lines[issueBodyCheckbox.lineIndex] = lines[issueBodyCheckbox.lineIndex].replace(
+            '- [x]',
+            '- [ ]'
+          );
+        }
+        failures.push(`${issueBodyCheckbox.label} (blocked by unchecked/unverified items)`);
       }
     }
 

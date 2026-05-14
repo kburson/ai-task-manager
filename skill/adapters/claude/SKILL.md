@@ -16,7 +16,7 @@ Claude-specific conventions:
 - `/task ...` is the primary user interface through `.claude/commands/task.md`.
 - Use executable scripts from `node_modules/ai-task-manager/scripts/`.
 - Runtime project state lives in `.ai-task-manager/`; read legacy `.claude/` state only as fallback when the shared file is absent.
-- Claude hooks are installed at `.claude/hooks/task-tracker.sh` and delegate to `node_modules/ai-task-manager/hooks/task-tracker.sh`.
+- Claude hook settings run direct Node commands from `node_modules/ai-task-manager/scripts/task-tracker/`.
 - The status line remains Claude-specific and reads `.ai-task-manager/task-tracker-state.json` with a legacy `.claude/task-tracker-state.json` fallback.
 
 When the shared skill mentions command examples, prefer these package paths:

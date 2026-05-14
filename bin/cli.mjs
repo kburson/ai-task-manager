@@ -106,6 +106,37 @@ function hasFlag(args, name) {
   return args.includes(name);
 }
 
+const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
+const COMMIT_TRAIL_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs';
+const LEGACY_TIMING_HOOK_COMMANDS = [
+  '.claude/hooks/task-tracker.sh',
+  'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
+];
+const LEGACY_COMMIT_TRAIL_HOOK_COMMANDS = ['.claude/hooks/commit-trail.sh'];
+
+function hookEntryHasCommand(entry, command) {
+  return (
+    entry?.command === command ||
+    (typeof entry === 'string' && entry === command) ||
+    entry?.hooks?.some((inner) => inner.command === command)
+  );
+}
+
+function removeHookCommands(entries, commands) {
+  return entries
+    .map((entry) => {
+      if (typeof entry === 'string') return commands.includes(entry) ? null : entry;
+      if (!entry || typeof entry !== 'object') return entry;
+      if (commands.includes(entry.command)) return null;
+      if (!Array.isArray(entry.hooks)) return entry;
+      const hooks = entry.hooks.filter((inner) => !commands.includes(inner.command));
+      if (hooks.length === 0) return null;
+      return { ...entry, hooks };
+    })
+    .filter(Boolean);
+}
+
 function patchSettingsJson(settingsPath) {
   let settings = {};
   if (existsSync(settingsPath)) {
@@ -118,26 +149,12 @@ function patchSettingsJson(settingsPath) {
 
   if (!settings.hooks) settings.hooks = {};
 
-  const hookCmd = '.claude/hooks/task-tracker.sh';
-  const hookEntry = { matcher: '', hooks: [{ type: 'command', command: hookCmd }] };
-  // Prior install used a non-existent handler path; remove if present.
-  const legacyHookCmd = 'node node_modules/ai-task-manager/hooks/hook-handler.mjs';
-
+  const hookEntry = { matcher: '', hooks: [{ type: 'command', command: TIMING_HOOK_CMD }] };
   for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
     if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
-    settings.hooks[event] = settings.hooks[event].filter(
-      (h) =>
-        !(
-          h.command === legacyHookCmd ||
-          (typeof h === 'string' && h === legacyHookCmd) ||
-          h.hooks?.some((inner) => inner.command === legacyHookCmd)
-        )
-    );
-    const alreadyRegistered = settings.hooks[event].some(
-      (h) =>
-        h.command === hookCmd ||
-        (typeof h === 'string' && h === hookCmd) ||
-        h.hooks?.some((inner) => inner.command === hookCmd)
+    settings.hooks[event] = removeHookCommands(settings.hooks[event], LEGACY_TIMING_HOOK_COMMANDS);
+    const alreadyRegistered = settings.hooks[event].some((h) =>
+      hookEntryHasCommand(h, TIMING_HOOK_CMD)
     );
     if (!alreadyRegistered) settings.hooks[event].push(hookEntry);
   }
@@ -193,11 +210,17 @@ function patchSettingsJson(settingsPath) {
 
   // commit-trail: PostToolUse hook that appends a row to the bound issue's
   // `### 🔗 Commits` comment after each successful `git commit`.
-  const trailCmd = '.claude/hooks/commit-trail.sh';
-  const trailEntry = { matcher: 'Bash', hooks: [{ type: 'command', command: trailCmd }] };
+  const trailEntry = {
+    matcher: 'Bash',
+    hooks: [{ type: 'command', command: COMMIT_TRAIL_HOOK_CMD }],
+  };
   if (!Array.isArray(settings.hooks.PostToolUse)) settings.hooks.PostToolUse = [];
+  settings.hooks.PostToolUse = removeHookCommands(
+    settings.hooks.PostToolUse,
+    LEGACY_COMMIT_TRAIL_HOOK_COMMANDS
+  );
   const trailRegistered = settings.hooks.PostToolUse.some((h) =>
-    h.hooks?.some((inner) => inner.command === trailCmd)
+    hookEntryHasCommand(h, COMMIT_TRAIL_HOOK_CMD)
   );
   if (!trailRegistered) settings.hooks.PostToolUse.push(trailEntry);
 
@@ -271,75 +294,6 @@ function replaceWithSymlink(dest, src, label) {
   ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
 }
 
-function hookStub() {
-  return [
-    '#!/usr/bin/env bash',
-    '# Routes Claude Code hook events to the bundled handler in node_modules.',
-    'set -euo pipefail',
-    '',
-    'INPUT=$(cat)',
-    '',
-    'NODE_BIN=""',
-    'if [ -f "$HOME/.nvm/nvm.sh" ]; then',
-    '  export NVM_DIR="$HOME/.nvm"',
-    '  # shellcheck source=/dev/null',
-    '  source "$NVM_DIR/nvm.sh" --no-use 2>/dev/null || true',
-    '  NODE_BIN=$(nvm which current 2>/dev/null || echo "")',
-    'fi',
-    'if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then',
-    '  NODE_BIN=$(command -v node 2>/dev/null || echo "")',
-    'fi',
-    'if [ -z "$NODE_BIN" ]; then',
-    '  echo "[task-tracker] node not found — skipping" >&2',
-    '  exit 0',
-    'fi',
-    '',
-    'SCRIPT="node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs"',
-    'if [ ! -f "$SCRIPT" ]; then',
-    '  echo "[task-tracker] handler not found at $SCRIPT — skipping" >&2',
-    '  exit 0',
-    'fi',
-    '',
-    'echo "$INPUT" | "$NODE_BIN" "$SCRIPT"',
-    '',
-    'exit 0',
-    '',
-  ].join('\n');
-}
-
-function commitTrailHookStub() {
-  return [
-    '#!/usr/bin/env bash',
-    "# PostToolUse hook — appends commit SHA rows to the bound issue's `### 🔗 Commits` comment.",
-    'set -uo pipefail',
-    '',
-    'INPUT=$(cat)',
-    '',
-    'NODE_BIN=""',
-    'if [ -f "$HOME/.nvm/nvm.sh" ]; then',
-    '  export NVM_DIR="$HOME/.nvm"',
-    '  # shellcheck source=/dev/null',
-    '  source "$NVM_DIR/nvm.sh" --no-use 2>/dev/null || true',
-    '  NODE_BIN=$(nvm which current 2>/dev/null || echo "")',
-    'fi',
-    'if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then',
-    '  NODE_BIN=$(command -v node 2>/dev/null || echo "")',
-    'fi',
-    'if [ -z "$NODE_BIN" ]; then',
-    '  exit 0',
-    'fi',
-    '',
-    'SCRIPT="node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs"',
-    'if [ ! -f "$SCRIPT" ]; then',
-    '  exit 0',
-    'fi',
-    '',
-    'echo "$INPUT" | "$NODE_BIN" "$SCRIPT" 2>/dev/null || true',
-    'exit 0',
-    '',
-  ].join('\n');
-}
-
 function claudeStub() {
   return [
     '---',
@@ -407,22 +361,6 @@ function installClaude(targetDir, linkMode) {
     replaceWithSymlink(skillDest, join(PKG_ROOT, 'skill', 'adapters', 'claude'), 'Skill');
   } else {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
-  }
-
-  const hookPath = join(targetDir, '.claude', 'hooks', 'task-tracker.sh');
-  installStub(hookPath, hookStub(), 'Hook');
-  try {
-    execFileSync('chmod', ['+x', hookPath]);
-  } catch {
-    /* ignore on Windows */
-  }
-
-  const trailHookPath = join(targetDir, '.claude', 'hooks', 'commit-trail.sh');
-  installStub(trailHookPath, commitTrailHookStub(), 'Hook');
-  try {
-    execFileSync('chmod', ['+x', trailHookPath]);
-  } catch {
-    /* ignore on Windows */
   }
 
   installStub(
@@ -594,7 +532,9 @@ function mergeDefaultPreferences(templateDest) {
   cfg.preferences = merged;
   const after = JSON.stringify(cfg.preferences);
   if (before === after && existsSync(cfgPath)) {
-    ok(`Preferences ${dim('.ai-task-manager/task-tracker.json#preferences')} ${dim('(unchanged)')}`);
+    ok(
+      `Preferences ${dim('.ai-task-manager/task-tracker.json#preferences')} ${dim('(unchanged)')}`
+    );
     return;
   }
   mkdirSync(dirname(cfgPath), { recursive: true });
@@ -775,9 +715,7 @@ async function cmdConfigurePreferences(args) {
     cfg.preferences && typeof cfg.preferences === 'object' ? { ...cfg.preferences } : {};
 
   banner('Configure project preferences', `target: ${targetDir}`);
-  console.log(
-    `  ${dim('Answers are written to .ai-task-manager/task-tracker.json#preferences.')}`
-  );
+  console.log(`  ${dim('Answers are written to .ai-task-manager/task-tracker.json#preferences.')}`);
   console.log(
     `  ${dim('Press Enter to keep the current value. These are team-shared and git-tracked.')}\n`
   );
@@ -797,7 +735,9 @@ async function cmdConfigurePreferences(args) {
   function strDefault(key, subKey) {
     if (subKey) {
       const sub = key in current ? current[key] : PREFERENCE_DEFAULTS[key];
-      return (sub && sub[subKey] !== undefined ? sub[subKey] : PREFERENCE_DEFAULTS[key][subKey]).toString();
+      return (
+        sub && sub[subKey] !== undefined ? sub[subKey] : PREFERENCE_DEFAULTS[key][subKey]
+      ).toString();
     }
     return (key in current ? current[key] : PREFERENCE_DEFAULTS[key]).toString();
   }
@@ -807,27 +747,39 @@ async function cmdConfigurePreferences(args) {
   updated.formatting = { ...PREFERENCE_DEFAULTS.formatting, ...(current.formatting ?? {}) };
 
   updated.noPushToOrigin = parseBool(
-    await ask(`  Solo project — never push to origin or open PRs? [${boolDefault('noPushToOrigin')}] `),
+    await ask(
+      `  Solo project — never push to origin or open PRs? [${boolDefault('noPushToOrigin')}] `
+    ),
     'noPushToOrigin'
   );
   updated.mainThreadOnly = parseBool(
-    await ask(`  Main-thread-only — commit straight to trunk, no feature branches? [${boolDefault('mainThreadOnly')}] `),
+    await ask(
+      `  Main-thread-only — commit straight to trunk, no feature branches? [${boolDefault('mainThreadOnly')}] `
+    ),
     'mainThreadOnly'
   );
   updated.driveSubIssuesToR4R = parseBool(
-    await ask(`  Drive sub-issues end-to-end to R4R without per-step check-ins? [${boolDefault('driveSubIssuesToR4R')}] `),
+    await ask(
+      `  Drive sub-issues end-to-end to R4R without per-step check-ins? [${boolDefault('driveSubIssuesToR4R')}] `
+    ),
     'driveSubIssuesToR4R'
   );
   updated.pauseTimerOnBlockingQuestion = parseBool(
-    await ask(`  Pause timer before asking blocking questions? [${boolDefault('pauseTimerOnBlockingQuestion')}] `),
+    await ask(
+      `  Pause timer before asking blocking questions? [${boolDefault('pauseTimerOnBlockingQuestion')}] `
+    ),
     'pauseTimerOnBlockingQuestion'
   );
   updated.noConfirmAfterDeepDive = parseBool(
-    await ask(`  Skip "ready to proceed?" after deep dive? [${boolDefault('noConfirmAfterDeepDive')}] `),
+    await ask(
+      `  Skip "ready to proceed?" after deep dive? [${boolDefault('noConfirmAfterDeepDive')}] `
+    ),
     'noConfirmAfterDeepDive'
   );
   updated.askGatesBeforeParallel = parseBool(
-    await ask(`  Prompt which human gates to toggle before parallel dispatch? [${boolDefault('askGatesBeforeParallel')}] `),
+    await ask(
+      `  Prompt which human gates to toggle before parallel dispatch? [${boolDefault('askGatesBeforeParallel')}] `
+    ),
     'askGatesBeforeParallel'
   );
   const curNoEmojis = current.formatting?.noEmojis ?? PREFERENCE_DEFAULTS.formatting.noEmojis;
@@ -840,7 +792,8 @@ async function cmdConfigurePreferences(args) {
     return ['y', 'yes', '1', 'true'].includes(s);
   })();
 
-  const currInBt = current.formatting?.currencyInBackticks ?? PREFERENCE_DEFAULTS.formatting.currencyInBackticks;
+  const currInBt =
+    current.formatting?.currencyInBackticks ?? PREFERENCE_DEFAULTS.formatting.currencyInBackticks;
   const cibInput = await ask(
     `  Wrap currency amounts in backticks (\`$200\`)? [${currInBt ? 'Y/n' : 'y/N'}] `
   );
@@ -850,7 +803,9 @@ async function cmdConfigurePreferences(args) {
     return ['y', 'yes', '1', 'true'].includes(s);
   })();
 
-  const scratchInput = await ask(`  Scratch directory for transient files? [${strDefault('scratchDir')}] `);
+  const scratchInput = await ask(
+    `  Scratch directory for transient files? [${strDefault('scratchDir')}] `
+  );
   updated.scratchDir = scratchInput.trim() || strDefault('scratchDir');
 
   rl.close();
@@ -858,7 +813,9 @@ async function cmdConfigurePreferences(args) {
   cfg.preferences = updated;
   mkdirSync(templateDest, { recursive: true });
   writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
-  console.log(`\n  ${green('✓')} Preferences saved to ${dim('.ai-task-manager/task-tracker.json')}`);
+  console.log(
+    `\n  ${green('✓')} Preferences saved to ${dim('.ai-task-manager/task-tracker.json')}`
+  );
 }
 
 const [, , command = 'help', ...rest] = process.argv;
@@ -888,7 +845,9 @@ switch (command) {
         process.exit(1);
       });
     } else {
-      err(`Unknown configure subcommand: ${rest[0] ?? '(none)'}. Try: npx ai-task-manager configure preferences`);
+      err(
+        `Unknown configure subcommand: ${rest[0] ?? '(none)'}. Try: npx ai-task-manager configure preferences`
+      );
       process.exit(1);
     }
     break;
