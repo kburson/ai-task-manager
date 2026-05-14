@@ -19,6 +19,9 @@ node_modules/
 .ai-task-manager/project-fields.json
 .ai-task-manager/project-field-events.json
 .ai-task-manager/orchestrator.lock
+# Per-app ephemeral session state (markers, transcripts) — never committed
+.ai-task-manager/claude/
+.ai-task-manager/codex/
 # Per-host install artifacts (Claude Code / Codex / Agents — regenerable from skill/)
 .claude/
 .agents/
