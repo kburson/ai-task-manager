@@ -60,6 +60,7 @@ The marker fires for every issue type — leaf, sub-issue, epic — and only on 
 - ❌ Running `/task close` without an explicit human instruction. "All checkboxes are checked" is not human approval.
 - ❌ Running `/task close` after implementation verification, even if every DoD item passes. The correct terminal step is `/task review`.
 - ❌ Running `move-state.mjs <N> done` directly. `/task close` does this internally; calling it manually skips the timing flush.
+- ❌ Calling `move-state.mjs <N> <state>` directly to jump to an arbitrary kanban state. Always use `/task promote` (or `next`) to advance one step and `/task demote` to step back — they enforce one-step-at-a-time movement and prevent stage-skipping (e.g., jumping from backlog straight to development).
 - ❌ Running `gh issue close` directly. Same reason.
 - ❌ Using `TASK_TRACKER_FORCE_DONE=1` for normal completion. It exists only for legitimate abandonment (the issue turned out invalid). Never use it to skip verification.
 - ❌ Editing files for an issue without first running `/task #N`.

@@ -134,6 +134,7 @@ export function codexBootstrapBlock({ scope = 'repo' } = {}) {
     '**FORBIDDEN — breaks the issue workflow, must never be done:**',
     '',
     '- Never call `gh issue create` directly. Always use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`. Direct calls skip project tether, `aitm-fields` injection, placeholder substitution, and assignee/priority gates — the resulting issue cannot be closed via the normal workflow.',
+    '- Never call `move-state.mjs <N> <state>` directly to jump to an arbitrary kanban state. Always use `/task promote` (or `next`) to advance one step and `/task demote` to step back — they enforce one-step-at-a-time movement and prevent stage-skipping (e.g., jumping from backlog straight to development).',
     END_MARKER,
     '',
   ].join('\n');
