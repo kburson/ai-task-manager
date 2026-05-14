@@ -78,7 +78,7 @@ function loadRepo(projectDir) {
   }
 }
 
-async function gitInfo(cwd) {
+export async function gitInfo(cwd) {
   const run = async (args) => {
     const { stdout } = await pexec('git', args, { cwd, timeout: GIT_TIMEOUT_MS });
     return stdout.trim();
@@ -134,7 +134,8 @@ export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 500
 
   const existing = await find(issueNumber, repo, { timeoutMs });
   const worktreeCols = existing ? hasWorktreeCols(existing.body) : info.isWorktree;
-  const row = buildRow(info, { worktreeCols });
+  const commitUrl = info.commitUrl || `https://github.com/${repo}/commit/${info.sha}`;
+  const row = buildRow({ ...info, commitUrl }, { worktreeCols });
 
   if (existing) {
     const parsed = parseMarker(existing.body);

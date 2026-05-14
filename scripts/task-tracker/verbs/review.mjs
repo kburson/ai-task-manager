@@ -36,6 +36,26 @@ export async function verbReview(ctx) {
 
   if (!SKIP_NETWORK) {
     const issueNum = String(target).replace(/^#/, '');
+    const { runReviewPreflight } = await import('../lib/review-preflight.mjs');
+    const preflight = await runReviewPreflight({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      projectDir,
+    });
+    if (!preflight.ok) {
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move ${target} to Validate:\n`);
+      for (const reason of preflight.reasons) {
+        process.stderr.write(`   BLOCKED: ${reason}\n`);
+      }
+      process.stderr.write('\nRun `/task commit-trace ');
+      process.stderr.write(`${target}` + '` after committing, then retry `/task review`.\n\n');
+      process.exit(4);
+    }
+  }
+
+  if (!SKIP_NETWORK) {
+    const issueNum = String(target).replace(/^#/, '');
     let body = '';
     try {
       const { stdout } = await pexec(

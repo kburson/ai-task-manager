@@ -65,6 +65,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     'resume',
     'start',
     'check',
+    'commit-trace',
     'close',
     'review',
     'approve',

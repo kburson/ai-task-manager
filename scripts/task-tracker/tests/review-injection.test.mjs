@@ -74,6 +74,31 @@ try {
   // Fake gh shim
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir, { recursive: true });
+  const headSha = 'abcdef1234567890abcdef1234567890abcdef12';
+  const traceComment = [
+    '### 🔗 Commits',
+    '',
+    `<!-- aitm-commits: ${headSha} -->`,
+    '',
+    '| SHA | Subject | Author | When |',
+    '|---|---|---|---|',
+    `| [\`${headSha.slice(0, 7)}\`](https://github.com/test-owner/test-repo/commit/${headSha}) | s | a | t |`,
+  ].join('\n');
+  const gitShim = path.join(binDir, 'git');
+  writeFileSync(
+    gitShim,
+    `#!/usr/bin/env node
+const argv = process.argv.slice(2).join(' ');
+if (argv === 'status --porcelain --untracked-files=no') process.exit(0);
+if (argv === 'rev-parse HEAD') {
+  process.stdout.write(${JSON.stringify(`${headSha}\n`)});
+  process.exit(0);
+}
+process.exit(0);
+`
+  );
+  chmodSync(gitShim, 0o755);
+
   const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
   const ghShim = path.join(binDir, 'gh');
   writeFileSync(
@@ -86,6 +111,10 @@ appendFileSync(log, JSON.stringify(argv) + '\\n');
 
 // issue view <num> -R <repo> --json body
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
+  if (argv.includes('comments')) {
+    process.stdout.write(JSON.stringify({ comments: [{ id: 'IC_trace', body: ${JSON.stringify(traceComment)}, url: 'https://example.test/comment' }] }));
+    process.exit(0);
+  }
   process.stdout.write(JSON.stringify({ body: ${JSON.stringify(fixtureBody)} }));
   process.exit(0);
 }

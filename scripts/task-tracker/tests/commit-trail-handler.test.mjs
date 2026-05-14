@@ -59,6 +59,7 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   const body = fake.calls.create[0].body;
   assert.match(body, /### 🔗 Commits/);
   assert.match(body, /abc1234/);
+  assert.match(body, /\[`abc1234`\]\(https:\/\/github\.com\/o\/r\/commit\/abc12340000000\)/);
   assert.match(body, /<!-- aitm-commits: abc12340000000 -->/);
 }
 

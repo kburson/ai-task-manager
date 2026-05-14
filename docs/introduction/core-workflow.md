@@ -33,10 +33,11 @@ This flushes timing and context-word deltas without ending the task.
 Move to review:
 
 ```text
+/task commit-trace #42
 /task review #42
 ```
 
-Review runs the verification gate, flushes measured actuals, and moves the issue toward human review if every required checkbox is complete.
+`/task commit-trace` creates or updates the canonical `### 🔗 Commits` comment from the current `HEAD`. Review refuses if tracked changes are still uncommitted or if that canonical comment does not contain `HEAD`. Then review runs the verification gate, flushes measured actuals, and moves the issue toward human review if every required checkbox is complete.
 
 Approve and close after human review:
 

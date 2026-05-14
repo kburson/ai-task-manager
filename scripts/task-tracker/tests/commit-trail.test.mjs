@@ -10,6 +10,7 @@ import {
   appendCommitRow,
   updateMarker,
   hasWorktreeCols,
+  hasCanonicalCommitTrace,
 } from '../lib/commit-trail.mjs';
 
 // --- detectGitCommit ---
@@ -116,6 +117,21 @@ import {
     subject: 'feat(x): do thing',
     author: 'kendrick burson',
     ts: '2026-05-10T14:32:11Z',
+    commitUrl: 'https://github.com/o/r/commit/abcdef1234567890',
+  });
+  assert.equal(
+    r,
+    '| [`abcdef1`](https://github.com/o/r/commit/abcdef1234567890) | feat(x): do thing | kendrick burson | 2026-05-10T14:32:11Z |'
+  );
+}
+
+// Without commitUrl, legacy callers still render a short SHA in code style.
+{
+  const r = buildRow({
+    sha: 'abcdef1234567890',
+    subject: 'feat(x): do thing',
+    author: 'kendrick burson',
+    ts: '2026-05-10T14:32:11Z',
   });
   assert.equal(r, '| `abcdef1` | feat(x): do thing | kendrick burson | 2026-05-10T14:32:11Z |');
 }
@@ -175,6 +191,41 @@ import {
   const before = body;
   body = updateMarker(body, 'aaa');
   assert.equal(body, before);
+}
+
+// --- canonical trace validation ---
+
+{
+  const body = [
+    '### 🔗 Commits',
+    '',
+    '<!-- aitm-commits: abcdef1234567890 -->',
+    '',
+    '| SHA | Subject | Author | When |',
+    '|---|---|---|---|',
+    '| [`abcdef1`](https://github.com/o/r/commit/abcdef1234567890) | s | a | t |',
+    '',
+  ].join('\n');
+  assert.equal(hasCanonicalCommitTrace(body, 'abcdef1234567890'), true);
+}
+
+{
+  const wrongHeading = [
+    '### 🔗 Related commit',
+    '',
+    '<!-- aitm-commits: abcdef1234567890 -->',
+  ].join('\n');
+  assert.equal(hasCanonicalCommitTrace(wrongHeading, 'abcdef1234567890'), false);
+}
+
+{
+  const missingMarker = ['### 🔗 Commits', '', '| SHA | Subject | Author | When |'].join('\n');
+  assert.equal(hasCanonicalCommitTrace(missingMarker, 'abcdef1234567890'), false);
+}
+
+{
+  const missingSha = ['### 🔗 Commits', '', '<!-- aitm-commits: def456 -->'].join('\n');
+  assert.equal(hasCanonicalCommitTrace(missingSha, 'abcdef1234567890'), false);
 }
 
 console.log('commit-trail: ok');

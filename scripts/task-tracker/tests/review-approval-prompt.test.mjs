@@ -30,6 +30,16 @@ const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
 
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';
+const HEAD_SHA = 'abcdef1234567890abcdef1234567890abcdef12';
+const TRACE_COMMENT = [
+  '### 🔗 Commits',
+  '',
+  `<!-- aitm-commits: ${HEAD_SHA} -->`,
+  '',
+  '| SHA | Subject | Author | When |',
+  '|---|---|---|---|',
+  `| [\`${HEAD_SHA.slice(0, 7)}\`](https://github.com/test-owner/test-repo/commit/${HEAD_SHA}) | s | a | t |`,
+].join('\n');
 
 function writeConfig(sandbox) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -62,10 +72,31 @@ function writeConfig(sandbox) {
 //     getIssueBoardState graphql query
 //   - returns empty subIssues/parent envelope for other graphql queries
 //   - records every invocation as one JSON line in gh-calls.log
-function makeGhShim(sandbox, { bodyOnView, stateOptionId, recordedBodyPath }) {
+function makeGhShim(
+  sandbox,
+  { bodyOnView, stateOptionId, recordedBodyPath, traceComment = TRACE_COMMENT, gitStatus = '' }
+) {
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir, { recursive: true });
   const callsLog = path.join(sandbox, 'gh-calls.log');
+  const gitShim = path.join(binDir, 'git');
+  writeFileSync(
+    gitShim,
+    `#!/usr/bin/env node
+const argv = process.argv.slice(2);
+if (argv.join(' ') === 'status --porcelain --untracked-files=no') {
+  process.stdout.write(${JSON.stringify(gitStatus)});
+  process.exit(0);
+}
+if (argv.join(' ') === 'rev-parse HEAD') {
+  process.stdout.write(${JSON.stringify(`${HEAD_SHA}\n`)});
+  process.exit(0);
+}
+process.exit(0);
+`
+  );
+  chmodSync(gitShim, 0o755);
+
   const ghShim = path.join(binDir, 'gh');
   writeFileSync(
     ghShim,
@@ -83,6 +114,11 @@ if (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && ar
 appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({argv, stdinBody}) + '\\n');
 
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
+  if (argv.includes('comments')) {
+    const traceComment = ${JSON.stringify(traceComment)};
+    process.stdout.write(JSON.stringify({ comments: traceComment ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }] : [] }));
+    process.exit(0);
+  }
   if (argv.includes('--jq')) {
     process.stdout.write(${JSON.stringify(bodyOnView)});
   } else {
@@ -205,6 +241,98 @@ async function run(sandbox, binDir, args) {
       `expected marker in stdout; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`
     );
     console.log('test 1 passed: verbReview emits marker on success');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
+// ─── Test 1b: verbReview refuses when canonical commit trace is missing ──────
+{
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-1b-'));
+  try {
+    writeConfig(sandbox);
+    writeFileSync(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
+        active: '#111',
+        lastActive: '#111',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
+    );
+    const fixtureBody = [
+      '## Pickup Directive',
+      '- [x] Deep dive complete',
+      '',
+      '## Deep-Dive Analysis (2026-05-10)',
+      '',
+      ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
+      '',
+      '### Verification Commands',
+      '',
+      '- [ ] `node --version`',
+      '',
+      '<!-- ai-task-manager:fields:start -->',
+      '<!-- ai-task-manager:fields:end -->',
+    ].join('\n');
+    const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
+      traceComment: null,
+    });
+    const r = await run(sandbox, binDir, ['review', '#111']);
+    assert.notEqual(r.code, 0, 'review should fail without canonical commit trace');
+    assert.match(r.stderr, /missing canonical `### 🔗 Commits` comment/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
+    console.log('test 1b passed: verbReview refuses missing canonical commit trace');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
+// ─── Test 1c: verbReview refuses tracked uncommitted changes ─────────────────
+{
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-1c-'));
+  try {
+    writeConfig(sandbox);
+    writeFileSync(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
+        active: '#112',
+        lastActive: '#112',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
+    );
+    const fixtureBody = [
+      '## Pickup Directive',
+      '- [x] Deep dive complete',
+      '',
+      '## Deep-Dive Analysis (2026-05-10)',
+      '',
+      ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
+      '',
+      '### Verification Commands',
+      '',
+      '- [ ] `node --version`',
+      '',
+      '<!-- ai-task-manager:fields:start -->',
+      '<!-- ai-task-manager:fields:end -->',
+    ].join('\n');
+    const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
+      gitStatus: ' M scripts/x.mjs\n',
+    });
+    const r = await run(sandbox, binDir, ['review', '#112']);
+    assert.notEqual(r.code, 0, 'review should fail with tracked worktree changes');
+    assert.match(r.stderr, /tracked worktree changes are uncommitted/);
+    assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
+    console.log('test 1c passed: verbReview refuses tracked worktree changes');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

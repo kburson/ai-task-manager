@@ -170,6 +170,11 @@ if (_isMain)
           await verbCheck(ctx);
           break;
         }
+        case 'commit-trace': {
+          const { verbCommitTrace } = await import('./verbs/commit-trace.mjs');
+          await verbCommitTrace(ctx);
+          break;
+        }
         case 'fleet': {
           const { verbFleet } = await import('./verbs/fleet.mjs');
           await verbFleet(ctx);

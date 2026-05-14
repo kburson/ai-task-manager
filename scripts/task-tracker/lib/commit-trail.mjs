@@ -46,15 +46,25 @@ function escapePipe(s) {
 }
 
 export function buildRow(
-  { sha, subject, author, ts, branch, worktree },
+  { sha, subject, author, ts, branch, worktree, commitUrl },
   { worktreeCols = false } = {}
 ) {
-  const cols = [`\`${shortSha(sha)}\``, escapePipe(subject), escapePipe(author), escapePipe(ts)];
+  const shaCell = commitUrl
+    ? `[\`${shortSha(sha)}\`](${escapePipe(commitUrl)})`
+    : `\`${shortSha(sha)}\``;
+  const cols = [shaCell, escapePipe(subject), escapePipe(author), escapePipe(ts)];
   if (worktreeCols) {
     cols.push(escapePipe(branch || '-'));
     cols.push(escapePipe(worktree || '-'));
   }
   return `| ${cols.join(' | ')} |`;
+}
+
+export function hasCanonicalCommitTrace(body, sha) {
+  const src = String(body || '');
+  if (!src.startsWith(TRAIL_HEADING)) return false;
+  const parsed = parseMarker(src);
+  return parsed.index !== -1 && parsed.shas.has(String(sha));
 }
 
 export function appendCommitRow(body, row) {

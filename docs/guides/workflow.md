@@ -40,6 +40,7 @@ scripts/gh/move-state.mjs 42 develop
 - Move to **Refine** when an issue is being shaped (sized, AC drafted).
 - Move to **Plan** after the deep-dive analysis is posted.
 - Move to **Develop** when `/task #N` activates an issue and code work begins.
+- Before `/task review`, commit the implementation and run `/task commit-trace #N`; Review requires a clean tracked worktree and a canonical `### 🔗 Commits` comment containing the current `HEAD`.
 - **Test** is entered automatically by `/task review` while the verification gate runs.
 - Move to **Review** automatically when verification passes (ready-for-review).
 - Move to **Done** only by `/task close` after a human approves.

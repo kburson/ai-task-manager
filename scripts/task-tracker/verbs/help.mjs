@@ -17,6 +17,7 @@ Task Tracker — available commands
   /task close [#N]          Close the active or specified task (runs pre-close gate)
   /task close --force       Close even if unchecked items remain
   /task check "<label>"     Toggle a checkbox in the active issue body
+  /task commit-trace [#N]   Create/update the canonical commit trace from HEAD
   /task log #N              Re-compute and write Engaged/Session Time + Context Length
   /task migrate [--dry-run] Migrate repo issues into a selected/configured project
   /task fleet               Show all active tasks across parallel worktrees

@@ -25,16 +25,20 @@ assert.equal(ok, true);
 assert.deepEqual(delivered, ['A', 'B']);
 assert.deepEqual(peek(qPath), []);
 
-// Test 4: drain halts on handler failure, keeps remaining
+// Test 4: drain continues past handler failures, keeps only failed events
 enqueue({ row: 'C' }, qPath);
 enqueue({ row: 'D' }, qPath);
+enqueue({ row: 'E' }, qPath);
+const deliveredAfterFailure = [];
 const ok2 = await drain(async (evt) => {
   if (evt.row === 'D') throw new Error('net down');
+  deliveredAfterFailure.push(evt.row);
 }, qPath);
 assert.equal(ok2, false);
 const remaining = peek(qPath);
 assert.equal(remaining.length, 1);
 assert.equal(remaining[0].row, 'D');
+assert.deepEqual(deliveredAfterFailure, ['C', 'E']);
 
 rmSync(tmp, { recursive: true });
 

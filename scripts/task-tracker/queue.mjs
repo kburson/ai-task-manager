@@ -36,15 +36,14 @@ export function enqueue(event, queuePath) {
 
 export async function drain(handler, queuePath) {
   const items = read(queuePath);
-  let i = 0;
-  try {
-    for (; i < items.length; i++) {
-      await handler(items[i]);
+  const failed = [];
+  for (const item of items) {
+    try {
+      await handler(item);
+    } catch {
+      failed.push(item);
     }
-    write([], queuePath);
-    return true;
-  } catch {
-    write(items.slice(i), queuePath);
-    return false;
   }
+  write(failed, queuePath);
+  return failed.length === 0;
 }
