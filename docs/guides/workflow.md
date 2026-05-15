@@ -188,6 +188,16 @@ Size and Estimate move through three distinct stages. Only the first two ever mu
 
 Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the analyze-stage hook. The bypass still posts a one-line audit comment so the gap is visible per-issue.
 
+**Discovered work — estimate inflation.** When scope expands during Develop (new defects found, design gaps surfaced, architecture decisions forced), update the estimate and record the change in the existing `<!-- aitm-groom-estimate: <N> -->` comment — do not post a new comment. Append a `### Discovered work — estimate inflation (<date>, Develop)` section with this structure:
+
+1. A single prose sentence stating what was discovered and why it pushed effort past the current size-bucket ceiling.
+2. A numbered defect/work-item table with an effort column per item, so the total delta is traceable to individual discoveries.
+3. A summary before/after table showing Size and Estimate with a Delta column; include the size-bucket ceiling in the Delta cell (e.g. `+1 bucket (total effort exceeded S ceiling of 3h)`).
+
+Then update the board fields and the `aitm-fields` block in the issue body to match.
+
+> Future automation: `/task inflate-estimate <N> --size <S|M|L> --estimate <Nh>` will find the marker, prompt for per-item rationale, append this section, and update board fields atomically. Until that verb exists, follow the manual steps above.
+
 **Review delta.** When `/task close <N>` advances an issue to Done, the harness posts a read-only retrospective comment recording Estimate vs. Actual:
 
 - Reads `Estimate` (hours) and `Engaged Time` (hours) from the project board.
