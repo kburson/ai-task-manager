@@ -267,10 +267,11 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
   }
 }
 
-// Approval gate: plan -> develop requires explicit human approval
-// recorded as a `<!-- aitm-plan-approved: <ts> -->` marker in the issue body.
-// Fires only when the *current* board state is `plan` so transitions back
-// from test/review do not require a fresh approval.
+// Approval gate: plan -> develop requires both explicit human approval
+// (`<!-- aitm-plan-approved: <ts> -->`) AND a completed deep-dive analysis
+// (`<!-- aitm-deep-dive-complete: <ts> -->` + substantive ## Deep-Dive Analysis
+// section). Both checks fire only when the current board state is `plan` so
+// transitions back from test/review do not require fresh markers.
 if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !== false) {
   let body = '';
   try {
@@ -282,6 +283,10 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
   }
 
   const approved = /<!--\s*aitm-plan-approved:\s*[^>]+-->/i.test(body);
+  const deepDiveMarker = /<!--\s*aitm-deep-dive-complete:\s*[^>]+-->/i.test(body);
+  const deepDiveBodyCheck = deepDiveMarker
+    ? validateBody(body, { gates: DEFAULT_GATES.filter((g) => g.name === 'deep-dive-complete') })
+    : { ok: false };
 
   // Resolve current state (single-select option name) via the project item.
   let currentStateName = '';
@@ -316,22 +321,34 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
 
   const fromAnalyze = currentStateName === '' || currentStateName === 'plan';
 
-  if (fromAnalyze && !approved) {
+  const planDevelopBlockers = [];
+  if (!approved)
+    planDevelopBlockers.push(
+      'plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)'
+    );
+  if (!deepDiveMarker)
+    planDevelopBlockers.push(
+      'plan -> develop requires <!-- aitm-deep-dive-complete: <ts> --> marker — post the deep-dive analysis and run `/task check "Deep dive complete"` first'
+    );
+  else if (!deepDiveBodyCheck.ok)
+    planDevelopBlockers.push(
+      `deep-dive-complete: ${deepDiveBodyCheck.refusedRules?.[0]?.reason ?? 'section insufficient (<20 non-empty lines)'}`
+    );
+
+  if (fromAnalyze && planDevelopBlockers.length > 0) {
     if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
       process.stderr.write(
-        `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing plan->develop approval gate for #${issueArg}\n`
+        `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing plan->develop gate for #${issueArg}\n`
       );
-      const bypassMsg = `⚠ **plan->develop approval gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}.`;
+      const bypassMsg = `⚠ **plan->develop gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${planDevelopBlockers.join('; ')}.`;
       try {
         await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]);
       } catch {}
     } else {
       process.stderr.write('\n');
       process.stderr.write(`⛔ Refusing to move #${issueArg} to develop:\n`);
-      process.stderr.write(
-        '   BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)\n'
-      );
-      process.stderr.write('\nResolve the blocker, then retry. Legitimate-abandonment override:\n');
+      planDevelopBlockers.forEach((b) => process.stderr.write(`   BLOCKED: ${b}\n`));
+      process.stderr.write('\nResolve the blockers, then retry. Legitimate-abandonment override:\n');
       process.stderr.write(
         `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} develop\n\n`
       );

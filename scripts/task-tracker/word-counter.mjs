@@ -2,6 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { homedir } from 'node:os';
 
 export function projectKey() {
   const dir = projectDir();
@@ -26,7 +27,16 @@ export function appStateDir() {
 
 export function transcriptDir() {
   if (process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR) return process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
-  return path.join(appStateDir(), 'session-transcripts');
+  const local = path.join(appStateDir(), 'session-transcripts');
+  if (existsSync(local)) return local;
+  // Fall back to Claude Code's native per-project transcript directory when the
+  // local session-transcripts directory hasn't been created (e.g. pre-existing
+  // install). Claude stores session JSONL at ~/.claude/projects/<encoded-path>/.
+  if (aiAppName() === 'claude') {
+    const claudeDir = path.join(homedir(), '.claude', 'projects', projectKey());
+    if (existsSync(claudeDir)) return claudeDir;
+  }
+  return local;
 }
 
 export function markerDir() {
