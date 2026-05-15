@@ -157,9 +157,15 @@ function bashFenceContents(text) {
   let inBash = false;
   let current = [];
   for (const line of lines) {
-    if (line.trim() === '```bash') { inBash = true; current = []; }
-    else if (line.trim() === '```' && inBash) { inBash = false; fences.push(current.join('\n')); }
-    else if (inBash) { current.push(line); }
+    if (line.trim() === '```bash') {
+      inBash = true;
+      current = [];
+    } else if (line.trim() === '```' && inBash) {
+      inBash = false;
+      fences.push(current.join('\n'));
+    } else if (inBash) {
+      current.push(line);
+    }
   }
   return fences;
 }
