@@ -211,6 +211,11 @@ if (_isMain)
           await autoCli(ctx.rest);
           break;
         }
+        case 'inflate-estimate': {
+          const { verbInflateEstimate } = await import('./verbs/inflate-estimate.mjs');
+          await verbInflateEstimate(ctx.rest, ctx.cfg);
+          break;
+        }
         case 'move':
           console.error('unknown verb: move — did you mean `/task promote` or `/task demote`?');
           process.exit(2);
