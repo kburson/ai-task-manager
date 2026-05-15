@@ -32,6 +32,12 @@ node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task
 
 Required content fragments (default `./tmp/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
 
+During deep dive, bind every Acceptance Criterion to automated evidence with an
+`aitm-verified-by` HTML comment marker. Every non-standard command named in
+those markers must be listed under the issue-specific `### Verification
+Commands` section. Standard DoD commands may be used as evidence markers but
+must not be duplicated there.
+
 Refusal contracts (deterministic exit codes):
 
 - `assignee-required` — no `--assignee` and no `assignee` in `.ai-task-manager/task-tracker.json`.

@@ -25,7 +25,8 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 1. **Verify every Acceptance Criteria checkbox** by inspection AND by running the relevant test/build/command. Tick each with `/task check "<label>"`.
 2. **Verify every Definition of Done checkbox** the same way. Tick each.
-3. **Run `/task review #N`.** This moves the issue to **Review**, flushes a review timing row, and pauses the task. **This is the terminal automation step. Stop here.**
+3. **Bind each Acceptance Criterion to automated evidence** with an `aitm-verified-by` HTML comment marker. Non-standard commands referenced by those markers must also appear under the issue-specific `### Verification Commands` section; standard DoD commands (`npm test`, `npm run lint`, `npm run format:check`) may be referenced by markers but must not be duplicated there.
+4. **Run `/task review #N`.** This moves the issue to **Review**, flushes a review timing row, and pauses the task. **This is the terminal automation step. Stop here.**
    - For epics: `/task review` will refuse if any sub-issues are not already in Review. All sub-issues must reach Review before the epic can.
 
 > ⛔ **All checkboxes checked means "ready for human review" — NOT permission to close.**
@@ -642,16 +643,16 @@ Then ask:
 
 The bash-guard enforces a command policy on `gh issue` mutations. Use this table to know what is allowed without additional gates and what is always forbidden:
 
-| Command                                        | Policy      | Use instead                                                               |
-| ---------------------------------------------- | ----------- | ------------------------------------------------------------------------- |
-| `gh issue view`, `gh issue list`               | **Allowed** | —                                                                         |
-| `gh issue edit --add-label/--remove-label/...` | **Allowed** | —                                                                         |
+| Command                                        | Policy      | Use instead                                                                                             |
+| ---------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- |
+| `gh issue view`, `gh issue list`               | **Allowed** | —                                                                                                       |
+| `gh issue edit --add-label/--remove-label/...` | **Allowed** | —                                                                                                       |
 | `gh issue edit --body` / `--body-file`         | **Guarded** | Allowed only when hidden markers (`aitm-fields`, `aitm-plan-approved`, …) are preserved in the new body |
-| `gh issue comment`                             | **Allowed** | Use structured helpers (`task-tracker.mjs`, `gh-timing-comment.mjs`, etc.) for workflow comments |
-| `gh issue reopen`                              | **Allowed** | Permitted during session recovery (no task-tracker verb equivalent)       |
-| `gh issue create`                              | **BLOCKED** | `scripts/gh/create-issue.mjs --shape <epic\|sub-issue\|solo>`            |
-| `gh issue close`                               | **BLOCKED** | `/task close`                                                             |
-| `gh api graphql` (issue/project mutation)      | **Allowed** | Treat as exceptional; prefer structured helpers; document the mutation site |
+| `gh issue comment`                             | **Allowed** | Use structured helpers (`task-tracker.mjs`, `gh-timing-comment.mjs`, etc.) for workflow comments        |
+| `gh issue reopen`                              | **Allowed** | Permitted during session recovery (no task-tracker verb equivalent)                                     |
+| `gh issue create`                              | **BLOCKED** | `scripts/gh/create-issue.mjs --shape <epic\|sub-issue\|solo>`                                           |
+| `gh issue close`                               | **BLOCKED** | `/task close`                                                                                           |
+| `gh api graphql` (issue/project mutation)      | **Allowed** | Treat as exceptional; prefer structured helpers; document the mutation site                             |
 
 ## Project Preferences
 
@@ -679,12 +680,12 @@ When a subagent returns from issue work, it MUST report one of these three statu
 **`DONE` and `DONE_WITH_CONCERNS` are not valid statuses for AITM issue work** — they
 carry ambiguous semantics and cause orchestrators to advance sequences prematurely.
 
-| Status                   | Meaning                                                                                                                                                                                                                         | Orchestrator action                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `CODE_COMPLETE`          | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly.                                                                                                    | Do NOT advance the sequence. Inspect remaining items; resolve or reassign.                                                       |
+| Status                   | Meaning                                                                                                                                                                                                                               | Orchestrator action                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `CODE_COMPLETE`          | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly.                                                                                                          | Do NOT advance the sequence. Inspect remaining items; resolve or reassign.                                                       |
 | `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is in Review. For epics: report this only after calling `/task review #<epic>` and the epic itself reaches Review. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
-| `HUMAN_APPROVED`         | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent.                                                                                        | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done.                 |
-| `BLOCKED`                | Agent cannot proceed without orchestrator or human help.                                                                                                                                                                        | Intervene, then redispatch or reassign.                                                                                          |
+| `HUMAN_APPROVED`         | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent.                                                                                              | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done.                 |
+| `BLOCKED`                | Agent cannot proceed without orchestrator or human help.                                                                                                                                                                              | Intervene, then redispatch or reassign.                                                                                          |
 
 **Epic review rule:** When all sub-issues in the current sequence reach Review, the orchestrator must call `/task review #<epic>` on the parent epic **before** notifying the human. Running `/task review` on the epic is orchestrator work, not human work. The epic cannot move to Review until all its sub-issues are already in Review — the gate is enforced. Do not report `ISSUE_READY_FOR_REVIEW` or notify the human until the epic itself is in Review.
 
@@ -765,6 +766,7 @@ Do NOT list specific issue numbers — discovered work may add sub-issues during
 - Verify every Definition of Done item AND every Acceptance Criterion individually — by inspection AND by running the relevant test/build/command.
 - The standard DoD command checkboxes are `npm test`, `npm run lint`, and `npm run format:check`. Do not duplicate those under the deep-dive `### Verification Commands` section.
 - Verification commands appended during pickup are for issue-specific checks not covered by the standard DoD. Each relevant command checkbox must be checked before checking the related Acceptance Criterion or prose Definition of Done box.
+- Every Acceptance Criterion must include one or more `aitm-verified-by` HTML comment markers. Each non-standard command named by a marker must be listed under `### Verification Commands`; standard DoD commands stay only in the DoD checklist.
 - Mark each verified item: `/task check "<label>"`.
 - Once every `- [ ]` in the issue body is `- [x]`, record exit word count and stop — the orchestrator calls `/task review #N --duration-minutes M --words W` with values from the agent's `CODE_COMPLETE` report. This is the terminal agent step — stop here.
 

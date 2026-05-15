@@ -440,27 +440,14 @@ async function run(sandbox, binDir, args) {
     assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/, `stdout:\n${r.stdout}`);
     assert.match(
       r.stderr,
-      /missing automated evidence/,
+      /missing `aitm-verified-by` automated evidence marker/,
       `expected missing evidence failure; stderr:\n${r.stderr}`
     );
-    assert.match(
-      r.stderr,
-      /REGRESSION: Fresh install registers direct Node hook commands\./,
-      `expected checked item to be reported as a regression; stderr:\n${r.stderr}`
+    assert.equal(
+      existsSync(recordedBodyPath),
+      false,
+      'preflight should refuse before review mutates the issue body'
     );
-    const written = readFileSync(recordedBodyPath, 'utf8');
-    for (const label of [
-      'Existing installs migrate legacy shell hook commands.',
-      'Acceptance criteria met (including test additions from deep dive)',
-      'Tests pass; new coverage committed',
-      'Pre-commit hooks pass',
-    ]) {
-      assert.match(
-        written,
-        new RegExp(`- \\[ \\] ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
-      );
-    }
-    assert.match(written, /- \[ \] Issue body checkboxes ticked/);
     console.log('test 3 passed: verbReview refuses AC/DoD without evidence');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });

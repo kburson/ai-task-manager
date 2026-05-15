@@ -351,7 +351,8 @@ import {
 // ── checkBodyChange: aitm-fields and aitm-groom-rationale marker protection ───
 {
   const FIELDS_MARKER = '<!-- aitm-fields: {"schema":1,"values":{}} -->';
-  const GROOM_MARKER = '<!-- aitm-groom-rationale: {"size":"M","estimate":"5h","priority":"P1"} -->';
+  const GROOM_MARKER =
+    '<!-- aitm-groom-rationale: {"size":"M","estimate":"5h","priority":"P1"} -->';
 
   // Dropping aitm-fields → block
   let r = checkBodyChange({

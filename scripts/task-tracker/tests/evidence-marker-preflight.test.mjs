@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+import { strict as assert } from 'node:assert';
+import { runReviewPreflight } from '../lib/review-preflight.mjs';
+
+const SHA = 'abcdef1234567890';
+const TRAIL = [
+  '### 🔗 Commits',
+  '',
+  '<!-- aitm-commits: abcdef1234567890 -->',
+  '',
+  '| SHA | Subject | Author | When |',
+  '|---|---|---|---|',
+  '| [`abcdef1`](https://github.com/o/r/commit/abcdef1234567890) | s | a | t |',
+].join('\n');
+
+const baseDeps = {
+  gitStatus: async () => '',
+  gitHeadSha: async () => SHA,
+  findTrailComment: async () => ({ body: TRAIL }),
+};
+
+{
+  const r = await runReviewPreflight({
+    issueNumber: '113',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      ...baseDeps,
+      getIssueBody: async () =>
+        [
+          '## Acceptance Criteria',
+          '- [ ] Existing issue can be audited',
+          '',
+          '### Verification Commands',
+          '- [ ] `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs`',
+        ].join('\n'),
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.reasons.join('\n'), /Existing issue can be audited/);
+  assert.match(r.reasons.join('\n'), /missing `aitm-verified-by` automated evidence marker/);
+}
+
+{
+  const r = await runReviewPreflight({
+    issueNumber: '113',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      ...baseDeps,
+      getIssueBody: async () =>
+        [
+          '## Acceptance Criteria',
+          '- [ ] Existing issue can be audited <!-- aitm-verified-by: `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs` -->',
+          '',
+          '### Verification Commands',
+          '- [ ] `node scripts/task-tracker/tests/other.test.mjs`',
+        ].join('\n'),
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(
+    r.reasons.join('\n'),
+    /evidence command missing from Verification Commands: node scripts\/task-tracker\/tests\/evidence-marker-preflight\.test\.mjs/
+  );
+}
+
+{
+  const r = await runReviewPreflight({
+    issueNumber: '113',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      ...baseDeps,
+      getIssueBody: async () =>
+        [
+          '## Acceptance Criteria',
+          '- [ ] Existing issue can be audited <!-- aitm-verified-by: `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs` -->',
+          '- [ ] Standard DoD command may prove an AC <!-- aitm-verified-by: `npm test` -->',
+          '',
+          '### Verification Commands',
+          '- [ ] `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs`',
+        ].join('\n'),
+    },
+  });
+  assert.equal(r.ok, true, r.reasons.join('\n'));
+}
+
+console.log('evidence-marker-preflight.test.mjs: all passed');

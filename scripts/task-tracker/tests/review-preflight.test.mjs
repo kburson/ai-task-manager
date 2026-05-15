@@ -22,6 +22,7 @@ const TRAIL = [
       gitStatus: async () => '',
       gitHeadSha: async () => SHA,
       findTrailComment: async () => ({ body: TRAIL }),
+      getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, true);
@@ -36,6 +37,7 @@ const TRAIL = [
       gitStatus: async () => ' M scripts/x.mjs\n',
       gitHeadSha: async () => SHA,
       findTrailComment: async () => ({ body: TRAIL }),
+      getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, false);
@@ -51,6 +53,7 @@ const TRAIL = [
       gitStatus: async () => '',
       gitHeadSha: async () => SHA,
       findTrailComment: async () => null,
+      getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, false);
@@ -68,6 +71,7 @@ const TRAIL = [
       findTrailComment: async () => ({
         body: ['### 🔗 Related commit', '', '<!-- aitm-commits: abcdef1234567890 -->'].join('\n'),
       }),
+      getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, false);
@@ -85,6 +89,7 @@ const TRAIL = [
       findTrailComment: async () => ({
         body: ['### 🔗 Commits', '', '<!-- aitm-commits: def456 -->'].join('\n'),
       }),
+      getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, false);

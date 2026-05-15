@@ -175,6 +175,11 @@ if (_isMain)
           await verbCommitTrace(ctx);
           break;
         }
+        case 'evidence-markers': {
+          const { verbEvidenceMarkers } = await import('./verbs/evidence-markers.mjs');
+          await verbEvidenceMarkers(ctx);
+          break;
+        }
         case 'fleet': {
           const { verbFleet } = await import('./verbs/fleet.mjs');
           await verbFleet(ctx);

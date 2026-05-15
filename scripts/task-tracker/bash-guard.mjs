@@ -137,7 +137,6 @@ if (/\bgh\s+issue\s+close\b/.test(scanned)) {
   );
 }
 
-
 // --- Extract write targets ---
 
 const writePaths = new Set();

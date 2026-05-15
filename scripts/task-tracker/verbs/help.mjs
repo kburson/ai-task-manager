@@ -18,6 +18,10 @@ Task Tracker — available commands
   /task close --force       Close even if unchecked items remain
   /task check "<label>"     Toggle a checkbox in the active issue body
   /task commit-trace [#N]   Create/update the canonical commit trace from HEAD
+  /task evidence-markers audit #N
+                            Audit AC evidence markers and Verification Commands
+  /task evidence-markers backfill #N --map-file mappings.json [--dry-run]
+                            Add explicit AC evidence markers from a reviewed mapping
   /task log #N              Re-compute and write Engaged/Session Time + Context Length
   /task migrate [--dry-run] Migrate repo issues into a selected/configured project
   /task fleet               Show all active tasks across parallel worktrees

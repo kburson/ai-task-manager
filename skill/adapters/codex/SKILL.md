@@ -32,6 +32,12 @@ Required content fragments (default `./tmp/`): `scope.md`, `acs.md` (must contai
 
 All issues are stubs at creation: scope + ACs + plan-metadata only. **Do not include implementation plan / task breakdown / code snippets in the body.** Deep-dive lands as a separate comment at pickup time, AFTER the Pickup Directive.
 
+During deep dive, bind every Acceptance Criterion to automated evidence with an
+`aitm-verified-by` HTML comment marker. Every non-standard command named in
+those markers must be listed under the issue-specific `### Verification
+Commands` section. Standard DoD commands may be used as evidence markers but
+must not be duplicated there.
+
 Refusal contracts (deterministic exit codes):
 
 - `assignee-required` — no `--assignee` and no `assignee` in `.ai-task-manager/task-tracker.json`.

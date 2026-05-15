@@ -30,9 +30,17 @@ required box is unchecked will be refused.
      relevant tests, builds, or commands**. Read the output. Then check the box.
    - Same rule for every Acceptance Criterion (including any added during the deep
      dive).
+   - Every Acceptance Criterion must carry automated evidence metadata using an
+     `aitm-verified-by` HTML comment marker. Add one or more markers beside the
+     AC text during deep dive, after choosing the command that proves that
+     criterion.
    - The standard DoD commands (`npm test`, `npm run lint`, and
      `npm run format:check`) are DoD checkboxes. Do not duplicate them under the
      deep-dive `### Verification Commands` section.
+   - Every non-standard command named in an AC `aitm-verified-by` marker must also
+     appear as a checkbox under the issue-specific `### Verification Commands`
+     section. Standard DoD commands may be referenced by AC markers, but stay only
+     in the DoD checklist.
    - Do not check a related Acceptance Criterion or DoD prose box until the
      relevant command checkbox has been checked.
    - Never bulk-check. Never check preemptively. "It looks done" is not verification.
@@ -142,6 +150,15 @@ required box is unchecked will be refused.
 
      Do not add words like `PASS`; the checked box is the proof.
 
+     Bind each Acceptance Criterion to its proof command with an inline marker:
+
+     ```markdown
+     - [ ] Config loads from project root. <!-- aitm-verified-by: `node scripts/task-tracker/tests/config.test.mjs` -->
+     ```
+
+     If an AC is proved by a standard DoD command, reference that command in the
+     marker but do not duplicate the command under `### Verification Commands`.
+
    - **Identified risks** beyond the Scope
    - **Sibling sub-issues to spawn** (if any)
    - **Dependency map** (always include, even if no dependencies):
@@ -245,6 +262,8 @@ Review every item in the Definition of Done checklist in the issue body. For eac
   `npm run format:check`.
 - Verify every relevant issue-specific command in `### Verification Commands` has been
   run successfully, its output read, and its checkbox checked.
+- Verify every Acceptance Criterion has at least one `aitm-verified-by` marker and
+  that every non-standard command named there appears under `### Verification Commands`.
 - Verify that all issue body checkboxes are ticked — this item is self-referential and
   must be the last box checked.
 - Mark each verified item with `/task check "<label>"`.
