@@ -14,6 +14,7 @@ import {
   saveMarker,
   countWords,
   currentSessionId,
+  ensureSessionTracking,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue } from './queue.mjs';
@@ -136,6 +137,7 @@ async function onSessionStart(sid) {
     const c = loadConfig();
     sweepOrphans({ maxAgeMs: c.deadSessionMaxAgeMs });
   } catch {}
+  if (sid) ensureSessionTracking(sid);
   const s = loadState(statePath);
 
   // Nothing active and nothing paused

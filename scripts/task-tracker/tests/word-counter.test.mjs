@@ -15,7 +15,7 @@ import {
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-'));
 const sampleJsonlPath = path.join(tmp, 'session.jsonl');
-const markerPath = path.join(tmp, 'session.word-marker');
+const markerPath = path.join(tmp, 'session.json');
 
 // Write a fake JSONL transcript
 const lines = [
@@ -221,10 +221,10 @@ try {
       markerProject,
       '.ai-task-manager',
       'codex',
-      'session-markers',
-      'session-123.word-marker'
+      'session-tracking',
+      'session-123.json'
     ),
-    'word marker path must live under app-scoped project-local .ai-task-manager'
+    'session tracking file must live under app-scoped project-local .ai-task-manager'
   );
   assert.equal(
     jsonlPath('session-123'),

@@ -40,7 +40,7 @@ export function transcriptDir() {
 }
 
 export function markerDir() {
-  return path.join(appStateDir(), 'session-markers');
+  return path.join(appStateDir(), 'session-tracking');
 }
 
 export function jsonlPath(sid) {
@@ -48,7 +48,22 @@ export function jsonlPath(sid) {
 }
 
 export function markerPathFor(sid) {
-  return path.join(markerDir(), `${sid}.word-marker`);
+  return path.join(markerDir(), `${sid}.json`);
+}
+
+export function ensureSessionTracking(sid) {
+  const trackingPath = markerPathFor(sid);
+  if (existsSync(trackingPath)) return;
+  mkdirSync(path.dirname(trackingPath), { recursive: true });
+  writeFileSync(
+    trackingPath,
+    JSON.stringify(
+      { sessionId: sid, startedAt: new Date().toISOString(), wordCount: { line: 0, words: 0, task: null, ts: null } },
+      null,
+      2
+    ),
+    'utf8'
+  );
 }
 
 export function currentSessionId() {
@@ -76,8 +91,8 @@ export function currentSessionId() {
 export function loadMarker(markerPath) {
   if (!existsSync(markerPath)) return { line: 0, words: 0, task: null };
   try {
-    const parsed = JSON.parse(readFileSync(markerPath, 'utf8'));
-    return { line: 0, words: 0, task: null, ...parsed };
+    const { wordCount = {} } = JSON.parse(readFileSync(markerPath, 'utf8'));
+    return { line: 0, words: 0, task: null, ...wordCount };
   } catch {
     return { line: 0, words: 0, task: null };
   }
@@ -85,9 +100,17 @@ export function loadMarker(markerPath) {
 
 export function saveMarker(markerPath, line, words, task = null) {
   mkdirSync(path.dirname(markerPath), { recursive: true });
+  let existing = {};
+  try {
+    if (existsSync(markerPath)) existing = JSON.parse(readFileSync(markerPath, 'utf8'));
+  } catch {}
   writeFileSync(
     markerPath,
-    JSON.stringify({ line, words, task, ts: new Date().toISOString() }, null, 2),
+    JSON.stringify(
+      { ...existing, wordCount: { line, words, task, ts: new Date().toISOString() } },
+      null,
+      2
+    ),
     'utf8'
   );
 }
