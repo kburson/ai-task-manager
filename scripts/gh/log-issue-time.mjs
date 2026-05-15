@@ -18,6 +18,7 @@ import {
   loadProjectFieldDefs,
 } from '../task-tracker/project-fields.mjs';
 import { parseTimingRows, rollupTotals } from '../task-tracker/timing-rollup.mjs';
+import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
 
 const args = process.argv.slice(2);
@@ -109,6 +110,9 @@ async function fetchProjectMeta() {
   const reviewField = fieldIdFor(cfg, 'reviewTime')
     ? { id: fieldIdFor(cfg, 'reviewTime') }
     : fieldByName('Review Time');
+  const startTimeField = cfg.fieldStartTime
+    ? { id: cfg.fieldStartTime }
+    : fieldByName('Start time');
   if (!sessionField) throw new Error('Field "Session Time" not found on project');
 
   return {
@@ -116,6 +120,7 @@ async function fetchProjectMeta() {
     engagedFieldId: engagedField?.id || '',
     sessionFieldId: sessionField.id,
     reviewFieldId: reviewField?.id || '',
+    startTimeFieldId: startTimeField?.id || '',
   };
 }
 
@@ -154,23 +159,36 @@ async function writeNumberField(itemId, fieldId, value) {
   console.log(`  Review Time         : ${reviewMin} min  (threshold ${thresholdMin} min)`);
 
   if (dryRun) {
+    const startTimestamp = firstStartTimestamp(comment.body);
+    if (startTimestamp) console.log(`  Start Time (from log): ${startTimestamp}`);
     console.log('Dry run — no writes performed.');
     process.exit(0);
   }
 
-  const { itemId, engagedFieldId, sessionFieldId, reviewFieldId } = await fetchProjectMeta();
+  const { itemId, engagedFieldId, sessionFieldId, reviewFieldId, startTimeFieldId } =
+    await fetchProjectMeta();
   const fieldDefs = loadProjectFieldDefs();
   const issueBody = await fetchIssueBody();
+
+  // Repair startTime: if missing from the issue field DB, derive from earliest timing row.
+  const existingValues = ensureIssueFieldDb(issueBody, fieldDefs).values;
+  const repairedStartTime =
+    !existingValues.startTime && startTimeFieldId
+      ? (firstStartTimestamp(comment.body) ?? null)
+      : null;
+
   const ensured = ensureIssueFieldDb(issueBody, fieldDefs, {
     engagedTime: engagedMin,
     sessionTime: totalActiveMin,
     reviewTime: reviewMin,
+    ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
   });
   const values = {
     ...ensured.values,
     engagedTime: engagedMin,
     sessionTime: totalActiveMin,
     reviewTime: reviewMin,
+    ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
   };
   const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
   if (updated.changed) await writeIssueBody(updated.body);
@@ -189,6 +207,16 @@ async function writeNumberField(itemId, fieldId, value) {
     if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, engagedMin);
     await writeNumberField(itemId, sessionFieldId, totalActiveMin);
     if (reviewFieldId) await writeNumberField(itemId, reviewFieldId, reviewMin);
+  }
+
+  if (repairedStartTime && startTimeFieldId) {
+    await writeProjectFieldValue({
+      projectId: cfg.projectId,
+      itemId,
+      fieldId: startTimeFieldId,
+      value: { text: repairedStartTime },
+    });
+    console.log(`  Start Time (repaired): ${repairedStartTime}`);
   }
 
   console.log('Fields updated on GitHub Projects board.');

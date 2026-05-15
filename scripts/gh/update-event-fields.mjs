@@ -127,5 +127,6 @@ try {
     await writeIssueBody(updated.body);
   }
 } catch (err) {
-  console.warn(`warn: event field update skipped: ${err.message}`);
+  console.error(`error: event field update failed: ${err.message}`);
+  process.exit(1);
 }

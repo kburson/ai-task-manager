@@ -410,7 +410,7 @@ try {
   /* best-effort */
 }
 
-// Update event fields (fire-and-forget)
+// Update event fields (awaited — failure is a visible warning, not a silent drop)
 if (!SKIP_NETWORK) {
   const repoRoot = getProjectDir();
   const eventScriptCandidates = [
@@ -421,10 +421,15 @@ if (!SKIP_NETWORK) {
   if (eventScript) {
     const args = [eventScript, issueArg, stateArg];
     if (itemId) args.push('--item-id', itemId);
-    // Fire-and-forget: side-effecting field write. Cap so a stuck child
-    // can't leak indefinitely; ignore ETIMEDOUT here — the GH-class call
-    // inside update-event-fields.mjs surfaces its own warnings.
-    pexec(process.execPath, args, { timeout: GH_API_TIMEOUT_MS * 2 }).catch(() => {});
+    try {
+      await pexec(process.execPath, args, { timeout: GH_API_TIMEOUT_MS * 2 });
+    } catch (e) {
+      const msg = e.stderr?.trim() || e.message?.split('\n')[0] || 'unknown error';
+      process.stderr.write(
+        `warning: Start Time field sync failed: ${msg}\n` +
+          `  To repair: node scripts/gh/update-event-fields.mjs ${issueArg} ${stateArg} --item-id ${itemId}\n`
+      );
+    }
   }
 }
 
