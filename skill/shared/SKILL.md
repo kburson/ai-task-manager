@@ -158,6 +158,8 @@ The 7-state Scrum vocabulary (`backlog` / `refine` / `plan` / `develop` / `test`
 
 Read the state file:
 
+> Requires bash. On Windows, use Git Bash or WSL.
+
 ```bash
 cat "$(git rev-parse --show-toplevel)/.ai-task-manager/task-tracker-state.json"
 ```
@@ -174,6 +176,8 @@ If `active === "plan"` → ask the user:
 - **yes** → proceed to **Plan-Mode Backlog Orchestration** below. **Do not call the CLI** — orchestration creates issues via the `create-issue.mjs` helper (which wraps `gh issue create` + project tether + sub-issue link + placeholder substitution into one atomic step).
 
 ### Step 1c: Run the CLI (all verbs except `new` in plan mode)
+
+> Requires bash. On Windows, use Git Bash or WSL.
 
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
@@ -202,6 +206,8 @@ gh issue reopen <N>
 ```
 
 Move to in-progress:
+
+> Requires bash. On Windows, use Git Bash or WSL.
 
 ```bash
 "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.mjs" <N> in-progress
@@ -362,6 +368,8 @@ When the user confirms "yes" in Step 1b, execute the following sections in order
 
 Before creating ANY issue (epic, sub-issue, or solo), run the preflight check:
 
+> Requires bash. On Windows, use Git Bash or WSL.
+
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs" --check-only
 ```
@@ -434,6 +442,8 @@ gh label create "data"           --color "#bfd4f2" --description "Analytics, exp
 
 Use the packaged helper to read values from `.ai-task-manager/task-tracker.json`. This produces a single clean `node` invocation instead of a `cat | python3` pipeline, which keeps the bash-guard hook happy and avoids shell-permission noise.
 
+> Requires bash. On Windows, use Git Bash or WSL.
+
 ```bash
 ROOT="$(git rev-parse --show-toplevel)"
 HELPER="$ROOT/node_modules/ai-task-manager/scripts/task-tracker/config-get.mjs"
@@ -481,6 +491,8 @@ project metadata while the Project board itself still has no visible item.
 
 Use:
 
+> Requires bash. On Windows, use Git Bash or WSL.
+
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
   --issue <N> \
@@ -518,6 +530,8 @@ Do not hand-assemble the issue body. The `--shape epic` flag below feeds these f
 #### 2. Create + tether the epic atomically
 
 `scripts/gh/create-issue.mjs --shape epic …` is the only sanctioned path. It calls `preflight-issue.mjs --shape epic` to render the body, runs `gh issue create`, tethers to the project Backlog with priority/size/estimate/sequence, and substitutes the `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic. **Never call `gh issue create` directly.**
+
+> Requires bash. On Windows, use Git Bash or WSL.
 
 ```bash
 URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
@@ -571,6 +585,8 @@ Same as Epic Creation step 1, but for the sub-issue:
 #### 3. Create + tether the sub-issue atomically
 
 Priority default for sub-issues: inherit from parent epic if not declared in spec. `create-issue.mjs --shape sub-issue` is the only sanctioned path; never call `gh issue create` directly.
+
+> Requires bash. On Windows, use Git Bash or WSL.
 
 ```bash
 URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
@@ -845,7 +861,11 @@ Orchestrators MUST run the seed helper **immediately after `git worktree add` an
 
 ```bash
 node scripts/task-tracker/seed-worktree.mjs <worktree-path>
-# (or, when ai-task-manager is installed as a dep:)
+```
+
+Or, when `ai-task-manager` is installed as a dependency:
+
+```bash
 node node_modules/ai-task-manager/scripts/task-tracker/seed-worktree.mjs <worktree-path>
 ```
 
@@ -854,6 +874,8 @@ The helper copies `task-tracker.json`, `pickup-directive.md`, `definition-of-don
 ### Wave parent — required for any solo fan-out of ≥2
 
 **Before** the per-child `dispatch-prep.mjs` loop, when the planned fan-out spans **2 or more candidate children**, the orchestrator MUST run:
+
+> Requires bash. On Windows, use Git Bash or WSL.
 
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/ensure-wave-parent.mjs" \
@@ -887,6 +909,8 @@ Children continue to log their own time on their own issues. The parent's `⏱ T
 Sub-issues that will be picked up immediately by an agent MUST be moved to `In Progress` **by the orchestrator, before the agent boots**, and the `start` timing row MUST be posted by the orchestrator at the same moment. Do not rely on the agent's bootstrap to flip the board status — that path is a silent dependency. If the agent's bootstrap fails for any reason, the board state lies (still `Backlog`) and the work is invisible to the rest of the system.
 
 For each sub-issue about to be dispatched:
+
+> Requires bash. On Windows, use Git Bash or WSL.
 
 ```bash
 node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/dispatch-prep.mjs" <SUB_N> --description "agent dispatch (sequence <S>)"

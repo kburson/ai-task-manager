@@ -146,4 +146,51 @@ assert.ok(
   'preflight block must NOT include the visible Deep dive checkbox — completion is recorded via the <!-- aitm-deep-dive-complete: <ts> --> marker'
 );
 
+// ---------------------------------------------------------------------------
+// Bash-fence lint: no > redirect or inline # comments in pickup-directive or
+// skill/shared/SKILL.md bash fences.
+// ---------------------------------------------------------------------------
+
+function bashFenceContents(text) {
+  const fences = [];
+  const lines = text.split('\n');
+  let inBash = false;
+  let current = [];
+  for (const line of lines) {
+    if (line.trim() === '```bash') { inBash = true; current = []; }
+    else if (line.trim() === '```' && inBash) { inBash = false; fences.push(current.join('\n')); }
+    else if (inBash) { current.push(line); }
+  }
+  return fences;
+}
+
+const pdFences = bashFenceContents(pickupDirective);
+for (const fence of pdFences) {
+  assert.ok(
+    !/> \.\//.test(fence) && !/>> \.\//.test(fence),
+    `pickup-directive bash fence must not contain '> ./' or '>> ./' redirect:\n${fence}`
+  );
+  const lines = fence.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    assert.ok(
+      !trimmed.startsWith('# '),
+      `pickup-directive bash fence must not contain inline '# ...' comment:\n${line}`
+    );
+  }
+}
+
+const sharedSkill = readFileSync(path.join(root, 'skill', 'shared', 'SKILL.md'), 'utf8');
+const sharedFences = bashFenceContents(sharedSkill);
+for (const fence of sharedFences) {
+  const lines = fence.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    assert.ok(
+      !trimmed.startsWith('# '),
+      `skill/shared/SKILL.md bash fence must not contain inline '# ...' comment:\n${line}`
+    );
+  }
+}
+
 console.log('templates.test.mjs: all passed');

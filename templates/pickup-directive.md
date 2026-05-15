@@ -124,10 +124,18 @@ required box is unchecked will be refused.
    > in-review/r4r/done moves when the Deep-Dive heading is present in any other
    > position.
 
+   Run the following command and save its output to `./tmp/body.md` via your Write
+   tool — do not use a `>` shell redirect:
+
+   ```
+   gh issue view <this-issue-#> --json body --jq .body
+   ```
+
+   Append the `## Deep-Dive Analysis (YYYY-MM-DD)` section after the Pickup
+   Directive block and before any `<!-- ai-task-manager:fields:start -->` marker,
+   using your Edit or Write tool. Then post the updated body:
+
    ```bash
-   gh issue view <this-issue-#> --json body --jq .body > ./tmp/body.md
-   # Append "## Deep-Dive Analysis (YYYY-MM-DD)" section to ./tmp/body.md
-   # — placed AFTER the Pickup Directive block and BEFORE the fields-block start marker.
    gh issue edit <this-issue-#> --body-file ./tmp/body.md
    ```
 
