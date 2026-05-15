@@ -22,9 +22,13 @@ Claude-specific conventions:
 When the shared skill mentions command examples, prefer these package paths:
 
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.mjs" <N> in-progress
+node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]
+node node_modules/ai-task-manager/scripts/gh/move-state.mjs <N> in-progress
 ```
+
+Run task commands from the project root. If an environment must invoke the
+script from another directory, set `AI_TASK_MANAGER_PROJECT_DIR` to the project
+root before running the command.
 
 ## Creating issues
 

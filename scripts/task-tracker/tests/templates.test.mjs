@@ -9,6 +9,18 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dir, '../../..');
 const body = readFileSync(path.join(root, 'templates', 'definition-of-done.md'), 'utf8');
 const pickupDirective = readFileSync(path.join(root, 'templates', 'pickup-directive.md'), 'utf8');
+const runtimePickupDirectivePath = path.join(root, '.ai-task-manager', 'pickup-directive.md');
+const runtimePickupDirective = existsSync(runtimePickupDirectivePath)
+  ? readFileSync(runtimePickupDirectivePath, 'utf8')
+  : null;
+const codexAdapter = readFileSync(
+  path.join(root, 'skill', 'adapters', 'codex', 'SKILL.md'),
+  'utf8'
+);
+const claudeAdapter = readFileSync(
+  path.join(root, 'skill', 'adapters', 'claude', 'SKILL.md'),
+  'utf8'
+);
 const taskIssueForm = readFileSync(
   path.join(root, '.github', 'ISSUE_TEMPLATE', 'task.yml'),
   'utf8'
@@ -187,21 +199,98 @@ for (const fence of pdFences) {
 }
 
 const sharedSkill = readFileSync(path.join(root, 'skill', 'shared', 'SKILL.md'), 'utf8');
-const sharedFences = bashFenceContents(sharedSkill);
-for (const fence of sharedFences) {
-  const lines = fence.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
+const auditedBashFenceFiles = [
+  ['skill/shared/SKILL.md', sharedSkill],
+  ['skill/adapters/codex/SKILL.md', codexAdapter],
+  ['skill/adapters/claude/SKILL.md', claudeAdapter],
+];
+for (const [file, text] of auditedBashFenceFiles) {
+  const fences = bashFenceContents(text);
+  for (const fence of fences) {
     assert.ok(
-      !trimmed.startsWith('# '),
-      `skill/shared/SKILL.md bash fence must not contain inline '# ...' comment:\n${line}`
+      !/> \.\//.test(fence) && !/>> \.\//.test(fence),
+      `${file} bash fence must not contain '> ./' or '>> ./' redirect:\n${fence}`
     );
+    const lines = fence.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      assert.ok(
+        !trimmed.startsWith('# '),
+        `${file} bash fence must not contain inline '# ...' comment:\n${line}`
+      );
+    }
   }
 }
 
+const auditedAgentFiles = [
+  ['templates/pickup-directive.md', pickupDirective],
+  ['skill/shared/SKILL.md', sharedSkill],
+  ['skill/adapters/codex/SKILL.md', codexAdapter],
+  ['skill/adapters/claude/SKILL.md', claudeAdapter],
+];
+if (runtimePickupDirective !== null) {
+  auditedAgentFiles.push(['.ai-task-manager/pickup-directive.md', runtimePickupDirective]);
+}
+
+if (runtimePickupDirective !== null) {
+  assert.equal(
+    runtimePickupDirective,
+    pickupDirective,
+    '.ai-task-manager/pickup-directive.md must stay byte-identical with templates/pickup-directive.md'
+  );
+}
+
+for (const [file, text] of auditedAgentFiles) {
+  assert.ok(
+    !text.includes('git rev-parse --show-toplevel'),
+    `${file} must not contain $(git rev-parse --show-toplevel) — use plain node node_modules/... invocations instead`
+  );
+}
+
+const pickupDirectiveFiles = [['templates/pickup-directive.md', pickupDirective]];
+if (runtimePickupDirective !== null) {
+  pickupDirectiveFiles.push(['.ai-task-manager/pickup-directive.md', runtimePickupDirective]);
+}
+
+for (const [file, text] of pickupDirectiveFiles) {
+  assert.ok(
+    text.includes(
+      'node node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress'
+    ),
+    `${file} must invoke move-state.mjs through node`
+  );
+  assert.ok(
+    !text.includes(
+      '\n   node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress'
+    ),
+    `${file} must not invoke move-state.mjs directly`
+  );
+}
+
+for (const [file, text] of pickupDirectiveFiles) {
+  assert.ok(
+    !text.includes('Edit or Write tool'),
+    `${file} must use agent-neutral file-editing wording, not Claude-specific "Edit or Write tool"`
+  );
+}
+
+for (const [file, text] of [
+  ['skill/adapters/codex/SKILL.md', codexAdapter],
+  ['skill/adapters/claude/SKILL.md', claudeAdapter],
+]) {
+  assert.ok(
+    text.includes(
+      'node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]'
+    ),
+    `${file} must document the portable task-tracker command`
+  );
+}
+
 assert.ok(
-  !sharedSkill.includes('git rev-parse --show-toplevel'),
-  'skill/shared/SKILL.md must not contain $(git rev-parse --show-toplevel) — use plain node node_modules/... invocations instead'
+  claudeAdapter.includes(
+    'node node_modules/ai-task-manager/scripts/gh/move-state.mjs <N> in-progress'
+  ),
+  'skill/adapters/claude/SKILL.md must invoke move-state.mjs through node'
 );
 
 console.log('templates.test.mjs: all passed');

@@ -96,7 +96,7 @@ required box is unchecked will be refused.
 1. **Move the issue to `in-progress` and capture your entry word count:**
 
    ```bash
-   node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress
+   node node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress
    node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
    ```
 
@@ -133,7 +133,7 @@ required box is unchecked will be refused.
 
    Append the `## Deep-Dive Analysis (YYYY-MM-DD)` section after the Pickup
    Directive block and before any `<!-- ai-task-manager:fields:start -->` marker,
-   using your Edit or Write tool. Then post the updated body:
+   using your agent's file-editing tool. Then post the updated body:
 
    ```bash
    gh issue edit <this-issue-#> --body-file ./tmp/body.md

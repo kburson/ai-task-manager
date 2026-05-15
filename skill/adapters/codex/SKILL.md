@@ -21,8 +21,12 @@ Codex-specific conventions:
 Primary script form:
 
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
+node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]
 ```
+
+Run task commands from the project root. If an environment must invoke the
+script from another directory, set `AI_TASK_MANAGER_PROJECT_DIR` to the project
+root before running the command.
 
 ## Creating issues
 
