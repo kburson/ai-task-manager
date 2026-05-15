@@ -34,8 +34,6 @@ root before running the command.
 
 Required content fragments (default `./tmp/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
 
-All issues are stubs at creation: scope + ACs + plan-metadata only. **Do not include implementation plan / task breakdown / code snippets in the body.** Deep-dive lands as a separate comment at pickup time, AFTER the Pickup Directive.
-
 During deep dive, bind every Acceptance Criterion to automated evidence with an
 `aitm-verified-by` HTML comment marker. Every non-standard command named in
 those markers must be listed under the issue-specific `### Verification
