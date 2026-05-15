@@ -158,10 +158,8 @@ The 7-state Scrum vocabulary (`backlog` / `refine` / `plan` / `develop` / `test`
 
 Read the state file:
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-cat "$(git rev-parse --show-toplevel)/.ai-task-manager/task-tracker-state.json"
+cat .ai-task-manager/task-tracker-state.json
 ```
 
 If `active` is **not** `"plan"` → skip to Step 1c (run the CLI normally).
@@ -177,10 +175,8 @@ If `active === "plan"` → ask the user:
 
 ### Step 1c: Run the CLI (all verbs except `new` in plan mode)
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs" <verb> [args...]
+node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]
 ```
 
 Print stdout verbatim. On non-zero exit, print stderr and surface the error.
@@ -207,10 +203,8 @@ gh issue reopen <N>
 
 Move to in-progress:
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-"$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/move-state.mjs" <N> in-progress
+node node_modules/ai-task-manager/scripts/gh/move-state.mjs <N> in-progress
 ```
 
 #### 2c. If this is a sub-issue, ensure the parent is open and in-progress
@@ -368,10 +362,8 @@ When the user confirms "yes" in Step 1b, execute the following sections in order
 
 Before creating ANY issue (epic, sub-issue, or solo), run the preflight check:
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs" --check-only
+node node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs --check-only
 ```
 
 If this exits non-zero, **STOP all work**. Do not create any issues. Surface the script's
@@ -442,16 +434,21 @@ gh label create "data"           --color "#bfd4f2" --description "Analytics, exp
 
 Use the packaged helper to read values from `.ai-task-manager/task-tracker.json`. This produces a single clean `node` invocation instead of a `cat | python3` pipeline, which keeps the bash-guard hook happy and avoids shell-permission noise.
 
-> Requires bash. On Windows, use Git Bash or WSL.
+Run each invocation and read the value from stdout:
 
 ```bash
-ROOT="$(git rev-parse --show-toplevel)"
-HELPER="$ROOT/node_modules/ai-task-manager/scripts/task-tracker/config-get.mjs"
-
-PROJECT_ID=$(node "$HELPER" projectId)
-ASSIGNEE=$(node   "$HELPER" assignee @me)
-REPO=$(node       "$HELPER" repo)
+node node_modules/ai-task-manager/scripts/task-tracker/config-get.mjs projectId
 ```
+
+```bash
+node node_modules/ai-task-manager/scripts/task-tracker/config-get.mjs assignee @me
+```
+
+```bash
+node node_modules/ai-task-manager/scripts/task-tracker/config-get.mjs repo
+```
+
+Store the outputs as `PROJECT_ID`, `ASSIGNEE`, and `REPO` for use in subsequent steps.
 
 **Never** use `cat .ai-task-manager/task-tracker.json | python3 -c "..."` — use `config-get.mjs` instead.
 
@@ -491,10 +488,8 @@ project metadata while the Project board itself still has no visible item.
 
 Use:
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/project-tether.mjs" \
+node node_modules/ai-task-manager/scripts/gh/project-tether.mjs \
   --issue <N> \
   --status backlog \
   --priority <P0|P1|P2> \
@@ -529,12 +524,10 @@ Do not hand-assemble the issue body. The `--shape epic` flag below feeds these f
 
 #### 2. Create + tether the epic atomically
 
-`scripts/gh/create-issue.mjs --shape epic …` is the only sanctioned path. It calls `preflight-issue.mjs --shape epic` to render the body, runs `gh issue create`, tethers to the project Backlog with priority/size/estimate/sequence, and substitutes the `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic. **Never call `gh issue create` directly.**
-
-> Requires bash. On Windows, use Git Bash or WSL.
+`node_modules/ai-task-manager/scripts/gh/create-issue.mjs --shape epic …` is the only sanctioned path. It calls `preflight-issue.mjs --shape epic` to render the body, runs `gh issue create`, tethers to the project Backlog with priority/size/estimate/sequence, and substitutes the `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic. **Never call `gh issue create` directly.**
 
 ```bash
-URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
+node node_modules/ai-task-manager/scripts/gh/create-issue.mjs \
   --shape epic \
   --title "EPIC: <title>" \
   --scope-file ./tmp/scope.md \
@@ -547,12 +540,12 @@ URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
   --assignee "$ASSIGNEE" \
   --label "plan:<slug>" \
   --label "<inferred1>" \
-  [--label "<inferred2>" ...])
+  [--label "<inferred2>" ...]
 ```
 
 Use `--dry-run` to print the rendered body to stdout without calling `gh` (useful for inspection or diff against an existing issue).
 
-The helper prints the issue URL on stdout. Extract the number (e.g., `https://github.com/owner/repo/issues/42` → `42`) and store as `EPIC_N`. Default priority for epics: `p0`.
+The helper prints the issue URL on stdout. Read the URL from stdout, extract the number (e.g., `https://github.com/owner/repo/issues/42` → `42`), and store as `EPIC_N`. Default priority for epics: `p0`.
 
 If the helper exits non-zero, STOP. Either the issue was never created (gh failure) or it was created but not tethered — the helper prints the exact recovery command in the latter case.
 
@@ -586,10 +579,8 @@ Same as Epic Creation step 1, but for the sub-issue:
 
 Priority default for sub-issues: inherit from parent epic if not declared in spec. `create-issue.mjs --shape sub-issue` is the only sanctioned path; never call `gh issue create` directly.
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
+node node_modules/ai-task-manager/scripts/gh/create-issue.mjs \
   --shape sub-issue \
   --title "<sub-issue-title>" \
   --scope-file ./tmp/scope.md \
@@ -603,10 +594,10 @@ URL=$(node "$(git rev-parse --show-toplevel)/scripts/gh/create-issue.mjs" \
   --assignee "$ASSIGNEE" \
   --label "plan:<slug>" \
   --label "<inferred1>" \
-  [--label "<inferred2>" ...])
+  [--label "<inferred2>" ...]
 ```
 
-The helper prints the issue URL on stdout. Extract the number and store as `SUB_N`. It also:
+The helper prints the issue URL on stdout. Read the URL from stdout, extract the number, and store as `SUB_N`. It also:
 
 - Tethers the issue to the project Backlog and sets priority/size/estimate/sequence.
 - Links the issue to the epic as a GitHub sub-issue after project-side visibility is verified.
@@ -875,10 +866,8 @@ The helper copies `task-tracker.json`, `pickup-directive.md`, `definition-of-don
 
 **Before** the per-child `dispatch-prep.mjs` loop, when the planned fan-out spans **2 or more candidate children**, the orchestrator MUST run:
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/ensure-wave-parent.mjs" \
+node node_modules/ai-task-manager/scripts/gh/ensure-wave-parent.mjs \
   --children <N1>,<N2>,<N3> \
   --purpose "<one-line summary of the wave>"
 ```
@@ -910,10 +899,8 @@ Sub-issues that will be picked up immediately by an agent MUST be moved to `In P
 
 For each sub-issue about to be dispatched:
 
-> Requires bash. On Windows, use Git Bash or WSL.
-
 ```bash
-node "$(git rev-parse --show-toplevel)/node_modules/ai-task-manager/scripts/gh/dispatch-prep.mjs" <SUB_N> --description "agent dispatch (sequence <S>)"
+node node_modules/ai-task-manager/scripts/gh/dispatch-prep.mjs <SUB_N> --description "agent dispatch (sequence <S>)"
 ```
 
 `dispatch-prep.mjs` runs `move-state.mjs <N> in-progress` then posts a `start` row to the issue's `⏱ Timing Log`. Both happen before the agent boots.

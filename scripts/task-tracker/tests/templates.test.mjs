@@ -199,4 +199,9 @@ for (const fence of sharedFences) {
   }
 }
 
+assert.ok(
+  !sharedSkill.includes('git rev-parse --show-toplevel'),
+  'skill/shared/SKILL.md must not contain $(git rev-parse --show-toplevel) — use plain node node_modules/... invocations instead'
+);
+
 console.log('templates.test.mjs: all passed');
