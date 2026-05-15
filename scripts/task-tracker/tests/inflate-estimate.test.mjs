@@ -14,11 +14,16 @@ import {
 {
   const parsed = parseArgs([
     '42',
-    '--size', 'M',
-    '--estimate', '6h',
-    '--reason', 'Discovered auth complexity',
-    '--item', 'Add OAuth flow (~2h)',
-    '--item', 'Write token refresh tests (~1h)',
+    '--size',
+    'M',
+    '--estimate',
+    '6h',
+    '--reason',
+    'Discovered auth complexity',
+    '--item',
+    'Add OAuth flow (~2h)',
+    '--item',
+    'Write token refresh tests (~1h)',
   ]);
   assert.equal(parsed.issueNumber, 42);
   assert.equal(parsed.size, 'M');
@@ -66,8 +71,10 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers shared by integration tests
 // ---------------------------------------------------------------------------
-const GROOM_BODY = '<!-- aitm-groom-estimate: 42 -->\n### 🛠 Refine estimate\n\n| Field | Value |\n|---|---|\n| Size | S |\n';
-const ISSUE_BODY = '## Scope\n\nDo the thing.\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"S","estimate":2}} -->\n';
+const GROOM_BODY =
+  '<!-- aitm-groom-estimate: 42 -->\n### 🛠 Refine estimate\n\n| Field | Value |\n|---|---|\n| Size | S |\n';
+const ISSUE_BODY =
+  '## Scope\n\nDo the thing.\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"S","estimate":2}} -->\n';
 const BASE_CFG = {
   repo: 'owner/repo',
   projectId: 'PVT_FAKE',
@@ -86,13 +93,19 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
   return {
     deps: {
       listComments: async () => comments,
-      patchComment: async ({ commentId, body }) => { patched.push({ commentId, body }); },
+      patchComment: async ({ commentId, body }) => {
+        patched.push({ commentId, body });
+      },
       getIssueBody: async () => issueBody,
-      writeIssueBody: async ({ body }) => { bodyWrites.push(body); },
+      writeIssueBody: async ({ body }) => {
+        bodyWrites.push(body);
+      },
       projectValuesForIssue: async () => ({ size: 'S', estimate: 2 }),
       projectItemForIssue: async () => ({ issueId: 'ISS_FAKE', itemId: 'ITEM_FAKE' }),
       fieldOptionMap: async () => ({ F_SIZE: { S: 'opt_s', M: 'opt_m', L: 'opt_l' } }),
-      writeProjectFieldValue: async (args) => { boardWrites.push(args); },
+      writeProjectFieldValue: async (args) => {
+        boardWrites.push(args);
+      },
       loadProjectFieldDefs: () => FIELD_DEFS,
     },
     patched,
@@ -110,7 +123,13 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
   });
 
   const result = await runInflateEstimate(
-    { issueNumber: 42, size: 'M', estimate: '6h', reason: 'Auth was complex.', items: ['OAuth flow (~2h)'] },
+    {
+      issueNumber: 42,
+      size: 'M',
+      estimate: '6h',
+      reason: 'Auth was complex.',
+      items: ['OAuth flow (~2h)'],
+    },
     BASE_CFG,
     deps
   );
@@ -176,7 +195,13 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
   });
 
   const result = await runInflateEstimate(
-    { issueNumber: 42, size: 'L', estimate: '12h', reason: 'Second inflation.', items: ['Task B (~6h)'] },
+    {
+      issueNumber: 42,
+      size: 'L',
+      estimate: '12h',
+      reason: 'Second inflation.',
+      items: ['Task B (~6h)'],
+    },
     BASE_CFG,
     deps
   );

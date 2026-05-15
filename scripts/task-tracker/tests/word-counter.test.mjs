@@ -217,13 +217,7 @@ try {
   process.env.CLAUDE_PROJECT_DIR = '/ignored/claude/project';
   assert.equal(
     markerPathFor('session-123'),
-    path.join(
-      markerProject,
-      '.ai-task-manager',
-      'codex',
-      'session-tracking',
-      'session-123.json'
-    ),
+    path.join(markerProject, '.ai-task-manager', 'codex', 'session-tracking', 'session-123.json'),
     'session tracking file must live under app-scoped project-local .ai-task-manager'
   );
   assert.equal(

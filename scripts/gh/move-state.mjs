@@ -348,7 +348,9 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
       process.stderr.write('\n');
       process.stderr.write(`⛔ Refusing to move #${issueArg} to develop:\n`);
       planDevelopBlockers.forEach((b) => process.stderr.write(`   BLOCKED: ${b}\n`));
-      process.stderr.write('\nResolve the blockers, then retry. Legitimate-abandonment override:\n');
+      process.stderr.write(
+        '\nResolve the blockers, then retry. Legitimate-abandonment override:\n'
+      );
       process.stderr.write(
         `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} develop\n\n`
       );

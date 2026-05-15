@@ -10,9 +10,19 @@ import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-import { projectValuesForIssue, projectItemForIssue, fieldOptionMap, writeProjectFieldValue } from '../../gh/lib/github-projects.mjs';
+import {
+  projectValuesForIssue,
+  projectItemForIssue,
+  fieldOptionMap,
+  writeProjectFieldValue,
+} from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs, fieldIdFor, valueForProjectField } from '../project-fields.mjs';
-import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb, defaultFieldValues } from '../issue-field-db.mjs';
+import {
+  parseIssueFieldDb,
+  stripIssueFieldDb,
+  formatIssueFieldDb,
+  defaultFieldValues,
+} from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -25,7 +35,9 @@ export function parseArgs(argv = []) {
   const args = argv.slice();
   const issueNumber = Number(args.shift());
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
-    throw new Error(`inflate-estimate: first argument must be a positive issue number, got: ${argv[0]}`);
+    throw new Error(
+      `inflate-estimate: first argument must be a positive issue number, got: ${argv[0]}`
+    );
   }
 
   const parsed = { issueNumber, size: null, estimate: null, reason: null, items: [] };
@@ -76,20 +88,29 @@ function parseItem(raw) {
   return { description: raw.trim(), effort: '?' };
 }
 
-export function buildInflationSection({ reason, items, beforeSize, beforeEstimate, newSize, newEstimate, date = new Date().toISOString().slice(0, 10) }) {
+export function buildInflationSection({
+  reason,
+  items,
+  beforeSize,
+  beforeEstimate,
+  newSize,
+  newEstimate,
+  date = new Date().toISOString().slice(0, 10),
+}) {
   const beforeIdx = SIZE_ORDER.indexOf(beforeSize);
   const afterIdx = SIZE_ORDER.indexOf(newSize);
   const bucketDelta = afterIdx - beforeIdx;
   const ceiling = SIZE_CEILINGS[beforeSize];
-  const deltaCell = ceiling !== undefined
-    ? `+${bucketDelta} bucket(s) (total effort exceeded ${beforeSize} ceiling of ${ceiling}h)`
-    : `+${bucketDelta} bucket(s)`;
+  const deltaCell =
+    ceiling !== undefined
+      ? `+${bucketDelta} bucket(s) (total effort exceeded ${beforeSize} ceiling of ${ceiling}h)`
+      : `+${bucketDelta} bucket(s)`;
 
   const parsedItems = items.map(parseItem);
 
-  const itemRows = parsedItems.map((it, i) =>
-    `| ${i + 1} | ${it.description} | ~${it.effort} |`
-  ).join('\n');
+  const itemRows = parsedItems
+    .map((it, i) => `| ${i + 1} | ${it.description} | ~${it.effort} |`)
+    .join('\n');
 
   return [
     '',
@@ -113,14 +134,24 @@ export function buildInflationSection({ reason, items, beforeSize, beforeEstimat
 async function defaultListComments({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
-    ['api', `repos/${repo}/issues/${issueNumber}/comments`, '--paginate', '--jq', '[.[] | {id, body}]'],
+    [
+      'api',
+      `repos/${repo}/issues/${issueNumber}/comments`,
+      '--paginate',
+      '--jq',
+      '[.[] | {id, body}]',
+    ],
     { timeout: GH_API_TIMEOUT_MS * 2 }
   );
   // --paginate emits one JSON array per page; merge them
-  const pages = String(stdout || '').trim().split(/\n(?=\[)/);
+  const pages = String(stdout || '')
+    .trim()
+    .split(/\n(?=\[)/);
   const comments = [];
   for (const page of pages) {
-    try { comments.push(...JSON.parse(page)); } catch {}
+    try {
+      comments.push(...JSON.parse(page));
+    } catch {}
   }
   return comments;
 }
@@ -135,7 +166,9 @@ async function defaultPatchComment({ repo, commentId, body }) {
       { timeout: GH_API_TIMEOUT_MS * 2 }
     );
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -152,13 +185,13 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(os.tmpdir(), `aitm-inflate-body-${issueNumber}-${Date.now()}.md`);
   writeFileSync(tmp, body);
   try {
-    await pexec(
-      'gh',
-      ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp],
-      { timeout: GH_API_TIMEOUT_MS }
-    );
+    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+      timeout: GH_API_TIMEOUT_MS,
+    });
   } finally {
-    try { unlinkSync(tmp); } catch {}
+    try {
+      unlinkSync(tmp);
+    } catch {}
   }
 }
 
@@ -227,14 +260,28 @@ export async function runInflateEstimate(
           const sizeFieldId = fieldIdFor(cfg, 'size');
           if (sizeFieldId) {
             const val = valueForProjectField(size, sizeDef.type);
-            if (val) await writeField({ projectId: cfg.projectId, itemId, fieldId: sizeFieldId, value: val, optionMap: optMap });
+            if (val)
+              await writeField({
+                projectId: cfg.projectId,
+                itemId,
+                fieldId: sizeFieldId,
+                value: val,
+                optionMap: optMap,
+              });
           }
         }
         if (estimateDef) {
           const estimateFieldId = fieldIdFor(cfg, 'estimate');
           if (estimateFieldId) {
             const val = valueForProjectField(newEstimate, estimateDef.type);
-            if (val) await writeField({ projectId: cfg.projectId, itemId, fieldId: estimateFieldId, value: val, optionMap: optMap });
+            if (val)
+              await writeField({
+                projectId: cfg.projectId,
+                itemId,
+                fieldId: estimateFieldId,
+                value: val,
+                optionMap: optMap,
+              });
           }
         }
         boardUpdated = true;
@@ -267,14 +314,16 @@ export async function verbInflateEstimate(argv, cfg) {
   if (result.status === 'no-groom-comment') {
     console.error(
       `error: no \`<!-- aitm-groom-estimate: ${parsed.issueNumber} -->\` comment found on issue #${parsed.issueNumber}.\n` +
-      `  This comment is posted when an issue transitions to Refine. Has issue #${parsed.issueNumber} been groomed?`
+        `  This comment is posted when an issue transitions to Refine. Has issue #${parsed.issueNumber} been groomed?`
     );
     process.exit(1);
   }
 
   console.log(`✓ Inflation section appended to groom-estimate comment on #${parsed.issueNumber}`);
   if (result.boardUpdated) {
-    console.log(`✓ Board Size → ${parsed.size}, Estimate → ${parseEstimateHours(parsed.estimate)}h`);
+    console.log(
+      `✓ Board Size → ${parsed.size}, Estimate → ${parseEstimateHours(parsed.estimate)}h`
+    );
   } else {
     console.log(`  (board fields skipped — projectId not configured or no project item found)`);
   }

@@ -58,7 +58,11 @@ export function ensureSessionTracking(sid) {
   writeFileSync(
     trackingPath,
     JSON.stringify(
-      { sessionId: sid, startedAt: new Date().toISOString(), wordCount: { line: 0, words: 0, task: null, ts: null } },
+      {
+        sessionId: sid,
+        startedAt: new Date().toISOString(),
+        wordCount: { line: 0, words: 0, task: null, ts: null },
+      },
       null,
       2
     ),
