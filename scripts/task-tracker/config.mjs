@@ -138,7 +138,7 @@ export function rawProjectConfig(paths = {}) {
 export const PREFERENCE_DEFAULTS = {
   noPushToOrigin: false,
   mainThreadOnly: false,
-  driveSubIssuesToR4R: true,
+  driveSubIssuesToReview: true,
   pauseTimerOnBlockingQuestion: true,
   noConfirmAfterDeepDive: true,
   askGatesBeforeParallel: true,
@@ -152,6 +152,10 @@ export const PREFERENCE_DEFAULTS = {
 function mergePreferences(overrides) {
   const merged = { ...PREFERENCE_DEFAULTS };
   if (overrides && typeof overrides === 'object' && !Array.isArray(overrides)) {
+    // Backward-compat: old key name from before the R4R → Review rename.
+    if ('driveSubIssuesToR4R' in overrides && !('driveSubIssuesToReview' in overrides)) {
+      overrides = { ...overrides, driveSubIssuesToReview: overrides.driveSubIssuesToR4R };
+    }
     for (const [k, v] of Object.entries(overrides)) {
       if (!(k in PREFERENCE_DEFAULTS)) continue;
       const def = PREFERENCE_DEFAULTS[k];

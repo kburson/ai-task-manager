@@ -5,7 +5,7 @@
 //   - solo bypass (no parentEpicNumber)
 //   - lower-Sequence sibling in Development → blocker
 //   - lower-Sequence sibling in Backlog → ok (Backlog excluded)
-//   - lower-Sequence sibling in R4R or Done → ok (terminal excluded)
+//   - lower-Sequence sibling in Review or Done → ok (terminal excluded)
 //   - same-Sequence sibling in Development → ok (newcomer rule)
 //   - higher-Sequence sibling in Development → ok (next wave)
 
@@ -49,7 +49,7 @@ function stub(siblings) {
   assert.equal(r.ok, true, JSON.stringify(r));
 }
 
-// 4. Lower-Sequence sibling in R4R → not a blocker
+// 4. Lower-Sequence sibling in Review → not a blocker
 {
   const r = await admit({
     parentEpicNumber: 41,

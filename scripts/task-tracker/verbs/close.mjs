@@ -313,7 +313,7 @@ export async function verbClose(ctx) {
         idleMin: 0,
         deltaWords: 0,
         wordMarker: 0,
-        description: 'closed — timing flushed at R4R',
+        description: 'closed — timing flushed at Review',
       })
     );
     clearActive(statePath);

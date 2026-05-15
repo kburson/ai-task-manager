@@ -758,11 +758,11 @@ async function cmdConfigurePreferences(args) {
     ),
     'mainThreadOnly'
   );
-  updated.driveSubIssuesToR4R = parseBool(
+  updated.driveSubIssuesToReview = parseBool(
     await ask(
-      `  Drive sub-issues end-to-end to R4R without per-step check-ins? [${boolDefault('driveSubIssuesToR4R')}] `
+      `  Drive sub-issues end-to-end to Review without per-step check-ins? [${boolDefault('driveSubIssuesToReview')}] `
     ),
-    'driveSubIssuesToR4R'
+    'driveSubIssuesToReview'
   );
   updated.pauseTimerOnBlockingQuestion = parseBool(
     await ask(

@@ -63,10 +63,10 @@ required box is unchecked will be refused.
    - `/task review` is an orchestrator action. `/task close` is a human action.
      Agents running either is a process violation.
 
-6. **Epic AC/DoD checkboxes may not be checked before all sub-issues reach R4R.**
+6. **Epic AC/DoD checkboxes may not be checked before all sub-issues reach Review.**
    For issues whose title begins with `EPIC:`, no Acceptance Criterion or Definition of
    Done checkbox may be ticked until every sub-issue linked to the epic has passed through
-   In Review verification and reached R4R status. Checking epic-level boxes during
+   In Review verification and reached Review status. Checking epic-level boxes during
    deep-dive or mid-implementation is a process violation, even if the outcome appears
    correct by inspection. The sub-issue lifecycle IS the verification.
 
@@ -181,11 +181,11 @@ required box is unchecked will be refused.
    Sequence 3 — after all Seq 2 close: #R
    ```
 
-   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: extract `duration_minutes` and `words_delta`, call `/task review #N --duration-minutes M --words W` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to R4R. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in R4R — do NOT run `/task close`.
+   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: extract `duration_minutes` and `words_delta`, call `/task review #N --duration-minutes M --words W` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to Review. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in Review — do NOT run `/task close`.
 
-   **When every sub-issue in the current sequence reaches R4R, the orchestrator must immediately call `/task review #<epic>` on the parent epic.** This is orchestrator work, not human work. Running `/task review` on the epic is what moves the epic to R4R and gates the human notification. Do not notify the human until the epic itself is in R4R.
+   **When every sub-issue in the current sequence reaches Review, the orchestrator must immediately call `/task review #<epic>` on the parent epic.** This is orchestrator work, not human work. Running `/task review` on the epic is what moves the epic to Review and gates the human notification. Do not notify the human until the epic itself is in Review.
 
-   Once the epic reaches R4R, report `ISSUE_READY_FOR_REVIEW` and notify the human: "Epic #X and sub-issues #A–#Z are in R4R awaiting your review and `/task close`." Do NOT run `/task close`. Only after **every** Sequence-N issue reaches Done via human-approved `/task close` should you spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
+   Once the epic reaches Review, report `ISSUE_READY_FOR_REVIEW` and notify the human: "Epic #X and sub-issues #A–#Z are in Review awaiting your review and `/task close`." Do NOT run `/task close`. Only after **every** Sequence-N issue reaches Done via human-approved `/task close` should you spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
 
 6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
    injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
@@ -210,7 +210,7 @@ sequence prematurely.
 | Status                   | Meaning                                                                                                                                                                                                                                       | Required condition                                                                                                                     |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `CODE_COMPLETE`          | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review #N --duration-minutes M --words W` using values from this report. | List any unchecked items and why they could not be verified. Include `duration_minutes` and `words_delta`. Do NOT call `/task review`. |
-| `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches R4R.                                                                                                                                                            | Orchestrator notifies the human for approval. Do NOT run `/task close`.                                                                |
+| `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches Review.                                                                                                                                                         | Orchestrator notifies the human for approval. Do NOT run `/task close`.                                                                |
 | `BLOCKED`                | Cannot proceed without orchestrator or human intervention.                                                                                                                                                                                    | Describe exactly what is needed.                                                                                                       |
 
 **Rules for orchestrators:**
@@ -220,7 +220,7 @@ sequence prematurely.
   If it exits non-zero (verification failed), post a comment on the issue listing the
   failed criteria, confirm the issue has been reverted to In Progress, and re-dispatch
   the agent. Loop until `/task review` succeeds.
-- On `/task review` success (issue reaches R4R): report `ISSUE_READY_FOR_REVIEW` and
+- On `/task review` success (issue reaches Review): report `ISSUE_READY_FOR_REVIEW` and
   notify the human. Do NOT run `/task close`.
 - A sub-issue sequence is complete only after all issues in that sequence reach **Done**
   via the `/task review` → human approval → `/task close` path.
@@ -264,5 +264,5 @@ see step 1). Include both values in your `CODE_COMPLETE` report.
 
 **Stop here. Report `CODE_COMPLETE`. Do NOT call `/task review`.**
 The orchestrator calls `/task review #N --duration-minutes M --words W`, which moves the
-issue through In Review → R4R (or reverts to In Progress on failure and re-dispatches
+issue through In Review → Review (or reverts to In Progress on failure and re-dispatches
 this agent). Duration and word count come from the agent's `CODE_COMPLETE` report.

@@ -798,7 +798,7 @@ BOARD_VIEW_NAME=$(gh api graphql -f query="
 }" --jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT")][0].name' 2>/dev/null || echo '')
 
 if [[ -n "$BOARD_VIEW_NAME" && "$BOARD_VIEW_NAME" != "null" ]]; then
-  ok "Board view exists: '$BOARD_VIEW_NAME' (R4R column visible once Status options are populated)."
+  ok "Board view exists: '$BOARD_VIEW_NAME' (Review column visible once Status options are populated)."
 else
   warn "No Board-layout view found on this project."
   info "GitHub Projects v2 does not expose view configuration via API. Create one manually:"

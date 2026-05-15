@@ -12,7 +12,7 @@
 //   `{ ok: true, blockers: [] }` without calling `fetchSiblings`.
 // - **Wave admission.** A sibling blocks iff its `sequence` is strictly LESS
 //   than this issue's `sequence` AND its board state is one of the
-//   "in-flight" states. In-flight = past Backlog and before R4R/Done:
+//   "in-flight" states. In-flight = past Backlog and before Review/Done:
 //   `grooming | analyze | development | validate | review`.
 // - **Same-Sequence siblings (newcomers).** Never block. Members of the same
 //   wave advance independently.

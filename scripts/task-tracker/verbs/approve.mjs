@@ -77,7 +77,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   if (state !== 'review') {
     return {
       status: 'wrong-state',
-      message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'review' — approve only applies to issues at R4R.`,
+      message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'review' — approve only applies to issues in Review.`,
     };
   }
 

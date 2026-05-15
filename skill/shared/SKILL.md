@@ -25,8 +25,8 @@ Per-issue time and context-word tracking. Writes to a "⏱ Timing Log" comment o
 
 1. **Verify every Acceptance Criteria checkbox** by inspection AND by running the relevant test/build/command. Tick each with `/task check "<label>"`.
 2. **Verify every Definition of Done checkbox** the same way. Tick each.
-3. **Run `/task review #N`.** This moves the issue to **R4R** (Ready For Release), flushes a review timing row, and pauses the task. **This is the terminal automation step. Stop here.**
-   - For epics: `/task review` will refuse if any sub-issues are not already in R4R. All sub-issues must reach R4R before the epic can.
+3. **Run `/task review #N`.** This moves the issue to **Review**, flushes a review timing row, and pauses the task. **This is the terminal automation step. Stop here.**
+   - For epics: `/task review` will refuse if any sub-issues are not already in Review. All sub-issues must reach Review before the epic can.
 
 > ⛔ **All checkboxes checked means "ready for human review" — NOT permission to close.**
 > No agent or orchestrator may infer human approval from checked boxes, passing tests,
@@ -45,7 +45,7 @@ When you see that marker, you MUST surface a structured human decision before do
 
 - **Approve** → run `/task approve #N` (records the human approval marker in the issue body), then run `/task close #N`. The close verb refuses (exit 7) if the approval marker is missing and `gateReviewToDone=true`; `--answer yes` does NOT satisfy this gate (exit 8).
 - **Reject** → ask a follow-up question for the rejection reason, then run `/task reject #N --reason "<reason>"`. The verb posts a `### ❌ Review rejected` comment on the issue and moves it back to Develop.
-- **Dismiss / no choice** → run `/task pause "review-prompt-dismissed"`. The issue stays in R4R; the human will revisit.
+- **Dismiss / no choice** → run `/task pause "review-prompt-dismissed"`. The issue stays in Review; the human will revisit.
 
 The marker fires for every issue type — leaf, sub-issue, epic — and only on the successful path. If `/task review` exits non-zero (cascade gate, verification gate), the marker is not emitted and no prompt is required.
 
@@ -106,9 +106,9 @@ The threshold lives in `.ai-task-manager/task-tracker.json` (`reviewPauseThresho
 | `/task resume #N`                | **Switch back to a specific paused task** (read body silently for context; do not print it)                                                                                                                                                        |
 | `/task pause`                    | Flush timing, keep last-active. Run before `/clear` or closing Claude Code.                                                                                                                                                                        |
 | `/task update [msg]`             | Checkpoint — flush timing and reset counters, keep task active                                                                                                                                                                                     |
-| `/task review #N`                | Move issue to R4R, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already R4R. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human.                  |
-| `/task reject #N --reason "..."` | Reject an issue currently in R4R: post a rejection comment with the reason and move the issue back to Develop.                                                                                                                                     |
-| `/task approve #N`               | Record explicit human review approval on a R4R issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent.                                                                             |
+| `/task review #N`                | Move issue to Review, flush a review timing row, and pause the task. For epics: refuses if any sub-issue is not already in Review. Emits `PROMPT_REQUIRED: review-approval #N` on success — surface an Approve/Reject prompt to the human.         |
+| `/task reject #N --reason "..."` | Reject an issue currently in Review: post a rejection comment with the reason and move the issue back to Develop.                                                                                                                                  |
+| `/task approve #N`               | Record explicit human review approval on a Review issue. Writes a hidden marker into the issue body that `/task close` requires when `gateReviewToDone=true`. Idempotent.                                                                          |
 | `/task close [#N]`               | Hard-stop — flush timing, update board fields, deregister from fleet, **and move the issue to Done**. The only sanctioned close path. Refuses (exit 7) if the review-approval marker is missing; `--answer yes` cannot satisfy this gate (exit 8). |
 | `/task close --force`            | Close even if unchecked items remain (audited; for legitimate abandonment only)                                                                                                                                                                    |
 | `/task log #N`                   | Re-compute and write Engaged Time, Session Time, and Context Length for any issue                                                                                                                                                                  |
@@ -661,7 +661,7 @@ Team-shared workflow preferences live in the git-tracked `.ai-task-manager/task-
 | -------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------- |
 | `noPushToOrigin`                 | `false`    | Commit/merge to trunk locally only; never `git push`, never open PRs.                                             |
 | `mainThreadOnly`                 | `false`    | No feature branches, no worktrees; commit straight to trunk. Disables parallel dispatch.                          |
-| `driveSubIssuesToR4R`            | `true`     | Drive sub-issues end-to-end through dispatch/review/merge to R4R without per-step human check-ins.                |
+| `driveSubIssuesToReview`         | `true`     | Drive sub-issues end-to-end through dispatch/review/merge to Review without per-step human check-ins.             |
 | `pauseTimerOnBlockingQuestion`   | `true`     | `/task pause "pause for question"` before any blocking user prompt; `/task start "question answered"` on resume.  |
 | `noConfirmAfterDeepDive`         | `true`     | After posting the deep-dive comment, proceed straight to implementation; do not ask "ready to proceed?".          |
 | `askGatesBeforeParallel`         | `true`     | Before parallel sub-agent dispatch, prompt user which human gates to disable; encode into prompts; restore after. |
@@ -682,11 +682,11 @@ carry ambiguous semantics and cause orchestrators to advance sequences premature
 | Status                   | Meaning                                                                                                                                                                                                                         | Orchestrator action                                                                                                              |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `CODE_COMPLETE`          | Implementation done; one or more DoD items are unverifiable by this agent and remain unchecked. Agent lists them explicitly.                                                                                                    | Do NOT advance the sequence. Inspect remaining items; resolve or reassign.                                                       |
-| `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is in R4R. For epics: report this only after calling `/task review #<epic>` and the epic itself reaches R4R. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
+| `ISSUE_READY_FOR_REVIEW` | All agent-verifiable AC, Verification Commands, and DoD checkboxes are checked. `/task review` has been run. Issue is in Review. For epics: report this only after calling `/task review #<epic>` and the epic itself reaches Review. | Notify the human for review. Do NOT run `/task close`. Count toward sequence completion only after the human runs `/task close`. |
 | `HUMAN_APPROVED`         | A human has explicitly instructed close (e.g., "close #N", "mark #N done"). This status is set by the human, not reported by a subagent.                                                                                        | Run `/task close <N>`. Count the issue as Done. Advance sequence only after all issues in the sequence are Done.                 |
 | `BLOCKED`                | Agent cannot proceed without orchestrator or human help.                                                                                                                                                                        | Intervene, then redispatch or reassign.                                                                                          |
 
-**Epic review rule:** When all sub-issues in the current sequence reach R4R, the orchestrator must call `/task review #<epic>` on the parent epic **before** notifying the human. Running `/task review` on the epic is orchestrator work, not human work. The epic cannot move to R4R until all its sub-issues are already in R4R — the gate is enforced. Do not report `ISSUE_READY_FOR_REVIEW` or notify the human until the epic itself is in R4R.
+**Epic review rule:** When all sub-issues in the current sequence reach Review, the orchestrator must call `/task review #<epic>` on the parent epic **before** notifying the human. Running `/task review` on the epic is orchestrator work, not human work. The epic cannot move to Review until all its sub-issues are already in Review — the gate is enforced. Do not report `ISSUE_READY_FOR_REVIEW` or notify the human until the epic itself is in Review.
 
 **Sequence-advance rule:** A sequence is complete only after every issue in that
 sequence reaches **Done** via the `/task review` → human approval → `/task close` path.
@@ -752,11 +752,11 @@ close contract.
   - Evidence present → skip analysis steps; proceed to implementation (step 7 in the directive).
   - Evidence absent → run the full deep dive **before writing any code**.
 - After completing the deep dive (step 3): `/task check "Deep dive complete"` writes the hidden marker.
-- **Deep-Dive placement is canonical.** The `## Deep-Dive Analysis (YYYY-MM-DD)` section is an appendix — it MUST appear AFTER the `## Pickup Directive` heading block and BEFORE the `<!-- ai-task-manager:fields:start -->` marker. Body order: Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive Analysis → fields-block. The `deep-dive-placement` body gate refuses in-review/r4r/done moves when the heading is present in any other position.
+- **Deep-Dive placement is canonical.** The `## Deep-Dive Analysis (YYYY-MM-DD)` section is an appendix — it MUST appear AFTER the `## Pickup Directive` heading block and BEFORE the `<!-- ai-task-manager:fields:start -->` marker. Body order: Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive Analysis → fields-block. The `deep-dive-placement` body gate refuses in-review/review/done moves when the heading is present in any other position.
 
 **For epics:** After appending the deep dive and running `/task check "Deep dive complete"` to write the hidden marker, verify that no Acceptance Criterion or Definition of Done checkbox has been ticked. If any are found ticked, uncheck them immediately. Then confirm that the following AC is present in the epic body (add it if missing):
 
-> `- [ ] All sub-issues have passed through In Review to be verified and landed in R4R to await final human review.`
+> `- [ ] All sub-issues have passed through In Review to be verified and landed in Review to await final human review.`
 
 Do NOT list specific issue numbers — discovered work may add sub-issues during implementation. This checkbox gates the epic close and may only be ticked by the orchestrator after the last sub-issue's `/task review` succeeds.
 

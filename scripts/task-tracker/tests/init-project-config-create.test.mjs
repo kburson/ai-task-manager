@@ -123,7 +123,7 @@ const input =
     '', // default title
     '', // default Feature Release template
     '', // status field default
-    '', // R4R missing — accept default [new] to create it
+    '', // Review missing — accept default [new] to create it
     '', // spare prompt response
     '', // spare prompt response
     '', // spare prompt response
