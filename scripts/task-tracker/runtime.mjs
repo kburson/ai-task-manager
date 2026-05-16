@@ -208,7 +208,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     handleMigrateResult(result);
   };
 
-  ctx.runMoveState = async (issue, state, { env: envOverride } = {}) => {
+  ctx.runMoveState = async (issue, state, { env: envOverride, silent = false } = {}) => {
     if (SKIP_NETWORK) return;
     const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
     const issueNum = String(issue).replace(/^#/, '');
@@ -218,14 +218,14 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         timeout: GH_API_TIMEOUT_MS,
         env: mergedEnv,
       });
-      if (stdout.trim()) console.log(stdout.trim());
+      if (!silent && stdout.trim()) console.log(stdout.trim());
     } catch (err) {
       console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
       console.warn(`[task-tracker] Run manually: node ${scriptPath} ${issueNum} ${state}`);
     }
   };
 
-  ctx.runMoveStateDone = (issue) => ctx.runMoveState(issue, 'done');
+  ctx.runMoveStateDone = (issue, opts) => ctx.runMoveState(issue, 'done', opts);
 
   ctx.worktreeLabel = () => {
     try {

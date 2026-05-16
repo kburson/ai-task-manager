@@ -258,7 +258,7 @@ export async function verbClose(ctx) {
                 description: 'cascade closed by epic',
               })
             );
-            await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' } });
+            await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' }, silent: true });
             await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
               timeout: GH_API_TIMEOUT_MS,
             });
@@ -301,7 +301,7 @@ export async function verbClose(ctx) {
     try {
       deregisterTask(projectDir, closeTarget);
     } catch {}
-    await runMoveStateDone(closeTarget);
+    await runMoveStateDone(closeTarget, { silent: true });
     console.log(`Closed ${closeTarget}.`);
   } else {
     await safePostTiming(
@@ -320,7 +320,7 @@ export async function verbClose(ctx) {
     try {
       deregisterTask(projectDir, s.active);
     } catch {}
-    await runMoveStateDone(s.active);
+    await runMoveStateDone(s.active, { silent: true });
     console.log(`Closed ${s.active}.`);
   }
 }

@@ -145,17 +145,9 @@ export async function verbReview(ctx) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
-    await runMoveState(target, 'test');
-    console.log(
-      `Review ${target}: +${activeMin} active min (agent), +${deltaWords} words; task paused.`
-    );
+    await runMoveState(target, 'test', { silent: true });
   } else if (s.active === target) {
-    const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(
-      s,
-      'review',
-      'starting review'
-    );
-    const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
+    await flushActiveToGH(s, 'review', 'starting review');
     saveState(
       {
         ...s,
@@ -169,10 +161,7 @@ export async function verbReview(ctx) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
-    await runMoveState(target, 'test');
-    console.log(
-      `Review ${target}: +${deltaMin} active min${wallNote}, +${deltaWords} words; task paused.`
-    );
+    await runMoveState(target, 'test', { silent: true });
   } else {
     const ts = nowIso();
     const { buildRow } = await import('../gh-timing-comment.mjs');
@@ -186,13 +175,13 @@ export async function verbReview(ctx) {
       description: 'starting review',
     });
     await safePostTiming(target, row);
-    await runMoveState(target, 'test');
+    await runMoveState(target, 'test', { silent: true });
     saveState(
       { ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target },
       statePath
     );
-    console.log(`Review ${target}: task paused.`);
   }
+  console.log(`Review ${target}: task paused.`);
   if (!SKIP_NETWORK) {
     const issueNum = target.replace(/^#/, '');
     const { stdout } = await pexec(
@@ -414,7 +403,7 @@ export async function verbReview(ctx) {
         process.exit(3);
       }
     }
-    await runMoveState(target, 'review');
+    await runMoveState(target, 'review', { silent: true });
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
     const reviewRow = br2({
