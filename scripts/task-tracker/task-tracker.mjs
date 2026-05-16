@@ -211,6 +211,11 @@ if (_isMain)
           await verbRefine(ctx.rest, ctx.cfg);
           break;
         }
+        case 'pull-next': {
+          const { verbPullNext } = await import('./verbs/pull-next.mjs');
+          await verbPullNext(ctx.rest, ctx.cfg);
+          break;
+        }
         case 'demote': {
           const { verbDemote } = await import('./verbs/demote.mjs');
           await verbDemote(ctx.rest, ctx.cfg);

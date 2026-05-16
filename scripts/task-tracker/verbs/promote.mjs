@@ -37,6 +37,7 @@ import {
   planPriorityGate,
 } from '../lib/apply-refinement-estimate.mjs';
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
+import { planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 
@@ -268,6 +269,18 @@ export async function runPromote({
         message: `Refusing to promote #${issueNumber} to Develop: missing planned-estimate appendix on refine-estimate comment.`,
       };
     }
+    const epicGateResult = await planEpicDevelopChildrenGate({
+      cfg,
+      issueNumber,
+      deps: deps.epicChildren,
+    });
+    if (!epicGateResult.ok) {
+      return {
+        status: 'epic-children-refused',
+        blockers: epicGateResult.blockers,
+        message: `Refusing to promote epic #${issueNumber} to Develop: one or more sub-issues still in Backlog.`,
+      };
+    }
   }
 
   const aliasVerb = ALIAS_VERB[recorded] || null;
@@ -445,7 +458,8 @@ export async function verbPromote(rest, cfg) {
     }
     case 'refine-gate-refused':
     case 'groom-gate-refused':
-    case 'planned-estimate-refused': {
+    case 'planned-estimate-refused':
+    case 'epic-children-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
       process.stderr.write('\n');

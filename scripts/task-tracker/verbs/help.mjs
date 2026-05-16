@@ -34,6 +34,7 @@ State transitions (7-state kanban):
   /task promote [#N]        Advance one forward state (Backlog→Refine→Plan→Develop→Test→Review→Done)
   /task refine #N --size <S> --estimate <h> --priority <p> --reason <text>
                             Atomic Backlog→Refine: set Priority+Size+Estimate, write rationale marker, promote
+  /task pull-next <epic#>   JIT child-pull: promote the next refine-state child of <epic#> (by sequence) into Plan
   /task next [#N]           Alias of /task promote
   /task demote [#N]         Return to Develop (from Test or Review)
   /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded

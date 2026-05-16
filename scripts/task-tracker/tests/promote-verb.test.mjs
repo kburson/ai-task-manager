@@ -59,6 +59,9 @@ function makeDeps({
       postTimingRow: async ({ row }) => {
         calls.timings.push(row);
       },
+      epicChildren: {
+        fetchSiblings: async () => [],
+      },
     },
   };
 }
@@ -150,6 +153,28 @@ test('promote: plan→develop refused when refine-estimate comment is missing (#
   const r = await runPromote({ issueNumber: 1011, cfg, deps });
   assert.equal(r.status, 'planned-estimate-refused');
   assert.ok(r.blockers.some((b) => b.startsWith('planned-estimate-missing-comment')));
+  assert.equal(calls.moves.length, 0);
+});
+
+test('promote: plan→develop refused when any sub-issue still in Backlog (#135)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [
+      {
+        id: 'IC_E',
+        body: '<!-- aitm-refined-estimate: 200 -->\n### 🛠 Refine estimate\n\n### Planned Estimate\n',
+      },
+    ],
+  };
+  deps.epicChildren = {
+    fetchSiblings: async () => [
+      { number: 201, state: 'refine', sequence: 1 },
+      { number: 202, state: 'backlog', sequence: 2 },
+    ],
+  };
+  const r = await runPromote({ issueNumber: 200, cfg, deps });
+  assert.equal(r.status, 'epic-children-refused');
+  assert.ok(r.blockers.some((b) => /#202/.test(b)));
   assert.equal(calls.moves.length, 0);
 });
 
