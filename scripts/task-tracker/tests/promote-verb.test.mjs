@@ -224,6 +224,56 @@ test('promote: plan→develop refused when any sub-issue still in Backlog (#135)
   assert.equal(calls.moves.length, 0);
 });
 
+test('promote: plan→develop refused when any sub-issue is PAST refine (#149 — children must not lead parent)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [
+      {
+        id: 'IC_E',
+        body: '<!-- aitm-refined-estimate: 2000 -->\n### 🛠 Refine estimate\n\n### Planned Estimate\n',
+      },
+    ],
+  };
+  deps.epicChildren = {
+    fetchSiblings: async () => [
+      { number: 201, state: 'refine', sequence: 1 },
+      { number: 202, state: 'plan', sequence: 2 },
+      { number: 203, state: 'develop', sequence: 3 },
+    ],
+  };
+  const r = await runPromote({ issueNumber: 2000, cfg, deps });
+  assert.equal(r.status, 'epic-children-refused');
+  assert.ok(r.blockers.some((b) => /epic-children-not-at-refine/.test(b)));
+  assert.ok(r.blockers.some((b) => /#202/.test(b)));
+  assert.ok(r.blockers.some((b) => /#203/.test(b)));
+  assert.equal(calls.moves.length, 0);
+});
+
+test('promote: refine→plan refused when an epic child is PAST refine (#149 — lead-rule)', async () => {
+  const rationale =
+    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
+  const ac = '## Acceptance Criteria\n- [ ] foo\n';
+  const body = `${bodyWithState('refine')}\n${rationale}\n\n${ac}`;
+  const { deps, calls } = makeDeps({ body, live: 'refine' });
+  deps.refinementEstimate = {
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
+    listCommentBodies: async () => [],
+    postComment: async () => {},
+    writeIssueBody: async () => {},
+  };
+  deps.refineToPlanGate = async () => ({
+    ok: false,
+    blockers: [
+      'refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): #202 (state=plan)',
+    ],
+  });
+  const r = await runPromote({ issueNumber: 1490, cfg, deps });
+  assert.equal(r.status, 'refine-exit-refused');
+  assert.ok(r.blockers.some((b) => /children-not-at-refine/.test(b)));
+  assert.equal(calls.moves.length, 0);
+});
+
 test('promote: plan→develop refused when planned-estimate appendix is missing (#134)', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
   deps.plannedEstimate = {
