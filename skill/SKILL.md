@@ -3,11 +3,13 @@ name: task
 description: Bind AI work sessions to GitHub issues and track time, context words, state, and completion workflow.
 ---
 
+<!-- aitm-skill-version: 1.0.0 -->
+
 # Task
 
 This legacy entrypoint is kept for compatibility. Load and follow:
 
-`skill/shared/SKILL.md`
+`skill/shared/router.md`
 
 Agent-specific installers use:
 

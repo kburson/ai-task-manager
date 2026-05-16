@@ -262,6 +262,31 @@ Three hooks, all project-local, all routing directly to `node node_modules/ai-ta
 
 All hooks: best-effort. Timeout = `hookNetworkTimeoutMs`. Never block the user.
 
+## Skill loading model
+
+The skill is delivered as a just-in-time loader to minimize context burden. Three tiers:
+
+- **Tier 0 — installed shim** (`.claude/skills/task/SKILL.md`, copied from `skill/SKILL.md`): minimal pointer plus the load-once procedure. Stays in agent context idle. Carries an `<!-- aitm-skill-version: X.Y.Z -->` marker stamped from `package.json#version` so `npm update` forces a reload.
+- **Tier 1 — router stub** (`skill/shared/router.md`): the only Tier-1 file loaded on first `/task` invocation. Carries the hard cross-cutting rules, the CLI invocation pattern, the verb → rule-file routing table, and the `gh issue` command policy. Budget ≤1,500 tokens. Emits a single sentinel line `aitm-skill-loaded:router:<version>` on first read.
+- **Tier 2 — per-context rule files** (`skill/shared/rules/*.md`): loaded only when the verb that needs them is about to run. Each emits its own sentinel `aitm-skill-loaded:rules/<name>:<version>` on first read; subsequent verbs within the same session find the sentinel and skip the re-read. Routing:
+
+| Verb / situation                                                                    | Rule file                    |
+| ----------------------------------------------------------------------------------- | ---------------------------- |
+| `/task #N`, `/task resume #N`                                                       | `rules/bind.md`              |
+| `/task review`                                                                      | `rules/review.md`            |
+| `/task close`                                                                       | `rules/close.md`             |
+| `/task promote`, `demote`, `next`, `reconcile`, `plan-approve`, `approve`, `reject` | `rules/state-walk.md`        |
+| `/task new` while `active=="plan"`                                                  | `rules/plan-mode-backlog.md` |
+| `/task config init`                                                                 | `rules/config-init.md`       |
+| Parallel fan-out (≥2 candidate children, any worktree dispatch)                     | `rules/parallel.md`          |
+| Session start (preferences detail)                                                  | `rules/preferences.md`       |
+| First commit / commit-trail troubleshooting                                         | `rules/commit-trail.md`      |
+| Hook-output diagnosis                                                               | `rules/hooks.md`             |
+
+Both Claude and Codex adapters point at the same router; Tier-2 rule files are tool-agnostic. Tool-specific divergence (e.g. how the agent surfaces a `PROMPT_REQUIRED:` line) stays in the adapter `SKILL.md`.
+
+After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/task-tracker/tests/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
+
 ## File Layout
 
 ```

@@ -9,7 +9,9 @@ description: Bind AI work sessions to GitHub issues and track time, context word
 
 Load and follow the canonical shared task workflow:
 
-`node_modules/ai-task-manager/skill/shared/SKILL.md`
+`node_modules/ai-task-manager/skill/shared/router.md`
+
+The router is a Tier-1 stub: hard cross-cutting rules + verb → rule-file routing table. Detailed contracts live in `skill/shared/rules/*.md` (Tier-2) and load JIT only when their verb runs.
 
 Claude-specific conventions:
 
@@ -51,4 +53,4 @@ Use `--dry-run` to print the rendered body without calling `gh`.
 
 ## Project preferences
 
-At session start, read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` from `scripts/task-tracker/config.mjs`. Honor each key by name — see "Project Preferences" in the shared SKILL.md for the table. Key examples: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`.
+At session start, read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` from `scripts/task-tracker/config.mjs`. Honor each key by name — see `skill/shared/rules/preferences.md` for the table. Key examples: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`.
