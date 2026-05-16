@@ -227,4 +227,67 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
   console.log('PASS: runRefine surfaces tether failure and skips promote');
 }
 
+// ---------------------------------------------------------------------------
+// runRefine — --sequence + --labels pass through (#147)
+// ---------------------------------------------------------------------------
+{
+  const calls = { tether: null, addLabels: null };
+  await runRefine({
+    args: {
+      issueNumber: 200,
+      size: 'S',
+      estimate: '2',
+      priority: 'p1',
+      reason: 'r',
+      sequence: '5.1',
+      labels: 'bug, backend , epic-107',
+    },
+    cfg: { repo: 'o/r', projectId: 'P' },
+    deps: {
+      tetherIssueToProject: async (opts) => {
+        calls.tether = opts;
+      },
+      addLabels: async (opts) => {
+        calls.addLabels = opts;
+      },
+      fetchBody: async () => '',
+      writeBody: async () => {},
+      verbPromote: async () => {},
+    },
+  });
+  assert.equal(calls.tether.sequence, 5.1, 'sequence forwarded to tetherIssueToProject');
+  assert.deepEqual(
+    calls.addLabels.labels,
+    ['bug', 'backend', 'epic-107'],
+    'labels parsed (trimmed, split) and forwarded'
+  );
+  assert.equal(calls.addLabels.issueNumber, 200);
+  console.log('PASS: runRefine forwards --sequence + --labels');
+}
+
+// ---------------------------------------------------------------------------
+// runRefine — no --sequence/--labels → no extra calls
+// ---------------------------------------------------------------------------
+{
+  const calls = { tether: null, addLabels: null };
+  await runRefine({
+    args: { issueNumber: 201, size: 'S', estimate: '2', priority: 'p1', reason: 'r' },
+    cfg: { repo: 'o/r', projectId: 'P' },
+    deps: {
+      tetherIssueToProject: async (opts) => {
+        calls.tether = opts;
+      },
+      addLabels: async (opts) => {
+        calls.addLabels = opts;
+      },
+      fetchBody: async () => '',
+      writeBody: async () => {},
+      verbPromote: async () => {},
+    },
+  });
+  assert.equal(calls.tether.sequence, undefined, 'sequence omitted when not supplied');
+  assert.equal(calls.addLabels, null, 'addLabels not called when labels not supplied');
+  console.log('PASS: runRefine omits sequence/labels when not supplied');
+}
+
 console.log('\nAll refine verb tests passed.');

@@ -38,6 +38,8 @@ import {
 } from '../lib/apply-refinement-estimate.mjs';
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
+import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
+import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 
@@ -251,6 +253,22 @@ export async function runPromote({
       };
     }
     refinementPlan = planResult.plan;
+
+    // #147 — Refine → Plan exit gate: Sequence + Labels + Start time on board,
+    // and (if epic) every child has cleared Backlog.
+    const exitGate = deps.refineToPlanGate || gateRefineToPlan;
+    const exitResult = await exitGate({
+      cfg,
+      issueNumber,
+      deps: deps.refineToPlanGateDeps,
+    });
+    if (!exitResult.ok) {
+      return {
+        status: 'refine-exit-refused',
+        blockers: exitResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Plan: Refine exit gate failed.`,
+      };
+    }
   }
 
   // Plan → Develop pre-flight (#134): the `### 🛠 Refine estimate` comment
@@ -368,6 +386,18 @@ export async function runPromote({
       // Best-effort. Transition is already committed on the board.
     }
   }
+  // #147 — Backlog → Refine success hook: stamp the "Start time" field on the
+  // project board so the refine→plan exit gate has a value to verify. Idempotent
+  // (skips when already set). Best-effort — board state is already committed.
+  if (target === 'refine') {
+    try {
+      const stamp = deps.stampStartTime || stampStartTime;
+      await stamp({ cfg, issueNumber, now });
+    } catch {
+      // best-effort
+    }
+  }
+
   // Refine-stage post-success hook: post the audit comment (idempotent) and
   // strip the rationale marker from the body. Best-effort — failures here do
   // not roll back the board move.
@@ -457,6 +487,7 @@ export async function verbPromote(rest, cfg) {
       return;
     }
     case 'refine-gate-refused':
+    case 'refine-exit-refused':
     case 'groom-gate-refused':
     case 'planned-estimate-refused':
     case 'epic-children-refused': {

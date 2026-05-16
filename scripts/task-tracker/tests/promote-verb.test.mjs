@@ -83,6 +83,7 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
     postComment: async () => {},
     writeIssueBody: async () => {},
   };
+  deps.refineToPlanGate = async () => ({ ok: true, blockers: [] });
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.from, 'refine');
@@ -125,6 +126,50 @@ test('promote: refine→plan refused when Acceptance Criteria section is empty',
   assert.equal(r.status, 'refine-gate-refused');
   assert.ok(r.blockers.some((b) => b.startsWith('refine-ac-section-empty')));
   assert.equal(calls.moves.length, 0);
+});
+
+test('promote: refine→plan refused when refine-exit gate returns blockers (#147)', async () => {
+  const rationale =
+    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
+  const ac = '## Acceptance Criteria\n- [ ] foo\n';
+  const body = `${bodyWithState('refine')}\n${rationale}\n\n${ac}`;
+  const { deps, calls } = makeDeps({ body, live: 'refine' });
+  deps.refinementEstimate = {
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
+    listCommentBodies: async () => [],
+    postComment: async () => {},
+    writeIssueBody: async () => {},
+  };
+  deps.refineToPlanGate = async () => ({
+    ok: false,
+    blockers: ['refine-exit-missing: Sequence is not set on the project board'],
+  });
+  const r = await runPromote({ issueNumber: 1471, cfg, deps });
+  assert.equal(r.status, 'refine-exit-refused');
+  assert.ok(r.blockers.some((b) => /Sequence/.test(b)));
+  assert.equal(calls.moves.length, 0);
+  assert.equal(calls.spawns.length, 0);
+});
+
+test('promote: backlog→refine stamps Start time on success (#147)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
+  deps.refinementEstimate = {
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({ priority: 'P2' }),
+  };
+  let stampCalls = 0;
+  let stampArgs = null;
+  deps.stampStartTime = async (opts) => {
+    stampCalls += 1;
+    stampArgs = opts;
+    return { status: 'stamped', value: '2026-05-16 10:00 -0700' };
+  };
+  const r = await runPromote({ issueNumber: 1472, cfg, deps });
+  assert.equal(r.status, 'promoted');
+  assert.deepEqual(calls.moves, [{ issueNumber: 1472, target: 'refine' }]);
+  assert.equal(stampCalls, 1);
+  assert.equal(stampArgs.issueNumber, 1472);
 });
 
 test('promote: plan→develop is a direct move-state call when planned-estimate appendix is present', async () => {

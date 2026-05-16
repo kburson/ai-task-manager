@@ -41,6 +41,8 @@ export function parseArgs(argv = []) {
     estimate: null,
     priority: null,
     reason: null,
+    sequence: null,
+    labels: null,
   };
 
   let i = 0;
@@ -64,6 +66,14 @@ export function parseArgs(argv = []) {
         parsed.reason = val;
         i += 2;
         break;
+      case '--sequence':
+        parsed.sequence = val;
+        i += 2;
+        break;
+      case '--labels':
+        parsed.labels = val;
+        i += 2;
+        break;
       default:
         throw new Error(`refine: unknown argument: ${flag}`);
     }
@@ -71,7 +81,16 @@ export function parseArgs(argv = []) {
   return parsed;
 }
 
-export function validateArgs({ issueNumber, size, estimate, priority, reason }) {
+export function parseLabelsArg(raw) {
+  if (raw == null) return null;
+  const parts = String(raw)
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return parts;
+}
+
+export function validateArgs({ issueNumber, size, estimate, priority, reason, sequence, labels }) {
   const errs = [];
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
     errs.push('issue# must be a positive integer');
@@ -89,6 +108,15 @@ export function validateArgs({ issueNumber, size, estimate, priority, reason }) 
     errs.push(`--priority must be one of: ${PRIORITY_ENUM.join(', ')}`);
   }
   if (!reason || !String(reason).trim()) errs.push('--reason is required (non-empty)');
+  if (sequence != null && sequence !== '') {
+    const sn = Number(sequence);
+    if (!Number.isFinite(sn)) errs.push('--sequence must be a number');
+  }
+  if (labels != null) {
+    const parts = parseLabelsArg(labels);
+    if (!parts || parts.length === 0)
+      errs.push('--labels must be a non-empty comma-separated list');
+  }
   if (errs.length) throw new Error(`refine: ${errs.join('; ')}`);
 }
 
@@ -135,6 +163,15 @@ async function defaultWriteBody({ issueNumber, repo, body }) {
   }
 }
 
+async function defaultAddLabels({ issueNumber, repo, labels }) {
+  if (!labels || labels.length === 0) return;
+  const args = ['issue', 'edit', String(issueNumber), '-R', repo];
+  for (const l of labels) {
+    args.push('--add-label', l);
+  }
+  await pexec('gh', args, { timeout: GH_API_TIMEOUT_MS });
+}
+
 // ---------------------------------------------------------------------------
 // Pure core
 // ---------------------------------------------------------------------------
@@ -143,14 +180,18 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   if (!cfg) throw new Error('refine: cfg is required');
   validateArgs(args);
 
-  const { issueNumber, size, estimate, priority, reason } = args;
+  const { issueNumber, size, estimate, priority, reason, sequence, labels } = args;
   const estimateNum = parseFloat(String(estimate).replace(/h$/i, ''));
   const priorityNorm = String(priority).toLowerCase();
+  const sequenceNum =
+    sequence == null || sequence === '' ? null : Number(sequence);
+  const labelList = parseLabelsArg(labels) || [];
 
   const tether = deps.tetherIssueToProject || tetherIssueToProject;
   const loadFieldOptionMap = deps.fieldOptionMap || fieldOptionMap;
   const fetchBody = deps.fetchBody || defaultFetchBody;
   const writeBody = deps.writeBody || defaultWriteBody;
+  const addLabels = deps.addLabels || defaultAddLabels;
   const promote = deps.verbPromote || verbPromote;
 
   // 1. Pre-load size option IDs from the project so tetherIssueToProject can
@@ -162,14 +203,24 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     cfgForTether = { ...cfg, sizeOptionMap: optMap };
   }
 
-  // 2. Set Priority + Size + Estimate atomically on the project board.
-  await tether({
+  // 2. Set Priority + Size + Estimate (+ Sequence when supplied) atomically on
+  //    the project board.
+  const tetherArgs = {
     cfg: cfgForTether,
     issueNumber,
     priority: priorityNorm,
     size,
     estimate: estimateNum,
-  });
+  };
+  if (sequenceNum != null && Number.isFinite(sequenceNum)) {
+    tetherArgs.sequence = sequenceNum;
+  }
+  await tether(tetherArgs);
+
+  // 2b. Add issue labels (separate from project fields).
+  if (labelList.length > 0) {
+    await addLabels({ issueNumber, repo: cfg.repo, labels: labelList });
+  }
 
   // 2. Write the rationale marker (replace any existing one — last write wins).
   const body = await fetchBody({ issueNumber, repo: cfg.repo });
