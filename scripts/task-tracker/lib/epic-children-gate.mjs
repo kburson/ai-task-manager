@@ -39,9 +39,7 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  const backlogged = children.filter(
-    (c) => String(c.state || '').toLowerCase() === BACKLOG_STATE
-  );
+  const backlogged = children.filter((c) => String(c.state || '').toLowerCase() === BACKLOG_STATE);
   if (backlogged.length) {
     const lines = backlogged.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {

@@ -103,14 +103,8 @@ test('findNextEligibleChild returns null on empty list', () => {
 });
 
 test('fetchEpicChildren throws when cfg or parentEpicNumber missing', async () => {
-  await assert.rejects(
-    () => fetchEpicChildren({ parentEpicNumber: 1 }),
-    /cfg is required/
-  );
-  await assert.rejects(
-    () => fetchEpicChildren({ cfg }),
-    /parentEpicNumber is required/
-  );
+  await assert.rejects(() => fetchEpicChildren({ parentEpicNumber: 1 }), /cfg is required/);
+  await assert.rejects(() => fetchEpicChildren({ cfg }), /parentEpicNumber is required/);
 });
 
 test('fetchEpicChildren returns array even when underlying returns non-array', async () => {

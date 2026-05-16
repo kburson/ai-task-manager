@@ -14,10 +14,7 @@
 // If the epic is not in `develop`, the verb errors.
 
 import { loadConfig } from '../config.mjs';
-import {
-  fetchEpicChildren,
-  findNextEligibleChild,
-} from '../lib/epic-children-gate.mjs';
+import { fetchEpicChildren, findNextEligibleChild } from '../lib/epic-children-gate.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { verbPromote } from './promote.mjs';
