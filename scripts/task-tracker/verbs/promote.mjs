@@ -34,6 +34,7 @@ import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import {
   planRefinementEstimate,
   applyRefinementEstimate,
+  planPriorityGate,
 } from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -212,14 +213,28 @@ export async function runPromote({
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
   }
 
-  // Refine-stage pre-flight: when promoting Backlog → Refine, the agent must
-  // have set Size / Estimate / Priority on the board AND embedded a
-  // `<!-- aitm-refinement-rationale: {...} -->` marker in the issue body
-  // (legacy `aitm-groom-rationale` still accepted). Refuse the move if either
-  // is missing, so the post-success hook can safely assume both signals are
-  // present (AC4 of #95).
+  // Backlog → Refine pre-flight (#133): require only Priority on the board.
+  // Sizing / Estimate / rationale move to the Refine → Plan gate below.
   let refinementPlan = null;
   if (target === 'refine') {
+    const gateResult = await planPriorityGate({
+      cfg,
+      issueNumber,
+      deps: deps.refinementEstimate || deps.groomEstimate,
+    });
+    if (!gateResult.ok) {
+      return {
+        status: 'refine-gate-refused',
+        blockers: gateResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Refine: Priority is not set on the project board.`,
+      };
+    }
+  }
+
+  // Refine → Plan pre-flight (#133): Size + Estimate set, rationale marker
+  // authored, `## Acceptance Criteria` section non-empty. Post-success hook
+  // posts the `### 🛠 Refine estimate` comment.
+  if (target === 'plan') {
     const planResult = await planRefinementEstimate({
       cfg,
       issueNumber,
@@ -230,7 +245,7 @@ export async function runPromote({
       return {
         status: 'refine-gate-refused',
         blockers: planResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Refine: missing refine-estimate signals.`,
+        message: `Refusing to promote #${issueNumber} to Plan: missing Refine exit signals.`,
       };
     }
     refinementPlan = planResult.plan;
@@ -325,7 +340,7 @@ export async function runPromote({
   // strip the rationale marker from the body. Best-effort — failures here do
   // not roll back the board move.
   let refinementPost = null;
-  if (target === 'refine' && refinementPlan) {
+  if (target === 'plan' && refinementPlan) {
     try {
       refinementPost = await applyRefinementEstimate({
         cfg,

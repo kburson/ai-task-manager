@@ -111,6 +111,48 @@ async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   }
 }
 
+// Backlog → Refine gate (#133): require only Priority on the board. Sizing
+// and rationale are produced during Refine and verified at Refine → Plan.
+export async function planPriorityGate({ cfg, issueNumber, deps = {} } = {}) {
+  if (!cfg) throw new Error('planPriorityGate: cfg is required');
+  if (!issueNumber) throw new Error('planPriorityGate: issueNumber is required');
+
+  const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
+  const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
+
+  const fieldDefs = fieldDefsLoader();
+  let projVals = {};
+  try {
+    projVals = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
+  } catch (err) {
+    return { ok: false, blockers: [`refine-board-fetch-failed: ${err.message}`] };
+  }
+  if (!projVals.priority) {
+    return {
+      ok: false,
+      blockers: [
+        'refine-field-missing: Priority is not set on the project board — run `scripts/gh/set-priority.mjs <#> p0|p1|p2` or set it in the kanban UI',
+      ],
+    };
+  }
+  return { ok: true };
+}
+
+// Count `## Acceptance Criteria` items (checked or unchecked) — refuse the
+// Refine → Plan move when the section is empty (#133 AC).
+function countAcceptanceCriteriaItems(body = '') {
+  const src = String(body);
+  const headRe = /^##\s+Acceptance Criteria\s*$/im;
+  const m = src.match(headRe);
+  if (!m) return 0;
+  const start = m.index + m[0].length;
+  const after = src.slice(start);
+  const nextHead = after.search(/^##\s+/m);
+  const section = nextHead >= 0 ? after.slice(0, nextHead) : after;
+  const items = section.match(/^\s*-\s*\[[ xX]\]/gm);
+  return items ? items.length : 0;
+}
+
 // Pre-flight gate: returns `{ ok: true, plan }` or `{ ok: false, blockers: [...] }`.
 // `plan` carries the resolved values + the comment body ready to post.
 export async function planRefinementEstimate({ cfg, issueNumber, body, deps = {} } = {}) {
@@ -140,6 +182,11 @@ export async function planRefinementEstimate({ cfg, issueNumber, body, deps = {}
   if (estimate == null)
     blockers.push('refine-field-missing: Estimate is not set on the project board');
   if (!priority) blockers.push('refine-field-missing: Priority is not set on the project board');
+  if (countAcceptanceCriteriaItems(body) === 0) {
+    blockers.push(
+      'refine-ac-section-empty: `## Acceptance Criteria` has no items — add `- [ ] ...` lines before promoting to Plan'
+    );
+  }
 
   const rationaleResult = parseRationaleMarker(body);
   if (!rationaleResult.ok) {

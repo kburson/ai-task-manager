@@ -49,7 +49,7 @@ fi
 exit 0
 `);
 
-  const result = spawnSync(process.execPath, [script, '999', 'develop', '--item-id', 'ITEM_FAKE'], {
+  const result = spawnSync(process.execPath, [script, '999', 'refine', '--item-id', 'ITEM_FAKE'], {
     encoding: 'utf8',
     env,
     cwd: repoRoot,
@@ -82,7 +82,7 @@ fi
 exit 0
 `);
 
-  const result = spawnSync(process.execPath, [script, '999', 'develop', '--item-id', 'ITEM_FAKE'], {
+  const result = spawnSync(process.execPath, [script, '999', 'refine', '--item-id', 'ITEM_FAKE'], {
     encoding: 'utf8',
     env,
     cwd: repoRoot,
@@ -109,7 +109,7 @@ fi
 exit 0
 `);
 
-  const result = spawnSync(process.execPath, [script, '999', 'develop', '--item-id', 'ITEM_FAKE'], {
+  const result = spawnSync(process.execPath, [script, '999', 'refine', '--item-id', 'ITEM_FAKE'], {
     encoding: 'utf8',
     env,
     cwd: repoRoot,
@@ -121,6 +121,64 @@ exit 0
     `set_once should skip write when value already present\n${result.stdout}`
   );
   console.log('PASS: set_once guard skips write when startTime already set');
+}
+
+// 4. refine binding fires on backlog→refine transition (#133)
+{
+  const { env } = makeTempEnv(`#!/bin/bash
+set -euo pipefail
+if [[ "$1 $2" == "issue view" ]]; then
+  echo '{"body":"<!-- aitm-fields: {\\"schema\\":1,\\"values\\":{\\"startTime\\":null}} -->"}'
+  exit 0
+fi
+if [[ "$1" == "api" && "$2" == "graphql" ]]; then
+  echo '{"data":{}}'
+  exit 0
+fi
+if [[ "$1 $2" == "issue edit" ]]; then
+  exit 0
+fi
+exit 0
+`);
+
+  const result = spawnSync(process.execPath, [script, '999', 'refine', '--item-id', 'ITEM_FAKE'], {
+    encoding: 'utf8',
+    env,
+    cwd: repoRoot,
+  });
+
+  assert.equal(result.status, 0, `expected exit 0 but got ${result.status}\n${result.stderr}`);
+  assert.match(result.stdout, /startTime set for #999/);
+  console.log('PASS: refine binding fires on backlog→refine');
+}
+
+// 5. develop transition no longer triggers startTime write (binding moved to refine)
+{
+  const { env } = makeTempEnv(`#!/bin/bash
+set -euo pipefail
+if [[ "$1 $2" == "issue view" ]]; then
+  echo '{"body":"<!-- aitm-fields: {\\"schema\\":1,\\"values\\":{\\"startTime\\":null}} -->"}'
+  exit 0
+fi
+if [[ "$1" == "api" && "$2" == "graphql" ]]; then
+  echo "unexpected graphql call" >&2
+  exit 1
+fi
+exit 0
+`);
+
+  const result = spawnSync(process.execPath, [script, '999', 'develop', '--item-id', 'ITEM_FAKE'], {
+    encoding: 'utf8',
+    env,
+    cwd: repoRoot,
+  });
+
+  assert.equal(result.status, 0, `expected exit 0 but got ${result.status}\n${result.stderr}`);
+  assert.ok(
+    !result.stdout.includes('startTime set'),
+    `develop should not trigger startTime write\n${result.stdout}`
+  );
+  console.log('PASS: develop binding is empty — no startTime write');
 }
 
 console.log('All start-time-sync tests passed.');

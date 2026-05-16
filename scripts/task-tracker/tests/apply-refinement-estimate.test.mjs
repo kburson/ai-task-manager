@@ -7,6 +7,7 @@
 import { strict as assert } from 'node:assert';
 import {
   planRefinementEstimate,
+  planPriorityGate,
   applyRefinementEstimate,
   parseRationaleMarker,
   stripRationaleMarker,
@@ -34,7 +35,7 @@ const NEW_RATIONALE_BLOCK =
   '<!-- aitm-refinement-rationale: {"size":"single verb extension","estimate":"~1h parser, ~1h formatter, ~1h tests, ~1h docs","priority":"QoL — no blockers"} -->';
 
 function bodyWithMarker(marker = NEW_RATIONALE_BLOCK, extra = '') {
-  return `# Title\n\n${extra}${marker}\n\n## ACs\n- [ ] foo\n`;
+  return `# Title\n\n${extra}${marker}\n\n## Acceptance Criteria\n- [ ] foo\n`;
 }
 
 function depsWithBoard(values = { size: 'S', estimate: 4, priority: 'P2' }) {
@@ -166,11 +167,60 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
   const result = await planRefinementEstimate({
     cfg: CFG,
     issueNumber: 95,
-    body: '# Title\n\n## ACs\n- [ ] foo\n',
+    body: '# Title\n\n## Acceptance Criteria\n- [ ] foo\n',
     deps: depsWithBoard(),
   });
   assert.equal(result.ok, false);
   assert.ok(result.blockers.some((b) => b.startsWith('refine-rationale-missing')));
+}
+
+// --- planRefinementEstimate: empty Acceptance Criteria section (#133) ----
+
+{
+  const result = await planRefinementEstimate({
+    cfg: CFG,
+    issueNumber: 95,
+    body: `# Title\n\n${NEW_RATIONALE_BLOCK}\n\n## Acceptance Criteria\n\nNo items yet.\n`,
+    deps: depsWithBoard(),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((b) => b.startsWith('refine-ac-section-empty')));
+}
+
+// --- planPriorityGate: Backlog→Refine only requires Priority (#133) ------
+
+{
+  const result = await planPriorityGate({
+    cfg: CFG,
+    issueNumber: 95,
+    deps: depsWithBoard({ size: null, estimate: null, priority: 'P1' }),
+  });
+  assert.equal(result.ok, true);
+}
+
+{
+  const result = await planPriorityGate({
+    cfg: CFG,
+    issueNumber: 95,
+    deps: depsWithBoard({ size: 'S', estimate: 2, priority: null }),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((b) => b.startsWith('refine-field-missing')));
+}
+
+{
+  const result = await planPriorityGate({
+    cfg: CFG,
+    issueNumber: 95,
+    deps: {
+      loadProjectFieldDefs: () => FIELD_DEFS,
+      projectValuesForIssue: async () => {
+        throw new Error('boom');
+      },
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((b) => b.startsWith('refine-board-fetch-failed')));
 }
 
 // --- applyRefinementEstimate: first post (AC1+AC2) -----------------------
