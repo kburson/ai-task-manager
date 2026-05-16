@@ -39,6 +39,7 @@ import {
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
+import { gateCodeComplete } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -301,6 +302,21 @@ export async function runPromote({
     }
   }
 
+  // Develop → Test pre-flight (#136): CODE_COMPLETE gate — every functional AC
+  // ticked + verified, `aitm-commits` non-empty, no dirty files in the union of
+  // SHAs' touch-set. Lifecycle DoD items tick at Review/Close, not here.
+  if (target === 'test') {
+    const codeCompleteGate = deps.codeCompleteGate || gateCodeComplete;
+    const ccResult = await codeCompleteGate({ cfg, issueNumber, body });
+    if (!ccResult.ok) {
+      return {
+        status: 'code-complete-refused',
+        blockers: ccResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Test: CODE_COMPLETE gate failed.`,
+      };
+    }
+  }
+
   const aliasVerb = ALIAS_VERB[recorded] || null;
   const transitionResult = aliasVerb
     ? {
@@ -490,7 +506,8 @@ export async function verbPromote(rest, cfg) {
     case 'refine-exit-refused':
     case 'groom-gate-refused':
     case 'planned-estimate-refused':
-    case 'epic-children-refused': {
+    case 'epic-children-refused':
+    case 'code-complete-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
       process.stderr.write('\n');

@@ -62,6 +62,7 @@ function makeDeps({
       epicChildren: {
         fetchSiblings: async () => [],
       },
+      codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
     },
   };
 }
@@ -246,6 +247,35 @@ test('promote: develop→test delegates to /task review', async () => {
   assert.equal(r.to, 'test');
   assert.equal(r.via, 'alias:review');
   assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 102 }]);
+});
+
+test('promote: develop→test refused when CODE_COMPLETE gate returns blockers (#136)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('develop'), live: 'develop' });
+  deps.codeCompleteGate = async () => ({
+    ok: false,
+    blockers: ['code-complete-ac-unverified: First AC', 'code-complete-commits-missing: ...'],
+    shas: [],
+  });
+  const r = await runPromote({ issueNumber: 1361, cfg, deps });
+  assert.equal(r.status, 'code-complete-refused');
+  assert.equal(r.blockers.length, 2);
+  assert.equal(calls.spawns.length, 0);
+  assert.equal(calls.moves.length, 0);
+});
+
+test('promote: develop→test allowed when CODE_COMPLETE gate passes (#136)', async () => {
+  let gateCalled = 0;
+  const { deps, calls } = makeDeps({ body: bodyWithState('develop'), live: 'develop' });
+  deps.codeCompleteGate = async ({ issueNumber }) => {
+    gateCalled += 1;
+    assert.equal(issueNumber, 1362);
+    return { ok: true, blockers: [], shas: ['abc'] };
+  };
+  const r = await runPromote({ issueNumber: 1362, cfg, deps });
+  assert.equal(r.status, 'promoted');
+  assert.equal(r.to, 'test');
+  assert.equal(gateCalled, 1);
+  assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 1362 }]);
 });
 
 test('promote: test→review is a direct move-state call (no alias verb exists)', async () => {
