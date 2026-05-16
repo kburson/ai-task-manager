@@ -158,7 +158,7 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Test 2: Missing groom-estimate comment → no-groom-comment
+// Test 2: Missing refine-estimate comment → no-refine-comment
 // ---------------------------------------------------------------------------
 {
   const { deps } = makeDeps({
@@ -171,8 +171,8 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
     deps
   );
 
-  assert.equal(result.status, 'no-groom-comment');
-  console.log('PASS: missing groom-estimate comment → no-groom-comment');
+  assert.equal(result.status, 'no-refine-comment');
+  console.log('PASS: missing refine-estimate comment → no-refine-comment');
 }
 
 // ---------------------------------------------------------------------------

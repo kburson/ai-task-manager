@@ -387,6 +387,25 @@ import {
     issueNumber: 42,
   });
   assert.equal(r.block, false);
+
+  // Dropping aitm-refinement-rationale → block (new marker form, #144)
+  const REFINEMENT_MARKER =
+    '<!-- aitm-refinement-rationale: {"size":"M","estimate":"5h","priority":"P1"} -->';
+  r = checkBodyChange({
+    newBody: '## Scope\nsome text\n',
+    currentBody: `## Scope\nsome text\n${REFINEMENT_MARKER}\n`,
+    issueNumber: 42,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-refinement-rationale/);
+
+  // Preserving aitm-refinement-rationale → pass
+  r = checkBodyChange({
+    newBody: `## Scope\nupdated\n${REFINEMENT_MARKER}\n`,
+    currentBody: `## Scope\noriginal\n${REFINEMENT_MARKER}\n`,
+    issueNumber: 42,
+  });
+  assert.equal(r.block, false);
 }
 
 console.log('gh-edit-guard.test.mjs: all passed');

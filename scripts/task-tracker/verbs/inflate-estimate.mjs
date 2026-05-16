@@ -1,5 +1,6 @@
 // `inflate-estimate` verb — appends a "Discovered work — estimate inflation" section to
-// the existing `<!-- aitm-groom-estimate: N -->` comment and atomically updates the
+// the existing `<!-- aitm-refined-estimate: N -->` comment (legacy
+// `aitm-groom-estimate:` also accepted) and atomically updates the
 // Size + Estimate board fields and the aitm-fields block in the issue body.
 //
 // Each invocation appends a dated block; re-runs do NOT overwrite prior inflations.
@@ -29,7 +30,10 @@ const pexec = promisify(execFile);
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL'];
 const SIZE_CEILINGS = { XS: 2, S: 4, M: 10, L: 20 };
-export const GROOM_ESTIMATE_MARKER_RE = /<!--\s*aitm-groom-estimate:\s*\d+\s*-->/;
+export const REFINED_ESTIMATE_MARKER_RE =
+  /<!--\s*aitm-(?:refined|groom)-estimate:\s*\d+\s*-->/;
+// Legacy alias retained for backward-compat imports.
+export const GROOM_ESTIMATE_MARKER_RE = REFINED_ESTIMATE_MARKER_RE;
 
 export function parseArgs(argv = []) {
   const args = argv.slice();
@@ -213,11 +217,11 @@ export async function runInflateEstimate(
   const repo = cfg.repo;
   const newEstimate = parseEstimateHours(estimate);
 
-  // 1. Find the groom-estimate comment
+  // 1. Find the refine-estimate comment
   const comments = await listComments({ issueNumber, repo });
-  const groomComment = comments.find((c) => GROOM_ESTIMATE_MARKER_RE.test(c.body));
-  if (!groomComment) {
-    return { status: 'no-groom-comment' };
+  const refineComment = comments.find((c) => REFINED_ESTIMATE_MARKER_RE.test(c.body));
+  if (!refineComment) {
+    return { status: 'no-refine-comment' };
   }
 
   // 2. Read current board values for the "Before" column
@@ -243,8 +247,8 @@ export async function runInflateEstimate(
     newSize: size,
     newEstimate,
   });
-  const patchedBody = groomComment.body + section;
-  await patchComment({ repo, commentId: groomComment.id, body: patchedBody });
+  const patchedBody = refineComment.body + section;
+  await patchComment({ repo, commentId: refineComment.id, body: patchedBody });
 
   // 4. Update board Size + Estimate fields
   let boardUpdated = false;
@@ -311,15 +315,15 @@ export async function verbInflateEstimate(argv, cfg) {
   validateArgs(parsed);
   const result = await runInflateEstimate(parsed, cfg);
 
-  if (result.status === 'no-groom-comment') {
+  if (result.status === 'no-refine-comment' || result.status === 'no-groom-comment') {
     console.error(
-      `error: no \`<!-- aitm-groom-estimate: ${parsed.issueNumber} -->\` comment found on issue #${parsed.issueNumber}.\n` +
-        `  This comment is posted when an issue transitions to Refine. Has issue #${parsed.issueNumber} been groomed?`
+      `error: no \`<!-- aitm-refined-estimate: ${parsed.issueNumber} -->\` comment (or legacy aitm-groom-estimate) found on issue #${parsed.issueNumber}.\n` +
+        `  This comment is posted when an issue transitions to Refine. Has issue #${parsed.issueNumber} been refined?`
     );
     process.exit(1);
   }
 
-  console.log(`✓ Inflation section appended to groom-estimate comment on #${parsed.issueNumber}`);
+  console.log(`✓ Inflation section appended to refine-estimate comment on #${parsed.issueNumber}`);
   if (result.boardUpdated) {
     console.log(
       `✓ Board Size → ${parsed.size}, Estimate → ${parseEstimateHours(parsed.estimate)}h`

@@ -1,9 +1,13 @@
-// Groom-stage estimate comment poster. Fires on Backlog → Groom in promote.mjs.
+// Refine-stage estimate comment poster. Fires on Backlog → Refine in promote.mjs.
 //
 // Symmetric to apply-reevaluate.mjs: reads the agent-authored rationale marker
 // from the issue body, combines it with the project board's Size / Estimate /
 // Priority values, and posts a `### 🛠 Refine estimate` audit comment. The post
-// is idempotent via a hidden marker `<!-- aitm-groom-estimate: <N> -->`.
+// is idempotent via a hidden marker `<!-- aitm-refined-estimate: <N> -->`.
+//
+// Backward-compat: reads accept both legacy `aitm-groom-rationale` /
+// `aitm-groom-estimate:` markers and the new `aitm-refinement-rationale` /
+// `aitm-refined-estimate:` forms. Writes emit only the new forms.
 //
 // Pure-ish core: all I/O is injectable for offline tests.
 
@@ -18,9 +22,14 @@ import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
-export const GROOM_HEADER = '### 🛠 Refine estimate';
-export const RATIONALE_MARKER_RE = /<!--\s*aitm-groom-rationale:\s*(\{[\s\S]*?\})\s*-->/;
-export const COMMENT_MARKER_PREFIX = '<!-- aitm-groom-estimate:';
+export const REFINEMENT_HEADER = '### 🛠 Refine estimate';
+// Legacy alias retained for backward-compat imports.
+export const GROOM_HEADER = REFINEMENT_HEADER;
+
+export const RATIONALE_MARKER_RE =
+  /<!--\s*aitm-(?:refinement|groom)-rationale:\s*(\{[\s\S]*?\})\s*-->/;
+export const COMMENT_MARKER_PREFIX = '<!-- aitm-refined-estimate:';
+const COMMENT_MARKER_RE = /<!--\s*aitm-(?:refined|groom)-estimate:\s*(\d+)\s*-->/;
 
 export function parseRationaleMarker(body = '') {
   const m = String(body).match(RATIONALE_MARKER_RE);
@@ -43,10 +52,10 @@ export function stripRationaleMarker(body = '') {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-export function buildGroomCommentBody({ issueNumber, size, estimate, priority, rationale }) {
+export function buildRefinementCommentBody({ issueNumber, size, estimate, priority, rationale }) {
   return [
-    `<!-- aitm-groom-estimate: ${issueNumber} -->`,
-    GROOM_HEADER,
+    `<!-- aitm-refined-estimate: ${issueNumber} -->`,
+    REFINEMENT_HEADER,
     '',
     'Initial provisional sizing at Refine (refined at Plan).',
     '',
@@ -59,6 +68,9 @@ export function buildGroomCommentBody({ issueNumber, size, estimate, priority, r
     'Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.',
   ].join('\n');
 }
+
+// Legacy alias retained for backward-compat imports.
+export const buildGroomCommentBody = buildRefinementCommentBody;
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
@@ -86,7 +98,7 @@ async function defaultListCommentBodies({ issueNumber, repo }) {
 }
 
 async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
-  const tmpFile = path.join(scratchDir, `groom-est-${issueNumber}.md`);
+  const tmpFile = path.join(scratchDir, `refine-est-${issueNumber}.md`);
   writeFileSync(tmpFile, body);
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmpFile], {
@@ -101,9 +113,9 @@ async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
 
 // Pre-flight gate: returns `{ ok: true, plan }` or `{ ok: false, blockers: [...] }`.
 // `plan` carries the resolved values + the comment body ready to post.
-export async function planGroomEstimate({ cfg, issueNumber, body, deps = {} } = {}) {
-  if (!cfg) throw new Error('planGroomEstimate: cfg is required');
-  if (!issueNumber) throw new Error('planGroomEstimate: issueNumber is required');
+export async function planRefinementEstimate({ cfg, issueNumber, body, deps = {} } = {}) {
+  if (!cfg) throw new Error('planRefinementEstimate: cfg is required');
+  if (!issueNumber) throw new Error('planRefinementEstimate: issueNumber is required');
 
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
@@ -115,7 +127,7 @@ export async function planGroomEstimate({ cfg, issueNumber, body, deps = {} } = 
   } catch (err) {
     return {
       ok: false,
-      blockers: [`groom-board-fetch-failed: ${err.message}`],
+      blockers: [`refine-board-fetch-failed: ${err.message}`],
     };
   }
 
@@ -124,29 +136,29 @@ export async function planGroomEstimate({ cfg, issueNumber, body, deps = {} } = 
   const priority = projVals.priority;
 
   const blockers = [];
-  if (!size) blockers.push('groom-field-missing: Size is not set on the project board');
+  if (!size) blockers.push('refine-field-missing: Size is not set on the project board');
   if (estimate == null)
-    blockers.push('groom-field-missing: Estimate is not set on the project board');
-  if (!priority) blockers.push('groom-field-missing: Priority is not set on the project board');
+    blockers.push('refine-field-missing: Estimate is not set on the project board');
+  if (!priority) blockers.push('refine-field-missing: Priority is not set on the project board');
 
   const rationaleResult = parseRationaleMarker(body);
   if (!rationaleResult.ok) {
     if (rationaleResult.reason === 'missing') {
       blockers.push(
-        'groom-rationale-missing: add `<!-- aitm-groom-rationale: {"size":"...","estimate":"...","priority":"..."} -->` to the issue body before promoting'
+        'refine-rationale-missing: add `<!-- aitm-refinement-rationale: {"size":"...","estimate":"...","priority":"..."} -->` to the issue body before promoting'
       );
     } else if (rationaleResult.reason === 'invalid-json') {
-      blockers.push(`groom-rationale-invalid: ${rationaleResult.detail}`);
+      blockers.push(`refine-rationale-invalid: ${rationaleResult.detail}`);
     } else if (rationaleResult.reason === 'incomplete') {
       blockers.push(
-        `groom-rationale-incomplete: missing field(s) ${rationaleResult.missing.join(', ')}`
+        `refine-rationale-incomplete: missing field(s) ${rationaleResult.missing.join(', ')}`
       );
     }
   }
 
   if (blockers.length) return { ok: false, blockers };
 
-  const commentBody = buildGroomCommentBody({
+  const commentBody = buildRefinementCommentBody({
     issueNumber,
     size,
     estimate,
@@ -168,24 +180,30 @@ export async function planGroomEstimate({ cfg, issueNumber, body, deps = {} } = 
   };
 }
 
+// Legacy alias retained for backward-compat imports.
+export const planGroomEstimate = planRefinementEstimate;
+
 // Post-success hook: posts the comment (idempotent) and strips the rationale
 // marker from the body. Returns one of:
 //   { status: 'posted' }
 //   { status: 'duplicate' }   — marker already present in a comment
 //   { status: 'post-failed', error }
-export async function applyGroomEstimate({ cfg, issueNumber, plan, scratchDir, deps = {} } = {}) {
-  if (!cfg) throw new Error('applyGroomEstimate: cfg is required');
-  if (!issueNumber) throw new Error('applyGroomEstimate: issueNumber is required');
-  if (!plan?.commentBody) throw new Error('applyGroomEstimate: plan.commentBody is required');
+export async function applyRefinementEstimate({ cfg, issueNumber, plan, scratchDir, deps = {} } = {}) {
+  if (!cfg) throw new Error('applyRefinementEstimate: cfg is required');
+  if (!issueNumber) throw new Error('applyRefinementEstimate: issueNumber is required');
+  if (!plan?.commentBody) throw new Error('applyRefinementEstimate: plan.commentBody is required');
 
   const postComment = deps.postComment || defaultPostComment;
   const listCommentBodies = deps.listCommentBodies || defaultListCommentBodies;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
 
-  const marker = `${COMMENT_MARKER_PREFIX} ${issueNumber} -->`;
   try {
     const bodies = await listCommentBodies({ issueNumber, repo: cfg.repo });
-    if (bodies.some((b) => b.includes(marker))) {
+    const hit = bodies.some((b) => {
+      const m = String(b).match(COMMENT_MARKER_RE);
+      return m && Number(m[1]) === Number(issueNumber);
+    });
+    if (hit) {
       return { status: 'duplicate' };
     }
   } catch {
@@ -214,3 +232,6 @@ export async function applyGroomEstimate({ cfg, issueNumber, plan, scratchDir, d
 
   return { status: 'posted' };
 }
+
+// Legacy alias retained for backward-compat imports.
+export const applyGroomEstimate = applyRefinementEstimate;

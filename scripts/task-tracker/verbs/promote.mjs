@@ -31,7 +31,10 @@ import {
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { planGroomEstimate, applyGroomEstimate } from '../lib/apply-groom-estimate.mjs';
+import {
+  planRefinementEstimate,
+  applyRefinementEstimate,
+} from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -208,27 +211,28 @@ export async function runPromote({
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
   }
 
-  // Groom-stage pre-flight: when promoting Backlog → Groom, the agent must
+  // Refine-stage pre-flight: when promoting Backlog → Refine, the agent must
   // have set Size / Estimate / Priority on the board AND embedded a
-  // `<!-- aitm-groom-rationale: {...} -->` marker in the issue body. Refuse
-  // the move if either is missing, so the post-success hook can safely
-  // assume both signals are present (AC4 of #95).
-  let groomPlan = null;
+  // `<!-- aitm-refinement-rationale: {...} -->` marker in the issue body
+  // (legacy `aitm-groom-rationale` still accepted). Refuse the move if either
+  // is missing, so the post-success hook can safely assume both signals are
+  // present (AC4 of #95).
+  let refinementPlan = null;
   if (target === 'refine') {
-    const planResult = await planGroomEstimate({
+    const planResult = await planRefinementEstimate({
       cfg,
       issueNumber,
       body,
-      deps: deps.groomEstimate,
+      deps: deps.refinementEstimate || deps.groomEstimate,
     });
     if (!planResult.ok) {
       return {
-        status: 'groom-gate-refused',
+        status: 'refine-gate-refused',
         blockers: planResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Groom: missing groom-estimate signals.`,
+        message: `Refusing to promote #${issueNumber} to Refine: missing refine-estimate signals.`,
       };
     }
-    groomPlan = planResult.plan;
+    refinementPlan = planResult.plan;
   }
 
   const aliasVerb = ALIAS_VERB[recorded] || null;
@@ -315,20 +319,20 @@ export async function runPromote({
       // Best-effort. Transition is already committed on the board.
     }
   }
-  // Groom-stage post-success hook: post the audit comment (idempotent) and
+  // Refine-stage post-success hook: post the audit comment (idempotent) and
   // strip the rationale marker from the body. Best-effort — failures here do
   // not roll back the board move.
-  let groomPost = null;
-  if (target === 'refine' && groomPlan) {
+  let refinementPost = null;
+  if (target === 'refine' && refinementPlan) {
     try {
-      groomPost = await applyGroomEstimate({
+      refinementPost = await applyRefinementEstimate({
         cfg,
         issueNumber,
-        plan: groomPlan,
-        deps: deps.groomEstimate,
+        plan: refinementPlan,
+        deps: deps.refinementEstimate || deps.groomEstimate,
       });
     } catch (err) {
-      groomPost = { status: 'post-failed', error: err.message };
+      refinementPost = { status: 'post-failed', error: err.message };
     }
   }
 
@@ -354,7 +358,7 @@ export async function runPromote({
     to: target,
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
     bootstrapped,
-    groomPost,
+    refinementPost,
   };
 }
 
@@ -392,15 +396,18 @@ export async function verbPromote(rest, cfg) {
           (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
           ` (${result.via})\n`
       );
-      if (result.groomPost?.status === 'posted') {
+      if (result.refinementPost?.status === 'posted') {
         process.stdout.write(`  ↳ posted "### 🛠 Refine estimate" comment\n`);
-      } else if (result.groomPost?.status === 'duplicate') {
-        process.stdout.write(`  ↳ groom-estimate comment already present (idempotent skip)\n`);
-      } else if (result.groomPost?.status === 'post-failed') {
-        process.stderr.write(`  ⚠ groom-estimate comment post failed: ${result.groomPost.error}\n`);
+      } else if (result.refinementPost?.status === 'duplicate') {
+        process.stdout.write(`  ↳ refine-estimate comment already present (idempotent skip)\n`);
+      } else if (result.refinementPost?.status === 'post-failed') {
+        process.stderr.write(
+          `  ⚠ refine-estimate comment post failed: ${result.refinementPost.error}\n`
+        );
       }
       return;
     }
+    case 'refine-gate-refused':
     case 'groom-gate-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);

@@ -4,6 +4,55 @@ Full workflow rules for projects using `ai-task-manager`. These rules define how
 
 ---
 
+## Vocabulary (canonical)
+
+Stage names are nouns describing a process; the corresponding activity is a verb. We shorten both to the verb form for brevity (e.g., we say "Refine stage" rather than "Refinement stage" — same column, shorter label).
+
+| Stage (column) | Full process name | Activity verb | Also known as | What happens here |
+|---|---|---|---|---|
+| Discover *(agent-side, pre-issue)* | Discovery | discover | Ideation, Triage | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work. |
+| Backlog | Backlog | — | — | Collection of prioritized backlog items (user stories, tasks). |
+| Refine | Refinement | refine | — | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels. |
+| Plan | Planning | plan | — | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate. |
+| Develop | Development | develop | In Progress | Code changes are made and committed against the story, including test automation. |
+| Test | Testing | verify | Verify, QA | Committed source is run against all ACs and test automation in a sandboxed environment. |
+| Review | Review | review | Ready for Acceptance | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met. |
+| Done | Done | — | Complete, Ready for Release | All ACs and Definition of Done are satisfied. |
+
+**Retired terms** (do not use):
+
+- ~~Groom / Grooming~~ — replaced by **Refine / Refinement**. The activity of sizing + estimating + prioritizing + adding rationale is "refining", not "grooming". Marker names, helper modules, comment prefixes, and docs use the `refine` form going forward. Legacy `aitm-groom-*` markers are read-accepted on existing issues for backward compatibility but never written.
+
+### Naming rules
+
+These rules tell you which spelling to use when introducing new code, markers, or doc references:
+
+| Where it appears | Form | Example |
+|---|---|---|
+| Stage / column name | Noun (shortened to verb form for column labels) | `Refine` column, `Refinement` process |
+| Body marker (artifact identity) | Noun | `aitm-refinement-rationale` |
+| Comment marker (action taken) | Past-tense verb | `aitm-refined-estimate` |
+| Module constant (process) | Noun | `REFINEMENT_HEADER` |
+| Function name (action) | Verb | `applyRefinementEstimate`, `planRefinementEstimate` |
+| CLI verb (`/task ...`) | Verb | `/task refine`, `/task discover`, `/task verify` |
+
+Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths emit only the new forms.
+
+**Verb-to-state-entry mapping** (state-entry verbs do the prep + transition atomically):
+
+| Verb | Enters stage | Notes |
+|---|---|---|
+| `/task refine #N` | Refine | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine. |
+| `/task plan #N` | Plan | (Reserved; current `/task plan` opens an untracked planning bucket — to be disambiguated.) |
+| `/task develop #N` | Develop | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.) |
+| `/task verify #N` | Test | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.) |
+| `/task review #N` | Review | Promotes Test → Review after verification passes. |
+| `/task approve #N` | (gate stamp) | Stamps the human-approval marker for the current gate (plan→develop or review→done). |
+| `/task close #N` | Done | Closes the issue and moves Review → Done. |
+| `/task promote #N` | next stage | Generic one-step advance; used for transitions without bespoke prep. |
+
+---
+
 ## Issue Creation
 
 **Always assign new issues to yourself** — every `gh issue create` must include `--assignee <your-github-login>`.
@@ -174,9 +223,9 @@ Size and Estimate move through three distinct stages. Only the first two ever mu
 **Refine estimate.** When `/task promote <N>` advances an issue from Backlog to Refine, the harness pre-checks two signals and posts an audit comment:
 
 - **Board values.** Size, Estimate, and Priority must already be set on the project board. The agent/human sets these manually before invoking promote.
-- **Rationale marker.** The agent embeds a one-line hidden marker in the issue body before promoting: `<!-- aitm-groom-rationale: {"size":"...","estimate":"...","priority":"..."} -->`.
+- **Rationale marker.** The agent embeds a one-line hidden marker in the issue body before promoting: `<!-- aitm-refinement-rationale: {"size":"...","estimate":"...","priority":"..."} -->` (legacy `aitm-groom-rationale` still read-accepted on existing issues).
 - If either is missing, promote refuses with one `BLOCKED:` line per signal and exits non-zero — no board move happens.
-- Otherwise, the move proceeds and a `### 🛠 Refine estimate` comment is posted with a Size/Estimate/Priority table. A hidden `<!-- aitm-groom-estimate: <N> -->` marker makes the post idempotent; re-running promote will not duplicate it. The rationale marker is stripped from the body after a successful post.
+- Otherwise, the move proceeds and a `### 🛠 Refine estimate` comment is posted with a Size/Estimate/Priority table. A hidden `<!-- aitm-refined-estimate: <N> -->` marker makes the post idempotent; re-running promote will not duplicate it. The rationale marker is stripped from the body after a successful post.
 
 **Plan re-estimate.** When `/task promote <N>` advances an issue from Plan to Develop, the harness re-evaluates Size + Estimate from the Deep-Dive Analysis section:
 
@@ -188,7 +237,7 @@ Size and Estimate move through three distinct stages. Only the first two ever mu
 
 Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the analyze-stage hook. The bypass still posts a one-line audit comment so the gap is visible per-issue.
 
-**Discovered work — estimate inflation.** When scope expands during Develop (new defects found, design gaps surfaced, architecture decisions forced), update the estimate and record the change in the existing `<!-- aitm-groom-estimate: <N> -->` comment — do not post a new comment. Append a `### Discovered work — estimate inflation (<date>, Develop)` section with this structure:
+**Discovered work — estimate inflation.** When scope expands during Develop (new defects found, design gaps surfaced, architecture decisions forced), update the estimate and record the change in the existing `<!-- aitm-refined-estimate: <N> -->` comment (legacy `aitm-groom-estimate:` still recognized) — do not post a new comment. Append a `### Discovered work — estimate inflation (<date>, Develop)` section with this structure:
 
 1. A single prose sentence stating what was discovered and why it pushed effort past the current size-bucket ceiling.
 2. A numbered defect/work-item table with an effort column per item, so the total delta is traceable to individual discoveries.

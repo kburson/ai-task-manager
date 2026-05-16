@@ -98,7 +98,7 @@ test('epic shape: canonical structure', () => {
   assertCanonicalOrder(body, 'epic');
 });
 
-test('priority gate refuses --status groom without --priority', () => {
+test('priority gate refuses --status refine without --priority', () => {
   const dir = fixtureDir();
   const res = spawnSync(
     'node',
@@ -115,13 +115,13 @@ test('priority gate refuses --status groom without --priority', () => {
       '--plan-metadata-file',
       join(dir, 'meta.md'),
       '--status',
-      'groom',
+      'refine',
       '--dry-run',
     ],
     { cwd: dir, encoding: 'utf8' }
   );
   assert.notEqual(res.status, 0);
-  assert.match(res.stderr, /priority-required-at-groom/);
+  assert.match(res.stderr, /priority-required-at-refine/);
 });
 
 test('sub-issue shape requires --parent', () => {

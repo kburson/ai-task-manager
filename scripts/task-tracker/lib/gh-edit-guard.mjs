@@ -33,6 +33,7 @@ const MARKER_PATTERNS = [
   { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved:/i },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
   { name: 'aitm-groom-rationale', re: /<!--\s*aitm-groom-rationale:/i },
+  { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;

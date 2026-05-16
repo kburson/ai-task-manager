@@ -17,7 +17,7 @@ const TETHER_SCRIPT =
 const PREFLIGHT_SCRIPT = path.resolve(SCRIPT_DIR, '..', 'task-tracker', 'preflight-issue.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
-const GROOM_LIKE_STATUSES = new Set(['groom', 'refine', 'ready']);
+const REFINE_LIKE_STATUSES = new Set(['refine', 'ready']);
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo']);
 
 function usage() {
@@ -213,11 +213,11 @@ function resolveAssignee(args, cfg) {
 function enforcePriorityGate(args) {
   const status = typeof args.status === 'string' ? args.status : null;
   if (!status) return;
-  if (!GROOM_LIKE_STATUSES.has(status)) return;
+  if (!REFINE_LIKE_STATUSES.has(status)) return;
   if (typeof args.priority !== 'string' || !args.priority) {
     die(
-      `priority-required-at-groom: --priority is required when --status=${status} ` +
-        '(set p0|p1|p2 alongside size + estimate at Groom)',
+      `priority-required-at-refine: --priority is required when --status=${status} ` +
+        '(set p0|p1|p2 alongside size + estimate at Refine)',
       2
     );
   }
