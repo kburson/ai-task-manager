@@ -124,14 +124,49 @@ test('promote: refine→plan refused when Acceptance Criteria section is empty',
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: plan→develop is a direct move-state call', async () => {
+test('promote: plan→develop is a direct move-state call when planned-estimate appendix is present', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [
+      {
+        id: 'IC_1',
+        body: '<!-- aitm-refined-estimate: 101 -->\n### 🛠 Refine estimate\n\n### Planned Estimate\n\n| Field | Refine | Plan | Δ |\n',
+      },
+    ],
+  };
   const r = await runPromote({ issueNumber: 101, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'develop');
   assert.equal(r.via, 'direct');
   assert.equal(calls.spawns.length, 0);
   assert.deepEqual(calls.moves, [{ issueNumber: 101, target: 'develop' }]);
+});
+
+test('promote: plan→develop refused when refine-estimate comment is missing (#134)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [],
+  };
+  const r = await runPromote({ issueNumber: 1011, cfg, deps });
+  assert.equal(r.status, 'planned-estimate-refused');
+  assert.ok(r.blockers.some((b) => b.startsWith('planned-estimate-missing-comment')));
+  assert.equal(calls.moves.length, 0);
+});
+
+test('promote: plan→develop refused when planned-estimate appendix is missing (#134)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [
+      {
+        id: 'IC_2',
+        body: '<!-- aitm-refined-estimate: 1012 -->\n### 🛠 Refine estimate\n\nNo appendix yet.\n',
+      },
+    ],
+  };
+  const r = await runPromote({ issueNumber: 1012, cfg, deps });
+  assert.equal(r.status, 'planned-estimate-refused');
+  assert.ok(r.blockers.some((b) => b.startsWith('planned-estimate-appendix-missing')));
+  assert.equal(calls.moves.length, 0);
 });
 
 test('promote: develop→test delegates to /task review', async () => {
@@ -211,6 +246,14 @@ test('promote: drift refused when live ≠ recorded', async () => {
 
 test('promote: bootstrap when lastKnownState absent — syncs to live, then promotes', async () => {
   const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [
+      {
+        id: 'IC_BOOT',
+        body: '<!-- aitm-refined-estimate: 108 -->\n### 🛠 Refine estimate\n\n### Planned Estimate\n',
+      },
+    ],
+  };
   const r = await runPromote({ issueNumber: 108, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.bootstrapped, true);

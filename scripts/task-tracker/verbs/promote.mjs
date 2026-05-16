@@ -36,6 +36,7 @@ import {
   applyRefinementEstimate,
   planPriorityGate,
 } from '../lib/apply-refinement-estimate.mjs';
+import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 
@@ -251,6 +252,24 @@ export async function runPromote({
     refinementPlan = planResult.plan;
   }
 
+  // Plan → Develop pre-flight (#134): the `### 🛠 Refine estimate` comment
+  // must carry a `### Planned Estimate` appendix recording any drift from the
+  // initial Refine bucket. Authored during Plan via `appendPlannedEstimate`.
+  if (target === 'develop') {
+    const gateResult = await planPlannedEstimateGate({
+      cfg,
+      issueNumber,
+      deps: deps.plannedEstimate,
+    });
+    if (!gateResult.ok) {
+      return {
+        status: 'planned-estimate-refused',
+        blockers: gateResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Develop: missing planned-estimate appendix on refine-estimate comment.`,
+      };
+    }
+  }
+
   const aliasVerb = ALIAS_VERB[recorded] || null;
   const transitionResult = aliasVerb
     ? {
@@ -425,7 +444,8 @@ export async function verbPromote(rest, cfg) {
       return;
     }
     case 'refine-gate-refused':
-    case 'groom-gate-refused': {
+    case 'groom-gate-refused':
+    case 'planned-estimate-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
       process.stderr.write('\n');
