@@ -4,6 +4,8 @@
 
 AI Task Manager lets Claude Code and Codex share the same GitHub issue/project workflow. It binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports.
 
+> **Your AI is drowning in context it never reads.** We cut cold-start skill load by 75% with a just-in-time loader — capability stayed flat, the tax disappeared. → [How we killed context bloat with JIT Skill Loading](docs/jit-loader-results.md)
+
 ---
 
 ## TL;DR — Up in 3 Minutes
