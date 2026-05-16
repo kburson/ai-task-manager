@@ -43,10 +43,7 @@ No CLI verb. Agent self-reports `REVIEW_COMPLETE`. The orchestrator confirms the
 
 ## Estimation comment surfaces
 
-Two state-walk verbs emit estimation comments (see `docs/guides/workflow.md` → Three-stage estimation):
-
-- `/task promote <N>` from Plan: if the Deep-Dive Analysis shifts the Size/Estimate bucket, posts a `### 🔁 Plan re-estimate` comment with from→to table and updates the board. A ≥2-tier jump posts a `⚠ HUMAN ATTENTION` variant and skips the writes. Bypass: `TASK_TRACKER_SKIP_REEVAL=1`.
-- `/task close <N>`: posts a `### 📊 Review delta` comment (Estimate vs. Actual hours). Read-only — Size and Estimate are not changed at close. Bypass: `TASK_TRACKER_SKIP_DELTA=1`.
+See [`docs/guides/workflow.md`](../../../docs/guides/workflow.md) → Three-stage estimation for the comment-emitting verbs (`/task promote` from Plan, `/task close`) and their bypass envs.
 
 ## Drift detection
 
