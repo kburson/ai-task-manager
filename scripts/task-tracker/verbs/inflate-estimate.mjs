@@ -30,8 +30,7 @@ const pexec = promisify(execFile);
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL'];
 const SIZE_CEILINGS = { XS: 2, S: 4, M: 10, L: 20 };
-export const REFINED_ESTIMATE_MARKER_RE =
-  /<!--\s*aitm-(?:refined|groom)-estimate:\s*\d+\s*-->/;
+export const REFINED_ESTIMATE_MARKER_RE = /<!--\s*aitm-(?:refined|groom)-estimate:\s*\d+\s*-->/;
 // Legacy alias retained for backward-compat imports.
 export const GROOM_ESTIMATE_MARKER_RE = REFINED_ESTIMATE_MARKER_RE;
 

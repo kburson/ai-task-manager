@@ -36,6 +36,7 @@ import {
   applyRefinementEstimate,
 } from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -311,7 +312,8 @@ export async function runPromote({
   } catch {
     bodyAfter = body;
   }
-  const stamped = writeLastKnownState(bodyAfter, target);
+  let stamped = writeLastKnownState(bodyAfter, target);
+  stamped = stampEntryMarker(stamped, target, now());
   if (stamped !== bodyAfter) {
     try {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });

@@ -8,16 +8,16 @@ Full workflow rules for projects using `ai-task-manager`. These rules define how
 
 Stage names are nouns describing a process; the corresponding activity is a verb. We shorten both to the verb form for brevity (e.g., we say "Refine stage" rather than "Refinement stage" — same column, shorter label).
 
-| Stage (column) | Full process name | Activity verb | Also known as | What happens here |
-|---|---|---|---|---|
-| Discover *(agent-side, pre-issue)* | Discovery | discover | Ideation, Triage | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work. |
-| Backlog | Backlog | — | — | Collection of prioritized backlog items (user stories, tasks). |
-| Refine | Refinement | refine | — | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels. |
-| Plan | Planning | plan | — | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate. |
-| Develop | Development | develop | In Progress | Code changes are made and committed against the story, including test automation. |
-| Test | Testing | verify | Verify, QA | Committed source is run against all ACs and test automation in a sandboxed environment. |
-| Review | Review | review | Ready for Acceptance | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met. |
-| Done | Done | — | Complete, Ready for Release | All ACs and Definition of Done are satisfied. |
+| Stage (column)                     | Full process name | Activity verb | Also known as               | What happens here                                                                                                               |
+| ---------------------------------- | ----------------- | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Discover _(agent-side, pre-issue)_ | Discovery         | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                  |
+| Backlog                            | Backlog           | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                  |
+| Refine                             | Refinement        | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                         |
+| Plan                               | Planning          | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                           |
+| Develop                            | Development       | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                               |
+| Test                               | Testing           | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                         |
+| Review                             | Review            | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met. |
+| Done                               | Done              | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                   |
 
 **Retired terms** (do not use):
 
@@ -27,30 +27,30 @@ Stage names are nouns describing a process; the corresponding activity is a verb
 
 These rules tell you which spelling to use when introducing new code, markers, or doc references:
 
-| Where it appears | Form | Example |
-|---|---|---|
-| Stage / column name | Noun (shortened to verb form for column labels) | `Refine` column, `Refinement` process |
-| Body marker (artifact identity) | Noun | `aitm-refinement-rationale` |
-| Comment marker (action taken) | Past-tense verb | `aitm-refined-estimate` |
-| Module constant (process) | Noun | `REFINEMENT_HEADER` |
-| Function name (action) | Verb | `applyRefinementEstimate`, `planRefinementEstimate` |
-| CLI verb (`/task ...`) | Verb | `/task refine`, `/task discover`, `/task verify` |
+| Where it appears                | Form                                            | Example                                             |
+| ------------------------------- | ----------------------------------------------- | --------------------------------------------------- |
+| Stage / column name             | Noun (shortened to verb form for column labels) | `Refine` column, `Refinement` process               |
+| Body marker (artifact identity) | Noun                                            | `aitm-refinement-rationale`                         |
+| Comment marker (action taken)   | Past-tense verb                                 | `aitm-refined-estimate`                             |
+| Module constant (process)       | Noun                                            | `REFINEMENT_HEADER`                                 |
+| Function name (action)          | Verb                                            | `applyRefinementEstimate`, `planRefinementEstimate` |
+| CLI verb (`/task ...`)          | Verb                                            | `/task refine`, `/task discover`, `/task verify`    |
 
 Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths emit only the new forms.
 
 **Verb-to-state-entry mapping** (state-entry verbs do the prep + transition atomically):
 
-| Verb | Enters stage | Notes |
-|---|---|---|
-| `/task refine #N` | Refine | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine. |
-| `/task discover` | (pre-backlog ideation) | Opens an untracked discovery bucket; promote to an issue with `/task new <title>`. Legacy `/task plan` is a deprecated alias. |
-| `/task plan #N` | Plan | (Reserved; currently use `/task promote` from Refine.) |
-| `/task develop #N` | Develop | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.) |
-| `/task verify #N` | Test | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.) |
-| `/task review #N` | Review | Promotes Test → Review after verification passes. |
-| `/task approve #N` | (gate stamp) | Stamps the human-approval marker for the current gate (plan→develop or review→done). |
-| `/task close #N` | Done | Closes the issue and moves Review → Done. |
-| `/task promote #N` | next stage | Generic one-step advance; used for transitions without bespoke prep. |
+| Verb               | Enters stage           | Notes                                                                                                                         |
+| ------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine.                      |
+| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket; promote to an issue with `/task new <title>`. Legacy `/task plan` is a deprecated alias. |
+| `/task plan #N`    | Plan                   | (Reserved; currently use `/task promote` from Refine.)                                                                        |
+| `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                               |
+| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)   |
+| `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                             |
+| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                          |
+| `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                     |
+| `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                          |
 
 ---
 

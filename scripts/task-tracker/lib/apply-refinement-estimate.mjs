@@ -188,7 +188,13 @@ export const planGroomEstimate = planRefinementEstimate;
 //   { status: 'posted' }
 //   { status: 'duplicate' }   — marker already present in a comment
 //   { status: 'post-failed', error }
-export async function applyRefinementEstimate({ cfg, issueNumber, plan, scratchDir, deps = {} } = {}) {
+export async function applyRefinementEstimate({
+  cfg,
+  issueNumber,
+  plan,
+  scratchDir,
+  deps = {},
+} = {}) {
   if (!cfg) throw new Error('applyRefinementEstimate: cfg is required');
   if (!issueNumber) throw new Error('applyRefinementEstimate: issueNumber is required');
   if (!plan?.commentBody) throw new Error('applyRefinementEstimate: plan.commentBody is required');

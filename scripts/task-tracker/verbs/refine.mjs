@@ -21,10 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { tetherIssueToProject } from '../../gh/lib/project-tether.mjs';
 import { fieldOptionMap } from '../../gh/lib/github-projects.mjs';
 import { verbPromote } from './promote.mjs';
-import {
-  parseRationaleMarker,
-  RATIONALE_MARKER_RE,
-} from '../lib/apply-refinement-estimate.mjs';
+import { parseRationaleMarker, RATIONALE_MARKER_RE } from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -84,7 +81,8 @@ export function validateArgs({ issueNumber, size, estimate, priority, reason }) 
   if (estimate == null || estimate === '') errs.push('--estimate is required');
   else {
     const n = parseFloat(String(estimate).replace(/h$/i, ''));
-    if (!Number.isFinite(n) || n <= 0) errs.push('--estimate must be a positive number (e.g. 4 or 4h)');
+    if (!Number.isFinite(n) || n <= 0)
+      errs.push('--estimate must be a positive number (e.g. 4 or 4h)');
   }
   if (!priority) errs.push('--priority is required');
   else if (!PRIORITY_ENUM.includes(String(priority).toLowerCase())) {
@@ -94,7 +92,7 @@ export function validateArgs({ issueNumber, size, estimate, priority, reason }) 
   if (errs.length) throw new Error(`refine: ${errs.join('; ')}`);
 }
 
-export function buildRationaleMarker({ size, estimate, priority, reason }) {
+export function buildRationaleMarker({ reason }) {
   const payload = JSON.stringify({
     size: reason,
     estimate: reason,
@@ -104,7 +102,9 @@ export function buildRationaleMarker({ size, estimate, priority, reason }) {
 }
 
 export function applyRationaleMarker(body, marker) {
-  const stripped = String(body || '').replace(RATIONALE_MARKER_RE, '').replace(/^\n+/, '');
+  const stripped = String(body || '')
+    .replace(RATIONALE_MARKER_RE, '')
+    .replace(/^\n+/, '');
   return `${marker}\n\n${stripped}`;
 }
 
@@ -173,7 +173,12 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
 
   // 2. Write the rationale marker (replace any existing one — last write wins).
   const body = await fetchBody({ issueNumber, repo: cfg.repo });
-  const marker = buildRationaleMarker({ size, estimate: estimateNum, priority: priorityNorm, reason });
+  const marker = buildRationaleMarker({
+    size,
+    estimate: estimateNum,
+    priority: priorityNorm,
+    reason,
+  });
   const newBody = applyRationaleMarker(body, marker);
   await writeBody({ issueNumber, repo: cfg.repo, body: newBody });
 

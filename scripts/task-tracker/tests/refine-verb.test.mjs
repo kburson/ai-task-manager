@@ -77,8 +77,7 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
     /--estimate is required/
   );
   assert.throws(
-    () =>
-      validateArgs({ issueNumber: 1, size: 'S', estimate: 'abc', priority: 'p1', reason: 'r' }),
+    () => validateArgs({ issueNumber: 1, size: 'S', estimate: 'abc', priority: 'p1', reason: 'r' }),
     /--estimate must be a positive number/
   );
   assert.throws(

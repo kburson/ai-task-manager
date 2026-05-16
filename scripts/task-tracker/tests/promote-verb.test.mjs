@@ -78,6 +78,11 @@ test('promote: refine→plan is a direct move-state call', async () => {
   assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'plan' }]);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /move:plan/);
+  // #140: stage-entry marker stamped on successful promote
+  assert.ok(
+    calls.writes.some((b) => /aitm-entered-plan:/.test(b)),
+    'aitm-entered-plan marker should be stamped on body write'
+  );
 });
 
 test('promote: plan→develop is a direct move-state call', async () => {
