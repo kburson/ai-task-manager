@@ -38,11 +38,12 @@ test('planEpicDevelopChildrenGate refuses when any child is in backlog', async (
   });
   assert.equal(result.ok, false);
   assert.equal(result.blockers.length, 1);
+  assert.match(result.blockers[0], /epic-children-not-at-refine/);
   assert.match(result.blockers[0], /#102/);
-  assert.equal(result.backloggedChildren.length, 1);
+  assert.equal(result.offendingChildren.length, 1);
 });
 
-test('planEpicDevelopChildrenGate passes when all children are past backlog', async () => {
+test('planEpicDevelopChildrenGate refuses when any child is PAST refine (children must not lead parent)', async () => {
   const result = await planEpicDevelopChildrenGate({
     cfg,
     issueNumber: 100,
@@ -50,7 +51,29 @@ test('planEpicDevelopChildrenGate passes when all children are past backlog', as
       fetchSiblings: stubFetch([
         { number: 101, state: 'refine', sequence: 1 },
         { number: 102, state: 'plan', sequence: 2 },
-        { number: 103, state: 'done', sequence: 3 },
+        { number: 103, state: 'develop', sequence: 3 },
+        { number: 104, state: 'done', sequence: 4 },
+      ]),
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.blockers[0], /epic-children-not-at-refine/);
+  assert.match(result.blockers[0], /#102/);
+  assert.match(result.blockers[0], /#103/);
+  assert.match(result.blockers[0], /#104/);
+  assert.doesNotMatch(result.blockers[0], /#101/);
+  assert.equal(result.offendingChildren.length, 3);
+});
+
+test('planEpicDevelopChildrenGate passes when all children are at refine', async () => {
+  const result = await planEpicDevelopChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([
+        { number: 101, state: 'refine', sequence: 1 },
+        { number: 102, state: 'refine', sequence: 2 },
+        { number: 103, state: 'refine', sequence: 3 },
       ]),
     },
   });

@@ -18,8 +18,6 @@ import { projectValuesForIssue, splitRepo, gql } from '../../gh/lib/github-proje
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { fetchEpicChildren } from './epic-children-gate.mjs';
 
-const REFINE_OR_LATER = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
-
 async function defaultFetchLabels({ cfg, issueNumber }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
@@ -88,11 +86,11 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
   }
 
   if (Array.isArray(children) && children.length > 0) {
-    const unrefined = children.filter((c) => !REFINE_OR_LATER.has(String(c.state || '').toLowerCase()));
-    if (unrefined.length) {
-      const lines = unrefined.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+    const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
+    if (offenders.length) {
+      const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
       blockers.push(
-        `refine-exit-children-unrefined: epic child(ren) still at backlog: ${lines.join(', ')}`
+        `refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): ${lines.join(', ')}`
       );
     }
   }

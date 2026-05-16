@@ -9,8 +9,6 @@
 
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 
-const BACKLOG_STATE = 'backlog';
-
 export async function fetchEpicChildren({ cfg, parentEpicNumber, deps = {} } = {}) {
   if (!cfg) throw new Error('fetchEpicChildren: cfg is required');
   if (!parentEpicNumber) throw new Error('fetchEpicChildren: parentEpicNumber is required');
@@ -39,15 +37,15 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  const backlogged = children.filter((c) => String(c.state || '').toLowerCase() === BACKLOG_STATE);
-  if (backlogged.length) {
-    const lines = backlogged.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+  const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
+  if (offenders.length) {
+    const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
       ok: false,
       blockers: [
-        `epic-children-backlog: refine these children before promoting the epic to Develop: ${lines.join(', ')}`,
+        `epic-children-not-at-refine: every child must be at refine before the epic promotes to Develop (children must not lead the parent): ${lines.join(', ')}`,
       ],
-      backloggedChildren: backlogged,
+      offendingChildren: offenders,
     };
   }
   return { ok: true, children };

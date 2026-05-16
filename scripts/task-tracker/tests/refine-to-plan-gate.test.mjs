@@ -68,10 +68,45 @@ test('epic with backlog child → blocker names child', async () => {
   });
   const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
   assert.equal(r.ok, false);
-  const childBlocker = r.blockers.find((b) => /children-unrefined/.test(b));
+  const childBlocker = r.blockers.find((b) => /children-not-at-refine/.test(b));
   assert.ok(childBlocker);
   assert.match(childBlocker, /#201/);
   assert.doesNotMatch(childBlocker, /#200/);
+});
+
+test('epic with past-refine child (plan/develop/etc.) → blocker; children must not lead parent', async () => {
+  const deps = makeDeps({
+    values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    children: [
+      { number: 300, state: 'refine' },
+      { number: 301, state: 'plan' },
+      { number: 302, state: 'develop' },
+      { number: 303, state: 'done' },
+    ],
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
+  assert.equal(r.ok, false);
+  const blk = r.blockers.find((b) => /children-not-at-refine/.test(b));
+  assert.ok(blk);
+  assert.match(blk, /#301/);
+  assert.match(blk, /#302/);
+  assert.match(blk, /#303/);
+  assert.doesNotMatch(blk, /#300/);
+});
+
+test('epic with all children at refine → ok', async () => {
+  const deps = makeDeps({
+    values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    children: [
+      { number: 400, state: 'refine' },
+      { number: 401, state: 'refine' },
+    ],
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.blockers, []);
 });
 
 test('non-epic (no children) skips child check', async () => {
