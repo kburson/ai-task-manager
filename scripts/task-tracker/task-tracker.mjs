@@ -201,6 +201,11 @@ if (_isMain)
           await verbPromote(ctx.rest, ctx.cfg);
           break;
         }
+        case 'refine': {
+          const { verbRefine } = await import('./verbs/refine.mjs');
+          await verbRefine(ctx.rest, ctx.cfg);
+          break;
+        }
         case 'demote': {
           const { verbDemote } = await import('./verbs/demote.mjs');
           await verbDemote(ctx.rest, ctx.cfg);
