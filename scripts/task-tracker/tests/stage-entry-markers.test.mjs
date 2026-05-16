@@ -5,6 +5,7 @@ import {
   parseEntryMarkers,
   verifyChainIntegrity,
   backfillEntryMarker,
+  stripEntryMarkersAfter,
   STAGES,
 } from '../lib/stage-entry-markers.mjs';
 
@@ -88,5 +89,54 @@ assert.throws(() => backfillEntryMarker('', 'mystery', 'ts', 'r'));
 
 // Missing ts throws
 assert.throws(() => stampEntryMarker('', 'refine', ''));
+
+// 10. stripEntryMarkersAfter: no-op when no future markers
+{
+  let body148 = stampEntryMarker('', 'backlog', '2026-01-01T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'refine', '2026-01-02T00:00:00Z');
+  const { body: out, stripped } = stripEntryMarkersAfter(body148, 'refine');
+  assert.deepEqual(stripped, []);
+  assert.equal(out, body148);
+}
+
+// 11. stripEntryMarkersAfter: strip single future marker
+{
+  let body148 = stampEntryMarker('', 'review', '2026-01-06T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'done', '2026-01-07T00:00:00Z');
+  const { body: out, stripped } = stripEntryMarkersAfter(body148, 'review');
+  assert.deepEqual(stripped, ['done']);
+  assert.doesNotMatch(out, /aitm-entered-done/);
+  assert.match(out, /aitm-entered-review/);
+}
+
+// 12. stripEntryMarkersAfter: strip multiple consecutive future markers
+{
+  let body148 = stampEntryMarker('', 'refine', '2026-01-02T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'plan', '2026-01-03T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'develop', '2026-01-04T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'test', '2026-01-05T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'review', '2026-01-06T00:00:00Z');
+  body148 = stampEntryMarker(body148, 'done', '2026-01-07T00:00:00Z');
+  const { body: out, stripped } = stripEntryMarkersAfter(body148, 'plan');
+  assert.deepEqual(stripped, ['develop', 'test', 'review', 'done']);
+  assert.match(out, /aitm-entered-refine/);
+  assert.match(out, /aitm-entered-plan/);
+  assert.doesNotMatch(out, /aitm-entered-develop/);
+  assert.doesNotMatch(out, /aitm-entered-test/);
+  assert.doesNotMatch(out, /aitm-entered-review/);
+  assert.doesNotMatch(out, /aitm-entered-done/);
+}
+
+// 13. stripEntryMarkersAfter: unknown stage throws
+assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
+
+// 14. stripEntryMarkersAfter: collapses blank line runs
+{
+  const messy =
+    'preamble\n\n<!-- aitm-entered-refine: 2026-01-02T00:00:00Z -->\n\n<!-- aitm-entered-done: 2026-01-07T00:00:00Z -->\n\ntrailing\n';
+  const { body: out, stripped } = stripEntryMarkersAfter(messy, 'refine');
+  assert.deepEqual(stripped, ['done']);
+  assert.doesNotMatch(out, /\n{3,}/);
+}
 
 console.log('stage-entry-markers.test.mjs: all passed');

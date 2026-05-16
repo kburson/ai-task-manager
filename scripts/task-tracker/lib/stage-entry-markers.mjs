@@ -95,6 +95,28 @@ export function verifyChainIntegrity(body, currentStage) {
   return { ok: holes.length === 0 && !outOfOrder, presentStages, holes, outOfOrder };
 }
 
+export function stripEntryMarkersAfter(body, stage) {
+  if (!KNOWN_STAGES.has(stage)) {
+    throw new Error(`stripEntryMarkersAfter: unknown stage "${stage}"`);
+  }
+  const src = String(body || '');
+  const idx = STAGE_INDEX[stage];
+  const stripped = [];
+  let out = src;
+  for (let i = idx + 1; i < STAGES.length; i++) {
+    const future = STAGES[i];
+    const re = new RegExp(`[ \\t]*<!--\\s*aitm-entered-${future}:[^>]*?-->[ \\t]*\\n?`, 'gi');
+    if (re.test(out)) {
+      out = out.replace(re, '');
+      stripped.push(future);
+    }
+  }
+  if (stripped.length > 0) {
+    out = out.replace(/\n{3,}/g, '\n\n');
+  }
+  return { body: out, stripped };
+}
+
 export function backfillEntryMarker(body, stage, ts, reason) {
   if (!KNOWN_STAGES.has(stage)) {
     throw new Error(`backfillEntryMarker: unknown stage "${stage}"`);

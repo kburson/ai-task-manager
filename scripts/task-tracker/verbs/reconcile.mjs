@@ -28,6 +28,7 @@ import {
   postTimingEvent,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { stripEntryMarkersAfter } from '../lib/stage-entry-markers.mjs';
 import { loadState, saveState } from '../state.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
@@ -185,9 +186,11 @@ export async function runReconcile({
       };
     }
     const stamped = writeLastKnownState(body, live);
-    await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
+    const { body: cleaned, stripped } = stripEntryMarkersAfter(stamped, live);
+    await writeIssueBody({ issueNumber, repo: cfg.repo, body: cleaned });
     persistTrackerState({ issueNumber, state: live });
     try {
+      const strippedNote = stripped.length > 0 ? `; stripped: ${stripped.join(', ')}` : '';
       const row = buildRow({
         ts: now(),
         event: 'drift-reconcile',
@@ -195,11 +198,11 @@ export async function runReconcile({
         idleMin: 0,
         deltaWords: 0,
         wordMarker: 0,
-        description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}"`,
+        description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}"${strippedNote}`,
       });
       await postTimingRow({ issueNumber, repo: cfg.repo, row });
     } catch {}
-    return { status: 'reconciled', mode, from: recorded, to: live };
+    return { status: 'reconciled', mode, from: recorded, to: live, stripped };
   }
 
   // revert-to-recorded

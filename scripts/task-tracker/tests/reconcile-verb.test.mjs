@@ -105,6 +105,48 @@ test('reconcile accept-live: no live state → error', async () => {
   assert.equal(calls.writes.length, 0);
 });
 
+test('reconcile accept-live: strips future entry markers + names them in timing row (#148 regression)', async () => {
+  // #140 scenario: lying review→done left aitm-entered-done + last-known=done
+  // on body, but live state remained review. Accept-live must roll back state
+  // marker AND strip the bogus entered-done marker.
+  const body =
+    '<!-- aitm-last-known-state: done -->\n' +
+    '<!-- aitm-last-known-state-ts: 2026-05-16T16:37:00Z -->\n' +
+    '\n' +
+    '<!-- aitm-entered-review: 2026-05-16T16:30:00Z -->\n' +
+    '\n' +
+    '<!-- aitm-entered-done: 2026-05-16T16:37:00Z -->\n' +
+    '\n' +
+    'body.\n';
+  const { deps, calls } = makeDeps({ body, live: 'review' });
+  const r = await runReconcile({ issueNumber: 148, mode: 'accept-live', cfg, deps });
+  assert.equal(r.status, 'reconciled');
+  assert.deepEqual(r.stripped, ['done']);
+  assert.equal(calls.writes.length, 1);
+  assert.match(calls.writes[0], /aitm-last-known-state: review/);
+  assert.match(calls.writes[0], /aitm-entered-review/);
+  assert.doesNotMatch(calls.writes[0], /aitm-entered-done/);
+  assert.equal(calls.timings.length, 1);
+  assert.match(calls.timings[0], /stripped: done/);
+});
+
+test('reconcile revert-to-recorded: does NOT strip future entry markers', async () => {
+  const body =
+    '<!-- aitm-last-known-state: plan -->\n' +
+    '<!-- aitm-last-known-state-ts: 2026-05-16T16:00:00Z -->\n' +
+    '\n' +
+    '<!-- aitm-entered-develop: 2026-05-16T16:10:00Z -->\n' +
+    '\n' +
+    'body.\n';
+  const { deps, calls } = makeDeps({ body, live: 'develop' });
+  const r = await runReconcile({ issueNumber: 149, mode: 'revert-to-recorded', cfg, deps });
+  assert.equal(r.status, 'reconciled');
+  assert.equal(r.mode, 'revert-to-recorded');
+  // revert path does not touch body — only board state via move-state.
+  assert.equal(calls.writes.length, 0);
+  assert.deepEqual(calls.moves, [{ issueNumber: 149, target: 'plan' }]);
+});
+
 test('reconcile revert: transition-failed when move-state exits non-zero', async () => {
   const { deps, calls } = makeDeps({
     body: bodyWithState('plan'),
