@@ -24,20 +24,40 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
-// Internal-only gate. move-state.mjs is the chokepoint script for state changes;
-// agents must reach it through `/task` verbs, not by shelling out directly. The
-// /task chokepoint sets AITM_INTERNAL=1 before spawning this script. A human at
-// a TTY may run the script directly. Anything else (non-TTY, no env var) is an
-// agent trying to bypass the gates — refuse with a clear pointer.
+// Verb-pipeline gate. move-state.mjs is the chokepoint script for state changes;
+// agents must reach it through `/task` verbs, not by shelling out directly. Each
+// verb sets `AITM_VERB_CONTEXT=<verb>` before spawning this script (legacy
+// `AITM_INTERNAL=1` is treated as equivalent for back-compat). A human at a TTY
+// may run the script directly. Out-of-band emergency moves pass
+// `--out-of-band <reason>` to bypass the env-check while writing a visible
+// audit trail. The per-install config flag `directMoveStateAllowed: true`
+// permits non-verb invocation with a per-call warning.
+const AITM_VERB_CONTEXT = String(process.env.AITM_VERB_CONTEXT || '').trim();
 const AITM_INTERNAL = process.env.AITM_INTERNAL === '1';
+const HAS_VERB_ENV = AITM_VERB_CONTEXT.length > 0 || AITM_INTERNAL;
 const IS_TTY = Boolean(process.stdin.isTTY);
-if (!AITM_INTERNAL && !IS_TTY) {
-  process.stderr.write(
-    'move-state.mjs is internal. Agents must use /task move <state>.\n' +
-      'If you are running this manually from a non-TTY shell (CI, pipe, redirect),\n' +
-      'set AITM_INTERNAL=1 to confirm.\n'
-  );
-  process.exit(3);
+
+// --out-of-band <reason> parsing (must run before the gate decision so we can
+// permit + audit). Reason is a non-empty string; empty reason refuses.
+let outOfBandReason = '';
+{
+  const idx = process.argv.indexOf('--out-of-band');
+  if (idx !== -1) {
+    const raw = process.argv[idx + 1];
+    if (raw === undefined || String(raw).trim() === '') {
+      process.stderr.write('move-state.mjs: --out-of-band requires a non-empty <reason>\n');
+      process.exit(2);
+    }
+    outOfBandReason = String(raw).trim();
+  }
+}
+
+function refusalVerbHint(targetState) {
+  const forward = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
+  const backward = new Set(['backlog']);
+  if (forward.has(targetState)) return '/task promote';
+  if (backward.has(targetState)) return '/task demote';
+  return '/task reconcile';
 }
 
 const STATE_TO_CONFIG_KEY = {
@@ -86,6 +106,24 @@ if (!configKey) {
 }
 
 const cfg = loadConfig();
+
+// Verb-pipeline gate decision (precedence): env → --out-of-band → cfg → TTY → refuse.
+const directAllowed = cfg.directMoveStateAllowed === true;
+if (!HAS_VERB_ENV && !outOfBandReason && !directAllowed && !IS_TTY) {
+  const verbHint = refusalVerbHint(stateArg);
+  process.stderr.write(
+    `move-state.mjs is internal; agents must reach it through the verb pipeline.\n` +
+      `Use ${verbHint} for ${stateArg}, or pass --out-of-band <reason> to record an emergency move.\n` +
+      `For one-off manual recovery from a non-TTY shell, set AITM_VERB_CONTEXT=<verb> (or AITM_INTERNAL=1) to confirm.\n`
+  );
+  process.exit(3);
+}
+if (!HAS_VERB_ENV && !outOfBandReason && directAllowed && !IS_TTY) {
+  process.stderr.write(
+    `⚠ directMoveStateAllowed=true — permitting non-verb move-state invocation for #${issueArg} → ${stateArg}.\n` +
+      `   Prefer routing through the /task verb pipeline.\n`
+  );
+}
 
 if (!SKIP_NETWORK && (!cfg.projectId || !cfg.kanbanFieldId)) {
   process.stderr.write('Error: Kanban board not configured. Run: npx ai-task-manager init\n');
@@ -413,6 +451,35 @@ if (!SKIP_NETWORK) {
 }
 
 console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
+
+// Out-of-band audit trail: visible comment + timing-log row. Best-effort —
+// failures do not roll back the board move.
+if (outOfBandReason && !SKIP_NETWORK) {
+  const ts = new Date().toISOString();
+  const fromLabel = resolvedFromState || '?';
+  const auditMarker = `<!-- aitm-out-of-band-move: ${fromLabel}→${stateArg}:${outOfBandReason}:${ts} -->`;
+  const auditBody = `⚠ **Out-of-band move-state** ${fromLabel} → ${stateArg} at ${ts}.\nReason: ${outOfBandReason}\n\n${auditMarker}`;
+  try {
+    await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', auditBody]);
+  } catch {
+    /* best-effort */
+  }
+  try {
+    const { buildRow, postTimingEvent } = await import('../task-tracker/gh-timing-comment.mjs');
+    const row = buildRow({
+      ts,
+      event: 'out-of-band-move',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 0,
+      description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
+    });
+    await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+  } catch {
+    /* best-effort */
+  }
+}
 
 // Persist new kanban state to tracker-state if this issue is the active task.
 // activity-guard reads `state` to gate write activity classes; without this,

@@ -131,7 +131,7 @@ function defaultRunMoveState({ issueNumber, target }) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, String(issueNumber), target], {
       stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env, AITM_INTERNAL: '1' },
+      env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
       timeout: GH_API_TIMEOUT_MS * 2,
     });
     child.on('exit', (code) => resolve(code ?? 1));

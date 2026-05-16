@@ -60,7 +60,7 @@ async function main() {
   await pexec('node', [moveScript, args.issue, 'develop'], {
     // move-state internally makes gh calls; gh-class budget is the right floor.
     timeout: GH_API_TIMEOUT_MS,
-    env: { ...process.env, AITM_INTERNAL: '1' },
+    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'dispatch' },
   });
 
   // 2. Post a `start` row so the issue's timing log shows the dispatch moment

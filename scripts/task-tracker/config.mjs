@@ -55,6 +55,10 @@ export const DEFAULTS = {
   // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
   gateAnalysisToDevelopment: true,
   gateReviewToDone: true,
+  // Verb-pipeline gate (#141). When false (default), non-verb invocations of
+  // move-state.mjs without `--out-of-band <reason>` are refused unless a human
+  // is at a TTY. Set true to permit direct invocation with a per-call warning.
+  directMoveStateAllowed: false,
   // Orphan GC threshold for `.claude/task-tracker.session.*.json`. (#89)
   deadSessionMaxAgeMs: 604800000,
 };
@@ -98,6 +102,7 @@ const TYPES = {
   pickupDirective: 'boolean',
   gateAnalysisToDevelopment: 'boolean',
   gateReviewToDone: 'boolean',
+  directMoveStateAllowed: 'boolean',
   deadSessionMaxAgeMs: 'number',
 };
 
@@ -286,6 +291,7 @@ const USER_KEYS = [
   'pickupDirective',
   'gateAnalysisToDevelopment',
   'gateReviewToDone',
+  'directMoveStateAllowed',
   'deadSessionMaxAgeMs',
   'statePath',
   'queuePath',

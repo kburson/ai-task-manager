@@ -213,7 +213,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
     const issueNum = String(issue).replace(/^#/, '');
     try {
-      const mergedEnv = { ...process.env, ...(envOverride || {}), AITM_INTERNAL: '1' };
+      const mergedEnv = {
+        ...process.env,
+        ...(envOverride || {}),
+        AITM_INTERNAL: '1',
+        AITM_VERB_CONTEXT: 'runtime',
+      };
       const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], {
         timeout: GH_API_TIMEOUT_MS,
         env: mergedEnv,
