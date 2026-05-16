@@ -131,6 +131,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED: plan -> develop requires/);
+  assert.match(e.stderr, /plan-approve/, 'gate message must name the plan-approve command');
   rmSync(sandbox, { recursive: true });
 }
 

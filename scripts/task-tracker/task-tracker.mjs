@@ -190,6 +190,11 @@ if (_isMain)
           await verbApprove(ctx.rest, ctx.cfg);
           break;
         }
+        case 'plan-approve': {
+          const { verbPlanApprove } = await import('./verbs/plan-approve.mjs');
+          await verbPlanApprove(ctx.rest, ctx.cfg);
+          break;
+        }
         case 'promote':
         case 'next': {
           const { verbPromote } = await import('./verbs/promote.mjs');

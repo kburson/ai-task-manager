@@ -41,6 +41,10 @@ export function insertReviewApprovedMarker(body, ts) {
   return insertMarkerBeforeFieldDb(body, REVIEW_APPROVED_RE, buildReviewApprovedMarker(ts));
 }
 
+export function insertPlanApprovedMarker(body, ts) {
+  return insertMarkerBeforeFieldDb(body, PLAN_APPROVED_RE, buildPlanApprovedMarker(ts));
+}
+
 // ---------------------------------------------------------------------------
 // deep-dive-complete (structural prerequisite for analyze → development)
 // ---------------------------------------------------------------------------

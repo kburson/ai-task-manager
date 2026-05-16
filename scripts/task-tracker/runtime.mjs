@@ -69,6 +69,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     'close',
     'review',
     'approve',
+    'plan-approve',
     'promote',
     'demote',
     'next',

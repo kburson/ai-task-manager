@@ -51,12 +51,21 @@ function makeDeps(overrides = {}) {
   };
 }
 
-// 1. wrong-state when not in review
+// 1. wrong-state when not in review (develop)
 {
   const { deps, calls } = makeDeps({ state: 'develop' });
   const r = await runApprove({ issueNumber: 58, cfg, deps });
   assert.equal(r.status, 'wrong-state');
   assert.match(r.message, /develop/);
+  assert.equal(calls.writes.length, 0);
+}
+
+// 1b. wrong-state when in plan (Review approval cannot approve Plan)
+{
+  const { deps, calls } = makeDeps({ state: 'plan' });
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'wrong-state');
+  assert.match(r.message, /plan/);
   assert.equal(calls.writes.length, 0);
 }
 

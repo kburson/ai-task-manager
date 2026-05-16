@@ -324,7 +324,7 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
   const planDevelopBlockers = [];
   if (!approved)
     planDevelopBlockers.push(
-      'plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker in the body (run the approve verb to solicit human approval)'
+      'plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker in the body (run `/task plan-approve #<N>` to record human approval)'
     );
   if (!deepDiveMarker)
     planDevelopBlockers.push(
