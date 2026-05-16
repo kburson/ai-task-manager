@@ -25,10 +25,8 @@ These rules apply to every verb. Skipping any is a process failure.
 6. **Pause on blocking question.** Before any blocking user prompt: `/task pause "pause for question"`. After answer: `/task start "question answered"`. The clock reflects focused work only.
 7. **Dirty-workspace gate exists.** Review verb warns; close verb blocks. See `rules/review.md` and `rules/close.md` for details.
 8. **`--role` flag at bind.** Solo issue picked up directly: omit (defaults to `solo`). Starting an epic to fan out to agents: `--role orchestrator`. Agent picking up a sub-issue via Pickup Directive: `--role agent` (set in pickup-directive.md).
-9. **Deep-dive checkpoint before code.** Plan-state issues must have `<!-- aitm-deep-dive-complete: <ts> -->` in the body before any code edit. Write the marker via `/task check "Deep dive complete"` after appending the deep-dive appendix (AFTER Pickup Directive, BEFORE the `aitm-fields` block).
-10. **Per-AC verification, no bulk-checking.** Verify by inspection AND by running the relevant test/build/command. Tick each with `/task check "<exact label>"`. Bind each AC to evidence with an `aitm-verified-by` HTML comment marker.
-11. **`/task review` is the agent terminal step. Stop there.** Never run `/task close` without explicit human instruction.
-12. **Honor project preferences.** Read `.ai-task-manager/task-tracker.json#preferences` at session start (`getPreferences()` from `scripts/task-tracker/config.mjs`). Keys: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`. See `rules/preferences.md`.
+9. **Pickup-directive contracts.** Deep-dive-before-code, per-AC verification (no bulk-checking), and `/task review` as the agent terminal step are defined in `.ai-task-manager/pickup-directive.md` Hard Rules. Honor them on every pickup.
+10. **Honor project preferences.** Read `.ai-task-manager/task-tracker.json#preferences` at session start (`getPreferences()` from `scripts/task-tracker/config.mjs`). Keys: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`. See `rules/preferences.md`.
 
 ## CLI invocation
 
