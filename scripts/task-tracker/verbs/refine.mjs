@@ -19,6 +19,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { tetherIssueToProject } from '../../gh/lib/project-tether.mjs';
+import { fieldOptionMap } from '../../gh/lib/github-projects.mjs';
 import { verbPromote } from './promote.mjs';
 import {
   parseRationaleMarker,
@@ -147,13 +148,23 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   const priorityNorm = String(priority).toLowerCase();
 
   const tether = deps.tetherIssueToProject || tetherIssueToProject;
+  const loadFieldOptionMap = deps.fieldOptionMap || fieldOptionMap;
   const fetchBody = deps.fetchBody || defaultFetchBody;
   const writeBody = deps.writeBody || defaultWriteBody;
   const promote = deps.verbPromote || verbPromote;
 
-  // 1. Set Priority + Size + Estimate atomically on the project board.
+  // 1. Pre-load size option IDs from the project so tetherIssueToProject can
+  //    resolve `size: 'S'` → option ID without requiring the config file to
+  //    carry sizeOptions (which most installs don't).
+  let cfgForTether = cfg;
+  if (cfg.sizeFieldId && !cfg.sizeOptions && !cfg.sizeOptionMap) {
+    const optMap = await loadFieldOptionMap(cfg.projectId);
+    cfgForTether = { ...cfg, sizeOptionMap: optMap };
+  }
+
+  // 2. Set Priority + Size + Estimate atomically on the project board.
   await tether({
-    cfg,
+    cfg: cfgForTether,
     issueNumber,
     priority: priorityNorm,
     size,
