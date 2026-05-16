@@ -155,8 +155,13 @@ if (_isMain)
         case 'migrate':
           await ctx.runMigrate(ctx.rest);
           break;
+        case 'discover': {
+          const { verbDiscover } = await import('./verbs/discover.mjs');
+          await verbDiscover(ctx);
+          break;
+        }
         case 'plan': {
-          const { verbPlan } = await import('./verbs/plan.mjs');
+          const { verbPlan } = await import('./verbs/discover.mjs');
           await verbPlan(ctx);
           break;
         }

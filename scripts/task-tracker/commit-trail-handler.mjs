@@ -59,7 +59,7 @@ function loadActiveIssue(projectDir) {
   try {
     const s = JSON.parse(readFileSync(statePath, 'utf8'));
     const active = s.active;
-    if (!active || active === 'plan') return null;
+    if (!active || active === 'discover' || active === 'plan') return null;
     const m = String(active).match(/^#?(\d+)$/);
     return m ? m[1] : null;
   } catch {

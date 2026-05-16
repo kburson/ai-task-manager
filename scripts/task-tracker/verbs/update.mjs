@@ -11,7 +11,7 @@ export async function verbUpdate(ctx) {
   const { statePath, rest, drainQueueIfAny, flushActiveToGH } = ctx;
   await drainQueueIfAny();
   const s = loadState(statePath);
-  if (!s.active || s.active === 'plan') {
+  if (!s.active || s.active === 'discover') {
     console.log('nothing to update');
     return;
   }

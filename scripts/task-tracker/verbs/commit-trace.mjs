@@ -16,7 +16,7 @@ export async function verbCommitTrace(ctx) {
   const { cfg, statePath, projectDir, rest } = ctx;
   const s = loadState(statePath);
   const target =
-    rest.find((a) => /^#?\d+$/.test(a)) || (s.active && s.active !== 'plan' ? s.active : null);
+    rest.find((a) => /^#?\d+$/.test(a)) || (s.active && s.active !== 'discover' ? s.active : null);
   if (!target) {
     process.stderr.write('Usage: /task commit-trace #N\n');
     process.exit(1);

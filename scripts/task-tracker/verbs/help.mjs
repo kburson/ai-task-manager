@@ -6,7 +6,7 @@ Task Tracker — available commands
   /task                     Show active task, elapsed time, words since last marker
   /task #N                  Start or switch to issue #N
   /task new [title]         Create a new issue and start tracking it
-  /task plan                Open an untracked planning bucket
+  /task discover            Open an untracked discovery bucket (pre-backlog ideation)
   /task pause               Flush timing and pause the active task
   /task resume              Resume the last paused task
   /task resume #N           Switch back to a specific paused task

@@ -51,9 +51,9 @@ export async function verbNew(ctx) {
   await drainQueueIfAny();
   const title = rest.join(' ').trim() || `Task ${new Date().toISOString().slice(0, 10)}`;
   const s = loadState(statePath);
-  const wasPlan = s.active === 'plan' && s.planBucket;
+  const wasDiscover = s.active === 'discover' && s.discoverBucket;
   let previousNote = '';
-  if (s.active && s.active !== 'plan' && cfg.autoEndOnSwitch) {
+  if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
     const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
     previousNote = ` Previous: ${s.active} ended (+${deltaMin} min, +${deltaWords} words).`;
   }
@@ -72,18 +72,18 @@ export async function verbNew(ctx) {
       description: 'task created',
     })
   );
-  if (wasPlan && !SKIP_NETWORK) {
-    for (const e of s.planBucket.entries) {
+  if (wasDiscover && !SKIP_NETWORK) {
+    for (const e of s.discoverBucket.entries) {
       await safePostTiming(
         issue,
         buildRow({
           ts: e.ts,
-          event: `planning: ${e.event}`,
+          event: `discovery: ${e.event}`,
           activeMin: e.deltaMin ?? 0,
           idleMin: 0,
           deltaWords: e.deltaWords ?? 0,
-          wordMarker: s.planBucket.wordsAtStart,
-          description: 'planning session',
+          wordMarker: s.discoverBucket.wordsAtStart,
+          description: 'discovery session',
         })
       );
     }

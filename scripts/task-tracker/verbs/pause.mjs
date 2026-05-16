@@ -5,7 +5,7 @@ export async function verbPause(ctx) {
   const { statePath, projectDir, rest, drainQueueIfAny, flushActiveToGH } = ctx;
   await drainQueueIfAny();
   const s = loadState(statePath);
-  if (!s.active || s.active === 'plan') {
+  if (!s.active || s.active === 'discover') {
     console.log('nothing to pause');
     return;
   }

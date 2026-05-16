@@ -8,9 +8,20 @@ export const EMPTY_STATE = {
   entryStartTs: null,
   wordsAtEntryStart: 0,
   totalActiveMinutes: 0,
-  planBucket: null,
+  discoverBucket: null,
   state: null,
 };
+
+function migrateLegacyFields(parsed) {
+  const out = { ...parsed };
+  if (out.planBucket != null && out.discoverBucket == null) {
+    out.discoverBucket = out.planBucket;
+  }
+  delete out.planBucket;
+  if (out.active === 'plan') out.active = 'discover';
+  if (out.lastActive === 'plan') out.lastActive = 'discover';
+  return out;
+}
 
 export function loadState(statePath) {
   let readPath = statePath;
@@ -21,7 +32,7 @@ export function loadState(statePath) {
   if (!existsSync(readPath)) return { ...EMPTY_STATE };
   try {
     const parsed = JSON.parse(readFileSync(readPath, 'utf8'));
-    return { ...EMPTY_STATE, ...parsed };
+    return { ...EMPTY_STATE, ...migrateLegacyFields(parsed) };
   } catch {
     return { ...EMPTY_STATE };
   }
@@ -37,7 +48,7 @@ export function clearActive(statePath) {
   s.active = null;
   s.entryStartTs = null;
   s.wordsAtEntryStart = 0;
-  s.planBucket = null;
+  s.discoverBucket = null;
   s.state = null;
   // keep lastActive
   saveState(s, statePath);

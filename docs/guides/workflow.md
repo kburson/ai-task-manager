@@ -43,7 +43,8 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | Verb | Enters stage | Notes |
 |---|---|---|
 | `/task refine #N` | Refine | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine. |
-| `/task plan #N` | Plan | (Reserved; current `/task plan` opens an untracked planning bucket — to be disambiguated.) |
+| `/task discover` | (pre-backlog ideation) | Opens an untracked discovery bucket; promote to an issue with `/task new <title>`. Legacy `/task plan` is a deprecated alias. |
+| `/task plan #N` | Plan | (Reserved; currently use `/task promote` from Refine.) |
 | `/task develop #N` | Develop | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.) |
 | `/task verify #N` | Test | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.) |
 | `/task review #N` | Review | Promotes Test → Review after verification passes. |
@@ -353,7 +354,7 @@ gh issue create \
   --assignee <your-login>
 ```
 
-Use `/task plan` in Claude Code to open an untracked planning bucket; use `/task new <title>` to promote it to a real issue when the scope is clear.
+Use `/task discover` in Claude Code to open an untracked discovery bucket; use `/task new <title>` to promote it to a real issue when the scope is clear. (Legacy `/task plan` still works with a deprecation warning.)
 
 ---
 

@@ -66,9 +66,9 @@ export async function verbClose(ctx) {
     }
   }
 
-  if (closeTarget === 'plan') {
-    console.log('Discarded planning bucket.');
-    saveState({ ...s, active: null, planBucket: null }, statePath);
+  if (closeTarget === 'discover') {
+    console.log('Discarded discovery bucket.');
+    saveState({ ...s, active: null, discoverBucket: null }, statePath);
     return;
   }
 

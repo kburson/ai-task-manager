@@ -20,7 +20,7 @@ const sample = {
   lastActive: '#107',
   entryStartTs: '2026-04-24T14:02:00Z',
   wordsAtEntryStart: 82140,
-  planBucket: null,
+  discoverBucket: null,
 };
 saveState(sample, statePath);
 s = loadState(statePath);
@@ -53,18 +53,33 @@ assert.equal(s.active, null);
 assert.equal(s.state, null);
 assert.equal(s.lastActive, '#400');
 
-// Test 4: plan bucket round-trip
+// Test 4: discover bucket round-trip
 saveState(
   {
-    active: 'plan',
+    active: 'discover',
     lastActive: '#107',
-    planBucket: { startedAt: 'x', wordsAtStart: 0, entries: [{ ts: 'y', event: 'start' }] },
+    discoverBucket: { startedAt: 'x', wordsAtStart: 0, entries: [{ ts: 'y', event: 'start' }] },
   },
   statePath
 );
 s = loadState(statePath);
-assert.equal(s.active, 'plan');
-assert.equal(s.planBucket.entries.length, 1);
+assert.equal(s.active, 'discover');
+assert.equal(s.discoverBucket.entries.length, 1);
+
+// Test 4b: legacy planBucket + 'plan' sentinel migrates on load
+saveState(
+  {
+    active: 'plan',
+    lastActive: 'plan',
+    planBucket: { startedAt: 'x', wordsAtStart: 0, entries: [] },
+  },
+  statePath
+);
+s = loadState(statePath);
+assert.equal(s.active, 'discover', 'legacy plan sentinel migrates to discover');
+assert.equal(s.lastActive, 'discover', 'legacy plan in lastActive migrates');
+assert.ok(s.discoverBucket, 'planBucket migrates to discoverBucket');
+assert.equal(s.planBucket, undefined, 'legacy planBucket is dropped');
 
 // Test 5: corrupt file returns empty state (does not throw)
 writeFileSync(statePath, '{not json');

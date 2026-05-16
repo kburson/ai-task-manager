@@ -31,7 +31,7 @@ export async function verbSwitch(ctx, target) {
   await drainQueueIfAny();
   const s = loadState(statePath);
   let previousNote = '';
-  if (s.active && s.active !== 'plan' && cfg.autoEndOnSwitch) {
+  if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
     const previous = s.active;
     const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
     previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
@@ -39,8 +39,8 @@ export async function verbSwitch(ctx, target) {
     try {
       deregisterTask(projectDir, previous);
     } catch {}
-  } else if (s.active === 'plan') {
-    console.log('Discarding planning bucket (switch to concrete issue).');
+  } else if (s.active === 'discover') {
+    console.log('Discarding discovery bucket (switch to concrete issue).');
   }
   const ts = nowIso();
   const sid = currentSessionId();

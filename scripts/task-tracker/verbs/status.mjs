@@ -15,12 +15,12 @@ export async function verbStatus(ctx) {
   if (!s.active) {
     if (s.lastActive)
       console.log(`No active task. Last active: ${s.lastActive}. Use "/task start" to resume.`);
-    else console.log('No active task. Use "/task #N" or "/task plan" to start.');
+    else console.log('No active task. Use "/task #N" or "/task discover" to start.');
     return;
   }
-  if (s.active === 'plan') {
+  if (s.active === 'discover') {
     console.log(
-      `Active: planning bucket (started ${s.planBucket?.startedAt}). Use "/task new" to promote.`
+      `Active: discovery bucket (started ${s.discoverBucket?.startedAt}). Use "/task new" to promote.`
     );
     return;
   }

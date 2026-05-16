@@ -61,12 +61,17 @@ r5 = await pexec('node', [CLI, '#108'], { env });
 assert.match(r5.stdout, /Active: #108/);
 assert.match(r5.stdout, /Previous: #107/);
 
-// Test 10: /task plan starts planning bucket
-r5 = await pexec('node', [CLI, 'plan'], { env });
-assert.match(r5.stdout, /planning bucket/i);
+// Test 10: /task discover starts discovery bucket
+r5 = await pexec('node', [CLI, 'discover'], { env });
+assert.match(r5.stdout, /discovery bucket/i);
 
 r5 = await pexec('node', [CLI, 'status'], { env });
-assert.match(r5.stdout, /planning bucket/i);
+assert.match(r5.stdout, /discovery bucket/i);
+
+// Test 10b: legacy /task plan alias still works, emits deprecation warning
+r5 = await pexec('node', [CLI, 'plan'], { env });
+assert.match(r5.stdout, /discovery bucket/i);
+assert.match(r5.stderr, /DEPRECATED.*\/task plan/);
 
 // Test 11: /task new "Title" with network skip just clears bucket
 const envNew = { ...env, TT_FAKE_NEW_ISSUE: '#999' };
@@ -126,7 +131,7 @@ for (const blockedVerb of [
   '#42',
   'close',
   'pause',
-  'plan',
+  'discover',
   'new',
   'update',
   'review',

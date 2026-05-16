@@ -50,7 +50,7 @@ async function safePost(issue, row) {
 
 async function onPreCompact(sid) {
   const s = loadState(statePath);
-  if (!s.active || s.active === 'plan') return;
+  if (!s.active || s.active === 'discover') return;
   const marker = loadMarker(markerPathFor(sid));
   const { count: newWords, totalLines } = countWords(jsonlPath(sid), marker.line);
   const ts = new Date().toISOString();
@@ -80,7 +80,7 @@ async function onPreCompact(sid) {
 
 async function onPostCompact(sid) {
   const s = loadState(statePath);
-  if (!s.active || s.active === 'plan') return;
+  if (!s.active || s.active === 'discover') return;
   const { totalLines } = countWords(jsonlPath(sid), 0);
   saveMarker(markerPathFor(sid), totalLines, 0, s.active);
   const row = buildRow({
@@ -160,12 +160,12 @@ async function onSessionStart(sid) {
     return;
   }
 
-  // Planning bucket active
-  if (s.active === 'plan') {
-    console.log('[task-tracker] Planning bucket active. Use /task new to promote to an issue.');
+  // Discovery bucket active
+  if (s.active === 'discover') {
+    console.log('[task-tracker] Discovery bucket active. Use /task new to promote to an issue.');
     if (sid) {
       const { totalLines } = countWords(jsonlPath(sid), 0);
-      saveMarker(markerPathFor(sid), totalLines, 0, 'plan');
+      saveMarker(markerPathFor(sid), totalLines, 0, 'discover');
     }
     return;
   }

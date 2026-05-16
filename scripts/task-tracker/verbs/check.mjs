@@ -7,7 +7,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 export async function verbCheck(ctx) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
   const s = loadState(statePath);
-  if (!s.active || s.active === 'plan') {
+  if (!s.active || s.active === 'discover') {
     console.error('no active task');
     process.exit(1);
   }
