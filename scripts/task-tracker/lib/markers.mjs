@@ -77,6 +77,74 @@ export function hasDeepDiveEvidence(body) {
   return hasDeepDiveCompleteMarker(body) || hasDeepDiveHeading(body);
 }
 
+export const DEEP_DIVE_DETAILS_SUMMARY =
+  'Deep-Dive Analysis (collapsed on plan approval — expand if revisiting scope)';
+
+// Wrap the `## Deep-Dive Analysis` section in a <details> block so it
+// collapses in the GitHub UI after plan approval. Section extends from the
+// heading through either the field-DB block, the next top-level (`## `)
+// heading, or the end of the body — whichever comes first.
+//
+// Idempotent: returns the body unchanged if a <details> block already
+// precedes the heading, or if no deep-dive section is present.
+export function wrapDeepDiveInDetails(body) {
+  const src = String(body || '');
+  if (!hasDeepDiveHeading(src)) return src;
+
+  const lines = src.split('\n');
+  let headingIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (DEEP_DIVE_HEADING_RE.test(lines[i])) {
+      headingIdx = i;
+      break;
+    }
+  }
+  if (headingIdx === -1) return src;
+
+  for (let i = headingIdx - 1; i >= 0; i--) {
+    const t = lines[i].trim();
+    if (t === '') continue;
+    if (t.startsWith('<details>')) return src;
+    if (t.startsWith('<summary>')) continue;
+    break;
+  }
+
+  let endIdx = lines.length;
+  for (let i = headingIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^##\s+/.test(line) && !DEEP_DIVE_HEADING_RE.test(line)) {
+      endIdx = i;
+      break;
+    }
+    if (/^<!--\s*aitm-fields:/.test(line)) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  while (endIdx > headingIdx + 1 && lines[endIdx - 1].trim() === '') endIdx--;
+
+  const before = lines.slice(0, headingIdx);
+  const section = lines.slice(headingIdx, endIdx);
+  const after = lines.slice(endIdx);
+
+  const wrapped = [
+    '<details>',
+    `<summary>${DEEP_DIVE_DETAILS_SUMMARY}</summary>`,
+    '',
+    ...section,
+    '',
+    '</details>',
+  ];
+
+  const out = [...before, ...wrapped];
+  if (after.length > 0) {
+    out.push('');
+    out.push(...after);
+  }
+  return out.join('\n');
+}
+
 // Backfill the marker on a legacy issue: if the heading is present and the
 // marker is absent, insert the marker at `ts`. Returns the (possibly
 // unchanged) body. Idempotent.

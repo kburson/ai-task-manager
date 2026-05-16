@@ -16,7 +16,11 @@ import { tmpdir } from 'node:os';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { getProjectDir } from '../paths.mjs';
-import { hasPlanApprovedMarker, insertPlanApprovedMarker } from '../lib/markers.mjs';
+import {
+  hasPlanApprovedMarker,
+  insertPlanApprovedMarker,
+  wrapDeepDiveInDetails,
+} from '../lib/markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -76,7 +80,8 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     return { status: 'already-approved' };
   }
   const ts = nowIso();
-  const updated = insertPlanApprovedMarker(body, ts);
+  const withMarker = insertPlanApprovedMarker(body, ts);
+  const updated = wrapDeepDiveInDetails(withMarker);
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
   return { status: 'approved', ts };
 }

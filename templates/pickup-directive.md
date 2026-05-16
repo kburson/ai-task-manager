@@ -84,7 +84,10 @@ required box is unchecked will be refused.
    - Why: the timer measures focused engagement. Idle time waiting for a human answer corrupts `engagedTime`/`sessionTime` and the value report.
    - Pause→resume gaps ≤ `reviewPauseThresholdMin` (default 5 min, configurable in `.ai-task-manager/task-tracker.json`) count as **Review Time** and roll into **Engaged Time**; longer gaps are excluded as idle.
 
-8. **On mistakes — stop and surface, do not self-correct.**
+8. **Skip collapsed `<details>` blocks unless told to expand.**
+   Issue bodies wrap the Deep-Dive Analysis appendix in a `<details>` block once `/task plan-approve` has run. Treat the wrapped content as already-applied context — do not re-read it on pickup unless the user explicitly asks you to revisit scope or expand the deep dive.
+
+9. **On mistakes — stop and surface, do not self-correct.**
    If you discover you have taken a wrong action (created a duplicate issue, used
    `gh issue close` directly, skipped the deep dive, dispatched agents without
    verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
