@@ -241,15 +241,61 @@ export async function runPromote({
     : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
 
   if (transitionResult.exitCode !== 0) {
+    // Option B drift reconcile (#132): alias verbs do multiple board moves
+    // (e.g. /task review moves `test` → verify → `develop`/`review`). When
+    // they exit non-zero mid-flight, the board may sit at an intermediate
+    // state while the marker still reads the recorded state. Re-read the
+    // live board and stamp the marker to whatever the board now says so
+    // the next verb does not reason from a stale marker.
+    let liveAfter = null;
+    try {
+      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
+    } catch {
+      liveAfter = null;
+    }
+    const drifted = liveAfter && liveAfter !== recorded;
+    if (drifted) {
+      try {
+        const { body: bodyDrift } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+        const stamped = writeLastKnownState(bodyDrift, liveAfter);
+        if (stamped !== bodyDrift) {
+          await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
+        }
+      } catch {
+        // best-effort — board is already in liveAfter
+      }
+      try {
+        const row = buildRow({
+          ts: now(),
+          event: 'drift-reconcile',
+          activeMin: 0,
+          idleMin: 0,
+          deltaWords: 0,
+          wordMarker: 0,
+          description: `${recorded} → ${liveAfter} (${
+            transitionResult.kind === 'alias'
+              ? `alias /task ${transitionResult.verb}`
+              : 'move-state'
+          } exited ${transitionResult.exitCode})`,
+        });
+        await postTimingRow({ issueNumber, repo: cfg.repo, row });
+      } catch {
+        // best-effort
+      }
+    }
     return {
       status: 'transition-failed',
       transitionResult,
+      reconciledTo: drifted ? liveAfter : null,
       message:
         `promote: ${
           transitionResult.kind === 'alias'
             ? `delegate /task ${transitionResult.verb}`
             : `move-state.mjs ${target}`
-        } exited ${transitionResult.exitCode}; ` + `recorded state left at "${recorded}".`,
+        } exited ${transitionResult.exitCode}; ` +
+        (drifted
+          ? `board drifted to "${liveAfter}"; marker reconciled.`
+          : `recorded state left at "${recorded}".`),
     };
   }
 

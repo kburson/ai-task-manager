@@ -10,14 +10,24 @@ import { runPromote } from '../verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
-function makeDeps({ body = '', live = null, spawnCode = 0, moveCode = 0, fetchSecondBody } = {}) {
+function makeDeps({
+  body = '',
+  live = null,
+  liveAfter,
+  liveThrowsAfter = false,
+  spawnCode = 0,
+  moveCode = 0,
+  fetchSecondBody,
+} = {}) {
   let secondFetch = false;
+  let liveCalls = 0;
   const calls = {
     writes: [],
     timings: [],
     spawns: [],
     moves: [],
     fetches: 0,
+    liveCalls: 0,
   };
   return {
     calls,
@@ -31,7 +41,13 @@ function makeDeps({ body = '', live = null, spawnCode = 0, moveCode = 0, fetchSe
       writeIssueBody: async ({ body: b }) => {
         calls.writes.push(b);
       },
-      getLiveState: async () => live,
+      getLiveState: async () => {
+        liveCalls++;
+        calls.liveCalls = liveCalls;
+        if (liveCalls === 1) return live;
+        if (liveThrowsAfter) throw new Error('boom');
+        return liveAfter !== undefined ? liveAfter : live;
+      },
       spawnVerb: async ({ verb, issueNumber }) => {
         calls.spawns.push({ verb, issueNumber });
         return spawnCode;
@@ -170,14 +186,61 @@ test('promote: transition-failed when alias verb exits non-zero — no metadata 
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
+    liveAfter: 'develop',
     spawnCode: 4,
   });
   const r = await runPromote({ issueNumber: 109, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.transitionResult.exitCode, 4);
-  // No timing row, no metadata write (bootstrap did not fire).
+  assert.equal(r.reconciledTo, null);
+  // Live state matches recorded after failure — no drift, no row, no write.
   assert.equal(calls.timings.length, 0);
   assert.equal(calls.writes.length, 0);
+});
+
+test('promote: drift-reconcile stamps marker to live state when alias verb exits mid-move (#132)', async () => {
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'test',
+    spawnCode: 3,
+  });
+  const r = await runPromote({ issueNumber: 132, cfg, deps });
+  assert.equal(r.status, 'transition-failed');
+  assert.equal(r.reconciledTo, 'test');
+  assert.equal(calls.writes.length, 1);
+  assert.match(calls.writes[0], /aitm-last-known-state: test/);
+  assert.equal(calls.timings.length, 1);
+  assert.match(calls.timings[0], /drift-reconcile/);
+  assert.match(calls.timings[0], /develop → test/);
+});
+
+test('promote: drift-reconcile is a no-op when live state matches recorded after failure', async () => {
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'develop',
+    spawnCode: 3,
+  });
+  const r = await runPromote({ issueNumber: 133, cfg, deps });
+  assert.equal(r.status, 'transition-failed');
+  assert.equal(r.reconciledTo, null);
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.timings.length, 0);
+});
+
+test('promote: drift-reconcile survives getLiveState throwing on the post-failure read', async () => {
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveThrowsAfter: true,
+    spawnCode: 3,
+  });
+  const r = await runPromote({ issueNumber: 134, cfg, deps });
+  assert.equal(r.status, 'transition-failed');
+  assert.equal(r.reconciledTo, null);
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.timings.length, 0);
 });
 
 test('promote: error when recorded state is unknown', async () => {
