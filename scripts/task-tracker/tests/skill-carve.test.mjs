@@ -52,7 +52,9 @@ const codexAdapter = read('skill/adapters/codex/SKILL.md');
 assert.match(claudeAdapter, /shared\/router\.md/);
 assert.match(codexAdapter, /shared\/router\.md/);
 // Neither adapter forks Tier-2 contracts (no rules/*.md path references unique to one side).
-const claudeRuleRefs = [...claudeAdapter.matchAll(/skill\/shared\/rules\/[^\s)]+/g)].map((m) => m[0]);
+const claudeRuleRefs = [...claudeAdapter.matchAll(/skill\/shared\/rules\/[^\s)]+/g)].map(
+  (m) => m[0]
+);
 const codexRuleRefs = [...codexAdapter.matchAll(/skill\/shared\/rules\/[^\s)]+/g)].map((m) => m[0]);
 assert.deepEqual(claudeRuleRefs.sort(), codexRuleRefs.sort(), 'adapters reference same rule files');
 
