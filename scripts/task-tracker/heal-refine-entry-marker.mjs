@@ -1,0 +1,175 @@
+#!/usr/bin/env node
+// One-shot heal — backfills `aitm-entered-refine` on issues that traversed
+// Refine before stage-entry marker stamping was wired (#140) or before the
+// chain-integrity close gate (#138) treated the marker as required.
+//
+// Detection: issue body has any later-stage entry marker (plan/develop/test/
+// review) but no `aitm-entered-refine`. That combination is unreachable today
+// — the only way to be in that state is to have traversed Refine before
+// stamping existed. Backfilled with the audit marker `aitm-backfill:refine:
+// pre-gate-refine-traversal:<ts>` so the heal is distinguishable from a real
+// entry. Timestamp used is issue.createdAt (lower bound — the issue couldn't
+// have entered Refine before it existed).
+//
+// Usage:
+//   node scripts/task-tracker/heal-refine-entry-marker.mjs [#N ...] [--apply]
+//
+// Without `--apply`, runs in dry-run mode and prints the plan. Without issue
+// numbers, scans all open issues in the configured repo.
+
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+
+import { loadConfig } from './config.mjs';
+import { backfillEntryMarker } from './lib/stage-entry-markers.mjs';
+import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+
+const pexec = promisify(execFile);
+
+const LATER_STAGE_RE = /<!--\s*aitm-entered-(plan|develop|test|review|done):/i;
+const REFINE_ENTRY_RE = /<!--\s*aitm-entered-refine:/i;
+const REFINE_ENTRY_TS_RE = /<!--\s*aitm-entered-refine:\s*([^\s-][^\s]*?)\s*-->/i;
+const REFINE_BACKFILL_AUDIT_RE = /<!--\s*aitm-backfill:\s*refine:/i;
+const BACKFILL_REASON = 'pre-gate-refine-traversal';
+
+function parseArgs(argv) {
+  const issues = [];
+  let apply = false;
+  for (const a of argv) {
+    if (a === '--apply') apply = true;
+    else if (/^#?\d+$/.test(a)) issues.push(String(a).replace(/^#/, ''));
+  }
+  return { issues, apply };
+}
+
+async function fetchOpenIssues(repo) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'list', '-R', repo, '--state', 'open', '--limit', '200', '--json', 'number'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return JSON.parse(stdout).map((i) => String(i.number));
+}
+
+async function fetchIssue(repo, num) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', num, '-R', repo, '--json', 'number,body,createdAt'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return JSON.parse(stdout);
+}
+
+async function writeBody(repo, num, body) {
+  const tmp = path.join(tmpdir(), `aitm-heal-refine-${process.pid}-${Date.now()}.md`);
+  writeFileSync(tmp, body, 'utf8');
+  try {
+    await pexec('gh', ['issue', 'edit', num, '-R', repo, '--body-file', tmp], {
+      timeout: GH_API_TIMEOUT_MS,
+    });
+  } finally {
+    try {
+      unlinkSync(tmp);
+    } catch {}
+  }
+}
+
+async function postComment(repo, num, body) {
+  await pexec('gh', ['issue', 'comment', num, '-R', repo, '--body', body], {
+    timeout: GH_API_TIMEOUT_MS,
+  });
+}
+
+// Two cases warrant a heal:
+//   (a) later-stage marker present but refine-entry missing — issue traversed
+//       Refine before entry stamping existed.
+//   (b) refine-entry present but `aitm-backfill:refine:` audit marker missing —
+//       the entry was hand-fabricated (or otherwise injected without an audit
+//       trail) and needs retroactive auditing.
+export function needsBackfill(body) {
+  const hasLater = LATER_STAGE_RE.test(body);
+  const hasEntry = REFINE_ENTRY_RE.test(body);
+  const hasAudit = REFINE_BACKFILL_AUDIT_RE.test(body);
+  if (hasLater && !hasEntry) return true;
+  if (hasEntry && hasLater && !hasAudit) return true;
+  return false;
+}
+
+function normalizeTs(iso) {
+  return String(iso || '').replace(/\.\d+Z$/, 'Z');
+}
+
+function extractRefineEntryTs(body) {
+  const m = REFINE_ENTRY_TS_RE.exec(body || '');
+  return m ? normalizeTs(m[1]) : null;
+}
+
+async function healOne({ repo, num, apply }) {
+  const issue = await fetchIssue(repo, num);
+  const body = issue.body || '';
+  if (!needsBackfill(body)) {
+    return { num, action: 'skip', reason: 'already-has-refine-entry-and-audit-or-never-traversed' };
+  }
+  const existingTs = extractRefineEntryTs(body);
+  const mode = existingTs ? 'audit-only' : 'entry+audit';
+  const reason = existingTs ? 'audit-only-unaudited-entry' : BACKFILL_REASON;
+  const ts = existingTs || normalizeTs(issue.createdAt);
+  if (!apply) {
+    return { num, action: 'plan', ts, reason, mode };
+  }
+  const nextBody = backfillEntryMarker(body, 'refine', ts, reason);
+  await writeBody(repo, num, nextBody);
+  const commentBody =
+    mode === 'audit-only'
+      ? `🛠 Heal: added missing audit marker for existing \`aitm-entered-refine: ${ts}\` (reason: ${reason}). The entry marker was present but lacked an audit trail; this comment + the \`aitm-backfill:refine:${reason}:${ts}\` marker provide retroactive provenance.`
+      : `🛠 Heal: backfilled \`aitm-entered-refine: ${ts}\` (reason: ${reason}). This issue traversed Refine before stage-entry marker stamping became mandatory; the marker was added retroactively using \`createdAt\` as a conservative lower bound. Audit trail: \`aitm-backfill:refine:${reason}:${ts}\`.`;
+  await postComment(repo, num, commentBody);
+  return { num, action: 'applied', ts, mode };
+}
+
+async function main() {
+  const { issues, apply } = parseArgs(process.argv.slice(2));
+  const cfg = loadConfig();
+  const repo = cfg.repo;
+  const targets = issues.length > 0 ? issues : await fetchOpenIssues(repo);
+  const results = [];
+  for (const num of targets) {
+    try {
+      results.push(await healOne({ repo, num, apply }));
+    } catch (err) {
+      results.push({ num, action: 'error', reason: err.message });
+    }
+  }
+  for (const r of results) {
+    if (r.action === 'plan') {
+      process.stdout.write(`#${r.num}: would backfill ts=${r.ts} reason=${r.reason}\n`);
+    } else if (r.action === 'applied') {
+      process.stdout.write(`#${r.num}: backfilled ts=${r.ts}\n`);
+    } else if (r.action === 'skip') {
+      process.stdout.write(`#${r.num}: skip (${r.reason})\n`);
+    } else if (r.action === 'error') {
+      process.stderr.write(`#${r.num}: ERROR ${r.reason}\n`);
+    }
+  }
+  if (!apply) {
+    process.stdout.write('\n(dry-run — pass --apply to write)\n');
+  }
+}
+
+import { fileURLToPath } from 'node:url';
+const _isMain = (() => {
+  try {
+    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  } catch {
+    return false;
+  }
+})();
+if (_isMain) {
+  main().catch((err) => {
+    process.stderr.write(`heal-refine-entry-marker: ${err.message}\n`);
+    process.exit(1);
+  });
+}
