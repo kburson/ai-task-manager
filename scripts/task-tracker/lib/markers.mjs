@@ -46,6 +46,30 @@ export function insertPlanApprovedMarker(body, ts) {
 }
 
 // ---------------------------------------------------------------------------
+// dod-verified (sandboxed /task test stamped this on green — #137)
+// ---------------------------------------------------------------------------
+
+export const DOD_VERIFIED_RE = /<!--\s*aitm-dod-verified:\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/i;
+
+export function buildDodVerifiedMarker(sha, ts) {
+  return `<!-- aitm-dod-verified: ${sha}:${ts} -->`;
+}
+
+export function hasDodVerifiedMarker(body) {
+  return DOD_VERIFIED_RE.test(String(body || ''));
+}
+
+export function parseDodVerifiedMarker(body) {
+  const m = String(body || '').match(DOD_VERIFIED_RE);
+  if (!m) return null;
+  return { sha: m[1], ts: m[2] };
+}
+
+export function insertDodVerifiedMarker(body, sha, ts) {
+  return insertMarkerBeforeFieldDb(body, DOD_VERIFIED_RE, buildDodVerifiedMarker(sha, ts));
+}
+
+// ---------------------------------------------------------------------------
 // deep-dive-complete (structural prerequisite for analyze → development)
 // ---------------------------------------------------------------------------
 

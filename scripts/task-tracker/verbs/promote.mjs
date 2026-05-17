@@ -56,7 +56,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 // fall-through, same as `backlog` and `test`. The plan→develop gate that
 // required the `aitm-plan-approved` marker is enforced by move-state itself.
 const ALIAS_VERB = {
-  develop: 'review',
+  develop: 'test',
   review: 'close',
 };
 

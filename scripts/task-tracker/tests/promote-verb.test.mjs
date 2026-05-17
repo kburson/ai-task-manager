@@ -290,13 +290,13 @@ test('promote: plan→develop refused when planned-estimate appendix is missing 
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: develop→test delegates to /task review', async () => {
+test('promote: develop→test delegates to /task test (#137)', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('develop'), live: 'develop' });
   const r = await runPromote({ issueNumber: 102, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'test');
-  assert.equal(r.via, 'alias:review');
-  assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 102 }]);
+  assert.equal(r.via, 'alias:test');
+  assert.deepEqual(calls.spawns, [{ verb: 'test', issueNumber: 102 }]);
 });
 
 test('promote: develop→test refused when CODE_COMPLETE gate returns blockers (#136)', async () => {
@@ -325,7 +325,7 @@ test('promote: develop→test allowed when CODE_COMPLETE gate passes (#136)', as
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'test');
   assert.equal(gateCalled, 1);
-  assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 1362 }]);
+  assert.deepEqual(calls.spawns, [{ verb: 'test', issueNumber: 1362 }]);
 });
 
 test('promote: test→review is a direct move-state call (no alias verb exists)', async () => {

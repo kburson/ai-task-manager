@@ -5,6 +5,7 @@ import { setTaskStatus } from '../fleet-registry.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
+import { hasDodVerifiedMarker } from '../lib/markers.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
@@ -230,6 +231,21 @@ export async function verbReview(ctx) {
     const regressions = [];
     const commandResults = new Map();
     const proseCheckboxes = [];
+    // #137 — sandboxed /task test stamps `aitm-dod-verified` after green
+    // verification. When present, /task review trusts that evidence and
+    // skips re-running commands. Without the marker, refuse — the test
+    // stage must run first.
+    const sandboxVerified = hasDodVerifiedMarker(rawBody);
+    if (!sandboxVerified) {
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
+      process.stderr.write(
+        '   BLOCKED: missing `aitm-dod-verified` marker — run `/task test ' +
+          `${target}` +
+          '` first.\n\n'
+      );
+      process.exit(4);
+    }
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
     for (const cb of checkboxes) {
       if (cb.command) {
@@ -244,17 +260,8 @@ export async function verbReview(ctx) {
           failures.push(`${cb.label} (rejected: ${validation.reason})`);
           continue;
         }
-        let passed = false;
-        try {
-          // Verification command runner: 5min budget — these are user-defined
-          // suites (lint, typecheck, full test) that legitimately exceed
-          // TEST_RUNNER_TIMEOUT_MS. Kept inline; not a TIMEOUT_CLASSES member.
-          await pexec(validation.argv[0], validation.argv.slice(1), {
-            cwd: projectDir,
-            timeout: 300000,
-          });
-          passed = true;
-        } catch {}
+        // #137 — trust the sandbox-verified marker; do not re-execute.
+        const passed = true;
         commandResults.set(cb.command, passed);
         if (passed) {
           if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');

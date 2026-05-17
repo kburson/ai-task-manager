@@ -31,6 +31,7 @@ const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';
 const HEAD_SHA = 'abcdef1234567890abcdef1234567890abcdef12';
+const DOD_VERIFIED_MARKER = `<!-- aitm-dod-verified: ${HEAD_SHA}:2026-05-17T00:00:00.000Z -->`;
 const TRACE_COMMENT = [
   '### 🔗 Commits',
   '',
@@ -224,6 +225,8 @@ async function run(sandbox, binDir, args) {
       '',
       '- [ ] `node --version`',
       '',
+      DOD_VERIFIED_MARKER,
+      '',
       '<!-- ai-task-manager:fields:start -->',
       '<!-- ai-task-manager:fields:end -->',
     ].join('\n');
@@ -272,6 +275,8 @@ async function run(sandbox, binDir, args) {
       '',
       '- [ ] `node --version`',
       '',
+      DOD_VERIFIED_MARKER,
+      '',
       '<!-- ai-task-manager:fields:start -->',
       '<!-- ai-task-manager:fields:end -->',
     ].join('\n');
@@ -318,6 +323,8 @@ async function run(sandbox, binDir, args) {
       '',
       '- [ ] `node --version`',
       '',
+      DOD_VERIFIED_MARKER,
+      '',
       '<!-- ai-task-manager:fields:start -->',
       '<!-- ai-task-manager:fields:end -->',
     ].join('\n');
@@ -362,7 +369,7 @@ async function run(sandbox, binDir, args) {
       '',
       '### Verification Commands',
       '',
-      '- [ ] `node x; touch /tmp/should-never-exist`',
+      '- [ ] `node --version`',
       '',
       '<!-- ai-task-manager:fields:start -->',
       '<!-- ai-task-manager:fields:end -->',
@@ -374,13 +381,18 @@ async function run(sandbox, binDir, args) {
       recordedBodyPath,
     });
     const r = await run(sandbox, binDir, ['review', '#102']);
-    assert.notEqual(r.code, 0, 'verbReview should exit non-zero on verification fail');
+    assert.notEqual(r.code, 0, 'verbReview must refuse when aitm-dod-verified marker is missing');
+    assert.match(
+      r.stderr,
+      /missing `aitm-dod-verified` marker/,
+      `expected missing-marker refusal; stderr:\n${r.stderr}`
+    );
     assert.doesNotMatch(
       r.stdout,
       /PROMPT_REQUIRED: review-approval/,
-      `marker must NOT be emitted on failure path; stdout:\n${r.stdout}`
+      `marker must NOT be emitted when refused; stdout:\n${r.stdout}`
     );
-    console.log('test 2 passed: verbReview does NOT emit marker on verification fail');
+    console.log('test 2 passed: verbReview refuses without aitm-dod-verified marker');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -425,6 +437,8 @@ async function run(sandbox, binDir, args) {
       '- [ ] Issue body checkboxes ticked',
       '',
       '<!-- aitm-plan-approved: 2026-05-10T00:00:00.000Z -->',
+      '',
+      DOD_VERIFIED_MARKER,
       '',
       '<!-- ai-task-manager:fields:start -->',
       '<!-- ai-task-manager:fields:end -->',
@@ -500,6 +514,8 @@ async function run(sandbox, binDir, args) {
       '- [ ] Issue body checkboxes ticked',
       '',
       '<!-- aitm-plan-approved: 2026-05-10T00:00:00.000Z -->',
+      '',
+      DOD_VERIFIED_MARKER,
       '',
       '<!-- ai-task-manager:fields:start -->',
       '<!-- ai-task-manager:fields:end -->',

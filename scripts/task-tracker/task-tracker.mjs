@@ -127,6 +127,11 @@ if (_isMain)
           await verbUpdate(ctx);
           break;
         }
+        case 'test': {
+          const { verbTest } = await import('./verbs/test.mjs');
+          await verbTest(ctx);
+          break;
+        }
         case 'review': {
           const { verbReview } = await import('./verbs/review.mjs');
           await verbReview(ctx);
