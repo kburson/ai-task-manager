@@ -25,6 +25,7 @@ export async function verbClose(ctx) {
     safePostTiming,
     runMoveState,
     runMoveStateDone,
+    runLogIssueTime,
     fetchSubIssues,
     getIssueBoardState,
     uncheckedPreCloseCheckboxes,
@@ -298,6 +299,7 @@ export async function verbClose(ctx) {
         description: 'closed',
       })
     );
+    if (runLogIssueTime) await runLogIssueTime(closeTarget);
     try {
       deregisterTask(projectDir, closeTarget);
     } catch {}
@@ -316,6 +318,7 @@ export async function verbClose(ctx) {
         description: 'closed — timing flushed at Review',
       })
     );
+    if (runLogIssueTime) await runLogIssueTime(closeTarget);
     clearActive(statePath);
     try {
       deregisterTask(projectDir, s.active);
