@@ -124,8 +124,14 @@ test('verbTest: green path stamps marker, posts success comment, moves test→re
     assert.equal(calls.worktreesRemoved, 1);
     assert.equal(calls.npmCiCalls, 1);
     assert.equal(calls.sandboxRuns.length, 2);
-    assert.equal(calls.bodyWrites.length, 1);
-    const stamped = calls.bodyWrites[0];
+    // Two writes: aitm-test-started (entry, before sandbox) + aitm-dod-verified (exit, on green).
+    assert.equal(calls.bodyWrites.length, 2);
+    assert.match(calls.bodyWrites[0], /aitm-test-started:/, 'entry marker stamped before sandbox');
+    assert.ok(
+      !hasDodVerifiedMarker(calls.bodyWrites[0]),
+      'dod-verified must NOT be present on entry write'
+    );
+    const stamped = calls.bodyWrites[calls.bodyWrites.length - 1];
     assert.ok(hasDodVerifiedMarker(stamped), 'body must carry dod-verified marker after green');
     assert.match(stamped, /aitm-entered-test:/, 'must stamp aitm-entered-test on green');
     assert.match(stamped, /aitm-entered-review:/, 'must stamp aitm-entered-review on green');
@@ -154,7 +160,14 @@ test('verbTest: red path posts failure comment, rolls back to develop, does NOT 
     });
     assert.equal(r.status, 'failed');
     assert.equal(calls.worktreesRemoved, 1, 'worktree must be cleaned up on red');
-    assert.equal(calls.bodyWrites.length, 0, 'must NOT stamp marker on red');
+    // Entry marker (aitm-test-started) is stamped before sandbox runs — survives on red.
+    // The dod-verified exit marker must NOT be stamped on red.
+    assert.equal(calls.bodyWrites.length, 1, 'only entry marker write on red');
+    assert.match(calls.bodyWrites[0], /aitm-test-started:/, 'entry marker stamped before sandbox');
+    assert.ok(
+      !hasDodVerifiedMarker(calls.bodyWrites[0]),
+      'must NOT stamp dod-verified marker on red'
+    );
     assert.equal(calls.comments.length, 1);
     assert.match(calls.comments[0], /Sandboxed verification failed/);
     assert.match(calls.comments[0], /boom/);

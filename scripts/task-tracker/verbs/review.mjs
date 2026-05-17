@@ -5,7 +5,7 @@ import { setTaskStatus } from '../fleet-registry.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
-import { hasDodVerifiedMarker } from '../lib/markers.mjs';
+import { hasDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
@@ -247,6 +247,38 @@ export async function verbReview(ctx) {
           '` first.\n\n'
       );
       process.exit(4);
+    }
+    // #154 — SHA-drift gate. The `aitm-test-started` marker records outer HEAD
+    // at the moment Test began; if HEAD has moved since, the sandbox proof is
+    // stale and the issue must be re-tested. Tolerates marker absence on
+    // legacy issues (the dod-verified marker also encodes a SHA, so a future
+    // hardening pass can require both — for now we only block when the
+    // test-started marker is present and mismatched).
+    const testStarted = parseTestStartedMarker(rawBody);
+    if (testStarted) {
+      let currentHeadSha = null;
+      try {
+        const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
+          cwd: projectDir,
+          timeout: 10_000,
+        });
+        currentHeadSha = String(stdout || '').trim();
+      } catch {
+        // best-effort — if we can't resolve HEAD, fall back to the existing
+        // dod-verified path. SHA-drift refusal is opportunistic, not mandatory.
+      }
+      if (currentHeadSha) {
+        const m = testStarted.sha;
+        const matches = currentHeadSha.startsWith(m) || m.startsWith(currentHeadSha);
+        if (!matches) {
+          process.stderr.write('\n');
+          process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
+          process.stderr.write(
+            `   BLOCKED: HEAD drifted from \`${m.slice(0, 8)}\` to \`${currentHeadSha.slice(0, 8)}\` during Test — re-run \`/task test ${target}\` to re-verify.\n\n`
+          );
+          process.exit(4);
+        }
+      }
     }
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
     for (const cb of checkboxes) {

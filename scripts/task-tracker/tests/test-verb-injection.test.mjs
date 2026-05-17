@@ -170,11 +170,21 @@ process.exit(0);
     `expected rejection reason in failure comment; comment was:\n${comment}`
   );
 
-  assert.equal(
-    existsSync(recordedBodyPath),
-    false,
-    'aitm-dod-verified marker must NOT be stamped on red verification'
-  );
+  // The entry marker (aitm-test-started) is stamped BEFORE the VC runs, so the
+  // body file will exist on red. What MUST NOT appear is the dod-verified exit
+  // marker. Allow either: body file missing, or body file present without
+  // aitm-dod-verified.
+  if (existsSync(recordedBodyPath)) {
+    const writtenBody = readFileSync(recordedBodyPath, 'utf8');
+    assert.ok(
+      !/aitm-dod-verified:/.test(writtenBody),
+      'aitm-dod-verified marker must NOT be stamped on red verification'
+    );
+    assert.ok(
+      /aitm-test-started:/.test(writtenBody),
+      'aitm-test-started entry marker must be stamped before VC runs'
+    );
+  }
 
   console.log('test-verb-injection.test.mjs: all passed');
 } finally {

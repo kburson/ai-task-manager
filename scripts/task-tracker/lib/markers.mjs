@@ -76,6 +76,43 @@ export function insertDodVerifiedMarker(body, sha, ts) {
 }
 
 // ---------------------------------------------------------------------------
+// test-started (#154 — Test→Review SHA drift gate)
+//
+// Stamped when verbTest moves an issue to the `test` state, BEFORE the
+// sandbox verification runs. Records the outer-HEAD SHA at the moment Test
+// began. verbReview's preflight compares it against current HEAD; if they
+// differ, the gate refuses the move and forces a re-test.
+//
+// Mirrors the DOD_VERIFIED_RE shape: `<sha>:<iso-ts>` (sha is 7–40 hex).
+// ---------------------------------------------------------------------------
+
+export const TEST_STARTED_RE = /<!--\s*aitm-test-started:\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/i;
+
+export function buildTestStartedMarker(sha, ts) {
+  return `<!-- aitm-test-started: ${sha}:${ts} -->`;
+}
+
+export function hasTestStartedMarker(body) {
+  return TEST_STARTED_RE.test(String(body || ''));
+}
+
+export function parseTestStartedMarker(body) {
+  const m = String(body || '').match(TEST_STARTED_RE);
+  if (!m) return null;
+  return { sha: m[1], ts: m[2] };
+}
+
+export function insertTestStartedMarker(body, sha, ts) {
+  // Replace any existing marker so re-running /task test refreshes the SHA.
+  // Without this, a stale entry-SHA survives forever and a re-test against
+  // a newer HEAD would always look "drifted" at Review preflight.
+  const stripped = String(body || '')
+    .replace(TEST_STARTED_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
+  return insertMarkerBeforeFieldDb(stripped, TEST_STARTED_RE, buildTestStartedMarker(sha, ts));
+}
+
+// ---------------------------------------------------------------------------
 // deep-dive-complete (structural prerequisite for analyze → development)
 // ---------------------------------------------------------------------------
 

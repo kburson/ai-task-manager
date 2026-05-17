@@ -25,7 +25,7 @@ import { loadState, saveState } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
-import { insertDodVerifiedMarker } from '../lib/markers.mjs';
+import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -203,6 +203,19 @@ export async function runVerbTest({
   }
 
   if (moveState) await moveState({ issueNumber: issueNum, target: 'test' });
+
+  // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
+  // verbReview's preflight can compare outer HEAD at review-time against the
+  // SHA we were testing. The marker is refreshed on every re-test so the
+  // entry SHA always reflects the current verification window.
+  {
+    const entryTs = now();
+    const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
+    if (stampedEntry !== body) {
+      body = stampedEntry;
+      await writeBody({ cfg, issueNum, body, projectDir });
+    }
+  }
 
   const results = [];
   let cleanupNeeded = false;

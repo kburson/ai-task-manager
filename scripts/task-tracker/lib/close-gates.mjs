@@ -7,10 +7,13 @@
 //                             modified in the working tree (issue-scoped dirty)
 //   3. chain-hole-at-<stage>— missing `aitm-entered-<stage>` marker
 //
-// `shaFreshGate` is still exported for the Test→Review boundary, but the
-// Review→Done gate intentionally does NOT check SHA freshness: once a story
-// reaches Review, later commits on trunk (from other stories) are unrelated
-// to its verification, so the gate would only generate false positives.
+// `shaFreshGate` is exported for SHA-freshness checks against the
+// `aitm-dod-verified` marker. The Test→Review boundary owns its own
+// drift detection (see #154 — `aitm-test-started` marker stamped by
+// verbTest, checked by verbReview against current HEAD). The Review→Done
+// gate intentionally does NOT check SHA freshness: once a story reaches
+// Review, later commits on trunk (from other stories) are unrelated to
+// its verification, so the gate would only generate false positives.
 // SHA freshness is a Test→Review concern, not a Review→Done concern.
 //
 // Each gate is a pure function (modulo injectable I/O). The aggregate
