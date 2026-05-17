@@ -51,6 +51,10 @@ Refusal contracts (deterministic exit codes):
 
 Use `--dry-run` to print the rendered body without calling `gh`.
 
+## Checkpoint Pause
+
+Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains an unaddressed question/instruction, halt and respond first — do not advance state. See the full rule in `templates/pickup-directive.md` ("Checkpoint Pause").
+
 ## Project preferences
 
 At session start, read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` from `scripts/task-tracker/config.mjs`. Honor each key by name — see `skill/shared/rules/preferences.md` for the table. Key examples: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`.

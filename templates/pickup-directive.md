@@ -87,12 +87,26 @@ required box is unchecked will be refused.
 8. **Skip collapsed `<details>` blocks unless told to expand.**
    Issue bodies wrap the Deep-Dive Analysis appendix in a `<details>` block once `/task plan-approve` has run. Treat the wrapped content as already-applied context — do not re-read it on pickup unless the user explicitly asks you to revisit scope or expand the deep dive.
 
-9. **On mistakes — stop and surface, do not self-correct.**
-   If you discover you have taken a wrong action (created a duplicate issue, used
-   `gh issue close` directly, skipped the deep dive, dispatched agents without
-   verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
-   Announce what happened, why it was wrong, and propose 2–3 resolution options.
-   Wait for explicit orchestrator or human instruction before proceeding.
+9. **Checkpoint Pause — re-read the conversation queue before any state transition.**
+   Before any `/task` state move, before switching the active issue, before closing an
+   issue, and before parallel-agent fan-out, **pause and re-read the most recent user
+   messages**. If the latest user message is unacknowledged or contains a question or
+   instruction not yet addressed, halt and respond first — do not advance state. There
+   is no programmatic signal for "unread chat queue"; this is behavioral self-discipline
+   at high-cost moments to prevent steam-rolling past queued input.
+
+   Trigger points (must checkpoint before each):
+   - Before `/task` state moves (`refine`, `plan`, `develop`, `test`, `review`, `done`).
+   - Before switching active issue (`/task #N` when already bound to a different `#M`).
+   - Before closing an issue.
+   - Before parallel-agent fan-out.
+
+10. **On mistakes — stop and surface, do not self-correct.**
+    If you discover you have taken a wrong action (created a duplicate issue, used
+    `gh issue close` directly, skipped the deep dive, dispatched agents without
+    verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
+    Announce what happened, why it was wrong, and propose 2–3 resolution options.
+    Wait for explicit orchestrator or human instruction before proceeding.
 
 ## Required steps before writing any code
 

@@ -12,6 +12,19 @@ An npm package that installs the `/task` Claude Code skill into any project. The
 - After long explanations or multi-part analysis, stop and wait for user to signal ready. Do not make any changes until you have 95% confidence in what you need to build.
 - Ask follow-up questions until that confidence is reached.
 
+## Conversation-Queue Checkpoint
+
+Before any state transition, **pause and re-read the most recent user messages** in the current conversation. If the latest user message is unacknowledged, or contains a question or instruction not yet addressed, halt and respond first — do not advance state. The goal is to prevent steam-rolling past queued input.
+
+There is no programmatic signal for "unread chat queue"; this is behavioral self-discipline at high-cost moments.
+
+Trigger points (must checkpoint before each):
+
+- Before `/task` state moves (`refine`, `plan`, `develop`, `test`, `review`, `done`).
+- Before switching active issue (`/task #N` when already bound to a different `#M`).
+- Before closing an issue.
+- Before parallel-agent fan-out.
+
 ## Sub-Agents
 
 Parallel sub-agent fan-out is an explicit, approved operation. Before any `Agent` spawn, name the candidates, estimate parallelism, flag shared files, and get user approval; every agent runs in its own git worktree with a self-contained prompt and explicit STOP conditions. Full rules — worktree requirements, state-machine transitions, gates, drift handling, and post-mortem procedure — in [`docs/guides/parallel-agents.md`](docs/guides/parallel-agents.md).
