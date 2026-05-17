@@ -56,7 +56,8 @@ export function findCommitTrailComment(comments) {
   if (!Array.isArray(comments)) return null;
   return (
     comments.find(
-      (c) => TRAIL_HEADING_RE.test(String(c.body || '')) && COMMITS_MARKER_RE.test(String(c.body || ''))
+      (c) =>
+        TRAIL_HEADING_RE.test(String(c.body || '')) && COMMITS_MARKER_RE.test(String(c.body || ''))
     ) || null
   );
 }
@@ -64,7 +65,17 @@ export function findCommitTrailComment(comments) {
 async function defaultListComments({ cfg, issueNumber }) {
   const { stdout } = await pexec(
     'gh',
-    ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'comments', '--jq', '.comments'],
+    [
+      'issue',
+      'view',
+      String(issueNumber),
+      '-R',
+      cfg.repo,
+      '--json',
+      'comments',
+      '--jq',
+      '.comments',
+    ],
     { timeout: 15000 }
   );
   return JSON.parse(stdout || '[]');
@@ -145,7 +156,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
         const files = await filesForSha(sha);
         for (const f of files) touchSet.add(f);
       } catch {
-        // best-effort; missing-sha is itself a flagable condition but we skip
+        // best-effort; missing sha is itself a fail signal but we skip here
       }
     }
     let dirty;

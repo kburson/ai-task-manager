@@ -53,12 +53,7 @@ function formatStartTime(d) {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi} ${sign}${ah}${am}`;
 }
 
-export async function stampStartTime({
-  cfg,
-  issueNumber,
-  now = () => new Date(),
-  deps = {},
-} = {}) {
+export async function stampStartTime({ cfg, issueNumber, now = () => new Date(), deps = {} } = {}) {
   if (!cfg) throw new Error('stampStartTime: cfg is required');
   if (!issueNumber) throw new Error('stampStartTime: issueNumber is required');
   const startTimeFieldId = cfg.fieldStartTime || fieldIdFor(cfg, 'startTime');

@@ -19,7 +19,13 @@ function makeDeps({ values = {}, labels = ['bug'], children = [] } = {}) {
 
 test('all fields + labels present, no children → ok', async () => {
   const deps = makeDeps({
-    values: { priority: 'P1', sequence: 5, size: 'S', estimate: 4, startTime: '2026-05-16 10:00 -07' },
+    values: {
+      priority: 'P1',
+      sequence: 5,
+      size: 'S',
+      estimate: 4,
+      startTime: '2026-05-16 10:00 -07',
+    },
     labels: ['epic-107', 'backend'],
   });
   const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
