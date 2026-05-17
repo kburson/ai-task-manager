@@ -86,11 +86,12 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
   }
 
   if (Array.isArray(children) && children.length > 0) {
+    const forcePromote = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
     const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
-    if (offenders.length) {
+    if (offenders.length && !forcePromote) {
       const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
       blockers.push(
-        `refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): ${lines.join(', ')}`
+        `refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): ${lines.join(', ')}. Heal-forward override: TASK_TRACKER_FORCE_PROMOTE=1`
       );
     }
   }

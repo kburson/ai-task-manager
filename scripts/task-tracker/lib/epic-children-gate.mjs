@@ -37,13 +37,14 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
+  const forcePromote = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
   const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
-  if (offenders.length) {
+  if (offenders.length && !forcePromote) {
     const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
       ok: false,
       blockers: [
-        `epic-children-not-at-refine: every child must be at refine before the epic promotes to Develop (children must not lead the parent): ${lines.join(', ')}`,
+        `epic-children-not-at-refine: every child must be at refine before the epic promotes to Develop (children must not lead the parent): ${lines.join(', ')}. Heal-forward override: TASK_TRACKER_FORCE_PROMOTE=1`,
       ],
       offendingChildren: offenders,
     };
