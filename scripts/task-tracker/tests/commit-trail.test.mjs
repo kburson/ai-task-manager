@@ -122,7 +122,7 @@ import {
   });
   assert.equal(
     r,
-    '| [`abcdef1`](https://github.com/o/r/commit/abcdef1234567890) | feat(x): do thing | kendrick burson | 2026-05-10T14:32:11Z |'
+    '| [`abcdef`](https://github.com/o/r/commit/abcdef1234567890) | feat(x): do thing | kendrick burson | 2026-05-10T14:32:11Z |'
   );
 }
 
@@ -134,7 +134,7 @@ import {
     author: 'kendrick burson',
     ts: '2026-05-10T14:32:11Z',
   });
-  assert.equal(r, '| `abcdef1` | feat(x): do thing | kendrick burson | 2026-05-10T14:32:11Z |');
+  assert.equal(r, '| `abcdef` | feat(x): do thing | kendrick burson | 2026-05-10T14:32:11Z |');
 }
 
 // Pipe characters in subject escaped
@@ -262,7 +262,7 @@ function makeTrail(shas, repo = 'o/r') {
   const parsed = parseMarker(out);
   assert.deepEqual(Array.from(parsed.shas), [SHA_A, SHA_C]);
   assert.ok(!out.includes(SHA_B), 'full SHA_B should be gone from URL');
-  assert.ok(!out.includes('`' + SHA_B.slice(0, 7) + '`'), 'short SHA_B should be gone from table');
+  assert.ok(!out.includes('`' + SHA_B.slice(0, 6) + '`'), 'short SHA_B should be gone from table');
   // Order preserved
   const idxA = out.indexOf(SHA_A);
   const idxC = out.indexOf(SHA_C);

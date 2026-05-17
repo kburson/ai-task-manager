@@ -35,8 +35,12 @@ export function buildInitialTrail({ worktreeCols = false } = {}) {
   return [TRAIL_HEADING, '', '<!-- aitm-commits:  -->', '', header].join('\n');
 }
 
+// Short SHA used in the visible table column. The marker keeps the full SHA
+// (parseable identity, lookup-friendly); the table column trims to keep rows
+// scannable. 6 chars matches `git log --abbrev=6` and remains unique in any
+// real-world repo. (#155)
 function shortSha(sha) {
-  return String(sha).slice(0, 7);
+  return String(sha).slice(0, 6);
 }
 
 function escapePipe(s) {
@@ -116,7 +120,7 @@ export async function pruneUnreachable(body, { existsSha } = {}) {
   const nextMarker = `<!-- aitm-commits: ${keep.join(',')} -->`;
   const next =
     body.slice(0, parsed.index) + nextMarker + body.slice(parsed.index + parsed.raw.length);
-  const droppedShorts = new Set([...drop].map((s) => String(s).slice(0, 7)));
+  const droppedShorts = new Set([...drop].map((s) => String(s).slice(0, 6)));
   const lines = next.split('\n');
   const filtered = lines.filter((line) => {
     if (!line.startsWith('|')) return true;

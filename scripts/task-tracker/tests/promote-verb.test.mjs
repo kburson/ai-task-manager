@@ -63,6 +63,7 @@ function makeDeps({
         fetchSiblings: async () => [],
       },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
+      commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),
     },
   };
 }

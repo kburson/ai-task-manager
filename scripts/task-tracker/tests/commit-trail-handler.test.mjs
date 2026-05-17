@@ -58,30 +58,30 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   assert.equal(fake.calls.create.length, 1);
   const body = fake.calls.create[0].body;
   assert.match(body, /### 🔗 Commits/);
-  assert.match(body, /abc1234/);
-  assert.match(body, /\[`abc1234`\]\(https:\/\/github\.com\/o\/r\/commit\/abc12340000000\)/);
+  assert.match(body, /abc123/);
+  assert.match(body, /\[`abc123`\]\(https:\/\/github\.com\/o\/r\/commit\/abc12340000000\)/);
   assert.match(body, /<!-- aitm-commits: abc12340000000 -->/);
 }
 
 // 2. Second commit → updates existing comment
 {
   const initial =
-    '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc1234` | s1 | a | t1 |\n';
+    '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc123` | s1 | a | t1 |\n';
   const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
   const info = { sha: 'def56780000000', subject: 's2', author: 'a', ts: 't2', isWorktree: false };
   const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
   assert.equal(r.action, 'updated');
   assert.equal(fake.calls.update.length, 1);
   const body = fake.calls.update[0].body;
-  assert.match(body, /abc1234/);
-  assert.match(body, /def5678/);
+  assert.match(body, /abc123/);
+  assert.match(body, /def567/);
   assert.match(body, /<!-- aitm-commits: abc12340000000,def56780000000 -->/);
 }
 
 // 3. Re-fire with same SHA → noop
 {
   const initial =
-    '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc1234` | s1 | a | t1 |\n';
+    '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc123` | s1 | a | t1 |\n';
   const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
   const info = { sha: 'abc12340000000', subject: 's1', author: 'a', ts: 't1', isWorktree: false };
   const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });

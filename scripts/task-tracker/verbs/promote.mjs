@@ -39,7 +39,7 @@ import {
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
-import { gateCodeComplete } from '../lib/code-complete-gate.mjs';
+import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -313,6 +313,21 @@ export async function runPromote({
         status: 'code-complete-refused',
         blockers: ccResult.blockers,
         message: `Refusing to promote #${issueNumber} to Test: CODE_COMPLETE gate failed.`,
+      };
+    }
+
+    // #155 — additionally require the commit-trail comment to contain HEAD.
+    // CODE_COMPLETE's existing commit-trail check accepts any non-empty trail;
+    // this gate is stricter: HEAD itself must appear, so a stale trail (from
+    // a commit-trace run before the latest commit landed) is refused.
+    const headTrailGate = deps.commitTrailHeadGate || gateCommitTrailContainsHead;
+    const projectDir = deps.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd();
+    const headResult = await headTrailGate({ cfg, issueNumber, projectDir });
+    if (!headResult.ok) {
+      return {
+        status: 'commit-trail-stale',
+        blockers: [headResult.blocker],
+        message: `Refusing to promote #${issueNumber} to Test: commit-trail does not contain HEAD.`,
       };
     }
   }

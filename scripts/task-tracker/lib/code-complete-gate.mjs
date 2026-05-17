@@ -103,6 +103,103 @@ async function defaultDirtyFiles() {
   return dirty;
 }
 
+// #155 — Develop→Test commit-trail-contains-HEAD gate.
+//
+// Refuses the develop→test transition unless the `### 🔗 Commits` comment
+// records the current outer-HEAD SHA in its `aitm-commits` marker. Without
+// this gate, code that lives only as a working-tree change (uncommitted) or
+// as a commit that landed *after* the last `/task commit-trace` run can slip
+// through to Test, where the sandbox verifies a different tree than the one
+// recorded on the issue's audit trail.
+//
+// Returns `{ ok, blocker, headSha, trailShas }`. Marker is canonical-truth
+// (full SHA); we compare prefix-either-direction so 6-char short forms in
+// callers still match a full SHA in the marker.
+export async function gateCommitTrailContainsHead({
+  cfg,
+  issueNumber,
+  projectDir,
+  deps = {},
+} = {}) {
+  if (!cfg) throw new Error('gateCommitTrailContainsHead: cfg is required');
+  if (!issueNumber) throw new Error('gateCommitTrailContainsHead: issueNumber is required');
+  const listComments = deps.listComments || defaultListComments;
+  const getHeadSha =
+    deps.getHeadSha ||
+    (async () => {
+      const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
+        cwd: projectDir,
+        timeout: 10_000,
+      });
+      return String(stdout || '').trim();
+    });
+
+  let headSha = null;
+  try {
+    headSha = await getHeadSha();
+  } catch (err) {
+    return {
+      ok: false,
+      blocker: `develop-to-test-head-resolve-failed: ${err.message}`,
+      headSha: null,
+      trailShas: [],
+    };
+  }
+  if (!headSha) {
+    return {
+      ok: false,
+      blocker: 'develop-to-test-head-empty: `git rev-parse HEAD` returned empty',
+      headSha: null,
+      trailShas: [],
+    };
+  }
+
+  let trailShas = [];
+  try {
+    const comments = await listComments({ cfg, issueNumber });
+    const trail = findCommitTrailComment(comments);
+    if (!trail) {
+      return {
+        ok: false,
+        blocker:
+          'develop-to-test-no-trail: no `### 🔗 Commits` comment found — run `/task commit-trace` first',
+        headSha,
+        trailShas: [],
+      };
+    }
+    trailShas = parseCommitShas(trail.body);
+  } catch (err) {
+    return {
+      ok: false,
+      blocker: `develop-to-test-trail-fetch-failed: ${err.message}`,
+      headSha,
+      trailShas: [],
+    };
+  }
+
+  if (trailShas.length === 0) {
+    return {
+      ok: false,
+      blocker:
+        'develop-to-test-empty-trail: `### 🔗 Commits` comment has no SHAs — run `/task commit-trace`',
+      headSha,
+      trailShas,
+    };
+  }
+
+  const matched = trailShas.some((s) => headSha.startsWith(s) || s.startsWith(headSha));
+  if (!matched) {
+    const shortHead = headSha.slice(0, 6);
+    return {
+      ok: false,
+      blocker: `develop-to-test-stale-trail: HEAD \`${shortHead}\` not in commit-trail (marker has ${trailShas.length} SHA(s)) — run \`/task commit-trace\` to record the latest commit`,
+      headSha,
+      trailShas,
+    };
+  }
+  return { ok: true, headSha, trailShas };
+}
+
 export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {}) {
   if (!cfg) throw new Error('gateCodeComplete: cfg is required');
   if (!issueNumber) throw new Error('gateCodeComplete: issueNumber is required');
