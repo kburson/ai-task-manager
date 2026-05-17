@@ -14,8 +14,15 @@ export const CLOSE_OWNED_CHECKBOXES = new Set([
   'If this completes the parent epic: update parent body; close parent if all siblings Done',
 ]);
 
+// Strip fenced code blocks (``` … ```) so example markdown inside spec/docs
+// sections doesn't get scanned as live checkboxes. Issue bodies frequently
+// include template examples that legitimately render as `- [ ]`.
+function stripFencedBlocks(src) {
+  return String(src ?? '').replace(/^```[^\n]*\n[\s\S]*?^```[ \t]*$/gm, '');
+}
+
 export function uncheckedPreCloseCheckboxes(body) {
-  return [...String(body ?? '').matchAll(/^- \[ \] (.+)$/gm)]
+  return [...stripFencedBlocks(body).matchAll(/^- \[ \] (.+)$/gm)]
     .map((m) => m[1])
     .filter((label) => !CLOSE_OWNED_CHECKBOXES.has(label))
     .filter((label) => !LIFECYCLE_LABEL_SET.has(label.trim()))

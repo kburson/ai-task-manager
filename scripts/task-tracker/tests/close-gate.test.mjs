@@ -37,3 +37,20 @@ test('handles null/undefined body without throwing', () => {
   assert.deepEqual(uncheckedPreCloseCheckboxes(null), []);
   assert.deepEqual(uncheckedPreCloseCheckboxes(undefined), []);
 });
+
+test('ignores `- [ ]` lines inside fenced code blocks (markdown examples)', () => {
+  const body = [
+    '- [ ] Real item',
+    '',
+    '```markdown',
+    '- [ ] Example in code block',
+    '- [ ] Another example',
+    '```',
+    '',
+    '- [ ] Second real item',
+  ].join('\n');
+  assert.deepEqual(uncheckedPreCloseCheckboxes(body), [
+    '- [ ] Real item',
+    '- [ ] Second real item',
+  ]);
+});
