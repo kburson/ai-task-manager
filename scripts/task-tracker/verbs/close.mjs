@@ -40,7 +40,14 @@ export async function verbClose(ctx) {
 
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
-  const closingDifferentIssue = !!(target && s.active && target !== s.active);
+
+  if (target && s.active && target !== s.active) {
+    console.log(`PROMPT_REQUIRED: bind-mismatch ${s.active}:${target}`);
+    console.error(
+      `⛔ Refusing to close ${target}: active binding is ${s.active}. Run \`/task ${target}\` to rebind, then retry \`/task close\`.`
+    );
+    process.exit(7);
+  }
 
   if (!s.active && target) {
     s = {
@@ -308,48 +315,26 @@ export async function verbClose(ctx) {
     await safePostTiming(closeTarget, dirtyAuditRow);
   }
   const { buildRow: closeBr } = await import('../gh-timing-comment.mjs');
-  if (closingDifferentIssue) {
-    await safePostTiming(
-      closeTarget,
-      closeBr({
-        ts: nowIso(),
-        event: 'done',
-        activeMin: 0,
-        idleMin: 0,
-        deltaWords: 0,
-        wordMarker: 0,
-        description: 'closed',
-      })
-    );
-    if (runLogIssueTime) await runLogIssueTime(closeTarget);
-    try {
-      deregisterTask(projectDir, closeTarget);
-    } catch {}
-    await runMoveStateDone(closeTarget, { silent: true });
-    await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
-    console.log(`Closed ${closeTarget}.`);
-  } else {
-    await safePostTiming(
-      closeTarget,
-      closeBr({
-        ts: nowIso(),
-        event: 'done',
-        activeMin: 0,
-        idleMin: 0,
-        deltaWords: 0,
-        wordMarker: 0,
-        description: 'closed — timing flushed at Review',
-      })
-    );
-    if (runLogIssueTime) await runLogIssueTime(closeTarget);
-    clearActive(statePath);
-    try {
-      deregisterTask(projectDir, s.active);
-    } catch {}
-    await runMoveStateDone(s.active, { silent: true });
-    await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
-    console.log(`Closed ${s.active}.`);
-  }
+  await safePostTiming(
+    closeTarget,
+    closeBr({
+      ts: nowIso(),
+      event: 'done',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      wordMarker: 0,
+      description: 'closed — timing flushed at Review',
+    })
+  );
+  if (runLogIssueTime) await runLogIssueTime(closeTarget);
+  clearActive(statePath);
+  try {
+    deregisterTask(projectDir, s.active);
+  } catch {}
+  await runMoveStateDone(s.active, { silent: true });
+  await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
+  console.log(`Closed ${s.active}.`);
 }
 
 // Tick the Lifecycle DoD items the close verb is responsible for. Best-effort:

@@ -39,8 +39,9 @@ r = await pexec('node', [CLI, 'help'], { env });
 assert.match(r.stdout, /\/task review #N/);
 assert.match(r.stdout, /\/task close \[#N\]/);
 
-// Bug fix: `close #N` with a different active task closes the named issue,
-// not the active task, and does not clear the active session.
+// #142: `close #N` with a different active task must REFUSE (exit 7,
+// PROMPT_REQUIRED: bind-mismatch). The prior silent-cross-close behavior
+// was the bug being fixed — see scripts/task-tracker/tests/close-cross-close.test.mjs.
 {
   const sandbox2 = mkdtempSync(path.join(tmpdir(), 'tt-close-target-'));
   mkdirSync(path.join(sandbox2, '.ai-task-manager'), { recursive: true });
@@ -50,26 +51,26 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   );
   const env2 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox2, TT_SKIP_NETWORK: '1' };
 
-  // Start active task #385 (epic)
   await pexec('node', [CLI, '#385'], { env: env2 });
   let st = JSON.parse(
     readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
   );
   assert.equal(st.active, '#385');
 
-  // Close #386 (a different issue)
-  const closeResult = await pexec('node', [CLI, 'close', '#386'], { env: env2 });
-  assert.match(closeResult.stdout, /Closed #386/, 'should report closing #386, not #385');
+  let refusalErr = null;
+  try {
+    await pexec('node', [CLI, 'close', '#386'], { env: env2 });
+  } catch (e) {
+    refusalErr = e;
+  }
+  assert.ok(refusalErr, 'cross-close must refuse with non-zero exit');
+  assert.equal(refusalErr.code, 7, 'cross-close refusal must exit 7');
+  assert.match(refusalErr.stdout, /PROMPT_REQUIRED: bind-mismatch #385:#386/);
 
-  // Active session (#385) must still be intact
   st = JSON.parse(
     readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
   );
-  assert.equal(
-    st.active,
-    '#385',
-    'active session should remain #385 after closing a different issue'
-  );
+  assert.equal(st.active, '#385', 'active session must remain #385 after refusal');
 
   rmSync(sandbox2, { recursive: true });
 }
