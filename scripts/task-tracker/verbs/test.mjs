@@ -26,6 +26,7 @@ import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker } from '../lib/markers.mjs';
+import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { seedWorktreeBackfill } from '../seed-worktree.mjs';
 
@@ -231,7 +232,9 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
-    const stamped = insertDodVerifiedMarker(body, sha, ts);
+    let stamped = insertDodVerifiedMarker(body, sha, ts);
+    stamped = stampEntryMarker(stamped, 'test', ts);
+    stamped = stampEntryMarker(stamped, 'review', ts);
     if (stamped !== body) {
       await writeBody({ cfg, issueNum, body: stamped, projectDir });
     }

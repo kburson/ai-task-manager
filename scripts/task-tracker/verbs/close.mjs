@@ -12,6 +12,8 @@ import {
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { runCloseGates } from '../lib/close-gates.mjs';
+import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -196,6 +198,26 @@ export async function verbClose(ctx) {
           `${unchecked.length} unchecked checkbox${unchecked.length === 1 ? '' : 'es'} in issue body`
         );
       }
+      if (!force) {
+        const gateResult = await runCloseGates({
+          cfg,
+          issueNumber: closeIssueNum,
+          body,
+          projectDir,
+        });
+        if (!gateResult.ok) {
+          console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
+          gateResult.blockers.forEach((b) => console.error(`   • ${b}`));
+          console.error('');
+          console.error('Legitimate-abandonment override: TASK_TRACKER_FORCE_DONE=1 /task close');
+          process.exit(3);
+        }
+        if (gateResult.dirtyCheckSkipped) {
+          console.warn(
+            `[task-tracker] issue-scoped dirty check skipped (${gateResult.dirtyCheckSkipped}).`
+          );
+        }
+      }
       if (reasons.length > 0) {
         if (force) {
           console.error(
@@ -304,6 +326,7 @@ export async function verbClose(ctx) {
       deregisterTask(projectDir, closeTarget);
     } catch {}
     await runMoveStateDone(closeTarget, { silent: true });
+    await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
     console.log(`Closed ${closeTarget}.`);
   } else {
     await safePostTiming(
@@ -324,6 +347,40 @@ export async function verbClose(ctx) {
       deregisterTask(projectDir, s.active);
     } catch {}
     await runMoveStateDone(s.active, { silent: true });
+    await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
     console.log(`Closed ${s.active}.`);
+  }
+}
+
+// Tick the Lifecycle DoD items the close verb is responsible for. Best-effort:
+// missing section or already-ticked items are no-ops; failures do not block
+// the close path since the issue has already moved to Done.
+async function tickLifecycleOnClose({ cfg, issueNum, pexec }) {
+  try {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const body = String(stdout || '');
+    let next = tickLifecycleItem(body, 'story-closed');
+    next = tickLifecycleItem(next, 'timing-flushed');
+    if (next === body) return;
+    const { writeFileSync, unlinkSync } = await import('node:fs');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const tmp = path.join(os.tmpdir(), `tt-lifecycle-${issueNum}-${Date.now()}.md`);
+    try {
+      writeFileSync(tmp, next, 'utf8');
+      await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], {
+        timeout: GH_API_TIMEOUT_MS,
+      });
+    } finally {
+      try {
+        unlinkSync(tmp);
+      } catch {}
+    }
+  } catch (err) {
+    process.stderr.write(`⚠ lifecycle-tick best-effort failed: ${err.message}\n`);
   }
 }

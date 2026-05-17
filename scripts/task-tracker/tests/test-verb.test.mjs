@@ -127,6 +127,8 @@ test('verbTest: green path stamps marker, posts success comment, moves test→re
     assert.equal(calls.bodyWrites.length, 1);
     const stamped = calls.bodyWrites[0];
     assert.ok(hasDodVerifiedMarker(stamped), 'body must carry dod-verified marker after green');
+    assert.match(stamped, /aitm-entered-test:/, 'must stamp aitm-entered-test on green');
+    assert.match(stamped, /aitm-entered-review:/, 'must stamp aitm-entered-review on green');
     const parsed = parseDodVerifiedMarker(stamped);
     assert.equal(parsed.sha, 'abc1234deadbeef');
     assert.equal(parsed.ts, '2026-05-17T01:23:45.000Z');
