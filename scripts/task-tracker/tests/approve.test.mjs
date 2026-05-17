@@ -46,6 +46,10 @@ function makeDeps(overrides = {}) {
         return overrides.state ?? 'review';
       },
       nowIso: () => FIXED_TS,
+      // Isolate baseline tests from ambient env (e.g. TT_FULL_AUTO=1 in
+      // sandbox). Tests that exercise the full-auto path inject their own
+      // detectFullAuto via overrides.deps.
+      detectFullAuto: () => ({ fired: false, signals: '' }),
       ...overrides.deps,
     },
     getBody: () => body,
