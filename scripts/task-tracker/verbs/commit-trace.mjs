@@ -9,7 +9,7 @@ export async function runCommitTrace({ issueNumber, cfg, projectDir, deps = {} }
   const getInfo = deps.gitInfo || defaultGitInfo;
   const post = deps.postCommitTrail || postCommitTrail;
   const info = await getInfo(cwd);
-  return post({ issueNumber: String(issueNumber).replace(/^#/, ''), repo: cfg.repo, info });
+  return post({ issueNumber: String(issueNumber).replace(/^#/, ''), repo: cfg.repo, info, cwd });
 }
 
 export async function verbCommitTrace(ctx) {

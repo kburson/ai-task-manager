@@ -18,6 +18,7 @@ import {
   buildRow,
   appendCommitRow,
   updateMarker,
+  pruneUnreachable,
   hasWorktreeCols,
   TRAIL_HEADING,
 } from './lib/commit-trail.mjs';
@@ -127,10 +128,27 @@ export async function updateTrailComment(commentId, body, { timeoutMs } = {}) {
   );
 }
 
-export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 5000, deps = {} }) {
+async function defaultExistsSha(sha, { cwd } = {}) {
+  try {
+    await pexec('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd, timeout: GIT_TIMEOUT_MS });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function postCommitTrail({
+  issueNumber,
+  repo,
+  info,
+  cwd,
+  timeoutMs = 5000,
+  deps = {},
+}) {
   const find = deps.find || findTrailComment;
   const create = deps.create || createTrailComment;
   const update = deps.update || updateTrailComment;
+  const existsSha = deps.existsSha || (cwd ? (sha) => defaultExistsSha(sha, { cwd }) : null);
 
   const existing = await find(issueNumber, repo, { timeoutMs });
   const worktreeCols = existing ? hasWorktreeCols(existing.body) : info.isWorktree;
@@ -138,9 +156,16 @@ export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 500
   const row = buildRow({ ...info, commitUrl }, { worktreeCols });
 
   if (existing) {
-    const parsed = parseMarker(existing.body);
-    if (parsed.shas.has(info.sha)) return { action: 'noop-duplicate' };
-    let next = appendCommitRow(existing.body, row);
+    const pruned = await pruneUnreachable(existing.body, { existsSha });
+    const parsed = parseMarker(pruned);
+    if (parsed.shas.has(info.sha)) {
+      if (pruned !== existing.body) {
+        await update(existing.id, pruned, { timeoutMs });
+        return { action: 'pruned' };
+      }
+      return { action: 'noop-duplicate' };
+    }
+    let next = appendCommitRow(pruned, row);
     next = updateMarker(next, info.sha);
     await update(existing.id, next, { timeoutMs });
     return { action: 'updated' };
@@ -182,7 +207,7 @@ async function main() {
   if (!info.sha) return;
 
   try {
-    await postCommitTrail({ issueNumber, repo, info });
+    await postCommitTrail({ issueNumber, repo, info, cwd });
   } catch (err) {
     process.stderr.write(`[commit-trail] gh error: ${err.message}\n`);
   }

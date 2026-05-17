@@ -11,6 +11,7 @@ import {
   updateMarker,
   hasWorktreeCols,
   hasCanonicalCommitTrace,
+  pruneUnreachable,
 } from '../lib/commit-trail.mjs';
 
 // --- detectGitCommit ---
@@ -226,6 +227,71 @@ import {
 {
   const missingSha = ['### 🔗 Commits', '', '<!-- aitm-commits: def456 -->'].join('\n');
   assert.equal(hasCanonicalCommitTrace(missingSha, 'abcdef1234567890'), false);
+}
+
+// --- pruneUnreachable ---
+
+const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const SHA_C = 'cccccccccccccccccccccccccccccccccccccccc';
+
+function makeTrail(shas, repo = 'o/r') {
+  let body = buildInitialTrail();
+  for (const sha of shas) {
+    const row = buildRow(
+      { sha, subject: `s-${sha.slice(0, 7)}`, author: 'a', ts: 't', commitUrl: `https://github.com/${repo}/commit/${sha}` },
+      {}
+    );
+    body = appendCommitRow(body, row);
+    body = updateMarker(body, sha);
+  }
+  return body;
+}
+
+// Drop unreachable middle SHA; preserve order of remaining rows + marker.
+{
+  const body = makeTrail([SHA_A, SHA_B, SHA_C]);
+  const reachable = new Set([SHA_A, SHA_C]);
+  const out = await pruneUnreachable(body, { existsSha: (s) => reachable.has(s) });
+  const parsed = parseMarker(out);
+  assert.deepEqual(Array.from(parsed.shas), [SHA_A, SHA_C]);
+  assert.ok(!out.includes(SHA_B), 'full SHA_B should be gone from URL');
+  assert.ok(!out.includes('`' + SHA_B.slice(0, 7) + '`'), 'short SHA_B should be gone from table');
+  // Order preserved
+  const idxA = out.indexOf(SHA_A);
+  const idxC = out.indexOf(SHA_C);
+  assert.ok(idxA > 0 && idxC > idxA, 'rows preserve original order');
+}
+
+// All reachable → idempotent no-op.
+{
+  const body = makeTrail([SHA_A, SHA_B]);
+  const out = await pruneUnreachable(body, { existsSha: () => true });
+  assert.equal(out, body);
+}
+
+// No marker → no-op.
+{
+  const body = 'no marker here';
+  const out = await pruneUnreachable(body, { existsSha: () => false });
+  assert.equal(out, body);
+}
+
+// existsSha not provided → no-op.
+{
+  const body = makeTrail([SHA_A]);
+  const out = await pruneUnreachable(body, {});
+  assert.equal(out, body);
+}
+
+// Async existsSha is awaited.
+{
+  const body = makeTrail([SHA_A, SHA_B]);
+  const out = await pruneUnreachable(body, {
+    existsSha: async (s) => s === SHA_A,
+  });
+  const parsed = parseMarker(out);
+  assert.deepEqual(Array.from(parsed.shas), [SHA_A]);
 }
 
 console.log('commit-trail: ok');

@@ -96,6 +96,42 @@ export function appendCommitRow(body, row) {
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
 
+// Drop SHAs from the marker (and their table rows) that fail `existsSha`.
+// `existsSha(sha)` may return a boolean or a Promise<boolean>. Caller supplies
+// the reachability check — typically `git cat-file -e <sha>^{commit}` so the
+// trail self-heals after `git reset --soft HEAD~N` + recommit flows that
+// orphan previously-recorded SHAs.
+export async function pruneUnreachable(body, { existsSha } = {}) {
+  if (typeof existsSha !== 'function') return body;
+  const parsed = parseMarker(body);
+  if (parsed.index === -1 || parsed.shas.size === 0) return body;
+  const keep = [];
+  const drop = new Set();
+  for (const sha of parsed.shas) {
+    const ok = await existsSha(sha);
+    if (ok) keep.push(sha);
+    else drop.add(sha);
+  }
+  if (drop.size === 0) return body;
+  const nextMarker = `<!-- aitm-commits: ${keep.join(',')} -->`;
+  const next =
+    body.slice(0, parsed.index) + nextMarker + body.slice(parsed.index + parsed.raw.length);
+  const droppedShorts = new Set([...drop].map((s) => String(s).slice(0, 7)));
+  const lines = next.split('\n');
+  const filtered = lines.filter((line) => {
+    if (!line.startsWith('|')) return true;
+    if (line.startsWith('| SHA') || line.startsWith('|---')) return true;
+    for (const full of drop) {
+      if (line.includes(`/commit/${full}`)) return false;
+    }
+    for (const short of droppedShorts) {
+      if (line.includes('`' + short + '`')) return false;
+    }
+    return true;
+  });
+  return filtered.join('\n');
+}
+
 export function updateMarker(body, sha) {
   const parsed = parseMarker(body);
   if (parsed.shas.has(sha)) return body;
