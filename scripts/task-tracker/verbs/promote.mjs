@@ -357,6 +357,7 @@ export async function runPromote({
           activeMin: 0,
           idleMin: 0,
           deltaWords: 0,
+          // wordMarker:0 audit row — drift-reconcile event, no active session
           wordMarker: 0,
           description: `${recorded} → ${liveAfter} (${
             transitionResult.kind === 'alias'
@@ -438,6 +439,7 @@ export async function runPromote({
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 audit row — promote move event, no active session
       wordMarker: 0,
       description:
         transitionResult.kind === 'alias' ? `via /task ${transitionResult.verb}` : 'direct move',

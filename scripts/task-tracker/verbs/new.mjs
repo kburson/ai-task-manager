@@ -68,6 +68,7 @@ export async function verbNew(ctx) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 ok — issue just created, no session yet
       wordMarker: 0,
       description: 'task created',
     })

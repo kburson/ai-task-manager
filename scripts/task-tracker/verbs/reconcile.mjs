@@ -197,6 +197,7 @@ export async function runReconcile({
         activeMin: 0,
         idleMin: 0,
         deltaWords: 0,
+        // wordMarker:0 audit row — drift-reconcile event, no active session
         wordMarker: 0,
         description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}"${strippedNote}`,
       });
@@ -227,6 +228,7 @@ export async function runReconcile({
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 audit row — drift-revert event, no active session
       wordMarker: 0,
       description: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
     });

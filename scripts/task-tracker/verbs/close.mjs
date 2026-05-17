@@ -131,6 +131,7 @@ export async function verbClose(ctx) {
           activeMin: 0,
           idleMin: 0,
           deltaWords: 0,
+          // wordMarker:0 audit row — closed-with-dirty-tree audit, no active session
           wordMarker: 0,
           description: shortAuditDescription(dirty),
         });
@@ -191,6 +192,7 @@ export async function verbClose(ctx) {
             activeMin: 0,
             idleMin: 0,
             deltaWords: 0,
+            // wordMarker:0 audit row — gate-bypass audit, no active session
             wordMarker: 0,
             description:
               'gateReviewToDone=false (session/project override) — bypassing human review',
@@ -284,6 +286,7 @@ export async function verbClose(ctx) {
                 activeMin: 0,
                 idleMin: 0,
                 deltaWords: 0,
+                // wordMarker:0 audit row — cascade close, no per-child session
                 wordMarker: 0,
                 description: 'cascade closed by epic',
               })
@@ -323,6 +326,7 @@ export async function verbClose(ctx) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 ok — timing already flushed at Review, this is the close audit row
       wordMarker: 0,
       description: 'closed — timing flushed at Review',
     })

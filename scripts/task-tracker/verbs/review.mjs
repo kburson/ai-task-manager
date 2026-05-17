@@ -101,6 +101,7 @@ export async function verbReview(ctx) {
               activeMin: 0,
               idleMin: 0,
               deltaWords: 0,
+              // wordMarker:0 audit row — gate-refused, no active session
               wordMarker: 0,
               description: `→ validate: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
             });
@@ -172,6 +173,7 @@ export async function verbReview(ctx) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 ok — no active session for this target on review entry
       wordMarker: 0,
       description: 'starting review',
     });
@@ -386,6 +388,7 @@ export async function verbReview(ctx) {
           activeMin: 0,
           idleMin: 0,
           deltaWords: 0,
+          // wordMarker:0 audit row — verification-failed revert, no live session
           wordMarker: 0,
           description: 'verification failed — reverted to Develop',
         })
@@ -419,6 +422,7 @@ export async function verbReview(ctx) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 audit row — post-move state event, no active session
       wordMarker: 0,
       description: 'task is now in Review',
     });

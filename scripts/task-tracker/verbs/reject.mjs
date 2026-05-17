@@ -55,6 +55,7 @@ export async function verbReject(ctx) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 audit row — review-rejected revert, no live session
       wordMarker: 0,
       description: `review rejected: ${descReason}`,
     })

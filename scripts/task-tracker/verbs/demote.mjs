@@ -211,6 +211,7 @@ export async function runDemote({
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      // wordMarker:0 audit row — demote move event, no active session
       wordMarker: 0,
       description: `demote from ${recorded}`,
     });
