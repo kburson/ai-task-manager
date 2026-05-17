@@ -239,7 +239,13 @@ function makeTrail(shas, repo = 'o/r') {
   let body = buildInitialTrail();
   for (const sha of shas) {
     const row = buildRow(
-      { sha, subject: `s-${sha.slice(0, 7)}`, author: 'a', ts: 't', commitUrl: `https://github.com/${repo}/commit/${sha}` },
+      {
+        sha,
+        subject: `s-${sha.slice(0, 7)}`,
+        author: 'a',
+        ts: 't',
+        commitUrl: `https://github.com/${repo}/commit/${sha}`,
+      },
       {}
     );
     body = appendCommitRow(body, row);
