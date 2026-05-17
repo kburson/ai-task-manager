@@ -6,7 +6,11 @@ import { test } from 'node:test';
 
 import {
   parseLifecycleItems,
+  parseFunctionalItems,
   tickLifecycleItem,
+  untickLifecycleItem,
+  detectLifecyclePretick,
+  locateFunctionalSection,
   LIFECYCLE_LABELS,
   LIFECYCLE_LABEL_SET,
 } from '../lib/lifecycle-dod.mjs';
@@ -60,6 +64,55 @@ test('tickLifecycleItem: missing section → returns body unchanged', () => {
 
 test('tickLifecycleItem: unknown key → throws', () => {
   assert.throws(() => tickLifecycleItem(TEMPLATE, 'nope'), /unknown lifecycle key/);
+});
+
+test('parseFunctionalItems: extracts Functional sub-block items', () => {
+  const items = parseFunctionalItems(TEMPLATE);
+  assert.equal(items.length, 2);
+  assert.equal(items[0].label, 'All automated tests pass');
+  assert.ok(items.every((i) => i.checked));
+});
+
+test('parseFunctionalItems: no Functional section → empty array', () => {
+  assert.deepEqual(parseFunctionalItems('## Scope\n\nno functional here'), []);
+});
+
+test('locateFunctionalSection: bounds end at next heading', () => {
+  const loc = locateFunctionalSection(TEMPLATE);
+  assert.ok(loc);
+  assert.ok(loc.section.includes('All automated tests pass'));
+  assert.ok(!loc.section.includes('Passed final human review'));
+});
+
+test('untickLifecycleItem: reverses a tick (idempotent)', () => {
+  const ticked = tickLifecycleItem(TEMPLATE, 'story-closed');
+  const reverted = untickLifecycleItem(ticked, 'story-closed');
+  assert.match(reverted, /- \[ \] Story closed and moved to Done/);
+  const again = untickLifecycleItem(reverted, 'story-closed');
+  assert.equal(again, reverted);
+});
+
+test('detectLifecyclePretick: ticked items → un-ticked + regressions reported', () => {
+  let body = tickLifecycleItem(TEMPLATE, 'story-closed');
+  body = tickLifecycleItem(body, 'timing-flushed');
+  const r = detectLifecyclePretick(body);
+  assert.equal(r.regressions.length, 2);
+  assert.deepEqual(r.regressions.map((x) => x.key).sort(), ['story-closed', 'timing-flushed']);
+  assert.match(r.body, /- \[ \] Story closed and moved to Done/);
+  assert.match(r.body, /- \[ \] Timing data flushed to issue/);
+});
+
+test('detectLifecyclePretick: no ticks → empty regressions, body unchanged', () => {
+  const r = detectLifecyclePretick(TEMPLATE);
+  assert.equal(r.regressions.length, 0);
+  assert.equal(r.body, TEMPLATE);
+});
+
+test('detectLifecyclePretick: no Lifecycle section (back-compat flat DoD) → no regressions', () => {
+  const flat = '## DoD\n\n- [x] All tests pass\n- [x] Lint clean\n';
+  const r = detectLifecyclePretick(flat);
+  assert.equal(r.regressions.length, 0);
+  assert.equal(r.body, flat);
 });
 
 test('LIFECYCLE_LABEL_SET: contains all three labels', () => {

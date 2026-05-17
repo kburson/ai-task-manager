@@ -57,6 +57,9 @@ PVTI
 PVTO
 PVTSSF
 pytest
+prebody
+pretick
+Pretick
 quotepath
 rebucket
 rebuckets
@@ -90,6 +93,7 @@ unmigrated
 unparseable
 unrecognised
 Unrecognised
+untick
 unticked
 unvetted
 Unvetted

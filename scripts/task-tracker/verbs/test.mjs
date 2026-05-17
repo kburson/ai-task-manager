@@ -27,6 +27,7 @@ import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker } from '../lib/markers.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { seedWorktreeBackfill } from '../seed-worktree.mjs';
 
@@ -175,7 +176,18 @@ export async function runVerbTest({
   const moveState = deps.moveState;
   const logIssueTime = deps.logIssueTime;
 
-  const body = await fetchBody({ cfg, issueNum });
+  let body = await fetchBody({ cfg, issueNum });
+  const pretick = detectLifecyclePretick(body);
+  if (pretick.regressions.length > 0) {
+    body = pretick.body;
+    await writeBody({ cfg, issueNum, body, projectDir });
+    const labels = pretick.regressions.map((r) => r.label).join('; ');
+    await postComment({
+      cfg,
+      issueNum,
+      body: `⚠️ Lifecycle DoD regression: items pre-ticked before their trigger fired and were auto-un-ticked: ${labels}. Run \`/task approve\` then \`/task close\` so the correct verb ticks them.`,
+    });
+  }
   const vcs = parseVerificationCommands(body);
   if (vcs.length === 0) {
     return {

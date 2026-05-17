@@ -21,6 +21,7 @@ import {
   hasReviewApprovedMarker,
   insertReviewApprovedMarker,
 } from '../lib/markers.mjs';
+import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -86,7 +87,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
     return { status: 'already-approved' };
   }
   const ts = nowIso();
-  const updated = insertApprovalMarker(body, ts);
+  let updated = insertApprovalMarker(body, ts);
+  updated = tickLifecycleItem(updated, 'passed-final-review');
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
   return { status: 'approved', ts };
 }

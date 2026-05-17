@@ -181,6 +181,45 @@ test('verbTest: no-vc body returns no-vc status (does not create worktree)', asy
   });
 });
 
+test('verbTest: detects lifecycle pretick → un-ticks, writes body, posts regression comment (#139)', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    const prebody = [
+      '## Scope',
+      'x',
+      '',
+      '## Verification Commands',
+      '- [ ] `node scripts/run-tests.mjs`',
+      '',
+      '#### Lifecycle (auto-ticked at Review/Close)',
+      '- [x] Passed final human review',
+      '- [x] Story closed and moved to Done',
+      '- [ ] Timing data flushed to issue',
+      '',
+    ].join('\n');
+    deps.fetchBody = async () => prebody;
+    const r = await runVerbTest({ cfg, issueNumber: 139, projectDir, deps });
+    assert.equal(r.status, 'passed');
+    const regressionComment = calls.comments.find((c) => /Lifecycle DoD regression/.test(c));
+    assert.ok(regressionComment, 'must post regression comment when pretick detected');
+    assert.match(regressionComment, /Passed final human review/);
+    assert.match(regressionComment, /Story closed and moved to Done/);
+    // First body write is the pretick un-tick; later writes contain markers.
+    assert.ok(calls.bodyWrites.length >= 2, 'pretick un-tick + green-path marker stamp');
+    assert.match(calls.bodyWrites[0], /- \[ \] Passed final human review/);
+    assert.match(calls.bodyWrites[0], /- \[ \] Story closed and moved to Done/);
+  });
+});
+
+test('verbTest: no pretick → no regression comment posted (#139)', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    const r = await runVerbTest({ cfg, issueNumber: 139, projectDir, deps });
+    assert.equal(r.status, 'passed');
+    assert.equal(calls.comments.filter((c) => /Lifecycle DoD regression/.test(c)).length, 0);
+  });
+});
+
 test('verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox', async () => {
   // Models the spec: a command that relies on a local-only env var passes
   // when run in the author's shell but fails in the clean worktree. We do

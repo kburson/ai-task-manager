@@ -32,14 +32,21 @@ const preflightBlock = execFileSync(
   { cwd: root, encoding: 'utf8' }
 );
 
-for (const line of [
-  '- [ ] `npm test`',
-  '- [ ] `npm run lint`',
-  '- [ ] `npm run format:check`',
+// DoD template uses Functional/Lifecycle split (#139). Verification commands
+// now live in the `aitm-verified-by` comments on each Functional item rather
+// than as standalone DoD lines.
+for (const fragment of [
+  '#### Functional (verified at Test)',
+  'aitm-verified-by: `npm test`',
+  'aitm-verified-by: `npm run lint` `npm run format:check`',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
+  '#### Lifecycle (auto-ticked at Review/Close)',
+  '- [ ] Passed final human review',
+  '- [ ] Story closed and moved to Done',
+  '- [ ] Timing data flushed to issue',
 ]) {
-  assert.ok(body.includes(line), `template includes ${line}`);
+  assert.ok(body.includes(fragment), `template includes ${fragment}`);
 }
 
 assert.ok(

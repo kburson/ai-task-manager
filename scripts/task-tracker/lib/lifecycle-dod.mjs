@@ -20,13 +20,14 @@ export const LIFECYCLE_LABELS = {
 export const LIFECYCLE_LABEL_SET = new Set(Object.values(LIFECYCLE_LABELS));
 
 const LIFECYCLE_HEADING_RE = /^####\s+Lifecycle\b[^\n]*$/im;
+const FUNCTIONAL_HEADING_RE = /^####\s+Functional\b[^\n]*$/im;
 // Section ends at the next heading of equal-or-shallower depth, the field-DB
 // block, or end-of-body — whichever comes first.
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 
-export function locateLifecycleSection(body) {
+function locateBy(headingRe, body) {
   const src = String(body || '');
-  const m = src.match(LIFECYCLE_HEADING_RE);
+  const m = src.match(headingRe);
   if (!m) return null;
   const start = m.index + m[0].length;
   const rest = src.slice(start);
@@ -39,6 +40,26 @@ export function locateLifecycleSection(body) {
     before: src.slice(0, start),
     after: src.slice(end),
   };
+}
+
+export function locateLifecycleSection(body) {
+  return locateBy(LIFECYCLE_HEADING_RE, body);
+}
+
+export function locateFunctionalSection(body) {
+  return locateBy(FUNCTIONAL_HEADING_RE, body);
+}
+
+export function parseFunctionalItems(body) {
+  const loc = locateFunctionalSection(body);
+  if (!loc) return [];
+  const items = [];
+  const re = /^- \[([ x])\]\s+(.+)$/gm;
+  let m;
+  while ((m = re.exec(loc.section)) !== null) {
+    items.push({ label: m[2].trim(), checked: m[1] === 'x' });
+  }
+  return items;
 }
 
 export function parseLifecycleItems(body) {
@@ -59,16 +80,42 @@ export function parseLifecycleItems(body) {
 // Tick the lifecycle item identified by `key`. Idempotent. Returns the
 // (possibly-unchanged) body.
 export function tickLifecycleItem(body, key) {
+  return _toggleLifecycleItem(body, key, /* tick */ true);
+}
+
+// Un-tick the lifecycle item identified by `key`. Idempotent.
+export function untickLifecycleItem(body, key) {
+  return _toggleLifecycleItem(body, key, /* tick */ false);
+}
+
+function _toggleLifecycleItem(body, key, tick) {
   if (!(key in LIFECYCLE_LABELS)) {
-    throw new Error(`tickLifecycleItem: unknown lifecycle key "${key}"`);
+    throw new Error(`${tick ? 'tick' : 'untick'}LifecycleItem: unknown lifecycle key "${key}"`);
   }
   const label = LIFECYCLE_LABELS[key];
   const loc = locateLifecycleSection(body);
   if (!loc) return String(body || '');
-  // Escape label for use in regex
   const labelRe = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const tickRe = new RegExp(`(^- )\\[ \\](\\s+${labelRe}\\s*$)`, 'm');
-  const tickedSection = loc.section.replace(tickRe, '$1[x]$2');
-  if (tickedSection === loc.section) return String(body || '');
-  return loc.before + tickedSection + loc.after;
+  const fromChar = tick ? ' ' : 'x';
+  const toChar = tick ? 'x' : ' ';
+  const re = new RegExp(`(^- )\\[${fromChar}\\](\\s+${labelRe}\\s*$)`, 'm');
+  const next = loc.section.replace(re, `$1[${toChar}]$2`);
+  if (next === loc.section) return String(body || '');
+  return loc.before + next + loc.after;
+}
+
+// Detect any lifecycle items that are ticked AND un-tick them. Used by /task
+// test to catch pre-ticks done by agents before the responsible verb fired.
+// Returns { body, regressions: [{ key, label }] }.
+export function detectLifecyclePretick(body) {
+  const items = parseLifecycleItems(body);
+  const regressions = [];
+  let next = String(body || '');
+  for (const it of items) {
+    if (it.checked && it.key) {
+      regressions.push({ key: it.key, label: it.label });
+      next = untickLifecycleItem(next, it.key);
+    }
+  }
+  return { body: next, regressions };
 }

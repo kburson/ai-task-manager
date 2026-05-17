@@ -156,4 +156,34 @@ function makeDeps(overrides = {}) {
   );
 }
 
+// 9. auto-ticks "Passed final human review" Lifecycle item on approve (#139)
+{
+  const body = [
+    '## AC',
+    '- [x] x',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
+    '',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({ initialBody: body });
+  await runApprove({ issueNumber: 58, cfg, deps });
+  const out = getBody();
+  assert.match(out, /- \[x\] Passed final human review/);
+  assert.match(out, /- \[ \] Story closed and moved to Done/);
+  assert.match(out, /- \[ \] Timing data flushed to issue/);
+}
+
+// 10. auto-tick is a no-op when there is no Lifecycle section (back-compat)
+{
+  const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
+  await runApprove({ issueNumber: 58, cfg, deps });
+  assert.match(getBody(), /<!-- aitm-review-approved:/);
+  assert.doesNotMatch(getBody(), /Passed final human review/);
+}
+
 console.log('approve.test.mjs: all passed');
