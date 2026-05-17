@@ -101,7 +101,16 @@ required box is unchecked will be refused.
    - Before closing an issue.
    - Before parallel-agent fan-out.
 
-10. **On mistakes — stop and surface, do not self-correct.**
+10. **Field units — `estimate` is hours; timing fields are minutes.**
+    The project-board `Estimate` field is denominated in **hours** (`unit: hours` in
+    `config/project-fields.default.json`). The timing fields — `engagedTime`,
+    `sessionTime`, `reviewTime` — are denominated in **minutes**. The Review delta
+    renderer normalizes both to seconds internally and displays `H:MM:SS`, but if you
+    read these values directly (board API, field-DB JSON), **do not compare them
+    raw** — a 3-hour estimate against a 22.5-minute actual is −87%, not +650%.
+    Internal compute is second-precision; the board still stores rounded minutes.
+
+11. **On mistakes — stop and surface, do not self-correct.**
     If you discover you have taken a wrong action (created a duplicate issue, used
     `gh issue close` directly, skipped the deep dive, dispatched agents without
     verifying state), STOP immediately. Do not attempt to fix the mistake yourself.

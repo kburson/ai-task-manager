@@ -45,15 +45,21 @@ function buildDeps({ estimate = 16, engagedTime = 22.5 } = {}) {
   };
 }
 
-// Test 1: auto path — estimate=16, actual=22.5 → +40.6%.
+// Test 1: auto path — estimate=16 hours (57600s), engagedTime=1350 minutes
+// (=81000s = 22.5h, +40.6% over). Verifies unit normalization in
+// apply-review-delta (minutes→seconds boundary conversion).
 {
-  const { state, deps } = buildDeps();
+  const { state, deps } = buildDeps({ estimate: 16, engagedTime: 1350 });
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   assert.equal(state.comments.length, 1);
   const c = state.comments[0];
   assert.ok(c.startsWith('### 📊 Review delta'), 'header present');
-  assert.match(c, /\| Hours \| 16 \| 22\.5 \| \+40\.6% \|/, 'row shows +40.6%');
+  assert.match(
+    c,
+    /\| Story effort \| 16:00:00 \| 22:30:00 \| \+40\.6% \|/,
+    'row shows +40.6% in H:MM:SS'
+  );
   assert.match(c, /read-only/i, 'read-only footer present');
 }
 
@@ -63,7 +69,7 @@ function buildDeps({ estimate = 16, engagedTime = 22.5 } = {}) {
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
-  assert.match(c, /\| Hours \| 16 \| — \| — \|/, 'em-dash cells when actual missing');
+  assert.match(c, /\| Story effort \| 16:00:00 \| — \| — \|/, 'em-dash cells when actual missing');
   assert.match(c, /Actual Session Time.*not set/i, 'fallback note present');
 }
 

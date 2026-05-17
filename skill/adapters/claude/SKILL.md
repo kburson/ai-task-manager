@@ -51,6 +51,16 @@ Refusal contracts (deterministic exit codes):
 
 Use `--dry-run` to print the rendered body without calling `gh`.
 
+## Field units
+
+The project-board `Estimate` is denominated in **hours**; the timing fields
+(`engagedTime`, `sessionTime`, `reviewTime`) are denominated in **minutes**.
+The Review delta renderer normalizes both to seconds and displays `H:MM:SS`.
+If you read these values directly (board API or `aitm-fields` JSON), **do not
+compare them raw** — a 3-hour estimate vs. a 22.5-minute actual is −87%, not
++650%. Internal compute is second-precision; the board still stores rounded
+minutes.
+
 ## Checkpoint Pause
 
 Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains an unaddressed question/instruction, halt and respond first — do not advance state. See the full rule in `templates/pickup-directive.md` ("Checkpoint Pause").
