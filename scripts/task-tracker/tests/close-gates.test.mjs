@@ -144,6 +144,21 @@ test('runCloseGates: full green → ok', async () => {
   assert.equal(r.dirtyCheckSkipped, 'no-commits-marker');
 });
 
+test('runCloseGates: stale marker SHA does NOT block close (Review→Done is HEAD-independent)', async () => {
+  const r = await runCloseGates({
+    cfg,
+    issueNumber: 1,
+    body: bodyWithMarker('aaa1111'),
+    projectDir: '/tmp/x',
+    deps: {
+      getHeadSha: async () => 'bbb2222deadbeef',
+      listComments: async () => [],
+    },
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.blockers));
+  assert.equal(r.blockers.filter((b) => /sha-stale|sha-fresh/.test(b)).length, 0);
+});
+
 test('runCloseGates: marker missing → marker-missing in blockers, sha-fresh skipped', async () => {
   const r = await runCloseGates({
     cfg,

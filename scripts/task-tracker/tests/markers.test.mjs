@@ -132,4 +132,21 @@ const TS = '2026-05-11T12:00:00Z';
   assert.equal(backfillDeepDiveCompleteMarker(noHeading, TS), noHeading);
 }
 
+// ── dod-verified: insert replaces stale SHA (re-test must refresh) ───────────
+{
+  const { insertDodVerifiedMarker, parseDodVerifiedMarker } = await import('../lib/markers.mjs');
+  const initial = insertDodVerifiedMarker('## AC\n- [ ] x\n', 'aaa1111', TS);
+  const parsed1 = parseDodVerifiedMarker(initial);
+  assert.equal(parsed1.sha, 'aaa1111');
+
+  // Re-stamping with a new SHA must REPLACE, not preserve (#139 fix).
+  const refreshed = insertDodVerifiedMarker(initial, 'bbb2222', '2026-05-17T12:00:00Z');
+  const parsed2 = parseDodVerifiedMarker(refreshed);
+  assert.equal(parsed2.sha, 'bbb2222');
+  assert.equal(parsed2.ts, '2026-05-17T12:00:00Z');
+  // Exactly one marker — no duplicates.
+  const matches = refreshed.match(/aitm-dod-verified:/g) || [];
+  assert.equal(matches.length, 1, 'must not leave a stale marker behind');
+}
+
 console.log('markers.test.mjs: all passed');

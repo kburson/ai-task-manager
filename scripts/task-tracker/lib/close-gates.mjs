@@ -1,12 +1,17 @@
 // /task close pre-close gates (#138).
 //
-// Four orthogonal refusals enforced before close moves an issue to Done:
+// Three orthogonal refusals enforced before close moves an issue to Done:
 //
 //   1. marker-missing       — `aitm-dod-verified` HTML marker absent
-//   2. sha-stale            — marker's sha != HEAD (new commits since /task test)
-//   3. issue-dirty          — files touched by this issue's commits are still
+//   2. issue-dirty          — files touched by this issue's commits are still
 //                             modified in the working tree (issue-scoped dirty)
-//   4. chain-hole-at-<stage>— missing `aitm-entered-<stage>` marker
+//   3. chain-hole-at-<stage>— missing `aitm-entered-<stage>` marker
+//
+// `shaFreshGate` is still exported for the Test→Review boundary, but the
+// Review→Done gate intentionally does NOT check SHA freshness: once a story
+// reaches Review, later commits on trunk (from other stories) are unrelated
+// to its verification, so the gate would only generate false positives.
+// SHA freshness is a Test→Review concern, not a Review→Done concern.
 //
 // Each gate is a pure function (modulo injectable I/O). The aggregate
 // `runCloseGates` returns `{ ok, blockers, dirtyCheckSkipped }`.
@@ -178,37 +183,19 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-async function defaultCommitsSince({ since, head, projectDir }) {
-  try {
-    const { stdout } = await pexec('git', ['log', '--pretty=format:%h', `${since}..${head}`], {
-      cwd: projectDir,
-      timeout: 10000,
-    });
-    return String(stdout || '')
-      .split('\n')
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps = {} } = {}) {
   const blockers = [];
   const m = markerPresentGate(body);
   if (!m.ok) blockers.push(m.blocker);
 
+  // SHA freshness intentionally NOT checked here. Review→Done is independent
+  // of HEAD movement on trunk from unrelated stories. See file header.
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
   let headSha = null;
   try {
     headSha = await getHeadSha({ projectDir });
   } catch (err) {
     blockers.push(`close-head-resolve-failed: ${err.message}`);
-  }
-  if (m.ok && headSha) {
-    const commitsSince =
-      deps.commitsSince || ((args) => defaultCommitsSince({ ...args, projectDir }));
-    const s = await shaFreshGate(body, headSha, { commitsSince });
-    if (!s.ok) blockers.push(s.blocker);
   }
 
   const c = chainIntegrityGate(body);

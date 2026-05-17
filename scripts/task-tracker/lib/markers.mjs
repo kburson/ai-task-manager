@@ -66,7 +66,13 @@ export function parseDodVerifiedMarker(body) {
 }
 
 export function insertDodVerifiedMarker(body, sha, ts) {
-  return insertMarkerBeforeFieldDb(body, DOD_VERIFIED_RE, buildDodVerifiedMarker(sha, ts));
+  // Replace any existing marker so re-running /task test refreshes the SHA.
+  // Without this, a stale marker survives forever and Test→Review re-runs
+  // can't pick up a moved HEAD.
+  const stripped = String(body || '')
+    .replace(DOD_VERIFIED_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
+  return insertMarkerBeforeFieldDb(stripped, DOD_VERIFIED_RE, buildDodVerifiedMarker(sha, ts));
 }
 
 // ---------------------------------------------------------------------------
