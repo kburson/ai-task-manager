@@ -27,10 +27,11 @@ import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker } from '../lib/markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { seedWorktreeBackfill } from '../seed-worktree.mjs';
 
 const pexec = promisify(execFile);
 
-const SANDBOX_TIMEOUT_MS = 300_000; // 5 min per command — same budget as review.mjs
+const SANDBOX_TIMEOUT_MS = 900_000; // 15 min per command — npm test in a fresh worktree runs ~100 files
 const NPM_CI_TIMEOUT_MS = 600_000; // 10 min worst-case fresh install
 const TAIL_LINES = 50;
 
@@ -67,6 +68,12 @@ async function defaultRemoveWorktree({ projectDir, path: wtPath }) {
   } catch {
     // best-effort
   }
+}
+
+async function defaultSeedWorktree({ projectDir, path: wtPath }) {
+  // `.ai-task-manager/` is gitignored, so a fresh worktree lacks the runtime
+  // config + templates that several tests touch. Copy them from the parent.
+  seedWorktreeBackfill({ source: projectDir, target: wtPath });
 }
 
 async function defaultNpmCi({ path: wtPath }) {
@@ -161,6 +168,7 @@ export async function runVerbTest({
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
   const createWorktree = deps.createWorktree || defaultCreateWorktree;
   const removeWorktree = deps.removeWorktree || defaultRemoveWorktree;
+  const seedWt = deps.seedWorktree || defaultSeedWorktree;
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const moveState = deps.moveState;
@@ -181,11 +189,14 @@ export async function runVerbTest({
     await removeWorktree({ projectDir, path: wtPath });
   }
 
+  if (moveState) await moveState({ issueNumber: issueNum, target: 'test' });
+
   const results = [];
   let cleanupNeeded = false;
   try {
     await createWorktree({ projectDir, path: wtPath });
     cleanupNeeded = true;
+    await seedWt({ projectDir, path: wtPath });
     await npmCi({ path: wtPath });
 
     for (const vc of vcs) {
@@ -229,7 +240,6 @@ export async function runVerbTest({
       issueNum,
       body: buildResultTable(results, { sha, status: 'green' }),
     });
-    if (moveState) await moveState({ issueNumber: issueNum, target: 'test' });
     if (moveState) await moveState({ issueNumber: issueNum, target: 'review' });
     if (logIssueTime) await logIssueTime(issueNum);
     return { status: 'passed', sha, ts, results, wtPath };

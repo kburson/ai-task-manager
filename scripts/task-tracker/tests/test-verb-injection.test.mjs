@@ -38,6 +38,9 @@ try {
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
     JSON.stringify({ repo: 'test-owner/test-repo', projectId: 'PVT_test' }, null, 2)
   );
+  // seedWorktree requires these to exist in the parent .ai-task-manager/.
+  writeFileSync(path.join(sandbox, '.ai-task-manager', 'pickup-directive.md'), '');
+  writeFileSync(path.join(sandbox, '.ai-task-manager', 'definition-of-done.md'), '');
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
     JSON.stringify({ active: '#999', lastActive: '#999', entryStartTs: null, wordsAtEntryStart: 0 })

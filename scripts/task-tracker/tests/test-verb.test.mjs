@@ -56,6 +56,7 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
       removeWorktree: async () => {
         calls.worktreesRemoved++;
       },
+      seedWorktree: async () => {},
       npmCi: async () => {
         calls.npmCiCalls++;
       },
@@ -155,7 +156,7 @@ test('verbTest: red path posts failure comment, rolls back to develop, does NOT 
     assert.equal(calls.comments.length, 1);
     assert.match(calls.comments[0], /Sandboxed verification failed/);
     assert.match(calls.comments[0], /boom/);
-    assert.deepEqual(calls.moves, ['develop']);
+    assert.deepEqual(calls.moves, ['test', 'develop']);
   });
 });
 
@@ -191,7 +192,7 @@ test('verbTest: sandbox isolation — locally-passing env-dependent command fail
     });
     const r = await runVerbTest({ cfg, issueNumber: 137, projectDir, deps });
     assert.equal(r.status, 'failed');
-    assert.equal(calls.moves[0], 'develop');
+    assert.deepEqual(calls.moves, ['test', 'develop']);
     assert.match(calls.comments[0], /MISSING_ENV not set/);
   });
 });
