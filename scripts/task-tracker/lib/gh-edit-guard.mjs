@@ -31,6 +31,7 @@ const MARKER_PATTERNS = [
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved:/i },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete:/i },
   { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved:/i },
+  { name: 'aitm-full-auto-approved', re: /<!--\s*aitm-full-auto-approved:/i },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
   { name: 'aitm-groom-rationale', re: /<!--\s*aitm-groom-rationale:/i },
   { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },

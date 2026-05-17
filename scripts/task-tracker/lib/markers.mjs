@@ -46,6 +46,34 @@ export function insertPlanApprovedMarker(body, ts) {
 }
 
 // ---------------------------------------------------------------------------
+// full-auto-approved (#156 — Full-Auto audit marker on /task approve)
+//
+// In full-auto mode, no human reviewed the work — but `/task approve` still
+// ticks "Passed final human review" so close-gates pass. The marker preserves
+// the audit truth: this approval was machine-generated, not human-reviewed.
+// `<signals>` records which detection inputs fired (env, tty, ci) so the trail
+// explains its own confidence later.
+// ---------------------------------------------------------------------------
+
+export const FULL_AUTO_APPROVED_RE = /<!--\s*aitm-full-auto-approved:\s*([^>]*?)\s*-->/i;
+
+export function buildFullAutoApprovedMarker(ts, signals) {
+  return `<!-- aitm-full-auto-approved: ${ts}:${signals} -->`;
+}
+
+export function hasFullAutoApprovedMarker(body) {
+  return FULL_AUTO_APPROVED_RE.test(String(body || ''));
+}
+
+export function insertFullAutoApprovedMarker(body, ts, signals) {
+  return insertMarkerBeforeFieldDb(
+    body,
+    FULL_AUTO_APPROVED_RE,
+    buildFullAutoApprovedMarker(ts, signals)
+  );
+}
+
+// ---------------------------------------------------------------------------
 // dod-verified (sandboxed /task test stamped this on green — #137)
 // ---------------------------------------------------------------------------
 

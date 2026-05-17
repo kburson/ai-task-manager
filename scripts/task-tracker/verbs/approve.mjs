@@ -20,6 +20,7 @@ import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
   insertReviewApprovedMarker,
+  insertFullAutoApprovedMarker,
 } from '../lib/markers.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -65,6 +66,25 @@ async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
   return mod.getIssueBoardState(String(issueNumber).replace(/^#/, ''));
 }
 
+// #156 — Detect "no human in the loop" so the approve verb can stamp an
+// audit marker that flags machine-generated approvals. There is no
+// Claude-Code-native signal; the wrapper has to declare it. We accept any of:
+//   - `TT_FULL_AUTO=1` (explicit, set by fleet/orchestrator)
+//   - `process.stdin.isTTY === false` (headless inference)
+//   - `CI=1` (generic CI flag)
+// If any fires, we record which ones via the signals string so the audit
+// trail explains its own confidence later. `env` defaults to process.env;
+// `tty` defaults to process.stdin.isTTY so tests can stub.
+export function detectFullAuto({ env = process.env, tty = process.stdin?.isTTY } = {}) {
+  const envOn = env.TT_FULL_AUTO === '1';
+  const ttyOff = tty === false;
+  const ciOn = env.CI === '1' || env.CI === 'true';
+  const fired = envOn || ttyOff || ciOn;
+  if (!fired) return { fired: false, signals: '' };
+  const parts = [`env=${envOn ? 1 : 0}`, `tty=${ttyOff ? 0 : 1}`, `ci=${ciOn ? 1 : 0}`];
+  return { fired: true, signals: parts.join(',') };
+}
+
 export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {}) {
   if (!issueNumber) throw new Error('approve: issueNumber is required');
   if (!cfg) throw new Error('approve: cfg is required');
@@ -73,6 +93,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
   const getBoardState = deps.getBoardState || defaultGetBoardState;
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
+  const detect = deps.detectFullAuto || detectFullAuto;
 
   const state = await getBoardState({ issueNumber, projectDir });
   if (state !== 'review') {
@@ -88,9 +109,17 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   }
   const ts = nowIso();
   let updated = insertApprovalMarker(body, ts);
+  // #156 — Stamp full-auto marker BEFORE ticking the "Passed final human
+  // review" lifecycle item, so the audit trail records that the tick was
+  // machine-generated, not human-evaluated. The tick still happens because
+  // close-gates depend on it; the marker preserves truth alongside.
+  const auto = detect();
+  if (auto.fired) {
+    updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
+  }
   updated = tickLifecycleItem(updated, 'passed-final-review');
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
-  return { status: 'approved', ts };
+  return { status: 'approved', ts, fullAuto: auto.fired, signals: auto.signals };
 }
 
 function parseArgs(rest) {

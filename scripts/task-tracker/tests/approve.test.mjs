@@ -18,6 +18,7 @@ import {
   buildMarker,
   hasApprovalMarker,
   insertApprovalMarker,
+  detectFullAuto,
 } from '../verbs/approve.mjs';
 
 const cfg = { repo: 'o/r' };
@@ -184,6 +185,64 @@ function makeDeps(overrides = {}) {
   await runApprove({ issueNumber: 58, cfg, deps });
   assert.match(getBody(), /<!-- aitm-review-approved:/);
   assert.doesNotMatch(getBody(), /Passed final human review/);
+}
+
+// --- #156 Full-Auto audit marker ---
+
+// 11. detectFullAuto: env=TT_FULL_AUTO=1 → fires with env=1
+{
+  const r = detectFullAuto({ env: { TT_FULL_AUTO: '1' }, tty: true });
+  assert.equal(r.fired, true);
+  assert.match(r.signals, /env=1/);
+  assert.match(r.signals, /tty=1/);
+  assert.match(r.signals, /ci=0/);
+}
+
+// 12. detectFullAuto: CI=1 → fires with ci=1
+{
+  const r = detectFullAuto({ env: { CI: '1' }, tty: true });
+  assert.equal(r.fired, true);
+  assert.match(r.signals, /env=0,tty=1,ci=1/);
+}
+
+// 13. detectFullAuto: stdin.isTTY === false → fires with tty=0
+{
+  const r = detectFullAuto({ env: {}, tty: false });
+  assert.equal(r.fired, true);
+  assert.match(r.signals, /env=0,tty=0,ci=0/);
+}
+
+// 14. detectFullAuto: no signals → does not fire
+{
+  const r = detectFullAuto({ env: {}, tty: true });
+  assert.equal(r.fired, false);
+  assert.equal(r.signals, '');
+}
+
+// 15. runApprove stamps full-auto marker when detect fires
+{
+  const { deps, getBody } = makeDeps({
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'env=1,tty=0,ci=0' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, true);
+  assert.match(getBody(), /<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->/);
+  assert.match(
+    getBody(),
+    /<!-- aitm-full-auto-approved: 2026-05-10T00:00:00Z:env=1,tty=0,ci=0 -->/
+  );
+}
+
+// 16. runApprove omits full-auto marker when detect returns not-fired
+{
+  const { deps, getBody } = makeDeps({
+    deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.fullAuto, false);
+  assert.match(getBody(), /<!-- aitm-review-approved:/);
+  assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
 }
 
 console.log('approve.test.mjs: all passed');
