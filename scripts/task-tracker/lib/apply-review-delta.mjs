@@ -22,6 +22,7 @@ import { computeReviewDelta, buildDeltaCommentBody, DELTA_HEADER } from './revie
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { findReviewNotesComment, parseDrivers } from './review-notes.mjs';
 
 const pexec = promisify(execFile);
 
@@ -31,6 +32,20 @@ async function defaultPostComment({ issueNumber, repo, body }) {
   });
 }
 
+async function defaultFetchComments({ issueNumber, repo }) {
+  try {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const parsed = JSON.parse(stdout);
+    return Array.isArray(parsed.comments) ? parsed.comments : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {}) {
   if (!cfg) throw new Error('applyReviewDelta: cfg is required');
   if (!issueNumber) throw new Error('applyReviewDelta: issueNumber is required');
@@ -38,6 +53,7 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
   const postComment = deps.postComment || defaultPostComment;
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
+  const fetchComments = deps.fetchComments || defaultFetchComments;
 
   const ts = new Date().toISOString();
   if (process.env.TASK_TRACKER_SKIP_DELTA === '1') {
@@ -75,7 +91,16 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
   // minute granularity.
   const actualSec = engagedMin === null ? null : engagedMin * 60;
   const result = computeReviewDelta({ estimateHr, actualSec });
-  const commentBody = buildDeltaCommentBody(result);
+
+  // Drivers: pull from the most-recent `### 📝 Review Notes` comment, if any.
+  let drivers = [];
+  try {
+    const comments = await fetchComments({ issueNumber, repo: cfg.repo });
+    const notes = findReviewNotesComment(comments);
+    if (notes) drivers = parseDrivers(notes.body);
+  } catch {}
+
+  const commentBody = buildDeltaCommentBody(result, { drivers });
 
   try {
     await postComment({ issueNumber, repo: cfg.repo, body: commentBody });

@@ -61,6 +61,17 @@ compare them raw** — a 3-hour estimate vs. a 22.5-minute actual is −87%, not
 +650%. Internal compute is second-precision; the board still stores rounded
 minutes.
 
+## Review Notes → Drivers
+
+`/task approve` posts a `### 📝 Review Notes` comment with bullet drivers before
+stamping `aitm-review-approved`. In human-review mode it prompts stdin (one
+bullet per line, blank line to finish); under `TT_FULL_AUTO=1` it auto-derives
+drivers from misestimate Δ%, sandbox-failure count, develop-stage re-entry, and
+oversized commit diffs, tagging the comment `<!-- aitm-review-notes-source: auto -->`.
+The close-time `### 📊 Review delta` comment reads the most-recent notes comment
+and renders its bullets under a `Drivers:` section; empty drivers omit the
+section entirely.
+
 ## Checkpoint Pause
 
 Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains an unaddressed question/instruction, halt and respond first — do not advance state. See the full rule in `templates/pickup-directive.md` ("Checkpoint Pause").

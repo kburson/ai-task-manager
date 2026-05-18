@@ -24,6 +24,8 @@ import {
 } from '../lib/markers.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { buildReviewNotesComment } from '../lib/review-notes.mjs';
+import { deriveDrivers } from '../lib/derive-drivers.mjs';
 
 const pexec = promisify(execFile);
 
@@ -66,6 +68,71 @@ async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
   return mod.getIssueBoardState(String(issueNumber).replace(/^#/, ''));
 }
 
+async function defaultPostComment({ issueNumber, repo, body }) {
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+    timeout: GH_API_TIMEOUT_MS,
+  });
+}
+
+async function defaultFetchComments({ issueNumber, repo }) {
+  try {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const parsed = JSON.parse(stdout);
+    return Array.isArray(parsed.comments) ? parsed.comments : [];
+  } catch {
+    return [];
+  }
+}
+
+async function defaultProjectValues({ cfg, issueNumber }) {
+  if (!cfg?.projectId) return {};
+  try {
+    const { projectValuesForIssue } = await import('../../gh/lib/github-projects.mjs');
+    const { loadProjectFieldDefs } = await import('../project-fields.mjs');
+    const fieldDefs = loadProjectFieldDefs();
+    return await projectValuesForIssue({ cfg, fieldDefs, issueNumber });
+  } catch {
+    return {};
+  }
+}
+
+// Prompt the reviewer for driver bullets via stdin. One bullet per line; blank
+// line ends input. Returns string[]. Empty input is allowed.
+async function defaultPromptDrivers() {
+  return new Promise((resolve) => {
+    if (!process.stdin || process.stdin.isTTY !== true) {
+      resolve([]);
+      return;
+    }
+    process.stderr.write(
+      'Enter Review Notes drivers, one bullet per line. Blank line to finish:\n'
+    );
+    const out = [];
+    let buf = '';
+    const onData = (chunk) => {
+      buf += chunk.toString('utf8');
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).replace(/\r$/, '');
+        buf = buf.slice(i + 1);
+        if (line.trim() === '') {
+          process.stdin.off('data', onData);
+          process.stdin.pause();
+          resolve(out);
+          return;
+        }
+        out.push(line.trim());
+      }
+    };
+    process.stdin.on('data', onData);
+    process.stdin.resume();
+  });
+}
+
 // #156 — Detect "no human in the loop" so the approve verb can stamp an
 // audit marker that flags machine-generated approvals. There is no
 // Claude-Code-native signal; the wrapper has to declare it. We accept any of:
@@ -94,6 +161,11 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   const getBoardState = deps.getBoardState || defaultGetBoardState;
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   const detect = deps.detectFullAuto || detectFullAuto;
+  const postComment = deps.postComment || defaultPostComment;
+  const fetchComments = deps.fetchComments || defaultFetchComments;
+  const fetchProjectValues = deps.fetchProjectValues || defaultProjectValues;
+  const promptDrivers = deps.promptDrivers || defaultPromptDrivers;
+  const derive = deps.deriveDrivers || deriveDrivers;
 
   const state = await getBoardState({ issueNumber, projectDir });
   if (state !== 'review') {
@@ -108,18 +180,52 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
     return { status: 'already-approved' };
   }
   const ts = nowIso();
+  const auto = detect();
+
+  // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
+  // delta-comment in `close` can consume it. Human mode prompts stdin; full-
+  // auto mode derives from observable signals. Either may yield zero drivers;
+  // that's fine — the renderer omits the Drivers section when empty.
+  let drivers = [];
+  let notesSource = null;
+  try {
+    if (auto.fired) {
+      const [comments, fields] = await Promise.all([
+        fetchComments({ issueNumber, repo: cfg.repo }),
+        fetchProjectValues({ cfg, issueNumber }),
+      ]);
+      drivers = derive({ body, comments, fields });
+      notesSource = 'auto';
+    } else {
+      drivers = await promptDrivers();
+      notesSource = 'human';
+    }
+    if (drivers.length > 0 || notesSource === 'auto') {
+      const noteBody = buildReviewNotesComment(drivers, { source: notesSource });
+      await postComment({ issueNumber, repo: cfg.repo, body: noteBody });
+    }
+  } catch (err) {
+    process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
+  }
+
   let updated = insertApprovalMarker(body, ts);
   // #156 — Stamp full-auto marker BEFORE ticking the "Passed final human
   // review" lifecycle item, so the audit trail records that the tick was
   // machine-generated, not human-evaluated. The tick still happens because
   // close-gates depend on it; the marker preserves truth alongside.
-  const auto = detect();
   if (auto.fired) {
     updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
   }
   updated = tickLifecycleItem(updated, 'passed-final-review');
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
-  return { status: 'approved', ts, fullAuto: auto.fired, signals: auto.signals };
+  return {
+    status: 'approved',
+    ts,
+    fullAuto: auto.fired,
+    signals: auto.signals,
+    drivers,
+    notesSource,
+  };
 }
 
 function parseArgs(rest) {

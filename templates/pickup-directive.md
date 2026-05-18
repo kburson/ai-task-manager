@@ -110,7 +110,17 @@ required box is unchecked will be refused.
     raw** — a 3-hour estimate against a 22.5-minute actual is −87%, not +650%.
     Internal compute is second-precision; the board still stores rounded minutes.
 
-11. **On mistakes — stop and surface, do not self-correct.**
+11. **Review Notes drive the Drivers section in the delta comment.**
+    The reviewer (or, under `TT_FULL_AUTO=1`, the auto-derive pipeline) posts a
+    `### 📝 Review Notes` comment with bullet drivers before approval. `/task approve`
+    handles this: in human-review mode it prompts stdin (one bullet per line, blank
+    line to end); in Full-Auto it derives drivers from observable signals (misestimate,
+    sandbox retries, develop re-entry, oversized diff) and tags the comment
+    `<!-- aitm-review-notes-source: auto -->`. The close-time `### 📊 Review delta`
+    comment reads the most-recent Review Notes comment and renders its bullets under
+    a `Drivers:` section. Empty drivers → no Drivers section.
+
+12. **On mistakes — stop and surface, do not self-correct.**
     If you discover you have taken a wrong action (created a duplicate issue, used
     `gh issue close` directly, skipped the deep dive, dispatched agents without
     verifying state), STOP immediately. Do not attempt to fix the mistake yourself.

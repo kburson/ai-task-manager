@@ -23,7 +23,7 @@ const FIXTURE_BODY = `## ACs
 <!-- ai-task-manager:fields:end -->
 `;
 
-function buildDeps({ estimate = 16, engagedTime = 22.5 } = {}) {
+function buildDeps({ estimate = 16, engagedTime = 22.5, fetchedComments = [] } = {}) {
   const state = { comments: [] };
   return {
     state,
@@ -41,6 +41,7 @@ function buildDeps({ estimate = 16, engagedTime = 22.5 } = {}) {
         if (engagedTime != null) out.engagedTime = engagedTime;
         return out;
       },
+      fetchComments: async () => fetchedComments,
     },
   };
 }
@@ -82,6 +83,39 @@ function buildDeps({ estimate = 16, engagedTime = 22.5 } = {}) {
   assert.equal(res.status, 'skipped');
   assert.equal(state.comments.length, 1);
   assert.match(state.comments[0], /Bypassed via `TASK_TRACKER_SKIP_DELTA=1`/);
+}
+
+// Test 4 (D1) — drivers present in a `### 📝 Review Notes` comment are
+// rendered into the delta comment under a `Drivers:` heading.
+{
+  const notesBody = [
+    '### 📝 Review Notes',
+    '',
+    '- driver one',
+    '- driver two',
+    '',
+    '<!-- aitm-review-notes-source: auto -->',
+  ].join('\n');
+  const { state, deps } = buildDeps({
+    estimate: 16,
+    engagedTime: 1350,
+    fetchedComments: [{ body: notesBody, createdAt: '2026-05-17T00:00:00Z' }],
+  });
+  const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
+  assert.equal(res.status, 'applied');
+  const c = state.comments[0];
+  assert.match(c, /Drivers:/, 'Drivers section present when notes comment exists');
+  assert.match(c, /- driver one/, 'driver one rendered');
+  assert.match(c, /- driver two/, 'driver two rendered');
+}
+
+// Test 5 (D1) — no review-notes comment → no Drivers section.
+{
+  const { state, deps } = buildDeps({ estimate: 16, engagedTime: 1350, fetchedComments: [] });
+  const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
+  assert.equal(res.status, 'applied');
+  const c = state.comments[0];
+  assert.doesNotMatch(c, /Drivers:/, 'no Drivers section when no notes comment');
 }
 
 console.log('apply-review-delta.test.mjs: all passed');
