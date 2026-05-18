@@ -45,11 +45,61 @@ test('reconcile accept-live: drifted issue writes new state + drift-reconcile ro
   assert.equal(r.to, 'develop');
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state: develop/);
+  assert.match(calls.writes[0], /aitm-entered-develop:/);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /drift-reconcile/);
   assert.match(calls.timings[0], /plan.*develop/);
   assert.equal(calls.moves.length, 0);
   assert.deepEqual(calls.persists, [{ issueNumber: 300, state: 'develop' }]);
+});
+
+test('reconcile accept-live stamps aitm-entered-<live> when absent (#174)', async () => {
+  const body =
+    '<!-- aitm-last-known-state: develop -->\n' +
+    '<!-- aitm-last-known-state-ts: 2026-05-18T00:00:00Z -->\n' +
+    '\n' +
+    '<!-- aitm-entered-refine: 2026-05-18T00:00:00Z -->\n' +
+    '\n' +
+    '<!-- aitm-entered-develop: 2026-05-18T00:10:00Z -->\n' +
+    '\n' +
+    'body.\n';
+  const { deps, calls } = makeDeps({ body, live: 'test' });
+  const r = await runReconcile({ issueNumber: 174, mode: 'accept-live', cfg, deps });
+  assert.equal(r.status, 'reconciled');
+  assert.equal(r.to, 'test');
+  assert.equal(calls.writes.length, 1);
+  const written = calls.writes[0];
+  assert.match(written, /aitm-entered-refine:/);
+  assert.match(written, /aitm-entered-develop:/);
+  assert.match(written, /aitm-entered-test:/);
+  // Monotonic order in body: refine, develop, test.
+  const idxRefine = written.indexOf('aitm-entered-refine');
+  const idxDevelop = written.indexOf('aitm-entered-develop');
+  const idxTest = written.indexOf('aitm-entered-test');
+  assert.ok(idxRefine < idxDevelop, 'refine before develop');
+  assert.ok(idxDevelop < idxTest, 'develop before test');
+});
+
+test('reconcile accept-live is idempotent for entry marker (#174)', async () => {
+  const existingTs = '2026-05-18T00:10:00Z';
+  const body =
+    '<!-- aitm-last-known-state: refine -->\n' +
+    '<!-- aitm-last-known-state-ts: 2026-05-18T00:00:00Z -->\n' +
+    '\n' +
+    `<!-- aitm-entered-develop: ${existingTs} -->\n` +
+    '\n' +
+    'body.\n';
+  const { deps, calls } = makeDeps({ body, live: 'develop' });
+  const r = await runReconcile({ issueNumber: 1742, mode: 'accept-live', cfg, deps });
+  assert.equal(r.status, 'reconciled');
+  assert.equal(calls.writes.length, 1);
+  const written = calls.writes[0];
+  // Single entered-develop marker preserved with original timestamp.
+  const matches = written.match(/aitm-entered-develop:\s*([^>\s]+)/g) || [];
+  assert.equal(matches.length, 1, 'exactly one entered-develop marker');
+  assert.ok(written.includes(`aitm-entered-develop: ${existingTs}`));
+  // Single drift-reconcile timing row (no phantom re-fire).
+  assert.equal(calls.timings.length, 1);
 });
 
 test('reconcile revert-to-recorded: drifted issue pushes board back + drift-revert row', async () => {
@@ -125,6 +175,8 @@ test('reconcile accept-live: strips future entry markers + names them in timing 
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state: review/);
   assert.match(calls.writes[0], /aitm-entered-review/);
+  // #174: accept-live stamps entered-<live> if absent; existing entered-review
+  // is preserved by stampEntryMarker's idempotent contract.
   assert.doesNotMatch(calls.writes[0], /aitm-entered-done/);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /stripped: done/);

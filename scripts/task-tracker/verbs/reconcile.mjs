@@ -28,9 +28,12 @@ import {
   postTimingEvent,
   readTimingCommentBody,
 } from '../gh-timing-comment.mjs';
-import { findRecordingFailureFromComments } from '../lib/state-recording.mjs';
+import {
+  findRecordingFailureFromComments,
+  writeIssueBodyWithRetry,
+} from '../lib/state-recording.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { stripEntryMarkersAfter } from '../lib/stage-entry-markers.mjs';
+import { stampEntryMarker, stripEntryMarkersAfter } from '../lib/stage-entry-markers.mjs';
 import { loadState, saveState } from '../state.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
@@ -189,13 +192,21 @@ export async function runReconcile({
         message: `reconcile accept-live: no live state for #${issueNumber}`,
       };
     }
+    const nowTs = now();
     const stamped = writeLastKnownState(body, live);
     const { body: cleaned, stripped } = stripEntryMarkersAfter(stamped, live);
-    await writeIssueBody({ issueNumber, repo: cfg.repo, body: cleaned });
+    const withEntry = stampEntryMarker(cleaned, live, nowTs);
+    await writeIssueBodyWithRetry({
+      issueNumber,
+      repo: cfg.repo,
+      body: withEntry,
+      bodyBefore: body,
+      target: live,
+      writeIssueBody: ({ body: b }) => writeIssueBody({ issueNumber, repo: cfg.repo, body: b }),
+    });
     persistTrackerState({ issueNumber, state: live });
     try {
       const strippedNote = stripped.length > 0 ? `; stripped: ${stripped.join(', ')}` : '';
-      const nowTs = now();
       const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
       const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
       let reason = 'external-mutation';
