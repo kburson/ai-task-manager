@@ -92,7 +92,7 @@ test('promote does not write aitm-last-known-state on successful develop→test 
   const { deps, calls } = makeDeps({ body, live: 'develop' });
   // develop→test runs the `test` alias verb path
   deps.spawnVerb = async () => 0;
-  deps.codeCompleteGate = async () => ({ ok: true, blockers: [], shas: ['c0ffee'] });
+  deps.codeCompleteGate = async () => ({ ok: true, blockers: [], shas: ['abc123'] });
 
   const r = await runPromote({ issueNumber: 200, cfg, deps });
   assert.equal(r.status, 'promoted');

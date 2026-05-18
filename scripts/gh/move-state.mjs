@@ -511,9 +511,7 @@ if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
       });
     }
   } catch (err) {
-    process.stderr.write(
-      `[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`
-    );
+    process.stderr.write(`[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`);
   }
 }
 

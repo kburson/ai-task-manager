@@ -473,14 +473,6 @@ export async function runPromote({
 
   // Transition succeeded. Entry-marker AND lastKnownState stamping are both
   // centralized in move-state.mjs's success path (#170 — single mutator).
-  // Re-fetch the body so downstream side-effects below (Start Time stamp on
-  // refine, etc.) see the post-move state.
-  let bodyAfter;
-  try {
-    ({ body: bodyAfter } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
-  } catch {
-    bodyAfter = body;
-  }
   // #147 — Backlog → Refine success hook: stamp the "Start time" field on the
   // project board so the refine→plan exit gate has a value to verify. Idempotent
   // (skips when already set). Best-effort — board state is already committed.
