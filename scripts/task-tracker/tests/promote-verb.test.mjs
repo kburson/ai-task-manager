@@ -434,7 +434,12 @@ test('promote: transition-failed when alias verb exits non-zero — no metadata 
   assert.equal(calls.writes.length, 0);
 });
 
-test('promote: drift-reconcile stamps marker to live state when alias verb exits mid-move (#132)', async () => {
+test('promote: drift-reconcile logs timing row when alias verb exits mid-move (#132, #170)', async () => {
+  // Post-#170: promote.mjs no longer writes the aitm-last-known-state marker
+  // on drift-reconcile. move-state.mjs writes the marker on every successful
+  // Status mutation, so by the time the alias verb fails the marker is
+  // already in sync with the live state. promote.mjs only logs the
+  // drift-reconcile timing row for audit-trail purposes.
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
@@ -444,8 +449,7 @@ test('promote: drift-reconcile stamps marker to live state when alias verb exits
   const r = await runPromote({ issueNumber: 132, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.reconciledTo, 'test');
-  assert.equal(calls.writes.length, 1);
-  assert.match(calls.writes[0], /aitm-last-known-state: test/);
+  assert.equal(calls.writes.length, 0, 'promote must not re-write marker post-#170');
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /drift-reconcile/);
   assert.match(calls.timings[0], /develop → test/);
