@@ -236,9 +236,12 @@ function makeDeps(overrides = {}) {
     getBody(),
     /<!-- aitm-full-auto-approved: 2026-05-10T00:00:00Z:env=1,tty=0,ci=0 -->/
   );
+  // #161 / D4 — visible footnote also present.
+  assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
+  assert.match(getBody(), /Full-Auto mode enabled: human review skipped/);
 }
 
-// 16. runApprove omits full-auto marker when detect returns not-fired
+// 16. runApprove omits full-auto marker AND footnote when detect returns not-fired
 {
   const { deps, getBody } = makeDeps({
     deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
@@ -247,6 +250,39 @@ function makeDeps(overrides = {}) {
   assert.equal(r.fullAuto, false);
   assert.match(getBody(), /<!-- aitm-review-approved:/);
   assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
+  // #161 / D4 — no footnote in human-review mode.
+  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
+}
+
+// 17. (#161 / D4) Legacy lifecycle heading: warn to stderr, verb still succeeds
+{
+  const legacyBody = [
+    '## Acceptance Criteria',
+    '- [x] do thing',
+    '',
+    '### Definition of Done',
+    '',
+    '#### Closeout',
+    '- [ ] Passed final human review',
+    '',
+  ].join('\n');
+  const { deps } = makeDeps({
+    initialBody: legacyBody,
+    deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
+  });
+  const origWrite = process.stderr.write.bind(process.stderr);
+  let captured = '';
+  process.stderr.write = (chunk) => {
+    captured += String(chunk);
+    return true;
+  };
+  try {
+    const r = await runApprove({ issueNumber: 58, cfg, deps });
+    assert.equal(r.status, 'approved');
+  } finally {
+    process.stderr.write = origWrite;
+  }
+  assert.match(captured, /lifecycle-tick-noop/);
 }
 
 console.log('approve.test.mjs: all passed');
