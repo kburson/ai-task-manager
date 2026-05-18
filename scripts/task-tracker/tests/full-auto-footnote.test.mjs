@@ -33,11 +33,63 @@ test('hasFullAutoFootnote detects presence', () => {
   );
 });
 
-// #178 — prose mentions of the start delimiter (e.g., a deep-dive describing
-// the marker format inside a code span) must NOT trip the presence check.
-// Pre-fix bug: includes() matched the prose mention, sending insert down the
-// "replace existing block" branch, which then no-op'd because the block regex
-// requires both delimiters in order.
+// #178 — body that legitimately contains BOTH delimiters in prose (e.g., a
+// deep-dive describing the block format and the matcher regex inline) must
+// NOT trip the presence check. Pre-tighten bug: the block regex matched the
+// prose-embedded pair, sending insert down the "replace" branch, which then
+// destroyed the prose between the two delimiters by overwriting it with the
+// real footnote block. This was the corruption that hit #178 itself.
+test('hasFullAutoFootnote ignores prose-embedded start+end pair (backtick-wrapped)', () => {
+  const body = [
+    'Scope describes the matcher: `' + FULL_AUTO_FOOTNOTE_START + '` and',
+    '`' + FULL_AUTO_FOOTNOTE_END + '` are the delimiters used by the regex.',
+    '',
+    'No real block on its own line — both mentions are wrapped in backticks.',
+  ].join('\n');
+  assert.equal(hasFullAutoFootnote(body), false);
+});
+
+test('insertFullAutoFootnote inserts (not replaces) when both delimiters appear only in prose (#178 corruption regression)', () => {
+  const body = [
+    '## Scope',
+    'The matcher regex is `' +
+      FULL_AUTO_FOOTNOTE_START +
+      '[\\s\\S]*?' +
+      FULL_AUTO_FOOTNOTE_END +
+      '\\n?/g`.',
+    'Both delimiters are mentioned here in prose; neither sits alone on its own line.',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+    '- [x] Story closed and moved to Done',
+    '- [x] Timing data flushed to issue',
+    '',
+    '## Tail',
+  ].join('\n');
+  const out = insertFullAutoFootnote(body, { ts: TS, signals: SIG });
+  // Prose mentions preserved verbatim — original sentence intact.
+  assert.ok(
+    out.includes(
+      'Both delimiters are mentioned here in prose; neither sits alone on its own line.'
+    ),
+    'prose between mentions must not be overwritten'
+  );
+  // Exactly one real block was inserted (at Lifecycle anchor), so total
+  // start-delimiter count = prose mention (1) + real block (1) = 2.
+  const escaped = FULL_AUTO_FOOTNOTE_START.replace(/[!*+?^${}()|[\]\\]/g, '\\$&');
+  const startMatches = out.match(new RegExp(escaped, 'g'));
+  assert.equal(startMatches.length, 2, 'prose mention + one real block');
+  const lifeIdx = out.indexOf('#### Lifecycle');
+  const tailIdx = out.indexOf('## Tail');
+  // Find the index of the real block's start delimiter (the one that sits
+  // alone on its own line, not the prose-embedded one).
+  const realStartIdx = out.indexOf('\n' + FULL_AUTO_FOOTNOTE_START + '\n');
+  assert.ok(
+    realStartIdx > lifeIdx && realStartIdx < tailIdx,
+    'real block anchored after Lifecycle, before Tail'
+  );
+});
+
 test('hasFullAutoFootnote ignores prose mention of start delimiter alone', () => {
   const body = `Some scope text mentions the marker \`${FULL_AUTO_FOOTNOTE_START}\` in a code span.\nNo real block here.`;
   assert.equal(hasFullAutoFootnote(body), false);

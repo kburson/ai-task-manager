@@ -83,9 +83,14 @@ export function insertFullAutoApprovedMarker(body, ts, signals) {
 
 export const FULL_AUTO_FOOTNOTE_START = '<!-- aitm-full-auto-footnote:start -->';
 export const FULL_AUTO_FOOTNOTE_END = '<!-- aitm-full-auto-footnote:end -->';
+// Match only when both delimiters sit alone on their own line (anchored at
+// line-start, optionally followed by trailing whitespace). This excludes prose
+// mentions inside code spans (backticks) and prose that wraps a delimiter into
+// a sentence — including a deep-dive describing the block format, which is
+// what corrupted #178's body before this tightening.
 const FULL_AUTO_FOOTNOTE_BLOCK_RE = new RegExp(
-  `${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[\\s\\S]*?${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}\\n?`,
-  'g'
+  `^${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[ \\t]*$[\\s\\S]*?^${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}[ \\t]*$\\n?`,
+  'gm'
 );
 
 function escapeRegExp(s) {
