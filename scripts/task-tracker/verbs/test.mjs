@@ -257,9 +257,11 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
+    // test.mjs moves develop→review (skipping the Test column). move-state.mjs
+    // stamps the entry marker for the target ('review') automatically; we
+    // stamp the intermediate 'test' marker here so the chain stays complete.
     let stamped = insertDodVerifiedMarker(body, sha, ts);
     stamped = stampEntryMarker(stamped, 'test', ts);
-    stamped = stampEntryMarker(stamped, 'review', ts);
     if (stamped !== body) {
       await writeBody({ cfg, issueNum, body: stamped, projectDir });
     }

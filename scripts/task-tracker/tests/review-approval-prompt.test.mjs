@@ -80,6 +80,12 @@ function makeGhShim(
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir, { recursive: true });
   const callsLog = path.join(sandbox, 'gh-calls.log');
+  // Persist mutable body state to disk so the shim's view/edit cycle simulates
+  // real gh behavior: `issue view` returns whatever the last `issue edit`
+  // wrote, not a frozen fixture. Without this, move-state.mjs's post-success
+  // entry-marker stamp re-fetches the fixture and overwrites verb writes.
+  const bodyStatePath = path.join(sandbox, 'gh-shim-body.txt');
+  writeFileSync(bodyStatePath, bodyOnView);
   const gitShim = path.join(binDir, 'git');
   writeFileSync(
     gitShim,
@@ -120,10 +126,11 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
     process.stdout.write(JSON.stringify({ comments: traceComment ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }] : [] }));
     process.exit(0);
   }
+  const currentBody = readFileSync(${JSON.stringify(bodyStatePath)}, 'utf8');
   if (argv.includes('--jq')) {
-    process.stdout.write(${JSON.stringify(bodyOnView)});
+    process.stdout.write(currentBody);
   } else {
-    process.stdout.write(JSON.stringify({ body: ${JSON.stringify(bodyOnView)} }));
+    process.stdout.write(JSON.stringify({ body: currentBody }));
   }
   process.exit(0);
 }
@@ -132,6 +139,7 @@ if (argv[0] === 'issue' && argv[1] === 'edit') {
   if (idx >= 0 && argv[idx+1]) {
     const body = readFileSync(argv[idx+1], 'utf8');
     writeFileSync(${JSON.stringify(recordedBodyPath)}, body);
+    writeFileSync(${JSON.stringify(bodyStatePath)}, body);
   }
   process.exit(0);
 }

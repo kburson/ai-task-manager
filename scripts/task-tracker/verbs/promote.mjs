@@ -42,7 +42,6 @@ import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
 import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 
 const pexec = promisify(execFile);
@@ -413,8 +412,9 @@ export async function runPromote({
   } catch {
     bodyAfter = body;
   }
-  let stamped = writeLastKnownState(bodyAfter, target);
-  stamped = stampEntryMarker(stamped, target, now());
+  // Entry-marker stamping is centralized in move-state.mjs success path; do not
+  // stamp here. See feedback_single_state_mutator.md.
+  const stamped = writeLastKnownState(bodyAfter, target);
   if (stamped !== bodyAfter) {
     try {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });

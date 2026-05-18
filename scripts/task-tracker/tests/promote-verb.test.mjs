@@ -96,10 +96,12 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /move:plan/);
   assert.equal(r.refinementPost.status, 'posted');
-  // #140: stage-entry marker stamped on successful promote
+  // Entry-marker stamping is now centralized in move-state.mjs (see
+  // feedback_single_state_mutator.md). promote.mjs no longer stamps
+  // aitm-entered-<stage>; verify it does not write the marker itself.
   assert.ok(
-    calls.writes.some((b) => /aitm-entered-plan:/.test(b)),
-    'aitm-entered-plan marker should be stamped on body write'
+    !calls.writes.some((b) => /aitm-entered-plan:/.test(b)),
+    'promote must not stamp aitm-entered-plan; that is move-state.mjs responsibility'
   );
 });
 

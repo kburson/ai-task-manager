@@ -5,7 +5,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
@@ -16,9 +16,15 @@ import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition, normalizeStateSlug } from '../task-tracker/state-machine.mjs';
 import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
-import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../task-tracker/paths.mjs';
+import {
+  getProjectDir,
+  existingRuntimePath,
+  SHARED_DIR,
+  projectTmpDir,
+} from '../task-tracker/paths.mjs';
 import { loadState, saveState } from '../task-tracker/state.mjs';
 import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
+import { stampEntryMarker, STAGES } from '../task-tracker/lib/stage-entry-markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -456,6 +462,41 @@ if (!SKIP_NETWORK) {
 }
 
 console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
+
+// Centralized stage-entry marker stamping. Every successful Status write
+// stamps `<!-- aitm-entered-<stage>: <ts> -->` in the issue body. This is the
+// single source of truth for the audit-trail chain — verbs must NOT stamp
+// entry markers themselves. Best-effort: marker write failure does not roll
+// back the board move (Status is already committed).
+if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
+  try {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const beforeBody = JSON.parse(stdout).body ?? '';
+    const stampedBody = stampEntryMarker(beforeBody, stateArg, new Date().toISOString());
+    if (stampedBody !== beforeBody) {
+      const tmp = path.join(
+        projectTmpDir(getProjectDir()),
+        `aitm-entry-${issueArg}-${Date.now()}.md`
+      );
+      try {
+        writeFileSync(tmp, stampedBody, 'utf8');
+        await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
+      } finally {
+        try {
+          unlinkSync(tmp);
+        } catch {
+          /* best-effort */
+        }
+      }
+    }
+  } catch {
+    /* best-effort — Status write already committed */
+  }
+}
 
 // Out-of-band audit trail: visible comment + timing-log row. Best-effort —
 // failures do not roll back the board move.
