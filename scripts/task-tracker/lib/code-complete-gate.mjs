@@ -253,7 +253,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
         const files = await filesForSha(sha);
         for (const f of files) touchSet.add(f);
       } catch {
-        // best-effort; missing sha is itself a fail signal but we skip here
+        // best-effort; missing-sha could itself be reported but we skip
       }
     }
     let dirty;
