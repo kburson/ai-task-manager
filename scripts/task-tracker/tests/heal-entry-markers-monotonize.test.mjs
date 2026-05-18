@@ -7,7 +7,12 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { outOfOrderHealableStages, planStageHeal, safeBackfillTs } from '../heal-entry-markers.mjs';
+import {
+  checkOnlyExitCode,
+  outOfOrderHealableStages,
+  planStageHeal,
+  safeBackfillTs,
+} from '../heal-entry-markers.mjs';
 import { parseEntryMarkers, verifyChainIntegrity } from '../lib/stage-entry-markers.mjs';
 
 function bodyWith(markers) {
@@ -126,6 +131,18 @@ test('refine/plan regression: previous heal behavior unchanged for early stages'
   const plan = planStageHeal({ stage: 'refine', body, createdAt: '2026-05-18T09:00:00Z' });
   assert.equal(plan.action, 'backfill');
   assert.equal(plan.reason, 'pre-gate-traversal');
+});
+
+test('checkOnlyExitCode: 0 when all results are skip (clean backlog)', () => {
+  assert.equal(checkOnlyExitCode([{ action: 'skip' }, { action: 'skip' }]), 0);
+});
+
+test('checkOnlyExitCode: 1 when any result is plan (anomaly present)', () => {
+  assert.equal(checkOnlyExitCode([{ action: 'skip' }, { action: 'plan', stagesActed: [] }]), 1);
+});
+
+test('checkOnlyExitCode: 2 when any result is error (precedence over plan)', () => {
+  assert.equal(checkOnlyExitCode([{ action: 'plan' }, { action: 'error', reason: 'boom' }]), 2);
 });
 
 test('verifyChainIntegrity passes after restamping out-of-order test (full round-trip)', async () => {

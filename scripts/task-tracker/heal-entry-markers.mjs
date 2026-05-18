@@ -19,10 +19,12 @@
 //       order) as a conservative lower bound.
 //
 // Usage:
-//   node scripts/task-tracker/heal-entry-markers.mjs [#N ...] [--apply]
+//   node scripts/task-tracker/heal-entry-markers.mjs [#N ...] [--apply|--check-only]
 //
 // Without `--apply`, runs in dry-run mode and prints the plan. Without issue
-// numbers, scans all open issues in the configured repo.
+// numbers, scans all open issues in the configured repo. With `--check-only`,
+// exits non-zero (1) if any anomaly would be healed, useful for CI/audit
+// sweeps. `--apply` and `--check-only` are mutually exclusive.
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -43,11 +45,22 @@ const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 function parseArgs(argv) {
   const issues = [];
   let apply = false;
+  let checkOnly = false;
   for (const a of argv) {
     if (a === '--apply') apply = true;
+    else if (a === '--check-only') checkOnly = true;
     else if (/^#?\d+$/.test(a)) issues.push(String(a).replace(/^#/, ''));
   }
-  return { issues, apply };
+  return { issues, apply, checkOnly };
+}
+
+// Pure decision used by --check-only mode and tested directly: given a set of
+// per-issue heal results, return exit code 1 if any anomaly would be healed,
+// 0 if the targeted set is clean. Errors propagate as exit 2.
+export function checkOnlyExitCode(results) {
+  if (results.some((r) => r.action === 'error')) return 2;
+  if (results.some((r) => r.action === 'plan')) return 1;
+  return 0;
 }
 
 async function fetchOpenIssues(repo) {
@@ -248,7 +261,11 @@ async function healOne({ repo, num, apply }) {
 }
 
 async function main() {
-  const { issues, apply } = parseArgs(process.argv.slice(2));
+  const { issues, apply, checkOnly } = parseArgs(process.argv.slice(2));
+  if (apply && checkOnly) {
+    process.stderr.write('heal-entry-markers: --apply and --check-only are mutually exclusive\n');
+    process.exit(2);
+  }
   const cfg = loadConfig();
   const repo = cfg.repo;
   const targets = issues.length > 0 ? issues : await fetchOpenIssues(repo);
@@ -275,6 +292,9 @@ async function main() {
   }
   if (!apply) {
     process.stdout.write('\n(dry-run — pass --apply to write)\n');
+  }
+  if (checkOnly) {
+    process.exit(checkOnlyExitCode(results));
   }
 }
 
