@@ -39,10 +39,12 @@ import {
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
+import { checkParentAdmission } from '../lib/body-gates.mjs';
+import { postOverrideAuditComment } from '../lib/override-audit.mjs';
+import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 
 const pexec = promisify(execFile);
@@ -150,6 +152,24 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
   await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
 }
 
+async function defaultFetchParentIssue({ issueNumber, repo }) {
+  const { owner, repoName } = splitRepo(repo);
+  try {
+    const data = await gql(
+      `
+      query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) { parent { number } }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNumber) }
+    );
+    return data?.repository?.issue?.parent?.number ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Pure core.
 // ---------------------------------------------------------------------------
@@ -237,6 +257,10 @@ export async function runPromote({
     }
   }
 
+  // Refine-exit override hand-off (#162) — populated below when the gate
+  // returns childOverrides under TASK_TRACKER_FORCE_PROMOTE=1.
+  let refineExitChildOverrides = [];
+
   // Refine → Plan pre-flight (#133): Size + Estimate set, rationale marker
   // authored, `## Acceptance Criteria` section non-empty. Post-success hook
   // posts the `### 🛠 Refine estimate` comment.
@@ -270,6 +294,9 @@ export async function runPromote({
         blockers: exitResult.blockers,
         message: `Refusing to promote #${issueNumber} to Plan: Refine exit gate failed.`,
       };
+    }
+    if (Array.isArray(exitResult.childOverrides) && exitResult.childOverrides.length > 0) {
+      refineExitChildOverrides = exitResult.childOverrides;
     }
   }
 
@@ -330,6 +357,50 @@ export async function runPromote({
         blockers: [headResult.blocker],
         message: `Refusing to promote #${issueNumber} to Test: commit-trail does not contain HEAD.`,
       };
+    }
+  }
+
+  // #162 — child-cannot-lead-epic gate. Runs on every forward transition.
+  // Solo issues (no parent) bypass. When the parent epic's live state is
+  // behind the child's target state, refuse unless TASK_TRACKER_FORCE_PROMOTE=1
+  // is set, in which case the override audit comment fires post-move.
+  const fetchParentIssue = deps.fetchParentIssue || defaultFetchParentIssue;
+  const readParentStatus = deps.readParentStatus || defaultReadParentStatus;
+  let parentAdmissionOverride = null;
+  {
+    let parentEpicNumber = null;
+    try {
+      parentEpicNumber = await fetchParentIssue({ issueNumber, repo: cfg.repo });
+    } catch {
+      parentEpicNumber = null;
+    }
+    if (parentEpicNumber != null) {
+      let gateOutcome;
+      try {
+        gateOutcome = await checkParentAdmission({
+          parentEpicNumber,
+          repo: cfg.repo,
+          projectId: cfg.projectId,
+          readParentStatus,
+          targetState: target,
+        });
+      } catch (err) {
+        return {
+          status: 'parent-admission-error',
+          message: `promote: parent-admission gate failed: ${err.message}`,
+        };
+      }
+      if (Array.isArray(gateOutcome)) {
+        if (gateOutcome.length > 0) {
+          return {
+            status: 'parent-admission-refused',
+            blockers: gateOutcome.map((b) => b.message),
+            message: `Refusing to promote #${issueNumber} to ${target}: child-cannot-lead-epic.`,
+          };
+        }
+      } else if (gateOutcome?.override) {
+        parentAdmissionOverride = gateOutcome.override;
+      }
     }
   }
 
@@ -413,8 +484,9 @@ export async function runPromote({
   } catch {
     bodyAfter = body;
   }
-  let stamped = writeLastKnownState(bodyAfter, target);
-  stamped = stampEntryMarker(stamped, target, now());
+  // Entry-marker stamping is centralized in move-state.mjs success path; do not
+  // stamp here. See feedback_single_state_mutator.md.
+  const stamped = writeLastKnownState(bodyAfter, target);
   if (stamped !== bodyAfter) {
     try {
       await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
@@ -470,6 +542,49 @@ export async function runPromote({
     // Audit row is best-effort; transition is the source of truth.
   }
 
+  // #162 — when the refine-exit gate accepted past-refine children under the
+  // override, post one audit comment pair per offending child.
+  let refineExitAudits = null;
+  if (refineExitChildOverrides.length > 0) {
+    refineExitAudits = [];
+    const post = deps.postOverrideAuditComment || postOverrideAuditComment;
+    for (const ovr of refineExitChildOverrides) {
+      try {
+        const r = await post({
+          cfg,
+          childNumber: ovr.childNumber,
+          parentNumber: Number(issueNumber),
+          childTarget: ovr.childState,
+          parentState: 'refine',
+          reason: ovr.reason,
+        });
+        refineExitAudits.push({ childNumber: ovr.childNumber, ...r });
+      } catch (err) {
+        refineExitAudits.push({ childNumber: ovr.childNumber, posted: false, error: err.message });
+      }
+    }
+  }
+
+  // #162 — post override audit comment on both child and parent when the
+  // parent-admission gate was bypassed via TASK_TRACKER_FORCE_PROMOTE=1.
+  // Best-effort — failure does not roll back the (already-committed) move.
+  let parentAdmissionAudit = null;
+  if (parentAdmissionOverride) {
+    try {
+      const post = deps.postOverrideAuditComment || postOverrideAuditComment;
+      parentAdmissionAudit = await post({
+        cfg,
+        childNumber: Number(issueNumber),
+        parentNumber: parentAdmissionOverride.parentNumber,
+        childTarget: parentAdmissionOverride.targetState,
+        parentState: parentAdmissionOverride.parentState,
+        reason: parentAdmissionOverride.reason,
+      });
+    } catch (err) {
+      parentAdmissionAudit = { posted: false, error: err.message };
+    }
+  }
+
   return {
     status: 'promoted',
     from: recorded,
@@ -477,6 +592,10 @@ export async function runPromote({
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
     bootstrapped,
     refinementPost,
+    parentAdmissionOverride,
+    parentAdmissionAudit,
+    refineExitChildOverrides,
+    refineExitAudits,
   };
 }
 
@@ -530,6 +649,7 @@ export async function verbPromote(rest, cfg) {
     case 'groom-gate-refused':
     case 'planned-estimate-refused':
     case 'epic-children-refused':
+    case 'parent-admission-refused':
     case 'code-complete-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
@@ -550,6 +670,7 @@ export async function verbPromote(rest, cfg) {
       process.stderr.write(`promote: ${result.message}\n`);
       process.exit(result.transitionResult?.exitCode || 1);
     }
+    case 'parent-admission-error':
     case 'error': {
       process.stderr.write(`promote: ${result.message}\n`);
       process.exit(1);

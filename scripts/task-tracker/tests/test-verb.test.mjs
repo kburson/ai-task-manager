@@ -133,8 +133,14 @@ test('verbTest: green path stamps marker, posts success comment, moves test→re
     );
     const stamped = calls.bodyWrites[calls.bodyWrites.length - 1];
     assert.ok(hasDodVerifiedMarker(stamped), 'body must carry dod-verified marker after green');
+    // verbTest stamps the intermediate 'test' marker (since the move goes
+    // develop→review, skipping the Test column). The 'review' marker is
+    // stamped by move-state.mjs centrally and is NOT written by this verb.
     assert.match(stamped, /aitm-entered-test:/, 'must stamp aitm-entered-test on green');
-    assert.match(stamped, /aitm-entered-review:/, 'must stamp aitm-entered-review on green');
+    assert.ok(
+      !/aitm-entered-review:/.test(stamped),
+      'aitm-entered-review is stamped by move-state.mjs, not by verbTest'
+    );
     const parsed = parseDodVerifiedMarker(stamped);
     assert.equal(parsed.sha, 'abc1234deadbeef');
     assert.equal(parsed.ts, '2026-05-17T01:23:45.000Z');
