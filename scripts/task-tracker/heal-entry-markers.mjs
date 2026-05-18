@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Generalized heal for stage-entry markers. Backfills missing markers and
-// re-stamps out-of-order chains for the early-lifecycle stages (refine, plan)
-// that historically traversed before entry-marker stamping was mandatory
-// (#140) or the chain-integrity close gate (#138) treated them as required.
+// re-stamps out-of-order chains for the lifecycle stages (refine, plan,
+// develop, test, review) that historically traversed before entry-marker
+// stamping was mandatory (#140) or the chain-integrity close gate (#138)
+// treated them as required, or whose entries were stamped out-of-order by
+// retrospective verb runs after a delegate-failure drift (#172/#175).
 //
 // Three cases warrant a heal, applied per stage in HEALABLE_STAGES:
 //
@@ -35,7 +37,7 @@ import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
-const HEALABLE_STAGES = ['refine', 'plan'];
+const HEALABLE_STAGES = ['refine', 'plan', 'develop', 'test', 'review'];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 
 function parseArgs(argv) {
@@ -106,30 +108,48 @@ export function stripStageMarkers(body, stage) {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-// Compute a safe ts for backfilling <stage>: the earlier of `createdAt` and
-// `earliestLaterStageTs - 1ms`. Adds a per-stage ms offset so multiple
-// backfilled stages preserve their relative order (refine < plan < ...).
+// Compute a safe ts for backfilling <stage>: strictly between the latest
+// earlier-stage marker (or createdAt) and the earliest later-stage marker.
+// Adds a per-stage ms offset so multiple backfilled stages preserve their
+// relative order (refine < plan < develop < ...). Throws if no feasible
+// interval exists (caller must surface as an un-healable anomaly).
 export function safeBackfillTs({ stage, markers, createdAt }) {
   const stageIdx = STAGE_INDEX[stage];
   const createdMs = Date.parse(createdAt);
   let upperMs = null;
+  let lowerMs = null;
   for (const [s, ts] of Object.entries(markers)) {
     if (s === stage) continue;
+    const ms = Date.parse(ts);
+    if (!Number.isFinite(ms)) continue;
     if (STAGE_INDEX[s] > stageIdx) {
-      const ms = Date.parse(ts);
-      if (Number.isFinite(ms) && (upperMs === null || ms < upperMs)) upperMs = ms;
+      if (upperMs === null || ms < upperMs) upperMs = ms;
+    } else if (STAGE_INDEX[s] < stageIdx) {
+      if (lowerMs === null || ms > lowerMs) lowerMs = ms;
     }
   }
-  let baseMs;
-  if (Number.isFinite(createdMs) && (upperMs === null || createdMs < upperMs)) {
-    baseMs = createdMs;
+  // Floor: latest earlier-stage marker, else createdAt, else (upper - STAGES.length).
+  let floorMs;
+  if (lowerMs !== null) {
+    floorMs = lowerMs + 1;
+  } else if (Number.isFinite(createdMs)) {
+    floorMs = createdMs;
   } else if (upperMs !== null) {
-    // createdAt isn't usable; fall back to earliest-later - (STAGES.length).
-    baseMs = upperMs - STAGES.length;
+    floorMs = upperMs - STAGES.length;
   } else {
     throw new Error(`safeBackfillTs: no usable bound for stage ${stage}`);
   }
-  return normalizeTs(new Date(baseMs + stageIdx).toISOString());
+  let candidateMs = floorMs + stageIdx;
+  if (upperMs !== null && candidateMs >= upperMs) {
+    // Clamp into (floor, upper) — if no room, fail loudly.
+    candidateMs = upperMs - 1;
+    if (candidateMs <= floorMs) {
+      throw new Error(
+        `safeBackfillTs: no feasible ts for stage ${stage} (floor=${floorMs}, upper=${upperMs})`
+      );
+    }
+  }
+  return normalizeTs(new Date(candidateMs).toISOString());
 }
 
 // Detect out-of-order: returns the set of HEALABLE_STAGES whose timestamp is
