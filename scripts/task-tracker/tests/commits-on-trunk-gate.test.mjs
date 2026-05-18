@@ -60,13 +60,13 @@ test('commitsOnTrunkGate: unknown SHA treated as not-on-trunk', async () => {
     cfg,
     issueNumber: 1,
     deps: {
-      listComments: async () => trail(['deadbee']),
+      listComments: async () => trail(['f00d123']),
       resolveTrunkRef: async () => 'trunk',
       isAncestor: async () => 'unknown-sha',
     },
   });
   assert.equal(r.ok, false);
-  assert.match(r.blocker, /deadbee/);
+  assert.match(r.blocker, /f00d123/);
 });
 
 test('commitsOnTrunkGate: no trail comment → graceful skip', async () => {
@@ -137,7 +137,7 @@ test('runCloseGates: stranded SHA composes into blockers alongside existing gate
     body: FULL_CHAIN_BODY,
     projectDir: '/tmp/x',
     deps: {
-      getHeadSha: async () => 'abc1234deadbeef',
+      getHeadSha: async () => 'abc1234f00d123f',
       listComments: async () => trail(['abc1234', 'aaa1111']),
       resolveTrunkRef: async () => 'trunk',
       isAncestor: async (sha) => (sha === 'aaa1111' ? 'stranded' : 'on-trunk'),
@@ -157,7 +157,7 @@ test('runCloseGates: all SHAs on trunk → trunk gate passes, full gate passes',
     body: FULL_CHAIN_BODY,
     projectDir: '/tmp/x',
     deps: {
-      getHeadSha: async () => 'abc1234deadbeef',
+      getHeadSha: async () => 'abc1234f00d123f',
       listComments: async () => trail(['abc1234']),
       resolveTrunkRef: async () => 'trunk',
       isAncestor: async () => 'on-trunk',
