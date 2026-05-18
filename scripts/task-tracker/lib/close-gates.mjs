@@ -186,6 +186,103 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
+// Trunk-integration gate (#B).
+//
+// Refuses Review→Done when any SHA in the issue's `aitm-commits` trail is not
+// an ancestor of the configured trunk ref. The #157 epic exposed this gap:
+// all five sub-issues were closed and stamped Done but their commits sat on
+// a worktree branch that was never merged to trunk. Audit said "shipped";
+// trunk disagreed. This gate catches the same condition on the way out.
+//
+// Trunk ref resolution (in order): cfg.trunkRef → first existing local
+// branch among `trunk`, `main`, `master` → refusal. `origin/HEAD` is
+// intentionally not probed: this project is solo / local-only.
+//
+// Skip semantics match issueDirtyGate: no trail → skip, empty marker → skip.
+// Unknown SHAs (git rev-parse exit 128) are treated as not-on-trunk because
+// the trail's truth claim is that the SHA exists.
+
+const TRUNK_FALLBACKS = ['trunk', 'main', 'master'];
+
+async function defaultResolveTrunkRef({ cfg, projectDir }) {
+  if (cfg && typeof cfg.trunkRef === 'string' && cfg.trunkRef.trim()) {
+    return cfg.trunkRef.trim();
+  }
+  for (const ref of TRUNK_FALLBACKS) {
+    try {
+      await pexec('git', ['rev-parse', '--verify', '--quiet', `refs/heads/${ref}`], {
+        cwd: projectDir,
+        timeout: 10000,
+      });
+      return ref;
+    } catch {
+      // try next
+    }
+  }
+  return null;
+}
+
+async function defaultIsAncestor(sha, ref, { cwd } = {}) {
+  try {
+    await pexec('git', ['merge-base', '--is-ancestor', sha, ref], { cwd, timeout: 10000 });
+    return 'on-trunk';
+  } catch (err) {
+    if (err && err.code === 1) return 'stranded';
+    return 'unknown-sha';
+  }
+}
+
+export async function commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps = {} } = {}) {
+  if (!cfg) throw new Error('commitsOnTrunkGate: cfg is required');
+  if (!issueNumber) throw new Error('commitsOnTrunkGate: issueNumber is required');
+  const listComments = deps.listComments || defaultListComments;
+  const resolveTrunkRef = deps.resolveTrunkRef || defaultResolveTrunkRef;
+  const isAncestor =
+    deps.isAncestor || ((sha, ref) => defaultIsAncestor(sha, ref, { cwd: projectDir }));
+
+  let shas = [];
+  try {
+    const comments = await listComments({ cfg, issueNumber });
+    const trail = findCommitTrailComment(comments);
+    if (!trail) return { ok: true, skipped: 'no-commits-marker' };
+    shas = parseCommitShas(trail.body);
+  } catch (err) {
+    return { ok: false, blocker: `close-trunk-comments-fetch-failed: ${err.message}` };
+  }
+  if (shas.length === 0) return { ok: true, skipped: 'empty-commits-marker' };
+
+  const trunkRef = await resolveTrunkRef({ cfg, projectDir });
+  if (!trunkRef) {
+    return {
+      ok: false,
+      blocker:
+        'close-trunk-ref-unresolved: no `trunkRef` configured and none of [trunk, main, master] exist locally — set `trunkRef` in `.ai-task-manager/task-tracker.json`',
+    };
+  }
+
+  const stranded = [];
+  for (const sha of shas) {
+    let status;
+    try {
+      status = await isAncestor(sha, trunkRef);
+    } catch {
+      status = 'unknown-sha';
+    }
+    if (status !== 'on-trunk') stranded.push(sha);
+  }
+  if (stranded.length === 0) return { ok: true, trunkRef };
+
+  const shorts = stranded.map((s) => s.slice(0, 7));
+  const display =
+    shorts.slice(0, 5).join(', ') + (shorts.length > 5 ? `, …(+${shorts.length - 5})` : '');
+  return {
+    ok: false,
+    blocker: `close-commits-not-on-trunk: ${stranded.length} SHA(s) not reachable from ${trunkRef}: ${display} — merge into ${trunkRef} or set TASK_TRACKER_FORCE_DONE=1 to override`,
+    trunkRef,
+    stranded,
+  };
+}
+
 export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps = {} } = {}) {
   const blockers = [];
   const m = markerPresentGate(body);
@@ -207,6 +304,14 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     if (c.blockers) blockers.push(...c.blockers);
   }
 
+  let trunkResult = null;
+  try {
+    trunkResult = await commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps });
+    if (!trunkResult.ok) blockers.push(trunkResult.blocker);
+  } catch (err) {
+    blockers.push(`close-trunk-gate-error: ${err.message}`);
+  }
+
   let dirtyResult = null;
   try {
     dirtyResult = await issueDirtyGate({ cfg, issueNumber, projectDir, deps });
@@ -219,6 +324,8 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     ok: blockers.length === 0,
     blockers,
     dirtyCheckSkipped: dirtyResult?.skipped || null,
+    trunkCheckSkipped: trunkResult?.skipped || null,
+    trunkRef: trunkResult?.trunkRef || null,
     headSha,
   };
 }
