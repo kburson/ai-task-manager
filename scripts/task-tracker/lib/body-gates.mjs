@@ -195,15 +195,29 @@ import { STATES as STATE_MACHINE_STATES, normalizeStateSlug } from '../state-mac
 const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 
 // #162 — child sub-issue cannot lead parent epic in state.
+// #176 — split entry-guard (targets ≤ develop) from arc-guard (targets > develop).
 //
-// Generalized from the original "must be at develop" rule to a target-aware
-// comparison: the parent epic must be at least at the child's target state.
+// Two regimes:
+//   1. Entry-guard, targets in {refine, plan, develop}: the parent epic must
+//      be at least at the child's target state. Prevents a child from leading
+//      the epic into a stage the epic hasn't been groomed for.
+//   2. Arc-guard, targets in {test, review, done}: the parent epic need only
+//      have been admitted to `develop`. Once both are in Develop, the child
+//      may complete its full arc independently — wave-model semantics require
+//      the epic to remain in Develop until every wave member reaches Done, so
+//      mirroring the leading child would deadlock. The epic's onward
+//      progression is governed by sub-issue-completion and wave gates, not
+//      by this admission check.
+//
 // `targetState` defaults to `develop` to preserve any caller that pre-dates the
 // generalization. Solo issues (`parentEpicNumber == null`) bypass.
 //
 // When `process.env.TASK_TRACKER_FORCE_PROMOTE === '1'`, the gate returns an
 // empty blocker list and surfaces an `override` payload so the caller can post
 // an audit comment.
+const ARC_GUARD_FLOOR_STATE = 'develop';
+const ARC_GUARD_FLOOR_IDX = STATE_MACHINE_STATES.indexOf(ARC_GUARD_FLOOR_STATE);
+
 export async function checkParentAdmission({
   parentEpicNumber,
   repo,
@@ -216,6 +230,8 @@ export async function checkParentAdmission({
   if (targetIdx < 0) {
     throw new Error(`checkParentAdmission: unknown targetState "${targetState}"`);
   }
+  const requiredIdx = targetIdx > ARC_GUARD_FLOOR_IDX ? ARC_GUARD_FLOOR_IDX : targetIdx;
+  const requiredState = STATE_MACHINE_STATES[requiredIdx];
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
   const state = raw == null ? null : normalizeStateSlug(String(raw).toLowerCase());
   const forced = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
@@ -234,12 +250,12 @@ export async function checkParentAdmission({
     return [
       {
         kind: 'parent-admission',
-        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to ${targetState[0].toUpperCase() + targetState.slice(1)} first`,
+        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to ${requiredState[0].toUpperCase() + requiredState.slice(1)} first`,
       },
     ];
   }
   const idx = STATE_MACHINE_STATES.indexOf(state);
-  if (idx >= 0 && idx >= targetIdx) return [];
+  if (idx >= 0 && idx >= requiredIdx) return [];
   if (forced) {
     return {
       blockers: [],
@@ -254,7 +270,7 @@ export async function checkParentAdmission({
   return [
     {
       kind: 'parent-admission',
-      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to ${targetState[0].toUpperCase() + targetState.slice(1)} first (child cannot lead parent). Override: TASK_TRACKER_FORCE_PROMOTE=1`,
+      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to ${requiredState[0].toUpperCase() + requiredState.slice(1)} first (child cannot lead parent). Override: TASK_TRACKER_FORCE_PROMOTE=1`,
     },
   ];
 }
