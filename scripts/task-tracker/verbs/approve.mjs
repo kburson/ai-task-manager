@@ -27,6 +27,7 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { buildReviewNotesComment } from '../lib/review-notes.mjs';
 import { deriveDrivers } from '../lib/derive-drivers.mjs';
+import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 
 const pexec = promisify(execFile);
 
@@ -134,9 +135,13 @@ async function defaultPromptDrivers() {
   });
 }
 
-// #156 — Detect "no human in the loop" so the approve verb can stamp an
-// audit marker that flags machine-generated approvals. There is no
-// Claude-Code-native signal; the wrapper has to declare it. We accept any of:
+// #156 / #177 — Detect "no human in the loop" so the approve verb can stamp
+// an audit marker that flags machine-generated approvals. Unified with the
+// audit-comment path (`enforceFullAutoAudit`) via the shared `isFullAuto`
+// predicate, anchored on absence of `TASK_TRACKER_HUMAN_REVIEWER` — the only
+// signal an operator sets explicitly. Legacy OR-signals are retained so
+// explicit-override paths (CI runners, scripted approvals, fleet
+// orchestration) keep working:
 //   - `TT_FULL_AUTO=1` (explicit, set by fleet/orchestrator)
 //   - `process.stdin.isTTY === false` (headless inference)
 //   - `CI=1` (generic CI flag)
@@ -144,12 +149,18 @@ async function defaultPromptDrivers() {
 // trail explains its own confidence later. `env` defaults to process.env;
 // `tty` defaults to process.stdin.isTTY so tests can stub.
 export function detectFullAuto({ env = process.env, tty = process.stdin?.isTTY } = {}) {
+  const reviewerUnset = isFullAuto(env);
   const envOn = env.TT_FULL_AUTO === '1';
   const ttyOff = tty === false;
   const ciOn = env.CI === '1' || env.CI === 'true';
-  const fired = envOn || ttyOff || ciOn;
+  const fired = reviewerUnset || envOn || ttyOff || ciOn;
   if (!fired) return { fired: false, signals: '' };
-  const parts = [`env=${envOn ? 1 : 0}`, `tty=${ttyOff ? 0 : 1}`, `ci=${ciOn ? 1 : 0}`];
+  const parts = [
+    `reviewer-unset=${reviewerUnset ? 1 : 0}`,
+    `env=${envOn ? 1 : 0}`,
+    `tty=${ttyOff ? 0 : 1}`,
+    `ci=${ciOn ? 1 : 0}`,
+  ];
   return { fired: true, signals: parts.join(',') };
 }
 

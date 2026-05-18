@@ -193,10 +193,15 @@ function makeDeps(overrides = {}) {
 
 // --- #156 Full-Auto audit marker ---
 
-// 11. detectFullAuto: env=TT_FULL_AUTO=1 → fires with env=1
+// 11. detectFullAuto: env=TT_FULL_AUTO=1 → fires with env=1 (human reviewer set
+// to isolate the legacy override signal — #177)
 {
-  const r = detectFullAuto({ env: { TT_FULL_AUTO: '1' }, tty: true });
+  const r = detectFullAuto({
+    env: { TT_FULL_AUTO: '1', TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
+    tty: true,
+  });
   assert.equal(r.fired, true);
+  assert.match(r.signals, /reviewer-unset=0/);
   assert.match(r.signals, /env=1/);
   assert.match(r.signals, /tty=1/);
   assert.match(r.signals, /ci=0/);
@@ -204,23 +209,42 @@ function makeDeps(overrides = {}) {
 
 // 12. detectFullAuto: CI=1 → fires with ci=1
 {
-  const r = detectFullAuto({ env: { CI: '1' }, tty: true });
+  const r = detectFullAuto({
+    env: { CI: '1', TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
+    tty: true,
+  });
   assert.equal(r.fired, true);
-  assert.match(r.signals, /env=0,tty=1,ci=1/);
+  assert.match(r.signals, /reviewer-unset=0,env=0,tty=1,ci=1/);
 }
 
 // 13. detectFullAuto: stdin.isTTY === false → fires with tty=0
 {
-  const r = detectFullAuto({ env: {}, tty: false });
+  const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' }, tty: false });
   assert.equal(r.fired, true);
-  assert.match(r.signals, /env=0,tty=0,ci=0/);
+  assert.match(r.signals, /reviewer-unset=0,env=0,tty=0,ci=0/);
 }
 
-// 14. detectFullAuto: no signals → does not fire
+// 14. detectFullAuto: no signals AND human reviewer set → does not fire
 {
-  const r = detectFullAuto({ env: {}, tty: true });
+  const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' }, tty: true });
   assert.equal(r.fired, false);
   assert.equal(r.signals, '');
+}
+
+// 14a. #177 — detectFullAuto: human reviewer unset (Claude-Code shape) → fires
+// via reviewer-unset signal even when legacy signals are inert.
+{
+  const r = detectFullAuto({ env: {}, tty: true });
+  assert.equal(r.fired, true);
+  assert.match(r.signals, /reviewer-unset=1/);
+}
+
+// 14b. #177 — detectFullAuto: human reviewer set to empty string is treated
+// as unset (full-auto fires).
+{
+  const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: '   ' }, tty: true });
+  assert.equal(r.fired, true);
+  assert.match(r.signals, /reviewer-unset=1/);
 }
 
 // 15. runApprove stamps full-auto marker when detect fires
@@ -283,6 +307,114 @@ function makeDeps(overrides = {}) {
     process.stderr.write = origWrite;
   }
   assert.match(captured, /lifecycle-tick-noop/);
+}
+
+// --- #177 — unified Full-Auto trigger (footnote ↔ audit-comment parity) ---
+
+// 17. Claude Code shape: TASK_TRACKER_HUMAN_REVIEWER unset, stdin is a TTY
+// (legacy signals all inert). The footnote MUST be inserted and the
+// aitm-full-auto-approved body marker stamped.
+{
+  const prevReviewer = process.env.TASK_TRACKER_HUMAN_REVIEWER;
+  const prevAuto = process.env.TT_FULL_AUTO;
+  const prevCi = process.env.CI;
+  delete process.env.TASK_TRACKER_HUMAN_REVIEWER;
+  delete process.env.TT_FULL_AUTO;
+  delete process.env.CI;
+  try {
+    const { deps, getBody } = makeDeps({
+      // do NOT override detectFullAuto — exercise the real predicate against
+      // a stubbed TTY=true and the cleared env.
+      deps: { detectFullAuto: () => detectFullAuto({ env: process.env, tty: true }) },
+    });
+    const r = await runApprove({ issueNumber: 58, cfg, deps });
+    assert.equal(r.status, 'approved');
+    assert.equal(r.fullAuto, true);
+    assert.match(getBody(), /<!-- aitm-full-auto-approved: /);
+    assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
+    assert.match(getBody(), /reviewer-unset=1/);
+  } finally {
+    if (prevReviewer !== undefined) process.env.TASK_TRACKER_HUMAN_REVIEWER = prevReviewer;
+    if (prevAuto !== undefined) process.env.TT_FULL_AUTO = prevAuto;
+    if (prevCi !== undefined) process.env.CI = prevCi;
+  }
+}
+
+// 18. Human path: TASK_TRACKER_HUMAN_REVIEWER=alice → footnote NOT inserted,
+// body marker NOT stamped, despite TTY signal being absent (legacy override
+// would have fired before #177).
+{
+  const prevReviewer = process.env.TASK_TRACKER_HUMAN_REVIEWER;
+  const prevAuto = process.env.TT_FULL_AUTO;
+  const prevCi = process.env.CI;
+  process.env.TASK_TRACKER_HUMAN_REVIEWER = 'alice';
+  delete process.env.TT_FULL_AUTO;
+  delete process.env.CI;
+  try {
+    const { deps, getBody } = makeDeps({
+      deps: { detectFullAuto: () => detectFullAuto({ env: process.env, tty: true }) },
+    });
+    const r = await runApprove({ issueNumber: 58, cfg, deps });
+    assert.equal(r.status, 'approved');
+    assert.notEqual(r.fullAuto, true);
+    assert.doesNotMatch(getBody(), /<!-- aitm-full-auto-approved:/);
+    assert.doesNotMatch(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
+  } finally {
+    if (prevReviewer !== undefined) process.env.TASK_TRACKER_HUMAN_REVIEWER = prevReviewer;
+    else delete process.env.TASK_TRACKER_HUMAN_REVIEWER;
+    if (prevAuto !== undefined) process.env.TT_FULL_AUTO = prevAuto;
+    if (prevCi !== undefined) process.env.CI = prevCi;
+  }
+}
+
+// 19. Footnote anchor survives current preflight DoD template — invoke
+// preflight-issue.mjs --shape solo, then runApprove, assert footnote lands
+// after Lifecycle subsection.
+{
+  const { execFileSync } = await import('node:child_process');
+  const { writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+  const dir = mkdtempSync(path.join(tmpdir(), 'preflight-test-'));
+  const scopeFile = path.join(dir, 'scope.md');
+  const acFile = path.join(dir, 'ac.md');
+  const planFile = path.join(dir, 'plan.md');
+  writeFileSync(scopeFile, 'Scope text.\n');
+  writeFileSync(acFile, '- [ ] one\n');
+  writeFileSync(
+    planFile,
+    '- **Size:** S\n- **Estimate:** 1h\n- **Priority:** P2\n- **Sequence:** —\n'
+  );
+  const rendered = execFileSync(
+    'node',
+    [
+      'scripts/task-tracker/preflight-issue.mjs',
+      '--shape',
+      'solo',
+      '--scope-file',
+      scopeFile,
+      '--ac-file',
+      acFile,
+      '--plan-metadata-file',
+      planFile,
+    ],
+    { encoding: 'utf8' }
+  );
+  const { deps, getBody } = makeDeps({ initialBody: rendered });
+  const r = await runApprove({
+    issueNumber: 58,
+    cfg,
+    deps: {
+      ...deps,
+      detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=0,tty=1,ci=0' }),
+    },
+  });
+  assert.equal(r.status, 'approved');
+  const body = getBody();
+  const lifecycleIdx = body.indexOf('#### Lifecycle');
+  const footnoteIdx = body.indexOf('<!-- aitm-full-auto-footnote:start -->');
+  assert.ok(lifecycleIdx > -1, 'preflight body contains Lifecycle subsection');
+  assert.ok(footnoteIdx > lifecycleIdx, 'footnote anchors after Lifecycle subsection');
 }
 
 console.log('approve.test.mjs: all passed');
