@@ -434,25 +434,93 @@ test('promote: transition-failed when alias verb exits non-zero — no metadata 
   assert.equal(calls.writes.length, 0);
 });
 
-test('promote: drift-reconcile logs timing row when alias verb exits mid-move (#132, #170)', async () => {
-  // Post-#170: promote.mjs no longer writes the aitm-last-known-state marker
-  // on drift-reconcile. move-state.mjs writes the marker on every successful
-  // Status mutation, so by the time the alias verb fails the marker is
-  // already in sync with the live state. promote.mjs only logs the
-  // drift-reconcile timing row for audit-trail purposes.
+test('promote: delegate non-zero but board reached target → promoted-with-warning (#175)', async () => {
+  // #175 — when the alias verb's Status move lands the board at `target`
+  // and a *subsequent* alias-internal step fails, promote treats the outcome
+  // as a soft warning (not transition-failed). Markers are already in sync
+  // (move-state stamps centrally per #170), so no body repair write fires.
+  const bodyAfter = bodyWithState('test') + '\n<!-- aitm-entered-test: 2026-05-18T00:00:00Z -->\n';
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
     liveAfter: 'test',
     spawnCode: 3,
+    fetchSecondBody: bodyAfter,
   });
   const r = await runPromote({ issueNumber: 132, cfg, deps });
+  assert.equal(r.status, 'promoted-with-warning');
+  assert.equal(r.from, 'develop');
+  assert.equal(r.to, 'test');
+  assert.equal(r.delegate, 'test');
+  assert.equal(r.delegateExitCode, 3);
+  assert.equal(r.markerRepair.status, 'noop');
+  assert.equal(calls.writes.length, 0, 'no repair write when markers already correct');
+  assert.equal(calls.timings.length, 1);
+  assert.match(calls.timings[0], /move:test/);
+  assert.match(calls.timings[0], /soft warning/);
+});
+
+test('promote: delegate non-zero, board at target, marker stale → repair write fires (#175)', async () => {
+  // Post-failure body still reads lastKnownState=develop even though Status
+  // is at test (centralized #170 stamp didn't run, e.g. move-state crashed
+  // after Status mutation but before marker write). promote must repair.
+  const staleBodyAfter = bodyWithState('develop');
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'test',
+    spawnCode: 1,
+    fetchSecondBody: staleBodyAfter,
+  });
+  const r = await runPromote({ issueNumber: 1751, cfg, deps });
+  assert.equal(r.status, 'promoted-with-warning');
+  assert.equal(r.markerRepair.status, 'ok');
+  assert.equal(r.markerRepair.attempts, 1);
+  assert.equal(calls.writes.length, 1);
+  assert.match(calls.writes[0], /aitm-last-known-state: test/);
+  assert.match(calls.writes[0], /aitm-entered-test:/);
+});
+
+test('promote: delegate non-zero, marker repair write fails → audit comment posted (#175, #168)', async () => {
+  const staleBodyAfter = bodyWithState('develop');
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'test',
+    spawnCode: 1,
+    fetchSecondBody: staleBodyAfter,
+  });
+  // Force writeIssueBody to fail (twice → audit fallback).
+  deps.writeIssueBody = async () => {
+    throw new Error('simulated gh failure');
+  };
+  const auditPosts = [];
+  deps.postComment = async ({ body }) => {
+    auditPosts.push(body);
+  };
+  const r = await runPromote({ issueNumber: 1752, cfg, deps });
+  assert.equal(r.status, 'promoted-with-warning');
+  assert.equal(r.markerRepair.status, 'failed');
+  assert.equal(r.markerRepair.auditPosted, true);
+  assert.equal(auditPosts.length, 1);
+  assert.match(auditPosts[0], /state-recording-failed/);
+});
+
+test('promote: delegate non-zero AND board drifted to non-target → transition-failed (#175)', async () => {
+  // Drifted to an intermediate / unrelated state (not target). Existing
+  // transition-failed behavior preserved — drift-reconcile audit row only.
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'review', // not target (target would be 'test')
+    spawnCode: 3,
+  });
+  const r = await runPromote({ issueNumber: 1753, cfg, deps });
   assert.equal(r.status, 'transition-failed');
-  assert.equal(r.reconciledTo, 'test');
-  assert.equal(calls.writes.length, 0, 'promote must not re-write marker post-#170');
+  assert.equal(r.reconciledTo, 'review');
+  assert.equal(calls.writes.length, 0);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /drift-reconcile/);
-  assert.match(calls.timings[0], /develop → test/);
 });
 
 test('promote: drift-reconcile is a no-op when live state matches recorded after failure', async () => {

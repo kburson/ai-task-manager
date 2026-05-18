@@ -47,6 +47,8 @@ import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-compl
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
+import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
+import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -415,23 +417,99 @@ export async function runPromote({
     : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
 
   if (transitionResult.exitCode !== 0) {
-    // Option B drift reconcile (#132): alias verbs do multiple board moves
-    // (e.g. /task review moves `test` → verify → `develop`/`review`). When
-    // they exit non-zero mid-flight, the board may sit at an intermediate
-    // state while the marker still reads the recorded state. Re-read the
-    // live board and stamp the marker to whatever the board now says so
-    // the next verb does not reason from a stale marker.
+    // Re-read live board to classify the failure.
+    //   liveAfter === target  → delegate reached target then side-task failed
+    //                            (#175): treat as soft warning, verify/repair
+    //                            markers, return promoted-with-warning.
+    //   liveAfter !== target  → board never reached target (mid-move or
+    //                            unchanged): keep transition-failed semantics.
     let liveAfter = null;
     try {
       liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
     } catch {
       liveAfter = null;
     }
+
+    if (liveAfter === target) {
+      // #175 — board reached target. Verify markers, repair if needed,
+      // surface delegate exit as soft warning.
+      let markerRepair = { status: 'noop' };
+      try {
+        const { body: bodyAfter } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+        const { state: stateAfter } = readLastKnownState(bodyAfter);
+        const hasEntry = new RegExp(`<!--\\s*aitm-entered-${target}:`).test(bodyAfter);
+        if (stateAfter !== target || !hasEntry) {
+          const nowTs = now();
+          let repaired = bodyAfter;
+          if (stateAfter !== target) repaired = writeLastKnownState(repaired, target);
+          if (!hasEntry) repaired = stampEntryMarker(repaired, target, nowTs);
+          markerRepair = await writeIssueBodyWithRetry({
+            issueNumber,
+            repo: cfg.repo,
+            body: repaired,
+            bodyBefore: bodyAfter,
+            target,
+            writeIssueBody: ({ body: b }) =>
+              writeIssueBody({ issueNumber, repo: cfg.repo, body: b }),
+            postComment: deps.postComment,
+          });
+        }
+      } catch {
+        // best-effort — marker is unreadable; warning still surfaces below.
+      }
+
+      try {
+        const nowTs = now();
+        const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
+        const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
+        const delegateLabel =
+          transitionResult.kind === 'alias' ? `via /task ${transitionResult.verb}` : 'direct move';
+        const repairNote =
+          markerRepair.status === 'failed'
+            ? `; marker-repair failed (audit posted: ${markerRepair.auditPosted})`
+            : markerRepair.status === 'ok'
+              ? `; marker repaired (attempts: ${markerRepair.attempts})`
+              : '';
+        const row = buildRow({
+          ts: nowTs,
+          event: `move:${target}`,
+          activeSec,
+          idleSec,
+          deltaWords: 0,
+          // wordMarker:0 audit row — promote move event, no active session
+          wordMarker: 0,
+          description: `${delegateLabel} (delegate exited ${transitionResult.exitCode} — soft warning)${repairNote}`,
+        });
+        await postTimingRow({ issueNumber, repo: cfg.repo, row });
+      } catch {
+        // best-effort
+      }
+
+      return {
+        status: 'promoted-with-warning',
+        from: recorded,
+        to: target,
+        via:
+          transitionResult.kind === 'alias'
+            ? `/task ${transitionResult.verb}`
+            : 'direct move-state',
+        delegate: transitionResult.kind === 'alias' ? transitionResult.verb : null,
+        delegateExitCode: transitionResult.exitCode,
+        markerRepair,
+        message: `promote: ${
+          transitionResult.kind === 'alias'
+            ? `delegate /task ${transitionResult.verb}`
+            : `move-state.mjs ${target}`
+        } exited ${transitionResult.exitCode}; board reached "${target}" — soft warning, markers verified.`,
+      };
+    }
+
     const drifted = liveAfter && liveAfter !== recorded;
     if (drifted) {
-      // Marker write was handled by move-state.mjs's centralized stamp on
-      // each successful Status mutation (#170). No marker write needed here;
-      // just log the drift-reconcile audit row.
+      // Mid-move drift: board moved past `recorded` but not to `target`.
+      // move-state.mjs centrally stamps markers on each successful Status
+      // mutation (#170), so the marker is already in sync with `liveAfter`.
+      // Log the drift-reconcile audit row for visibility.
       try {
         const nowTs = now();
         const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
@@ -620,6 +698,22 @@ export async function verbPromote(rest, cfg) {
       } else if (result.refinementPost?.status === 'post-failed') {
         process.stderr.write(
           `  ⚠ refine-estimate comment post failed: ${result.refinementPost.error}\n`
+        );
+      }
+      return;
+    }
+    case 'promoted-with-warning': {
+      process.stdout.write(
+        `✓ #${issueNumber} promoted: ${result.from} → ${result.to} (${result.via})\n`
+      );
+      process.stderr.write(
+        `  ⚠ delegate ${result.delegate ? `/task ${result.delegate}` : '(direct)'} exited ${result.delegateExitCode} — board reached target; treating as soft warning.\n`
+      );
+      if (result.markerRepair?.status === 'ok') {
+        process.stderr.write(`  ↳ marker repaired (attempts: ${result.markerRepair.attempts})\n`);
+      } else if (result.markerRepair?.status === 'failed') {
+        process.stderr.write(
+          `  ↳ marker-repair FAILED; audit comment posted: ${result.markerRepair.auditPosted}\n`
         );
       }
       return;
