@@ -30,11 +30,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from './config.mjs';
-import {
-  STAGES,
-  parseEntryMarkers,
-  backfillEntryMarker,
-} from './lib/stage-entry-markers.mjs';
+import { STAGES, parseEntryMarkers, backfillEntryMarker } from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -99,15 +95,15 @@ function normalizeTs(iso) {
 // Strip both entry and audit-backfill markers for a single stage. Used before
 // re-stamping out-of-order entries.
 export function stripStageMarkers(body, stage) {
-  const entryRe = new RegExp(
-    `[ \\t]*<!--\\s*aitm-entered-${stage}:[^>]*?-->[ \\t]*\\n?`,
-    'gi'
-  );
+  const entryRe = new RegExp(`[ \\t]*<!--\\s*aitm-entered-${stage}:[^>]*?-->[ \\t]*\\n?`, 'gi');
   const auditRe = new RegExp(
     `[ \\t]*<!--\\s*aitm-backfill:\\s*${stage}:[^>]*?-->[ \\t]*\\n?`,
     'gi'
   );
-  return body.replace(entryRe, '').replace(auditRe, '').replace(/\n{3,}/g, '\n\n');
+  return body
+    .replace(entryRe, '')
+    .replace(auditRe, '')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
 // Compute a safe ts for backfilling <stage>: the earlier of `createdAt` and
@@ -160,9 +156,7 @@ export function planStageHeal({ stage, body, createdAt }) {
   const markers = parseEntryMarkers(body);
   const hasEntry = stage in markers;
   const hasAudit = new RegExp(`<!--\\s*aitm-backfill:\\s*${stage}:`, 'i').test(body);
-  const hasLater = Object.entries(markers).some(
-    ([s]) => STAGE_INDEX[s] > STAGE_INDEX[stage]
-  );
+  const hasLater = Object.entries(markers).some(([s]) => STAGE_INDEX[s] > STAGE_INDEX[stage]);
   const outOfOrder = outOfOrderHealableStages(markers).has(stage);
 
   if (outOfOrder) {
@@ -248,9 +242,7 @@ async function main() {
   }
   for (const r of results) {
     if (r.action === 'plan') {
-      const parts = r.stagesActed.map(
-        (s) => `${s.stage}=${s.action}:${s.ts}(${s.reason})`
-      );
+      const parts = r.stagesActed.map((s) => `${s.stage}=${s.action}:${s.ts}(${s.reason})`);
       process.stdout.write(`#${r.num}: would heal ${parts.join(', ')}\n`);
     } else if (r.action === 'applied') {
       const parts = r.stagesActed.map((s) => `${s.stage}=${s.action}:${s.ts}`);

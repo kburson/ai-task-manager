@@ -192,31 +192,69 @@ export function checkRequiredBodySections(body = '') {
 
 import { STATES as STATE_MACHINE_STATES, normalizeStateSlug } from '../state-machine.mjs';
 
-const PARENT_ADMIT_INDEX = STATE_MACHINE_STATES.indexOf('develop');
+const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 
+// #162 — child sub-issue cannot lead parent epic in state.
+//
+// Generalized from the original "must be at develop" rule to a target-aware
+// comparison: the parent epic must be at least at the child's target state.
+// `targetState` defaults to `develop` to preserve any caller that pre-dates the
+// generalization. Solo issues (`parentEpicNumber == null`) bypass.
+//
+// When `process.env.TASK_TRACKER_FORCE_PROMOTE === '1'`, the gate returns an
+// empty blocker list and surfaces an `override` payload so the caller can post
+// an audit comment.
 export async function checkParentAdmission({
   parentEpicNumber,
   repo,
   projectId,
   readParentStatus,
+  targetState = DEFAULT_PARENT_ADMIT_STATE,
 }) {
   if (parentEpicNumber == null) return [];
+  const targetIdx = STATE_MACHINE_STATES.indexOf(targetState);
+  if (targetIdx < 0) {
+    throw new Error(`checkParentAdmission: unknown targetState "${targetState}"`);
+  }
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
   const state = raw == null ? null : normalizeStateSlug(String(raw).toLowerCase());
+  const forced = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
   if (state == null) {
+    if (forced) {
+      return {
+        blockers: [],
+        override: {
+          parentNumber: parentEpicNumber,
+          parentState: 'unknown',
+          targetState,
+          reason: 'parent-admission-unknown',
+        },
+      };
+    }
     return [
       {
         kind: 'parent-admission',
-        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to Develop first`,
+        message: `parent-admission: parent #${parentEpicNumber} has no Status on the configured project (unknown); advance the epic to ${targetState[0].toUpperCase() + targetState.slice(1)} first`,
       },
     ];
   }
   const idx = STATE_MACHINE_STATES.indexOf(state);
-  if (idx >= 0 && idx >= PARENT_ADMIT_INDEX) return [];
+  if (idx >= 0 && idx >= targetIdx) return [];
+  if (forced) {
+    return {
+      blockers: [],
+      override: {
+        parentNumber: parentEpicNumber,
+        parentState: state,
+        targetState,
+        reason: 'parent-admission-below-target',
+      },
+    };
+  }
   return [
     {
       kind: 'parent-admission',
-      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to Develop first`,
+      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to ${targetState[0].toUpperCase() + targetState.slice(1)} first (child cannot lead parent). Override: TASK_TRACKER_FORCE_PROMOTE=1`,
     },
   ];
 }

@@ -85,16 +85,38 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
     );
   }
 
+  const childOverrides = [];
   if (Array.isArray(children) && children.length > 0) {
     const forcePromote = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
     const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
-    if (offenders.length && !forcePromote) {
-      const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
-      blockers.push(
-        `refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): ${lines.join(', ')}. Heal-forward override: TASK_TRACKER_FORCE_PROMOTE=1`
-      );
+    if (offenders.length) {
+      if (forcePromote) {
+        // #162 — heal-forward override: record offenders so the caller can
+        // post the per-child override audit comment on the parent + each
+        // offender. Gate itself is silent (no blocker) when the override is
+        // in effect.
+        for (const c of offenders) {
+          childOverrides.push({
+            childNumber: c.number,
+            childState: String(c.state || 'unknown').toLowerCase(),
+            reason: 'refine-exit-child-leads-parent',
+          });
+        }
+      } else {
+        const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+        blockers.push(
+          `refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): ${lines.join(', ')}. Heal-forward override: TASK_TRACKER_FORCE_PROMOTE=1`
+        );
+      }
     }
   }
 
-  return { ok: blockers.length === 0, blockers, projectValues, labels, children };
+  return {
+    ok: blockers.length === 0,
+    blockers,
+    projectValues,
+    labels,
+    children,
+    childOverrides,
+  };
 }

@@ -85,6 +85,10 @@ The close-time `### 📊 Review delta` comment reads the most-recent notes comme
 and renders its bullets under a `Drivers:` section; empty drivers omit the
 section entirely.
 
+## Sequence rules
+
+**Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target. The Refine → Plan exit gate enforces the same invariant for epics: every child must be at `refine` (not `backlog`) before the epic itself may move to `plan`. Heal-forward override: `TASK_TRACKER_FORCE_PROMOTE=1` permits a single promote and posts paired `⚠ override used` audit comments on the child and parent. See `templates/pickup-directive.md` ("Sequence rules") for the full rule.
+
 ## Checkpoint Pause
 
 Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains an unaddressed question/instruction, halt and respond first — do not advance state. See the full rule in `templates/pickup-directive.md` ("Checkpoint Pause").

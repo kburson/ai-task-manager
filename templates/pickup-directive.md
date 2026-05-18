@@ -137,6 +137,14 @@ approve` writes a blockquote footnote between
     Announce what happened, why it was wrong, and propose 2–3 resolution options.
     Wait for explicit orchestrator or human instruction before proceeding.
 
+## Sequence rules
+
+**Child sub-issues may not lead the parent epic in state.** The `promote <child> <target>` verb refuses when the parent epic's state is lower than the child's requested target (e.g., parent in `refine`, child promoting to `develop`). The gate is the `child-cannot-lead-epic` invariant — drive the epic forward first, then the children may follow.
+
+Same rule applies inside the Refine → Plan exit gate: every epic child must be at `refine` (no `backlog` children) before the epic itself may move to `plan`.
+
+Heal-forward override (use sparingly, audit-trailed): set `TASK_TRACKER_FORCE_PROMOTE=1` in the environment for a single command. The promote will succeed and post `⚠ override used` audit comments on both the child sub-issue and the parent epic naming the offending state pair. The override exists for recovery cases where the parent was manually advanced or the board drifted; it is not a substitute for sequencing.
+
 ## Required steps before writing any code
 
 1. **Move the issue to `in-progress` and capture your entry word count:**
