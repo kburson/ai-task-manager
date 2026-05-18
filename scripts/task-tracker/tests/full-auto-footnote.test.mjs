@@ -33,6 +33,46 @@ test('hasFullAutoFootnote detects presence', () => {
   );
 });
 
+// #178 — prose mentions of the start delimiter (e.g., a deep-dive describing
+// the marker format inside a code span) must NOT trip the presence check.
+// Pre-fix bug: includes() matched the prose mention, sending insert down the
+// "replace existing block" branch, which then no-op'd because the block regex
+// requires both delimiters in order.
+test('hasFullAutoFootnote ignores prose mention of start delimiter alone', () => {
+  const body = `Some scope text mentions the marker \`${FULL_AUTO_FOOTNOTE_START}\` in a code span.\nNo real block here.`;
+  assert.equal(hasFullAutoFootnote(body), false);
+});
+
+test('insertFullAutoFootnote inserts block when only prose-mention of start delimiter exists (#178 regression)', () => {
+  const body = [
+    '## Scope',
+    `The bug is that ${FULL_AUTO_FOOTNOTE_START} is mentioned in this prose,`,
+    'which used to fool the presence check.',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+    '- [x] Story closed and moved to Done',
+    '- [x] Timing data flushed to issue',
+    '',
+    '## Tail',
+  ].join('\n');
+  const out = insertFullAutoFootnote(body, { ts: TS, signals: SIG });
+  // Exactly two occurrences of FULL_AUTO_FOOTNOTE_START: the prose mention
+  // (preserved verbatim) and the real block (newly inserted).
+  const escaped = FULL_AUTO_FOOTNOTE_START.replace(/[!*+?^${}()|[\]\\]/g, '\\$&');
+  const matches = out.match(new RegExp(escaped, 'g'));
+  assert.equal(matches.length, 2, 'expected prose mention + real block');
+  // Real block must contain end delimiter, payload, and Lifecycle anchor.
+  assert.ok(out.includes(FULL_AUTO_FOOTNOTE_END), 'end delimiter present');
+  assert.ok(out.includes(TS), 'timestamp present');
+  assert.ok(out.includes(SIG), 'signals present');
+  // Block sits after Lifecycle subsection, before Tail heading.
+  const lifeIdx = out.indexOf('#### Lifecycle');
+  const tailIdx = out.indexOf('## Tail');
+  const endIdx = out.indexOf(FULL_AUTO_FOOTNOTE_END);
+  assert.ok(endIdx > lifeIdx && endIdx < tailIdx, 'block anchored after Lifecycle, before Tail');
+});
+
 test('insertFullAutoFootnote anchors after Lifecycle subsection checklist', () => {
   const body = [
     '## Acceptance Criteria',

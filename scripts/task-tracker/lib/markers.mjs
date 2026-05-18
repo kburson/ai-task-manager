@@ -105,7 +105,14 @@ export function buildFullAutoFootnoteBlock({ ts, signals }) {
 }
 
 export function hasFullAutoFootnote(body) {
-  return typeof body === 'string' && body.includes(FULL_AUTO_FOOTNOTE_START);
+  if (typeof body !== 'string') return false;
+  // Use the block regex (start…end with content) rather than `String.includes`
+  // on the start delimiter alone — otherwise any prose that mentions the
+  // marker (e.g., a deep-dive describing the format) trips the check, sending
+  // `insertFullAutoFootnote` down the "replace existing" branch, which then
+  // no-ops because the regex below can't match a single delimiter in prose.
+  FULL_AUTO_FOOTNOTE_BLOCK_RE.lastIndex = 0;
+  return FULL_AUTO_FOOTNOTE_BLOCK_RE.test(body);
 }
 
 /**
