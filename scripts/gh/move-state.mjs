@@ -511,22 +511,18 @@ if (outOfBandReason && !SKIP_NETWORK) {
     /* best-effort */
   }
   try {
-    const { buildRow, postTimingEvent } = await import('../task-tracker/gh-timing-comment.mjs');
+    const { buildRow, postTimingEvent, readTimingCommentBody } =
+      await import('../task-tracker/gh-timing-comment.mjs');
     const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
-    // Best-effort body fetch so the audit row reflects elapsed time since
-    // the prior row. If the fetch fails the delta is honest 0/0.
-    let _bodyM2 = '';
-    try {
-      const { stdout: _stdoutM2 } = await pexec(
-        'gh',
-        ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      _bodyM2 = JSON.parse(_stdoutM2).body ?? '';
-    } catch {
-      /* best-effort */
-    }
-    const _dM2 = deriveStateMoveDelta(_bodyM2, ts);
+    // Best-effort fetch of the timing-log comment body (where prior rows live).
+    // The issue body never contains timing rows. If the fetch fails the delta
+    // is honest 0/0.
+    const _timingBodyM2 = await readTimingCommentBody({
+      issueNumber: issueArg,
+      repo: cfg.repo,
+      timeoutMs: GH_API_TIMEOUT_MS,
+    });
+    const _dM2 = deriveStateMoveDelta(_timingBodyM2, ts);
     const row = buildRow({
       ts,
       event: 'out-of-band-move',

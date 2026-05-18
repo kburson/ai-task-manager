@@ -29,6 +29,7 @@ import {
   writeLastKnownState,
   buildRow,
   postTimingEvent,
+  readTimingCommentBody,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import {
@@ -440,7 +441,8 @@ export async function runPromote({
       }
       try {
         const nowTs = now();
-        const { activeSec, idleSec } = deriveStateMoveDelta(bodyDrift, nowTs);
+        const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
+        const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
         const row = buildRow({
           ts: nowTs,
           event: 'drift-reconcile',
@@ -525,7 +527,8 @@ export async function runPromote({
 
   try {
     const nowTs = now();
-    const { activeSec, idleSec } = deriveStateMoveDelta(stamped, nowTs);
+    const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
+    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
     const row = buildRow({
       ts: nowTs,
       event: `move:${target}`,
