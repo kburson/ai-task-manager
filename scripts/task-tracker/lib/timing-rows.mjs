@@ -15,6 +15,10 @@
 // ISO timestamps contain `:` and a colon separator would be ambiguous.
 // Format: `<!-- aitm-pause: <fromIsoOrMs>..<untilIsoOrMs> -->`.
 const PAUSE_MARKER_RE = /<!--\s*aitm-pause:\s*([^\s>]+?)\.\.([^\s>]+?)\s*-->/g;
+// D3 design-doc form: `<!-- aitm-pause: from=<ISO> until=<ISO> [reason=<slug>] -->`.
+// Keys may appear in any order; reason is optional. Values are non-whitespace runs.
+const PAUSE_MARKER_KV_RE =
+  /<!--\s*aitm-pause:\s+(?=[^>]*\bfrom=)(?=[^>]*\buntil=)((?:\s*[a-z]+=\S+)+)\s*-->/g;
 const ROW_SEC_RE = /<!--\s*row-sec:\s*a=(-?\d+)\s+i=(-?\d+)\s*-->/;
 
 // Timing-log timestamp pattern (supports both legacy HH:MM and new
@@ -99,21 +103,53 @@ export function lastRowTsFromBody(body) {
   return last;
 }
 
-// Extract pause spans from `<!-- aitm-pause: <from>:<until> -->` markers
-// inside the window [startMs, endMs]. Returns array of seconds.
-export function pauseSpansBetween(body, startMs, endMs) {
+// Parse every `aitm-pause` marker in the body and return
+// `Array<{from: Date, until: Date, reason: string}>`. Accepts both forms:
+//   `<!-- aitm-pause: <from>..<until> -->`                (back-compat)
+//   `<!-- aitm-pause: from=<ISO> until=<ISO> [reason=<slug>] -->` (D3 spec)
+// Markers with an unparseable timestamp, or `until <= from`, are dropped.
+// `reason` is empty string when absent.
+export function parsePauseMarkers(body) {
   if (!body || typeof body !== 'string') return [];
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
-  const spans = [];
+  const out = [];
   let m;
   PAUSE_MARKER_RE.lastIndex = 0;
   while ((m = PAUSE_MARKER_RE.exec(body)) !== null) {
-    const from = tsToMs(m[1]);
-    const until = tsToMs(m[2]);
-    if (!Number.isFinite(from) || !Number.isFinite(until) || until <= from) continue;
-    // Overlap with window.
-    const lo = Math.max(from, startMs);
-    const hi = Math.min(until, endMs);
+    const fromMs = tsToMs(m[1]);
+    const untilMs = tsToMs(m[2]);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(untilMs) || untilMs <= fromMs) continue;
+    out.push({ from: new Date(fromMs), until: new Date(untilMs), reason: '' });
+  }
+  PAUSE_MARKER_KV_RE.lastIndex = 0;
+  while ((m = PAUSE_MARKER_KV_RE.exec(body)) !== null) {
+    const kvs = {};
+    for (const pair of m[1].trim().split(/\s+/)) {
+      const eq = pair.indexOf('=');
+      if (eq < 1) continue;
+      kvs[pair.slice(0, eq)] = pair.slice(eq + 1);
+    }
+    if (!kvs.from || !kvs.until) continue;
+    const fromMs = tsToMs(kvs.from);
+    const untilMs = tsToMs(kvs.until);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(untilMs) || untilMs <= fromMs) continue;
+    out.push({
+      from: new Date(fromMs),
+      until: new Date(untilMs),
+      reason: kvs.reason || '',
+    });
+  }
+  return out;
+}
+
+// Extract pause spans inside the window [startMs, endMs]. Partial-overlap
+// spans are pro-rated to the intersection. Returns array of seconds.
+export function pauseSpansBetween(body, startMs, endMs) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
+  const markers = parsePauseMarkers(body);
+  const spans = [];
+  for (const { from, until } of markers) {
+    const lo = Math.max(from.getTime(), startMs);
+    const hi = Math.min(until.getTime(), endMs);
     if (hi > lo) spans.push(Math.floor((hi - lo) / 1000));
   }
   return spans;

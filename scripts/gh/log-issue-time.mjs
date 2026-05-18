@@ -17,7 +17,11 @@ import {
   fieldIdFor,
   loadProjectFieldDefs,
 } from '../task-tracker/project-fields.mjs';
-import { parseTimingRows, rollupTotals } from '../task-tracker/timing-rollup.mjs';
+import {
+  applyPauseSpansToRows,
+  parseTimingRows,
+  rollupTotals,
+} from '../task-tracker/timing-rollup.mjs';
 import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
 
@@ -142,7 +146,11 @@ async function writeNumberField(itemId, fieldId, value) {
     process.exit(1);
   }
 
-  const rows = parseTimingRows(comment.body);
+  const rawRows = parseTimingRows(comment.body);
+  // Pause-aware rollup: subtract `aitm-pause` spans inside each row's window.
+  // Body carries the markers; comment body does not.
+  const issueBodyForPauses = await fetchIssueBody();
+  const rows = applyPauseSpansToRows(rawRows, issueBodyForPauses);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
   const { rowCount, totalActiveMin, reviewMin, engagedMin } = rollupTotals(rows, thresholdMin);
 
@@ -168,7 +176,7 @@ async function writeNumberField(itemId, fieldId, value) {
   const { itemId, engagedFieldId, sessionFieldId, reviewFieldId, startTimeFieldId } =
     await fetchProjectMeta();
   const fieldDefs = loadProjectFieldDefs();
-  const issueBody = await fetchIssueBody();
+  const issueBody = issueBodyForPauses;
 
   // Repair startTime: if missing from the issue field DB, derive from earliest timing row.
   const existingValues = ensureIssueFieldDb(issueBody, fieldDefs).values;

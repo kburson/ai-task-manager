@@ -3,6 +3,8 @@
 // Used by scripts/gh/log-issue-time.mjs to compute board-field totals
 // (engagedTime, sessionTime, reviewTime) from the timing comment of record.
 
+import { pauseSpansBetween } from './lib/timing-rows.mjs';
+
 // Support both legacy minute-precision (HH:MM) and current second-precision
 // (HH:MM:SS) timestamps.
 const TS_PATTERN = /(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})(?::(\d{2}))? ([+-]\d{2}):(\d{2})/;
@@ -80,6 +82,36 @@ export function computeReviewMin(rows, thresholdMin) {
     if (deltaMin <= thresholdMin && deltaMin >= 0) total += deltaMin;
   }
   return total;
+}
+
+// Subtract pause-marker spans from each row's window [prevRow.ts, row.ts].
+// Returns a shallow-copied rows array with `activeSec` reduced and `idleSec`
+// increased accordingly. The first row of each contiguous-ts sequence has
+// no prior reference point and is left unchanged. Rows lacking a parseable
+// timestamp are passed through.
+export function applyPauseSpansToRows(rows, body) {
+  if (!Array.isArray(rows) || rows.length === 0) return rows ?? [];
+  if (!body || typeof body !== 'string') return rows;
+  const out = [];
+  let prevTsMs = null;
+  for (const r of rows) {
+    const copy = { ...r };
+    if (r.tsMs != null && prevTsMs != null && r.tsMs > prevTsMs) {
+      const pauseSecs = pauseSpansBetween(body, prevTsMs, r.tsMs);
+      const pauseSec = pauseSecs.reduce((a, b) => a + b, 0);
+      if (pauseSec > 0 && copy.activeSec != null) {
+        const reduce = Math.min(pauseSec, copy.activeSec);
+        copy.activeSec = copy.activeSec - reduce;
+        copy.idleSec = (copy.idleSec || 0) + reduce;
+        if (copy.activeMin != null) {
+          copy.activeMin = Math.max(0, Math.round(copy.activeSec / 60));
+        }
+      }
+    }
+    if (r.tsMs != null) prevTsMs = r.tsMs;
+    out.push(copy);
+  }
+  return out;
 }
 
 export function rollupTotals(rows, thresholdMin) {
