@@ -463,38 +463,57 @@ if (!SKIP_NETWORK) {
 
 console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
 
-// Centralized stage-entry marker stamping. Every successful Status write
-// stamps `<!-- aitm-entered-<stage>: <ts> -->` in the issue body. This is the
-// single source of truth for the audit-trail chain — verbs must NOT stamp
-// entry markers themselves. Best-effort: marker write failure does not roll
-// back the board move (Status is already committed).
+// Centralized stage-entry + recorded-state marker stamping. Every successful
+// Status write stamps `<!-- aitm-entered-<stage>: <ts> -->` AND updates
+// `<!-- aitm-last-known-state -->` in the issue body. Both markers are
+// written in a single body update so drift detection cannot fire phantom
+// `external-mutation` rows on legitimate non-promote transitions
+// (#170). This is the single source of truth for the audit-trail chain —
+// verbs must NOT stamp these markers themselves. Failures surface via
+// `writeIssueBodyWithRetry`'s audit-comment path (#168).
 if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
   try {
+    const [{ writeIssueBodyWithRetry }, { writeLastKnownState }] = await Promise.all([
+      import('../task-tracker/lib/state-recording.mjs'),
+      import('../task-tracker/gh-timing-comment.mjs'),
+    ]);
     const { stdout } = await pexec(
       'gh',
       ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
     const beforeBody = JSON.parse(stdout).body ?? '';
-    const stampedBody = stampEntryMarker(beforeBody, stateArg, new Date().toISOString());
-    if (stampedBody !== beforeBody) {
+    let nextBody = stampEntryMarker(beforeBody, stateArg, new Date().toISOString());
+    nextBody = writeLastKnownState(nextBody, stateArg);
+    if (nextBody !== beforeBody) {
       const tmp = path.join(
         projectTmpDir(getProjectDir()),
         `aitm-entry-${issueArg}-${Date.now()}.md`
       );
-      try {
-        writeFileSync(tmp, stampedBody, 'utf8');
-        await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
-      } finally {
-        try {
-          unlinkSync(tmp);
-        } catch {
-          /* best-effort */
-        }
-      }
+      await writeIssueBodyWithRetry({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        body: nextBody,
+        bodyBefore: beforeBody,
+        target: stateArg,
+        writeIssueBody: async ({ body }) => {
+          try {
+            writeFileSync(tmp, body, 'utf8');
+            await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
+          } finally {
+            try {
+              unlinkSync(tmp);
+            } catch {
+              /* best-effort */
+            }
+          }
+        },
+      });
     }
-  } catch {
-    /* best-effort — Status write already committed */
+  } catch (err) {
+    process.stderr.write(
+      `[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`
+    );
   }
 }
 

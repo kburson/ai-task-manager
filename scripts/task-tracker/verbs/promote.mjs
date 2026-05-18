@@ -47,7 +47,6 @@ import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-compl
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
-import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -430,21 +429,9 @@ export async function runPromote({
     }
     const drifted = liveAfter && liveAfter !== recorded;
     if (drifted) {
-      let bodyDrift = '';
-      try {
-        ({ body: bodyDrift } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
-        const stamped = writeLastKnownState(bodyDrift, liveAfter);
-        await writeIssueBodyWithRetry({
-          issueNumber,
-          repo: cfg.repo,
-          body: stamped,
-          bodyBefore: bodyDrift,
-          target: liveAfter,
-          writeIssueBody,
-        });
-      } catch {
-        // body fetch itself failed — board is already in liveAfter
-      }
+      // Marker write was handled by move-state.mjs's centralized stamp on
+      // each successful Status mutation (#170). No marker write needed here;
+      // just log the drift-reconcile audit row.
       try {
         const nowTs = now();
         const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
@@ -484,25 +471,16 @@ export async function runPromote({
     };
   }
 
-  // Transition succeeded — stamp new lastKnownState and write the audit row.
-  // Re-fetch the body in case the alias verb mutated it (markers, ticks).
+  // Transition succeeded. Entry-marker AND lastKnownState stamping are both
+  // centralized in move-state.mjs's success path (#170 — single mutator).
+  // Re-fetch the body so downstream side-effects below (Start Time stamp on
+  // refine, etc.) see the post-move state.
   let bodyAfter;
   try {
     ({ body: bodyAfter } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
   } catch {
     bodyAfter = body;
   }
-  // Entry-marker stamping is centralized in move-state.mjs success path; do not
-  // stamp here. See feedback_single_state_mutator.md.
-  const stamped = writeLastKnownState(bodyAfter, target);
-  await writeIssueBodyWithRetry({
-    issueNumber,
-    repo: cfg.repo,
-    body: stamped,
-    bodyBefore: bodyAfter,
-    target,
-    writeIssueBody,
-  });
   // #147 — Backlog → Refine success hook: stamp the "Start time" field on the
   // project board so the refine→plan exit gate has a value to verify. Idempotent
   // (skips when already set). Best-effort — board state is already committed.
