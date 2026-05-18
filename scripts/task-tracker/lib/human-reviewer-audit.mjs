@@ -36,6 +36,15 @@ export function getHumanReviewer(env = process.env) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+// #177 — Single source of truth for Full-Auto detection. Anchored on the
+// absence of `TASK_TRACKER_HUMAN_REVIEWER` because that's the only signal an
+// operator sets explicitly. Used by both the audit-comment path
+// (`enforceFullAutoAudit`) and the in-body footnote path (`detectFullAuto` in
+// verbs/approve.mjs) so the two cannot drift.
+export function isFullAuto(env = process.env) {
+  return getHumanReviewer(env) === null;
+}
+
 export function buildHumanReviewerMarker(handle, ts) {
   return `<!-- aitm-human-reviewer: ${handle} @ ${ts} -->`;
 }
@@ -97,10 +106,11 @@ export async function enforceFullAutoAudit({
   if (!repo) throw new Error('enforceFullAutoAudit: repo is required');
   const ts = now();
   const handle = getHumanReviewer(env);
+  const fullAuto = isFullAuto(env);
   const list = listComments || defaultListComments;
   const post = postComment || defaultPostComment;
 
-  if (handle) {
+  if (!fullAuto) {
     if (body == null) return { mode: 'noop-no-body' };
     if (HUMAN_REVIEWER_MARKER_RE.test(body)) {
       return { mode: 'human-reviewer', handle, stamped: false };
