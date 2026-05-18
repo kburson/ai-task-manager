@@ -13,7 +13,11 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../../..');
 
-const FILES = ['scripts/task-tracker/verbs/promote.mjs', 'scripts/gh/move-state.mjs'];
+const FILES = [
+  'scripts/task-tracker/verbs/promote.mjs',
+  'scripts/task-tracker/verbs/reconcile.mjs',
+  'scripts/gh/move-state.mjs',
+];
 
 // Allowed argument shapes for the first arg of deriveStateMoveDelta:
 //   - any identifier containing "timing" (case-insensitive) — i.e. the

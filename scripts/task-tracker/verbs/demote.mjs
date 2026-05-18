@@ -23,10 +23,12 @@ import {
   writeLastKnownState,
   buildRow,
   postTimingEvent,
+  readTimingCommentBody,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
+import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -200,14 +202,18 @@ export async function runDemote({
     bodyAfter = body;
   }
   const stamped = writeLastKnownState(bodyAfter, DEMOTE_TARGET);
-  if (stamped !== bodyAfter) {
-    try {
-      await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
-    } catch {}
-  }
+  await writeIssueBodyWithRetry({
+    issueNumber,
+    repo: cfg.repo,
+    body: stamped,
+    bodyBefore: bodyAfter,
+    target: DEMOTE_TARGET,
+    writeIssueBody,
+  });
   try {
     const nowTs = now();
-    const { activeSec, idleSec } = deriveStateMoveDelta(stamped, nowTs);
+    const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
+    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
     const row = buildRow({
       ts: nowTs,
       event: `move:${DEMOTE_TARGET}`,

@@ -47,6 +47,7 @@ import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-compl
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
+import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -433,11 +434,16 @@ export async function runPromote({
       try {
         ({ body: bodyDrift } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
         const stamped = writeLastKnownState(bodyDrift, liveAfter);
-        if (stamped !== bodyDrift) {
-          await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
-        }
+        await writeIssueBodyWithRetry({
+          issueNumber,
+          repo: cfg.repo,
+          body: stamped,
+          bodyBefore: bodyDrift,
+          target: liveAfter,
+          writeIssueBody,
+        });
       } catch {
-        // best-effort — board is already in liveAfter
+        // body fetch itself failed — board is already in liveAfter
       }
       try {
         const nowTs = now();
@@ -489,13 +495,14 @@ export async function runPromote({
   // Entry-marker stamping is centralized in move-state.mjs success path; do not
   // stamp here. See feedback_single_state_mutator.md.
   const stamped = writeLastKnownState(bodyAfter, target);
-  if (stamped !== bodyAfter) {
-    try {
-      await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
-    } catch {
-      // Best-effort. Transition is already committed on the board.
-    }
-  }
+  await writeIssueBodyWithRetry({
+    issueNumber,
+    repo: cfg.repo,
+    body: stamped,
+    bodyBefore: bodyAfter,
+    target,
+    writeIssueBody,
+  });
   // #147 — Backlog → Refine success hook: stamp the "Start time" field on the
   // project board so the refine→plan exit gate has a value to verify. Idempotent
   // (skips when already set). Best-effort — board state is already committed.
