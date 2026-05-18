@@ -52,10 +52,7 @@ test('parseCommitShas: empty marker → []', () => {
 });
 
 test('findCommitTrailComment: finds comment with both heading and marker', () => {
-  const comments = [
-    { body: 'random' },
-    { body: '### 🔗 Commits\n<!-- aitm-commits: abc -->' },
-  ];
+  const comments = [{ body: 'random' }, { body: '### 🔗 Commits\n<!-- aitm-commits: abc -->' }];
   assert.ok(findCommitTrailComment(comments));
   assert.equal(findCommitTrailComment([{ body: 'no trail' }]), null);
 });

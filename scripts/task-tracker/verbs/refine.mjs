@@ -183,8 +183,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   const { issueNumber, size, estimate, priority, reason, sequence, labels } = args;
   const estimateNum = parseFloat(String(estimate).replace(/h$/i, ''));
   const priorityNorm = String(priority).toLowerCase();
-  const sequenceNum =
-    sequence == null || sequence === '' ? null : Number(sequence);
+  const sequenceNum = sequence == null || sequence === '' ? null : Number(sequence);
   const labelList = parseLabelsArg(labels) || [];
 
   const tether = deps.tetherIssueToProject || tetherIssueToProject;
