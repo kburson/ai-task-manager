@@ -498,6 +498,58 @@ if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
   }
 }
 
+// #169 — Full-Auto review-gate audit. When the move lands at `done` and
+// `TASK_TRACKER_HUMAN_REVIEWER` is unset, post a structured audit comment
+// so the close is observable as auto-approved. When set, stamp an
+// `aitm-human-reviewer` body marker. Idempotent on both paths.
+if (stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1') {
+  try {
+    const { enforceFullAutoAudit } = await import('../task-tracker/lib/human-reviewer-audit.mjs');
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const currentBody = JSON.parse(stdout).body ?? '';
+    const tmpForMarker = path.join(
+      projectTmpDir(getProjectDir()),
+      `aitm-human-reviewer-${issueArg}-${Date.now()}.md`
+    );
+    const result = await enforceFullAutoAudit({
+      issueNumber: issueArg,
+      repo: cfg.repo,
+      body: currentBody,
+      env: process.env,
+      writeIssueBody: async ({ body }) => {
+        writeFileSync(tmpForMarker, body, 'utf8');
+        try {
+          await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmpForMarker]);
+        } finally {
+          try {
+            unlinkSync(tmpForMarker);
+          } catch {
+            /* best-effort */
+          }
+        }
+      },
+    });
+    if (result.mode === 'full-auto' && result.auditPosted) {
+      process.stderr.write(
+        `[human-reviewer-audit] #${issueArg}: posted full-auto audit comment (no human reviewer)\n`
+      );
+    } else if (result.mode === 'human-reviewer' && result.stamped) {
+      process.stderr.write(
+        `[human-reviewer-audit] #${issueArg}: stamped human-reviewer marker (${result.handle})\n`
+      );
+    }
+  } catch (err) {
+    // surface, do not block — board move is committed
+    process.stderr.write(
+      `[human-reviewer-audit] #${issueArg}: enforcement failed: ${err.message}\n`
+    );
+  }
+}
+
 // Out-of-band audit trail: visible comment + timing-log row. Best-effort —
 // failures do not roll back the board move.
 if (outOfBandReason && !SKIP_NETWORK) {
