@@ -26,7 +26,9 @@ import {
   writeLastKnownState,
   buildRow,
   postTimingEvent,
+  readTimingCommentBody,
 } from '../gh-timing-comment.mjs';
+import { findRecordingFailureFromComments } from '../lib/state-recording.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { stripEntryMarkersAfter } from '../lib/stage-entry-markers.mjs';
 import { loadState, saveState } from '../state.mjs';
@@ -162,6 +164,7 @@ export async function runReconcile({
   const runMoveState = deps.runMoveState || defaultRunMoveState;
   const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
   const persistTrackerState = deps.persistTrackerState || defaultPersistTrackerState;
+  const listComments = deps.listComments || null;
 
   const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: recorded } = readLastKnownState(body);
@@ -193,7 +196,20 @@ export async function runReconcile({
     try {
       const strippedNote = stripped.length > 0 ? `; stripped: ${stripped.join(', ')}` : '';
       const nowTs = now();
-      const { activeSec, idleSec } = deriveStateMoveDelta(cleaned, nowTs);
+      const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
+      const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
+      let reason = 'external-mutation';
+      if (listComments) {
+        try {
+          const comments = await listComments({ cfg, issueNumber });
+          const hit = findRecordingFailureFromComments(comments);
+          if (hit) {
+            reason = `marker-write-failed at ${hit.createdAt}`;
+          }
+        } catch {
+          // best-effort
+        }
+      }
       const row = buildRow({
         ts: nowTs,
         event: 'drift-reconcile',
@@ -202,7 +218,7 @@ export async function runReconcile({
         deltaWords: 0,
         // wordMarker:0 audit row — drift-reconcile event, no active session
         wordMarker: 0,
-        description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}"${strippedNote}`,
+        description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}" (${reason})${strippedNote}`,
       });
       await postTimingRow({ issueNumber, repo: cfg.repo, row });
     } catch {}
@@ -226,7 +242,8 @@ export async function runReconcile({
   }
   try {
     const nowTs = now();
-    const { activeSec, idleSec } = deriveStateMoveDelta(body, nowTs);
+    const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
+    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
     const row = buildRow({
       ts: nowTs,
       event: 'drift-revert',

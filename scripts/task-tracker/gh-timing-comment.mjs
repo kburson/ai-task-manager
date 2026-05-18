@@ -219,6 +219,24 @@ export async function postTimingEvent({ issueNumber, repo, row, timeoutMs = 2000
   }
 }
 
+// Fetch the timing-comment body (where rows actually live). State-move
+// rollups MUST derive their delta from this — not from the issue body,
+// which never contains timing rows.
+export async function readTimingCommentBody({
+  issueNumber,
+  repo,
+  timeoutMs = 2000,
+  deps = {},
+} = {}) {
+  const find = deps.findTimingComment || findTimingComment;
+  try {
+    const existing = await find(issueNumber, repo, { timeoutMs });
+    return existing?.body ?? '';
+  } catch {
+    return '';
+  }
+}
+
 // Internal symbols — exported under a dedicated namespace strictly so the
 // sibling `gh-timing-comment.internals.mjs` module can re-export them for
 // tests. Production code MUST NOT import `__internals` directly; it is not
