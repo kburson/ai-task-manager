@@ -3,13 +3,16 @@
 // Used by scripts/gh/log-issue-time.mjs to compute board-field totals
 // (engagedTime, sessionTime, reviewTime) from the timing comment of record.
 
-const TS_PATTERN = /(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2}) ([+-]\d{2}):(\d{2})/;
+// Support both legacy minute-precision (HH:MM) and current second-precision
+// (HH:MM:SS) timestamps.
+const TS_PATTERN = /(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})(?::(\d{2}))? ([+-]\d{2}):(\d{2})/;
+const ROW_SEC_RE = /<!--\s*row-sec:\s*a=(-?\d+)\s+i=(-?\d+)\s*-->/;
 
 function parseTs(cell) {
   const m = TS_PATTERN.exec(cell.trim());
   if (!m) return null;
-  const [, date, hh, mm, offH, offM] = m;
-  return Date.parse(`${date}T${hh}:${mm}:00${offH}:${offM}`);
+  const [, date, hh, mm, ss, offH, offM] = m;
+  return Date.parse(`${date}T${hh}:${mm}:${ss ?? '00'}${offH}:${offM}`);
 }
 
 function parseNum(cell) {
@@ -39,10 +42,18 @@ export function parseTimingRows(body) {
     }
     if (cells.every((c) => /^[-: ]+$/.test(c.trim()))) continue;
     if (tsCol === -1 || eventCol === -1) continue;
+    const activeMin = parseNum(cells[activeCol] ?? '');
+    // Trailing `<!-- row-sec: a=N i=N -->` carries second precision.
+    // Legacy rows without the marker derive seconds from minutes.
+    const secMatch = line.match(ROW_SEC_RE);
+    const activeSec = secMatch ? Number(secMatch[1]) : activeMin != null ? activeMin * 60 : null;
+    const idleSec = secMatch ? Number(secMatch[2]) : 0;
     rows.push({
       tsMs: parseTs(cells[tsCol] ?? ''),
       event: (cells[eventCol] ?? '').trim().toLowerCase(),
-      activeMin: parseNum(cells[activeCol] ?? ''),
+      activeMin,
+      activeSec,
+      idleSec,
       wordMarker: parseNum(cells[wordMarkerCol] ?? ''),
     });
   }
@@ -73,17 +84,24 @@ export function computeReviewMin(rows, thresholdMin) {
 
 export function rollupTotals(rows, thresholdMin) {
   let totalActiveMin = 0;
+  let totalActiveSec = 0;
   let lastWordMarker = null;
   for (const r of rows) {
     if (r.activeMin != null) totalActiveMin += r.activeMin;
+    if (r.activeSec != null && Number.isFinite(r.activeSec)) totalActiveSec += r.activeSec;
     if (r.wordMarker != null) lastWordMarker = r.wordMarker;
   }
   const reviewMin = computeReviewMin(rows, thresholdMin);
+  const reviewSec = reviewMin * 60;
+  const engagedSec = totalActiveSec + reviewSec;
   return {
     rowCount: rows.length,
     totalActiveMin,
+    totalActiveSec,
     reviewMin,
-    engagedMin: totalActiveMin + reviewMin,
+    reviewSec,
+    engagedMin: Math.round(engagedSec / 60),
+    engagedSec,
     lastWordMarker,
   };
 }

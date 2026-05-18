@@ -46,14 +46,28 @@ export async function verbReject(ctx) {
   }
   await runMoveState(target, 'develop');
   const { buildRow } = await import('../gh-timing-comment.mjs');
+  const { deriveStateMoveDelta } = await import('../lib/timing-rows.mjs');
+  let rejectBody = '';
+  try {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    rejectBody = JSON.parse(stdout).body ?? '';
+  } catch {
+    // best-effort — fall through with empty body (delta is 0/0)
+  }
   const descReason = reason.trim().slice(0, 40);
+  const _ts = nowIso();
+  const _d = deriveStateMoveDelta(rejectBody, _ts);
   await safePostTiming(
     target,
     buildRow({
-      ts: nowIso(),
+      ts: _ts,
       event: 'develop',
-      activeMin: 0,
-      idleMin: 0,
+      activeSec: _d.activeSec,
+      idleSec: _d.idleSec,
       deltaWords: 0,
       // wordMarker:0 audit row — review-rejected revert, no live session
       wordMarker: 0,

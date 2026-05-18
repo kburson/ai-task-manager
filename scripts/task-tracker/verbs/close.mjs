@@ -83,6 +83,7 @@ export async function verbClose(ctx) {
   }
 
   let dirtyAuditRow = null;
+  let closeBody = '';
   if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
@@ -125,11 +126,14 @@ export async function verbClose(ctx) {
           `[task-tracker] Closing ${closeTarget} with dirty workspace (${dirty.total} path(s)) — appending audit row.`
         );
         const { buildRow: dbr } = await import('../gh-timing-comment.mjs');
+        const { deriveStateMoveDelta: _dsm1 } = await import('../lib/timing-rows.mjs');
+        const _ts1 = nowIso();
+        const _d1 = _dsm1(closeBody, _ts1);
         dirtyAuditRow = dbr({
-          ts: nowIso(),
+          ts: _ts1,
           event: 'closed-with-dirty-tree',
-          activeMin: 0,
-          idleMin: 0,
+          activeSec: _d1.activeSec,
+          idleSec: _d1.idleSec,
           deltaWords: 0,
           // wordMarker:0 audit row — closed-with-dirty-tree audit, no active session
           wordMarker: 0,
@@ -145,7 +149,6 @@ export async function verbClose(ctx) {
   const forceFlag = rest.includes('--force');
   const forceEnv = process.env.TASK_TRACKER_FORCE_DONE === '1';
   const force = forceFlag || forceEnv;
-  let closeBody = '';
   if (!SKIP_NETWORK) {
     try {
       const { stdout } = await pexec(
@@ -184,13 +187,16 @@ export async function verbClose(ctx) {
         }
       } else if (!_resolvedReviewGate) {
         const { buildRow: gbr } = await import('../gh-timing-comment.mjs');
+        const { deriveStateMoveDelta: _dsm2 } = await import('../lib/timing-rows.mjs');
+        const _ts2 = nowIso();
+        const _d2 = _dsm2(closeBody, _ts2);
         await safePostTiming(
           closeTarget,
           gbr({
-            ts: nowIso(),
+            ts: _ts2,
             event: 'gate-bypassed',
-            activeMin: 0,
-            idleMin: 0,
+            activeSec: _d2.activeSec,
+            idleSec: _d2.idleSec,
             deltaWords: 0,
             // wordMarker:0 audit row — gate-bypass audit, no active session
             wordMarker: 0,
@@ -278,13 +284,15 @@ export async function verbClose(ctx) {
         const { buildRow: br } = await import('../gh-timing-comment.mjs');
         for (const child of reviewChildren) {
           try {
+            // Cascade close: per-child body not fetched here; activeSec=0 is
+            // honest because no per-child timing context is loaded.
             await safePostTiming(
               `#${child.num}`,
               br({
                 ts: nowIso(),
                 event: 'done',
-                activeMin: 0,
-                idleMin: 0,
+                activeSec: 0,
+                idleSec: 0,
                 deltaWords: 0,
                 // wordMarker:0 audit row — cascade close, no per-child session
                 wordMarker: 0,
@@ -318,13 +326,16 @@ export async function verbClose(ctx) {
     await safePostTiming(closeTarget, dirtyAuditRow);
   }
   const { buildRow: closeBr } = await import('../gh-timing-comment.mjs');
+  const { deriveStateMoveDelta: _dsm3 } = await import('../lib/timing-rows.mjs');
+  const _ts3 = nowIso();
+  const _d3 = _dsm3(closeBody, _ts3);
   await safePostTiming(
     closeTarget,
     closeBr({
-      ts: nowIso(),
+      ts: _ts3,
       event: 'done',
-      activeMin: 0,
-      idleMin: 0,
+      activeSec: _d3.activeSec,
+      idleSec: _d3.idleSec,
       deltaWords: 0,
       // wordMarker:0 ok — timing already flushed at Review, this is the close audit row
       wordMarker: 0,

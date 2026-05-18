@@ -273,11 +273,16 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
           try {
             const { buildRow, postTimingEvent } =
               await import('../task-tracker/gh-timing-comment.mjs');
+            const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+            const _tsM1 = new Date().toISOString();
+            // Body is not loaded in this branch (we never reached the body
+            // fetch); 0/0 is honest — no prior reference point available.
+            const _dM1 = deriveStateMoveDelta('', _tsM1);
             const row = buildRow({
-              ts: new Date().toISOString(),
+              ts: _tsM1,
               event: 'gate-refused',
-              activeMin: 0,
-              idleMin: 0,
+              activeSec: _dM1.activeSec,
+              idleSec: _dM1.idleSec,
               deltaWords: 0,
               wordMarker: 0,
               description: `→ ${stateArg}: ${refusedRuleNames.join(', ')}`,
@@ -466,11 +471,26 @@ if (outOfBandReason && !SKIP_NETWORK) {
   }
   try {
     const { buildRow, postTimingEvent } = await import('../task-tracker/gh-timing-comment.mjs');
+    const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+    // Best-effort body fetch so the audit row reflects elapsed time since
+    // the prior row. If the fetch fails the delta is honest 0/0.
+    let _bodyM2 = '';
+    try {
+      const { stdout: _stdoutM2 } = await pexec(
+        'gh',
+        ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      _bodyM2 = JSON.parse(_stdoutM2).body ?? '';
+    } catch {
+      /* best-effort */
+    }
+    const _dM2 = deriveStateMoveDelta(_bodyM2, ts);
     const row = buildRow({
       ts,
       event: 'out-of-band-move',
-      activeMin: 0,
-      idleMin: 0,
+      activeSec: _dM2.activeSec,
+      idleSec: _dM2.idleSec,
       deltaWords: 0,
       wordMarker: 0,
       description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,

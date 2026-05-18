@@ -15,7 +15,7 @@ function localMinuteWithOffset(iso) {
   const sign = offsetMin >= 0 ? '+' : '-';
   const abs = Math.abs(offsetMin);
   const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} ${offset}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${offset}`;
 }
 
 // All "now-ish" timestamps used below — buildRow refuses retroactive entries

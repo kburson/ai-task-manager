@@ -43,6 +43,7 @@ import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-compl
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -356,8 +357,9 @@ export async function runPromote({
     }
     const drifted = liveAfter && liveAfter !== recorded;
     if (drifted) {
+      let bodyDrift = '';
       try {
-        const { body: bodyDrift } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+        ({ body: bodyDrift } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
         const stamped = writeLastKnownState(bodyDrift, liveAfter);
         if (stamped !== bodyDrift) {
           await writeIssueBody({ issueNumber, repo: cfg.repo, body: stamped });
@@ -366,11 +368,13 @@ export async function runPromote({
         // best-effort — board is already in liveAfter
       }
       try {
+        const nowTs = now();
+        const { activeSec, idleSec } = deriveStateMoveDelta(bodyDrift, nowTs);
         const row = buildRow({
-          ts: now(),
+          ts: nowTs,
           event: 'drift-reconcile',
-          activeMin: 0,
-          idleMin: 0,
+          activeSec,
+          idleSec,
           deltaWords: 0,
           // wordMarker:0 audit row — drift-reconcile event, no active session
           wordMarker: 0,
@@ -448,11 +452,13 @@ export async function runPromote({
   }
 
   try {
+    const nowTs = now();
+    const { activeSec, idleSec } = deriveStateMoveDelta(stamped, nowTs);
     const row = buildRow({
-      ts: now(),
+      ts: nowTs,
       event: `move:${target}`,
-      activeMin: 0,
-      idleMin: 0,
+      activeSec,
+      idleSec,
       deltaWords: 0,
       // wordMarker:0 audit row — promote move event, no active session
       wordMarker: 0,

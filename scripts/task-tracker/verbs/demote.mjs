@@ -26,6 +26,7 @@ import {
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -205,11 +206,13 @@ export async function runDemote({
     } catch {}
   }
   try {
+    const nowTs = now();
+    const { activeSec, idleSec } = deriveStateMoveDelta(stamped, nowTs);
     const row = buildRow({
-      ts: now(),
+      ts: nowTs,
       event: `move:${DEMOTE_TARGET}`,
-      activeMin: 0,
-      idleMin: 0,
+      activeSec,
+      idleSec,
       deltaWords: 0,
       // wordMarker:0 audit row — demote move event, no active session
       wordMarker: 0,

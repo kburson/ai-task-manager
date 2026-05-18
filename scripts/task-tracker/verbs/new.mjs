@@ -65,8 +65,9 @@ export async function verbNew(ctx) {
     buildRow({
       ts: createdTs,
       event: 'created',
-      activeMin: 0,
-      idleMin: 0,
+      // First row of a fresh issue's timing log — no prior reference point.
+      activeSec: 0,
+      idleSec: 0,
       deltaWords: 0,
       // wordMarker:0 ok — issue just created, no session yet
       wordMarker: 0,
@@ -115,8 +116,9 @@ export async function verbNew(ctx) {
     buildRow({
       ts,
       event: 'start',
-      activeMin: 0,
-      idleMin: 0,
+      // First start row of a fresh issue's timing log — no prior reference.
+      activeSec: 0,
+      idleSec: 0,
       deltaWords: 0,
       wordMarker: wordsAtStart,
       description: role,

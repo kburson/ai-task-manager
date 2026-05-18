@@ -19,10 +19,12 @@ export function fmtTs(iso) {
   const sign = offsetMin >= 0 ? '+' : '-';
   const abs = Math.abs(offsetMin);
   const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} ${offset}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${offset}`;
 }
 
-const TS_PATTERN = /\d{4}-\d{2}-\d{2} \d{2}:\d{2} [+-]\d{2}:\d{2}/;
+// Match both legacy minute-precision (HH:MM) and current second-precision
+// (HH:MM:SS) table timestamps so old rows still parse.
+const TS_PATTERN = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})? [+-]\d{2}:\d{2}/;
 
 export function firstStartTimestamp(commentBody) {
   if (!commentBody) return null;
@@ -66,6 +68,8 @@ export function buildRow({
   event,
   activeMin,
   idleMin,
+  activeSec,
+  idleSec,
   deltaWords,
   wordMarker,
   description = '',
@@ -77,7 +81,23 @@ export function buildRow({
   if (Math.abs(tsMs - Date.now()) > RETROACTIVE_TS_WINDOW_MS) {
     throw new Error(RETROACTIVE_TS_ERROR);
   }
-  return `| ${fmtTs(ts)} | ${event} | ${fmtNum(activeMin)} | ${fmtNum(idleMin)} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |`;
+  // When second precision is supplied, derive minute display values from
+  // it so the visible cells match the hidden marker. The visible 7-col
+  // schema is preserved; a trailing `<!-- row-sec: a=N i=N -->` comment
+  // carries the second-precision values for downstream rollup.
+  let activeMinOut = activeMin;
+  let idleMinOut = idleMin;
+  let trailingMarker = '';
+  if (Number.isFinite(Number(activeSec)) || Number.isFinite(Number(idleSec))) {
+    const aSec = Number.isFinite(Number(activeSec))
+      ? Math.max(0, Math.floor(Number(activeSec)))
+      : 0;
+    const iSec = Number.isFinite(Number(idleSec)) ? Math.max(0, Math.floor(Number(idleSec))) : 0;
+    activeMinOut = Math.round(aSec / 60);
+    idleMinOut = Math.round(iSec / 60);
+    trailingMarker = ` <!-- row-sec: a=${aSec} i=${iSec} -->`;
+  }
+  return `| ${fmtTs(ts)} | ${event} | ${fmtNum(activeMinOut)} | ${fmtNum(idleMinOut)} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
 }
 
 // ---- lastKnownState metadata helpers ---------------------------------------

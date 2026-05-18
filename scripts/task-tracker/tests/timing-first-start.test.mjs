@@ -53,7 +53,7 @@ assert.equal(firstStartTimestamp('no table here'), null);
 // fmtTs format check (smoke)
 {
   const out = fmtTs('2026-05-08T14:30:00Z');
-  assert.match(out, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} [+-]\d{2}:\d{2}$/);
+  assert.match(out, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [+-]\d{2}:\d{2}$/);
 }
 
 console.log('timing-first-start.test.mjs: all passed');

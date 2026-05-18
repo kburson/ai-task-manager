@@ -33,6 +33,7 @@ import { loadState, saveState } from '../state.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -191,11 +192,13 @@ export async function runReconcile({
     persistTrackerState({ issueNumber, state: live });
     try {
       const strippedNote = stripped.length > 0 ? `; stripped: ${stripped.join(', ')}` : '';
+      const nowTs = now();
+      const { activeSec, idleSec } = deriveStateMoveDelta(cleaned, nowTs);
       const row = buildRow({
-        ts: now(),
+        ts: nowTs,
         event: 'drift-reconcile',
-        activeMin: 0,
-        idleMin: 0,
+        activeSec,
+        idleSec,
         deltaWords: 0,
         // wordMarker:0 audit row — drift-reconcile event, no active session
         wordMarker: 0,
@@ -222,11 +225,13 @@ export async function runReconcile({
     };
   }
   try {
+    const nowTs = now();
+    const { activeSec, idleSec } = deriveStateMoveDelta(body, nowTs);
     const row = buildRow({
-      ts: now(),
+      ts: nowTs,
       event: 'drift-revert',
-      activeMin: 0,
-      idleMin: 0,
+      activeSec,
+      idleSec,
       deltaWords: 0,
       // wordMarker:0 audit row — drift-revert event, no active session
       wordMarker: 0,

@@ -8,6 +8,7 @@ import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
 import { hasDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 
 export async function verbReview(ctx) {
   const {
@@ -95,11 +96,12 @@ export async function verbReview(ctx) {
           try {
             const ts = new Date().toISOString();
             const { buildRow } = await import('../gh-timing-comment.mjs');
+            // Body not yet fetched at this point — fall back to 0/0.
             const row = buildRow({
               ts,
               event: 'gate-refused',
-              activeMin: 0,
-              idleMin: 0,
+              activeSec: 0,
+              idleSec: 0,
               deltaWords: 0,
               // wordMarker:0 audit row — gate-refused, no active session
               wordMarker: 0,
@@ -167,11 +169,12 @@ export async function verbReview(ctx) {
   } else {
     const ts = nowIso();
     const { buildRow } = await import('../gh-timing-comment.mjs');
+    // Body not loaded in this branch; honest 0/0.
     const row = buildRow({
       ts,
       event: 'review',
-      activeMin: 0,
-      idleMin: 0,
+      activeSec: 0,
+      idleSec: 0,
       deltaWords: 0,
       // wordMarker:0 ok — no active session for this target on review entry
       wordMarker: 0,
@@ -412,13 +415,15 @@ export async function verbReview(ctx) {
         regressions.forEach((r) => console.error(`   REGRESSION: ${r}`));
       }
       const { buildRow: br } = await import('../gh-timing-comment.mjs');
+      const _tsR1 = nowIso();
+      const _dR1 = deriveStateMoveDelta(rawBody, _tsR1);
       await safePostTiming(
         target,
         br({
-          ts: nowIso(),
+          ts: _tsR1,
           event: 'develop',
-          activeMin: 0,
-          idleMin: 0,
+          activeSec: _dR1.activeSec,
+          idleSec: _dR1.idleSec,
           deltaWords: 0,
           // wordMarker:0 audit row — verification-failed revert, no live session
           wordMarker: 0,
@@ -448,11 +453,12 @@ export async function verbReview(ctx) {
     await runMoveState(target, 'review', { silent: true });
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
+    const _dR2 = deriveStateMoveDelta(rawBody, reviewTs);
     const reviewRow = br2({
       ts: reviewTs,
       event: 'review-ready',
-      activeMin: 0,
-      idleMin: 0,
+      activeSec: _dR2.activeSec,
+      idleSec: _dR2.idleSec,
       deltaWords: 0,
       // wordMarker:0 audit row — post-move state event, no active session
       wordMarker: 0,

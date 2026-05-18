@@ -45,7 +45,10 @@ export function buildFieldSyncPlan({ cfg, fieldDefs, values }) {
     const fieldId = fieldIdFor(cfg, def.key);
     if (!fieldId) continue;
     const value = valueForProjectField(values[def.key], def.type);
-    if (!value) continue;
+    // Accept explicit zero / falsy-but-valid wrapped values. Skip only when
+    // the field genuinely had no input (null/undefined upstream rejected by
+    // `valueForProjectField`).
+    if (value === undefined || value === null) continue;
     plan.push({ key: def.key, type: def.type, fieldId, value });
   }
   return plan;
