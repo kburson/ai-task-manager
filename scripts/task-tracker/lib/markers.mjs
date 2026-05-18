@@ -74,6 +74,97 @@ export function insertFullAutoApprovedMarker(body, ts, signals) {
 }
 
 // ---------------------------------------------------------------------------
+// full-auto footnote — visible audit signal under DoD when no human reviewed
+// (#161). The hidden `aitm-full-auto-approved` marker records the truth but is
+// invisible in rendered GitHub; this footnote is a blockquote rendered just
+// after the Lifecycle subsection so a reader sees "no human looked at this"
+// at a glance.
+// ---------------------------------------------------------------------------
+
+export const FULL_AUTO_FOOTNOTE_START = '<!-- aitm-full-auto-footnote:start -->';
+export const FULL_AUTO_FOOTNOTE_END = '<!-- aitm-full-auto-footnote:end -->';
+const FULL_AUTO_FOOTNOTE_BLOCK_RE = new RegExp(
+  `${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[\\s\\S]*?${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}\\n?`,
+  'g'
+);
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function buildFullAutoFootnoteBlock({ ts, signals }) {
+  const tsStr = ts || '';
+  const sigStr = signals || '';
+  return [
+    FULL_AUTO_FOOTNOTE_START,
+    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
+    `> Approval was stamped by an autonomous agent (\`${sigStr}\`) at ${tsStr}.`,
+    '> Hidden marker: `aitm-full-auto-approved`.',
+    FULL_AUTO_FOOTNOTE_END,
+  ].join('\n');
+}
+
+export function hasFullAutoFootnote(body) {
+  return typeof body === 'string' && body.includes(FULL_AUTO_FOOTNOTE_START);
+}
+
+/**
+ * Insert (or replace) the visible Full-Auto footnote block in `body`. Anchor
+ * preference (first match wins):
+ *   1. After the last `- [ ]`/`- [x]` line under the `#### Lifecycle …` subsection.
+ *   2. End of the `### Definition of Done` section (before the next heading or EOF).
+ *   3. End of body.
+ * Idempotent: an existing block between the delimiters is replaced verbatim.
+ */
+export function insertFullAutoFootnote(body, { ts, signals } = {}) {
+  const src = typeof body === 'string' ? body : '';
+  const block = buildFullAutoFootnoteBlock({ ts, signals });
+  if (hasFullAutoFootnote(src)) {
+    return src.replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, `${block}\n`).replace(/\n{3,}/g, '\n\n');
+  }
+
+  const lines = src.split('\n');
+
+  // Anchor 1 — Lifecycle subsection. Find `#### Lifecycle` heading; insert
+  // after the last checklist line under it.
+  const lifeIdx = lines.findIndex((l) => /^####\s+Lifecycle\b/i.test(l));
+  if (lifeIdx !== -1) {
+    let last = lifeIdx;
+    for (let i = lifeIdx + 1; i < lines.length; i++) {
+      if (/^#{1,4}\s/.test(lines[i])) break;
+      if (/^\s*[-*]\s+\[[ xX]\]/.test(lines[i])) last = i;
+    }
+    lines.splice(last + 1, 0, '', block);
+    return lines.join('\n');
+  }
+
+  // Anchor 2 — Definition of Done section.
+  const dodIdx = lines.findIndex((l) => /^###\s+Definition of Done\b/i.test(l));
+  if (dodIdx !== -1) {
+    let endIdx = lines.length;
+    for (let i = dodIdx + 1; i < lines.length; i++) {
+      if (/^#{1,4}\s/.test(lines[i])) {
+        endIdx = i;
+        break;
+      }
+    }
+    lines.splice(endIdx, 0, block, '');
+    return lines.join('\n');
+  }
+
+  // Anchor 3 — end of body.
+  const sep = src.endsWith('\n') ? '' : '\n';
+  return `${src}${sep}\n${block}\n`;
+}
+
+export function removeFullAutoFootnote(body) {
+  if (!hasFullAutoFootnote(body)) return body;
+  return String(body)
+    .replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+// ---------------------------------------------------------------------------
 // dod-verified (sandboxed /task test stamped this on green — #137)
 // ---------------------------------------------------------------------------
 

@@ -21,6 +21,7 @@ import {
   hasReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoApprovedMarker,
+  insertFullAutoFootnote,
 } from '../lib/markers.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -215,8 +216,15 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   // close-gates depend on it; the marker preserves truth alongside.
   if (auto.fired) {
     updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
+    updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
   }
+  const beforeTick = updated;
   updated = tickLifecycleItem(updated, 'passed-final-review');
+  if (updated === beforeTick && /-\s*\[ \]\s+Passed final human review/i.test(beforeTick)) {
+    process.stderr.write(
+      `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading\n`
+    );
+  }
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
   return {
     status: 'approved',

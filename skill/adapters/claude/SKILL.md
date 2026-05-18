@@ -61,6 +61,19 @@ compare them raw** — a 3-hour estimate vs. a 22.5-minute actual is −87%, not
 +650%. Internal compute is second-precision; the board still stores rounded
 minutes.
 
+## Full-Auto footnote
+
+When `/task approve` runs under `TT_FULL_AUTO=1` (or any signal `detectFullAuto`
+fires on), it appends a visible blockquote footnote under the Lifecycle DoD
+subsection between `<!-- aitm-full-auto-footnote:start -->` and
+`<!-- aitm-full-auto-footnote:end -->` delimiters so a reader can see at a
+glance that no human reviewed the issue. The hidden `aitm-full-auto-approved`
+marker still records the audit signals. The footnote is idempotent (re-runs
+replace the block in place). `gh-edit-guard` protects the delimiters from
+accidental drop. If the body lacks a recognized `Passed final human review`
+checklist line, approve emits a stderr warning
+(`approve: lifecycle-tick-noop`) but does not fail.
+
 ## Review Notes → Drivers
 
 `/task approve` posts a `### 📝 Review Notes` comment with bullet drivers before

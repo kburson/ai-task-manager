@@ -120,7 +120,17 @@ required box is unchecked will be refused.
     comment reads the most-recent Review Notes comment and renders its bullets under
     a `Drivers:` section. Empty drivers → no Drivers section.
 
-12. **On mistakes — stop and surface, do not self-correct.**
+12. **Full-Auto approvals leave a visible footnote under DoD.**
+    Under `TT_FULL_AUTO=1` (or any other signal `detectFullAuto` fires on), `/task
+approve` writes a blockquote footnote between
+    `<!-- aitm-full-auto-footnote:start -->` and `<!-- aitm-full-auto-footnote:end -->`
+    under the Lifecycle DoD subsection so reviewers can see at a glance that no
+    human was in the loop. The hidden `aitm-full-auto-approved` marker still
+    records the audit signals. `gh-edit-guard` protects the delimiters; do not
+    strip them. A `lifecycle-tick-noop` stderr warning fires if the DoD checklist
+    label is missing or legacy — investigate the body shape rather than ignoring.
+
+13. **On mistakes — stop and surface, do not self-correct.**
     If you discover you have taken a wrong action (created a duplicate issue, used
     `gh issue close` directly, skipped the deep dive, dispatched agents without
     verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
