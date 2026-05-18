@@ -417,4 +417,46 @@ function makeDeps(overrides = {}) {
   assert.ok(footnoteIdx > lifecycleIdx, 'footnote anchors after Lifecycle subsection');
 }
 
+// 20. (#178) Body whose prose mentions the start delimiter (e.g., a deep-dive
+// describing the marker format in a code span) must still get the real footnote
+// inserted. Pre-fix bug: `hasFullAutoFootnote` used `String.includes` on the
+// start delimiter alone, so the prose mention tripped the presence check,
+// pushing `insertFullAutoFootnote` down the "replace existing block" branch,
+// which then no-op'd because the block regex requires both delimiters in order.
+{
+  const body = [
+    '## Scope',
+    'The bug is that `<!-- aitm-full-auto-footnote:start -->` is mentioned',
+    'in this prose (code span), which used to fool the presence check.',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
+    '',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({
+    initialBody: body,
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=0,tty=1,ci=0' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, true);
+  const out = getBody();
+  // The real block must be inserted in addition to the prose mention — so the
+  // start delimiter appears exactly twice (prose + real block).
+  const startMatches = out.match(/<!-- aitm-full-auto-footnote:start -->/g);
+  assert.equal(startMatches.length, 2, 'prose mention + real block');
+  assert.match(out, /<!-- aitm-full-auto-footnote:end -->/);
+  assert.match(out, /Full-Auto mode enabled: human review skipped/);
+  // Lifecycle item ticked.
+  assert.match(out, /- \[x\] Passed final human review/);
+  // Footnote anchored after Lifecycle subsection.
+  const lifeIdx = out.indexOf('#### Lifecycle');
+  const endIdx = out.indexOf('<!-- aitm-full-auto-footnote:end -->');
+  assert.ok(endIdx > lifeIdx, 'footnote block anchors after Lifecycle subsection');
+}
+
 console.log('approve.test.mjs: all passed');

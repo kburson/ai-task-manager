@@ -83,9 +83,14 @@ export function insertFullAutoApprovedMarker(body, ts, signals) {
 
 export const FULL_AUTO_FOOTNOTE_START = '<!-- aitm-full-auto-footnote:start -->';
 export const FULL_AUTO_FOOTNOTE_END = '<!-- aitm-full-auto-footnote:end -->';
+// Match only when both delimiters sit alone on their own line (anchored at
+// line-start, optionally followed by trailing whitespace). This excludes prose
+// mentions inside code spans (backticks) and prose that wraps a delimiter into
+// a sentence — including a deep-dive describing the block format, which is
+// what corrupted #178's body before this tightening.
 const FULL_AUTO_FOOTNOTE_BLOCK_RE = new RegExp(
-  `${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[\\s\\S]*?${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}\\n?`,
-  'g'
+  `^${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[ \\t]*$[\\s\\S]*?^${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}[ \\t]*$\\n?`,
+  'gm'
 );
 
 function escapeRegExp(s) {
@@ -105,7 +110,14 @@ export function buildFullAutoFootnoteBlock({ ts, signals }) {
 }
 
 export function hasFullAutoFootnote(body) {
-  return typeof body === 'string' && body.includes(FULL_AUTO_FOOTNOTE_START);
+  if (typeof body !== 'string') return false;
+  // Use the block regex (start…end with content) rather than `String.includes`
+  // on the start delimiter alone — otherwise any prose that mentions the
+  // marker (e.g., a deep-dive describing the format) trips the check, sending
+  // `insertFullAutoFootnote` down the "replace existing" branch, which then
+  // no-ops because the regex below can't match a single delimiter in prose.
+  FULL_AUTO_FOOTNOTE_BLOCK_RE.lastIndex = 0;
+  return FULL_AUTO_FOOTNOTE_BLOCK_RE.test(body);
 }
 
 /**
