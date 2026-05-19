@@ -46,14 +46,23 @@ Verbs MUST consume this map, not redefine labels.
 ## Policy (Q1 resolution): hybrid contract
 
 **Lifecycle labels are reserved.** They are owned by verbs, not by the user.
-Close-gate refuses to advance to Done unless each lifecycle key is satisfied by
-ONE of:
+The pre-close gate (`assertLifecycleSatisfied`) refuses to advance to Done
+unless each **non-close-owned** lifecycle key is satisfied by ONE of:
 
 1. Visible checkbox ticked (`- [x] <label>`), OR
 2. Corresponding audit marker present
    (`<!-- aitm-full-auto-approved: ... -->` satisfies `passed-final-review`), OR
 3. Explicit per-key opt-out marker:
    `<!-- aitm-lifecycle-optout: <key> -->`.
+
+**Close-owned keys are filtered from blocking.** `story-closed` and
+`timing-flushed` are stamped by `tickLifecycleOnClose` INSIDE the close verb,
+after the pre-close gate runs. Blocking on them would deadlock close. They
+are tracked in `CLOSE_OWNED_LIFECYCLE_KEYS` at `close-gate.mjs` and excluded
+from the gate's `missing` blocker list. The full per-key status remains in
+`results`, so `preflight-issue.mjs --check-integrity` still reports them.
+
+Net effect: only `passed-final-review` is enforced pre-close.
 
 **Preflight only warns.** Issue creation via `preflight-issue.mjs --shape ...`
 emits a structured `[task-tracker] WARN:` block to stderr listing any reserved

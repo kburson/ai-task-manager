@@ -73,11 +73,30 @@ test('parseLifecycleOptouts: parses multiple keys, lowercases', () => {
   assert.equal(out.has('passed-final-review'), false);
 });
 
-test('assertLifecycleSatisfied: required + missing → block', () => {
+test('assertLifecycleSatisfied: required + passed-final-review missing → block', () => {
   const gate = assertLifecycleSatisfied({ body: bodyWith(ALL_LIFECYCLE_LINES) });
   assert.equal(gate.block, true);
   assert.match(gate.reason, /lifecycle-incomplete/);
   assert.match(gate.reason, /passed-final-review/);
+  // close-owned keys must NOT appear in the block reason even though they
+  // are still "missing" in results.
+  assert.doesNotMatch(gate.reason, /story-closed/);
+  assert.doesNotMatch(gate.reason, /timing-flushed/);
+});
+
+test('assertLifecycleSatisfied: only close-owned keys missing → pass', () => {
+  // Tick passed-final-review; leave the two close-owned keys unticked.
+  const lines = [
+    `- [x] ${LIFECYCLE_LABELS['passed-final-review']}`,
+    `- [ ] ${LIFECYCLE_LABELS['story-closed']}`,
+    `- [ ] ${LIFECYCLE_LABELS['timing-flushed']}`,
+  ];
+  const gate = assertLifecycleSatisfied({ body: bodyWith(lines) });
+  assert.equal(gate.block, false);
+  assert.equal(gate.missing.length, 0);
+  // Full results still expose the unticked close-owned keys for integrity reporting.
+  const missingInResults = gate.results.filter((r) => r.status === 'missing').map((r) => r.key);
+  assert.deepEqual(missingInResults.sort(), ['story-closed', 'timing-flushed']);
 });
 
 test('assertLifecycleSatisfied: required + all ticked → pass', () => {
@@ -93,8 +112,12 @@ test('assertLifecycleSatisfied: required=false never blocks', () => {
     required: false,
   });
   assert.equal(gate.block, false);
-  // results still expose what's missing for caller WARN emission.
-  assert.equal(gate.missing.length, 3);
+  // `missing` reflects only the keys the gate would actually block on —
+  // close-owned keys are filtered. Full status still available in `results`.
+  assert.equal(gate.missing.length, 1);
+  assert.equal(gate.missing[0].key, 'passed-final-review');
+  const allMissing = gate.results.filter((r) => r.status === 'missing').map((r) => r.key);
+  assert.equal(allMissing.length, 3);
 });
 
 test('assertLifecycleSatisfied: audit marker satisfies passed-final-review only', () => {
@@ -102,11 +125,13 @@ test('assertLifecycleSatisfied: audit marker satisfies passed-final-review only'
     bodyWith(ALL_LIFECYCLE_LINES) +
     '\n<!-- aitm-full-auto-approved: 2026-05-19T00:00:00Z signals=test -->';
   const gate = assertLifecycleSatisfied({ body });
-  assert.equal(gate.block, true);
-  const missingKeys = gate.missing.map((m) => m.key);
-  assert.equal(missingKeys.includes('passed-final-review'), false);
-  assert.equal(missingKeys.includes('story-closed'), true);
-  assert.equal(missingKeys.includes('timing-flushed'), true);
+  // passed-final-review is audited; close-owned keys are filtered → no block.
+  assert.equal(gate.block, false);
+  // Full results still expose the unticked close-owned keys.
+  const resultMissingKeys = gate.results.filter((r) => r.status === 'missing').map((r) => r.key);
+  assert.equal(resultMissingKeys.includes('passed-final-review'), false);
+  assert.equal(resultMissingKeys.includes('story-closed'), true);
+  assert.equal(resultMissingKeys.includes('timing-flushed'), true);
 });
 
 test('assertLifecycleSatisfied: opt-outs unblock per key', () => {

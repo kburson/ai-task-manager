@@ -31,17 +31,29 @@ export function uncheckedPreCloseCheckboxes(body) {
     .map((label) => `- [ ] ${label}`);
 }
 
+// Lifecycle keys that the close verb itself ticks via `tickLifecycleOnClose`
+// AFTER the pre-close gate runs. Filtering them out of the gate's blocker
+// list resolves the chicken-and-egg deadlock from #179 (gate refused to pass
+// the very keys that only get ticked once it passes). They remain in
+// `results` so integrity sweeps still report their status.
+export const CLOSE_OWNED_LIFECYCLE_KEYS = new Set(['story-closed', 'timing-flushed']);
+
 // Hard Review → Done lifecycle gate (#179). Returns `{ block, missing, results }`
 // where `results` is the full per-key satisfaction list (also useful for
 // non-blocking WARN emission when `lifecycleCheckboxesRequired` is false).
 //
 // `body` — current issue body
 // `required` — when false, computes status but never blocks (caller emits WARN)
+//
+// Only `passed-final-review` is enforced pre-close. Close-owned keys are
+// excluded from blocking via CLOSE_OWNED_LIFECYCLE_KEYS.
 export function assertLifecycleSatisfied({ body, required = true } = {}) {
   const src = String(body || '');
   const fullAutoApproved = FULL_AUTO_APPROVED_RE.test(src);
   const results = lifecycleSatisfaction(src, { fullAutoApproved });
-  const missing = results.filter((r) => r.status === 'missing');
+  const missing = results.filter(
+    (r) => r.status === 'missing' && !CLOSE_OWNED_LIFECYCLE_KEYS.has(r.key)
+  );
   if (!required || missing.length === 0) {
     return { block: false, missing, results };
   }
