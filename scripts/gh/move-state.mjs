@@ -94,6 +94,7 @@ const issueArg = cliArgs[0];
 const stateArg = cliArgs[1];
 let itemIdOverride = '';
 let fromOverride = '';
+let demoteFlag = false;
 
 for (let i = 2; i < cliArgs.length; i++) {
   if (cliArgs[i] === '--item-id' && cliArgs[i + 1]) {
@@ -102,6 +103,8 @@ for (let i = 2; i < cliArgs.length; i++) {
   } else if (cliArgs[i] === '--from' && cliArgs[i + 1]) {
     fromOverride = cliArgs[i + 1];
     i++;
+  } else if (cliArgs[i] === '--demote') {
+    demoteFlag = true;
   }
 }
 
@@ -536,6 +539,75 @@ if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
     }
   } catch (err) {
     process.stderr.write(`[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`);
+  }
+}
+
+// #128 — Paired lifecycle row emission. The chokepoint for all kanban
+// transitions emits `<prev>:complete` + `<next>:enter` rows (both share
+// the same wall-clock `ts`) from the canonical PHASE_EVENTS table. Demote
+// substitutes a `demoted` row (no completion event) before the
+// `<next>:enter`. Skip when SKIP_NETWORK is set or when both halves are
+// absent (e.g. transitions with no completion event for the previous
+// state and no entry event for the target). Best-effort — failures here
+// do not roll back the committed board move.
+if (!SKIP_NETWORK) {
+  try {
+    const { buildRow, postTimingEvent, readTimingCommentBody } =
+      await import('../task-tracker/gh-timing-comment.mjs');
+    const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+    const { PHASE_EVENTS } = await import('../task-tracker/phase-events.mjs');
+
+    const ts = new Date().toISOString();
+    const prev = resolvedFromState || '';
+    const timingBody = await readTimingCommentBody({
+      issueNumber: issueArg,
+      repo: cfg.repo,
+      timeoutMs: GH_API_TIMEOUT_MS,
+    });
+    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
+
+    // First row: completion of the previous state (or `demoted` for demote).
+    if (demoteFlag) {
+      const row = buildRow({
+        ts,
+        event: 'demoted',
+        activeSec,
+        idleSec,
+        deltaWords: 0,
+        wordMarker: 0,
+        description: prev ? `demoted from ${prev}` : 'demoted',
+      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+    } else if (prev && PHASE_EVENTS[prev]?.complete) {
+      const row = buildRow({
+        ts,
+        phase: { state: prev, phase: 'complete' },
+        activeSec,
+        idleSec,
+        deltaWords: 0,
+        wordMarker: 0,
+      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+    }
+
+    // Second row: entry into the new state. Share the same `ts` so the
+    // pair is co-located in the table.
+    if (PHASE_EVENTS[stateArg]?.enter) {
+      // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
+      // paired emission shares ts with the completion row above — no
+      // elapsed delta is possible between the two halves.
+      const row = buildRow({
+        ts,
+        phase: { state: stateArg, phase: 'enter' },
+        activeSec: 0,
+        idleSec: 0,
+        deltaWords: 0,
+        wordMarker: 0,
+      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+    }
+  } catch (err) {
+    process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);
   }
 }
 

@@ -46,9 +46,10 @@ test('demote: test→develop happy path', async () => {
   assert.equal(r.from, 'test');
   assert.equal(r.to, 'develop');
   assert.deepEqual(calls.moves, [{ issueNumber: 200, target: 'develop' }]);
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /move:develop/);
-  assert.match(calls.timings[0], /demote from test/);
+  // #128 — demote no longer emits a `move:<target>` audit row. The paired
+  // `demoted` + `<target>:enter` rows are emitted from move-state.mjs via
+  // the `--demote` flag and are not visible to this dependency-injected fake.
+  assert.equal(calls.timings.length, 0);
 });
 
 test('demote: review→develop happy path', async () => {
