@@ -65,7 +65,7 @@ export async function verbStart(ctx, reasonOverride) {
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const row = buildRow({
     ts,
-    event: 'resume',
+    event: 'resumed',
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,

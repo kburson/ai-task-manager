@@ -53,25 +53,36 @@ export async function verbNew(ctx) {
   const s = loadState(statePath);
   const wasDiscover = s.active === 'discover' && s.discoverBucket;
   let previousNote = '';
+  const previousActive = s.active;
   if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
-    const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
-    previousNote = ` Previous: ${s.active} ended (+${deltaMin} min, +${deltaWords} words).`;
+    // Outgoing-side row uses the canonical `switch-out` slug. The target
+    // ref is finalized below after `createNewIssue`, so the flush is
+    // deferred until we know the new issue number.
   }
   const issue = await createNewIssue(title, ctx);
+  if (previousActive && previousActive !== 'discover' && cfg.autoEndOnSwitch) {
+    const { deltaMin, deltaWords } = await flushActiveToGH(
+      s,
+      'switch-out',
+      `switch-out → task ${issue}`
+    );
+    previousNote = ` Previous: ${previousActive} ended (+${deltaMin} min, +${deltaWords} words).`;
+  }
   const createdTs = nowIso();
   const { buildRow } = await import('../gh-timing-comment.mjs');
+  const { PHASE_EVENTS } = await import('../phase-events.mjs');
   await safePostTiming(
     issue,
     buildRow({
       ts: createdTs,
-      event: 'created',
+      event: PHASE_EVENTS.backlog.enter.event,
       // First row of a fresh issue's timing log — no prior reference point.
       activeSec: 0,
       idleSec: 0,
       deltaWords: 0,
       // wordMarker:0 ok — issue just created, no session yet
       wordMarker: 0,
-      description: 'task created',
+      description: PHASE_EVENTS.backlog.enter.description,
     })
   );
   if (wasDiscover && !SKIP_NETWORK) {

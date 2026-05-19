@@ -20,14 +20,14 @@ import { buildRow } from '../gh-timing-comment.mjs';
 {
   const row = buildRow({
     ts: new Date(Date.now() - 5000).toISOString(),
-    event: 'resume',
+    event: 'resumed',
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,
     wordMarker: 5000,
     description: 'question answered',
   });
-  assert.match(row, /\| resume \|/);
+  assert.match(row, /\| resumed \|/);
   assert.match(row, /\| question answered \|$/);
 }
 
