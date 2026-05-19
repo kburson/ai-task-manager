@@ -93,8 +93,10 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
   assert.equal(r.via, 'direct');
   assert.equal(calls.spawns.length, 0);
   assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'plan' }]);
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /move:plan/);
+  // #128 — promote no longer emits a `move:<target>` audit row. The paired
+  // `<prev>:complete` + `<next>:enter` rows are emitted from move-state.mjs
+  // (the chokepoint) and not visible to this dependency-injected fake.
+  assert.equal(calls.timings.length, 0);
   assert.equal(r.refinementPost.status, 'posted');
   // Entry-marker stamping is now centralized in move-state.mjs (see
   // feedback_single_state_mutator.md). promote.mjs no longer stamps
@@ -455,9 +457,11 @@ test('promote: delegate non-zero but board reached target → promoted-with-warn
   assert.equal(r.delegateExitCode, 3);
   assert.equal(r.markerRepair.status, 'noop');
   assert.equal(calls.writes.length, 0, 'no repair write when markers already correct');
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /move:test/);
-  assert.match(calls.timings[0], /soft warning/);
+  // #128 — promoted-with-warning no longer emits a `move:<target>` audit row.
+  // The paired phase rows are emitted from move-state.mjs (chokepoint) on
+  // every successful Status mutation, including the path that produced this
+  // warning. The verb no longer duplicates that row.
+  assert.equal(calls.timings.length, 0);
 });
 
 test('promote: delegate non-zero, board at target, marker stale → repair write fires (#175)', async () => {
@@ -561,9 +565,11 @@ test('promote: error when recorded state is unknown', async () => {
   assert.match(r.message, /unknown recorded state/);
 });
 
-test('promote: writes move:<target> audit row with current ts (within retroactive-ts window)', async () => {
+test('promote: no longer writes a move:<target> audit row (#128 — chokepoint emits paired phase rows)', async () => {
+  // #128 — the legacy `move:<target>` audit row was redundant with the
+  // paired `<prev>:complete` + `<next>:enter` rows emitted from
+  // move-state.mjs. promote no longer writes the audit row inline.
   const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
   await runPromote({ issueNumber: 111, cfg, deps });
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /\| move:review \|/);
+  assert.equal(calls.timings.length, 0);
 });

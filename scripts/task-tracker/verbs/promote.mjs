@@ -458,32 +458,10 @@ export async function runPromote({
         // best-effort — marker is unreadable; warning still surfaces below.
       }
 
-      try {
-        const nowTs = now();
-        const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
-        const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
-        const delegateLabel =
-          transitionResult.kind === 'alias' ? `via /task ${transitionResult.verb}` : 'direct move';
-        const repairNote =
-          markerRepair.status === 'failed'
-            ? `; marker-repair failed (audit posted: ${markerRepair.auditPosted})`
-            : markerRepair.status === 'ok'
-              ? `; marker repaired (attempts: ${markerRepair.attempts})`
-              : '';
-        const row = buildRow({
-          ts: nowTs,
-          event: `move:${target}`,
-          activeSec,
-          idleSec,
-          deltaWords: 0,
-          // wordMarker:0 audit row — promote move event, no active session
-          wordMarker: 0,
-          description: `${delegateLabel} (delegate exited ${transitionResult.exitCode} — soft warning)${repairNote}`,
-        });
-        await postTimingRow({ issueNumber, repo: cfg.repo, row });
-      } catch {
-        // best-effort
-      }
+      // #128 — paired `<prev>:complete` + `<next>:enter` rows are emitted
+      // at the move-state.mjs chokepoint on every successful Status write.
+      // The previous `move:<target>` audit row was redundant with that pair
+      // and is intentionally removed.
 
       return {
         status: 'promoted-with-warning',
@@ -580,25 +558,10 @@ export async function runPromote({
     }
   }
 
-  try {
-    const nowTs = now();
-    const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
-    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
-    const row = buildRow({
-      ts: nowTs,
-      event: `move:${target}`,
-      activeSec,
-      idleSec,
-      deltaWords: 0,
-      // wordMarker:0 audit row — promote move event, no active session
-      wordMarker: 0,
-      description:
-        transitionResult.kind === 'alias' ? `via /task ${transitionResult.verb}` : 'direct move',
-    });
-    await postTimingRow({ issueNumber, repo: cfg.repo, row });
-  } catch {
-    // Audit row is best-effort; transition is the source of truth.
-  }
+  // #128 — paired `<prev>:complete` + `<next>:enter` rows are emitted at
+  // the move-state.mjs chokepoint on every successful Status write. The
+  // previous `move:<target>` audit row was redundant with that pair and
+  // is intentionally removed.
 
   // #162 — when the refine-exit gate accepted past-refine children under the
   // override, post one audit comment pair per offending child.

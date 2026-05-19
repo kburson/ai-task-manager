@@ -18,16 +18,9 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { BACKWARD, STATES, validateTransition, normalizeStateSlug } from '../state-machine.mjs';
-import {
-  readLastKnownState,
-  writeLastKnownState,
-  buildRow,
-  postTimingEvent,
-  readTimingCommentBody,
-} from '../gh-timing-comment.mjs';
+import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 
 const pexec = promisify(execFile);
@@ -98,7 +91,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
 function defaultRunMoveState({ issueNumber, target }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), target], {
+    const child = spawn(process.execPath, [script, String(issueNumber), target, '--demote'], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'demote' },
       timeout: GH_API_TIMEOUT_MS * 2,
@@ -108,20 +101,11 @@ function defaultRunMoveState({ issueNumber, target }) {
   });
 }
 
-async function defaultPostTimingRow({ issueNumber, repo, row }) {
-  await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
-}
-
 // ---------------------------------------------------------------------------
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runDemote({
-  issueNumber,
-  cfg,
-  deps = {},
-  now = () => new Date().toISOString(),
-} = {}) {
+export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('demote: issueNumber is required');
   if (!cfg) throw new Error('demote: cfg is required');
 
@@ -129,7 +113,6 @@ export async function runDemote({
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
-  const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
 
   const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);
@@ -210,22 +193,10 @@ export async function runDemote({
     target: DEMOTE_TARGET,
     writeIssueBody,
   });
-  try {
-    const nowTs = now();
-    const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
-    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
-    const row = buildRow({
-      ts: nowTs,
-      event: `move:${DEMOTE_TARGET}`,
-      activeSec,
-      idleSec,
-      deltaWords: 0,
-      // wordMarker:0 audit row — demote move event, no active session
-      wordMarker: 0,
-      description: `demote from ${recorded}`,
-    });
-    await postTimingRow({ issueNumber, repo: cfg.repo, row });
-  } catch {}
+  // #128 — paired `demoted` + `<target>:enter` rows are emitted at the
+  // move-state.mjs chokepoint when invoked with `--demote`. The previous
+  // `move:<target>` audit row was redundant with that pair and is
+  // intentionally removed.
 
   return { status: 'demoted', from: recorded, to: DEMOTE_TARGET, bootstrapped };
 }
