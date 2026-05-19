@@ -243,19 +243,20 @@ async function onSessionStart(sid) {
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
-if (isMain) (async () => {
-  let payload = {};
-  try {
-    payload = JSON.parse(readStdin() || '{}');
-  } catch {}
-  const sid = payload.session_id || currentSessionId();
-  const event = payload.hook_event_name || process.argv[2];
-  try {
-    if (event === 'PreCompact') await onPreCompact(sid);
-    else if (event === 'PostCompact') await onPostCompact(sid);
-    else if (event === 'SessionStart') await onSessionStart(sid);
-  } catch (err) {
-    console.error(`[task-tracker-hook] ${event}: ${err.message}`);
-  }
-  process.exit(0);
-})();
+if (isMain)
+  (async () => {
+    let payload = {};
+    try {
+      payload = JSON.parse(readStdin() || '{}');
+    } catch {}
+    const sid = payload.session_id || currentSessionId();
+    const event = payload.hook_event_name || process.argv[2];
+    try {
+      if (event === 'PreCompact') await onPreCompact(sid);
+      else if (event === 'PostCompact') await onPostCompact(sid);
+      else if (event === 'SessionStart') await onSessionStart(sid);
+    } catch (err) {
+      console.error(`[task-tracker-hook] ${event}: ${err.message}`);
+    }
+    process.exit(0);
+  })();

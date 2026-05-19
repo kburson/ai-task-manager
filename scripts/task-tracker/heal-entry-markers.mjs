@@ -39,7 +39,6 @@ import {
   parseEntryMarkersFirstVisit as parseEntryMarkers,
   parseEntryMarkers as parseEntryMarkersFull,
   backfillEntryMarker,
-  verifyChainIntegrity,
   LEGAL_TRANSITIONS,
 } from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';

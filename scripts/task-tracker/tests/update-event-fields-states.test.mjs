@@ -52,11 +52,11 @@ exit 0
 const states = ['refine', 'plan', 'develop', 'test', 'review', 'done'];
 for (const state of states) {
   const { env } = makeTempEnv(SUCCESS_GH);
-  const result = spawnSync(
-    process.execPath,
-    [script, '999', state, '--item-id', 'ITEM_FAKE'],
-    { encoding: 'utf8', env, cwd: repoRoot }
-  );
+  const result = spawnSync(process.execPath, [script, '999', state, '--item-id', 'ITEM_FAKE'], {
+    encoding: 'utf8',
+    env,
+    cwd: repoRoot,
+  });
   assert.equal(
     result.status,
     0,
@@ -82,11 +82,11 @@ for (const state of states) {
 // 2. Unknown state should exit 1 with usage message.
 {
   const { env } = makeTempEnv(SUCCESS_GH);
-  const result = spawnSync(
-    process.execPath,
-    [script, '999', 'bogus', '--item-id', 'ITEM_FAKE'],
-    { encoding: 'utf8', env, cwd: repoRoot }
-  );
+  const result = spawnSync(process.execPath, [script, '999', 'bogus', '--item-id', 'ITEM_FAKE'], {
+    encoding: 'utf8',
+    env,
+    cwd: repoRoot,
+  });
   assert.equal(result.status, 1, `expected exit 1 for unknown state, got ${result.status}`);
   assert.match(result.stderr, /Usage:.*refine\|plan\|develop\|test\|review\|done/);
   console.log('PASS: unknown state arg rejected with usage');

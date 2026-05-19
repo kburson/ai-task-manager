@@ -131,7 +131,11 @@ function buildDeps({
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
-  assert.match(c, /\| Plan minutes \| — \| 25 \| — \|/, 'Plan minutes row present when planTime set');
+  assert.match(
+    c,
+    /\| Plan minutes \| — \| 25 \| — \|/,
+    'Plan minutes row present when planTime set'
+  );
 }
 
 // Test 7 (#187): planTime absent → no Plan minutes row.
