@@ -26,7 +26,7 @@ import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
-import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { seedWorktreeBackfill } from '../seed-worktree.mjs';
@@ -260,8 +260,18 @@ export async function runVerbTest({
     // test.mjs moves develop→review (skipping the Test column). move-state.mjs
     // stamps the entry marker for the target ('review') automatically; we
     // stamp the intermediate 'test' marker here so the chain stays complete.
+    // Skip the stamp when the chain has already advanced past 'test' (e.g.
+    // re-test after a demote review→develop) — otherwise the new marker lands
+    // with a ts later than the existing review marker, producing the illegal
+    // arc `review->test` that close-gates rejects.
     let stamped = insertDodVerifiedMarker(body, sha, ts);
-    stamped = stampEntryMarker(stamped, 'test', ts);
+    const testIdx = STAGES.indexOf('test');
+    const chainPastTest = parseEntryMarkers(stamped).some(
+      (t) => STAGES.indexOf(t.stage) > testIdx
+    );
+    if (!chainPastTest) {
+      stamped = stampEntryMarker(stamped, 'test', ts);
+    }
     if (stamped !== body) {
       await writeBody({ cfg, issueNum, body: stamped, projectDir });
     }
