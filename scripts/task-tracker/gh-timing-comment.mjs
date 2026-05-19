@@ -3,6 +3,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { resolvePhaseEvent } from './phase-events.mjs';
 const pexec = promisify(execFile);
 
 const TIMING_HEADING = '⏱ Timing Log';
@@ -73,6 +74,7 @@ export function buildRow({
   deltaWords,
   wordMarker,
   description = '',
+  phase,
 }) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
@@ -80,6 +82,17 @@ export function buildRow({
   }
   if (Math.abs(tsMs - Date.now()) > RETROACTIVE_TS_WINDOW_MS) {
     throw new Error(RETROACTIVE_TS_ERROR);
+  }
+  // Phase descriptor — when supplied as `{state, phase}` (or `{state, kind}`),
+  // resolve event + description from PHASE_EVENTS. Caller-supplied `event` /
+  // `description` win when the descriptor is missing or unresolved; this keeps
+  // legacy callers (still passing raw event strings) byte-identical.
+  if (phase && typeof phase === 'object') {
+    const resolved = resolvePhaseEvent(phase);
+    if (resolved) {
+      if (event == null) event = resolved.event;
+      if (!description) description = resolved.description;
+    }
   }
   // When second precision is supplied, derive minute display values from
   // it so the visible cells match the hidden marker. The visible 7-col

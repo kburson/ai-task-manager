@@ -11,6 +11,12 @@ import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
+import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
+
+// Re-exported so downstream verbs (promote/demote/review/new/close/switch —
+// sub-issues #128, #129 of epic #126) can pull the canonical table without
+// importing the sibling module directly.
+export { PHASE_EVENTS };
 import { enqueue, drain } from './queue.mjs';
 import {
   currentSessionId,
@@ -45,8 +51,12 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
   exit(result.status || 1);
 }
 
-const EVENT_DESCRIPTIONS = {
-  created: 'task created',
+// Legacy per-event description fallbacks. Used only when a caller does not
+// supply a description AND does not supply a phase descriptor that resolves
+// against PHASE_EVENTS. Retained for back-compat with callers that emit
+// ad-hoc event slugs ('pause', 'switch-end', etc.) outside the lifecycle
+// table. PHASE_EVENTS is the canonical source for the 11 lifecycle slugs.
+const LEGACY_DESCRIPTION_FALLBACKS = {
   pause: 'task paused',
   close: 'task closed',
   end: 'task closed',
@@ -131,7 +141,20 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }, queuePath);
   };
 
-  ctx.flushActiveToGH = async (state, event, description) => {
+  ctx.flushActiveToGH = async (state, event, description, phase) => {
+    // Phase descriptor (optional): `{state, phase}` where state is a lifecycle
+    // state slug (backlog/refine/plan/develop/test/review/done) and phase is
+    // `enter` or `complete`. When supplied and resolvable against
+    // PHASE_EVENTS, it provides defaults for `event` and `description` that
+    // the caller can still override by passing them explicitly. Wiring only
+    // in this issue (#127) — no call-sites yet supply a descriptor.
+    const resolved = resolvePhaseEvent(phase);
+    const effectiveEvent = event ?? resolved?.event;
+    const effectiveDescription =
+      description ??
+      resolved?.description ??
+      LEGACY_DESCRIPTION_FALLBACKS[effectiveEvent] ??
+      effectiveEvent;
     const ts = nowIso();
     const sid = currentSessionId();
     let deltaWords = 0;
@@ -157,12 +180,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     const { buildRow } = await import('./gh-timing-comment.mjs');
     const row = buildRow({
       ts,
-      event,
+      event: effectiveEvent,
       activeMin,
       idleMin,
       deltaWords,
       wordMarker,
-      description: description ?? EVENT_DESCRIPTIONS[event] ?? event,
+      description: effectiveDescription,
     });
     await ctx.safePostTiming(state.active, row);
     return { ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
