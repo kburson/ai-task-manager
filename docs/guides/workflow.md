@@ -270,6 +270,70 @@ In git commit messages, reference issue numbers (`fixes #42`) to auto-link commi
 
 ---
 
+## Timing Log
+
+Each issue carries a single `⏱ Timing Log` comment that records its full lifecycle as rows. The canonical event table lives in [`scripts/task-tracker/phase-events.mjs`](../../scripts/task-tracker/phase-events.mjs).
+
+### Lifecycle phase rows
+
+There are 11 lifecycle events: 7 `enter` rows (one per kanban state) and 4 `complete` rows (only for the non-terminal middle states). Terminal states — `backlog`, `review`, `done` — emit only an `enter` row.
+
+| Event slug        | State     | Kind     | Description                              | Emitted by                  |
+| ----------------- | --------- | -------- | ---------------------------------------- | --------------------------- |
+| `created`         | backlog   | enter    | task created in Backlog                  | `new` (issue creation)      |
+| `refine:start`    | refine    | enter    | start refinement                         | `promote` / `refine`        |
+| `refine:done`     | refine    | complete | refinement completed                     | `refine` (on exit)          |
+| `plan:start`      | plan      | enter    | plan started                             | `refine` / `promote`        |
+| `plan:done`       | plan      | complete | plan completed — waiting approval        | `plan-approve` / `promote`  |
+| `develop:start`   | develop   | enter    | start development                        | `promote`                   |
+| `develop:done`    | develop   | complete | development complete                     | `review` (on exit)          |
+| `test:start`      | test      | enter    | start testing                            | `review` / `promote`        |
+| `test:done`       | test      | complete | testing complete                         | `review` (on exit)          |
+| `review:waiting`  | review    | enter    | waiting in review                        | `review`                    |
+| `approved`        | done      | enter    | story approved                           | `approve` / `close`         |
+
+### Paired-emission rule
+
+State-moving verbs emit **both** a `<prev>:complete` row and a `<next>:enter` row in a single invocation; there are no separate "complete" verbs. For example, a single `/task review #N` call on an issue in `develop` writes `develop:done` _and_ `test:start` to the timing log as a paired entry. Likewise `/task promote #N` from `plan` writes `plan:done` _and_ `develop:start`. The chokepoint is `scripts/gh/move-state.mjs`, which derives the pair from the canonical `PHASE_EVENTS` table.
+
+### Task switching
+
+`/task switch <id>` is asymmetric — the timing log on the **outgoing** issue gets a single `switch-out → task <id>` row; the incoming issue records only its normal start or `resumed` row. There is no matching `switch-in` row on the outgoing side, and an issue that is switched away from and never returned to retains the outgoing-only marker as its final row (no synthetic close).
+
+A returning task (one whose timing log is reopened after a `switch-out`) records a plain `resumed` row when re-bound; the gap between `switch-out` and `resumed` is the time the agent spent elsewhere.
+
+### Parallel worktrees
+
+Timing logs are strictly **per-issue and single-writer**. When an epic fans out into parallel sub-agent worktrees, each child sub-agent appends only to its own child issue's timing log; the parent epic's log records **epic-level** phase rows only — for example, when a wave is dispatched, when all children in the wave reach Review, and when the epic itself transitions. No child ever writes to the parent's timing log, and no two agents share a writer for a single issue.
+
+### Sample timing log
+
+A complete Backlog → Done sequence interleaved with one pause/resume cycle and one pre-/post-compact pair:
+
+```
+| Timestamp (UTC)        | Event                  | Description                          |
+| ---------------------- | ---------------------- | ------------------------------------ |
+| 2026-05-19T12:00:00Z   | created                | task created in Backlog              |
+| 2026-05-19T12:05:00Z   | refine:start           | start refinement                     |
+| 2026-05-19T12:18:00Z   | refine:done            | refinement completed                 |
+| 2026-05-19T12:18:00Z   | plan:start             | plan started                         |
+| 2026-05-19T12:40:00Z   | plan:done              | plan completed — waiting approval    |
+| 2026-05-19T12:41:00Z   | develop:start          | start development                    |
+| 2026-05-19T13:10:00Z   | pause                  | pause for question                   |
+| 2026-05-19T13:25:00Z   | resumed                | question answered                    |
+| 2026-05-19T14:02:00Z   | pre-compact-flush      | context approaching limit            |
+| 2026-05-19T14:03:00Z   | post-compact-resume    | resumed after /compact               |
+| 2026-05-19T14:55:00Z   | develop:done           | development complete                 |
+| 2026-05-19T14:55:00Z   | test:start             | start testing                        |
+| 2026-05-19T15:10:00Z   | test:done              | testing complete                     |
+| 2026-05-19T15:10:00Z   | review:waiting         | waiting in review                    |
+| 2026-05-19T15:30:00Z   | approved               | story approved                       |
+```
+
+Note the paired emissions on the state-moving rows (`refine:done` + `plan:start`, `plan:done` + `develop:start`, `develop:done` + `test:start`, `test:done` + `review:waiting`), and that `pause`/`resumed`/`pre-compact-flush`/`post-compact-resume` are session-lifecycle rows that interleave freely inside any state.
+
+---
+
 ## Cleanup Procedure
 
 When the user says **"cleanup"**, execute in order:
