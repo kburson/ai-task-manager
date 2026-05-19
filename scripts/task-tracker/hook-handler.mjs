@@ -4,6 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
 import { loadState, saveState } from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
@@ -19,13 +20,27 @@ import {
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue } from './queue.mjs';
 import { seedMissingTemplates, findMainWorktree } from './seed-worktree.mjs';
-import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
+import {
+  findMainWorktreePath,
+  currentBranch,
+  fleetRegistryPath,
+  readFleet,
+} from './fleet-registry.mjs';
 import { getProjectDir } from './paths.mjs';
 
 const projectDir = getProjectDir();
 const cfg = loadConfig();
 const statePath = path.join(projectDir, cfg.statePath);
 const queuePath = path.join(projectDir, cfg.queuePath);
+
+// Decides whether a stale `lastActive` reflects a paused task or a closed/gone
+// one. /task pause persists `status: "paused"` in the fleet registry; /task
+// close deregisters the entry entirely. Exported for unit testing.
+export function isPausedTask(fleet, lastActive) {
+  if (!lastActive) return false;
+  const entry = fleet && fleet[lastActive];
+  return entry?.status === 'paused';
+}
 
 function readStdin() {
   try {
@@ -150,9 +165,20 @@ async function onSessionStart(sid) {
     return;
   }
 
-  // Was properly paused (active cleared, lastActive preserved)
+  // No active task — could be paused or closed. Disambiguate via fleet
+  // registry: pause persists `status: "paused"`, close removes the entry.
   if (!s.active) {
-    console.log(`[task-tracker] ${s.lastActive} is paused. Use /task start to resume.`);
+    let fleet = {};
+    try {
+      fleet = readFleet(fleetRegistryPath(findMainWorktreePath(projectDir)));
+    } catch {
+      // Fall through with empty fleet → treated as no-active.
+    }
+    if (isPausedTask(fleet, s.lastActive)) {
+      console.log(`[task-tracker] ${s.lastActive} is paused. Use /task start to resume.`);
+    } else {
+      console.log('[task-tracker] No active task.');
+    }
     if (sid) {
       const { totalLines } = countWords(jsonlPath(sid), 0);
       saveMarker(markerPathFor(sid), totalLines, 0, null);
@@ -215,7 +241,9 @@ async function onSessionStart(sid) {
   );
 }
 
-(async () => {
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMain) (async () => {
   let payload = {};
   try {
     payload = JSON.parse(readStdin() || '{}');
