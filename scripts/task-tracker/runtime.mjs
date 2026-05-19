@@ -177,7 +177,18 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       });
       if (stdout.trim()) console.log(stdout.trim());
     } catch (err) {
-      console.warn(`[task-tracker] Could not update board fields: ${err.message}`);
+      // Fail-loud: silent swallow here is the root cause of #180 (board fields
+      // never written, body cache stays null, close completes anyway). Re-throw
+      // unless the caller has explicitly accepted a no-fields close via the
+      // escape hatch (genuinely offline / GitHub outage).
+      if (process.env.TASK_TRACKER_FORCE_DONE_NO_FIELDS === '1') {
+        console.warn(`[task-tracker] Could not update board fields: ${err.message}`);
+        return;
+      }
+      throw new Error(
+        `runLogIssueTime: failed to update board fields for ${issue}: ${err.message}. ` +
+          `Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override (close will proceed with null fields).`
+      );
     }
   };
 

@@ -343,6 +343,13 @@ export async function verbClose(ctx) {
     })
   );
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
+  // Post-close board/body agreement check (#180 defect 1 guard). After
+  // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
+  // non-null engagedTime. If it's still null, board fields almost certainly
+  // were not written either — refuse to clear active so the user can recover.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
+  }
   clearActive(statePath);
   try {
     deregisterTask(projectDir, s.active);
@@ -350,6 +357,51 @@ export async function verbClose(ctx) {
   await runMoveStateDone(s.active, { silent: true });
   await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
   console.log(`Closed ${s.active}.`);
+}
+
+// Caller-side assertion that runLogIssueTime actually persisted fields to
+// both the board AND the `<!-- aitm-fields -->` body marker. Guards against
+// the silent-swallow class of bug that produced #180 / #165. Honors
+// TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 escape hatch.
+async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
+  if (process.env.TASK_TRACKER_FORCE_DONE_NO_FIELDS === '1') return;
+  let body = '';
+  try {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    body = String(stdout || '');
+  } catch (err) {
+    throw new Error(
+      `assertFieldsPersisted: could not re-read body for #${issueNum}: ${err.message}. ` +
+        `Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override.`
+    );
+  }
+  const m = body.match(/<!--\s*aitm-fields:\s*(\{[\s\S]*?\})\s*-->/);
+  if (!m) {
+    throw new Error(
+      `assertFieldsPersisted: <!-- aitm-fields --> marker missing on #${issueNum} after runLogIssueTime. ` +
+        `Board fields almost certainly were not written. ` +
+        `Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override.`
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(m[1]);
+  } catch (err) {
+    throw new Error(
+      `assertFieldsPersisted: malformed aitm-fields JSON on #${issueNum}: ${err.message}`
+    );
+  }
+  const values = parsed?.values || {};
+  if (values.engagedTime == null) {
+    throw new Error(
+      `assertFieldsPersisted: aitm-fields.engagedTime is still null on #${issueNum} after runLogIssueTime — ` +
+        `field write silently failed. Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override.`
+    );
+  }
 }
 
 // Tick the Lifecycle DoD items the close verb is responsible for. Best-effort:

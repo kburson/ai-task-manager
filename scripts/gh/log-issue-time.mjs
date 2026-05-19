@@ -142,8 +142,13 @@ async function writeNumberField(itemId, fieldId, value) {
 (async () => {
   const comment = await fetchTimingComment();
   if (!comment) {
+    // Not an error condition: an issue with no timing rows is a legitimate
+    // state (e.g. test fixtures, issues closed without engaged work). Exit
+    // cleanly so the fail-loud guard in runtime.mjs only fires on real
+    // failures. The close-path body-marker assertion (#180) will catch the
+    // resulting null engagedTime at the appropriate layer.
     console.error(`No ⏱ Timing Log comment found on issue #${issueNumber}`);
-    process.exit(1);
+    process.exit(0);
   }
 
   const rawRows = parseTimingRows(comment.body);
