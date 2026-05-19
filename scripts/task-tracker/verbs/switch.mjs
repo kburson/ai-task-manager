@@ -33,7 +33,11 @@ export async function verbSwitch(ctx, target) {
   let previousNote = '';
   if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
     const previous = s.active;
-    const { deltaMin, deltaWords } = await flushActiveToGH(s, 'switch-end');
+    const { deltaMin, deltaWords } = await flushActiveToGH(
+      s,
+      'switch-out',
+      `switch-out → task ${target}`
+    );
     previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
     await runLogIssueTime(previous);
     try {

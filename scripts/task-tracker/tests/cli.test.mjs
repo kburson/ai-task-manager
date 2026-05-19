@@ -98,15 +98,19 @@ const switchEnv = {
 await pexec('node', [CLI, '#200'], { env: switchEnv });
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 
-// `/task start #201` must start #201, not resume #200.
+// `/task start #201` must bind #201, not lastActive #200. Under epic #126
+// (sub-issue #129), start/resume with a target writes the canonical
+// `resumed` row on the target rather than delegating to switch.
 let rs = await pexec('node', [CLI, 'start', '#201'], { env: switchEnv });
-assert.match(rs.stdout, /Active: #201/, '/task start #N should switch to #N');
+assert.match(rs.stdout, /Resumed #201/, '/task start #N should bind #N');
 assert.doesNotMatch(rs.stdout, /Resumed #200/, '/task start #N must not resume lastActive');
 
-// Regression guard: `/task resume #N` continues to switch.
+// Regression guard: `/task resume #N` writes a canonical `resumed` row.
+// Under epic #126 (sub-issue #129), resume no longer delegates to switch
+// when there is no active task — it binds directly and emits `resumed`.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 rs = await pexec('node', [CLI, 'resume', '#202'], { env: switchEnv });
-assert.match(rs.stdout, /Active: #202/, '/task resume #N should switch to #N');
+assert.match(rs.stdout, /Resumed #202/, '/task resume #N should resume #N');
 
 // `/task start` with no arg and no active still resumes lastActive.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });

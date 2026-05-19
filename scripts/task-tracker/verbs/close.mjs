@@ -282,6 +282,7 @@ export async function verbClose(ctx) {
       if (reviewChildren.length > 0) {
         console.log(`[task-tracker] Cascade closing ${reviewChildren.length} child issue(s)...`);
         const { buildRow: br } = await import('../gh-timing-comment.mjs');
+        const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
         for (const child of reviewChildren) {
           try {
             // Cascade close: per-child body not fetched here; activeSec=0 is
@@ -290,13 +291,13 @@ export async function verbClose(ctx) {
               `#${child.num}`,
               br({
                 ts: nowIso(),
-                event: 'done',
+                event: _PEcascade.done.enter.event,
                 activeSec: 0,
                 idleSec: 0,
                 deltaWords: 0,
                 // wordMarker:0 audit row — cascade close, no per-child session
                 wordMarker: 0,
-                description: 'cascade closed by epic',
+                description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
               })
             );
             await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' }, silent: true });
@@ -326,6 +327,7 @@ export async function verbClose(ctx) {
     await safePostTiming(closeTarget, dirtyAuditRow);
   }
   const { buildRow: closeBr } = await import('../gh-timing-comment.mjs');
+  const { PHASE_EVENTS: _PE3 } = await import('../phase-events.mjs');
   const { deriveStateMoveDelta: _dsm3 } = await import('../lib/timing-rows.mjs');
   const _ts3 = nowIso();
   const _d3 = _dsm3(closeBody, _ts3);
@@ -333,13 +335,13 @@ export async function verbClose(ctx) {
     closeTarget,
     closeBr({
       ts: _ts3,
-      event: 'done',
+      event: _PE3.done.enter.event,
       activeSec: _d3.activeSec,
       idleSec: _d3.idleSec,
       deltaWords: 0,
       // wordMarker:0 ok — timing already flushed at Review, this is the close audit row
       wordMarker: 0,
-      description: 'closed — timing flushed at Review',
+      description: _PE3.done.enter.description,
     })
   );
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
