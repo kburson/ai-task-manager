@@ -34,11 +34,10 @@ const repoRoot = path.resolve(here, '../../..');
 // "no `switch-in`") are allowed.
 let grep = '';
 try {
-  grep = execFileSync(
-    'grep',
-    ['-rEn', `event: ['\\\"]switch-in['\\\"]`, 'scripts/'],
-    { cwd: repoRoot, encoding: 'utf8' }
-  ).trim();
+  grep = execFileSync('grep', ['-rEn', `event: ['\\\"]switch-in['\\\"]`, 'scripts/'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
 } catch (err) {
   // grep exits 1 when no matches — that's the success case here.
   if (err.status !== 1) throw err;
@@ -76,10 +75,7 @@ const resumed = buildRow({
   description: 'agent',
 });
 assert.match(resumed, /\| resumed \|/, 'return-to-task row must use resumed slug');
-assert.ok(
-  !resumed.includes('switch-in'),
-  'return-to-task row must not contain "switch-in"'
-);
+assert.ok(!resumed.includes('switch-in'), 'return-to-task row must not contain "switch-in"');
 
 // ---- 4. B's log: a fresh `start` row carries the role but no switch token --
 const tsB = new Date(Date.now() - 4000).toISOString();

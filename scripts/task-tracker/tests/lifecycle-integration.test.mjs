@@ -85,10 +85,7 @@ assert.equal(rows.length, 11, `expected 11 lifecycle rows, got ${rows.length}`);
 // Each row must contain its expected slug, in order.
 for (let i = 0; i < expectedSlugs.length; i += 1) {
   const slug = expectedSlugs[i];
-  assert.ok(
-    rows[i].includes(`| ${slug} |`),
-    `row ${i} expected slug "${slug}", got: ${rows[i]}`
-  );
+  assert.ok(rows[i].includes(`| ${slug} |`), `row ${i} expected slug "${slug}", got: ${rows[i]}`);
 }
 
 // No leftover legacy slugs: assert that no row contains a `move:<state>`
@@ -99,10 +96,7 @@ for (const r of rows) {
     !/\| move:[a-z]+ \|/.test(r),
     `lifecycle rows must not include legacy move:<state> slugs: ${r}`
   );
-  assert.ok(
-    !/\| closed \|/.test(r),
-    `lifecycle rows must not include bare "closed" event: ${r}`
-  );
+  assert.ok(!/\| closed \|/.test(r), `lifecycle rows must not include bare "closed" event: ${r}`);
   assert.ok(
     !/\| direct move \|/.test(r),
     `lifecycle rows must not include legacy "direct move" event: ${r}`

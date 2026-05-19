@@ -26,10 +26,7 @@ for (const state of Object.keys(PHASE_EVENTS)) {
   }
 }
 for (const slug of ['pause', 'resumed', 'pre-compact-flush', 'post-compact-resume']) {
-  assert.ok(
-    !phaseSlugs.has(slug),
-    `${slug} must not collide with a canonical PHASE_EVENTS slug`
-  );
+  assert.ok(!phaseSlugs.has(slug), `${slug} must not collide with a canonical PHASE_EVENTS slug`);
 }
 
 // Build the row stream that a typical Develop phase with a pause + a

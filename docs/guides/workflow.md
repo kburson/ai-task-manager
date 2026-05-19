@@ -278,19 +278,19 @@ Each issue carries a single `⏱ Timing Log` comment that records its full lifec
 
 There are 11 lifecycle events: 7 `enter` rows (one per kanban state) and 4 `complete` rows (only for the non-terminal middle states). Terminal states — `backlog`, `review`, `done` — emit only an `enter` row.
 
-| Event slug        | State     | Kind     | Description                              | Emitted by                  |
-| ----------------- | --------- | -------- | ---------------------------------------- | --------------------------- |
-| `created`         | backlog   | enter    | task created in Backlog                  | `new` (issue creation)      |
-| `refine:start`    | refine    | enter    | start refinement                         | `promote` / `refine`        |
-| `refine:done`     | refine    | complete | refinement completed                     | `refine` (on exit)          |
-| `plan:start`      | plan      | enter    | plan started                             | `refine` / `promote`        |
-| `plan:done`       | plan      | complete | plan completed — waiting approval        | `plan-approve` / `promote`  |
-| `develop:start`   | develop   | enter    | start development                        | `promote`                   |
-| `develop:done`    | develop   | complete | development complete                     | `review` (on exit)          |
-| `test:start`      | test      | enter    | start testing                            | `review` / `promote`        |
-| `test:done`       | test      | complete | testing complete                         | `review` (on exit)          |
-| `review:waiting`  | review    | enter    | waiting in review                        | `review`                    |
-| `approved`        | done      | enter    | story approved                           | `approve` / `close`         |
+| Event slug       | State   | Kind     | Description                       | Emitted by                 |
+| ---------------- | ------- | -------- | --------------------------------- | -------------------------- |
+| `created`        | backlog | enter    | task created in Backlog           | `new` (issue creation)     |
+| `refine:start`   | refine  | enter    | start refinement                  | `promote` / `refine`       |
+| `refine:done`    | refine  | complete | refinement completed              | `refine` (on exit)         |
+| `plan:start`     | plan    | enter    | plan started                      | `refine` / `promote`       |
+| `plan:done`      | plan    | complete | plan completed — waiting approval | `plan-approve` / `promote` |
+| `develop:start`  | develop | enter    | start development                 | `promote`                  |
+| `develop:done`   | develop | complete | development complete              | `review` (on exit)         |
+| `test:start`     | test    | enter    | start testing                     | `review` / `promote`       |
+| `test:done`      | test    | complete | testing complete                  | `review` (on exit)         |
+| `review:waiting` | review  | enter    | waiting in review                 | `review`                   |
+| `approved`       | done    | enter    | story approved                    | `approve` / `close`        |
 
 ### Paired-emission rule
 
