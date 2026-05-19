@@ -64,17 +64,17 @@ test('chainIntegrityGate: missing test entry → chain-hole-at-test', () => {
   assert.ok(r.blockers.some((b) => /chain-hole-at-test/.test(b)));
 });
 
-test('chainIntegrityGate: out-of-order timestamps → refuses', () => {
+test('chainIntegrityGate: illegal arc → refuses', () => {
   const body = [
-    '<!-- aitm-entered-refine: 2026-05-17T05:00:00Z -->',
     '<!-- aitm-entered-plan: 2026-05-17T01:00:00Z -->',
     '<!-- aitm-entered-develop: 2026-05-17T02:00:00Z -->',
     '<!-- aitm-entered-test: 2026-05-17T03:00:00Z -->',
     '<!-- aitm-entered-review: 2026-05-17T04:00:00Z -->',
+    '<!-- aitm-entered-refine-2: 2026-05-17T05:00:00Z -->',
   ].join('\n');
   const r = chainIntegrityGate(body);
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /out-of-order/.test(b)));
+  assert.ok(r.blockers.some((b) => /illegal-arc/.test(b)));
 });
 
 test('issueDirtyGate: no trail comment → graceful skip', async () => {

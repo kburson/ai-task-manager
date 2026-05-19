@@ -13,7 +13,10 @@ import {
   planStageHeal,
   safeBackfillTs,
 } from '../heal-entry-markers.mjs';
-import { parseEntryMarkers, verifyChainIntegrity } from '../lib/stage-entry-markers.mjs';
+import {
+  parseEntryMarkersFirstVisit as parseEntryMarkers,
+  verifyChainIntegrity,
+} from '../lib/stage-entry-markers.mjs';
 
 function bodyWith(markers) {
   return markers.map(([s, ts]) => `<!-- aitm-entered-${s}: ${ts} -->`).join('\n');

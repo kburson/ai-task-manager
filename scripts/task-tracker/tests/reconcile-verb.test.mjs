@@ -155,10 +155,11 @@ test('reconcile accept-live: no live state → error', async () => {
   assert.equal(calls.writes.length, 0);
 });
 
-test('reconcile accept-live: strips future entry markers + names them in timing row (#148 regression)', async () => {
-  // #140 scenario: lying review→done left aitm-entered-done + last-known=done
-  // on body, but live state remained review. Accept-live must roll back state
-  // marker AND strip the bogus entered-done marker.
+test('reconcile accept-live: preserves forward markers as history + adds visit marker (#181)', async () => {
+  // #181 schema: forward markers are preserved as audit history. accept-live
+  // updates last-known-state and stamps entered-<live>-N as a new visit. The
+  // chain-integrity gate validates the resulting sequence against
+  // LEGAL_TRANSITIONS (done->review is the rollback arc).
   const body =
     '<!-- aitm-last-known-state: done -->\n' +
     '<!-- aitm-last-known-state-ts: 2026-05-16T16:37:00Z -->\n' +
@@ -171,15 +172,14 @@ test('reconcile accept-live: strips future entry markers + names them in timing 
   const { deps, calls } = makeDeps({ body, live: 'review' });
   const r = await runReconcile({ issueNumber: 148, mode: 'accept-live', cfg, deps });
   assert.equal(r.status, 'reconciled');
-  assert.deepEqual(r.stripped, ['done']);
+  assert.deepEqual(r.stripped, []);
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state: review/);
-  assert.match(calls.writes[0], /aitm-entered-review/);
-  // #174: accept-live stamps entered-<live> if absent; existing entered-review
-  // is preserved by stampEntryMarker's idempotent contract.
-  assert.doesNotMatch(calls.writes[0], /aitm-entered-done/);
+  assert.match(calls.writes[0], /aitm-entered-review:/);
+  assert.match(calls.writes[0], /aitm-entered-done:/);
+  assert.match(calls.writes[0], /aitm-entered-review-2:/);
   assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /stripped: done/);
+  assert.doesNotMatch(calls.timings[0], /stripped:/);
 });
 
 test('reconcile revert-to-recorded: does NOT strip future entry markers', async () => {

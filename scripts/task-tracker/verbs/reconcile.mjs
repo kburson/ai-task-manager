@@ -33,7 +33,7 @@ import {
   writeIssueBodyWithRetry,
 } from '../lib/state-recording.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { stampEntryMarker, stripEntryMarkersAfter } from '../lib/stage-entry-markers.mjs';
+import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { loadState, saveState } from '../state.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
@@ -194,8 +194,11 @@ export async function runReconcile({
     }
     const nowTs = now();
     const stamped = writeLastKnownState(body, live);
-    const { body: cleaned, stripped } = stripEntryMarkersAfter(stamped, live);
-    const withEntry = stampEntryMarker(cleaned, live, nowTs);
+    // Visit-aware schema (#181): preserve forward markers as history.
+    // stampEntryMarker increments the visit suffix; the chain-integrity gate
+    // validates the resulting sequence against LEGAL_TRANSITIONS.
+    const stripped = [];
+    const withEntry = stampEntryMarker(stamped, live, nowTs);
     await writeIssueBodyWithRetry({
       issueNumber,
       repo: cfg.repo,

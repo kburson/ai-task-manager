@@ -72,22 +72,23 @@ export async function shaFreshGate(body, headSha, deps = {}) {
 
 export function chainIntegrityGate(body) {
   const result = verifyChainIntegrity(body, 'review');
-  // Strict variant: require every REQUIRED_CHAIN_STAGES marker.
+  // Strict variant: require every REQUIRED_CHAIN_STAGES marker (any visit).
   const holes = [];
   for (const stage of REQUIRED_CHAIN_STAGES) {
-    const re = new RegExp(`<!--\\s*aitm-entered-${stage}:\\s*[^>]*?-->`, 'i');
+    const re = new RegExp(`<!--\\s*aitm-entered-${stage}(?:-\\d+)?:\\s*[^>]*?-->`, 'i');
     if (!re.test(String(body || ''))) holes.push(stage);
   }
-  if (holes.length === 0 && !result.outOfOrder) return { ok: true };
+  const illegal = result.illegalArcs || [];
+  if (holes.length === 0 && illegal.length === 0) return { ok: true };
   const blockers = [];
   for (const h of holes) {
     blockers.push(
       `close-chain-hole-at-${h}: \`aitm-entered-${h}\` marker missing — stage skipped or marker stripped`
     );
   }
-  if (result.outOfOrder) {
+  for (const arc of illegal) {
     blockers.push(
-      `close-chain-out-of-order: stage-entry markers exist but timestamps are not monotonic`
+      `close-chain-illegal-arc: ${arc.from}->${arc.to} at ${arc.atTs} is not in LEGAL_TRANSITIONS`
     );
   }
   return { ok: false, blockers };

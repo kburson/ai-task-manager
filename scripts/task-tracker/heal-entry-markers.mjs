@@ -34,7 +34,11 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from './config.mjs';
-import { STAGES, parseEntryMarkers, backfillEntryMarker } from './lib/stage-entry-markers.mjs';
+import {
+  STAGES,
+  parseEntryMarkersFirstVisit as parseEntryMarkers,
+  backfillEntryMarker,
+} from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);

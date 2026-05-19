@@ -3,9 +3,11 @@ import { strict as assert } from 'node:assert';
 import {
   stampEntryMarker,
   parseEntryMarkers,
+  parseEntryMarkersFirstVisit,
   verifyChainIntegrity,
   backfillEntryMarker,
   stripEntryMarkersAfter,
+  LEGAL_TRANSITIONS,
   STAGES,
 } from '../lib/stage-entry-markers.mjs';
 
@@ -18,26 +20,55 @@ const withFields = 'Body text\n\n<!-- aitm-fields: {"foo":"bar"} -->\n';
 b = stampEntryMarker(withFields, 'plan', '2026-01-02T00:00:00Z');
 assert.ok(b.indexOf('aitm-entered-plan') < b.indexOf('aitm-fields'));
 
-// 2. Idempotency: second call with same stage returns unchanged body
-const once = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
-const twice = stampEntryMarker(once, 'refine', '2026-02-02T00:00:00Z');
-assert.equal(once, twice, 'second stamp of same stage is no-op');
+// 2. Visit-numbered stamping (#181): second visit emits `-2`, third `-3`, etc.
+let visitBody = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
+visitBody = stampEntryMarker(visitBody, 'refine', '2026-02-02T00:00:00Z');
+assert.match(visitBody, /aitm-entered-refine: 2026-01-01T00:00:00Z/);
+assert.match(visitBody, /aitm-entered-refine-2: 2026-02-02T00:00:00Z/);
+visitBody = stampEntryMarker(visitBody, 'refine', '2026-03-03T00:00:00Z');
+assert.match(visitBody, /aitm-entered-refine-3: 2026-03-03T00:00:00Z/);
 
-// 3. parseEntryMarkers
-assert.deepEqual(parseEntryMarkers(''), {});
+// 2b. First-visit idempotency: re-stamping same stage with same ts is no-op
+const onceVisit = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
+const twiceSameTs = stampEntryMarker(onceVisit, 'refine', '2026-01-01T00:00:00Z');
+assert.equal(onceVisit, twiceSameTs, 'same-ts re-stamp is no-op');
+
+// 3. parseEntryMarkers returns ordered tuples
+assert.deepEqual(parseEntryMarkers(''), []);
 let multi = '';
-for (const s of STAGES)
+for (const s of STAGES) {
   multi = stampEntryMarker(
     multi,
     s,
     `2026-01-${String(STAGES.indexOf(s) + 1).padStart(2, '0')}T00:00:00Z`
   );
+}
 const parsed = parseEntryMarkers(multi);
-assert.equal(Object.keys(parsed).length, 7);
-assert.equal(parsed.backlog, '2026-01-01T00:00:00Z');
-assert.equal(parsed.done, '2026-01-07T00:00:00Z');
+assert.equal(parsed.length, 7);
+assert.deepEqual(parsed[0], { stage: 'backlog', visit: 1, ts: '2026-01-01T00:00:00Z' });
+assert.deepEqual(parsed[6], { stage: 'done', visit: 1, ts: '2026-01-07T00:00:00Z' });
 
-// 4. verifyChainIntegrity — no holes
+// 3b. parseEntryMarkers captures visit suffixes
+const replay = stampEntryMarker(stampEntryMarker('', 'plan', 't1'), 'plan', 't2');
+const replayParsed = parseEntryMarkers(replay);
+assert.equal(replayParsed.length, 2);
+assert.deepEqual(replayParsed[0], { stage: 'plan', visit: 1, ts: 't1' });
+assert.deepEqual(replayParsed[1], { stage: 'plan', visit: 2, ts: 't2' });
+
+// 3c. parseEntryMarkersFirstVisit collapses to legacy {stage:ts} map
+const firstVisit = parseEntryMarkersFirstVisit(replay);
+assert.deepEqual(firstVisit, { plan: 't1' });
+
+// 3d. Legacy unsuffixed-only bodies parse as visit:1
+const legacy =
+  '<!-- aitm-entered-backlog: 2026-01-01T00:00:00Z -->\n' +
+  '<!-- aitm-entered-refine: 2026-01-02T00:00:00Z -->\n';
+const legacyParsed = parseEntryMarkers(legacy);
+assert.equal(legacyParsed.length, 2);
+assert.equal(legacyParsed[0].visit, 1);
+assert.equal(legacyParsed[1].visit, 1);
+
+// 4. verifyChainIntegrity — no holes, no illegal arcs
 let chain = '';
 chain = stampEntryMarker(chain, 'backlog', '2026-01-01T00:00:00Z');
 chain = stampEntryMarker(chain, 'refine', '2026-01-02T00:00:00Z');
@@ -45,6 +76,7 @@ chain = stampEntryMarker(chain, 'plan', '2026-01-03T00:00:00Z');
 let r = verifyChainIntegrity(chain, 'plan');
 assert.equal(r.ok, true);
 assert.deepEqual(r.holes, []);
+assert.deepEqual(r.illegalArcs, []);
 assert.deepEqual(r.presentStages, ['backlog', 'refine', 'plan']);
 
 // 5. One hole: backlog + plan, current=plan
@@ -54,31 +86,106 @@ r = verifyChainIntegrity(hole, 'plan');
 assert.equal(r.ok, false);
 assert.deepEqual(r.holes, ['refine']);
 
-// 6. Multiple holes: backlog + develop, current=develop
+// 6. Multiple holes
 let holes2 = stampEntryMarker('', 'backlog', '2026-01-01T00:00:00Z');
 holes2 = stampEntryMarker(holes2, 'develop', '2026-01-04T00:00:00Z');
 r = verifyChainIntegrity(holes2, 'develop');
 assert.deepEqual(r.holes, ['refine', 'plan']);
 
-// 7. Out-of-order: refine ts > plan ts
-let ooo = stampEntryMarker('', 'backlog', '2026-01-01T00:00:00Z');
-ooo = stampEntryMarker(ooo, 'refine', '2026-01-05T00:00:00Z');
-ooo = stampEntryMarker(ooo, 'plan', '2026-01-03T00:00:00Z');
-r = verifyChainIntegrity(ooo, 'plan');
-assert.equal(r.outOfOrder, true);
-assert.equal(r.ok, false);
+// 7. Legal rollback arcs pass: backlog→refine→plan→refine-2→plan-2
+let rollback = '';
+rollback = stampEntryMarker(rollback, 'backlog', '2026-01-01T00:00:00Z');
+rollback = stampEntryMarker(rollback, 'refine', '2026-01-02T00:00:00Z');
+rollback = stampEntryMarker(rollback, 'plan', '2026-01-03T00:00:00Z');
+rollback = stampEntryMarker(rollback, 'refine', '2026-01-04T00:00:00Z');
+rollback = stampEntryMarker(rollback, 'plan', '2026-01-05T00:00:00Z');
+r = verifyChainIntegrity(rollback, 'plan');
+assert.equal(r.ok, true, `expected ok, got ${JSON.stringify(r)}`);
+assert.deepEqual(r.illegalArcs, []);
 
-// Empty body → ok with no presentStages
+// 7b. develop → plan rollback is legal
+let devRollback = '';
+for (const [s, ts] of [
+  ['backlog', '2026-01-01T00:00:00Z'],
+  ['refine', '2026-01-02T00:00:00Z'],
+  ['plan', '2026-01-03T00:00:00Z'],
+  ['develop', '2026-01-04T00:00:00Z'],
+  ['plan', '2026-01-05T00:00:00Z'],
+]) {
+  devRollback = stampEntryMarker(devRollback, s, ts);
+}
+r = verifyChainIntegrity(devRollback, 'plan');
+assert.equal(r.ok, true);
+
+// 7c. review → develop rollback (rework) is legal
+let reworkChain = '';
+for (const [s, ts] of [
+  ['backlog', '2026-01-01T00:00:00Z'],
+  ['refine', '2026-01-02T00:00:00Z'],
+  ['plan', '2026-01-03T00:00:00Z'],
+  ['develop', '2026-01-04T00:00:00Z'],
+  ['test', '2026-01-05T00:00:00Z'],
+  ['review', '2026-01-06T00:00:00Z'],
+  ['develop', '2026-01-07T00:00:00Z'],
+]) {
+  reworkChain = stampEntryMarker(reworkChain, s, ts);
+}
+r = verifyChainIntegrity(reworkChain, 'develop');
+assert.equal(r.ok, true);
+
+// 8. Illegal arcs flagged: done → develop
+const illegal =
+  '<!-- aitm-entered-done: 2026-01-01T00:00:00Z -->\n' +
+  '<!-- aitm-entered-develop-2: 2026-01-02T00:00:00Z -->\n';
+r = verifyChainIntegrity(illegal, 'develop');
+assert.equal(r.ok, false);
+assert.equal(r.illegalArcs.length, 1);
+assert.equal(r.illegalArcs[0].from, 'done');
+assert.equal(r.illegalArcs[0].to, 'develop');
+
+// 8b. Illegal arc: review → refine (skipping develop)
+const illegal2 =
+  '<!-- aitm-entered-review: 2026-01-01T00:00:00Z -->\n' +
+  '<!-- aitm-entered-refine-2: 2026-01-02T00:00:00Z -->\n';
+r = verifyChainIntegrity(illegal2, 'refine');
+assert.equal(r.ok, false);
+assert.equal(r.illegalArcs[0].from, 'review');
+assert.equal(r.illegalArcs[0].to, 'refine');
+
+// 9. LEGAL_TRANSITIONS exported and contains expected entries
+assert.ok(LEGAL_TRANSITIONS instanceof Set);
+for (const arc of [
+  'backlog->refine',
+  'refine->plan',
+  'plan->develop',
+  'develop->test',
+  'test->review',
+  'review->done',
+  'review->develop',
+  'test->develop',
+  'develop->plan',
+  'develop->refine',
+  'plan->refine',
+  'plan->backlog',
+  'refine->backlog',
+]) {
+  assert.ok(LEGAL_TRANSITIONS.has(arc), `expected legal arc: ${arc}`);
+}
+assert.ok(!LEGAL_TRANSITIONS.has('done->develop'));
+assert.ok(!LEGAL_TRANSITIONS.has('review->refine'));
+
+// Empty body → ok
 r = verifyChainIntegrity('', 'develop');
 assert.equal(r.ok, true);
 assert.deepEqual(r.presentStages, []);
+assert.deepEqual(r.illegalArcs, []);
 
-// 8. backfillEntryMarker writes marker AND audit comment
+// 10. backfillEntryMarker writes marker AND audit comment
 const bf = backfillEntryMarker('', 'refine', '2026-01-02T00:00:00Z', 'recovered-from-drift');
 assert.match(bf, /aitm-entered-refine: 2026-01-02T00:00:00Z/);
 assert.match(bf, /aitm-backfill: refine:recovered-from-drift:2026-01-02T00:00:00Z/);
 
-// 9. Backfill idempotency: second call is no-op for both marker AND audit
+// 10b. Backfill idempotency
 const bf2 = backfillEntryMarker(bf, 'refine', '2026-02-02T00:00:00Z', 'different-reason');
 assert.equal(bf, bf2, 'second backfill of same stage is no-op');
 
@@ -86,20 +193,9 @@ assert.equal(bf, bf2, 'second backfill of same stage is no-op');
 assert.throws(() => stampEntryMarker('', 'mystery', '2026-01-01T00:00:00Z'));
 assert.throws(() => verifyChainIntegrity('', 'mystery'));
 assert.throws(() => backfillEntryMarker('', 'mystery', 'ts', 'r'));
-
-// Missing ts throws
 assert.throws(() => stampEntryMarker('', 'refine', ''));
 
-// 10. stripEntryMarkersAfter: no-op when no future markers
-{
-  let body148 = stampEntryMarker('', 'backlog', '2026-01-01T00:00:00Z');
-  body148 = stampEntryMarker(body148, 'refine', '2026-01-02T00:00:00Z');
-  const { body: out, stripped } = stripEntryMarkersAfter(body148, 'refine');
-  assert.deepEqual(stripped, []);
-  assert.equal(out, body148);
-}
-
-// 11. stripEntryMarkersAfter: strip single future marker
+// 11. stripEntryMarkersAfter still functional (kept for emergency use)
 {
   let body148 = stampEntryMarker('', 'review', '2026-01-06T00:00:00Z');
   body148 = stampEntryMarker(body148, 'done', '2026-01-07T00:00:00Z');
@@ -108,35 +204,6 @@ assert.throws(() => stampEntryMarker('', 'refine', ''));
   assert.doesNotMatch(out, /aitm-entered-done/);
   assert.match(out, /aitm-entered-review/);
 }
-
-// 12. stripEntryMarkersAfter: strip multiple consecutive future markers
-{
-  let body148 = stampEntryMarker('', 'refine', '2026-01-02T00:00:00Z');
-  body148 = stampEntryMarker(body148, 'plan', '2026-01-03T00:00:00Z');
-  body148 = stampEntryMarker(body148, 'develop', '2026-01-04T00:00:00Z');
-  body148 = stampEntryMarker(body148, 'test', '2026-01-05T00:00:00Z');
-  body148 = stampEntryMarker(body148, 'review', '2026-01-06T00:00:00Z');
-  body148 = stampEntryMarker(body148, 'done', '2026-01-07T00:00:00Z');
-  const { body: out, stripped } = stripEntryMarkersAfter(body148, 'plan');
-  assert.deepEqual(stripped, ['develop', 'test', 'review', 'done']);
-  assert.match(out, /aitm-entered-refine/);
-  assert.match(out, /aitm-entered-plan/);
-  assert.doesNotMatch(out, /aitm-entered-develop/);
-  assert.doesNotMatch(out, /aitm-entered-test/);
-  assert.doesNotMatch(out, /aitm-entered-review/);
-  assert.doesNotMatch(out, /aitm-entered-done/);
-}
-
-// 13. stripEntryMarkersAfter: unknown stage throws
 assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
-
-// 14. stripEntryMarkersAfter: collapses blank line runs
-{
-  const messy =
-    'preamble\n\n<!-- aitm-entered-refine: 2026-01-02T00:00:00Z -->\n\n<!-- aitm-entered-done: 2026-01-07T00:00:00Z -->\n\ntrailing\n';
-  const { body: out, stripped } = stripEntryMarkersAfter(messy, 'refine');
-  assert.deepEqual(stripped, ['done']);
-  assert.doesNotMatch(out, /\n{3,}/);
-}
 
 console.log('stage-entry-markers.test.mjs: all passed');

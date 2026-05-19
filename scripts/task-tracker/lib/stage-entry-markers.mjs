@@ -8,10 +8,34 @@ export const STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review',
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 const KNOWN_STAGES = new Set(STAGES);
 
-const ENTRY_RE_GLOBAL = /<!--\s*aitm-entered-([a-z]+):\s*([^>\s]+)\s*-->/gi;
+// Legal transitions in the 7-state machine. Forward arcs follow the linear
+// chain; rollback arcs cover legitimate rewinds (review/test → develop on
+// rework, develop → plan/refine on re-plan, plan → refine/backlog on cancel,
+// refine → backlog on demote). Used by verifyChainIntegrity to validate the
+// timestamp-ordered sequence of visit-numbered entry markers.
+function buildLegalTransitions() {
+  const set = new Set();
+  for (let i = 0; i < STAGES.length - 1; i++) set.add(`${STAGES[i]}->${STAGES[i + 1]}`);
+  for (const arc of [
+    'review->develop',
+    'test->develop',
+    'develop->plan',
+    'develop->refine',
+    'plan->refine',
+    'plan->backlog',
+    'refine->backlog',
+  ]) {
+    set.add(arc);
+  }
+  return set;
+}
+export const LEGAL_TRANSITIONS = buildLegalTransitions();
 
-function entryMarker(stage, ts) {
-  return `<!-- aitm-entered-${stage}: ${ts} -->`;
+const ENTRY_RE_GLOBAL = /<!--\s*aitm-entered-([a-z]+)(?:-(\d+))?:\s*([^>\s]+)\s*-->/gi;
+
+function entryMarker(stage, ts, visit = 1) {
+  const suffix = visit > 1 ? `-${visit}` : '';
+  return `<!-- aitm-entered-${stage}${suffix}: ${ts} -->`;
 }
 
 function backfillAuditMarker(stage, reason, ts) {
@@ -20,7 +44,7 @@ function backfillAuditMarker(stage, reason, ts) {
 }
 
 function stageMarkerRe(stage) {
-  return new RegExp(`<!--\\s*aitm-entered-${stage}:\\s*([^>]*?)\\s*-->`, 'i');
+  return new RegExp(`<!--\\s*aitm-entered-${stage}(?:-\\d+)?:\\s*([^>]*?)\\s*-->`, 'i');
 }
 
 function backfillMarkerRe(stage) {
@@ -43,18 +67,41 @@ export function stampEntryMarker(body, stage, ts) {
   }
   if (!ts) throw new Error('stampEntryMarker: ts is required');
   const src = String(body || '');
-  if (stageMarkerRe(stage).test(src)) return src;
-  return insertBeforeFieldDb(src, entryMarker(stage, ts));
+  const tuples = parseEntryMarkers(src);
+  let maxVisit = 0;
+  for (const t of tuples) {
+    if (t.stage === stage && t.visit > maxVisit) maxVisit = t.visit;
+  }
+  // Idempotency: re-stamping the exact same (stage, ts) pair is a no-op.
+  // Distinct ts always advances the visit count.
+  if (tuples.some((t) => t.stage === stage && t.ts === ts)) return src;
+  const nextVisit = maxVisit + 1;
+  return insertBeforeFieldDb(src, entryMarker(stage, ts, nextVisit));
 }
 
+// Returns an ordered list of `{stage, visit, ts}` tuples in document order.
+// Legacy unsuffixed markers parse as `visit: 1`.
 export function parseEntryMarkers(body) {
   const src = String(body || '');
-  const out = {};
+  const out = [];
   ENTRY_RE_GLOBAL.lastIndex = 0;
   let m;
   while ((m = ENTRY_RE_GLOBAL.exec(src)) !== null) {
-    const [, stage, ts] = m;
-    if (!(stage in out)) out[stage] = ts;
+    const [, stage, visitStr, ts] = m;
+    const visit = visitStr ? Number(visitStr) : 1;
+    out.push({ stage, visit, ts });
+  }
+  return out;
+}
+
+// First-visit-only view as a `{stage: ts}` map. For callers that only need
+// the legacy "first time we entered this stage" semantics — preserves
+// back-compat for heal-entry-markers and similar consumers that haven't been
+// updated to the tuple form.
+export function parseEntryMarkersFirstVisit(body) {
+  const out = {};
+  for (const { stage, visit, ts } of parseEntryMarkers(body)) {
+    if (visit === 1 && !(stage in out)) out[stage] = ts;
   }
   return out;
 }
@@ -63,12 +110,14 @@ export function verifyChainIntegrity(body, currentStage) {
   if (!KNOWN_STAGES.has(currentStage)) {
     throw new Error(`verifyChainIntegrity: unknown currentStage "${currentStage}"`);
   }
-  const markers = parseEntryMarkers(body);
-  const present = Object.keys(markers);
-  if (present.length === 0) {
-    return { ok: true, presentStages: [], holes: [], outOfOrder: false };
+  const tuples = parseEntryMarkers(body);
+  if (tuples.length === 0) {
+    return { ok: true, presentStages: [], holes: [], illegalArcs: [] };
   }
-  const presentIndices = present.map((s) => STAGE_INDEX[s]).sort((a, b) => a - b);
+
+  const ordered = [...tuples].sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+  const seenStages = new Set(ordered.map((t) => t.stage));
+  const presentIndices = [...seenStages].map((s) => STAGE_INDEX[s]).sort((a, b) => a - b);
   const earliest = presentIndices[0];
   const currentIdx = STAGE_INDEX[currentStage];
   const rangeEnd = Math.max(earliest, currentIdx);
@@ -77,22 +126,26 @@ export function verifyChainIntegrity(body, currentStage) {
   const presentStages = [];
   for (let i = earliest; i <= rangeEnd; i++) {
     const s = STAGES[i];
-    if (s in markers) presentStages.push(s);
+    if (seenStages.has(s)) presentStages.push(s);
     else holes.push(s);
   }
 
-  let outOfOrder = false;
-  let prevTs = null;
-  for (const s of presentStages) {
-    const ts = markers[s];
-    if (prevTs !== null && ts < prevTs) {
-      outOfOrder = true;
-      break;
+  const illegalArcs = [];
+  for (let i = 1; i < ordered.length; i++) {
+    const from = ordered[i - 1].stage;
+    const to = ordered[i].stage;
+    if (from === to) continue;
+    if (!LEGAL_TRANSITIONS.has(`${from}->${to}`)) {
+      illegalArcs.push({ from, to, atTs: ordered[i].ts });
     }
-    prevTs = ts;
   }
 
-  return { ok: holes.length === 0 && !outOfOrder, presentStages, holes, outOfOrder };
+  return {
+    ok: holes.length === 0 && illegalArcs.length === 0,
+    presentStages,
+    holes,
+    illegalArcs,
+  };
 }
 
 export function stripEntryMarkersAfter(body, stage) {
