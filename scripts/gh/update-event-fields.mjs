@@ -9,17 +9,28 @@ import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 
+const VALID_STATES = ['refine', 'plan', 'develop', 'test', 'review', 'done'];
+
 const args = process.argv.slice(2);
 const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
-const state = args.find((a) => ['refine', 'develop', 'done'].includes(a));
+const state = args.find((a) => VALID_STATES.includes(a));
 const itemId = args[args.indexOf('--item-id') + 1] || '';
 
 if (!issue || !state || !itemId) {
   console.error(
-    'Usage: update-event-fields.mjs <issue#> <refine|develop|done> --item-id <project-item-id>'
+    'Usage: update-event-fields.mjs <issue#> <refine|plan|develop|test|review|done> --item-id <project-item-id>'
   );
   process.exit(1);
 }
+
+const STATE_TO_EVENT = {
+  refine: 'moveToRefine',
+  plan: 'moveToPlan',
+  develop: 'moveToDevelopment',
+  test: 'moveToTest',
+  review: 'moveToReview',
+  done: 'moveToDone',
+};
 
 const cfg = loadConfig();
 if (!cfg.projectId) process.exit(0);
@@ -96,8 +107,7 @@ async function writeIssueBody(body) {
 }
 
 try {
-  const eventName =
-    state === 'refine' ? 'moveToRefine' : state === 'develop' ? 'moveToDevelopment' : 'moveToDone';
+  const eventName = STATE_TO_EVENT[state];
   const bindings = loadEventBindings()[eventName] || [];
   const fieldDefs = loadProjectFieldDefs(projectDir());
   const issueBody = cfg.repo ? await fetchIssueBody() : '';

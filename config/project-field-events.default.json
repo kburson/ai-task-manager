@@ -1,6 +1,10 @@
 {
   "moveToRefine": [{ "field": "startTime", "value": "now", "mode": "set_once" }],
+  "moveToPlan": [],
   "moveToDevelopment": [],
+  "moveToTest": [],
+  "moveToReview": [],
+  "moveToDone": [],
   "logTime": [
     { "field": "engagedTime", "value": "computed.engagedMinutes", "mode": "set" },
     { "field": "sessionTime", "value": "computed.sessionMinutes", "mode": "set" },
