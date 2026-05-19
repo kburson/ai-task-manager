@@ -131,13 +131,27 @@ export function normalizeFieldValues(values, fieldDefs = []) {
   return out;
 }
 
-export function ensureIssueFieldDb(body, fieldDefs = [], projectValues = {}) {
+export function ensureIssueFieldDb(body, fieldDefs = [], projectValues = {}, options = {}) {
   const parsed = parseIssueFieldDb(body);
   const base = defaultFieldValues(fieldDefs);
   const visible = inferVisibleFieldValues(body, fieldDefs);
+  // Default precedence: parsed (persisted DB) wins over projectValues (treated as defaults/seeds).
+  // With { override: true } (or per-key { overrideKeys: [...] }), projectValues win — used by
+  // log-issue-time.mjs to push fresh authoritative values into the body marker.
+  const overrideAll = options.override === true;
+  const overrideKeys = new Set(options.overrideKeys || []);
+  const overrides = {};
+  if (overrideAll || overrideKeys.size) {
+    for (const [k, v] of Object.entries(projectValues || {})) {
+      if (overrideAll || overrideKeys.has(k)) overrides[k] = v;
+    }
+  }
   const values = parsed.ok
-    ? normalizeFieldValues({ ...base, ...projectValues, ...visible, ...parsed.values }, fieldDefs)
-    : normalizeFieldValues({ ...base, ...projectValues, ...visible }, fieldDefs);
+    ? normalizeFieldValues(
+        { ...base, ...projectValues, ...visible, ...parsed.values, ...overrides },
+        fieldDefs
+      )
+    : normalizeFieldValues({ ...base, ...projectValues, ...visible, ...overrides }, fieldDefs);
   const nextBody = `${stripIssueFieldDb(body)}\n\n${formatIssueFieldDb(values)}\n`;
   return {
     changed: !parsed.ok || nextBody !== body,

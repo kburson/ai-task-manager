@@ -190,20 +190,23 @@ async function writeNumberField(itemId, fieldId, value) {
       ? (firstStartTimestamp(comment.body) ?? null)
       : null;
 
-  const ensured = ensureIssueFieldDb(issueBody, fieldDefs, {
-    engagedTime: engagedMin,
-    sessionTime: totalActiveMin,
-    reviewTime: reviewMin,
-    ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
-  });
-  const values = {
-    ...ensured.values,
-    engagedTime: engagedMin,
-    sessionTime: totalActiveMin,
-    reviewTime: reviewMin,
-    ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
-  };
-  const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
+  // Authoritative timing rollup — these keys MUST overwrite stale body-marker values.
+  // Without override, the persisted DB wins (see ensureIssueFieldDb), so a board write
+  // succeeds but the `<!-- aitm-fields -->` cache stays null. That is the #180 bug.
+  const overrideKeys = ['engagedTime', 'sessionTime', 'reviewTime'];
+  if (repairedStartTime) overrideKeys.push('startTime');
+  const updated = ensureIssueFieldDb(
+    issueBody,
+    fieldDefs,
+    {
+      engagedTime: engagedMin,
+      sessionTime: totalActiveMin,
+      reviewTime: reviewMin,
+      ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
+    },
+    { overrideKeys }
+  );
+  const values = updated.values;
   if (updated.changed) await writeIssueBody(updated.body);
 
   const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values });
