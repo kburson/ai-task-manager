@@ -25,7 +25,7 @@ const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
 
 function makeDeps(overrides = {}) {
-  const calls = { writes: [], bodies: [], stateLookups: 0 };
+  const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
@@ -50,6 +50,11 @@ function makeDeps(overrides = {}) {
       // sandbox). Tests that exercise the full-auto path inject their own
       // detectFullAuto via overrides.deps.
       detectFullAuto: () => ({ fired: false, signals: '' }),
+      postComment: async ({ body }) => {
+        calls.comments.push(body);
+      },
+      fetchComments: async () => [],
+      fetchProjectValues: async () => ({}),
       ...overrides.deps,
     },
     getBody: () => body,
