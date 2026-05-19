@@ -260,16 +260,19 @@ export async function runVerbTest({
     // test.mjs moves develop→review (skipping the Test column). move-state.mjs
     // stamps the entry marker for the target ('review') automatically; we
     // stamp the intermediate 'test' marker here so the chain stays complete.
-    // Skip the stamp when the chain has already advanced past 'test' (e.g.
-    // re-test after a demote review→develop) — otherwise the new marker lands
-    // with a ts later than the existing review marker, producing the illegal
-    // arc `review->test` that close-gates rejects.
+    // Stamp only when the latest marker by ts is 'develop' (the legitimate
+    // develop→test→review bridge). If the chain has already advanced past
+    // develop without a fresh develop entry (e.g. test re-run within review),
+    // stamping would create an illegal review→test arc.
     let stamped = insertDodVerifiedMarker(body, sha, ts);
+    const markers = parseEntryMarkers(stamped);
+    const latest = markers
+      .slice()
+      .sort((a, b) => new Date(a.ts) - new Date(b.ts))
+      .pop();
     const testIdx = STAGES.indexOf('test');
-    const chainPastTest = parseEntryMarkers(stamped).some(
-      (t) => STAGES.indexOf(t.stage) > testIdx
-    );
-    if (!chainPastTest) {
+    const latestIdx = latest ? STAGES.indexOf(latest.stage) : -1;
+    if (latestIdx < testIdx) {
       stamped = stampEntryMarker(stamped, 'test', ts);
     }
     if (stamped !== body) {
