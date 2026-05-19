@@ -211,6 +211,8 @@ Once installed, Claude will use `ref_search_documentation` and `ref_read_url` au
 
 ---
 
+<!-- cspell:ignore optout -->
+
 ## Task-tracker settings (`.ai-task-manager/task-tracker.json`)
 
 A few keys gate state transitions. The defaults are safe; flip them off only with intent.
