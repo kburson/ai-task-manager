@@ -5,6 +5,7 @@
 // record.
 
 import { pauseSpansBetween } from './lib/timing-rows.mjs';
+import { parseEntryMarkers, STAGES } from './lib/stage-entry-markers.mjs';
 
 // Support both legacy minute-precision (HH:MM) and current second-precision
 // (HH:MM:SS) timestamps.
@@ -144,6 +145,76 @@ export function computePlanMin(rows) {
     if (deltaMin > 0) total += deltaMin;
   }
   return total;
+}
+
+// Compute per-stage durations from visit-numbered entry markers in the issue
+// body. Each `aitm-entered-<stage>[-N]` marker opens a (stage, visit) window;
+// the next marker in document order closes it. The trailing open window — the
+// stage the issue is currently in — contributes zero (no closing marker yet).
+//
+// Returns:
+//   {
+//     visits: [{ stage, visit, startMs, endMs, durationMin }, ...],
+//     perStageMin: { backlog: N, refine: N, plan: N, ... },
+//     totalMin: N,
+//   }
+//
+// Legacy single-visit issues (no `-N` suffix on markers) parse as visit=1 and
+// produce the same shape as multi-visit issues.
+export function computeStageDurations(body) {
+  const tuples = parseEntryMarkers(body);
+  const visits = [];
+  const perStageMin = Object.fromEntries(STAGES.map((s) => [s, 0]));
+  for (let i = 0; i < tuples.length; i++) {
+    const { stage, visit, ts } = tuples[i];
+    const startMs = Date.parse(ts);
+    if (!Number.isFinite(startMs)) continue;
+    const next = tuples[i + 1];
+    const endMs = next ? Date.parse(next.ts) : null;
+    if (endMs == null || !Number.isFinite(endMs) || endMs < startMs) {
+      visits.push({ stage, visit, startMs, endMs: null, durationMin: 0 });
+      continue;
+    }
+    const durationMin = Math.round((endMs - startMs) / 60000);
+    visits.push({ stage, visit, startMs, endMs, durationMin });
+    if (stage in perStageMin) perStageMin[stage] += durationMin;
+  }
+  const totalMin = Object.values(perStageMin).reduce((a, b) => a + b, 0);
+  return { visits, perStageMin, totalMin };
+}
+
+const STAGE_ROLLUP_MARKER_RE = /<!--\s*aitm-stage-rollup:\s*(\{[\s\S]*?\})\s*-->/;
+
+// Build the audit marker line that persists per-visit detail in the issue body.
+// `schema: 1` lets future readers detect format upgrades without parsing every
+// historical issue.
+export function buildStageRollupMarker(rollup) {
+  const payload = {
+    schema: 1,
+    perStage: rollup.perStageMin,
+    totalMin: rollup.totalMin,
+    visits: rollup.visits.map(({ stage, visit, durationMin }) => ({
+      stage,
+      visit,
+      durationMin,
+    })),
+  };
+  return `<!-- aitm-stage-rollup: ${JSON.stringify(payload)} -->`;
+}
+
+// Idempotent: replaces an existing marker in place, otherwise appends after the
+// `aitm-fields` marker (or at end if absent).
+export function upsertStageRollupMarker(body, rollup) {
+  const src = String(body || '');
+  const line = buildStageRollupMarker(rollup);
+  if (STAGE_ROLLUP_MARKER_RE.test(src)) {
+    return src.replace(STAGE_ROLLUP_MARKER_RE, line);
+  }
+  const fieldsRe = /<!--\s*aitm-fields:[\s\S]*?-->/;
+  if (fieldsRe.test(src)) {
+    return src.replace(fieldsRe, (m) => `${m}\n${line}`);
+  }
+  return src.endsWith('\n') ? `${src}${line}\n` : `${src}\n${line}\n`;
 }
 
 export function rollupTotals(rows, thresholdMin) {

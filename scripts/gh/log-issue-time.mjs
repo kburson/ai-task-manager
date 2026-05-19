@@ -19,8 +19,10 @@ import {
 } from '../task-tracker/project-fields.mjs';
 import {
   applyPauseSpansToRows,
+  computeStageDurations,
   parseTimingRows,
   rollupTotals,
+  upsertStageRollupMarker,
 } from '../task-tracker/timing-rollup.mjs';
 import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
@@ -179,6 +181,19 @@ async function writeNumberField(itemId, fieldId, value) {
   console.log(`  Review Time         : ${reviewMin} min  (threshold ${thresholdMin} min)`);
   console.log(`  Plan Time           : ${planMin} min`);
 
+  const stageRollup = computeStageDurations(issueBodyForPauses);
+  if (stageRollup.visits.length) {
+    console.log('  Stage Time (per visit):');
+    for (const v of stageRollup.visits) {
+      const closed = v.endMs != null ? `${v.durationMin} min` : 'open';
+      console.log(`    ${v.stage}#${v.visit}: ${closed}`);
+    }
+    console.log('  Stage Time (totals):');
+    for (const [stage, min] of Object.entries(stageRollup.perStageMin)) {
+      if (min > 0) console.log(`    ${stage}: ${min} min`);
+    }
+  }
+
   if (dryRun) {
     const startTimestamp = firstStartTimestamp(comment.body);
     if (startTimestamp) console.log(`  Start Time (from log): ${startTimestamp}`);
@@ -216,7 +231,11 @@ async function writeNumberField(itemId, fieldId, value) {
     { overrideKeys }
   );
   const values = updated.values;
-  if (updated.changed) await writeIssueBody(updated.body);
+  let bodyOut = updated.body;
+  if (stageRollup.visits.length) {
+    bodyOut = upsertStageRollupMarker(bodyOut, stageRollup);
+  }
+  if (bodyOut !== issueBody) await writeIssueBody(bodyOut);
 
   const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values });
   if (syncPlan.length) {
