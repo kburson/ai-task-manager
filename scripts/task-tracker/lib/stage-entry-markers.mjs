@@ -80,7 +80,7 @@ export function stampEntryMarker(body, stage, ts) {
 }
 
 // Returns an ordered list of `{stage, visit, ts}` tuples in document order.
-// Legacy unsuffixed markers parse as `visit: 1`.
+// Legacy markers without a visit suffix parse as `visit: 1`.
 export function parseEntryMarkers(body) {
   const src = String(body || '');
   const out = [];

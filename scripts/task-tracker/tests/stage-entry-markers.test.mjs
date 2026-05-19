@@ -59,7 +59,7 @@ assert.deepEqual(replayParsed[1], { stage: 'plan', visit: 2, ts: 't2' });
 const firstVisit = parseEntryMarkersFirstVisit(replay);
 assert.deepEqual(firstVisit, { plan: 't1' });
 
-// 3d. Legacy unsuffixed-only bodies parse as visit:1
+// 3d. Legacy bodies without visit suffixes parse as visit:1
 const legacy =
   '<!-- aitm-entered-backlog: 2026-01-01T00:00:00Z -->\n' +
   '<!-- aitm-entered-refine: 2026-01-02T00:00:00Z -->\n';
