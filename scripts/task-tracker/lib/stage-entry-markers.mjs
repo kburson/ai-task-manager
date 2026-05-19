@@ -2,7 +2,13 @@
 // hidden markers on issue bodies as a tamper-evident audit trail of every
 // successful /task promote transition. Append-only — first-stamp wins.
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
+import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+
+const pexec = promisify(execFile);
 
 export const STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
@@ -168,6 +174,129 @@ export function stripEntryMarkersAfter(body, stage) {
     out = out.replace(/\n{3,}/g, '\n\n');
   }
   return { body: out, stripped };
+}
+
+// Returns the highest visit number observed for `stage` in `body` (0 if none).
+// Used by callers that need to detect re-entry (visit >= 2) after stamping.
+export function getStageVisitCount(body, stage) {
+  if (!KNOWN_STAGES.has(stage)) {
+    throw new Error(`getStageVisitCount: unknown stage "${stage}"`);
+  }
+  let max = 0;
+  for (const t of parseEntryMarkers(body)) {
+    if (t.stage === stage && t.visit > max) max = t.visit;
+  }
+  return max;
+}
+
+// Hidden marker for re-entry audit comments. One per (stage, visit) pair.
+export const REENTRY_AUDIT_MARKER_RE = /<!--\s*aitm-reentry-audit:\s*([a-z]+)-(\d+)\s*-->/i;
+
+export function buildReentryAuditMarker(stage, visit) {
+  return `<!-- aitm-reentry-audit: ${stage}-${visit} -->`;
+}
+
+export function buildReentryAuditCommentBody({ stage, visit, ts }) {
+  if (!stage) throw new Error('buildReentryAuditCommentBody: stage is required');
+  if (!visit || visit < 2) throw new Error('buildReentryAuditCommentBody: visit must be >= 2');
+  if (!ts) throw new Error('buildReentryAuditCommentBody: ts is required');
+  return [
+    `### Re-entry recorded — \`${stage}\` (visit ${visit})`,
+    '',
+    `Stage \`${stage}\` was re-entered at ${ts} (visit ${visit}).`,
+    '',
+    'A visit-numbered entry marker was appended to the issue body. The previous markers for this stage are preserved as audit history. This comment makes the body change observable in the issue timeline.',
+    '',
+    buildReentryAuditMarker(stage, visit),
+  ].join('\n');
+}
+
+async function defaultPostComment({ repo, issueNumber, body }) {
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+    timeout: GH_API_TIMEOUT_MS,
+  });
+}
+
+async function defaultListComments({ repo, issueNumber }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const parsed = JSON.parse(stdout || '{}');
+  return Array.isArray(parsed.comments) ? parsed.comments : [];
+}
+
+function hasReentryAuditCommentFor(comments, stage, visit) {
+  if (!Array.isArray(comments)) return false;
+  const expect = `aitm-reentry-audit: ${stage}-${visit}`;
+  return comments.some((c) => String(c?.body ?? '').includes(expect));
+}
+
+// Idempotent re-entry audit-comment poster. Call AFTER stampEntryMarker when
+// visit >= 2 to make the body re-stamp observable in the issue timeline.
+// First-visit calls (visit === 1) are a no-op so callers can invoke
+// unconditionally.
+//
+// Returns one of:
+//   { mode: 'first-visit' }                                  visit < 2 — no-op
+//   { mode: 'already-present' }                              prior comment found
+//   { mode: 'posted' }                                       comment posted
+//   { mode: 'error', error: string }                         post failed (degraded)
+//
+// Never throws — failure to post degrades gracefully with a stderr warning so
+// the caller's body-stamp success is not undone by a comment-API hiccup.
+export async function postReentryAuditComment({
+  issueNumber,
+  repo,
+  stage,
+  visit,
+  ts,
+  postComment,
+  listComments,
+  warn = (msg) => process.stderr.write(`${msg}\n`),
+} = {}) {
+  if (!issueNumber) throw new Error('postReentryAuditComment: issueNumber is required');
+  if (!repo) throw new Error('postReentryAuditComment: repo is required');
+  if (!stage || !KNOWN_STAGES.has(stage)) {
+    throw new Error(`postReentryAuditComment: unknown stage "${stage}"`);
+  }
+  const v = Number(visit);
+  if (!Number.isFinite(v) || v < 1) {
+    throw new Error('postReentryAuditComment: visit must be a positive integer');
+  }
+  if (!ts) throw new Error('postReentryAuditComment: ts is required');
+
+  if (v < 2) return { mode: 'first-visit' };
+
+  const list = listComments || defaultListComments;
+  const post = postComment || defaultPostComment;
+
+  // Pre-check: scan comments for the (stage, visit) marker before posting.
+  try {
+    const comments = await list({ repo, issueNumber });
+    if (hasReentryAuditCommentFor(comments, stage, v)) {
+      return { mode: 'already-present' };
+    }
+  } catch (err) {
+    // best-effort — if list fails, fall through and post (a duplicate is
+    // preferable to a silently omitted audit row, mirroring the
+    // full-auto-approval policy).
+    warn(
+      `[reentry-audit] issue #${issueNumber}: comment list failed (${err.message}) — posting anyway`
+    );
+  }
+
+  const body = buildReentryAuditCommentBody({ stage, visit: v, ts });
+  try {
+    await post({ repo, issueNumber, body });
+    return { mode: 'posted' };
+  } catch (err) {
+    warn(
+      `[reentry-audit] issue #${issueNumber}: comment post FAILED for ${stage}-${v}: ${err.message}`
+    );
+    return { mode: 'error', error: err.message };
+  }
 }
 
 export function backfillEntryMarker(body, stage, ts, reason) {

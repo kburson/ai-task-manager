@@ -24,7 +24,12 @@ import {
 } from '../task-tracker/paths.mjs';
 import { loadState, saveState } from '../task-tracker/state.mjs';
 import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
-import { stampEntryMarker, STAGES } from '../task-tracker/lib/stage-entry-markers.mjs';
+import {
+  stampEntryMarker,
+  getStageVisitCount,
+  postReentryAuditComment,
+  STAGES,
+} from '../task-tracker/lib/stage-entry-markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -483,8 +488,14 @@ if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
       { timeout: GH_API_TIMEOUT_MS }
     );
     const beforeBody = JSON.parse(stdout).body ?? '';
-    let nextBody = stampEntryMarker(beforeBody, stateArg, new Date().toISOString());
+    const stampTs = new Date().toISOString();
+    const priorVisitCount = getStageVisitCount(beforeBody, stateArg);
+    let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs);
     nextBody = writeLastKnownState(nextBody, stateArg);
+    // Visit number this stamp produced. If stampEntryMarker treated the call
+    // as a no-op (same ts re-stamp), the count is unchanged and we should
+    // not post an audit comment.
+    const nextVisitCount = getStageVisitCount(nextBody, stateArg);
     if (nextBody !== beforeBody) {
       const tmp = path.join(
         projectTmpDir(getProjectDir()),
@@ -508,6 +519,19 @@ if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
             }
           }
         },
+      });
+    }
+    // #184 — When the body stamp produced a visit-numbered re-entry marker
+    // (visit >= 2), post a backfill audit comment so the body change is
+    // observable in the issue timeline. Idempotent on the (stage, visit)
+    // tuple; failure does not undo the body stamp (degrades to stderr).
+    if (nextVisitCount >= 2 && nextVisitCount > priorVisitCount) {
+      await postReentryAuditComment({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        stage: stateArg,
+        visit: nextVisitCount,
+        ts: stampTs,
       });
     }
   } catch (err) {

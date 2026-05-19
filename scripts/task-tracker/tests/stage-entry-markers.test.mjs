@@ -7,6 +7,10 @@ import {
   verifyChainIntegrity,
   backfillEntryMarker,
   stripEntryMarkersAfter,
+  getStageVisitCount,
+  buildReentryAuditMarker,
+  buildReentryAuditCommentBody,
+  postReentryAuditComment,
   LEGAL_TRANSITIONS,
   STAGES,
 } from '../lib/stage-entry-markers.mjs';
@@ -205,5 +209,189 @@ assert.throws(() => stampEntryMarker('', 'refine', ''));
   assert.match(out, /aitm-entered-review/);
 }
 assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
+
+// 12. getStageVisitCount — #184
+{
+  assert.equal(getStageVisitCount('', 'refine'), 0, 'empty body → 0 visits');
+  let cnt = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
+  assert.equal(getStageVisitCount(cnt, 'refine'), 1, 'one visit');
+  cnt = stampEntryMarker(cnt, 'refine', '2026-02-02T00:00:00Z');
+  assert.equal(getStageVisitCount(cnt, 'refine'), 2, 'second visit');
+  cnt = stampEntryMarker(cnt, 'refine', '2026-03-03T00:00:00Z');
+  assert.equal(getStageVisitCount(cnt, 'refine'), 3, 'third visit');
+  assert.equal(getStageVisitCount(cnt, 'plan'), 0, 'other stage unaffected');
+  assert.throws(() => getStageVisitCount('', 'mystery'));
+}
+
+// 13. buildReentryAuditMarker + buildReentryAuditCommentBody — #184
+{
+  assert.equal(buildReentryAuditMarker('plan', 2), '<!-- aitm-reentry-audit: plan-2 -->');
+  const body = buildReentryAuditCommentBody({
+    stage: 'plan',
+    visit: 2,
+    ts: '2026-01-01T00:00:00Z',
+  });
+  assert.match(body, /plan/);
+  assert.match(body, /visit 2/);
+  assert.match(body, /2026-01-01T00:00:00Z/);
+  assert.match(body, /<!-- aitm-reentry-audit: plan-2 -->/);
+  // Validation
+  assert.throws(() => buildReentryAuditCommentBody({ stage: 'plan', visit: 1, ts: 't' }));
+  assert.throws(() => buildReentryAuditCommentBody({ stage: 'plan', visit: 2, ts: '' }));
+  assert.throws(() => buildReentryAuditCommentBody({ visit: 2, ts: 't' }));
+}
+
+// 14. postReentryAuditComment — first-visit is a no-op — #184
+{
+  const posted = [];
+  const listed = [];
+  const res = await postReentryAuditComment({
+    issueNumber: 1,
+    repo: 'o/r',
+    stage: 'plan',
+    visit: 1,
+    ts: '2026-01-01T00:00:00Z',
+    postComment: async (args) => {
+      posted.push(args);
+    },
+    listComments: async (args) => {
+      listed.push(args);
+      return [];
+    },
+  });
+  assert.equal(res.mode, 'first-visit');
+  assert.equal(posted.length, 0, 'first-visit posts no comment');
+  assert.equal(listed.length, 0, 'first-visit does not list comments');
+}
+
+// 15. postReentryAuditComment — second visit posts comment — #184
+{
+  const posted = [];
+  const res = await postReentryAuditComment({
+    issueNumber: 42,
+    repo: 'o/r',
+    stage: 'plan',
+    visit: 2,
+    ts: '2026-01-02T00:00:00Z',
+    postComment: async (args) => {
+      posted.push(args);
+    },
+    listComments: async () => [],
+  });
+  assert.equal(res.mode, 'posted');
+  assert.equal(posted.length, 1, 'one comment posted');
+  assert.equal(posted[0].repo, 'o/r');
+  assert.equal(posted[0].issueNumber, 42);
+  assert.match(posted[0].body, /<!-- aitm-reentry-audit: plan-2 -->/);
+}
+
+// 16. postReentryAuditComment — repeat-stamp does not duplicate — #184
+{
+  const posted = [];
+  const existing = [
+    { body: 'unrelated' },
+    { body: 'something <!-- aitm-reentry-audit: plan-2 --> visible' },
+  ];
+  const res = await postReentryAuditComment({
+    issueNumber: 42,
+    repo: 'o/r',
+    stage: 'plan',
+    visit: 2,
+    ts: '2026-01-02T00:00:00Z',
+    postComment: async (args) => {
+      posted.push(args);
+    },
+    listComments: async () => existing,
+  });
+  assert.equal(res.mode, 'already-present');
+  assert.equal(posted.length, 0, 'no duplicate comment');
+}
+
+// 17. postReentryAuditComment — distinct visit numbers don't collide — #184
+{
+  const posted = [];
+  const existing = [{ body: '<!-- aitm-reentry-audit: plan-2 -->' }];
+  const res = await postReentryAuditComment({
+    issueNumber: 42,
+    repo: 'o/r',
+    stage: 'plan',
+    visit: 3,
+    ts: '2026-01-03T00:00:00Z',
+    postComment: async (args) => {
+      posted.push(args);
+    },
+    listComments: async () => existing,
+  });
+  assert.equal(res.mode, 'posted');
+  assert.equal(posted.length, 1);
+  assert.match(posted[0].body, /<!-- aitm-reentry-audit: plan-3 -->/);
+}
+
+// 18. postReentryAuditComment — post failure degrades gracefully (no throw) — #184
+{
+  const warnings = [];
+  const res = await postReentryAuditComment({
+    issueNumber: 42,
+    repo: 'o/r',
+    stage: 'plan',
+    visit: 2,
+    ts: '2026-01-02T00:00:00Z',
+    postComment: async () => {
+      throw new Error('network down');
+    },
+    listComments: async () => [],
+    warn: (msg) => warnings.push(msg),
+  });
+  assert.equal(res.mode, 'error');
+  assert.match(res.error, /network down/);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /reentry-audit/);
+  assert.match(warnings[0], /FAILED/);
+}
+
+// 19. postReentryAuditComment — list failure posts anyway with warning — #184
+{
+  const posted = [];
+  const warnings = [];
+  const res = await postReentryAuditComment({
+    issueNumber: 42,
+    repo: 'o/r',
+    stage: 'plan',
+    visit: 2,
+    ts: '2026-01-02T00:00:00Z',
+    postComment: async (args) => {
+      posted.push(args);
+    },
+    listComments: async () => {
+      throw new Error('list api down');
+    },
+    warn: (msg) => warnings.push(msg),
+  });
+  assert.equal(res.mode, 'posted');
+  assert.equal(posted.length, 1);
+  assert.ok(warnings.some((w) => /comment list failed/.test(w)));
+}
+
+// 20. postReentryAuditComment — argument validation — #184
+await assert.rejects(
+  postReentryAuditComment({ repo: 'o/r', stage: 'plan', visit: 2, ts: 't' }),
+  /issueNumber is required/
+);
+await assert.rejects(
+  postReentryAuditComment({ issueNumber: 1, stage: 'plan', visit: 2, ts: 't' }),
+  /repo is required/
+);
+await assert.rejects(
+  postReentryAuditComment({ issueNumber: 1, repo: 'o/r', stage: 'mystery', visit: 2, ts: 't' }),
+  /unknown stage/
+);
+await assert.rejects(
+  postReentryAuditComment({ issueNumber: 1, repo: 'o/r', stage: 'plan', visit: 0, ts: 't' }),
+  /visit must be a positive integer/
+);
+await assert.rejects(
+  postReentryAuditComment({ issueNumber: 1, repo: 'o/r', stage: 'plan', visit: 2 }),
+  /ts is required/
+);
 
 console.log('stage-entry-markers.test.mjs: all passed');
