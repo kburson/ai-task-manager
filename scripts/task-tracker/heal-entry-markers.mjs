@@ -37,7 +37,10 @@ import { loadConfig } from './config.mjs';
 import {
   STAGES,
   parseEntryMarkersFirstVisit as parseEntryMarkers,
+  parseEntryMarkers as parseEntryMarkersFull,
   backfillEntryMarker,
+  verifyChainIntegrity,
+  LEGAL_TRANSITIONS,
 } from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
@@ -63,7 +66,7 @@ function parseArgs(argv) {
 // 0 if the targeted set is clean. Errors propagate as exit 2.
 export function checkOnlyExitCode(results) {
   if (results.some((r) => r.action === 'error')) return 2;
-  if (results.some((r) => r.action === 'plan')) return 1;
+  if (results.some((r) => r.action === 'plan' || r.action === 'illegal-arcs')) return 1;
   return 0;
 }
 
@@ -169,6 +172,29 @@ export function safeBackfillTs({ stage, markers, createdAt }) {
   return normalizeTs(new Date(candidateMs).toISOString());
 }
 
+// Visit-aware diagnostic: returns the list of illegal arcs (transitions not in
+// LEGAL_TRANSITIONS) detected by walking the body's full visit-numbered entry
+// marker chain in timestamp order. Legitimate loops (review→develop, etc.) are
+// in LEGAL_TRANSITIONS and are NOT flagged. Genuine illegal arcs (e.g.
+// done→backlog without an explicit re-open) are returned as
+// `{from, to, atTs}` rows. Diagnostic-only: this function does not propose
+// a fix because illegal arcs imply data corruption requiring human judgment.
+export function detectIllegalArcs(body) {
+  const tuples = parseEntryMarkersFull(body);
+  if (tuples.length < 2) return [];
+  const ordered = [...tuples].sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+  const illegal = [];
+  for (let i = 1; i < ordered.length; i++) {
+    const from = ordered[i - 1].stage;
+    const to = ordered[i].stage;
+    if (from === to) continue;
+    if (!LEGAL_TRANSITIONS.has(`${from}->${to}`)) {
+      illegal.push({ from, to, atTs: ordered[i].ts });
+    }
+  }
+  return illegal;
+}
+
 // Detect out-of-order: returns the set of HEALABLE_STAGES whose timestamp is
 // strictly greater than at least one later-indexed stage's timestamp.
 export function outOfOrderHealableStages(markers) {
@@ -249,11 +275,15 @@ async function healOne({ repo, num, apply }) {
     stagesActed.push({ stage, ...plan });
     if (apply) body = applyStageHeal({ body, stage, plan });
   }
-  if (stagesActed.length === 0) {
+  const illegalArcs = detectIllegalArcs(body);
+  if (stagesActed.length === 0 && illegalArcs.length === 0) {
     return { num, action: 'skip', reason: 'no-heal-needed' };
   }
+  if (stagesActed.length === 0 && illegalArcs.length > 0) {
+    return { num, action: 'illegal-arcs', illegalArcs };
+  }
   if (!apply) {
-    return { num, action: 'plan', stagesActed };
+    return { num, action: 'plan', stagesActed, illegalArcs };
   }
   await writeBody(repo, num, body);
   const summary = stagesActed
@@ -285,6 +315,13 @@ async function main() {
     if (r.action === 'plan') {
       const parts = r.stagesActed.map((s) => `${s.stage}=${s.action}:${s.ts}(${s.reason})`);
       process.stdout.write(`#${r.num}: would heal ${parts.join(', ')}\n`);
+      if (r.illegalArcs && r.illegalArcs.length) {
+        const arcs = r.illegalArcs.map((a) => `${a.from}->${a.to}@${a.atTs}`).join(', ');
+        process.stdout.write(`#${r.num}: illegal arcs detected (diagnostic only): ${arcs}\n`);
+      }
+    } else if (r.action === 'illegal-arcs') {
+      const arcs = r.illegalArcs.map((a) => `${a.from}->${a.to}@${a.atTs}`).join(', ');
+      process.stdout.write(`#${r.num}: illegal arcs detected (diagnostic only): ${arcs}\n`);
     } else if (r.action === 'applied') {
       const parts = r.stagesActed.map((s) => `${s.stage}=${s.action}:${s.ts}`);
       process.stdout.write(`#${r.num}: healed ${parts.join(', ')}\n`);
