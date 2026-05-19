@@ -55,6 +55,11 @@ export const DEFAULTS = {
   // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
   gateAnalysisToDevelopment: true,
   gateReviewToDone: true,
+  // #179 — Hard Review→Done lifecycle-checkbox gate. When true (default), close
+  // refuses to advance unless each Lifecycle DoD item is ticked, audit-marker
+  // satisfied (Full-Auto path), or per-key opt-out marker stamped. When false,
+  // gate downgrades to a WARN row in the timing log.
+  lifecycleCheckboxesRequired: true,
   // Verb-pipeline gate (#141). When false (default), non-verb invocations of
   // move-state.mjs without `--out-of-band <reason>` are refused unless a human
   // is at a TTY. Set true to permit direct invocation with a per-call warning.
@@ -102,6 +107,7 @@ const TYPES = {
   pickupDirective: 'boolean',
   gateAnalysisToDevelopment: 'boolean',
   gateReviewToDone: 'boolean',
+  lifecycleCheckboxesRequired: 'boolean',
   directMoveStateAllowed: 'boolean',
   deadSessionMaxAgeMs: 'number',
 };
@@ -291,6 +297,7 @@ const USER_KEYS = [
   'pickupDirective',
   'gateAnalysisToDevelopment',
   'gateReviewToDone',
+  'lifecycleCheckboxesRequired',
   'directMoveStateAllowed',
   'deadSessionMaxAgeMs',
   'statePath',

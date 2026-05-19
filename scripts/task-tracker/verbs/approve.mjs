@@ -7,6 +7,7 @@
 // Idempotent: re-invocation with the marker already present is a no-op.
 // Refuses if the issue is not in `review` state.
 
+// cspell:ignore optout optouts Optouts
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -23,7 +24,7 @@ import {
   insertFullAutoApprovedMarker,
   insertFullAutoFootnote,
 } from '../lib/markers.mjs';
-import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
+import { tickLifecycleItem, parseLifecycleOptouts } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { buildReviewNotesComment } from '../lib/review-notes.mjs';
 import { deriveDrivers } from '../lib/derive-drivers.mjs';
@@ -231,10 +232,34 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   }
   const beforeTick = updated;
   updated = tickLifecycleItem(updated, 'passed-final-review');
-  if (updated === beforeTick && /-\s*\[ \]\s+Passed final human review/i.test(beforeTick)) {
+  const optouts = parseLifecycleOptouts(beforeTick);
+  if (updated === beforeTick && !optouts.has('passed-final-review')) {
     process.stderr.write(
-      `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading\n`
+      `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD\n`
     );
+    try {
+      const { buildRow: _br, postTimingEvent: _pe } = await import('../gh-timing-comment.mjs');
+      const { deriveStateMoveDelta: _dsm } = await import('../lib/timing-rows.mjs');
+      const _ts = new Date().toISOString();
+      const _d = _dsm(beforeTick, _ts);
+      await _pe({
+        issueNumber,
+        repo: cfg.repo,
+        timeoutMs: 3000,
+        row: _br({
+          ts: _ts,
+          event: 'lifecycle-warn',
+          activeSec: _d.activeSec,
+          idleSec: _d.idleSec,
+          deltaWords: 0,
+          // wordMarker:0 audit row — lifecycle-noop warning, no active session work
+          wordMarker: 0,
+          description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
+        }),
+      });
+    } catch {
+      /* fire-and-forget */
+    }
   }
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
   return {

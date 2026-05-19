@@ -15,7 +15,10 @@ import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition, normalizeStateSlug } from '../task-tracker/state-machine.mjs';
-import { uncheckedPreCloseCheckboxes } from '../task-tracker/close-gate.mjs';
+import {
+  uncheckedPreCloseCheckboxes,
+  assertLifecycleSatisfied,
+} from '../task-tracker/close-gate.mjs';
 import {
   getProjectDir,
   existingRuntimePath,
@@ -269,6 +272,40 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
       const unchecked = uncheckedPreCloseCheckboxes(body);
       if (unchecked.length > 0)
         reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
+
+      // #179 — Hard Review→Done lifecycle gate (parallel to close.mjs).
+      const lifecycleRequired = cfg.lifecycleCheckboxesRequired !== false;
+      const lifecycleGate = assertLifecycleSatisfied({ body, required: lifecycleRequired });
+      if (lifecycleGate.block) {
+        reasons.push(lifecycleGate.reason);
+        refusedRuleNames.push('lifecycle-incomplete');
+      } else if (!lifecycleRequired && lifecycleGate.missing.length > 0) {
+        try {
+          const { buildRow: _br, postTimingEvent: _pe } =
+            await import('../task-tracker/gh-timing-comment.mjs');
+          const { deriveStateMoveDelta: _dsm } =
+            await import('../task-tracker/lib/timing-rows.mjs');
+          const _ts = new Date().toISOString();
+          const _d = _dsm(body, _ts);
+          const missLabels = lifecycleGate.missing.map((m) => m.key).join(', ');
+          await _pe({
+            issueNumber: issueArg,
+            repo: cfg.repo,
+            timeoutMs: 3000,
+            row: _br({
+              ts: _ts,
+              event: 'lifecycle-warn',
+              activeSec: _d.activeSec,
+              idleSec: _d.idleSec,
+              deltaWords: 0,
+              wordMarker: 0,
+              description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
+            }),
+          });
+        } catch {
+          /* fire-and-forget */
+        }
+      }
     }
 
     if (reasons.length > 0) {

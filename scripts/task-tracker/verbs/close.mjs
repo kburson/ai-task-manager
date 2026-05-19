@@ -14,6 +14,7 @@ import {
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { runCloseGates } from '../lib/close-gates.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
+import { assertLifecycleSatisfied } from '../close-gate.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -212,6 +213,38 @@ export async function verbClose(ctx) {
         reasons.push(
           `${unchecked.length} unchecked checkbox${unchecked.length === 1 ? '' : 'es'} in issue body`
         );
+      }
+
+      // #179 — Hard Review→Done lifecycle gate. When required, blocks close unless
+      // each lifecycle key is ticked, audited (Full-Auto), or per-key opt-out marker
+      // present. When toggled off, downgrade to a WARN timing-log row.
+      const lifecycleRequired = cfg.lifecycleCheckboxesRequired !== false;
+      const lifecycleGate = assertLifecycleSatisfied({ body, required: lifecycleRequired });
+      if (lifecycleGate.block) {
+        reasons.push(lifecycleGate.reason);
+      } else if (!lifecycleRequired && lifecycleGate.missing.length > 0) {
+        try {
+          const { buildRow: gbrL } = await import('../gh-timing-comment.mjs');
+          const { deriveStateMoveDelta: _dsmL } = await import('../lib/timing-rows.mjs');
+          const _tsL = nowIso();
+          const _dL = _dsmL(body, _tsL);
+          const missLabels = lifecycleGate.missing.map((m) => m.key).join(', ');
+          await safePostTiming(
+            closeTarget,
+            gbrL({
+              ts: _tsL,
+              event: 'lifecycle-warn',
+              activeSec: _dL.activeSec,
+              idleSec: _dL.idleSec,
+              deltaWords: 0,
+              // wordMarker:0 audit row — lifecycle WARN bypass, no active session work
+              wordMarker: 0,
+              description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
+            })
+          );
+        } catch {
+          // best-effort
+        }
       }
       if (!force) {
         const gateResult = await runCloseGates({

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// cspell:ignore optout
 // Preflight check before any `gh issue create` from the task skill.
 //
 // Two modes:
@@ -29,7 +30,9 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { existingRuntimePath } from './paths.mjs';
-import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
+import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -155,12 +158,69 @@ function emitShape(args, dodPath, root) {
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
+  const assembled = body + tailBlock(dodPath);
+  warnMissingLifecycleLabels(assembled);
   process.stdout.write(body);
   process.stdout.write(tailBlock(dodPath));
 }
 
-function main() {
+// #179 — Emit a stderr WARN if any reserved lifecycle label is absent from the
+// assembled body. Never blocks; close-gate is the hard contract.
+function warnMissingLifecycleLabels(body) {
+  const missing = [];
+  for (const [key, label] of Object.entries(LIFECYCLE_LABELS)) {
+    if (!body.includes(label)) missing.push({ key, label });
+  }
+  if (missing.length === 0) return;
+  process.stderr.write(
+    [
+      '',
+      '[task-tracker] WARN: customized DoD is missing reserved lifecycle labels.',
+      'These labels are auto-ticked by /task approve & /task close; absence will',
+      'block close unless an opt-out marker is stamped per missing key:',
+      ...missing.map(
+        (m) => `   - ${m.key} (${m.label})  →  <!-- aitm-lifecycle-optout: ${m.key} -->`
+      ),
+      '',
+    ].join('\n')
+  );
+}
+
+async function checkIntegrity(issueNumber) {
+  const num = String(issueNumber);
+  if (!/^\d+$/.test(num)) {
+    die(`--check-integrity expects an issue number (got: ${issueNumber})`);
+  }
+  let body;
+  try {
+    body = execFileSync('gh', ['issue', 'view', num, '--json', 'body', '--jq', '.body'], {
+      encoding: 'utf8',
+      timeout: GH_API_TIMEOUT_MS,
+    });
+  } catch (err) {
+    die(`gh issue view #${num} failed: ${err.message}`);
+    return;
+  }
+  const fullAutoApproved = FULL_AUTO_APPROVED_RE.test(String(body));
+  const results = lifecycleSatisfaction(String(body), { fullAutoApproved });
+  process.stderr.write(`[task-tracker] integrity check for #${num}:\n`);
+  for (const r of results) {
+    process.stderr.write(`   - ${r.key} (${r.label}): ${r.status}\n`);
+  }
+  const missing = results.filter((r) => r.status === 'missing');
+  if (missing.length > 0) {
+    process.stderr.write(`   close-gate would BLOCK: ${missing.map((m) => m.key).join(', ')}\n`);
+    process.exit(0);
+  }
+  process.stderr.write('   close-gate would PASS.\n');
+}
+
+async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (typeof args['check-integrity'] === 'string') {
+    await checkIntegrity(args['check-integrity']);
+    return;
+  }
   const root = repoRoot();
   const pickupPath = existingRuntimePath(root, '.ai-task-manager/pickup-directive.md');
   const dodPath = existingRuntimePath(root, '.ai-task-manager/definition-of-done.md');
@@ -205,4 +265,7 @@ function main() {
   process.stdout.write(tailBlock(dodPath));
 }
 
-main();
+main().catch((err) => {
+  process.stderr.write(`preflight-issue: ${err.message || err}\n`);
+  process.exit(2);
+});

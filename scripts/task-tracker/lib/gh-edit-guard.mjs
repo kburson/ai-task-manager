@@ -1,3 +1,4 @@
+// cspell:ignore optout
 // Diff-based protection for `gh issue edit/create ... --body-file <path>` and
 // `gh issue edit/create ... --body "<text>"` commands.
 //
@@ -37,6 +38,7 @@ const MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
   { name: 'aitm-groom-rationale', re: /<!--\s*aitm-groom-rationale:/i },
   { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },
+  { name: 'aitm-lifecycle-optout', re: /<!--\s*aitm-lifecycle-optout:/i },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
