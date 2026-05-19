@@ -1,7 +1,8 @@
 // Pure-function rollups over a parsed ⏱ Timing Log table.
 //
 // Used by scripts/gh/log-issue-time.mjs to compute board-field totals
-// (engagedTime, sessionTime, reviewTime) from the timing comment of record.
+// (engagedTime, sessionTime, reviewTime, planTime) from the timing comment of
+// record.
 
 import { pauseSpansBetween } from './lib/timing-rows.mjs';
 
@@ -114,6 +115,37 @@ export function applyPauseSpansToRows(rows, body) {
   return out;
 }
 
+// Sum minutes spent in the Plan kanban column. A "plan window" opens on a
+// `move:plan` row and closes on the next state-transition row (any other
+// `move:<state>` event — typically `move:develop` for forward progress or
+// `move:refine` on rollback). Plan windows with no closing transition (issue
+// still in Plan, or final row of the log) contribute zero.
+//
+// Aggregates across multiple plan visits when re-entries occur, so the field
+// is forward-compatible with #181's visit-aware schema once that lands.
+const MOVE_EVENT_RE = /^move:(.+)$/;
+
+export function computePlanMin(rows) {
+  let total = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const m = MOVE_EVENT_RE.exec(rows[i].event || '');
+    if (!m || m[1] !== 'plan') continue;
+    const planMs = rows[i].tsMs;
+    if (planMs == null) continue;
+    let next = null;
+    for (let j = i + 1; j < rows.length; j++) {
+      const nm = MOVE_EVENT_RE.exec(rows[j].event || '');
+      if (!nm) continue;
+      next = rows[j];
+      break;
+    }
+    if (!next || next.tsMs == null) continue;
+    const deltaMin = Math.round((next.tsMs - planMs) / 60000);
+    if (deltaMin > 0) total += deltaMin;
+  }
+  return total;
+}
+
 export function rollupTotals(rows, thresholdMin) {
   let totalActiveMin = 0;
   let totalActiveSec = 0;
@@ -126,12 +158,14 @@ export function rollupTotals(rows, thresholdMin) {
   const reviewMin = computeReviewMin(rows, thresholdMin);
   const reviewSec = reviewMin * 60;
   const engagedSec = totalActiveSec + reviewSec;
+  const planMin = computePlanMin(rows);
   return {
     rowCount: rows.length,
     totalActiveMin,
     totalActiveSec,
     reviewMin,
     reviewSec,
+    planMin,
     engagedMin: Math.round(engagedSec / 60),
     engagedSec,
     lastWordMarker,

@@ -114,6 +114,9 @@ async function fetchProjectMeta() {
   const reviewField = fieldIdFor(cfg, 'reviewTime')
     ? { id: fieldIdFor(cfg, 'reviewTime') }
     : fieldByName('Review Time');
+  const planField = fieldIdFor(cfg, 'planTime')
+    ? { id: fieldIdFor(cfg, 'planTime') }
+    : fieldByName('Plan Time');
   const startTimeField = cfg.fieldStartTime
     ? { id: cfg.fieldStartTime }
     : fieldByName('Start time');
@@ -124,6 +127,7 @@ async function fetchProjectMeta() {
     engagedFieldId: engagedField?.id || '',
     sessionFieldId: sessionField.id,
     reviewFieldId: reviewField?.id || '',
+    planFieldId: planField?.id || '',
     startTimeFieldId: startTimeField?.id || '',
   };
 }
@@ -157,7 +161,10 @@ async function writeNumberField(itemId, fieldId, value) {
   const issueBodyForPauses = await fetchIssueBody();
   const rows = applyPauseSpansToRows(rawRows, issueBodyForPauses);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
-  const { rowCount, totalActiveMin, reviewMin, engagedMin } = rollupTotals(rows, thresholdMin);
+  const { rowCount, totalActiveMin, reviewMin, planMin, engagedMin } = rollupTotals(
+    rows,
+    thresholdMin
+  );
 
   if (rowCount === 0) {
     console.error('Timing comment found but contains no data rows');
@@ -170,6 +177,7 @@ async function writeNumberField(itemId, fieldId, value) {
   );
   console.log(`  Session Time        : ${totalActiveMin} min`);
   console.log(`  Review Time         : ${reviewMin} min  (threshold ${thresholdMin} min)`);
+  console.log(`  Plan Time           : ${planMin} min`);
 
   if (dryRun) {
     const startTimestamp = firstStartTimestamp(comment.body);
@@ -178,7 +186,7 @@ async function writeNumberField(itemId, fieldId, value) {
     process.exit(0);
   }
 
-  const { itemId, engagedFieldId, sessionFieldId, reviewFieldId, startTimeFieldId } =
+  const { itemId, engagedFieldId, sessionFieldId, reviewFieldId, planFieldId, startTimeFieldId } =
     await fetchProjectMeta();
   const fieldDefs = loadProjectFieldDefs();
   const issueBody = issueBodyForPauses;
@@ -193,7 +201,7 @@ async function writeNumberField(itemId, fieldId, value) {
   // Authoritative timing rollup — these keys MUST overwrite stale body-marker values.
   // Without override, the persisted DB wins (see ensureIssueFieldDb), so a board write
   // succeeds but the `<!-- aitm-fields -->` cache stays null. That is the #180 bug.
-  const overrideKeys = ['engagedTime', 'sessionTime', 'reviewTime'];
+  const overrideKeys = ['engagedTime', 'sessionTime', 'reviewTime', 'planTime'];
   if (repairedStartTime) overrideKeys.push('startTime');
   const updated = ensureIssueFieldDb(
     issueBody,
@@ -202,6 +210,7 @@ async function writeNumberField(itemId, fieldId, value) {
       engagedTime: engagedMin,
       sessionTime: totalActiveMin,
       reviewTime: reviewMin,
+      planTime: planMin,
       ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
     },
     { overrideKeys }
@@ -223,6 +232,7 @@ async function writeNumberField(itemId, fieldId, value) {
     if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, engagedMin);
     await writeNumberField(itemId, sessionFieldId, totalActiveMin);
     if (reviewFieldId) await writeNumberField(itemId, reviewFieldId, reviewMin);
+    if (planFieldId) await writeNumberField(itemId, planFieldId, planMin);
   }
 
   if (repairedStartTime && startTimeFieldId) {

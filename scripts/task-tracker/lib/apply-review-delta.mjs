@@ -71,11 +71,13 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
 
   let estimateHr = null;
   let engagedMin = null;
+  let planMin = null;
   if (cfg.projectId) {
     try {
       const projVals = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
       if (typeof projVals.estimate === 'number') estimateHr = projVals.estimate;
       if (typeof projVals.engagedTime === 'number') engagedMin = projVals.engagedTime;
+      if (typeof projVals.planTime === 'number') planMin = projVals.planTime;
     } catch {}
   }
 
@@ -90,7 +92,7 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
   // surface seconds directly; until then, this is a faithful conversion at
   // minute granularity.
   const actualSec = engagedMin === null ? null : engagedMin * 60;
-  const result = computeReviewDelta({ estimateHr, actualSec });
+  const result = computeReviewDelta({ estimateHr, actualSec, planMin });
 
   // Drivers: pull from the most-recent `### 📝 Review Notes` comment, if any.
   let drivers = [];

@@ -52,6 +52,13 @@
     "aliases": []
   },
   {
+    "key": "planTime",
+    "name": "Plan Time",
+    "type": "number",
+    "unit": "minutes",
+    "aliases": []
+  },
+  {
     "key": "sequence",
     "name": "Sequence",
     "type": "number",

@@ -23,7 +23,12 @@ const FIXTURE_BODY = `## ACs
 <!-- ai-task-manager:fields:end -->
 `;
 
-function buildDeps({ estimate = 16, engagedTime = 22.5, fetchedComments = [] } = {}) {
+function buildDeps({
+  estimate = 16,
+  engagedTime = 22.5,
+  planTime = null,
+  fetchedComments = [],
+} = {}) {
   const state = { comments: [] };
   return {
     state,
@@ -34,11 +39,13 @@ function buildDeps({ estimate = 16, engagedTime = 22.5, fetchedComments = [] } =
       loadProjectFieldDefs: () => [
         { key: 'estimate', name: 'Estimate', type: 'number' },
         { key: 'engagedTime', name: 'Actual Hours', type: 'number' },
+        { key: 'planTime', name: 'Plan Time', type: 'number' },
       ],
       projectValuesForIssue: async () => {
         const out = {};
         if (estimate != null) out.estimate = estimate;
         if (engagedTime != null) out.engagedTime = engagedTime;
+        if (planTime != null) out.planTime = planTime;
         return out;
       },
       fetchComments: async () => fetchedComments,
@@ -116,6 +123,24 @@ function buildDeps({ estimate = 16, engagedTime = 22.5, fetchedComments = [] } =
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
   assert.doesNotMatch(c, /Drivers:/, 'no Drivers section when no notes comment');
+}
+
+// Test 6 (#187): planTime present → comment includes Plan minutes row.
+{
+  const { state, deps } = buildDeps({ planTime: 25 });
+  const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
+  assert.equal(res.status, 'applied');
+  const c = state.comments[0];
+  assert.match(c, /\| Plan minutes \| — \| 25 \| — \|/, 'Plan minutes row present when planTime set');
+}
+
+// Test 7 (#187): planTime absent → no Plan minutes row.
+{
+  const { state, deps } = buildDeps({ planTime: null });
+  const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
+  assert.equal(res.status, 'applied');
+  const c = state.comments[0];
+  assert.ok(!/Plan minutes/.test(c), 'Plan minutes row absent when planTime missing');
 }
 
 console.log('apply-review-delta.test.mjs: all passed');

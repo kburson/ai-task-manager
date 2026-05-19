@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { parseTimingRows, computeReviewMin, rollupTotals } from '../timing-rollup.mjs';
+import {
+  parseTimingRows,
+  computeReviewMin,
+  computePlanMin,
+  rollupTotals,
+} from '../timing-rollup.mjs';
 
 function buildLog(rows) {
   const header = '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |';
@@ -71,5 +76,58 @@ assert.equal(totals.totalActiveMin, 15);
 assert.equal(totals.reviewMin, 3);
 assert.equal(totals.engagedMin, 18);
 assert.equal(totals.lastWordMarker, 800);
+
+// computePlanMin: single Plan window — 25 min between move:plan and move:develop.
+body = buildLog([
+  { ts: '2026-05-09 09:00 -07:00', event: 'move:refine' },
+  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 09:55 -07:00', event: 'move:develop' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 25, 'single plan window = 25 min');
+
+// computePlanMin: no plan window — 0.
+body = buildLog([
+  { ts: '2026-05-09 09:00 -07:00', event: 'move:refine' },
+  { ts: '2026-05-09 09:30 -07:00', event: 'move:develop' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 0, 'no plan window = 0');
+
+// computePlanMin: open plan window (still in plan, no closing transition) = 0.
+body = buildLog([
+  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 09:45 -07:00', event: 'start' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 0, 'unclosed plan window contributes 0');
+
+// computePlanMin: rollback path — plan → refine still aggregated.
+body = buildLog([
+  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 09:40 -07:00', event: 'move:refine' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 10, 'plan → refine rollback still counted');
+
+// computePlanMin: multi-visit aggregation (forward-compat with #181).
+body = buildLog([
+  { ts: '2026-05-09 09:00 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 09:10 -07:00', event: 'move:develop' },
+  { ts: '2026-05-09 10:00 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 10:15 -07:00', event: 'move:develop' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 25, 'multi-visit plan windows aggregated');
+
+// rollupTotals exposes planMin.
+body = buildLog([
+  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 09:55 -07:00', event: 'move:develop' },
+  { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 10 },
+]);
+rows = parseTimingRows(body);
+const totalsP = rollupTotals(rows, 5);
+assert.equal(totalsP.planMin, 25, 'rollupTotals exposes planMin');
 
 console.log('timing-rollup.test.mjs: all passed');

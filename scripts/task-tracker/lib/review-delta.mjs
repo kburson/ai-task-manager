@@ -42,9 +42,10 @@ export function formatHMS(sec) {
 //     deltaSec, deltaPct,         // null when either side missing or estimate=0
 //     hasActual, hasEstimate,
 //   }
-export function computeReviewDelta({ estimateHr, actualSec } = {}) {
+export function computeReviewDelta({ estimateHr, actualSec, planMin } = {}) {
   const estHr = typeof estimateHr === 'number' && Number.isFinite(estimateHr) ? estimateHr : null;
   const actSec = typeof actualSec === 'number' && Number.isFinite(actualSec) ? actualSec : null;
+  const planNum = typeof planMin === 'number' && Number.isFinite(planMin) ? planMin : null;
   const hasEstimate = estHr !== null;
   const hasActual = actSec !== null;
   const estimateSec = hasEstimate ? Math.round(estHr * SEC_PER_HOUR) : null;
@@ -55,10 +56,12 @@ export function computeReviewDelta({ estimateHr, actualSec } = {}) {
     estimateHr: estHr,
     estimateSec,
     actualSec: actSec,
+    planMin: planNum,
     deltaSec,
     deltaPct,
     hasActual,
     hasEstimate,
+    hasPlanTime: planNum !== null,
   };
 }
 
@@ -79,6 +82,10 @@ export function buildDeltaCommentBody(result, { drivers } = {}) {
     '|---|---|---|---|',
     `| Story effort | ${estCell} | ${actCell} | ${deltaCell} |`,
   ];
+
+  if (result.hasPlanTime) {
+    tableLines.push(`| Plan minutes | — | ${result.planMin} | — |`);
+  }
 
   const noteLine =
     '_Estimate is whole-story hours (set at refine/plan). Actual is agentic engaged time, second-precision. Board fields are rounded to minutes._';
