@@ -208,3 +208,27 @@ Gives Claude access to live documentation for libraries, frameworks, and APIs. A
 ```
 
 Once installed, Claude will use `ref_search_documentation` and `ref_read_url` automatically when working with third-party libraries.
+
+---
+
+## Task-tracker settings (`.ai-task-manager/task-tracker.json`)
+
+A few keys gate state transitions. The defaults are safe; flip them off only with intent.
+
+### `lifecycleCheckboxesRequired` (default `true`)
+
+Controls the hard Review→Done lifecycle-checkbox gate (#179). With the default
+`true`, `/task close` (and the underlying state-mover) refuses to advance to
+Done unless each item under the `#### Lifecycle (auto-ticked at Review/Close)`
+DoD subsection is satisfied by ONE of:
+
+1. Visible checkbox ticked (`- [x] <label>`),
+2. Corresponding audit marker present (`<!-- aitm-full-auto-approved: ... -->`
+   satisfies `passed-final-review`), or
+3. Explicit per-key opt-out marker:
+   `<!-- aitm-lifecycle-optout: <key> -->`.
+
+Set to `false` to downgrade the block to a `lifecycle-warn` row in the timing
+log — useful for migrations or experimental workflows. See
+[`docs/internals/checkbox-gates.md`](../internals/checkbox-gates.md) for the
+full policy and inventory of label-string matches.
