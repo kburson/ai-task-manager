@@ -130,7 +130,18 @@ approve` writes a blockquote footnote between
     strip them. A `lifecycle-tick-noop` stderr warning fires if the DoD checklist
     label is missing or legacy — investigate the body shape rather than ignoring.
 
-13. **On mistakes — stop and surface, do not self-correct.**
+13. **Post-Compact/Clear Recovery — boot index is authoritative.**
+    A `Compact` or `Clear` cannot reproduce the verbatim hard rules in this
+    file from a summary. After either operation (or any fresh session), follow
+    [`.ai-task-manager/session-boot.md`](./session-boot.md) before the first
+    verb: re-read every Tier-1 file in order, discard any prior
+    `aitm-skill-loaded:*` sentinels, then emit a one-shot
+    `aitm-boot-recovered:<session-id>:<timestamp>` sentinel. Treating a
+    compacted paraphrase as the rule is a process violation. See the
+    "Post-Compact/Clear Recovery" step in "Required steps before writing any
+    code" below.
+
+14. **On mistakes — stop and surface, do not self-correct.**
     If you discover you have taken a wrong action (created a duplicate issue, used
     `gh issue close` directly, skipped the deep dive, dispatched agents without
     verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
@@ -146,6 +157,19 @@ Same rule applies inside the Refine → Plan exit gate: every epic child must be
 Heal-forward override (use sparingly, audit-trailed): set `TASK_TRACKER_FORCE_PROMOTE=1` in the environment for a single command. The promote will succeed and post `⚠ override used` audit comments on both the child sub-issue and the parent epic naming the offending state pair. The override exists for recovery cases where the parent was manually advanced or the board drifted; it is not a substitute for sequencing.
 
 ## Required steps before writing any code
+
+0. **Post-Compact/Clear Recovery.** If this session was just compacted, cleared,
+   or freshly started — i.e. you see a "This session is being continued from a
+   previous conversation" banner, a fresh-session preamble, or no
+   `aitm-boot-recovered:*` sentinel in the live context — follow
+   [`.ai-task-manager/session-boot.md`](./session-boot.md) **before any other
+   step below**. Re-read every Tier-1 file listed there (router, this pickup
+   directive, `task-tracker.json`, the active issue body via `gh issue view`).
+   Treat any compacted summary of those files as a hint only, not as the rule
+   itself. Then emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>`
+   sentinel and continue with step 1 below. See also Hard Rule cross-reference
+   above: rule decay through compaction is a process violation, not a
+   shortcut.
 
 1. **Move the issue to `in-progress` and capture your entry word count:**
 

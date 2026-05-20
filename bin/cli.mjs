@@ -451,6 +451,8 @@ function installTemplates(targetDir) {
     'epic-body.md',
     'sub-issue-body.md',
     'solo-issue-body.md',
+    'session-boot.md',
+    'session-state-template.md',
   ]) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(templateDest, name);

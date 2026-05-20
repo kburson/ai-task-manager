@@ -334,6 +334,46 @@ Note the paired emissions on the state-moving rows (`refine:done` + `plan:start`
 
 ---
 
+## Context management
+
+AI sessions accumulate large live context: global instructions, repo memory,
+task-tracker rules, loaded skills, tool output, issue bodies, evolving
+implementation state. Once the transcript grows large enough, the assistant
+can start missing active rules or over-weighting stale context. Treat
+context management as a first-class lifecycle concern.
+
+**Three operations, one rule:** after any of them, reload the boot index.
+
+- **Compact** — preserves narrative; loses structural enforceability of
+  hard rules. Use when continuing the same task and a current
+  `session-state.md` artifact exists.
+- **Clear** — drops live context entirely. Use when the transcript is
+  stale, noisy, contradictory, or above the reliability threshold (rules
+  being missed, repeated re-derivation of known facts).
+- **Fresh worker** — a new session (parallel worker, return after a long
+  break). Same boot procedure applies.
+
+**Boot index:** `.ai-task-manager/session-boot.md` lists the Tier-1 files
+every session must reload (router, pickup-directive, task-tracker.json,
+active issue body). After Compact or Clear, re-read all of them — a
+compacted paraphrase of a rule is **not** the rule. See the
+"Post-Compact/Clear Recovery" section in
+`.ai-task-manager/pickup-directive.md` and Hard Rule 11 in
+`skill/shared/router.md`.
+
+**Per-task state:** copy `.ai-task-manager/session-state-template.md` to
+`.ai-task-manager/claude/session-tracking/<issue>-state.md` (gitignored)
+and keep its 9 fields current. The template preserves the structure
+(Goal, Non-Negotiable Rules, Active Files, Decisions, Plan, Completed,
+Remaining, Verification, Risks) that a compacted summary cannot.
+
+**Practical thresholds:** keep active context small where possible.
+Compact around sustained medium-large sessions; don't compact mid-verb.
+Prefer Clear/reload when transcript noise dominates. Compacted summaries
+are hints, not authoritative configuration.
+
+---
+
 ## Cleanup Procedure
 
 When the user says **"cleanup"**, execute in order:

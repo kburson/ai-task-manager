@@ -15,6 +15,8 @@ node_modules/
 # Install-output copies of templates/ (regenerable; templates/ is the source)
 .ai-task-manager/pickup-directive.md
 .ai-task-manager/definition-of-done.md
+.ai-task-manager/session-boot.md
+.ai-task-manager/session-state-template.md
 # Runtime project-field caches (ephemeral)
 .ai-task-manager/project-fields.json
 .ai-task-manager/project-field-events.json
