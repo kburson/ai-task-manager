@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-// Matrix test for the target-aware child-cannot-lead-epic gate (#162, #176).
+// Matrix test for the wave-admission parent-admission gate (#162, #176, #195).
 //
-// Two regimes:
-//   - Entry-guard, targets in {refine, plan, develop}: pass iff parentIdx
-//     >= targetIdx. A child cannot lead the epic into an early stage.
-//   - Arc-guard, targets in {test, review, done}: pass iff parentIdx >=
-//     develop. Once the epic is in Develop, children may complete their
-//     arc independently (#176 — wave-model requires the epic to remain in
-//     Develop until every wave member reaches Done).
+// Rule:
+//   - target = refine: pass iff parentIdx >= refineIdx. Children may sit in
+//     Refine alongside the parent epic during grooming.
+//   - target in {plan, develop, test, review, done}: pass iff parentIdx >=
+//     developIdx. A child cannot enter Plan or beyond until the epic has
+//     cleared its own Plan stage and entered Develop.
 //
 // Solo issues (no parentEpicNumber) always bypass.
 // TASK_TRACKER_FORCE_PROMOTE=1 demotes any refusal to a passing outcome
@@ -25,18 +24,18 @@ function stub(value) {
   return async () => value;
 }
 
+const REFINE_IDX = STATES.indexOf('refine');
 const DEVELOP_IDX = STATES.indexOf('develop');
 
-function requiredIdxFor(targetIdx) {
-  return targetIdx > DEVELOP_IDX ? DEVELOP_IDX : targetIdx;
+function requiredIdxFor(target) {
+  return target === 'refine' ? REFINE_IDX : DEVELOP_IDX;
 }
 
-test('matrix: entry-guard (target ≤ develop) refuses unless parent ≥ target; arc-guard (target > develop) refuses unless parent ≥ develop', async () => {
+test('matrix: target=refine requires parent>=refine; all other targets require parent>=develop', async () => {
   for (const parentState of STATES) {
     for (const target of PROMOTABLE_TARGETS) {
       const parentIdx = STATES.indexOf(parentState);
-      const targetIdx = STATES.indexOf(target);
-      const requiredIdx = requiredIdxFor(targetIdx);
+      const requiredIdx = requiredIdxFor(target);
       const requiredState = STATES[requiredIdx];
       const expectedPass = parentIdx >= requiredIdx;
       const r = await checkParentAdmission({
@@ -60,7 +59,6 @@ test('matrix: entry-guard (target ≤ develop) refuses unless parent ≥ target;
         assert.equal(r[0].kind, 'parent-admission');
         assert.match(r[0].message, new RegExp(`#9000`));
         assert.match(r[0].message, new RegExp(parentState));
-        // refusal message names the *required* floor state, not the literal target.
         const cap = requiredState[0].toUpperCase() + requiredState.slice(1);
         assert.match(r[0].message, new RegExp(cap));
         assert.match(r[0].message, /TASK_TRACKER_FORCE_PROMOTE=1/);
@@ -69,10 +67,45 @@ test('matrix: entry-guard (target ≤ develop) refuses unless parent ≥ target;
   }
 });
 
-test('#176 arc-guard: parent=develop, target ∈ {test, review, done} now admits without override', async () => {
+test('child→plan refused when parent in Plan (the deadlock case)', async () => {
+  const r = await checkParentAdmission({
+    parentEpicNumber: 192,
+    repo: 'o/r',
+    projectId: 'P',
+    readParentStatus: stub('plan'),
+    targetState: 'plan',
+  });
+  assert.ok(Array.isArray(r) && r.length === 1, `expected refusal; got ${JSON.stringify(r)}`);
+  assert.match(r[0].message, /Develop/);
+  assert.match(r[0].message, /child cannot lead parent/);
+});
+
+test('child→plan admitted when parent in Develop', async () => {
+  const r = await checkParentAdmission({
+    parentEpicNumber: 9001,
+    repo: 'o/r',
+    projectId: 'P',
+    readParentStatus: stub('develop'),
+    targetState: 'plan',
+  });
+  assert.deepEqual(r, []);
+});
+
+test('child→refine admitted when parent in Refine (grooming together)', async () => {
+  const r = await checkParentAdmission({
+    parentEpicNumber: 9002,
+    repo: 'o/r',
+    projectId: 'P',
+    readParentStatus: stub('refine'),
+    targetState: 'refine',
+  });
+  assert.deepEqual(r, []);
+});
+
+test('arc-guard: parent=develop admits child→{test,review,done}', async () => {
   for (const target of ['test', 'review', 'done']) {
     const r = await checkParentAdmission({
-      parentEpicNumber: 9001,
+      parentEpicNumber: 9003,
       repo: 'o/r',
       projectId: 'P',
       readParentStatus: stub('develop'),
@@ -80,56 +113,6 @@ test('#176 arc-guard: parent=develop, target ∈ {test, review, done} now admits
     });
     assert.deepEqual(r, [], `parent=develop target=${target} must admit; got ${JSON.stringify(r)}`);
   }
-});
-
-test('#176 arc-guard floor: parent below develop refuses any post-develop target', async () => {
-  for (const parentState of ['backlog', 'refine', 'plan']) {
-    for (const target of ['test', 'review', 'done']) {
-      const r = await checkParentAdmission({
-        parentEpicNumber: 9002,
-        repo: 'o/r',
-        projectId: 'P',
-        readParentStatus: stub(parentState),
-        targetState: target,
-      });
-      assert.ok(
-        Array.isArray(r) && r.length === 1,
-        `parent=${parentState} target=${target} must refuse; got ${JSON.stringify(r)}`
-      );
-      assert.match(r[0].message, /Develop/);
-    }
-  }
-});
-
-test('#176 entry-guard preserved: parent=refine, child→develop still refuses', async () => {
-  const r = await checkParentAdmission({
-    parentEpicNumber: 9003,
-    repo: 'o/r',
-    projectId: 'P',
-    readParentStatus: stub('refine'),
-    targetState: 'develop',
-  });
-  assert.ok(Array.isArray(r) && r.length === 1);
-  assert.match(r[0].message, /Develop/);
-});
-
-test('#176 entry-guard boundary: parent=plan admits child→plan; parent=refine refuses child→plan', async () => {
-  const admit = await checkParentAdmission({
-    parentEpicNumber: 9004,
-    repo: 'o/r',
-    projectId: 'P',
-    readParentStatus: stub('plan'),
-    targetState: 'plan',
-  });
-  assert.deepEqual(admit, []);
-  const refuse = await checkParentAdmission({
-    parentEpicNumber: 9004,
-    repo: 'o/r',
-    projectId: 'P',
-    readParentStatus: stub('refine'),
-    targetState: 'plan',
-  });
-  assert.ok(Array.isArray(refuse) && refuse.length === 1);
 });
 
 test('override: TASK_TRACKER_FORCE_PROMOTE=1 demotes refusal to override payload', async () => {

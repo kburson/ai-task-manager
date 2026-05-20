@@ -195,28 +195,27 @@ import { STATES as STATE_MACHINE_STATES, normalizeStateSlug } from '../state-mac
 const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 
 // #162 — child sub-issue cannot lead parent epic in state.
-// #176 — split entry-guard (targets ≤ develop) from arc-guard (targets > develop).
+// #176 — split entry-guard from arc-guard.
+// Wave-admission tightening: a child may sit in Refine alongside the parent,
+// but must wait for the epic to enter Develop before advancing to Plan or
+// beyond. Without this, parent and children can be promoted to Plan together,
+// which then deadlocks the epic's plan→develop epic-children-at-refine gate
+// (every child would need to be reverted, which the 7-state machine
+// disallows).
 //
-// Two regimes:
-//   1. Entry-guard, targets in {refine, plan, develop}: the parent epic must
-//      be at least at the child's target state. Prevents a child from leading
-//      the epic into a stage the epic hasn't been groomed for.
-//   2. Arc-guard, targets in {test, review, done}: the parent epic need only
-//      have been admitted to `develop`. Once both are in Develop, the child
-//      may complete its full arc independently — wave-model semantics require
-//      the epic to remain in Develop until every wave member reaches Done, so
-//      mirroring the leading child would deadlock. The epic's onward
-//      progression is governed by sub-issue-completion and wave gates, not
-//      by this admission check.
+// Rule:
+//   - target = refine: parent ≥ refine. Children get groomed alongside the epic.
+//   - target ∈ {plan, develop, test, review, done}: parent ≥ develop. A child
+//     cannot enter Plan until the epic has cleared its own Plan stage.
 //
-// `targetState` defaults to `develop` to preserve any caller that pre-dates the
-// generalization. Solo issues (`parentEpicNumber == null`) bypass.
+// Solo issues (`parentEpicNumber == null`) bypass.
 //
 // When `process.env.TASK_TRACKER_FORCE_PROMOTE === '1'`, the gate returns an
 // empty blocker list and surfaces an `override` payload so the caller can post
 // an audit comment.
-const ARC_GUARD_FLOOR_STATE = 'develop';
-const ARC_GUARD_FLOOR_IDX = STATE_MACHINE_STATES.indexOf(ARC_GUARD_FLOOR_STATE);
+const ADMIT_FLOOR_STATE = 'develop';
+const ADMIT_FLOOR_IDX = STATE_MACHINE_STATES.indexOf(ADMIT_FLOOR_STATE);
+const REFINE_IDX = STATE_MACHINE_STATES.indexOf('refine');
 
 export async function checkParentAdmission({
   parentEpicNumber,
@@ -230,7 +229,11 @@ export async function checkParentAdmission({
   if (targetIdx < 0) {
     throw new Error(`checkParentAdmission: unknown targetState "${targetState}"`);
   }
-  const requiredIdx = targetIdx > ARC_GUARD_FLOOR_IDX ? ARC_GUARD_FLOOR_IDX : targetIdx;
+  // Wave-admission floor: target=refine matches Refine; everything else
+  // requires the parent to have entered Develop. `targetIdx` retained for the
+  // unknown-target validation above.
+  void targetIdx;
+  const requiredIdx = targetState === 'refine' ? REFINE_IDX : ADMIT_FLOOR_IDX;
   const requiredState = STATE_MACHINE_STATES[requiredIdx];
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
   const state = raw == null ? null : normalizeStateSlug(String(raw).toLowerCase());
