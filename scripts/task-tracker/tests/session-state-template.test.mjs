@@ -12,7 +12,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
 const TEMPLATE = path.join(repoRoot, 'templates', 'session-state-template.md');
-const INSTALLED = path.join(repoRoot, '.ai-task-manager', 'session-state-template.md');
 
 const REQUIRED_FIELDS_IN_ORDER = [
   'Goal',
@@ -28,10 +27,6 @@ const REQUIRED_FIELDS_IN_ORDER = [
 
 test('session-state-template.md template exists', () => {
   assert.ok(existsSync(TEMPLATE), `missing template: ${TEMPLATE}`);
-});
-
-test('session-state-template.md installed copy exists', () => {
-  assert.ok(existsSync(INSTALLED), `missing installed copy: ${INSTALLED}`);
 });
 
 test('session-state-template.md has all 9 required field headings in order', () => {

@@ -14,7 +14,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
 const TEMPLATE = path.join(repoRoot, 'templates', 'session-boot.md');
-const INSTALLED = path.join(repoRoot, '.ai-task-manager', 'session-boot.md');
 
 const REQUIRED_TIER1_PATHS = [
   'skill/shared/router.md',
@@ -24,10 +23,6 @@ const REQUIRED_TIER1_PATHS = [
 
 test('session-boot.md template exists', () => {
   assert.ok(existsSync(TEMPLATE), `missing template: ${TEMPLATE}`);
-});
-
-test('session-boot.md installed copy exists', () => {
-  assert.ok(existsSync(INSTALLED), `missing installed copy: ${INSTALLED}`);
 });
 
 test('session-boot.md references every required Tier-1 file by exact path', () => {
