@@ -8,7 +8,7 @@ import path from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
-import { runVerbTest } from '../verbs/test.mjs';
+import { runVerbTest, buildPassedMessage } from '../verbs/test.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { hasDodVerifiedMarker, parseDodVerifiedMarker } from '../lib/markers.mjs';
 
@@ -87,6 +87,16 @@ function withTmpDir(fn) {
   });
 }
 
+test('buildPassedMessage: develop→test promotion success message names "Test", not "Review"', () => {
+  // Regression for the leftover-rename bug: the test verb advances develop→test
+  // (one forward step). The success line emitted by `/task test` must name the
+  // resolved target ("Test"), never the old pre-rename target ("Review").
+  const msg = buildPassedMessage(137, 'test');
+  assert.match(msg, /moved to Test\b/, 'success message must say "moved to Test"');
+  assert.doesNotMatch(msg, /moved to Review\b/, 'success message must NOT say "moved to Review"');
+  assert.equal(msg, '✓ #137 verified in sandbox — moved to Test.');
+});
+
 test('parseVerificationCommands: extracts VC checkboxes only, in order', () => {
   const body = [
     '## Acceptance Criteria',
@@ -109,7 +119,7 @@ test('parseVerificationCommands: extracts VC checkboxes only, in order', () => {
   assert.equal(vcs[1].checked, true);
 });
 
-test('verbTest: green path stamps marker, posts success comment, moves test→review, logs time', async () => {
+test('verbTest: green path stamps marker, posts success comment, moves develop→test, logs time', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps();
     const r = await runVerbTest({
@@ -133,20 +143,21 @@ test('verbTest: green path stamps marker, posts success comment, moves test→re
     );
     const stamped = calls.bodyWrites[calls.bodyWrites.length - 1];
     assert.ok(hasDodVerifiedMarker(stamped), 'body must carry dod-verified marker after green');
-    // verbTest stamps the intermediate 'test' marker (since the move goes
-    // develop→review, skipping the Test column). The 'review' marker is
-    // stamped by move-state.mjs centrally and is NOT written by this verb.
+    // verbTest stamps the 'test' entry marker defensively (move-state.mjs is
+    // the production source, but the stubbed moveState in this test does not
+    // stamp markers). 'review' must NOT be stamped — verbTest stops at Test.
     assert.match(stamped, /aitm-entered-test:/, 'must stamp aitm-entered-test on green');
     assert.ok(
       !/aitm-entered-review:/.test(stamped),
-      'aitm-entered-review is stamped by move-state.mjs, not by verbTest'
+      'aitm-entered-review must not be stamped by verbTest — Test→Review is a separate verb'
     );
     const parsed = parseDodVerifiedMarker(stamped);
     assert.equal(parsed.sha, 'abc1234deadbeef');
     assert.equal(parsed.ts, '2026-05-17T01:23:45.000Z');
     assert.equal(calls.comments.length, 1);
     assert.match(calls.comments[0], /Sandboxed verification passed/);
-    assert.deepEqual(calls.moves, ['test', 'review']);
+    assert.deepEqual(calls.moves, ['test'], 'verbTest moves develop→test only; review is a separate verb');
+    assert.equal(r.target, 'test', 'result.target drives the success message — must be "test", not "review"');
     assert.deepEqual(calls.logs, ['137']);
   });
 });

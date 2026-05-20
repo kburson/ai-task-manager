@@ -46,6 +46,11 @@ function shortSha(sha) {
   return String(sha || '').slice(0, 8) || 'no-head';
 }
 
+export function buildPassedMessage(issueNumber, target) {
+  const label = target ? target.charAt(0).toUpperCase() + target.slice(1) : 'Test';
+  return `✓ #${issueNumber} verified in sandbox — moved to ${label}.`;
+}
+
 async function defaultGetHeadSha({ projectDir }) {
   const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
     cwd: projectDir,
@@ -257,13 +262,11 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
-    // test.mjs moves develop→review (skipping the Test column). move-state.mjs
-    // stamps the entry marker for the target ('review') automatically; we
-    // stamp the intermediate 'test' marker here so the chain stays complete.
-    // Stamp only when the latest marker by ts is 'develop' (the legitimate
-    // develop→test→review bridge). If the chain has already advanced past
-    // develop without a fresh develop entry (e.g. test re-run within review),
-    // stamping would create an illegal review→test arc.
+    // verbTest advances develop→test only. The Test→Review step is a separate
+    // forward verb (`/task review`) — verbTest must not skip it. move-state.mjs
+    // already stamped the `test` entry marker via the earlier moveState call;
+    // we re-stamp here defensively so the chain stays complete even if a stub
+    // moveState (e.g. in unit tests) omits marker stamping.
     let stamped = insertDodVerifiedMarker(body, sha, ts);
     const markers = parseEntryMarkers(stamped);
     const latest = markers
@@ -283,9 +286,8 @@ export async function runVerbTest({
       issueNum,
       body: buildResultTable(results, { sha, status: 'green' }),
     });
-    if (moveState) await moveState({ issueNumber: issueNum, target: 'review' });
     if (logIssueTime) await logIssueTime(issueNum);
-    return { status: 'passed', sha, ts, results, wtPath };
+    return { status: 'passed', sha, ts, results, wtPath, target: 'test' };
   }
 
   await postComment({
@@ -337,8 +339,8 @@ export async function verbTest(ctx) {
       console.error(result.message);
       process.exit(4);
       break;
-    case 'passed':
-      console.log(`✓ #${issueNumber} verified in sandbox — moved to Review.`);
+    case 'passed': {
+      console.log(buildPassedMessage(issueNumber, result.target));
       saveState(
         {
           ...s,
@@ -350,6 +352,7 @@ export async function verbTest(ctx) {
         statePath
       );
       return;
+    }
     case 'failed': {
       const fails = result.results.filter((r) => !r.passed).length;
       console.error(`✗ #${issueNumber} verification failed in sandbox (${fails} command(s)).`);
