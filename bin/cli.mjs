@@ -453,6 +453,7 @@ function installTemplates(targetDir) {
     'solo-issue-body.md',
     'session-boot.md',
     'session-state-template.md',
+    'worker-report.md',
   ]) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(templateDest, name);

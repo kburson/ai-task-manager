@@ -27,7 +27,7 @@ Parallel sub-agents are an **explicit, approved** operation — never the defaul
 
 ## 3. Per-agent prompt requirements
 
-Each agent prompt is self-contained — the spawned session has no memory of the orchestrator's context.
+Each agent prompt is self-contained — the spawned session has no memory of the orchestrator's context. The full prompt-construction contract — orchestrator pack, worker boot pack, task pack, chatter policy, and final-report schema — lives in [`worker-context-contract.md`](worker-context-contract.md). That doc is the source of truth for what goes into a worker prompt and what comes back; this section is the per-prompt checklist.
 
 Required elements:
 
@@ -133,3 +133,18 @@ Any guardrail violation, lost work, or unexpected board-state corruption ends wi
 - Link the post-mortem from the GitHub issue that triggered it, and (if the change is non-trivial) from `CLAUDE.md` or the relevant skill section.
 
 The procedure is blameless on individuals and blameful on guardrails — every incident is, by definition, a place the rules let the wrong thing through.
+
+---
+
+## 9. Worker context contract
+
+The mechanics in §1–§8 cover orchestration: when to spawn, where workers run, how state transitions land, how to recover from drift. The complementary question — what context flows in to a worker session and what shape reports return — is specified in [`worker-context-contract.md`](worker-context-contract.md).
+
+The short version:
+
+- Three named packs (orchestrator / worker boot / worker task); only the boot pack and task pack reach the worker prompt.
+- Workers stay silent unless blocked or producing their final report.
+- Final reports are a flat structured schema; no narrative dumps.
+- No inherited orchestrator transcript; the boot pack points at [`.ai-task-manager/session-boot.md`](../../.ai-task-manager/session-boot.md) so workers reload Tier-1 rules from source (#190).
+
+Use [`templates/worker-report.md`](../../templates/worker-report.md) as the report template.

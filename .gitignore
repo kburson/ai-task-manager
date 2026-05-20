@@ -17,6 +17,7 @@ node_modules/
 .ai-task-manager/definition-of-done.md
 .ai-task-manager/session-boot.md
 .ai-task-manager/session-state-template.md
+.ai-task-manager/worker-report.md
 # Runtime project-field caches (ephemeral)
 .ai-task-manager/project-fields.json
 .ai-task-manager/project-field-events.json
