@@ -47,3 +47,29 @@ export async function drain(handler, queuePath) {
   write(failed, queuePath);
   return failed.length === 0;
 }
+
+// Drain only items matching `predicate`, consuming them regardless of handler
+// outcome. Non-matching items are written back untouched. Used at end of
+// `/task close` to clear queue entries for the closing issue — once an issue
+// is Done, residual rows are not interesting and must not re-queue forever.
+export async function drainAndDiscard(handler, queuePath, predicate) {
+  const items = read(queuePath);
+  const kept = [];
+  const targeted = [];
+  for (const item of items) {
+    if (predicate(item)) targeted.push(item);
+    else kept.push(item);
+  }
+  let delivered = 0;
+  let discarded = 0;
+  for (const item of targeted) {
+    try {
+      await handler(item);
+      delivered++;
+    } catch {
+      discarded++;
+    }
+  }
+  write(kept, queuePath);
+  return { delivered, discarded };
+}

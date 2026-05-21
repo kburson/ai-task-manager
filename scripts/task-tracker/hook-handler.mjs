@@ -18,7 +18,7 @@ import {
   ensureSessionTracking,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
-import { enqueue } from './queue.mjs';
+import { enqueue, drain } from './queue.mjs';
 import { seedMissingTemplates, findMainWorktree } from './seed-worktree.mjs';
 import {
   findMainWorktreePath,
@@ -142,9 +142,26 @@ function emitWorktreeBanner() {
   } catch {}
 }
 
+async function bestEffortDrainQueue() {
+  if (process.env.TT_SKIP_NETWORK === '1') return;
+  try {
+    await drain(async (evt) => {
+      if (evt.kind === 'timing') {
+        await postTimingEvent({
+          issueNumber: evt.issue,
+          repo: cfg.repo,
+          row: evt.row,
+          timeoutMs: cfg.hookNetworkTimeoutMs,
+        });
+      }
+    }, queuePath);
+  } catch {}
+}
+
 async function onSessionStart(sid) {
   emitWorktreeBanner();
   selfHealTemplates();
+  await bestEffortDrainQueue();
   // (#89) Sweep orphaned session-override files older than the configured TTL.
   try {
     const { sweepOrphans } = await import('./lib/session-store.mjs');

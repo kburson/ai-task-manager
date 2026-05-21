@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { enqueue, drain, peek } from '../queue.mjs';
+import { enqueue, drain, peek, drainAndDiscard } from '../queue.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-q-'));
 const qPath = path.join(tmp, 'queue.json');
@@ -63,4 +63,71 @@ assert.equal(survivors.length, 1, 'original queue must survive failed write');
 assert.equal(survivors[0].row, 'PRESERVE_ME');
 
 rmSync(atomicTmp, { recursive: true });
+
+// drainAndDiscard: all matches succeed → delivered counts, queue untouched non-matches
+{
+  const t = mkdtempSync(path.join(tmpdir(), 'tt-q-dad-a-'));
+  const p = path.join(t, 'queue.json');
+  enqueue({ issue: '#197', row: 'A' }, p);
+  enqueue({ issue: '#198', row: 'B' }, p);
+  enqueue({ issue: '#197', row: 'C' }, p);
+  const delivered = [];
+  const r = await drainAndDiscard(
+    async (evt) => {
+      delivered.push(evt.row);
+    },
+    p,
+    (evt) => String(evt.issue).replace(/^#/, '') === '197'
+  );
+  assert.deepEqual(r, { delivered: 2, discarded: 0 });
+  assert.deepEqual(delivered.sort(), ['A', 'C']);
+  const left = peek(p);
+  assert.equal(left.length, 1);
+  assert.equal(left[0].row, 'B');
+  rmSync(t, { recursive: true });
+}
+
+// drainAndDiscard: all matches fail → discarded counts, items still removed
+{
+  const t = mkdtempSync(path.join(tmpdir(), 'tt-q-dad-b-'));
+  const p = path.join(t, 'queue.json');
+  enqueue({ issue: '#197', row: 'A' }, p);
+  enqueue({ issue: '#197', row: 'B' }, p);
+  enqueue({ issue: '#198', row: 'C' }, p);
+  const r = await drainAndDiscard(
+    async () => {
+      throw new Error('net down');
+    },
+    p,
+    (evt) => String(evt.issue).replace(/^#/, '') === '197'
+  );
+  assert.deepEqual(r, { delivered: 0, discarded: 2 });
+  const left = peek(p);
+  assert.equal(left.length, 1);
+  assert.equal(left[0].row, 'C');
+  rmSync(t, { recursive: true });
+}
+
+// drainAndDiscard: mixed success/failure, mixed predicate match
+{
+  const t = mkdtempSync(path.join(tmpdir(), 'tt-q-dad-c-'));
+  const p = path.join(t, 'queue.json');
+  enqueue({ issue: 197, row: 'A' }, p);
+  enqueue({ issue: '#197', row: 'B' }, p);
+  enqueue({ issue: '#198', row: 'C' }, p);
+  enqueue({ issue: '#197', row: 'D' }, p);
+  const r = await drainAndDiscard(
+    async (evt) => {
+      if (evt.row === 'B') throw new Error('boom');
+    },
+    p,
+    (evt) => String(evt.issue).replace(/^#/, '') === '197'
+  );
+  assert.deepEqual(r, { delivered: 2, discarded: 1 });
+  const left = peek(p);
+  assert.equal(left.length, 1);
+  assert.equal(left[0].row, 'C');
+  rmSync(t, { recursive: true });
+}
+
 console.log('queue.test.mjs: all passed');

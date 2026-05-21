@@ -17,7 +17,7 @@ import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 // sub-issues #128, #129 of epic #126) can pull the canonical table without
 // importing the sibling module directly.
 export { PHASE_EVENTS };
-import { enqueue, drain } from './queue.mjs';
+import { enqueue, drain, drainAndDiscard } from './queue.mjs';
 import {
   currentSessionId,
   jsonlPath,
@@ -139,6 +139,25 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         });
       }
     }, queuePath);
+  };
+
+  ctx.flushAndForgetQueueFor = async (issueRef) => {
+    if (SKIP_NETWORK) return { delivered: 0, discarded: 0 };
+    const ref = String(issueRef).replace(/^#/, '');
+    return drainAndDiscard(
+      async (evt) => {
+        if (evt.kind === 'timing') {
+          await postTimingEvent({
+            issueNumber: evt.issue,
+            repo: cfg.repo,
+            row: evt.row,
+            timeoutMs: cfg.hookNetworkTimeoutMs,
+          });
+        }
+      },
+      queuePath,
+      (evt) => String(evt.issue).replace(/^#/, '') === ref
+    );
   };
 
   ctx.flushActiveToGH = async (state, event, description, phase) => {

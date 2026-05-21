@@ -25,6 +25,7 @@ export async function verbClose(ctx) {
     SKIP_NETWORK,
     pexec,
     drainQueueIfAny,
+    flushAndForgetQueueFor,
     safePostTiming,
     runMoveState,
     runMoveStateDone,
@@ -340,7 +341,12 @@ export async function verbClose(ctx) {
             try {
               deregisterTask(projectDir, `#${child.num}`);
             } catch {}
-            console.log(`  ✓ #${child.num} closed`);
+            const childFlush = await flushAndForgetQueueFor(`#${child.num}`);
+            const childSuffix =
+              childFlush.delivered || childFlush.discarded
+                ? ` (queue: delivered ${childFlush.delivered}, discarded ${childFlush.discarded})`
+                : '';
+            console.log(`  ✓ #${child.num} closed${childSuffix}`);
           } catch (err) {
             console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
           }
@@ -384,6 +390,12 @@ export async function verbClose(ctx) {
   // were not written either — refuse to clear active so the user can recover.
   if (!SKIP_NETWORK && closeIssueNum) {
     await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
+  }
+  const flushResult = await flushAndForgetQueueFor(closeTarget);
+  if (flushResult.delivered || flushResult.discarded) {
+    console.log(
+      `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
+    );
   }
   clearActive(statePath);
   try {
