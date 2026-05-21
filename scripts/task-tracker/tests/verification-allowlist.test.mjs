@@ -110,5 +110,97 @@ assert.equal(validateVerificationCommand(123, opts).ok, false);
   assert.equal(r.ok, false);
 }
 
+// ----- REJECT (#198): per-bin rule violations -----
+
+// Interpreter inline-code flags
+const inlineCodeCases = [
+  ['bash -c "rm -rf /"', /'bash' rejects flag '-c'/],
+  ['sh -c whoami', /'sh' rejects flag '-c'/],
+  ['node -e "process.exit(1)"', /'node' rejects flag '-e'/],
+  ['node --eval "1+1"', /'node' rejects flag '--eval'/],
+  ['node -p "1"', /'node' rejects flag '-p'/],
+  ['node --print "1"', /'node' rejects flag '--print'/],
+  ['python -c "import os"', /'python' rejects flag '-c'/],
+  ['python3 -c "import os"', /'python3' rejects flag '-c'/],
+  ['python -m http.server', /'python' rejects flag '-m'/],
+];
+for (const [input, frag] of inlineCodeCases) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, false, `expected reject for: ${input}`);
+  assert.match(r.reason, frag, `reason mismatch for: ${input} -> ${r.reason}`);
+}
+
+// gh mutators
+const ghMutatorCases = [
+  ['gh issue close 1', /'gh issue' rejects 'close'/],
+  ['gh pr merge 5', /'gh pr' rejects 'merge'/],
+  ['gh api -X DELETE repos/foo/bar', /rejects flag '-X'/],
+  ['gh api --method POST repos/foo', /rejects flag '--method'/],
+  ['gh auth login', /rejects subcommand 'auth'/],
+  ['gh repo delete foo', /'gh repo' rejects 'delete'/],
+];
+for (const [input, frag] of ghMutatorCases) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, false, `expected reject for: ${input}`);
+  assert.match(r.reason, frag, `reason mismatch for: ${input} -> ${r.reason}`);
+}
+
+// git mutators
+const gitMutatorCases = [
+  ['git push origin main', /rejects subcommand 'push'/],
+  ['git reset --hard HEAD', /rejects subcommand 'reset'/],
+  ['git checkout -- file', /rejects subcommand 'checkout'/],
+  ['git commit -m msg', /rejects subcommand 'commit'/],
+  ['git rebase main', /rejects subcommand 'rebase'/],
+  ['git clean -fd', /rejects subcommand 'clean'/],
+  ['git stash drop', /rejects subcommand 'stash'/],
+];
+for (const [input, frag] of gitMutatorCases) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, false, `expected reject for: ${input}`);
+  assert.match(r.reason, frag, `reason mismatch for: ${input} -> ${r.reason}`);
+}
+
+// npm mutators
+const npmMutatorCases = [
+  ['npm publish', /'npm' rejects subcommand 'publish'/],
+  ['npm install foo', /'npm' rejects subcommand 'install'/],
+  ['npm i', /'npm' rejects subcommand 'i'/],
+  ['npm audit fix', /'npm' rejects subcommand 'audit'/],
+  ['pnpm publish', /'pnpm' rejects subcommand 'publish'/],
+];
+for (const [input, frag] of npmMutatorCases) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, false, `expected reject for: ${input}`);
+  assert.match(r.reason, frag, `reason mismatch for: ${input} -> ${r.reason}`);
+}
+
+// ----- ACCEPT (#198): canonical verification commands found in real issue bodies -----
+const canonicalCases = [
+  'npm test',
+  'npm test -- scripts/task-tracker/tests/verification-allowlist.test.mjs',
+  'npm run lint',
+  'npm run format:check',
+  'npm run typecheck',
+  'npm ci',
+  'node scripts/task-tracker/measure-context.mjs --all --adapter claude',
+  'node scripts/task-tracker/measure-context.mjs --all --adapter codex',
+  'gh issue view 198',
+  'gh pr diff 5',
+  'gh pr list',
+  'gh api repos/foo/bar/issues',
+  'git status',
+  'git log --oneline -10',
+  'git diff HEAD',
+  'git rev-parse HEAD',
+  'git branch --show-current',
+  'pytest -k foo',
+  'make build',
+];
+for (const input of canonicalCases) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, true, `expected accept for canonical: ${input} (got ${r.reason})`);
+}
+
 rmSync(tmp, { recursive: true, force: true });
 console.log('verification-allowlist: ok');

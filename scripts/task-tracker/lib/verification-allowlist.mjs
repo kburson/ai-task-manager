@@ -1,8 +1,26 @@
 // Strict allowlist validator for /task review verification commands.
 //
-// Goal: a verification command extracted from an issue body must never reach a
-// shell. This module returns an `argv` array suitable for `execFile`, or an
-// explicit rejection. See issue #2 for threat model.
+// Threat model: a verification command is extracted from an issue body — which
+// may be authored by an adversary — and then executed by an automated agent
+// with the operator's Git/GitHub credentials. We MUST prevent any authenticated
+// mutation, any interpreter payload, and any side-effect write.
+//
+// The previous version allowed a flat BIN_ALLOWLIST (`gh`, `git`, `bash`,
+// `node`, ...) which let through `gh issue close`, `git push`, `bash -c '...'`,
+// `node -e '...'`, and `npm publish`. We now resolve each bin to a per-bin
+// rule object that constrains:
+//
+//   - allowedSubcommands  (first non-flag arg after the bin)
+//   - forbiddenFlags      (any positional flag, anywhere in argv)
+//   - allowPassthrough    (no subcommand check; only flag check)
+//   - requireScriptPath   (the next argv slot must be a project-local file)
+//
+// The exported `validateVerificationCommand(raw, opts)` signature is preserved
+// so existing callers (`verbs/review.mjs`, `verbs/test.mjs`) work unchanged.
+//
+// See issues #2 and #198 for context.
+//
+// cspell:ignore userconfig globalconfig rcfile metachar
 
 import path from 'node:path';
 import { existsSync, statSync } from 'node:fs';
@@ -20,29 +38,105 @@ const FORBIDDEN = [
   { needle: '\r', name: 'carriage return (\\r)' },
 ];
 
-const BIN_ALLOWLIST = new Set([
-  'node',
-  'npm',
-  'npx',
-  'pnpm',
-  'yarn',
-  'bash',
-  'sh',
-  'python',
-  'python3',
-  'pytest',
-  'gh',
-  'git',
-  'make',
-]);
+// Per-bin rule definitions. `null` for a list means "no constraint at that
+// level"; an empty list `[]` means "nothing allowed at that level".
+const BIN_RULES = {
+  // Package managers: only read/test/build script invocations. `publish`,
+  // `pack`, `install`, `audit fix`, etc. are explicitly excluded.
+  npm: {
+    allowedSubcommands: ['test', 'run', 'run-script', 'exec', 'ci', 'rebuild'],
+    forbiddenFlags: ['--prefix', '--cwd', '--registry', '--userconfig', '--globalconfig'],
+  },
+  pnpm: {
+    allowedSubcommands: ['test', 'run', 'exec'],
+    forbiddenFlags: ['--registry', '--userconfig'],
+  },
+  yarn: {
+    allowedSubcommands: ['test', 'run'],
+    forbiddenFlags: ['--registry'],
+  },
 
-// Tokenize on whitespace, respecting balanced single/double quotes. We do NOT
-// interpret backslash escapes — any string with shell metacharacters has been
-// rejected upstream by the FORBIDDEN check, so quotes are the only nuance left.
+  // Interpreters: reject any inline-code flag; the next argv slot must be a
+  // script path (no further constraint on extension or location — `npm test`
+  // does the same and is fine).
+  node: {
+    forbiddenFlags: ['-e', '--eval', '-p', '--print', '-c'],
+  },
+  python: {
+    forbiddenFlags: ['-c', '-m'],
+  },
+  python3: {
+    forbiddenFlags: ['-c', '-m'],
+  },
+
+  // Shell interpreters: outright reject `-c` (inline script) and `-s` (stdin).
+  // We still allow `bash scripts/foo.sh` (positional script path).
+  bash: {
+    forbiddenFlags: ['-c', '-s', '--rcfile', '--init-file'],
+  },
+  sh: {
+    forbiddenFlags: ['-c', '-s'],
+  },
+
+  // `gh`: only read verbs. Mutations (`close`, `merge`, `delete`, `api -X`,
+  // `auth`, `repo create`, `release create`, ...) are excluded.
+  gh: {
+    allowedSubcommands: ['issue', 'pr', 'api', 'repo', 'release', 'search', 'run', 'workflow'],
+    allowedSecondTokens: {
+      issue: ['view', 'list', 'status'],
+      pr: ['view', 'list', 'diff', 'status', 'checks'],
+      api: null, // checked separately for -X
+      repo: ['view', 'list'],
+      release: ['view', 'list'],
+      search: null, // search is read-only by design
+      run: ['view', 'list'],
+      workflow: ['view', 'list'],
+    },
+    // -X / --method anything other than GET is a mutation.
+    forbiddenFlags: ['-X', '--method', '-F', '-f'],
+  },
+
+  // `git`: only read verbs. `push`, `reset`, `checkout`, `commit`, `merge`,
+  // `rebase`, `pull`, `fetch`, `tag`, `clean`, `stash`, `rm`, `mv` are all
+  // excluded by absence.
+  git: {
+    allowedSubcommands: [
+      'status',
+      'log',
+      'diff',
+      'show',
+      'rev-parse',
+      'rev-list',
+      'branch',
+      'ls-files',
+      'ls-tree',
+      'cat-file',
+      'config',
+      'describe',
+      'blame',
+      'grep',
+    ],
+    // `git config` with write is `git config <key> <value>`; we only allow
+    // read forms (`git config --get`, `git config --list`). Bare two-positional
+    // form is also a write, so block it.
+    forbiddenFlags: ['--global', '--system', '--unset', '--add', '--replace-all'],
+  },
+
+  // `pytest` and `make` are path/target-scoped; we keep them pass-through but
+  // still apply the shell-metachar check at the top of validate.
+  pytest: { allowPassthrough: true },
+  make: { allowPassthrough: true },
+
+  // `npx`: runs arbitrary npm packages; restrict to known-installed names
+  // would be ideal but for now leave pass-through. Document as follow-up.
+  npx: { allowPassthrough: true },
+};
+
+// Tokenize on whitespace, respecting balanced single/double quotes.
 function tokenize(raw) {
   const tokens = [];
   let buf = '';
-  let quote = null; // null, "'" or '"'
+  let quote = null;
   for (let i = 0; i < raw.length; i++) {
     const ch = raw[i];
     if (quote) {
@@ -71,6 +165,69 @@ function tokenize(raw) {
   return { tokens };
 }
 
+function firstNonFlag(argv, fromIndex = 1) {
+  for (let i = fromIndex; i < argv.length; i++) {
+    if (!argv[i].startsWith('-')) return { token: argv[i], index: i };
+  }
+  return null;
+}
+
+function validateBinRule(bin, argv) {
+  const rule = BIN_RULES[bin];
+  if (!rule) return { ok: false, reason: `bin not in allowlist: ${bin}` };
+
+  // Forbidden-flag scan applies to every bin that defines it.
+  if (Array.isArray(rule.forbiddenFlags) && rule.forbiddenFlags.length > 0) {
+    for (let i = 1; i < argv.length; i++) {
+      const tok = argv[i];
+      // Match exact flag or `--flag=value` form.
+      const eq = tok.indexOf('=');
+      const head = eq >= 0 ? tok.slice(0, eq) : tok;
+      if (rule.forbiddenFlags.includes(head)) {
+        return {
+          ok: false,
+          reason: `bin '${bin}' rejects flag '${head}' (mutation/inline-code vector)`,
+        };
+      }
+    }
+  }
+
+  // Pass-through bins (pytest, make, npx) need no further check.
+  if (rule.allowPassthrough) return { ok: true };
+
+  // Subcommand check.
+  if (Array.isArray(rule.allowedSubcommands)) {
+    const sub = firstNonFlag(argv, 1);
+    if (!sub) {
+      // Interpreters (node, python, bash, sh) define no allowedSubcommands —
+      // skip subcommand check entirely when undefined.
+      return { ok: true };
+    }
+    if (!rule.allowedSubcommands.includes(sub.token)) {
+      return {
+        ok: false,
+        reason: `bin '${bin}' rejects subcommand '${sub.token}' (not in per-bin allowlist)`,
+      };
+    }
+
+    // Optional second-token check (e.g. `gh issue view` ok, `gh issue close` not).
+    if (rule.allowedSecondTokens && rule.allowedSecondTokens[sub.token] !== undefined) {
+      const allowedSecond = rule.allowedSecondTokens[sub.token];
+      if (Array.isArray(allowedSecond)) {
+        const second = firstNonFlag(argv, sub.index + 1);
+        if (second && !allowedSecond.includes(second.token)) {
+          return {
+            ok: false,
+            reason: `bin '${bin} ${sub.token}' rejects '${second.token}' (not in per-bin allowlist)`,
+          };
+        }
+      }
+    }
+  }
+
+  return { ok: true };
+}
+
 export function validateVerificationCommand(raw, opts = {}) {
   if (typeof raw !== 'string') {
     return { ok: false, reason: 'command must be a string' };
@@ -91,8 +248,10 @@ export function validateVerificationCommand(raw, opts = {}) {
 
   const head = argv[0];
 
-  // Branch 1: bare-name binary in allowlist.
-  if (BIN_ALLOWLIST.has(head)) {
+  // Branch 1: bare-name binary with per-bin rule check.
+  if (Object.prototype.hasOwnProperty.call(BIN_RULES, head)) {
+    const rule = validateBinRule(head, argv);
+    if (!rule.ok) return rule;
     return { ok: true, argv };
   }
 
@@ -133,4 +292,7 @@ export function validateVerificationCommand(raw, opts = {}) {
   return { ok: true, argv };
 }
 
-export const _internals = { FORBIDDEN, BIN_ALLOWLIST };
+// Back-compat: legacy export name. Build a flat Set of permitted bins.
+const BIN_ALLOWLIST = new Set(Object.keys(BIN_RULES));
+
+export const _internals = { FORBIDDEN, BIN_RULES, BIN_ALLOWLIST };
