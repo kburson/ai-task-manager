@@ -22,15 +22,16 @@ Start here if you are adopting the package:
 
 ## Guides
 
-| File                                                             | Why it matters                                                                                        |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| [guides/workflow.md](./guides/workflow.md)                       | Detailed GitHub Issues and Kanban workflow reference for teams already using the tool.                |
-| [guides/ai-value-framework.md](./guides/ai-value-framework.md)   | Financial and measurement methodology behind estimates, engaged hours, cost comparisons, and reports. |
-| [guides/settings-guide.md](./guides/settings-guide.md)           | Claude Code and Codex-adjacent settings that make the task workflow smoother.                         |
-| [guides/parallel-agents.md](./guides/parallel-agents.md)         | Rules for parallel agent dispatch, worktree isolation, state gates, and postmortems.                  |
-| [guides/migrations.md](./guides/migrations.md)                   | Current migration helper notes for issue comments and field encoding maintenance.                     |
-| [guides/migration-7-state.md](./guides/migration-7-state.md)     | Runbook for migrating older GitHub Projects boards onto the canonical seven-state workflow.           |
-| [guides/postmortem-template.md](./guides/postmortem-template.md) | Template for documenting process failures and guardrail fixes.                                        |
+| File                                                             | Why it matters                                                                                                                                        |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [guides/architecture.md](./guides/architecture.md)               | The script-backed-skill pattern — why this repo pairs a thin prose skill with a robust Node CLI surface, with a spectrum against other Claude skills. |
+| [guides/workflow.md](./guides/workflow.md)                       | Detailed GitHub Issues and Kanban workflow reference for teams already using the tool.                                                                |
+| [guides/ai-value-framework.md](./guides/ai-value-framework.md)   | Financial and measurement methodology behind estimates, engaged hours, cost comparisons, and reports.                                                 |
+| [guides/settings-guide.md](./guides/settings-guide.md)           | Claude Code and Codex-adjacent settings that make the task workflow smoother.                                                                         |
+| [guides/parallel-agents.md](./guides/parallel-agents.md)         | Rules for parallel agent dispatch, worktree isolation, state gates, and postmortems.                                                                  |
+| [guides/migrations.md](./guides/migrations.md)                   | Current migration helper notes for issue comments and field encoding maintenance.                                                                     |
+| [guides/migration-7-state.md](./guides/migration-7-state.md)     | Runbook for migrating older GitHub Projects boards onto the canonical seven-state workflow.                                                           |
+| [guides/postmortem-template.md](./guides/postmortem-template.md) | Template for documenting process failures and guardrail fixes.                                                                                        |
 
 ## Technical Reference
 
