@@ -211,6 +211,99 @@ test('planPlannedEstimateGate accepts when comment + appendix present', async ()
   assert.equal(r.commentId, 'IC_OK');
 });
 
+test('buildPlannedAppendix rejects scalar planned/current', () => {
+  assert.throws(
+    () => buildPlannedAppendix({ planned: 4, current: 4 }),
+    /buildPlannedAppendix: 'planned' must be \{ size\?, estimate\? \} — got number \(4\)/
+  );
+  assert.throws(
+    () => buildPlannedAppendix({ planned: { size: 'M', estimate: 4 }, current: 4 }),
+    /buildPlannedAppendix: 'current' must be \{ size\?, estimate\? \} — got number \(4\)/
+  );
+});
+
+test('buildPlannedAppendix rejects null and arrays', () => {
+  assert.throws(
+    () => buildPlannedAppendix({ planned: null, current: { size: 'M' } }),
+    /'planned' must be \{ size\?, estimate\? \} — got null/
+  );
+  assert.throws(
+    () => buildPlannedAppendix({ planned: { size: 'M' }, current: ['M', 4] }),
+    /'current' must be \{ size\?, estimate\? \} — got array/
+  );
+});
+
+test('buildPlannedAppendix rejects empty object with no size or estimate', () => {
+  assert.throws(
+    () => buildPlannedAppendix({ planned: {}, current: { size: 'M' } }),
+    /'planned' must define at least one of 'size' or 'estimate'/
+  );
+});
+
+test('appendPlannedEstimate rejects scalar planned/current before any I/O', async () => {
+  await assert.rejects(
+    appendPlannedEstimate({
+      cfg,
+      issueNumber: 191,
+      planned: 4,
+      current: 4,
+      deps: {
+        listComments: async () => {
+          throw new Error('should not be called');
+        },
+        patchComment: async () => {
+          throw new Error('should not be called');
+        },
+      },
+    }),
+    /appendPlannedEstimate: 'planned' must be \{ size\?, estimate\? \} — got number \(4\)/
+  );
+});
+
+test('appendPlannedEstimate rejects null planned', async () => {
+  await assert.rejects(
+    appendPlannedEstimate({
+      cfg,
+      issueNumber: 191,
+      planned: null,
+      current: { size: 'M' },
+      deps: { listComments: async () => [], patchComment: async () => {} },
+    }),
+    /'planned' must be \{ size\?, estimate\? \} — got null/
+  );
+});
+
+test('appendPlannedEstimate still works with valid { size, estimate } objects', async () => {
+  const patchCalls = [];
+  const r = await appendPlannedEstimate({
+    cfg,
+    issueNumber: 191,
+    planned: { size: 'L', estimate: 8 },
+    current: { size: 'M', estimate: 4 },
+    rationale: 'risk grew',
+    deps: {
+      listComments: async () => [{ id: 'IC_V', body: baseComment(191) }],
+      patchComment: async ({ commentId, body }) => {
+        patchCalls.push({ commentId, body });
+      },
+    },
+  });
+  assert.equal(r.status, 'appended');
+  assert.equal(patchCalls.length, 1);
+  assert.match(patchCalls[0].body, /\| Size \| M \| L \| M→L \|/);
+});
+
+test('planPlannedEstimateGate refuses an all-em-dash data row', async () => {
+  const degenerate = `${baseComment(191)}\n${PLANNED_ESTIMATE_HEADER}\n\n| Field | Refine | Plan | Δ |\n|---|---|---|---|\n| Size | — | — | 0 |\n| Estimate (h) | — | — | n/a |\n\n_no rationale supplied_\n`;
+  const r = await planPlannedEstimateGate({
+    cfg,
+    issueNumber: 191,
+    deps: { listComments: async () => [{ id: 'IC_EMPTY', body: degenerate }] },
+  });
+  assert.equal(r.ok, false);
+  assert.ok(r.blockers[0].startsWith('planned-estimate-empty-table'));
+});
+
 test('planPlannedEstimateGate captures listComments failure', async () => {
   const r = await planPlannedEstimateGate({
     cfg,

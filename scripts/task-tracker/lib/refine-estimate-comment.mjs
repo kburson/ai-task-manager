@@ -18,9 +18,35 @@ const pexec = promisify(execFile);
 export const PLANNED_ESTIMATE_HEADER = '### Planned Estimate';
 const REFINE_COMMENT_MARKER_RE = /<!--\s*aitm-(?:refined|groom)-estimate:\s*(\d+)\s*-->/;
 const PLANNED_HEADER_RE = /^###\s+Planned Estimate\s*$/m;
+const EMPTY_SIZE_ROW_RE = /^\|\s*Size\s*\|\s*—\s*\|\s*—\s*\|/m;
+const EMPTY_ESTIMATE_ROW_RE = /^\|\s*Estimate \(h\)\s*\|\s*—\s*\|\s*—\s*\|/m;
 
 export function hasPlannedAppendix(body = '') {
   return PLANNED_HEADER_RE.test(String(body));
+}
+
+export function hasEmptyPlannedAppendix(body = '') {
+  const s = String(body);
+  return EMPTY_SIZE_ROW_RE.test(s) && EMPTY_ESTIMATE_ROW_RE.test(s);
+}
+
+function describeBadArg(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return `array (${JSON.stringify(v)})`;
+  return `${typeof v} (${JSON.stringify(v)})`;
+}
+
+function validateSizeEstimateArg(name, fnName, v) {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) {
+    throw new Error(
+      `${fnName}: '${name}' must be { size?, estimate? } — got ${describeBadArg(v)}`
+    );
+  }
+  if (v.size === undefined && v.estimate === undefined) {
+    throw new Error(
+      `${fnName}: '${name}' must define at least one of 'size' or 'estimate' — got ${JSON.stringify(v)}`
+    );
+  }
 }
 
 function formatDeltaEstimate(currentEst, plannedEst) {
@@ -32,6 +58,8 @@ function formatDeltaEstimate(currentEst, plannedEst) {
 }
 
 export function buildPlannedAppendix({ planned = {}, current = {}, rationale = '' } = {}) {
+  validateSizeEstimateArg('planned', 'buildPlannedAppendix', planned);
+  validateSizeEstimateArg('current', 'buildPlannedAppendix', current);
   const beforeSize = current.size ?? '—';
   const beforeEst = current.estimate ?? '—';
   const afterSize = planned.size ?? '—';
@@ -121,6 +149,8 @@ export async function appendPlannedEstimate({
 } = {}) {
   if (!cfg) throw new Error('appendPlannedEstimate: cfg is required');
   if (!issueNumber) throw new Error('appendPlannedEstimate: issueNumber is required');
+  validateSizeEstimateArg('planned', 'appendPlannedEstimate', planned);
+  validateSizeEstimateArg('current', 'appendPlannedEstimate', current);
   const patchComment = deps.patchComment || defaultPatchComment;
 
   const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
@@ -164,6 +194,14 @@ export async function planPlannedEstimateGate({ cfg, issueNumber, deps = {} } = 
       ok: false,
       blockers: [
         'planned-estimate-appendix-missing: append a `### Planned Estimate` section to the refine-estimate comment (use `appendPlannedEstimate` from `lib/refine-estimate-comment.mjs`)',
+      ],
+    };
+  }
+  if (hasEmptyPlannedAppendix(comment.body)) {
+    return {
+      ok: false,
+      blockers: [
+        'planned-estimate-empty-table: the `### Planned Estimate` appendix has an all-em-dash data row — re-run `appendPlannedEstimate` with concrete { size?, estimate? } objects for `planned` and `current`',
       ],
     };
   }
