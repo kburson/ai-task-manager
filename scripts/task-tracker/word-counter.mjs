@@ -15,6 +15,7 @@ export function projectDir() {
 }
 
 export function aiAppName() {
+  // TODO(#203): route through provider registry (detectProvider + sessionIdEnvKeys)
   const explicit = process.env.AI_TASK_MANAGER_APP_NAME?.trim().toLowerCase();
   if (explicit === 'claude' || explicit === 'codex') return explicit;
   if (process.env.CODEX_SESSION_ID || process.env.CODEX_HOME) return 'codex';
@@ -22,10 +23,12 @@ export function aiAppName() {
 }
 
 export function appStateDir() {
+  // TODO(#203): route through provider registry (stateDir capability)
   return path.join(projectDir(), '.ai-task-manager', aiAppName());
 }
 
 export function transcriptDir() {
+  // TODO(#203): route through provider registry (transcriptLocator capability)
   if (process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR) return process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
   const local = path.join(appStateDir(), 'session-transcripts');
   if (existsSync(local)) return local;
@@ -75,6 +78,7 @@ export function currentSessionId() {
   // mtime-sort fallback is fragile (stale .jsonl touched by an editor or
   // indexer can outrank the live session) and only runs when the env var
   // is unset or empty.
+  // TODO(#203): route through provider registry (sessionIdEnvKeys capability)
   for (const key of ['AI_TASK_MANAGER_SESSION_ID', 'CODEX_SESSION_ID', 'CLAUDE_SESSION_ID']) {
     const envSid = process.env[key];
     if (typeof envSid === 'string' && envSid.length > 0) return envSid;

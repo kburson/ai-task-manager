@@ -9,6 +9,7 @@ import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs'
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');
 const testsDir = path.resolve(__dir, 'task-tracker', 'tests');
+const providersTestsDir = path.resolve(__dir, 'providers', 'tests');
 const integrationDir = path.resolve(repoRoot, 'tests', 'integration');
 // Tests skipped due to unrelated tracked bugs. Each entry must reference an issue.
 const SKIP = new Map([]);
@@ -25,11 +26,15 @@ const unitFiles = readdirSync(testsDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()
   .map((f) => ({ label: f, full: path.join(testsDir, f) }));
+const providerFiles = safeReaddir(providersTestsDir)
+  .filter((f) => f.endsWith('.test.mjs'))
+  .sort()
+  .map((f) => ({ label: `providers/${f}`, full: path.join(providersTestsDir, f) }));
 const integrationFiles = safeReaddir(integrationDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()
   .map((f) => ({ label: `integration/${f}`, full: path.join(integrationDir, f) }));
-const files = [...unitFiles, ...integrationFiles];
+const files = [...unitFiles, ...providerFiles, ...integrationFiles];
 
 let failed = 0;
 const failures = [];

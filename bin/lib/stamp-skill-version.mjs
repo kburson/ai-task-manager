@@ -12,9 +12,10 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { getProvider } from '../../scripts/providers/index.mjs';
 
 export const SKILL_DETAIL_FILES = [
-  { id: 'adapter', pkgRelPath: 'skill/adapters/claude/SKILL.md' },
+  { id: 'adapter', pkgRelPath: getProvider('claude').skillAdapterPath },
   { id: 'shared', pkgRelPath: 'skill/shared/SKILL.md' },
   { id: 'pickup', pkgRelPath: 'templates/pickup-directive.md' },
 ];
