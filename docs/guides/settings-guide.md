@@ -71,6 +71,18 @@ The `install` command creates these automatically. Shown here for reference:
 
 The timing hook commands are direct Node invocations so installed hook execution does not require POSIX shell support. If your project still needs an optional `setup-nvm.sh` hook, register it before the direct Node timing hook.
 
+### Bash permissions allowlist
+
+`install` writes a positive `permissions.allow` allowlist into `.claude/settings.json` instead of granting a broad `Bash` allow. The PreToolUse hooks (`bash-guard.mjs`, `activity-guard.mjs`) remain in place as defense-in-depth, but the primary security boundary is the enumerated allowlist.
+
+The canonical source-of-truth lives in [`bin/lib/claude-bash-allowlist.mjs`](../../bin/lib/claude-bash-allowlist.mjs). Entries cover the canonical commands the task-tracker drives (`npm test`, `npm run lint`, `npm run format:check`, `node scripts/**`, read-only `gh`, non-destructive `git`, basic filesystem inspection). Interpreter-payload forms (`bash -c '<payload>'`, `node -e '...'`, `python -c '...'`) are intentionally **not** included — they bypass argv parsing and would let arbitrary code slip past the lexical hook classifier.
+
+Older installs that shipped a single broad `Bash` entry are migrated automatically: re-running `install` drops the broad entry and adds the enumerated ones. Commands outside the allowlist prompt the user for permission rather than auto-running.
+
+### `/tmp` write contract
+
+The bash-guard hook scopes Bash writes to the project root only. The canonical scratch directory is project-local `./tmp/` (gitignored). System `/tmp/` and `/private/tmp/` are **not** in scope for reads or writes — use `./tmp/<file>` instead. This matches the activity-guard `tmp/**` carve-out documented in `CLAUDE.md` "Tool Usage Rules".
+
 ---
 
 ## Superpowers Plugin

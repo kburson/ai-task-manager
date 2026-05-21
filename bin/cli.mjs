@@ -25,6 +25,7 @@ import {
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
+import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -224,11 +225,18 @@ function patchSettingsJson(settingsPath) {
   );
   if (!trailRegistered) settings.hooks.PostToolUse.push(trailEntry);
 
-  // Allow all Bash without prompting — the bash-guard hook above enforces path scope
-  // so per-command permission prompts add friction without meaningful security benefit.
+  // Positive Bash allowlist (issue #199) — replaces the prior broad `Bash` allow.
+  // The hooks above (bash-guard + activity-guard) remain in place as
+  // defense-in-depth, but the primary security boundary is this enumerated
+  // allowlist. Anything outside it will prompt the user. The canonical
+  // source-of-truth lives in `bin/lib/claude-bash-allowlist.mjs`.
   if (!settings.permissions) settings.permissions = {};
   if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
-  if (!settings.permissions.allow.includes('Bash')) settings.permissions.allow.push('Bash');
+  // Migrate older installs that ship the broad `Bash` allow.
+  settings.permissions.allow = settings.permissions.allow.filter((entry) => entry !== 'Bash');
+  for (const entry of CLAUDE_BASH_ALLOWLIST) {
+    if (!settings.permissions.allow.includes(entry)) settings.permissions.allow.push(entry);
+  }
 
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
