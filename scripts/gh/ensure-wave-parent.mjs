@@ -144,6 +144,11 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
     '--status',
     'develop',
     '--no-placeholder-substitution',
+    // Wave-parent body is a synthetic container (purpose + child list),
+    // not the canonical Scope/AC/DoD/Pickup-Directive shape that
+    // create-issue.mjs enforces on --body-file. Mark as internal and set
+    // the env gate so the verifier (added in #200) lets this through.
+    '--internal',
   ];
   if (priority) args.push('--priority', priority);
   if (sequence) args.push('--sequence', String(sequence));
@@ -152,7 +157,11 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
   // create-issue.mjs makes multiple gh calls; allow gh-class budget plus headroom.
   let stdout;
   try {
-    stdout = execFileSync('node', args, { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS * 2 });
+    stdout = execFileSync('node', args, {
+      encoding: 'utf8',
+      timeout: GH_API_TIMEOUT_MS * 2,
+      env: { ...process.env, AITM_CREATE_ISSUE_INTERNAL: '1' },
+    });
   } catch (err) {
     if (err.stderr) process.stderr.write(String(err.stderr));
     throw new Error(`create-issue failed (exit ${err.status ?? 1})`);
