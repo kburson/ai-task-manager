@@ -10,6 +10,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
+import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
+
+// Exit codes (documented contract):
+//   1 — generic failure (gh error, tether failure, internal error)
+//   2 — usage error (missing/invalid flag)
+//   4 — issue-body verifier refusal (--body-file content failed canonical-structure check)
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TETHER_SCRIPT =
@@ -21,7 +27,7 @@ const REFINE_LIKE_STATUSES = new Set(['refine', 'ready']);
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -30,7 +36,12 @@ function parseArgs(argv) {
     const a = argv[i];
     if (!a.startsWith('--')) continue;
     const key = a.slice(2);
-    if (key === 'no-tether' || key === 'no-placeholder-substitution' || key === 'dry-run') {
+    if (
+      key === 'no-tether' ||
+      key === 'no-placeholder-substitution' ||
+      key === 'dry-run' ||
+      key === 'internal'
+    ) {
       out[key] = true;
       continue;
     }
@@ -262,6 +273,25 @@ function main() {
     bodyContent = rendered;
   } else {
     bodyContent = readBody(bodyFilePath);
+    // Canonical issue-body verification. The `--body-file` shortcut bypasses
+    // the fragment path (`--shape` + scope/ac/plan-metadata), so we re-run the
+    // structural check here. Internal/testing callers may opt out with BOTH
+    // `--internal` AND env `AITM_CREATE_ISSUE_INTERNAL=1` set.
+    const internalFlag = args.internal === true;
+    const internalEnv = process.env.AITM_CREATE_ISSUE_INTERNAL === '1';
+    if (!(internalFlag && internalEnv)) {
+      const verdict = verifyIssueBody(bodyContent);
+      if (!verdict.ok) {
+        process.stderr.write(
+          `create-issue: --body-file failed canonical issue-body verifier (exit 4)\n` +
+            `missing or malformed sections:\n` +
+            verdict.missing.map((m) => `  - ${m}`).join('\n') +
+            `\n\nTo bypass for legitimate internal/testing use, pass --internal AND set ` +
+            `AITM_CREATE_ISSUE_INTERNAL=1 in the environment.\n`
+        );
+        process.exit(4);
+      }
+    }
     if (dryRun) {
       process.stdout.write(bodyContent);
       return;
