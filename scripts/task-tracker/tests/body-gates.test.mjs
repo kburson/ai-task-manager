@@ -142,6 +142,34 @@ function deepDiveSection(lines = 25) {
   assert.equal(r.ok, true, JSON.stringify(r));
 }
 
+// 8b. verification-commands: ignores lifecycle labels swept in from the
+// sibling `### Definition of Done` → `#### Lifecycle` subsection (#195).
+// `nextSectionEnd` stops only at `##`, so `### Verification Commands` scope
+// overruns sibling `###` headings; the rule must filter `LIFECYCLE_LABEL_SET`.
+{
+  const body = [
+    '### Verification Commands',
+    '',
+    '- [x] `npm test`',
+    '- [x] `npm run lint`',
+    '- [x] `npm run format:check`',
+    '',
+    '### Definition of Done',
+    '',
+    '#### Functional (verified at Test)',
+    '',
+    '- [x] All automated tests pass',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '',
+    '- [ ] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, true, JSON.stringify(r));
+}
+
 // 9. dependency-map: ticked with section passes
 {
   const body = [

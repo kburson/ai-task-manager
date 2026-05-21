@@ -22,13 +22,14 @@ audit record.
 
 ## Inventory
 
-| #   | File                                                                                          | Label matched                                                                   | Purpose                                       | Behavior on miss                                                    |
-| --- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
-| 1   | [verbs/approve.mjs](../../scripts/task-tracker/verbs/approve.mjs)                             | `Passed final human review`                                                     | Tick lifecycle item on approve                | Stderr WARN + timing-log `lifecycle-warn` row (#179)                |
-| 2   | [verbs/close.mjs](../../scripts/task-tracker/verbs/close.mjs) `tickLifecycleOnClose`          | `Story closed and moved to Done`, `Timing data flushed to issue`                | Tick lifecycle items on close                 | Best-effort no-op; hard-blocked upstream by close-gate (#179)       |
-| 3   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `uncheckedPreCloseCheckboxes`     | All `- [ ]` checkboxes not in `CLOSE_OWNED_CHECKBOXES` or `LIFECYCLE_LABEL_SET` | Block close on unchecked items                | Counted as blocker (existing behavior)                              |
-| 4   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `assertLifecycleSatisfied` (#179) | The three lifecycle labels in `LIFECYCLE_LABELS`                                | Hard Review→Done gate                         | Block (default) or WARN (when `lifecycleCheckboxesRequired: false`) |
-| 5   | [gh/move-state.mjs](../../scripts/gh/move-state.mjs)                                          | Same as #3 + #4                                                                 | Parallel enforcement at the chokepoint script | Same as close.mjs                                                   |
+| #   | File                                                                                               | Label matched                                                                         | Purpose                                           | Behavior on miss                                                    |
+| --- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| 1   | [verbs/approve.mjs](../../scripts/task-tracker/verbs/approve.mjs)                                  | `Passed final human review`                                                           | Tick lifecycle item on approve                    | Stderr WARN + timing-log `lifecycle-warn` row (#179)                |
+| 2   | [verbs/close.mjs](../../scripts/task-tracker/verbs/close.mjs) `tickLifecycleOnClose`               | `Story closed and moved to Done`, `Timing data flushed to issue`                      | Tick lifecycle items on close                     | Best-effort no-op; hard-blocked upstream by close-gate (#179)       |
+| 3   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `uncheckedPreCloseCheckboxes`          | All `- [ ]` checkboxes not in `CLOSE_OWNED_CHECKBOXES` or `LIFECYCLE_LABEL_SET`       | Block close on unchecked items                    | Counted as blocker (existing behavior)                              |
+| 4   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `assertLifecycleSatisfied` (#179)      | The three lifecycle labels in `LIFECYCLE_LABELS`                                      | Hard Review→Done gate                             | Block (default) or WARN (when `lifecycleCheckboxesRequired: false`) |
+| 5   | [gh/move-state.mjs](../../scripts/gh/move-state.mjs)                                               | Same as #3 + #4                                                                       | Parallel enforcement at the chokepoint script     | Same as close.mjs                                                   |
+| 6   | [lib/body-gates.mjs](../../scripts/task-tracker/lib/body-gates.mjs) `verification-commands` (#195) | All `- [ ]` under `Verification Commands` heading **excluding** `LIFECYCLE_LABEL_SET` | Block test→review on unchecked verification items | Counted as blocker; lifecycle labels filtered (owned by close-gate) |
 
 The authoritative key→label map lives at
 [lib/lifecycle-dod.mjs](../../scripts/task-tracker/lib/lifecycle-dod.mjs):
@@ -63,6 +64,15 @@ from the gate's `missing` blocker list. The full per-key status remains in
 `results`, so `preflight-issue.mjs --check-integrity` still reports them.
 
 Net effect: only `passed-final-review` is enforced pre-close.
+
+**Body-gate `verification-commands` scope excludes lifecycle labels.** The
+`### Verification Commands` heading is typically `###`, and its sibling
+`### Definition of Done` houses the `#### Lifecycle` subsection. Because
+`nextSectionEnd` in [lib/body-gates.mjs](../../scripts/task-tracker/lib/body-gates.mjs)
+only terminates the scope at `##`, the Verification Commands scan walks into
+the Lifecycle subsection. The rule filters labels in `LIFECYCLE_LABEL_SET` from
+its unchecked-item collection — those labels are enforced by
+`assertLifecycleSatisfied` (#179) at close, not by this body-gate (#195).
 
 **Preflight only warns.** Issue creation via `preflight-issue.mjs --shape ...`
 emits a structured `[task-tracker] WARN:` block to stderr listing any reserved

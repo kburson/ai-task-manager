@@ -6,6 +6,8 @@
 //
 // validateBody(body, { gates }) → { ok: true } | { ok: false, refusedRules: [{ rule, reason }] }
 
+import { LIFECYCLE_LABEL_SET } from './lifecycle-dod.mjs';
+
 const SECTION_RULE = 'section';
 const ALL_CHECKED_RULE = 'all-checked-under';
 const PLACEMENT_RULE = 'placement';
@@ -80,7 +82,15 @@ function evaluateAllCheckedRule(lines, rule) {
   const unchecked = [];
   for (let i = headingIdx + 1; i < end; i++) {
     const m = lines[i].match(/^- \[([ x])\]\s+(.+)$/);
-    if (m && m[1] === ' ') unchecked.push(m[2].trim());
+    if (m && m[1] === ' ') {
+      const label = m[2].trim();
+      // Lifecycle labels under `#### Lifecycle` (a `####` sibling of Verification
+      // Commands' `###` heading) fall inside this scope because `nextSectionEnd`
+      // stops only at `##`. They are owned by close — enforced by
+      // `assertLifecycleSatisfied` in close-gate.mjs — not by the user, so skip.
+      if (LIFECYCLE_LABEL_SET.has(label)) continue;
+      unchecked.push(label);
+    }
   }
   if (unchecked.length > 0) {
     return {
