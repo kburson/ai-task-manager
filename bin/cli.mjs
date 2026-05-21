@@ -5,6 +5,7 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, relative } from 'node:path';
+// (getProvider import added below; dirname already imported for adapter dir resolution)
 import { createInterface } from 'node:readline';
 import {
   existsSync,
@@ -27,6 +28,7 @@ import {
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
+import { getProvider } from '../scripts/providers/index.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -322,7 +324,7 @@ function claudeStub() {
     '',
     'Files (id — path):',
     '',
-    '- `adapter` — `node_modules/ai-task-manager/skill/adapters/claude/SKILL.md`',
+    `- \`adapter\` — \`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
     '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
     '- `pickup` — `.ai-task-manager/pickup-directive.md` (loaded on sub-issue pickup)',
     '',
@@ -333,7 +335,7 @@ function claudeStub() {
     '',
     'Load and follow the canonical Claude adapter instructions from:',
     '',
-    '`node_modules/ai-task-manager/skill/adapters/claude/SKILL.md`',
+    `\`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
     '',
     'Use executable scripts from:',
     '',
@@ -353,7 +355,7 @@ function codexStub() {
     '',
     'Load and follow the canonical Codex adapter instructions from:',
     '',
-    '`node_modules/ai-task-manager/skill/adapters/codex/SKILL.md`',
+    `\`node_modules/ai-task-manager/${getProvider('codex').skillAdapterPath}\``,
     '',
     'Use executable scripts from:',
     '',
@@ -364,9 +366,14 @@ function codexStub() {
 
 function installClaude(targetDir, linkMode) {
   step('Claude Code files');
+  // TODO(#203): route through provider registry (installTarget capability)
   const skillDest = join(targetDir, '.claude', 'skills', 'task');
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, 'skill', 'adapters', 'claude'), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(PKG_ROOT, dirname(getProvider('claude').skillAdapterPath)),
+      'Skill'
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
@@ -393,15 +400,21 @@ function installClaude(targetDir, linkMode) {
     'Command'
   );
 
+  // TODO(#203): route through provider registry (hookCapability capability)
   patchSettingsJson(join(targetDir, '.claude', 'settings.json'));
   ok(`Settings ${dim('.claude/settings.json')}`);
 }
 
 function installCodex(targetDir, linkMode) {
   step('Codex files');
+  // TODO(#203): route through provider registry (installTarget capability)
   const skillDest = join(targetDir, '.agents', 'skills', 'task');
   if (linkMode === 'symlink') {
-    replaceWithSymlink(skillDest, join(PKG_ROOT, 'skill', 'adapters', 'codex'), 'Skill');
+    replaceWithSymlink(
+      skillDest,
+      join(PKG_ROOT, dirname(getProvider('codex').skillAdapterPath)),
+      'Skill'
+    );
   } else {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
   }
