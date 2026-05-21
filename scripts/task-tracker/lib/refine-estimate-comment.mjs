@@ -38,9 +38,7 @@ function describeBadArg(v) {
 
 function validateSizeEstimateArg(name, fnName, v) {
   if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    throw new Error(
-      `${fnName}: '${name}' must be { size?, estimate? } — got ${describeBadArg(v)}`
-    );
+    throw new Error(`${fnName}: '${name}' must be { size?, estimate? } — got ${describeBadArg(v)}`);
   }
   if (v.size === undefined && v.estimate === undefined) {
     throw new Error(

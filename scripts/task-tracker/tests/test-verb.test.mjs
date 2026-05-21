@@ -156,8 +156,16 @@ test('verbTest: green path stamps marker, posts success comment, moves develop�
     assert.equal(parsed.ts, '2026-05-17T01:23:45.000Z');
     assert.equal(calls.comments.length, 1);
     assert.match(calls.comments[0], /Sandboxed verification passed/);
-    assert.deepEqual(calls.moves, ['test'], 'verbTest moves develop→test only; review is a separate verb');
-    assert.equal(r.target, 'test', 'result.target drives the success message — must be "test", not "review"');
+    assert.deepEqual(
+      calls.moves,
+      ['test'],
+      'verbTest moves develop→test only; review is a separate verb'
+    );
+    assert.equal(
+      r.target,
+      'test',
+      'result.target drives the success message — must be "test", not "review"'
+    );
     assert.deepEqual(calls.logs, ['137']);
   });
 });
