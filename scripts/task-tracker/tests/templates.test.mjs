@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -299,5 +299,45 @@ assert.ok(
   ),
   'skill/adapters/claude/SKILL.md must invoke move-state.mjs through node'
 );
+
+// ── references/ byte-identity (#204) ───────────────────────────────────────
+// Every checked-in templates/references/*.md must (a) exist and (b) — if the
+// runtime mirror under .ai-task-manager/references/ is present — be
+// byte-identical to it. installTemplates() copies references at install time;
+// drift means a downstream consumer would see stale rationale text relative
+// to the directive that links to it.
+{
+  const refsSrcRoot = path.join(root, 'templates', 'references');
+  const refsRuntimeRoot = path.join(root, '.ai-task-manager', 'references');
+  if (existsSync(refsSrcRoot)) {
+    const walk = (dir, rel) => {
+      const out = [];
+      for (const entry of readdirSync(dir)) {
+        const p = path.join(dir, entry);
+        const r = rel ? `${rel}/${entry}` : entry;
+        const st = statSync(p);
+        if (st.isDirectory()) out.push(...walk(p, r));
+        else if (st.isFile()) out.push(r);
+      }
+      return out;
+    };
+    for (const rel of walk(refsSrcRoot, '')) {
+      const src = readFileSync(path.join(refsSrcRoot, rel), 'utf8');
+      assert.ok(
+        src.startsWith('<!-- aitm-skill-version:'),
+        `templates/references/${rel} must start with the aitm-skill-version stamp`
+      );
+      const runtimePath = path.join(refsRuntimeRoot, rel);
+      if (existsSync(runtimePath)) {
+        const runtime = readFileSync(runtimePath, 'utf8');
+        assert.equal(
+          runtime,
+          src,
+          `.ai-task-manager/references/${rel} must stay byte-identical with templates/references/${rel}`
+        );
+      }
+    }
+  }
+}
 
 console.log('templates.test.mjs: all passed');
