@@ -4,16 +4,21 @@
 // data-only too: detect/lookup logic lives here, but it must not import
 // from outside `scripts/providers/` to avoid circular-import hazards.
 //
-// #201 wires only `skillAdapterPath` through the registry; the remaining
-// capability fork points carry `// TODO(#203): route through provider registry`
-// markers so the strangler migration in #203 can find them.
+// #201 routed `skillAdapterPath` through the registry; #203 routed the
+// remaining five capabilities (installTarget, stateDir, transcriptLocator,
+// sessionIdEnvKeys + detectionEnvKeys, hookCapability) and removed every
+// hard-coded provider fork at call sites.
 
 import { claudeAdapter } from './claude.mjs';
 import { codexAdapter } from './codex.mjs';
 
+// Registration order doubles as detection priority — more specific signals
+// (codex) are checked before fallback signals (claude). Preserves the
+// pre-#203 `aiAppName()` precedence where CODEX_SESSION_ID/CODEX_HOME
+// wins when both providers' env vars are set simultaneously.
 const REGISTRY = Object.freeze({
-  claude: claudeAdapter,
   codex: codexAdapter,
+  claude: claudeAdapter,
 });
 
 /**
@@ -40,8 +45,9 @@ export function listProviders() {
 }
 
 /**
- * Detect the active provider from environment / filesystem signals.
- * Priority: CLAUDE_SESSION_ID -> CODEX_SESSION_ID -> default 'claude'.
+ * Detect the active provider from environment signals.
+ * Iterates each adapter's `detectionEnvKeys` (presence indicates provider).
+ * Falls back to claude when no signal is present.
  * @param {{ env?: NodeJS.ProcessEnv }} [opts]
  * @returns {import('./provider-adapter.mjs').ProviderAdapter}
  */
@@ -49,7 +55,8 @@ export function detectProvider(opts = {}) {
   const env = opts.env ?? process.env;
   for (const name of listProviders()) {
     const adapter = REGISTRY[name];
-    if (adapter.sessionIdEnvKeys.some((key) => env[key])) return adapter;
+    const keys = adapter.detectionEnvKeys ?? adapter.sessionIdEnvKeys;
+    if (keys.some((key) => env[key])) return adapter;
   }
   return REGISTRY.claude;
 }
