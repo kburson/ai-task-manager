@@ -369,8 +369,7 @@ function codexStub() {
 
 function installClaude(targetDir, linkMode) {
   step('Claude Code files');
-  // TODO(#203): route through provider registry (installTarget capability)
-  const skillDest = join(targetDir, '.claude', 'skills', 'task');
+  const skillDest = join(targetDir, getProvider('claude').installTarget);
   if (linkMode === 'symlink') {
     replaceWithSymlink(
       skillDest,
@@ -403,15 +402,18 @@ function installClaude(targetDir, linkMode) {
     'Command'
   );
 
-  // TODO(#203): route through provider registry (hookCapability capability)
-  patchSettingsJson(join(targetDir, '.claude', 'settings.json'));
-  ok(`Settings ${dim('.claude/settings.json')}`);
+  // Lifecycle hooks are only installed when the active provider supports them.
+  // Routed through `adapter.hookCapability` to remove the prior hard-coded
+  // claude/codex fork at this call site (#203).
+  if (getProvider('claude').hookCapability) {
+    patchSettingsJson(join(targetDir, '.claude', 'settings.json'));
+    ok(`Settings ${dim('.claude/settings.json')}`);
+  }
 }
 
 function installCodex(targetDir, linkMode) {
   step('Codex files');
-  // TODO(#203): route through provider registry (installTarget capability)
-  const skillDest = join(targetDir, '.agents', 'skills', 'task');
+  const skillDest = join(targetDir, getProvider('codex').installTarget);
   if (linkMode === 'symlink') {
     replaceWithSymlink(
       skillDest,

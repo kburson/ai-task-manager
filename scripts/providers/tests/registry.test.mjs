@@ -27,6 +27,20 @@ const REPO_ROOT = path.resolve(__dir, '..', '..', '..');
 const EXPECTED_CLAUDE_SKILL_PATH = 'skill/adapters/claude/SKILL.md';
 const EXPECTED_CODEX_SKILL_PATH = 'skill/adapters/codex/SKILL.md';
 
+// Values previously hard-coded at provider-fork call sites (migrated in #203).
+const EXPECTED_CLAUDE_INSTALL_TARGET = '.claude/skills/task';
+const EXPECTED_CODEX_INSTALL_TARGET = '.agents/skills/task';
+const EXPECTED_CLAUDE_STATE_DIR = '.ai-task-manager/claude';
+const EXPECTED_CODEX_STATE_DIR = '.ai-task-manager/codex';
+const EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR = '.claude/projects';
+const EXPECTED_CODEX_TRANSCRIPT_LOCATOR = null;
+const EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS = ['CLAUDE_SESSION_ID'];
+const EXPECTED_CODEX_SESSION_ID_ENV_KEYS = ['CODEX_SESSION_ID'];
+const EXPECTED_CLAUDE_DETECTION_ENV_KEYS = ['CLAUDE_SESSION_ID'];
+const EXPECTED_CODEX_DETECTION_ENV_KEYS = ['CODEX_SESSION_ID', 'CODEX_HOME'];
+const EXPECTED_CLAUDE_HOOK_CAPABILITY = true;
+const EXPECTED_CODEX_HOOK_CAPABILITY = false;
+
 const tests = [];
 function test(name, fn) {
   tests.push({ name, fn });
@@ -121,6 +135,103 @@ test('migrated call site: bin/cli.mjs imports getProvider and has no bare adapte
     !/['"]skill\/adapters\/codex\/SKILL\.md['"]/.test(src),
     'bin/cli.mjs still hard-codes the codex skill adapter path literal'
   );
+});
+
+// --- #203 capability parity tests ---
+
+test('parity: claude.installTarget matches previous hard-coded value', () => {
+  assert.equal(claudeAdapter.installTarget, EXPECTED_CLAUDE_INSTALL_TARGET);
+  assert.equal(getProvider('claude').installTarget, EXPECTED_CLAUDE_INSTALL_TARGET);
+});
+
+test('parity: codex.installTarget matches previous hard-coded value', () => {
+  assert.equal(codexAdapter.installTarget, EXPECTED_CODEX_INSTALL_TARGET);
+  assert.equal(getProvider('codex').installTarget, EXPECTED_CODEX_INSTALL_TARGET);
+});
+
+test('migrated call site: bin/cli.mjs has no bare install-target literals', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'bin', 'cli.mjs'), 'utf8');
+  // The bare literal `.claude/skills/task` and `.agents/skills/task` should
+  // no longer appear at call sites (only the registry encodes them).
+  assert.ok(
+    !/join\([^)]*['"]\.claude['"]\s*,\s*['"]skills['"]\s*,\s*['"]task['"]/.test(src),
+    'bin/cli.mjs still constructs .claude/skills/task via bare join() literals'
+  );
+  assert.ok(
+    !/join\([^)]*['"]\.agents['"]\s*,\s*['"]skills['"]\s*,\s*['"]task['"]/.test(src),
+    'bin/cli.mjs still constructs .agents/skills/task via bare join() literals'
+  );
+});
+
+test('parity: claude.stateDir matches previous hard-coded value', () => {
+  assert.equal(claudeAdapter.stateDir, EXPECTED_CLAUDE_STATE_DIR);
+  assert.equal(getProvider('claude').stateDir, EXPECTED_CLAUDE_STATE_DIR);
+});
+
+test('parity: codex.stateDir matches previous hard-coded value', () => {
+  assert.equal(codexAdapter.stateDir, EXPECTED_CODEX_STATE_DIR);
+  assert.equal(getProvider('codex').stateDir, EXPECTED_CODEX_STATE_DIR);
+});
+
+test('parity: claude.transcriptLocator matches previous hard-coded homedir-relative dir', () => {
+  assert.equal(claudeAdapter.transcriptLocator, EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR);
+});
+
+test('parity: codex.transcriptLocator is null (no homedir fallback)', () => {
+  assert.equal(codexAdapter.transcriptLocator, EXPECTED_CODEX_TRANSCRIPT_LOCATOR);
+});
+
+test('parity: claude.sessionIdEnvKeys matches previous hard-coded list', () => {
+  assert.deepEqual(claudeAdapter.sessionIdEnvKeys, EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS);
+});
+
+test('parity: codex.sessionIdEnvKeys matches previous hard-coded list', () => {
+  assert.deepEqual(codexAdapter.sessionIdEnvKeys, EXPECTED_CODEX_SESSION_ID_ENV_KEYS);
+});
+
+test('parity: claude.detectionEnvKeys matches previous hard-coded list', () => {
+  assert.deepEqual(claudeAdapter.detectionEnvKeys, EXPECTED_CLAUDE_DETECTION_ENV_KEYS);
+});
+
+test('parity: codex.detectionEnvKeys includes CODEX_HOME (pre-#203 behavior)', () => {
+  assert.deepEqual(codexAdapter.detectionEnvKeys, EXPECTED_CODEX_DETECTION_ENV_KEYS);
+});
+
+test('detectProvider returns codex when only CODEX_HOME is set (pre-#203 parity)', () => {
+  const adapter = detectProvider({ env: { CODEX_HOME: '/tmp/codex' } });
+  assert.equal(adapter.name, 'codex');
+});
+
+test('parity: claude.hookCapability is true', () => {
+  assert.equal(claudeAdapter.hookCapability, EXPECTED_CLAUDE_HOOK_CAPABILITY);
+});
+
+test('parity: codex.hookCapability is false', () => {
+  assert.equal(codexAdapter.hookCapability, EXPECTED_CODEX_HOOK_CAPABILITY);
+});
+
+test('migrated call site: scripts/task-tracker/word-counter.mjs imports from providers registry', () => {
+  const src = readFileSync(
+    path.join(REPO_ROOT, 'scripts', 'task-tracker', 'word-counter.mjs'),
+    'utf8'
+  );
+  assert.match(src, /from ['"]\.\.\/providers\/index\.mjs['"]/);
+  // The bare detection literal `process.env.CODEX_HOME` should no longer
+  // appear at the call site (only the registry encodes it).
+  assert.ok(
+    !/process\.env\.CODEX_HOME/.test(src),
+    'word-counter.mjs still hard-codes CODEX_HOME detection'
+  );
+  // Same for the unified env-key list.
+  assert.ok(
+    !/['"]CODEX_SESSION_ID['"]\s*,\s*['"]CLAUDE_SESSION_ID['"]/.test(src),
+    'word-counter.mjs still hard-codes the unified provider env-key list'
+  );
+});
+
+test('migrated call site: bin/cli.mjs gates hook install on adapter.hookCapability', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'bin', 'cli.mjs'), 'utf8');
+  assert.match(src, /hookCapability/);
 });
 
 let failed = 0;

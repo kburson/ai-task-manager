@@ -4,6 +4,8 @@ import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 
+import { detectProvider, getProvider, listProviders } from '../providers/index.mjs';
+
 export function projectKey() {
   const dir = projectDir();
   // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive colon.
@@ -15,29 +17,29 @@ export function projectDir() {
 }
 
 export function aiAppName() {
-  // TODO(#203): route through provider registry (detectProvider + sessionIdEnvKeys)
+  // Explicit override wins; otherwise delegate to the provider registry.
   const explicit = process.env.AI_TASK_MANAGER_APP_NAME?.trim().toLowerCase();
-  if (explicit === 'claude' || explicit === 'codex') return explicit;
-  if (process.env.CODEX_SESSION_ID || process.env.CODEX_HOME) return 'codex';
-  return 'claude';
+  if (explicit && listProviders().includes(explicit)) return explicit;
+  return detectProvider({ env: process.env }).name;
 }
 
 export function appStateDir() {
-  // TODO(#203): route through provider registry (stateDir capability)
-  return path.join(projectDir(), '.ai-task-manager', aiAppName());
+  // Provider-specific AITM state dir (registry-driven).
+  return path.join(projectDir(), getProvider(aiAppName()).stateDir);
 }
 
 export function transcriptDir() {
-  // TODO(#203): route through provider registry (transcriptLocator capability)
   if (process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR) return process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
   const local = path.join(appStateDir(), 'session-transcripts');
   if (existsSync(local)) return local;
-  // Fall back to Claude Code's native per-project transcript directory when the
-  // local session-transcripts directory hasn't been created (e.g. pre-existing
-  // install). Claude stores session JSONL at ~/.claude/projects/<encoded-path>/.
-  if (aiAppName() === 'claude') {
-    const claudeDir = path.join(homedir(), '.claude', 'projects', projectKey());
-    if (existsSync(claudeDir)) return claudeDir;
+  // Fall back to the provider's native per-project transcript directory when
+  // the local session-transcripts directory hasn't been created (e.g.
+  // pre-existing install). Only providers that declare a `transcriptLocator`
+  // expose a homedir-rooted fallback.
+  const locator = getProvider(aiAppName()).transcriptLocator;
+  if (locator) {
+    const nativeDir = path.join(homedir(), locator, projectKey());
+    if (existsSync(nativeDir)) return nativeDir;
   }
   return local;
 }
@@ -78,8 +80,15 @@ export function currentSessionId() {
   // mtime-sort fallback is fragile (stale .jsonl touched by an editor or
   // indexer can outrank the live session) and only runs when the env var
   // is unset or empty.
-  // TODO(#203): route through provider registry (sessionIdEnvKeys capability)
-  for (const key of ['AI_TASK_MANAGER_SESSION_ID', 'CODEX_SESSION_ID', 'CLAUDE_SESSION_ID']) {
+  // Orchestrator override first, then session-id keys for every registered
+  // adapter (active adapter first, then the rest in registration order).
+  const active = detectProvider({ env: process.env }).name;
+  const ordered = [active, ...listProviders().filter((n) => n !== active)];
+  const keys = [
+    'AI_TASK_MANAGER_SESSION_ID',
+    ...ordered.flatMap((name) => getProvider(name).sessionIdEnvKeys),
+  ];
+  for (const key of keys) {
     const envSid = process.env[key];
     if (typeof envSid === 'string' && envSid.length > 0) return envSid;
   }
