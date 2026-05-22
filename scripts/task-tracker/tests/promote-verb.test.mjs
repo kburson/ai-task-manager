@@ -334,13 +334,24 @@ test('promote: develop→test allowed when CODE_COMPLETE gate passes (#136)', as
 });
 
 test('promote: test→review is a direct move-state call (no alias verb exists)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
+  // #210 (Fix C) — test→review requires `aitm-dod-verified` in the body.
+  const body =
+    bodyWithState('test') + '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n';
+  const { deps, calls } = makeDeps({ body, live: 'test' });
   const r = await runPromote({ issueNumber: 103, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'review');
   assert.equal(r.via, 'direct');
   assert.equal(calls.spawns.length, 0);
   assert.deepEqual(calls.moves, [{ issueNumber: 103, target: 'review' }]);
+});
+
+test('promote: test→review refused when aitm-dod-verified marker is missing (#210 Fix C)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
+  const r = await runPromote({ issueNumber: 1031, cfg, deps });
+  assert.equal(r.status, 'dod-verified-missing');
+  assert.ok(r.blockers.some((b) => b.startsWith('test-to-review-dod-missing')));
+  assert.equal(calls.moves.length, 0, 'no move-state call when gate refuses');
 });
 
 test('promote: review→done delegates to /task close', async () => {
@@ -441,7 +452,13 @@ test('promote: delegate non-zero but board reached target → promoted-with-warn
   // and a *subsequent* alias-internal step fails, promote treats the outcome
   // as a soft warning (not transition-failed). Markers are already in sync
   // (move-state stamps centrally per #170), so no body repair write fires.
-  const bodyAfter = bodyWithState('test') + '\n<!-- aitm-entered-test: 2026-05-18T00:00:00Z -->\n';
+  // #210 (Fix B) — soft-warning path requires `aitm-dod-verified` to be
+  // present in the post-move body. Sandbox produced its green proof; only a
+  // *subsequent* alias-internal step failed.
+  const bodyAfter =
+    bodyWithState('test') +
+    '\n<!-- aitm-entered-test: 2026-05-18T00:00:00Z -->\n' +
+    '<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n';
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
@@ -468,7 +485,10 @@ test('promote: delegate non-zero, board at target, marker stale → repair write
   // Post-failure body still reads lastKnownState=develop even though Status
   // is at test (centralized #170 stamp didn't run, e.g. move-state crashed
   // after Status mutation but before marker write). promote must repair.
-  const staleBodyAfter = bodyWithState('develop');
+  // #210 (Fix B) — dod-verified must be present so the soft-warning path
+  // applies; otherwise the alias=test failure falls through to transition-failed.
+  const staleBodyAfter =
+    bodyWithState('develop') + '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n';
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
@@ -486,7 +506,9 @@ test('promote: delegate non-zero, board at target, marker stale → repair write
 });
 
 test('promote: delegate non-zero, marker repair write fails → audit comment posted (#175, #168)', async () => {
-  const staleBodyAfter = bodyWithState('develop');
+  // #210 (Fix B) — needs dod-verified present so the soft-warning path applies.
+  const staleBodyAfter =
+    bodyWithState('develop') + '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n';
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
@@ -508,6 +530,31 @@ test('promote: delegate non-zero, marker repair write fails → audit comment po
   assert.equal(r.markerRepair.auditPosted, true);
   assert.equal(auditPosts.length, 1);
   assert.match(auditPosts[0], /state-recording-failed/);
+});
+
+test('promote: alias=test exit non-zero AND no aitm-dod-verified → transition-failed + rollback (#210 Fix B)', async () => {
+  // verbTest crashed mid-sandbox: board reached `test` but no green proof was
+  // stamped. The soft-warning path must NOT laundering this into success;
+  // instead promote rolls the board back to `develop` and reports
+  // transition-failed.
+  const bodyAfterNoDod = bodyWithState('test'); // no aitm-dod-verified marker
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'test',
+    spawnCode: 1,
+    fetchSecondBody: bodyAfterNoDod,
+  });
+  const r = await runPromote({ issueNumber: 2101, cfg, deps });
+  assert.equal(r.status, 'transition-failed');
+  assert.equal(r.delegate, 'test');
+  assert.equal(r.delegateExitCode, 1);
+  // Rollback moveState call to recorded state ('develop').
+  assert.deepEqual(
+    calls.moves[calls.moves.length - 1],
+    { issueNumber: 2101, target: 'develop' },
+    'last moveState call must be the rollback to develop'
+  );
 });
 
 test('promote: delegate non-zero AND board drifted to non-target → transition-failed (#175)', async () => {

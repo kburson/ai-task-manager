@@ -214,22 +214,27 @@ export async function runVerbTest({
     body = await fetchBody({ cfg, issueNum });
   }
 
-  // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
-  // verbReview's preflight can compare outer HEAD at review-time against the
-  // SHA we were testing. The marker is refreshed on every re-test so the
-  // entry SHA always reflects the current verification window.
-  {
-    const entryTs = now();
-    const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
-    if (stampedEntry !== body) {
-      body = stampedEntry;
-      await writeBody({ cfg, issueNum, body, projectDir });
-    }
-  }
-
+  // #210 (Fix A) — Once the board has been moved to `test`, ANY failure before
+  // the sandbox produces a green/red result MUST demote the board back to
+  // `develop`. Otherwise verbTest can crash mid-sandbox (worktree/npm-ci
+  // failure, etc.), leave the board in `test`, and let the next forward
+  // promote sail through with no `aitm-dod-verified` evidence.
   const results = [];
   let cleanupNeeded = false;
   try {
+    // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
+    // verbReview's preflight can compare outer HEAD at review-time against the
+    // SHA we were testing. The marker is refreshed on every re-test so the
+    // entry SHA always reflects the current verification window.
+    {
+      const entryTs = now();
+      const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
+      if (stampedEntry !== body) {
+        body = stampedEntry;
+        await writeBody({ cfg, issueNum, body, projectDir });
+      }
+    }
+
     await createWorktree({ projectDir, path: wtPath });
     cleanupNeeded = true;
     await seedWt({ projectDir, path: wtPath });
@@ -257,6 +262,35 @@ export async function runVerbTest({
         stderr: r.stderr,
       });
     }
+  } catch (err) {
+    // #210 (Fix A) — sandbox-setup or sandbox-run threw. Roll the board back
+    // to `develop` so the lifecycle chain stays honest, post an audit comment
+    // for visibility, then re-throw so the caller surfaces a non-zero exit.
+    try {
+      await postComment({
+        cfg,
+        issueNum,
+        body: [
+          '> ⚠ test-aborted',
+          '',
+          'Sandbox verification crashed before producing a green/red result. Board demoted back to `develop`.',
+          '',
+          `Error: \`${err?.message ?? String(err)}\``,
+          '',
+          '<!-- aitm-test-aborted -->',
+        ].join('\n'),
+      });
+    } catch {
+      // audit-only, best-effort
+    }
+    if (moveState) {
+      try {
+        await moveState({ issueNumber: issueNum, target: 'develop' });
+      } catch {
+        // best-effort rollback; the audit comment above records the abort
+      }
+    }
+    throw err;
   } finally {
     if (cleanupNeeded) {
       await removeWorktree({ projectDir, path: wtPath });

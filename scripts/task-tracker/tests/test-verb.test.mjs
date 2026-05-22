@@ -208,6 +208,45 @@ test('verbTest: worktree cleanup runs even when sandbox exec throws', async () =
   });
 });
 
+// #210 (Fix A) — When the sandbox section throws before producing a green/red
+// result, verbTest must demote the board back to `develop` so the lifecycle
+// chain stays honest. Previously the board was stranded at `test` and the
+// next promote sailed through without `aitm-dod-verified` evidence.
+test('verbTest #210 Fix A: sandbox-setup crash → demotes board back to develop + posts test-aborted audit', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    // Override createWorktree to throw — simulates a sandbox-setup failure
+    // (the most likely real-world cause of an exit-1 mid-test).
+    deps.createWorktree = async () => {
+      throw new Error('worktree create failed');
+    };
+    await assert.rejects(() => runVerbTest({ cfg, issueNumber: 2102, projectDir, deps }));
+    assert.deepEqual(
+      calls.moves,
+      ['test', 'develop'],
+      'must call moveState→test then rollback moveState→develop on setup failure'
+    );
+    assert.ok(
+      calls.comments.some((c) => /test-aborted/.test(c) && /aitm-test-aborted/.test(c)),
+      'must post a `test-aborted` audit comment on sandbox-setup failure'
+    );
+  });
+});
+
+test('verbTest #210 Fix A: sandbox-exec crash → demotes board back to develop', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps({ shouldThrowOnExec: true });
+    await assert.rejects(() => runVerbTest({ cfg, issueNumber: 2103, projectDir, deps }));
+    // The exec-throw path runs after worktree creation, but the rollback must
+    // still fire. Last move call is the demote.
+    assert.equal(
+      calls.moves[calls.moves.length - 1],
+      'develop',
+      'final moveState call must demote to develop'
+    );
+  });
+});
+
 test('verbTest: no-vc body returns no-vc status (does not create worktree)', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps();

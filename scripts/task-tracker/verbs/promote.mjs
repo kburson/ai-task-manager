@@ -49,6 +49,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { hasDodVerifiedMarker } from '../lib/markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -363,6 +364,27 @@ export async function runPromote({
     }
   }
 
+  // #210 (Fix C) — Test → Review pre-flight: require `aitm-dod-verified`.
+  // The sandbox proof is what makes Test→Review legitimate. verbReview's own
+  // gate enforces this when invoked directly, but `promote` from `test` goes
+  // through a direct moveState (no alias verb), bypassing verbReview. Without
+  // this gate, a soft sandbox failure that left the board at `test` without
+  // dod-verified would sail through here, and close-time would be the first
+  // catch — too late.
+  if (recorded === 'test' && target === 'review') {
+    if (!hasDodVerifiedMarker(body)) {
+      return {
+        status: 'dod-verified-missing',
+        blockers: [
+          'test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #' +
+            String(issueNumber).replace(/^#/, '') +
+            '` to produce sandbox evidence before promoting to Review.',
+        ],
+        message: `Refusing to promote #${issueNumber} to Review: sandbox proof (aitm-dod-verified) is missing.`,
+      };
+    }
+  }
+
   // #162 — child-cannot-lead-epic gate. Runs on every forward transition.
   // Solo issues (no parent) bypass. When the parent epic's live state is
   // behind the child's target state, refuse unless TASK_TRACKER_FORCE_PROMOTE=1
@@ -431,6 +453,38 @@ export async function runPromote({
     }
 
     if (liveAfter === target) {
+      // #210 (Fix B) — Before classifying as a soft warning, if the alias
+      // verb was `/task test` (develop→test), require `aitm-dod-verified` in
+      // the post-move body. Without it, the sandbox never produced a
+      // green result and the board has no business sitting at `test` —
+      // demote back to `develop` and report transition-failed so the caller
+      // surfaces a hard refusal instead of a "promoted-with-warning".
+      if (transitionResult.kind === 'alias' && transitionResult.verb === 'test') {
+        let bodyForDodCheck = null;
+        try {
+          const fetched = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+          bodyForDodCheck = fetched.body;
+        } catch {
+          bodyForDodCheck = null;
+        }
+        if (bodyForDodCheck != null && !hasDodVerifiedMarker(bodyForDodCheck)) {
+          // Best-effort rollback: demote board back to recorded state.
+          try {
+            await runMoveState({ issueNumber, target: recorded, cfg });
+          } catch {
+            // best-effort; if rollback fails, drift-reconcile will catch it
+          }
+          return {
+            status: 'transition-failed',
+            from: recorded,
+            to: target,
+            via: `/task ${transitionResult.verb}`,
+            delegate: transitionResult.verb,
+            delegateExitCode: transitionResult.exitCode,
+            message: `promote: delegate /task ${transitionResult.verb} exited ${transitionResult.exitCode} and produced no \`aitm-dod-verified\` marker; board rolled back to "${recorded}".`,
+          };
+        }
+      }
       // #175 — board reached target. Verify markers, repair if needed,
       // surface delegate exit as soft warning.
       let markerRepair = { status: 'noop' };
@@ -687,7 +741,8 @@ export async function verbPromote(rest, cfg) {
     case 'planned-estimate-refused':
     case 'epic-children-refused':
     case 'parent-admission-refused':
-    case 'code-complete-refused': {
+    case 'code-complete-refused':
+    case 'dod-verified-missing': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
       process.stderr.write('\n');
