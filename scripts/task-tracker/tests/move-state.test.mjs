@@ -118,7 +118,10 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
   assert.equal(after.state, 'test', 'state field should be updated on transition');
   assert.equal(after.active, '#777', 'active should be preserved');
 
-  // Now test: non-active issue does NOT mutate state
+  // #210 — every successful transition syncs local state.state, even when
+  // the issue is not bound as active. move-state.mjs is the single
+  // state-mutator; gating the sync on `s.active === '#N'` left the cache
+  // permanently stale for orchestrator/sub-agent flows that don't bind.
   await run(['888', 'review'], {
     TT_SKIP_NETWORK: '1',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
@@ -126,9 +129,18 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
   const after2 = JSON.parse(readFileSync(sp, 'utf8'));
   assert.equal(
     after2.state,
-    'test',
-    'state field should not be touched when issue is not the active task'
+    'review',
+    'state field must sync on every successful transition, regardless of active'
   );
+
+  // And with active=null entirely (orchestrator-style invocation).
+  writeFileSync(sp, JSON.stringify({ active: null, lastActive: null, state: 'review' }, null, 2));
+  await run(['999', 'develop'], {
+    TT_SKIP_NETWORK: '1',
+    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+  });
+  const after3 = JSON.parse(readFileSync(sp, 'utf8'));
+  assert.equal(after3.state, 'develop', 'state must sync even when active is null');
 
   rmSync(sandbox, { recursive: true });
 }

@@ -258,6 +258,67 @@ test('verbTest: no pretick → no regression comment posted (#139)', async () =>
   });
 });
 
+// #210 — Regression: verbTest must re-fetch the issue body after moveState
+// so the body it writes back reflects the post-transition `aitm-last-known-state`
+// marker. The pre-fix bug was a read-modify-write hazard: fetch body (marker=develop),
+// call moveState (writes marker=test to GitHub), stamp local edits on the stale
+// body and write it back, clobbering marker back to develop. The next promote's
+// preflight then refused with `human-move`.
+test('verbTest #210: re-fetches body after moveState so writes preserve last-known-state marker', async () => {
+  await withTmpDir(async (projectDir) => {
+    const fetchCalls = [];
+    const bodyWrites = [];
+    const moves = [];
+    const baseBody = bodyWithVc(['npm test']);
+    const preTransitionBody = `<!-- aitm-last-known-state: develop -->\n${baseBody}`;
+    const postTransitionBody = `<!-- aitm-last-known-state: test -->\n${baseBody}`;
+    let movedToTest = false;
+    const deps = {
+      fetchBody: async () => {
+        fetchCalls.push(movedToTest ? 'after-move' : 'before-move');
+        return movedToTest ? postTransitionBody : preTransitionBody;
+      },
+      writeBody: async ({ body }) => {
+        bodyWrites.push(body);
+      },
+      postComment: async () => {},
+      getHeadSha: async () => 'sha12345',
+      createWorktree: async () => {},
+      removeWorktree: async () => {},
+      seedWorktree: async () => {},
+      npmCi: async () => {},
+      execInSandbox: async () => ({ exit: 0, stdout: '', stderr: '' }),
+      moveState: async ({ target }) => {
+        moves.push(target);
+        if (target === 'test') movedToTest = true;
+      },
+      logIssueTime: async () => {},
+    };
+
+    const r = await runVerbTest({ cfg, issueNumber: 210, projectDir, deps });
+    assert.equal(r.status, 'passed');
+
+    // Must have fetched at least twice: once before moveState, once after.
+    assert.ok(
+      fetchCalls.filter((c) => c === 'after-move').length >= 1,
+      `expected at least one fetch after moveState, got ${JSON.stringify(fetchCalls)}`
+    );
+
+    // Every body the verb wrote back must reflect the post-transition marker.
+    // Pre-fix, at least one write carried marker=develop.
+    for (const w of bodyWrites) {
+      assert.ok(
+        w.includes('aitm-last-known-state: test'),
+        'body write must preserve post-transition marker (no read-modify-write clobber)'
+      );
+      assert.ok(
+        !w.includes('aitm-last-known-state: develop'),
+        'body write must not regress marker to pre-transition state'
+      );
+    }
+  });
+});
+
 test('verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox', async () => {
   // Models the spec: a command that relies on a local-only env var passes
   // when run in the author's shell but fails in the clean worktree. We do

@@ -97,6 +97,15 @@ async function defaultListCommentBodies({ issueNumber, repo }) {
   return String(stdout || '').split('\n');
 }
 
+async function defaultFetchIssueBody({ issueNumber, repo }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return String(stdout || '');
+}
+
 async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   const tmpFile = path.join(scratchDir, `refine-est-${issueNumber}.md`);
   writeFileSync(tmpFile, body);
@@ -249,6 +258,7 @@ export async function applyRefinementEstimate({
   const postComment = deps.postComment || defaultPostComment;
   const listCommentBodies = deps.listCommentBodies || defaultListCommentBodies;
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
 
   try {
     const bodies = await listCommentBodies({ issueNumber, repo: cfg.repo });
@@ -270,17 +280,24 @@ export async function applyRefinementEstimate({
     return { status: 'post-failed', error: err.message };
   }
 
-  if (plan.strippedBody !== undefined) {
-    try {
+  // #210 — Re-fetch the body BEFORE stripping the rationale marker. The
+  // pre-computed `plan.strippedBody` is built from a pre-moveState fetch and
+  // would clobber the `aitm-last-known-state` marker that move-state stamped
+  // when the refine→plan transition succeeded. Re-fetch + re-strip preserves
+  // every marker the transition wrote while still cleaning up the rationale.
+  try {
+    const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    const stripped = stripRationaleMarker(freshBody);
+    if (stripped !== freshBody) {
       await writeIssueBody({
         issueNumber,
         repo: cfg.repo,
-        body: plan.strippedBody,
+        body: stripped,
         scratchDir: scratchDir || path.resolve('tmp'),
       });
-    } catch {
-      // Best-effort — comment is already on the issue.
     }
+  } catch {
+    // Best-effort — comment is already on the issue.
   }
 
   return { status: 'posted' };

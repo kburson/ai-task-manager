@@ -243,12 +243,56 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
       listCommentBodies: async () => [],
       postComment: async ({ body }) => posts.push(body),
       writeIssueBody: async ({ body }) => writes.push(body),
+      // #210 — applyRefinementEstimate re-fetches the body after moveState
+      // so it doesn't clobber the `aitm-last-known-state` marker. Return a
+      // post-transition body (marker=plan) with the rationale still present.
+      fetchIssueBody: async () =>
+        `<!-- aitm-last-known-state: plan -->\n${bodyWithMarker(NEW_RATIONALE_BLOCK)}`,
     },
   });
   assert.equal(result.status, 'posted');
   assert.equal(posts.length, 1);
   assert.match(posts[0], /<!-- aitm-refined-estimate: 95 -->/);
   assert.equal(writes.length, 1);
+  assert.ok(!writes[0].includes('aitm-refinement-rationale'));
+  // The write must preserve the post-transition marker, not regress it.
+  assert.ok(writes[0].includes('aitm-last-known-state: plan'));
+}
+
+// --- applyRefinementEstimate #210: does not regress last-known-state marker --
+
+{
+  // Regression: pre-fix, applyRefinementEstimate wrote `plan.strippedBody`
+  // (computed from a pre-moveState body). That clobbered the
+  // `aitm-last-known-state: plan` marker that move-state had just stamped,
+  // regressing it to `refine` and causing the next promote's preflight to
+  // refuse with `human-move`. Fix: re-fetch the body before stripping.
+  const writes = [];
+  const planResult = await planRefinementEstimate({
+    cfg: CFG,
+    issueNumber: 210,
+    body: bodyWithMarker(NEW_RATIONALE_BLOCK),
+    deps: depsWithBoard(),
+  });
+  // Simulate: planResult.plan.strippedBody is stale (marker=refine). The fresh
+  // fetch returns the post-transition body (marker=plan). Apply must write
+  // the fresh-stripped form, not the stale plan.strippedBody.
+  const result = await applyRefinementEstimate({
+    cfg: CFG,
+    issueNumber: 210,
+    plan: planResult.plan,
+    scratchDir: '/tmp',
+    deps: {
+      listCommentBodies: async () => [],
+      postComment: async () => {},
+      writeIssueBody: async ({ body }) => writes.push(body),
+      fetchIssueBody: async () =>
+        `<!-- aitm-last-known-state: plan -->\n${bodyWithMarker(NEW_RATIONALE_BLOCK)}`,
+    },
+  });
+  assert.equal(result.status, 'posted');
+  assert.equal(writes.length, 1);
+  assert.ok(writes[0].includes('aitm-last-known-state: plan'));
   assert.ok(!writes[0].includes('aitm-refinement-rationale'));
 }
 

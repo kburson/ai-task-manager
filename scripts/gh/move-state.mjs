@@ -740,17 +740,18 @@ if (outOfBandReason && !SKIP_NETWORK) {
   }
 }
 
-// Persist new kanban state to tracker-state if this issue is the active task.
-// activity-guard reads `state` to gate write activity classes; without this,
-// every bound issue falls through to the no-active-task policy.
+// Persist new kanban state to tracker-state. move-state.mjs is the single
+// state-mutator, so every successful transition must sync the local cache —
+// regardless of whether the caller bound via `/task #N` first. Orchestrator
+// flows and sub-agent fan-outs run with `s.active === null`; gating on
+// active here left the cache permanently stale and the next verb's preflight
+// flagged it as a human-move (#210).
 try {
   const projectDir = getProjectDir();
   const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
   const s = loadState(sp);
-  if (s.active === `#${issueArg}`) {
-    s.state = stateArg;
-    saveState(s, sp);
-  }
+  s.state = stateArg;
+  saveState(s, sp);
 } catch {
   /* best-effort */
 }

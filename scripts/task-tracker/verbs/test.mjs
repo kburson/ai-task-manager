@@ -207,7 +207,12 @@ export async function runVerbTest({
     await removeWorktree({ projectDir, path: wtPath });
   }
 
-  if (moveState) await moveState({ issueNumber: issueNum, target: 'test' });
+  if (moveState) {
+    await moveState({ issueNumber: issueNum, target: 'test' });
+    // #210 — Re-fetch after moveState so subsequent body writes don't clobber
+    // the `aitm-last-known-state` marker that the transition just stamped.
+    body = await fetchBody({ cfg, issueNum });
+  }
 
   // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
   // verbReview's preflight can compare outer HEAD at review-time against the
@@ -262,6 +267,10 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
+    // #210 — Re-fetch before stamping DoD-verified so we don't clobber any
+    // marker writes (entry markers, lifecycle pretick, last-known-state) that
+    // GitHub may have received in the meantime.
+    body = await fetchBody({ cfg, issueNum });
     // verbTest advances develop→test only. The Test→Review step is a separate
     // forward verb (`/task review`) — verbTest must not skip it. move-state.mjs
     // already stamped the `test` entry marker via the earlier moveState call;
