@@ -40,6 +40,51 @@ function checkRepoMismatch(ctx) {
 
 const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet']);
 
+// #208 — shared preflight verbs. `target-required` parses `#N` from rest and
+// enforces bind-match. `target-optional` falls back to active when no `#N` is
+// in rest. `active-only` skips bind-match entirely (operates on active or is
+// a switch-style verb that handles target itself).
+const PREFLIGHT_MODE = {
+  approve: 'target-required',
+  'plan-approve': 'target-required',
+  promote: 'target-required',
+  next: 'target-required',
+  refine: 'target-required',
+  demote: 'target-required',
+  close: 'target-optional',
+  end: 'target-optional',
+  review: 'target-optional',
+  reject: 'target-optional',
+  pause: 'active-only',
+  update: 'active-only',
+  resume: 'active-only',
+  start: 'active-only',
+};
+
+function targetFromRest(rest) {
+  for (const a of rest || []) {
+    if (/^#\d+$/.test(String(a))) return String(a);
+    if (/^\d+$/.test(String(a))) return `#${a}`;
+  }
+  return null;
+}
+
+async function runVerbPreflight(ctx) {
+  const mode = PREFLIGHT_MODE[ctx.verb];
+  if (!mode) return;
+  const { preflightVerb } = await import('./lib/verb-preflight.mjs');
+  const { loadState } = await import('./state.mjs');
+  const stateBefore = loadState(ctx.statePath);
+  const target = mode === 'active-only' ? undefined : targetFromRest(ctx.rest);
+  await preflightVerb({
+    stateBefore,
+    statePath: ctx.statePath,
+    target,
+    cfg: ctx.cfg,
+    verb: ctx.verb,
+  });
+}
+
 function checkInit(ctx) {
   if (INIT_EXEMPT.has(ctx.verb)) return;
   const cfgPath = path.join(ctx.projectDir, '.ai-task-manager', 'task-tracker.json');
@@ -93,6 +138,7 @@ if (_isMain)
     const ctx = buildContext();
     checkRepoMismatch(ctx);
     checkInit(ctx);
+    await runVerbPreflight(ctx);
     try {
       switch (ctx.verb) {
         case 'status': {

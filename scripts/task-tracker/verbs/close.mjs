@@ -43,14 +43,7 @@ export async function verbClose(ctx) {
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
 
-  if (target && s.active && target !== s.active) {
-    console.log(`PROMPT_REQUIRED: bind-mismatch ${s.active}:${target}`);
-    console.error(
-      `⛔ Refusing to close ${target}: active binding is ${s.active}. Run \`/task ${target}\` to rebind, then retry \`/task close\`.`
-    );
-    process.exit(7);
-  }
-
+  // #208 — bind-mismatch check moved to shared preflight (dispatcher).
   if (!s.active && target) {
     s = {
       ...s,

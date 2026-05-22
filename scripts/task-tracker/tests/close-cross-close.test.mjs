@@ -1,26 +1,33 @@
 #!/usr/bin/env node
-// Unit tests for the cross-close refusal in verbClose (#142).
+// Unit tests for the cross-close refusal (#142 / #208).
 //
 // `/task close <N>` must refuse when state.active is set and target !== active.
 // The refusal is unconditional (no --answer escape), exits 7, emits
 // PROMPT_REQUIRED on stdout, and performs no state or network mutation.
 //
-// We exercise two layers:
-//   1. Source-level invariants (cheap, fast, hard to bypass).
-//   2. Direct verbClose() call with a mocked ctx, asserting the refusal
-//      runs to process.exit(7) before any ctx side-effect fires.
+// In #208 the refusal was lifted out of close.mjs into the shared
+// `lib/verb-preflight.mjs` helper and runs at the dispatcher before any verb
+// body executes. The behavioral test now exercises the dispatcher path
+// end-to-end via a child process. The source-level invariants moved to the
+// preflight helper / dispatcher wiring.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { tmpdir } from 'node:os';
 
 import { verbClose } from '../verbs/close.mjs';
 
+const pexec = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_PATH = path.resolve(__dirname, '..', 'verbs/close.mjs');
 const SRC = readFileSync(SRC_PATH, 'utf8');
+const PREFLIGHT_SRC = readFileSync(path.resolve(__dirname, '..', 'lib/verb-preflight.mjs'), 'utf8');
+const CLI = path.resolve(__dirname, '..', 'task-tracker.mjs');
 
 // ── Source-level invariants ──────────────────────────────────────────────────
 
@@ -31,23 +38,22 @@ test('source: no `closingDifferentIssue` references remain (dead-code check)', (
   );
 });
 
-test('source: refusal precedes any state-mutation, network probe, or dirty check', () => {
-  const refusalIdx = SRC.indexOf('PROMPT_REQUIRED: bind-mismatch');
-  assert.ok(refusalIdx > 0, 'PROMPT_REQUIRED refusal must exist');
-  // Search for the actual call sites, not the destructure-from-ctx lines.
-  const networkIdx = SRC.search(/await getIssueBoardState\(/);
-  const dirtyIdx = SRC.search(/await checkDirty\(|checkDirty\(/);
-  const saveStateIdx = SRC.search(/saveState\(s, statePath\)/);
-  assert.ok(refusalIdx < networkIdx, 'refusal must precede network probe');
-  assert.ok(refusalIdx < dirtyIdx, 'refusal must precede dirty check');
-  assert.ok(refusalIdx < saveStateIdx, 'refusal must precede the bind-on-the-fly saveState');
+test('source: bind-mismatch refusal now lives in the shared preflight helper', () => {
+  assert.ok(
+    !/PROMPT_REQUIRED: bind-mismatch/.test(SRC),
+    'close.mjs must no longer carry the inline bind-mismatch refusal (#208 lifted it to preflight)'
+  );
+  assert.ok(
+    /PROMPT_REQUIRED: bind-mismatch/.test(PREFLIGHT_SRC),
+    'lib/verb-preflight.mjs must emit the PROMPT_REQUIRED: bind-mismatch token'
+  );
 });
 
-test('source: bind-mismatch refusal uses exit(7)', () => {
-  // Other PROMPT_REQUIRED gates in close.mjs (review-approval) also exit 7;
-  // we just assert ours is wired with the same convention.
-  const block = SRC.match(/PROMPT_REQUIRED: bind-mismatch[\s\S]*?process\.exit\(7\)/) || [];
-  assert.ok(block[0], 'bind-mismatch refusal block must call process.exit(7)');
+test('source: preflight bind-mismatch uses exit(7)', () => {
+  assert.ok(
+    /EXIT_BIND_MISMATCH\s*=\s*7/.test(PREFLIGHT_SRC),
+    'preflight helper must define EXIT_BIND_MISMATCH = 7'
+  );
 });
 
 // ── Behavioral test via direct verbClose() invocation ───────────────────────
@@ -119,8 +125,6 @@ async function runCloseAndCaptureExit(ctx) {
 
 // We need verbClose to see s.active = '#101'. The verb calls loadState(statePath).
 // Easiest path: write a real temp state file and point statePath at it.
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 
 function withRealStateFile({ active }) {
   const dir = mkdtempSync(path.join(tmpdir(), 'tt-cross-close-'));
@@ -137,20 +141,42 @@ function withRealStateFile({ active }) {
   return { dir, statePath };
 }
 
-test('refuses cross-close: exit 7, PROMPT_REQUIRED on stdout, no side-effects', async () => {
-  const { statePath } = withRealStateFile({ active: '#101' });
-  const sideEffects = [];
-  const ctx = {
-    ...buildMockCtx({ active: '#101', target: '#102', sideEffects }),
-    statePath,
-    rest: ['#102'],
-  };
-  const r = await runCloseAndCaptureExit(ctx);
-  assert.equal(r.exitCode, 7, `expected exit 7, got ${r.exitCode}. stderr=${r.stderr}`);
-  assert.match(r.stdout, /PROMPT_REQUIRED: bind-mismatch #101:#102/);
-  assert.match(r.stderr, /Refusing to close #102/);
-  assert.match(r.stderr, /\/task #102/);
-  assert.deepEqual(sideEffects, [], 'no ctx side-effects on refusal');
+function makeDispatcherSandbox({ active }) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'tt-cross-close-cli-'));
+  mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(dir, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
+  );
+  writeFileSync(
+    path.join(dir, '.ai-task-manager', 'task-tracker-state.json'),
+    JSON.stringify({
+      active,
+      lastActive: active,
+      entryStartTs: '2026-05-17T12:00:00Z',
+      wordsAtEntryStart: 0,
+      totalActiveMinutes: 0,
+      discoverBucket: null,
+      state: 'develop',
+    })
+  );
+  return dir;
+}
+
+test('refuses cross-close: exit 7, PROMPT_REQUIRED on stdout (via dispatcher preflight)', async () => {
+  const sandbox = makeDispatcherSandbox({ active: '#101' });
+  const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
+  let err;
+  try {
+    await pexec('node', [CLI, 'close', '#102'], { env });
+    throw new Error('expected non-zero exit');
+  } catch (e) {
+    err = e;
+  }
+  assert.equal(err.code, 7, `expected exit 7, got ${err.code}. stderr=${err.stderr}`);
+  assert.match(err.stdout, /PROMPT_REQUIRED: bind-mismatch #101:#102/);
+  assert.match(err.stderr, /Refusing \/task close/);
+  assert.match(err.stderr, /\/task #102/);
 });
 
 test('allows close when target equals s.active (no refusal)', async () => {
