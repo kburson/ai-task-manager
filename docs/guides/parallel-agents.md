@@ -77,6 +77,12 @@ After the batch returns and the orchestrator has merged the worktree branches, *
 
 ---
 
+## 4a. Human-eyes-on-the-diff distinction
+
+Two sub-agent terminal statuses look superficially identical — both end in `/task close` and Done — but encode different audit guarantees. `HUMAN_APPROVED` means a human ran `/task approve` after reading the diff (human eyes on the diff). `HUMAN_AUTHORIZED_AI_APPROVED` means a human pre-authorized the gate-keeper (Full-Auto via `TT_FULL_AUTO=1`, or single-gate-disable) but no human has yet read the diff; review is available retroactively via the commit trail and any follow-up defect/enhancement stories. Sub-agents running under `TT_FULL_AUTO=1` or single-gate-disable MUST emit `HUMAN_AUTHORIZED_AI_APPROVED`, never `HUMAN_APPROVED`. Use the right verb so the audit trail does not lie about which closures had human review.
+
+---
+
 ## 5. `/task promote` / `/task demote` are mandatory
 
 The canonical user-facing surface for state transitions is:
