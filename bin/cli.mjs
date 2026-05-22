@@ -10,12 +10,14 @@ import { createInterface } from 'node:readline';
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
   copyFileSync,
   symlinkSync,
   rmSync,
   lstatSync,
+  statSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -252,6 +254,7 @@ function patchGitignore(targetDir) {
     '.ai-task-manager/task-fleet.json',
     '.ai-task-manager/pickup-directive.md.bak',
     '.ai-task-manager/definition-of-done.md.bak',
+    '.ai-task-manager/references/',
     '.claude/task-tracker.json',
     '.claude/task-tracker-state.json',
     '.claude/task-tracker-queue.json',
@@ -526,9 +529,50 @@ function installTemplates(targetDir) {
       ok(`Config ${dim('.ai-task-manager/activity-policy.json')} ${dim('(unchanged)')}`);
     }
   }
+  installReferences(templateDest);
   patchGitignore(targetDir);
   ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
   mergeDefaultPreferences(templateDest);
+}
+
+// Recursively copy templates/references/ -> .ai-task-manager/references/
+// using the same overwrite-with-.bak behavior as installTemplates(). Reference
+// files are checked-in under templates/references/ so downstream consumers
+// receive them at install time; the runtime location is gitignored.
+function installReferences(templateDest) {
+  const srcRoot = join(PKG_ROOT, 'templates', 'references');
+  if (!existsSync(srcRoot)) return;
+  const destRoot = join(templateDest, 'references');
+  mkdirSync(destRoot, { recursive: true });
+  copyReferenceTree(srcRoot, destRoot, 'references');
+}
+
+function copyReferenceTree(srcDir, destDir, displayPrefix) {
+  for (const entry of readdirSync(srcDir)) {
+    const srcPath = join(srcDir, entry);
+    const destPath = join(destDir, entry);
+    const display = `${displayPrefix}/${entry}`;
+    const st = statSync(srcPath);
+    if (st.isDirectory()) {
+      mkdirSync(destPath, { recursive: true });
+      copyReferenceTree(srcPath, destPath, display);
+      continue;
+    }
+    if (!st.isFile()) continue;
+    let suffix = '';
+    if (existsSync(destPath)) {
+      const existing = readFileSync(destPath, 'utf8');
+      const bundled = readFileSync(srcPath, 'utf8');
+      if (existing !== bundled) {
+        writeFileSync(destPath + '.bak', existing, 'utf8');
+        suffix = ` ${yellow('(overwrote; previous saved as .bak)')}`;
+      } else {
+        suffix = ` ${dim('(unchanged)')}`;
+      }
+    }
+    copyFileSync(srcPath, destPath);
+    ok(`Reference ${dim('.ai-task-manager/' + display)}${suffix}`);
+  }
 }
 
 function mergeDefaultPreferences(templateDest) {

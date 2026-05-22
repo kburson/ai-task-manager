@@ -5,171 +5,62 @@
 These steps apply on first pickup of any issue with an unchecked `- [ ] Deep dive complete`
 checkbox. If the checkbox is already checked, skip to step 6.
 
+Rationale, examples, and audited overrides for every hard rule below live in
+[`references/pickup-directive-rationale.md`](./references/pickup-directive-rationale.md).
+Read it when you need the "why" behind a rule or the recovery procedure for an
+override.
+
 ## ⛔ Hard Rules — Do Not Skip
 
 These rules are enforced by `/task close` and by `move-state.mjs <issue> done`. Bypassing
 them is a process violation, not a shortcut. Closing or moving an issue to Done while any
 required box is unchecked will be refused.
 
-0. **Bootstrap is fail-closed. If steps 1–7 of "Required steps before writing any code" do not all succeed, STOP.**
-   - If `task-tracker.mjs <issue> --role agent` reports `config-not-found`, if `move-state.mjs` cannot move the issue to `in-progress`, if `words-count` returns no value, or if any other bootstrap step exits non-zero — you MUST report `STATUS: BLOCKED` with the failing step name (`bootstrap-step-<N>: <reason>`) and stop before editing any source file.
-   - "It printed a warning but I kept going" is a process violation. The bootstrap is the contract that registers your session, moves the issue, and posts the `start` timing row. If the contract did not complete, your work cannot be accounted for and will be discarded.
-   - The most common cause is a worktree that was created without `.ai-task-manager/` (the directory is gitignored, so `git worktree add` doesn't carry it). The orchestrator must seed it via `scripts/task-tracker/seed-worktree.mjs <worktree>` BEFORE booting you. If you hit this, BLOCK — do not try to recreate the config yourself.
+0. **Bootstrap is fail-closed.** If steps 1–7 of "Required steps before writing any code" do not all succeed, STOP and report `STATUS: BLOCKED bootstrap-step-<N>: <reason>` before editing any source file. See rationale.
 
-1. **Deep Dive is mandatory before any code changes.**
-   - You MUST complete the deep-dive analysis (step 2 below) and append it to the issue
-     body (step 3) BEFORE editing any source file in service of this issue.
-   - You MUST check `- [ ] Deep dive complete` (`/task check "Deep dive complete"`)
-     immediately after appending. That check is the gate signal — do not run it ahead
-     of time.
-   - If you have already started writing code without doing this: stop, set aside the
-     changes, and run the deep dive against the actual current state of the repo.
+1. **Deep Dive is mandatory before any code changes.** Complete the deep-dive analysis (step 2 below), append it to the issue body (step 3), and run `/task check "Deep dive complete"` BEFORE editing any source file in service of this issue.
 
-2. **Every Definition of Done item must be individually verified.**
-   - For each DoD checkbox, verify completion by **inspection AND by running the
-     relevant tests, builds, or commands**. Read the output. Then check the box.
-   - Same rule for every Acceptance Criterion (including any added during the deep
-     dive).
-   - Every Acceptance Criterion must carry automated evidence metadata using an
-     `aitm-verified-by` HTML comment marker. Add one or more markers beside the
-     AC text during deep dive, after choosing the command that proves that
-     criterion.
-   - The standard DoD commands (`npm test`, `npm run lint`, and
-     `npm run format:check`) are DoD checkboxes. Do not duplicate them under the
-     deep-dive `### Verification Commands` section.
-   - Every non-standard command named in an AC `aitm-verified-by` marker must also
-     appear as a checkbox under the issue-specific `### Verification Commands`
-     section. Standard DoD commands may be referenced by AC markers, but stay only
-     in the DoD checklist.
-   - Do not check a related Acceptance Criterion or DoD prose box until the
-     relevant command checkbox has been checked.
-   - Never bulk-check. Never check preemptively. "It looks done" is not verification.
+2. **Every Definition of Done item and Acceptance Criteria checkbox must be individually verified.** For each DoD checkbox and every Acceptance Criteria item, verify by inspection AND by running the relevant tests, builds, or commands; then check the box. Every Acceptance Criteria checkbox must carry an `aitm-verified-by` HTML comment marker, and every non-standard command named there must appear as a checkbox under the issue-specific `### Verification Commands` section. Standard DoD commands (`npm test`, `npm run lint`, `npm run format:check`) stay only in the DoD checklist — do not duplicate them under `### Verification Commands`. Never bulk-check; never check preemptively.
 
-3. **All pre-close checkboxes must be checked before close.**
-   - Before `/task close` or moving the issue to Done, every user-verifiable `- [ ]`
-     in the issue body MUST be `- [x]`. This includes the Deep Dive checkpoint,
-     every Acceptance Criterion, every issue-specific Verification Commands checkbox,
-     and every Definition of Done item.
-   - Close side effects such as moving to Done, writing the final timing row, and
-     updating Actuals are owned by `/task close`; they are not DoD checkboxes.
-   - The pre-close gate WILL refuse if any pre-close box is unchecked. Do not bypass.
-   - The audited override `TASK_TRACKER_FORCE_DONE=1` exists for legitimate
-     abandonment cases only (e.g., issue turned out invalid). It writes a visible
-     bypass row to the timing log. Do not use it to skip verification.
+3. **All pre-close checkboxes must be checked before close.** Before `/task close` or moving the issue to Done, every user-verifiable `- [ ]` in the issue body MUST be `- [x]`. The pre-close gate WILL refuse if any pre-close box is unchecked. The audited override `TASK_TRACKER_FORCE_DONE=1` exists for legitimate abandonment only.
 
-4. **Move to Done is gated.**
-   - `move-state.mjs <issue> done` will refuse if Deep Dive is unchecked or any other
-     pre-close box in the issue body is unchecked. Same audited override applies.
-   - Normal path: run `/task close` — it validates, flushes timing, then moves to Done.
+4. **Move to Done is gated.** `move-state.mjs <issue> done` refuses if Deep Dive or any other pre-close box is unchecked. Normal path: `/task close` validates, flushes timing, then moves to Done.
 
-5. **Agents MUST NOT run `/task review` or `/task close`. The terminal agent action is reporting `CODE_COMPLETE`.**
-   - Once implementation is complete and all verifiable checkboxes are checked, capture
-     exit word count, then report `CODE_COMPLETE` with `duration_minutes` and
-     `words_delta`. The orchestrator calls `/task review #N --duration-minutes M --words W`.
-   - Checking all boxes means "orchestrator should now call `/task review`" — NOT
-     permission for the agent to call `/task review` or `/task close`.
-   - `/task review` is an orchestrator action. `/task close` is a human action.
-     Agents running either is a process violation.
+5. **Agents MUST NOT run `/task review` or `/task close`. The terminal agent action is reporting `CODE_COMPLETE`.** Checking all boxes means "orchestrator should now call `/task review`" — NOT permission for the agent to call `/task review` or `/task close`. `/task review` is an orchestrator action; `/task close` is a human action. Agents running either is a process violation.
 
-6. **Epic AC/DoD checkboxes may not be checked before all sub-issues reach Review.**
-   For issues whose title begins with `EPIC:`, no Acceptance Criterion or Definition of
-   Done checkbox may be ticked until every sub-issue linked to the epic has passed through
-   In Review verification and reached Review status. Checking epic-level boxes during
-   deep-dive or mid-implementation is a process violation, even if the outcome appears
-   correct by inspection. The sub-issue lifecycle IS the verification.
+6. **Epic AC/DoD checkboxes may not be checked before all sub-issues reach Review.** For issues whose title begins with `EPIC:`, no AC or DoD checkbox may be ticked until every linked sub-issue has reached Review. The sub-issue lifecycle IS the verification.
 
-7. **Pause the timer before asking the user a blocking question; resume after they answer.**
-   - Any time you must stop work to ask the user a clarification, design choice, missing-info, or scope-confirmation question and wait for an answer, run `/task pause "pause for question"` BEFORE asking. Run `/task start "question answered"` AFTER they answer, before any further tool calls. The reason strings are positional args and land in the `description` column of the issue's `⏱ Timing Log`.
-   - Does NOT apply to rhetorical or in-flight prose questions you answer yourself.
-   - Why: the timer measures focused engagement. Idle time waiting for a human answer corrupts `engagedTime`/`sessionTime` and the value report.
-   - Pause→resume gaps ≤ `reviewPauseThresholdMin` (default 5 min, configurable in `.ai-task-manager/task-tracker.json`) count as **Review Time** and roll into **Engaged Time**; longer gaps are excluded as idle.
+7. **Pause the timer before asking the user a blocking question; resume after they answer.** Run `/task pause "pause for question"` BEFORE asking, `/task start "question answered"` AFTER they answer. Does NOT apply to rhetorical or in-flight prose questions you answer yourself. See rationale for `reviewPauseThresholdMin` semantics.
 
-8. **Skip collapsed `<details>` blocks unless told to expand.**
-   Issue bodies wrap the Deep-Dive Analysis appendix in a `<details>` block once `/task plan-approve` has run. Treat the wrapped content as already-applied context — do not re-read it on pickup unless the user explicitly asks you to revisit scope or expand the deep dive.
+8. **Skip collapsed `<details>` blocks unless told to expand.** Treat wrapped Deep-Dive Analysis content as already-applied context — do not re-read it on pickup unless explicitly asked to revisit scope.
 
-9. **Checkpoint Pause — re-read the conversation queue before any state transition.**
-   Before any `/task` state move, before switching the active issue, before closing an
-   issue, and before parallel-agent fan-out, **pause and re-read the most recent user
-   messages**. If the latest user message is unacknowledged or contains a question or
-   instruction not yet addressed, halt and respond first — do not advance state. There
-   is no programmatic signal for "unread chat queue"; this is behavioral self-discipline
-   at high-cost moments to prevent steam-rolling past queued input.
-
-   Trigger points (must checkpoint before each):
+9. **Checkpoint Pause — re-read the conversation queue before any state transition.** Re-read the most recent user messages at every trigger below. If the latest message is unacknowledged or contains a question not yet addressed, halt and respond first — do not advance state. Triggers:
    - Before `/task` state moves (`refine`, `plan`, `develop`, `test`, `review`, `done`).
    - Before switching active issue (`/task #N` when already bound to a different `#M`).
    - Before closing an issue.
    - Before parallel-agent fan-out.
 
-10. **Field units — `estimate` is hours; timing fields are minutes.**
-    The project-board `Estimate` field is denominated in **hours** (`unit: hours` in
-    `config/project-fields.default.json`). The timing fields — `engagedTime`,
-    `sessionTime`, `reviewTime` — are denominated in **minutes**. The Review delta
-    renderer normalizes both to seconds internally and displays `H:MM:SS`, but if you
-    read these values directly (board API, field-DB JSON), **do not compare them
-    raw** — a 3-hour estimate against a 22.5-minute actual is −87%, not +650%.
-    Internal compute is second-precision; the board still stores rounded minutes.
+10. **Field units — `estimate` is hours; timing fields are minutes.** The board's `Estimate` is hours; `engagedTime`, `sessionTime`, `reviewTime` are minutes. If you read these directly (board API, field-DB JSON), do not compare them raw.
 
-11. **Review Notes drive the Drivers section in the delta comment.**
-    The reviewer (or, under `TT_FULL_AUTO=1`, the auto-derive pipeline) posts a
-    `### 📝 Review Notes` comment with bullet drivers before approval. `/task approve`
-    handles this: in human-review mode it prompts stdin (one bullet per line, blank
-    line to end); in Full-Auto it derives drivers from observable signals (misestimate,
-    sandbox retries, develop re-entry, oversized diff) and tags the comment
-    `<!-- aitm-review-notes-source: auto -->`. The close-time `### 📊 Review delta`
-    comment reads the most-recent Review Notes comment and renders its bullets under
-    a `Drivers:` section. Empty drivers → no Drivers section.
+11. **Review Notes drive the Drivers section in the delta comment.** `/task approve` writes a `### 📝 Review Notes` comment (stdin-prompted under human review; auto-derived under `TT_FULL_AUTO=1` and tagged `<!-- aitm-review-notes-source: auto -->`). The close-time `### 📊 Review delta` reads it.
 
-12. **Full-Auto approvals leave a visible footnote under DoD.**
-    Under `TT_FULL_AUTO=1` (or any other signal `detectFullAuto` fires on), `/task
-approve` writes a blockquote footnote between
-    `<!-- aitm-full-auto-footnote:start -->` and `<!-- aitm-full-auto-footnote:end -->`
-    under the Lifecycle DoD subsection so reviewers can see at a glance that no
-    human was in the loop. The hidden `aitm-full-auto-approved` marker still
-    records the audit signals. `gh-edit-guard` protects the delimiters; do not
-    strip them. A `lifecycle-tick-noop` stderr warning fires if the DoD checklist
-    label is missing or legacy — investigate the body shape rather than ignoring.
+12. **Full-Auto approvals leave a visible footnote under DoD.** Under `TT_FULL_AUTO=1`, `/task approve` writes a blockquote footnote between `<!-- aitm-full-auto-footnote:start -->` and `<!-- aitm-full-auto-footnote:end -->`. `gh-edit-guard` protects the delimiters; do not strip them. A `lifecycle-tick-noop` stderr warning means the DoD checklist label is missing or legacy.
 
-13. **Post-Compact/Clear Recovery — boot index is authoritative.**
-    A `Compact` or `Clear` cannot reproduce the verbatim hard rules in this
-    file from a summary. After either operation (or any fresh session), follow
-    [`.ai-task-manager/session-boot.md`](./session-boot.md) before the first
-    verb: re-read every Tier-1 file in order, discard any prior
-    `aitm-skill-loaded:*` sentinels, then emit a one-shot
-    `aitm-boot-recovered:<session-id>:<timestamp>` sentinel. Treating a
-    compacted paraphrase as the rule is a process violation. See the
-    "Post-Compact/Clear Recovery" step in "Required steps before writing any
-    code" below.
+13. **Post-Compact/Clear Recovery — boot index is authoritative.** After any compact, clear, or fresh session, follow [`.ai-task-manager/session-boot.md`](./session-boot.md) before the first verb: re-read every Tier-1 file, discard prior `aitm-skill-loaded:*` sentinels, then emit `aitm-boot-recovered:<session-id>:<timestamp>`. Treating a compacted paraphrase as the rule is a process violation.
 
-14. **On mistakes — stop and surface, do not self-correct.**
-    If you discover you have taken a wrong action (created a duplicate issue, used
-    `gh issue close` directly, skipped the deep dive, dispatched agents without
-    verifying state), STOP immediately. Do not attempt to fix the mistake yourself.
-    Announce what happened, why it was wrong, and propose 2–3 resolution options.
-    Wait for explicit orchestrator or human instruction before proceeding.
+14. **On mistakes — stop and surface, do not self-correct.** If you discover you have taken a wrong action (created a duplicate issue, used `gh issue close` directly, skipped the deep dive, dispatched agents without verifying state), STOP. Announce what happened, why it was wrong, and propose 2–3 resolution options. Wait for explicit instruction before proceeding.
 
 ## Sequence rules
 
-**Child sub-issues may not lead the parent epic in state.** The `promote <child> <target>` verb refuses when the parent epic's state is lower than the child's requested target (e.g., parent in `refine`, child promoting to `develop`). The gate is the `child-cannot-lead-epic` invariant — drive the epic forward first, then the children may follow.
+**Child sub-issues may not lead the parent epic in state.** The `promote <child> <target>` verb refuses when the parent epic's state is lower than the child's requested target. The gate is the `child-cannot-lead-epic` invariant.
 
 Same rule applies inside the Refine → Plan exit gate: every epic child must be at `refine` (no `backlog` children) before the epic itself may move to `plan`.
 
-Heal-forward override (use sparingly, audit-trailed): set `TASK_TRACKER_FORCE_PROMOTE=1` in the environment for a single command. The promote will succeed and post `⚠ override used` audit comments on both the child sub-issue and the parent epic naming the offending state pair. The override exists for recovery cases where the parent was manually advanced or the board drifted; it is not a substitute for sequencing.
+Heal-forward override `TASK_TRACKER_FORCE_PROMOTE=1` exists for audited recovery — see [rationale](./references/pickup-directive-rationale.md#sequence-rules-override).
 
 ## Required steps before writing any code
 
-0. **Post-Compact/Clear Recovery.** If this session was just compacted, cleared,
-   or freshly started — i.e. you see a "This session is being continued from a
-   previous conversation" banner, a fresh-session preamble, or no
-   `aitm-boot-recovered:*` sentinel in the live context — follow
-   [`.ai-task-manager/session-boot.md`](./session-boot.md) **before any other
-   step below**. Re-read every Tier-1 file listed there (router, this pickup
-   directive, `task-tracker.json`, the active issue body via `gh issue view`).
-   Treat any compacted summary of those files as a hint only, not as the rule
-   itself. Then emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>`
-   sentinel and continue with step 1 below. See also Hard Rule cross-reference
-   above: rule decay through compaction is a process violation, not a
-   shortcut.
+0. **Post-Compact/Clear Recovery.** If this session was just compacted, cleared, or freshly started — i.e. you see a "This session is being continued from a previous conversation" banner, a fresh-session preamble, or no `aitm-boot-recovered:*` sentinel in the live context — follow [`.ai-task-manager/session-boot.md`](./session-boot.md) before any other step below. Treat any compacted summary of those files as a hint only, not as the rule itself. Then emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel and continue with step 1.
 
 1. **Move the issue to `in-progress` and capture your entry word count:**
 
@@ -178,123 +69,19 @@ Heal-forward override (use sparingly, audit-trailed): set `TASK_TRACKER_FORCE_PR
    node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
    ```
 
-   Record the output as `W_start` and the current wall-clock time as `T_start`. You will
-   use these at exit to compute `words_delta` and `duration_minutes` for your
-   `CODE_COMPLETE` report. When implementation is complete, report `CODE_COMPLETE` and
-   stop — the orchestrator calls `/task review #N --duration-minutes M --words W`.
+   Record the output as `W_start` and the current wall-clock time as `T_start`. You will use these at exit to compute `words_delta` and `duration_minutes` for your `CODE_COMPLETE` report. When implementation is complete, report `CODE_COMPLETE` and stop — the orchestrator calls `/task review #N --duration-minutes M --words W`.
 
-2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's
-   assumptions still hold, identify concrete files to edit, define the test approach,
-   surface new risks. Use `rg`, `rg --files`, repository docs, and any relevant
-   `AGENTS.md` files to build the file map from the current checkout.
+2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's assumptions still hold, identify concrete files to edit, define the test approach, surface new risks. Use `rg`, `rg --files`, repository docs, and any relevant `AGENTS.md` files to build the file map from the current checkout.
 
-3. **Append the deep dive to the issue body**, then flip the checkpoint checkbox.
+3. **Append the deep dive to the issue body, then flip the checkpoint checkbox.** Full procedure (placement gate, `--body-file` requirement, required subsections, AC `aitm-verified-by` binding, `### Verification Commands`, Dependency Map) is in [`references/deep-dive-procedure.md`](./references/deep-dive-procedure.md). After appending, run `/task check "Deep dive complete"`.
 
-   > ⚠️ **Never use `gh issue edit --body "..."`** — it replaces the entire body.
-   > Always use `--body-file`.
+4. **Re-evaluate Estimate and Size.** If the deep dive changes either, update project fields and post a comment. If Size jumps ≥ 2 tiers, pause and wait for human direction.
 
-   > 📐 **Placement is mandatory.** Append the `## Deep-Dive Analysis (YYYY-MM-DD)`
-   > section AFTER the `## Pickup Directive` heading block (after its trailing
-   > `- [ ] Deep dive complete` checkbox) and BEFORE the
-   > `<!-- ai-task-manager:fields:start -->` marker. The canonical body order is
-   > Scope → Acceptance Criteria → Definition of Done → Pickup Directive → Deep-Dive
-   > Analysis → fields-block. The `deep-dive-placement` body gate refuses
-   > in-review/r4r/done moves when the Deep-Dive heading is present in any other
-   > position.
+5. **If this is an Epic — validate sequencing and fan out sub-issues.** Skip for plain sub-issues. Full procedure (sub-issue Scope review, Sequence validation, validated Dependency Map comment, fan-out and re-dispatch loop, parent-epic `/task review` rule, human notification only after epic reaches Review) is in [`references/deep-dive-procedure.md`](./references/deep-dive-procedure.md).
 
-   Run the following command and save its output to `./tmp/body.md` via your Write
-   tool — do not use a `>` shell redirect:
+6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
 
-   ```
-   gh issue view <this-issue-#> --json body --jq .body
-   ```
-
-   Append the `## Deep-Dive Analysis (YYYY-MM-DD)` section after the Pickup
-   Directive block and before any `<!-- ai-task-manager:fields:start -->` marker,
-   using your agent's file-editing tool. Then post the updated body:
-
-   ```bash
-   gh issue edit <this-issue-#> --body-file ./tmp/body.md
-   ```
-
-   Then flip the checkpoint: `/task check "Deep dive complete"`
-
-   The deep-dive section must include:
-   - **Files to edit** (full repo-relative paths)
-   - **Step-by-step implementation plan**
-   - **Test additions** — list each test file with a one-line description; append as new acceptance-criteria checkboxes
-   - **Verification Commands** — issue-specific commands to prove criteria that are
-     not already covered by the standard DoD commands. Append them as checkboxes and
-     check them only after successful execution and output review:
-
-     ```markdown
-     ### Verification Commands
-
-     - [ ] `node scripts/task-tracker/tests/config.test.mjs`
-     - [ ] `node scripts/task-tracker/tests/state.test.mjs`
-     ```
-
-     Do not add words like `PASS`; the checked box is the proof.
-
-     Bind each Acceptance Criterion to its proof command with an inline marker:
-
-     ```markdown
-     - [ ] Config loads from project root. <!-- aitm-verified-by: `node scripts/task-tracker/tests/config.test.mjs` -->
-     ```
-
-     If an AC is proved by a standard DoD command, reference that command in the
-     marker but do not duplicate the command under `### Verification Commands`.
-
-   - **Identified risks** beyond the Scope
-   - **Sibling sub-issues to spawn** (if any)
-   - **Dependency map** (always include, even if no dependencies):
-
-     ```
-     ## Dependency Map
-     Depends on: #N (reason), #M (reason)   ← or "none"
-     Blocks: #P (reason), #Q (reason)        ← or "none"
-     ```
-
-4. **Re-evaluate Estimate and Size.** If the deep dive changes either, update project
-   fields and post a comment. If Size jumps ≥ 2 tiers, pause and wait for human direction.
-
-5. **If this is an Epic — validate sequencing and fan out sub-issues.**
-
-   Skip this step for plain sub-issues. Only run it when picking up an issue whose title begins with `EPIC:` or that has linked sub-issues.
-
-   a. Fetch all open sub-issues and read their Scope sections.
-
-   b. Validate each sub-issue's `Sequence` field against actual code dependencies found in the deep dive. If a value is wrong, update it:
-
-   ```bash
-   gh project item-edit \
-     --project-id <projectId> \
-     --id <item-id> \
-     --field-id <sequenceFieldId from .ai-task-manager/task-tracker.json> \
-     --number <N>
-   ```
-
-   c. Post a validated dependency map comment on the epic:
-
-   ```markdown
-   ## Dependency Map (validated YYYY-MM-DD)
-
-   Sequence 1 — start immediately, parallel: #N, #M
-   Sequence 2 — after all Seq 1 close: #P, #Q
-   Sequence 3 — after all Seq 2 close: #R
-   ```
-
-   d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents work. When an agent returns, it will report `CODE_COMPLETE`, `ISSUE_READY_FOR_REVIEW`, or `BLOCKED` (see Status Reporting above). For `CODE_COMPLETE`: extract `duration_minutes` and `words_delta`, call `/task review #N --duration-minutes M --words W` — on failure post a comment with failed criteria, revert to In Progress, and re-dispatch; on success the sub-issue moves to Review. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is already in Review — do NOT run `/task close`.
-
-   **When every sub-issue in the current sequence reaches Review, the orchestrator must immediately call `/task review #<epic>` on the parent epic.** This is orchestrator work, not human work. Running `/task review` on the epic is what moves the epic to Review and gates the human notification. Do not notify the human until the epic itself is in Review.
-
-   Once the epic reaches Review, report `ISSUE_READY_FOR_REVIEW` and notify the human: "Epic #X and sub-issues #A–#Z are in Review awaiting your review and `/task close`." Do NOT run `/task close`. Only after **every** Sequence-N issue reaches Done via human-approved `/task close` should you spawn Sequence-(N+1). **Do not pick up work from other epics or solo tasks while this epic is in progress.**
-
-6. **Spawn sibling sub-issues if needed.** Each sibling gets a fresh Pickup Directive
-   injected, the same priority as the parent epic, and a "Spawned from: #<this-issue>" link.
-
-7. **Proceed with implementation.** Branch: `<this-issue-#>-<short-slug>`. Use
-   `superpowers:using-git-worktrees`. Every commit references this issue and parent epic:
+7. **Proceed with implementation.** Branch: `<this-issue-#>-<short-slug>`. Use `superpowers:using-git-worktrees`. Every commit references this issue and parent epic:
 
    ```
    <scope>: short summary
@@ -305,69 +92,12 @@ Heal-forward override (use sparingly, audit-trailed): set `TASK_TRACKER_FORCE_PR
 
 ## Status Reporting
 
-When returning control to an orchestrator after completing your work, report exactly one
-of these statuses. Do not use `DONE` or `DONE_WITH_CONCERNS` — those terms are
-ambiguous under the AITM close contract and will cause orchestrators to advance the
-sequence prematurely.
+Report exactly one status. Do not use `DONE` or `DONE_WITH_CONCERNS` — those terms are ambiguous under the AITM close contract and will cause orchestrators to advance the sequence prematurely.
 
-| Status                   | Meaning                                                                                                                                                                                                                                       | Required condition                                                                                                                     |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `CODE_COMPLETE`          | Implementation finished. All verifiable boxes checked; any boxes requiring human/live-env observation noted as unverifiable. Agent stops — orchestrator calls `/task review #N --duration-minutes M --words W` using values from this report. | List any unchecked items and why they could not be verified. Include `duration_minutes` and `words_delta`. Do NOT call `/task review`. |
-| `ISSUE_READY_FOR_REVIEW` | Orchestrator reports this after `/task review` succeeds and the issue reaches Review.                                                                                                                                                         | Orchestrator notifies the human for approval. Do NOT run `/task close`.                                                                |
-| `BLOCKED`                | Cannot proceed without orchestrator or human intervention.                                                                                                                                                                                    | Describe exactly what is needed.                                                                                                       |
+- `CODE_COMPLETE` — implementation finished; all verifiable boxes checked; list any unchecked items and why they could not be verified. Include `duration_minutes` and `words_delta`. Do NOT call `/task review`. The orchestrator calls `/task review #N --duration-minutes M --words W`. This status means ready for human review via the orchestrator; it is NOT permission to close.
+- `ISSUE_READY_FOR_REVIEW` — orchestrator reports this after `/task review` succeeds and the issue reaches Review. Notify the human. Do NOT run `/task close`.
+- `BLOCKED` — cannot proceed without orchestrator or human intervention. Describe exactly what is needed.
 
-**Rules for orchestrators:**
-
-- On receiving `CODE_COMPLETE` from an agent: extract `duration_minutes` and
-  `words_delta` from the report, then call `/task review #N --duration-minutes M --words W`.
-  If it exits non-zero (verification failed), post a comment on the issue listing the
-  failed criteria, confirm the issue has been reverted to In Progress, and re-dispatch
-  the agent. Loop until `/task review` succeeds.
-- On `/task review` success (issue reaches Review): report `ISSUE_READY_FOR_REVIEW` and
-  notify the human. Do NOT run `/task close`.
-- A sub-issue sequence is complete only after all issues in that sequence reach **Done**
-  via the `/task review` → human approval → `/task close` path.
-- Do not advance to the next sequence while any issue has not been explicitly closed by
-  a human.
-
-**If a DoD item cannot be verified by the agent** (e.g., it requires a human to observe
-a live environment, or it involves a third-party review), leave that checkbox unchecked,
-report `CODE_COMPLETE`, and list the unverified items. Do not check DoD boxes you cannot
-actually verify.
-
-## Before reporting CODE_COMPLETE — agent steps
-
-> ⛔ **All checkboxes checked means "ready for orchestrator to call `/task review`" — NOT
-> permission for the agent to call `/task review` or `/task close`.**
-> The agent's terminal action is reporting `CODE_COMPLETE` and stopping.
-
-Review every item in the Definition of Done checklist in the issue body. For each item:
-
-- Verify it is genuinely complete (inspection + relevant test/command output).
-- Run the standard DoD command checkboxes: `npm test`, `npm run lint`, and
-  `npm run format:check`.
-- Verify every relevant issue-specific command in `### Verification Commands` has been
-  run successfully, its output read, and its checkbox checked.
-- Verify every Acceptance Criterion has at least one `aitm-verified-by` marker and
-  that every non-standard command named there appears under `### Verification Commands`.
-- Verify that all issue body checkboxes are ticked — this item is self-referential and
-  must be the last box checked.
-- Mark each verified item with `/task check "<label>"`.
-
-Then verify every Acceptance Criterion the same way. Do not check the related Acceptance
-Criterion or DoD item until the relevant command checkbox is checked.
-
-**Word count — exit step (agent sessions only):**
-Before reporting `CODE_COMPLETE`, record your final word count:
-
-```
-node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
-```
-
-Compute `words_delta = W_end - W_start` (where `W_start` was captured at agent entry —
-see step 1). Include both values in your `CODE_COMPLETE` report.
+Full status table, orchestrator rules, and the pre-`CODE_COMPLETE` agent checklist (including the `words-count` exit step) live in [`references/status-reporting.md`](./references/status-reporting.md). If a DoD item cannot be verified by the agent (live-env observation, third-party review), leave it unchecked, report `CODE_COMPLETE`, and list it.
 
 **Stop here. Report `CODE_COMPLETE`. Do NOT call `/task review`.**
-The orchestrator calls `/task review #N --duration-minutes M --words W`, which moves the
-issue through In Review → Review (or reverts to In Progress on failure and re-dispatches
-this agent). Duration and word count come from the agent's `CODE_COMPLETE` report.
