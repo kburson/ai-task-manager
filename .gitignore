@@ -38,3 +38,7 @@ tmp/
 .claude/task-fleet.json
 # Session-scoped auto-mode overrides (#89) — per-chat, never committed
 .claude/task-tracker.session.*.json
+
+# >>> ai-task-manager managed >>>
+.ai-task-manager/sessions/
+# <<< ai-task-manager managed <<<
