@@ -82,6 +82,10 @@ assert.ok(s.discoverBucket, 'planBucket migrates to discoverBucket');
 assert.equal(s.planBucket, undefined, 'legacy planBucket is dropped');
 
 // Test 5: corrupt file returns empty state (does not throw)
+// Note (#212): per-session bound-issue state now lives in
+// .ai-task-manager/sessions/<sid>/active-task.json. Clear it first so this
+// test exercises the corrupt-global-file path in isolation.
+clearActive(statePath);
 writeFileSync(statePath, '{not json');
 s = loadState(statePath);
 assert.deepEqual(s, EMPTY_STATE);

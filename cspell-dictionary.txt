@@ -81,6 +81,7 @@ sandboxed
 Sandboxed
 scriptable
 Segoe
+sess
 shellcheck
 sidechain
 Sidechain

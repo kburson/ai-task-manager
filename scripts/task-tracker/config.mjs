@@ -66,6 +66,14 @@ export const DEFAULTS = {
   directMoveStateAllowed: false,
   // Orphan GC threshold for `.claude/task-tracker.session.*.json`. (#89)
   deadSessionMaxAgeMs: 604800000,
+  // EPIC #207 / #212 — per-session state directory retention. Sessions whose
+  // last-write mtime is older than this are eligible for GC by a future
+  // sub-issue. Integer (days).
+  sessionRetentionDays: 2,
+  // EPIC #207 / #212 — minimum gap (in seconds) between activity events before
+  // the next event implies a pause. Used by per-session pause detection in a
+  // later sub-issue. Integer (seconds).
+  pauseThresholdSeconds: 30,
 };
 
 const TYPES = {
@@ -110,6 +118,8 @@ const TYPES = {
   lifecycleCheckboxesRequired: 'boolean',
   directMoveStateAllowed: 'boolean',
   deadSessionMaxAgeMs: 'number',
+  sessionRetentionDays: 'integer',
+  pauseThresholdSeconds: 'integer',
 };
 
 function defaultPaths() {
@@ -246,6 +256,13 @@ function coerce(key, raw) {
   if (t === 'number') {
     const n = Number(raw);
     if (!Number.isFinite(n)) throw new Error(`value for ${key} must be numeric, got: ${raw}`);
+    return n;
+  }
+  if (t === 'integer') {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      throw new Error(`value for ${key} must be an integer, got: ${raw}`);
+    }
     return n;
   }
   if (t === 'boolean') {

@@ -91,5 +91,36 @@ cfg = loadConfig({ projectPath, userPath });
 assert.equal(cfg.reviewPauseThresholdMin, 10);
 assert.equal(cfg._sources.reviewPauseThresholdMin, 'project');
 
+// Test 14 (#212): sessionRetentionDays default + integer coercion
+writeFileSync(projectPath, JSON.stringify({}));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.sessionRetentionDays, 2, 'default sessionRetentionDays is 2');
+assert.equal(DEFAULTS.sessionRetentionDays, 2);
+setConfigValue('sessionRetentionDays', '7', { projectPath, userPath });
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.sessionRetentionDays, 7);
+assert.throws(
+  () => setConfigValue('sessionRetentionDays', '2.5', { projectPath, userPath }),
+  /integer/i,
+  'non-integer must be rejected'
+);
+assert.throws(
+  () => setConfigValue('sessionRetentionDays', 'abc', { projectPath, userPath }),
+  /integer/i
+);
+
+// Test 15 (#212): pauseThresholdSeconds default + integer coercion
+writeFileSync(projectPath, JSON.stringify({}));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.pauseThresholdSeconds, 30, 'default pauseThresholdSeconds is 30');
+assert.equal(DEFAULTS.pauseThresholdSeconds, 30);
+setConfigValue('pauseThresholdSeconds', '60', { projectPath, userPath });
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.pauseThresholdSeconds, 60);
+assert.throws(
+  () => setConfigValue('pauseThresholdSeconds', '1.5', { projectPath, userPath }),
+  /integer/i
+);
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

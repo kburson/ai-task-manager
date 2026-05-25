@@ -246,3 +246,30 @@ Set to `false` to downgrade the block to a `lifecycle-warn` row in the timing
 log — useful for migrations or experimental workflows. See
 [`docs/internals/checkbox-gates.md`](../internals/checkbox-gates.md) for the
 full policy and inventory of label-string matches.
+
+## Lock primitive
+
+EPIC #207 (multi-session safety) needs a mutual-exclusion primitive when two
+Claude Code sessions in the same repo touch shared state files. After review,
+the project standardized on the **mkdir-based `withLock()`** pattern already
+proven in
+[`scripts/task-tracker/fleet-registry.mjs`](../../scripts/task-tracker/fleet-registry.mjs)
+(lines 19–50). All EPIC #207 sub-issues (Seq 1–5) MUST inherit this choice.
+
+Rationale:
+
+- `mkdir(2)` is atomic on every POSIX filesystem the runtime supports; no race
+  window between check and acquire.
+- Stale-lock detection by directory mtime (`LOCK_STALE_MS = 30s`) is sufficient
+  for the durations the task-tracker holds locks (milliseconds, occasionally
+  seconds during `gh` calls). No daemon, no PID file, no extra cleanup.
+- Zero native dependencies — preserves the "Node + `gh`, nothing else" install
+  promise. The rejected alternative was `flock(2)` via an npm dep such as
+  `proper-lockfile` or `fs-ext`, which would add a native build step and a new
+  attack surface for marginal benefit.
+- The pattern is already exercised under concurrency by `fleet-registry`'s
+  test suite (`fleet-registry-concurrent.test.mjs`), giving us a working
+  template to copy rather than design from scratch.
+
+Implementers in Seq 2–5: import or replicate the `withLock(registryPath, fn)`
+shape from `fleet-registry.mjs`. Do NOT introduce a competing lock primitive.

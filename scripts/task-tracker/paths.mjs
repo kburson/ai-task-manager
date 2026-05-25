@@ -49,3 +49,16 @@ export function projectTmpDir(projDir) {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+// Per-session directory under .ai-task-manager/sessions/<sid>/. Used by
+// session-state.mjs and (later in EPIC #207) per-session pause/idle markers.
+// Honors getProjectDir() precedence (AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd).
+export function sessionDir(sid, projDir = getProjectDir()) {
+  const safe = String(sid || 'default-session').replace(/[^A-Za-z0-9._-]/g, '_');
+  return path.join(projDir, SHARED_DIR, 'sessions', safe);
+}
+
+// Absolute path to the active-task.json file for a given session id.
+export function activeTaskPath(sid, projDir = getProjectDir()) {
+  return path.join(sessionDir(sid, projDir), 'active-task.json');
+}

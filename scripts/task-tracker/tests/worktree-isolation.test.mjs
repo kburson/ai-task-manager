@@ -33,8 +33,25 @@ function makeSandbox(prefix) {
 }
 
 function readState(dir) {
-  const p = path.join(dir, '.ai-task-manager', 'task-tracker-state.json');
-  return JSON.parse(readFileSync(p, 'utf8'));
+  // Per-session migration (#212): bound-issue triple lives in
+  // .ai-task-manager/sessions/<sid>/active-task.json. Fall back to the legacy
+  // global file if a session record isn't present.
+  const sid = process.env.CLAUDE_SESSION_ID || 'default-session';
+  const sessionPath = path.join(dir, '.ai-task-manager', 'sessions', sid, 'active-task.json');
+  const globalPath = path.join(dir, '.ai-task-manager', 'task-tracker-state.json');
+  const globalRaw = (() => {
+    try {
+      return JSON.parse(readFileSync(globalPath, 'utf8'));
+    } catch {
+      return {};
+    }
+  })();
+  try {
+    const session = JSON.parse(readFileSync(sessionPath, 'utf8'));
+    return { ...globalRaw, active: session.issue ?? null };
+  } catch {
+    return { active: globalRaw.active ?? null, ...globalRaw };
+  }
 }
 
 const parent = makeSandbox('tt-iso-parent-');
