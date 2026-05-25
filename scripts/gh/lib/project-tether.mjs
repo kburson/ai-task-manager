@@ -269,7 +269,7 @@ function failureMessage({ cfg, issueNumber, project, phantomItems }) {
   ].join(' ');
 }
 
-// Backlog is for unvetted ideas; sized + estimated work belongs in the Groom column.
+// Backlog is for unvetted ideas; sized + estimated work belongs in the Refine column.
 // Returns the warning string when the rule is violated, otherwise null. Pure helper.
 export function backlogSizingWarning({ status, size, estimate } = {}) {
   if (status !== 'backlog') return null;
@@ -278,8 +278,8 @@ export function backlogSizingWarning({ status, size, estimate } = {}) {
     return null;
   return (
     '⚠ warning: tethering a sized + estimated issue to Backlog. ' +
-    'Backlog is for unvetted ideas; sized work belongs in the Groom column. ' +
-    'Use --status groom instead, or override.'
+    'Backlog is for unvetted ideas; sized work belongs in the Refine column. ' +
+    'Use --status refine instead, or override.'
   );
 }
 
@@ -292,7 +292,7 @@ export function backlogMoveWarning({ targetState, fieldValues } = {}) {
   if (typeof fieldValues.estimate !== 'number') return null;
   return (
     '⚠ warning: moving a sized + estimated issue to Backlog. ' +
-    'Backlog is for unvetted ideas; sized work belongs in the Groom column.'
+    'Backlog is for unvetted ideas; sized work belongs in the Refine column.'
   );
 }
 

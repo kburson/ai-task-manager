@@ -25,9 +25,10 @@ const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 const REFINE_LIKE_STATUSES = new Set(['refine', 'ready']);
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo']);
+const VALID_STATUSES = new Set(['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|refine|plan|develop|test|review|done] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -87,6 +88,9 @@ function extractIssueNumber(urlOrText) {
 
 function validateArgs(args) {
   if (!args.title || args.title === true) die(`missing --title\n${usage()}`, 2);
+  if (typeof args.status === 'string' && !VALID_STATUSES.has(args.status.toLowerCase())) {
+    die(`invalid --status "${args.status}". Valid values: ${[...VALID_STATUSES].join('|')}`, 2);
+  }
   const hasBody = typeof args['body-file'] === 'string';
   const hasShape = typeof args.shape === 'string';
   if (!hasBody && !hasShape) die(`missing --body-file or --shape\n${usage()}`, 2);

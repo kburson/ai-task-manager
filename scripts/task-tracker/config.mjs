@@ -12,7 +12,11 @@ export const DEFAULTS = {
   repo: '',
   // GitHub Projects V2 node ID (set by init script)
   projectId: '',
-  // Kanban board field + state option IDs (set by init script)
+  // Kanban board field + state option IDs (set by init script).
+  // The `kanbanOption*` key suffixes predate the 2026-05 column rename
+  // (Groom→Refine, Analyze→Plan, Development→Develop, Validate→Test) and
+  // remain the canonical config API. `scripts/gh/lib/project-tether.mjs`
+  // `STATUS_CONFIG_KEYS` maps the new state slugs onto these keys.
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
   kanbanOptionGroom: '',
@@ -163,10 +167,6 @@ export const PREFERENCE_DEFAULTS = {
 function mergePreferences(overrides) {
   const merged = { ...PREFERENCE_DEFAULTS };
   if (overrides && typeof overrides === 'object' && !Array.isArray(overrides)) {
-    // Backward-compat: old key name from before the R4R → Review rename.
-    if ('driveSubIssuesToR4R' in overrides && !('driveSubIssuesToReview' in overrides)) {
-      overrides = { ...overrides, driveSubIssuesToReview: overrides.driveSubIssuesToR4R };
-    }
     for (const [k, v] of Object.entries(overrides)) {
       if (!(k in PREFERENCE_DEFAULTS)) continue;
       const def = PREFERENCE_DEFAULTS[k];

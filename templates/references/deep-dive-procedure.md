@@ -16,7 +16,7 @@ code" in `.ai-task-manager/pickup-directive.md`.
 > `<!-- ai-task-manager:fields:start -->` marker. The canonical body order is
 > Scope → Acceptance Criteria → Definition of Done → Pickup Directive →
 > Deep-Dive Analysis → fields-block. The `deep-dive-placement` body gate
-> refuses in-review/r4r/done moves when the Deep-Dive heading is present in
+> refuses test/review/done moves when the Deep-Dive heading is present in
 > any other position.
 
 Run this command and save its output to `./tmp/body.md` via your agent's

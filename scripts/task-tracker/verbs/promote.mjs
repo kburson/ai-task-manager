@@ -1,12 +1,12 @@
 // `promote` verb — directional forward state-change (#81 rename of `/task move`).
 //
 // One verb advances the issue by exactly one state along the FORWARD chain:
-//   backlog → groom → analyze → development → validate → review → done.
+//   backlog → refine → plan → develop → test → review → done.
 //
 // Promote is the only sanctioned forward chokepoint. Existing stage verbs
-// (analyze / approve / review / close) remain as aliases — promote delegates to
-// them so their gates and side effects run unchanged. The new behaviour layered
-// on top is:
+// (refine / plan-approve / approve / review / close) remain as aliases — promote
+// delegates to them so their gates and side effects run unchanged. The new
+// behaviour layered on top is:
 //
 //   1. Drift detection (live board state vs. recorded lastKnownState).
 //   2. Stamp `<!-- aitm-last-known-state -->` metadata to the new target.
@@ -737,7 +737,6 @@ export async function verbPromote(rest, cfg) {
     }
     case 'refine-gate-refused':
     case 'refine-exit-refused':
-    case 'groom-gate-refused':
     case 'planned-estimate-refused':
     case 'epic-children-refused':
     case 'parent-admission-refused':

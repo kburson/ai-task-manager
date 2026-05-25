@@ -137,13 +137,13 @@ function evaluatePlacementRule(body, lines, rule) {
 }
 
 // ---------------------------------------------------------------------------
-// Analyze-gate predicates (Grooming → Analysis transition).
+// Plan-gate predicates (Refine → Plan transition).
 //
 // These three "gate kinds" — `field-required`, `wave-admission`,
-// `cascade-grooming` — fire only when the target state is `analyze`.
+// `cascade-grooming` — fire only when the target state is `plan`.
 // `body-section-required` is a fourth helper that covers the AC's "required
 // body sections" check (rough AC, DoD, Pickup Directive, fields-block marker).
-// They are exported as discrete predicates so the `analyze` verb can compose
+// They are exported as discrete predicates so the `plan` verb can compose
 // them and return one blocker line per refusal.
 //
 // Each predicate returns either `null` (pass) or
@@ -186,11 +186,11 @@ export function checkRequiredBodySections(body = '') {
   return refusals;
 }
 
-// `waveAdmission` and `cascadeGrooming` are async. The `analyze` verb composes
+// `waveAdmission` and `cascadeGrooming` are async. The `plan` verb composes
 // them with the sync predicates above and emits one stderr line per blocker.
 
-// Parent-admission gate. Refuses a sub-issue state advance past `Groom` when
-// the parent epic's live Status is not yet `Development` or beyond. Refuse-only
+// Parent-admission gate. Refuses a sub-issue state advance past `Refine` when
+// the parent epic's live Status is not yet `Develop` or beyond. Refuse-only
 // — never auto-moves the parent.
 //
 // `readParentStatus({ parentEpicNumber, repo, projectId })` must return the

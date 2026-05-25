@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Move a GitHub issue through board states: Backlog → Groom → Analyze → Development → Validate → Review → Done
+// Move a GitHub issue through board states: Backlog → Refine → Plan → Develop → Test → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
 // States: backlog | refine | plan | develop | test | review | done
 

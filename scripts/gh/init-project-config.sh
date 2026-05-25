@@ -662,7 +662,12 @@ auto_or_pick() {
   done
 }
 
-# Backlog only auto-matches "backlog" — not "todo" (that belongs to Refine)
+# Auto-pick alias lists below are board-column-NAME candidates, not vocabulary.
+# Each canonical state ("Refine", "Plan", "Develop", "Test", "Review") accepts a
+# fallback list of column names a consumer's GitHub Project might still use from
+# before the 2026-05 rename. Keep these aliases so init works against older
+# boards; the canonical Scrum vocab is the first entry of each list.
+# Backlog only auto-matches "backlog" — not "todo" (that belongs to Refine).
 auto_or_pick "Backlog" "backlog"                                              "required"; OPTION_BACKLOG="$PICKED_ID"
 auto_or_pick "Refine"  "refine,groom,grooming,refined,ready,todo,to do"       "required"; OPTION_REFINE="$PICKED_ID"
 auto_or_pick "Plan"    "plan,analyze,analysis"                                "required"; OPTION_PLAN="$PICKED_ID"

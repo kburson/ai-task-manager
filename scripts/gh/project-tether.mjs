@@ -4,7 +4,7 @@ import { fieldOptionMap } from './lib/github-projects.mjs';
 import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
 
 function usage() {
-  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|groom|analyze|development|validate|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
+  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|refine|plan|develop|test|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
 }
 
 function parseArgs(args) {
@@ -31,11 +31,20 @@ function numberFlag(value, name) {
   return n;
 }
 
+const VALID_STATUSES = new Set(['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const issueNumber = numberFlag(args.issue, '--issue');
   if (!issueNumber) {
     console.error(usage());
+    process.exit(2);
+  }
+
+  if (args.status && !VALID_STATUSES.has(String(args.status).toLowerCase())) {
+    console.error(
+      `project-tether: invalid --status "${args.status}". Valid values: ${[...VALID_STATUSES].join('|')}`
+    );
     process.exit(2);
   }
 

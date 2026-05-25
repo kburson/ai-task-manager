@@ -49,7 +49,7 @@ export function admit({
       if (!Number.isFinite(sibSeq) || !Number.isFinite(mySeq)) continue;
       if (sibSeq >= mySeq) continue; // same wave or later — never blocks
       const state = String(sib.state || '').toLowerCase();
-      if (!IN_FLIGHT_STATES.has(state)) continue; // backlog / r4r / done excluded
+      if (!IN_FLIGHT_STATES.has(state)) continue; // backlog / review / done excluded
       blockers.push({ issue: sib.number, sequence: sibSeq, state });
     }
     return { ok: blockers.length === 0, blockers };

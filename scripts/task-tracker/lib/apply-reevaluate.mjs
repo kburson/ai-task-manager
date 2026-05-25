@@ -102,7 +102,7 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
       await postComment({
         issueNumber,
         repo: cfg.repo,
-        body: `${AUDIT_HEADER}\n\n_Skipped: epic with ${subInfo.count} sub-issue(s); Size/Estimate is the sum of children, set at Groom time._`,
+        body: `${AUDIT_HEADER}\n\n_Skipped: epic with ${subInfo.count} sub-issue(s); Size/Estimate is the sum of children, set at Refine time._`,
       });
     } catch {}
     return { status: 'skipped-epic', subIssueCount: subInfo.count };
