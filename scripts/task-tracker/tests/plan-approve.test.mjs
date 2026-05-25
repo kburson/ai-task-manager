@@ -139,4 +139,60 @@ function makeDeps(overrides = {}) {
   );
 }
 
+// 9. re-stamps aitm-entered-plan when approval marker present but entry missing
+//    (defense-in-depth against external `gh issue edit --body-file` overwrites
+//    that wiped the entry marker; see #217).
+{
+  const bodyApprovedNoEntry =
+    '## Scope\n\nSome scope.\n\n<!-- aitm-plan-approved: 2026-05-01T00:00:00Z -->\n';
+  const { deps, calls, getBody } = makeDeps({ initialBody: bodyApprovedNoEntry });
+  const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
+  assert.equal(r.status, 're-stamped-entry');
+  assert.equal(r.ts, FIXED_TS);
+  assert.equal(calls.writes.length, 1);
+  const out = getBody();
+  assert.match(out, /<!-- aitm-entered-plan: 2026-05-16T00:00:00Z -->/);
+  // approval marker preserved (only one — must not be duplicated).
+  const approvalMatches = out.match(/<!-- aitm-plan-approved:/g) || [];
+  assert.equal(approvalMatches.length, 1, 'approval marker must not be duplicated');
+}
+
+// 10. idempotent when both markers already present (true no-op).
+{
+  const bodyBoth =
+    '## Scope\n\n<!-- aitm-entered-plan: 2026-05-01T00:00:00Z -->\n\n<!-- aitm-plan-approved: 2026-05-01T00:00:00Z -->\n';
+  const { deps, calls } = makeDeps({ initialBody: bodyBoth });
+  const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  assert.equal(calls.writes.length, 0, 'no-op must not rewrite body');
+}
+
+// 11. first approval on issue with no plan markers stamps BOTH markers.
+{
+  const bodyEmpty = '## Scope\n\nSome scope.\n';
+  const { deps, getBody } = makeDeps({ initialBody: bodyEmpty });
+  const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
+  assert.equal(r.status, 'approved');
+  const out = getBody();
+  assert.match(out, /<!-- aitm-entered-plan: 2026-05-16T00:00:00Z -->/);
+  assert.match(out, /<!-- aitm-plan-approved: 2026-05-16T00:00:00Z -->/);
+}
+
+// 12. visit-suffix safe: if aitm-entered-plan-2 exists (legitimate re-entry)
+//     but bare aitm-entered-plan does not, do NOT backfill a phantom visit-1.
+{
+  const bodyReentry =
+    '## Scope\n\n<!-- aitm-entered-plan-2: 2026-05-10T00:00:00Z -->\n\n<!-- aitm-plan-approved: 2026-05-01T00:00:00Z -->\n';
+  const { deps, getBody } = makeDeps({ initialBody: bodyReentry });
+  const r = await runPlanApprove({ issueNumber: 217, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  const out = getBody();
+  // No new entry marker stamped.
+  assert.ok(
+    !/<!-- aitm-entered-plan: /.test(out),
+    'must not backfill bare aitm-entered-plan when -2 already exists'
+  );
+  assert.match(out, /<!-- aitm-entered-plan-2: 2026-05-10T00:00:00Z -->/);
+}
+
 console.log('plan-approve.test.mjs: all passed');

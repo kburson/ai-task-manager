@@ -21,7 +21,14 @@ import {
   insertPlanApprovedMarker,
   wrapDeepDiveInDetails,
 } from '../lib/markers.mjs';
+import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+
+// Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
+// We only backfill the original visit when NO plan entry marker exists at
+// all — if `aitm-entered-plan-2` is present (legitimate re-entry), we do
+// not synthesize a phantom visit-1 marker.
+const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?:/i;
 
 const pexec = promisify(execFile);
 
@@ -76,13 +83,35 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-  if (hasPlanApprovedMarker(body)) {
+  const hasApproval = hasPlanApprovedMarker(body);
+  const hasPlanEntry = PLAN_ENTRY_RE.test(body);
+
+  // Both markers present — true no-op.
+  if (hasApproval && hasPlanEntry) {
     return { status: 'already-approved' };
   }
+
   const ts = nowIso();
-  const withMarker = insertPlanApprovedMarker(body, ts);
-  const updated = wrapDeepDiveInDetails(withMarker);
+  let next = body;
+
+  // Defense-in-depth re-stamp: if approval was recorded but the entry
+  // marker is missing (typically wiped by an external `gh issue edit
+  // --body-file` overwrite outside writeIssueBodyWithRetry), restore the
+  // chain anchor so the close-time chain-hole detector doesn't refuse.
+  if (!hasPlanEntry) {
+    next = stampEntryMarker(next, 'plan', ts);
+  }
+
+  if (!hasApproval) {
+    next = insertPlanApprovedMarker(next, ts);
+  }
+
+  const updated = wrapDeepDiveInDetails(next);
   await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
+
+  if (hasApproval && !hasPlanEntry) {
+    return { status: 're-stamped-entry', ts };
+  }
   return { status: 'approved', ts };
 }
 
@@ -121,6 +150,11 @@ export async function verbPlanApprove(rest, cfg) {
       return;
     case 'already-approved':
       process.stdout.write(`#${issueNumber} already has a plan-approval marker — no change.\n`);
+      return;
+    case 're-stamped-entry':
+      process.stdout.write(
+        `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present). \`/task promote #${issueNumber}\` to move to Develop.\n`
+      );
       return;
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
