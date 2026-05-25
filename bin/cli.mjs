@@ -3,7 +3,7 @@
 // Commands: install, init, statusline, version
 
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve, relative } from 'node:path';
 // (getProvider import added below; dirname already imported for adapter dir resolution)
 import { createInterface } from 'node:readline';
@@ -276,6 +276,41 @@ function patchGitignore(targetDir) {
   if (changed) writeFileSync(gitignorePath, content, 'utf8');
 }
 
+// EPIC #207 / #212 — per-session state directory must be gitignored. Lives in
+// its own managed block so future EPIC #207 sub-issues can add neighbors
+// (idle markers, pause markers) without conflicting with `patchGitignore()`
+// above or with user hand-edits. Re-running the installer is idempotent: only
+// missing entries are inserted into the block; the block markers themselves
+// are detected by regex and never duplicated.
+export const MANAGED_BLOCK_OPEN = '# >>> ai-task-manager managed >>>';
+export const MANAGED_BLOCK_CLOSE = '# <<< ai-task-manager managed <<<';
+
+export function ensureGitignoreEntry(targetDir, entry) {
+  const gitignorePath = join(targetDir, '.gitignore');
+  const current = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
+  const blockRe = new RegExp(
+    `${MANAGED_BLOCK_OPEN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([\\s\\S]*?)${MANAGED_BLOCK_CLOSE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+    'm'
+  );
+  const match = current.match(blockRe);
+  if (match) {
+    const inner = match[1];
+    const lines = inner.split('\n').map((l) => l.trim());
+    if (lines.includes(entry)) return false; // already present, idempotent
+    const innerNext = inner.replace(/\n$/, '') + '\n' + entry + '\n';
+    const next = current.replace(
+      blockRe,
+      `${MANAGED_BLOCK_OPEN}${innerNext}${MANAGED_BLOCK_CLOSE}`
+    );
+    writeFileSync(gitignorePath, next, 'utf8');
+    return true;
+  }
+  const lead = current === '' || current.endsWith('\n') ? '' : '\n';
+  const block = `${lead}\n${MANAGED_BLOCK_OPEN}\n${entry}\n${MANAGED_BLOCK_CLOSE}\n`;
+  writeFileSync(gitignorePath, current + block, 'utf8');
+  return true;
+}
+
 function writeIfChanged(file, content) {
   mkdirSync(dirname(file), { recursive: true });
   if (existsSync(file) && readFileSync(file, 'utf8') === content) return false;
@@ -534,6 +569,8 @@ function installTemplates(targetDir) {
   installReferences(templateDest);
   patchGitignore(targetDir);
   ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
+  ensureGitignoreEntry(targetDir, '.ai-task-manager/sessions/');
+  ok(`Gitignore ${dim('.ai-task-manager/sessions/ (managed block)')}`);
   mergeDefaultPreferences(templateDest);
 }
 
@@ -888,41 +925,44 @@ async function cmdConfigurePreferences(args) {
   );
 }
 
+// Only dispatch when invoked as a script — not when imported by tests (#212).
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 const [, , command = 'help', ...rest] = process.argv;
 
-switch (command) {
-  case 'version':
-  case '-v':
-  case '--version':
-    cmdVersion();
-    break;
-  case 'install':
-    cmdInstall(rest);
-    break;
-  case 'init':
-    cmdInit(rest);
-    break;
-  case 'repair':
-    cmdRepair(rest);
-    break;
-  case 'statusline':
-    cmdStatusline();
-    break;
-  case 'configure':
-    if (rest[0] === 'preferences') {
-      cmdConfigurePreferences(rest.slice(1)).catch((e) => {
-        err(e.message);
+if (invokedDirectly)
+  switch (command) {
+    case 'version':
+    case '-v':
+    case '--version':
+      cmdVersion();
+      break;
+    case 'install':
+      cmdInstall(rest);
+      break;
+    case 'init':
+      cmdInit(rest);
+      break;
+    case 'repair':
+      cmdRepair(rest);
+      break;
+    case 'statusline':
+      cmdStatusline();
+      break;
+    case 'configure':
+      if (rest[0] === 'preferences') {
+        cmdConfigurePreferences(rest.slice(1)).catch((e) => {
+          err(e.message);
+          process.exit(1);
+        });
+      } else {
+        err(
+          `Unknown configure subcommand: ${rest[0] ?? '(none)'}. Try: npx ai-task-manager configure preferences`
+        );
         process.exit(1);
-      });
-    } else {
-      err(
-        `Unknown configure subcommand: ${rest[0] ?? '(none)'}. Try: npx ai-task-manager configure preferences`
-      );
-      process.exit(1);
-    }
-    break;
-  default:
-    console.log(`
+      }
+      break;
+    default:
+      console.log(`
 ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
 
   ${dim('Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow.')}
@@ -944,4 +984,4 @@ ${bold('  Quickstart')}
     ${green('3.')} ${dim('Claude Code:')} ${magenta('/task #<issue-number>')}
     ${green('4.')} ${dim('Codex:')} ${magenta('Use the task skill to start issue #<issue-number>.')}
 `);
-}
+  }
