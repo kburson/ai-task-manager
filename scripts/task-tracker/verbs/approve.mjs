@@ -29,6 +29,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { buildReviewNotesComment } from '../lib/review-notes.mjs';
 import { deriveDrivers } from '../lib/derive-drivers.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
+import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 
 const pexec = promisify(execFile);
 
@@ -188,88 +189,93 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
     };
   }
 
-  const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-  if (hasApprovalMarker(body)) {
-    return { status: 'already-approved' };
-  }
-  const ts = nowIso();
-  const auto = detect();
+  return withIssueLock(
+    { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
+    async () => {
+      const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+      if (hasApprovalMarker(body)) {
+        return { status: 'already-approved' };
+      }
+      const ts = nowIso();
+      const auto = detect();
 
-  // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
-  // delta-comment in `close` can consume it. Human mode prompts stdin; full-
-  // auto mode derives from observable signals. Either may yield zero drivers;
-  // that's fine — the renderer omits the Drivers section when empty.
-  let drivers = [];
-  let notesSource = null;
-  try {
-    if (auto.fired) {
-      const [comments, fields] = await Promise.all([
-        fetchComments({ issueNumber, repo: cfg.repo }),
-        fetchProjectValues({ cfg, issueNumber }),
-      ]);
-      drivers = derive({ body, comments, fields });
-      notesSource = 'auto';
-    } else {
-      drivers = await promptDrivers();
-      notesSource = 'human';
-    }
-    if (drivers.length > 0 || notesSource === 'auto') {
-      const noteBody = buildReviewNotesComment(drivers, { source: notesSource });
-      await postComment({ issueNumber, repo: cfg.repo, body: noteBody });
-    }
-  } catch (err) {
-    process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
-  }
+      // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
+      // delta-comment in `close` can consume it. Human mode prompts stdin; full-
+      // auto mode derives from observable signals. Either may yield zero drivers;
+      // that's fine — the renderer omits the Drivers section when empty.
+      let drivers = [];
+      let notesSource = null;
+      try {
+        if (auto.fired) {
+          const [comments, fields] = await Promise.all([
+            fetchComments({ issueNumber, repo: cfg.repo }),
+            fetchProjectValues({ cfg, issueNumber }),
+          ]);
+          drivers = derive({ body, comments, fields });
+          notesSource = 'auto';
+        } else {
+          drivers = await promptDrivers();
+          notesSource = 'human';
+        }
+        if (drivers.length > 0 || notesSource === 'auto') {
+          const noteBody = buildReviewNotesComment(drivers, { source: notesSource });
+          await postComment({ issueNumber, repo: cfg.repo, body: noteBody });
+        }
+      } catch (err) {
+        process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
+      }
 
-  let updated = insertApprovalMarker(body, ts);
-  // #156 — Stamp full-auto marker BEFORE ticking the "Passed final human
-  // review" lifecycle item, so the audit trail records that the tick was
-  // machine-generated, not human-evaluated. The tick still happens because
-  // close-gates depend on it; the marker preserves truth alongside.
-  if (auto.fired) {
-    updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
-    updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
-  }
-  const beforeTick = updated;
-  updated = tickLifecycleItem(updated, 'passed-final-review');
-  const optouts = parseLifecycleOptouts(beforeTick);
-  if (updated === beforeTick && !optouts.has('passed-final-review')) {
-    process.stderr.write(
-      `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD\n`
-    );
-    try {
-      const { buildRow: _br, postTimingEvent: _pe } = await import('../gh-timing-comment.mjs');
-      const { deriveStateMoveDelta: _dsm } = await import('../lib/timing-rows.mjs');
-      const _ts = new Date().toISOString();
-      const _d = _dsm(beforeTick, _ts);
-      await _pe({
-        issueNumber,
-        repo: cfg.repo,
-        timeoutMs: 3000,
-        row: _br({
-          ts: _ts,
-          event: 'lifecycle-warn',
-          activeSec: _d.activeSec,
-          idleSec: _d.idleSec,
-          deltaWords: 0,
-          // wordMarker:0 audit row — lifecycle-noop warning, no active session work
-          wordMarker: 0,
-          description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
-        }),
-      });
-    } catch {
-      /* fire-and-forget */
+      let updated = insertApprovalMarker(body, ts);
+      // #156 — Stamp full-auto marker BEFORE ticking the "Passed final human
+      // review" lifecycle item, so the audit trail records that the tick was
+      // machine-generated, not human-evaluated. The tick still happens because
+      // close-gates depend on it; the marker preserves truth alongside.
+      if (auto.fired) {
+        updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
+        updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
+      }
+      const beforeTick = updated;
+      updated = tickLifecycleItem(updated, 'passed-final-review');
+      const optouts = parseLifecycleOptouts(beforeTick);
+      if (updated === beforeTick && !optouts.has('passed-final-review')) {
+        process.stderr.write(
+          `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD\n`
+        );
+        try {
+          const { buildRow: _br, postTimingEvent: _pe } = await import('../gh-timing-comment.mjs');
+          const { deriveStateMoveDelta: _dsm } = await import('../lib/timing-rows.mjs');
+          const _ts = new Date().toISOString();
+          const _d = _dsm(beforeTick, _ts);
+          await _pe({
+            issueNumber,
+            repo: cfg.repo,
+            timeoutMs: 3000,
+            row: _br({
+              ts: _ts,
+              event: 'lifecycle-warn',
+              activeSec: _d.activeSec,
+              idleSec: _d.idleSec,
+              deltaWords: 0,
+              // wordMarker:0 audit row — lifecycle-noop warning, no active session work
+              wordMarker: 0,
+              description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
+            }),
+          });
+        } catch {
+          /* fire-and-forget */
+        }
+      }
+      await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
+      return {
+        status: 'approved',
+        ts,
+        fullAuto: auto.fired,
+        signals: auto.signals,
+        drivers,
+        notesSource,
+      };
     }
-  }
-  await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
-  return {
-    status: 'approved',
-    ts,
-    fullAuto: auto.fired,
-    signals: auto.signals,
-    drivers,
-    notesSource,
-  };
+  );
 }
 
 function parseArgs(rest) {
@@ -296,6 +302,10 @@ export async function verbApprove(rest, cfg) {
   try {
     result = await runApprove({ issueNumber, cfg, projectDir });
   } catch (err) {
+    if (err instanceof IssueLockError) {
+      process.stderr.write(`⛔ ${err.message}\n`);
+      process.exit(7);
+    }
     process.stderr.write(`approve: ${err.message}\n`);
     process.exit(1);
   }

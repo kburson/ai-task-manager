@@ -24,6 +24,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { FORWARD, STATES, normalizeStateSlug } from '../state-machine.mjs';
+import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
+import { getProjectDir } from '../paths.mjs';
 import {
   readLastKnownState,
   writeLastKnownState,
@@ -695,8 +697,15 @@ export async function verbPromote(rest, cfg) {
 
   let result;
   try {
-    result = await runPromote({ issueNumber, cfg });
+    result = await withIssueLock(
+      { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
+      () => runPromote({ issueNumber, cfg })
+    );
   } catch (err) {
+    if (err instanceof IssueLockError) {
+      process.stderr.write(`⛔ ${err.message}\n`);
+      process.exit(7);
+    }
     process.stderr.write(`promote: ${err.message}\n`);
     process.exit(1);
   }

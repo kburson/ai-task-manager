@@ -33,6 +33,11 @@ import {
   postReentryAuditComment,
   STAGES,
 } from '../task-tracker/lib/stage-entry-markers.mjs';
+import {
+  withIssueLock,
+  IssueLockError,
+  ISSUE_LOCK_HELD_ENV,
+} from '../task-tracker/issue-mutator-lock.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -473,321 +478,354 @@ if (stateArg === 'backlog' && !SKIP_NETWORK) {
   }
 }
 
-// Resolve project item ID
-let itemId = itemIdOverride;
-if (!itemId && !SKIP_NETWORK) {
-  const result = await projectItemForIssue({
-    repo: cfg.repo,
-    projectId: cfg.projectId,
-    issueNumber: issueArg,
-  });
-  itemId = result.itemId;
-  if (!itemId) {
-    process.stderr.write(
-      `Issue #${issueArg} not found in project (repo: ${cfg.repo}, projectId: ${cfg.projectId})\n`
-    );
-    process.exit(1);
-  }
-}
-
-// Update the kanban board field
-if (!SKIP_NETWORK) {
-  await gh([
-    'project',
-    'item-edit',
-    '--project-id',
-    cfg.projectId,
-    '--id',
-    itemId,
-    '--field-id',
-    cfg.kanbanFieldId,
-    '--single-select-option-id',
-    optionId,
-  ]);
-}
-
-console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
-
-// Centralized stage-entry + recorded-state marker stamping. Every successful
-// Status write stamps `<!-- aitm-entered-<stage>: <ts> -->` AND updates
-// `<!-- aitm-last-known-state -->` in the issue body. Both markers are
-// written in a single body update so drift detection cannot fire phantom
-// `external-mutation` rows on legitimate non-promote transitions
-// (#170). This is the single source of truth for the audit-trail chain —
-// verbs must NOT stamp these markers themselves. Failures surface via
-// `writeIssueBodyWithRetry`'s audit-comment path (#168).
-if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
-  try {
-    const [{ writeIssueBodyWithRetry }, { writeLastKnownState }] = await Promise.all([
-      import('../task-tracker/lib/state-recording.mjs'),
-      import('../task-tracker/gh-timing-comment.mjs'),
-    ]);
-    const { stdout } = await pexec(
-      'gh',
-      ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-      { timeout: GH_API_TIMEOUT_MS }
-    );
-    const beforeBody = JSON.parse(stdout).body ?? '';
-    const stampTs = new Date().toISOString();
-    const priorVisitCount = getStageVisitCount(beforeBody, stateArg);
-    let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs);
-    nextBody = writeLastKnownState(nextBody, stateArg);
-    // Visit number this stamp produced. If stampEntryMarker treated the call
-    // as a no-op (same ts re-stamp), the count is unchanged and we should
-    // not post an audit comment.
-    const nextVisitCount = getStageVisitCount(nextBody, stateArg);
-    if (nextBody !== beforeBody) {
-      const tmp = path.join(
-        projectTmpDir(getProjectDir()),
-        `aitm-entry-${issueArg}-${Date.now()}.md`
+// --- mutation block (per-issue advisory lock — EPIC #207 / #214) ---
+// Wrap every write that touches the issue (board status field, body markers,
+// timing-log comment, audit comments, local state file) so two parallel
+// sessions on the same issue serialize cleanly. The verb pipeline
+// (promote/approve/reconcile) may have already acquired this lock and signal
+// via `AITM_ISSUE_LOCK_HELD=1`; in that case skip re-acquisition.
+const __mutationBlock = async () => {
+  // Resolve project item ID
+  let itemId = itemIdOverride;
+  if (!itemId && !SKIP_NETWORK) {
+    const result = await projectItemForIssue({
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber: issueArg,
+    });
+    itemId = result.itemId;
+    if (!itemId) {
+      process.stderr.write(
+        `Issue #${issueArg} not found in project (repo: ${cfg.repo}, projectId: ${cfg.projectId})\n`
       );
-      await writeIssueBodyWithRetry({
+      process.exit(1);
+    }
+  }
+
+  // Update the kanban board field
+  if (!SKIP_NETWORK) {
+    await gh([
+      'project',
+      'item-edit',
+      '--project-id',
+      cfg.projectId,
+      '--id',
+      itemId,
+      '--field-id',
+      cfg.kanbanFieldId,
+      '--single-select-option-id',
+      optionId,
+    ]);
+  }
+
+  console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
+
+  // Centralized stage-entry + recorded-state marker stamping. Every successful
+  // Status write stamps `<!-- aitm-entered-<stage>: <ts> -->` AND updates
+  // `<!-- aitm-last-known-state -->` in the issue body. Both markers are
+  // written in a single body update so drift detection cannot fire phantom
+  // `external-mutation` rows on legitimate non-promote transitions
+  // (#170). This is the single source of truth for the audit-trail chain —
+  // verbs must NOT stamp these markers themselves. Failures surface via
+  // `writeIssueBodyWithRetry`'s audit-comment path (#168).
+  if (!SKIP_NETWORK && STAGES.includes(stateArg)) {
+    try {
+      const [{ writeIssueBodyWithRetry }, { writeLastKnownState }] = await Promise.all([
+        import('../task-tracker/lib/state-recording.mjs'),
+        import('../task-tracker/gh-timing-comment.mjs'),
+      ]);
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const beforeBody = JSON.parse(stdout).body ?? '';
+      const stampTs = new Date().toISOString();
+      const priorVisitCount = getStageVisitCount(beforeBody, stateArg);
+      let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs);
+      nextBody = writeLastKnownState(nextBody, stateArg);
+      // Visit number this stamp produced. If stampEntryMarker treated the call
+      // as a no-op (same ts re-stamp), the count is unchanged and we should
+      // not post an audit comment.
+      const nextVisitCount = getStageVisitCount(nextBody, stateArg);
+      if (nextBody !== beforeBody) {
+        const tmp = path.join(
+          projectTmpDir(getProjectDir()),
+          `aitm-entry-${issueArg}-${Date.now()}.md`
+        );
+        await writeIssueBodyWithRetry({
+          issueNumber: issueArg,
+          repo: cfg.repo,
+          body: nextBody,
+          bodyBefore: beforeBody,
+          target: stateArg,
+          writeIssueBody: async ({ body }) => {
+            try {
+              writeFileSync(tmp, body, 'utf8');
+              await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
+            } finally {
+              try {
+                unlinkSync(tmp);
+              } catch {
+                /* best-effort */
+              }
+            }
+          },
+        });
+      }
+      // #184 — When the body stamp produced a visit-numbered re-entry marker
+      // (visit >= 2), post a backfill audit comment so the body change is
+      // observable in the issue timeline. Idempotent on the (stage, visit)
+      // tuple; failure does not undo the body stamp (degrades to stderr).
+      if (nextVisitCount >= 2 && nextVisitCount > priorVisitCount) {
+        await postReentryAuditComment({
+          issueNumber: issueArg,
+          repo: cfg.repo,
+          stage: stateArg,
+          visit: nextVisitCount,
+          ts: stampTs,
+        });
+      }
+    } catch (err) {
+      process.stderr.write(`[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`);
+    }
+  }
+
+  // #128 — Paired lifecycle row emission. The chokepoint for all kanban
+  // transitions emits `<prev>:complete` + `<next>:enter` rows (both share
+  // the same wall-clock `ts`) from the canonical PHASE_EVENTS table. Demote
+  // substitutes a `demoted` row (no completion event) before the
+  // `<next>:enter`. Skip when SKIP_NETWORK is set or when both halves are
+  // absent (e.g. transitions with no completion event for the previous
+  // state and no entry event for the target). Best-effort — failures here
+  // do not roll back the committed board move.
+  if (!SKIP_NETWORK) {
+    try {
+      const { buildRow, postTimingEvent, readTimingCommentBody } =
+        await import('../task-tracker/gh-timing-comment.mjs');
+      const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+      const { PHASE_EVENTS } = await import('../task-tracker/phase-events.mjs');
+
+      const ts = new Date().toISOString();
+      const prev = resolvedFromState || '';
+      const timingBody = await readTimingCommentBody({
         issueNumber: issueArg,
         repo: cfg.repo,
-        body: nextBody,
-        bodyBefore: beforeBody,
-        target: stateArg,
+        timeoutMs: GH_API_TIMEOUT_MS,
+      });
+      const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
+
+      // First row: completion of the previous state (or `demoted` for demote).
+      if (demoteFlag) {
+        const row = buildRow({
+          ts,
+          event: 'demoted',
+          activeSec,
+          idleSec,
+          deltaWords: 0,
+          wordMarker: 0,
+          description: prev ? `demoted from ${prev}` : 'demoted',
+        });
+        await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      } else if (prev && PHASE_EVENTS[prev]?.complete) {
+        const row = buildRow({
+          ts,
+          phase: { state: prev, phase: 'complete' },
+          activeSec,
+          idleSec,
+          deltaWords: 0,
+          wordMarker: 0,
+        });
+        await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      }
+
+      // Second row: entry into the new state. Share the same `ts` so the
+      // pair is co-located in the table.
+      if (PHASE_EVENTS[stateArg]?.enter) {
+        // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
+        // paired emission shares ts with the completion row above — no
+        // elapsed delta is possible between the two halves.
+        const row = buildRow({
+          ts,
+          phase: { state: stateArg, phase: 'enter' },
+          activeSec: 0,
+          idleSec: 0,
+          deltaWords: 0,
+          wordMarker: 0,
+        });
+        await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      }
+    } catch (err) {
+      process.stderr.write(
+        `[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`
+      );
+    }
+  }
+
+  // #169 — Full-Auto review-gate audit. When the move lands at `done` and
+  // `TASK_TRACKER_HUMAN_REVIEWER` is unset, post a structured audit comment
+  // so the close is observable as auto-approved. When set, stamp an
+  // `aitm-human-reviewer` body marker. Idempotent on both paths.
+  if (stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1') {
+    try {
+      const { enforceFullAutoAudit } = await import('../task-tracker/lib/human-reviewer-audit.mjs');
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const currentBody = JSON.parse(stdout).body ?? '';
+      const tmpForMarker = path.join(
+        projectTmpDir(getProjectDir()),
+        `aitm-human-reviewer-${issueArg}-${Date.now()}.md`
+      );
+      const result = await enforceFullAutoAudit({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        body: currentBody,
+        env: process.env,
         writeIssueBody: async ({ body }) => {
+          writeFileSync(tmpForMarker, body, 'utf8');
           try {
-            writeFileSync(tmp, body, 'utf8');
-            await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
+            await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmpForMarker]);
           } finally {
             try {
-              unlinkSync(tmp);
+              unlinkSync(tmpForMarker);
             } catch {
               /* best-effort */
             }
           }
         },
       });
+      if (result.mode === 'full-auto' && result.auditPosted) {
+        process.stderr.write(
+          `[human-reviewer-audit] #${issueArg}: posted full-auto audit comment (no human reviewer)\n`
+        );
+      } else if (result.mode === 'human-reviewer' && result.stamped) {
+        process.stderr.write(
+          `[human-reviewer-audit] #${issueArg}: stamped human-reviewer marker (${result.handle})\n`
+        );
+      }
+    } catch (err) {
+      // surface, do not block — board move is committed
+      process.stderr.write(
+        `[human-reviewer-audit] #${issueArg}: enforcement failed: ${err.message}\n`
+      );
     }
-    // #184 — When the body stamp produced a visit-numbered re-entry marker
-    // (visit >= 2), post a backfill audit comment so the body change is
-    // observable in the issue timeline. Idempotent on the (stage, visit)
-    // tuple; failure does not undo the body stamp (degrades to stderr).
-    if (nextVisitCount >= 2 && nextVisitCount > priorVisitCount) {
-      await postReentryAuditComment({
+  }
+
+  // Out-of-band audit trail: visible comment + timing-log row. Best-effort —
+  // failures do not roll back the board move.
+  if (outOfBandReason && !SKIP_NETWORK) {
+    const ts = new Date().toISOString();
+    const fromLabel = resolvedFromState || '?';
+    const auditMarker = `<!-- aitm-out-of-band-move: ${fromLabel}→${stateArg}:${outOfBandReason}:${ts} -->`;
+    const auditBody = `⚠ **Out-of-band move-state** ${fromLabel} → ${stateArg} at ${ts}.\nReason: ${outOfBandReason}\n\n${auditMarker}`;
+    try {
+      await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', auditBody]);
+    } catch {
+      /* best-effort */
+    }
+    try {
+      const { buildRow, postTimingEvent, readTimingCommentBody } =
+        await import('../task-tracker/gh-timing-comment.mjs');
+      const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+      // Best-effort fetch of the timing-log comment body (where prior rows live).
+      // The issue body never contains timing rows. If the fetch fails the delta
+      // is honest 0/0.
+      const _timingBodyM2 = await readTimingCommentBody({
         issueNumber: issueArg,
         repo: cfg.repo,
-        stage: stateArg,
-        visit: nextVisitCount,
-        ts: stampTs,
+        timeoutMs: GH_API_TIMEOUT_MS,
       });
+      const _dM2 = deriveStateMoveDelta(_timingBodyM2, ts);
+      const row = buildRow({
+        ts,
+        event: 'out-of-band-move',
+        activeSec: _dM2.activeSec,
+        idleSec: _dM2.idleSec,
+        deltaWords: 0,
+        wordMarker: 0,
+        description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
+      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+    } catch {
+      /* best-effort */
     }
-  } catch (err) {
-    process.stderr.write(`[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`);
   }
-}
 
-// #128 — Paired lifecycle row emission. The chokepoint for all kanban
-// transitions emits `<prev>:complete` + `<next>:enter` rows (both share
-// the same wall-clock `ts`) from the canonical PHASE_EVENTS table. Demote
-// substitutes a `demoted` row (no completion event) before the
-// `<next>:enter`. Skip when SKIP_NETWORK is set or when both halves are
-// absent (e.g. transitions with no completion event for the previous
-// state and no entry event for the target). Best-effort — failures here
-// do not roll back the committed board move.
-if (!SKIP_NETWORK) {
+  // Persist new kanban state to tracker-state. move-state.mjs is the single
+  // state-mutator, so every successful transition must sync the local cache —
+  // regardless of whether the caller bound via `/task #N` first. Orchestrator
+  // flows and sub-agent fan-outs run with `s.active === null`; gating on
+  // active here left the cache permanently stale and the next verb's preflight
+  // flagged it as a human-move (#210).
   try {
-    const { buildRow, postTimingEvent, readTimingCommentBody } =
-      await import('../task-tracker/gh-timing-comment.mjs');
-    const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
-    const { PHASE_EVENTS } = await import('../task-tracker/phase-events.mjs');
-
-    const ts = new Date().toISOString();
-    const prev = resolvedFromState || '';
-    const timingBody = await readTimingCommentBody({
-      issueNumber: issueArg,
-      repo: cfg.repo,
-      timeoutMs: GH_API_TIMEOUT_MS,
-    });
-    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
-
-    // First row: completion of the previous state (or `demoted` for demote).
-    if (demoteFlag) {
-      const row = buildRow({
-        ts,
-        event: 'demoted',
-        activeSec,
-        idleSec,
-        deltaWords: 0,
-        wordMarker: 0,
-        description: prev ? `demoted from ${prev}` : 'demoted',
-      });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-    } else if (prev && PHASE_EVENTS[prev]?.complete) {
-      const row = buildRow({
-        ts,
-        phase: { state: prev, phase: 'complete' },
-        activeSec,
-        idleSec,
-        deltaWords: 0,
-        wordMarker: 0,
-      });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-    }
-
-    // Second row: entry into the new state. Share the same `ts` so the
-    // pair is co-located in the table.
-    if (PHASE_EVENTS[stateArg]?.enter) {
-      // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
-      // paired emission shares ts with the completion row above — no
-      // elapsed delta is possible between the two halves.
-      const row = buildRow({
-        ts,
-        phase: { state: stateArg, phase: 'enter' },
-        activeSec: 0,
-        idleSec: 0,
-        deltaWords: 0,
-        wordMarker: 0,
-      });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-    }
-  } catch (err) {
-    process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);
+    const projectDir = getProjectDir();
+    const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
+    const s = loadState(sp);
+    s.state = stateArg;
+    saveState(s, sp);
+  } catch {
+    /* best-effort */
   }
-}
 
-// #169 — Full-Auto review-gate audit. When the move lands at `done` and
-// `TASK_TRACKER_HUMAN_REVIEWER` is unset, post a structured audit comment
-// so the close is observable as auto-approved. When set, stamp an
-// `aitm-human-reviewer` body marker. Idempotent on both paths.
-if (stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1') {
+  // Update event fields (awaited — failure is a visible warning, not a silent drop)
+  if (!SKIP_NETWORK) {
+    const repoRoot = getProjectDir();
+    const eventScriptCandidates = [
+      path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
+      path.resolve(__dir, 'update-event-fields.mjs'),
+    ];
+    const eventScript = eventScriptCandidates.find((s) => existsSync(s));
+    if (eventScript) {
+      const args = [eventScript, issueArg, stateArg];
+      if (itemId) args.push('--item-id', itemId);
+      try {
+        await pexec(process.execPath, args, { timeout: GH_API_TIMEOUT_MS * 2 });
+      } catch (e) {
+        const msg = e.stderr?.trim() || e.message?.split('\n')[0] || 'unknown error';
+        process.stderr.write(
+          `warning: Start Time field sync failed: ${msg}\n` +
+            `  To repair: node scripts/gh/update-event-fields.mjs ${issueArg} ${stateArg} --item-id ${itemId}\n`
+        );
+      }
+    }
+  }
+
+  // End task tracking when moving to done (unless during cascade close)
+  if (stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK) {
+    const repoRoot = getProjectDir();
+    const ttScriptCandidates = [
+      path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs'),
+      path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
+    ];
+    const ttScript = ttScriptCandidates.find((s) => existsSync(s));
+    // Fire-and-forget local task-tracker end. Local-fast budget; ignore failures.
+    if (ttScript)
+      pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS }).catch(
+        () => {}
+      );
+  }
+}; // end __mutationBlock
+
+if (process.env[ISSUE_LOCK_HELD_ENV] === '1') {
+  await __mutationBlock();
+} else {
   try {
-    const { enforceFullAutoAudit } = await import('../task-tracker/lib/human-reviewer-audit.mjs');
-    const { stdout } = await pexec(
-      'gh',
-      ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-      { timeout: GH_API_TIMEOUT_MS }
-    );
-    const currentBody = JSON.parse(stdout).body ?? '';
-    const tmpForMarker = path.join(
-      projectTmpDir(getProjectDir()),
-      `aitm-human-reviewer-${issueArg}-${Date.now()}.md`
-    );
-    const result = await enforceFullAutoAudit({
-      issueNumber: issueArg,
-      repo: cfg.repo,
-      body: currentBody,
-      env: process.env,
-      writeIssueBody: async ({ body }) => {
-        writeFileSync(tmpForMarker, body, 'utf8');
-        try {
-          await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmpForMarker]);
-        } finally {
-          try {
-            unlinkSync(tmpForMarker);
-          } catch {
-            /* best-effort */
-          }
-        }
+    await withIssueLock(
+      {
+        issue: issueArg,
+        verb: AITM_VERB_CONTEXT || 'move-state',
+        projDir: getProjectDir(),
       },
-    });
-    if (result.mode === 'full-auto' && result.auditPosted) {
-      process.stderr.write(
-        `[human-reviewer-audit] #${issueArg}: posted full-auto audit comment (no human reviewer)\n`
-      );
-    } else if (result.mode === 'human-reviewer' && result.stamped) {
-      process.stderr.write(
-        `[human-reviewer-audit] #${issueArg}: stamped human-reviewer marker (${result.handle})\n`
-      );
-    }
-  } catch (err) {
-    // surface, do not block — board move is committed
-    process.stderr.write(
-      `[human-reviewer-audit] #${issueArg}: enforcement failed: ${err.message}\n`
+      __mutationBlock
     );
-  }
-}
-
-// Out-of-band audit trail: visible comment + timing-log row. Best-effort —
-// failures do not roll back the board move.
-if (outOfBandReason && !SKIP_NETWORK) {
-  const ts = new Date().toISOString();
-  const fromLabel = resolvedFromState || '?';
-  const auditMarker = `<!-- aitm-out-of-band-move: ${fromLabel}→${stateArg}:${outOfBandReason}:${ts} -->`;
-  const auditBody = `⚠ **Out-of-band move-state** ${fromLabel} → ${stateArg} at ${ts}.\nReason: ${outOfBandReason}\n\n${auditMarker}`;
-  try {
-    await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', auditBody]);
-  } catch {
-    /* best-effort */
-  }
-  try {
-    const { buildRow, postTimingEvent, readTimingCommentBody } =
-      await import('../task-tracker/gh-timing-comment.mjs');
-    const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
-    // Best-effort fetch of the timing-log comment body (where prior rows live).
-    // The issue body never contains timing rows. If the fetch fails the delta
-    // is honest 0/0.
-    const _timingBodyM2 = await readTimingCommentBody({
-      issueNumber: issueArg,
-      repo: cfg.repo,
-      timeoutMs: GH_API_TIMEOUT_MS,
-    });
-    const _dM2 = deriveStateMoveDelta(_timingBodyM2, ts);
-    const row = buildRow({
-      ts,
-      event: 'out-of-band-move',
-      activeSec: _dM2.activeSec,
-      idleSec: _dM2.idleSec,
-      deltaWords: 0,
-      wordMarker: 0,
-      description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
-    });
-    await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-  } catch {
-    /* best-effort */
-  }
-}
-
-// Persist new kanban state to tracker-state. move-state.mjs is the single
-// state-mutator, so every successful transition must sync the local cache —
-// regardless of whether the caller bound via `/task #N` first. Orchestrator
-// flows and sub-agent fan-outs run with `s.active === null`; gating on
-// active here left the cache permanently stale and the next verb's preflight
-// flagged it as a human-move (#210).
-try {
-  const projectDir = getProjectDir();
-  const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
-  const s = loadState(sp);
-  s.state = stateArg;
-  saveState(s, sp);
-} catch {
-  /* best-effort */
-}
-
-// Update event fields (awaited — failure is a visible warning, not a silent drop)
-if (!SKIP_NETWORK) {
-  const repoRoot = getProjectDir();
-  const eventScriptCandidates = [
-    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
-    path.resolve(__dir, 'update-event-fields.mjs'),
-  ];
-  const eventScript = eventScriptCandidates.find((s) => existsSync(s));
-  if (eventScript) {
-    const args = [eventScript, issueArg, stateArg];
-    if (itemId) args.push('--item-id', itemId);
-    try {
-      await pexec(process.execPath, args, { timeout: GH_API_TIMEOUT_MS * 2 });
-    } catch (e) {
-      const msg = e.stderr?.trim() || e.message?.split('\n')[0] || 'unknown error';
-      process.stderr.write(
-        `warning: Start Time field sync failed: ${msg}\n` +
-          `  To repair: node scripts/gh/update-event-fields.mjs ${issueArg} ${stateArg} --item-id ${itemId}\n`
-      );
+  } catch (err) {
+    if (err instanceof IssueLockError) {
+      process.stderr.write(`⛔ ${err.message}\n`);
+      process.exit(7);
     }
+    throw err;
   }
-}
-
-// End task tracking when moving to done (unless during cascade close)
-if (stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK) {
-  const repoRoot = getProjectDir();
-  const ttScriptCandidates = [
-    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs'),
-    path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
-  ];
-  const ttScript = ttScriptCandidates.find((s) => existsSync(s));
-  // Fire-and-forget local task-tracker end. Local-fast budget; ignore failures.
-  if (ttScript)
-    pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS }).catch(() => {});
 }

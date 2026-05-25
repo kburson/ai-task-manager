@@ -39,6 +39,7 @@ import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
+import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -303,8 +304,15 @@ export async function verbReconcile(rest, cfg) {
 
   let result;
   try {
-    result = await runReconcile({ issueNumber, mode, cfg });
+    result = await withIssueLock(
+      { issue: issueNumber, verb: 'reconcile', projDir: getProjectDir() },
+      () => runReconcile({ issueNumber, mode, cfg })
+    );
   } catch (err) {
+    if (err instanceof IssueLockError) {
+      process.stderr.write(`⛔ ${err.message}\n`);
+      process.exit(7);
+    }
     process.stderr.write(`reconcile: ${err.message}\n`);
     process.exit(1);
   }
