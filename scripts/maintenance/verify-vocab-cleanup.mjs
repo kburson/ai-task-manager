@@ -15,6 +15,8 @@
 //   node scripts/maintenance/verify-vocab-cleanup.mjs final-sweep
 //
 // Exit 0 = pass, non-zero = fail (with a one-line reason on stderr).
+//
+// cspell:ignore deprecat
 
 import { existsSync, readFileSync, statSync, readdirSync } from 'node:fs';
 import path from 'node:path';
