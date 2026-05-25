@@ -394,4 +394,35 @@ await assert.rejects(
   /ts is required/
 );
 
+// #211 — Legal-arc validator anchors at the latest aitm-entered-develop-N
+// marker. Arcs before the most recent develop re-entry belong to a discarded
+// earlier attempt and should not block close on a corrected suffix.
+{
+  // Anchored pass: early illegal `develop -> review` (skipped test) followed
+  // by a corrected suffix `review -> develop-2 -> test -> review-2`.
+  const repaired =
+    '<!-- aitm-entered-refine: 2026-01-01T00:00:00Z -->\n' +
+    '<!-- aitm-entered-plan: 2026-01-02T00:00:00Z -->\n' +
+    '<!-- aitm-entered-develop: 2026-01-03T00:00:00Z -->\n' +
+    '<!-- aitm-entered-review: 2026-01-04T00:00:00Z -->\n' +
+    '<!-- aitm-entered-develop-2: 2026-01-05T00:00:00Z -->\n' +
+    '<!-- aitm-entered-test: 2026-01-06T00:00:00Z -->\n' +
+    '<!-- aitm-entered-review-2: 2026-01-07T00:00:00Z -->\n';
+  const rRepaired = verifyChainIntegrity(repaired, 'review');
+  assert.equal(rRepaired.ok, true, 'repaired chain after develop re-entry should pass');
+  assert.deepEqual(rRepaired.illegalArcs, []);
+
+  // Anchored fail: latest suffix itself contains an illegal arc.
+  const stillBroken =
+    '<!-- aitm-entered-develop: 2026-01-01T00:00:00Z -->\n' +
+    '<!-- aitm-entered-test: 2026-01-02T00:00:00Z -->\n' +
+    '<!-- aitm-entered-develop-2: 2026-01-03T00:00:00Z -->\n' +
+    '<!-- aitm-entered-done: 2026-01-04T00:00:00Z -->\n';
+  const rBroken = verifyChainIntegrity(stillBroken, 'done');
+  assert.equal(rBroken.ok, false, 'illegal arc inside the latest suffix must still fail');
+  assert.equal(rBroken.illegalArcs.length, 1);
+  assert.equal(rBroken.illegalArcs[0].from, 'develop');
+  assert.equal(rBroken.illegalArcs[0].to, 'done');
+}
+
 console.log('stage-entry-markers.test.mjs: all passed');

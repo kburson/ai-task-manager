@@ -136,8 +136,22 @@ export function verifyChainIntegrity(body, currentStage) {
     else holes.push(s);
   }
 
+  // Anchor the arc scan at the latest `develop` marker. Each
+  // `aitm-entered-develop-N` marks a fresh implementation attempt; arcs from
+  // earlier attempts have been superseded by the rework and should not block
+  // close. The arc INTO the anchor is still checked (so an illegal arrival
+  // like `done -> develop` is still flagged). If no develop marker exists,
+  // scan from the start (legacy behavior).
+  let anchorIdx = 0;
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    if (ordered[i].stage === 'develop') {
+      anchorIdx = i;
+      break;
+    }
+  }
+
   const illegalArcs = [];
-  for (let i = 1; i < ordered.length; i++) {
+  for (let i = Math.max(1, anchorIdx); i < ordered.length; i++) {
     const from = ordered[i - 1].stage;
     const to = ordered[i].stage;
     if (from === to) continue;
