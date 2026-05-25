@@ -273,3 +273,82 @@ Rationale:
 
 Implementers in Seq 2–5: import or replicate the `withLock(registryPath, fn)`
 shape from `fleet-registry.mjs`. Do NOT introduce a competing lock primitive.
+
+## Hook-driven pause/resume
+
+Two Claude Code hooks turn natural conversational pauses into mechanical timing
+events — no `/task pause` discipline required.
+
+- **`Stop` hook → `scripts/task-tracker/hooks/on-stop.mjs`**: when Claude
+  finishes a turn, the hook writes a JSON marker at
+  `.ai-task-manager/sessions/<sid>/pending-pause.json` containing
+  `{stoppedAt, issue, state, sessionId}`. Zero network I/O.
+- **`UserPromptSubmit` hook → `scripts/task-tracker/hooks/on-user-prompt.mjs`**:
+  when the user sends the next turn, the hook reads the marker, computes the
+  inter-turn gap, and (above `pauseThresholdSeconds`) appends one `idle` row to
+  the bound issue's `⏱ Timing Log` comment. The marker is then deleted.
+
+Both hooks key on `CLAUDE_SESSION_ID` (Claude Code sets this env var per
+session) with `AI_TASK_MANAGER_SESSION_ID` as a self-test fallback. Both
+tolerate missing env / missing active task / write failures — a misbehaving
+hook must never break the user's session.
+
+## Per-session state layout
+
+Each Claude Code session gets its own subdirectory so two sessions in the same
+repo cannot clobber each other:
+
+```
+<projectRoot>/.ai-task-manager/
+  sessions/
+    <sid>/
+      active-task.json     # bound issue + entry timestamps + word baseline
+      pending-pause.json   # ephemeral pause marker (deleted on resume)
+  locks/
+    timing-#<issue>.lock/  # per-issue mkdir-based withLock dir
+  queue/                   # offline post queue (drained on next online verb)
+```
+
+`.ai-task-manager/sessions/` and `.ai-task-manager/locks/` are gitignored —
+they are local-only runtime state. Only `task-tracker.json` (config) is
+committed.
+
+## Orphan finalize
+
+A "pending pause" marker can become orphaned when a session dies before the
+next `UserPromptSubmit` fires (window closed, machine slept, process killed).
+The shared lib at `scripts/task-tracker/orphan-finalize.mjs` finalizes those
+markers from FOUR triggers — all routed through one implementation:
+
+| Trigger                          | Reason tag        | When                                                 |
+| -------------------------------- | ----------------- | ---------------------------------------------------- |
+| `UserPromptSubmit` hook          | `natural`         | Normal next-turn resume                              |
+| `verbs/start` and `verbs/resume` | `orphan-finalize` | Before binding/rebinding an issue                    |
+| `verbs/switch` (`/task #N`)      | `switch`          | When the new sid differs from the bound one (forced) |
+| `onSessionStart` sweep           | `stale-session`   | Per stale dir older than `sessionRetentionDays`      |
+
+The idle row always lands on the issue named in the marker — NOT the
+currently-bound issue. Sub-threshold gaps silently delete the marker without
+posting (except `switch`, which forces a row regardless). A marker whose
+`sessionId` differs from the consuming session's sid is REFUSED with a stderr
+warning and left in place for the real owner to recover.
+
+## Per-session timing config
+
+Two task-tracker keys (`.ai-task-manager/task-tracker.json`) govern hook
+behavior:
+
+### `pauseThresholdSeconds` (default `30`)
+
+Minimum inter-turn gap, in seconds, that produces an `idle` row in the timing
+comment. Gaps shorter than this are dropped — they represent normal think-time,
+not real pauses. Raise to suppress chatty short rows; lower to capture every
+hesitation.
+
+### `sessionRetentionDays` (default `2`)
+
+Maximum age, in days, that a `.ai-task-manager/sessions/<sid>/` directory
+survives without activity. The `onSessionStart` sweep finalizes any pending
+pause inside an older dir (reason `stale-session`) and then removes the dir.
+Raise if you frequently resume work in long-stale sessions; lower to keep the
+runtime tree compact.

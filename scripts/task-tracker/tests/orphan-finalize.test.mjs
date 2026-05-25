@@ -127,5 +127,77 @@ function writeMarker(sid, payload) {
   assert.equal(existsSync(p), false);
 }
 
+// Test 8 (#216 edge case): corrupt JSON marker → null, marker NOT deleted
+{
+  const sid = 'corrupt';
+  const p = pendingPausePath(sid, tmp);
+  mkdirSync(path.dirname(p), { recursive: true });
+  writeFileSync(p, '{not-json,,,', 'utf8');
+  const r = await finalizeOrphanPause({ sid, reason: 'natural', projDir: tmp });
+  assert.equal(r, null, 'corrupt JSON returns null');
+  // Corrupt files are treated as "no marker" — we deliberately do NOT
+  // delete them so an operator can inspect what went wrong.
+  assert.equal(existsSync(p), true, 'corrupt marker is preserved for inspection');
+}
+
+// Test 9 (#216 edge case): missing `issue` field with stoppedAt → deleted, null
+// (already covered by Test 7 with issue:null; this verifies the "field absent"
+// case independently of the explicit-null case.)
+{
+  const sid = 'no-issue-field';
+  const p = writeMarker(sid, {
+    stoppedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    state: 'develop',
+    sessionId: sid,
+    // `issue` key intentionally absent
+  });
+  const r = await finalizeOrphanPause({ sid, reason: 'natural', projDir: tmp });
+  assert.equal(r, null);
+  assert.equal(existsSync(p), false, 'marker without issue field is deleted');
+}
+
+// Test 10 (#216 edge case): future-dated stoppedAt → gap clamps to 0,
+// treated as sub-threshold, marker deleted, no post.
+{
+  const sid = 'future';
+  const p = writeMarker(sid, {
+    stoppedAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+    issue: '#99',
+    state: 'develop',
+    sessionId: sid,
+  });
+  const calls = [];
+  const r = await finalizeOrphanPause({
+    sid,
+    reason: 'natural',
+    projDir: tmp,
+    deps: { postTimingEvent: async (a) => calls.push(a) },
+  });
+  assert.equal(r, null, 'future-dated marker yields null (gap clamps to 0)');
+  assert.equal(calls.length, 0);
+  assert.equal(existsSync(p), false);
+}
+
+// Test 11 (#216): stale-session reason path posts with correct marker text
+{
+  const sid = 'stale-r';
+  writeMarker(sid, {
+    stoppedAt: new Date(Date.now() - 10 * 60_000).toISOString(),
+    issue: '#stl',
+    state: 'develop',
+    sessionId: sid,
+  });
+  const calls = [];
+  const r = await finalizeOrphanPause({
+    sid,
+    reason: 'stale-session',
+    projDir: tmp,
+    deps: { postTimingEvent: async (a) => calls.push(a) },
+  });
+  assert.ok(r);
+  assert.equal(r.reason, 'stale-session');
+  assert.match(calls[0].row, /sess: stale-r reason: stale-session/);
+}
+
 rmSync(tmp, { recursive: true });
 console.log('orphan-finalize.test.mjs: all passed');

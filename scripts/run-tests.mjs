@@ -11,6 +11,7 @@ const repoRoot = path.resolve(__dir, '..');
 const testsDir = path.resolve(__dir, 'task-tracker', 'tests');
 const providersTestsDir = path.resolve(__dir, 'providers', 'tests');
 const integrationDir = path.resolve(repoRoot, 'tests', 'integration');
+const ttIntegrationDir = path.resolve(testsDir, 'integration');
 // Tests skipped due to unrelated tracked bugs. Each entry must reference an issue.
 const SKIP = new Map([]);
 
@@ -34,7 +35,11 @@ const integrationFiles = safeReaddir(integrationDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()
   .map((f) => ({ label: `integration/${f}`, full: path.join(integrationDir, f) }));
-const files = [...unitFiles, ...providerFiles, ...integrationFiles];
+const ttIntegrationFiles = safeReaddir(ttIntegrationDir)
+  .filter((f) => f.endsWith('.test.mjs'))
+  .sort()
+  .map((f) => ({ label: `task-tracker/integration/${f}`, full: path.join(ttIntegrationDir, f) }));
+const files = [...unitFiles, ...providerFiles, ...integrationFiles, ...ttIntegrationFiles];
 
 let failed = 0;
 const failures = [];
