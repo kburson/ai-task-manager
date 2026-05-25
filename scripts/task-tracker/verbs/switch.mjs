@@ -10,6 +10,7 @@ import {
 import { loadSession } from '../lib/session-store.mjs';
 import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
+import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
@@ -33,6 +34,21 @@ export async function verbSwitch(ctx, target) {
   let previousNote = '';
   if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
     const previous = s.active;
+    // #215 — a switch IS a pause: force-finalize any pending-pause row
+    // against the OUTGOING issue regardless of sub-threshold gap. This must
+    // happen BEFORE flushActiveToGH so the row lands on the old binding.
+    try {
+      const sidSwitch = currentSessionId();
+      if (sidSwitch) {
+        await finalizePauseForSwitch({
+          sid: sidSwitch,
+          oldIssue: previous,
+          projDir: projectDir,
+        });
+      }
+    } catch {
+      /* never block switch on finalize failure */
+    }
     const { deltaMin, deltaWords } = await flushActiveToGH(
       s,
       'switch-out',

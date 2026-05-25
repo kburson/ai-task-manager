@@ -1,65 +1,22 @@
 #!/usr/bin/env node
-// Claude Code `UserPromptSubmit` hook — drains the pending-pause marker
-// dropped by `on-stop.mjs` and, when the inter-turn gap exceeds
-// `pauseThresholdSeconds`, posts ONE idle row to the bound issue's
-// `⏱ Timing Log` comment marked `<!-- sess: <sid> reason: natural -->`.
+// Claude Code `UserPromptSubmit` hook — thin wrapper around
+// `finalizeOrphanPause({sid, reason: 'natural'})`. The shared library at
+// `scripts/task-tracker/orphan-finalize.mjs` owns all marker I/O, gap
+// math, and timing-row posting. See that module for the contract.
 //
-// EPIC #207 / #213 — Seq 2.
-//
-// Flow:
-//   1. Read $CLAUDE_SESSION_ID; bail when absent.
-//   2. Read `.ai-task-manager/sessions/<sid>/pending-pause.json`. If missing,
-//      no idle event to record — bail.
-//   3. Confirm the bound issue is still the same as when we stopped — if
-//      `/task #M` re-bound during the gap, drop the marker without posting
-//      (the old binding's timer is no longer authoritative for this gap).
-//   4. Compute `gap = now - stoppedAt`. When `gap >= pauseThresholdSeconds`,
-//      append one idle row to the issue's timing comment. Otherwise drop
-//      silently — sub-threshold gaps are noise.
-//   5. Delete the marker file regardless of post outcome (queued posts go
-//      through the offline queue).
-//
-// Errors during posting fall through to the offline queue used elsewhere
-// in this codebase. The hook always exits 0.
+// EPIC #207 / #215 — Seq 4. Was Seq 2's inlined implementation; the logic
+// moved out so all four finalize triggers share one code path.
 
-import { existsSync, readFileSync, rmSync } from 'node:fs';
-import path from 'node:path';
-import { loadConfig } from '../config.mjs';
 import { getProjectDir } from '../paths.mjs';
-import { getActiveTask } from '../session-state.mjs';
-import { postTimingEvent, buildRow } from '../gh-timing-comment.mjs';
-import { enqueue } from '../queue.mjs';
-import { pendingPausePath } from './on-stop.mjs';
+import { finalizeOrphanPause, computeGapSeconds } from '../orphan-finalize.mjs';
 
 function currentSid(env = process.env) {
   return env.CLAUDE_SESSION_ID || env.AI_TASK_MANAGER_SESSION_ID || null;
 }
 
-function readMarker(p) {
-  if (!existsSync(p)) return null;
-  try {
-    const raw = readFileSync(p, 'utf8');
-    if (!raw.trim()) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function deleteMarker(p) {
-  try {
-    rmSync(p);
-  } catch {
-    /* tolerate */
-  }
-}
-
-export function computeGapSeconds(stoppedAt, nowMs = Date.now()) {
-  const t = Date.parse(stoppedAt);
-  if (!Number.isFinite(t)) return 0;
-  return Math.max(0, Math.floor((nowMs - t) / 1000));
-}
-
+// Backwards-compatible export — older tests/imports may still call this.
+// Returns { status: 'no-session'|'no-marker'|'sub-threshold'|'posted'|... }
+// for compatibility with the previous shape used by on-user-prompt.test.mjs.
 export async function processPendingPause({
   env = process.env,
   now = () => new Date(),
@@ -68,61 +25,29 @@ export async function processPendingPause({
   const sid = currentSid(env);
   if (!sid) return { status: 'no-session' };
   const projDir = getProjectDir(env);
-  const markerPath = pendingPausePath(sid, projDir);
-  const marker = readMarker(markerPath);
-  if (!marker) return { status: 'no-marker' };
-
-  // Same-binding check: if the active task changed (e.g. `/task #M` during
-  // the gap), the old timer is stale.
-  let active = null;
-  try {
-    active = getActiveTask(sid, projDir);
-  } catch {
-    active = null;
-  }
-  const stillBound = active && active.issue && active.issue === marker.issue;
-  if (!stillBound) {
-    deleteMarker(markerPath);
-    return { status: 'rebound', marker };
-  }
-
-  const cfg = loadConfig();
-  const threshold = Number(cfg.pauseThresholdSeconds) || 0;
-  const gapSec = computeGapSeconds(marker.stoppedAt, now().getTime());
-  if (gapSec < threshold) {
-    deleteMarker(markerPath);
-    return { status: 'sub-threshold', gapSec };
-  }
-
-  const postFn = deps.postTimingEvent || postTimingEvent;
-  const enqueueFn = deps.enqueue || enqueue;
-  const nowIso = now().toISOString();
-  const row = buildRow({
-    ts: nowIso,
-    event: 'idle',
-    idleSec: gapSec,
-    activeSec: 0,
-    deltaWords: 0,
-    wordMarker: null,
-    description: `<!-- sess: ${sid} reason: natural -->`,
+  const result = await finalizeOrphanPause({
+    sid,
+    reason: 'natural',
+    projDir,
+    now,
+    deps,
   });
-  try {
-    await postFn({
-      issueNumber: marker.issue,
-      repo: cfg.repo,
-      row,
-      timeoutMs: cfg.hookNetworkTimeoutMs,
-    });
-  } catch {
-    try {
-      enqueueFn({ kind: 'timing', issue: marker.issue, row }, path.join(projDir, cfg.queuePath));
-    } catch {
-      /* drop on the floor; never break a hook */
-    }
+  if (!result) {
+    // finalizeOrphanPause returns null for several cases; the legacy hook
+    // only needs a coarse signal. The status here is informational —
+    // callers who need fine-grained outcomes should use finalizeOrphanPause
+    // directly.
+    return { status: 'no-op' };
   }
-  deleteMarker(markerPath);
-  return { status: 'posted', gapSec, row };
+  return {
+    status: 'posted',
+    gapSec: result.idleSeconds,
+    issue: result.issue,
+    reason: result.reason,
+  };
 }
+
+export { computeGapSeconds };
 
 const invokedDirectly =
   import.meta.url === `file://${process.argv[1]}` ||

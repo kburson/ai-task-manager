@@ -8,10 +8,25 @@ import {
   countWords,
 } from '../word-counter.mjs';
 import { loadConfig } from '../config.mjs';
+import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 
 export async function verbStart(ctx, reasonOverride) {
   const { statePath, rest, role: _role, projectDir, drainQueueIfAny, safePostTiming, nowIso } = ctx;
   await drainQueueIfAny();
+  // #215 — finalize any orphaned pending-pause from a prior turn BEFORE
+  // binding/resuming. The row lands on whatever issue was bound at pause.
+  try {
+    const sidPre = currentSessionId();
+    if (sidPre) {
+      await finalizeOrphanPause({
+        sid: sidPre,
+        reason: 'orphan-finalize',
+        projDir: projectDir,
+      });
+    }
+  } catch {
+    /* never block start on a finalize failure */
+  }
   const s = loadState(statePath);
   if (s.active) {
     console.log(`already active: ${s.active}`);

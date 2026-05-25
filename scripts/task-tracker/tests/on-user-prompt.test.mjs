@@ -8,6 +8,10 @@ import { recordPendingPause, pendingPausePath } from '../hooks/on-stop.mjs';
 import { processPendingPause, computeGapSeconds } from '../hooks/on-user-prompt.mjs';
 
 // Pause threshold default is 30s — see config.mjs DEFAULTS.
+// After #215, on-user-prompt.mjs delegates to finalizeOrphanPause. The hook
+// returns a coarse {status} signal; finer-grained outcomes (sub-threshold,
+// foreign-session, no-marker) collapse to `no-op` here. Detailed semantics
+// are covered by orphan-finalize.test.mjs.
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-up-'));
 
@@ -21,10 +25,10 @@ const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-up-'));
 {
   const env = { CLAUDE_SESSION_ID: 'u1', AI_TASK_MANAGER_PROJECT_DIR: tmp };
   const r = await processPendingPause({ env });
-  assert.equal(r.status, 'no-marker');
+  assert.equal(r.status, 'no-op');
 }
 
-// Test 3: gap below threshold → marker deleted, no post
+// Test 3: gap below threshold → marker deleted, no post, no-op status
 {
   const sid = 'u2';
   setActiveTask(sid, { issue: '#213', state: 'develop' }, tmp);
@@ -35,7 +39,7 @@ const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-up-'));
     env,
     deps: { postTimingEvent: async (a) => calls.push(a) },
   });
-  assert.equal(r.status, 'sub-threshold');
+  assert.equal(r.status, 'no-op');
   assert.equal(calls.length, 0, 'no post for sub-threshold gap');
   assert.equal(existsSync(pendingPausePath(sid, tmp)), false, 'marker deleted');
 }
@@ -60,13 +64,13 @@ const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-up-'));
   assert.equal(existsSync(pendingPausePath(sid, tmp)), false);
 }
 
-// Test 5: rebound — marker references a different issue than the current
-// active task → drop without posting.
+// Test 5: marker references a different issue than the current bound task
+// — after #215, the row goes to the issue NAMED IN THE MARKER (not the
+// currently-bound issue). The old "rebound = drop" behavior is gone.
 {
   const sid = 'u4';
   setActiveTask(sid, { issue: '#999', state: 'develop' }, tmp);
   const env = { CLAUDE_SESSION_ID: sid, AI_TASK_MANAGER_PROJECT_DIR: tmp };
-  // Hand-craft a marker referencing a stale binding.
   const p = pendingPausePath(sid, tmp);
   mkdirSync(path.dirname(p), { recursive: true });
   writeFileSync(
@@ -83,8 +87,9 @@ const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-up-'));
     env,
     deps: { postTimingEvent: async (a) => calls.push(a) },
   });
-  assert.equal(r.status, 'rebound');
-  assert.equal(calls.length, 0, 'no post on rebound');
+  assert.equal(r.status, 'posted');
+  assert.equal(calls.length, 1, 'posts to marker.issue, not currently-bound');
+  assert.equal(calls[0].issueNumber, '#213');
   assert.equal(existsSync(p), false);
 }
 

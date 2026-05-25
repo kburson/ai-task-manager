@@ -9,6 +9,7 @@ import {
 } from '../word-counter.mjs';
 import { verbSwitch } from './switch.mjs';
 import { verbStart } from './start.mjs';
+import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 
 // `/task resume` writes a canonical `resumed` row on the incoming task,
 // regardless of how it was last paused or switched. The `resumed` row is the
@@ -37,6 +38,21 @@ export async function verbResume(ctx) {
   }
 
   await drainQueueIfAny();
+  // #215 — finalize any orphaned pending-pause from a prior turn BEFORE
+  // binding the resumed issue. The idle row lands on the issue named in
+  // the marker (which may differ from `target`).
+  try {
+    const sidPre = currentSessionId();
+    if (sidPre) {
+      await finalizeOrphanPause({
+        sid: sidPre,
+        reason: 'orphan-finalize',
+        projDir: projectDir,
+      });
+    }
+  } catch {
+    /* never block resume on a finalize failure */
+  }
   const ts = nowIso();
   const sid = currentSessionId();
   let wordsAtStart = 0;

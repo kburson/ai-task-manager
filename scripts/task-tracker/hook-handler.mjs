@@ -169,6 +169,15 @@ async function onSessionStart(sid) {
     const c = loadConfig();
     sweepOrphans({ maxAgeMs: c.deadSessionMaxAgeMs });
   } catch {}
+  // (#215) Sweep stale `.ai-task-manager/sessions/<sid>/` dirs older than
+  // `sessionRetentionDays`. Any orphan pause marker in the dir is finalized
+  // BEFORE removal (row goes to the issue named in the marker). Best-effort
+  // — never blocks session startup. All marker I/O is centralized in
+  // orphan-finalize.mjs (see AC8).
+  try {
+    const { sweepStaleSessionDirs } = await import('./orphan-finalize.mjs');
+    await sweepStaleSessionDirs({ projDir: projectDir });
+  } catch {}
   if (sid) ensureSessionTracking(sid);
   const s = loadState(statePath);
 
