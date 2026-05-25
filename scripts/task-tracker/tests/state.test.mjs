@@ -101,5 +101,49 @@ assert.ok(existsSync(preferredStatePath), 'preferred state path should be writte
 s = loadState(preferredStatePath);
 assert.equal(s.active, '#201');
 
+// Test 8 (#212): relative state-path must resolve project dir to CWD, not
+// the immediate parent. Regression for the bug that produced a nested
+// .ai-task-manager/.ai-task-manager/sessions/ tree when callers passed
+// '.ai-task-manager/task-tracker-state.json' relative to repo root.
+{
+  const cwdBefore = process.cwd();
+  const relTmp = mkdtempSync(path.join(tmpdir(), 'tt-state-rel-'));
+  try {
+    process.chdir(relTmp);
+    const rel = '.ai-task-manager/task-tracker-state.json';
+    saveState(
+      {
+        active: '#212',
+        lastActive: '#212',
+        state: 'develop',
+        entryStartTs: 'x',
+        wordsAtEntryStart: 1,
+      },
+      rel
+    );
+    const nested = path.join(relTmp, '.ai-task-manager', '.ai-task-manager');
+    assert.equal(
+      existsSync(nested),
+      false,
+      'projectDirForState must resolve relative paths to CWD; no nested .ai-task-manager/.ai-task-manager/ tree'
+    );
+    const sessionFile = path.join(
+      relTmp,
+      '.ai-task-manager',
+      'sessions',
+      'default-session',
+      'active-task.json'
+    );
+    assert.equal(
+      existsSync(sessionFile),
+      true,
+      'per-session active-task should land under the real project root'
+    );
+  } finally {
+    process.chdir(cwdBefore);
+    rmSync(relTmp, { recursive: true });
+  }
+}
+
 rmSync(tmp, { recursive: true });
 console.log('state.test.mjs: all passed');

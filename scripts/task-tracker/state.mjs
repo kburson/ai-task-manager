@@ -43,12 +43,13 @@ function migrateLegacyFields(parsed) {
 // per-session active-task.json sits alongside, not in a stray location when
 // callers pass an absolute path.
 function projectDirForState(statePath) {
-  const norm = statePath.split(path.sep).join('/');
+  const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
+  const norm = abs.split(path.sep).join('/');
   for (const marker of ['/.ai-task-manager/', '/.claude/']) {
     const idx = norm.indexOf(marker);
-    if (idx !== -1) return statePath.slice(0, idx);
+    if (idx !== -1) return abs.slice(0, idx);
   }
-  return path.dirname(statePath);
+  return path.dirname(abs);
 }
 
 export function loadState(statePath) {
