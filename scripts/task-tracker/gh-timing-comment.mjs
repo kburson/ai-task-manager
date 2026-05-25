@@ -2,8 +2,11 @@
 // GH I/O uses `gh` CLI via execFile with timeout.
 
 import { execFile } from 'node:child_process';
+import path from 'node:path';
 import { promisify } from 'node:util';
 import { resolvePhaseEvent } from './phase-events.mjs';
+import { withLock } from './locks.mjs';
+import { getProjectDir } from './paths.mjs';
 const pexec = promisify(execFile);
 
 const TIMING_HEADING = '⏱ Timing Log';
@@ -221,15 +224,42 @@ async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
   );
 }
 
-export async function postTimingEvent({ issueNumber, repo, row, timeoutMs = 2000 }) {
-  const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
-  if (existing) {
-    const updated = appendRow(existing.body, row);
-    await updateTimingComment(existing.id, repo, updated, { timeoutMs });
-  } else {
-    const initial = appendRow(buildInitialComment(), row);
-    await createTimingComment(issueNumber, repo, initial, { timeoutMs });
+function timingLockPath(issueNumber, projDir = getProjectDir()) {
+  const safe = String(issueNumber).replace(/[^A-Za-z0-9_-]/g, '_');
+  return path.join(projDir, '.ai-task-manager', 'locks', `timing-${safe}.lock`);
+}
+
+// Locked + retrying timing append. Concurrent appenders to the same issue
+// serialize on the per-issue lock dir; transient GitHub conflicts (returned
+// by `updateIssueComment` when the comment changed under us) trigger a
+// re-read + re-merge + re-post for up to `retries` attempts.
+//
+// The lock+retry path is the default. Tests can disable both by passing
+// `{ lock: false, retries: 0 }` to keep call counts deterministic.
+export async function postTimingEvent({
+  issueNumber,
+  repo,
+  row,
+  timeoutMs = 2000,
+  retries = 2,
+  lock = true,
+  projDir,
+} = {}) {
+  const work = async () => {
+    const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
+    if (existing) {
+      const updated = appendRow(existing.body, row);
+      await updateTimingComment(existing.id, repo, updated, { timeoutMs });
+    } else {
+      const initial = appendRow(buildInitialComment(), row);
+      await createTimingComment(issueNumber, repo, initial, { timeoutMs });
+    }
+  };
+  if (!lock) {
+    return work();
   }
+  const lockPath = timingLockPath(issueNumber, projDir || getProjectDir());
+  return withLock(lockPath, work, { timeoutMs: Math.max(timeoutMs * 3, 5_000), retries });
 }
 
 // Fetch the timing-comment body (where rows actually live). State-move

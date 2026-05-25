@@ -114,6 +114,13 @@ function hasFlag(args, name) {
 const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
 const COMMIT_TRAIL_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs';
+// EPIC #207 / #213 — Seq 2: Stop + UserPromptSubmit hooks for hook-driven
+// pause/resume. The hook handlers write/drain a per-session pending-pause
+// marker; the resume hook posts a single idle row when the inter-turn gap
+// exceeds `pauseThresholdSeconds`.
+const ON_STOP_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
+const ON_USER_PROMPT_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
@@ -142,7 +149,7 @@ function removeHookCommands(entries, commands) {
     .filter(Boolean);
 }
 
-function patchSettingsJson(settingsPath) {
+export function patchSettingsJson(settingsPath) {
   let settings = {};
   if (existsSync(settingsPath)) {
     try {
@@ -228,6 +235,22 @@ function patchSettingsJson(settingsPath) {
     hookEntryHasCommand(h, COMMIT_TRAIL_HOOK_CMD)
   );
   if (!trailRegistered) settings.hooks.PostToolUse.push(trailEntry);
+
+  // EPIC #207 / #213 — Stop + UserPromptSubmit hooks. Idempotent: matched by
+  // command string so re-running the installer does not duplicate entries.
+  for (const [event, cmd] of [
+    ['Stop', ON_STOP_HOOK_CMD],
+    ['UserPromptSubmit', ON_USER_PROMPT_HOOK_CMD],
+  ]) {
+    if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
+    const already = settings.hooks[event].some((h) => hookEntryHasCommand(h, cmd));
+    if (!already) {
+      settings.hooks[event].push({
+        matcher: '',
+        hooks: [{ type: 'command', command: cmd }],
+      });
+    }
+  }
 
   // Positive Bash allowlist (issue #199) — replaces the prior broad `Bash` allow.
   // The hooks above (bash-guard + activity-guard) remain in place as
