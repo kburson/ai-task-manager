@@ -1,8 +1,8 @@
-// Analyze-stage re-evaluation: reads Deep-Dive signals from the issue body,
+// Plan-stage re-evaluation: reads Deep-Dive signals from the issue body,
 // rebuckets Size/Estimate, mutates the project board + issue field-DB block,
 // and posts an audit comment. Failures must not block the calling verb.
 //
-// Extracted from task-tracker.mjs so the analyze→development hook in
+// Extracted from task-tracker.mjs so the plan→develop hook in
 // verbs/approve.mjs can invoke it without dragging the whole CLI surface in.
 // Deps are injectable for tests.
 
