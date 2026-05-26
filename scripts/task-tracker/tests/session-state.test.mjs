@@ -40,14 +40,14 @@ const record = {
   issue: '#212',
   entryStartTs: '2026-05-25T07:00:00Z',
   wordsAtStart: 80000,
-  state: 'develop',
+  state: 'develop', // #218: provided here to verify it's stripped on write
 };
 setActiveTask('sess-1', record, tmp);
 const round = getActiveTask('sess-1', tmp);
 assert.equal(round.issue, '#212');
 assert.equal(round.entryStartTs, '2026-05-25T07:00:00Z');
 assert.equal(round.wordsAtStart, 80000);
-assert.equal(round.state, 'develop');
+assert.equal(round.state, undefined, '#218: state field is stripped on write');
 assert.ok(round.boundAt, 'setActiveTask should stamp boundAt when caller omits it');
 
 // AC: setActiveTask overwrites cleanly (atomic via tmp + rename — no half-write)

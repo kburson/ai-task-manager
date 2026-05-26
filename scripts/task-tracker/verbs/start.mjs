@@ -7,7 +7,6 @@ import {
   saveMarker,
   countWords,
 } from '../word-counter.mjs';
-import { loadConfig } from '../config.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 
 export async function verbStart(ctx, reasonOverride) {
@@ -54,26 +53,8 @@ export async function verbStart(ctx, reasonOverride) {
     },
     statePath
   );
-  if (/^#\d+$/.test(s.lastActive)) {
-    try {
-      const cfg = loadConfig();
-      const { fetchLiveKanbanState } = await import('../../gh/lib/live-state.mjs');
-      const live = await fetchLiveKanbanState({
-        repo: cfg.repo,
-        projectId: cfg.projectId,
-        issueNumber: s.lastActive.replace(/^#/, ''),
-      });
-      if (live) {
-        const s2 = loadState(statePath);
-        if (s2.active === s.lastActive) {
-          s2.state = live;
-          saveState(s2, statePath);
-        }
-      }
-    } catch {
-      /* best-effort */
-    }
-  }
+  // #218: state hydration removed — the issue body's `aitm-last-known-state`
+  // marker is the source of truth; preflight reads it on demand.
   try {
     setTaskStatus(projectDir, s.lastActive, 'active');
   } catch {}

@@ -71,7 +71,7 @@ function setActive(sid, issue) {
   const payload = JSON.parse(raw);
   assert.equal(payload.stoppedAt, '2026-05-25T16:00:00.000Z');
   assert.equal(payload.issue, '#hp-1');
-  assert.equal(payload.state, 'develop');
+  assert.equal(payload.state, undefined, '#218: state field is not part of pending-pause payload');
   assert.equal(payload.sessionId, sid);
 }
 
@@ -91,11 +91,11 @@ function setActive(sid, issue) {
 
 // 5. buildPayload is deterministic given inputs (unit-level)
 {
+  // #218: state is no longer part of the payload, even if passed in.
   const p = buildPayload({ issue: '#x', state: 'test' }, 'sid-x', '2026-01-01T00:00:00.000Z');
   assert.deepEqual(p, {
     stoppedAt: '2026-01-01T00:00:00.000Z',
     issue: '#x',
-    state: 'test',
     sessionId: 'sid-x',
   });
 }

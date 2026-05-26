@@ -79,23 +79,8 @@ export async function verbSwitch(ctx, target) {
     wordsAtEntryStart: wordsAtStart,
   };
   saveState(newState, statePath);
-  try {
-    const { fetchLiveKanbanState } = await import('../../gh/lib/live-state.mjs');
-    const live = await fetchLiveKanbanState({
-      repo: cfg.repo,
-      projectId: cfg.projectId,
-      issueNumber: target.replace(/^#/, ''),
-    });
-    if (live) {
-      const s2 = loadState(statePath);
-      if (s2.active === target) {
-        s2.state = live;
-        saveState(s2, statePath);
-      }
-    }
-  } catch {
-    /* best-effort — bind must not fail on GraphQL */
-  }
+  // #218: state hydration removed — the issue body's `aitm-last-known-state`
+  // marker is the source of truth; preflight reads it on demand.
   try {
     registerTask(projectDir, target, projectDir, currentBranch(projectDir));
   } catch {}

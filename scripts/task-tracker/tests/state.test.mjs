@@ -33,24 +33,27 @@ s = loadState(statePath);
 assert.equal(s.active, null);
 assert.equal(s.lastActive, '#107');
 
-// Test 3a: EMPTY_STATE includes `state` field; default null
+// Test 3a (#218): EMPTY_STATE no longer declares `state` — the issue body
+// `aitm-last-known-state` marker is the source of truth.
 assert.ok(
-  Object.prototype.hasOwnProperty.call(EMPTY_STATE, 'state'),
-  'EMPTY_STATE should declare state field'
+  !Object.prototype.hasOwnProperty.call(EMPTY_STATE, 'state'),
+  'EMPTY_STATE should not declare state field (#218)'
 );
-assert.equal(EMPTY_STATE.state, null);
 
-// Test 3b: state field round-trips through save/load
-saveState({ active: '#400', lastActive: '#400', state: 'develop' }, statePath);
+// Test 3b (#218): a stale `state` value in the file is stripped on load.
+saveState({ active: '#400', lastActive: '#400' }, statePath);
+// Hand-write a state field into the file to simulate legacy data.
+const rawWithState = JSON.parse((await import('node:fs')).readFileSync(statePath, 'utf8'));
+rawWithState.state = 'develop';
+(await import('node:fs')).writeFileSync(statePath, JSON.stringify(rawWithState));
 s = loadState(statePath);
 assert.equal(s.active, '#400');
-assert.equal(s.state, 'develop');
+assert.equal(s.state, undefined, 'stale state field is stripped on load');
 
-// Test 3c: clearActive clears state along with active
+// Test 3c: clearActive still resets active while preserving lastActive
 clearActive(statePath);
 s = loadState(statePath);
 assert.equal(s.active, null);
-assert.equal(s.state, null);
 assert.equal(s.lastActive, '#400');
 
 // Test 4: discover bucket round-trip
@@ -115,7 +118,6 @@ assert.equal(s.active, '#201');
       {
         active: '#212',
         lastActive: '#212',
-        state: 'develop',
         entryStartTs: 'x',
         wordsAtEntryStart: 1,
       },

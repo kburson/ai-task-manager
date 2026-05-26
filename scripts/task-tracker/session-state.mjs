@@ -42,17 +42,22 @@ export function getActiveTask(sid, projDir) {
 // ISO timestamp if the caller did not supply one. Unknown extra keys are
 // preserved on the record so downstream EPIC #207 sub-issues can extend the
 // schema without breaking this writer.
+//
+// #218: `state` is no longer part of the canonical schema (the issue body's
+// `aitm-last-known-state` marker is the source of truth). The field is
+// stripped on write; legacy files with `state` present continue to load.
 export function setActiveTask(sid, record, projDir) {
   if (!record || typeof record !== 'object') {
     throw new Error('setActiveTask: record must be an object');
   }
+  const { state: _droppedState, ...recordWithoutState } = record;
+  void _droppedState;
   const payload = {
     issue: record.issue ?? null,
     entryStartTs: record.entryStartTs ?? null,
     wordsAtStart: record.wordsAtStart ?? 0,
-    state: record.state ?? null,
     boundAt: record.boundAt ?? new Date().toISOString(),
-    ...record,
+    ...recordWithoutState,
   };
   atomicWrite(activeTaskPath(sid, projDir), payload);
   return payload;

@@ -86,7 +86,9 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
   rmSync(sandbox, { recursive: true });
 }
 
-// Test: tracker-state `state` field is updated when issue matches active task
+// Test (#218): tracker-state never carries a `state` field. Even if legacy
+// data is on disk, move-state must not preserve or rewrite it — the issue
+// body `aitm-last-known-state` marker is the single source of truth.
 {
   const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ms-state-write-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -105,6 +107,7 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
     )
   );
   const sp = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
+  // Seed with legacy `state` field to verify it gets stripped on next write.
   writeFileSync(
     sp,
     JSON.stringify({ active: '#777', lastActive: '#777', state: 'develop' }, null, 2)
@@ -115,32 +118,8 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   const after = JSON.parse(readFileSync(sp, 'utf8'));
-  assert.equal(after.state, 'test', 'state field should be updated on transition');
+  assert.equal(after.state, undefined, '#218: state field must be absent from tracker-state');
   assert.equal(after.active, '#777', 'active should be preserved');
-
-  // #210 — every successful transition syncs local state.state, even when
-  // the issue is not bound as active. move-state.mjs is the single
-  // state-mutator; gating the sync on `s.active === '#N'` left the cache
-  // permanently stale for orchestrator/sub-agent flows that don't bind.
-  await run(['888', 'review'], {
-    TT_SKIP_NETWORK: '1',
-    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
-  });
-  const after2 = JSON.parse(readFileSync(sp, 'utf8'));
-  assert.equal(
-    after2.state,
-    'review',
-    'state field must sync on every successful transition, regardless of active'
-  );
-
-  // And with active=null entirely (orchestrator-style invocation).
-  writeFileSync(sp, JSON.stringify({ active: null, lastActive: null, state: 'review' }, null, 2));
-  await run(['999', 'develop'], {
-    TT_SKIP_NETWORK: '1',
-    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
-  });
-  const after3 = JSON.parse(readFileSync(sp, 'utf8'));
-  assert.equal(after3.state, 'develop', 'state must sync even when active is null');
 
   rmSync(sandbox, { recursive: true });
 }

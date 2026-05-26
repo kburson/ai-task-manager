@@ -10,7 +10,7 @@
 //   - Read $CLAUDE_SESSION_ID (or AI_TASK_MANAGER_SESSION_ID) for the sid.
 //   - Look up the bound active task via session-state (Seq 1).
 //   - If a task is bound, write a `pending-pause.json` marker under the
-//     session dir with `{stoppedAt, issue, state, sessionId}`.
+//     session dir with `{stoppedAt, issue, sessionId}`.
 //   - Zero network I/O. The matching `on-user-prompt` hook does the post.
 //
 // Tolerates absence of `CLAUDE_SESSION_ID` (no-ops) and read errors on the
@@ -34,7 +34,6 @@ export function buildPayload(active, sid, nowIso = new Date().toISOString()) {
   return {
     stoppedAt: nowIso,
     issue: active?.issue ?? null,
-    state: active?.state ?? null,
     sessionId: sid,
   };
 }

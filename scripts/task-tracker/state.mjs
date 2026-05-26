@@ -10,7 +10,6 @@ export const EMPTY_STATE = {
   wordsAtEntryStart: 0,
   totalActiveMinutes: 0,
   discoverBucket: null,
-  state: null,
 };
 
 // Fields owned by per-session active-task.json (#212). The authoritative copy
@@ -19,7 +18,10 @@ export const EMPTY_STATE = {
 // so legacy readers (and tests that inspect the JSON directly) keep working.
 // Reads overlay per-session over the legacy fallback, so the session record
 // always wins when present.
-const PER_SESSION_FIELDS = ['active', 'entryStartTs', 'wordsAtEntryStart', 'state'];
+// #218: `state` removed — the issue body's `aitm-last-known-state` marker is
+// now the single source of truth. Stale `state` fields on disk are silently
+// dropped on read.
+const PER_SESSION_FIELDS = ['active', 'entryStartTs', 'wordsAtEntryStart'];
 
 function currentSid() {
   const env = process.env || {};
@@ -67,6 +69,9 @@ export function loadState(statePath) {
     }
   }
   const base = { ...EMPTY_STATE, ...migrateLegacyFields(parsed) };
+  // #218: silently drop any stale `state` field from on-disk JSON. The issue
+  // body is now the single source of truth.
+  delete base.state;
   // Per-session overlay (#212). When a session-scoped active-task.json exists,
   // its values take precedence over any legacy fields surfaced from the global
   // file. Missing-dir tolerated by getActiveTask (returns null).
@@ -79,7 +84,6 @@ export function loadState(statePath) {
     }
     if (active.entryStartTs != null) base.entryStartTs = active.entryStartTs;
     if (active.wordsAtStart != null) base.wordsAtEntryStart = active.wordsAtStart;
-    if (active.state != null) base.state = active.state;
   }
   return base;
 }
@@ -93,8 +97,7 @@ export function saveState(state, statePath) {
   const hasActiveBinding =
     state.active != null ||
     state.entryStartTs != null ||
-    (state.wordsAtEntryStart != null && state.wordsAtEntryStart !== 0) ||
-    state.state != null;
+    (state.wordsAtEntryStart != null && state.wordsAtEntryStart !== 0);
   if (hasActiveBinding) {
     setActiveTask(
       sid,
@@ -102,7 +105,6 @@ export function saveState(state, statePath) {
         issue: state.active ?? null,
         entryStartTs: state.entryStartTs ?? null,
         wordsAtStart: state.wordsAtEntryStart ?? 0,
-        state: state.state ?? null,
       },
       projDir
     );
@@ -113,6 +115,8 @@ export function saveState(state, statePath) {
   // Read-path overlays session record, so the session copy is authoritative.
   void PER_SESSION_FIELDS;
   const globalPayload = { ...state };
+  // #218: never persist `state` to disk — issue body is the source of truth.
+  delete globalPayload.state;
   writeFileSync(statePath, JSON.stringify(globalPayload, null, 2) + '\n', 'utf8');
 }
 
@@ -122,7 +126,6 @@ export function clearActive(statePath) {
   s.entryStartTs = null;
   s.wordsAtEntryStart = 0;
   s.discoverBucket = null;
-  s.state = null;
-  // keep lastActive
+  // keep lastActive; `state` is body-sourced (#218), not persisted here.
   saveState(s, statePath);
 }

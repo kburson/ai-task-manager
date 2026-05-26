@@ -1,21 +1,27 @@
-// Shared verb preflight (#208) — bind-match + live-state reconciliation.
+// Shared verb preflight (#208, refactored in #218) — bind-match + live-state
+// reconciliation.
 //
 // `runPreflight` is a pure core: it takes the loaded task-tracker state and
-// an optional target issue, and reports one of four outcomes:
+// an optional target issue, and reports one of three outcomes:
 //
 //   1. bind-mismatch  — exit 7 — target ≠ state.active and both are set.
 //      Caller must abort and tell the user to rebind (`/task #N`).
-//   2. ai-oversight   — exit 8 — board state ≠ local state, but the
-//      `aitm-last-known-state` marker matches the board. Some scripted move
-//      ran without notifying the local cache. Caller prompts:
-//      "AI moved the board; accept it?"
-//   3. human-move     — exit 9 — board state ≠ local state AND marker ≠
-//      board. The marker is updated atomically by every move-state.mjs run,
-//      so a marker that's behind the board implies a hand-edit through the
-//      GitHub UI. Caller prompts: "Human moved the board; reconcile?"
-//   4. ok             — bind matches (or none), board == local (or no live
-//      data). state.state is rewritten to the live value so the local cache
-//      stays in sync.
+//   2. drift          — exit 9 (kind: `human-move`) — board state ≠ the
+//      issue body's `aitm-last-known-state` marker. The marker is updated
+//      atomically by every move-state.mjs run, so any divergence means
+//      either the board was hand-edited via the GitHub UI or a marker
+//      write failed. Caller prompts: "reconcile?"
+//   3. ok             — bind matches (or none), board == marker (or no
+//      live data / no marker yet).
+//
+// #218: the previous "local cache (`state.state`) vs live" comparison was
+// replaced with "issue body marker vs live." The body and board are now the
+// only two sources, so reconcile (marker vs board) and preflight (marker vs
+// board) cannot disagree.
+//
+// The `ai-oversight` kind / exit code is retained as a no-op branch for
+// backwards-compat with downstream callers, but `runPreflight` never emits
+// it under the new model — all drift surfaces as `human-move`.
 //
 // All network I/O is injected. When `TT_SKIP_NETWORK=1` the live fetch is
 // skipped and the preflight only enforces bind-match.
@@ -126,19 +132,9 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   live = String(live || '').toLowerCase();
   if (!live) return { ok: true, stateAfter: stateBefore, changed: false };
 
-  const localState = stateBefore.state ? String(stateBefore.state).toLowerCase() : null;
-
-  if (!localState || localState === live) {
-    if (stateBefore.state === live) return { ok: true, stateAfter: stateBefore, changed: false };
-    return {
-      ok: true,
-      stateAfter: { ...stateBefore, state: live },
-      changed: true,
-      live,
-    };
-  }
-
-  // Mismatch: classify via marker (primary) then actor (best-effort).
+  // #218: the issue body marker is the single local source of truth. Fetch
+  // it unconditionally and compare to live; the loaded `stateBefore.state`
+  // (if any legacy cache still carries it) is ignored.
   let marker = null;
   try {
     marker = await fetchMarker({ issueNumber: issueForReconcile, repo: cfg.repo });
@@ -147,6 +143,11 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   }
   marker = marker ? String(marker).toLowerCase() : null;
 
+  // Marker absent (freshly created, never moved) or matches live: no drift.
+  if (!marker || marker === live) {
+    return { ok: true, stateAfter: stateBefore, changed: false };
+  }
+
   let actor = null;
   try {
     actor = await fetchActor({ issueNumber: issueForReconcile, repo: cfg.repo });
@@ -154,25 +155,12 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
     actor = null;
   }
 
-  if (marker && marker === live) {
-    return {
-      ok: false,
-      code: EXIT_AI_OVERSIGHT,
-      kind: 'ai-oversight',
-      live,
-      local: localState,
-      marker,
-      actor,
-      issueNumber: issueForReconcile,
-    };
-  }
-
   return {
     ok: false,
     code: EXIT_HUMAN_MOVE,
     kind: 'human-move',
     live,
-    local: localState,
+    local: marker,
     marker,
     actor,
     issueNumber: issueForReconcile,

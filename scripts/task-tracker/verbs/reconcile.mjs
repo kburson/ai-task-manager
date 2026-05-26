@@ -34,9 +34,8 @@ import {
 } from '../lib/state-recording.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
-import { loadState, saveState } from '../state.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
-import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../paths.mjs';
+import { getProjectDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
@@ -122,18 +121,13 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
   await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
 }
 
-function defaultPersistTrackerState({ issueNumber, state }) {
-  try {
-    const projectDir = getProjectDir();
-    const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
-    const s = loadState(sp);
-    if (s.active === `#${issueNumber}`) {
-      s.state = state;
-      saveState(s, sp);
-    }
-  } catch {
-    /* best-effort */
-  }
+// #218: the local cache no longer carries a `state` field — the issue body
+// marker (rewritten above by `writeIssueBodyWithRetry`) is the source of
+// truth. The helper is retained as a no-op so call-site signatures and the
+// `deps.persistTrackerState` injection point remain stable for tests.
+function defaultPersistTrackerState({ issueNumber, state } = {}) {
+  void issueNumber;
+  void state;
 }
 
 // ---------------------------------------------------------------------------

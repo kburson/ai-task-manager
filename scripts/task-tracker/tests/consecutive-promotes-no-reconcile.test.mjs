@@ -1,16 +1,11 @@
-// #210 — Integration regression: two consecutive forward state transitions
-// must both succeed without an interposed `/task reconcile`.
+// #210 / #218 — Integration regression: two consecutive forward state
+// transitions must both succeed without an interposed `/task reconcile`.
 //
-// Pre-fix, after a successful `develop→test` (or `refine→plan`) move, the
-// local `state.state` cache stayed pinned at the prior state because the
-// active-guard in move-state.mjs only synced when `s.active === '#N'`. On
-// the second `promote` call, the verb-preflight saw (live=test, local=develop,
-// marker=develop) and refused with exit 9 `human-move`.
-//
-// This test drives two consecutive `move-state.mjs` invocations against a
-// sandboxed runtime config (TT_SKIP_NETWORK=1, no real gh) and asserts the
-// local cache advances on every transition, including the orchestrator case
-// where `s.active` is null.
+// Under #218 the local `state.state` field has been removed entirely; the
+// issue body `aitm-last-known-state` marker is the single source of truth.
+// This test asserts the file-level invariant: after each successful
+// transition, the tracker-state file must NOT contain a `state` field —
+// even when the file was seeded with a stale `state` from legacy data.
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -74,15 +69,12 @@ async function testConsecutiveBound() {
 
     await runMoveState(['210', 'test'], env);
     let s = readState(sp);
-    assert.equal(s.state, 'test', 'first promote (develop→test) must sync local state');
+    assert.equal(s.state, undefined, '#218: tracker-state must not carry a state field');
+    assert.equal(s.active, '#210', 'active binding preserved across transition');
 
     await runMoveState(['210', 'review'], env);
     s = readState(sp);
-    assert.equal(
-      s.state,
-      'review',
-      'second consecutive promote (test→review) must also sync — no reconcile required'
-    );
+    assert.equal(s.state, undefined, '#218: tracker-state stays clean across consecutive promotes');
   } finally {
     rmSync(sandbox, { recursive: true });
   }
@@ -103,12 +95,12 @@ async function testConsecutiveOrchestrator() {
 
     await runMoveState(['311', 'plan'], env);
     let s = readState(sp);
-    assert.equal(s.state, 'plan', 'orchestrator promote (refine→plan) must sync local state');
+    assert.equal(s.state, undefined, '#218: state field stripped on orchestrator promote');
     assert.equal(s.active, null, 'orchestrator flow must not synthesize an active binding');
 
     await runMoveState(['311', 'develop'], env);
     s = readState(sp);
-    assert.equal(s.state, 'develop', 'second orchestrator promote (plan→develop) must also sync');
+    assert.equal(s.state, undefined, '#218: state field stays absent across orchestrator promotes');
   } finally {
     rmSync(sandbox, { recursive: true });
   }
