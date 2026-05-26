@@ -13,15 +13,33 @@
 //   8. missing cfg                    → ok, no network
 
 import { strict as assert } from 'node:assert';
-import { runPreflight, EXIT_BIND_MISMATCH, EXIT_HUMAN_MOVE } from '../lib/verb-preflight.mjs';
+import {
+  runPreflight,
+  EXIT_BIND_MISMATCH,
+  EXIT_HUMAN_MOVE,
+  EXIT_ASSIGNEE_MISMATCH,
+} from '../lib/verb-preflight.mjs';
 
 const CFG = { repo: 'test/repo', projectId: 'PVT_test' };
+const CFG_NO_ASSIGNEE_GATE = {
+  repo: 'test/repo',
+  projectId: 'PVT_test',
+  preferences: { gateAssigneeMatch: false },
+};
 
-function depsOf({ live = '', marker = null, actor = null } = {}) {
+function depsOf({
+  live = '',
+  marker = null,
+  actor = null,
+  assignees = ['kburson'],
+  currentUser = 'kburson',
+} = {}) {
   return {
     fetchLive: async () => live,
     fetchLastKnownState: async () => marker,
     fetchLastStatusActor: async () => actor,
+    fetchAssignees: async () => assignees,
+    fetchCurrentUser: async () => currentUser,
   };
 }
 
@@ -188,6 +206,120 @@ function depsOf({ live = '', marker = null, actor = null } = {}) {
   });
   assert.equal(v.ok, true, '#218: stale stateBefore.state must not cause drift');
   assert.equal(v.changed, false);
+}
+
+// 10. #219: assignee guard refuses when current user not in assignees.
+{
+  const v = await runPreflight({
+    stateBefore: { active: '#219' },
+    target: '#219',
+    cfg: CFG,
+    deps: depsOf({
+      live: 'develop',
+      marker: 'develop',
+      assignees: ['alice'],
+      currentUser: 'kburson',
+    }),
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(v.kind, 'assignee-mismatch');
+  assert.equal(v.assigneeKind, 'assigned-to-other');
+  assert.deepEqual(v.assignees, ['alice']);
+}
+
+// 11. #219: assignee guard refuses when issue is unassigned.
+{
+  const v = await runPreflight({
+    stateBefore: { active: '#219' },
+    target: '#219',
+    cfg: CFG,
+    deps: depsOf({ live: 'develop', marker: 'develop', assignees: [], currentUser: 'kburson' }),
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(v.assigneeKind, 'unassigned');
+}
+
+// 12. #219: gateAssigneeMatch=false skips guard.
+{
+  let assigneeFetched = false;
+  const v = await runPreflight({
+    stateBefore: { active: '#219' },
+    target: '#219',
+    cfg: CFG_NO_ASSIGNEE_GATE,
+    deps: {
+      fetchLive: async () => 'develop',
+      fetchLastKnownState: async () => 'develop',
+      fetchAssignees: async () => {
+        assigneeFetched = true;
+        return ['alice'];
+      },
+      fetchCurrentUser: async () => 'kburson',
+    },
+  });
+  assert.equal(v.ok, true);
+  assert.equal(assigneeFetched, false, 'guard skipped when gateAssigneeMatch=false');
+}
+
+// 13. #219: bind-mismatch wins over assignee-mismatch.
+{
+  let assigneeFetched = false;
+  const v = await runPreflight({
+    stateBefore: { active: '#100' },
+    target: '#219',
+    cfg: CFG,
+    deps: {
+      fetchLive: async () => 'develop',
+      fetchLastKnownState: async () => 'develop',
+      fetchAssignees: async () => {
+        assigneeFetched = true;
+        return ['alice'];
+      },
+      fetchCurrentUser: async () => 'kburson',
+    },
+  });
+  assert.equal(v.code, EXIT_BIND_MISMATCH);
+  assert.equal(assigneeFetched, false);
+}
+
+// 14. #219: assignee guard short-circuits before drift check.
+{
+  let liveFetched = false;
+  const v = await runPreflight({
+    stateBefore: { active: '#219' },
+    target: '#219',
+    cfg: CFG,
+    deps: {
+      fetchLive: async () => {
+        liveFetched = true;
+        return 'develop';
+      },
+      fetchLastKnownState: async () => 'develop',
+      fetchAssignees: async () => ['alice'],
+      fetchCurrentUser: async () => 'kburson',
+    },
+  });
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(liveFetched, false, 'live fetch skipped when assignee guard fires');
+}
+
+// 15. #219: assignee fetch failure is non-fatal (treated as ok).
+{
+  const v = await runPreflight({
+    stateBefore: { active: '#219' },
+    target: '#219',
+    cfg: CFG,
+    deps: {
+      fetchLive: async () => 'develop',
+      fetchLastKnownState: async () => 'develop',
+      fetchAssignees: async () => {
+        throw new Error('network down');
+      },
+      fetchCurrentUser: async () => 'kburson',
+    },
+  });
+  assert.equal(v.ok, true);
 }
 
 console.log('verb-preflight.test.mjs: ok');

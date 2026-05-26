@@ -31,6 +31,12 @@ import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { saveState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import {
+  checkAssigneeMatch,
+  formatAssigneeRefusal,
+  formatAssigneePromptLine,
+  EXIT_ASSIGNEE_MISMATCH,
+} from './assignee-guard.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -39,6 +45,7 @@ const pexec = promisify(execFile);
 export const EXIT_BIND_MISMATCH = 7;
 export const EXIT_AI_OVERSIGHT = 8;
 export const EXIT_HUMAN_MOVE = 9;
+export { EXIT_ASSIGNEE_MISMATCH };
 
 function normalizeIssueNumber(target) {
   if (target == null) return null;
@@ -114,6 +121,36 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
     return { ok: true, stateAfter: stateBefore, changed: false, skippedNetwork: true };
   }
   if (!cfg) return { ok: true, stateAfter: stateBefore, changed: false };
+
+  // #219: assignee guard runs before drift check. Preference-gated; default on.
+  const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
+  if (gateAssignee) {
+    let assigneeVerdict;
+    try {
+      assigneeVerdict = await checkAssigneeMatch({
+        issueNumber: issueForReconcile,
+        cfg,
+        deps: {
+          fetchAssignees: deps.fetchAssignees,
+          fetchCurrentUser: deps.fetchCurrentUser,
+          cache: deps.assigneeCache,
+        },
+      });
+    } catch {
+      assigneeVerdict = { ok: true };
+    }
+    if (!assigneeVerdict.ok) {
+      return {
+        ok: false,
+        code: EXIT_ASSIGNEE_MISMATCH,
+        kind: 'assignee-mismatch',
+        assigneeKind: assigneeVerdict.kind,
+        currentUser: assigneeVerdict.currentUser,
+        assignees: assigneeVerdict.assignees,
+        issueNumber: issueForReconcile,
+      };
+    }
+  }
 
   const fetchLive = deps.fetchLive || fetchLiveKanbanState;
   const fetchMarker = deps.fetchLastKnownState || defaultFetchLastKnownState;
@@ -202,6 +239,21 @@ export async function preflightVerb({
         `⛔ Refusing /task ${verb}: board for ${issue} is "${verdict.live}", local cache says "${verdict.local}". The last-known-state marker matches the board, so a scripted move ran outside this session. Run \`/task reconcile accept-live ${issue}\` to adopt the board state, or investigate the drift before retrying.\n`
       );
       process.exit(EXIT_AI_OVERSIGHT);
+      return;
+    }
+    case 'assignee-mismatch': {
+      const verdict2 = {
+        kind: verdict.assigneeKind,
+        currentUser: verdict.currentUser,
+        assignees: verdict.assignees,
+      };
+      process.stdout.write(
+        formatAssigneePromptLine({ issueNumber: verdict.issueNumber, verdict: verdict2 }) + '\n'
+      );
+      process.stderr.write(
+        formatAssigneeRefusal({ verb, issueNumber: verdict.issueNumber, verdict: verdict2 }) + '\n'
+      );
+      process.exit(EXIT_ASSIGNEE_MISMATCH);
       return;
     }
     case 'human-move': {

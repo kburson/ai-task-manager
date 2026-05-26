@@ -167,6 +167,7 @@ export const PREFERENCE_DEFAULTS = {
   pauseTimerOnBlockingQuestion: true,
   noConfirmAfterDeepDive: true,
   askGatesBeforeParallel: true,
+  gateAssigneeMatch: true,
   formatting: {
     noEmojis: true,
     currencyInBackticks: true,
@@ -247,6 +248,7 @@ export function loadConfig(paths = {}) {
   }
   merged.fieldEngagedTime ||= merged.fieldActualHours || '';
   merged.fieldSessionTime ||= merged.fieldActualMinutes || '';
+  merged.preferences = mergePreferences(project.preferences);
   merged._sources = sources;
   return merged;
 }
