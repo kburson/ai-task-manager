@@ -10,6 +10,7 @@ import path from 'node:path';
 import {
   getActiveTask,
   setActiveTask,
+  setSessionKanbanState,
   clearActiveTask,
   sessionDir,
   activeTaskPath,
@@ -77,6 +78,34 @@ const { mkdirSync } = await import('node:fs');
 mkdirSync(path.dirname(corruptPath), { recursive: true });
 writeFileSync(corruptPath, '{not json');
 assert.equal(getActiveTask('sess-c', tmp), null);
+
+// #218 follow-up: setSessionKanbanState seeds the derived cache, and
+// subsequent setActiveTask calls that don't carry kanbanState must preserve
+// it (sticky). state.mjs#saveState mints records without kanbanState on
+// every bind; without stickiness the activity-guard would deadlock.
+setActiveTask('sess-sticky', { issue: '#42', wordsAtStart: 100 }, tmp);
+setSessionKanbanState('sess-sticky', 'develop', tmp);
+assert.equal(getActiveTask('sess-sticky', tmp).kanbanState, 'develop');
+
+// Re-bind to the SAME issue without passing kanbanState — must preserve.
+setActiveTask('sess-sticky', { issue: '#42', wordsAtStart: 200 }, tmp);
+assert.equal(
+  getActiveTask('sess-sticky', tmp).kanbanState,
+  'develop',
+  'kanbanState should survive a setActiveTask call that omits it (same issue)'
+);
+
+// Explicit kanbanState in the new record wins.
+setActiveTask('sess-sticky', { issue: '#42', kanbanState: 'test' }, tmp);
+assert.equal(getActiveTask('sess-sticky', tmp).kanbanState, 'test');
+
+// Switching to a different issue must NOT carry the prior issue's kanbanState.
+setActiveTask('sess-sticky', { issue: '#43' }, tmp);
+assert.equal(
+  getActiveTask('sess-sticky', tmp).kanbanState,
+  undefined,
+  'kanbanState must not bleed across different bound issues'
+);
 
 rmSync(tmp, { recursive: true });
 console.log('session-state.test.mjs: all passed');

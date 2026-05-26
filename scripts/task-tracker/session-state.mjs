@@ -52,11 +52,23 @@ export function setActiveTask(sid, record, projDir) {
   }
   const { state: _droppedState, ...recordWithoutState } = record;
   void _droppedState;
+  // Preserve the derived `kanbanState` cache (#218 follow-up) across saves
+  // that don't carry it. Only setSessionKanbanState / explicit refreshers
+  // should mutate this field; the generic state writer (state.mjs#saveState)
+  // doesn't know about it and would otherwise blow it away on every bind.
+  let stickyKanban = {};
+  if (!('kanbanState' in recordWithoutState) && record.issue != null) {
+    const existing = readJson(activeTaskPath(sid, projDir));
+    if (existing && existing.issue === record.issue && existing.kanbanState) {
+      stickyKanban = { kanbanState: existing.kanbanState };
+    }
+  }
   const payload = {
     issue: record.issue ?? null,
     entryStartTs: record.entryStartTs ?? null,
     wordsAtStart: record.wordsAtStart ?? 0,
     boundAt: record.boundAt ?? new Date().toISOString(),
+    ...stickyKanban,
     ...recordWithoutState,
   };
   atomicWrite(activeTaskPath(sid, projDir), payload);
