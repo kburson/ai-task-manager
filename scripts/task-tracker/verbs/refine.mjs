@@ -23,6 +23,8 @@ import { fieldOptionMap } from '../../gh/lib/github-projects.mjs';
 import { verbPromote } from './promote.mjs';
 import { parseRationaleMarker, RATIONALE_MARKER_RE } from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { ensureIssueFieldDb } from '../issue-field-db.mjs';
+import { loadProjectFieldDefs } from '../project-fields.mjs';
 
 const pexec = promisify(execFile);
 
@@ -204,6 +206,8 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   const writeBody = deps.writeBody || defaultWriteBody;
   const addLabels = deps.addLabels || defaultAddLabels;
   const promote = deps.verbPromote || verbPromote;
+  const ensureFieldDb = deps.ensureIssueFieldDb || ensureIssueFieldDb;
+  const loadFieldDefs = deps.loadProjectFieldDefs || loadProjectFieldDefs;
 
   // 1. Pre-load size option IDs from the project so tetherIssueToProject can
   //    resolve `size: 'S'` → option ID without requiring the config file to
@@ -242,7 +246,29 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     sequence: sequenceNum,
     reason,
   });
-  const newBody = applyRationaleMarker(body, marker);
+  let newBody = applyRationaleMarker(body, marker);
+
+  // #223 — refresh the aitm-fields body cache with the just-refined values so
+  // it agrees with the board immediately. Without this, the cache lags until
+  // the next timing-rollup / heal-backlog pass touches the body.
+  try {
+    const fieldDefs = loadFieldDefs();
+    const refreshed = ensureFieldDb(
+      newBody,
+      fieldDefs,
+      {
+        priority: priorityNorm.toUpperCase(),
+        size,
+        estimate: estimateNum,
+        sequence: sequenceNum,
+      },
+      { overrideKeys: ['priority', 'size', 'estimate', 'sequence'] }
+    );
+    newBody = refreshed.body;
+  } catch (err) {
+    process.stderr.write(`[refine] WARN: aitm-fields cache refresh skipped: ${err.message}\n`);
+  }
+
   await writeBody({ issueNumber, repo: cfg.repo, body: newBody });
 
   // 3. Round-trip validate.
