@@ -28,11 +28,16 @@ const FIELD_DEFS = [
   { key: 'priority', name: 'Priority', type: 'single_select' },
 ];
 
+// Legacy/buggy shape: reason text repeated in every bucket slot, no `rationale`
+// key. Pre-#220 marker form. parseRationaleMarker still accepts it for
+// backward-compat (synthesizes `rationale` from `size`).
 const LEGACY_RATIONALE_BLOCK =
   '<!-- aitm-groom-rationale: {"size":"single verb extension","estimate":"~1h parser, ~1h formatter, ~1h tests, ~1h docs","priority":"QoL — no blockers"} -->';
 
+// #220 canonical shape: bucket tokens in bucket slots, reason text in its own
+// `rationale` key.
 const NEW_RATIONALE_BLOCK =
-  '<!-- aitm-refinement-rationale: {"size":"single verb extension","estimate":"~1h parser, ~1h formatter, ~1h tests, ~1h docs","priority":"QoL — no blockers"} -->';
+  '<!-- aitm-refinement-rationale: {"size":"S","estimate":"4h","priority":"P2","rationale":"single verb extension"} -->';
 
 function bodyWithMarker(marker = NEW_RATIONALE_BLOCK, extra = '') {
   return `# Title\n\n${extra}${marker}\n\n## Acceptance Criteria\n- [ ] foo\n`;
@@ -55,16 +60,21 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
 // --- parseRationaleMarker -------------------------------------------------
 
 {
+  // #220 canonical: bucket token in size, reason in rationale
   const r = parseRationaleMarker(bodyWithMarker(NEW_RATIONALE_BLOCK));
   assert.equal(r.ok, true);
-  assert.equal(r.rationale.size, 'single verb extension');
+  assert.equal(r.rationale.size, 'S');
+  assert.equal(r.rationale.rationale, 'single verb extension');
 }
 
 {
-  // backward-compat: legacy marker form still parses
+  // backward-compat: legacy marker form still parses; parseRationaleMarker
+  // synthesizes a `rationale` field from the legacy bucket value so downstream
+  // consumers see a uniform shape.
   const r = parseRationaleMarker(bodyWithMarker(LEGACY_RATIONALE_BLOCK));
   assert.equal(r.ok, true);
   assert.equal(r.rationale.size, 'single verb extension');
+  assert.equal(r.rationale.rationale, 'single verb extension');
 }
 
 {
@@ -102,18 +112,20 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
 // --- buildRefinementCommentBody ------------------------------------------
 
 {
+  // #220: rationale prose is a single field on the parsed marker; the comment
+  // body renders that same text in the Rationale column for each row.
   const body = buildRefinementCommentBody({
     issueNumber: 95,
     size: 'S',
     estimate: 4,
     priority: 'P2',
-    rationale: { size: 'a', estimate: 'b', priority: 'c' },
+    rationale: { size: 'S', estimate: '4h', priority: 'P2', rationale: 'tight scope' },
   });
   assert.match(body, /<!-- aitm-refined-estimate: 95 -->/);
   assert.match(body, /### 🛠 Refine estimate/);
-  assert.match(body, /\| Size \| S \| a \|/);
-  assert.match(body, /\| Estimate \| 4h \| b \|/);
-  assert.match(body, /\| Priority \| P2 \| c \|/);
+  assert.match(body, /\| Size \| S \| tight scope \|/);
+  assert.match(body, /\| Estimate \| 4h \| tight scope \|/);
+  assert.match(body, /\| Priority \| P2 \| tight scope \|/);
 }
 
 // --- planRefinementEstimate: happy path ----------------------------------

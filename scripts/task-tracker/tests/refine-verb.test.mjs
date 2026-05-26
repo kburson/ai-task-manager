@@ -100,7 +100,9 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
 }
 
 // ---------------------------------------------------------------------------
-// buildRationaleMarker — emits new (refinement) form, round-trip parses
+// #220: buildRationaleMarker — bucket tokens stay in their slots, reason text
+// goes only in `rationale`. The pre-#220 form repeated `reason` into every
+// slot; this test pins the corrected shape.
 // ---------------------------------------------------------------------------
 {
   const marker = buildRationaleMarker({
@@ -112,10 +114,65 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
   assert.match(marker, /^<!-- aitm-refinement-rationale: \{/);
   const parsed = parseRationaleMarker(marker);
   assert.ok(parsed.ok, `expected parse ok, got: ${JSON.stringify(parsed)}`);
-  assert.equal(parsed.rationale.size, 'tight scope');
-  assert.equal(parsed.rationale.estimate, 'tight scope');
-  assert.equal(parsed.rationale.priority, 'tight scope');
-  console.log('PASS: buildRationaleMarker emits refinement form and round-trips');
+  assert.equal(parsed.rationale.size, 'S');
+  assert.equal(parsed.rationale.estimate, '2');
+  assert.equal(parsed.rationale.priority, 'p1');
+  assert.equal(parsed.rationale.rationale, 'tight scope');
+  console.log('PASS: buildRationaleMarker emits canonical shape and round-trips');
+}
+
+// ---------------------------------------------------------------------------
+// #220: four-flag combination — the actual repro case from the bug report.
+// ---------------------------------------------------------------------------
+{
+  const marker = buildRationaleMarker({
+    size: 'S',
+    estimate: '1h',
+    priority: 'P1',
+    reason: 'long explanation of why this is small and urgent',
+  });
+  const raw = marker.match(/\{[\s\S]*\}/)[0];
+  const json = JSON.parse(raw);
+  assert.equal(json.size, 'S');
+  assert.equal(json.estimate, '1h');
+  assert.equal(json.priority, 'P1');
+  assert.equal(json.rationale, 'long explanation of why this is small and urgent');
+  assert.equal('sequence' in json, false, 'sequence omitted when not supplied');
+  console.log(
+    'PASS: buildRationaleMarker four-flag combo lands tokens in slots, reason in rationale'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// #220: sequence flag emits as number when supplied.
+// ---------------------------------------------------------------------------
+{
+  const marker = buildRationaleMarker({
+    size: 'M',
+    estimate: 4,
+    priority: 'p0',
+    sequence: 240,
+    reason: 'with sequence',
+  });
+  const json = JSON.parse(marker.match(/\{[\s\S]*\}/)[0]);
+  assert.equal(json.sequence, 240);
+  assert.equal(typeof json.sequence, 'number');
+  console.log('PASS: buildRationaleMarker emits sequence as number');
+}
+
+// ---------------------------------------------------------------------------
+// #220: missing/empty reason rejected.
+// ---------------------------------------------------------------------------
+{
+  assert.throws(
+    () => buildRationaleMarker({ size: 'S', estimate: 2, priority: 'p1' }),
+    /reason is required/
+  );
+  assert.throws(
+    () => buildRationaleMarker({ size: 'S', estimate: 2, priority: 'p1', reason: '   ' }),
+    /reason is required/
+  );
+  console.log('PASS: buildRationaleMarker rejects missing/empty reason');
 }
 
 // ---------------------------------------------------------------------------

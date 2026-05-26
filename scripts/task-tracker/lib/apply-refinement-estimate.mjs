@@ -43,7 +43,15 @@ export function parseRationaleMarker(body = '') {
   const required = ['size', 'estimate', 'priority'];
   const missing = required.filter((k) => typeof parsed[k] !== 'string' || parsed[k].trim() === '');
   if (missing.length) return { ok: false, reason: 'incomplete', missing };
-  return { ok: true, rationale: parsed, raw: m[0] };
+  // #220: canonical shape carries reason text in `rationale`. Legacy/buggy
+  // markers (and the pre-#220 `aitm-groom-rationale` form) repeated the reason
+  // into all three bucket slots — synthesize `rationale` from `size` so
+  // downstream consumers always read a single field regardless of shape.
+  const normalized =
+    typeof parsed.rationale === 'string' && parsed.rationale.trim() !== ''
+      ? parsed
+      : { ...parsed, rationale: parsed.size };
+  return { ok: true, rationale: normalized, raw: m[0] };
 }
 
 export function stripRationaleMarker(body = '') {
@@ -53,6 +61,10 @@ export function stripRationaleMarker(body = '') {
 }
 
 export function buildRefinementCommentBody({ issueNumber, size, estimate, priority, rationale }) {
+  // #220: the rationale prose lives in `rationale.rationale` under the new
+  // canonical shape. Legacy markers without that field have it synthesized by
+  // `parseRationaleMarker`, so this read is uniform.
+  const reasonText = rationale.rationale;
   return [
     `<!-- aitm-refined-estimate: ${issueNumber} -->`,
     REFINEMENT_HEADER,
@@ -61,9 +73,9 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
     '',
     '| Field | Value | Rationale |',
     '|---|---|---|',
-    `| Size | ${size} | ${rationale.size} |`,
-    `| Estimate | ${estimate}h | ${rationale.estimate} |`,
-    `| Priority | ${priority} | ${rationale.priority} |`,
+    `| Size | ${size} | ${reasonText} |`,
+    `| Estimate | ${estimate}h | ${reasonText} |`,
+    `| Priority | ${priority} | ${reasonText} |`,
     '',
     'Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.',
   ].join('\n');

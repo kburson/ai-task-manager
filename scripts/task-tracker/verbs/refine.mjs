@@ -120,13 +120,25 @@ export function validateArgs({ issueNumber, size, estimate, priority, reason, se
   if (errs.length) throw new Error(`refine: ${errs.join('; ')}`);
 }
 
-export function buildRationaleMarker({ reason }) {
-  const payload = JSON.stringify({
-    size: reason,
-    estimate: reason,
-    priority: reason,
-  });
-  return `<!-- aitm-refinement-rationale: ${payload} -->`;
+// #220: emit the canonical four-key shape — bucket tokens stay in their slots,
+// the reason text lives in its own `rationale` key. `sequence` is included as a
+// number when supplied (omitted otherwise so round-trip equality doesn't carry
+// a stray null).
+export function buildRationaleMarker({ size, estimate, priority, sequence, reason } = {}) {
+  if (typeof reason !== 'string' || reason.trim() === '') {
+    throw new Error('buildRationaleMarker: reason is required');
+  }
+  const payload = {
+    size: String(size),
+    estimate: String(estimate),
+    priority: String(priority),
+    rationale: reason,
+  };
+  if (sequence != null && sequence !== '') {
+    const seqNum = Number(sequence);
+    if (Number.isFinite(seqNum)) payload.sequence = seqNum;
+  }
+  return `<!-- aitm-refinement-rationale: ${JSON.stringify(payload)} -->`;
 }
 
 export function applyRationaleMarker(body, marker) {
@@ -227,6 +239,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     size,
     estimate: estimateNum,
     priority: priorityNorm,
+    sequence: sequenceNum,
     reason,
   });
   const newBody = applyRationaleMarker(body, marker);
