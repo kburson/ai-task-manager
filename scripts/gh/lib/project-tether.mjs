@@ -247,13 +247,24 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, sequ
   }
 
   if (sequence !== undefined) {
-    await writeField({
-      cfg,
-      itemId,
-      fieldId: cfg.fieldSequence || cfg.sequenceFieldId || cfg.fieldIds?.sequence,
-      value: { number: Number(sequence) },
-      runGql,
-    });
+    const sequenceFieldId = cfg.fieldSequence || cfg.sequenceFieldId || cfg.fieldIds?.sequence;
+    if (!sequenceFieldId) {
+      // #222 — surface the silent-failure case where --sequence was passed but
+      // no Sequence field id is configured. Without this warning the caller
+      // sees a successful tether and an empty board field.
+      process.stderr.write(
+        `[project-tether] WARN: sequence=${sequence} supplied but no Sequence field id configured ` +
+          `(checked cfg.fieldSequence, cfg.sequenceFieldId, cfg.fieldIds.sequence). Skipping write.\n`
+      );
+    } else {
+      await writeField({
+        cfg,
+        itemId,
+        fieldId: sequenceFieldId,
+        value: { number: Number(sequence) },
+        runGql,
+      });
+    }
   }
 }
 
