@@ -34,9 +34,9 @@ const EXPECTED_CLAUDE_STATE_DIR = '.ai-task-manager/claude';
 const EXPECTED_CODEX_STATE_DIR = '.ai-task-manager/codex';
 const EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR = '.claude/projects';
 const EXPECTED_CODEX_TRANSCRIPT_LOCATOR = null;
-const EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS = ['CLAUDE_SESSION_ID'];
+const EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
 const EXPECTED_CODEX_SESSION_ID_ENV_KEYS = ['CODEX_SESSION_ID'];
-const EXPECTED_CLAUDE_DETECTION_ENV_KEYS = ['CLAUDE_SESSION_ID'];
+const EXPECTED_CLAUDE_DETECTION_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
 const EXPECTED_CODEX_DETECTION_ENV_KEYS = ['CODEX_SESSION_ID', 'CODEX_HOME'];
 const EXPECTED_CLAUDE_HOOK_CAPABILITY = true;
 const EXPECTED_CODEX_HOOK_CAPABILITY = false;
@@ -69,6 +69,11 @@ test('detectProvider returns codex when CODEX_SESSION_ID is set', () => {
 
 test('detectProvider returns claude when CLAUDE_SESSION_ID is set', () => {
   const adapter = detectProvider({ env: { CLAUDE_SESSION_ID: 'abc' } });
+  assert.equal(adapter.name, 'claude');
+});
+
+test('#224: detectProvider returns claude when CLAUDE_CODE_SESSION_ID is set', () => {
+  const adapter = detectProvider({ env: { CLAUDE_CODE_SESSION_ID: 'abc' } });
   assert.equal(adapter.name, 'claude');
 });
 

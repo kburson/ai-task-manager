@@ -38,8 +38,8 @@ const EXPECTED_CLAUDE = Object.freeze({
   installTarget: '.claude/skills/task',
   stateDir: '.ai-task-manager/claude',
   transcriptLocator: '.claude/projects',
-  sessionIdEnvKeys: ['CLAUDE_SESSION_ID'],
-  detectionEnvKeys: ['CLAUDE_SESSION_ID'],
+  sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
+  detectionEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   hookCapability: true,
   skillAdapterPath: 'skill/adapters/claude/SKILL.md',
 });

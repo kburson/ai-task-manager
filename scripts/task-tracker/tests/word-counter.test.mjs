@@ -144,6 +144,7 @@ try {
 const origHome = process.env.HOME;
 const origUserprofile = process.env.USERPROFILE;
 const origSid = process.env.CLAUDE_SESSION_ID;
+const origCodeSid = process.env.CLAUDE_CODE_SESSION_ID;
 const origAitmSid = process.env.AI_TASK_MANAGER_SESSION_ID;
 const origAppName = process.env.AI_TASK_MANAGER_APP_NAME;
 const origProjectDir2 = process.env.CLAUDE_PROJECT_DIR;
@@ -169,6 +170,7 @@ try {
   // Path 2: env unset, files present → newest mtime wins.
   delete process.env.AI_TASK_MANAGER_SESSION_ID;
   delete process.env.CLAUDE_SESSION_ID;
+  delete process.env.CLAUDE_CODE_SESSION_ID;
   const oldFile = path.join(sessionDir, 'old-session.jsonl');
   const newFile = path.join(sessionDir, 'new-session.jsonl');
   writeFileSync(oldFile, '{}\n');
@@ -195,6 +197,8 @@ try {
   else process.env.USERPROFILE = origUserprofile;
   if (origSid === undefined) delete process.env.CLAUDE_SESSION_ID;
   else process.env.CLAUDE_SESSION_ID = origSid;
+  if (origCodeSid === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+  else process.env.CLAUDE_CODE_SESSION_ID = origCodeSid;
   if (origAitmSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
   else process.env.AI_TASK_MANAGER_SESSION_ID = origAitmSid;
   if (origAppName === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
@@ -210,11 +214,17 @@ try {
 const origAitmProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
 const origClaudeProjectDir3 = process.env.CLAUDE_PROJECT_DIR;
 const origAppName3 = process.env.AI_TASK_MANAGER_APP_NAME;
+const origSid3 = process.env.CLAUDE_SESSION_ID;
+const origCodeSid3 = process.env.CLAUDE_CODE_SESSION_ID;
+const origAitmSid3 = process.env.AI_TASK_MANAGER_SESSION_ID;
 const markerProject = mkdtempSync(path.join(tmpdir(), 'tt-wc-marker-project-'));
 try {
   process.env.AI_TASK_MANAGER_PROJECT_DIR = markerProject;
   process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
   process.env.CLAUDE_PROJECT_DIR = '/ignored/claude/project';
+  delete process.env.CLAUDE_SESSION_ID;
+  delete process.env.CLAUDE_CODE_SESSION_ID;
+  delete process.env.AI_TASK_MANAGER_SESSION_ID;
   assert.equal(
     markerPathFor('session-123'),
     path.join(markerProject, '.ai-task-manager', 'codex', 'session-tracking', 'session-123.json'),
@@ -259,6 +269,12 @@ try {
   else process.env.CLAUDE_PROJECT_DIR = origClaudeProjectDir3;
   if (origAppName3 === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
   else process.env.AI_TASK_MANAGER_APP_NAME = origAppName3;
+  if (origSid3 === undefined) delete process.env.CLAUDE_SESSION_ID;
+  else process.env.CLAUDE_SESSION_ID = origSid3;
+  if (origCodeSid3 === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+  else process.env.CLAUDE_CODE_SESSION_ID = origCodeSid3;
+  if (origAitmSid3 === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+  else process.env.AI_TASK_MANAGER_SESSION_ID = origAitmSid3;
   rmSync(markerProject, { recursive: true, force: true });
 }
 
