@@ -11,6 +11,7 @@ import { loadSession } from '../lib/session-store.mjs';
 import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
+import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
@@ -84,6 +85,20 @@ export async function verbSwitch(ctx, target) {
   try {
     registerTask(projectDir, target, projectDir, currentBranch(projectDir));
   } catch {}
+  // #218 follow-up — seed the per-session `kanbanState` derived cache so the
+  // activity-guard hook can read state synchronously without a network call.
+  if (sid && cfg?.repo) {
+    try {
+      await seedSessionKanbanFromBody({
+        sid,
+        issue: target,
+        projDir: projectDir,
+        repo: cfg.repo,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const row = buildRow({
     ts,

@@ -13,12 +13,17 @@
 //   Block:   stdout = JSON {decision:'block', reason:'<msg>'}, exit 0.
 //   Errors:  pass (exit 0) — never deadlock the agent on parse/I/O failure.
 //
-// State source: `.ai-task-manager/task-tracker-state.json` (`state` field).
-// When the file or field is missing, treated as "no active task" — the
-// classifier's no-active-task policy applies (refuse WRITE_CODE/COMMIT_CODE,
-// allow everything else).
+// State source (#218 + follow-up): the bound issue's `aitm-last-known-state`
+// body marker IS the local kanban state. Because hooks must read synchronously
+// on every tool call, move-state.mjs / reconcile / bind mirror the marker into
+// a derived `kanbanState` field on the per-session
+// `.ai-task-manager/sessions/<sid>/active-task.json` so the guard can read it
+// without a network round-trip. Legacy fallback: the global
+// `task-tracker-state.json#state` field (pre-#218). When neither is present
+// but an active task is bound, the guard refuses writes and points at
+// `reconcile accept-live` to repair the body marker.
 
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, readdirSync, statSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -120,23 +125,67 @@ block(buildReason({ activityClass, target, state, activeIssue, toolName }));
 
 function readState(root) {
   const statePath = path.join(root, '.ai-task-manager', 'task-tracker-state.json');
-  let raw;
+  let parsed = null;
   try {
-    raw = readFileSync(statePath, 'utf8');
+    parsed = JSON.parse(readFileSync(statePath, 'utf8'));
   } catch {
-    return { activeIssue: null, state: null };
+    /* missing or malformed — fall through with parsed null */
   }
+  const activeIssue =
+    parsed && typeof parsed === 'object' && typeof parsed.active === 'string'
+      ? parsed.active
+      : null;
+
+  // #218: prefer the per-session derived cache (`kanbanState` on the most
+  // recently updated active-task.json). The session writer mirrors the body
+  // marker every time move-state.mjs / reconcile / bind touches it, so this
+  // is a synchronous, near-current view of the body's `aitm-last-known-state`.
+  const sessionState = readSessionKanbanState(root, activeIssue);
+  if (sessionState != null) return { activeIssue, state: sessionState };
+
+  // Legacy fallback: pre-#218 global `state` field. Retained so that
+  // installations that haven't yet picked up the new writers don't deadlock.
+  if (parsed && typeof parsed === 'object' && typeof parsed.state === 'string') {
+    const legacy = parsed.state;
+    if (Object.prototype.hasOwnProperty.call(STATE_MATRIX, legacy)) {
+      return { activeIssue, state: legacy };
+    }
+  }
+  return { activeIssue, state: null };
+}
+
+// Scan `.ai-task-manager/sessions/*/active-task.json` for a record whose
+// `issue` matches `activeIssue` and return its `kanbanState` (when valid).
+// Picks the most-recently-modified match when more than one session is bound
+// to the same issue. Returns null if no match.
+function readSessionKanbanState(root, activeIssue) {
+  if (!activeIssue) return null;
+  const sessionsDir = path.join(root, '.ai-task-manager', 'sessions');
+  let entries;
   try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { activeIssue: null, state: null };
-    const activeIssue = typeof parsed.active === 'string' ? parsed.active : null;
-    const stateRaw = typeof parsed.state === 'string' ? parsed.state : null;
-    const state =
-      stateRaw && Object.prototype.hasOwnProperty.call(STATE_MATRIX, stateRaw) ? stateRaw : null;
-    return { activeIssue, state };
+    entries = readdirSync(sessionsDir, { withFileTypes: true });
   } catch {
-    return { activeIssue: null, state: null };
+    return null;
   }
+  let best = null; // { mtimeMs, state }
+  for (const ent of entries) {
+    if (!ent.isDirectory()) continue;
+    const p = path.join(sessionsDir, ent.name, 'active-task.json');
+    let raw, parsed, mtimeMs;
+    try {
+      mtimeMs = statSync(p).mtimeMs;
+      raw = readFileSync(p, 'utf8');
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    if (!parsed || typeof parsed !== 'object') continue;
+    if (parsed.issue !== activeIssue) continue;
+    const k = typeof parsed.kanbanState === 'string' ? parsed.kanbanState : null;
+    if (!k || !Object.prototype.hasOwnProperty.call(STATE_MATRIX, k)) continue;
+    if (!best || mtimeMs > best.mtimeMs) best = { mtimeMs, state: k };
+  }
+  return best ? best.state : null;
 }
 
 function normalizePath(filePath, root) {

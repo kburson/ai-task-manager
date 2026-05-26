@@ -436,6 +436,108 @@ test('Edit with absolute path inside project root → normalized + blocked in re
   }
 });
 
+// ---------------------------------------------------------------------------
+// Per-session kanbanState derived cache (#218 follow-up)
+// ---------------------------------------------------------------------------
+
+function writeSessionCache(dir, sid, record) {
+  const sessDir = path.join(dir, '.ai-task-manager', 'sessions', sid);
+  mkdirSync(sessDir, { recursive: true });
+  writeFileSync(path.join(sessDir, 'active-task.json'), JSON.stringify(record));
+}
+
+test('session kanbanState cache supplies state when global state field is absent', () => {
+  const dir = makeRepo({
+    /* no legacy state */
+  });
+  writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'develop' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, '');
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('session kanbanState overrides legacy global state when both present', () => {
+  // Legacy says develop (would allow), session cache says refine (would block).
+  // Session cache wins (it mirrors the body-marker source of truth).
+  const dir = makeRepo({ state: 'develop' });
+  writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'refine' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /refine/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('session cache for a different issue is ignored', () => {
+  const dir = makeRepo({
+    /* no legacy state */
+  });
+  writeSessionCache(dir, 'sess-a', { issue: '#999', kanbanState: 'develop' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /no recorded kanban state/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('session cache with invalid kanbanState is ignored; falls back', () => {
+  const dir = makeRepo({
+    /* no legacy state */
+  });
+  writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'bogus' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /no recorded kanban state/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('most-recently-modified session cache wins when multiple match', () => {
+  const dir = makeRepo({
+    /* no legacy state */
+  });
+  // Older cache says refine
+  writeSessionCache(dir, 'sess-old', { issue: '#65', kanbanState: 'refine' });
+  // Force a measurable mtime gap, then write newer cache saying develop.
+  spawnSync('sleep', ['0.05']);
+  writeSessionCache(dir, 'sess-new', { issue: '#65', kanbanState: 'develop' });
+  try {
+    const r = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, '');
+  } finally {
+    cleanup(dir);
+  }
+});
+
 test('invalid state value in state file with active issue → block; suggest reconcile', () => {
   const dir = makeRepo({ state: 'bogus-state' });
   try {

@@ -33,6 +33,8 @@ import {
   writeIssueBodyWithRetry,
 } from '../lib/state-recording.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { getActiveTask, setSessionKanbanState } from '../session-state.mjs';
+import { currentSessionId } from '../word-counter.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
@@ -123,11 +125,24 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
 
 // #218: the local cache no longer carries a `state` field — the issue body
 // marker (rewritten above by `writeIssueBodyWithRetry`) is the source of
-// truth. The helper is retained as a no-op so call-site signatures and the
-// `deps.persistTrackerState` injection point remain stable for tests.
+// truth. The helper now also refreshes the per-session `kanbanState` derived
+// cache that the activity-guard hook reads synchronously, so the hook isn't
+// deadlocked between two stale sources after `reconcile accept-live`. The
+// `deps.persistTrackerState` injection point remains stable for tests.
 function defaultPersistTrackerState({ issueNumber, state } = {}) {
-  void issueNumber;
-  void state;
+  if (!issueNumber || !state) return;
+  try {
+    const sid = currentSessionId();
+    if (!sid) return;
+    const projDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.cwd();
+    const active = getActiveTask(sid, projDir);
+    const wantIssue = String(issueNumber).startsWith('#') ? String(issueNumber) : `#${issueNumber}`;
+    if (active && active.issue === wantIssue) {
+      setSessionKanbanState(sid, state, projDir);
+    }
+  } catch {
+    /* best-effort cache refresh — must never block reconcile */
+  }
 }
 
 // ---------------------------------------------------------------------------

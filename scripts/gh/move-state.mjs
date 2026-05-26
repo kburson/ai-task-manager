@@ -591,6 +591,31 @@ const __mutationBlock = async () => {
     }
   }
 
+  // #218 follow-up — refresh the per-session `kanbanState` derived cache that
+  // the activity-guard hook reads synchronously. The body marker remains the
+  // source of truth; this only updates the read-cache for the current
+  // session's bound issue so the hook isn't deadlocked between two stale
+  // sources. Best-effort: failures must never block the board move.
+  if (STAGES.includes(stateArg)) {
+    try {
+      const [{ setSessionKanbanState, getActiveTask }, { currentSessionId }] = await Promise.all([
+        import('../task-tracker/session-state.mjs'),
+        import('../task-tracker/word-counter.mjs'),
+      ]);
+      const sid = currentSessionId();
+      if (sid) {
+        const active = getActiveTask(sid, getProjectDir());
+        if (active && active.issue === `#${issueArg}`) {
+          setSessionKanbanState(sid, stateArg, getProjectDir());
+        }
+      }
+    } catch (err) {
+      process.stderr.write(
+        `[move-state] #${issueArg}: kanbanState cache refresh failed: ${err.message}\n`
+      );
+    }
+  }
+
   // #128 — Paired lifecycle row emission. The chokepoint for all kanban
   // transitions emits `<prev>:complete` + `<next>:enter` rows (both share
   // the same wall-clock `ts`) from the canonical PHASE_EVENTS table. Demote

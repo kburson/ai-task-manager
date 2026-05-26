@@ -8,9 +8,19 @@ import {
   countWords,
 } from '../word-counter.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
+import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 
 export async function verbStart(ctx, reasonOverride) {
-  const { statePath, rest, role: _role, projectDir, drainQueueIfAny, safePostTiming, nowIso } = ctx;
+  const {
+    cfg,
+    statePath,
+    rest,
+    role: _role,
+    projectDir,
+    drainQueueIfAny,
+    safePostTiming,
+    nowIso,
+  } = ctx;
   await drainQueueIfAny();
   // #215 — finalize any orphaned pending-pause from a prior turn BEFORE
   // binding/resuming. The row lands on whatever issue was bound at pause.
@@ -58,6 +68,20 @@ export async function verbStart(ctx, reasonOverride) {
   try {
     setTaskStatus(projectDir, s.lastActive, 'active');
   } catch {}
+  // #218 follow-up — seed the per-session `kanbanState` derived cache so the
+  // activity-guard hook can read state synchronously without a network call.
+  if (sid && cfg?.repo) {
+    try {
+      await seedSessionKanbanFromBody({
+        sid,
+        issue: s.lastActive,
+        projDir: projectDir,
+        repo: cfg.repo,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const row = buildRow({
     ts,

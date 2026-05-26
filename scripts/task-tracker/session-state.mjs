@@ -63,6 +63,20 @@ export function setActiveTask(sid, record, projDir) {
   return payload;
 }
 
+// #218 follow-up: stamps a derived `kanbanState` field onto the record. The
+// issue body `aitm-last-known-state` marker remains the source of truth — this
+// is a synchronous read-cache for the activity-guard hook, refreshed by the
+// single state mutator (move-state.mjs) and by reconcile / bind. Idempotent
+// no-op when the record is absent or `kanbanState` is already current.
+export function setSessionKanbanState(sid, kanbanState, projDir) {
+  const existing = getActiveTask(sid, projDir);
+  if (!existing || typeof existing !== 'object') return null;
+  if (existing.kanbanState === kanbanState) return existing;
+  const next = { ...existing, kanbanState };
+  atomicWrite(activeTaskPath(sid, projDir), next);
+  return next;
+}
+
 // Removes the active-task file for `sid`. Idempotent — silently succeeds when
 // the file is already absent.
 export function clearActiveTask(sid, projDir) {
