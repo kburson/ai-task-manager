@@ -6,6 +6,7 @@ import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
 import { hasDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
+import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
@@ -282,6 +283,14 @@ export async function verbReview(ctx) {
           process.exit(4);
         }
       }
+    }
+    // #226 — under sandbox-verified authority, the standard DoD commands
+    // (`npm test`, `npm run lint`, `npm run format:check`) are trusted-passed.
+    // Seed commandResults so AC lines whose `aitm-verified-by` annotation
+    // references these commands resolve as passed evidence instead of
+    // false-positive `unknown evidence command` regressions.
+    for (const cmd of STANDARD_DOD_COMMANDS) {
+      commandResults.set(cmd, true);
     }
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
     for (const cb of checkboxes) {
