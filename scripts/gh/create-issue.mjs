@@ -11,6 +11,7 @@ import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
+import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -301,6 +302,18 @@ function main() {
       return;
     }
   }
+
+  // #221 — stamp the initial-state entry marker so the lifecycle chain starts
+  // at creation instead of at the first transition. stampEntryMarker is
+  // idempotent — if the body already contains the marker (template-injected),
+  // re-stamping with the same ts is a no-op.
+  const initialState = typeof args.status === 'string' ? args.status : 'backlog';
+  bodyContent = stampEntryMarker(bodyContent, initialState, new Date().toISOString());
+  if (!tmpDir) {
+    tmpDir = mkdtempSync(path.join(tmpdir(), 'aitm-create-issue-'));
+    bodyFilePath = path.join(tmpDir, 'body.md');
+  }
+  writeFileSync(bodyFilePath, bodyContent, 'utf8');
 
   try {
     const ghArgs = { ...args, 'body-file': bodyFilePath };
