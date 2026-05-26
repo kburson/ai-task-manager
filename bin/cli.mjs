@@ -18,6 +18,7 @@ import {
   rmSync,
   lstatSync,
   statSync,
+  realpathSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -949,7 +950,17 @@ async function cmdConfigurePreferences(args) {
 }
 
 // Only dispatch when invoked as a script — not when imported by tests (#212).
-const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+// Compare real paths so the bin-shim symlink (node_modules/.bin/ai-task-manager) resolves
+// to the same path as import.meta.url (#227).
+let invokedDirectly = false;
+if (process.argv[1]) {
+  try {
+    invokedDirectly =
+      realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    invokedDirectly = import.meta.url === pathToFileURL(process.argv[1]).href;
+  }
+}
 const [, , command = 'help', ...rest] = process.argv;
 
 if (invokedDirectly)
