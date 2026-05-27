@@ -68,8 +68,8 @@ export function saveSession(
 
 // Map a user choice to gate booleans. Used by /task auto verb.
 //   both    -> both gates OFF
-//   analyze -> analyze→dev OFF, review→done ON
-//   review  -> review→done OFF, analyze→dev ON
+//   plan    -> plan→dev OFF, review→done ON
+//   review  -> review→done OFF, plan→dev ON
 //   off     -> both gates ON
 //   reset   -> clear override (null) + clear lastPromptedParent
 const CHOICE_GATES = {

@@ -70,18 +70,6 @@ test('findRefineEstimateComment matches the issue-number marker', async () => {
   assert.equal(r.hasPlannedAppendix, false);
 });
 
-test('findRefineEstimateComment also matches the legacy aitm-groom-estimate marker', async () => {
-  const listComments = async () => [
-    { id: 'IC_OLD', body: '<!-- aitm-groom-estimate: 99 -->\n### 🛠 Refine estimate\n' },
-  ];
-  const r = await findRefineEstimateComment({
-    cfg,
-    issueNumber: 99,
-    deps: { listComments },
-  });
-  assert.equal(r.id, 'IC_OLD');
-});
-
 test('findRefineEstimateComment returns null when no comment matches', async () => {
   const listComments = async () => [{ id: 'IC_1', body: 'irrelevant' }];
   const r = await findRefineEstimateComment({

@@ -176,11 +176,11 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
 }
 
 // ---------------------------------------------------------------------------
-// applyRationaleMarker — replaces existing legacy/old marker, prepends new
+// applyRationaleMarker — replaces existing marker, prepends new
 // ---------------------------------------------------------------------------
 {
   const original =
-    '<!-- aitm-groom-rationale: {"size":"old","estimate":"old","priority":"old"} -->\n\n## Scope\n\nHello.\n';
+    '<!-- aitm-refinement-rationale: {"size":"old","estimate":"old","priority":"old","rationale":"old"} -->\n\n## Scope\n\nHello.\n';
   const marker = buildRationaleMarker({
     size: 'S',
     estimate: 2,
@@ -188,13 +188,17 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
     reason: 'fresh',
   });
   const out = applyRationaleMarker(original, marker);
-  // legacy marker stripped
-  assert.doesNotMatch(out, /aitm-groom-rationale/);
+  // existing marker stripped (only one instance survives)
+  const matches = out.match(/aitm-refinement-rationale/g) || [];
+  assert.equal(matches.length, 1);
   // new marker at top
   assert.match(out, /^<!-- aitm-refinement-rationale: /);
+  // new reason present, old reason gone
+  assert.match(out, /"rationale":"fresh"/);
+  assert.doesNotMatch(out, /"rationale":"old"/);
   // body preserved
   assert.match(out, /## Scope/);
-  console.log('PASS: applyRationaleMarker strips legacy + prepends new');
+  console.log('PASS: applyRationaleMarker strips existing + prepends new');
 }
 
 // ---------------------------------------------------------------------------

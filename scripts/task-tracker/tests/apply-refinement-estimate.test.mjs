@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 // Unit: `planRefinementEstimate` + `applyRefinementEstimate` (#95, renamed #144).
 // Covers AC3 (idempotent), AC4 (refuses on missing values), AC6 (first post).
-// Also asserts backward-compat reads of legacy `aitm-groom-rationale` /
-// `aitm-groom-estimate:` markers.
 
 import { strict as assert } from 'node:assert';
 import {
@@ -12,11 +10,6 @@ import {
   parseRationaleMarker,
   stripRationaleMarker,
   buildRefinementCommentBody,
-  // legacy alias re-exports
-  planGroomEstimate,
-  applyGroomEstimate,
-  buildGroomCommentBody,
-  GROOM_HEADER,
   REFINEMENT_HEADER,
 } from '../lib/apply-refinement-estimate.mjs';
 
@@ -27,12 +20,6 @@ const FIELD_DEFS = [
   { key: 'estimate', name: 'Estimate', type: 'number' },
   { key: 'priority', name: 'Priority', type: 'single_select' },
 ];
-
-// Legacy/buggy shape: reason text repeated in every bucket slot, no `rationale`
-// key. Pre-#220 marker form. parseRationaleMarker still accepts it for
-// backward-compat (synthesizes `rationale` from `size`).
-const LEGACY_RATIONALE_BLOCK =
-  '<!-- aitm-groom-rationale: {"size":"single verb extension","estimate":"~1h parser, ~1h formatter, ~1h tests, ~1h docs","priority":"QoL — no blockers"} -->';
 
 // #220 canonical shape: bucket tokens in bucket slots, reason text in its own
 // `rationale` key.
@@ -50,12 +37,7 @@ function depsWithBoard(values = { size: 'S', estimate: 4, priority: 'P2' }) {
   };
 }
 
-// --- legacy aliases -------------------------------------------------------
-
-assert.equal(GROOM_HEADER, REFINEMENT_HEADER);
-assert.equal(planGroomEstimate, planRefinementEstimate);
-assert.equal(applyGroomEstimate, applyRefinementEstimate);
-assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
+assert.equal(REFINEMENT_HEADER, '### 🛠 Refine estimate');
 
 // --- parseRationaleMarker -------------------------------------------------
 
@@ -64,16 +46,6 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
   const r = parseRationaleMarker(bodyWithMarker(NEW_RATIONALE_BLOCK));
   assert.equal(r.ok, true);
   assert.equal(r.rationale.size, 'S');
-  assert.equal(r.rationale.rationale, 'single verb extension');
-}
-
-{
-  // backward-compat: legacy marker form still parses; parseRationaleMarker
-  // synthesizes a `rationale` field from the legacy bucket value so downstream
-  // consumers see a uniform shape.
-  const r = parseRationaleMarker(bodyWithMarker(LEGACY_RATIONALE_BLOCK));
-  assert.equal(r.ok, true);
-  assert.equal(r.rationale.size, 'single verb extension');
   assert.equal(r.rationale.rationale, 'single verb extension');
 }
 
@@ -101,12 +73,6 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
 {
   const stripped = stripRationaleMarker(bodyWithMarker(NEW_RATIONALE_BLOCK));
   assert.ok(!stripped.includes('aitm-refinement-rationale'));
-}
-
-{
-  // backward-compat strip
-  const stripped = stripRationaleMarker(bodyWithMarker(LEGACY_RATIONALE_BLOCK));
-  assert.ok(!stripped.includes('aitm-groom-rationale'));
 }
 
 // --- buildRefinementCommentBody ------------------------------------------
@@ -143,20 +109,6 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
   assert.equal(result.plan.priority, 'P2');
   assert.match(result.plan.commentBody, /### 🛠 Refine estimate/);
   assert.ok(!result.plan.strippedBody.includes('aitm-refinement-rationale'));
-}
-
-// --- planRefinementEstimate: backward-compat read of legacy marker -------
-
-{
-  const result = await planRefinementEstimate({
-    cfg: CFG,
-    issueNumber: 95,
-    body: bodyWithMarker(LEGACY_RATIONALE_BLOCK),
-    deps: depsWithBoard(),
-  });
-  assert.equal(result.ok, true);
-  // Written marker is always the new form
-  assert.match(result.plan.commentBody, /<!-- aitm-refined-estimate: 95 -->/);
 }
 
 // --- planRefinementEstimate: missing board values (AC4) ------------------
@@ -327,34 +279,6 @@ assert.equal(buildGroomCommentBody, buildRefinementCommentBody);
       listCommentBodies: async () => [
         'some old comment',
         '<!-- aitm-refined-estimate: 95 -->\n### 🛠 Refine estimate\n...',
-      ],
-      postComment: async ({ body }) => posts.push(body),
-      writeIssueBody: async () => {},
-    },
-  });
-  assert.equal(result.status, 'duplicate');
-  assert.equal(posts.length, 0);
-}
-
-// --- applyRefinementEstimate: idempotent on legacy-form marker (AC3) ----
-
-{
-  const posts = [];
-  const planResult = await planRefinementEstimate({
-    cfg: CFG,
-    issueNumber: 95,
-    body: bodyWithMarker(NEW_RATIONALE_BLOCK),
-    deps: depsWithBoard(),
-  });
-  const result = await applyRefinementEstimate({
-    cfg: CFG,
-    issueNumber: 95,
-    plan: planResult.plan,
-    scratchDir: '/tmp',
-    deps: {
-      listCommentBodies: async () => [
-        'some old comment',
-        '<!-- aitm-groom-estimate: 95 -->\n### 🛠 Refine estimate\n...',
       ],
       postComment: async ({ body }) => posts.push(body),
       writeIssueBody: async () => {},

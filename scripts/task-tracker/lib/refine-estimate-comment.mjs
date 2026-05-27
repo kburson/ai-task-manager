@@ -16,7 +16,7 @@ import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 const pexec = promisify(execFile);
 
 export const PLANNED_ESTIMATE_HEADER = '### Planned Estimate';
-const REFINE_COMMENT_MARKER_RE = /<!--\s*aitm-(?:refined|groom)-estimate:\s*(\d+)\s*-->/;
+const REFINE_COMMENT_MARKER_RE = /<!--\s*aitm-refined-estimate:\s*(\d+)\s*-->/;
 const PLANNED_HEADER_RE = /^###\s+Planned Estimate\s*$/m;
 const EMPTY_SIZE_ROW_RE = /^\|\s*Size\s*\|\s*—\s*\|\s*—\s*\|/m;
 const EMPTY_ESTIMATE_ROW_RE = /^\|\s*Estimate \(h\)\s*\|\s*—\s*\|\s*—\s*\|/m;

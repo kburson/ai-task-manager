@@ -1,7 +1,7 @@
 // `inflate-estimate` verb — appends a "Discovered work — estimate inflation" section to
-// the existing `<!-- aitm-refined-estimate: N -->` comment (legacy
-// `aitm-groom-estimate:` also accepted) and atomically updates the
-// Size + Estimate board fields and the aitm-fields block in the issue body.
+// the existing `<!-- aitm-refined-estimate: N -->` comment and atomically
+// updates the Size + Estimate board fields and the aitm-fields block in the
+// issue body.
 //
 // Each invocation appends a dated block; re-runs do NOT overwrite prior inflations.
 
@@ -30,9 +30,7 @@ const pexec = promisify(execFile);
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL'];
 const SIZE_CEILINGS = { XS: 2, S: 4, M: 10, L: 20 };
-export const REFINED_ESTIMATE_MARKER_RE = /<!--\s*aitm-(?:refined|groom)-estimate:\s*\d+\s*-->/;
-// Legacy alias retained for backward-compat imports.
-export const GROOM_ESTIMATE_MARKER_RE = REFINED_ESTIMATE_MARKER_RE;
+export const REFINED_ESTIMATE_MARKER_RE = /<!--\s*aitm-refined-estimate:\s*\d+\s*-->/;
 
 export function parseArgs(argv = []) {
   const args = argv.slice();
@@ -314,9 +312,9 @@ export async function verbInflateEstimate(argv, cfg) {
   validateArgs(parsed);
   const result = await runInflateEstimate(parsed, cfg);
 
-  if (result.status === 'no-refine-comment' || result.status === 'no-groom-comment') {
+  if (result.status === 'no-refine-comment') {
     console.error(
-      `error: no \`<!-- aitm-refined-estimate: ${parsed.issueNumber} -->\` comment (or legacy aitm-groom-estimate) found on issue #${parsed.issueNumber}.\n` +
+      `error: no \`<!-- aitm-refined-estimate: ${parsed.issueNumber} -->\` comment found on issue #${parsed.issueNumber}.\n` +
         `  This comment is posted when an issue transitions to Refine. Has issue #${parsed.issueNumber} been refined?`
     );
     process.exit(1);

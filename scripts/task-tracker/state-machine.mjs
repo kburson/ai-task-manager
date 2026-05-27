@@ -28,22 +28,12 @@ export const BACKWARD = {
   review: 'develop',
 };
 
-// Legacy column-name aliases. Board columns may still be named "Groom",
-// "Analyze", "Development", "Validate" in existing projects; map them to the
-// new canonical slugs so live-state reads work without renaming columns.
-const BOARD_NAME_ALIASES = {
-  groom: 'refine',
-  analyze: 'plan',
-  analysis: 'plan',
-  development: 'develop',
-  validate: 'test',
-  validation: 'test',
-};
-
+// Canonical state slugs only. Boards using retired vocabulary
+// (Groom/Analyze/Development/Validate) must be migrated via
+// `scripts/migrate/rename-status-2026-05.mjs` before consumption.
 export function normalizeStateSlug(input) {
   if (input == null) return null;
-  const slug = String(input).toLowerCase();
-  return BOARD_NAME_ALIASES[slug] || slug;
+  return String(input).toLowerCase();
 }
 
 export function validateTransition(from, to) {

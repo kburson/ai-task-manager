@@ -5,9 +5,9 @@
 // Priority values, and posts a `### 🛠 Refine estimate` audit comment. The post
 // is idempotent via a hidden marker `<!-- aitm-refined-estimate: <N> -->`.
 //
-// Backward-compat: reads accept both legacy `aitm-groom-rationale` /
-// `aitm-groom-estimate:` markers and the new `aitm-refinement-rationale` /
-// `aitm-refined-estimate:` forms. Writes emit only the new forms.
+// Markers: reads/writes use `aitm-refinement-rationale` and
+// `aitm-refined-estimate:` exclusively. Issues authored under the retired
+// `aitm-groom-*` marker scheme must be migrated before consumption.
 //
 // Pure-ish core: all I/O is injectable for offline tests.
 
@@ -23,13 +23,10 @@ import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 const pexec = promisify(execFile);
 
 export const REFINEMENT_HEADER = '### 🛠 Refine estimate';
-// Legacy alias retained for backward-compat imports.
-export const GROOM_HEADER = REFINEMENT_HEADER;
 
-export const RATIONALE_MARKER_RE =
-  /<!--\s*aitm-(?:refinement|groom)-rationale:\s*(\{[\s\S]*?\})\s*-->/;
+export const RATIONALE_MARKER_RE = /<!--\s*aitm-refinement-rationale:\s*(\{[\s\S]*?\})\s*-->/;
 export const COMMENT_MARKER_PREFIX = '<!-- aitm-refined-estimate:';
-const COMMENT_MARKER_RE = /<!--\s*aitm-(?:refined|groom)-estimate:\s*(\d+)\s*-->/;
+const COMMENT_MARKER_RE = /<!--\s*aitm-refined-estimate:\s*(\d+)\s*-->/;
 
 export function parseRationaleMarker(body = '') {
   const m = String(body).match(RATIONALE_MARKER_RE);
@@ -43,10 +40,10 @@ export function parseRationaleMarker(body = '') {
   const required = ['size', 'estimate', 'priority'];
   const missing = required.filter((k) => typeof parsed[k] !== 'string' || parsed[k].trim() === '');
   if (missing.length) return { ok: false, reason: 'incomplete', missing };
-  // #220: canonical shape carries reason text in `rationale`. Legacy/buggy
-  // markers (and the pre-#220 `aitm-groom-rationale` form) repeated the reason
-  // into all three bucket slots — synthesize `rationale` from `size` so
-  // downstream consumers always read a single field regardless of shape.
+  // #220: canonical shape carries reason text in `rationale`. Buggy markers
+  // may have repeated the reason into all three bucket slots — synthesize
+  // `rationale` from `size` so downstream consumers always read a single
+  // field regardless of shape.
   const normalized =
     typeof parsed.rationale === 'string' && parsed.rationale.trim() !== ''
       ? parsed
@@ -80,9 +77,6 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
     'Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.',
   ].join('\n');
 }
-
-// Legacy alias retained for backward-compat imports.
-export const buildGroomCommentBody = buildRefinementCommentBody;
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
@@ -248,9 +242,6 @@ export async function planRefinementEstimate({ cfg, issueNumber, body, deps = {}
   };
 }
 
-// Legacy alias retained for backward-compat imports.
-export const planGroomEstimate = planRefinementEstimate;
-
 // Post-success hook: posts the comment (idempotent) and strips the rationale
 // marker from the body. Returns one of:
 //   { status: 'posted' }
@@ -314,6 +305,3 @@ export async function applyRefinementEstimate({
 
   return { status: 'posted' };
 }
-
-// Legacy alias retained for backward-compat imports.
-export const applyGroomEstimate = applyRefinementEstimate;

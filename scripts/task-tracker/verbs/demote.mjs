@@ -1,7 +1,7 @@
 // `demote` verb — directional backward state-change (#81 rename of `/task move`).
 //
-// The only backward path on the kanban is `validate → development` and
-// `review → development` — both for failed-tests / review-rework loops. From
+// The only backward path on the kanban is `test → develop` and
+// `review → develop` — both for failed-tests / review-rework loops. From
 // every other state demote refuses. There is no gate (rework is intentional)
 // and no alias delegation — demote calls `scripts/gh/move-state.mjs` directly
 // with `AITM_INTERNAL=1`.

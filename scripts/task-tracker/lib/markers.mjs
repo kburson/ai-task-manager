@@ -10,7 +10,7 @@ import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../iss
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
 // ---------------------------------------------------------------------------
-// plan-approved (analyze → development human gate)
+// plan-approved (plan → develop human gate)
 // ---------------------------------------------------------------------------
 
 export const PLAN_APPROVED_RE = /<!--\s*aitm-plan-approved:\s*([^>]*?)\s*-->/i;
@@ -244,7 +244,7 @@ export function insertTestStartedMarker(body, sha, ts) {
 }
 
 // ---------------------------------------------------------------------------
-// deep-dive-complete (structural prerequisite for analyze → development)
+// deep-dive-complete (structural prerequisite for plan → develop)
 // ---------------------------------------------------------------------------
 
 export const DEEP_DIVE_COMPLETE_RE = /<!--\s*aitm-deep-dive-complete:\s*([^>]*?)\s*-->/i;
@@ -264,7 +264,7 @@ export function insertDeepDiveCompleteMarker(body, ts) {
 // Heading-fallback for legacy issues authored before the marker existed. A
 // `## Deep-Dive Analysis` heading in the body is treated as equivalent
 // evidence that the deep-dive was performed, so pickup logic and the
-// analyze→development gate do not re-author the section.
+// plan→develop gate do not re-author the section.
 export const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
 
 export function hasDeepDiveHeading(body) {

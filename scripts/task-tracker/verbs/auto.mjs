@@ -1,4 +1,4 @@
-// `/task auto <both|analyze|review|off|reset>` verb (#89).
+// `/task auto <both|plan|review|off|reset>` verb (#89).
 //
 // Mutates the session-scoped gate-override file. Pure-core + DI seam — the
 // `runAuto` function takes `loadSession` / `saveSession` deps so tests can stub
@@ -14,8 +14,8 @@ import { currentSessionId } from '../word-counter.mjs';
 
 const SUMMARIES = {
   both: 'both gates OFF (full auto)',
-  analyze: 'analyze→dev OFF, review→done ON',
-  review: 'analyze→dev ON, review→done OFF',
+  plan: 'plan→dev OFF, review→done ON',
+  review: 'plan→dev ON, review→done OFF',
   off: 'both gates ON (safe default)',
   reset: 'session override cleared (falls back to project config)',
 };

@@ -5,7 +5,7 @@ import {
   validateArgs,
   buildInflationSection,
   runInflateEstimate,
-  GROOM_ESTIMATE_MARKER_RE,
+  REFINED_ESTIMATE_MARKER_RE,
 } from '../verbs/inflate-estimate.mjs';
 
 // ---------------------------------------------------------------------------
@@ -71,8 +71,8 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers shared by integration tests
 // ---------------------------------------------------------------------------
-const GROOM_BODY =
-  '<!-- aitm-groom-estimate: 42 -->\n### 🛠 Refine estimate\n\n| Field | Value |\n|---|---|\n| Size | S |\n';
+const REFINE_BODY =
+  '<!-- aitm-refined-estimate: 42 -->\n### 🛠 Refine estimate\n\n| Field | Value |\n|---|---|\n| Size | S |\n';
 const ISSUE_BODY =
   '## Scope\n\nDo the thing.\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"S","estimate":2}} -->\n';
 const BASE_CFG = {
@@ -119,7 +119,7 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
 // ---------------------------------------------------------------------------
 {
   const { deps, patched, boardWrites, bodyWrites } = makeDeps({
-    comments: [{ id: 99, body: GROOM_BODY }],
+    comments: [{ id: 99, body: REFINE_BODY }],
   });
 
   const result = await runInflateEstimate(
@@ -140,7 +140,7 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
   // Comment was patched once
   assert.equal(patched.length, 1);
   assert.equal(patched[0].commentId, 99);
-  assert.match(patched[0].body, GROOM_ESTIMATE_MARKER_RE);
+  assert.match(patched[0].body, REFINED_ESTIMATE_MARKER_RE);
   assert.match(patched[0].body, /### Discovered work — estimate inflation/);
   assert.match(patched[0].body, /Auth was complex\./);
 
@@ -188,7 +188,7 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
     newEstimate: 4,
     date: '2026-05-10',
   });
-  const bodyWithFirstInflation = GROOM_BODY + firstSection;
+  const bodyWithFirstInflation = REFINE_BODY + firstSection;
 
   const { deps, patched } = makeDeps({
     comments: [{ id: 99, body: bodyWithFirstInflation }],

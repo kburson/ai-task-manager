@@ -47,7 +47,7 @@ export async function verbReview(ctx) {
     });
     if (!preflight.ok) {
       process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move ${target} to Validate:\n`);
+      process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
       for (const reason of preflight.reasons) {
         process.stderr.write(`   BLOCKED: ${reason}\n`);
       }
@@ -106,12 +106,12 @@ export async function verbReview(ctx) {
               deltaWords: 0,
               // wordMarker:0 audit row — gate-refused, no active session
               wordMarker: 0,
-              description: `→ validate: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
+              description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
             });
             await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
           } catch {}
           process.stderr.write('\n');
-          process.stderr.write(`⛔ Refusing to move ${target} to Validate:\n`);
+          process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
           for (const r of result.refusedRules)
             process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
           process.stderr.write('\nSee .ai-task-manager/pickup-directive.md Hard Rules.\n\n');

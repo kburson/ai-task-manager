@@ -348,11 +348,9 @@ import {
   assert.equal(r.block, false);
 }
 
-// ── checkBodyChange: aitm-fields and aitm-groom-rationale marker protection ───
+// ── checkBodyChange: aitm-fields marker protection ───
 {
   const FIELDS_MARKER = '<!-- aitm-fields: {"schema":1,"values":{}} -->';
-  const GROOM_MARKER =
-    '<!-- aitm-groom-rationale: {"size":"M","estimate":"5h","priority":"P1"} -->';
 
   // Dropping aitm-fields → block
   let r = checkBodyChange({
@@ -363,19 +361,10 @@ import {
   assert.equal(r.block, true);
   assert.match(r.reason, /aitm-fields/);
 
-  // Dropping aitm-groom-rationale → block
+  // Preserving the marker → pass
   r = checkBodyChange({
-    newBody: '## Scope\nsome text\n',
-    currentBody: `## Scope\nsome text\n${GROOM_MARKER}\n`,
-    issueNumber: 42,
-  });
-  assert.equal(r.block, true);
-  assert.match(r.reason, /aitm-groom-rationale/);
-
-  // Preserving both markers → pass
-  r = checkBodyChange({
-    newBody: `## Scope\nupdated\n${FIELDS_MARKER}\n${GROOM_MARKER}\n`,
-    currentBody: `## Scope\noriginal\n${FIELDS_MARKER}\n${GROOM_MARKER}\n`,
+    newBody: `## Scope\nupdated\n${FIELDS_MARKER}\n`,
+    currentBody: `## Scope\noriginal\n${FIELDS_MARKER}\n`,
     issueNumber: 42,
   });
   assert.equal(r.block, false);
