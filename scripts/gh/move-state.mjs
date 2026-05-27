@@ -81,10 +81,10 @@ function refusalVerbHint(targetState) {
 
 const STATE_TO_CONFIG_KEY = {
   backlog: 'kanbanOptionBacklog',
-  refine: 'kanbanOptionGroom',
-  plan: 'kanbanOptionAnalyze',
-  develop: 'kanbanOptionDevelopment',
-  test: 'kanbanOptionValidate',
+  refine: 'kanbanOptionRefine',
+  plan: 'kanbanOptionPlan',
+  develop: 'kanbanOptionDevelop',
+  test: 'kanbanOptionTest',
   review: 'kanbanOptionReview',
   done: 'kanbanOptionDone',
 };

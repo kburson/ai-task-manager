@@ -50,10 +50,10 @@ const EMPTY_CFG = {
   projectId: 'PVT_x',
   kanbanFieldId: 'PVTSSF_status',
   kanbanOptionBacklog: '',
-  kanbanOptionGroom: '',
-  kanbanOptionAnalyze: '',
-  kanbanOptionDevelopment: '',
-  kanbanOptionValidate: '',
+  kanbanOptionRefine: '',
+  kanbanOptionPlan: '',
+  kanbanOptionDevelop: '',
+  kanbanOptionTest: '',
   kanbanOptionReview: '',
   kanbanOptionDone: '',
 };
@@ -72,13 +72,13 @@ const FULL_OPTS = [
 {
   const sandbox = makeSandbox(EMPTY_CFG);
   const r = await runRepair(sandbox, FULL_OPTS);
-  assert.match(r.stdout, /Filled:.*kanbanOptionGroom/);
+  assert.match(r.stdout, /Filled:.*kanbanOptionRefine/);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'OP_b');
-  assert.equal(cfg.kanbanOptionGroom, 'OP_g');
-  assert.equal(cfg.kanbanOptionAnalyze, 'OP_a');
-  assert.equal(cfg.kanbanOptionDevelopment, 'OP_d');
-  assert.equal(cfg.kanbanOptionValidate, 'OP_v');
+  assert.equal(cfg.kanbanOptionRefine, 'OP_g');
+  assert.equal(cfg.kanbanOptionPlan, 'OP_a');
+  assert.equal(cfg.kanbanOptionDevelop, 'OP_d');
+  assert.equal(cfg.kanbanOptionTest, 'OP_v');
   assert.equal(cfg.kanbanOptionReview, 'OP_r');
   assert.equal(cfg.kanbanOptionDone, 'OP_done');
   rmSync(sandbox, { recursive: true });
@@ -91,10 +91,10 @@ const FULL_OPTS = [
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'EXISTING_B',
-    kanbanOptionGroom: 'EXISTING_G',
-    kanbanOptionAnalyze: 'EXISTING_A',
-    kanbanOptionDevelopment: 'EXISTING_D',
-    kanbanOptionValidate: '',
+    kanbanOptionRefine: 'EXISTING_G',
+    kanbanOptionPlan: 'EXISTING_A',
+    kanbanOptionDevelop: 'EXISTING_D',
+    kanbanOptionTest: '',
     kanbanOptionReview: 'EXISTING_R',
     kanbanOptionDone: 'EXISTING_DONE',
   });
@@ -104,9 +104,9 @@ const FULL_OPTS = [
   ]);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'EXISTING_B', 'must not overwrite populated keys');
-  assert.equal(cfg.kanbanOptionGroom, 'EXISTING_G');
+  assert.equal(cfg.kanbanOptionRefine, 'EXISTING_G');
   assert.equal(cfg.kanbanOptionDone, 'EXISTING_DONE');
-  assert.equal(cfg.kanbanOptionValidate, 'OP_v', 'must fill empty key');
+  assert.equal(cfg.kanbanOptionTest, 'OP_v', 'must fill empty key');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -116,9 +116,9 @@ const FULL_OPTS = [
   // Missing Validate column
   const opts = FULL_OPTS.filter((o) => o.name !== 'Test');
   const r = await runRepair(sandbox, opts);
-  assert.match(r.stdout, /Unmatched.*kanbanOptionValidate/);
+  assert.match(r.stdout, /Unmatched.*kanbanOptionTest/);
   const cfg = readCfg(sandbox);
-  assert.equal(cfg.kanbanOptionValidate, '', 'unmatched key stays empty');
+  assert.equal(cfg.kanbanOptionTest, '', 'unmatched key stays empty');
   assert.equal(cfg.kanbanOptionBacklog, 'OP_b');
   rmSync(sandbox, { recursive: true });
 }
@@ -130,10 +130,10 @@ const FULL_OPTS = [
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'OP_b',
-    kanbanOptionGroom: 'OP_g',
-    kanbanOptionAnalyze: 'OP_a',
-    kanbanOptionDevelopment: 'OP_d',
-    kanbanOptionValidate: 'OP_v',
+    kanbanOptionRefine: 'OP_g',
+    kanbanOptionPlan: 'OP_a',
+    kanbanOptionDevelop: 'OP_d',
+    kanbanOptionTest: 'OP_v',
     kanbanOptionReview: 'OP_r',
     kanbanOptionDone: 'OP_done',
   });

@@ -37,8 +37,8 @@ function setupSandbox() {
         repo: 'o/r',
         projectId: 'P',
         kanbanFieldId: 'F',
-        kanbanOptionDevelopment: 'D',
-        kanbanOptionValidate: 'V',
+        kanbanOptionDevelop: 'D',
+        kanbanOptionTest: 'V',
       },
       null,
       2

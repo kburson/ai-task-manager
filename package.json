@@ -1,6 +1,6 @@
 {
   "name": "ai-task-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
   "type": "module",
   "license": "MIT",

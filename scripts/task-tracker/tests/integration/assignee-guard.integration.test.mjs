@@ -27,7 +27,7 @@ function writeConfig(sandbox, preferences = {}) {
         projectId: 'PVT_test',
         kanbanFieldId: 'PVTF_x',
         kanbanOptionBacklog: 'OPT_backlog',
-        kanbanOptionDevelopment: 'OPT_dev',
+        kanbanOptionDevelop: 'OPT_dev',
         kanbanOptionReview: 'OPT_review',
         kanbanOptionDone: 'OPT_done',
         preferences,

@@ -19,10 +19,10 @@ export const DEFAULTS = {
   // `STATUS_CONFIG_KEYS` maps the new state slugs onto these keys.
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
-  kanbanOptionGroom: '',
-  kanbanOptionAnalyze: '',
-  kanbanOptionDevelopment: '',
-  kanbanOptionValidate: '',
+  kanbanOptionRefine: '',
+  kanbanOptionPlan: '',
+  kanbanOptionDevelop: '',
+  kanbanOptionTest: '',
   kanbanOptionReview: '',
   kanbanOptionDone: '',
   // Sequence field ID (set by init script) — numeric field on the project board
@@ -36,9 +36,6 @@ export const DEFAULTS = {
   fieldContextWords: '',
   fieldSequence: '',
   fieldStartTime: '',
-  // Legacy aliases retained for older scripts/config files.
-  fieldActualHours: '',
-  fieldActualMinutes: '',
   // Priority field + option IDs (set by init script)
   priorityFieldId: '',
   priorityOptionP0: '',
@@ -86,10 +83,10 @@ const TYPES = {
   projectId: 'string',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
-  kanbanOptionGroom: 'string',
-  kanbanOptionAnalyze: 'string',
-  kanbanOptionDevelopment: 'string',
-  kanbanOptionValidate: 'string',
+  kanbanOptionRefine: 'string',
+  kanbanOptionPlan: 'string',
+  kanbanOptionDevelop: 'string',
+  kanbanOptionTest: 'string',
   kanbanOptionReview: 'string',
   kanbanOptionDone: 'string',
   sequenceFieldId: 'string',
@@ -101,8 +98,6 @@ const TYPES = {
   fieldContextWords: 'string',
   fieldSequence: 'string',
   fieldStartTime: 'string',
-  fieldActualHours: 'string',
-  fieldActualMinutes: 'string',
   priorityFieldId: 'string',
   priorityOptionP0: 'string',
   priorityOptionP1: 'string',
@@ -246,8 +241,6 @@ export function loadConfig(paths = {}) {
     merged.sizeFieldId ||= merged.fieldIds.size || '';
     merged.fieldStartTime ||= merged.fieldIds.startTime || '';
   }
-  merged.fieldEngagedTime ||= merged.fieldActualHours || '';
-  merged.fieldSessionTime ||= merged.fieldActualMinutes || '';
   merged.preferences = mergePreferences(project.preferences);
   merged._sources = sources;
   return merged;
@@ -327,10 +320,10 @@ const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId',
   'kanbanOptionBacklog',
-  'kanbanOptionGroom',
-  'kanbanOptionAnalyze',
-  'kanbanOptionDevelopment',
-  'kanbanOptionValidate',
+  'kanbanOptionRefine',
+  'kanbanOptionPlan',
+  'kanbanOptionDevelop',
+  'kanbanOptionTest',
   'kanbanOptionReview',
   'kanbanOptionDone',
   'sequenceFieldId',

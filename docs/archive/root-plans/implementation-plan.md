@@ -55,7 +55,7 @@ Copy from `ocp-services`:
 
 ### 1. `scripts/task-tracker/config.mjs` — clear hardcoded defaults
 
-- Change DEFAULTS: `projectId: ''`, `fieldActualMinutes: ''`, `fieldContextWords: ''`, `fieldActualHours: ''`, `repo: ''`
+- Change DEFAULTS: `projectId: ''`, `fieldSessionTime: ''`, `fieldContextWords: ''`, `fieldEngagedTime: ''`, `repo: ''`
 - Add `assignee: '@me'` (replaces hardcoded `kburson`)
 - Add new keys: `kanbanFieldId: ''`, `kanbanOptionBacklog: ''`, `kanbanOptionReady: ''`, `kanbanOptionInProgress: ''`, `kanbanOptionInReview: ''`, `kanbanOptionDone: ''`
 
