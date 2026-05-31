@@ -38,6 +38,7 @@ const MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
   { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },
   { name: 'aitm-lifecycle-optout', re: /<!--\s*aitm-lifecycle-optout:/i },
+  { name: 'aitm-blocked-by', re: /<!--\s*aitm-blocked-by:/i },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;

@@ -397,4 +397,26 @@ import {
   assert.equal(r.block, false);
 }
 
+// ── checkBodyChange: aitm-blocked-by marker protection (#246) ─────────────────
+{
+  const BLOCKED_MARKER = '<!-- aitm-blocked-by: #247, #248 -->';
+
+  // Dropping aitm-blocked-by → block
+  let r = checkBodyChange({
+    newBody: '## Scope\nsome text\n',
+    currentBody: `## Scope\nsome text\n${BLOCKED_MARKER}\n`,
+    issueNumber: 246,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-blocked-by/);
+
+  // Preserving aitm-blocked-by → pass
+  r = checkBodyChange({
+    newBody: `## Scope\nupdated\n${BLOCKED_MARKER}\n`,
+    currentBody: `## Scope\noriginal\n${BLOCKED_MARKER}\n`,
+    issueNumber: 246,
+  });
+  assert.equal(r.block, false);
+}
+
 console.log('gh-edit-guard.test.mjs: all passed');
