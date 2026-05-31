@@ -263,10 +263,6 @@ export async function runPromote({
     }
   }
 
-  // Refine-exit override hand-off (#162) — populated below when the gate
-  // returns childOverrides under TASK_TRACKER_FORCE_PROMOTE=1.
-  let refineExitChildOverrides = [];
-
   // Refine → Plan pre-flight (#133): Size + Estimate set, rationale marker
   // authored, `## Acceptance Criteria` section non-empty. Post-success hook
   // posts the `### 🛠 Refine estimate` comment.
@@ -300,9 +296,6 @@ export async function runPromote({
         blockers: exitResult.blockers,
         message: `Refusing to promote #${issueNumber} to Plan: Refine exit gate failed.`,
       };
-    }
-    if (Array.isArray(exitResult.childOverrides) && exitResult.childOverrides.length > 0) {
-      refineExitChildOverrides = exitResult.childOverrides;
     }
   }
 
@@ -619,29 +612,6 @@ export async function runPromote({
   // previous `move:<target>` audit row was redundant with that pair and
   // is intentionally removed.
 
-  // #162 — when the refine-exit gate accepted past-refine children under the
-  // override, post one audit comment pair per offending child.
-  let refineExitAudits = null;
-  if (refineExitChildOverrides.length > 0) {
-    refineExitAudits = [];
-    const post = deps.postOverrideAuditComment || postOverrideAuditComment;
-    for (const ovr of refineExitChildOverrides) {
-      try {
-        const r = await post({
-          cfg,
-          childNumber: ovr.childNumber,
-          parentNumber: Number(issueNumber),
-          childTarget: ovr.childState,
-          parentState: 'refine',
-          reason: ovr.reason,
-        });
-        refineExitAudits.push({ childNumber: ovr.childNumber, ...r });
-      } catch (err) {
-        refineExitAudits.push({ childNumber: ovr.childNumber, posted: false, error: err.message });
-      }
-    }
-  }
-
   // #162 — post override audit comment on both child and parent when the
   // parent-admission gate was bypassed via TASK_TRACKER_FORCE_PROMOTE=1.
   // Best-effort — failure does not roll back the (already-committed) move.
@@ -671,8 +641,6 @@ export async function runPromote({
     refinementPost,
     parentAdmissionOverride,
     parentAdmissionAudit,
-    refineExitChildOverrides,
-    refineExitAudits,
   };
 }
 

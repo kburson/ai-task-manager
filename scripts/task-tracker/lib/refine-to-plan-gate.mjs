@@ -7,16 +7,13 @@
 //   - Sequence set on the project board
 //   - Labels set on the issue (≥ 1)
 //   - Start Time set on the project board (auto-stamped at backlog→refine)
-//   - If the issue is an epic (has sub-issues), every child is at least at
-//     `refine` — backlog children block the parent's refine→plan move.
 //
-// Returns `{ ok, blockers, projectValues, labels, children }`. All I/O is
-// injectable; the production wiring uses `projectValuesForIssue`,
-// `fetchEpicChildren`, and a GraphQL labels query.
+// Returns `{ ok, blockers, projectValues, labels }`. All I/O is injectable;
+// the production wiring uses `projectValuesForIssue` and a GraphQL labels
+// query.
 
 import { projectValuesForIssue, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
-import { fetchEpicChildren } from './epic-children-gate.mjs';
 import { lintChecklistCommands } from './checklist-command-lint.mjs';
 
 async function defaultFetchBody({ cfg, issueNumber }) {
@@ -57,7 +54,6 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
   const fetchLabels = deps.fetchLabels || defaultFetchLabels;
-  const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
   const fetchBody = deps.fetchBody || defaultFetchBody;
 
   const fieldDefs = fieldDefsLoader();
@@ -74,13 +70,6 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
     labels = await fetchLabels({ cfg, issueNumber });
   } catch (err) {
     return { ok: false, blockers: [`refine-exit-labels-fetch-failed: ${err.message}`] };
-  }
-
-  let children = [];
-  try {
-    children = await fetchChildren({ cfg, parentEpicNumber: issueNumber, deps });
-  } catch (err) {
-    return { ok: false, blockers: [`refine-exit-children-fetch-failed: ${err.message}`] };
   }
 
   const blockers = [];
@@ -115,38 +104,10 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
     blockers.push(`refine-exit-body-fetch-failed: ${err.message}`);
   }
 
-  const childOverrides = [];
-  if (Array.isArray(children) && children.length > 0) {
-    const forcePromote = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
-    const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
-    if (offenders.length) {
-      if (forcePromote) {
-        // #162 — heal-forward override: record offenders so the caller can
-        // post the per-child override audit comment on the parent + each
-        // offender. Gate itself is silent (no blocker) when the override is
-        // in effect.
-        for (const c of offenders) {
-          childOverrides.push({
-            childNumber: c.number,
-            childState: String(c.state || 'unknown').toLowerCase(),
-            reason: 'refine-exit-child-leads-parent',
-          });
-        }
-      } else {
-        const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
-        blockers.push(
-          `refine-exit-children-not-at-refine: every epic child must be at refine (children must not lead the parent): ${lines.join(', ')}. Heal-forward override: TASK_TRACKER_FORCE_PROMOTE=1`
-        );
-      }
-    }
-  }
-
   return {
     ok: blockers.length === 0,
     blockers,
     projectValues,
     labels,
-    children,
-    childOverrides,
   };
 }

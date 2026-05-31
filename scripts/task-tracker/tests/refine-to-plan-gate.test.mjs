@@ -64,7 +64,7 @@ test('missing startTime → blocker', async () => {
   assert.ok(r.blockers.some((b) => /start time/i.test(b)));
 });
 
-test('epic with backlog child → blocker names child', async () => {
+test('#245 — epic whose child is in backlog now PASSES (child-not-at-refine check removed)', async () => {
   const deps = makeDeps({
     values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
     labels: ['x'],
@@ -74,56 +74,20 @@ test('epic with backlog child → blocker names child', async () => {
     ],
   });
   const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
-  assert.equal(r.ok, false);
-  const childBlocker = r.blockers.find((b) => /children-not-at-refine/.test(b));
-  assert.ok(childBlocker);
-  assert.match(childBlocker, /#201/);
-  assert.doesNotMatch(childBlocker, /#200/);
-});
-
-test('epic with past-refine child (plan/develop/etc.) → blocker; children must not lead parent', async () => {
-  const deps = makeDeps({
-    values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
-    labels: ['x'],
-    children: [
-      { number: 300, state: 'refine' },
-      { number: 301, state: 'plan' },
-      { number: 302, state: 'develop' },
-      { number: 303, state: 'done' },
-    ],
-  });
-  const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
-  assert.equal(r.ok, false);
-  const blk = r.blockers.find((b) => /children-not-at-refine/.test(b));
-  assert.ok(blk);
-  assert.match(blk, /#301/);
-  assert.match(blk, /#302/);
-  assert.match(blk, /#303/);
-  assert.doesNotMatch(blk, /#300/);
-});
-
-test('epic with all children at refine → ok', async () => {
-  const deps = makeDeps({
-    values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
-    labels: ['x'],
-    children: [
-      { number: 400, state: 'refine' },
-      { number: 401, state: 'refine' },
-    ],
-  });
-  const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
   assert.equal(r.ok, true);
   assert.deepEqual(r.blockers, []);
+  assert.ok(!r.blockers.some((b) => /refine-exit-children-not-at-refine/.test(b)));
 });
 
-test('non-epic (no children) skips child check', async () => {
+test('#245 — kept checks still fire: missing sequence yields refine-exit-missing even for an epic', async () => {
   const deps = makeDeps({
-    values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
+    values: { startTime: '2026-05-16 10:00 -07' },
     labels: ['x'],
-    children: [],
+    children: [{ number: 201, state: 'backlog' }],
   });
-  const r = await gateRefineToPlan({ cfg, issueNumber: 999, deps });
-  assert.equal(r.ok, true);
+  const r = await gateRefineToPlan({ cfg, issueNumber: 107, deps });
+  assert.equal(r.ok, false);
+  assert.ok(r.blockers.some((b) => /^refine-exit-missing/.test(b) && /sequence/i.test(b)));
 });
 
 test('compound CLI command in AC marker → refine-exit-forbidden-command blocker', async () => {
