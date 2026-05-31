@@ -7,6 +7,7 @@ Task Tracker — available commands
   /task #N                  Start or switch to issue #N
   /task new [title]         Create a new issue and start tracking it
   /task discover            Open an untracked discovery bucket (pre-backlog ideation)
+  /task cancel              Discard the active discovery bucket (no timing recorded)
   /task pause               Flush timing and pause the active task
   /task resume              Resume the last paused task
   /task resume #N           Switch back to a specific paused task

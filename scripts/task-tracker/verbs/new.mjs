@@ -86,20 +86,32 @@ export async function verbNew(ctx) {
     })
   );
   if (wasDiscover && !SKIP_NETWORK) {
-    for (const e of s.discoverBucket.entries) {
-      await safePostTiming(
-        issue,
-        buildRow({
-          ts: e.ts,
-          event: `discovery: ${e.event}`,
-          activeMin: e.deltaMin ?? 0,
-          idleMin: 0,
-          deltaWords: e.deltaWords ?? 0,
-          wordMarker: s.discoverBucket.wordsAtStart,
-          description: 'discovery session',
-        })
-      );
-    }
+    // The discovery bucket's only entry is stamped with the moment the bucket
+    // opened (`startedAt`). Replaying that stale ts into a timing row trips
+    // the 60s freshness guard in `buildRow` (which no flag defeats), deadlocking
+    // promotion for any real (> 60s) discovery session (#234). The guard is a
+    // deliberate anti-backdating invariant, so rather than weaken it we
+    // reconcile the elapsed bucket time honestly: ONE fresh-stamped row that
+    // records the whole window as idle. No active work is fabricated.
+    const { startedAt, wordsAtStart } = s.discoverBucket;
+    const startedMs = Date.parse(startedAt);
+    const idleMin = Number.isFinite(startedMs)
+      ? Math.max(0, Math.round((Date.parse(createdTs) - startedMs) / 60000))
+      : 0;
+    await safePostTiming(
+      issue,
+      buildRow({
+        ts: createdTs,
+        event: 'discovery: idle-reconciled',
+        // activeMin:0 honest — discovery has no active session; the entire
+        // bucket window is recorded as idle below, nothing is fabricated.
+        activeMin: 0,
+        idleMin,
+        deltaWords: 0,
+        wordMarker: wordsAtStart,
+        description: `discovery session reconciled as idle (opened ${startedAt})`,
+      })
+    );
   }
   const ts = nowIso();
   const sid = currentSessionId();

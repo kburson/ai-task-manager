@@ -221,6 +221,11 @@ if (_isMain)
           await verbNew(ctx);
           break;
         }
+        case 'cancel': {
+          const { verbCancel } = await import('./verbs/cancel.mjs');
+          await verbCancel(ctx);
+          break;
+        }
         case 'check': {
           const { verbCheck } = await import('./verbs/check.mjs');
           await verbCheck(ctx);
