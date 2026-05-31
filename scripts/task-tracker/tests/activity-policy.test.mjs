@@ -85,6 +85,65 @@ test('classifyEdit: fallthrough', () => {
   assert.equal(classifyEdit('tmp/x.json'), 'WRITE_OTHER');
 });
 
+test('classifyEdit: configGlobs — repo-root tooling config classifies as WRITE_CODE', () => {
+  // Ignore lists
+  assert.equal(classifyEdit('.gitignore'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.prettierignore'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.eslintignore'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.markdownlintignore'), 'WRITE_CODE');
+  // Editor / runtime version pins
+  assert.equal(classifyEdit('.editorconfig'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.npmrc'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.nvmrc'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.node-version'), 'WRITE_CODE');
+  // Linter / formatter configs
+  assert.equal(classifyEdit('eslint.config.mjs'), 'WRITE_CODE');
+  assert.equal(classifyEdit('eslint.config.js'), 'WRITE_CODE');
+  assert.equal(classifyEdit('prettier.config.mjs'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.prettierrc'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.prettierrc.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('cspell.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('cspell.config.yaml'), 'WRITE_CODE');
+  assert.equal(classifyEdit('markdownlint.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.markdownlint.json'), 'WRITE_CODE');
+  // TS / JS configs
+  assert.equal(classifyEdit('tsconfig.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('tsconfig.build.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('jsconfig.json'), 'WRITE_CODE');
+  // Package manifests / lock files
+  assert.equal(classifyEdit('package.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('package-lock.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('pnpm-lock.yaml'), 'WRITE_CODE');
+  assert.equal(classifyEdit('yarn.lock'), 'WRITE_CODE');
+  // Claude settings
+  assert.equal(classifyEdit('.claude/settings.json'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.claude/settings.local.json'), 'WRITE_CODE');
+});
+
+test('loadPolicy: configGlobs override propagates from project-local file', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-policy-cfg-'));
+  mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(dir, '.ai-task-manager', 'activity-policy.json'),
+    JSON.stringify({ configGlobs: ['custom.config.*'] })
+  );
+  const p = loadPolicy(dir);
+  assert.deepEqual(p.configGlobs, ['custom.config.*']);
+  // Other keys fall back to defaults.
+  assert.deepEqual(p.codeGlobs, DEFAULT_POLICY.codeGlobs);
+});
+
+test('loadPolicy: missing configGlobs falls back to defaults', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-policy-cfg2-'));
+  mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(dir, '.ai-task-manager', 'activity-policy.json'),
+    JSON.stringify({ codeGlobs: ['src/**'] })
+  );
+  const p = loadPolicy(dir);
+  assert.deepEqual(p.configGlobs, DEFAULT_POLICY.configGlobs);
+});
+
 // ---------------------------------------------------------------------------
 // classifyBash
 // ---------------------------------------------------------------------------

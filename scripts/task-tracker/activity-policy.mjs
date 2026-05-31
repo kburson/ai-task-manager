@@ -33,6 +33,42 @@ export const DEFAULT_POLICY = Object.freeze({
   codeGlobExcludes: [],
   codeGlobReincludes: [],
   docGlobs: ['docs/**', '.claude/plans/**', 'docs/plans/**', '**/*.md', 'CLAUDE.md'],
+  // Repo-root and tooling config files that ARE part of the project's code
+  // surface (ignore lists, formatter/linter configs, TS/JS configs, package
+  // manifests, Claude/editor settings). Without these, every edit to
+  // `.gitignore`, `package.json`, `eslint.config.*`, etc. classifies as
+  // WRITE_OTHER — which no kanban state permits, locking out routine
+  // config maintenance under any active task. Classified as WRITE_CODE.
+  configGlobs: [
+    '.gitignore',
+    '.prettierignore',
+    '.eslintignore',
+    '.editorconfig',
+    '.npmrc',
+    '.nvmrc',
+    '.node-version',
+    '.markdownlintignore',
+    'eslint.config.*',
+    'prettier.config.*',
+    '.prettierrc',
+    '.prettierrc.*',
+    'cspell.json',
+    'cspell.config.*',
+    'tsconfig.json',
+    'tsconfig.*.json',
+    'jsconfig.json',
+    'jsconfig.*.json',
+    'package.json',
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'yarn.lock',
+    'markdownlint.json',
+    'markdownlint.*.json',
+    '.markdownlint.json',
+    '.markdownlint.*.json',
+    '.claude/settings.json',
+    '.claude/settings.*.json',
+  ],
   testRunners: ['npm test', 'npm run test', 'node --test', 'pytest', 'cargo test', 'go test'],
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
 });
@@ -119,6 +155,13 @@ export function classifyEdit(filePath, policy = DEFAULT_POLICY) {
   // Docs precede code so `scripts/foo.md` (matches both code-glob `scripts/**`
   // and doc-glob `**/*.md`) classifies as WRITE_DOCS.
   if (anyGlobMatch(p, policy.docGlobs)) return 'WRITE_DOCS';
+
+  // Repo-root / tooling config files (e.g. `.gitignore`, `package.json`,
+  // `eslint.config.*`) classify as WRITE_CODE so they remain editable under
+  // any state that permits WRITE_CODE. Checked AFTER docs so `*.md` configs
+  // still go to docs, and BEFORE code so bare-root configs don't fall
+  // through to WRITE_OTHER. See DEFAULT_POLICY.configGlobs for the list.
+  if (anyGlobMatch(p, policy.configGlobs)) return 'WRITE_CODE';
 
   if (anyGlobMatch(p, policy.codeGlobs)) {
     if (anyGlobMatch(p, policy.codeGlobExcludes)) {
@@ -282,6 +325,9 @@ export function loadPolicy(cwd) {
         ? parsed.codeGlobReincludes
         : DEFAULT_POLICY.codeGlobReincludes,
       docGlobs: Array.isArray(parsed.docGlobs) ? parsed.docGlobs : DEFAULT_POLICY.docGlobs,
+      configGlobs: Array.isArray(parsed.configGlobs)
+        ? parsed.configGlobs
+        : DEFAULT_POLICY.configGlobs,
       testRunners: Array.isArray(parsed.testRunners)
         ? parsed.testRunners
         : DEFAULT_POLICY.testRunners,
