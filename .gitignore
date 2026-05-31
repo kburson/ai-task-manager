@@ -32,7 +32,10 @@ node_modules/
 .claude/
 .agents/
 AGENTS.md
+
 tmp/
+.tmp/
+
 .worktrees/
 .claude/task-tracker.json
 .claude/task-tracker-state.json

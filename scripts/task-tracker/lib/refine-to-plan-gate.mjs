@@ -17,6 +17,21 @@
 import { projectValuesForIssue, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { fetchEpicChildren } from './epic-children-gate.mjs';
+import { lintChecklistCommands } from './checklist-command-lint.mjs';
+
+async function defaultFetchBody({ cfg, issueNumber }) {
+  const { owner, repoName } = splitRepo(cfg.repo);
+  const data = await gql(
+    `
+    query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) { body }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) }
+  );
+  return data?.repository?.issue?.body ?? '';
+}
 
 async function defaultFetchLabels({ cfg, issueNumber }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -43,6 +58,7 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
   const fetchLabels = deps.fetchLabels || defaultFetchLabels;
   const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
+  const fetchBody = deps.fetchBody || defaultFetchBody;
 
   const fieldDefs = fieldDefsLoader();
 
@@ -83,6 +99,20 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
     blockers.push(
       'refine-exit-missing: Start time is not set on the project board — re-enter Refine or backfill before promoting to Plan'
     );
+  }
+
+  // #236 — reject compound CLI commands in AC evidence markers / VC section.
+  try {
+    const body = await fetchBody({ cfg, issueNumber });
+    const lint = lintChecklistCommands(body);
+    for (const v of lint.violations) {
+      if (v.severity !== 'error') continue;
+      blockers.push(
+        `refine-exit-forbidden-command: ${v.section}:${v.lineIndex + 1}: \`${v.command}\` — forbidden ${v.rule}. Split into separate backtick-quoted commands.`
+      );
+    }
+  } catch (err) {
+    blockers.push(`refine-exit-body-fetch-failed: ${err.message}`);
   }
 
   const childOverrides = [];

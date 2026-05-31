@@ -23,6 +23,7 @@ import {
 } from '../lib/markers.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { lintChecklistCommands } from '../lib/checklist-command-lint.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -83,6 +84,26 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+
+  // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
+  // compound CLI commands that the /task test sandbox will later reject.
+  const lint = lintChecklistCommands(body);
+  const lintErrors = lint.violations.filter((v) => v.severity === 'error');
+  if (lintErrors.length > 0) {
+    return {
+      status: 'forbidden-command',
+      message:
+        `#${issueNumber} body contains forbidden compound commands in checklists — refusing to approve.\n` +
+        lintErrors
+          .map(
+            (v) =>
+              `  plan-exit-forbidden-command: ${v.section}:${v.lineIndex + 1}: \`${v.command}\` — forbidden ${v.rule}`
+          )
+          .join('\n'),
+      violations: lintErrors,
+    };
+  }
+
   const hasApproval = hasPlanApprovedMarker(body);
   const hasPlanEntry = PLAN_ENTRY_RE.test(body);
 
@@ -159,6 +180,9 @@ export async function verbPlanApprove(rest, cfg) {
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(3);
+    case 'forbidden-command':
+      process.stderr.write(`⛔ ${result.message}\n`);
+      process.exit(12);
     default:
       process.stderr.write(`plan-approve: unknown result: ${result.status}\n`);
       process.exit(1);

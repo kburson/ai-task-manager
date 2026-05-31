@@ -8,12 +8,13 @@ import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
-function makeDeps({ values = {}, labels = ['bug'], children = [] } = {}) {
+function makeDeps({ values = {}, labels = ['bug'], children = [], body = '' } = {}) {
   return {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => values,
     fetchLabels: async () => labels,
     fetchEpicChildren: async () => children,
+    fetchBody: async () => body,
   };
 }
 
@@ -123,6 +124,20 @@ test('non-epic (no children) skips child check', async () => {
   });
   const r = await gateRefineToPlan({ cfg, issueNumber: 999, deps });
   assert.equal(r.ok, true);
+});
+
+test('compound CLI command in AC marker → refine-exit-forbidden-command blocker', async () => {
+  const deps = makeDeps({
+    values: { sequence: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    body: `## Acceptance Criteria
+
+- [ ] AC. <!-- aitm-verified-by: \`npm run lint && npm test\` -->
+`,
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
+  assert.equal(r.ok, false);
+  assert.ok(r.blockers.some((b) => /refine-exit-forbidden-command/.test(b)));
 });
 
 test('multiple missing fields produces multiple blockers', async () => {

@@ -33,6 +33,7 @@ import { existingRuntimePath } from './paths.mjs';
 import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
 import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
+import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -160,6 +161,19 @@ function emitShape(args, dodPath, root) {
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
   const assembled = body + tailBlock(dodPath);
   warnMissingLifecycleLabels(assembled);
+  const lint = lintChecklistCommands(assembled);
+  if (!lint.ok) {
+    process.stderr.write('preflight-issue: checklist-forbidden-command\n');
+    for (const line of formatViolations(lint.violations.filter((v) => v.severity === 'error'))) {
+      process.stderr.write(`  ${line}\n`);
+    }
+    process.exit(12);
+  }
+  for (const w of lint.violations.filter((v) => v.severity === 'warn')) {
+    process.stderr.write(
+      `preflight-issue: WARN ac-evidence-marker:${w.lineIndex + 1} — marker payload "${w.command}" has no backtick-quoted commands (rule: ${w.rule})\n`
+    );
+  }
   process.stdout.write(body);
   process.stdout.write(tailBlock(dodPath));
 }
