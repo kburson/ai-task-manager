@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Tests for the bash-guard `/tmp` contract (issue #199, Option A).
 //
-// Contract: project-local `./tmp/` is the canonical scratch directory.
+// Contract: project-local `./.tmp/` is the canonical scratch directory.
 // System `/tmp/` and `/private/tmp/` are NOT in scope for writes or reads.
 //
 // The hook reads a JSON payload from stdin and emits either nothing (pass)
@@ -48,23 +48,20 @@ function check(label, ok, detail) {
   }
 }
 
-// -- Allowed: project-local `./tmp/foo` write -------------------------------
-// Relative paths are not absolute, so the absPath regex doesn't pick them up
-// for read-validation. Redirection to a relative path: also relative, not
-// captured. Use a touch with a project-root absolute path inside ./tmp.
+// -- Allowed: project-local `./.tmp/foo` write ------------------------------
 
 {
-  const r = await runGuard('touch ./tmp/scratch.txt');
+  const r = await runGuard('touch ./.tmp/gh/scratch.txt');
   const d = parseDecision(r.stdout);
-  check('allows write to project-local ./tmp/scratch.txt', !d.block, d.reason);
+  check('allows write to project-local ./.tmp/gh/scratch.txt', !d.block, d.reason);
 }
 
 {
-  // Project-root absolute path under tmp/ — must pass.
+  // Project-root absolute path under .tmp/ — must pass.
   const cwd = process.cwd();
-  const r = await runGuard(`touch ${cwd}/tmp/scratch.txt`);
+  const r = await runGuard(`touch ${cwd}/.tmp/gh/scratch.txt`);
   const d = parseDecision(r.stdout);
-  check('allows write to <projectRoot>/tmp/scratch.txt', !d.block, d.reason);
+  check('allows write to <projectRoot>/.tmp/gh/scratch.txt', !d.block, d.reason);
 }
 
 // -- Rejected: system /tmp write --------------------------------------------
@@ -78,8 +75,8 @@ function check(label, ok, detail) {
     d.reason
   );
   check(
-    'block message points at ./tmp/ for scratch',
-    d.block && /\.\/tmp\//.test(d.reason ?? ''),
+    'block message points at ./.tmp/ for scratch',
+    d.block && /\.\/\.tmp\//.test(d.reason ?? ''),
     d.reason
   );
 }

@@ -10,17 +10,16 @@
     "MD029": false,
     "MD028": false,
     "MD001": false,
-    "MD024": { "siblings_only": true },
+    "MD024": { "siblings_only": true }
   },
-  "globs": ["**/*.md"],
+  "globs": ["**/*.md", "!.tmp/**", ".tmp/gh/**/*.md", ".tmp/plan/**/*.md"],
   "ignores": [
     "node_modules/**",
-    "tmp/**",
     ".git/**",
     ".worktrees/**",
     ".claude/worktrees/**",
     "reports/**",
     "coverage/**",
-    "docs/postmortems/**",
-  ],
+    "docs/postmortems/**"
+  ]
 }

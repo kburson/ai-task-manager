@@ -5,5 +5,11 @@
   "arrowParens": "always",
   "endOfLine": "lf",
   "tabWidth": 2,
-  "semi": true
+  "semi": true,
+  "overrides": [
+    {
+      "files": ["*.jsonc", "*.json5"],
+      "options": { "trailingComma": "none" }
+    }
+  ]
 }

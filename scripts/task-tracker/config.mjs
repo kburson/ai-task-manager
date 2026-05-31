@@ -167,7 +167,7 @@ export const PREFERENCE_DEFAULTS = {
     noEmojis: true,
     currencyInBackticks: true,
   },
-  scratchDir: './tmp/',
+  scratchDir: './.tmp/',
 };
 
 function mergePreferences(overrides) {

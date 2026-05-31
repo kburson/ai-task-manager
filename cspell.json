@@ -12,7 +12,7 @@
   "dictionaries": ["project"],
   "ignorePaths": [
     "node_modules/**",
-    "tmp/**",
+    ".tmp/**",
     ".git/**",
     ".worktrees/**",
     ".claude/worktrees/**",

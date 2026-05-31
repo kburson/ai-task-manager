@@ -57,11 +57,11 @@ Every created epic, sub-issue, and solo task must be tethered via `project-tethe
 
 ## Epic creation
 
-Stage three fragments under `./tmp/`:
+Stage three fragments under `./.tmp/plan/`:
 
-- `./tmp/scope.md` — Epic Scope prose
-- `./tmp/acs.md` — Acceptance Criteria as `- [ ]` checkboxes (closes-gate parser requires the bracket-space-bracket format)
-- `./tmp/plan-meta.md` — `**Size:**`, `**Estimate:**`, `**Priority:**`, `**Sequence:**`
+- `./.tmp/plan/scope.md` — Epic Scope prose
+- `./.tmp/plan/acs.md` — Acceptance Criteria as `- [ ]` checkboxes (closes-gate parser requires the bracket-space-bracket format)
+- `./.tmp/plan/plan-meta.md` — `**Size:**`, `**Estimate:**`, `**Priority:**`, `**Sequence:**`
 
 Create + tether atomically:
 
@@ -69,9 +69,9 @@ Create + tether atomically:
 node node_modules/ai-task-manager/scripts/gh/create-issue.mjs \
   --shape epic \
   --title "EPIC: <title>" \
-  --scope-file ./tmp/scope.md \
-  --ac-file ./tmp/acs.md \
-  --plan-metadata-file ./tmp/plan-meta.md \
+  --scope-file ./.tmp/plan/scope.md \
+  --ac-file ./.tmp/plan/acs.md \
+  --plan-metadata-file ./.tmp/plan/plan-meta.md \
   --priority <p0|p1|p2> \
   --size <XS|S|M|L|XL> \
   --estimate <hours-as-float> \
@@ -92,16 +92,16 @@ If the helper exits non-zero, STOP. Either the issue was never created (gh failu
 For each sub-issue in document order:
 
 1. Infer purpose labels from scope.
-2. Stage `./tmp/scope.md`, `./tmp/acs.md`, `./tmp/plan-meta.md`.
+2. Stage `./.tmp/plan/scope.md`, `./.tmp/plan/acs.md`, `./.tmp/plan/plan-meta.md`.
 3. Create + tether:
 
 ```bash
 node node_modules/ai-task-manager/scripts/gh/create-issue.mjs \
   --shape sub-issue \
   --title "<title>" \
-  --scope-file ./tmp/scope.md \
-  --ac-file ./tmp/acs.md \
-  --plan-metadata-file ./tmp/plan-meta.md \
+  --scope-file ./.tmp/plan/scope.md \
+  --ac-file ./.tmp/plan/acs.md \
+  --plan-metadata-file ./.tmp/plan/plan-meta.md \
   --parent <EPIC_N> \
   --priority <inherit from parent if absent> \
   --size <…> --estimate <…> --sequence <N> \

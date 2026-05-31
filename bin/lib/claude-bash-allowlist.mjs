@@ -73,10 +73,10 @@ export const CLAUDE_BASH_ALLOWLIST = Object.freeze([
   'Bash(pwd)',
 
   // Scratch directory mutations — bash-guard scopes writes to project root
-  // (which includes ./tmp). Explicit entries reduce friction for canonical
+  // (which includes ./.tmp). Explicit entries reduce friction for canonical
   // scratch operations.
-  'Bash(mkdir -p tmp/**)',
-  'Bash(mkdir -p ./tmp/**)',
+  'Bash(mkdir -p .tmp/**)',
+  'Bash(mkdir -p ./.tmp/**)',
 ]);
 
 // Interpreter-payload patterns that must never be added to the allowlist.

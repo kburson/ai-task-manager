@@ -296,7 +296,7 @@ export async function applyRefinementEstimate({
         issueNumber,
         repo: cfg.repo,
         body: stripped,
-        scratchDir: scratchDir || path.resolve('tmp'),
+        scratchDir: scratchDir || path.resolve('.tmp/gh'),
       });
     }
   } catch {

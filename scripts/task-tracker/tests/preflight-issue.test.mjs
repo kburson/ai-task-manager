@@ -64,8 +64,7 @@ describe('preflight-issue --shape lint wiring', () => {
   });
 
   it('accepts a clean AC with separate backtick-quoted commands', async () => {
-    const acBody =
-      '- [ ] Good. <!-- aitm-verified-by: `npm run lint` `npm test` -->\n';
+    const acBody = '- [ ] Good. <!-- aitm-verified-by: `npm run lint` `npm test` -->\n';
     const fx = makeFixture(acBody);
     try {
       const r = await runPreflight([

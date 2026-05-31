@@ -81,7 +81,7 @@ Older installs that shipped a single broad `Bash` entry are migrated automatical
 
 ### `/tmp` write contract
 
-The bash-guard hook scopes Bash writes to the project root only. The canonical scratch directory is project-local `./tmp/` (gitignored). System `/tmp/` and `/private/tmp/` are **not** in scope for reads or writes — use `./tmp/<file>` instead. This matches the activity-guard `tmp/**` carve-out documented in `CLAUDE.md` "Tool Usage Rules".
+The bash-guard hook scopes Bash writes to the project root only. The canonical scratch directory is project-local `./.tmp/` (gitignored) with purpose subfolders `gh/`, `plan/`, `heal/`, `inspect/`. System `/tmp/` and `/private/tmp/` are **not** in scope for reads or writes — use `./.tmp/<subfolder>/<file>` instead. This matches the activity-guard `.tmp/**` carve-out documented in `CLAUDE.md` "Tool Usage Rules".
 
 ---
 

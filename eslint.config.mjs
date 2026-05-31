@@ -5,7 +5,7 @@ export default [
   {
     ignores: [
       'node_modules/**',
-      'tmp/**',
+      '.tmp/**',
       '.worktrees/**',
       '.claude/worktrees/**',
       'reports/**',

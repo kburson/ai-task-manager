@@ -173,12 +173,12 @@ test('Bash READ command (cat README.md) in done → pass', () => {
   }
 });
 
-test('Write tmp/foo.txt in develop → pass (scratch carve-out)', () => {
+test('Write .tmp/gh/foo.txt in develop → pass (scratch carve-out)', () => {
   const dir = makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
-      payload: { tool_name: 'Write', tool_input: { file_path: 'tmp/foo.txt' } },
+      payload: { tool_name: 'Write', tool_input: { file_path: '.tmp/gh/foo.txt' } },
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
@@ -187,12 +187,12 @@ test('Write tmp/foo.txt in develop → pass (scratch carve-out)', () => {
   }
 });
 
-test('Write tmp/draft.md in refine → pass (scratch carve-out)', () => {
+test('Write .tmp/plan/draft.md in refine → pass (scratch carve-out)', () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
-      payload: { tool_name: 'Write', tool_input: { file_path: 'tmp/draft.md' } },
+      payload: { tool_name: 'Write', tool_input: { file_path: '.tmp/plan/draft.md' } },
     });
     assert.equal(r.code, 0);
     assert.equal(r.stdout, '');
@@ -201,14 +201,14 @@ test('Write tmp/draft.md in refine → pass (scratch carve-out)', () => {
   }
 });
 
-test('Write absolute tmp/ path → pass (scratch carve-out)', () => {
+test('Write absolute .tmp/ path → pass (scratch carve-out)', () => {
   const dir = makeRepo({ state: 'done' });
   try {
     const r = runGuard({
       cwd: dir,
       payload: {
         tool_name: 'Write',
-        tool_input: { file_path: path.join(dir, 'tmp/issue-body.md') },
+        tool_input: { file_path: path.join(dir, '.tmp/gh/issue-body.md') },
       },
     });
     assert.equal(r.code, 0);

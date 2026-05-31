@@ -34,7 +34,7 @@ root before running the command.
 
 `scripts/gh/create-issue.mjs --shape epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly** — bodies authored that way miss the assignee, project tether, fields block, `## Scope`, `- [ ]` Acceptance Criteria, Definition of Done, and Pickup Directive (see issue #103 for the failure mode). The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic.
 
-Required content fragments (default `./tmp/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
+Required content fragments (default `./.tmp/plan/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
 
 During deep dive, bind every Acceptance Criterion to automated evidence with an
 `aitm-verified-by` HTML comment marker. Every non-standard command named in

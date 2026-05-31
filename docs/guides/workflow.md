@@ -408,7 +408,7 @@ When the user says **"cleanup"**, execute in order:
 ### Usage
 
 ```bash
-# Dry run, all issues (default) — writes report to tmp/heal-backlog-<ISO>.md
+# Dry run, all issues (default) — writes report to .tmp/heal/heal-backlog-<ISO>.md
 node scripts/task-tracker/heal-backlog.mjs
 
 # Apply changes for real
@@ -494,7 +494,7 @@ Config files (all at repo root):
 - `.markdownlint-cli2.jsonc` + `.markdownlintignore`
 - `cspell.json` + `cspell-dictionary.txt`
 
-Ignored paths in every tool include `node_modules/`, `tmp/`, `.worktrees/`, `.claude/worktrees/`, `reports/`, `coverage/`, `docs/postmortems/`.
+Ignored paths in every tool include `node_modules/`, `.tmp/`, `.worktrees/`, `.claude/worktrees/`, `reports/`, `coverage/`, `docs/postmortems/`.
 
 When CSpell flags a legitimate token (project jargon, library name, person name), add it to `cspell-dictionary.txt` — keep the file sorted (`sort -u -o cspell-dictionary.txt cspell-dictionary.txt`). Don't disable spell-check inline.
 

@@ -19,7 +19,7 @@ code" in `.ai-task-manager/pickup-directive.md`.
 > refuses test/review/done moves when the Deep-Dive heading is present in
 > any other position.
 
-Run this command and save its output to `./tmp/body.md` via your agent's
+Run this command and save its output to `./.tmp/gh/<this-issue-#>-body.md` via your agent's
 file-editing tool — do not use a `>` shell redirect:
 
 ```
@@ -31,7 +31,7 @@ Directive block and before any `<!-- ai-task-manager:fields:start -->`
 marker. Then post the updated body:
 
 ```bash
-gh issue edit <this-issue-#> --body-file ./tmp/body.md
+gh issue edit <this-issue-#> --body-file ./.tmp/gh/<this-issue-#>-body.md
 ```
 
 Then flip the checkpoint: `/task check "Deep dive complete"`.

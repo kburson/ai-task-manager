@@ -37,7 +37,7 @@ Required elements:
 - **Verb chain:** The exact verbs to run, in order, with `--answer yes` for any human gates that have been pre-disabled for the batch (see §4).
 - **No retroactive timing:** Pause/resume via `/task` only — never fabricate gaps (§6).
 
-The `activity-guard` hook enforces `.ai-task-manager/activity-policy.json` on every `Edit`, `Write`, and `NotebookEdit` call. Out-of-policy writes refuse at the tool boundary; do not try to route around it — fix the policy or the scope. Writes under `tmp/**` are exempt from classification (canonical scratch directory; gitignored) and pass in every kanban state.
+The `activity-guard` hook enforces `.ai-task-manager/activity-policy.json` on every `Edit`, `Write`, and `NotebookEdit` call. Out-of-policy writes refuse at the tool boundary; do not try to route around it — fix the policy or the scope. Writes under `.tmp/**` are exempt from classification (canonical scratch directory; gitignored) and pass in every kanban state.
 
 ---
 

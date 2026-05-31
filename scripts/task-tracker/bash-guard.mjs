@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // PreToolUse hook — enforces read/write path scoping on Bash commands.
 //
-// Write permissions: project root only (scratch lives under `./tmp/`, which is
-//                    inside the project root). System `/tmp` and `/private/tmp`
-//                    are NOT writable — use `./tmp/` instead. All other
-//                    destinations → block.
+// Write permissions: project root only (scratch lives under `./.tmp/`, which is
+//                    inside the project root, with purpose subfolders
+//                    `gh/`, `plan/`, `heal/`, `inspect/`). System `/tmp` and
+//                    `/private/tmp` are NOT writable — use `./.tmp/<sub>/`
+//                    instead. All other destinations → block.
 // Read permissions:  project root + ~/.claude/ + system binaries.
 //                    All other sources → block.
 // ~/.claude/ writes: always blocked (read-only for the task manager).
@@ -14,8 +15,8 @@
 //
 // `/tmp` contract (issue #199): system `/tmp` and `/private/tmp` are out of
 // scope for both reads and writes. The canonical scratch directory is
-// project-local `./tmp/` (see CLAUDE.md "Tool Usage Rules"). This matches the
-// activity-guard `tmp/**` carve-out.
+// project-local `./.tmp/` (see CLAUDE.md "Tool Usage Rules"). This matches the
+// activity-guard `.tmp/**` carve-out.
 
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -77,7 +78,7 @@ if (/\bmove-state\.(mjs|sh)\b/.test(command)) {
   );
 }
 
-// Write-allowed prefixes — project root only. `./tmp/` lives inside the
+// Write-allowed prefixes — project root only. `./.tmp/` lives inside the
 // project root and is the canonical scratch directory. System `/tmp` and
 // `/private/tmp` are deliberately excluded.
 const WRITE_ALLOWED = [projectRoot + '/'];
@@ -174,7 +175,7 @@ const allPaths = new Set(scanned.match(absPathRe) ?? []);
 for (const p of writePaths) {
   if (!WRITE_ALLOWED.some((prefix) => p.startsWith(prefix))) {
     block(
-      `Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside the project root; use \`./tmp/\` for scratch — system \`/tmp\` and \`/private/tmp\` are not allowed)`
+      `Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside the project root; use \`./.tmp/\` for scratch — \`./.tmp/gh/\` for issue bodies, \`./.tmp/plan/\` for create-issue fragments; system \`/tmp\` and \`/private/tmp\` are not allowed)`
     );
   }
   // Explicit check: ~/.claude writes are blocked even if path somehow matched
@@ -188,7 +189,7 @@ for (const p of allPaths) {
   if (writePaths.has(p)) continue; // already validated above
   if (!READ_ALLOWED.some((prefix) => p.startsWith(prefix))) {
     block(
-      `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, ~/.claude/, and system binaries; system \`/tmp\` is not in scope — use \`./tmp/\` for scratch)`
+      `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, ~/.claude/, and system binaries; system \`/tmp\` is not in scope — use \`./.tmp/\` for scratch)`
     );
   }
 }

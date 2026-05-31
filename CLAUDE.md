@@ -62,7 +62,7 @@ See [`docs/onboarding.md`](docs/onboarding.md) for the Recommended Skills (Super
 - Use Read, Edit, Write for files. Bash only for: git, npm/node, shell scripts.
 - Never search inside `node_modules/`.
 - Wrap currency in backticks: `$200`.
-- Scratch / staging files for issue bodies, deep-dives, and other transient drafts go in `./tmp/` (gitignored). Do not write scratch under `.git/`.
+- Scratch / staging files for issue bodies, deep-dives, and other transient drafts go in `./.tmp/` (gitignored), under subfolder by purpose: `./.tmp/gh/` (issue bodies), `./.tmp/plan/` (scope/acs/plan-meta), `./.tmp/heal/` (repair scratch), `./.tmp/inspect/` (ad-hoc scripts). Do not write scratch under `.git/`.
 
 ## Formatting
 
