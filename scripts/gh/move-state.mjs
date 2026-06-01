@@ -31,6 +31,7 @@ import {
   stampEntryMarker,
   getStageVisitCount,
   postReentryAuditComment,
+  evaluateContiguity,
   STAGES,
 } from '../task-tracker/lib/stage-entry-markers.mjs';
 import {
@@ -475,6 +476,67 @@ if (stateArg === 'backlog' && !SKIP_NETWORK) {
     }
   } catch {
     /* fire-and-forget */
+  }
+}
+
+// Forward-transition contiguity guard (#252). On a forward move, every
+// canonical prior forward stage must already carry its `aitm-entered-*` marker
+// in the body. Catches a board that advanced while the marker chain has a hole
+// (clobbered/skipped marker — the #251 class) at the point of the skip, rather
+// than deferring the discovery to the close-time chain check. Forward-only:
+// backward/rework arcs and re-entry (toIdx <= fromIdx) resolve to 'skip' and
+// are never blocked; an empty `resolvedFromState` (offline) is skipped too.
+// Runs BEFORE __mutationBlock so refusal precedes any board write or marker
+// stamp (no partial transition). Audited override: TASK_TRACKER_FORCE_CONTIGUITY=1.
+if (!SKIP_NETWORK && resolvedFromState && STAGES.includes(stateArg)) {
+  let contigBody = '';
+  let contigFetched = false;
+  try {
+    contigBody = (
+      await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
+    ).trim();
+    contigFetched = true;
+  } catch {
+    /* body fetch failed — skip (offline-tolerant, like the sibling gates) */
+  }
+  if (contigFetched) {
+    const verdict = evaluateContiguity({
+      fromState: resolvedFromState,
+      toState: stateArg,
+      body: contigBody,
+      force: process.env.TASK_TRACKER_FORCE_CONTIGUITY === '1',
+    });
+    if (verdict.action === 'bypass') {
+      process.stderr.write(
+        `⚠ TASK_TRACKER_FORCE_CONTIGUITY=1 — bypassing contiguity guard for #${issueArg} (${resolvedFromState} → ${stateArg})\n`
+      );
+      const ts = new Date().toISOString();
+      const auditBody =
+        `⚠ **Contiguity guard bypassed** via \`TASK_TRACKER_FORCE_CONTIGUITY=1\` at ${ts}. ` +
+        `${verdict.message}. The skipped stage(s) were never recorded as entered.\n\n` +
+        `<!-- aitm-contiguity-bypass: ${resolvedFromState}->${stateArg}:${verdict.missing.join('+')}:${ts} -->`;
+      try {
+        await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', auditBody]);
+      } catch {}
+    } else if (verdict.action === 'refuse') {
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+      process.stderr.write(`   BLOCKED: ${verdict.message}\n`);
+      process.stderr.write(
+        '\nA forward move may not enter a new stage while an earlier stage in the chain is unrecorded.\n'
+      );
+      process.stderr.write('Recovery:\n');
+      process.stderr.write(
+        '   • Backfill the marker(s) if the stage(s) genuinely ran, then retry, or\n'
+      );
+      process.stderr.write(
+        `   • Run \`/task reconcile accept-live ${issueArg}\` if the board and body have drifted, or\n`
+      );
+      process.stderr.write(
+        '   • Override (audited): TASK_TRACKER_FORCE_CONTIGUITY=1 <your /task promote>\n\n'
+      );
+      process.exit(6);
+    }
   }
 }
 

@@ -203,6 +203,52 @@ export function getStageVisitCount(body, stage) {
   return max;
 }
 
+// Forward-transition contiguity decision (#252). Pure — no network, no IO —
+// so the single state-mutator can call it and the test suite can exercise
+// every branch without spawning the CLI.
+//
+// On a FORWARD move (`toIdx > fromIdx` over the canonical STAGES order), every
+// canonical prior forward stage (`STAGES[0..toIdx-1]`) must already carry an
+// `aitm-entered-*` marker in the body. Checking the full prefix — not just the
+// immediately-prior stage — is deliberate: the #251 hole was at `refine`
+// (index 1) and only surfaced during a `plan→develop` move (2→3); an
+// immediately-prior-only check would have inspected `plan` and missed it.
+//
+// Returns one of:
+//   { action: 'skip',  missing: [] }            — not a forward move / offline / unknown stage
+//   { action: 'allow', missing: [] }            — forward move, full prefix present
+//   { action: 'refuse', missing, message }      — forward move, prefix hole, no override
+//   { action: 'bypass', missing, message }      — same hole, but `force` set (audited override)
+//
+// Backward/rework arcs and re-entry all have `toIdx <= fromIdx` and resolve to
+// 'skip', so they are never blocked. An empty/unknown `fromState` (offline,
+// no live board Status) also resolves to 'skip'.
+export function evaluateContiguity({ fromState, toState, body, force = false }) {
+  const fromIdx = STAGE_INDEX[fromState] ?? -1;
+  const toIdx = STAGE_INDEX[toState] ?? -1;
+  if (fromIdx === -1 || toIdx === -1 || toIdx <= fromIdx) {
+    return { action: 'skip', missing: [] };
+  }
+  const missing = [];
+  for (let i = 0; i < toIdx; i++) {
+    if (getStageVisitCount(body || '', STAGES[i]) === 0) missing.push(STAGES[i]);
+  }
+  if (missing.length === 0) return { action: 'allow', missing: [] };
+  const markerList = missing.map((s) => `aitm-entered-${s}`).join(', ');
+  if (force) {
+    return {
+      action: 'bypass',
+      missing,
+      message: `forward move ${fromState} → ${toState} proceeded with missing prior-stage marker(s): ${markerList}`,
+    };
+  }
+  return {
+    action: 'refuse',
+    missing,
+    message: `contiguity-hole — missing prior-stage entry marker(s): ${markerList}. The board shows ${fromState} but the body never recorded entry into: ${missing.join(', ')}`,
+  };
+}
+
 // Hidden marker for re-entry audit comments. One per (stage, visit) pair.
 export const REENTRY_AUDIT_MARKER_RE = /<!--\s*aitm-reentry-audit:\s*([a-z]+)-(\d+)\s*-->/i;
 

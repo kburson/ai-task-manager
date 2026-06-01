@@ -29,6 +29,13 @@ function deepDiveAdequate() {
     '## Pickup Directive',
     '- [x] Deep dive complete',
     '',
+    // A real plan->develop issue carries the full prior entry-marker chain.
+    // The #252 contiguity guard requires it on the forward move, so the
+    // fixture must include it for the approval-gate assertions to be reached.
+    '<!-- aitm-entered-backlog: 2026-05-09T09:00:00Z -->',
+    '<!-- aitm-entered-refine: 2026-05-09T09:30:00Z -->',
+    '<!-- aitm-entered-plan: 2026-05-09T09:45:00Z -->',
+    '',
     '<!-- aitm-deep-dive-complete: 2026-05-09T10:00:00Z -->',
     '',
     '## Deep-Dive Analysis (2026-05-09)',

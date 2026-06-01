@@ -12,6 +12,7 @@ callsite
 callsites
 capitalised
 chokepoint
+contig
 creds
 criticals
 customised
