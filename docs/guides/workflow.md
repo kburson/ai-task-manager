@@ -148,6 +148,23 @@ N+1 cannot start until every Sequence-N sibling reaches Done. The
 parent epic bypass the gate. See [DESIGN.md](../DESIGN.md) for the
 discovered-sub-issue and same-wave-newcomer semantics.
 
+Within a wave, child flow is further constrained:
+
+- **WIP rule** — at most one child advances out of Refine per epic at a time
+  (`planRefineWipGate`, entering Plan). A child _parked_ on a dependency does
+  not count against the budget, and a blocker may run ahead of the parked
+  sibling it unblocks. Override: `TASK_TRACKER_FORCE_PROMOTE=1`.
+- **Dependency representation** — a parked child carries the `BLOCKED` label
+  plus an `aitm-blocked-by: #N[, #M]` body marker.
+- **Dependency-aware JIT selection** — the next child pulled Refine → Plan
+  prefers blockers and excludes any child whose blockers are not all Done. When
+  a blocker reaches Done its dependents are auto-unparked.
+- **Discovered work** may be created and driven Refine → Review (never straight
+  to Done) at any epic state except a Done epic; the `childCreationAllowedAtEpicState`
+  guard refuses new children under a Done parent (override
+  `AITM_SKIP_PARENT_STATE_GATE=1`). Children are no longer required to all reach
+  Refine before the epic may move to Plan — that exit-gate requirement was retired.
+
 ### Backlog vs Refine
 
 Backlog and Refine are not interchangeable — they encode different states of issue readiness:

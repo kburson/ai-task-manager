@@ -54,7 +54,13 @@ required box is unchecked will be refused.
 
 **Child sub-issues may not lead the parent epic in state.** The `promote <child> <target>` verb refuses when the parent epic's state is lower than the child's requested target. The gate is the `child-cannot-lead-epic` invariant.
 
-Same rule applies inside the Refine → Plan exit gate: every epic child must be at `refine` (no `backlog` children) before the epic itself may move to `plan`.
+Children do **not** all have to reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead, children flow through the verb chain under these rules:
+
+- **Discovered work** may be created and driven `refine → review` (never straight to `done`) at any epic state **except a Done epic** — a Done epic must not grow new children. The `childCreationAllowedAtEpicState` guard refuses `--shape sub-issue` creation under a Done parent (override `AITM_SKIP_PARENT_STATE_GATE=1`).
+- **WIP rule:** at most one child advances out of Refine per epic at a time. A child _parked_ on a dependency (carrying an `aitm-blocked-by` body marker) does not count against the budget, and a blocker may run ahead of the parked sibling it unblocks. Enforced by `planRefineWipGate` at the child Refine → Plan transition (override `TASK_TRACKER_FORCE_PROMOTE=1`).
+- **Dependency representation:** a parked child carries the `BLOCKED` label plus an `aitm-blocked-by: #N[, #M]` body marker.
+- **Dependency-aware JIT selection:** the next child pulled Refine → Plan prefers blockers and excludes any child whose blockers are not all `done`.
+- **Done-block unchanged:** a parent epic cannot close until every child is `done`; when a blocker reaches `done`, its dependents are auto-unparked.
 
 Heal-forward override `TASK_TRACKER_FORCE_PROMOTE=1` exists for audited recovery — see [rationale](./references/pickup-directive-rationale.md#sequence-rules-override).
 

@@ -87,7 +87,7 @@ section entirely.
 
 ## Sequence rules
 
-**Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target. The Refine → Plan exit gate enforces the same invariant for epics: every child must be at `refine` (not `backlog`) before the epic itself may move to `plan`. Heal-forward override: `TASK_TRACKER_FORCE_PROMOTE=1` permits a single promote and posts paired `⚠ override used` audit comments on the child and parent. See `templates/pickup-directive.md` ("Sequence rules") for the full rule.
+**Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target (the `child-cannot-lead-epic` invariant). Children are **not** required to all reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead a WIP rule applies: at most one child advances out of Refine per epic at a time (`planRefineWipGate`), where a child parked on a dependency (`aitm-blocked-by` marker) does not count and a blocker may run ahead of the parked sibling it unblocks. Heal-forward override: `TASK_TRACKER_FORCE_PROMOTE=1` permits a single promote and posts paired `⚠ override used` audit comments on the child and parent. See `templates/pickup-directive.md` ("Sequence rules") for the full rule.
 
 ## Checkpoint Pause
 
