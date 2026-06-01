@@ -1,5 +1,5 @@
 {
-  "codeGlobs": ["src/**", "lib/**", "bin/**", "scripts/**", "config/**", ".ai-task-manager/**"],
+  "codeGlobs": ["src/**", "lib/**", "bin/**", "scripts/**", "config/**", ".ai-task-manager/**", "cspell-dictionary.txt"],
   "codeGlobExcludes": [],
   "codeGlobReincludes": [],
   "docGlobs": ["docs/**", ".claude/plans/**", "docs/plans/**", "**/*.md", "CLAUDE.md"],

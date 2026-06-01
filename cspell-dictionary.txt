@@ -88,6 +88,8 @@ Sidechain
 speccing
 statusline
 Statusline
+subfolder
+subfolders
 toggleable
 toplevel
 TOTP
