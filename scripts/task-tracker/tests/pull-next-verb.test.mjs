@@ -21,6 +21,10 @@ function makeDeps({ liveState = 'develop', children = [], promoteResult = { stat
       epicChildren: {
         fetchSiblings: async () => children,
       },
+      // No-op body fetch → no blockers → selection stays pure-sequence (#248).
+      enrich: {
+        fetchBody: async () => '',
+      },
       promote: async (rest) => {
         calls.promotes.push(rest);
         return promoteResult;
@@ -67,6 +71,26 @@ test('runPullNext promotes lowest-sequence refine child', async () => {
   assert.equal(result.childNumber, 103);
   assert.equal(result.childSequence, 3);
   assert.deepEqual(calls.promotes, [['103']]);
+});
+
+test('runPullNext skips a child whose blocker is not Done (#248)', async () => {
+  // #103 (lowest sequence) is blocked by #105, which is still in develop.
+  // Enrichment surfaces that marker, so #104 is pulled instead.
+  const { deps, calls } = makeDeps({
+    children: [
+      { number: 103, state: 'refine', sequence: 3 },
+      { number: 104, state: 'refine', sequence: 4 },
+      { number: 105, state: 'develop', sequence: 5 },
+    ],
+  });
+  deps.enrich = {
+    fetchBody: async ({ issueNumber }) =>
+      issueNumber === 103 ? '<!-- aitm-blocked-by: #105 -->' : '',
+  };
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'pulled');
+  assert.equal(result.childNumber, 104);
+  assert.deepEqual(calls.promotes, [['104']]);
 });
 
 test('runPullNext requires epicNumber and cfg', async () => {

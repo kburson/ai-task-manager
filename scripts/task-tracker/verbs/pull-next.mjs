@@ -14,7 +14,11 @@
 // If the epic is not in `develop`, the verb errors.
 
 import { loadConfig } from '../config.mjs';
-import { fetchEpicChildren, findNextEligibleChild } from '../lib/epic-children-gate.mjs';
+import {
+  fetchEpicChildren,
+  findNextEligibleChild,
+  enrichChildrenWithBlockedBy,
+} from '../lib/epic-children-gate.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { verbPromote } from './promote.mjs';
@@ -79,7 +83,15 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     };
   }
 
-  const next = findNextEligibleChild(children);
+  // Attach each child's `aitm-blocked-by` blockers so selection can skip
+  // children with unmet dependencies and prefer blockers (#248).
+  const enriched = await enrichChildrenWithBlockedBy({
+    children,
+    cfg,
+    deps: deps.enrich,
+  });
+
+  const next = findNextEligibleChild(enriched);
   if (!next) {
     const counts = children.reduce((acc, c) => {
       const s = String(c.state || 'unknown').toLowerCase();

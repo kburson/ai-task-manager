@@ -8,6 +8,7 @@ import {
   fetchEpicChildren,
   planEpicDevelopChildrenGate,
   findNextEligibleChild,
+  enrichChildrenWithBlockedBy,
 } from '../lib/epic-children-gate.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
@@ -138,4 +139,78 @@ test('fetchEpicChildren returns array even when underlying returns non-array', a
   });
   assert.ok(Array.isArray(result));
   assert.equal(result.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// #248 — dependency-aware findNextEligibleChild
+// ---------------------------------------------------------------------------
+
+test('findNextEligibleChild excludes a child whose blocker is not Done', () => {
+  // #6 is blocked by #9 (still in develop, not Done) → must be skipped even
+  // though it has the lower sequence. #7 (unblocked) is chosen instead.
+  const next = findNextEligibleChild([
+    { number: 6, state: 'refine', sequence: 1, blockedBy: [9] },
+    { number: 7, state: 'refine', sequence: 2, blockedBy: [] },
+    { number: 9, state: 'develop', sequence: 0 },
+  ]);
+  assert.equal(next.number, 7);
+});
+
+test('findNextEligibleChild prefers a child that blocks a sibling (blocking-first)', () => {
+  // #8 blocks #6, so #8 sorts ahead of the lower-sequence leaf child #5.
+  const next = findNextEligibleChild([
+    { number: 5, state: 'refine', sequence: 1, blockedBy: [] },
+    { number: 8, state: 'refine', sequence: 3, blockedBy: [] },
+    { number: 6, state: 'refine', sequence: 4, blockedBy: [8] },
+  ]);
+  assert.equal(next.number, 8);
+});
+
+test('findNextEligibleChild keeps sequence-ascending tiebreak among equals', () => {
+  // No blockers anywhere → reduces to lowest-sequence (original behavior).
+  const next = findNextEligibleChild([
+    { number: 5, state: 'refine', sequence: 3, blockedBy: [] },
+    { number: 6, state: 'refine', sequence: 1, blockedBy: [] },
+  ]);
+  assert.equal(next.number, 6);
+});
+
+test('findNextEligibleChild makes a child eligible once its blocker is Done', () => {
+  // #6 blocked by #9; #9 is now Done → #6 becomes selectable (and it blocks
+  // nobody, but it is the only eligible refine child here).
+  const next = findNextEligibleChild([
+    { number: 6, state: 'refine', sequence: 2, blockedBy: [9] },
+    { number: 9, state: 'done', sequence: 1 },
+  ]);
+  assert.equal(next.number, 6);
+});
+
+test('enrichChildrenWithBlockedBy attaches parsed blockedBy per child', async () => {
+  const bodies = {
+    6: 'Scope...\n<!-- aitm-blocked-by: #8, #9 -->\n',
+    7: 'No marker here.',
+  };
+  const enriched = await enrichChildrenWithBlockedBy({
+    children: [
+      { number: 6, state: 'refine', sequence: 1 },
+      { number: 7, state: 'refine', sequence: 2 },
+    ],
+    cfg,
+    deps: { fetchBody: async ({ issueNumber }) => bodies[issueNumber] ?? '' },
+  });
+  assert.deepEqual(enriched[0].blockedBy, [8, 9]);
+  assert.deepEqual(enriched[1].blockedBy, []);
+});
+
+test('enrichChildrenWithBlockedBy treats a fetch failure as no blockers', async () => {
+  const enriched = await enrichChildrenWithBlockedBy({
+    children: [{ number: 6, state: 'refine', sequence: 1 }],
+    cfg,
+    deps: {
+      fetchBody: async () => {
+        throw new Error('network down');
+      },
+    },
+  });
+  assert.deepEqual(enriched[0].blockedBy, []);
 });
