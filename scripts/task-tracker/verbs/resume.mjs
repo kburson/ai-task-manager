@@ -10,6 +10,7 @@ import {
 import { verbSwitch } from './switch.mjs';
 import { verbStart } from './start.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
+import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 
 // `/task resume` writes a canonical `resumed` row on the incoming task,
 // regardless of how it was last paused or switched. The `resumed` row is the
@@ -22,7 +23,7 @@ export async function verbResume(ctx) {
     return;
   }
 
-  const { statePath, projectDir, role, drainQueueIfAny, safePostTiming, nowIso } = ctx;
+  const { cfg, statePath, projectDir, role, drainQueueIfAny, safePostTiming, nowIso } = ctx;
   const s = loadState(statePath);
 
   // If there is an active task different from the resume target, fall back to
@@ -77,6 +78,27 @@ export async function verbResume(ctx) {
   try {
     registerTask(projectDir, target, projectDir, currentBranch(projectDir));
   } catch {}
+  // #251 — seed the per-session `kanbanState` derived cache so the
+  // activity-guard hook can read state synchronously without a network call.
+  // Mirrors verbStart; the resume fresh-bind path previously skipped this,
+  // dead-locking freshly bound sessions (post-compact orchestrators and every
+  // parallel sub-agent) out of all WRITE activity. Best-effort: failures are
+  // swallowed and never block the bind.
+  if (sid && cfg?.repo) {
+    // Seam is injectable for tests; production passes nothing and uses the real
+    // body-marker seed.
+    const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
+    try {
+      await seed({
+        sid,
+        issue: target,
+        projDir: projectDir,
+        repo: cfg.repo,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const row = buildRow({
     ts,
