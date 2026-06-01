@@ -42,10 +42,11 @@ export function getProjectDir(env = process.env, cwd = process.cwd()) {
   return env.AI_TASK_MANAGER_PROJECT_DIR || env.CLAUDE_PROJECT_DIR || cwd;
 }
 
-// Returns a project-local tmp directory, creating it if needed.
-// Keeps all ephemeral files inside the project tree.
+// Returns a project-local scratch directory, creating it if needed.
+// Keeps all ephemeral files inside the gitignored `.tmp/` tree so they never
+// dirty the working tree. (`.gitignore` ignores `.tmp/`, NOT `tmp/`.)
 export function projectTmpDir(projDir) {
-  const dir = path.join(projDir, 'tmp');
+  const dir = path.join(projDir, '.tmp');
   mkdirSync(dir, { recursive: true });
   return dir;
 }
