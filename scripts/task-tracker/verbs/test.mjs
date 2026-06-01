@@ -37,6 +37,11 @@ const pexec = promisify(execFile);
 const SANDBOX_TIMEOUT_MS = 900_000; // 15 min per command — npm test in a fresh worktree runs ~100 files
 const NPM_CI_TIMEOUT_MS = 600_000; // 10 min worst-case fresh install
 const TAIL_LINES = 50;
+// #254 — bounded retry of the sandbox SETUP chain (worktree add / config seed /
+// npm ci). These are infrastructure steps that *throw* on transient failure; the
+// VC loop is deliberately excluded from retry (see runVerbTest) so a genuine red
+// still rolls back on first occurrence.
+const SETUP_MAX_ATTEMPTS = 3;
 
 function tail(text, n = TAIL_LINES) {
   const lines = String(text || '').split('\n');
@@ -162,6 +167,87 @@ function buildResultTable(results, { sha, status, autoTicked = 0 }) {
   return `${header}\n\n${table}\n${tails ? '\n' + tails : ''}`;
 }
 
+// #254 — run a single setup step, re-throwing any failure tagged with the step
+// name, exit code, and a stderr tail so the abort path can record durable
+// diagnostics instead of swallowing them.
+async function runSetupStep(step, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const tagged = err instanceof Error ? err : new Error(String(err));
+    tagged.step = step;
+    tagged.exit = err?.code ?? err?.exitCode ?? err?.status ?? err?.exit ?? null;
+    tagged.stderrTail = tail(err?.stderr || err?.message || String(err));
+    throw tagged;
+  }
+}
+
+// #254 — run the setup chain (createWorktree → seedWt → npmCi) with bounded
+// retry. On a transient throw, remove any partial worktree (so the next
+// `git worktree add` doesn't collide) and retry up to `attempts` times. The
+// last failure's tagged diagnostics are reported via `captureDiag`. Throws the
+// final tagged error once attempts are exhausted.
+async function runSetupWithRetry({
+  attempts,
+  projectDir,
+  wtPath,
+  createWorktree,
+  seedWt,
+  npmCi,
+  removeWorktree,
+  onCreated,
+  captureDiag,
+}) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await runSetupStep('git worktree add', () => createWorktree({ projectDir, path: wtPath }));
+      onCreated();
+      await runSetupStep('config seed', () => seedWt({ projectDir, path: wtPath }));
+      await runSetupStep('npm ci', () => npmCi({ path: wtPath }));
+      return { attempts: attempt };
+    } catch (err) {
+      lastErr = err;
+      captureDiag({
+        step: err.step ?? 'sandbox setup',
+        exit: err.exit ?? null,
+        stderrTail: err.stderrTail ?? '',
+        attempt,
+        attempts,
+      });
+      // Clear any partial worktree before the next attempt so `git worktree add`
+      // doesn't collide on a half-created path.
+      if (existsSync(wtPath)) {
+        await removeWorktree({ projectDir, path: wtPath });
+      }
+      if (attempt >= attempts) break;
+    }
+  }
+  throw lastErr;
+}
+
+// #254 — build the durable `test-aborted` audit comment from tagged setup
+// diagnostics: failing step, exit code, attempt count, and stderr tail.
+function buildAbortComment(diag, err) {
+  return [
+    '> ⚠ test-aborted',
+    '',
+    'Sandbox verification crashed before producing a green/red result. Board demoted back to `develop`.',
+    '',
+    `- **Failed step:** \`${diag.step}\``,
+    `- **Exit code:** \`${diag.exit ?? 'n/a'}\``,
+    `- **Attempts:** ${diag.attempt ?? 1}/${diag.attempts ?? 1}`,
+    '',
+    '**stderr tail:**',
+    '',
+    '```',
+    diag.stderrTail || err?.message || String(err),
+    '```',
+    '',
+    '<!-- aitm-test-aborted -->',
+  ].join('\n');
+}
+
 export async function runVerbTest({
   cfg,
   issueNumber,
@@ -226,6 +312,7 @@ export async function runVerbTest({
   // promote sail through with no `aitm-dod-verified` evidence.
   const results = [];
   let cleanupNeeded = false;
+  let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
   try {
     // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
     // verbReview's preflight can compare outer HEAD at review-time against the
@@ -240,10 +327,27 @@ export async function runVerbTest({
       }
     }
 
-    await createWorktree({ projectDir, path: wtPath });
-    cleanupNeeded = true;
-    await seedWt({ projectDir, path: wtPath });
-    await npmCi({ path: wtPath });
+    // #254 — bounded retry of the setup chain only. A transient throw (registry
+    // blip during `npm ci`, worktree-path contention) is retried up to
+    // SETUP_MAX_ATTEMPTS before the board is rolled back. The VC loop below is
+    // intentionally OUTSIDE this retry: `execInSandbox` returns exit codes
+    // rather than throwing, so a genuine verification red never reaches the
+    // retry and still rolls back on first occurrence via the `allGreen` check.
+    await runSetupWithRetry({
+      attempts: SETUP_MAX_ATTEMPTS,
+      projectDir,
+      wtPath,
+      createWorktree,
+      seedWt,
+      npmCi,
+      removeWorktree,
+      onCreated: () => {
+        cleanupNeeded = true;
+      },
+      captureDiag: (d) => {
+        setupDiag = d;
+      },
+    });
 
     for (const vc of vcs) {
       const validation = validateVerificationCommand(vc.command, { projectDir: wtPath });
@@ -271,22 +375,31 @@ export async function runVerbTest({
     // #210 (Fix A) — sandbox-setup or sandbox-run threw. Roll the board back
     // to `develop` so the lifecycle chain stays honest, post an audit comment
     // for visibility, then re-throw so the caller surfaces a non-zero exit.
+    //
+    // #254 — the audit comment now carries durable diagnostics (failing step,
+    // exit code, stderr tail, attempt count) drawn from the tagged setup
+    // failure, and the post is NOT swallowed: if it fails, surface the failure
+    // on stderr instead of silently dropping it (the prior best-effort `catch
+    // {}` is exactly why #237's abort left no recoverable diagnostics).
+    const diag = setupDiag || {
+      step: err?.step || 'sandbox',
+      exit: err?.exit ?? err?.code ?? null,
+      stderrTail: err?.stderrTail || tail(err?.stderr || err?.message || String(err)),
+      attempt: 1,
+      attempts: 1,
+    };
     try {
       await postComment({
         cfg,
         issueNum,
-        body: [
-          '> ⚠ test-aborted',
-          '',
-          'Sandbox verification crashed before producing a green/red result. Board demoted back to `develop`.',
-          '',
-          `Error: \`${err?.message ?? String(err)}\``,
-          '',
-          '<!-- aitm-test-aborted -->',
-        ].join('\n'),
+        body: buildAbortComment(diag, err),
       });
-    } catch {
-      // audit-only, best-effort
+    } catch (postErr) {
+      // Diagnostics are the whole point of this path — do not swallow a failed
+      // post. Surface it so a GitHub API hiccup during the abort is visible.
+      process.stderr.write(
+        `test: failed to post abort diagnostics for #${issueNum}: ${postErr?.message ?? String(postErr)}\n`
+      );
     }
     if (moveState) {
       try {
