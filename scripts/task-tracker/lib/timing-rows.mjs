@@ -52,6 +52,52 @@ export function formatHMS(sec) {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// Render a non-negative integer second count as the human-readable
+// `Xh Ym Zs` duration form used in timing-log rows: hours are not
+// zero-padded, minutes and seconds are zero-padded to two digits.
+// Examples: 0 -> "0h 00m 00s", 47 -> "0h 00m 47s",
+// 3852 -> "1h 04m 12s", 43380 -> "12h 03m 00s".
+//
+// The companion `parseDurationSeconds` is its exact inverse, so
+// `parseDurationSeconds(formatDurationSeconds(n)) === n` for every
+// non-negative integer n. Throws on non-integer or negative input —
+// this is a storage-format helper and silent coercion would corrupt
+// the round-trip guarantee.
+export function formatDurationSeconds(n) {
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < 0) {
+    throw new RangeError(`formatDurationSeconds expects a non-negative integer, got: ${n}`);
+  }
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = n % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+}
+
+const DURATION_SECONDS_RE = /^(\d+)h (\d{2})m (\d{2})s$/;
+
+// Parse the `Xh Ym Zs` form produced by `formatDurationSeconds` back to
+// an integer second count. Inverse of `formatDurationSeconds`. Throws on
+// any string that does not match the canonical zero-padded form, or whose
+// minutes/seconds fields are out of range (>= 60).
+export function parseDurationSeconds(s) {
+  if (typeof s !== 'string') {
+    throw new TypeError(`parseDurationSeconds expects a string, got: ${typeof s}`);
+  }
+  const match = s.match(DURATION_SECONDS_RE);
+  if (!match) {
+    throw new RangeError(`parseDurationSeconds: malformed duration string: ${JSON.stringify(s)}`);
+  }
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  const sec = Number(match[3]);
+  if (m >= 60 || sec >= 60) {
+    throw new RangeError(
+      `parseDurationSeconds: minutes/seconds out of range: ${JSON.stringify(s)}`
+    );
+  }
+  return h * 3600 + m * 60 + sec;
+}
+
 // Compute elapsed-time delta for a state-move row.
 //
 // Returns { activeSec, idleSec } where activeSec is wall-clock seconds
