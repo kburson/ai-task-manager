@@ -9,6 +9,9 @@ import {
   planEpicDevelopChildrenGate,
   findNextEligibleChild,
   enrichChildrenWithBlockedBy,
+  wipAdvanceDecision,
+  planRefineWipGate,
+  childCreationAllowedAtEpicState,
 } from '../lib/epic-children-gate.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
@@ -213,4 +216,115 @@ test('enrichChildrenWithBlockedBy treats a fetch failure as no blockers', async 
     },
   });
   assert.deepEqual(enriched[0].blockedBy, []);
+});
+
+// ---------------------------------------------------------------------------
+// #247 — Refine→Plan WIP budget (wipAdvanceDecision)
+// ---------------------------------------------------------------------------
+
+test('wipAdvanceDecision: allows first child out of Refine (no advancing sibling)', () => {
+  const children = [
+    { number: 10, state: 'refine', blockedBy: [] },
+    { number: 11, state: 'refine', blockedBy: [] },
+  ];
+  const d = wipAdvanceDecision({ promotingNumber: 10, children });
+  assert.equal(d.ok, true);
+  assert.deepEqual(d.advancing, []);
+});
+
+test('wipAdvanceDecision: refuses a second child while one already advances', () => {
+  const children = [
+    { number: 10, state: 'develop', blockedBy: [] }, // already advancing
+    { number: 11, state: 'refine', blockedBy: [] }, // wants to advance
+  ];
+  const d = wipAdvanceDecision({ promotingNumber: 11, children });
+  assert.equal(d.ok, false);
+  assert.deepEqual(d.advancing, [10]);
+});
+
+test('wipAdvanceDecision: blocker-exception lets a blocker run ahead of its parked sibling', () => {
+  // 10 is unparked and advancing (would normally refuse a second advance), but
+  // 12 is parked out of Refine waiting on the promoting child 11 — so 11 is
+  // admitted under the blocker-exception so it can clear 12's park.
+  const children = [
+    { number: 10, state: 'develop', blockedBy: [] }, // unparked, advancing
+    { number: 12, state: 'develop', blockedBy: [11] }, // parked, blocked by the promoting child
+    { number: 11, state: 'refine', blockedBy: [] }, // the blocker, wants to advance
+  ];
+  const d = wipAdvanceDecision({ promotingNumber: 11, children });
+  assert.equal(d.ok, true);
+  assert.match(d.reason, /exception/);
+});
+
+test('wipAdvanceDecision: a parked out-of-Refine sibling does not count against the budget', () => {
+  const children = [
+    { number: 10, state: 'develop', blockedBy: [99] }, // parked on an unrelated blocker
+    { number: 11, state: 'refine', blockedBy: [] },
+  ];
+  const d = wipAdvanceDecision({ promotingNumber: 11, children });
+  assert.equal(d.ok, true);
+  assert.deepEqual(d.advancing, []);
+});
+
+test('wipAdvanceDecision: Done siblings never count as advancing', () => {
+  const children = [
+    { number: 10, state: 'done', blockedBy: [] },
+    { number: 11, state: 'refine', blockedBy: [] },
+  ];
+  const d = wipAdvanceDecision({ promotingNumber: 11, children });
+  assert.equal(d.ok, true);
+});
+
+test('planRefineWipGate: solo issue (no parent) bypasses', async () => {
+  const r = await planRefineWipGate({
+    cfg,
+    issueNumber: 11,
+    deps: { fetchParentIssue: async () => null },
+  });
+  assert.equal(r.ok, true);
+});
+
+test('planRefineWipGate: refuses when an epic sibling already advances', async () => {
+  const r = await planRefineWipGate({
+    cfg,
+    issueNumber: 11,
+    deps: {
+      fetchParentIssue: async () => 5,
+      fetchSiblings: async () => [
+        { number: 10, state: 'develop' },
+        { number: 11, state: 'refine' },
+      ],
+      fetchBody: async () => '', // no blockers anywhere
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.blockers[0], /wip-budget-exceeded/);
+});
+
+test('planRefineWipGate: fails open when sibling fetch throws', async () => {
+  const r = await planRefineWipGate({
+    cfg,
+    issueNumber: 11,
+    deps: {
+      fetchParentIssue: async () => 5,
+      fetchSiblings: async () => {
+        throw new Error('network down');
+      },
+    },
+  });
+  assert.equal(r.ok, true);
+});
+
+// ---------------------------------------------------------------------------
+// #247 — childCreationAllowedAtEpicState (AC4)
+// ---------------------------------------------------------------------------
+
+test('childCreationAllowedAtEpicState: true for every state except done', () => {
+  for (const s of ['backlog', 'refine', 'plan', 'develop', 'test', 'review']) {
+    assert.equal(childCreationAllowedAtEpicState(s), true, `expected ${s} to allow`);
+  }
+  assert.equal(childCreationAllowedAtEpicState('done'), false);
+  assert.equal(childCreationAllowedAtEpicState('DONE'), false);
+  assert.equal(childCreationAllowedAtEpicState(undefined), false);
+  assert.equal(childCreationAllowedAtEpicState(''), false);
 });

@@ -245,3 +245,108 @@ test('--no-tether: skips tether step entirely', () => {
   // gh issue create must still have been called
   assert.match(readLines(ctx.ghCallsLog)[0] ?? '', /issue create/);
 });
+
+// #247 — a Done epic must not grow new children. The parent-state gate fires
+// before body materialization, so the sub-issue is never created.
+test('--shape sub-issue: refuses creation under a Done parent epic', () => {
+  // Fake gh returns a project Status of "Done" for the parent epic's graphql
+  // query, and would echo a created-issue URL if creation were (wrongly) reached.
+  const doneParentGh = `
+if [[ "$1" == "api" && "$2" == "graphql" ]]; then
+  cat >/dev/null
+  echo '{"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"id":"PVT_TEST"},"fieldValues":{"nodes":[{"name":"Done","field":{"name":"Status"}}]}}]}}}}}'
+  exit 0
+fi
+if [[ "$1 $2" == "issue create" ]]; then
+  echo "https://github.com/kburson/ai-task-manager/issues/9999"
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 1
+`;
+  const ctx = setup({ ghCreateOverride: doneParentGh });
+
+  const result = spawnSync(
+    'node',
+    [
+      script,
+      '--title',
+      'child',
+      '--shape',
+      'sub-issue',
+      '--scope-file',
+      join(ctx.temp, 'scope.md'),
+      '--ac-file',
+      join(ctx.temp, 'ac.md'),
+      '--plan-metadata-file',
+      join(ctx.temp, 'plan.md'),
+      '--parent',
+      '5',
+    ],
+    {
+      encoding: 'utf8',
+      cwd: ctx.temp,
+      env: {
+        ...process.env,
+        PATH: `${ctx.binDir}:${process.env.PATH}`,
+        CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
+      },
+    }
+  );
+
+  assert.equal(result.status, 2, `expected exit 2, got ${result.status}\n${result.stderr}`);
+  assert.match(result.stderr, /epic is at "done"/i);
+  // Creation must NOT have happened.
+  assert.equal(
+    readLines(ctx.ghCallsLog).some((l) => /issue create/.test(l)),
+    false,
+    'gh issue create must NOT run when the parent epic is Done'
+  );
+});
+
+// #247 — the gate can be overridden for legitimate internal/testing use.
+test('--shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check', () => {
+  const doneParentGh = `
+if [[ "$1" == "api" && "$2" == "graphql" ]]; then
+  cat >/dev/null
+  echo '{"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"id":"PVT_TEST"},"fieldValues":{"nodes":[{"name":"Done","field":{"name":"Status"}}]}}]}}}}}'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 1
+`;
+  const ctx = setup({ ghCreateOverride: doneParentGh });
+  // With the gate bypassed, execution proceeds to body materialization; we stop
+  // there by pointing --scope-file at a missing path so preflight fails (exit
+  // != 2). The point is only that the refusal message does NOT appear.
+  const result = spawnSync(
+    'node',
+    [
+      script,
+      '--title',
+      'child',
+      '--shape',
+      'sub-issue',
+      '--scope-file',
+      join(ctx.temp, 'missing-scope.md'),
+      '--ac-file',
+      join(ctx.temp, 'missing-ac.md'),
+      '--plan-metadata-file',
+      join(ctx.temp, 'missing-plan.md'),
+      '--parent',
+      '5',
+    ],
+    {
+      encoding: 'utf8',
+      cwd: ctx.temp,
+      env: {
+        ...process.env,
+        PATH: `${ctx.binDir}:${process.env.PATH}`,
+        CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
+        AITM_SKIP_PARENT_STATE_GATE: '1',
+      },
+    }
+  );
+
+  assert.doesNotMatch(result.stderr, /epic is at "done"/i);
+});

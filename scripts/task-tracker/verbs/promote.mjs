@@ -40,7 +40,7 @@ import {
   planPriorityGate,
 } from '../lib/apply-refinement-estimate.mjs';
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
-import { planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
+import { planEpicDevelopChildrenGate, planRefineWipGate } from '../lib/epic-children-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { postOverrideAuditComment } from '../lib/override-audit.mjs';
@@ -296,6 +296,28 @@ export async function runPromote({
         blockers: exitResult.blockers,
         message: `Refusing to promote #${issueNumber} to Plan: Refine exit gate failed.`,
       };
+    }
+
+    // #247 — Refine → Plan WIP budget: at most one child may advance out of
+    // Refine per epic (parked-on-dependency children excepted, and a blocker may
+    // run ahead of the sibling it unblocks). Solo issues bypass; fetch failure
+    // fails open. Override: TASK_TRACKER_FORCE_PROMOTE=1.
+    if (process.env.TASK_TRACKER_FORCE_PROMOTE !== '1') {
+      const wipResult = await planRefineWipGate({
+        cfg,
+        issueNumber,
+        deps: {
+          fetchParentIssue: deps.fetchParentIssue || defaultFetchParentIssue,
+          ...(deps.epicChildren || {}),
+        },
+      });
+      if (!wipResult.ok) {
+        return {
+          status: 'wip-budget-refused',
+          blockers: wipResult.blockers,
+          message: `Refusing to promote #${issueNumber} to Plan: epic WIP budget exceeded.`,
+        };
+      }
     }
   }
 

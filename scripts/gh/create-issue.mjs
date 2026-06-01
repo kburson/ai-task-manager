@@ -12,6 +12,8 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
+import { readParentStatus } from './lib/parent-status.mjs';
+import { childCreationAllowedAtEpicState } from '../task-tracker/lib/epic-children-gate.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -239,7 +241,7 @@ function enforcePriorityGate(args) {
   }
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   validateArgs(args);
 
@@ -254,6 +256,37 @@ function main() {
       );
     }
     if (!cfg.repo) die('no repo in task-tracker.json — run /task init', 2);
+  }
+
+  // #247 — A Done epic must not grow new children (it would have to reopen).
+  // Refuse `--shape sub-issue` creation when the parent epic is at `done`. Skip
+  // for dry-runs and when no project board is configured (status is unknowable).
+  // Override for legitimate internal/testing use: AITM_SKIP_PARENT_STATE_GATE=1.
+  if (
+    args.shape === 'sub-issue' &&
+    !dryRun &&
+    cfg.projectId &&
+    typeof args.parent === 'string' &&
+    process.env.AITM_SKIP_PARENT_STATE_GATE !== '1'
+  ) {
+    let parentState = null;
+    try {
+      parentState = await readParentStatus({
+        parentEpicNumber: Number(args.parent),
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+      });
+    } catch {
+      parentState = null; // fail open — a transient read error must not block creation
+    }
+    if (parentState != null && !childCreationAllowedAtEpicState(parentState)) {
+      die(
+        `refusing to create sub-issue under epic #${args.parent}: epic is at "${parentState}". ` +
+          `A Done epic must not grow new children — reopen it first, or override with ` +
+          `AITM_SKIP_PARENT_STATE_GATE=1.`,
+        2
+      );
+    }
   }
 
   const assignee = dryRun
@@ -338,9 +371,7 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (err) {
+main().catch((err) => {
   console.error(`create-issue: ${err.message}`);
   process.exit(1);
-}
+});

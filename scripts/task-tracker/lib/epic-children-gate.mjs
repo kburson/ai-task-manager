@@ -111,6 +111,129 @@ export function findNextEligibleChild(children = []) {
   return eligible[0] || null;
 }
 
+// States that count as "out of Refine but not yet Done" — a child occupying one
+// of these is actively advancing through the verb chain.
+const OUT_OF_REFINE_ACTIVE = new Set(['plan', 'develop', 'test', 'review']);
+
+// A child is "parked" when it carries at least one unmet blocker
+// (`aitm-blocked-by`), attached as `blockedBy` by enrichChildrenWithBlockedBy.
+function isParked(child) {
+  return childBlockers(child).length > 0;
+}
+
+/**
+ * WIP-budget decision for a child leaving Refine (Refine→Plan).
+ *
+ * The budget is **one advancing child**: a child may leave Refine iff no other
+ * non-Done child is already out of Refine, OR the promoting child is a blocker
+ * of a now-parked out-of-Refine sibling (so the blocker can run ahead and clear
+ * the park). Parked children (carrying an unmet `aitm-blocked-by`) never count
+ * against the budget.
+ *
+ * Pure: reads each child's `state` and optional `blockedBy` (number[]).
+ *
+ * @param {object} opts
+ * @param {number} opts.promotingNumber  the child being promoted out of Refine
+ * @param {Array<{number:number, state?:string, blockedBy?:number[]}>} opts.children
+ *   the full sibling set (may include the promoting child).
+ * @returns {{ok:boolean, reason:string, advancing:number[]}}
+ */
+export function wipAdvanceDecision({ promotingNumber, children = [] } = {}) {
+  const me = Number(promotingNumber);
+  const others = (children || []).filter((c) => Number(c.number) !== me);
+
+  // Advancing = out-of-refine, not Done, not parked.
+  const advancing = others
+    .filter((c) => OUT_OF_REFINE_ACTIVE.has(String(c.state || '').toLowerCase()))
+    .filter((c) => !isParked(c));
+
+  if (advancing.length === 0) {
+    return { ok: true, reason: 'no advancing sibling', advancing: [] };
+  }
+
+  // Blocker-exception: the promoting child unblocks a parked, out-of-refine
+  // sibling.
+  const parkedOutOfRefine = others.filter(
+    (c) => OUT_OF_REFINE_ACTIVE.has(String(c.state || '').toLowerCase()) && isParked(c)
+  );
+  const unblocksParked = parkedOutOfRefine.some((c) => childBlockers(c).includes(me));
+
+  const advancingNums = advancing.map((c) => Number(c.number));
+  if (unblocksParked) {
+    return {
+      ok: true,
+      reason: `blocker-exception: #${me} unblocks a parked out-of-Refine sibling`,
+      advancing: advancingNums,
+    };
+  }
+  return {
+    ok: false,
+    reason: `wip-budget: ${advancingNums.map((n) => `#${n}`).join(', ')} already out of Refine`,
+    advancing: advancingNums,
+  };
+}
+
+/**
+ * Network wrapper for the WIP gate, called from the promote verb at Refine→Plan.
+ * Solo issues (no parent epic) bypass. Fails open on any fetch error so a
+ * transient GitHub failure never deadlocks the board.
+ *
+ * @returns {Promise<{ok:boolean, blockers?:string[]}>}
+ */
+export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
+  if (!cfg) throw new Error('planRefineWipGate: cfg is required');
+  if (!issueNumber) throw new Error('planRefineWipGate: issueNumber is required');
+  const me = Number(String(issueNumber).replace(/^#/, ''));
+
+  let parentEpicNumber = null;
+  try {
+    const fetchParent = deps.fetchParentIssue;
+    parentEpicNumber = fetchParent ? await fetchParent({ issueNumber: me, repo: cfg.repo }) : null;
+  } catch {
+    return { ok: true }; // fail open
+  }
+  if (parentEpicNumber == null) return { ok: true }; // solo issue — bypass
+
+  let children;
+  try {
+    children = await fetchEpicChildren({ cfg, parentEpicNumber, deps });
+    children = await enrichChildrenWithBlockedBy({ children, cfg, deps });
+  } catch {
+    return { ok: true }; // fail open
+  }
+
+  const decision = wipAdvanceDecision({ promotingNumber: me, children });
+  if (decision.ok) return { ok: true };
+  return {
+    ok: false,
+    blockers: [
+      `wip-budget-exceeded: ${decision.reason}. Finish or park the advancing sibling first, or make #${me} its blocker. Override: TASK_TRACKER_FORCE_PROMOTE=1`,
+    ],
+  };
+}
+
+// Epic states at which new sub-issues may be created. A Done epic must not grow
+// new children (it would have to reopen). Backlog/Refine/Plan/Develop/Test/
+// Review all admit children; Done refuses.
+const CHILD_CREATION_EPIC_STATES = new Set([
+  'backlog',
+  'refine',
+  'plan',
+  'develop',
+  'test',
+  'review',
+]);
+
+/**
+ * Whether a sub-issue may be created under an epic at the given board state.
+ * @param {string} state epic board state
+ * @returns {boolean} true for backlog/refine/plan/develop/test/review; false for
+ *   done (or any unrecognized state).
+ */
+export function childCreationAllowedAtEpicState(state) {
+  return CHILD_CREATION_EPIC_STATES.has(String(state || '').toLowerCase());
+}
+
 // Default per-child body fetch (used by enrichChildrenWithBlockedBy). Returns
 // the issue body text, or '' on any failure (treated as no blockers).
 async function defaultFetchBody({ issueNumber, cfg }) {
