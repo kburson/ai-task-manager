@@ -739,6 +739,29 @@ const __mutationBlock = async () => {
     }
   }
 
+  // #249 — Auto-unpark dependents. When the move lands at `done`, release any
+  // sibling whose `aitm-blocked-by` marker references this issue: strip the ref
+  // (and, on a full clear, drop the BLOCKED label) via child (b)'s marker API.
+  // Best-effort — failures are surfaced, never block the committed board move.
+  if (stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1') {
+    try {
+      const { unparkDependents } = await import('../task-tracker/lib/unpark-dependents.mjs');
+      const released = await unparkDependents({ doneIssueNumber: Number(issueArg), cfg });
+      const cleared = released.filter((r) => r.cleared);
+      const errored = released.filter((r) => r.error);
+      if (cleared.length) {
+        const summary = cleared.map((r) => `#${r.issue}(${r.cleared})`).join(', ');
+        process.stderr.write(`[unpark] #${issueArg}: released ${summary}\n`);
+      }
+      for (const r of errored) {
+        process.stderr.write(`[unpark] #${issueArg}: ${r.issue ?? '?'} failed: ${r.error}\n`);
+      }
+    } catch (err) {
+      // surface, do not block — board move is committed
+      process.stderr.write(`[unpark] #${issueArg}: enforcement failed: ${err.message}\n`);
+    }
+  }
+
   // Out-of-band audit trail: visible comment + timing-log row. Best-effort —
   // failures do not roll back the board move.
   if (outOfBandReason && !SKIP_NETWORK) {
