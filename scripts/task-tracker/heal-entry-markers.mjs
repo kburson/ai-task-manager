@@ -45,7 +45,13 @@ import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
-const HEALABLE_STAGES = ['refine', 'plan', 'develop', 'test', 'review'];
+// `backlog` (STAGES[0]) is healable as of #253. The #252 contiguity guard checks
+// the full prior-stage prefix (STAGES[0..toIdx-1]) on every forward move past Refine,
+// so `aitm-entered-backlog` is now a required marker. Issues created before
+// create-issue.mjs stamped the initial-state marker (e.g. #237, #230) lack it; the
+// case-(a) backfill (marker missing AND a later-indexed stage marker present) repairs
+// them. safeBackfillTs already handles stageIdx 0 (lowerMs falls back to createdAt).
+const HEALABLE_STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review'];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 
 function parseArgs(argv) {
