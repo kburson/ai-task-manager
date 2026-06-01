@@ -26,6 +26,7 @@ import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
+import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -137,13 +138,17 @@ async function defaultPostComment({ cfg, issueNum, body }) {
   });
 }
 
-function buildResultTable(results, { sha, status }) {
+function buildResultTable(results, { sha, status, autoTicked = 0 }) {
   const rows = results.map((r) => {
     const mark = r.passed ? '✓' : r.rejected ? '⚠' : '✗';
     return `| ${mark} | \`${r.command}\` | exit ${r.exit ?? 'n/a'} |`;
   });
   const header = `## ${status === 'green' ? '✓ Sandboxed verification passed' : '✗ Sandboxed verification failed'}\n\nHEAD: \`${shortSha(sha)}\``;
-  const table = ['| | Command | Result |', '|---|---|---|', ...rows].join('\n');
+  const ticked =
+    status === 'green' && autoTicked > 0
+      ? `\n\n_Auto-ticked ${autoTicked} command-backed checkbox${autoTicked === 1 ? '' : 'es'} from passing evidence (#255)._`
+      : '';
+  const table = ['| | Command | Result |', '|---|---|---|', ...rows].join('\n') + ticked;
   const tails = results
     .filter((r) => !r.passed)
     .map(
@@ -321,13 +326,24 @@ export async function runVerbTest({
     if (latestIdx < testIdx) {
       stamped = stampEntryMarker(stamped, 'test', ts);
     }
+    // #255 — auto-tick the boxes we have direct command evidence for: every
+    // passing `## Verification Commands` entry and any Functional DoD item
+    // whose `aitm-verified-by` command(s) all passed. Judgment items (no
+    // command marker) and the Lifecycle section are left untouched. Reached
+    // only on the green path, so a red result ticks nothing.
+    const autoTick = autoTickVerified(stamped, results);
+    stamped = autoTick.body;
     if (stamped !== body) {
       await writeBody({ cfg, issueNum, body: stamped, projectDir });
     }
     await postComment({
       cfg,
       issueNum,
-      body: buildResultTable(results, { sha, status: 'green' }),
+      body: buildResultTable(results, {
+        sha,
+        status: 'green',
+        autoTicked: autoTick.tickedVc.length + autoTick.tickedFunctional.length,
+      }),
     });
     if (logIssueTime) await logIssueTime(issueNum);
     return { status: 'passed', sha, ts, results, wtPath, target: 'test' };
