@@ -52,6 +52,7 @@ import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { hasDodVerifiedMarker } from '../lib/markers.mjs';
+import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -400,6 +401,29 @@ export async function runPromote({
         message: `Refusing to promote #${issueNumber} to Review: sandbox proof (aitm-dod-verified) is missing.`,
       };
     }
+
+    // #257 — completeness gate at Test → Review. An incomplete story must not
+    // enter Review and be presented for review → done approval. `promote` from
+    // `test` is a DIRECT moveState (no alias verb), so it bypasses verbReview's
+    // own completeness gate — this is the same bypass that motivated the
+    // duplicated dod-verified check above. Reuse the EXACT close-gate scanner
+    // here so the identical standard applies whether Review is reached via
+    // `/task review` or `/task promote` (single source of truth). Lifecycle +
+    // close-owned items and fenced examples are already excluded by the scanner;
+    // CODE_COMPLETE (develop → test) has already ticked every functional AC, so
+    // anything still unticked here is a genuine, non-lifecycle gap.
+    const stillUnticked = uncheckedPreCloseCheckboxes(body);
+    if (stillUnticked.length > 0) {
+      return {
+        status: 'completeness-refused',
+        blockers: stillUnticked.map(
+          (line) => `test-to-review-incomplete: ${line} (the close gate enforces the same set)`
+        ),
+        message:
+          `Refusing to promote #${issueNumber} to Review: ${stillUnticked.length} incomplete ` +
+          'checkbox(es) — tick every item before promoting (a story cannot enter Review incomplete).',
+      };
+    }
   }
 
   // #162 — child-cannot-lead-epic gate. Runs on every forward transition.
@@ -740,7 +764,8 @@ export async function verbPromote(rest, cfg) {
     case 'epic-children-refused':
     case 'parent-admission-refused':
     case 'code-complete-refused':
-    case 'dod-verified-missing': {
+    case 'dod-verified-missing':
+    case 'completeness-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
       process.stderr.write('\n');

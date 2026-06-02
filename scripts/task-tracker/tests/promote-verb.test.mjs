@@ -354,6 +354,43 @@ test('promote: test→review refused when aitm-dod-verified marker is missing (#
   assert.equal(calls.moves.length, 0, 'no move-state call when gate refuses');
 });
 
+test('promote: test→review REFUSED when a non-lifecycle checkbox is still unticked (#257)', async () => {
+  // The defect: `/task promote` test→review is a DIRECT move that bypasses
+  // verbReview, so verbReview's completeness gate never ran on this path. The
+  // gate now lives in promote's preflight and reuses the close-gate scanner.
+  const body =
+    bodyWithState('test') +
+    '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n' +
+    '\n## Acceptance Criteria\n- [x] Functional AC ticked at CODE_COMPLETE\n' +
+    '- [ ] A manual checklist item nobody ticked\n';
+  const { deps, calls } = makeDeps({ body, live: 'test' });
+  const r = await runPromote({ issueNumber: 2571, cfg, deps });
+  assert.equal(r.status, 'completeness-refused');
+  assert.ok(
+    r.blockers.some((b) => b.startsWith('test-to-review-incomplete')),
+    'blocker must name the incomplete-checkbox gate'
+  );
+  assert.ok(
+    r.blockers.some((b) => /A manual checklist item nobody ticked/.test(b)),
+    'blocker must surface the offending checkbox label'
+  );
+  assert.equal(calls.moves.length, 0, 'no move-state call when completeness gate refuses');
+  assert.equal(calls.spawns.length, 0);
+});
+
+test('promote: test→review ALLOWED when dod-verified present and every checkbox ticked (#257)', async () => {
+  const body =
+    bodyWithState('test') +
+    '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n' +
+    '\n## Acceptance Criteria\n- [x] First AC\n- [x] Second AC\n';
+  const { deps, calls } = makeDeps({ body, live: 'test' });
+  const r = await runPromote({ issueNumber: 2572, cfg, deps });
+  assert.equal(r.status, 'promoted');
+  assert.equal(r.to, 'review');
+  assert.equal(r.via, 'direct');
+  assert.deepEqual(calls.moves, [{ issueNumber: 2572, target: 'review' }]);
+});
+
 test('promote: review→done delegates to /task close', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('review'), live: 'review' });
   const r = await runPromote({ issueNumber: 104, cfg, deps });
