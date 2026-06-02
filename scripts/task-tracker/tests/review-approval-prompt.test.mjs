@@ -680,4 +680,69 @@ async function run(sandbox, binDir, args) {
   }
 }
 
+// ─── Test 8: #257 — completeness gate refuses an unticked manual checkbox ────
+// Everything review can auto-tick IS ticked (the `node --version` VC), but a
+// manual non-lifecycle item remains unticked. The post-auto-tick completeness
+// gate (uncheckedPreCloseCheckboxes parity with the close gate) must refuse the
+// move into Review and emit NO review-approval prompt.
+{
+  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-8-'));
+  try {
+    writeConfig(sandbox);
+    writeFileSync(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
+        active: '#108',
+        lastActive: '#108',
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+      })
+    );
+    const fixtureBody = [
+      '## Pickup Directive',
+      '- [x] Deep dive complete',
+      '- [ ] Manual reviewer signoff obtained',
+      '',
+      '## Deep-Dive Analysis (2026-05-10)',
+      '',
+      ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
+      '',
+      '### Verification Commands',
+      '',
+      '- [ ] `node --version`',
+      '',
+      DOD_VERIFIED_MARKER,
+      '',
+      '<!-- ai-task-manager:fields:start -->',
+      '<!-- ai-task-manager:fields:end -->',
+    ].join('\n');
+    const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: fixtureBody,
+      stateOptionId: OPT_REVIEW,
+      recordedBodyPath,
+    });
+    const r = await run(sandbox, binDir, ['review', '#108']);
+    assert.notEqual(r.code, 0, 'review must refuse when a manual checkbox is unticked');
+    assert.match(
+      r.stderr,
+      /Refusing to move #108 to Review/,
+      `expected completeness refusal; stderr:\n${r.stderr}`
+    );
+    assert.match(
+      r.stderr,
+      /Manual reviewer signoff obtained/,
+      `expected the unticked item named; stderr:\n${r.stderr}`
+    );
+    assert.doesNotMatch(
+      r.stdout,
+      /PROMPT_REQUIRED: review-approval/,
+      `marker must NOT be emitted when refused; stdout:\n${r.stdout}`
+    );
+    console.log('test 8 passed: completeness gate refuses an unticked manual checkbox');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
 console.log('review-approval-prompt.test.mjs: all passed');

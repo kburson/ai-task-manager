@@ -459,6 +459,43 @@ export async function verbReview(ctx) {
         process.exit(3);
       }
     }
+    // #257 — completeness gate at test → review. After auto-ticking every
+    // command/evidence-backed item above, reuse the EXACT close-gate scanner so
+    // an incomplete story cannot enter Review and be presented for
+    // review → done approval. `uncheckedPreCloseCheckboxes` already excludes
+    // Lifecycle + close-owned items and strips fenced examples, giving exact
+    // parity with the close gate (single source of truth across both paths).
+    // On any remaining unticked item: refuse, leave the board in Test, emit no
+    // `review-approval` prompt.
+    const { uncheckedPreCloseCheckboxes } = await import('../close-gate.mjs');
+    const stillUnticked = uncheckedPreCloseCheckboxes(lines.join('\n'));
+    if (stillUnticked.length > 0) {
+      const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
+      const _tsR0 = nowIso();
+      const _dR0 = deriveStateMoveDelta(rawBody, _tsR0);
+      await safePostTiming(
+        target,
+        br0({
+          ts: _tsR0,
+          event: 'gate-refused',
+          activeSec: _dR0.activeSec,
+          idleSec: _dR0.idleSec,
+          deltaWords: 0,
+          // wordMarker:0 audit row — completeness gate refusal, no live session
+          wordMarker: 0,
+          description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
+        })
+      );
+      process.stderr.write('\n');
+      process.stderr.write(
+        `⛔ Refusing to move ${target} to Review — ${stillUnticked.length} incomplete checkbox(es):\n`
+      );
+      for (const line of stillUnticked) process.stderr.write(`   ${line}\n`);
+      process.stderr.write(
+        '\nTick every item above (the close gate enforces the same set), then retry `/task review`.\n\n'
+      );
+      process.exit(4);
+    }
     await runMoveState(target, 'review', { silent: true });
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
