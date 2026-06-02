@@ -127,7 +127,7 @@ The fundamental unit is a _task session_: Claude is working on one GitHub issue 
 ...work for an hour...
 /task update       → checkpoint — flush timing, reset counters, keep task active
 ...work more...
-/task close        → done — move card to Done, write Engaged Time + Session Time + Context Length to board
+/task close        → done — move card to Done, write Engaged Time + Session Time to board
 ```
 
 ### Commands
@@ -144,7 +144,7 @@ The fundamental unit is a _task session_: Claude is working on one GitHub issue 
 | `/task update [msg]`                    | Checkpoint — flush and reset counters, keep task active                                                           |
 | `/task close`                           | Hard-stop — flush, update board fields, move to Done                                                              |
 | `TASK_TRACKER_FORCE_DONE=1 /task close` | Audited bypass for legitimate abandonment — posts an audit comment to the issue. Do not use to skip verification. |
-| `/task log #N`                          | Re-compute and write Engaged Time, Session Time, and Context Length for any issue                                 |
+| `/task log #N`                          | Re-compute and write Engaged Time and Session Time for any issue                                                  |
 | `/task migrate`                         | Select/configure a project, import repo issues, heal field DBs, and sync project fields                           |
 | `/task check "<label>"`                 | Toggle a checkbox in the active issue body (exact label match)                                                    |
 | `/task fleet`                           | Show all active tasks across parallel agent worktrees                                                             |
@@ -174,7 +174,6 @@ When you switch tasks or close an issue, the skill updates your board automatica
 
 - **Kanban state** → moves the card through the 7-state workflow (Backlog → Refine → Plan → Develop → Test → Review → Done)
 - **Engaged Time / Session Time** → measured minutes used by reports and board filters
-- **Context Length** → total context words across all sessions
 - **Sequence** → the issue's position in the fan-out order
 - **Start date / End date** → set automatically when work moves into active development or Done
 
@@ -455,7 +454,7 @@ npx github-project-report --html --region sf_bay --role senior
 
 The report answers: **what did it actually cost to ship this, versus what would it have cost without AI?**
 
-It reads three fields from your board — `Estimate` (pre-work hours), `Session Time` (measured minutes), and `Context Length` (chat words) — and builds a multi-section, print-optimized PDF or HTML document:
+It reads two fields from your board — `Estimate` (pre-work hours) and `Session Time` (measured minutes) — plus chat words supplied via the `--chat-words` flag, and builds a multi-section, print-optimized PDF or HTML document:
 
 **Page 1 — Executive Summary**
 A branded header (title, generated date, region, project/repo/filters) followed by a plain-English summary of the report's structure and methodology — designed as a clean cover page for stakeholder distribution.

@@ -16,7 +16,7 @@
  *     [--region national]          region ID from regional-rates.json
  *     [--output ./report]          output base path (no extension)
  *     [--html]                     skip PDF, emit HTML only
- *     [--chat-words N]             additional context words not yet in any issue's Context Length field
+ *     [--chat-words N]             reader-visible chat context words feeding the reading-time / leverage aggregate
  *     [--from YYYY-MM-DD]          only issues closed on or after this date
  *     [--to   YYYY-MM-DD]          only issues closed on or before this date
  *     [--state open|closed|all]    filter by GitHub issue state (default: all)
@@ -32,11 +32,12 @@
 //
 // Measured fields read from GitHub Projects:
 //   "Session Time"        — minutes of active AI-assisted session time
-//   "Context Length"       — words of *reader-visible* chat context
-//                            (text actually rendered in the chat window).
-//                            EXCLUDES system-reminders, skill bodies,
-//                            slash-command scaffolding, tool results, hook
-//                            injections, and other non-rendered payload.
+//
+// Context words (words of *reader-visible* chat context — text actually
+// rendered in the chat window, EXCLUDING system-reminders, skill bodies,
+// slash-command scaffolding, tool results, and hook injections) are no longer
+// read from a board field. The "Context Length" board field was retired (#260);
+// supply context words via the --chat-words flag instead.
 //
 // Calculated:
 //   Engaged Hours = (session_minutes / 60) + (context_words / reading_wpm / 60)
@@ -219,7 +220,10 @@ function processItems(raw) {
         ...parseStartInfo(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
         sessionMin:   f['Session Time'] ?? f['Actual Session Time'] ?? null,
-        contextWords: f['Context Length']      ?? null,
+        // The board "Context Length" field was retired (#260). Per-item context
+        // words are no longer sourced from the board; the report's reading-time /
+        // leverage aggregate is fed by the --chat-words flag instead.
+        contextWords: null,
         status:       f['Status']              ?? null,
         parentNumber: n.content.parent?.number ?? null,
       };
@@ -972,7 +976,7 @@ async function main() {
   const items = processItems(raw);
 
   if (items.length === 0) {
-    console.error('No items found with Estimate, Session Time, or Context Length set on the board.');
+    console.error('No items found with Estimate or Session Time set on the board.');
     process.exit(1);
   }
 

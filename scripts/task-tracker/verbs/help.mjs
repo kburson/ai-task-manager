@@ -23,7 +23,7 @@ Task Tracker — available commands
                             Audit AC evidence markers and Verification Commands
   /task evidence-markers backfill #N --map-file mappings.json [--dry-run]
                             Add explicit AC evidence markers from a reviewed mapping
-  /task log #N              Re-compute and write Engaged/Session Time + Context Length
+  /task log #N              Re-compute and write Engaged/Session Time
   /task migrate [--dry-run] Migrate repo issues into a selected/configured project
   /task fleet               Show all active tasks across parallel worktrees
   /task config              List all config values

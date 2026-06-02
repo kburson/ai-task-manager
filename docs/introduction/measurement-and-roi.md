@@ -49,7 +49,7 @@ The exact report model can include role, region, reading speed, review overlap, 
 flowchart LR
     Estimate["Estimate field\nhuman-equivalent hours"] --> Ratio["Acceleration ratio"]
     Session["Session Time\nagent-engaged minutes"] --> Engaged["Measured engaged hours"]
-    Context["Context Length\nvisible chat words"] --> ReviewTime["Estimated review time"]
+    Context["Chat words (--chat-words)\nvisible chat context"] --> ReviewTime["Estimated review time"]
     ReviewTime --> Engaged
     Engaged --> Ratio
     Ratio --> Report["Value report"]

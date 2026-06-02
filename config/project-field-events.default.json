@@ -7,7 +7,6 @@
   "moveToDone": [],
   "logTime": [
     { "field": "engagedTime", "value": "computed.engagedMinutes", "mode": "set" },
-    { "field": "sessionTime", "value": "computed.sessionMinutes", "mode": "set" },
-    { "field": "contextLength", "value": "computed.contextWords", "mode": "set" }
+    { "field": "sessionTime", "value": "computed.sessionMinutes", "mode": "set" }
   ]
 }

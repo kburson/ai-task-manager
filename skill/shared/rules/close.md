@@ -19,7 +19,7 @@ The verb atomically:
 3. Deregisters from the fleet.
 4. Invokes `move-state.mjs <N> done` internally.
 
-Engaged Time, Session Time, and Context Length were flushed at `/task review` — not at close.
+Engaged Time and Session Time were flushed at `/task review` — not at close.
 
 ## Forbidden
 

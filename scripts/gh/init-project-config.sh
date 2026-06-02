@@ -1221,7 +1221,6 @@ SIZE_FIELD_ID=""
 FIELD_ESTIMATE=""
 FIELD_ENGAGED_TIME=""
 FIELD_SESSION_TIME=""
-FIELD_CONTEXT_LENGTH=""
 FIELD_SEQUENCE=""
 FIELD_START_TIME=""
 
@@ -1276,7 +1275,6 @@ while IFS= read -r FIELD_DEF <&3; do
       estimate) FIELD_ESTIMATE="$RESULT_FIELD_ID" ;;
       engagedTime) FIELD_ENGAGED_TIME="$RESULT_FIELD_ID" ;;
       sessionTime) FIELD_SESSION_TIME="$RESULT_FIELD_ID" ;;
-      contextLength) FIELD_CONTEXT_LENGTH="$RESULT_FIELD_ID" ;;
       sequence) FIELD_SEQUENCE="$RESULT_FIELD_ID" ;;
       startTime) FIELD_START_TIME="$RESULT_FIELD_ID" ;;
     esac
@@ -1309,7 +1307,6 @@ SIZE_FIELD_ID="$SIZE_FIELD_ID" \
 FIELD_ESTIMATE="$FIELD_ESTIMATE" \
 FIELD_ENGAGED_TIME="$FIELD_ENGAGED_TIME" \
 FIELD_SESSION_TIME="$FIELD_SESSION_TIME" \
-FIELD_CONTEXT_LENGTH="$FIELD_CONTEXT_LENGTH" \
 FIELD_SEQUENCE="$FIELD_SEQUENCE" \
 FIELD_START_TIME="$FIELD_START_TIME" \
 FIELD_IDS_JSON="$FIELD_IDS_JSON" \
@@ -1348,7 +1345,6 @@ const optional = {
   fieldEstimate:          process.env.FIELD_ESTIMATE,
   fieldEngagedTime:       process.env.FIELD_ENGAGED_TIME,
   fieldSessionTime:       process.env.FIELD_SESSION_TIME,
-  fieldContextWords:      process.env.FIELD_CONTEXT_LENGTH,
   fieldSequence:          process.env.FIELD_SEQUENCE,
   sequenceFieldId:        process.env.FIELD_SEQUENCE,
   fieldStartTime:         process.env.FIELD_START_TIME,

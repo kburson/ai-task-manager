@@ -397,7 +397,7 @@ When the user says **"cleanup"**, execute in order:
 
 1. **Update docs** — update any `docs/` files that reflect this session's work.
 
-2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Session Time`, `Engaged Time`, and `Context Length` fields on the board. Open follow-on issues; close completed ones with a resolution comment.
+2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Session Time` and `Engaged Time` fields on the board. Open follow-on issues; close completed ones with a resolution comment.
 
 3. **Commit** — stage all changes and commit with a descriptive message referencing issue numbers.
 
@@ -457,7 +457,6 @@ At issue close, set these two fields on the GitHub Projects board:
 
 - **Session Time** — total active AI session minutes across all sessions touching this issue.
 - **Engaged Time** — session time plus review-time adjustments used by reports.
-- **Context Length** — total reader-visible chat words across all sessions.
 
 The `/task end` command (or `scripts/gh/move-state.mjs <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/guides/ai-value-framework.md`.
 

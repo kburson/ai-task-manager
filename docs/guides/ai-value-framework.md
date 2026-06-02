@@ -78,13 +78,12 @@ Size buckets for the GitHub Projects `Size` field:
 
 ### What we measure
 
-Three measurement fields are recorded per issue on the GitHub Projects board:
+Two measurement fields are recorded per issue on the GitHub Projects board:
 
-| Field              | Type             | What it captures                                                         |
-| ------------------ | ---------------- | ------------------------------------------------------------------------ |
-| **Session Time**   | Number (minutes) | Active AI-assisted session minutes                                       |
-| **Engaged Time**   | Number (hours)   | Report-ready active/review engagement total                              |
-| **Context Length** | Number (words)   | Reader-visible chat words accumulated across all sessions for this issue |
+| Field            | Type             | What it captures                            |
+| ---------------- | ---------------- | ------------------------------------------- |
+| **Session Time** | Number (minutes) | Active AI-assisted session minutes          |
+| **Engaged Time** | Number (hours)   | Report-ready active/review engagement total |
 
 ### Engaged Hours formula
 
@@ -124,7 +123,7 @@ Claude Code uses a flat subscription — the only measurable human cost is time 
 4. **Sub-issues inherit complexity from their scope, not their parent.** A 200h epic broken into 10 sub-issues should have sub-issue estimates that sum to ~200h.
 5. **Don't adjust estimates after the fact.** Note surprises in comments but leave the original estimate intact.
 6. **Epics get a separate orchestration estimate** (typically 5–10% of sum of children) for coordination, final verification, and cleanup.
-7. **Set session time and context length at issue close.** Log both in a comment using the session log template below, then update the board fields.
+7. **Set session time at issue close.** Log it in a comment using the session log template below, then update the board field.
 
 ---
 
@@ -164,16 +163,6 @@ gh api graphql -f query="mutation {
     itemId: \"$ITEM_ID\"
     fieldId: \"<SESSION_TIME_FIELD_ID>\"
     value: { number: <minutes> }
-  }) { projectV2Item { id } }
-}"
-
-# Set Context Length (words) — replace FIELD_ID with fieldContextWords
-gh api graphql -f query="mutation {
-  updateProjectV2ItemFieldValue(input: {
-    projectId: \"$PROJECT_ID\"
-    itemId: \"$ITEM_ID\"
-    fieldId: \"<CONTEXT_WORDS_FIELD_ID>\"
-    value: { number: <words> }
   }) { projectV2Item { id } }
 }"
 ```
@@ -300,7 +289,6 @@ gh api graphql -f query='
       state: .content.state,
       estimate: (.fieldValues.nodes[] | select(.field.name == "Estimate") | .number) // null,
       sessionMin: (.fieldValues.nodes[] | select(.field.name == "Session Time") | .number) // null,
-      contextWords: (.fieldValues.nodes[] | select(.field.name == "Context Length") | .number) // null,
       status: (.fieldValues.nodes[] | select(.field.name == "Status") | .name) // null
     }
   | select(.estimate != null or .sessionMin != null)

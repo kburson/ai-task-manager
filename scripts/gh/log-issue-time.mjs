@@ -3,7 +3,6 @@
 //
 // Engaged Time / Session Time = sum of all Active Min rows until richer Codex
 // engagement metrics are available.
-// Context Length              = Word Marker from the last data row.
 //
 // Usage: node log-issue-time.mjs <issue#> [--dry-run]
 

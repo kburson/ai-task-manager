@@ -11,5 +11,5 @@
 - [ ] Pre-commit hooks pass
 - [ ] Issue body checkboxes ticked
 - [ ] Issue moved to Done
-- [ ] `/task close` run (writes Actual Session Time + Context Length automatically)
+- [ ] `/task close` run (writes Actual Session Time automatically)
 - [ ] If this completes the parent epic: update parent body; close parent if all siblings Done

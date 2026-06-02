@@ -40,7 +40,7 @@ Full rules in `docs/guides/workflow.md`. Quick reference:
 - Set priority: `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]`
 - Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close. **Note:** GitHub Projects supports only one level of nesting — sub-issues cannot themselves have sub-issues.
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
-- At issue close: set `Actual Session Time` + `Context Length` on board. See `docs/guides/ai-value-framework.md`.
+- At issue close: set `Actual Session Time` on board. See `docs/guides/ai-value-framework.md`.
 
 ## Cleanup
 

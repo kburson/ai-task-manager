@@ -33,7 +33,6 @@ export const DEFAULTS = {
   fieldEstimate: '',
   fieldEngagedTime: '',
   fieldSessionTime: '',
-  fieldContextWords: '',
   fieldSequence: '',
   fieldStartTime: '',
   // Priority field + option IDs (set by init script)
@@ -95,7 +94,6 @@ const TYPES = {
   fieldEstimate: 'string',
   fieldEngagedTime: 'string',
   fieldSessionTime: 'string',
-  fieldContextWords: 'string',
   fieldSequence: 'string',
   fieldStartTime: 'string',
   priorityFieldId: 'string',
@@ -235,7 +233,6 @@ export function loadConfig(paths = {}) {
     merged.fieldEstimate ||= merged.fieldIds.estimate || '';
     merged.fieldEngagedTime ||= merged.fieldIds.engagedTime || merged.fieldIds.actualHours || '';
     merged.fieldSessionTime ||= merged.fieldIds.sessionTime || '';
-    merged.fieldContextWords ||= merged.fieldIds.contextLength || '';
     merged.fieldSequence ||= merged.fieldIds.sequence || '';
     merged.sequenceFieldId ||= merged.fieldIds.sequence || '';
     merged.sizeFieldId ||= merged.fieldIds.size || '';
@@ -332,7 +329,6 @@ const INTERNAL_KEYS = [
   'fieldEstimate',
   'fieldEngagedTime',
   'fieldSessionTime',
-  'fieldContextWords',
   'fieldSequence',
   'fieldStartTime',
   'priorityFieldId',
