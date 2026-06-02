@@ -12,7 +12,7 @@
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
-import { toggleChecklistLine } from '../verbs/check.mjs';
+import { toggleChecklistLine, toggleChecklistLines } from '../verbs/check.mjs';
 
 test('prefix-collision: toggling the shorter label does not touch the longer line', () => {
   const body = [
@@ -59,4 +59,45 @@ test('missing label returns not-found and does not throw', () => {
   const r = toggleChecklistLine(body, 'nope');
   assert.equal(r.status, 'not-found');
   assert.equal(r.body, undefined);
+});
+
+test('batch: multi-label toggle accumulates in one body', () => {
+  const body = ['- [ ] a', '- [ ] b', '- [ ] c'].join('\n');
+  const { body: updated, results } = toggleChecklistLines(body, ['a', 'c']);
+  // Both requested boxes flipped to [x]; the untouched box stays [ ].
+  assert.match(updated, /^- \[x\] a$/m);
+  assert.match(updated, /^- \[ \] b$/m);
+  assert.match(updated, /^- \[x\] c$/m);
+  assert.deepEqual(results, [
+    { label: 'a', status: 'toggled', alreadyChecked: false },
+    { label: 'c', status: 'toggled', alreadyChecked: false },
+  ]);
+});
+
+test('batch: mixed found / already-checked / not-found reported independently; not-found does not drop the batch', () => {
+  const body = ['- [ ] a', '- [x] b'].join('\n');
+  const { body: updated, results } = toggleChecklistLines(body, ['a', 'b', 'zzz']);
+  // 'a' newly checked; 'b' was checked so it toggles back to unchecked
+  // (alreadyChecked:true); 'zzz' is absent but the batch still processes a & b.
+  assert.match(updated, /^- \[x\] a$/m);
+  assert.match(updated, /^- \[ \] b$/m);
+  assert.deepEqual(results, [
+    { label: 'a', status: 'toggled', alreadyChecked: false },
+    { label: 'b', status: 'toggled', alreadyChecked: true },
+    { label: 'zzz', status: 'not-found', alreadyChecked: false },
+  ]);
+});
+
+test('batch: single label behaves like the legacy single-label toggle', () => {
+  const body = '- [ ] only\n';
+  const { body: updated, results } = toggleChecklistLines(body, ['only']);
+  assert.match(updated, /^- \[x\] only$/m);
+  assert.deepEqual(results, [{ label: 'only', status: 'toggled', alreadyChecked: false }]);
+});
+
+test('batch: empty label list is a no-op returning the body unchanged', () => {
+  const body = '- [ ] a\n';
+  const { body: updated, results } = toggleChecklistLines(body, []);
+  assert.equal(updated, body);
+  assert.deepEqual(results, []);
 });
