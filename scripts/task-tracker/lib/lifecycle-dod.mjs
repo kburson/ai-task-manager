@@ -166,3 +166,24 @@ export function detectLifecyclePretick(body) {
   }
   return { body: next, regressions };
 }
+
+// #231 — Detect any Functional DoD items that carry an `aitm-verified-by`
+// marker AND are already ticked. The green tick is owned by `autoTickVerified`
+// (only after the sandbox records a passing exit code). A pre-tick here is the
+// same trust-attestation pattern that the lifecycle pretick guard catches —
+// un-tick so the sandbox-driven re-tick is the only path to green. Judgment
+// items (no marker) are untouched. Returns { body, regressions: [{ label }] }.
+const FUNC_MARKER_RE = /<!--\s*aitm-verified-by:/i;
+export function detectFunctionalPretick(body) {
+  const loc = locateFunctionalSection(body);
+  if (!loc) return { body: String(body || ''), regressions: [] };
+  const regressions = [];
+  const nextSection = loc.section.replace(/^- \[x\](\s+)(.+)$/gm, (line, sp, rest) => {
+    if (!FUNC_MARKER_RE.test(rest)) return line;
+    const label = rest.replace(/<!--[\s\S]*?-->/g, '').trim();
+    regressions.push({ label });
+    return `- [ ]${sp}${rest}`;
+  });
+  if (nextSection === loc.section) return { body: String(body || ''), regressions: [] };
+  return { body: loc.before + nextSection + loc.after, regressions };
+}

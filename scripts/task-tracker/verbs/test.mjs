@@ -29,7 +29,7 @@ import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
-import { detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
+import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { seedWorktreeBackfill } from '../seed-worktree.mjs';
 
@@ -281,6 +281,22 @@ export async function runVerbTest({
       cfg,
       issueNum,
       body: `⚠️ Lifecycle DoD regression: items pre-ticked before their trigger fired and were auto-un-ticked: ${labels}. Run \`/task approve\` then \`/task close\` so the correct verb ticks them.`,
+    });
+  }
+  // #231 — Functional DoD items carrying an `aitm-verified-by` marker are
+  // sandbox-owned: the green tick must come from `autoTickVerified` after a
+  // passing exit code, not from a hand-tick. Un-tick any pre-ticked
+  // command-backed Functional item so the sandbox-driven re-tick is the only
+  // path to green. Judgment items (no marker) are untouched.
+  const funcPretick = detectFunctionalPretick(body);
+  if (funcPretick.regressions.length > 0) {
+    body = funcPretick.body;
+    await writeBody({ cfg, issueNum, body, projectDir });
+    const labels = funcPretick.regressions.map((r) => r.label).join('; ');
+    await postComment({
+      cfg,
+      issueNum,
+      body: `⚠️ Functional DoD regression: command-backed items pre-ticked before sandbox evidence and were auto-un-ticked: ${labels}. The sandbox re-ticks them on a passing exit code.`,
     });
   }
   const vcs = parseVerificationCommands(body);

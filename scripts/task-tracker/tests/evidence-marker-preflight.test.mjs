@@ -80,6 +80,7 @@ const baseDeps = {
           '',
           '### Verification Commands',
           '- [ ] `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs`',
+          '- [ ] `npm test`',
         ].join('\n'),
     },
   });
