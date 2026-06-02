@@ -42,8 +42,11 @@ const metadata = [
   ].join('\n');
   const audit = auditEvidenceMarkers(body);
   assert.deepEqual(audit.missingEvidence, []);
+  // #231 — `npm run lint` is no longer exempt from the VC-linkage requirement,
+  // so it also surfaces as missing here.
   assert.deepEqual(audit.missingVerificationCommands, [
     'node scripts/task-tracker/tests/new.test.mjs',
+    'npm run lint',
   ]);
   assert.deepEqual(audit.staleVerificationCommands, [
     'node scripts/task-tracker/tests/existing.test.mjs',
