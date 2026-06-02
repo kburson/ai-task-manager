@@ -13,7 +13,6 @@
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
@@ -22,6 +21,7 @@ import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mj
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -51,16 +51,14 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-demote-${process.pid}-${Date.now()}.md`);
-  writeFileSync(tmp, body, 'utf8');
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber,
+    repo,
+    body,
+    scratchPath: tmp,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {

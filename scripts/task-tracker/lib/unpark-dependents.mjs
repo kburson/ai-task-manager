@@ -15,10 +15,10 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseBlockedBy, removeBlockedBy, blockedLabelRemoveArgs } from './blocked-marker.mjs';
+import { pushIssueBody } from './issue-body-push.mjs';
 
 const pexec = promisify(execFile);
 
@@ -67,16 +67,7 @@ function defaultFetchBody({ repo }) {
 function defaultEditBody({ repo }) {
   return async (issueNumber, body) => {
     const tmp = path.join(tmpdir(), `aitm-unpark-${issueNumber}-${process.pid}.md`);
-    writeFileSync(tmp, body, 'utf8');
-    try {
-      await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
-    } finally {
-      try {
-        unlinkSync(tmp);
-      } catch {
-        /* best-effort */
-      }
-    }
+    await pushIssueBody({ issueNumber, repo, body, scratchPath: tmp, deps: { pexec } });
   };
 }
 

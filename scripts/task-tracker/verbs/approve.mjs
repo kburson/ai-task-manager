@@ -10,7 +10,6 @@
 // cspell:ignore optout optouts Optouts
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -30,6 +29,7 @@ import { buildReviewNotesComment } from '../lib/review-notes.mjs';
 import { deriveDrivers } from '../lib/derive-drivers.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 
 const pexec = promisify(execFile);
 
@@ -55,16 +55,14 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-approve-${process.pid}-${Date.now()}.md`);
-  writeFileSync(tmp, body, 'utf8');
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber,
+    repo,
+    body,
+    scratchPath: tmp,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {

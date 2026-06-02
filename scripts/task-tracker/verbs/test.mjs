@@ -18,7 +18,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { loadState, saveState } from '../state.mjs';
@@ -28,6 +28,7 @@ import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { seedWorktreeBackfill } from '../seed-worktree.mjs';
@@ -125,16 +126,14 @@ async function defaultFetchBody({ cfg, issueNum }) {
 
 async function defaultWriteBody({ cfg, issueNum, body, projectDir }) {
   const tmp = path.join(projectTmpDir(projectDir), `task-test-body-${issueNum}.md`);
-  try {
-    writeFileSync(tmp, body, 'utf8');
-    await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber: issueNum,
+    repo: cfg.repo,
+    body,
+    scratchPath: tmp,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 async function defaultPostComment({ cfg, issueNum, body }) {

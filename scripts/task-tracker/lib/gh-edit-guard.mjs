@@ -29,6 +29,7 @@ const LEGACY_PATTERNS = [
 ];
 
 const MARKER_PATTERNS = [
+  { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state:/i },
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved:/i },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete:/i },
   { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved:/i },
@@ -43,6 +44,28 @@ const MARKER_PATTERNS = [
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
 const DEEP_DIVE_MARKER_RE = /<!--\s*aitm-deep-dive-complete:/i;
+
+// State-marker drop/staleness protection (#258). The state mutators write
+// `aitm-last-known-state`, `aitm-last-known-state-ts`, and one
+// `aitm-entered-<stage>` per stage visited, atomically into the LIVE body. A
+// stale frozen scratch re-pushed by the manual agent flow reverts those — the
+// exact clobber observed twice in #257. These helpers let `checkBodyChange`
+// refuse such a push at the only choke point that sees the manual flow.
+const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)\s*:/gi;
+const LAST_KNOWN_STATE_TS_RE = /<!--\s*aitm-last-known-state-ts:\s*([^>]+?)\s*-->/i;
+
+function enteredStages(body) {
+  const set = new Set();
+  for (const m of String(body || '').matchAll(ENTERED_STAGE_RE)) {
+    set.add(m[1].toLowerCase());
+  }
+  return set;
+}
+
+function lastKnownStateTs(body) {
+  const m = String(body || '').match(LAST_KNOWN_STATE_TS_RE);
+  return m ? m[1].trim() : null;
+}
 
 export function parseGhIssueEdit(command) {
   const m = String(command || '').match(ISSUE_EDIT_RE);
@@ -112,6 +135,45 @@ export function checkBodyChange({ newBody, currentBody, issueNumber }) {
         reason:
           `gh issue edit on #${issueNumber} would drop hidden marker <${name}> that is present in the current body.\n` +
           `  This marker tracks verb completion. Re-fetch the current body, edit it in place, and re-write — do not replace wholesale.`,
+      };
+    }
+  }
+
+  // #258 — drop of any `aitm-entered-<stage>` marker present in the live body.
+  // Stage is variable, so this is a set-diff rather than a single regex in
+  // MARKER_PATTERNS. A stale scratch frozen before a stage transition will be
+  // missing the stages stamped in the interim.
+  const curEntered = enteredStages(cur);
+  const srcEntered = enteredStages(src);
+  for (const stage of curEntered) {
+    if (!srcEntered.has(stage)) {
+      return {
+        block: true,
+        reason:
+          `gh issue edit on #${issueNumber} would drop hidden marker <aitm-entered-${stage}> that is present in the current body.\n` +
+          `  This marker records a stage transition written by the state machine. Re-fetch the current body, edit it in place, and re-write — do not re-push a stale scratch.`,
+      };
+    }
+  }
+
+  // #258 — stale-snapshot staleness check. The state mutators only ever advance
+  // `aitm-last-known-state-ts`. A push whose ts is strictly older than the live
+  // body's ts is therefore based on a stale snapshot — it would revert state
+  // values and drop entered markers stamped after the scratch was frozen (the
+  // #257 clobber). This single check is vector-agnostic: it catches value
+  // reverts, entered-marker drops, and any stale re-push without needing
+  // state-machine knowledge.
+  const curTs = lastKnownStateTs(cur);
+  const srcTs = lastKnownStateTs(src);
+  if (curTs && srcTs) {
+    const curMs = Date.parse(curTs);
+    const srcMs = Date.parse(srcTs);
+    if (!Number.isNaN(curMs) && !Number.isNaN(srcMs) && srcMs < curMs) {
+      return {
+        block: true,
+        reason:
+          `gh issue edit on #${issueNumber} is based on a stale snapshot: the body's aitm-last-known-state-ts (${srcTs}) is older than the live body's (${curTs}).\n` +
+          `  A state mutator advanced the live body after this scratch was frozen. Re-fetch the current body, re-apply your edit, and re-write — do not re-push the stale scratch (this is the #257 clobber).`,
       };
     }
   }

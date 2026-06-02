@@ -9,7 +9,6 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -24,6 +23,7 @@ import {
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { lintChecklistCommands } from '../lib/checklist-command-lint.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -49,16 +49,14 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-plan-approve-${process.pid}-${Date.now()}.md`);
-  writeFileSync(tmp, body, 'utf8');
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber,
+    repo,
+    body,
+    scratchPath: tmp,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {

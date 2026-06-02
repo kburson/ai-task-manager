@@ -1,8 +1,8 @@
 import path from 'node:path';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import { loadState } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -71,16 +71,13 @@ export async function verbCheck(ctx) {
   }
   const { body: updated, alreadyChecked } = result;
   const tmp = path.join(projectTmpDir(projectDir), `tt-check-${Date.now()}.md`);
-  try {
-    writeFileSync(tmp, updated, 'utf8');
-    await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber: issueNum,
+    repo: cfg.repo,
+    body: updated,
+    scratchPath: tmp,
+    deps: { pexec },
+  });
   const action = alreadyChecked ? 'Unchecked' : 'Checked';
   console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}`);
 }

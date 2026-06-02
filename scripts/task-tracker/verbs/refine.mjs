@@ -13,7 +13,6 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +24,7 @@ import { parseRationaleMarker, RATIONALE_MARKER_RE } from '../lib/apply-refineme
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { ensureIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 
 const pexec = promisify(execFile);
 
@@ -165,16 +165,14 @@ async function defaultFetchBody({ issueNumber, repo }) {
 
 async function defaultWriteBody({ issueNumber, repo, body }) {
   const tmp = path.join(os.tmpdir(), `aitm-refine-${issueNumber}-${Date.now()}.md`);
-  writeFileSync(tmp, body, 'utf8');
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber,
+    repo,
+    body,
+    scratchPath: tmp,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 async function defaultAddLabels({ issueNumber, repo, labels }) {

@@ -25,6 +25,7 @@ import {
   defaultFieldValues,
 } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 
 const pexec = promisify(execFile);
 
@@ -184,16 +185,14 @@ async function defaultGetIssueBody({ issueNumber, repo }) {
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(os.tmpdir(), `aitm-inflate-body-${issueNumber}-${Date.now()}.md`);
-  writeFileSync(tmp, body);
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber,
+    repo,
+    body,
+    scratchPath: tmp,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 export async function runInflateEstimate(

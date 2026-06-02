@@ -12,6 +12,7 @@ import {
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { runCloseGates } from '../lib/close-gates.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
@@ -458,20 +459,17 @@ async function tickLifecycleOnClose({ cfg, issueNum, pexec }) {
     let next = tickLifecycleItem(body, 'story-closed');
     next = tickLifecycleItem(next, 'timing-flushed');
     if (next === body) return;
-    const { writeFileSync, unlinkSync } = await import('node:fs');
     const path = await import('node:path');
     const os = await import('node:os');
     const tmp = path.join(os.tmpdir(), `tt-lifecycle-${issueNum}-${Date.now()}.md`);
-    try {
-      writeFileSync(tmp, next, 'utf8');
-      await pexec('gh', ['issue', 'edit', issueNum, '-R', cfg.repo, '--body-file', tmp], {
-        timeout: GH_API_TIMEOUT_MS,
-      });
-    } finally {
-      try {
-        unlinkSync(tmp);
-      } catch {}
-    }
+    await pushIssueBody({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      body: next,
+      scratchPath: tmp,
+      timeout: GH_API_TIMEOUT_MS,
+      deps: { pexec },
+    });
   } catch (err) {
     process.stderr.write(`⚠ lifecycle-tick best-effort failed: ${err.message}\n`);
   }

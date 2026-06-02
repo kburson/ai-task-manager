@@ -13,12 +13,12 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { pushIssueBody } from './issue-body-push.mjs';
 
 const pexec = promisify(execFile);
 
@@ -114,16 +114,14 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
   const tmpFile = path.join(scratchDir, `refine-est-${issueNumber}.md`);
-  writeFileSync(tmpFile, body);
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmpFile], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmpFile);
-    } catch {}
-  }
+  await pushIssueBody({
+    issueNumber,
+    repo,
+    body,
+    scratchPath: tmpFile,
+    timeout: GH_API_TIMEOUT_MS,
+    deps: { pexec },
+  });
 }
 
 // Backlog → Refine gate (#133): require only Priority on the board. Sizing

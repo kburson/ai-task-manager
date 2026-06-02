@@ -419,4 +419,115 @@ import {
   assert.equal(r.block, false);
 }
 
+// ── checkBodyChange: aitm-last-known-state marker protection (#258) ───────────
+{
+  const STATE = '<!-- aitm-last-known-state: develop -->';
+  const STATE_TS = '<!-- aitm-last-known-state-ts: 2026-06-01T10:00:00Z -->';
+
+  // Dropping aitm-last-known-state → block (distinct from the -ts variant)
+  let r = checkBodyChange({
+    newBody: `## Scope\ntext\n${STATE_TS}\n`,
+    currentBody: `## Scope\ntext\n${STATE}\n${STATE_TS}\n`,
+    issueNumber: 258,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-last-known-state\b/);
+
+  // Preserving it (value may change forward) → pass
+  r = checkBodyChange({
+    newBody: `## Scope\n${STATE.replace('develop', 'test')}\n${STATE_TS}\n`,
+    currentBody: `## Scope\n${STATE}\n${STATE_TS}\n`,
+    issueNumber: 258,
+  });
+  assert.equal(r.block, false);
+}
+
+// ── checkBodyChange: aitm-entered-<stage> set-diff drop (#258) ────────────────
+{
+  const ENTER_PLAN = '<!-- aitm-entered-plan: 2026-06-01T09:00:00Z -->';
+  const ENTER_DEV = '<!-- aitm-entered-develop: 2026-06-01T10:00:00Z -->';
+
+  // Dropping aitm-entered-develop while plan stays → block, names the stage
+  let r = checkBodyChange({
+    newBody: `## Scope\n${ENTER_PLAN}\n`,
+    currentBody: `## Scope\n${ENTER_PLAN}\n${ENTER_DEV}\n`,
+    issueNumber: 258,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-entered-develop/);
+
+  // Preserving both entered markers → pass
+  r = checkBodyChange({
+    newBody: `## Scope\nrevised\n${ENTER_PLAN}\n${ENTER_DEV}\n`,
+    currentBody: `## Scope\norig\n${ENTER_PLAN}\n${ENTER_DEV}\n`,
+    issueNumber: 258,
+  });
+  assert.equal(r.block, false);
+
+  // Adding a new entered marker (forward transition) → pass (not a drop)
+  r = checkBodyChange({
+    newBody: `## Scope\n${ENTER_PLAN}\n${ENTER_DEV}\n`,
+    currentBody: `## Scope\n${ENTER_PLAN}\n`,
+    issueNumber: 258,
+  });
+  assert.equal(r.block, false);
+}
+
+// ── checkBodyChange: ts-staleness (the #257 clobber) (#258) ───────────────────
+{
+  // The exact #257 sequence: a scratch frozen at an OLD ts is re-pushed after a
+  // mutator advanced the live body's ts. Vector-agnostic — blocks regardless of
+  // which marker values differ.
+  const live = [
+    '## Scope',
+    'text',
+    '<!-- aitm-last-known-state: test -->',
+    '<!-- aitm-last-known-state-ts: 2026-06-01T12:00:00Z -->',
+    '<!-- aitm-entered-test: 2026-06-01T12:00:00Z -->',
+  ].join('\n');
+  // Stale scratch: older ts, missing the entered-test marker, reverted state.
+  const stale = [
+    '## Scope',
+    'text',
+    '<!-- aitm-last-known-state: develop -->',
+    '<!-- aitm-last-known-state-ts: 2026-06-01T10:00:00Z -->',
+    '<!-- aitm-entered-test: 2026-06-01T12:00:00Z -->',
+  ].join('\n');
+
+  let r = checkBodyChange({ newBody: stale, currentBody: live, issueNumber: 257 });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /stale snapshot/i);
+  assert.match(r.reason, /2026-06-01T10:00:00Z/);
+  assert.match(r.reason, /2026-06-01T12:00:00Z/);
+
+  // Forward push (newer ts) → pass
+  const forward = [
+    '## Scope',
+    'text',
+    '<!-- aitm-last-known-state: review -->',
+    '<!-- aitm-last-known-state-ts: 2026-06-01T14:00:00Z -->',
+    '<!-- aitm-entered-test: 2026-06-01T12:00:00Z -->',
+    '<!-- aitm-entered-review: 2026-06-01T14:00:00Z -->',
+  ].join('\n');
+  r = checkBodyChange({ newBody: forward, currentBody: live, issueNumber: 257 });
+  assert.equal(r.block, false);
+
+  // Equal ts → pass (idempotent re-push of the same snapshot)
+  r = checkBodyChange({ newBody: live, currentBody: live, issueNumber: 257 });
+  assert.equal(r.block, false);
+
+  // Only one side carries a ts → staleness check needs both, so it abstains.
+  // (`aitm-last-known-state-ts` is deliberately NOT in MARKER_PATTERNS — the
+  // `aitm-last-known-state` regex requires a literal `:` after `state`, which
+  // `-ts:` does not satisfy — so a lone -ts drop is not a marker-drop block
+  // either. In practice the -ts marker is always co-written with the state
+  // marker, whose drop IS caught.) Here, with no other markers, this passes.
+  r = checkBodyChange({
+    newBody: '## Scope\ntext\n',
+    currentBody: '## Scope\ntext\n<!-- aitm-last-known-state-ts: 2026-06-01T12:00:00Z -->\n',
+    issueNumber: 257,
+  });
+  assert.equal(r.block, false);
+}
+
 console.log('gh-edit-guard.test.mjs: all passed');

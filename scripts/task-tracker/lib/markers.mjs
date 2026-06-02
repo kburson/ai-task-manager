@@ -8,6 +8,7 @@
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { pushIssueBody } from './issue-body-push.mjs';
 
 // ---------------------------------------------------------------------------
 // plan-approved (plan → develop human gate)
@@ -378,21 +379,16 @@ export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } 
   const writeBody =
     deps.writeBody ||
     (async (body) => {
-      const { writeFileSync, unlinkSync } = await import('node:fs');
       const os = await import('node:os');
       const tmp = pathMod.join(os.tmpdir(), `tt-deep-dive-${Date.now()}.md`);
-      try {
-        writeFileSync(tmp, body, 'utf8');
-        await pexec(
-          'gh',
-          ['issue', 'edit', String(issueNumber), '-R', cfg.repo, '--body-file', tmp],
-          { timeout: GH_API_TIMEOUT_MS }
-        );
-      } finally {
-        try {
-          unlinkSync(tmp);
-        } catch {}
-      }
+      await pushIssueBody({
+        issueNumber,
+        repo: cfg.repo,
+        body,
+        scratchPath: tmp,
+        timeout: GH_API_TIMEOUT_MS,
+        deps: { pexec },
+      });
     });
 
   const body = await fetchBody();

@@ -17,7 +17,6 @@
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
-import { writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
@@ -39,6 +38,7 @@ import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 
@@ -69,16 +69,7 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
   const tmp = path.join(tmpdir(), `aitm-reconcile-${process.pid}-${Date.now()}.md`);
-  writeFileSync(tmp, body, 'utf8');
-  try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
-      timeout: GH_API_TIMEOUT_MS,
-    });
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
+  await pushIssueBody({ issueNumber, repo, body, scratchPath: tmp, deps: { pexec } });
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
