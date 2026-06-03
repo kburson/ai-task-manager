@@ -33,6 +33,6 @@
     "startTime": "PVTF_lAHOABCEY84BXillzhSuxp4"
   },
   "defaultLabels": ["epic", "bug", "cleanup", "refactor"],
-  "gateAnalysisToDevelopment": true,
-  "gateReviewToDone": true
+  "gateAnalysisToDevelopment": false,
+  "gateReviewToDone": false
 }
