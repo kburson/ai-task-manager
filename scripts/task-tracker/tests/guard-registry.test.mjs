@@ -26,7 +26,7 @@ test('empty registry: runGuards returns { ok: true, refusals: [] } for any state
     ['test', 'review'],
     ['review', 'done'],
   ]) {
-    const r = runGuards(pair[0], pair[1], {});
+    const r = await runGuards(pair[0], pair[1], {});
     assert.deepEqual(r, { ok: true, refusals: [] }, `pair ${pair.join('->')}`);
   }
 });
@@ -73,7 +73,7 @@ test('runGuards aggregates refusals across exit + entry (no short-circuit)', asy
     run: () => ({ ok: false, reason: 'entry refused' }),
   });
 
-  const r = runGuards('plan', 'develop', { issueNumber: 42 });
+  const r = await runGuards('plan', 'develop', { issueNumber: 42 });
   assert.equal(r.ok, false);
   assert.equal(r.refusals.length, 2);
   const ids = r.refusals.map((x) => x.id).sort();
@@ -101,7 +101,7 @@ test('runGuards passes ctx to each guard.run', async () => {
     },
   });
   const ctx = { issueNumber: 1, repo: 'x/y' };
-  runGuards('refine', 'plan', ctx);
+  await runGuards('refine', 'plan', ctx);
   assert.equal(seen.length, 2);
   assert.equal(seen[0][1], ctx);
   assert.equal(seen[1][1], ctx);
@@ -116,7 +116,7 @@ test('runGuards: a throwing guard is treated as a refusal, not a crash', async (
     },
   });
   registerGuard('develop', 'entry', { id: 'ok-after', run: () => ({ ok: true }) });
-  const r = runGuards('plan', 'develop', {});
+  const r = await runGuards('plan', 'develop', {});
   assert.equal(r.ok, false);
   assert.equal(r.refusals.length, 1);
   assert.equal(r.refusals[0].id, 'throws');

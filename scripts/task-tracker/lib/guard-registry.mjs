@@ -6,16 +6,28 @@
 //   - call `runGuards(from, to, ctx)` from the state-mutator and `promote.mjs`.
 //
 // Contract:
-//   guard = { id: string, run(ctx) -> { ok: true } | { ok: false, reason } }
+//   guard = { id: string, run(ctx) -> { ok: true } | { ok: false, reason }
+//                              | Promise<{ ok, reason? }> }
 //
-// runGuards iterates `GUARDS[fromState].exit` then `GUARDS[toState].entry`,
-// invoking each `run(ctx)`. Refusals are aggregated across both lists; there
-// is no short-circuit. A guard that throws is treated as a refusal whose
-// `reason` is the stringified error — one buggy guard must not crash the
-// whole pipeline.
+// `run` may be sync OR async — `runGuards` awaits the result either way, so
+// guards that shell out to git/gh can coexist with pure-data guards.
+//
+// runGuards is async. It iterates `GUARDS[fromState].exit` then
+// `GUARDS[toState].entry`, awaiting each `run(ctx)`. Refusals are aggregated
+// across both lists; there is no short-circuit. A guard that throws is
+// treated as a refusal whose `reason` is the stringified error — one buggy
+// guard must not crash the whole pipeline.
 //
 // registerGuard is idempotent on `guard.id`: re-registering the same id is a
 // no-op (returns false). Unknown state or unknown kind throw.
+//
+// Registration policy: this module ships with an EMPTY registry on import.
+// Callers (state-mutator, promote.mjs, close-gates) register guards
+// explicitly — there is no auto-registration from the registry's side. Tests
+// that assert "empty registry" import this module without calling any
+// register-side-effect module. Production CLI entry-points import the
+// guard-bootstrap module (or call registerGuard themselves) before invoking
+// runGuards.
 
 const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 const KINDS = ['exit', 'entry'];
@@ -50,9 +62,12 @@ export function registerGuard(state, kind, guard) {
   return true;
 }
 
-function invoke(guard, ctx) {
+// Guards may be sync OR return a Promise. invoke awaits either uniformly so a
+// guard that shells out to git/gh can be registered alongside pure-data
+// guards without callers needing to know which is which.
+async function invoke(guard, ctx) {
   try {
-    const result = guard.run(ctx);
+    const result = await guard.run(ctx);
     if (result && result.ok === true) return { ok: true };
     if (result && result.ok === false) {
       return { ok: false, reason: result.reason ?? '(no reason given)' };
@@ -66,7 +81,7 @@ function invoke(guard, ctx) {
   }
 }
 
-export function runGuards(fromState, toState, ctx) {
+export async function runGuards(fromState, toState, ctx) {
   const refusals = [];
   const fromSlot = GUARDS[fromState];
   const toSlot = GUARDS[toState];
@@ -76,13 +91,13 @@ export function runGuards(fromState, toState, ctx) {
   // it as "no guards" rather than throwing, so transition logging stays clean.
   if (fromSlot) {
     for (const g of fromSlot.exit) {
-      const r = invoke(g, ctx);
+      const r = await invoke(g, ctx);
       if (!r.ok) refusals.push({ id: g.id, reason: r.reason });
     }
   }
   if (toSlot) {
     for (const g of toSlot.entry) {
-      const r = invoke(g, ctx);
+      const r = await invoke(g, ctx);
       if (!r.ok) refusals.push({ id: g.id, reason: r.reason });
     }
   }

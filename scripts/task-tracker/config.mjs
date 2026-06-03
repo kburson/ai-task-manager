@@ -55,6 +55,11 @@ export const DEFAULTS = {
   // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
   gateAnalysisToDevelopment: true,
   gateReviewToDone: true,
+  // #247 — Refine→Plan WIP budget: at most one child past Refine per epic.
+  // Default true preserves WIP enforcement. Set false to permit sanctioned
+  // parallel-agent batches under one epic; restore to true when the batch
+  // closes. Env override: TASK_TRACKER_FORCE_PROMOTE=1.
+  gatePlanRefineWip: true,
   // #179 — Hard Review→Done lifecycle-checkbox gate. When true (default), close
   // refuses to advance unless each Lifecycle DoD item is ticked, audit-marker
   // satisfied (Full-Auto path), or per-key opt-out marker stamped. When false,
@@ -112,6 +117,7 @@ const TYPES = {
   pickupDirective: 'boolean',
   gateAnalysisToDevelopment: 'boolean',
   gateReviewToDone: 'boolean',
+  gatePlanRefineWip: 'boolean',
   lifecycleCheckboxesRequired: 'boolean',
   directMoveStateAllowed: 'boolean',
   deadSessionMaxAgeMs: 'number',
@@ -306,6 +312,7 @@ const USER_KEYS = [
   'pickupDirective',
   'gateAnalysisToDevelopment',
   'gateReviewToDone',
+  'gatePlanRefineWip',
   'lifecycleCheckboxesRequired',
   'directMoveStateAllowed',
   'deadSessionMaxAgeMs',
