@@ -300,8 +300,11 @@ export async function runPromote({
     // #247 — Refine → Plan WIP budget: at most one child may advance out of
     // Refine per epic (parked-on-dependency children excepted, and a blocker may
     // run ahead of the sibling it unblocks). Solo issues bypass; fetch failure
-    // fails open. Override: TASK_TRACKER_FORCE_PROMOTE=1.
-    if (process.env.TASK_TRACKER_FORCE_PROMOTE !== '1') {
+    // fails open. Override: TASK_TRACKER_FORCE_PROMOTE=1. Config override:
+    // `gatePlanRefineWip: false` in task-tracker.json disables the gate for the
+    // whole project (use for sanctioned parallel-agent batches; restore to true
+    // when batch closes).
+    if (process.env.TASK_TRACKER_FORCE_PROMOTE !== '1' && cfg?.gatePlanRefineWip !== false) {
       const wipResult = await planRefineWipGate({
         cfg,
         issueNumber,

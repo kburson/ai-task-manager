@@ -34,5 +34,6 @@
   },
   "defaultLabels": ["epic", "bug", "cleanup", "refactor"],
   "gateAnalysisToDevelopment": false,
-  "gateReviewToDone": false
+  "gateReviewToDone": false,
+  "gatePlanRefineWip": false
 }
