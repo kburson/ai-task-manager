@@ -1,0 +1,6 @@
+{
+  "transition": "review→done",
+  "kind": "refuse",
+  "body": "## Definition of Done\n\n- [ ] Story closed\n",
+  "expectedSubstrings": ["close-marker"]
+}

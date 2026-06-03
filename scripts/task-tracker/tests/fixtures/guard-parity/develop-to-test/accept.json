@@ -1,0 +1,8 @@
+{
+  "transition": "develop→test",
+  "kind": "accept",
+  "body": "## Acceptance Criteria\n\n- [x] AC1 <!-- aitm-verified-by: npm test -->\n",
+  "commitTrailBody": "### 🔗 Commits\n\n<!-- aitm-commits: abc1234 -->\n",
+  "shas": ["abc1234"],
+  "dirtyFiles": []
+}

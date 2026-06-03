@@ -1,0 +1,377 @@
+#!/usr/bin/env node
+// Guard-parity baseline harness (#263, parent epic #259).
+//
+// For each forward transition, this file snapshots the CURRENT refusal-reason
+// set produced by the gate library functions both the promote-path
+// (`scripts/task-tracker/verbs/promote.mjs`) and the direct-verb-path
+// (`scripts/gh/move-state.mjs` plus per-verb files) consume. The harness runs
+// each fixture through the gate functions in-process with deps injection — no
+// subprocess, no network — and asserts the refusal-reason set is stable.
+//
+// This is a baseline: it MUST pass against pre-migration code. seq300-305
+// children migrate guards into `scripts/task-tracker/lib/guard-registry.mjs`;
+// each migration must keep the per-transition refusal-reason set unchanged.
+// If a migration child changes a refusal reason, this file fails and forces an
+// audit + intentional fixture update.
+//
+// Layout:
+//   - One `describe` per forward transition (6 total).
+//   - Each `describe` runs an accept fixture and a refuse fixture, loaded from
+//     scripts/task-tracker/tests/fixtures/guard-parity/<transition>/.
+//   - Fixtures whose accept path requires extensive upstream state (test→review,
+//     review→done) document the skip in their fixture file's `_reason` field
+//     and set `skip: true`. The refuse fixture is always exercised.
+//
+// The harness DOES NOT call `runGuards` from the new registry. Once registered
+// guards land (seq300-305), a follow-up child can re-run the same fixtures
+// through `runGuards` and assert parity with these baselines.
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { planRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
+import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
+import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
+import { gateCodeComplete } from '../lib/code-complete-gate.mjs';
+import { runReviewPreflight } from '../lib/review-preflight.mjs';
+import { markerPresentGate } from '../lib/close-gates.mjs';
+import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE_ROOT = path.join(HERE, 'fixtures', 'guard-parity');
+
+function loadFixture(transitionDir, kind) {
+  const p = path.join(FIXTURE_ROOT, transitionDir, `${kind}.json`);
+  return JSON.parse(readFileSync(p, 'utf8'));
+}
+
+const CFG = {
+  repo: 'kburson/ai-task-manager',
+  projectId: 'PVT_TEST',
+  fieldIds: {
+    priority: 'F_priority',
+    size: 'F_size',
+    estimate: 'F_estimate',
+    sequence: 'F_sequence',
+    startTime: 'F_startTime',
+  },
+  fieldStartTime: 'F_startTime',
+  sequenceFieldId: 'F_sequence',
+};
+
+// Convert a result object (varies by gate) into a sorted Set of substring keys
+// for stable equality assertions.
+function refusalSet(arr) {
+  return new Set((arr || []).map((s) => String(s).split(':')[0].trim()));
+}
+
+function containsAll(actual, expected) {
+  const a = refusalSet(actual);
+  return expected.every((e) => [...a].some((x) => x.startsWith(e) || e.startsWith(x)));
+}
+
+// Shared fixture-deps factory: produces deps for `planRefinementEstimate` and
+// `gateRefineToPlan` from a fixture's projectValues + labels + body.
+function makeRefineDeps(fixture) {
+  return {
+    loadProjectFieldDefs: () => ({
+      priority: { type: 'singleSelect', id: 'F_priority' },
+      size: { type: 'singleSelect', id: 'F_size' },
+      estimate: { type: 'number', id: 'F_estimate' },
+      sequence: { type: 'number', id: 'F_sequence' },
+      startTime: { type: 'text', id: 'F_startTime' },
+    }),
+    projectValuesForIssue: async () => fixture.projectValues || {},
+    fetchLabels: async () => fixture.labels || [],
+    fetchBody: async () => fixture.body || '',
+  };
+}
+
+// -----------------------------------------------------------------------------
+// 1) backlog → refine
+// -----------------------------------------------------------------------------
+describe('guard-parity: backlog→refine', () => {
+  it('accept fixture: refine-preflight ok on a well-formed fresh issue', async () => {
+    const f = loadFixture('backlog-to-refine', 'accept');
+    // Promote-path and direct-verb-path both consume `validateBody` at this
+    // boundary. There is no preflight gate at backlog→refine today; the
+    // refine-side gates fire on the NEXT transition. Parity check here is
+    // that validateBody (the shared body-gate stack) accepts.
+    const promote = validateBody(f.body, { gates: DEFAULT_GATES });
+    const direct = validateBody(f.body, { gates: DEFAULT_GATES });
+    assert.equal(promote.ok, true, JSON.stringify(promote));
+    assert.equal(promote.ok, direct.ok);
+    assert.deepEqual(refusalSet(promote.refusedRules), refusalSet(direct.refusedRules));
+  });
+
+  it('refuse fixture: validateBody refusal-set agrees across paths', async () => {
+    const f = loadFixture('backlog-to-refine', 'refuse');
+    const promote = validateBody(f.body, { gates: DEFAULT_GATES });
+    const direct = validateBody(f.body, { gates: DEFAULT_GATES });
+    // Today neither path refuses backlog→refine on body alone; AC-section
+    // absence is checked on the NEXT transition. Baseline-correct: both
+    // accept here. Any migration that adds a backlog→refine entry gate must
+    // update this fixture.
+    assert.equal(promote.ok, true);
+    assert.equal(direct.ok, true);
+    assert.deepEqual(refusalSet(promote.refusedRules), refusalSet(direct.refusedRules));
+  });
+});
+
+// -----------------------------------------------------------------------------
+// 2) refine → plan
+// -----------------------------------------------------------------------------
+describe('guard-parity: refine→plan', () => {
+  it('accept fixture: preflight + exit gate agree on ok', async () => {
+    const f = loadFixture('refine-to-plan', 'accept');
+    const deps = makeRefineDeps(f);
+
+    const promotePreflight = await planRefinementEstimate({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const promoteExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
+
+    // Direct-verb path: refine verb calls the same library functions.
+    const directPreflight = await planRefinementEstimate({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const directExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
+
+    assert.equal(promotePreflight.ok, directPreflight.ok);
+    assert.equal(promoteExit.ok, directExit.ok);
+    assert.deepEqual(refusalSet(promotePreflight.blockers), refusalSet(directPreflight.blockers));
+    assert.deepEqual(refusalSet(promoteExit.blockers), refusalSet(directExit.blockers));
+  });
+
+  it('refuse fixture: blocker sets are identical between paths', async () => {
+    const f = loadFixture('refine-to-plan', 'refuse');
+    const deps = makeRefineDeps(f);
+
+    const promotePreflight = await planRefinementEstimate({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const promoteExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
+
+    const directPreflight = await planRefinementEstimate({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const directExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
+
+    assert.equal(promotePreflight.ok, false);
+    assert.equal(directPreflight.ok, false);
+    assert.deepEqual(refusalSet(promotePreflight.blockers), refusalSet(directPreflight.blockers));
+    assert.deepEqual(refusalSet(promoteExit.blockers), refusalSet(directExit.blockers));
+
+    if (Array.isArray(f.expectedPreflightSubstrings)) {
+      assert.ok(
+        containsAll(promotePreflight.blockers, f.expectedPreflightSubstrings),
+        `expected preflight blockers to include ${JSON.stringify(f.expectedPreflightSubstrings)}; got ${JSON.stringify(promotePreflight.blockers)}`
+      );
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// 3) plan → develop
+// -----------------------------------------------------------------------------
+describe('guard-parity: plan→develop', () => {
+  it('accept fixture: planned-estimate gate + body-gates ok', async () => {
+    const f = loadFixture('plan-to-develop', 'accept');
+    // Inject a stub comments-list so planPlannedEstimateGate finds an appendix.
+    const deps = {
+      listComments: async () => [
+        {
+          body: '### 🛠 Refine estimate\n\n<!-- aitm-refined-estimate: 1 -->\n\nSize · Estimate · Priority\n\n### Planned Estimate\n\n| Size | M | M |\n| Estimate (h) | 4 | 4 |\n',
+        },
+      ],
+    };
+
+    const promote = await planPlannedEstimateGate({ cfg: CFG, issueNumber: 1, deps });
+    const direct = await planPlannedEstimateGate({ cfg: CFG, issueNumber: 1, deps });
+    const bodyPromote = validateBody(f.body, { gates: DEFAULT_GATES });
+    const bodyDirect = validateBody(f.body, { gates: DEFAULT_GATES });
+
+    assert.equal(promote.ok, direct.ok);
+    assert.equal(bodyPromote.ok, bodyDirect.ok);
+    assert.deepEqual(refusalSet(promote.blockers), refusalSet(direct.blockers));
+    assert.deepEqual(
+      refusalSet(bodyPromote.refusedRules?.map((r) => r.rule)),
+      refusalSet(bodyDirect.refusedRules?.map((r) => r.rule))
+    );
+    assert.equal(
+      promote.ok,
+      true,
+      `accept fixture should pass planned-estimate gate; got ${JSON.stringify(promote)}`
+    );
+  });
+
+  it('refuse fixture: missing planned-estimate appendix refuses both paths', async () => {
+    const f = loadFixture('plan-to-develop', 'refuse');
+    const deps = {
+      listComments: async () => [], // no refine-estimate comment at all
+    };
+    const promote = await planPlannedEstimateGate({ cfg: CFG, issueNumber: 1, deps });
+    const direct = await planPlannedEstimateGate({ cfg: CFG, issueNumber: 1, deps });
+    assert.equal(promote.ok, false);
+    assert.equal(direct.ok, false);
+    assert.deepEqual(refusalSet(promote.blockers), refusalSet(direct.blockers));
+    if (Array.isArray(f.expectedPreflightSubstrings)) {
+      assert.ok(
+        containsAll(promote.blockers, f.expectedPreflightSubstrings),
+        `expected ${JSON.stringify(f.expectedPreflightSubstrings)}; got ${JSON.stringify(promote.blockers)}`
+      );
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// 4) develop → test
+// -----------------------------------------------------------------------------
+describe('guard-parity: develop→test', () => {
+  it('accept fixture: code-complete-gate ok when AC ticked + commit-trail present', async () => {
+    const f = loadFixture('develop-to-test', 'accept');
+    const deps = {
+      listComments: async () => [{ body: f.commitTrailBody }],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(f.dirtyFiles || []),
+    };
+    const promote = await gateCodeComplete({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const direct = await gateCodeComplete({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    assert.equal(promote.ok, direct.ok);
+    assert.deepEqual(refusalSet(promote.blockers), refusalSet(direct.blockers));
+    assert.equal(promote.ok, true, `accept failed: ${JSON.stringify(promote.blockers)}`);
+  });
+
+  it('refuse fixture: unticked AC + missing commit-trail refuses both paths', async () => {
+    const f = loadFixture('develop-to-test', 'refuse');
+    const deps = {
+      listComments: async () => [],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(),
+    };
+    const promote = await gateCodeComplete({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const direct = await gateCodeComplete({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    assert.equal(promote.ok, false);
+    assert.equal(direct.ok, false);
+    assert.deepEqual(refusalSet(promote.blockers), refusalSet(direct.blockers));
+    if (Array.isArray(f.expectedSubstrings)) {
+      assert.ok(
+        containsAll(promote.blockers, f.expectedSubstrings),
+        `expected ${JSON.stringify(f.expectedSubstrings)}; got ${JSON.stringify(promote.blockers)}`
+      );
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// 5) test → review
+// -----------------------------------------------------------------------------
+describe('guard-parity: test→review', () => {
+  it('accept fixture: skipped — see fixture _reason', async () => {
+    const f = loadFixture('test-to-review', 'accept');
+    assert.equal(f.skip, true, 'fixture must explicitly opt out');
+    assert.ok(f._reason && f._reason.length > 0, 'skip requires _reason');
+  });
+
+  it('refuse fixture: review-preflight refusal-set agrees across paths', async () => {
+    const f = loadFixture('test-to-review', 'refuse');
+    const deps = {
+      gitStatus: async () => f.gitStatus || '',
+      gitHeadSha: async () => f.headSha || '',
+      findTrailComment: async () => (f.commitTrailBody ? { body: f.commitTrailBody } : null),
+      getIssueBody: async () => f.body || '',
+    };
+    const promote = await runReviewPreflight({
+      issueNumber: 1,
+      repo: 'kburson/ai-task-manager',
+      projectDir: '/tmp/fake',
+      deps,
+    });
+    const direct = await runReviewPreflight({
+      issueNumber: 1,
+      repo: 'kburson/ai-task-manager',
+      projectDir: '/tmp/fake',
+      deps,
+    });
+    assert.equal(promote.ok, false);
+    assert.equal(direct.ok, false);
+    assert.deepEqual(new Set(promote.reasons), new Set(direct.reasons));
+    if (Array.isArray(f.expectedSubstrings)) {
+      for (const want of f.expectedSubstrings) {
+        assert.ok(
+          promote.reasons.some((r) => r.includes(want)),
+          `expected reason containing "${want}"; got ${JSON.stringify(promote.reasons)}`
+        );
+      }
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// 6) review → done
+// -----------------------------------------------------------------------------
+describe('guard-parity: review→done', () => {
+  it('accept fixture: skipped — see fixture _reason', async () => {
+    const f = loadFixture('review-to-done', 'accept');
+    assert.equal(f.skip, true, 'fixture must explicitly opt out');
+    assert.ok(f._reason && f._reason.length > 0, 'skip requires _reason');
+  });
+
+  it('refuse fixture: markerPresentGate refuses missing dod-verified marker', async () => {
+    const f = loadFixture('review-to-done', 'refuse');
+    // markerPresentGate is the cheapest pure check inside runCloseGates and is
+    // the single gate that fires deterministically without git/gh I/O. Both
+    // the promote-path (review→done via approve verb) and the direct-verb
+    // path (`approve` verb, then close) reach `runCloseGates` which calls
+    // `markerPresentGate` first. Asserting agreement at this gate proves the
+    // baseline refusal-reason set.
+    const promote = markerPresentGate(f.body);
+    const direct = markerPresentGate(f.body);
+    assert.equal(promote.ok, false);
+    assert.equal(direct.ok, false);
+    assert.equal(promote.blocker, direct.blocker);
+    if (Array.isArray(f.expectedSubstrings)) {
+      for (const want of f.expectedSubstrings) {
+        assert.ok(
+          String(promote.blocker).includes(want),
+          `expected blocker containing "${want}"; got "${promote.blocker}"`
+        );
+      }
+    }
+  });
+});

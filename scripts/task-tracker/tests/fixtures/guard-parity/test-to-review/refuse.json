@@ -1,0 +1,9 @@
+{
+  "transition": "test→review",
+  "kind": "refuse",
+  "body": "## Acceptance Criteria\n\n- [x] AC missing evidence marker\n",
+  "gitStatus": "M scripts/something.mjs",
+  "headSha": "deadbeef",
+  "commitTrailBody": null,
+  "expectedSubstrings": ["tracked worktree changes are uncommitted", "missing canonical"]
+}

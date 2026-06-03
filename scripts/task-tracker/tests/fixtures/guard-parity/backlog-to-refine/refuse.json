@@ -1,0 +1,8 @@
+{
+  "transition": "backlog→refine",
+  "kind": "refuse",
+  "body": "## Scope\n\nMissing pickup directive and AC section.\n",
+  "labels": [],
+  "projectValues": {},
+  "expectedRefusalSet": ["backlog-entry-missing-ac-section"]
+}

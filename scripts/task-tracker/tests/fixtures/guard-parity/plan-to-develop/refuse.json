@@ -1,0 +1,9 @@
+{
+  "transition": "plan→develop",
+  "kind": "refuse",
+  "body": "## Scope\n\n## Acceptance Criteria\n\n- [ ] AC1 <!-- aitm-verified-by: inspection -->\n",
+  "labels": ["refactor"],
+  "plannedAppendixPresent": false,
+  "expectedPreflightSubstrings": ["planned-estimate-missing-comment"],
+  "expectedBodyGateSubstrings": []
+}

@@ -1,0 +1,6 @@
+{
+  "transition": "review→done",
+  "kind": "accept",
+  "_reason": "accept fixture skipped — runCloseGates requires real git-rev-list + real project board lifecycle state. A legitimate accept demands extensive upstream traversal; production uses TASK_TRACKER_FORCE_DONE=1 for legitimate-abandonment overrides. See issue #263 acceptance note.",
+  "skip": true
+}

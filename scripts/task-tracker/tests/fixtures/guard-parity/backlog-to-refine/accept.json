@@ -1,0 +1,13 @@
+{
+  "transition": "backlog→refine",
+  "kind": "accept",
+  "body": "## Scope\n\nFresh issue body, no markers.\n\n## Acceptance Criteria\n\n- [ ] First AC <!-- aitm-verified-by: inspection -->\n",
+  "labels": ["refactor"],
+  "projectValues": {
+    "size": "M",
+    "estimate": 4,
+    "priority": "P2",
+    "sequence": 100,
+    "startTime": "2026-06-01 09:00 -0500"
+  }
+}

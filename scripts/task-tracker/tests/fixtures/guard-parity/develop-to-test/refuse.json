@@ -1,0 +1,9 @@
+{
+  "transition": "develop→test",
+  "kind": "refuse",
+  "body": "## Acceptance Criteria\n\n- [ ] AC1 <!-- aitm-verified-by: npm test -->\n",
+  "commitTrailBody": null,
+  "shas": [],
+  "dirtyFiles": [],
+  "expectedSubstrings": ["code-complete-ac-unticked", "code-complete-commits-missing"]
+}

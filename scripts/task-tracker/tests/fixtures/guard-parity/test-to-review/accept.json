@@ -1,0 +1,6 @@
+{
+  "transition": "test→review",
+  "kind": "accept",
+  "_reason": "accept fixture skipped — review-preflight legitimately requires a real HEAD SHA appearing in a real commit-trail comment on a real issue. Setting that up would require shelling out to git + gh, which violates the in-process-fixture goal. Only refuse fixture is exercised.",
+  "skip": true
+}

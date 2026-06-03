@@ -1,0 +1,15 @@
+{
+  "transition": "refine→plan",
+  "kind": "refuse",
+  "body": "## Scope\n\nNo rationale, empty AC.\n\n## Acceptance Criteria\n",
+  "labels": ["refactor"],
+  "projectValues": {
+    "size": "M",
+    "estimate": 4,
+    "priority": "P2",
+    "sequence": null,
+    "startTime": ""
+  },
+  "expectedPreflightSubstrings": ["refine-ac-section-empty", "refine-rationale-missing"],
+  "expectedExitSubstrings": ["refine-exit-missing"]
+}
