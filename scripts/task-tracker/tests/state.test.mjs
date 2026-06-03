@@ -111,6 +111,17 @@ assert.equal(s.active, '#201');
 {
   const cwdBefore = process.cwd();
   const relTmp = mkdtempSync(path.join(tmpdir(), 'tt-state-rel-'));
+  // #273 — sid resolution now consults the provider registry env keys
+  // (CLAUDE_CODE_SESSION_ID, CLAUDE_SESSION_ID, CODEX_SESSION_ID, plus
+  // AI_TASK_MANAGER_SESSION_ID). Save+restore so this test pins the
+  // fallback path regardless of the ambient shell.
+  const savedEnv = {
+    CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID,
+    CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,
+    CODEX_SESSION_ID: process.env.CODEX_SESSION_ID,
+    AI_TASK_MANAGER_SESSION_ID: process.env.AI_TASK_MANAGER_SESSION_ID,
+  };
+  for (const k of Object.keys(savedEnv)) delete process.env[k];
   try {
     process.chdir(relTmp);
     const rel = '.ai-task-manager/task-tracker-state.json';
@@ -144,6 +155,10 @@ assert.equal(s.active, '#201');
   } finally {
     process.chdir(cwdBefore);
     rmSync(relTmp, { recursive: true });
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   }
 }
 

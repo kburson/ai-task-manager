@@ -70,6 +70,9 @@ export async function verbStart(ctx, reasonOverride) {
   } catch {}
   // #218 follow-up — seed the per-session `kanbanState` derived cache so the
   // activity-guard hook can read state synchronously without a network call.
+  // #273: surface tagged seeder errors to stderr instead of swallowing.
+  // Failures still don't abort the resume (the cache can be repaired via
+  // `/task reconcile accept-live <N>`), but the user sees the diagnostic.
   if (sid && cfg?.repo) {
     try {
       await seedSessionKanbanFromBody({
@@ -78,8 +81,13 @@ export async function verbStart(ctx, reasonOverride) {
         projDir: projectDir,
         repo: cfg.repo,
       });
-    } catch {
-      /* best-effort */
+    } catch (err) {
+      process.stderr.write(
+        `[start] #${s.lastActive}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+      );
+      process.stderr.write(
+        `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(s.lastActive).replace(/^#/, '')}\n`
+      );
     }
   }
   const { buildRow } = await import('../gh-timing-comment.mjs');

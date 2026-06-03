@@ -178,6 +178,33 @@ export async function runReconcile({
     return { status: 'error', message: `reconcile: no live or recorded state for #${issueNumber}` };
   }
   if (recorded && live && recorded === live) {
+    // #273 — even when board and body agree, the per-session derived cache
+    // (`kanbanState` in active-task.json) can be absent: bind ran while the
+    // network was flaky, the seed silently failed (pre-#273), or the user
+    // is on a brand-new session that never seeded. Refusing here forces the
+    // user to fabricate drift before they can recover, which was the exact
+    // wedge #273 reports. Seed the cache and return a non-error status.
+    try {
+      const sid = currentSessionId();
+      const projDir = getProjectDir();
+      const active = sid ? getActiveTask(sid, projDir) : null;
+      const cacheAbsent =
+        active && active.issue === `#${issueNumber}` && active.kanbanState == null;
+      if (cacheAbsent) {
+        setSessionKanbanState(sid, recorded, projDir);
+        return {
+          status: 'cache-seeded',
+          live,
+          recorded,
+          message: `cache seeded from board for #${issueNumber} (state="${recorded}")`,
+        };
+      }
+    } catch (err) {
+      // If the cache-seed attempt itself blows up, fall through to the
+      // historical no-drift-refused response — the user can still inspect
+      // the underlying error via stderr.
+      process.stderr.write(`[reconcile] cache-seed attempt failed: ${err.message}\n`);
+    }
     return {
       status: 'no-drift-refused',
       live,

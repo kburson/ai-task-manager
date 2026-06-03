@@ -95,8 +95,14 @@ export async function verbResume(ctx) {
         projDir: projectDir,
         repo: cfg.repo,
       });
-    } catch {
-      /* best-effort */
+    } catch (err) {
+      // #273: surface tagged seeder errors instead of swallowing.
+      process.stderr.write(
+        `[resume] ${target}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+      );
+      process.stderr.write(
+        `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(target).replace(/^#/, '')}\n`
+      );
     }
   }
   const { buildRow } = await import('../gh-timing-comment.mjs');

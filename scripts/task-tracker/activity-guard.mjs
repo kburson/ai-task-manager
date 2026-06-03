@@ -35,6 +35,7 @@ import {
   STATE_MATRIX,
 } from './activity-policy.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -212,59 +213,11 @@ function normalizePath(filePath, root) {
   return filePath;
 }
 
-function buildReason({ activityClass, target, state, activeIssue, toolName }) {
-  const targetLabel = toolName === 'Bash' ? `\`${truncate(target, 80)}\`` : target;
-  const stateLabel = state ?? 'no-active-task';
-  const issueLabel = activeIssue ?? 'none';
-
-  if (state == null) {
-    if (activeIssue) {
-      // Active task is set but no kanban state recorded — drift between
-      // tracker-state and the board. Tell the user how to repair.
-      const id = activeIssue.replace(/^#/, '');
-      return [
-        `activity refused: ${activityClass} on ${targetLabel} — active task ${activeIssue} has no recorded kanban state.`,
-        `  Active task: ${activeIssue}`,
-        `  To proceed: Run \`/task reconcile accept-live ${id}\` to sync local state with the board.`,
-      ].join('\n');
-    }
-    // No-active-task message
-    return [
-      `activity refused: ${activityClass} on ${targetLabel} is not permitted with no active task.`,
-      `  Active task: none`,
-      `  To proceed: Run \`/task start <issue#>\` (or \`/task plan\` for untracked work) before editing code.`,
-    ].join('\n');
-  }
-
-  const allowed = STATE_MATRIX[state] ?? [];
-  const suggestion = suggestTransition(activityClass, state, activeIssue);
-
-  return [
-    `activity refused: ${activityClass} on ${targetLabel} is not permitted in state ${stateLabel}.`,
-    `  Active task: ${issueLabel}`,
-    `  Allowed in ${stateLabel}: ${allowed.join(', ') || '(none)'}`,
-    `  To proceed: ${suggestion}`,
-  ].join('\n');
-}
-
-function suggestTransition(activityClass, currentState, activeIssue) {
-  const id = activeIssue ? activeIssue.replace(/^#/, '') : '<id>';
-
-  // Find the canonical state that allows this activity class. Pick the
-  // earliest in the kanban flow that grants it.
-  const order = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
-  for (const s of order) {
-    if (s === currentState) continue;
-    const allowed = STATE_MATRIX[s] ?? [];
-    if (allowed.includes(activityClass)) {
-      return `\`/task move ${id} ${s}\``;
-    }
-  }
-  return `(no kanban state permits ${activityClass}; review activity-policy.json)`;
-}
-
-function truncate(s, n) {
-  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+// #273 — extracted to lib/activity-block-reason.mjs so tests can pin the
+// block-message shape without importing the hook script. These thin wrappers
+// preserve the previous local-name call sites.
+function buildReason(opts) {
+  return buildReasonCore({ ...opts, STATE_MATRIX });
 }
 
 function block(reason) {

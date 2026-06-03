@@ -87,6 +87,7 @@ export async function verbSwitch(ctx, target) {
   } catch {}
   // #218 follow-up — seed the per-session `kanbanState` derived cache so the
   // activity-guard hook can read state synchronously without a network call.
+  // #273: tagged seeder errors are reported, not swallowed.
   if (sid && cfg?.repo) {
     try {
       await seedSessionKanbanFromBody({
@@ -95,8 +96,13 @@ export async function verbSwitch(ctx, target) {
         projDir: projectDir,
         repo: cfg.repo,
       });
-    } catch {
-      /* best-effort */
+    } catch (err) {
+      process.stderr.write(
+        `[switch] ${target}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+      );
+      process.stderr.write(
+        `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${target.replace(/^#/, '')}\n`
+      );
     }
   }
   const { buildRow } = await import('../gh-timing-comment.mjs');

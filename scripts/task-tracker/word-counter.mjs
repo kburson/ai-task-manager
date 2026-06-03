@@ -1,10 +1,10 @@
 // Word counter — extracted from tally-chat-words.mjs for reuse.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 
 import { detectProvider, getProvider, listProviders } from '../providers/index.mjs';
+import { resolveSessionId } from './lib/session-id.mjs';
 
 export function projectKey() {
   const dir = projectDir();
@@ -76,33 +76,11 @@ export function ensureSessionTracking(sid) {
 }
 
 export function currentSessionId() {
-  // Prefer the authoritative session id exported via env. The
-  // mtime-sort fallback is fragile (stale .jsonl touched by an editor or
-  // indexer can outrank the live session) and only runs when the env var
-  // is unset or empty.
-  // Orchestrator override first, then session-id keys for every registered
-  // adapter (active adapter first, then the rest in registration order).
-  const active = detectProvider({ env: process.env }).name;
-  const ordered = [active, ...listProviders().filter((n) => n !== active)];
-  const keys = [
-    'AI_TASK_MANAGER_SESSION_ID',
-    ...ordered.flatMap((name) => getProvider(name).sessionIdEnvKeys),
-  ];
-  for (const key of keys) {
-    const envSid = process.env[key];
-    if (typeof envSid === 'string' && envSid.length > 0) return envSid;
-  }
-  try {
-    const dir = transcriptDir();
-    const files = readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
-    if (!files.length) return null;
-    return files
-      .map((f) => ({ f, mtime: statSync(path.join(dir, f)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime)[0]
-      .f.replace('.jsonl', '');
-  } catch {
-    return null;
-  }
+  // #273 — delegate to the lone resolver in lib/session-id.mjs so that
+  // state.mjs (writer) and this module (reader) agree on which sid represents
+  // "this session". Falls back to `'default-session'` rather than null so
+  // bind paths always have a stable directory to land at.
+  return resolveSessionId({ env: process.env, transcriptDir });
 }
 
 export function loadMarker(markerPath) {

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { legacyPathFor } from './paths.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
+import { currentSessionId } from './word-counter.mjs';
 
 export const EMPTY_STATE = {
   active: null,
@@ -24,8 +25,11 @@ export const EMPTY_STATE = {
 const PER_SESSION_FIELDS = ['active', 'entryStartTs', 'wordsAtEntryStart'];
 
 function currentSid() {
-  const env = process.env || {};
-  return env.CLAUDE_SESSION_ID || env.AI_TASK_MANAGER_SESSION_ID || 'default-session';
+  // #273 — delegate to the lone resolver so this writer agrees with the
+  // activity-guard / move-state readers on which sid represents "this session".
+  // Pre-#273 this branch returned `'default-session'` while readers used a
+  // mtime-sorted .jsonl basename; the disagreement wedged sessions on bind.
+  return currentSessionId();
 }
 
 function migrateLegacyFields(parsed) {

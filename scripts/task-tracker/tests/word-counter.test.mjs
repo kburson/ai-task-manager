@@ -186,10 +186,17 @@ try {
   assert.equal(currentSessionId(), 'new-session', 'empty env string should fall back to mtime');
   delete process.env.AI_TASK_MANAGER_SESSION_ID;
 
-  // Path 3: env unset, no files → null.
+  // Path 3: env unset, no files → fallback to 'default-session' (#273).
+  // Pre-#273 this branch returned null and the writer at state.mjs used
+  // 'default-session' anyway; the disagreement wedged sessions on bind.
+  // Both writer and reader now go through the same resolver.
   rmSync(oldFile);
   rmSync(newFile);
-  assert.equal(currentSessionId(), null, 'should return null when env unset and no jsonl files');
+  assert.equal(
+    currentSessionId(),
+    'default-session',
+    "should fall back to 'default-session' (#273 — writer/reader convergence)"
+  );
 } finally {
   if (origHome === undefined) delete process.env.HOME;
   else process.env.HOME = origHome;
@@ -259,7 +266,15 @@ try {
     ),
     'jsonlPath must not fall back to ~/.claude/projects'
   );
-  assert.equal(currentSessionId(), null, 'currentSessionId must not scan ~/.claude/projects');
+  // #273 — resolveSessionId no longer returns null; with no env keys and no
+  // local transcripts, the last-resort fallback is the non-empty literal
+  // 'default-session' (always a stable, non-empty string so the writer and
+  // reader land on the same per-session active-task.json).
+  assert.equal(
+    currentSessionId(),
+    'default-session',
+    'currentSessionId must not scan ~/.claude/projects; falls back to default-session'
+  );
   if (oldHome === undefined) delete process.env.HOME;
   else process.env.HOME = oldHome;
 } finally {
