@@ -198,9 +198,7 @@ function bodyWithState(state) {
       cfg: baseCfg,
       deps: {
         fetchIssueBody: async () => ({
-          body:
-            bodyWithState('refine') +
-            '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->\n',
+          body: bodyWithState('refine') + '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->\n',
         }),
         writeIssueBody: async () => {},
         getLiveState: async () => 'refine',
