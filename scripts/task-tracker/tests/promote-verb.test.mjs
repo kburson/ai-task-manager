@@ -72,11 +72,16 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
 }
 
+// #282 — refine→plan promotion requires this stage-completion marker.
+// Tests that exercise the refine→plan deeper gates include it in the body
+// so the new marker-presence check passes and the deeper gate under test runs.
+const REFINE_COMPLETE_MARKER = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
+
 test('promote: refine→plan is a direct move-state call with refine-estimate hook', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${rationale}\n\n${ac}`;
+  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n${ac}`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
@@ -108,7 +113,8 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
 });
 
 test('promote: refine→plan refused when full refine-estimate signals are missing', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('refine'), live: 'refine' });
+  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n`;
+  const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({}),
@@ -122,7 +128,7 @@ test('promote: refine→plan refused when full refine-estimate signals are missi
 test('promote: refine→plan refused when Acceptance Criteria section is empty', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
-  const body = `${bodyWithState('refine')}\n${rationale}\n\n## Acceptance Criteria\n\n(none)\n`;
+  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n## Acceptance Criteria\n\n(none)\n`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
@@ -138,7 +144,7 @@ test('promote: refine→plan refused when refine-exit gate returns blockers (#14
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${rationale}\n\n${ac}`;
+  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n${ac}`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
@@ -258,7 +264,7 @@ test('promote: refine→plan refused when an epic child is PAST refine (#149 —
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${rationale}\n\n${ac}`;
+  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n${ac}`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],

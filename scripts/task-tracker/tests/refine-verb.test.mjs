@@ -246,11 +246,13 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
   // body fetched once
   assert.equal(calls.fetch, 1);
 
-  // body write contains the marker and preserves scope
-  assert.match(calls.write, /^<!-- aitm-refinement-rationale: /);
+  // body write contains both stage markers and preserves scope
+  assert.match(calls.write, /<!-- aitm-refinement-rationale: /);
+  assert.match(calls.write, /<!-- aitm-refine-complete: /);
   assert.match(calls.write, /## Scope/);
 
-  // verbPromote called with the issue number as a string
+  // body has no recorded state → treated as backlog entry, so verbPromote
+  // IS called for the one legitimate transitive transition (#282).
   assert.deepEqual(calls.promote, ['133']);
 
   console.log('PASS: runRefine happy path — tether + body marker + promote');

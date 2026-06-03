@@ -261,6 +261,22 @@ export async function runPromote({
     }
   }
 
+  // Refine → Plan pre-flight (#282): the `aitm-refine-complete` stage-
+  // completion marker must be present. `/task refine` stamps it after fields
+  // and rationale are written. Absent marker = user has not signalled that
+  // refinement work is done; refuse with a message that names the producing
+  // verb. This is the explicit user-signal that replaces the prior implicit
+  // forward-promote out of the refine verb.
+  if (target === 'plan') {
+    if (!/<!--\s*aitm-refine-complete:[^>]*-->/i.test(body)) {
+      return {
+        status: 'refine-exit-refused',
+        blockers: ['missing aitm-refine-complete marker; run `/task refine`'],
+        message: `Refusing to promote #${issueNumber} to Plan: missing aitm-refine-complete marker; run \`/task refine\`.`,
+      };
+    }
+  }
+
   // Refine → Plan pre-flight (#133): Size + Estimate set, rationale marker
   // authored, `## Acceptance Criteria` section non-empty. Post-success hook
   // posts the `### 🛠 Refine estimate` comment.

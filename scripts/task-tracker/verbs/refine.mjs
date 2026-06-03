@@ -25,6 +25,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { ensureIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { readLastKnownState } from '../gh-timing-comment.mjs';
 
 const pexec = promisify(execFile);
 
@@ -150,6 +151,17 @@ export function applyRationaleMarker(body, marker) {
   return `${marker}\n\n${stripped}`;
 }
 
+// #282 — stage-completion marker for the Refine stage. Promote reads this
+// on the refine→plan transition; absent marker = refuse-with-message.
+// Re-runs of `/task refine` re-stamp with the latest timestamp (idempotent).
+export const REFINE_COMPLETE_MARKER_RE = /<!--\s*aitm-refine-complete:[^>]*-->\s*\n?/gi;
+
+export function stampRefineCompleteMarker(body, ts) {
+  const stamp = ts || new Date().toISOString();
+  const stripped = String(body || '').replace(REFINE_COMPLETE_MARKER_RE, '');
+  return `<!-- aitm-refine-complete: ${stamp} -->\n${stripped}`;
+}
+
 // ---------------------------------------------------------------------------
 // Default I/O
 // ---------------------------------------------------------------------------
@@ -216,6 +228,13 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     cfgForTether = { ...cfg, sizeOptionMap: optMap };
   }
 
+  // 1b. Read the issue body up front so we can decide whether this run is a
+  //     Backlog → Refine entry transition (the one legitimate transitive
+  //     advance for this verb) or a Refine-state field/rationale refresh.
+  const body = await fetchBody({ issueNumber, repo: cfg.repo });
+  const { state: recordedState } = readLastKnownState(body);
+  const isBacklogEntry = recordedState == null || recordedState === 'backlog';
+
   // 2. Set Priority + Size + Estimate (+ Sequence when supplied) atomically on
   //    the project board.
   const tetherArgs = {
@@ -235,8 +254,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     await addLabels({ issueNumber, repo: cfg.repo, labels: labelList });
   }
 
-  // 2. Write the rationale marker (replace any existing one — last write wins).
-  const body = await fetchBody({ issueNumber, repo: cfg.repo });
+  // 2c. Write the rationale marker (replace any existing one — last write wins).
   const marker = buildRationaleMarker({
     size,
     estimate: estimateNum,
@@ -245,6 +263,10 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     reason,
   });
   let newBody = applyRationaleMarker(body, marker);
+
+  // 2d. Stamp the Refine stage-completion marker (#282). The promote verb
+  //     reads this on the refine→plan transition; absent marker = refuse.
+  newBody = stampRefineCompleteMarker(newBody);
 
   // #223 — refresh the aitm-fields body cache with the just-refined values so
   // it agrees with the board immediately. Without this, the cache lags until
@@ -275,8 +297,16 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     throw new Error(`refine: wrote rationale marker but parse failed: ${parsed.reason}`);
   }
 
-  // 4. Delegate to promote for the Backlog → Refine transition.
-  await promote([String(issueNumber)], cfg);
+  // 4. Backlog → Refine entry transition (#282). This is the verb-name
+  //     entry transition — the one legitimate transitive advance for this
+  //     verb. When the issue is already in Refine (or any later state) we
+  //     do NOT advance; the user must call `/task promote` explicitly to
+  //     exit Refine. No forward EXIT advancement from a stage verb.
+  let promoted = false;
+  if (isBacklogEntry) {
+    await promote([String(issueNumber)], cfg);
+    promoted = true;
+  }
 
   return {
     status: 'refined',
@@ -284,6 +314,8 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     size,
     estimate: estimateNum,
     priority: priorityNorm.toUpperCase(),
+    promoted,
+    recordedState: recordedState ?? null,
   };
 }
 
@@ -305,8 +337,11 @@ export async function verbRefine(rest, cfg) {
 
   try {
     const result = await runRefine({ args, cfg });
+    const tail = result.promoted
+      ? '; moved Backlog → Refine'
+      : `; stayed at ${result.recordedState ?? 'refine'} (no forward promote — run \`/task promote\` to advance)`;
     process.stdout.write(
-      `✓ #${result.issueNumber} refined: size=${result.size}, estimate=${result.estimate}h, priority=${result.priority}; moved Backlog → Refine\n`
+      `✓ #${result.issueNumber} refined: size=${result.size}, estimate=${result.estimate}h, priority=${result.priority}${tail}\n`
     );
   } catch (err) {
     process.stderr.write(`refine: ${err.message}\n`);

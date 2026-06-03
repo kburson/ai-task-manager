@@ -60,8 +60,9 @@ function makeDeps({ body, live, moveCode = 0 } = {}) {
 test('promote does not write aitm-last-known-state on successful refine→plan', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
+  const refineComplete = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${rationale}\n\n${ac}`;
+  const body = `${bodyWithState('refine')}\n${refineComplete}\n${rationale}\n\n${ac}`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
