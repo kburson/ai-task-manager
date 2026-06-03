@@ -1,9 +1,11 @@
-// `refine` verb — atomic Backlog → Refine prep + promote.
+// `refine` verb — Refine-stage field prep + stage-completion marker (#282).
 //
 // Sets Priority + Size + Estimate on the GitHub project board (via
 // tetherIssueToProject), prepends a `<!-- aitm-refinement-rationale: {...} -->`
-// marker to the issue body, and delegates to verbPromote to execute the
-// Backlog → Refine state transition.
+// marker AND stamps a `<!-- aitm-refine-complete: <ts> -->` stage-completion
+// marker to the issue body. When the issue is still in Backlog, executes the
+// one-step Backlog → Refine entry transition (the verb-name entry). Does NOT
+// forward-promote out of Refine — `/task promote` must be called explicitly.
 //
 // CLI:
 //   /task refine <issue#> --size <XS|S|M|L|XL> --estimate <hours>
