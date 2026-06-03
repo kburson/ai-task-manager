@@ -18,10 +18,12 @@ for (const file of FILES) {
       /child-cannot-lead-epic|child sub-issues may not lead/i,
       `${file} must reference the gate by name or rule`
     );
-    assert.match(
+    // No env override exists — the prior TASK_TRACKER_FORCE_PROMOTE bypass was
+    // removed. Docs must not advertise a non-existent escape hatch.
+    assert.doesNotMatch(
       body,
-      /TASK_TRACKER_FORCE_PROMOTE=1/,
-      `${file} must name the heal-forward override env var`
+      /TASK_TRACKER_FORCE_PROMOTE/,
+      `${file} must NOT reference the removed FORCE_PROMOTE override`
     );
   });
 }

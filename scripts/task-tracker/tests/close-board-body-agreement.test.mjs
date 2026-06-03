@@ -36,10 +36,12 @@ assert.ok(
   'assertFieldsPersisted must run BEFORE clearActive (so a failure leaves state recoverable)'
 );
 
-// Runtime fail-loud guard: runLogIssueTime must throw on error (unless override).
+// Runtime fail-loud guard: runLogIssueTime must throw on error.
+// No env override exists — the prior TASK_TRACKER_FORCE_DONE_NO_FIELDS bypass
+// was removed because agents rationalized it as routine.
 assert.ok(
-  /TASK_TRACKER_FORCE_DONE_NO_FIELDS/.test(runtimeSrc),
-  'runtime.mjs must honor TASK_TRACKER_FORCE_DONE_NO_FIELDS override'
+  !/TASK_TRACKER_FORCE_DONE_NO_FIELDS\s*===\s*['"]1['"]/.test(runtimeSrc),
+  'runtime.mjs must NOT honor TASK_TRACKER_FORCE_DONE_NO_FIELDS (override was removed)'
 );
 assert.ok(
   /throw new Error\(\s*\n?\s*['"`]runLogIssueTime/.test(runtimeSrc),

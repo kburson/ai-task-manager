@@ -72,51 +72,28 @@ export async function verbReview(ctx) {
       const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
       const result = validateBody(body, { gates: activeGates });
       if (!result.ok) {
-        if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
-          process.stderr.write(
-            `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing review gate for ${target}\n`
-          );
-          for (const r of result.refusedRules)
-            process.stderr.write(`   • ${r.rule}: ${r.reason}\n`);
-          try {
-            await pexec(
-              'gh',
-              [
-                'issue',
-                'comment',
-                issueNum,
-                '-R',
-                cfg.repo,
-                '--body',
-                `⚠ **review gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${result.refusedRules.map((r) => r.rule).join(', ')}.`,
-              ],
-              { timeout: GH_API_TIMEOUT_MS }
-            );
-          } catch {}
-        } else {
-          try {
-            const ts = new Date().toISOString();
-            const { buildRow } = await import('../gh-timing-comment.mjs');
-            // Body not yet fetched at this point — fall back to 0/0.
-            const row = buildRow({
-              ts,
-              event: 'gate-refused',
-              activeSec: 0,
-              idleSec: 0,
-              deltaWords: 0,
-              // wordMarker:0 audit row — gate-refused, no active session
-              wordMarker: 0,
-              description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
-            });
-            await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
-          } catch {}
-          process.stderr.write('\n');
-          process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
-          for (const r of result.refusedRules)
-            process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
-          process.stderr.write('\nSee .ai-task-manager/pickup-directive.md Hard Rules.\n\n');
-          process.exit(4);
-        }
+        try {
+          const ts = new Date().toISOString();
+          const { buildRow } = await import('../gh-timing-comment.mjs');
+          // Body not yet fetched at this point — fall back to 0/0.
+          const row = buildRow({
+            ts,
+            event: 'gate-refused',
+            activeSec: 0,
+            idleSec: 0,
+            deltaWords: 0,
+            // wordMarker:0 audit row — gate-refused, no active session
+            wordMarker: 0,
+            description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
+          });
+          await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
+        } catch {}
+        process.stderr.write('\n');
+        process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+        for (const r of result.refusedRules)
+          process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
+        process.stderr.write('\nSee .ai-task-manager/pickup-directive.md Hard Rules.\n\n');
+        process.exit(4);
       }
     }
   }

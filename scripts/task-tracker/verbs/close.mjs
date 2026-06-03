@@ -142,9 +142,7 @@ export async function verbClose(ctx) {
     }
   }
 
-  const forceFlag = rest.includes('--force');
-  const forceEnv = process.env.TASK_TRACKER_FORCE_DONE === '1';
-  const force = forceFlag || forceEnv;
+  const force = rest.includes('--force');
   if (!SKIP_NETWORK) {
     try {
       const { stdout } = await pexec(
@@ -252,7 +250,6 @@ export async function verbClose(ctx) {
           console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
           gateResult.blockers.forEach((b) => console.error(`   • ${b}`));
           console.error('');
-          console.error('Legitimate-abandonment override: TASK_TRACKER_FORCE_DONE=1 /task close');
           process.exit(3);
         }
         if (gateResult.dirtyCheckSkipped) {
@@ -263,14 +260,12 @@ export async function verbClose(ctx) {
       }
       if (reasons.length > 0) {
         if (force) {
-          console.error(
-            `[task-tracker] ⚠ ${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'} — bypassing close gate for ${closeTarget}`
-          );
+          console.error(`[task-tracker] ⚠ --force — bypassing close gate for ${closeTarget}`);
           reasons.forEach((r) => console.error(`   • ${r}`));
           unchecked.forEach((u) => console.error(`   ${u}`));
           try {
             const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-            const note = `⚠ **Close gate bypassed** via \`${forceEnv ? 'TASK_TRACKER_FORCE_DONE=1' : '--force'}\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
+            const note = `⚠ **Close gate bypassed** via \`--force\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
             await pexec('gh', ['issue', 'comment', closeIssueNum, '-R', cfg.repo, '--body', note], {
               timeout: GH_API_TIMEOUT_MS,
             });
@@ -282,7 +277,6 @@ export async function verbClose(ctx) {
           console.error('');
           console.error('See .ai-task-manager/pickup-directive.md Hard Rules.');
           console.error('Verify each item, check its box (`/task check "<label>"`), then retry.');
-          console.error('Legitimate-abandonment override: TASK_TRACKER_FORCE_DONE=1 /task close');
           process.exit(3);
         }
       }
@@ -402,10 +396,9 @@ export async function verbClose(ctx) {
 
 // Caller-side assertion that runLogIssueTime actually persisted fields to
 // both the board AND the `<!-- aitm-fields -->` body marker. Guards against
-// the silent-swallow class of bug that produced #180 / #165. Honors
-// TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 escape hatch.
+// the silent-swallow class of bug that produced #180 / #165. No env override
+// exists.
 async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
-  if (process.env.TASK_TRACKER_FORCE_DONE_NO_FIELDS === '1') return;
   let body = '';
   try {
     const { stdout } = await pexec(
@@ -417,15 +410,14 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
   } catch (err) {
     throw new Error(
       `assertFieldsPersisted: could not re-read body for #${issueNum}: ${err.message}. ` +
-        `Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override.`
+        `Retry when GitHub is reachable.`
     );
   }
   const m = body.match(/<!--\s*aitm-fields:\s*(\{[\s\S]*?\})\s*-->/);
   if (!m) {
     throw new Error(
       `assertFieldsPersisted: <!-- aitm-fields --> marker missing on #${issueNum} after runLogIssueTime. ` +
-        `Board fields almost certainly were not written. ` +
-        `Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override.`
+        `Board fields almost certainly were not written.`
     );
   }
   let parsed;
@@ -440,7 +432,7 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
   if (values.engagedTime == null) {
     throw new Error(
       `assertFieldsPersisted: aitm-fields.engagedTime is still null on #${issueNum} after runLogIssueTime — ` +
-        `field write silently failed. Set TASK_TRACKER_FORCE_DONE_NO_FIELDS=1 to override.`
+        `field write silently failed.`
     );
   }
 }

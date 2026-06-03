@@ -6,8 +6,7 @@
 //   1. Body without the ticked approval line, current state Analyze -> exit 4
 //      with `BLOCKED: plan -> develop requires`.
 //   2. Body WITH the ticked approval line -> exit 0 + `moved to: develop`.
-//   3. TASK_TRACKER_FORCE_DONE=1 bypasses with audible warning.
-//   4. Current state != plan (e.g. test) -> gate does NOT fire even
+//   3. Current state != plan (e.g. test) -> gate does NOT fire even
 //      without the approval line, so backwards transitions still work.
 
 import { strict as assert } from 'node:assert';
@@ -151,15 +150,15 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   rmSync(sandbox, { recursive: true });
 }
 
-// 3. TASK_TRACKER_FORCE_DONE=1 bypasses the gate even when not approved
+// 3. TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored — gate refuses regardless
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
   const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
-  const r = await runMove(sandbox, binDir, ['100', 'develop'], {
+  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop'], {
     TASK_TRACKER_FORCE_DONE: '1',
   });
-  assert.match(r.stderr, /bypassing plan->develop gate/);
-  assert.match(r.stdout, /moved to: develop/);
+  assert.equal(e.code, 4, `expected exit 4 even with FORCE_DONE set, got ${e.code}: ${e.stderr}`);
+  assert.match(e.stderr, /BLOCKED: plan -> develop requires/);
   rmSync(sandbox, { recursive: true });
 }
 

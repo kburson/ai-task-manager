@@ -6,7 +6,7 @@
 //   - test with ticked Deep dive + adequate section → exit 0
 //   - review with same missing-section body → exit 4
 //   - done with same missing-section body → exit 4 (Done gate fires)
-//   - TASK_TRACKER_FORCE_DONE=1 bypasses
+//   - TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored (refuses regardless)
 
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -141,13 +141,15 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   rmSync(sandbox, { recursive: true });
 }
 
-// 5. TASK_TRACKER_FORCE_DONE=1 bypasses with visible warning
+// 5. TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored — gate refuses anyway
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
   const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'test'], { TASK_TRACKER_FORCE_DONE: '1' });
-  assert.match(r.stderr, /bypassing test gate/);
-  assert.match(r.stdout, /moved to: test/);
+  const e = await runMoveExpectFail(sandbox, binDir, ['100', 'test'], {
+    TASK_TRACKER_FORCE_DONE: '1',
+  });
+  assert.equal(e.code, 4, `expected exit 4 even with FORCE_DONE set, got ${e.code}: ${e.stderr}`);
+  assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
   rmSync(sandbox, { recursive: true });
 }
 

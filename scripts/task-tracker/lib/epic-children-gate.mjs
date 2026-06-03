@@ -39,14 +39,13 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  const forcePromote = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
   const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
-  if (offenders.length && !forcePromote) {
+  if (offenders.length) {
     const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
       ok: false,
       blockers: [
-        `epic-children-not-at-refine: every child must be at refine before the epic promotes to Develop (children must not lead the parent): ${lines.join(', ')}. Heal-forward override: TASK_TRACKER_FORCE_PROMOTE=1`,
+        `epic-children-not-at-refine: every child must be at refine before the epic promotes to Develop (children must not lead the parent): ${lines.join(', ')}`,
       ],
       offendingChildren: offenders,
     };
@@ -207,7 +206,7 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
   return {
     ok: false,
     blockers: [
-      `wip-budget-exceeded: ${decision.reason}. Finish or park the advancing sibling first, or make #${me} its blocker. Override: TASK_TRACKER_FORCE_PROMOTE=1`,
+      `wip-budget-exceeded: ${decision.reason}. Finish or park the advancing sibling first, or make #${me} its blocker.`,
     ],
   };
 }

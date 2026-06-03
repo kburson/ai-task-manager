@@ -58,7 +58,7 @@ export const DEFAULTS = {
   // #247 — Refine→Plan WIP budget: at most one child past Refine per epic.
   // Default true preserves WIP enforcement. Set false to permit sanctioned
   // parallel-agent batches under one epic; restore to true when the batch
-  // closes. Env override: TASK_TRACKER_FORCE_PROMOTE=1.
+  // closes.
   gatePlanRefineWip: true,
   // #179 — Hard Review→Done lifecycle-checkbox gate. When true (default), close
   // refuses to advance unless each Lifecycle DoD item is ticked, audit-marker

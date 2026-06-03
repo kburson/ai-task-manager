@@ -315,54 +315,43 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
     }
 
     if (reasons.length > 0) {
-      if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
-        process.stderr.write(
-          `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing ${stateArg} gate for #${issueArg}\n`
-        );
-        reasons.forEach((r) => process.stderr.write(`   • ${r}\n`));
-        const bypassMsg = `⚠ **${stateArg} gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${reasons.join(', ')}.`;
+      // No env override exists. Legitimate abandonment requires a human to
+      // move the card directly in the GitHub Projects UI (intentionally not
+      // gated).
+      //
+      // Append a gate-refused row to the timing log (fire-and-forget).
+      if (refusedRuleNames.length > 0) {
         try {
-          await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]);
-        } catch {}
-      } else {
-        // Append a gate-refused row to the timing log (fire-and-forget).
-        if (refusedRuleNames.length > 0) {
-          try {
-            const { buildRow, postTimingEvent } =
-              await import('../task-tracker/gh-timing-comment.mjs');
-            const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
-            const _tsM1 = new Date().toISOString();
-            // Body is not loaded in this branch (we never reached the body
-            // fetch); 0/0 is honest — no prior reference point available.
-            const _dM1 = deriveStateMoveDelta('', _tsM1);
-            const row = buildRow({
-              ts: _tsM1,
-              event: 'gate-refused',
-              activeSec: _dM1.activeSec,
-              idleSec: _dM1.idleSec,
-              deltaWords: 0,
-              wordMarker: 0,
-              description: `→ ${stateArg}: ${refusedRuleNames.join(', ')}`,
-            });
-            await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-          } catch {
-            /* fire-and-forget */
-          }
+          const { buildRow, postTimingEvent } =
+            await import('../task-tracker/gh-timing-comment.mjs');
+          const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+          const _tsM1 = new Date().toISOString();
+          // Body is not loaded in this branch (we never reached the body
+          // fetch); 0/0 is honest — no prior reference point available.
+          const _dM1 = deriveStateMoveDelta('', _tsM1);
+          const row = buildRow({
+            ts: _tsM1,
+            event: 'gate-refused',
+            activeSec: _dM1.activeSec,
+            idleSec: _dM1.idleSec,
+            deltaWords: 0,
+            wordMarker: 0,
+            description: `→ ${stateArg}: ${refusedRuleNames.join(', ')}`,
+          });
+          await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+        } catch {
+          /* fire-and-forget */
         }
-        process.stderr.write('\n');
-        process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
-        reasons.forEach((r) => process.stderr.write(`   BLOCKED: ${r}\n`));
-        process.stderr.write('\n');
-        process.stderr.write('See .ai-task-manager/pickup-directive.md Hard Rules.\n');
-        const itemIdSuffix = itemIdOverride ? ` --item-id ${itemIdOverride}` : '';
-        process.stderr.write(
-          'Verify each item, check its box, then retry. Legitimate-abandonment override:\n'
-        );
-        process.stderr.write(
-          `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} ${stateArg}${itemIdSuffix}\n\n`
-        );
-        process.exit(4);
       }
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+      reasons.forEach((r) => process.stderr.write(`   BLOCKED: ${r}\n`));
+      process.stderr.write('\n');
+      process.stderr.write('See .ai-task-manager/pickup-directive.md Hard Rules.\n');
+      process.stderr.write(
+        'Verify each item, check its box, then retry. For legitimate abandonment, move the card in the GitHub Projects UI.\n\n'
+      );
+      process.exit(4);
     }
   }
 }
@@ -436,26 +425,13 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
     );
 
   if (fromAnalyze && planDevelopBlockers.length > 0) {
-    if (process.env.TASK_TRACKER_FORCE_DONE === '1') {
-      process.stderr.write(
-        `⚠ TASK_TRACKER_FORCE_DONE=1 — bypassing plan->develop gate for #${issueArg}\n`
-      );
-      const bypassMsg = `⚠ **plan->develop gate bypassed** via \`TASK_TRACKER_FORCE_DONE=1\` at ${new Date().toISOString()}. Unverified: ${planDevelopBlockers.join('; ')}.`;
-      try {
-        await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', bypassMsg]);
-      } catch {}
-    } else {
-      process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move #${issueArg} to develop:\n`);
-      planDevelopBlockers.forEach((b) => process.stderr.write(`   BLOCKED: ${b}\n`));
-      process.stderr.write(
-        '\nResolve the blockers, then retry. Legitimate-abandonment override:\n'
-      );
-      process.stderr.write(
-        `   TASK_TRACKER_FORCE_DONE=1 node scripts/gh/move-state.mjs ${issueArg} develop\n\n`
-      );
-      process.exit(4);
-    }
+    process.stderr.write('\n');
+    process.stderr.write(`⛔ Refusing to move #${issueArg} to develop:\n`);
+    planDevelopBlockers.forEach((b) => process.stderr.write(`   BLOCKED: ${b}\n`));
+    process.stderr.write(
+      '\nResolve the blockers, then retry. For legitimate abandonment, move the card in the GitHub Projects UI.\n\n'
+    );
+    process.exit(4);
   }
 }
 
@@ -487,7 +463,7 @@ if (stateArg === 'backlog' && !SKIP_NETWORK) {
 // backward/rework arcs and re-entry (toIdx <= fromIdx) resolve to 'skip' and
 // are never blocked; an empty `resolvedFromState` (offline) is skipped too.
 // Runs BEFORE __mutationBlock so refusal precedes any board write or marker
-// stamp (no partial transition). Audited override: TASK_TRACKER_FORCE_CONTIGUITY=1.
+// stamp (no partial transition). No env override exists.
 if (!SKIP_NETWORK && resolvedFromState && STAGES.includes(stateArg)) {
   let contigBody = '';
   let contigFetched = false;
@@ -504,21 +480,9 @@ if (!SKIP_NETWORK && resolvedFromState && STAGES.includes(stateArg)) {
       fromState: resolvedFromState,
       toState: stateArg,
       body: contigBody,
-      force: process.env.TASK_TRACKER_FORCE_CONTIGUITY === '1',
+      force: false,
     });
-    if (verdict.action === 'bypass') {
-      process.stderr.write(
-        `⚠ TASK_TRACKER_FORCE_CONTIGUITY=1 — bypassing contiguity guard for #${issueArg} (${resolvedFromState} → ${stateArg})\n`
-      );
-      const ts = new Date().toISOString();
-      const auditBody =
-        `⚠ **Contiguity guard bypassed** via \`TASK_TRACKER_FORCE_CONTIGUITY=1\` at ${ts}. ` +
-        `${verdict.message}. The skipped stage(s) were never recorded as entered.\n\n` +
-        `<!-- aitm-contiguity-bypass: ${resolvedFromState}->${stateArg}:${verdict.missing.join('+')}:${ts} -->`;
-      try {
-        await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', auditBody]);
-      } catch {}
-    } else if (verdict.action === 'refuse') {
+    if (verdict.action === 'refuse') {
       process.stderr.write('\n');
       process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
       process.stderr.write(`   BLOCKED: ${verdict.message}\n`);
@@ -530,10 +494,7 @@ if (!SKIP_NETWORK && resolvedFromState && STAGES.includes(stateArg)) {
         '   • Backfill the marker(s) if the stage(s) genuinely ran, then retry, or\n'
       );
       process.stderr.write(
-        `   • Run \`/task reconcile accept-live ${issueArg}\` if the board and body have drifted, or\n`
-      );
-      process.stderr.write(
-        '   • Override (audited): TASK_TRACKER_FORCE_CONTIGUITY=1 <your /task promote>\n\n'
+        `   • Run \`/task reconcile accept-live ${issueArg}\` if the board and body have drifted.\n\n`
       );
       process.exit(6);
     }

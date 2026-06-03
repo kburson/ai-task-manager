@@ -153,7 +153,7 @@ Within a wave, child flow is further constrained:
 - **WIP rule** — at most one child advances out of Refine per epic at a time
   (`planRefineWipGate`, entering Plan). A child _parked_ on a dependency does
   not count against the budget, and a blocker may run ahead of the parked
-  sibling it unblocks. Override: `TASK_TRACKER_FORCE_PROMOTE=1`.
+  sibling it unblocks. No env override exists.
 - **Dependency representation** — a parked child carries the `BLOCKED` label
   plus an `aitm-blocked-by: #N[, #M]` body marker.
 - **Dependency-aware JIT selection** — the next child pulled Refine → Plan

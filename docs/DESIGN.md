@@ -24,7 +24,6 @@ A project-local AI agent skill that binds the active work session to a specific 
 /task pause             Soft-stop — flushes timing, keeps task as "last active"
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
 /task close             Hard-stop — flush, update board fields, move to Done
-TASK_TRACKER_FORCE_DONE=1 /task close   Audited bypass — close with unverified items (legitimate abandonment only); posts an audit comment to the issue
 /task log #N            Re-compute and write Engaged Time and Session Time to GitHub Projects
 /task check "<label>"   Toggle a checkbox in the active issue body (exact label match)
 /task fleet             Show all active tasks across parallel agent worktrees
@@ -414,7 +413,7 @@ Blocks: #P (reason)       ← or "none"
 
 Full agent instructions live in `.ai-task-manager/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
 
-**Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.mjs <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. The audited override `TASK_TRACKER_FORCE_DONE=1` bypasses but posts an audit comment listing the unverified items. The GitHub UI (drag a card, delete an issue) is not gated.
+**Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.mjs <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. No env override exists. The GitHub UI (drag a card, delete an issue) is not gated; legitimate abandonment moves through the UI.
 
 ### Multi-Agent Orchestration
 

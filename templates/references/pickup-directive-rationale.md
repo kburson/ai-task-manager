@@ -52,16 +52,15 @@ Before `/task close` or moving to Done, every user-verifiable `- [ ]` in
 the issue body MUST be `- [x]` — Deep Dive checkpoint, every AC, every
 issue-specific Verification Commands checkbox, every DoD item. Close side
 effects (moving to Done, writing the final timing row, updating Actuals)
-are owned by `/task close`; they are not DoD checkboxes. The audited
-override `TASK_TRACKER_FORCE_DONE=1` exists for legitimate abandonment
-only (issue turned out invalid) and writes a visible bypass row to the
-timing log.
+are owned by `/task close`; they are not DoD checkboxes. No env override
+exists. Legitimate abandonment moves through the GitHub UI (drag the card
+to Done, or delete the issue).
 
 ## Rule 4 — Move-to-Done is gated
 
 `move-state.mjs <issue> done` refuses if Deep Dive is unchecked or any
-other pre-close box is unchecked. Same audited override applies. Normal
-path: `/task close` — it validates, flushes timing, then moves to Done.
+other pre-close box is unchecked. No env override exists. Normal path:
+`/task close` — it validates, flushes timing, then moves to Done.
 
 ## Rule 5 — Agent terminal action is reporting CODE_COMPLETE
 
@@ -165,13 +164,3 @@ without verifying state), STOP immediately. Do not attempt to fix the
 mistake yourself. Announce what happened, why it was wrong, and propose
 2–3 resolution options. Wait for explicit orchestrator or human
 instruction before proceeding.
-
-## Sequence-rules override
-
-Heal-forward override (use sparingly, audit-trailed): set
-`TASK_TRACKER_FORCE_PROMOTE=1` in the environment for a single command.
-The promote will succeed and post `⚠ override used` audit comments on
-both the child sub-issue and the parent epic naming the offending state
-pair. The override exists for recovery cases where the parent was
-manually advanced or the board drifted; it is not a substitute for
-sequencing.

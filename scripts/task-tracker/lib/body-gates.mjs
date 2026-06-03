@@ -220,9 +220,7 @@ const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 //
 // Solo issues (`parentEpicNumber == null`) bypass.
 //
-// When `process.env.TASK_TRACKER_FORCE_PROMOTE === '1'`, the gate returns an
-// empty blocker list and surfaces an `override` payload so the caller can post
-// an audit comment.
+// No env override exists.
 const ADMIT_FLOOR_STATE = 'develop';
 const ADMIT_FLOOR_IDX = STATE_MACHINE_STATES.indexOf(ADMIT_FLOOR_STATE);
 const REFINE_IDX = STATE_MACHINE_STATES.indexOf('refine');
@@ -247,19 +245,7 @@ export async function checkParentAdmission({
   const requiredState = STATE_MACHINE_STATES[requiredIdx];
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
   const state = raw == null ? null : normalizeStateSlug(String(raw).toLowerCase());
-  const forced = process.env.TASK_TRACKER_FORCE_PROMOTE === '1';
   if (state == null) {
-    if (forced) {
-      return {
-        blockers: [],
-        override: {
-          parentNumber: parentEpicNumber,
-          parentState: 'unknown',
-          targetState,
-          reason: 'parent-admission-unknown',
-        },
-      };
-    }
     return [
       {
         kind: 'parent-admission',
@@ -269,21 +255,10 @@ export async function checkParentAdmission({
   }
   const idx = STATE_MACHINE_STATES.indexOf(state);
   if (idx >= 0 && idx >= requiredIdx) return [];
-  if (forced) {
-    return {
-      blockers: [],
-      override: {
-        parentNumber: parentEpicNumber,
-        parentState: state,
-        targetState,
-        reason: 'parent-admission-below-target',
-      },
-    };
-  }
   return [
     {
       kind: 'parent-admission',
-      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to ${requiredState[0].toUpperCase() + requiredState.slice(1)} first (child cannot lead parent). Override: TASK_TRACKER_FORCE_PROMOTE=1`,
+      message: `parent-admission: parent #${parentEpicNumber} is in ${state}; advance the epic to ${requiredState[0].toUpperCase() + requiredState.slice(1)} first (child cannot lead parent)`,
     },
   ];
 }

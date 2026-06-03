@@ -42,7 +42,6 @@ import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { planEpicDevelopChildrenGate, planRefineWipGate } from '../lib/epic-children-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
-import { postOverrideAuditComment } from '../lib/override-audit.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
@@ -300,11 +299,11 @@ export async function runPromote({
     // #247 — Refine → Plan WIP budget: at most one child may advance out of
     // Refine per epic (parked-on-dependency children excepted, and a blocker may
     // run ahead of the sibling it unblocks). Solo issues bypass; fetch failure
-    // fails open. Override: TASK_TRACKER_FORCE_PROMOTE=1. Config override:
+    // fails open. No env override exists. Config override:
     // `gatePlanRefineWip: false` in task-tracker.json disables the gate for the
     // whole project (use for sanctioned parallel-agent batches; restore to true
     // when batch closes).
-    if (process.env.TASK_TRACKER_FORCE_PROMOTE !== '1' && cfg?.gatePlanRefineWip !== false) {
+    if (cfg?.gatePlanRefineWip !== false) {
       const wipResult = await planRefineWipGate({
         cfg,
         issueNumber,
@@ -429,11 +428,9 @@ export async function runPromote({
 
   // #162 — child-cannot-lead-epic gate. Runs on every forward transition.
   // Solo issues (no parent) bypass. When the parent epic's live state is
-  // behind the child's target state, refuse unless TASK_TRACKER_FORCE_PROMOTE=1
-  // is set, in which case the override audit comment fires post-move.
+  // behind the child's target state, refuse. No env override exists.
   const fetchParentIssue = deps.fetchParentIssue || defaultFetchParentIssue;
   const readParentStatus = deps.readParentStatus || defaultReadParentStatus;
-  let parentAdmissionOverride = null;
   {
     let parentEpicNumber = null;
     try {
@@ -442,9 +439,9 @@ export async function runPromote({
       parentEpicNumber = null;
     }
     if (parentEpicNumber != null) {
-      let gateOutcome;
+      let blockers;
       try {
-        gateOutcome = await checkParentAdmission({
+        blockers = await checkParentAdmission({
           parentEpicNumber,
           repo: cfg.repo,
           projectId: cfg.projectId,
@@ -457,16 +454,12 @@ export async function runPromote({
           message: `promote: parent-admission gate failed: ${err.message}`,
         };
       }
-      if (Array.isArray(gateOutcome)) {
-        if (gateOutcome.length > 0) {
-          return {
-            status: 'parent-admission-refused',
-            blockers: gateOutcome.map((b) => b.message),
-            message: `Refusing to promote #${issueNumber} to ${target}: child-cannot-lead-epic.`,
-          };
-        }
-      } else if (gateOutcome?.override) {
-        parentAdmissionOverride = gateOutcome.override;
+      if (Array.isArray(blockers) && blockers.length > 0) {
+        return {
+          status: 'parent-admission-refused',
+          blockers: blockers.map((b) => b.message),
+          message: `Refusing to promote #${issueNumber} to ${target}: child-cannot-lead-epic.`,
+        };
       }
     }
   }
@@ -659,26 +652,6 @@ export async function runPromote({
   // previous `move:<target>` audit row was redundant with that pair and
   // is intentionally removed.
 
-  // #162 — post override audit comment on both child and parent when the
-  // parent-admission gate was bypassed via TASK_TRACKER_FORCE_PROMOTE=1.
-  // Best-effort — failure does not roll back the (already-committed) move.
-  let parentAdmissionAudit = null;
-  if (parentAdmissionOverride) {
-    try {
-      const post = deps.postOverrideAuditComment || postOverrideAuditComment;
-      parentAdmissionAudit = await post({
-        cfg,
-        childNumber: Number(issueNumber),
-        parentNumber: parentAdmissionOverride.parentNumber,
-        childTarget: parentAdmissionOverride.targetState,
-        parentState: parentAdmissionOverride.parentState,
-        reason: parentAdmissionOverride.reason,
-      });
-    } catch (err) {
-      parentAdmissionAudit = { posted: false, error: err.message };
-    }
-  }
-
   return {
     status: 'promoted',
     from: recorded,
@@ -686,8 +659,6 @@ export async function runPromote({
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
     bootstrapped,
     refinementPost,
-    parentAdmissionOverride,
-    parentAdmissionAudit,
   };
 }
 

@@ -58,7 +58,7 @@ If `/task review` exits 3, unchecked items exist in the body. The CLI has alread
 1. Ask: "Would you like me to verify and resolve these items first, or proceed anyway?"
 2. **Default behavior is resolution.** Walk each item: verify, then `/task check "<label>"`. Re-run `/task review #N`.
 
-Do NOT use `TASK_TRACKER_FORCE_DONE=1` to bypass — that flag is for legitimate-abandonment at close, not for skipping review verification.
+No env override exists. The pre-review checkbox gate cannot be skipped from the script path.
 
 ## Epic review rule
 

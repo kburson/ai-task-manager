@@ -27,7 +27,6 @@ Engaged Time and Session Time were flushed at `/task review` — not at close.
 - ❌ `move-state.mjs <N> done` directly — same reason. `/task close` does this internally.
 - ❌ `/task close` without explicit human instruction.
 - ❌ `/task close` immediately after implementation verification. The correct terminal step is `/task review`.
-- ❌ `TASK_TRACKER_FORCE_DONE=1` for normal completion — exists only for legitimate abandonment (issue turned out invalid).
 
 If no task session is active and you need to mark an issue done: run `/task #N` first to register, complete any verification, then `/task close`.
 
@@ -37,7 +36,7 @@ If `/task close` exits 3, unchecked items exist. The CLI prints them to stderr. 
 
 1. Ask: "Would you like me to verify and resolve these items first, or close anyway?"
 2. **Default behavior is resolution.** Walk each: verify by inspection + run the test/build/command, then `/task check "<label>"`. Then `/task review` → human approval → `/task close`.
-3. If the user explicitly says close anyway (legitimate abandonment): `TASK_TRACKER_FORCE_DONE=1 /task close`. Writes an audit comment listing the items left unverified at close. Do not use this to skip verification on a real fix.
+3. If the user explicitly says close anyway (legitimate abandonment): drag the card to Done in the GitHub Projects UI, or delete the issue. No env override exists for the script-driven path.
 
 ## Review-approval gate (exit 7 / 8)
 
@@ -71,10 +70,6 @@ Inspects `git status --porcelain` in the issue's bound workspace (fleet-register
 ```
 
 **Known limitation:** the fleet registry stores one `worktreePath` per issue. If multiple worktrees are bound to the same issue, only the last-registered path is checked.
-
-## Close-with-force audit
-
-`TASK_TRACKER_FORCE_DONE=1 /task close` bypasses the pre-close checkbox gate AND the deep-dive checkpoint, and writes a visible audit comment to the issue listing every item left unverified. Use **only** for legitimate abandonment.
 
 ## Estimation delta comment
 

@@ -278,7 +278,7 @@ export async function commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps = 
     shorts.slice(0, 5).join(', ') + (shorts.length > 5 ? `, …(+${shorts.length - 5})` : '');
   return {
     ok: false,
-    blocker: `close-commits-not-on-trunk: ${stranded.length} SHA(s) not reachable from ${trunkRef}: ${display} — merge into ${trunkRef} or set TASK_TRACKER_FORCE_DONE=1 to override`,
+    blocker: `close-commits-not-on-trunk: ${stranded.length} SHA(s) not reachable from ${trunkRef}: ${display} — merge into ${trunkRef}`,
     trunkRef,
     stranded,
   };
