@@ -26,12 +26,10 @@ const TETHER_SCRIPT =
 const PREFLIGHT_SCRIPT = path.resolve(SCRIPT_DIR, '..', 'task-tracker', 'preflight-issue.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
-const REFINE_LIKE_STATUSES = new Set(['refine', 'ready']);
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo']);
-const VALID_STATUSES = new Set(['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--status backlog|refine|plan|develop|test|review|done] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -91,8 +89,14 @@ function extractIssueNumber(urlOrText) {
 
 function validateArgs(args) {
   if (!args.title || args.title === true) die(`missing --title\n${usage()}`, 2);
-  if (typeof args.status === 'string' && !VALID_STATUSES.has(args.status.toLowerCase())) {
-    die(`invalid --status "${args.status}". Valid values: ${[...VALID_STATUSES].join('|')}`, 2);
+  // #272 — --status is no longer accepted. All issues are created in Backlog
+  // and only advance via promote verbs.
+  if ('status' in args) {
+    die(
+      `--status is no longer accepted (#272). All issues are created in Backlog; ` +
+        `promote afterward via \`node scripts/task-tracker/task-tracker.mjs promote <N>\`.`,
+      2
+    );
   }
   const hasBody = typeof args['body-file'] === 'string';
   const hasShape = typeof args.shape === 'string';
@@ -166,8 +170,9 @@ function ghCreate(args, assignee) {
 }
 
 function buildTetherArgs(issueNumber, args, priority) {
-  const status = typeof args.status === 'string' ? args.status : 'backlog';
-  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', status];
+  // #272 — Always create new issues in Backlog. The --status flag was removed
+  // from this script's surface; the project tether call hard-codes `backlog`.
+  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', 'backlog'];
   if (priority) tArgs.push('--priority', priority);
   if (typeof args.size === 'string') tArgs.push('--size', args.size);
   if (typeof args.estimate === 'string') tArgs.push('--estimate', args.estimate);
@@ -228,17 +233,10 @@ function resolveAssignee(args, cfg) {
   return null;
 }
 
-function enforcePriorityGate(args) {
-  const status = typeof args.status === 'string' ? args.status : null;
-  if (!status) return;
-  if (!REFINE_LIKE_STATUSES.has(status)) return;
-  if (typeof args.priority !== 'string' || !args.priority) {
-    die(
-      `priority-required-at-refine: --priority is required when --status=${status} ` +
-        '(set p0|p1|p2 alongside size + estimate at Refine)',
-      2
-    );
-  }
+function enforcePriorityGate(_args) {
+  // #272 — The priority gate fired only when `--status refine` was passed.
+  // With `--status` removed, every issue creates at Backlog where the gate
+  // is vacuous: priority is set later when the issue moves to Refine.
 }
 
 async function main() {
@@ -337,11 +335,11 @@ async function main() {
   }
 
   // #221 — stamp the initial-state entry marker so the lifecycle chain starts
-  // at creation instead of at the first transition. stampEntryMarker is
-  // idempotent — if the body already contains the marker (template-injected),
+  // at creation instead of at the first transition. #272 — initial state is
+  // hard-coded to `backlog`: all issues are born in Backlog. stampEntryMarker
+  // is idempotent — if the body already contains the marker (template-injected),
   // re-stamping with the same ts is a no-op.
-  const initialState = typeof args.status === 'string' ? args.status : 'backlog';
-  bodyContent = stampEntryMarker(bodyContent, initialState, new Date().toISOString());
+  bodyContent = stampEntryMarker(bodyContent, 'backlog', new Date().toISOString());
   if (!tmpDir) {
     tmpDir = mkdtempSync(path.join(tmpdir(), 'aitm-create-issue-'));
     bodyFilePath = path.join(tmpDir, 'body.md');

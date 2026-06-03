@@ -172,7 +172,7 @@ Backlog and Refine are not interchangeable — they encode different states of i
 - **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
 - **Refine** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Refine never requires additional shaping.
 
-When an agent or human files a new issue with full ACs and sizing already set, tether it to `--status refine`, not `backlog`. Plan-mode sub-issue creation is the one exception: those tether to `backlog` and flip to `refine`/`develop` at fan-out time, because not every planned sub-issue is dispatched immediately.
+All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. When an agent or human files a new issue with full ACs and sizing already set, create it (lands in Backlog and stamps `aitm-entered-backlog`) and immediately chain `node scripts/task-tracker/task-tracker.mjs promote <N>` to advance through Refine. The previous "tether straight to Refine" shortcut left `aitm-entered-backlog` unstamped and broke the contiguity guard on later forward transitions.
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 

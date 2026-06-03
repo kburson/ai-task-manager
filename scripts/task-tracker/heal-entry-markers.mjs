@@ -219,6 +219,32 @@ export function outOfOrderHealableStages(markers) {
   return out;
 }
 
+// #272 — Compute the createdAt-anchored backlog fallback. Used when the
+// normal safeBackfillTs floor (the latest earlier-stage marker, or createdAt)
+// does not produce a feasible ts because `aitm-entered-refine` was stamped
+// at ~createdAt under the old `create-issue --status refine` defect.
+//
+// Strategy: stamp backlog at createdAt - 2s (always strictly before the
+// creation event). If refine is at or before that, bump refine to
+// createdAt + 1s so the chain is monotone again.
+//
+// Returns { backlogTs, refineBumpTs|null }. Pure; no I/O.
+export function backlogCreatedAtFallback({ markers, createdAt }) {
+  const createdMs = Date.parse(createdAt);
+  if (!Number.isFinite(createdMs)) {
+    throw new Error('backlogCreatedAtFallback: createdAt is not parseable');
+  }
+  const backlogMs = createdMs - 2000;
+  const backlogTs = normalizeTs(new Date(backlogMs).toISOString());
+  const refineTs = markers.refine;
+  const refineMs = refineTs ? Date.parse(refineTs) : null;
+  let refineBumpTs = null;
+  if (Number.isFinite(refineMs) && refineMs <= backlogMs) {
+    refineBumpTs = normalizeTs(new Date(createdMs + 1000).toISOString());
+  }
+  return { backlogTs, refineBumpTs };
+}
+
 // Decide what to do for one stage. Returns { action, ts?, reason?, mode? }.
 export function planStageHeal({ stage, body, createdAt }) {
   const markers = parseEntryMarkers(body);
@@ -243,13 +269,31 @@ export function planStageHeal({ stage, body, createdAt }) {
     };
   }
   if (hasLater && !hasEntry) {
-    const ts = safeBackfillTs({ stage, markers, createdAt });
-    return {
-      action: 'backfill',
-      ts,
-      reason: 'pre-gate-traversal',
-      mode: 'entry+audit',
-    };
+    try {
+      const ts = safeBackfillTs({ stage, markers, createdAt });
+      return {
+        action: 'backfill',
+        ts,
+        reason: 'pre-gate-traversal',
+        mode: 'entry+audit',
+      };
+    } catch (err) {
+      // #272 — Issues born under `create-issue --status refine` have
+      // `aitm-entered-refine` stamped at ~createdAt, leaving no feasible
+      // floor for `aitm-entered-backlog`. Fall back to createdAt - 2s and,
+      // if needed, bump the refine marker to createdAt + 1s.
+      if (stage === 'backlog' && Number.isFinite(Date.parse(createdAt))) {
+        const fallback = backlogCreatedAtFallback({ markers, createdAt });
+        return {
+          action: 'backfill',
+          ts: fallback.backlogTs,
+          reason: 'createdAt-anchored-backlog-fallback',
+          mode: 'entry+audit',
+          refineBumpTs: fallback.refineBumpTs,
+        };
+      }
+      throw err;
+    }
   }
   if (hasEntry && hasLater && !hasAudit) {
     const m = new RegExp(`<!--\\s*aitm-entered-${stage}:\\s*([^\\s-][^\\s]*?)\\s*-->`, 'i').exec(
@@ -266,7 +310,15 @@ function applyStageHeal({ body, stage, plan }) {
   if (plan.action === 'restamp') {
     return backfillEntryMarker(plan.strippedBody, stage, plan.ts, plan.reason);
   }
-  return backfillEntryMarker(body, stage, plan.ts, plan.reason);
+  let next = backfillEntryMarker(body, stage, plan.ts, plan.reason);
+  // #272 — backlog fallback may need to bump an existing refine marker so the
+  // chain remains monotone. Strip the existing refine entry + audit and
+  // re-stamp at the bump ts.
+  if (plan.refineBumpTs && stage === 'backlog') {
+    next = stripStageMarkers(next, 'refine');
+    next = backfillEntryMarker(next, 'refine', plan.refineBumpTs, 'createdAt-anchored-refine-bump');
+  }
+  return next;
 }
 
 async function healOne({ repo, num, apply }) {

@@ -33,6 +33,7 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { classify, rejectionMessage } from './lib/wave-detect.mjs';
 import { gql, splitRepo } from './lib/github-projects.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
+import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.join(
@@ -141,8 +142,6 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
     title,
     '--body-file',
     bodyFile,
-    '--status',
-    'develop',
     '--no-placeholder-substitution',
     // Wave-parent body is a synthetic container (purpose + child list),
     // not the canonical Scope/AC/DoD/Pickup-Directive shape that
@@ -168,7 +167,69 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
   }
   const m = /\/issues\/(\d+)/.exec(stdout || '');
   if (!m) throw new Error(`could not parse new parent number from create-issue stdout: ${stdout}`);
-  return Number(m[1]);
+  const parentNumber = Number(m[1]);
+
+  // #272 — create-issue no longer accepts --status; all issues are born in
+  // Backlog. Wave-parents are synthetic containers that legitimately bypass
+  // the state-machine gates and live at `develop` for the duration of the
+  // fan-out. Flip the project column directly and stamp the intermediate
+  // entry markers (refine, plan, develop) so chain-integrity gates are happy
+  // if the wave-parent is ever inspected by heal-entry-markers.
+  promoteWaveParentToDevelop({ parentNumber, cfg });
+
+  return parentNumber;
+}
+
+function promoteWaveParentToDevelop({ parentNumber, cfg }) {
+  const tetherScript = path.join(__dir, 'project-tether.mjs');
+  try {
+    execFileSync('node', [tetherScript, '--issue', String(parentNumber), '--status', 'develop'], {
+      encoding: 'utf8',
+      timeout: GH_API_TIMEOUT_MS * 2,
+    });
+  } catch (err) {
+    if (err.stderr) process.stderr.write(String(err.stderr));
+    throw new Error(
+      `wave-parent #${parentNumber} created but project-tether --status develop failed (exit ${err.status ?? 1})`
+    );
+  }
+
+  // Stamp refine/plan/develop entry markers on the body so the chain is
+  // contiguous (backlog already stamped by create-issue). Use a 1ms-stepped
+  // ISO chain so order is unambiguous.
+  let body;
+  try {
+    body = execFileSync(
+      'gh',
+      ['issue', 'view', String(parentNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+      { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }
+    );
+  } catch (err) {
+    if (err.stderr) process.stderr.write(String(err.stderr));
+    throw new Error(
+      `wave-parent #${parentNumber}: failed to fetch body for entry-marker chain (exit ${err.status ?? 1})`
+    );
+  }
+  const baseMs = Date.now();
+  body = stampEntryMarker(body, 'refine', new Date(baseMs).toISOString());
+  body = stampEntryMarker(body, 'plan', new Date(baseMs + 1).toISOString());
+  body = stampEntryMarker(body, 'develop', new Date(baseMs + 2).toISOString());
+
+  const tmpDir = mkdtempSync(path.join(tmpdir(), 'wave-parent-stamp-'));
+  const stampFile = path.join(tmpDir, 'body.md');
+  writeFileSync(stampFile, body, 'utf8');
+  try {
+    execFileSync(
+      'gh',
+      ['issue', 'edit', String(parentNumber), '-R', cfg.repo, '--body-file', stampFile],
+      { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }
+    );
+  } catch (err) {
+    if (err.stderr) process.stderr.write(String(err.stderr));
+    throw new Error(
+      `wave-parent #${parentNumber}: failed to push entry-marker chain (exit ${err.status ?? 1})`
+    );
+  }
 }
 
 async function main() {

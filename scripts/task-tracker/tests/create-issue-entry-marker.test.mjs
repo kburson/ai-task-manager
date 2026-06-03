@@ -110,22 +110,22 @@ test('#221: default (no --status) stamps aitm-entered-backlog on the posted body
   );
 });
 
-test('#221: --status refine stamps aitm-entered-refine on the posted body', () => {
+test('#272: --status flag is rejected (all issues born in backlog)', () => {
   const ctx = setup();
   const result = runCreate(ctx, ['--status', 'refine', '--priority', 'p2']);
-  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
-  const posted = readFileSync(ctx.capturedBodyPath, 'utf8');
+  assert.notEqual(result.status, 0, '--status must be refused');
   assert.match(
-    posted,
-    /<!--\s*aitm-entered-refine:\s*[0-9TZ:.-]+\s*-->/,
-    'posted body contains aitm-entered-refine marker'
+    result.stderr,
+    /--status is no longer accepted/,
+    'rejection message references the #272 deprecation'
   );
-  // Sanity: backlog marker should NOT be present when status is refine.
-  assert.doesNotMatch(
-    posted,
-    /<!--\s*aitm-entered-backlog:/,
-    'no spurious backlog marker when --status=refine'
-  );
+});
+
+test('#272: --status develop is rejected (no backdoor to other stages on create)', () => {
+  const ctx = setup();
+  const result = runCreate(ctx, ['--status', 'develop']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--status is no longer accepted/);
 });
 
 test('#221: stampEntryMarker is idempotent — pre-existing marker is not duplicated', async () => {

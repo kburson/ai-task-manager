@@ -98,7 +98,10 @@ test('epic shape: canonical structure', () => {
   assertCanonicalOrder(body, 'epic');
 });
 
-test('priority gate refuses --status refine without --priority', () => {
+test('#272: --status flag is rejected on shape-based creation', () => {
+  // The legacy `priority-required-at-refine` gate only fired when --status was
+  // accepted. With --status removed (#272), the script must refuse the flag
+  // outright with the deprecation message.
   const dir = fixtureDir();
   const res = spawnSync(
     'node',
@@ -121,7 +124,7 @@ test('priority gate refuses --status refine without --priority', () => {
     { cwd: dir, encoding: 'utf8' }
   );
   assert.notEqual(res.status, 0);
-  assert.match(res.stderr, /priority-required-at-refine/);
+  assert.match(res.stderr, /--status is no longer accepted/);
 });
 
 test('sub-issue shape requires --parent', () => {
