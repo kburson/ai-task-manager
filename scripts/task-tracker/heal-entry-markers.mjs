@@ -224,9 +224,34 @@ export function outOfOrderHealableStages(markers) {
 // does not produce a feasible ts because `aitm-entered-refine` was stamped
 // at ~createdAt under the old `create-issue --status refine` defect.
 //
-// Strategy: stamp backlog at createdAt - 2s (always strictly before the
-// creation event). If refine is at or before that, bump refine to
-// createdAt + 1s so the chain is monotone again.
+// Marker ordering invariant (the rule this fallback restores):
+//
+//   GitHub createdAt < aitm-entered-backlog < aitm-entered-refine < ... < done
+//
+// `createdAt` is the canonical birth of the issue — the moment it first
+// exists in GitHub. Before that, the issue is invisible to our state
+// machine; the machine has nothing to act on. Backlog is the FIRST
+// visible stage, so its entry marker MUST be strictly AFTER `createdAt`,
+// and every subsequent stage marker MUST be strictly after the previous.
+//
+// An earlier draft of this fallback stamped backlog at `createdAt - 2s`
+// under the (inverted) reasoning that "the issue was conceptually in
+// Backlog from the moment it existed, so backlog precedes createdAt."
+// That is wrong: nothing in the state machine can predate `createdAt`
+// because the issue did not exist yet. Never stamp a stage entry marker
+// before `createdAt`.
+//
+// Strategy:
+//   1. backlogTs = createdAt + 1s   (smallest interval preserving strict ordering)
+//   2. If refine is at or before backlogTs (the typical case for issues
+//      born under --status refine, where refine was stamped at ~createdAt),
+//      cascade refine forward to backlogTs + 1s (= createdAt + 2s).
+//
+// Later markers (plan, develop, test, ...) are not cascaded here because
+// in practice they were stamped at real promote-time — minutes to hours
+// after createdAt — and cannot collide with a backlog ts in the
+// createdAt+1s..createdAt+2s window. If a future scenario produces such
+// a collision, extend the cascade walk here.
 //
 // Returns { backlogTs, refineBumpTs|null }. Pure; no I/O.
 export function backlogCreatedAtFallback({ markers, createdAt }) {
@@ -234,13 +259,13 @@ export function backlogCreatedAtFallback({ markers, createdAt }) {
   if (!Number.isFinite(createdMs)) {
     throw new Error('backlogCreatedAtFallback: createdAt is not parseable');
   }
-  const backlogMs = createdMs - 2000;
+  const backlogMs = createdMs + 1000;
   const backlogTs = normalizeTs(new Date(backlogMs).toISOString());
   const refineTs = markers.refine;
   const refineMs = refineTs ? Date.parse(refineTs) : null;
   let refineBumpTs = null;
   if (Number.isFinite(refineMs) && refineMs <= backlogMs) {
-    refineBumpTs = normalizeTs(new Date(createdMs + 1000).toISOString());
+    refineBumpTs = normalizeTs(new Date(backlogMs + 1000).toISOString());
   }
   return { backlogTs, refineBumpTs };
 }
