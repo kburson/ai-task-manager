@@ -115,9 +115,21 @@ function insertVerificationCommands(lines, commands) {
   const out = [...lines];
   const headingIdx = out.findIndex((line) => /^#{2,3}\s+Verification Commands\b/i.test(line));
   if (headingIdx >= 0) {
+    // #296: section-end detection must be heading-level aware.
+    // If `### Verification Commands` (H3) is nested under a Deep-Dive H2,
+    // we must terminate at the NEXT heading of the same or higher level
+    // (H1/H2/H3 — i.e. depth `<=` matched depth), not at the next H2.
+    // Otherwise we sail past sibling H3 subsections (`### Identified
+    // risks`, `### Sibling sub-issues`) and insert bullets in the wrong
+    // logical section — the parser tracks `inVerificationCommands` by
+    // the most recent heading at ANY level, so the inserted bullets get
+    // dropped on audit.
+    const matched = out[headingIdx].match(/^(#{1,6})\s+/);
+    const matchedLevel = matched ? matched[1].length : 2;
+    const sameOrHigherRe = new RegExp(`^#{1,${matchedLevel}}\\s+`);
     let end = out.length;
     for (let i = headingIdx + 1; i < out.length; i += 1) {
-      if (/^##\s+/.test(out[i])) {
+      if (sameOrHigherRe.test(out[i])) {
         end = i;
         break;
       }

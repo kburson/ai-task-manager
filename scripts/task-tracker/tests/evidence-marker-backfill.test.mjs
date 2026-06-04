@@ -106,4 +106,69 @@ const metadata = [
   assert.match(written, /aitm-verified-by/);
 }
 
+// #296 — regression: when `### Verification Commands` (H3) is nested under
+// a Deep-Dive H2 followed by sibling H3 subsections, the inserter must
+// stop at the next same-or-higher-level heading (H1/H2/H3), not at the
+// next H2. Pre-fix this dropped new bullets into the wrong logical
+// section and audit kept reporting them as `missing-verification-command`.
+{
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] Plain AC',
+    '',
+    '## Deep-Dive Analysis',
+    '',
+    '### Verification Commands',
+    '',
+    '- [ ] `node scripts/task-tracker/tests/existing.test.mjs`',
+    '',
+    '### Identified risks',
+    '',
+    '- Some risk.',
+    '',
+    '### Sibling sub-issues',
+    '',
+    'None.',
+    '',
+    '## Dependency Map',
+    '',
+    'Depends on: none.',
+    '',
+    metadata,
+  ].join('\n');
+  const result = buildEvidenceBackfill(body, {
+    mappings: {
+      'Plain AC': ['node scripts/task-tracker/tests/regression-new.test.mjs'],
+    },
+  });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const lines = result.body.split('\n');
+  const newCmdIdx = lines.findIndex((l) =>
+    l.includes('node scripts/task-tracker/tests/regression-new.test.mjs')
+  );
+  // The bullet for that command appears twice: once in the AC marker, once as a VC list item.
+  const newBulletIdx = lines.findIndex((l) =>
+    /^- \[ \] `node scripts\/task-tracker\/tests\/regression-new\.test\.mjs`/.test(l)
+  );
+  const identifiedRisksIdx = lines.findIndex((l) => /^###\s+Identified risks\b/.test(l));
+  const dependencyMapIdx = lines.findIndex((l) => /^##\s+Dependency Map\b/.test(l));
+  assert.ok(newCmdIdx >= 0, 'AC marker should reference the new command');
+  assert.ok(newBulletIdx >= 0, 'a new VC bullet should be inserted');
+  assert.ok(
+    newBulletIdx < identifiedRisksIdx,
+    `bullet should land before ### Identified risks (got bullet@${newBulletIdx}, risks@${identifiedRisksIdx})`
+  );
+  assert.ok(
+    newBulletIdx < dependencyMapIdx,
+    `bullet should land well before ## Dependency Map (got bullet@${newBulletIdx}, depMap@${dependencyMapIdx})`
+  );
+  // And the post-insert audit should be clean (no missing-verification-command).
+  const post = auditEvidenceMarkers(result.body);
+  assert.deepEqual(
+    post.missingVerificationCommands,
+    [],
+    `missing-verification-command should be empty post-backfill; got ${JSON.stringify(post.missingVerificationCommands)}`
+  );
+}
+
 console.log('evidence-marker-backfill.test.mjs: all passed');
