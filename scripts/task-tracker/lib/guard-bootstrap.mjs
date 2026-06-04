@@ -1,48 +1,22 @@
-// Guard registration bootstrap (#286, parent epic #280).
+// Guard registration bootstrap — DEPRECATION SHIM (#292).
 //
-// Imported by production CLI entry-points (state-mover, /task verbs) so that
-// the universal exit-guards are present in the registry before any
-// `runGuards(...)` call. The registry itself ships empty (per
-// guard-registry.mjs docstring) — registration is explicit.
+// Original (#286, parent epic #280) responsibility: register the universal
+// `blocked-by-not-done` exit guard plus the #276 entry-field adapters into
+// the flat guard-registry as a side-effect on import.
 //
-// Registration is idempotent: re-importing this module is safe.
-// `registerGuard` returns `false` when the same `guard.id` is already present
-// in the slot, so duplicate imports do not duplicate work.
-//
-// Today this module wires the `blocked-by-not-done` guard at every exit slot
-// except `done` (which has no exit). Future universal guards register here as
-// well — keep the registration list small and obvious.
+// Replaced by `state-bootstrap.mjs` (#292): each kanban state now owns its
+// own `{ entryGuards, exitGuards, onEnter }` container in
+// `scripts/task-tracker/states/*.mjs`, and `state-bootstrap` walks those
+// containers to populate the flat registry. This file is preserved as a
+// re-export shim so existing callers (central state-mover side-effect
+// import, parity tests, future external integrations) keep working
+// unchanged. Remove this shim only after every importer has been migrated
+// to `state-bootstrap.mjs` directly.
 
-import { registerGuard } from './guard-registry.mjs';
-import { blockedByGuard } from './blocked-by-guard.mjs';
-import {
-  refineEntryFieldsPriority,
-  planEntryFieldsBody,
-  planEntryFieldsBoard,
-} from './guard-adapters-entry-fields.mjs';
+import './state-bootstrap.mjs';
+export { bootstrapGuards } from './state-bootstrap.mjs';
 
-// All board states that have an `exit` transition. `done` is terminal so it
-// has no exit slot — registering there would be a no-op but we omit it
-// explicitly to keep intent clear.
+// All board states that have an `exit` transition (`done` is terminal).
+// Re-exported for back-compat with callers that iterated the list
+// directly to mirror the old registration loop.
 export const EXIT_STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review'];
-
-let booted = false;
-
-export function bootstrapGuards() {
-  if (booted) return;
-  for (const state of EXIT_STATES) {
-    registerGuard(state, 'exit', blockedByGuard);
-  }
-  // #276 — entry-field adapter guards. Registered at the source state's `exit`
-  // slot (matching the "exit guards protect entry contract" convention used
-  // for `blockedByGuard`). `backlog.exit` enforces the refine-entry Priority
-  // requirement; `refine.exit` enforces the plan-entry body + board fields.
-  registerGuard('backlog', 'exit', refineEntryFieldsPriority);
-  registerGuard('refine', 'exit', planEntryFieldsBody);
-  registerGuard('refine', 'exit', planEntryFieldsBoard);
-  booted = true;
-}
-
-// Eager boot on import. Callers may also call `bootstrapGuards()` explicitly
-// (e.g. tests that need to control timing).
-bootstrapGuards();

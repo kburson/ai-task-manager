@@ -78,6 +78,11 @@ Issues move through seven states:
 Backlog → Refine → Plan → Develop → Test → Review → Done
 ```
 
+Each state is a first-class object (`scripts/task-tracker/states/<state>.mjs`)
+owning its `entryGuards`, `exitGuards`, and `onEnter` actions — see
+[`docs/architecture/state-machine.md`](../architecture/state-machine.md) for
+the contract and migration roadmap.
+
 Move issues using the helper script (reads all IDs from `.ai-task-manager/task-tracker.json`):
 
 ```bash

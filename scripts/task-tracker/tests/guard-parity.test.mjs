@@ -41,6 +41,37 @@ import { markerPresentGate } from '../lib/close-gates.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
+import { STATES } from '../states/index.mjs';
+
+// Walk STATES[from].exitGuards followed by STATES[to].entryGuards directly,
+// bypassing the flat guard-registry. Returns the same `{ ok, refusals }`
+// shape `runGuards` produces so the via-state-objects assertions can mirror
+// the via-registry assertions without per-test plumbing.
+async function runStateObjectGuards(from, to, ctx) {
+  const fromState = STATES[from];
+  const toState = STATES[to];
+  const refusals = [];
+  const sequence = [
+    ...fromState.exitGuards.map((g) => ({ slot: 'exit', guard: g })),
+    ...toState.entryGuards.map((g) => ({ slot: 'entry', guard: g })),
+  ];
+  for (const { slot, guard } of sequence) {
+    let result;
+    try {
+      result = await guard.run(ctx);
+    } catch (err) {
+      result = { ok: false, reason: String(err && err.message ? err.message : err) };
+    }
+    if (!result || result.ok === false) {
+      refusals.push({
+        slot,
+        id: guard.id,
+        reason: result?.reason || '(no reason given)',
+      });
+    }
+  }
+  return { ok: refusals.length === 0, refusals };
+}
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_ROOT = path.join(HERE, 'fixtures', 'guard-parity');
@@ -460,5 +491,125 @@ describe('guard-parity: review→done', () => {
         );
       }
     }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// via-state-objects: backlog→refine + refine→plan through STATES (#292)
+// -----------------------------------------------------------------------------
+// Exercises `STATES[from].exitGuards` + `STATES[to].entryGuards` DIRECTLY,
+// bypassing the flat registry. Asserts the refusal-reason set is identical
+// to the via-registry baseline above. Proves the state-object containers and
+// the registry agree, so callers can be migrated to read from STATES with no
+// behavior drift.
+describe('guard-parity: backlog→refine via-state-objects', () => {
+  it('accept fixture: state-object walk passes when Priority is set', async () => {
+    const f = loadFixture('backlog-to-refine', 'accept');
+    const deps = makeRefineDeps({
+      ...f,
+      projectValues: { priority: 'P2' },
+    });
+    const r = await runStateObjectGuards('backlog', 'refine', {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps },
+    });
+    assert.equal(r.ok, true, JSON.stringify(r.refusals));
+  });
+
+  it('refuse fixture: state-object walk refuses when Priority missing', async () => {
+    const f = loadFixture('backlog-to-refine', 'refuse');
+    const deps = makeRefineDeps({ ...f, projectValues: {} });
+    const r = await runStateObjectGuards('backlog', 'refine', {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps },
+    });
+    assert.equal(r.ok, false);
+    const reasons = (r.refusals || []).map((x) => x.reason).join(' | ');
+    assert.match(reasons, /priority/i, `expected priority refusal, got: ${reasons}`);
+  });
+
+  it('parity: state-object refusal set equals registry refusal set', async () => {
+    const f = loadFixture('backlog-to-refine', 'refuse');
+    const deps = makeRefineDeps({ ...f, projectValues: {} });
+    const ctxRegistry = {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps },
+    };
+    const ctxStates = {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps },
+    };
+    const reg = await runGuards('backlog', 'refine', ctxRegistry);
+    const obj = await runStateObjectGuards('backlog', 'refine', ctxStates);
+    const regKeys = new Set((reg.refusals || []).map((x) => x.id));
+    const objKeys = new Set((obj.refusals || []).map((x) => x.id));
+    assert.deepEqual(objKeys, regKeys);
+  });
+});
+
+describe('guard-parity: refine→plan via-state-objects', () => {
+  it('refuse fixture: aggregate state-object refusals match library refusals', async () => {
+    const f = loadFixture('refine-to-plan', 'refuse');
+    const deps = makeRefineDeps(f);
+
+    const libPreflight = await planRefinementEstimate({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const libExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
+    const libBlockers = new Set([...(libPreflight.blockers || []), ...(libExit.blockers || [])]);
+
+    const r = await runStateObjectGuards('refine', 'plan', {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps, refineToPlanGateDeps: deps },
+    });
+    assert.equal(r.ok, false);
+
+    const objReasons = new Set();
+    for (const ref of r.refusals || []) {
+      for (const piece of String(ref.reason).split(/;\s*/)) {
+        if (piece) objReasons.add(piece);
+      }
+    }
+    for (const b of libBlockers) {
+      assert.ok(
+        [...objReasons].some((x) => x.includes(b) || b.includes(x)),
+        `library blocker "${b}" missing from state-object refusals: ${[...objReasons].join(' | ')}`
+      );
+    }
+  });
+
+  it('parity: state-object refusal set equals registry refusal set', async () => {
+    const f = loadFixture('refine-to-plan', 'refuse');
+    const deps = makeRefineDeps(f);
+    const ctxRegistry = {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps, refineToPlanGateDeps: deps },
+    };
+    const ctxStates = {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps, refineToPlanGateDeps: deps },
+    };
+    const reg = await runGuards('refine', 'plan', ctxRegistry);
+    const obj = await runStateObjectGuards('refine', 'plan', ctxStates);
+    const regKeys = new Set((reg.refusals || []).map((x) => x.id));
+    const objKeys = new Set((obj.refusals || []).map((x) => x.id));
+    assert.deepEqual(objKeys, regKeys);
   });
 });

@@ -673,6 +673,36 @@ const __mutationBlock = async () => {
     }
   }
 
+  // #292 — fire each `STATES[to].onEnter` action after a successful Status
+  // write + marker stamp. Actions are short, idempotent setup hooks (see
+  // `states/index.mjs` Action contract). Empty today; populated by future
+  // migration sub-issues. Failures degrade to stderr — the transition stands.
+  if (!SKIP_NETWORK) {
+    try {
+      const { STATES: STATE_OBJS } = await import('../task-tracker/states/index.mjs');
+      const target = STATE_OBJS[stateArg];
+      if (target) {
+        for (const action of target.onEnter) {
+          try {
+            await action.run({
+              issueNumber: Number(issueArg),
+              repo: cfg.repo,
+              fromState: resolvedFromState,
+              toState: stateArg,
+              cfg,
+            });
+          } catch (err) {
+            process.stderr.write(
+              `[move-state] #${issueArg}: onEnter action "${action.id}" failed: ${err.message}\n`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      process.stderr.write(`[move-state] #${issueArg}: onEnter dispatch failed: ${err.message}\n`);
+    }
+  }
+
   // #218 follow-up — refresh the per-session `kanbanState` derived cache that
   // the activity-guard hook reads synchronously. The body marker remains the
   // source of truth; this only updates the read-cache for the current
