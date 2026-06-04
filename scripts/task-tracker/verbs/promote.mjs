@@ -40,6 +40,7 @@ import {
 } from '../lib/apply-refinement-estimate.mjs';
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
 import { planEpicDevelopChildrenGate, planRefineWipGate } from '../lib/epic-children-gate.mjs';
+import { planDeepDiveGate } from '../lib/deep-dive-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
@@ -352,6 +353,17 @@ export async function runPromote({
         status: 'planned-estimate-refused',
         blockers: gateResult.blockers,
         message: `Refusing to promote #${issueNumber} to Develop: missing planned-estimate appendix on refine-estimate comment.`,
+      };
+    }
+    // #297 — Plan → Develop pre-flight: the Deep-Dive Analysis must have
+    // run (markers + section + ticked Pickup Directive checkbox). Hole
+    // exposed by #296, which reached Develop with no deep dive recorded.
+    const deepDiveGateResult = planDeepDiveGate({ body });
+    if (!deepDiveGateResult.ok) {
+      return {
+        status: 'deep-dive-refused',
+        blockers: deepDiveGateResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Develop: Deep-Dive Analysis signals missing.`,
       };
     }
     const epicGateResult = await planEpicDevelopChildrenGate({

@@ -68,8 +68,25 @@ function makeDeps({
   };
 }
 
+// #297 — plan→develop now requires Deep-Dive Analysis signals. Tests that
+// reach the children/bootstrap gates need the signals in the body so the
+// new gate passes and the deeper gate under test runs.
+const DEEP_DIVE_SIGNALS = [
+  '',
+  '## Pickup Directive',
+  '',
+  '- [x] Deep dive complete',
+  '',
+  '<!-- aitm-deep-dive-posted: 2026-06-04 -->',
+  '## Deep-Dive Analysis (2026-06-04)',
+  'details',
+  '<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->',
+  '',
+].join('\n');
+
 function bodyWithState(state) {
-  return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
+  const base = `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
+  return state === 'plan' ? base + DEEP_DIVE_SIGNALS : base;
 }
 
 // #282 — refine→plan promotion requires this stage-completion marker.
@@ -454,7 +471,12 @@ test('promote: drift refused when live ≠ recorded', async () => {
 });
 
 test('promote: bootstrap when lastKnownState absent — syncs to live, then promotes', async () => {
-  const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'plan' });
+  // #297 — plan→develop now needs deep-dive signals; bootstrap is mid-flight
+  // but still hits the same pre-flight, so include them in the seed body.
+  const { deps, calls } = makeDeps({
+    body: '## just a body\n' + DEEP_DIVE_SIGNALS,
+    live: 'plan',
+  });
   deps.plannedEstimate = {
     listComments: async () => [
       {
