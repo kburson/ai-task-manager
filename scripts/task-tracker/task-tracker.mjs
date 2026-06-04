@@ -292,6 +292,16 @@ if (_isMain)
           await verbInflateEstimate(ctx.rest, ctx.cfg);
           break;
         }
+        case 'block': {
+          const { verbBlock } = await import('./verbs/block.mjs');
+          await verbBlock(ctx);
+          break;
+        }
+        case 'unblock': {
+          const { verbUnblock } = await import('./verbs/unblock.mjs');
+          await verbUnblock(ctx);
+          break;
+        }
         case 'move':
           console.error('unknown verb: move — did you mean `/task promote` or `/task demote`?');
           process.exit(2);
