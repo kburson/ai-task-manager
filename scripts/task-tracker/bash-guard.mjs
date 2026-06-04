@@ -25,6 +25,7 @@ import { join } from 'node:path';
 
 import { evaluateGhEdit, evaluateGhCreate } from './lib/gh-edit-guard.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { readBoundState } from './lib/bound-state.mjs';
 
 let input = {};
 try {
@@ -198,6 +199,15 @@ for (const p of allPaths) {
 // Refuses writes that would reintroduce deprecated visible-checkbox lines or
 // drop hidden verb-completion markers. Diff-based: safe wholesale rewrites of
 // bodies that never had the legacy lines or markers pass through.
+// Resolve the bound issue's kanban state once for any per-state gates
+// inside evaluateGhEdit (e.g. #281 Refine deep-dive gate). The callback only
+// reports state when the target issue IS the currently-bound issue — guarding
+// an unbound issue's body against a state we don't know would be guessing.
+const bound = readBoundState(projectRoot);
+const boundIssueNum = bound.activeIssue
+  ? Number(String(bound.activeIssue).replace(/^#/, ''))
+  : null;
+
 const ghEditResult = evaluateGhEdit({
   command,
   readBodyFile: (p) => readFileSync(p, 'utf8'),
@@ -207,6 +217,7 @@ const ghEditResult = evaluateGhEdit({
       stdio: ['ignore', 'pipe', 'ignore'],
       timeout: GH_API_TIMEOUT_MS,
     }),
+  resolveCurrentState: (n) => (Number(n) === boundIssueNum ? bound.state : undefined),
 });
 if (ghEditResult.block) block(ghEditResult.reason);
 

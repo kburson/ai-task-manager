@@ -268,6 +268,22 @@ test('isAllowed: develop allows everything', () => {
   }
 });
 
+// #281 AC3 + AC4 — Plan stage refuses WRITE_CODE (file writes) and
+// COMMIT_CODE (git commits), but allows WRITE_DOCS / WRITE_ISSUE / RUN_TESTS
+// / READ_*. The grandfather marker is deliberately NOT honored at this layer:
+// AC3/AC4 are forward-looking gates, not legacy-artifact bypasses.
+test('isAllowed: plan refuses WRITE_CODE / COMMIT_CODE / WRITE_OTHER / RUN_BUILD', () => {
+  assert.equal(isAllowed('plan', 'WRITE_CODE'), false);
+  assert.equal(isAllowed('plan', 'COMMIT_CODE'), false);
+  assert.equal(isAllowed('plan', 'WRITE_OTHER'), false);
+  assert.equal(isAllowed('plan', 'RUN_BUILD'), false);
+  // Permitted in plan — planning docs, issue body edits, test runs.
+  assert.equal(isAllowed('plan', 'WRITE_DOCS'), true);
+  assert.equal(isAllowed('plan', 'WRITE_ISSUE'), true);
+  assert.equal(isAllowed('plan', 'RUN_TESTS'), true);
+  assert.equal(isAllowed('plan', 'READ_*'), true);
+});
+
 test('isAllowed: refine refuses WRITE_CODE / COMMIT_CODE / RUN_TESTS / RUN_BUILD', () => {
   assert.equal(isAllowed('refine', 'WRITE_CODE'), false);
   assert.equal(isAllowed('refine', 'COMMIT_CODE'), false);

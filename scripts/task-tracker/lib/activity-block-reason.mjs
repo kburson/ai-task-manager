@@ -40,13 +40,18 @@ export function buildReason({ activityClass, target, state, activeIssue, toolNam
 }
 
 export function suggestTransition(activityClass, currentState, activeIssue, STATE_MATRIX) {
-  const id = activeIssue ? activeIssue.replace(/^#/, '') : '<id>';
   const order = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+  const curIdx = order.indexOf(currentState);
   for (const s of order) {
     if (s === currentState) continue;
     const allowed = STATE_MATRIX[s] ?? [];
     if (allowed.includes(activityClass)) {
-      return `\`/task move ${id} ${s}\``;
+      const tgtIdx = order.indexOf(s);
+      // Forward → /task promote. Backward → /task demote (only test/review
+      // can demote, but the verb itself enforces that; we just emit the
+      // appropriate direction so the user sees a runnable command).
+      const verb = tgtIdx > curIdx ? '/task promote' : '/task demote';
+      return `\`${verb}\` → ${s}`;
     }
   }
   return `(no kanban state permits ${activityClass}; review activity-policy.json)`;

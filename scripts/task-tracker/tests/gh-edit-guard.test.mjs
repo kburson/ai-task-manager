@@ -530,4 +530,63 @@ import {
   assert.equal(r.block, false);
 }
 
+// ── #281 stage-bound: Refine refuses Deep-Dive introduction (AC1, AC6) ──────
+{
+  const cur = '## AC\n\n- [ ] do thing\n';
+  const newWithHeading =
+    '## AC\n\n- [ ] do thing\n## Deep-Dive Analysis\nfindings\n' +
+    '<!-- aitm-deep-dive-complete: 2026-06-04T00:00:00.000Z -->\n';
+
+  // No currentState → stage-bound gate inactive (forward-compat). The
+  // newBody already carries the deep-dive marker, so the legacy
+  // heading-without-marker branch doesn't fire either → passes.
+  let r = checkBodyChange({ newBody: newWithHeading, currentBody: cur, issueNumber: 281 });
+  assert.equal(r.block, false);
+
+  // currentState='refine' → stage-bound refusal names state/action/next.
+  r = checkBodyChange({
+    newBody: newWithHeading,
+    currentBody: cur,
+    issueNumber: 281,
+    currentState: 'refine',
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /stage-bound refusal/);
+  assert.match(r.reason, /state `refine`/);
+  assert.match(r.reason, /Deep-Dive Analysis/);
+  assert.match(r.reason, /\/task promote/);
+  assert.match(r.reason, /plan/);
+
+  // currentState='plan' → gate inactive; legacy heading-without-marker check
+  // still passes when the marker is included.
+  r = checkBodyChange({
+    newBody: newWithHeading,
+    currentBody: cur,
+    issueNumber: 281,
+    currentState: 'plan',
+  });
+  assert.equal(r.block, false);
+
+  // AC6 grandfather: live body carries the marker → bypass even in refine.
+  const curGrandfathered = cur + '<!-- aitm-stage-bound-grandfather -->\n';
+  r = checkBodyChange({
+    newBody: newWithHeading + '<!-- aitm-stage-bound-grandfather -->\n',
+    currentBody: curGrandfathered,
+    issueNumber: 281,
+    currentState: 'refine',
+  });
+  assert.equal(r.block, false);
+
+  // Adding only the marker (no heading) in refine → still refused, but with
+  // the marker-flavored action message.
+  r = checkBodyChange({
+    newBody: cur + '<!-- aitm-deep-dive-complete: 2026-06-04T00:00:00.000Z -->\n',
+    currentBody: cur,
+    issueNumber: 281,
+    currentState: 'refine',
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-deep-dive-complete/);
+}
+
 console.log('gh-edit-guard.test.mjs: all passed');

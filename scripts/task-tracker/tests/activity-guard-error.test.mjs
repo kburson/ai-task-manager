@@ -35,7 +35,11 @@ test('no active issue + no state → no-active-task message', () => {
   assert.match(reason, /\/task start/);
 });
 
-test('non-null state + disallowed activity → message suggests a state move', () => {
+test('non-null state + disallowed activity → message suggests promote/demote', () => {
+  // #281 — legacy `/task move <id> <state>` advice was wrong (verb retired in
+  // favor of promote/demote). Forward suggestion → /task promote; backward →
+  // /task demote. WRITE_CODE in refine resolves forward to develop, so the
+  // message points the user at promote.
   const reason = buildReason({
     activityClass: 'WRITE_CODE',
     target: 'src/foo.mjs',
@@ -45,5 +49,6 @@ test('non-null state + disallowed activity → message suggests a state move', (
     STATE_MATRIX,
   });
   assert.match(reason, /not permitted in state refine/);
-  assert.match(reason, /\/task move 273/);
+  assert.match(reason, /\/task promote/);
+  assert.doesNotMatch(reason, /\/task move /);
 });

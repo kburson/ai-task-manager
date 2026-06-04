@@ -3,6 +3,8 @@ import { loadState } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { readBoundState } from '../lib/bound-state.mjs';
+import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -113,6 +115,14 @@ export async function verbCheck(ctx) {
   const body = stdout;
 
   if (/^deep[- ]?dive complete$/i.test(label)) {
+    // #281 — stage-bound: deep-dive-complete is a Plan-stage artifact. Refuse in
+    // Refine unless the live body carries the `aitm-stage-bound-grandfather`
+    // marker (legacy bypass; AC6).
+    const refusal = stageBoundDeepDiveRefusal({ projectDir, body, issueNumber: issueNum });
+    if (refusal) {
+      console.error(refusal);
+      process.exit(1);
+    }
     const { markDeepDiveComplete } = await import('../lib/markers.mjs');
     const res = await markDeepDiveComplete({ issueNumber: issueNum, cfg });
     if (!res.changed) {
@@ -185,6 +195,22 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
     }
   }
 
+  if (ddLabels.length) {
+    // #281 — stage-bound: fetch body once for the grandfather check. If the
+    // checklist path already fetched it, this is a second round-trip — accept
+    // that for clarity; the verb is interactive and not on a hot path.
+    const { stdout: ddBody } = await pexec(
+      'gh',
+      ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    const refusal = stageBoundDeepDiveRefusal({ projectDir, body: ddBody, issueNumber: issueNum });
+    if (refusal) {
+      console.error(refusal);
+      process.exit(1);
+    }
+  }
+
   for (let i = 0; i < ddLabels.length; i++) {
     const { markDeepDiveComplete } = await import('../lib/markers.mjs');
     const res = await markDeepDiveComplete({ issueNumber: issueNum, cfg });
@@ -196,4 +222,27 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
   }
 
   if (exitCode) process.exit(exitCode);
+}
+
+// #281 — stage-bound gate for `check "Deep dive complete"`. Reads bound state
+// from the per-session active-task.json mirror (same source as the activity
+// hooks). Returns a refusal message string when blocked, null otherwise.
+// Grandfather: an `aitm-stage-bound-grandfather` marker on the live body
+// bypasses the gate (scoped to AC1/AC2 per spec).
+function stageBoundDeepDiveRefusal({ projectDir, body, issueNumber }) {
+  let bound;
+  try {
+    bound = readBoundState(projectDir);
+  } catch {
+    return null; // fail-open on state-read errors — hooks still gate body push
+  }
+  if (bound?.state !== 'refine') return null;
+  if (hasStageBoundGrandfather(body)) return null;
+  return formatStageBoundRefusal({
+    state: 'refine',
+    action: 'marking deep-dive complete via `/task check "Deep dive complete"`',
+    nextVerb: '/task promote',
+    nextState: 'plan',
+    issueNumber,
+  });
 }

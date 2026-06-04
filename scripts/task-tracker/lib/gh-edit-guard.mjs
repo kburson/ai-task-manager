@@ -8,6 +8,8 @@
 //
 // Pure logic — caller injects body sources so this is fully unit-testable.
 
+import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound-reason.mjs';
+
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
@@ -112,9 +114,32 @@ export function checkNewBody({ newBody }) {
   return { block: false };
 }
 
-export function checkBodyChange({ newBody, currentBody, issueNumber }) {
+export function checkBodyChange({ newBody, currentBody, issueNumber, currentState }) {
   const src = String(newBody || '');
   const cur = String(currentBody || '');
+
+  // #281 — Refine-state stage-bound gate: refuse edits that introduce
+  // Plan-stage artifacts (Deep-Dive heading or aitm-deep-dive-complete marker)
+  // while the issue is still in `refine`. Grandfather: an
+  // `aitm-stage-bound-grandfather` marker on the live body bypasses the gate.
+  if (currentState === 'refine' && !hasStageBoundGrandfather(cur)) {
+    const addsHeading = DEEP_DIVE_HEADING_RE.test(src) && !DEEP_DIVE_HEADING_RE.test(cur);
+    const addsMarker = DEEP_DIVE_MARKER_RE.test(src) && !DEEP_DIVE_MARKER_RE.test(cur);
+    if (addsHeading || addsMarker) {
+      return {
+        block: true,
+        reason: formatStageBoundRefusal({
+          state: 'refine',
+          action: addsHeading
+            ? 'introducing a `## Deep-Dive Analysis` section'
+            : 'introducing an `aitm-deep-dive-complete` marker',
+          nextVerb: '/task promote',
+          nextState: 'plan',
+          issueNumber,
+        }),
+      };
+    }
+  }
 
   for (const { name, re, advice } of LEGACY_PATTERNS) {
     if (re.test(src) && !re.test(cur)) {
@@ -201,7 +226,7 @@ export function checkBodyChange({ newBody, currentBody, issueNumber }) {
 // readers, and runs the diff check. Returns { block: false } when the command
 // is not a relevant `gh issue edit`, when the body can't be resolved, or when
 // the diff is safe.
-export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody }) {
+export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody, resolveCurrentState }) {
   const parsed = parseGhIssueEdit(command);
   if (!parsed || parsed.source === 'none') return { block: false };
 
@@ -224,7 +249,21 @@ export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody }) {
     currentBody = '';
   }
 
-  return checkBodyChange({ newBody, currentBody, issueNumber: parsed.issueNumber });
+  let currentState;
+  if (typeof resolveCurrentState === 'function') {
+    try {
+      currentState = resolveCurrentState(parsed.issueNumber) ?? undefined;
+    } catch {
+      currentState = undefined;
+    }
+  }
+
+  return checkBodyChange({
+    newBody,
+    currentBody,
+    issueNumber: parsed.issueNumber,
+    currentState,
+  });
 }
 
 // Wrapper for `gh issue create`. No current body — only legacy-introduction

@@ -23,9 +23,8 @@
 // but an active task is bound, the guard refuses writes and points at
 // `reconcile accept-live` to repair the body marker.
 
-import { readFileSync, realpathSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import path from 'node:path';
 
 import {
   classifyEdit,
@@ -36,6 +35,7 @@ import {
 } from './activity-policy.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
+import { readBoundState } from './lib/bound-state.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -69,7 +69,7 @@ try {
 }
 
 const policy = loadPolicy(projectRoot);
-const { activeIssue, state: recordedState } = readState(projectRoot);
+const { activeIssue, state: recordedState } = readBoundState(projectRoot);
 // When no task is bound (paused or never started), ignore the residual
 // `state` field from the last active task. Otherwise editing infra/meta
 // files between tasks would be permanently blocked: WRITE_OTHER is excluded
@@ -125,71 +125,6 @@ block(buildReason({ activityClass, target, state, activeIssue, toolName }));
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function readState(root) {
-  const statePath = path.join(root, '.ai-task-manager', 'task-tracker-state.json');
-  let parsed = null;
-  try {
-    parsed = JSON.parse(readFileSync(statePath, 'utf8'));
-  } catch {
-    /* missing or malformed — fall through with parsed null */
-  }
-  const activeIssue =
-    parsed && typeof parsed === 'object' && typeof parsed.active === 'string'
-      ? parsed.active
-      : null;
-
-  // #218: prefer the per-session derived cache (`kanbanState` on the most
-  // recently updated active-task.json). The session writer mirrors the body
-  // marker every time move-state.mjs / reconcile / bind touches it, so this
-  // is a synchronous, near-current view of the body's `aitm-last-known-state`.
-  const sessionState = readSessionKanbanState(root, activeIssue);
-  if (sessionState != null) return { activeIssue, state: sessionState };
-
-  // Legacy fallback: pre-#218 global `state` field. Retained so that
-  // installations that haven't yet picked up the new writers don't deadlock.
-  if (parsed && typeof parsed === 'object' && typeof parsed.state === 'string') {
-    const legacy = parsed.state;
-    if (Object.prototype.hasOwnProperty.call(STATE_MATRIX, legacy)) {
-      return { activeIssue, state: legacy };
-    }
-  }
-  return { activeIssue, state: null };
-}
-
-// Scan `.ai-task-manager/sessions/*/active-task.json` for a record whose
-// `issue` matches `activeIssue` and return its `kanbanState` (when valid).
-// Picks the most-recently-modified match when more than one session is bound
-// to the same issue. Returns null if no match.
-function readSessionKanbanState(root, activeIssue) {
-  if (!activeIssue) return null;
-  const sessionsDir = path.join(root, '.ai-task-manager', 'sessions');
-  let entries;
-  try {
-    entries = readdirSync(sessionsDir, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  let best = null; // { mtimeMs, state }
-  for (const ent of entries) {
-    if (!ent.isDirectory()) continue;
-    const p = path.join(sessionsDir, ent.name, 'active-task.json');
-    let raw, parsed, mtimeMs;
-    try {
-      mtimeMs = statSync(p).mtimeMs;
-      raw = readFileSync(p, 'utf8');
-      parsed = JSON.parse(raw);
-    } catch {
-      continue;
-    }
-    if (!parsed || typeof parsed !== 'object') continue;
-    if (parsed.issue !== activeIssue) continue;
-    const k = typeof parsed.kanbanState === 'string' ? parsed.kanbanState : null;
-    if (!k || !Object.prototype.hasOwnProperty.call(STATE_MATRIX, k)) continue;
-    if (!best || mtimeMs > best.mtimeMs) best = { mtimeMs, state: k };
-  }
-  return best ? best.state : null;
-}
 
 function normalizePath(filePath, root) {
   // Resolve symlinks on root so /var/... and /private/var/... unify on macOS.

@@ -122,7 +122,10 @@ test('Edit docs/notes.md in refine → block per STATE_MATRIX', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_DOCS/);
-    assert.match(r.decision.reason, /\/task move 65 plan/);
+    // #281 — refusal advice migrated from legacy `/task move <id> <state>`
+    // to `/task promote → <state>` (forward) / `/task demote → <state>` (back).
+    assert.match(r.decision.reason, /\/task promote/);
+    assert.match(r.decision.reason, /plan/);
   } finally {
     cleanup(dir);
   }
@@ -233,7 +236,9 @@ test('Edit src/foo.ts in refine → block; suggests develop', () => {
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
     assert.match(r.decision.reason, /refine/);
-    assert.match(r.decision.reason, /\/task move 65 develop/);
+    // #281 — forward suggestion: `/task promote → develop`.
+    assert.match(r.decision.reason, /\/task promote/);
+    assert.match(r.decision.reason, /develop/);
     assert.match(r.decision.reason, /Active task: #65/);
   } finally {
     cleanup(dir);
@@ -250,7 +255,9 @@ test('Edit src/foo.ts in test → block; suggests develop', () => {
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
     assert.match(r.decision.reason, /WRITE_CODE/);
-    assert.match(r.decision.reason, /\/task move 65 develop/);
+    // #281 — backward suggestion from `test`: `/task demote → develop`.
+    assert.match(r.decision.reason, /\/task demote/);
+    assert.match(r.decision.reason, /develop/);
   } finally {
     cleanup(dir);
   }
