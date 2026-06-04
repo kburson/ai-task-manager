@@ -66,6 +66,8 @@ export const DEFAULT_POLICY = Object.freeze({
     'markdownlint.*.json',
     '.markdownlint.json',
     '.markdownlint.*.json',
+    '.markdownlint-cli2.jsonc',
+    '.markdownlint-cli2.*',
     '.claude/settings.json',
     '.claude/settings.*.json',
   ],
