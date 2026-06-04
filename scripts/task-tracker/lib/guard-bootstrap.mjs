@@ -15,6 +15,11 @@
 
 import { registerGuard } from './guard-registry.mjs';
 import { blockedByGuard } from './blocked-by-guard.mjs';
+import {
+  refineEntryFieldsPriority,
+  planEntryFieldsBody,
+  planEntryFieldsBoard,
+} from './guard-adapters-entry-fields.mjs';
 
 // All board states that have an `exit` transition. `done` is terminal so it
 // has no exit slot — registering there would be a no-op but we omit it
@@ -28,6 +33,13 @@ export function bootstrapGuards() {
   for (const state of EXIT_STATES) {
     registerGuard(state, 'exit', blockedByGuard);
   }
+  // #276 — entry-field adapter guards. Registered at the source state's `exit`
+  // slot (matching the "exit guards protect entry contract" convention used
+  // for `blockedByGuard`). `backlog.exit` enforces the refine-entry Priority
+  // requirement; `refine.exit` enforces the plan-entry body + board fields.
+  registerGuard('backlog', 'exit', refineEntryFieldsPriority);
+  registerGuard('refine', 'exit', planEntryFieldsBody);
+  registerGuard('refine', 'exit', planEntryFieldsBoard);
   booted = true;
 }
 

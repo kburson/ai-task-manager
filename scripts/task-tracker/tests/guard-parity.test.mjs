@@ -39,6 +39,8 @@ import { gateCodeComplete } from '../lib/code-complete-gate.mjs';
 import { runReviewPreflight } from '../lib/review-preflight.mjs';
 import { markerPresentGate } from '../lib/close-gates.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
+import { runGuards } from '../lib/guard-registry.mjs';
+import '../lib/guard-bootstrap.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_ROOT = path.join(HERE, 'fixtures', 'guard-parity');
@@ -181,6 +183,91 @@ describe('guard-parity: refine→plan', () => {
       assert.ok(
         containsAll(promotePreflight.blockers, f.expectedPreflightSubstrings),
         `expected preflight blockers to include ${JSON.stringify(f.expectedPreflightSubstrings)}; got ${JSON.stringify(promotePreflight.blockers)}`
+      );
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
+// via-registry: backlog→refine + refine→plan through runGuards (#276)
+// -----------------------------------------------------------------------------
+// Asserts that the in-registry entry-field adapters produce the SAME refusal
+// content as the underlying gate libraries when invoked through the
+// move-state.mjs chokepoint ctx shape `{ cfg, issueNumber, body, deps }`.
+// Pre-flight in promote.mjs and in-registry guards both wrap the same gates;
+// these tests prove the registry path agrees with the library-baseline path
+// the other describes already cover.
+describe('guard-parity: backlog→refine via-registry', () => {
+  it('accept fixture: runGuards passes when Priority is set', async () => {
+    const f = loadFixture('backlog-to-refine', 'accept');
+    const deps = makeRefineDeps({
+      ...f,
+      // Adapter expects Priority on the board; the backlog→refine accept
+      // fixture has no projectValues block (validateBody-only). Stamp one
+      // in so the registry path mirrors the post-Refine reality.
+      projectValues: { priority: 'P2' },
+    });
+    const r = await runGuards('backlog', 'refine', {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps },
+    });
+    assert.equal(r.ok, true, JSON.stringify(r.refusals || r));
+  });
+
+  it('refuse fixture: runGuards refuses when Priority missing', async () => {
+    const f = loadFixture('backlog-to-refine', 'refuse');
+    const deps = makeRefineDeps({ ...f, projectValues: {} }); // no priority
+    const r = await runGuards('backlog', 'refine', {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps },
+    });
+    assert.equal(r.ok, false);
+    const reasons = (r.refusals || []).map((x) => x.reason).join(' | ');
+    assert.match(reasons, /priority/i, `expected priority refusal, got: ${reasons}`);
+  });
+});
+
+describe('guard-parity: refine→plan via-registry', () => {
+  it('refuse fixture: aggregate registry refusals match library refusals', async () => {
+    const f = loadFixture('refine-to-plan', 'refuse');
+    const deps = makeRefineDeps(f);
+
+    // Library baseline.
+    const libPreflight = await planRefinementEstimate({
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps,
+    });
+    const libExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
+    const libBlockers = new Set([...(libPreflight.blockers || []), ...(libExit.blockers || [])]);
+
+    // Registry path.
+    const r = await runGuards('refine', 'plan', {
+      cfg: CFG,
+      issueNumber: 1,
+      body: f.body,
+      deps: { refinementEstimate: deps, refineToPlanGateDeps: deps },
+    });
+    assert.equal(r.ok, false);
+    const regReasons = new Set();
+    for (const ref of r.refusals || []) {
+      // Registry joins blockers into a `; `-separated reason; split back out
+      // so set-equality works against the library baseline.
+      for (const piece of String(ref.reason).split(/;\s*/)) {
+        if (piece) regReasons.add(piece);
+      }
+    }
+
+    // Every library blocker must appear in the registry refusal output.
+    for (const b of libBlockers) {
+      assert.ok(
+        [...regReasons].some((x) => x.includes(b) || b.includes(x)),
+        `library blocker "${b}" missing from registry refusals: ${[...regReasons].join(' | ')}`
       );
     }
   });

@@ -381,6 +381,16 @@ if (!SKIP_NETWORK && resolvedFromState) {
     return await resolveLiveStateName(String(blockerNumber));
   }
 
+  // ctx.cfg + ctx.deps feed the entry-field guard adapters
+  // (refine-entry-fields-priority, plan-entry-fields-body, plan-entry-fields-board)
+  // registered in guard-bootstrap. The adapters wrap planPriorityGate /
+  // planRefinementEstimate / gateRefineToPlan, which all accept `deps = {}`
+  // and fall back to real `gh` implementations when callers omit them — so
+  // `deps` is left undefined here and the gates self-default. `cfg` MUST be
+  // present (the adapters short-circuit on `!ctx.cfg`). The body adapter
+  // side-channels its resolved `refinementPlan` onto ctx; that field is
+  // consumed today only by promote.mjs's inline pre-flight (which still runs
+  // ahead of move-state spawn), so the in-registry assignment is harmless.
   const guardResult = await runGuards(resolvedFromState, stateArg, {
     issueNumber: Number(issueArg),
     repo: cfg.repo,
@@ -388,6 +398,7 @@ if (!SKIP_NETWORK && resolvedFromState) {
     toState: stateArg,
     body: guardBody,
     fetchBlockerState,
+    cfg,
   });
 
   if (!guardResult.ok) {
