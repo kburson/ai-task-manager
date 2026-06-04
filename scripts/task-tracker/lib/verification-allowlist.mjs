@@ -130,6 +130,10 @@ const BIN_RULES = {
   // `npx`: runs arbitrary npm packages; restrict to known-installed names
   // would be ideal but for now leave pass-through. Document as follow-up.
   npx: { allowPassthrough: true },
+
+  // `grep`: read-only text search. Common AC evidence command ("file contains
+  // line X"). No destructive flags exist; pass-through.
+  grep: { allowPassthrough: true },
 };
 
 // Tokenize on whitespace, respecting balanced single/double quotes.

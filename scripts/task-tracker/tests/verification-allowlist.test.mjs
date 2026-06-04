@@ -196,6 +196,8 @@ const canonicalCases = [
   'git branch --show-current',
   'pytest -k foo',
   'make build',
+  'grep -n "foo" bar.txt',
+  'grep -rn "pattern" scripts/',
 ];
 for (const input of canonicalCases) {
   const r = validateVerificationCommand(input, opts);
