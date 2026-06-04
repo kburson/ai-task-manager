@@ -13,6 +13,42 @@
 import { spawn } from 'node:child_process';
 import { BODY_VERSION_MARKER_RE, parseBodyVersion, stampBodyVersion } from './body-version.mjs';
 
+// Stale-input drift detection (#293).
+//
+// Inspect the caller's `mutate(base) → ourLocal` output for an
+// `aitm-body-version` marker BEFORE stripping. A correctly-written `mutate`
+// operates on the already-stripped `base` and returns a stripped result, so
+// `parseBodyVersion(ourLocal)` will be null — the check is a no-op. The
+// failure mode this catches: a `mutate: () => body` that ignores `base` and
+// returns a captured snapshot of an OLDER body version. In that case the
+// snapshot still carries `aitm-body-version: N` with `N < remoteVersion`,
+// and we refuse with `reason: 'stale-input'` instead of silently clobbering
+// every marker added between the snapshot capture and now.
+function checkStaleInput({ ourLocal, remoteVersion, issueNumber }) {
+  // Only fire when the caller's output ACTUALLY carries a marker — a missing
+  // marker is the normal happy-path (mutate operated on the stripped base
+  // and returned a stripped result), not stale. parseBodyVersion conflates
+  // "no marker" with "version 0", so we test for the marker directly.
+  const src = String(ourLocal ?? '');
+  if (!BODY_VERSION_MARKER_RE.test(src)) return;
+  const ourLocalVersion = parseBodyVersion(src);
+  if (ourLocalVersion < remoteVersion) {
+    throw new BodyWriteRefusalError(
+      `versionedWriteBody: refusing — stale input on issue #${issueNumber}: ` +
+        `caller's mutate returned a body at aitm-body-version=${ourLocalVersion}, ` +
+        `but remote is at version=${remoteVersion}. The caller's mutate appears to ` +
+        `have ignored its 'base' argument and returned a captured snapshot. Use ` +
+        `mutateIssueBody({ mutate }) from lib/issue-body-mutate.mjs so the closure ` +
+        `is forced to derive its result from the fresh remote base.`,
+      {
+        reason: 'stale-input',
+        ourDiff: { ourLocalVersion },
+        theirDiff: { remoteVersion },
+      }
+    );
+  }
+}
+
 export const DEFAULT_MAX_RETRIES = 3;
 
 function stripVersion(body) {
@@ -159,6 +195,7 @@ export async function versionedWriteBody({
       // First attempt — caller's mutate sees the fresh remote base.
       ourBase = remoteBase;
       ourLocal = await mutate(ourBase);
+      checkStaleInput({ ourLocal, remoteVersion, issueNumber });
     } else {
       // Retry — rebase our last edit onto the new remote.
       const ourEdit = editRange(lastBase, lastLocal);

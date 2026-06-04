@@ -5,7 +5,7 @@
 // and the error is rethrown. All I/O is injected — no network, no real fs.
 
 import { strict as assert } from 'node:assert';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { pushIssueBody, _resetDeprecationWarningForTest } from '../lib/issue-body-push.mjs';
 
 // Build an injectable deps triple that records calls.
 //
@@ -186,6 +186,76 @@ function makeDeps({ pexecImpl } = {}) {
     });
     assert.equal(res.status, 'ok');
   }
+}
+
+// ── deprecation warning: fires exactly once per process (#293) ──────────────
+{
+  _resetDeprecationWarningForTest();
+  const warnCalls = [];
+  const warn = (msg) => warnCalls.push(msg);
+
+  const { deps: d1 } = makeDeps();
+  d1.warn = warn;
+  await pushIssueBody({
+    issueNumber: 1,
+    repo: 'o/r',
+    body: 'a',
+    scratchPath: '/tmp/dep-1.md',
+    deps: d1,
+  });
+
+  const { deps: d2 } = makeDeps();
+  d2.warn = warn;
+  await pushIssueBody({
+    issueNumber: 2,
+    repo: 'o/r',
+    body: 'b',
+    scratchPath: '/tmp/dep-2.md',
+    deps: d2,
+  });
+
+  const { deps: d3 } = makeDeps();
+  d3.warn = warn;
+  await pushIssueBody({
+    issueNumber: 3,
+    repo: 'o/r',
+    body: 'c',
+    scratchPath: '/tmp/dep-3.md',
+    deps: d3,
+  });
+
+  assert.equal(warnCalls.length, 1, 'deprecation warning must fire exactly once');
+  assert.match(warnCalls[0], /DEPRECATED/);
+  assert.match(warnCalls[0], /mutateIssueBody/);
+  assert.match(warnCalls[0], /#293/);
+}
+
+// ── deprecation warning: re-fires after explicit reset (test-only knob) ─────
+{
+  _resetDeprecationWarningForTest();
+  const warnCalls = [];
+  const { deps } = makeDeps();
+  deps.warn = (msg) => warnCalls.push(msg);
+  await pushIssueBody({
+    issueNumber: 1,
+    repo: 'o/r',
+    body: 'a',
+    scratchPath: '/tmp/dep-reset-1.md',
+    deps,
+  });
+  assert.equal(warnCalls.length, 1);
+
+  _resetDeprecationWarningForTest();
+  const { deps: deps2 } = makeDeps();
+  deps2.warn = (msg) => warnCalls.push(msg);
+  await pushIssueBody({
+    issueNumber: 2,
+    repo: 'o/r',
+    body: 'b',
+    scratchPath: '/tmp/dep-reset-2.md',
+    deps: deps2,
+  });
+  assert.equal(warnCalls.length, 2, 'reset must allow a fresh single warning');
 }
 
 console.log('issue-body-push.test.mjs: all passed');

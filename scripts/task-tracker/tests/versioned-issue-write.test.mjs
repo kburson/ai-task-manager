@@ -212,3 +212,74 @@ test('non-overlapping rebase preserves both edits even with multi-line splits', 
   assert.ok(srv.current.includes('para A line 1 OURS'));
   assert.ok(srv.current.includes('para C line 1 EDITED'));
 });
+
+// ── stale-input refusal (#293 / #292 replay) ─────────────────────────────────
+
+test('stale-input refusal: mutate returns snapshot with older aitm-body-version', async () => {
+  // Simulates the #292 clobber: a heal script captured a v4 snapshot, the
+  // live body advanced to v16 (markers added), then the script pushed the
+  // v4 snapshot back via `pushIssueBody({ body: <snapshot> })` — internally
+  // `versionedWriteBody({ mutate: () => snapshot })`. Pre-fix this silently
+  // clobbered every marker added between v4 and v16. Post-fix it refuses.
+  const remote = stampBodyVersion('current body with markers added', 16);
+  const staleSnapshot = stampBodyVersion('old body without those markers', 4);
+  const srv = makeServer(remote);
+
+  let pushed = false;
+  await assert.rejects(
+    () =>
+      versionedWriteBody({
+        issueNumber: 292,
+        repo: 'o/r',
+        mutate: () => staleSnapshot, // arrow ignores `base` — the bug class.
+        deps: {
+          fetchBody: srv.fetchBody,
+          pushBody: async (...args) => {
+            pushed = true;
+            return srv.pushBody(...args);
+          },
+        },
+      }),
+    (err) => {
+      assert.ok(err instanceof BodyWriteRefusalError);
+      assert.equal(err.reason, 'stale-input');
+      assert.match(err.message, /version=4/);
+      assert.match(err.message, /version=16/);
+      assert.match(err.message, /mutateIssueBody/);
+      return true;
+    }
+  );
+  assert.equal(pushed, false, 'must refuse before pushing');
+  assert.equal(srv.current, remote, 'remote body must be untouched');
+});
+
+test('stale-input gate: mutate returning current remote version passes', async () => {
+  // Boundary: a mutate that retains the SAME version marker as remote (a
+  // weird but possible no-op) is not stale — the check fires only on
+  // strictly older versions.
+  const remote = stampBodyVersion('body', 7);
+  const srv = makeServer(remote);
+  const r = await versionedWriteBody({
+    issueNumber: 1,
+    repo: 'o/r',
+    mutate: () => stampBodyVersion('edited body', 7), // same version, edited content
+    deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+  });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.version, 8);
+});
+
+test('stale-input gate: mutate with no version marker passes (normal path)', async () => {
+  // The normal pattern: mutate operates on `base` (already stripped) and
+  // returns a stripped result. parseBodyVersion(ourLocal) is null → gate is
+  // a no-op.
+  const srv = makeServer(stampBodyVersion('hello', 5));
+  const r = await versionedWriteBody({
+    issueNumber: 1,
+    repo: 'o/r',
+    mutate: (base) => `${base} world`,
+    deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+  });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.version, 6);
+});

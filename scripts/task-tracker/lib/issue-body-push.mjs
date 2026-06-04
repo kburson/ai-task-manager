@@ -1,5 +1,15 @@
 // Single-use issue-body push helper (#258).
 //
+// ⚠️ SOFT-DEPRECATED (#293). Prefer `mutateIssueBody({ mutate })` from
+// `./issue-body-mutate.mjs`. The `body:` snapshot signature here is fragile:
+// callers that compute the body once and pass it through will silently
+// clobber any markers added to the live body between capture and push. The
+// underlying `versionedWriteBody` now version-checks the input and refuses
+// with `reason: 'stale-input'` when this pattern is detected, but the
+// structural fix is to migrate to a `mutate(base) → newBody` closure.
+// Remaining call sites should carry a `// keep: <reason>` justification or
+// migrate as part of routine maintenance. See #293 for migration guidance.
+//
 // The clobber fixed here: a body scratch file frozen at one point in time, then
 // re-pushed after a state mutator has written authoritative markers into the
 // LIVE body, reverts those markers (the #257 drift). The structural fix is to
@@ -21,6 +31,13 @@ import { versionedWriteBody } from './versioned-issue-write.mjs';
 
 const defaultPexec = promisify(execFile);
 
+// Module-scoped flag — emit the deprecation warning at most once per process
+// (per #293). Tests reset this via the `deps.resetDeprecationWarning` knob.
+let _deprecationWarned = false;
+export function _resetDeprecationWarningForTest() {
+  _deprecationWarned = false;
+}
+
 // Push `body` to issue #`issueNumber` via `gh issue edit --body-file`, staging
 // through `scratchPath`. The scratch is deleted only after the push resolves;
 // if the push rejects, the scratch is left in place and the error is rethrown.
@@ -41,6 +58,17 @@ export async function pushIssueBody({
   const writeFileSync = deps.writeFileSync || fsWriteFileSync;
   const unlinkSync = deps.unlinkSync || fsUnlinkSync;
   const pexec = deps.pexec || defaultPexec;
+  const warn = deps.warn || ((msg) => console.warn(msg));
+
+  // One-time deprecation notice per process (#293).
+  if (!_deprecationWarned) {
+    _deprecationWarned = true;
+    warn(
+      '[pushIssueBody] DEPRECATED: the snapshot-body signature is fragile under ' +
+        'in-flight markers. Use mutateIssueBody({ mutate }) from ' +
+        'lib/issue-body-mutate.mjs. See #293 for migration guidance.'
+    );
+  }
 
   // Route through versionedWriteBody (epic #288): every body write stamps an
   // optimistic-concurrency `aitm-body-version` marker, and a concurrent
