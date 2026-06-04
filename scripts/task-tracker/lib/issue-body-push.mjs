@@ -17,6 +17,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { versionedWriteBody } from './versioned-issue-write.mjs';
 
 const defaultPexec = promisify(execFile);
 
@@ -41,14 +42,39 @@ export async function pushIssueBody({
   const unlinkSync = deps.unlinkSync || fsUnlinkSync;
   const pexec = deps.pexec || defaultPexec;
 
-  writeFileSync(scratchPath, body, 'utf8');
+  // Route through versionedWriteBody (epic #288): every body write stamps an
+  // optimistic-concurrency `aitm-body-version` marker, and a concurrent
+  // non-overlapping bump is rebased rather than clobbered. Callers continue
+  // to pass a full body — we model that as `mutate: () => body` (caller's
+  // value is authoritative; remote base only matters for conflict detection).
+  //
+  // The scratch file is still written before the push for crash-recovery
+  // inspection, then deleted on success — preserving the existing contract.
+  const fetchBody = async () => {
+    const { stdout } = await pexec(
+      'gh',
+      ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '-q', '.body'],
+      { timeout }
+    );
+    return stdout;
+  };
 
-  // No try/finally: on a rejected push we must NOT delete the scratch.
-  await pexec(
-    'gh',
-    ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', scratchPath],
-    { timeout }
-  );
+  const pushBody = async (_repo, _issue, finalBody) => {
+    writeFileSync(scratchPath, finalBody, 'utf8');
+    // No try/finally: on a rejected push we must NOT delete the scratch.
+    await pexec(
+      'gh',
+      ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', scratchPath],
+      { timeout }
+    );
+  };
+
+  await versionedWriteBody({
+    issueNumber,
+    repo,
+    mutate: () => body,
+    deps: { fetchBody, pushBody },
+  });
 
   // Push succeeded — the scratch is now stale by definition; delete it. A
   // failed delete (e.g. already gone) is non-fatal.

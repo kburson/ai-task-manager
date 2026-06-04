@@ -176,6 +176,9 @@ function emitShape(args, dodPath, root) {
   }
   process.stdout.write(body);
   process.stdout.write(tailBlock(dodPath));
+  // Epic #288: stamp the optimistic-concurrency marker on every newly-rendered
+  // body. `pushIssueBody` bumps subsequent writes; this seeds version 1.
+  process.stdout.write('<!-- aitm-body-version: 1 -->\n');
 }
 
 // #179 — Emit a stderr WARN if any reserved lifecycle label is absent from the
@@ -277,6 +280,7 @@ async function main() {
 
   // Legacy tail-only mode.
   process.stdout.write(tailBlock(dodPath));
+  process.stdout.write('<!-- aitm-body-version: 1 -->\n');
 }
 
 main().catch((err) => {

@@ -128,7 +128,7 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
     process.exit(0);
   }
   const currentBody = readFileSync(${JSON.stringify(bodyStatePath)}, 'utf8');
-  if (argv.includes('--jq')) {
+  if (argv.includes('--jq') || argv.includes('-q')) {
     process.stdout.write(currentBody);
   } else {
     process.stdout.write(JSON.stringify({ body: currentBody }));

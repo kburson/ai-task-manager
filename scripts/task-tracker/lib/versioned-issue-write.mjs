@@ -135,7 +135,7 @@ export async function versionedWriteBody({
   deps = {},
   maxRetries = DEFAULT_MAX_RETRIES,
 } = {}) {
-  if (!issueNumber) throw new Error('versionedWriteBody: issueNumber is required');
+  if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
     throw new TypeError('versionedWriteBody: mutate must be a function (baseBody) => newBody');
   }
@@ -190,9 +190,11 @@ export async function versionedWriteBody({
 
     // Verify our exact body landed. Version alone is insufficient: two
     // concurrent writers may both compute targetVersion=N+1, and a marker
-    // match could mask a lost write. Require byte-equality with our push.
+    // match could mask a lost write. Require byte-equality with our push —
+    // modulo trailing whitespace, which `gh issue view -q .body` appends.
     const verifyRemote = await fetchBody(repo, issueNumber);
-    if (verifyRemote === stamped) {
+    const norm = (s) => String(s ?? '').replace(/\s+$/, '');
+    if (norm(verifyRemote) === norm(stamped)) {
       return { status: 'ok', attempts, version: targetVersion };
     }
 

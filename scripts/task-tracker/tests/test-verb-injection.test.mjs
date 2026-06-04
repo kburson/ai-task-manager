@@ -107,7 +107,11 @@ const log = ${JSON.stringify(path.join(sandbox, 'gh-calls.log'))};
 appendFileSync(log, JSON.stringify(argv) + '\\n');
 
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
-  process.stdout.write(${JSON.stringify(fixtureBody)});
+  // Stateful: return the last-pushed body when present, else the fixture.
+  let cur;
+  try { cur = readFileSync(${JSON.stringify(recordedBodyPath)}, 'utf8'); }
+  catch { cur = ${JSON.stringify(fixtureBody)}; }
+  process.stdout.write(cur);
   process.exit(0);
 }
 if (argv[0] === 'issue' && argv[1] === 'edit') {
