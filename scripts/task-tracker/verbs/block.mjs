@@ -18,6 +18,7 @@ import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { addBlockedBy, parseBlockedBy, blockedLabelAddArgs } from '../lib/blocked-marker.mjs';
+import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
 
 const pexec = promisify(execFile);
 
@@ -163,6 +164,22 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
 
   await editBody({ issueNumber: target, repo: cfg.repo, body: next });
   await runLabel({ args: blockedLabelAddArgs(target), repo: cfg.repo });
+
+  // Mirror the canonical marker into the `Blocked By` Project field. No-op
+  // when `cfg.fieldBlockedBy` is absent (older installs pre-#287 migrate).
+  const mirrorDeps = deps.writeFieldValue ? { writeFieldValue: deps.writeFieldValue } : {};
+  try {
+    await writeBlockedByField({
+      issueNumber: target,
+      refs: parseBlockedBy(next),
+      cfg,
+      deps: mirrorDeps,
+    });
+  } catch (err) {
+    // Field mirror is best-effort. The marker is authoritative; a transient
+    // GraphQL failure must not roll back the body edit or label addition.
+    console.error(`[task-tracker] warn: writeBlockedByField failed for #${target}: ${err.message}`);
+  }
 
   // Audit comment — one per newly-added ref (those not already in `existing`).
   const added = refs.filter((m) => !existing.has(m));

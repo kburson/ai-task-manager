@@ -21,6 +21,7 @@ import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { removeBlockedBy, parseBlockedBy, blockedLabelRemoveArgs } from '../lib/blocked-marker.mjs';
+import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
 import { parseByList, resolveTargetIssue } from './block.mjs';
 
 const pexec = promisify(execFile);
@@ -108,6 +109,20 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
   const cleared = remaining.length === 0;
   if (cleared) {
     await runLabel({ args: blockedLabelRemoveArgs(target), repo: cfg.repo });
+  }
+
+  // Mirror the post-removal marker into the `Blocked By` Project field.
+  // Writes empty string when fully cleared. Best-effort; never throws.
+  const mirrorDeps = deps.writeFieldValue ? { writeFieldValue: deps.writeFieldValue } : {};
+  try {
+    await writeBlockedByField({
+      issueNumber: target,
+      refs: remaining,
+      cfg,
+      deps: mirrorDeps,
+    });
+  } catch (err) {
+    console.error(`[task-tracker] warn: writeBlockedByField failed for #${target}: ${err.message}`);
   }
 
   // Audit comment(s) — one per cleared ref, or one summary line when all dropped.

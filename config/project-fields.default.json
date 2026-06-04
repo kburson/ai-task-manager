@@ -69,5 +69,11 @@
     "name": "Start time",
     "type": "text",
     "aliases": ["Start Time", "Start date", "Start Date"]
+  },
+  {
+    "key": "blockedBy",
+    "name": "Blocked By",
+    "type": "text",
+    "aliases": ["BlockedBy", "Blocked-By"]
   }
 ]

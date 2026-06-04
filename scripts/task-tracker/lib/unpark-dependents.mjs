@@ -18,6 +18,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseBlockedBy, removeBlockedBy, blockedLabelRemoveArgs } from './blocked-marker.mjs';
+import { writeBlockedByField } from './blocked-by-field.mjs';
 import { pushIssueBody } from './issue-body-push.mjs';
 
 const pexec = promisify(execFile);
@@ -126,6 +127,21 @@ export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } 
         results.push({ issue, cleared: 'full' });
       } else {
         results.push({ issue, cleared: 'partial' });
+      }
+
+      // Mirror the post-removal marker into the `Blocked By` Project field.
+      // Best-effort; the board move that triggered unpark is already
+      // committed, so a field-write failure must not roll it back.
+      const mirrorDeps = deps.writeFieldValue ? { writeFieldValue: deps.writeFieldValue } : {};
+      try {
+        await writeBlockedByField({
+          issueNumber: issue,
+          refs: remaining,
+          cfg,
+          deps: mirrorDeps,
+        });
+      } catch {
+        /* best-effort */
       }
     } catch (err) {
       results.push({ issue, error: err.message });

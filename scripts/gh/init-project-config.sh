@@ -1223,6 +1223,7 @@ FIELD_ENGAGED_TIME=""
 FIELD_SESSION_TIME=""
 FIELD_SEQUENCE=""
 FIELD_START_TIME=""
+FIELD_BLOCKED_BY=""
 
 set_field_id_json() {
   FIELD_IDS_JSON=$(printf '%s\n' "$FIELD_IDS_JSON" | jq -c --arg key "$1" --arg val "$2" '. + {($key): $val}')
@@ -1277,6 +1278,7 @@ while IFS= read -r FIELD_DEF <&3; do
       sessionTime) FIELD_SESSION_TIME="$RESULT_FIELD_ID" ;;
       sequence) FIELD_SEQUENCE="$RESULT_FIELD_ID" ;;
       startTime) FIELD_START_TIME="$RESULT_FIELD_ID" ;;
+      blockedBy) FIELD_BLOCKED_BY="$RESULT_FIELD_ID" ;;
     esac
   fi
   echo ""
@@ -1309,6 +1311,7 @@ FIELD_ENGAGED_TIME="$FIELD_ENGAGED_TIME" \
 FIELD_SESSION_TIME="$FIELD_SESSION_TIME" \
 FIELD_SEQUENCE="$FIELD_SEQUENCE" \
 FIELD_START_TIME="$FIELD_START_TIME" \
+FIELD_BLOCKED_BY="$FIELD_BLOCKED_BY" \
 FIELD_IDS_JSON="$FIELD_IDS_JSON" \
 node -e "
 const fs = require('fs');
@@ -1348,6 +1351,7 @@ const optional = {
   fieldSequence:          process.env.FIELD_SEQUENCE,
   sequenceFieldId:        process.env.FIELD_SEQUENCE,
   fieldStartTime:         process.env.FIELD_START_TIME,
+  fieldBlockedBy:         process.env.FIELD_BLOCKED_BY,
 };
 for (const [k, v] of Object.entries(optional)) { if (v) updates[k] = v; }
 try {
