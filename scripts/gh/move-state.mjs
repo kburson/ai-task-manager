@@ -39,6 +39,11 @@ import {
   IssueLockError,
   ISSUE_LOCK_HELD_ENV,
 } from '../task-tracker/issue-mutator-lock.mjs';
+// Bootstrap registers universal exit-guards (e.g. blocked-by-not-done) into
+// the guard registry on import. Keep this side-effect import alongside
+// runGuards so the two are read together.
+import { runGuards } from '../task-tracker/lib/guard-registry.mjs';
+import '../task-tracker/lib/guard-bootstrap.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -353,6 +358,49 @@ if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
       );
       process.exit(4);
     }
+  }
+}
+
+// Universal exit-guard pipeline (#286). Runs on every transition once the
+// from-state is known. The blocked-by-not-done guard parses the active
+// issue's body for `aitm-blocked-by: #M, #P` and refuses if any blocker is
+// not in `done`. Refusals are aggregated into the same `BLOCKED:` stderr
+// format the structural gate uses. Skipped when SKIP_NETWORK is set or the
+// from-state could not be resolved (same fall-through as other gates).
+if (!SKIP_NETWORK && resolvedFromState) {
+  let guardBody = '';
+  try {
+    guardBody = (
+      await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
+    ).trim();
+  } catch {
+    /* ignore — empty body means no marker means guard passes */
+  }
+
+  async function fetchBlockerState(blockerNumber) {
+    return await resolveLiveStateName(String(blockerNumber));
+  }
+
+  const guardResult = await runGuards(resolvedFromState, stateArg, {
+    issueNumber: Number(issueArg),
+    repo: cfg.repo,
+    fromState: resolvedFromState,
+    toState: stateArg,
+    body: guardBody,
+    fetchBlockerState,
+  });
+
+  if (!guardResult.ok) {
+    process.stderr.write('\n');
+    process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+    for (const r of guardResult.refusals) {
+      process.stderr.write(`   BLOCKED: #${issueArg} is in ${resolvedFromState}; ${r.reason}\n`);
+    }
+    process.stderr.write('\n');
+    process.stderr.write(
+      'Use `/task unblock` (or close the blockers) before retrying this move.\n\n'
+    );
+    process.exit(4);
   }
 }
 
