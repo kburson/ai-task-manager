@@ -16,7 +16,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
-import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { tetherIssueToProject } from '../../gh/lib/project-tether.mjs';
@@ -26,7 +25,7 @@ import { parseRationaleMarker, RATIONALE_MARKER_RE } from '../lib/apply-refineme
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { ensureIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 
 const pexec = promisify(execFile);
@@ -177,16 +176,9 @@ async function defaultFetchBody({ issueNumber, repo }) {
   return String(stdout || '');
 }
 
-async function defaultWriteBody({ issueNumber, repo, body }) {
-  const tmp = path.join(os.tmpdir(), `aitm-refine-${issueNumber}-${Date.now()}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmp,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+// #295 — body writes go through `mutateIssueBody({ mutate })`.
+async function defaultMutateBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultAddLabels({ issueNumber, repo, labels }) {
@@ -215,7 +207,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   const tether = deps.tetherIssueToProject || tetherIssueToProject;
   const loadFieldOptionMap = deps.fieldOptionMap || fieldOptionMap;
   const fetchBody = deps.fetchBody || defaultFetchBody;
-  const writeBody = deps.writeBody || defaultWriteBody;
+  const mutateBody = deps.mutateBody || defaultMutateBody;
   const addLabels = deps.addLabels || defaultAddLabels;
   const promote = deps.verbPromote || verbPromote;
   const ensureFieldDb = deps.ensureIssueFieldDb || ensureIssueFieldDb;
@@ -264,34 +256,40 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     sequence: sequenceNum,
     reason,
   });
-  let newBody = applyRationaleMarker(body, marker);
 
-  // 2d. Stamp the Refine stage-completion marker (#282). The promote verb
-  //     reads this on the refine→plan transition; absent marker = refuse.
-  newBody = stampRefineCompleteMarker(newBody);
-
-  // #223 — refresh the aitm-fields body cache with the just-refined values so
-  // it agrees with the board immediately. Without this, the cache lags until
-  // the next timing-rollup / heal-backlog pass touches the body.
-  try {
-    const fieldDefs = loadFieldDefs();
-    const refreshed = ensureFieldDb(
-      newBody,
-      fieldDefs,
-      {
-        priority: priorityNorm.toUpperCase(),
-        size,
-        estimate: estimateNum,
-        sequence: sequenceNum,
-      },
-      { overrideKeys: ['priority', 'size', 'estimate', 'sequence'] }
-    );
-    newBody = refreshed.body;
-  } catch (err) {
-    process.stderr.write(`[refine] WARN: aitm-fields cache refresh skipped: ${err.message}\n`);
-  }
-
-  await writeBody({ issueNumber, repo: cfg.repo, body: newBody });
+  // #295 — capture the final body via a closure so refresh applies to the
+  // FRESH base on each push attempt. `newBody` is held for the round-trip
+  // validation below.
+  let newBody = null;
+  await mutateBody({
+    issueNumber,
+    repo: cfg.repo,
+    mutate: (base) => {
+      let next = applyRationaleMarker(base, marker);
+      // 2d. Stamp the Refine stage-completion marker (#282).
+      next = stampRefineCompleteMarker(next);
+      // #223 — refresh the aitm-fields body cache.
+      try {
+        const fieldDefs = loadFieldDefs();
+        const refreshed = ensureFieldDb(
+          next,
+          fieldDefs,
+          {
+            priority: priorityNorm.toUpperCase(),
+            size,
+            estimate: estimateNum,
+            sequence: sequenceNum,
+          },
+          { overrideKeys: ['priority', 'size', 'estimate', 'sequence'] }
+        );
+        next = refreshed.body;
+      } catch (err) {
+        process.stderr.write(`[refine] WARN: aitm-fields cache refresh skipped: ${err.message}\n`);
+      }
+      newBody = next;
+      return next;
+    },
+  });
 
   // 3. Round-trip validate.
   const parsed = parseRationaleMarker(newBody);

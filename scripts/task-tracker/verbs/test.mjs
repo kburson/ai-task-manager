@@ -28,7 +28,7 @@ import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { seedWorktreeBackfill } from '../seed-worktree.mjs';
@@ -124,14 +124,12 @@ async function defaultFetchBody({ cfg, issueNum }) {
   return String(stdout || '');
 }
 
-async function defaultWriteBody({ cfg, issueNum, body, projectDir }) {
-  const tmp = path.join(projectTmpDir(projectDir), `task-test-body-${issueNum}.md`);
-  await pushIssueBody({
+// #295 — body writes go through `mutateIssueBody({ mutate })`.
+async function defaultMutateBody({ cfg, issueNum, mutate }) {
+  return mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
-    body,
-    scratchPath: tmp,
-    timeout: GH_API_TIMEOUT_MS,
+    mutate,
     deps: { pexec },
   });
 }
@@ -260,7 +258,7 @@ export async function runVerbTest({
 
   const issueNum = String(issueNumber).replace(/^#/, '');
   const fetchBody = deps.fetchBody || defaultFetchBody;
-  const writeBody = deps.writeBody || defaultWriteBody;
+  const mutateBody = deps.mutateBody || defaultMutateBody;
   const postComment = deps.postComment || defaultPostComment;
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
   const createWorktree = deps.createWorktree || defaultCreateWorktree;
@@ -275,7 +273,8 @@ export async function runVerbTest({
   const pretick = detectLifecyclePretick(body);
   if (pretick.regressions.length > 0) {
     body = pretick.body;
-    await writeBody({ cfg, issueNum, body, projectDir });
+    // #295 — re-run regression strip on FRESH base.
+    await mutateBody({ cfg, issueNum, mutate: (base) => detectLifecyclePretick(base).body });
     const labels = pretick.regressions.map((r) => r.label).join('; ');
     await postComment({
       cfg,
@@ -291,7 +290,7 @@ export async function runVerbTest({
   const funcPretick = detectFunctionalPretick(body);
   if (funcPretick.regressions.length > 0) {
     body = funcPretick.body;
-    await writeBody({ cfg, issueNum, body, projectDir });
+    await mutateBody({ cfg, issueNum, mutate: (base) => detectFunctionalPretick(base).body });
     const labels = funcPretick.regressions.map((r) => r.label).join('; ');
     await postComment({
       cfg,
@@ -338,7 +337,11 @@ export async function runVerbTest({
       const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
       if (stampedEntry !== body) {
         body = stampedEntry;
-        await writeBody({ cfg, issueNum, body, projectDir });
+        await mutateBody({
+          cfg,
+          issueNum,
+          mutate: (base) => insertTestStartedMarker(base, sha, entryTs),
+        });
       }
     }
 
@@ -462,7 +465,23 @@ export async function runVerbTest({
     const autoTick = autoTickVerified(stamped, results);
     stamped = autoTick.body;
     if (stamped !== body) {
-      await writeBody({ cfg, issueNum, body: stamped, projectDir });
+      // #295 — re-run the full stamp+autoTick fold on FRESH base.
+      await mutateBody({
+        cfg,
+        issueNum,
+        mutate: (base) => {
+          let next = insertDodVerifiedMarker(base, sha, ts);
+          const ms = parseEntryMarkers(next);
+          const latestM = ms
+            .slice()
+            .sort((a, b) => new Date(a.ts) - new Date(b.ts))
+            .pop();
+          const tIdx = STAGES.indexOf('test');
+          const lIdx = latestM ? STAGES.indexOf(latestM.stage) : -1;
+          if (lIdx < tIdx) next = stampEntryMarker(next, 'test', ts);
+          return autoTickVerified(next, results).body;
+        },
+      });
     }
     await postComment({
       cfg,

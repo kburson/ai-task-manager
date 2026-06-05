@@ -1,8 +1,6 @@
-import path from 'node:path';
 import { loadState } from '../state.mjs';
-import { projectTmpDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readBoundState } from '../lib/bound-state.mjs';
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
 
@@ -75,6 +73,10 @@ function parseCheckArgs(rest) {
 
 export async function verbCheck(ctx) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
+  // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
+  // FRESH base each push attempt.
+  const mutateBody = ({ issueNumber, repo, mutate }) =>
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
     console.error('no active task');
@@ -133,8 +135,11 @@ export async function verbCheck(ctx) {
     return;
   }
 
-  const result = toggleChecklistLine(body, label);
-  if (result.status === 'not-found') {
+  // Diagnostic check (pre-fetched body — best-effort for the not-found
+  // error message). The authoritative write below re-runs the toggle on
+  // FRESH base.
+  const diag = toggleChecklistLine(body, label);
+  if (diag.status === 'not-found') {
     const found = [...body.matchAll(/^- \[[ x]\] (.+)$/gm)].map((m) => `  "${m[1]}"`);
     const list = found.length
       ? `\nCheckboxes found:\n${found.join('\n')}`
@@ -142,24 +147,28 @@ export async function verbCheck(ctx) {
     console.error(`[task-tracker] checkbox "${label}" not found in ${s.active}${list}`);
     process.exit(1);
   }
-  const { body: updated, alreadyChecked } = result;
-  const tmp = path.join(projectTmpDir(projectDir), `tt-check-${Date.now()}.md`);
-  await pushIssueBody({
+  let landed = null;
+  await mutateBody({
     issueNumber: issueNum,
     repo: cfg.repo,
-    body: updated,
-    scratchPath: tmp,
-    deps: { pexec },
+    mutate: (base) => {
+      const r = toggleChecklistLine(base, label);
+      if (r.status === 'not-found') return base;
+      landed = r;
+      return r.body;
+    },
   });
-  const action = alreadyChecked ? 'Unchecked' : 'Checked';
+  const action = (landed?.alreadyChecked ?? diag.alreadyChecked) ? 'Unchecked' : 'Checked';
   console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}`);
 }
 
 // Batch path: one `gh issue view` fetch, toggle every checklist label in memory,
-// one `pushIssueBody` push. Any `deep dive complete` label is routed to the
+// one body write. Any `deep dive complete` label is routed to the
 // HTML-marker helper (its own round-trip) and excluded from the checkbox fold.
 async function verbCheckBatch({ ctx, issueNum, active, labels }) {
   const { cfg, projectDir, pexec } = ctx;
+  const mutateBody = ({ issueNumber, repo, mutate }) =>
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
   const isDeepDive = (l) => /^deep[- ]?dive complete$/i.test(l.trim());
   const ddLabels = labels.filter(isDeepDive);
   const checklistLabels = labels.filter((l) => !isDeepDive(l));
@@ -172,16 +181,15 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
-    const { body: updated, results } = toggleChecklistLines(stdout, checklistLabels);
+    const { results } = toggleChecklistLines(stdout, checklistLabels);
     const anyToggled = results.some((r) => r.status === 'toggled');
     if (anyToggled) {
-      const tmp = path.join(projectTmpDir(projectDir), `tt-check-${Date.now()}.md`);
-      await pushIssueBody({
+      // #295 — re-run the toggle fold on FRESH base; reported per-label
+      // results above reflect the diagnostic pass (pre-fetch).
+      await mutateBody({
         issueNumber: issueNum,
         repo: cfg.repo,
-        body: updated,
-        scratchPath: tmp,
-        deps: { pexec },
+        mutate: (base) => toggleChecklistLines(base, checklistLabels).body,
       });
     }
     for (const r of results) {

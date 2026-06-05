@@ -68,8 +68,13 @@ function makeDeps({
     calls,
     deps: {
       fetchBody: async () => bodyWithVc(commands),
-      writeBody: async ({ body }) => {
-        calls.bodyWrites.push(body);
+      // #295 — closure form. base built from same fixture.
+      mutateBody: async ({ mutate }) => {
+        const base = bodyWithVc(commands);
+        const next = mutate(base);
+        if (next === base) return { status: 'no-op' };
+        calls.bodyWrites.push(next);
+        return { status: 'ok' };
       },
       postComment: async ({ body }) => {
         calls.comments.push(body);

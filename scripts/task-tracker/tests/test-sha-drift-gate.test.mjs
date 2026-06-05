@@ -63,12 +63,17 @@ const result = await runVerbTest({
   now: () => '2026-05-17T20:00:00.000Z',
   deps: {
     fetchBody: async () => body,
-    writeBody: async ({ body: b }) => {
-      writes.push(b);
-      body = b;
-      if (!sandboxRan && hasTestStartedMarker(b)) {
+    // #295 — closure form; runs against live `body` and updates it.
+    mutateBody: async ({ mutate }) => {
+      const before = body;
+      const next = mutate(before);
+      if (next === before) return { status: 'no-op' };
+      writes.push(next);
+      body = next;
+      if (!sandboxRan && hasTestStartedMarker(next)) {
         stampedBeforeSandbox = true;
       }
+      return { status: 'ok' };
     },
     postComment: async () => {},
     getHeadSha: async () => SHA,

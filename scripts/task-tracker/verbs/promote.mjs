@@ -18,7 +18,6 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -47,7 +46,7 @@ import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent
 import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -90,16 +89,10 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
   return { body: issue.body || '' };
 }
 
-async function defaultWriteIssueBody({ issueNumber, repo, body }) {
-  const tmp = path.join(tmpdir(), `aitm-promote-${process.pid}-${Date.now()}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmp,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+// #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
+// runs on the FRESH base each push attempt.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
@@ -189,7 +182,7 @@ export async function runPromote({
   if (!cfg) throw new Error('promote: cfg is required');
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
@@ -212,8 +205,13 @@ export async function runPromote({
         message: `promote: no recorded state and no live state for #${issueNumber} — board item missing`,
       };
     }
+    // #295 — closure stamps the bootstrap marker on the FRESH base.
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => writeLastKnownState(base, live),
+    });
     body = writeLastKnownState(body, live);
-    await writeIssueBody({ issueNumber, repo: cfg.repo, body });
     recorded = live;
     bootstrapped = true;
   } else if (live && live !== recorded) {
@@ -552,25 +550,26 @@ export async function runPromote({
       // surface delegate exit as soft warning.
       let markerRepair = { status: 'noop' };
       try {
-        const { body: bodyAfter } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-        const { state: stateAfter } = readLastKnownState(bodyAfter);
-        const hasEntry = new RegExp(`<!--\\s*aitm-entered-${target}:`).test(bodyAfter);
-        if (stateAfter !== target || !hasEntry) {
-          const nowTs = now();
-          let repaired = bodyAfter;
-          if (stateAfter !== target) repaired = writeLastKnownState(repaired, target);
-          if (!hasEntry) repaired = stampEntryMarker(repaired, target, nowTs);
-          markerRepair = await writeIssueBodyWithRetry({
-            issueNumber,
-            repo: cfg.repo,
-            body: repaired,
-            bodyBefore: bodyAfter,
-            target,
-            writeIssueBody: ({ body: b }) =>
-              writeIssueBody({ issueNumber, repo: cfg.repo, body: b }),
-            postComment: deps.postComment,
-          });
-        }
+        // #295 — repair inside the closure so the FRESH base is inspected on
+        // every push attempt. Identity-return when the markers are already
+        // correct produces a `no-op` from versionedWriteBody.
+        markerRepair = await writeIssueBodyWithRetry({
+          issueNumber,
+          repo: cfg.repo,
+          target,
+          mutate: (base) => {
+            const { state: stateAfter } = readLastKnownState(base);
+            const hasEntry = new RegExp(`<!--\\s*aitm-entered-${target}:`).test(base);
+            if (stateAfter === target && hasEntry) return base;
+            const nowTs = now();
+            let repaired = base;
+            if (stateAfter !== target) repaired = writeLastKnownState(repaired, target);
+            if (!hasEntry) repaired = stampEntryMarker(repaired, target, nowTs);
+            return repaired;
+          },
+          deps: { mutateIssueBody: mutateBody },
+          postComment: deps.postComment,
+        });
       } catch {
         // best-effort — marker is unreadable; warning still surfaces below.
       }

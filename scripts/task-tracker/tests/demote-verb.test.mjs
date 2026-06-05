@@ -9,19 +9,26 @@ import { runDemote } from '../verbs/demote.mjs';
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
+  // #295 — the verb writes through `deps.mutateIssueBody({mutate})`. The
+  // closure is invoked with the FRESH base; the fake tracks the resulting
+  // body so tests can assert "mutate produced body X from base Y".
   const calls = { writes: [], timings: [], moves: [], fetches: 0 };
-  let secondFetch = false;
+  let remote = body;
   return {
     calls,
     deps: {
       fetchIssueBody: async () => {
         calls.fetches++;
-        if (secondFetch) return { body };
-        secondFetch = true;
-        return { body };
+        return { body: remote };
       },
-      writeIssueBody: async ({ body: b }) => {
-        calls.writes.push(b);
+      mutateIssueBody: async ({ mutate }) => {
+        const before = remote;
+        const next = mutate(before);
+        if (next !== before) {
+          remote = next;
+          calls.writes.push({ before, after: next });
+        }
+        return { status: 'ok' };
       },
       getLiveState: async () => live,
       runMoveState: async ({ issueNumber, target }) => {
@@ -112,4 +119,22 @@ test('demote: bootstrap then demote from test succeeds', async () => {
   assert.equal(r.from, 'test');
   assert.equal(r.to, 'develop');
   assert.deepEqual(calls.moves, [{ issueNumber: 206, target: 'develop' }]);
+  // #295 — bootstrap stamps `test`, post-move stamp lands `develop`.
+  assert.equal(calls.writes.length, 2, 'bootstrap + post-move stamp');
+  assert.match(calls.writes[0].after, /aitm-last-known-state: test/);
+  assert.match(calls.writes[1].after, /aitm-last-known-state: develop/);
+  // The post-move closure ran over the FRESH base (bootstrap's result),
+  // not the original empty body — the bootstrap marker is preserved/replaced
+  // in-place rather than blown away.
+  assert.equal(calls.writes[1].before, calls.writes[0].after);
+});
+
+test('demote: test→develop landed write carries develop marker (#295 closure semantics)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
+  const r = await runDemote({ issueNumber: 207, cfg, deps });
+  assert.equal(r.status, 'demoted');
+  // Exactly one write — the post-move develop stamp.
+  assert.equal(calls.writes.length, 1);
+  assert.match(calls.writes[0].before, /aitm-last-known-state: test/);
+  assert.match(calls.writes[0].after, /aitm-last-known-state: develop/);
 });

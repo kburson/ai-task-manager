@@ -14,14 +14,13 @@ import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
 
 import { BACKWARD, STATES, validateTransition, normalizeStateSlug } from '../state-machine.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -49,16 +48,11 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
   return { body: issue.body || '' };
 }
 
-async function defaultWriteIssueBody({ issueNumber, repo, body }) {
-  const tmp = path.join(tmpdir(), `aitm-demote-${process.pid}-${Date.now()}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmp,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+// #295: writes go through `mutateIssueBody({ mutate })` — the closure is
+// invoked with the FRESH base every push attempt, so a concurrent writer
+// between the verb's pre-fetch and our push is preserved.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
@@ -108,7 +102,7 @@ export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
   if (!cfg) throw new Error('demote: cfg is required');
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
 
@@ -117,7 +111,6 @@ export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
   const live = (await getLiveState({ issueNumber, cfg })) || null;
 
   let recorded = rawRecorded;
-  let body = initialBody;
   let bootstrapped = false;
   if (!recorded) {
     if (!live) {
@@ -126,8 +119,11 @@ export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
         message: `demote: no recorded state and no live state for #${issueNumber} — board item missing`,
       };
     }
-    body = writeLastKnownState(body, live);
-    await writeIssueBody({ issueNumber, repo: cfg.repo, body });
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => writeLastKnownState(base, live),
+    });
     recorded = live;
     bootstrapped = true;
   } else if (live && live !== recorded) {
@@ -176,20 +172,15 @@ export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
     };
   }
 
-  let bodyAfter;
-  try {
-    ({ body: bodyAfter } = await fetchIssueBody({ issueNumber, repo: cfg.repo }));
-  } catch {
-    bodyAfter = body;
-  }
-  const stamped = writeLastKnownState(bodyAfter, DEMOTE_TARGET);
+  // #295 — post-move stamp via mutateIssueBody closure; the helper re-fetches
+  // the FRESH base inside the closure, so a concurrent writer between move
+  // and stamp is preserved.
   await writeIssueBodyWithRetry({
     issueNumber,
     repo: cfg.repo,
-    body: stamped,
-    bodyBefore: bodyAfter,
     target: DEMOTE_TARGET,
-    writeIssueBody,
+    mutate: (base) => writeLastKnownState(base, DEMOTE_TARGET),
+    deps: { mutateIssueBody: mutateBody },
   });
   // #128 — paired `demoted` + `<target>:enter` rows are emitted at the
   // move-state.mjs chokepoint when invoked with `--demote`. The previous

@@ -11,7 +11,6 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { getProjectDir } from '../paths.mjs';
@@ -21,9 +20,8 @@ import {
   wrapDeepDiveInDetails,
 } from '../lib/markers.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { lintChecklistCommands } from '../lib/checklist-command-lint.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -47,16 +45,10 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
   return data?.repository?.issue?.body ?? '';
 }
 
-async function defaultWriteIssueBody({ issueNumber, repo, body }) {
-  const tmp = path.join(tmpdir(), `aitm-plan-approve-${process.pid}-${Date.now()}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmp,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+// #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
+// runs on the FRESH base each push attempt.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
@@ -69,7 +61,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   if (!cfg) throw new Error('plan-approve: cfg is required');
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getBoardState = deps.getBoardState || defaultGetBoardState;
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
 
@@ -105,28 +97,33 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   const hasApproval = hasPlanApprovedMarker(body);
   const hasPlanEntry = PLAN_ENTRY_RE.test(body);
 
-  // Both markers present — true no-op.
+  // Both markers present — true no-op. (Diagnostic fast-path; the closure
+  // below would re-check the FRESH base anyway, but skipping the call when
+  // we already know the answer keeps the no-op shape clean.)
   if (hasApproval && hasPlanEntry) {
     return { status: 'already-approved' };
   }
 
   const ts = nowIso();
-  let next = body;
-
-  // Defense-in-depth re-stamp: if approval was recorded but the entry
-  // marker is missing (typically wiped by an external `gh issue edit
-  // --body-file` overwrite outside writeIssueBodyWithRetry), restore the
-  // chain anchor so the close-time chain-hole detector doesn't refuse.
-  if (!hasPlanEntry) {
-    next = stampEntryMarker(next, 'plan', ts);
-  }
-
-  if (!hasApproval) {
-    next = insertPlanApprovedMarker(next, ts);
-  }
-
-  const updated = wrapDeepDiveInDetails(next);
-  await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
+  // #295 — closure re-derives the next body from the FRESH base on every
+  // push attempt. The diagnostic flags above set the return shape; the
+  // closure independently checks markers so a concurrent writer that
+  // landed approval / entry between our pre-fetch and the push is
+  // honored (returns base unchanged → no-op).
+  await mutateBody({
+    issueNumber,
+    repo: cfg.repo,
+    mutate: (base) => {
+      let n = base;
+      if (!PLAN_ENTRY_RE.test(n)) {
+        n = stampEntryMarker(n, 'plan', ts);
+      }
+      if (!hasPlanApprovedMarker(n)) {
+        n = insertPlanApprovedMarker(n, ts);
+      }
+      return wrapDeepDiveInDetails(n);
+    },
+  });
 
   if (hasApproval && !hasPlanEntry) {
     return { status: 're-stamped-entry', ts };

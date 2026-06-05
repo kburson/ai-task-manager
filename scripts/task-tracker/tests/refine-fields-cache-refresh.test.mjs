@@ -21,19 +21,24 @@ something
 <!-- aitm-fields: {"schema":1,"values":{"priority":null,"size":null,"estimate":null,"sequence":null}} -->
 `;
 
-function makeDeps({ writtenBodyRef }) {
-  return {
+function makeDeps({ writtenBodyRef, fetchRef }) {
+  const deps = {
     tetherIssueToProject: async () => ({}),
     fieldOptionMap: async () => ({}),
-    fetchBody: async () => STARTING_BODY,
-    writeBody: async ({ body }) => {
-      writtenBodyRef.value = body;
+    fetchBody: async () => (fetchRef && fetchRef.value) || STARTING_BODY,
+    mutateBody: async ({ mutate }) => {
+      const base = (fetchRef && fetchRef.value) || STARTING_BODY;
+      const next = mutate(base);
+      if (next === base) return { status: 'no-op' };
+      writtenBodyRef.value = next;
+      return { status: 'ok' };
     },
     addLabels: async () => {},
     verbPromote: async () => {},
     ensureIssueFieldDb: undefined,
     loadProjectFieldDefs: () => FIELD_DEFS,
   };
+  return deps;
 }
 
 const CFG = {
@@ -72,8 +77,8 @@ test('#223: refine overrides stale prior values in aitm-fields cache', async () 
     /"size":null/,
     '"size":"XL"'
   );
-  const deps = makeDeps({ writtenBodyRef });
-  deps.fetchBody = async () => STALE_BODY;
+  const fetchRef = { value: STALE_BODY };
+  const deps = makeDeps({ writtenBodyRef, fetchRef });
   await runRefine({
     args: {
       issueNumber: 223,

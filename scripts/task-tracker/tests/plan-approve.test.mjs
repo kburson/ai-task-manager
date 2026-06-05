@@ -37,9 +37,15 @@ function makeDeps(overrides = {}) {
         calls.bodies.push(body);
         return body;
       },
-      writeIssueBody: async ({ body: b }) => {
-        calls.writes.push(b);
-        body = b;
+      // #295 — verb now writes via mutateIssueBody({mutate}); closure runs on
+      // the FRESH base. Old `writeIssueBody({body})` signature retired.
+      mutateIssueBody: async ({ mutate }) => {
+        const before = body;
+        const next = mutate(before);
+        if (next === before) return { status: 'no-op', attempts: 1 };
+        calls.writes.push(next);
+        body = next;
+        return { status: 'ok', attempts: 1 };
       },
       getBoardState: async () => {
         calls.stateLookups++;

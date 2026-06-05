@@ -22,9 +22,14 @@ function makeDeps(initialBody, state = 'plan') {
     calls,
     deps: {
       fetchIssueBody: async () => body,
-      writeIssueBody: async ({ body: b }) => {
-        calls.writes.push(b);
-        body = b;
+      // #295 — closure form.
+      mutateIssueBody: async ({ mutate }) => {
+        const before = body;
+        const next = mutate(before);
+        if (next === before) return { status: 'no-op', attempts: 1 };
+        calls.writes.push(next);
+        body = next;
+        return { status: 'ok', attempts: 1 };
       },
       getBoardState: async () => state,
       nowIso: () => FIXED_TS,

@@ -12,7 +12,6 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { getProjectDir } from '../paths.mjs';
@@ -29,7 +28,7 @@ import { buildReviewNotesComment } from '../lib/review-notes.mjs';
 import { deriveDrivers } from '../lib/derive-drivers.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 
@@ -53,16 +52,10 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
   return data?.repository?.issue?.body ?? '';
 }
 
-async function defaultWriteIssueBody({ issueNumber, repo, body }) {
-  const tmp = path.join(tmpdir(), `aitm-approve-${process.pid}-${Date.now()}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmp,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+// #295 — closure-form body write; mutate is reapplied against the FRESH base
+// on every push attempt, preserving concurrent writes.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
@@ -169,7 +162,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   if (!cfg) throw new Error('approve: cfg is required');
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getBoardState = deps.getBoardState || defaultGetBoardState;
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   const detect = deps.detectFullAuto || detectFullAuto;
@@ -223,11 +216,25 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
         process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
       }
 
+      // #295 — re-derive everything inside the closure on the FRESH base so
+      // a concurrent writer landing between our pre-fetch (`body`) and the
+      // push is preserved. The pre-fetched `body` is only used above for the
+      // gate (hasApprovalMarker / state check / drivers derivation); the
+      // actual write transform reads its own base.
+      const stamp = (base) => {
+        if (hasApprovalMarker(base)) return base;
+        let updated = insertApprovalMarker(base, ts);
+        if (auto.fired) {
+          updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
+          updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
+        }
+        return tickLifecycleItem(updated, 'passed-final-review');
+      };
+      // Diagnostic-only: compute against the pre-fetched body to surface the
+      // legacy-DoD warning. This duplicates the early transform but is
+      // observability rather than correctness — the closure above is the
+      // authoritative write.
       let updated = insertApprovalMarker(body, ts);
-      // #156 — Stamp full-auto marker BEFORE ticking the "Passed final human
-      // review" lifecycle item, so the audit trail records that the tick was
-      // machine-generated, not human-evaluated. The tick still happens because
-      // close-gates depend on it; the marker preserves truth alongside.
       if (auto.fired) {
         updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
         updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
@@ -263,7 +270,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
           /* fire-and-forget */
         }
       }
-      await writeIssueBody({ issueNumber, repo: cfg.repo, body: updated });
+      await mutateBody({ issueNumber, repo: cfg.repo, mutate: stamp });
       return {
         status: 'approved',
         ts,

@@ -37,6 +37,13 @@ function makeDeps({ body, live, moveCode = 0 } = {}) {
       writeIssueBody: async ({ body: b }) => {
         calls.writes.push(b);
       },
+      // #295 — promote bootstrap + marker repair now go through mutateIssueBody.
+      mutateIssueBody: async ({ mutate }) => {
+        const next = mutate(body);
+        if (next === body) return { status: 'no-op' };
+        calls.writes.push(next);
+        return { status: 'ok' };
+      },
       getLiveState: async () => live,
       spawnVerb: async () => 0,
       runMoveState: async ({ issueNumber, target }) => {

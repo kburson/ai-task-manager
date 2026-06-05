@@ -37,9 +37,17 @@ function makeDeps(overrides = {}) {
         calls.bodies.push(body);
         return body;
       },
-      writeIssueBody: async ({ body: b }) => {
-        calls.writes.push(b);
-        body = b;
+      // #295 — closure-form body write. Track both base-in and result-out so
+      // tests can assert "mutate produced body X from base Y" rather than just
+      // observing the final body.
+      mutateIssueBody: async ({ mutate }) => {
+        const before = body;
+        const next = mutate(before);
+        if (next !== before) {
+          body = next;
+          calls.writes.push(next);
+        }
+        return { status: 'ok' };
       },
       getBoardState: async () => {
         calls.stateLookups++;

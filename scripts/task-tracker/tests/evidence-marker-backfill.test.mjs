@@ -97,8 +97,12 @@ const metadata = [
     mappings: { 'Plain AC': ['node scripts/task-tracker/tests/evidence-marker-backfill.test.mjs'] },
     deps: {
       fetchIssueBody: async () => body,
-      writeIssueBody: async ({ body: next }) => {
+      // #295 — verb now writes via mutateIssueBody closure.
+      mutateIssueBody: async ({ mutate }) => {
+        const next = mutate(body);
+        if (next === body) return { status: 'no-op' };
         written = next;
+        return { status: 'ok' };
       },
     },
   });

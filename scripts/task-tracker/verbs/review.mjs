@@ -1,7 +1,5 @@
-import path from 'node:path';
 import { loadState, saveState } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
-import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
 import { hasDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
@@ -9,7 +7,7 @@ import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 
 export async function verbReview(ctx) {
   const {
@@ -383,12 +381,11 @@ export async function verbReview(ctx) {
       }
     }
 
-    const tmpBody = path.join(projectTmpDir(projectDir), `task-review-body-${issueNum}.md`);
-    await pushIssueBody({
+    const finalBody = lines.join('\n');
+    await mutateIssueBody({
       issueNumber: issueNum,
       repo: cfg.repo,
-      body: lines.join('\n'),
-      scratchPath: tmpBody,
+      mutate: () => finalBody,
       timeout: GH_API_TIMEOUT_MS,
       deps: { pexec },
     });

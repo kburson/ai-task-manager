@@ -11,12 +11,10 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import path from 'node:path';
-import { tmpdir } from 'node:os';
 
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { addBlockedBy, parseBlockedBy, blockedLabelAddArgs } from '../lib/blocked-marker.mjs';
 import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
 
@@ -83,13 +81,10 @@ async function defaultValidateBlocker({ blockerNumber, repo }) {
   }
 }
 
-async function defaultFetchBody({ issueNumber, repo }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  return stdout;
+// #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
+// runs on the FRESH base every push attempt, preserving concurrent markers.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultRunLabel({ args, repo }) {
@@ -130,8 +125,7 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
   refs = [...new Set(refs.filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
 
   const validateBlocker = deps.validateBlocker || defaultValidateBlocker;
-  const fetchBody = deps.fetchBody || defaultFetchBody;
-  const editBody = deps.editBody || defaultEditBody({ cfg });
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const runLabel = deps.runLabel || defaultRunLabel;
   const postComment = deps.postComment || defaultPostComment;
 
@@ -151,18 +145,30 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
     }
   }
 
-  const body = await fetchBody({ issueNumber: target, repo: cfg.repo });
-  const existing = new Set(parseBlockedBy(body));
-  const next = addBlockedBy(body, refs);
+  // #295 — closure runs over FRESH base each push attempt. `existing` is
+  // captured from inside so audit comments reflect what was actually on the
+  // body the moment we wrote, not a possibly-stale pre-fetched snapshot.
+  let existing = new Set();
+  let finalBody = null;
+  const writeRes = await mutateBody({
+    issueNumber: target,
+    repo: cfg.repo,
+    mutate: (base) => {
+      existing = new Set(parseBlockedBy(base));
+      const next = addBlockedBy(base, refs);
+      finalBody = next;
+      return next;
+    },
+  });
 
-  if (next === body) {
+  if (writeRes?.status === 'no-op') {
     console.log(
       `[task-tracker] ✓ #${target} already blocked by ${refs.map((n) => `#${n}`).join(', ')}`
     );
     return { status: 'idempotent', target, refs };
   }
 
-  await editBody({ issueNumber: target, repo: cfg.repo, body: next });
+  const next = finalBody;
   await runLabel({ args: blockedLabelAddArgs(target), repo: cfg.repo });
 
   // Mirror the canonical marker into the `Blocked By` Project field. No-op
@@ -193,20 +199,6 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
 
   console.log(`[task-tracker] ✓ #${target} blocked by ${added.map((n) => `#${n}`).join(', ')}`);
   return { status: 'added', target, refs: added };
-}
-
-function defaultEditBody({ cfg }) {
-  return async ({ issueNumber, body }) => {
-    const tmp = path.join(tmpdir(), `aitm-block-${issueNumber}-${process.pid}.md`);
-    await pushIssueBody({
-      issueNumber,
-      repo: cfg.repo,
-      body,
-      scratchPath: tmp,
-      timeout: GH_API_TIMEOUT_MS,
-      deps: { pexec },
-    });
-  };
 }
 
 export async function verbBlock(ctx) {

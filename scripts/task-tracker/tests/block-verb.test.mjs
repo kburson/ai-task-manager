@@ -31,9 +31,15 @@ function makeDeps({ store, openBlockers = new Set(), closedBlockers = new Set() 
       if (closedBlockers.has(blockerNumber)) return { exists: true, state: 'CLOSED' };
       return { exists: false, state: null };
     },
-    fetchBody: async () => store.body,
-    editBody: async ({ body }) => {
-      store.body = body;
+    // #295 — verbs write through `mutateIssueBody({mutate})`; closure runs
+    // on FRESH base. The fake feeds the live store body in and stamps the
+    // result back so the audit-comment + label logic sees what landed.
+    mutateIssueBody: async ({ mutate }) => {
+      const before = store.body;
+      const next = mutate(before);
+      if (next === before) return { status: 'no-op' };
+      store.body = next;
+      return { status: 'ok' };
     },
     runLabel: async ({ args }) => {
       store.labelCalls += 1;

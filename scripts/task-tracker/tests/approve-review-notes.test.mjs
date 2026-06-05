@@ -8,13 +8,21 @@ import { runApprove } from '../verbs/approve.mjs';
 function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = {}) {
   const posted = [];
   const written = [];
+  let body =
+    '## Definition of Done\n\n#### Lifecycle (auto-ticked at Review/Close)\n- [ ] Passed final human review\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n';
   return {
     posted,
     written,
-    fetchIssueBody: async () =>
-      '## Definition of Done\n\n#### Lifecycle (auto-ticked at Review/Close)\n- [ ] Passed final human review\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n',
-    writeIssueBody: async ({ body }) => {
-      written.push(body);
+    fetchIssueBody: async () => body,
+    // #295 — verb writes through `mutateIssueBody({mutate})`; closure runs on FRESH base.
+    mutateIssueBody: async ({ mutate }) => {
+      const before = body;
+      const next = mutate(before);
+      if (next !== before) {
+        body = next;
+        written.push(next);
+      }
+      return { status: 'ok' };
     },
     getBoardState: async () => 'review',
     nowIso: () => '2026-05-17T00:00:00Z',

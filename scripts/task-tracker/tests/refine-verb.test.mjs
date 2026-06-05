@@ -225,8 +225,10 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
         calls.fetch += 1;
         return '## Scope\n\nDo it.\n';
       },
-      writeBody: async ({ body }) => {
-        calls.write = body;
+      mutateBody: async ({ mutate }) => {
+        const next = mutate('## Scope\n\nDo it.\n');
+        calls.write = next;
+        return { status: 'ok' };
       },
       verbPromote: async (rest /* , cfg */) => {
         calls.promote = rest;
@@ -278,7 +280,10 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
           throw new Error('graphql boom');
         },
         fetchBody: async () => '',
-        writeBody: async () => {},
+        mutateBody: async ({ mutate }) => {
+          mutate('');
+          return { status: 'ok' };
+        },
         verbPromote: async () => {
           promoted = true;
         },
@@ -314,7 +319,10 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
         calls.addLabels = opts;
       },
       fetchBody: async () => '',
-      writeBody: async () => {},
+      mutateBody: async ({ mutate }) => {
+        mutate('');
+        return { status: 'ok' };
+      },
       verbPromote: async () => {},
     },
   });
@@ -344,7 +352,10 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
         calls.addLabels = opts;
       },
       fetchBody: async () => '',
-      writeBody: async () => {},
+      mutateBody: async ({ mutate }) => {
+        mutate('');
+        return { status: 'ok' };
+      },
       verbPromote: async () => {},
     },
   });

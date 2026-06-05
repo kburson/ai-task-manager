@@ -117,8 +117,17 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
 if (argv[0] === 'issue' && argv[1] === 'edit') {
   const idx = argv.indexOf('--body-file');
   if (idx >= 0 && argv[idx+1]) {
-    const body = readFileSync(argv[idx+1], 'utf8');
-    writeFileSync(${JSON.stringify(recordedBodyPath)}, body);
+    const src = argv[idx+1];
+    if (src === '-') {
+      let buf = '';
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', (c) => { buf += c; });
+      await new Promise((res) => process.stdin.on('end', res));
+      writeFileSync(${JSON.stringify(recordedBodyPath)}, buf);
+    } else {
+      const body = readFileSync(src, 'utf8');
+      writeFileSync(${JSON.stringify(recordedBodyPath)}, body);
+    }
   }
   process.exit(0);
 }

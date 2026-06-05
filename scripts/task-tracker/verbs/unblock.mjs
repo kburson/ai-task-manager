@@ -14,12 +14,10 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import path from 'node:path';
-import { tmpdir } from 'node:os';
 
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { removeBlockedBy, parseBlockedBy, blockedLabelRemoveArgs } from '../lib/blocked-marker.mjs';
 import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
 import { parseByList, resolveTargetIssue } from './block.mjs';
@@ -42,15 +40,6 @@ export function parseArgs(rest, activeIssue) {
   return { target, refs, byProvided: by !== null };
 }
 
-async function defaultFetchBody({ issueNumber, repo }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  return stdout;
-}
-
 async function defaultRunLabel({ args, repo }) {
   await pexec('gh', [...args, '-R', repo], { timeout: GH_API_TIMEOUT_MS });
 }
@@ -61,18 +50,9 @@ async function defaultPostComment({ issueNumber, repo, body }) {
   });
 }
 
-function defaultEditBody({ cfg }) {
-  return async ({ issueNumber, body }) => {
-    const tmp = path.join(tmpdir(), `aitm-unblock-${issueNumber}-${process.pid}.md`);
-    await pushIssueBody({
-      issueNumber,
-      repo: cfg.repo,
-      body,
-      scratchPath: tmp,
-      timeout: GH_API_TIMEOUT_MS,
-      deps: { pexec },
-    });
-  };
+// #295 — body writes go through `mutateIssueBody({ mutate })`.
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 /**
@@ -88,24 +68,33 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
     throw new Error('unblock: cfg.repo is required');
   }
 
-  const fetchBody = deps.fetchBody || defaultFetchBody;
-  const editBody = deps.editBody || defaultEditBody({ cfg });
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const runLabel = deps.runLabel || defaultRunLabel;
   const postComment = deps.postComment || defaultPostComment;
 
-  const body = await fetchBody({ issueNumber: target, repo: cfg.repo });
-  const current = parseBlockedBy(body);
-  const toDrop = refs === null ? current : refs.filter((m) => current.includes(m));
+  // #295 — closure runs on FRESH base each push attempt. `toDrop` is
+  // recomputed from the live base inside; outer captures expose what
+  // actually landed so audit + label logic stays consistent with the write.
+  let toDrop = [];
+  let remaining = [];
+  const writeRes = await mutateBody({
+    issueNumber: target,
+    repo: cfg.repo,
+    mutate: (base) => {
+      const current = parseBlockedBy(base);
+      toDrop = refs === null ? current : refs.filter((m) => current.includes(m));
+      if (toDrop.length === 0) return base;
+      const next = removeBlockedBy(base, toDrop);
+      remaining = parseBlockedBy(next);
+      return next;
+    },
+  });
 
-  if (toDrop.length === 0) {
+  if (writeRes?.status === 'no-op' || toDrop.length === 0) {
     console.log(`[task-tracker] ✓ #${target} has no matching blockers to clear`);
     return { status: 'idempotent', target, removed: [], cleared: false };
   }
 
-  const next = removeBlockedBy(body, toDrop);
-  await editBody({ issueNumber: target, repo: cfg.repo, body: next });
-
-  const remaining = parseBlockedBy(next);
   const cleared = remaining.length === 0;
   if (cleared) {
     await runLabel({ args: blockedLabelRemoveArgs(target), repo: cfg.repo });

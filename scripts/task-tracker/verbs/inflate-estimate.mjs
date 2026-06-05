@@ -25,7 +25,7 @@ import {
   defaultFieldValues,
 } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 
@@ -174,22 +174,11 @@ async function defaultPatchComment({ repo, commentId, body }) {
   }
 }
 
-async function defaultGetIssueBody({ issueNumber, repo }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  return String(stdout || '').trim();
-}
-
-async function defaultWriteIssueBody({ issueNumber, repo, body }) {
-  const tmp = path.join(os.tmpdir(), `aitm-inflate-body-${issueNumber}-${Date.now()}.md`);
-  await pushIssueBody({
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  await mutateIssueBody({
     issueNumber,
     repo,
-    body,
-    scratchPath: tmp,
+    mutate,
     timeout: GH_API_TIMEOUT_MS,
     deps: { pexec },
   });
@@ -202,8 +191,7 @@ export async function runInflateEstimate(
 ) {
   const listComments = deps.listComments || defaultListComments;
   const patchComment = deps.patchComment || defaultPatchComment;
-  const getIssueBody = deps.getIssueBody || defaultGetIssueBody;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
   const getProjectItem = deps.projectItemForIssue || projectItemForIssue;
   const getFieldOptionMap = deps.fieldOptionMap || fieldOptionMap;
@@ -293,12 +281,16 @@ export async function runInflateEstimate(
 
   // 5. Update aitm-fields block in issue body — force-merge new size/estimate
   try {
-    const issueBody = await getIssueBody({ issueNumber, repo });
-    const parsed = parseIssueFieldDb(issueBody);
-    const existing = parsed.ok ? parsed.values : defaultFieldValues(fieldDefs);
-    const updated = { ...existing, size, estimate: newEstimate };
-    const nextBody = `${stripIssueFieldDb(issueBody)}\n\n${formatIssueFieldDb(updated)}\n`;
-    if (nextBody !== issueBody) await writeIssueBody({ issueNumber, repo, body: nextBody });
+    await mutateBody({
+      issueNumber,
+      repo,
+      mutate: (base) => {
+        const parsed = parseIssueFieldDb(base);
+        const existing = parsed.ok ? parsed.values : defaultFieldValues(fieldDefs);
+        const updated = { ...existing, size, estimate: newEstimate };
+        return `${stripIssueFieldDb(base)}\n\n${formatIssueFieldDb(updated)}\n`;
+      },
+    });
   } catch (err) {
     process.stderr.write(`warning: issue body update failed: ${err.message}\n`);
   }

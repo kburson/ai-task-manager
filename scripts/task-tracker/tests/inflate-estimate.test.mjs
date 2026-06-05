@@ -97,8 +97,11 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
         patched.push({ commentId, body });
       },
       getIssueBody: async () => issueBody,
-      writeIssueBody: async ({ body }) => {
-        bodyWrites.push(body);
+      mutateIssueBody: async ({ mutate }) => {
+        const next = mutate(issueBody);
+        if (next === issueBody) return { status: 'no-op' };
+        bodyWrites.push(next);
+        return { status: 'ok' };
       },
       projectValuesForIssue: async () => ({ size: 'S', estimate: 2 }),
       projectItemForIssue: async () => ({ issueId: 'ISS_FAKE', itemId: 'ITEM_FAKE' }),

@@ -12,7 +12,7 @@ import {
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { pushIssueBody } from '../lib/issue-body-push.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { runCloseGates } from '../lib/close-gates.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
@@ -442,24 +442,14 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
 // the close path since the issue has already moved to Done.
 async function tickLifecycleOnClose({ cfg, issueNum, pexec }) {
   try {
-    const { stdout } = await pexec(
-      'gh',
-      ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-      { timeout: GH_API_TIMEOUT_MS }
-    );
-    const body = String(stdout || '');
-    let next = tickLifecycleItem(body, 'story-closed');
-    next = tickLifecycleItem(next, 'timing-flushed');
-    if (next === body) return;
-    const path = await import('node:path');
-    const os = await import('node:os');
-    const tmp = path.join(os.tmpdir(), `tt-lifecycle-${issueNum}-${Date.now()}.md`);
-    await pushIssueBody({
+    await mutateIssueBody({
       issueNumber: issueNum,
       repo: cfg.repo,
-      body: next,
-      scratchPath: tmp,
-      timeout: GH_API_TIMEOUT_MS,
+      mutate: (base) => {
+        let next = tickLifecycleItem(base, 'story-closed');
+        next = tickLifecycleItem(next, 'timing-flushed');
+        return next;
+      },
       deps: { pexec },
     });
   } catch (err) {

@@ -38,8 +38,17 @@ function makeDeps({
         secondFetch = true;
         return { body };
       },
-      writeIssueBody: async ({ body: b }) => {
-        calls.writes.push(b);
+      // #295 — verbs write through `mutateIssueBody({mutate})`. The closure
+      // is invoked with the FRESH base; this fake feeds whatever the current
+      // fetch would return (initial body pre-soft-warning, fetchSecondBody
+      // post-fetch toggle) so the marker-repair path sees the "post-move"
+      // body when the soft-warning branch runs.
+      mutateIssueBody: async ({ mutate }) => {
+        const base = secondFetch && fetchSecondBody !== undefined ? fetchSecondBody : body;
+        const next = mutate(base);
+        if (next === base) return { status: 'no-op', attempts: 1 };
+        calls.writes.push(next);
+        return { status: 'ok', attempts: 1 };
       },
       getLiveState: async () => {
         liveCalls++;
@@ -581,8 +590,8 @@ test('promote: delegate non-zero, marker repair write fails → audit comment po
     spawnCode: 1,
     fetchSecondBody: staleBodyAfter,
   });
-  // Force writeIssueBody to fail (twice → audit fallback).
-  deps.writeIssueBody = async () => {
+  // Force mutateIssueBody to fail (twice → audit fallback).
+  deps.mutateIssueBody = async () => {
     throw new Error('simulated gh failure');
   };
   const auditPosts = [];

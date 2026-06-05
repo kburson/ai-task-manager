@@ -40,7 +40,10 @@ function bodyWithState(state) {
     deps: {
       tetherIssueToProject: async () => ({ itemId: 'X' }),
       fetchBody: async () => bodyWithState('refine'),
-      writeBody: async () => {},
+      mutateBody: async ({ mutate }) => {
+        mutate(bodyWithState('refine'));
+        return { status: 'ok' };
+      },
       verbPromote: async () => {
         promoteCalled = true;
       },
@@ -66,9 +69,13 @@ function bodyWithState(state) {
   const deps = {
     tetherIssueToProject: async () => ({ itemId: 'X' }),
     fetchBody: async () => currentBody,
-    writeBody: async ({ body }) => {
-      writes.push(body);
-      currentBody = body;
+    mutateBody: async ({ mutate }) => {
+      const before = currentBody;
+      const next = mutate(before);
+      if (next === before) return { status: 'no-op' };
+      writes.push(next);
+      currentBody = next;
+      return { status: 'ok' };
     },
     verbPromote: async () => {
       promoteCount += 1;
@@ -103,8 +110,10 @@ function bodyWithState(state) {
     deps: {
       tetherIssueToProject: async () => ({ itemId: 'X' }),
       fetchBody: async () => bodyWithState('refine'),
-      writeBody: async ({ body }) => {
-        captured = body;
+      mutateBody: async ({ mutate }) => {
+        const next = mutate(bodyWithState('refine'));
+        captured = next;
+        return { status: 'ok' };
       },
       verbPromote: async () => {},
     },

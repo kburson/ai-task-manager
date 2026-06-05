@@ -38,6 +38,8 @@ import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+// keep: recovery snapshot semantics intentional — reconcile force-rewrites the
+// body verbatim (no closure), so pushIssueBody is the correct primitive here.
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';

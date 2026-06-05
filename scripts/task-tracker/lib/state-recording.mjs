@@ -123,6 +123,11 @@ export async function writeIssueBodyWithRetry({
   // fresh remote base, versionedWriteBody still pushes a version-bumped body
   // and returns `ok`. Callers that need a no-op fast-path should pre-check
   // before invoking this helper.
+  //
+  // #295 — verbs inject either `deps.mutateIssueBody` (whole-function override
+  // — the test seam most verbs use) or `deps.fetchBody`+`deps.pushBody` (the
+  // versionedWriteBody seam, for tests that exercise the retry loop).
+  const mutateImpl = deps.mutateIssueBody || mutateIssueBody;
 
   // Two-attempt retry over thrown errors (preserves the #168 contract).
   // versionedWriteBody's own `maxRetries` handles the race-loss path, but a
@@ -130,7 +135,7 @@ export async function writeIssueBodyWithRetry({
   let lastErr = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const res = await mutateIssueBody({
+      const res = await mutateImpl({
         issueNumber,
         repo,
         mutate,

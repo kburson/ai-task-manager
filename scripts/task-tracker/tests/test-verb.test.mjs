@@ -39,43 +39,50 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
     worktreesRemoved: 0,
     npmCiCalls: 0,
   };
-  return {
-    calls,
-    deps: {
-      fetchBody: async () => bodyWithVc(['node scripts/run-tests.mjs', 'npm run lint']),
-      writeBody: async ({ body }) => {
-        calls.bodyWrites.push(body);
-      },
-      postComment: async ({ body }) => {
-        calls.comments.push(body);
-      },
-      getHeadSha: async () => 'abc1234deadbeef',
-      createWorktree: async () => {
-        calls.worktreesCreated++;
-      },
-      removeWorktree: async () => {
-        calls.worktreesRemoved++;
-      },
-      seedWorktree: async () => {},
-      npmCi: async () => {
-        calls.npmCiCalls++;
-      },
-      execInSandbox: async ({ argv }) => {
-        calls.sandboxRuns.push(argv.join(' '));
-        if (shouldThrowOnExec) throw new Error('sandbox boom');
-        const key = argv.join(' ');
-        const r = execResults[key];
-        if (r) return r;
-        return { exit: 0, stdout: '', stderr: '' };
-      },
-      moveState: async ({ target }) => {
-        calls.moves.push(target);
-      },
-      logIssueTime: async (n) => {
-        calls.logs.push(n);
-      },
-    },
+  const deps = {
+    fetchBody: async () => bodyWithVc(['node scripts/run-tests.mjs', 'npm run lint']),
   };
+  // #295 — verb writes via mutateBody({mutate}); closure runs on FRESH base
+  // pulled from the current `deps.fetchBody` so tests that override it
+  // (e.g. lifecycle pretick) see their override reflected in mutate's base.
+  deps.mutateBody = async ({ mutate }) => {
+    const base = await deps.fetchBody();
+    const next = mutate(base);
+    if (next === base) return { status: 'no-op' };
+    calls.bodyWrites.push(next);
+    return { status: 'ok' };
+  };
+  Object.assign(deps, {
+    postComment: async ({ body }) => {
+      calls.comments.push(body);
+    },
+    getHeadSha: async () => 'abc1234deadbeef',
+    createWorktree: async () => {
+      calls.worktreesCreated++;
+    },
+    removeWorktree: async () => {
+      calls.worktreesRemoved++;
+    },
+    seedWorktree: async () => {},
+    npmCi: async () => {
+      calls.npmCiCalls++;
+    },
+    execInSandbox: async ({ argv }) => {
+      calls.sandboxRuns.push(argv.join(' '));
+      if (shouldThrowOnExec) throw new Error('sandbox boom');
+      const key = argv.join(' ');
+      const r = execResults[key];
+      if (r) return r;
+      return { exit: 0, stdout: '', stderr: '' };
+    },
+    moveState: async ({ target }) => {
+      calls.moves.push(target);
+    },
+    logIssueTime: async (n) => {
+      calls.logs.push(n);
+    },
+  });
+  return { calls, deps };
 }
 
 function withTmpDir(fn) {
@@ -317,8 +324,15 @@ test('verbTest #210: re-fetches body after moveState so writes preserve last-kno
         fetchCalls.push(movedToTest ? 'after-move' : 'before-move');
         return movedToTest ? postTransitionBody : preTransitionBody;
       },
-      writeBody: async ({ body }) => {
-        bodyWrites.push(body);
+      // #295 — closure runs over FRESH base. The base reflects the current
+      // post/pre-transition body so the assertion that every write carries
+      // `last-known-state: test` still holds (after moveState has flipped).
+      mutateBody: async ({ mutate }) => {
+        const base = movedToTest ? postTransitionBody : preTransitionBody;
+        const next = mutate(base);
+        if (next === base) return { status: 'no-op' };
+        bodyWrites.push(next);
+        return { status: 'ok' };
       },
       postComment: async () => {},
       getHeadSha: async () => 'sha12345',
