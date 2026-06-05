@@ -8,6 +8,7 @@
 
 import { splitRepo, gql, writeProjectFieldValue } from '../../gh/lib/github-projects.mjs';
 import { fieldIdFor } from '../project-fields.mjs';
+import { warnMissingFieldId } from './field-config-warn.mjs';
 
 async function defaultResolveItem({ cfg, issueNumber }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -58,6 +59,7 @@ export async function stampStartTime({ cfg, issueNumber, now = () => new Date(),
   if (!issueNumber) throw new Error('stampStartTime: issueNumber is required');
   const startTimeFieldId = cfg.fieldStartTime || fieldIdFor(cfg, 'startTime');
   if (!startTimeFieldId) {
+    warnMissingFieldId({ cfgKey: 'fieldStartTime', context: 'board stamp skipped' });
     return { status: 'skipped', reason: 'no-field-configured' };
   }
   const resolveItem = deps.resolveItem || defaultResolveItem;

@@ -23,6 +23,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { warnMissingFieldId } from './field-config-warn.mjs';
 
 const pexec = promisify(execFile);
 
@@ -114,6 +115,7 @@ async function defaultWriteFieldValue({ cfg, issueNumber, value }) {
  */
 export async function writeBlockedByField({ issueNumber, refs, cfg, deps = {} } = {}) {
   if (!cfg || !cfg.fieldBlockedBy) {
+    warnMissingFieldId({ cfgKey: 'fieldBlockedBy', context: 'board mirror skipped' });
     return { skipped: 'no-field-id' };
   }
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { getProjectDir } from './paths.mjs';
+import { warnMissingFieldId } from './lib/field-config-warn.mjs';
 
 export function loadProjectFieldDefs(dir = getProjectDir()) {
   const local = path.join(dir, '.ai-task-manager', 'project-fields.json');
@@ -43,7 +44,12 @@ export function buildFieldSyncPlan({ cfg, fieldDefs, values }) {
   const plan = [];
   for (const def of fieldDefs) {
     const fieldId = fieldIdFor(cfg, def.key);
-    if (!fieldId) continue;
+    if (!fieldId) {
+      // #314 — surface missing field ids so operators can re-run init.
+      const pascal = `${def.key[0].toUpperCase()}${def.key.slice(1)}`;
+      warnMissingFieldId({ cfgKey: `field${pascal}`, context: 'field sync skipped' });
+      continue;
+    }
     const value = valueForProjectField(values[def.key], def.type);
     // Accept explicit zero / falsy-but-valid wrapped values. Skip only when
     // the field genuinely had no input (null/undefined upstream rejected by

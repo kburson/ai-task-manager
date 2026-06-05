@@ -1,0 +1,158 @@
+// #314 — Regression tests for the silent-skip → WARN contract.
+//
+// Covers:
+//   - warnMissingFieldId emits a single-line WARN to stderr.
+//   - WARN is deduped per (process, cfgKey).
+//   - selfCheckFieldConfig emits one consolidated WARN listing all missing keys.
+//   - writeBlockedByField surfaces the WARN when cfg.fieldBlockedBy is absent.
+//   - stampStartTime surfaces the WARN when cfg.fieldStartTime is absent.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  warnMissingFieldId,
+  selfCheckFieldConfig,
+  __resetFieldConfigWarnings,
+  WELL_KNOWN_FIELD_KEYS,
+} from '../lib/field-config-warn.mjs';
+import { writeBlockedByField } from '../lib/blocked-by-field.mjs';
+import { stampStartTime } from '../lib/stamp-start-time.mjs';
+
+function makeStream() {
+  return {
+    chunks: [],
+    write(s) {
+      this.chunks.push(String(s));
+    },
+    text() {
+      return this.chunks.join('');
+    },
+  };
+}
+
+test('warnMissingFieldId: emits expected single-line WARN', () => {
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  const ok = warnMissingFieldId({
+    cfgKey: 'fieldBlockedBy',
+    context: 'board mirror skipped',
+    stream,
+  });
+  assert.equal(ok, true);
+  const out = stream.text();
+  assert.match(out, /^\[task-tracker\] WARN:/);
+  assert.match(out, /"Blocked By"/);
+  assert.match(out, /cfg\.fieldBlockedBy/);
+  assert.match(out, /board mirror skipped/);
+  assert.match(out, /init-project-config\.sh/);
+  // Single newline at end, no embedded newlines (single-line contract).
+  assert.equal(out.endsWith('\n'), true);
+  assert.equal(out.split('\n').filter(Boolean).length, 1);
+});
+
+test('warnMissingFieldId: deduped per cfgKey', () => {
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  warnMissingFieldId({ cfgKey: 'fieldBlockedBy', stream });
+  warnMissingFieldId({ cfgKey: 'fieldBlockedBy', stream });
+  warnMissingFieldId({ cfgKey: 'fieldBlockedBy', stream });
+  const lines = stream.text().split('\n').filter(Boolean);
+  assert.equal(lines.length, 1);
+});
+
+test('warnMissingFieldId: distinct cfgKeys each warn once', () => {
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  warnMissingFieldId({ cfgKey: 'fieldBlockedBy', stream });
+  warnMissingFieldId({ cfgKey: 'fieldStartTime', stream });
+  warnMissingFieldId({ cfgKey: 'fieldBlockedBy', stream });
+  const lines = stream.text().split('\n').filter(Boolean);
+  assert.equal(lines.length, 2);
+});
+
+test('warnMissingFieldId: rejects empty cfgKey', () => {
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  const ok = warnMissingFieldId({ cfgKey: '', stream });
+  assert.equal(ok, false);
+  assert.equal(stream.text(), '');
+});
+
+test('selfCheckFieldConfig: emits consolidated WARN listing every missing key', () => {
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  const r = selfCheckFieldConfig({ cfg: {}, stream });
+  assert.equal(r.warned, true);
+  assert.deepEqual(r.missing.sort(), [...WELL_KNOWN_FIELD_KEYS].sort());
+  const out = stream.text();
+  assert.match(out, /^\[task-tracker\] WARN: configuration is missing/);
+  for (const k of WELL_KNOWN_FIELD_KEYS) {
+    assert.match(out, new RegExp(`cfg\\.${k}`));
+  }
+});
+
+test('selfCheckFieldConfig: no WARN when all keys present', () => {
+  __resetFieldConfigWarnings();
+  const cfg = Object.fromEntries(WELL_KNOWN_FIELD_KEYS.map((k) => [k, 'PVTF_x']));
+  const stream = makeStream();
+  const r = selfCheckFieldConfig({ cfg, stream });
+  assert.equal(r.warned, false);
+  assert.equal(r.missing.length, 0);
+  assert.equal(stream.text(), '');
+});
+
+test('selfCheckFieldConfig: deduped per process', () => {
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  selfCheckFieldConfig({ cfg: {}, stream });
+  selfCheckFieldConfig({ cfg: {}, stream });
+  const lines = stream.text().split('\n').filter(Boolean);
+  assert.equal(lines.length, 1);
+});
+
+test('writeBlockedByField: missing cfg.fieldBlockedBy → WARN to stderr', async () => {
+  __resetFieldConfigWarnings();
+  const captured = [];
+  const origWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (s) => {
+    captured.push(String(s));
+    return true;
+  };
+  try {
+    const r = await writeBlockedByField({
+      issueNumber: 1,
+      refs: [2],
+      cfg: { repo: 'o/r', projectId: 'P_x', fieldBlockedBy: '' },
+    });
+    assert.deepEqual(r, { skipped: 'no-field-id' });
+  } finally {
+    process.stderr.write = origWrite;
+  }
+  const out = captured.join('');
+  assert.match(out, /\[task-tracker\] WARN/);
+  assert.match(out, /fieldBlockedBy/);
+});
+
+test('stampStartTime: missing cfg.fieldStartTime → WARN to stderr', async () => {
+  __resetFieldConfigWarnings();
+  const captured = [];
+  const origWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (s) => {
+    captured.push(String(s));
+    return true;
+  };
+  try {
+    const r = await stampStartTime({
+      cfg: { repo: 'o/r', projectId: 'P_x' },
+      issueNumber: 1,
+    });
+    assert.equal(r.status, 'skipped');
+    assert.equal(r.reason, 'no-field-configured');
+  } finally {
+    process.stderr.write = origWrite;
+  }
+  const out = captured.join('');
+  assert.match(out, /\[task-tracker\] WARN/);
+  assert.match(out, /fieldStartTime/);
+});

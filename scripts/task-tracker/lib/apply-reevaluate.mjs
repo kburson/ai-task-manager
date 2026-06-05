@@ -20,6 +20,7 @@ import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../iss
 import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { warnMissingFieldId } from './field-config-warn.mjs';
 
 const pexec = promisify(execFile);
 
@@ -134,6 +135,15 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
       if (itemId) {
         const sizeFieldId = fieldIdFor(cfg, 'size');
         const estimateFieldId = fieldIdFor(cfg, 'estimate');
+        if (!estimateFieldId) {
+          warnMissingFieldId({
+            cfgKey: 'fieldEstimate',
+            context: 're-eval estimate write skipped',
+          });
+        }
+        if (!sizeFieldId) {
+          warnMissingFieldId({ cfgKey: 'fieldSize', context: 're-eval size write skipped' });
+        }
         const optionMap = sizeFieldId ? await optionMapFor(cfg.projectId) : {};
         if (estimateFieldId) {
           await writeField({

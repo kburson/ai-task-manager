@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
+import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
 import { postTimingEvent } from './gh-timing-comment.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 
@@ -91,6 +92,11 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
 
   const projectDir = getProjectDir();
   const cfg = loadConfig();
+  // #314 — surface configuration drift once per process so operators see
+  // missing project-field ids before silent skips bury them.
+  if (process.env.TT_SKIP_FIELD_SELF_CHECK !== '1') {
+    selfCheckFieldConfig({ cfg });
+  }
   const statePath = path.join(projectDir, cfg.statePath);
   const queuePath = path.join(projectDir, cfg.queuePath);
   const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
