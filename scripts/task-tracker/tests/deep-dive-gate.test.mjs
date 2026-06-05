@@ -96,6 +96,11 @@ function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, 
   assert.equal(r3.ok, false);
   assert.equal(r3.blockers.length, 1);
   assert.ok(r3.blockers[0].startsWith('plan-develop-deep-dive-posted-marker-missing'));
+  // #294 — refusal message must point implementers at the canonical writer.
+  assert.ok(
+    r3.blockers[0].includes('stampDeepDive (scripts/task-tracker/lib/deep-dive.mjs)'),
+    `refusal message must name stampDeepDive: ${r3.blockers[0]}`
+  );
 
   // Legacy ticked checkbox is NOT a substitute for the complete marker.
   const checkboxOnly = ['## Scope', POSTED, SECTION_H2, '- [x] Deep dive complete'].join('\n');

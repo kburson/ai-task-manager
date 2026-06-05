@@ -1,0 +1,120 @@
+# Issue-Body Markers
+
+Hidden HTML-comment markers (`<!-- aitm-<name>: <value> -->`) are the canonical
+state record for an issue. They are invisible in rendered GitHub Markdown but
+parseable from the raw body string. The state machine reads them; gates write
+them; humans rarely interact with them directly.
+
+This page catalogues the **Deep-Dive Analysis** marker pair introduced by
+issues `#297` / `#300` / `#294`. For the body-version + write-contract markers
+(`aitm-body-version`, `aitm-fields`) see [`body-writes.md`](./body-writes.md).
+For the state-transition entry markers (`aitm-entered-*`) see
+[`state-machine.md`](./state-machine.md).
+
+## Deep-Dive Marker Pair
+
+The Plan → Develop promotion arc refuses unless **all three** of the following
+signals appear in the issue body:
+
+| Signal                                       | Type            | What it means                                          |
+| -------------------------------------------- | --------------- | ------------------------------------------------------ |
+| `<!-- aitm-deep-dive-posted: <iso-ts> -->`   | hidden marker   | Deep-dive appendix has been written into the body.     |
+| `## Deep-Dive Analysis` _(or H3)_            | visible heading | Deep-dive appendix exists at the documented placement. |
+| `<!-- aitm-deep-dive-complete: <iso-ts> -->` | hidden marker   | Author has acknowledged the deep dive is complete.     |
+
+The two markers + the heading form a three-signal check (see #297). Splitting
+"posted" from "complete" makes a partially-authored deep dive fail loudly:
+posting the appendix without explicitly marking it complete still blocks
+promotion, so a draft deep dive cannot accidentally pass the gate.
+
+### `aitm-deep-dive-posted`
+
+- **Regex (reader):** `/<!--\s*aitm-deep-dive-posted:\s*[^>]*?-->/i` — defined
+  in `scripts/task-tracker/lib/deep-dive-gate.mjs` (`POSTED_RE`).
+- **Writer:** `stampDeepDive` (`scripts/task-tracker/lib/deep-dive.mjs`). One
+  transactional `mutateIssueBody` call that:
+  1. Injects the marker immediately above a new `## Deep-Dive Analysis
+(<yyyy-mm-dd>)` heading.
+  2. Splices the heading + appendix prose AFTER the `## Pickup Directive`
+     block and its trailing `---` separator (fallback: before the
+     `aitm-fields` trailer).
+  3. Returns `{ status: 'no-op' }` if the marker already exists (idempotent
+     — re-running with a different `appendix` does NOT overwrite).
+- **Reader:** `planDeepDiveGate({ body })` (`lib/deep-dive-gate.mjs`).
+- **Gate failure code:** `plan-develop-deep-dive-posted-marker-missing`. The
+  blocker string names `stampDeepDive (scripts/task-tracker/lib/deep-dive.mjs)`
+  as the canonical remediation.
+
+### `aitm-deep-dive-complete`
+
+- **Regex (reader):** `/<!--\s*aitm-deep-dive-complete:\s*[^>]*?-->/i`
+  (`COMPLETE_RE`).
+- **Writer:** `/task check "Deep dive complete"`
+  (`scripts/task-tracker/verbs/check.mjs`). This is the only writer in the
+  codebase. #300 migrated this signal from the legacy `- [x] Deep dive
+complete` checkbox to the hidden marker; `gh-edit-guard` refuses bodies
+  that reintroduce the checkbox.
+- **Reader:** `planDeepDiveGate({ body })`.
+- **Gate failure code:** `plan-develop-deep-dive-complete-marker-missing`.
+  The blocker string instructs the operator to run `/task check "Deep dive
+complete"` to stamp the marker.
+
+## Why two markers instead of one
+
+A single marker would conflate "the appendix exists" with "the appendix is
+complete." That conflation broke the pre-#297 workflow: agents could write a
+stub `## Deep-Dive Analysis` heading, leave the body otherwise empty, and
+sail through the promote because no gate distinguished draft from final.
+
+Splitting the signal:
+
+- **`posted`** is mechanical — stamped by the tool that appends the appendix
+  (`stampDeepDive`). Cannot be forgotten while the appendix lands.
+- **`complete`** is intentional — stamped by an explicit `/task check`
+  invocation. Forces a beat where the author rereads what they just wrote.
+
+The visible H2/H3 heading is the third signal so a stripped-down body
+(markers without prose) is also refused.
+
+## Operator workflow
+
+```bash
+# 1. Author the deep dive prose, then stamp posted + heading in one call.
+node -e "
+  import('./scripts/task-tracker/lib/deep-dive.mjs').then(({ stampDeepDive }) =>
+    stampDeepDive({
+      issueNumber: 294,
+      repo: 'kburson/ai-task-manager',
+      appendix: 'Root cause: ...\\n### Files to edit\\n...\\n### Risks\\n...',
+    }).then(console.log)
+  );
+"
+# → { status: 'ok', attempts: 1, version: <N+1> }
+
+# 2. Acknowledge completion (writes aitm-deep-dive-complete).
+node scripts/task-tracker/task-tracker.mjs check 294 "Deep dive complete"
+
+# 3. Promote — now all three signals are present.
+node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
+```
+
+## Failure modes the gate catches
+
+| Body state                                      | Refusal code                                                         | Fix                                                                                    |
+| ----------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Neither marker, no heading                      | All three blockers fire simultaneously.                              | Call `stampDeepDive`, then `/task check`.                                              |
+| Posted marker only (no heading)                 | `section-missing`                                                    | Heading must be `## Deep-Dive Analysis` or `### …`; `stampDeepDive` writes it for you. |
+| Heading only (no posted marker)                 | `posted-marker-missing`                                              | Use `stampDeepDive` — do not hand-write the marker.                                    |
+| Posted + heading, no `/task check` run          | `complete-marker-missing`                                            | `/task check "Deep dive complete"`.                                                    |
+| Legacy `- [x] Deep dive complete` checkbox only | `complete-marker-missing` + `gh-edit-guard` refusal on future writes | Remove the checkbox; rely on the marker.                                               |
+
+## Related
+
+- [`body-writes.md`](./body-writes.md) — `mutateIssueBody` contract,
+  `aitm-body-version`, stale-input refusals.
+- [`state-machine.md`](./state-machine.md) — entry markers per state, audit
+  trail.
+- `scripts/task-tracker/lib/deep-dive-gate.mjs` — the three-signal gate.
+- `scripts/task-tracker/lib/deep-dive.mjs` — the `stampDeepDive` writer.
+- `scripts/task-tracker/verbs/check.mjs` — the `aitm-deep-dive-complete`
+  writer.

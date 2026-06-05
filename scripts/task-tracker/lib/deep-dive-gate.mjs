@@ -39,7 +39,7 @@ export function planDeepDiveGate({ body = '' } = {}) {
   const blockers = [];
   if (!hasDeepDivePostedMarker(body)) {
     blockers.push(
-      'plan-develop-deep-dive-posted-marker-missing: body must contain `<!-- aitm-deep-dive-posted: ... -->` — run the deep-dive author flow to stamp the posted marker'
+      'plan-develop-deep-dive-posted-marker-missing: body must contain `<!-- aitm-deep-dive-posted: ... -->` — call `stampDeepDive (scripts/task-tracker/lib/deep-dive.mjs)` to append the appendix and stamp the marker in one atomic write'
     );
   }
   if (!hasDeepDiveSection(body)) {
