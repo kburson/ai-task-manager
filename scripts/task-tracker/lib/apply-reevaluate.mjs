@@ -8,7 +8,6 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import path from 'node:path';
 
 import {
   projectValuesForIssue,
@@ -20,7 +19,7 @@ import { reevaluateEstimate, buildAuditCommentBody, AUDIT_HEADER } from './reeva
 import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { pushIssueBody } from './issue-body-push.mjs';
+import { mutateIssueBody } from './issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 
@@ -57,24 +56,16 @@ async function defaultHasSubIssues({ issueNumber, repo }) {
   }
 }
 
-async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
-  const tmpFile = path.join(scratchDir, `reeval-${issueNumber}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmpFile,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
-export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps = {} } = {}) {
+export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}) {
   if (!cfg) throw new Error('applyReevaluate: cfg is required');
   if (!issueNumber) throw new Error('applyReevaluate: issueNumber is required');
 
   const postComment = deps.postComment || defaultPostComment;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
   const fetchProjectItem = deps.projectItemForIssue || projectItemForIssue;
@@ -168,10 +159,22 @@ export async function applyReevaluate({ cfg, issueNumber, body, scratchDir, deps
   }
 
   if (dbParsed.ok) {
-    const nextValues = { ...dbParsed.values, size: result.size, estimate: result.estimate };
-    const nextBody = `${stripIssueFieldDb(body)}\n\n${formatIssueFieldDb(nextValues)}\n`;
+    // #295 — re-derive the field-DB block from the FRESH base inside the
+    // closure so a concurrent writer between the pre-flight fetch above and
+    // this write doesn't get clobbered. The size/estimate values are
+    // deterministic from `result` (computed once); only the surrounding
+    // body context is re-read.
     try {
-      await writeIssueBody({ issueNumber, repo: cfg.repo, body: nextBody, scratchDir });
+      await mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: (base) => {
+          const parsed = parseIssueFieldDb(base);
+          const baseValues = parsed.ok ? parsed.values : {};
+          const nextValues = { ...baseValues, size: result.size, estimate: result.estimate };
+          return `${stripIssueFieldDb(base)}\n\n${formatIssueFieldDb(nextValues)}\n`;
+        },
+      });
     } catch (err) {
       process.stderr.write(`⚠ re-eval: body patch failed: ${err.message}\n`);
     }

@@ -198,20 +198,23 @@ assert.equal(REFINEMENT_HEADER, '### 🛠 Refine estimate');
     body: bodyWithMarker(NEW_RATIONALE_BLOCK),
     deps: depsWithBoard(),
   });
+  // #295 — applyRefinementEstimate now writes via `mutateIssueBody({ mutate })`.
+  // The injected `mutateIssueBody` dep is invoked with `{issueNumber, repo,
+  // mutate}` and the mutate closure is what computes the new body from the
+  // FRESH base. The test supplies a base carrying `aitm-last-known-state: plan`
+  // (the marker move-state stamped) plus the rationale; the closure must
+  // preserve the former and strip the latter.
+  const post = `<!-- aitm-last-known-state: plan -->\n${bodyWithMarker(NEW_RATIONALE_BLOCK)}`;
   const result = await applyRefinementEstimate({
     cfg: CFG,
     issueNumber: 95,
     plan: planResult.plan,
-    scratchDir: '/tmp',
     deps: {
       listCommentBodies: async () => [],
       postComment: async ({ body }) => posts.push(body),
-      writeIssueBody: async ({ body }) => writes.push(body),
-      // #210 — applyRefinementEstimate re-fetches the body after moveState
-      // so it doesn't clobber the `aitm-last-known-state` marker. Return a
-      // post-transition body (marker=plan) with the rationale still present.
-      fetchIssueBody: async () =>
-        `<!-- aitm-last-known-state: plan -->\n${bodyWithMarker(NEW_RATIONALE_BLOCK)}`,
+      mutateIssueBody: async ({ mutate }) => {
+        writes.push(mutate(post));
+      },
     },
   });
   assert.equal(result.status, 'posted');
@@ -239,19 +242,19 @@ assert.equal(REFINEMENT_HEADER, '### 🛠 Refine estimate');
     deps: depsWithBoard(),
   });
   // Simulate: planResult.plan.strippedBody is stale (marker=refine). The fresh
-  // fetch returns the post-transition body (marker=plan). Apply must write
-  // the fresh-stripped form, not the stale plan.strippedBody.
+  // base passed into the mutate closure carries `aitm-last-known-state: plan`.
+  // Apply must write the fresh-stripped form, not the stale plan.strippedBody.
+  const post = `<!-- aitm-last-known-state: plan -->\n${bodyWithMarker(NEW_RATIONALE_BLOCK)}`;
   const result = await applyRefinementEstimate({
     cfg: CFG,
     issueNumber: 210,
     plan: planResult.plan,
-    scratchDir: '/tmp',
     deps: {
       listCommentBodies: async () => [],
       postComment: async () => {},
-      writeIssueBody: async ({ body }) => writes.push(body),
-      fetchIssueBody: async () =>
-        `<!-- aitm-last-known-state: plan -->\n${bodyWithMarker(NEW_RATIONALE_BLOCK)}`,
+      mutateIssueBody: async ({ mutate }) => {
+        writes.push(mutate(post));
+      },
     },
   });
   assert.equal(result.status, 'posted');
@@ -281,7 +284,7 @@ assert.equal(REFINEMENT_HEADER, '### 🛠 Refine estimate');
         '<!-- aitm-refined-estimate: 95 -->\n### 🛠 Refine estimate\n...',
       ],
       postComment: async ({ body }) => posts.push(body),
-      writeIssueBody: async () => {},
+      mutateIssueBody: async () => {},
     },
   });
   assert.equal(result.status, 'duplicate');

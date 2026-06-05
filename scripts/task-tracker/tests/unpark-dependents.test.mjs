@@ -8,7 +8,12 @@ import { unparkDependents } from '../lib/unpark-dependents.mjs';
 import { parseBlockedBy } from '../lib/blocked-marker.mjs';
 
 // Build an injectable deps surface over an in-memory body map. Records every
-// editBody write and runLabel call for assertions.
+// mutateBody write and runLabel call for assertions.
+//
+// #295 — `mutateBody(n, mutate)` mirrors the production shape: the closure is
+// invoked with the FRESH base from the store and the return value replaces it.
+// Tests can therefore assert on the post-mutation body without threading a
+// pre-baked body through the dep.
 function makeDeps(bodies) {
   const store = new Map(Object.entries(bodies).map(([k, v]) => [Number(k), v]));
   const labelCalls = [];
@@ -21,7 +26,11 @@ function makeDeps(bodies) {
         if (!store.has(n)) throw new Error(`no body for #${n}`);
         return store.get(n);
       },
-      editBody: async (n, body) => store.set(n, body),
+      mutateBody: async (n, mutate) => {
+        const base = store.get(n);
+        const next = mutate(base);
+        store.set(n, next);
+      },
       runLabel: async (args) => labelCalls.push(args),
     },
   };

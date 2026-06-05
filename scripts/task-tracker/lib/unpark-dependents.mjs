@@ -15,11 +15,9 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import path from 'node:path';
-import { tmpdir } from 'node:os';
 import { parseBlockedBy, removeBlockedBy, blockedLabelRemoveArgs } from './blocked-marker.mjs';
 import { writeBlockedByField } from './blocked-by-field.mjs';
-import { pushIssueBody } from './issue-body-push.mjs';
+import { mutateIssueBody } from './issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 
@@ -65,10 +63,9 @@ function defaultFetchBody({ repo }) {
   };
 }
 
-function defaultEditBody({ repo }) {
-  return async (issueNumber, body) => {
-    const tmp = path.join(tmpdir(), `aitm-unpark-${issueNumber}-${process.pid}.md`);
-    await pushIssueBody({ issueNumber, repo, body, scratchPath: tmp, deps: { pexec } });
+function defaultMutateBody({ repo }) {
+  return async (issueNumber, mutate) => {
+    await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
   };
 }
 
@@ -86,8 +83,8 @@ function defaultRunLabel({ repo }) {
  * @param {object}   [opts.cfg]            config carrying `repo` for default deps
  * @param {object}   [opts.deps]           injectable side-effect surface:
  *   - listCandidates(): Promise<number[]>      issues that may be blocked
- *   - fetchBody(n): Promise<string>            issue body text
- *   - editBody(n, body): Promise<void>         write issue body
+ *   - fetchBody(n): Promise<string>            issue body text (used for blocker discovery)
+ *   - mutateBody(n, mutate): Promise<void>     atomically mutate issue body via closure
  *   - runLabel(args): Promise<void>            run a gh label-arg array
  * @returns {Promise<Array<{issue:number, cleared?:'full'|'partial', error?:string}>>}
  *   one entry per candidate that referenced the Done issue (plus any that
@@ -100,7 +97,7 @@ export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } 
   const repo = cfg.repo;
   const listCandidates = deps.listCandidates || defaultListCandidates({ repo });
   const fetchBody = deps.fetchBody || defaultFetchBody({ repo });
-  const editBody = deps.editBody || defaultEditBody({ repo });
+  const mutateBody = deps.mutateBody || defaultMutateBody({ repo });
   const runLabel = deps.runLabel || defaultRunLabel({ repo });
 
   let candidates;
@@ -118,10 +115,14 @@ export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } 
       const blockers = parseBlockedBy(body);
       if (!blockers.includes(done)) continue;
 
-      const next = removeBlockedBy(body, done);
-      await editBody(issue, next);
+      // #295 — mutate the live body inside the closure so a concurrent
+      // writer between the discovery fetch above and this write doesn't
+      // get clobbered. `remaining` is deterministic from `blockers` (which
+      // we already verified contains `done`), so we don't need to re-parse
+      // the post-mutation body.
+      await mutateBody(issue, (base) => removeBlockedBy(base, done));
+      const remaining = blockers.filter((b) => b !== done);
 
-      const remaining = parseBlockedBy(next);
       if (remaining.length === 0) {
         await runLabel(blockedLabelRemoveArgs(issue));
         results.push({ issue, cleared: 'full' });

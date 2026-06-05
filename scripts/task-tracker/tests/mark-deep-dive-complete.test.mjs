@@ -25,19 +25,25 @@ const BARE_BODY = [
 ].join('\n');
 
 // ── Test 1: writes marker on first call ──────────────────────────────────────
+//
+// #295 — the dep surface collapsed from (fetchBody, writeBody) to a single
+// `mutateBody(fn)` that invokes the closure with the FRESH base and stores
+// the result. The closure decides whether to insert; the test taps
+// `state.writes` by counting closure invocations that actually changed the
+// body.
 {
   const state = { body: BARE_BODY, writes: 0 };
   const deps = {
-    fetchBody: async () => state.body,
-    writeBody: async (b) => {
-      state.body = b;
-      state.writes++;
+    mutateBody: async (fn) => {
+      const next = await fn(state.body);
+      if (next !== state.body) state.writes++;
+      state.body = next;
     },
   };
   const res = await markDeepDiveComplete({ issueNumber: 123, cfg: CFG, now: NOW, deps });
   assert.equal(res.changed, true, 'first call must report changed=true');
   assert.equal(res.ts, '2026-05-11T12:00:00Z');
-  assert.equal(state.writes, 1, 'writeBody invoked exactly once');
+  assert.equal(state.writes, 1, 'mutateBody-closure produced exactly one write');
   assert.ok(hasDeepDiveCompleteMarker(state.body), 'body now carries the marker');
   assert.match(state.body, /<!-- aitm-deep-dive-complete: 2026-05-11T12:00:00Z -->/);
 }
@@ -47,16 +53,16 @@ const BARE_BODY = [
   const seeded = BARE_BODY + '\n<!-- aitm-deep-dive-complete: 2026-05-10T00:00:00Z -->\n';
   const state = { body: seeded, writes: 0 };
   const deps = {
-    fetchBody: async () => state.body,
-    writeBody: async (b) => {
-      state.body = b;
-      state.writes++;
+    mutateBody: async (fn) => {
+      const next = await fn(state.body);
+      if (next !== state.body) state.writes++;
+      state.body = next;
     },
   };
   const res = await markDeepDiveComplete({ issueNumber: 123, cfg: CFG, now: NOW, deps });
   assert.equal(res.changed, false, 'second call must report changed=false');
   assert.equal(res.ts, null);
-  assert.equal(state.writes, 0, 'writeBody must NOT be invoked on idempotent path');
+  assert.equal(state.writes, 0, 'mutate closure must be a no-op on idempotent path');
   // Original marker timestamp preserved.
   assert.match(state.body, /<!-- aitm-deep-dive-complete: 2026-05-10T00:00:00Z -->/);
 }

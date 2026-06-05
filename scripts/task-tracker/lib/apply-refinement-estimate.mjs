@@ -13,12 +13,11 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import path from 'node:path';
 
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { pushIssueBody } from './issue-body-push.mjs';
+import { mutateIssueBody } from './issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 
@@ -103,25 +102,8 @@ async function defaultListCommentBodies({ issueNumber, repo }) {
   return String(stdout || '').split('\n');
 }
 
-async function defaultFetchIssueBody({ issueNumber, repo }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  return String(stdout || '');
-}
-
-async function defaultWriteIssueBody({ issueNumber, repo, body, scratchDir }) {
-  const tmpFile = path.join(scratchDir, `refine-est-${issueNumber}.md`);
-  await pushIssueBody({
-    issueNumber,
-    repo,
-    body,
-    scratchPath: tmpFile,
-    timeout: GH_API_TIMEOUT_MS,
-    deps: { pexec },
-  });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 // Backlog → Refine gate (#133): require only Priority on the board. Sizing
@@ -245,21 +227,14 @@ export async function planRefinementEstimate({ cfg, issueNumber, body, deps = {}
 //   { status: 'posted' }
 //   { status: 'duplicate' }   — marker already present in a comment
 //   { status: 'post-failed', error }
-export async function applyRefinementEstimate({
-  cfg,
-  issueNumber,
-  plan,
-  scratchDir,
-  deps = {},
-} = {}) {
+export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {} } = {}) {
   if (!cfg) throw new Error('applyRefinementEstimate: cfg is required');
   if (!issueNumber) throw new Error('applyRefinementEstimate: issueNumber is required');
   if (!plan?.commentBody) throw new Error('applyRefinementEstimate: plan.commentBody is required');
 
   const postComment = deps.postComment || defaultPostComment;
   const listCommentBodies = deps.listCommentBodies || defaultListCommentBodies;
-  const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
-  const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
 
   try {
     const bodies = await listCommentBodies({ issueNumber, repo: cfg.repo });
@@ -281,22 +256,18 @@ export async function applyRefinementEstimate({
     return { status: 'post-failed', error: err.message };
   }
 
-  // #210 — Re-fetch the body BEFORE stripping the rationale marker. The
-  // pre-computed `plan.strippedBody` is built from a pre-moveState fetch and
-  // would clobber the `aitm-last-known-state` marker that move-state stamped
-  // when the refine→plan transition succeeded. Re-fetch + re-strip preserves
-  // every marker the transition wrote while still cleaning up the rationale.
+  // #210 / #295 — strip the rationale marker from the FRESH base inside the
+  // mutate closure. The closure does its own read; if a concurrent writer
+  // landed between move-state and now (e.g. the `aitm-last-known-state`
+  // stamp from the refine→plan transition), the closure sees their work and
+  // preserves it. Idempotent: if the rationale marker isn't present, the
+  // mutate returns base unchanged and mutateIssueBody no-ops.
   try {
-    const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-    const stripped = stripRationaleMarker(freshBody);
-    if (stripped !== freshBody) {
-      await writeIssueBody({
-        issueNumber,
-        repo: cfg.repo,
-        body: stripped,
-        scratchDir: scratchDir || path.resolve('.tmp/gh'),
-      });
-    }
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => stripRationaleMarker(base),
+    });
   } catch {
     // Best-effort — comment is already on the issue.
   }

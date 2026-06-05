@@ -7,8 +7,7 @@
 // blocks are normalized as a side-effect of any marker write.
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
-import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { pushIssueBody } from './issue-body-push.mjs';
+import { mutateIssueBody } from './issue-body-mutate.mjs';
 
 // ---------------------------------------------------------------------------
 // plan-approved (plan → develop human gate)
@@ -356,49 +355,40 @@ export function backfillDeepDiveCompleteMarker(body, ts) {
 
 // Stamp the deep-dive-complete marker on a live issue body via `gh`.
 // Idempotent: returns `{ changed: false }` if the marker is already present.
-// Tests inject `deps.fetchBody` / `deps.writeBody` to avoid GitHub I/O.
+// Tests inject `deps.mutateBody` to avoid GitHub I/O.
 export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } = {}) {
   if (!issueNumber) throw new Error('markDeepDiveComplete: issueNumber is required');
   if (!cfg?.repo) throw new Error('markDeepDiveComplete: cfg.repo is required');
 
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');
-  const pathMod = await import('node:path');
   const pexec = promisify(execFile);
 
-  const fetchBody =
-    deps.fetchBody ||
-    (async () => {
-      const { stdout } = await pexec(
-        'gh',
-        ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      return stdout;
-    });
-  const writeBody =
-    deps.writeBody ||
-    (async (body) => {
-      const os = await import('node:os');
-      const tmp = pathMod.join(os.tmpdir(), `tt-deep-dive-${Date.now()}.md`);
-      await pushIssueBody({
+  // #295 — the idempotency check (was the marker already present?) and the
+  // insertion both run inside the mutate closure against the freshly-fetched
+  // remote base, so a concurrent writer between an external read and this
+  // write doesn't get clobbered. `changed` is observed by closing over
+  // `inserted` from inside the closure.
+  const ts = (typeof now === 'function' ? now() : new Date().toISOString()).replace(/\.\d+Z$/, 'Z');
+  let inserted = false;
+  const mutate = (base) => {
+    if (hasDeepDiveCompleteMarker(base)) return base;
+    inserted = true;
+    return insertDeepDiveCompleteMarker(base, ts);
+  };
+  const mutateBody =
+    deps.mutateBody ||
+    (async (fn) => {
+      await mutateIssueBody({
         issueNumber,
         repo: cfg.repo,
-        body,
-        scratchPath: tmp,
-        timeout: GH_API_TIMEOUT_MS,
+        mutate: fn,
         deps: { pexec },
       });
     });
 
-  const body = await fetchBody();
-  if (hasDeepDiveCompleteMarker(body)) {
-    return { changed: false, ts: null };
-  }
-  const ts = (typeof now === 'function' ? now() : new Date().toISOString()).replace(/\.\d+Z$/, 'Z');
-  const updated = insertDeepDiveCompleteMarker(body, ts);
-  await writeBody(updated);
-  return { changed: true, ts };
+  await mutateBody(mutate);
+  return inserted ? { changed: true, ts } : { changed: false, ts: null };
 }
 
 // ---------------------------------------------------------------------------
