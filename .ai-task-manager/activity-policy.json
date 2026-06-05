@@ -6,6 +6,7 @@
     "scripts/**",
     "config/**",
     ".ai-task-manager/**",
+    "tests/**",
     "cspell-dictionary.txt"
   ],
   "codeGlobExcludes": [],

@@ -130,6 +130,11 @@ function renderShapeBody(args) {
   if (typeof args['sub-issue-list-file'] === 'string') {
     flags.push('--sub-issue-list-file', args['sub-issue-list-file']);
   }
+  // #298 AC3 — forward seed values so preflight emits the `aitm-fields`
+  // trailer block at creation time (Refine→Plan `fields-block marker` gate).
+  for (const k of ['priority', 'size', 'estimate', 'sequence', 'start-time']) {
+    if (typeof args[k] === 'string' && args[k]) flags.push(`--${k}`, args[k]);
+  }
   const result = run('node', [PREFLIGHT_SCRIPT, ...flags], { timeout: GH_API_TIMEOUT_MS });
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.status !== 0)

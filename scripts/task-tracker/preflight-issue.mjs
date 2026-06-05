@@ -34,6 +34,7 @@ import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
 import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
+import { formatIssueFieldDb } from './issue-field-db.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -116,6 +117,90 @@ function fillTemplate(template, fills) {
   return out;
 }
 
+// #298 — Normalize section fill values BEFORE template substitution so the
+// rendered body passes Refine→Plan / Plan→Develop gates without heal scripts.
+//
+// AC1 — H2 dedupe: if a fill begins with the same `## <heading>` that the
+// template wraps it in, strip the duplicate leading heading line. Anchored;
+// case-sensitive; only strips a single leading occurrence.
+//
+// AC2 — Numbered ACs → checkboxes: in the `acceptance_criteria` fill,
+// line-anchor-convert `1. <text>` / `- <text>` to `- [ ] <text>`. Lines that
+// already start with `- [` (checkbox) are left alone. One pass.
+const SECTION_HEADINGS = {
+  scope: '## Scope',
+  acceptance_criteria: '## Acceptance Criteria',
+  plan_metadata: '## Plan Metadata',
+};
+
+export function stripLeadingHeading(value, heading) {
+  const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^${esc}\\s*\\n+`, '');
+  return value.replace(re, '');
+}
+
+export function normalizeAcceptanceCriteria(value) {
+  const lines = value.split('\n');
+  const out = lines.map((line) => {
+    if (/^\s*- \[[ x]\]\s+/.test(line)) return line; // already a checkbox
+    const numbered = line.match(/^(\s*)\d+\.\s+(.*)$/);
+    if (numbered) return `${numbered[1]}- [ ] ${numbered[2]}`;
+    const bullet = line.match(/^(\s*)-\s+(?!\[)(.+)$/);
+    if (bullet) return `${bullet[1]}- [ ] ${bullet[2]}`;
+    return line;
+  });
+  return out.join('\n');
+}
+
+export function normalizeFills(fills) {
+  const out = { ...fills };
+  for (const [key, heading] of Object.entries(SECTION_HEADINGS)) {
+    if (typeof out[key] === 'string' && out[key]) {
+      out[key] = stripLeadingHeading(out[key], heading);
+    }
+  }
+  if (typeof out.acceptance_criteria === 'string') {
+    out.acceptance_criteria = normalizeAcceptanceCriteria(out.acceptance_criteria);
+  }
+  return out;
+}
+
+// #298 AC3 — Build the `aitm-fields` trailer block from seed values forwarded
+// by create-issue.mjs (priority/size/estimate/sequence/start-time). Returns
+// null when no values were forwarded; caller then omits the trailer block.
+function buildFieldsTrailer(args) {
+  const keys = ['priority', 'size', 'estimate', 'sequence', 'start-time'];
+  const out = {
+    priority: null,
+    size: null,
+    estimate: null,
+    engagedTime: null,
+    sessionTime: null,
+    reviewTime: null,
+    sequence: null,
+    startTime: null,
+    blockedBy: null,
+  };
+  let any = false;
+  for (const k of keys) {
+    const raw = args[k];
+    if (typeof raw !== 'string' || raw === '') continue;
+    any = true;
+    if (k === 'estimate') {
+      const n = parseFloat(String(raw).replace(/h$/i, ''));
+      out.estimate = Number.isFinite(n) ? n : null;
+    } else if (k === 'sequence') {
+      const n = parseInt(raw, 10);
+      out.sequence = Number.isFinite(n) ? n : null;
+    } else if (k === 'start-time') {
+      out.startTime = raw;
+    } else {
+      out[k] = raw;
+    }
+  }
+  return any ? formatIssueFieldDb(out) + '\n' : null;
+}
+
 function tailBlock(dodPath) {
   const dod = readFileSync(dodPath, 'utf8').replace(/\s+$/, '');
   return [
@@ -143,11 +228,12 @@ function emitShape(args, dodPath, root) {
     die('--parent <N> required with --shape sub-issue');
   }
 
-  const fills = {
+  const rawFills = {
     scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
     acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),
     plan_metadata: readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim(),
   };
+  const fills = normalizeFills(rawFills);
   if (shape === 'sub-issue') fills.parent_epic = `#${args.parent}`;
   if (shape === 'epic') {
     fills.sub_issue_list =
@@ -176,6 +262,11 @@ function emitShape(args, dodPath, root) {
   }
   process.stdout.write(body);
   process.stdout.write(tailBlock(dodPath));
+  // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded
+  // by create-issue.mjs. Goes BEFORE `aitm-body-version` so the body-shape
+  // matches the canonical trailer order seen on healed issues.
+  const fieldsTrailer = buildFieldsTrailer(args);
+  if (fieldsTrailer) process.stdout.write(fieldsTrailer);
   // Epic #288: stamp the optimistic-concurrency marker on every newly-rendered
   // body. `pushIssueBody` bumps subsequent writes; this seeds version 1.
   process.stdout.write('<!-- aitm-body-version: 1 -->\n');

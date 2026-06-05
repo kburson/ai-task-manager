@@ -6,11 +6,11 @@ test/build/command. Do not bulk-check. Do not preemptively check. See
 
 #### Functional (verified at Test)
 
-- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` -->
-- [ ] Lint and format checks pass <!-- aitm-verified-by: `npm run lint` `npm run format:check` -->
-- [ ] Acceptance criteria met (including additions from deep dive)
-- [ ] All changes committed; commit messages follow project convention
-- [ ] Issue body checkboxes ticked
+- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->
+- [ ] Lint and format checks pass <!-- aitm-verified-by: `npm run lint` `npm run format:check` --> <!-- dod:functional:lint -->
+- [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->
+- [ ] All changes committed; commit messages follow project convention <!-- dod:functional:commits -->
+- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->
 
 #### Lifecycle (auto-ticked at Review/Close)
 
