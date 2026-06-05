@@ -15,7 +15,9 @@
     "github-project-report": "scripts/reports/generate-value-report.mjs"
   },
   "scripts": {
-    "test": "node scripts/run-tests.mjs",
+    "test": "node scripts/run-tests.mjs --lane fast",
+    "test:slow": "node scripts/run-tests.mjs --lane slow",
+    "test:all": "node scripts/run-tests.mjs --lane all",
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",

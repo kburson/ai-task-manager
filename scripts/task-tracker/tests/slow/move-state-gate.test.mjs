@@ -12,13 +12,13 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dir, '../../gh/move-state.mjs');
+const SCRIPT = path.resolve(__dir, '../../../gh/move-state.mjs');
 
 function deepDiveAdequate() {
   const lines = [

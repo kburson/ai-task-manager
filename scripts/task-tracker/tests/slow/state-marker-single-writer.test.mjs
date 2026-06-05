@@ -18,9 +18,9 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { runPromote } from '../verbs/promote.mjs';
-import { writeLastKnownState, readLastKnownState } from '../gh-timing-comment.mjs';
-import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import { runPromote } from '../../verbs/promote.mjs';
+import { writeLastKnownState, readLastKnownState } from '../../gh-timing-comment.mjs';
+import { stampEntryMarker } from '../../lib/stage-entry-markers.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 

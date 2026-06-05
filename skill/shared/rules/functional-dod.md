@@ -19,13 +19,13 @@ running the verifier.
 
 Five canonical keys, two classes:
 
-| Key          | Class     | How the marker appears                                               |
-| ------------ | --------- | -------------------------------------------------------------------- |
-| `tests`      | stampable | `/task dod-stamp tests` runs `npm test` and stamps on exit-zero      |
-| `lint`       | stampable | `/task dod-stamp lint` runs the declared lint+format chain           |
-| `commits`    | stampable | `/task dod-stamp commits` runs the declared commit-trail verifier    |
-| `acs`        | derived   | `/task close` derives from "all AC checkboxes ticked" — auto-stamped |
-| `checkboxes` | derived   | `/task close` derives from "all non-self non-lifecycle boxes ticked" |
+| Key          | Class     | How the marker appears                                                  |
+| ------------ | --------- | ----------------------------------------------------------------------- |
+| `tests`      | stampable | `/task dod-stamp tests` runs `npm run test:all` and stamps on exit-zero |
+| `lint`       | stampable | `/task dod-stamp lint` runs the declared lint+format chain              |
+| `commits`    | stampable | `/task dod-stamp commits` runs the declared commit-trail verifier       |
+| `acs`        | derived   | `/task close` derives from "all AC checkboxes ticked" — auto-stamped    |
+| `checkboxes` | derived   | `/task close` derives from "all non-self non-lifecycle boxes ticked"    |
 
 ## Use the batch path. Stamp first.
 

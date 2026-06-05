@@ -52,8 +52,8 @@ For each item:
 
 - Verify it is genuinely complete (inspection + relevant test/command
   output).
-- Run the standard DoD command checkboxes: `npm test`, `npm run lint`,
-  and `npm run format:check`.
+- Run the standard DoD command checkboxes: `npm run test:all` (both
+  fast and slow lanes), `npm run lint`, and `npm run format:check`.
 - Verify every relevant issue-specific command in `### Verification
 Commands` has been run successfully, its output read, and its checkbox
   checked.

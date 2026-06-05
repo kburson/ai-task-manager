@@ -10,7 +10,7 @@ See `skill/shared/rules/functional-dod.md` for the full contract.
 
 #### Functional (verified at Test)
 
-- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->
+- [ ] All automated tests pass <!-- aitm-verified-by: `npm run test:all` --> <!-- dod:functional:tests -->
 - [ ] Lint and format checks pass <!-- aitm-verified-by: `npm run lint` `npm run format:check` --> <!-- dod:functional:lint -->
 - [ ] All changes committed; commit messages follow project convention <!-- aitm-verified-by: `git log --oneline -1` --> <!-- dod:functional:commits -->
 - [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->

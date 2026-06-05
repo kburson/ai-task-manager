@@ -495,6 +495,20 @@ After `/clear`, `/compact`, or `npm update ai-task-manager`, the sentinel/marker
 
 ---
 
+## Test lanes
+
+`scripts/run-tests.mjs` accepts a `--lane fast|slow|all` flag. Three npm wrappers:
+
+| Script              | Lane | Roughly | When to use                                             |
+| ------------------- | ---- | ------- | ------------------------------------------------------- |
+| `npm test`          | fast | ~40s    | develop tight-loop; default after every meaningful edit |
+| `npm run test:slow` | slow | ~90s    | when iterating on a file under `tests/slow/`            |
+| `npm run test:all`  | both | ~130s   | DoD verification — what `/task dod-stamp tests` invokes |
+
+The slow lane is everything under `scripts/task-tracker/tests/slow/`: integration-y tests that each spawn child processes and take ≥2s. Add a new file there when its measured runtime exceeds ~2s; otherwise default to `scripts/task-tracker/tests/`.
+
+`STANDARD_DOD_COMMANDS` recognizes both `npm test` and `npm run test:all` so legacy issue bodies keep passing; new bodies authored via `preflight-issue.mjs` ship with `npm run test:all` in the Functional-DoD `tests` marker.
+
 ## Quality Gates
 
 Code/docs/spelling are gated by four tools wired through `package.json` scripts.

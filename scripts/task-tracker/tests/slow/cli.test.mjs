@@ -3,13 +3,13 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
+const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cli-'));
 mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });

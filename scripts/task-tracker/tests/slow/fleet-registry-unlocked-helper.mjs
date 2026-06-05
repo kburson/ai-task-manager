@@ -7,7 +7,7 @@ import {
   readFleet,
   writeFleet,
   findMainWorktreePath,
-} from '../fleet-registry.mjs';
+} from '../../fleet-registry.mjs';
 const [, , projectDir, issueRef, branch] = process.argv;
 const rPath = fleetRegistryPath(findMainWorktreePath(projectDir));
 const fleet = readFleet(rPath);

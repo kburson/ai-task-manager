@@ -37,7 +37,7 @@ const preflightBlock = execFileSync(
 // than as standalone DoD lines.
 for (const fragment of [
   '#### Functional (verified at Test)',
-  'aitm-verified-by: `npm test`',
+  'aitm-verified-by: `npm run test:all`',
   'aitm-verified-by: `npm run lint` `npm run format:check`',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',

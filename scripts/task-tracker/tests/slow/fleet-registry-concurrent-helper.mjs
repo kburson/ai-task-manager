@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { registerTask } from '../fleet-registry.mjs';
+import { registerTask } from '../../fleet-registry.mjs';
 const [, , projectDir, issueRef, branch, delayMs] = process.argv;
 if (delayMs) {
   const until = Date.now() + Number(delayMs);

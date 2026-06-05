@@ -13,13 +13,13 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
-import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
+const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';

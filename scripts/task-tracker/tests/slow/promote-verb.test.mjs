@@ -6,7 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { runPromote } from '../verbs/promote.mjs';
+import { runPromote } from '../../verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 

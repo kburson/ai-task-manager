@@ -13,13 +13,13 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dir, '../../gh/move-state.mjs');
+const SCRIPT = path.resolve(__dir, '../../../gh/move-state.mjs');
 
 // Build a body that satisfies both the plan-approved marker AND the deep-dive
 // structural gate. Tests that need to isolate one gate can omit the other.

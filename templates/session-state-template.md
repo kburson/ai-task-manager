@@ -57,7 +57,7 @@ implementation. New discoveries get a one-line note on origin
 Each command that must pass before the task is Done, paired with its
 current status (`pending`, `running`, `pass`, `fail`). Includes
 acceptance-criteria verification commands from the issue body, plus
-`npm test`, `npm run lint`, `npm run format:check`, and any task-
+`npm test`, `npm run test:all`, `npm run lint`, `npm run format:check`, and any task-
 specific checks.
 
 ## Risks

@@ -4,8 +4,8 @@ import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { fleetRegistryPath, readFleet, withLock } from '../fleet-registry.mjs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { fleetRegistryPath, readFleet, withLock } from '../../fleet-registry.mjs';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 
 const exec = promisify(execFile);
 const lockedHelper = new URL('./fleet-registry-concurrent-helper.mjs', import.meta.url).pathname;

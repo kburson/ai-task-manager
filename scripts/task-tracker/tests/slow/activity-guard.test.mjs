@@ -10,12 +10,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import url from 'node:url';
 
 const GUARD = path.resolve(
   url.fileURLToPath(new URL('.', import.meta.url)),
+  '..',
   '..',
   'activity-guard.mjs'
 );

@@ -7,16 +7,16 @@ import { strict as assert } from 'node:assert';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync, existsSync, readFileSync } from 'node:fs';
-import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { postCommitTrail } from '../commit-trail-handler.mjs';
-import { TRAIL_HEADING } from '../lib/commit-trail.mjs';
+import { postCommitTrail } from '../../commit-trail-handler.mjs';
+import { TRAIL_HEADING } from '../../lib/commit-trail.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const HANDLER = path.resolve(__dir, '..', 'commit-trail-handler.mjs');
+const HANDLER = path.resolve(__dir, '..', '..', 'commit-trail-handler.mjs');
 
 function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = false } = {}) {
   const calls = { find: [], create: [], update: [] };

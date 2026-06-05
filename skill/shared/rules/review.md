@@ -23,7 +23,7 @@ Stop. Do not run `/task close`. Do not infer human approval from passing tests o
 
 1. **Per-AC verification.** For every `- [ ]` in the issue body's Acceptance Criteria, verify by inspection AND by running the relevant test/build/command. Tick each with `/task check "<exact label>"`. No bulk-checking.
 2. **Per-DoD verification.** Same rule for the Definition of Done items. The Functional DoD subsection is gated by the evidence-marker contract — see `rules/functional-dod.md`. Stamp every stampable key with `/task dod-stamp <key>` before batch-ticking; `acs` and `checkboxes` are derived by `/task close` and refuse manual ticks.
-3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under the issue-specific `### Verification Commands` section. Standard DoD commands (`npm test`, `npm run lint`, `npm run format:check`) may be referenced by markers but must NOT be duplicated in `### Verification Commands`.
+3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under the issue-specific `### Verification Commands` section. Standard DoD commands (`npm test`, `npm run test:all`, `npm run lint`, `npm run format:check`) may be referenced by markers but must NOT be duplicated in `### Verification Commands`.
 4. **Run `/task review #N`.**
 
 For epics: `/task review` refuses if any sub-issue is not already in Review. Drive every sub-issue to Review first.

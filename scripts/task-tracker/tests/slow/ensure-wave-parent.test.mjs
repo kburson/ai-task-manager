@@ -21,13 +21,13 @@ import {
   rmSync,
   existsSync,
 } from 'node:fs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const HELPER = path.resolve(__dir, '..', '..', 'gh', 'ensure-wave-parent.mjs');
+const HELPER = path.resolve(__dir, '..', '..', '..', 'gh', 'ensure-wave-parent.mjs');
 
 function writeConfig(sandbox) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });

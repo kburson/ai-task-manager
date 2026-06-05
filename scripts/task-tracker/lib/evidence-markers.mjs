@@ -1,4 +1,11 @@
-export const STANDARD_DOD_COMMANDS = new Set(['npm test', 'npm run lint', 'npm run format:check']);
+// `npm test` (fast lane) stays in the set so legacy bodies keep passing;
+// `npm run test:all` is the new canonical Functional-DoD command (#305).
+export const STANDARD_DOD_COMMANDS = new Set([
+  'npm test',
+  'npm run test:all',
+  'npm run lint',
+  'npm run format:check',
+]);
 
 const EVIDENCE_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/g;
 const CHECKBOX_RE = /^- \[([ x])\] (.+)$/;
