@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 
 import {
@@ -121,7 +121,7 @@ test('classifyEdit: configGlobs — repo-root tooling config classifies as WRITE
 });
 
 test('loadPolicy: configGlobs override propagates from project-local file', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-policy-cfg-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-policy-cfg-'));
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'activity-policy.json'),
@@ -134,7 +134,7 @@ test('loadPolicy: configGlobs override propagates from project-local file', () =
 });
 
 test('loadPolicy: missing configGlobs falls back to defaults', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-policy-cfg2-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-policy-cfg2-'));
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'activity-policy.json'),
@@ -348,13 +348,13 @@ test('isAllowed: unknown state refuses everything except READ_* via no-fallback'
 // ---------------------------------------------------------------------------
 
 test('loadPolicy: missing file returns DEFAULT_POLICY', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'apolicy-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'apolicy-'));
   const p = loadPolicy(dir);
   assert.deepEqual(p, DEFAULT_POLICY);
 });
 
 test('loadPolicy: present file is parsed', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'apolicy-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'apolicy-'));
   mkdirSync(path.join(dir, '.ai-task-manager'));
   const custom = {
     codeGlobs: ['custom/**'],
@@ -370,7 +370,7 @@ test('loadPolicy: present file is parsed', () => {
 });
 
 test('loadPolicy: invalid json falls back to DEFAULT_POLICY', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'apolicy-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'apolicy-'));
   mkdirSync(path.join(dir, '.ai-task-manager'));
   writeFileSync(path.join(dir, '.ai-task-manager', 'activity-policy.json'), '{not-json');
   const p = loadPolicy(dir);

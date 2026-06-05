@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { enqueue, drain, peek, drainAndDiscard } from '../queue.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-q-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-q-'));
 const qPath = path.join(tmp, 'queue.json');
 
 // Test 1: empty queue
@@ -46,7 +46,7 @@ rmSync(tmp, { recursive: true });
 // Force writeFileSync(queue.json.tmp, …) to fail by pre-creating queue.json.tmp
 // as a directory — EISDIR. Without atomic write, the original queue would be
 // clobbered; with atomic write, the rename never runs and the original survives.
-const atomicTmp = mkdtempSync(path.join(tmpdir(), 'tt-q-atomic-'));
+const atomicTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-q-atomic-'));
 const aPath = path.join(atomicTmp, 'queue.json');
 writeFileSync(aPath, JSON.stringify([{ row: 'PRESERVE_ME' }], null, 2) + '\n', 'utf8');
 mkdirSync(aPath + '.tmp'); // blocks writeFileSync to the tmp path
@@ -66,7 +66,7 @@ rmSync(atomicTmp, { recursive: true });
 
 // drainAndDiscard: all matches succeed → delivered counts, queue untouched non-matches
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-q-dad-a-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-q-dad-a-'));
   const p = path.join(t, 'queue.json');
   enqueue({ issue: '#197', row: 'A' }, p);
   enqueue({ issue: '#198', row: 'B' }, p);
@@ -89,7 +89,7 @@ rmSync(atomicTmp, { recursive: true });
 
 // drainAndDiscard: all matches fail → discarded counts, items still removed
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-q-dad-b-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-q-dad-b-'));
   const p = path.join(t, 'queue.json');
   enqueue({ issue: '#197', row: 'A' }, p);
   enqueue({ issue: '#197', row: 'B' }, p);
@@ -110,7 +110,7 @@ rmSync(atomicTmp, { recursive: true });
 
 // drainAndDiscard: mixed success/failure, mixed predicate match
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-q-dad-c-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-q-dad-c-'));
   const p = path.join(t, 'queue.json');
   enqueue({ issue: 197, row: 'A' }, p);
   enqueue({ issue: '#197', row: 'B' }, p);

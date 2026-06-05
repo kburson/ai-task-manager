@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../..', import.meta.url).pathname;
@@ -14,7 +14,7 @@ const script = join(repoRoot, 'scripts/gh/create-issue.mjs');
 const PACKAGE_TEMPLATES = join(repoRoot, 'templates');
 
 function fixtureDir() {
-  const dir = mkdtempSync(join(tmpdir(), 'aitm-authoring-'));
+  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-authoring-'));
   mkdirSync(join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     join(dir, '.ai-task-manager/task-tracker.json'),

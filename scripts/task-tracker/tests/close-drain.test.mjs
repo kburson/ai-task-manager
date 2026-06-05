@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { enqueue, peek, drainAndDiscard } from '../queue.mjs';
 
@@ -24,7 +24,7 @@ function makeFlushAndForget(handler) {
 
 // Scenario 1 — network healthy mid-close: targeted rows delivered, others kept.
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-cd-ok-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cd-ok-'));
   const p = path.join(t, 'queue.json');
   enqueue({ kind: 'timing', issue: '#197', row: 'review-flush' }, p);
   enqueue({ kind: 'timing', issue: '#197', row: 'done-enter' }, p);
@@ -44,7 +44,7 @@ function makeFlushAndForget(handler) {
 
 // Scenario 2 — network still down at close: targeted rows discarded.
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-cd-down-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cd-down-'));
   const p = path.join(t, 'queue.json');
   enqueue({ kind: 'timing', issue: '#197', row: 'a' }, p);
   enqueue({ kind: 'timing', issue: '#197', row: 'b' }, p);
@@ -63,7 +63,7 @@ function makeFlushAndForget(handler) {
 // `safePostTiming` callers; `flushAndForgetQueueFor` itself does one attempt
 // per row, so the simulation here is a single-pass handler that flakes once.
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-cd-flake-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cd-flake-'));
   const p = path.join(t, 'queue.json');
   enqueue({ kind: 'timing', issue: '#197', row: 'a' }, p);
   enqueue({ kind: 'timing', issue: '#197', row: 'b' }, p);
@@ -80,7 +80,7 @@ function makeFlushAndForget(handler) {
 
 // Scenario 4 — empty match set is a no-op.
 {
-  const t = mkdtempSync(path.join(tmpdir(), 'tt-cd-empty-'));
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cd-empty-'));
   const p = path.join(t, 'queue.json');
   enqueue({ kind: 'timing', issue: '#39', row: 'x' }, p);
   const flush = makeFlushAndForget(async () => {});

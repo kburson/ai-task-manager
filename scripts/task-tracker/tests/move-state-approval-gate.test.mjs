@@ -12,8 +12,8 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -48,7 +48,7 @@ function deepDiveAdequate() {
 const PROJECT_ID = 'PVT_x';
 
 function makeSandbox(body, { currentState = 'Analyze' } = {}) {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-approval-gate-'));
+  const sandbox = mkdtempProjectIsolated('tt-approval-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

@@ -8,14 +8,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import { setActiveTask, setSessionKanbanState, getActiveTask } from '../session-state.mjs';
 import { activeTaskPath } from '../paths.mjs';
 import { resolveSessionId } from '../lib/session-id.mjs';
 
 function makeProjDir() {
-  const root = mkdtempSync(path.join(tmpdir(), 'bind-reseed-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'bind-reseed-'));
   mkdirSync(path.join(root, '.ai-task-manager', 'sessions'), { recursive: true });
   return root;
 }

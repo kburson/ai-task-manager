@@ -12,7 +12,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,7 +20,7 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const GH_LIB = path.resolve(__dir, '..', '..', 'gh', 'lib', 'github-projects.mjs');
 
-const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-graphql-float-'));
+const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-graphql-float-'));
 try {
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir, { recursive: true });

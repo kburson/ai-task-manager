@@ -9,7 +9,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 import { verifyIssueBody, REQUIRED_SECTIONS } from '../../gh/lib/issue-body-verifier.mjs';
 
@@ -110,7 +110,7 @@ test('verifyIssueBody: tolerates lifecycle marker blocks between sections', () =
 // ── round-trip: preflight fragment path output passes verifier ─────────────
 
 test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'aitm-rt-'));
+  const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-rt-'));
   const scopeFile = join(tmp, 'scope.md');
   const acFile = join(tmp, 'ac.md');
   const pmFile = join(tmp, 'pm.md');
@@ -166,7 +166,7 @@ exit 1
 }
 
 function setupSandbox() {
-  const temp = mkdtempSync(join(tmpdir(), 'aitm-vci-'));
+  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-vci-'));
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });

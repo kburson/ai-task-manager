@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   fleetRegistryPath,
@@ -12,7 +12,7 @@ import {
   setTaskStatus,
 } from '../fleet-registry.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-fleet-'));
+const tmp = mkdtempProjectIsolated('tt-fleet-');
 
 try {
   const preferred = fleetRegistryPath(tmp);

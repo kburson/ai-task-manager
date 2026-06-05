@@ -9,7 +9,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
+
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import {
   projectValuesForIssue,
@@ -159,7 +160,7 @@ async function defaultListComments({ issueNumber, repo }) {
 }
 
 async function defaultPatchComment({ repo, commentId, body }) {
-  const tmp = path.join(os.tmpdir(), `aitm-inflate-${commentId}-${Date.now()}.md`);
+  const tmp = path.join(projectScratchDir('gh'), `aitm-inflate-${commentId}-${Date.now()}.md`);
   writeFileSync(tmp, body);
   try {
     await pexec(

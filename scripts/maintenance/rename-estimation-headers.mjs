@@ -15,7 +15,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { listAllIssues } from '../gh/lib/list-issues.mjs';
@@ -75,7 +75,7 @@ async function listIssueComments(repo, issueNumber) {
 }
 
 async function patchComment(repo, commentId, newBody) {
-  const tmp = path.join(tmpdir(), `aitm-rename-${process.pid}-${commentId}.txt`);
+  const tmp = path.join(projectScratchDir('test'), `aitm-rename-${process.pid}-${commentId}.txt`);
   writeFileSync(tmp, newBody, 'utf8');
   try {
     await pexec(

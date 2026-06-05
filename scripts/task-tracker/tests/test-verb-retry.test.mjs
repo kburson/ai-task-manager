@@ -18,7 +18,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import path from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import { runVerbTest } from '../verbs/test.mjs';
 
@@ -110,7 +110,7 @@ function makeDeps({
 }
 
 function withTmpDir(fn) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'test-verb-retry-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'test-verb-retry-'));
   return Promise.resolve(fn(dir)).finally(() => {
     try {
       rmSync(dir, { recursive: true, force: true });

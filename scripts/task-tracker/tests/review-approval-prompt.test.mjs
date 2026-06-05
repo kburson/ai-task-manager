@@ -20,7 +20,7 @@ import {
   rmSync,
   existsSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -220,7 +220,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 1: verbReview success path emits the marker ────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-1-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-1-'));
   try {
     writeConfig(sandbox);
     writeFileSync(
@@ -270,7 +270,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 1b: verbReview refuses when canonical commit trace is missing ──────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-1b-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-1b-'));
   try {
     writeConfig(sandbox);
     writeFileSync(
@@ -318,7 +318,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 1c: verbReview refuses tracked uncommitted changes ─────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-1c-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-1c-'));
   try {
     writeConfig(sandbox);
     writeFileSync(
@@ -366,7 +366,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 2: verbReview verification-fail path does NOT emit the marker ──────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-2-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-2-'));
   try {
     writeConfig(sandbox);
     writeFileSync(
@@ -419,7 +419,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 3: verbReview refuses to auto-mark AC/DoD without evidence ─────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-3-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-3-'));
   try {
     writeConfig(sandbox);
     writeFileSync(
@@ -489,7 +489,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 4: verbReview marks AC/DoD with passing evidence ───────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-4-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-4-'));
   try {
     writeConfig(sandbox);
     writeFileSync(
@@ -580,7 +580,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 5: /task reject without --reason → exit non-zero ───────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-5-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-5-'));
   try {
     writeConfig(sandbox);
     // No shim needed — verbReject exits on missing reason before any network call
@@ -608,7 +608,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 6: /task reject when state != review → exit non-zero, no comment ───
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-6-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-6-'));
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -650,7 +650,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 7: /task reject happy path → posts rejection comment ───────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-7-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-7-'));
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -701,7 +701,7 @@ async function run(sandbox, binDir, args) {
 // gate (uncheckedPreCloseCheckboxes parity with the close gate) must refuse the
 // move into Review and emit NO review-approval prompt.
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-rap-8-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-8-'));
   try {
     writeConfig(sandbox);
     writeFileSync(

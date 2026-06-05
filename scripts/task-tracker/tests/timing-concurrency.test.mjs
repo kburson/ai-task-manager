@@ -11,7 +11,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, writeFileSync, chmodSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../../..');
 const fakeGhMjs = path.join(__dirname, 'fixtures', 'fake-gh.mjs');
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-timing-conc-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-timing-conc-'));
 const binDir = path.join(tmp, 'bin');
 const store = path.join(tmp, 'store.json');
 

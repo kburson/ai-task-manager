@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   SUPERPOWER_SKILLS,
@@ -12,7 +12,7 @@ import {
   upsertManagedBlock,
 } from '../codex-superpowers.mjs';
 
-const sandbox = mkdtempSync(path.join(tmpdir(), 'aitm-codex-superpowers-'));
+const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-codex-superpowers-'));
 
 function writeSkill(root, version, name, body = `# ${name}\n`) {
   const dir = path.join(
@@ -101,7 +101,9 @@ try {
   assert.match(twice, /using-superpowers/, 'bootstrap block names using-superpowers');
   assert.match(twice, /\.agents\/skills\/task\/SKILL\.md/, 'keeps the AITM task skill separate');
 
-  const missingHome = mkdtempSync(path.join(tmpdir(), 'aitm-codex-superpowers-missing-'));
+  const missingHome = mkdtempSync(
+    path.join(projectScratchDir('test'), 'aitm-codex-superpowers-missing-')
+  );
   try {
     assert.equal(
       findSuperpowersSkillRoot({ home: missingHome }),

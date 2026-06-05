@@ -23,7 +23,7 @@
 import { gh, gql } from '../gh/lib/github-projects.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 
 const REPO = 'kburson/options-co-pilot';
@@ -127,7 +127,7 @@ function projectValuesFor(item, fieldNameToId) {
 }
 
 async function writeIssueBody(issueNumber, body) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-heal-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-heal-'));
   const file = path.join(dir, `body-${issueNumber}.md`);
   try {
     writeFileSync(file, body, 'utf8');

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { patchSettingsJson } from '../../../bin/cli.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-install-hooks-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
 
 const STOP_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';

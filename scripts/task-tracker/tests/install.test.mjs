@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,10 +12,16 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dir, '..', '..', '..');
 const CLI = path.join(ROOT, 'bin', 'cli.mjs');
 
-const target = mkdtempSync(path.join(tmpdir(), 'install-test-'));
-const legacyTarget = mkdtempSync(path.join(tmpdir(), 'install-legacy-hooks-test-'));
-const codexTarget = mkdtempSync(path.join(tmpdir(), 'install-codex-superpowers-test-'));
-const fakeHome = mkdtempSync(path.join(tmpdir(), 'install-codex-superpowers-home-'));
+const target = mkdtempSync(path.join(projectScratchDir('test'), 'install-test-'));
+const legacyTarget = mkdtempSync(
+  path.join(projectScratchDir('test'), 'install-legacy-hooks-test-')
+);
+const codexTarget = mkdtempSync(
+  path.join(projectScratchDir('test'), 'install-codex-superpowers-test-')
+);
+const fakeHome = mkdtempSync(
+  path.join(projectScratchDir('test'), 'install-codex-superpowers-home-')
+);
 
 const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
 const COMMIT_TRAIL_HOOK_CMD =

@@ -9,7 +9,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../..', import.meta.url).pathname;
@@ -31,7 +31,7 @@ const CANONICAL_TAIL = [
 ].join('\n');
 
 function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
-  const temp = mkdtempSync(join(tmpdir(), 'aitm-create-'));
+  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-'));
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });

@@ -23,7 +23,7 @@ import {
   rmSync,
   existsSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,7 +31,7 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
 
-const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-test-injection-'));
+const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-test-injection-'));
 try {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(

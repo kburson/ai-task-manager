@@ -2,8 +2,8 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +11,7 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
 
-const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-lifecycle-'));
+const sandbox = mkdtempProjectIsolated('tt-lifecycle-');
 mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
   path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -43,7 +43,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
 // PROMPT_REQUIRED: bind-mismatch). The prior silent-cross-close behavior
 // was the bug being fixed — see scripts/task-tracker/tests/close-cross-close.test.mjs.
 {
-  const sandbox2 = mkdtempSync(path.join(tmpdir(), 'tt-close-target-'));
+  const sandbox2 = mkdtempProjectIsolated('tt-close-target-');
   mkdirSync(path.join(sandbox2, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox2, '.ai-task-manager', 'task-tracker.json'),
@@ -77,7 +77,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
 
 // Bug fix: `close #N` with no active task closes the named issue (existing behavior).
 {
-  const sandbox3 = mkdtempSync(path.join(tmpdir(), 'tt-close-noactive-'));
+  const sandbox3 = mkdtempProjectIsolated('tt-close-noactive-');
   mkdirSync(path.join(sandbox3, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox3, '.ai-task-manager', 'task-tracker.json'),

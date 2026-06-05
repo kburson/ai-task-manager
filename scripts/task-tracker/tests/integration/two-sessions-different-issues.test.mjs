@@ -6,13 +6,13 @@
 import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workerPath = path.join(__dirname, 'worker.mjs');
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-int-diff-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-int-diff-'));
 const logPath = path.join(tmp, 'events.ndjson');
 writeFileSync(logPath, '');
 

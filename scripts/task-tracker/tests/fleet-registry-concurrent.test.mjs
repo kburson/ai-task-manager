@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, utimesSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fleetRegistryPath, readFleet, withLock } from '../fleet-registry.mjs';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 const exec = promisify(execFile);
 const lockedHelper = new URL('./fleet-registry-concurrent-helper.mjs', import.meta.url).pathname;
@@ -20,11 +20,22 @@ async function runConcurrent(helper, projectDir) {
   for (let i = 0; i < N; i++) {
     procs.push(exec(process.execPath, [helper, projectDir, `#${100 + i}`, `b-${i}`, '0'], { env }));
   }
-  await Promise.all(procs);
+  // #304 — `allSettled`, not `all`: the unlocked control case is *designed*
+  // to race on `task-fleet.json.tmp` and surface ENOENT on rename. Propagating
+  // that as a `Promise.all` rejection turned the intended race into a flaky
+  // test failure. The downstream assertion checks survivor count, not exec
+  // success.
+  await Promise.allSettled(procs);
 }
 
 // Test 1: control — without the lock, the race destroys entries.
-const ctlDir = mkdtempSync(path.join(tmpdir(), 'tt-fleet-ctl-'));
+const ctlDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-fleet-ctl-'));
+// #304 — sandbox sits inside this repo's worktree. `findMainWorktreePath`
+// walks up to the nearest git root, so without an isolating `git init` the
+// helper procs would resolve to the real repo root and clobber the live
+// `.ai-task-manager/task-fleet.json`. `/tmp/` previously hid this by being
+// outside the repo; init each sandbox to restore that boundary.
+execFileSync('git', ['init', '-q'], { cwd: ctlDir });
 try {
   await runConcurrent(unlockedHelper, ctlDir);
   const fleet = readFleet(fleetRegistryPath(ctlDir));
@@ -41,7 +52,8 @@ try {
 }
 
 // Test 2: with the lock, all entries survive under the same race conditions.
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-fleet-cc-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-fleet-cc-'));
+execFileSync('git', ['init', '-q'], { cwd: tmp });
 try {
   await runConcurrent(lockedHelper, tmp);
   const fleet = readFleet(fleetRegistryPath(tmp));

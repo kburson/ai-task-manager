@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +28,7 @@ async function runMoveState(args, env) {
 }
 
 function setupSandbox() {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-i210-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-i210-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

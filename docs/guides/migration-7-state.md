@@ -47,7 +47,7 @@ boards. Operators curate which items advance into those gates manually.
 3. Snapshot current board state for rollback:
 
    ```
-   gh api graphql -f query='query{ node(id:"<projectId>"){ ... on ProjectV2 { items(first:100){ nodes { id fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name } } content{ ... on Issue { number } } } } } } }' > /tmp/board-snapshot.json
+   gh api graphql -f query='query{ node(id:"<projectId>"){ ... on ProjectV2 { items(first:100){ nodes { id fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name } } content{ ... on Issue { number } } } } } } }' > ./.tmp/inspect/board-snapshot.json
    ```
 
 4. Confirm `.ai-task-manager/task-tracker.json` has `projectId` and

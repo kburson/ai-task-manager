@@ -21,7 +21,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from './lib/scratch-dir.mjs';
 
 import { loadConfig } from './config.mjs';
 import { backfillEntryMarker } from './lib/stage-entry-markers.mjs';
@@ -64,7 +64,10 @@ async function fetchIssue(repo, num) {
 }
 
 async function writeBody(repo, num, body) {
-  const tmp = path.join(tmpdir(), `aitm-heal-refine-${process.pid}-${Date.now()}.md`);
+  const tmp = path.join(
+    projectScratchDir('test'),
+    `aitm-heal-refine-${process.pid}-${Date.now()}.md`
+  );
   writeFileSync(tmp, body, 'utf8');
   try {
     await pexec('gh', ['issue', 'edit', num, '-R', repo, '--body-file', tmp], {

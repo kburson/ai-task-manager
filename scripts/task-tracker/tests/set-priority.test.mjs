@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, chmodSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,7 +46,7 @@ async function runExpectFail(args, env = {}) {
 
 // Test: valid priority with TT_SKIP_NETWORK prints success without hitting GH
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-sp-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-sp-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -75,7 +75,7 @@ async function runExpectFail(args, env = {}) {
 
 // Test: when issue is in multiple projects, only the configured projectId is selected.
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-sp-multi-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-sp-multi-'));
   const TARGET_PROJECT = 'PVT_target';
   const OTHER_PROJECT = 'PVT_other';
   const TARGET_ITEM = 'PVTI_target_item';

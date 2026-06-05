@@ -16,12 +16,12 @@
 
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { recordPendingPause, pendingPausePath, buildPayload } from '../hooks/on-stop.mjs';
 import { processPendingPause } from '../hooks/on-user-prompt.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-hook-payload-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-hook-payload-'));
 
 function setActive(sid, issue) {
   // Mirror the format session-state.mjs writes.

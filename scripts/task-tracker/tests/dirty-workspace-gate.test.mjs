@@ -6,7 +6,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,7 +16,7 @@ const TT = path.resolve(__dir, '..', 'task-tracker.mjs');
 const MOVE = path.resolve(__dir, '..', '..', 'gh', 'move-state.mjs');
 
 function setupSandbox() {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'aitm-dirty-gate-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-dirty-gate-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -204,7 +204,9 @@ try {
     const sandbox = setupSandbox();
     cleanup(sandbox);
     // alt worktree has dirty git; sandbox cwd has a clean git shim
-    const altWorktree = realpathSync(mkdtempSync(path.join(tmpdir(), 'aitm-alt-')));
+    const altWorktree = realpathSync(
+      mkdtempSync(path.join(projectScratchDir('test'), 'aitm-alt-'))
+    );
     cleanup(altWorktree);
     // Sandbox git shim returns clean
     const binDir = makeGitShim(sandbox, '');

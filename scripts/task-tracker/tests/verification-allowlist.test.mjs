@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-allow-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-allow-'));
 mkdirSync(path.join(tmp, 'scripts'), { recursive: true });
 mkdirSync(path.join(tmp, 'scripts', 'sub'), { recursive: true });
 writeFileSync(path.join(tmp, 'scripts', 'check.sh'), '#!/bin/sh\nexit 0\n');

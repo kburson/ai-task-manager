@@ -425,9 +425,9 @@ function makeDeps(overrides = {}) {
 {
   const { execFileSync } = await import('node:child_process');
   const { writeFileSync, mkdtempSync } = await import('node:fs');
-  const { tmpdir } = await import('node:os');
+  const { projectScratchDir } = await import('../lib/scratch-dir.mjs');
   const path = await import('node:path');
-  const dir = mkdtempSync(path.join(tmpdir(), 'preflight-test-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'preflight-test-'));
   const scopeFile = path.join(dir, 'scope.md');
   const acFile = path.join(dir, 'ac.md');
   const planFile = path.join(dir, 'plan.md');

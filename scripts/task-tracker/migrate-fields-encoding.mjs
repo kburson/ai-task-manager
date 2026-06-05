@@ -13,7 +13,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from './lib/scratch-dir.mjs';
 import path from 'node:path';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
@@ -55,7 +55,7 @@ async function fetchBody({ repo, issueNumber }) {
 }
 
 async function writeBody({ repo, issueNumber, body }) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-migrate-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-migrate-'));
   const file = path.join(dir, 'body.md');
   try {
     writeFileSync(file, body);

@@ -12,7 +12,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,7 +43,7 @@ function runMoveState(args, envOverrides = {}) {
 // Always isolate the project dir so the local state-file write inside
 // move-state.mjs cannot clobber the repo's tracker state cache.
 {
-  const projDir = mkdtempSync(path.join(tmpdir(), 'tt-isolated-'));
+  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-isolated-'));
   mkdirSync(path.join(projDir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(projDir, '.ai-task-manager/task-tracker.json'),
@@ -59,7 +59,7 @@ function runMoveState(args, envOverrides = {}) {
 
 // Test 2: holder payload is written inside the lock dir during critical section
 {
-  const projDir = mkdtempSync(path.join(tmpdir(), 'tt-issue-lock-'));
+  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-issue-lock-'));
   const issue = 4242;
   let holderSeen = null;
   await withIssueLock({ issue, verb: 'unit-test', projDir, sessionId: 'sess-xyz' }, async () => {
@@ -79,7 +79,7 @@ function runMoveState(args, envOverrides = {}) {
 // Test 3: contention — pre-create the lock dir with a holder, run move-state
 // pointed at that projDir, expect non-zero exit and locked-by stderr.
 {
-  const projDir = mkdtempSync(path.join(tmpdir(), 'tt-issue-lock-'));
+  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-issue-lock-'));
   const issue = 7777;
   // Build a minimal config so loadConfig doesn't barf — copy the real one.
   const cfgDir = path.join(projDir, '.ai-task-manager');

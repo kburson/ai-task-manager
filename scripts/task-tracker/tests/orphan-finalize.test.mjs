@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { pendingPausePath } from '../hooks/on-stop.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-orphan-fin-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-orphan-fin-'));
 
 function writeMarker(sid, payload) {
   const p = pendingPausePath(sid, tmp);

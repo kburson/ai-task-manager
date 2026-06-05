@@ -14,7 +14,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,7 +26,7 @@ const MOVE_STATE = path.resolve(__dir, '../../gh/move-state.mjs');
 const REPO_ROOT = path.resolve(__dir, '../../..');
 
 function setupProjectDir() {
-  const dir = mkdtempSync(path.join(tmpdir(), 'tt-conc-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-conc-'));
   const cfgDir = path.join(dir, '.ai-task-manager');
   mkdirSync(cfgDir, { recursive: true });
   writeFileSync(

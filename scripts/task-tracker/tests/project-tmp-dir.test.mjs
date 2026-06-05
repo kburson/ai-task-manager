@@ -11,17 +11,17 @@ import { test } from 'node:test';
 import { readFileSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { projectTmpDir } from '../paths.mjs';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPTS_ROOT = path.resolve(HERE, '..', '..'); // scripts/
 
 // AC1 + AC5: the helper resolves under `.tmp/`, never bare `tmp/`.
 test('projectTmpDir resolves under .tmp/, not bare tmp/', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-ptd-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-ptd-'));
   try {
     const dir = projectTmpDir(root);
     assert.equal(dir, path.join(root, '.tmp'), 'must be <root>/.tmp');
@@ -74,7 +74,9 @@ const REPO_ROOT = path.resolve(SCRIPTS_ROOT, '..'); // project root
 // scratch writes can never dirty the working tree. projectTmpDir chooses
 // `.tmp/`; assert `.gitignore` ignores `.tmp/` and does NOT depend on `tmp/`.
 test('.gitignore ignores the .tmp/ scratch dir projectTmpDir writes to', () => {
-  const dirName = path.basename(projectTmpDir(mkdtempSync(path.join(os.tmpdir(), 'aitm-gi-'))));
+  const dirName = path.basename(
+    projectTmpDir(mkdtempSync(path.join(projectScratchDir('test'), 'aitm-gi-')))
+  );
   assert.equal(dirName, '.tmp', 'guard: helper must target .tmp');
   const gitignore = readFileSync(path.join(REPO_ROOT, '.gitignore'), 'utf8');
   const ignores = (entry) =>

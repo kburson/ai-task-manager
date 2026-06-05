@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import url from 'node:url';
 
@@ -25,7 +25,7 @@ const GUARD = path.resolve(
 // ---------------------------------------------------------------------------
 
 function makeRepo({ state } = {}) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-activity-guard-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
   // Init bare git repo so `git rev-parse --show-toplevel` works.
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
@@ -39,7 +39,7 @@ function makeRepo({ state } = {}) {
 }
 
 function makeRepoNoState() {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-activity-guard-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   // No state file at all.
   return dir;

@@ -7,13 +7,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import { runReconcile } from '../verbs/reconcile.mjs';
 import { setActiveTask, getActiveTask } from '../session-state.mjs';
 
 function makeProjDir() {
-  const root = mkdtempSync(path.join(tmpdir(), 'reconcile-no-seed-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'reconcile-no-seed-'));
   mkdirSync(path.join(root, '.ai-task-manager', 'sessions'), { recursive: true });
   return root;
 }

@@ -5,7 +5,7 @@
 
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   getActiveTask,
@@ -16,7 +16,7 @@ import {
   activeTaskPath,
 } from '../session-state.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-session-state-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-session-state-'));
 
 // AC: paths.mjs exports sessionDir(sid) returning .ai-task-manager/sessions/<sid>
 const dir = sessionDir('sess-1', tmp);

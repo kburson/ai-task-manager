@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { getActiveTask, setSessionKanbanState } from '../session-state.mjs';
 import { loadState } from '../state.mjs';
@@ -12,7 +12,7 @@ import { loadState } from '../state.mjs';
 // the guard refused every WRITE activity class — dead-locking post-compact
 // orchestrators and every parallel sub-agent in a fresh worktree.
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-resume-seed-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-resume-seed-'));
 
 // Isolate every AITM path writer (markerDir, transcriptDir, fleet registry,
 // session records) under the tmp project so the test never touches real state.

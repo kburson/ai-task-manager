@@ -18,7 +18,7 @@ import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import {
   readLastKnownState,
@@ -70,7 +70,10 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 }
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
-  const tmp = path.join(tmpdir(), `aitm-reconcile-${process.pid}-${Date.now()}.md`);
+  const tmp = path.join(
+    projectScratchDir('test'),
+    `aitm-reconcile-${process.pid}-${Date.now()}.md`
+  );
   await pushIssueBody({ issueNumber, repo, body, scratchPath: tmp, deps: { pexec } });
 }
 

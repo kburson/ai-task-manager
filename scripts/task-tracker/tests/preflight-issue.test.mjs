@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,7 +19,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.resolve(HERE, '..', 'preflight-issue.mjs');
 
 function makeFixture(acBody) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-preflight-test-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-preflight-test-'));
   const ac = path.join(dir, 'ac.md');
   const scope = path.join(dir, 'scope.md');
   const meta = path.join(dir, 'meta.md');

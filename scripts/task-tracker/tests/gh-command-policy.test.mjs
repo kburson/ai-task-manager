@@ -12,7 +12,7 @@
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,7 +22,7 @@ const GUARD = path.resolve(__dir, '..', 'bash-guard.mjs');
 function runGuard(command) {
   const payload = JSON.stringify({ tool_input: { command } });
   // Run in a temp git repo so project-root resolution works.
-  const dir = mkdtempSync(path.join(tmpdir(), 'tt-gh-policy-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gh-policy-'));
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(path.join(dir, '.ai-task-manager', 'task-tracker.json'), JSON.stringify({}));
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });

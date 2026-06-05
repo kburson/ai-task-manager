@@ -4,7 +4,7 @@
 // rows, and is a clean no-op when no bucket is active. See issue #234.
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbCancel } from '../verbs/cancel.mjs';
 
@@ -26,7 +26,7 @@ function makeCtx(statePath, dir, rows) {
 
 // --- Case 1: active discovery bucket is cleared, no timing rows posted ------
 {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-cancel-active-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-cancel-active-'));
   const statePath = path.join(dir, 'state.json');
   const startedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   writeFileSync(
@@ -54,7 +54,7 @@ function makeCtx(statePath, dir, rows) {
 
 // --- Case 2: no active bucket — clean no-op, no throw, no rows --------------
 {
-  const dir = mkdtempSync(path.join(tmpdir(), 'aitm-cancel-noop-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-cancel-noop-'));
   const statePath = path.join(dir, 'state.json');
   writeFileSync(
     statePath,

@@ -6,7 +6,7 @@
 // reconciled as a single fresh-stamped idle row. See issue #234.
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbNew } from '../verbs/new.mjs';
 
@@ -28,7 +28,7 @@ function parseRow(row) {
   };
 }
 
-const dir = mkdtempSync(path.join(tmpdir(), 'aitm-aged-bucket-'));
+const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-aged-bucket-'));
 const statePath = path.join(dir, 'state.json');
 
 // Bucket opened 10 minutes ago — well beyond the 60s freshness window.

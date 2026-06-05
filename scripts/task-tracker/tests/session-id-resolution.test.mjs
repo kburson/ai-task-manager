@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, utimesSync } from 'node:fs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import {
   FALLBACK_SESSION_ID,
@@ -25,7 +25,7 @@ test('orchestrator env var wins over everything', () => {
 });
 
 test('provider env var beats mtime fallback', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'sid-test-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'sid-test-'));
   writeFileSync(path.join(dir, 'fallback-sid.jsonl'), '');
   const env = { CLAUDE_SESSION_ID: 'provider-sid' };
   const sid = resolveSessionId({ env, transcriptDir: () => dir });
@@ -33,7 +33,7 @@ test('provider env var beats mtime fallback', () => {
 });
 
 test('mtime fallback picks newest .jsonl when no env var is set', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'sid-test-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'sid-test-'));
   const old = path.join(dir, 'older.jsonl');
   const fresh = path.join(dir, 'newer.jsonl');
   writeFileSync(old, '');
@@ -46,7 +46,7 @@ test('mtime fallback picks newest .jsonl when no env var is set', () => {
 });
 
 test('falls back to default-session when no env + no transcripts', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'sid-test-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'sid-test-'));
   const sid = resolveSessionId({ env: {}, transcriptDir: () => dir });
   assert.equal(sid, FALLBACK_SESSION_ID);
 });
@@ -67,7 +67,7 @@ test('writer and reader resolve identically — the #273 wedge cannot recur', ()
   // The pre-fix wedge was: state.mjs returned `'default-session'`,
   // word-counter returned a mtime-sorted basename. They must agree now.
   const env = {};
-  const dir = mkdtempSync(path.join(tmpdir(), 'sid-test-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'sid-test-'));
   // No transcripts → both should hit the default fallback.
   const writerSid = resolveSessionId({ env, transcriptDir: () => dir });
   const readerSid = resolveSessionId({ env, transcriptDir: () => dir });

@@ -21,7 +21,7 @@ import {
   rmSync,
   existsSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -225,7 +225,7 @@ function readCalls(callsLog) {
 
 // ─── Test 1: Solo-wave happy path ─────────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-1-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-1-'));
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -254,7 +254,7 @@ function readCalls(callsLog) {
 
 // ─── Test 2: All-parented passthrough ─────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-2-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-2-'));
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -283,7 +283,7 @@ function readCalls(callsLog) {
 
 // ─── Test 3: Mixed fan-out rejection ──────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-3-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-3-'));
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -302,7 +302,7 @@ function readCalls(callsLog) {
 
 // ─── Test 4: Multi-parent rejection ───────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-4-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-4-'));
   try {
     writeConfig(sandbox);
     const { binDir } = makeGhShim(sandbox, {
@@ -319,7 +319,7 @@ function readCalls(callsLog) {
 
 // ─── Test 5: Single-issue passthrough ─────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-5-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-5-'));
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, { parents: { 50: null } });
@@ -336,7 +336,7 @@ function readCalls(callsLog) {
 
 // ─── Test 6: Idempotency — existing wave-id reused ────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ewp-6-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-6-'));
   try {
     writeConfig(sandbox);
     // compute the wave-id the helper will compute for [60, 61]

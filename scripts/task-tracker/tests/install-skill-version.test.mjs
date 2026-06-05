@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   SKILL_DETAIL_FILES,
@@ -11,7 +11,7 @@ import {
 } from '../../../bin/lib/stamp-skill-version.mjs';
 
 function makeFixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'aitm-stamp-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-stamp-'));
   for (const f of SKILL_DETAIL_FILES) {
     const abs = path.join(root, f.pkgRelPath);
     mkdirSync(path.dirname(abs), { recursive: true });
@@ -93,7 +93,7 @@ function makeFixture() {
 
 // ---- isDevPackage: detects .git directory; AITM_FORCE_STAMP overrides ----
 {
-  const root = mkdtempSync(path.join(tmpdir(), 'aitm-dev-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-dev-'));
   try {
     delete process.env.AITM_FORCE_STAMP;
     assert.equal(isDevPackage(root), false, 'no .git → not dev');

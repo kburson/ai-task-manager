@@ -5,7 +5,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,7 @@ function runGuard({ cwd, stdin }) {
 
 function makeRepo() {
   // realpath to neutralize macOS /tmp -> /private/tmp symlink
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'aitm-agent-guard-')));
+  const root = realpathSync(mkdtempSync(join(projectScratchDir('test'), 'aitm-agent-guard-')));
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'test@example.com');
   git(root, 'config', 'user.name', 'Test');

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { writeFileSync, mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { loadConfig, setConfigValue, DEFAULTS } from '../config.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-config-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-config-'));
 const projectPath = path.join(tmp, 'project.json');
 const legacyProjectPath = path.join(tmp, 'legacy-project.json');
 const userPath = path.join(tmp, 'user.json');

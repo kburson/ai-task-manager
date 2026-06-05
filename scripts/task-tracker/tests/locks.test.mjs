@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, mkdirSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { withLock, LOCK_STALE_MS } from '../locks.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-locks-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-locks-'));
 
 // Test 1: basic acquire/release
 {

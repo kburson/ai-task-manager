@@ -12,16 +12,8 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  chmodSync,
-  rmSync,
-  existsSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -149,7 +141,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 1: close with no marker, gateReviewToDone=true → exit 7 ────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-gate-1-'));
+  const sandbox = mkdtempProjectIsolated('tt-gate-1-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 201);
@@ -169,7 +161,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 2: close with --answer yes and no marker → exit 8 ──────────────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-gate-2-'));
+  const sandbox = mkdtempProjectIsolated('tt-gate-2-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 202);
@@ -188,7 +180,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 3: close with gateReviewToDone=false → bypass audit, no exit 7/8 ───
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-gate-3-'));
+  const sandbox = mkdtempProjectIsolated('tt-gate-3-');
   try {
     writeConfig(sandbox, { gateReviewToDone: false });
     writeState(sandbox, 203);
@@ -221,7 +213,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 4: close with marker present → passes review-approval gate ─────────
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-gate-4-'));
+  const sandbox = mkdtempProjectIsolated('tt-gate-4-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 204);

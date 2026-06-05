@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pendingPausePath } from '../hooks/on-stop.mjs';
@@ -12,7 +12,7 @@ import { pendingPausePath } from '../hooks/on-stop.mjs';
 //   2. Return null.
 //   3. NOT delete the marker file (the real owner can recover it).
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-foreign-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-foreign-'));
 
 const sidCaller = 'caller-sid';
 const sidOwner = 'real-owner-sid';

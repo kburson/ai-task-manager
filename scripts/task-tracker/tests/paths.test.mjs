@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { existingRuntimePath, getProjectDir, legacyPathFor } from '../paths.mjs';
 
@@ -24,7 +24,7 @@ assert.equal(
   'leading ./ is normalized before mapping'
 );
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-paths-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-paths-'));
 const preferred = '.ai-task-manager/task-tracker.json';
 const legacy = '.claude/task-tracker.json';
 const preferredAbs = path.join(tmp, preferred);

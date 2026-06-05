@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { writeFileSync, mkdtempSync, mkdirSync, rmSync, utimesSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   currentSessionId,
@@ -13,7 +13,7 @@ import {
   saveMarker,
 } from '../word-counter.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-wc-'));
 const sampleJsonlPath = path.join(tmp, 'session.jsonl');
 const markerPath = path.join(tmp, 'session.json');
 
@@ -149,7 +149,7 @@ const origAitmSid = process.env.AI_TASK_MANAGER_SESSION_ID;
 const origAppName = process.env.AI_TASK_MANAGER_APP_NAME;
 const origProjectDir2 = process.env.CLAUDE_PROJECT_DIR;
 const origAitmProjectDir2 = process.env.AI_TASK_MANAGER_PROJECT_DIR;
-const sidTmp = mkdtempSync(path.join(tmpdir(), 'tt-wc-sid-'));
+const sidTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-wc-sid-'));
 try {
   process.env.HOME = sidTmp;
   process.env.USERPROFILE = sidTmp;
@@ -224,7 +224,7 @@ const origAppName3 = process.env.AI_TASK_MANAGER_APP_NAME;
 const origSid3 = process.env.CLAUDE_SESSION_ID;
 const origCodeSid3 = process.env.CLAUDE_CODE_SESSION_ID;
 const origAitmSid3 = process.env.AI_TASK_MANAGER_SESSION_ID;
-const markerProject = mkdtempSync(path.join(tmpdir(), 'tt-wc-marker-project-'));
+const markerProject = mkdtempSync(path.join(projectScratchDir('test'), 'tt-wc-marker-project-'));
 try {
   process.env.AI_TASK_MANAGER_PROJECT_DIR = markerProject;
   process.env.AI_TASK_MANAGER_APP_NAME = 'codex';

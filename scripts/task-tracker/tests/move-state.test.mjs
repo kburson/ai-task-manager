@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -57,7 +57,7 @@ for (const legacy of ['in-progress', 'in-review', 'r4r', 'ready']) {
 
 // Test: each new state with TT_SKIP_NETWORK prints success without hitting GH
 for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
-  const sandbox = mkdtempSync(path.join(tmpdir(), `tt-ms-${state}-`));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), `tt-ms-${state}-`));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -90,7 +90,7 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
 // data is on disk, move-state must not preserve or rewrite it — the issue
 // body `aitm-last-known-state` marker is the single source of truth.
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-ms-state-write-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ms-state-write-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir, mkdtempOutsideRepo } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -13,7 +13,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', 'seed-worktree.mjs');
 
 function makeRepo() {
-  const root = mkdtempSync(path.join(tmpdir(), 'seed-src-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'seed-src-'));
   const cfgDir = path.join(root, '.ai-task-manager');
   mkdirSync(cfgDir, { recursive: true });
   writeFileSync(path.join(cfgDir, 'task-tracker.json'), '{"repo":"o/r"}\n');
@@ -23,7 +23,7 @@ function makeRepo() {
 }
 
 function makeTarget() {
-  return mkdtempSync(path.join(tmpdir(), 'seed-tgt-'));
+  return mkdtempSync(path.join(projectScratchDir('test'), 'seed-tgt-'));
 }
 
 // 1. Success path
@@ -68,7 +68,7 @@ function makeTarget() {
 
 // 3b. Failure when source dir missing entirely
 {
-  const src = mkdtempSync(path.join(tmpdir(), 'seed-empty-'));
+  const src = mkdtempSync(path.join(projectScratchDir('test'), 'seed-empty-'));
   const tgt = makeTarget();
   assert.throws(
     () => seedWorktree({ source: src, target: tgt }),
@@ -156,7 +156,9 @@ function makeTarget() {
 {
   const r = findMainWorktree(__dir);
   assert.equal(typeof r, 'string', 'returns main worktree path inside a repo');
-  const nonRepo = mkdtempSync(path.join(tmpdir(), 'no-git-'));
+  // Must be outside any git repo for this assertion. `.tmp/test/` lives
+  // inside *this* repo, so use the OS temp dir as the escape hatch.
+  const nonRepo = mkdtempOutsideRepo('no-git-');
   assert.equal(findMainWorktree(nonRepo), null, 'returns null outside a git repo');
   rmSync(nonRepo, { recursive: true, force: true });
 }

@@ -3,7 +3,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { join } from 'node:path';
 import {
   checkDirty,
@@ -13,7 +13,7 @@ import {
   DEFAULT_AUDIT_LINES,
 } from '../../gh/lib/dirty-workspace.mjs';
 
-const tmp = mkdtempSync(join(tmpdir(), 'aitm-dirty-'));
+const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-dirty-'));
 
 try {
   // 1. checkDirty: clean (empty stdout)

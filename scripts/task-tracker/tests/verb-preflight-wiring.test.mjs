@@ -6,7 +6,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +15,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', 'task-tracker.mjs');
 
 function makeSandbox(active) {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-preflight-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-preflight-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

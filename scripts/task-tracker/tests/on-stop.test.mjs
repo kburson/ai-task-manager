@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { setActiveTask } from '../session-state.mjs';
 import { recordPendingPause, pendingPausePath } from '../hooks/on-stop.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-stop-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-stop-'));
 
 // Test 1: no session id → no-op
 {

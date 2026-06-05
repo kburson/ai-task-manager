@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import { verbClose } from '../verbs/close.mjs';
 
@@ -127,7 +127,7 @@ async function runCloseAndCaptureExit(ctx) {
 // Easiest path: write a real temp state file and point statePath at it.
 
 function withRealStateFile({ active }) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'tt-cross-close-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cross-close-'));
   const statePath = path.join(dir, 'state.json');
   writeFileSync(
     statePath,
@@ -142,7 +142,7 @@ function withRealStateFile({ active }) {
 }
 
 function makeDispatcherSandbox({ active }) {
-  const dir = mkdtempSync(path.join(tmpdir(), 'tt-cross-close-cli-'));
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cross-close-cli-'));
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'task-tracker.json'),

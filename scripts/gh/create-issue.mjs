@@ -6,7 +6,7 @@
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
@@ -308,7 +308,7 @@ async function main() {
       process.stdout.write(rendered);
       return;
     }
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'aitm-create-issue-'));
+    tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
     bodyFilePath = path.join(tmpDir, 'body.md');
     writeFileSync(bodyFilePath, rendered, 'utf8');
     bodyContent = rendered;
@@ -346,7 +346,7 @@ async function main() {
   // re-stamping with the same ts is a no-op.
   bodyContent = stampEntryMarker(bodyContent, 'backlog', new Date().toISOString());
   if (!tmpDir) {
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'aitm-create-issue-'));
+    tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
     bodyFilePath = path.join(tmpDir, 'body.md');
   }
   writeFileSync(bodyFilePath, bodyContent, 'utf8');

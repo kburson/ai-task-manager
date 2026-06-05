@@ -24,7 +24,7 @@
 
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -131,7 +131,7 @@ async function addSubIssue({ parentId, childId }) {
 
 function createParentIssue({ purpose, children, waveIdValue, priority, sequence, cfg }) {
   const body = renderTemplate({ purpose, children, waveIdValue });
-  const tmpDir = mkdtempSync(path.join(tmpdir(), 'wave-parent-'));
+  const tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'wave-parent-'));
   const bodyFile = path.join(tmpDir, 'body.md');
   writeFileSync(bodyFile, body, 'utf8');
   const title = `Wave: ${purpose}`.slice(0, 200);
@@ -215,7 +215,7 @@ function promoteWaveParentToDevelop({ parentNumber, cfg }) {
   body = stampEntryMarker(body, 'plan', new Date(baseMs + 1).toISOString());
   body = stampEntryMarker(body, 'develop', new Date(baseMs + 2).toISOString());
 
-  const tmpDir = mkdtempSync(path.join(tmpdir(), 'wave-parent-stamp-'));
+  const tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'wave-parent-stamp-'));
   const stampFile = path.join(tmpDir, 'body.md');
   writeFileSync(stampFile, body, 'utf8');
   try {

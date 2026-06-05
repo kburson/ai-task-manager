@@ -551,16 +551,16 @@ Or set individual values:
 
 `install` adds auto-allow rules to `.claude/settings.json` so orchestration runs hands-free. During backlog creation, every shell command executes without a prompt:
 
-| Rule                             | What it covers                             |
-| -------------------------------- | ------------------------------------------ |
-| `Bash(gh issue create*)`         | Issue creation                             |
-| `Bash(gh api graphql*)`          | Project field mutations, sub-issue linking |
-| `Bash(gh label create*)`         | Label setup                                |
-| `Bash(gh project item-edit*)`    | Size, Sequence, Estimate, Priority fields  |
-| `Bash(cat > /tmp/*)`             | Issue body temp files                      |
-| `Bash(node */task-tracker.mjs*)` | All `/task` verbs                          |
-| `Bash(*/move-state.mjs*)`        | Kanban state transitions                   |
-| `Bash(*/set-priority.mjs*)`      | Priority setting                           |
+| Rule                             | What it covers                                |
+| -------------------------------- | --------------------------------------------- |
+| `Bash(gh issue create*)`         | Issue creation                                |
+| `Bash(gh api graphql*)`          | Project field mutations, sub-issue linking    |
+| `Bash(gh label create*)`         | Label setup                                   |
+| `Bash(gh project item-edit*)`    | Size, Sequence, Estimate, Priority fields     |
+| `Bash(cat > ./.tmp/gh/*)`        | Issue body temp files (project-local scratch) |
+| `Bash(node */task-tracker.mjs*)` | All `/task` verbs                             |
+| `Bash(*/move-state.mjs*)`        | Kanban state transitions                      |
+| `Bash(*/set-priority.mjs*)`      | Priority setting                              |
 
 All mutations are scoped to the issues being created or updated in the current project. Nothing reaches outside your configured repo and project board.
 

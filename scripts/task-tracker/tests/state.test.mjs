@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { loadState, saveState, clearActive, EMPTY_STATE } from '../state.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-state-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-'));
 const statePath = path.join(tmp, 'state.json');
 const preferredStatePath = path.join(tmp, '.ai-task-manager', 'task-tracker-state.json');
 const legacyStatePath = path.join(tmp, '.claude', 'task-tracker-state.json');
@@ -110,7 +110,7 @@ assert.equal(s.active, '#201');
 // '.ai-task-manager/task-tracker-state.json' relative to repo root.
 {
   const cwdBefore = process.cwd();
-  const relTmp = mkdtempSync(path.join(tmpdir(), 'tt-state-rel-'));
+  const relTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-rel-'));
   // #273 — sid resolution now consults the provider registry env keys
   // (CLAUDE_CODE_SESSION_ID, CLAUDE_SESSION_ID, CODEX_SESSION_ID, plus
   // AI_TASK_MANAGER_SESSION_ID). Save+restore so this test pins the

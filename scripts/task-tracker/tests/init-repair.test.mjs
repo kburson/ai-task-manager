@@ -9,7 +9,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,7 +19,7 @@ const REPAIR = path.resolve(__dir, '../../gh/init-repair.mjs');
 const INIT_SH = path.resolve(__dir, '../../gh/init-project-config.sh');
 
 function makeSandbox(cfg) {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-repair-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-repair-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

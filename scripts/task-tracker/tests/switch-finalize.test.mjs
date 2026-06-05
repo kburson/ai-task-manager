@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { pendingPausePath } from '../hooks/on-stop.mjs';
 import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
@@ -9,7 +9,7 @@ import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
 // #215 AC5 — `/task #N` switch path: a switch IS a pause, even for a
 // sub-threshold gap. The row must go to the OLD issue.
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-switch-fin-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-switch-fin-'));
 
 function writeMarker(sid, payload) {
   const p = pendingPausePath(sid, tmp);

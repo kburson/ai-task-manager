@@ -14,7 +14,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,7 +22,7 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const TASK_TRACKER = path.resolve(__dir, '..', 'task-tracker.mjs');
 
-const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-graphql-params-'));
+const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-graphql-params-'));
 try {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(

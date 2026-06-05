@@ -25,7 +25,8 @@
     "lint:js": "eslint .",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:spell": "cspell --no-progress \"**/*.{md,mjs,js,json}\"",
-    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell",
+    "lint:tmp": "node scripts/maintenance/lint-no-system-tmp.mjs",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp",
     "quality": "npm run format:check && npm run lint && npm test"
   },
   "files": [

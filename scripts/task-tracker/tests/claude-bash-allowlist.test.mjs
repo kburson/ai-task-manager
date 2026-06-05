@@ -11,7 +11,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,8 +26,8 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dir, '..', '..', '..');
 const CLI = path.join(ROOT, 'bin', 'cli.mjs');
 
-const target = mkdtempSync(path.join(tmpdir(), 'allowlist-test-'));
-const migrationTarget = mkdtempSync(path.join(tmpdir(), 'allowlist-migrate-'));
+const target = mkdtempSync(path.join(projectScratchDir('test'), 'allowlist-test-'));
+const migrationTarget = mkdtempSync(path.join(projectScratchDir('test'), 'allowlist-migrate-'));
 
 try {
   // -- Allowlist shape ------------------------------------------------------

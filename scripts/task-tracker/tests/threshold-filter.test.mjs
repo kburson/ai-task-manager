@@ -9,13 +9,13 @@
 
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { pendingPausePath } from '../hooks/on-stop.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { loadConfig } from '../config.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-threshold-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-threshold-'));
 const threshold = Number(loadConfig().pauseThresholdSeconds) || 30;
 
 function writeMarker(sid, ageSec) {

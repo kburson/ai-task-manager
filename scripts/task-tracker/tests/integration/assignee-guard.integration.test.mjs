@@ -9,7 +9,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -105,7 +105,7 @@ async function runCli(sandbox, binDir, args) {
 
 // Test 1: guard ON + issue assigned to another user → exit 10.
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-assignee-1-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-assignee-1-'));
   try {
     writeConfig(sandbox, { gateAssigneeMatch: true });
     writeState(sandbox, 219);
@@ -123,7 +123,7 @@ async function runCli(sandbox, binDir, args) {
 
 // Test 2: guard OFF → bypassed; no assignee refusal.
 {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-assignee-2-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-assignee-2-'));
   try {
     writeConfig(sandbox, { gateAssigneeMatch: false });
     writeState(sandbox, 219);

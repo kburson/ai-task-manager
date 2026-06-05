@@ -9,7 +9,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../..', import.meta.url).pathname;
@@ -34,7 +34,7 @@ const CANONICAL_BODY = [
 // gh mock that copies the --body-file content to a known capture path so the
 // test can assert what was actually posted to `gh issue create`.
 function setup() {
-  const temp = mkdtempSync(join(tmpdir(), 'aitm-create-em-'));
+  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-em-'));
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });

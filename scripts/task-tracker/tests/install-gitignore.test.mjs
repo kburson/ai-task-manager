@@ -5,7 +5,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   ensureGitignoreEntry,
@@ -13,7 +13,7 @@ import {
   MANAGED_BLOCK_CLOSE,
 } from '../../../bin/cli.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-install-gitignore-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-gitignore-'));
 const gitignorePath = path.join(tmp, '.gitignore');
 
 // Case 1: no pre-existing .gitignore — entry is written inside a managed block.

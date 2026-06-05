@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync, utimesSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { sweepStaleSessionDirs } from '../orphan-finalize.mjs';
 import { pendingPausePath } from '../hooks/on-stop.mjs';
@@ -9,7 +9,7 @@ import { pendingPausePath } from '../hooks/on-stop.mjs';
 // #215 AC6 — onSessionStart sweep: finalize pending-pause for each session
 // dir older than `sessionRetentionDays` BEFORE removing it.
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-sweep-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-sweep-'));
 
 function makeSession(sid, { ageDays = 0, withMarker = false, markerPayload } = {}) {
   const dir = path.dirname(pendingPausePath(sid, tmp));

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { collectEventTimestamps, computeActiveMinutes } from '../active-time.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-at-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-at-'));
 const jsonlPath = path.join(tmp, 'session.jsonl');
 
 // Helper to build an iso timestamp from a base + offset seconds.

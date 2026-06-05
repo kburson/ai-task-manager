@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { setActiveTask } from '../session-state.mjs';
 import { recordPendingPause, pendingPausePath } from '../hooks/on-stop.mjs';
@@ -13,7 +13,7 @@ import { processPendingPause, computeGapSeconds } from '../hooks/on-user-prompt.
 // foreign-session, no-marker) collapse to `no-op` here. Detailed semantics
 // are covered by orphan-finalize.test.mjs.
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-on-up-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-up-'));
 
 // Test 1: no session → no-op
 {

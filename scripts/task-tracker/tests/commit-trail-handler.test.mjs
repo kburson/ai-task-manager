@@ -6,16 +6,8 @@
 import { strict as assert } from 'node:assert';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  chmodSync,
-  rmSync,
-  existsSync,
-  readFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync, chmodSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -129,7 +121,7 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 // --- Full handler E2E via spawn ---
 
 function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'aitm-trail-'));
+  const sandbox = mkdtempProjectIsolated('aitm-trail-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

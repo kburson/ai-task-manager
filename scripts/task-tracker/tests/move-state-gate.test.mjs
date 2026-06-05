@@ -12,7 +12,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,7 +34,7 @@ function deepDiveAdequate() {
 }
 
 function makeSandbox(body) {
-  const sandbox = mkdtempSync(path.join(tmpdir(), 'tt-gate-'));
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gate-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

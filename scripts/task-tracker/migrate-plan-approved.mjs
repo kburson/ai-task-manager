@@ -17,7 +17,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from './lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -70,7 +70,10 @@ async function fetchBody(issueNumber, repo) {
 }
 
 async function writeBody(issueNumber, repo, body) {
-  const tmp = path.join(tmpdir(), `aitm-migrate-plan-${process.pid}-${Date.now()}.md`);
+  const tmp = path.join(
+    projectScratchDir('test'),
+    `aitm-migrate-plan-${process.pid}-${Date.now()}.md`
+  );
   writeFileSync(tmp, body, 'utf8');
   try {
     await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {

@@ -5,11 +5,11 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { withLock } from '../locks.mjs';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'tt-flock-'));
+const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-flock-'));
 const lockPath = path.join(tmp, 'shared.lock');
 
 // 1. Serial admission — N concurrent withLock calls never overlap.
