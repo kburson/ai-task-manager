@@ -53,7 +53,7 @@ Inspects `git status --porcelain` in the issue's bound workspace (fleet-register
 
 | State                                     | Result                                                                                                                                                      |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Clean                                     | Proceeds to the pre-close checkbox gate.                                                                                                                    |
+| Clean                                     | Proceeds to Functional DoD derivation (`acs`, `checkboxes` — see `rules/functional-dod.md`) and then the pre-close checkbox gate.                           |
 | Dirty + `--answer yes`                    | **Exit 6.** Refuses; prints the cleanup-flow guidance below. Clean up, then re-run `/task close <id>`.                                                      |
 | Dirty + `--answer no`                     | Closes anyway; appends `closed-with-dirty-tree` audit row (dirty paths summarized, capped at 5).                                                            |
 | Dirty + `--answer cancel`                 | Aborts (exit 0, no board change, no timing row); issue stays in Review.                                                                                     |

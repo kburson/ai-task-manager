@@ -3,6 +3,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readBoundState } from '../lib/bound-state.mjs';
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
+import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-dod-evidence.mjs';
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -147,6 +148,14 @@ export async function verbCheck(ctx) {
     console.error(`[task-tracker] checkbox "${label}" not found in ${s.active}${list}`);
     process.exit(1);
   }
+  // #303 — Functional DoD evidence gate. Refuse stampable ticks without an
+  // `aitm-dod-evidence:KEY` marker; refuse derived keys outright.
+  const gate = gateFunctionalDodTick(body, label);
+  const refusal = formatGateRefusal(gate, s.active);
+  if (refusal) {
+    console.error(refusal);
+    process.exit(1);
+  }
   let landed = null;
   await mutateBody({
     issueNumber: issueNum,
@@ -181,6 +190,23 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
+    // #303 — Functional DoD evidence gate. Batch is atomic: if ANY label fails
+    // the gate, refuse the entire batch. This preserves the user's intent of
+    // batch-atomicity for the network round-trip while keeping evidence
+    // discipline per-key.
+    const gateFailures = [];
+    for (const lbl of checklistLabels) {
+      const g = gateFunctionalDodTick(stdout, lbl);
+      const msg = formatGateRefusal(g, active);
+      if (msg) gateFailures.push(msg);
+    }
+    if (gateFailures.length) {
+      for (const msg of gateFailures) console.error(msg);
+      console.error(
+        `[task-tracker] batch tick on ${active} refused: ${gateFailures.length} Functional DoD label(s) lack evidence. Run \`/task dod-stamp <key>\` for each missing key, then retry.`
+      );
+      process.exit(1);
+    }
     const { results } = toggleChecklistLines(stdout, checklistLabels);
     const anyToggled = results.some((r) => r.status === 'toggled');
     if (anyToggled) {
@@ -230,6 +256,61 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
   }
 
   if (exitCode) process.exit(exitCode);
+}
+
+// #303 — Functional DoD evidence-marker gate. Refuses to tick a checkbox in
+// the `#### Functional (verified at Test)` subsection unless the corresponding
+// `dod:functional:KEY` line already carries an `aitm-dod-evidence:KEY` marker
+// (for stampable keys) — derived keys (`acs`, `checkboxes`) are refused
+// outright; `verbs/close.mjs` derives + stamps them at close time.
+//
+// Returns one of:
+//   { kind: 'pass' }                    — label is not a Functional DoD key, or
+//                                          item already ticked (unticking allowed)
+//   { kind: 'refuse-missing-evidence', key, label, label2 } — stampable key, no marker
+//   { kind: 'refuse-derived', key, label } — `acs` or `checkboxes` — manual tick disallowed
+//
+// `label2` is the trimmed label as it appears in the body (markers stripped),
+// used to make the refusal message recognisable.
+export function gateFunctionalDodTick(body, requestedLabel) {
+  const items = parseFunctionalDodKeys(body);
+  if (!items.length) return { kind: 'pass' };
+  const wanted = String(requestedLabel || '').trim();
+  const match = items.find((it) => it.label === wanted);
+  if (!match) return { kind: 'pass' };
+  if (match.checked) return { kind: 'pass' }; // unticking is fine
+  const klass = KEY_CLASSIFICATION[match.key] || null;
+  if (klass === 'derived') {
+    return { kind: 'refuse-derived', key: match.key, label: match.label };
+  }
+  if (klass === 'stampable' && !match.evidenceMarker) {
+    return {
+      kind: 'refuse-missing-evidence',
+      key: match.key,
+      label: match.label,
+      label2: match.label,
+    };
+  }
+  return { kind: 'pass' };
+}
+
+function formatGateRefusal(gate, issueRef) {
+  if (gate.kind === 'refuse-derived') {
+    return [
+      `[task-tracker] ✗ Refusing to tick Functional DoD "${gate.label}" on ${issueRef}.`,
+      `  Key dod:functional:${gate.key} is DERIVED — its truth is computed from the body at`,
+      `  close time. Do not tick manually; \`/task close\` will derive and stamp it.`,
+    ].join('\n');
+  }
+  if (gate.kind === 'refuse-missing-evidence') {
+    return [
+      `[task-tracker] ✗ Refusing to tick Functional DoD "${gate.label}" on ${issueRef}.`,
+      `  Key dod:functional:${gate.key} has no aitm-dod-evidence marker. Run`,
+      `  \`/task dod-stamp ${gate.key}\` to execute the verifier in a sandbox; the`,
+      `  evidence marker it stamps unlocks this tick.`,
+    ].join('\n');
+  }
+  return null;
 }
 
 // #281 — stage-bound gate for `check "Deep dive complete"`. Reads bound state

@@ -65,6 +65,13 @@ pytest
 prebody
 pretick
 Pretick
+recognisable
+refetched
+stampable
+Stampable
+STAMPABLE
+unticking
+klass
 quotepath
 rebucket
 rebuckets

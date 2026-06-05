@@ -27,6 +27,8 @@ State slugs are canonical. There is no slug shim — the renamed states are the 
 
 `/task plan-approve #N`, `/task approve #N`, and `/task reject #N --reason "..."` remain first-class — they are gate verbs, not state-walking verbs.
 
+`/task dod-stamp <key>` is a Test/Review-stage helper, not a state-walking verb. It runs the verifier declared on a Functional DoD item and stamps an evidence marker that unlocks the corresponding `/task check` tick. See `rules/functional-dod.md` for the full contract.
+
 ## Forbidden
 
 - ❌ `move-state.mjs <N> <state>` directly to jump arbitrarily. Always use `/task promote` (or `next`) to advance one step and `/task demote` to step back. One step at a time prevents stage-skipping (e.g., Backlog → Develop).

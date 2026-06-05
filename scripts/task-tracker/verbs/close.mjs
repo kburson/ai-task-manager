@@ -14,8 +14,14 @@ import {
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { runCloseGates } from '../lib/close-gates.mjs';
-import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
+import { tickLifecycleItem, locateLifecycleSection } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
+import {
+  parseFunctionalDodKeys,
+  stampEvidenceMarker,
+  deriveAcsStatus,
+  deriveCheckboxesStatus,
+} from '../lib/functional-dod-evidence.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 
 export async function verbClose(ctx) {
@@ -152,7 +158,7 @@ export async function verbClose(ctx) {
         { timeout: GH_API_TIMEOUT_MS }
       );
       const data = JSON.parse(stdout);
-      const body = data.body ?? '';
+      let body = data.body ?? '';
       closeBody = body;
 
       const _resolvedReviewGate = resolveGate('reviewToDone', {
@@ -199,6 +205,81 @@ export async function verbClose(ctx) {
               'gateReviewToDone=false (session/project override) — bypassing human review',
           })
         );
+      }
+
+      // #303 — Derived Functional DoD keys (`acs`, `checkboxes`) are computed
+      // and stamped here, immediately before the close gate. `checkboxes`
+      // MUST be derived LAST because its derivation counts every
+      // non-self/non-derived/non-lifecycle box — including the `acs` box that
+      // we tick first when ACs are complete. Atomic single push via mutate.
+      try {
+        const derivedTs = nowIso();
+        let derivedHeadSha = 'unknown';
+        try {
+          const { stdout: shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {});
+          derivedHeadSha = String(shaOut || '').trim() || 'unknown';
+        } catch {
+          // best-effort — sha=unknown is acceptable in the evidence marker
+        }
+        const mutated = await mutateIssueBody({
+          issueNumber: closeIssueNum,
+          repo: cfg.repo,
+          deps: { pexec },
+          mutate: (base) => {
+            const items = parseFunctionalDodKeys(base);
+            const acsItem = items.find((it) => it.key === 'acs');
+            const cbItem = items.find((it) => it.key === 'checkboxes');
+            let next = base;
+            // 1. acs
+            if (acsItem) {
+              const ac = deriveAcsStatus(next);
+              if (ac.allTicked && !acsItem.evidenceMarker) {
+                next = stampEvidenceMarker(next, 'acs', {
+                  cmd: 'derive:all-acceptance-criteria-ticked',
+                  sha: derivedHeadSha,
+                  ts: derivedTs,
+                  exit: 0,
+                });
+              }
+              if (ac.allTicked && !acsItem.checked) {
+                next = next.replace(/^(- \[) (\]\s+Acceptance criteria met\b)/m, '$1x$2');
+              }
+            }
+            // 2. checkboxes — must run AFTER acs so the acs tick is counted.
+            if (cbItem) {
+              const lifecyclePresent = Boolean(locateLifecycleSection(next));
+              const cb = deriveCheckboxesStatus(next, { lifecyclePresent });
+              if (cb.allTicked && !cbItem.evidenceMarker) {
+                next = stampEvidenceMarker(next, 'checkboxes', {
+                  cmd: 'derive:all-non-self-non-lifecycle-checkboxes-ticked',
+                  sha: derivedHeadSha,
+                  ts: derivedTs,
+                  exit: 0,
+                });
+              }
+              if (cb.allTicked && !cbItem.checked) {
+                next = next.replace(/^(- \[) (\]\s+Issue body checkboxes ticked\b)/m, '$1x$2');
+              }
+            }
+            return next;
+          },
+        });
+        // Re-fetch body so the rest of the close gate sees the post-derivation
+        // state. Skipped on no-op.
+        if (mutated?.status === 'ok') {
+          const { stdout: refetched } = await pexec(
+            'gh',
+            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          body = String(refetched || body);
+          closeBody = body;
+        }
+      } catch (err) {
+        // Derivation is best-effort. If it fails, the existing
+        // uncheckedPreCloseCheckboxes / lifecycle gate will surface the issue
+        // through the normal blocker path. Log and continue.
+        console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
       }
 
       const unchecked = uncheckedPreCloseCheckboxes(body);
