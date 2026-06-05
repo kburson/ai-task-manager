@@ -2,8 +2,9 @@
 
 # Pickup Directive — Agent Instructions
 
-These steps apply on first pickup of any issue with an unchecked `- [ ] Deep dive complete`
-checkbox. If the checkbox is already checked, skip to step 6.
+These steps apply on first pickup of any issue whose body does NOT yet carry an
+`<!-- aitm-deep-dive-complete: ... -->` marker. If the marker is already present,
+skip to step 6.
 
 Rationale, examples, and audited overrides for every hard rule below live in
 [`references/pickup-directive-rationale.md`](./references/pickup-directive-rationale.md).
@@ -77,7 +78,7 @@ Children do **not** all have to reach `refine` before the epic may move to `plan
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate the Scope's assumptions still hold, identify concrete files to edit, define the test approach, surface new risks. Use `rg`, `rg --files`, repository docs, and any relevant `AGENTS.md` files to build the file map from the current checkout.
 
-3. **Append the deep dive to the issue body, then flip the checkpoint checkbox.** Full procedure (placement gate, `--body-file` requirement, required subsections, AC `aitm-verified-by` binding, `### Verification Commands`, Dependency Map) is in [`references/deep-dive-procedure.md`](./references/deep-dive-procedure.md). After appending, run `/task check "Deep dive complete"`.
+3. **Append the deep dive to the issue body, then stamp the completion marker.** Full procedure (placement gate, `--body-file` requirement, required subsections, AC `aitm-verified-by` binding, `### Verification Commands`, Dependency Map) is in [`references/deep-dive-procedure.md`](./references/deep-dive-procedure.md). After appending, run `/task check "Deep dive complete"`, which writes the hidden `<!-- aitm-deep-dive-complete: ... -->` marker (the gate signal). No visible checkbox is needed.
 
 4. **Re-evaluate Estimate and Size.** If the deep dive changes either, update project fields and post a comment. If Size jumps ≥ 2 tiers, pause and wait for human direction.
 

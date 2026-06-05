@@ -16,12 +16,10 @@ const PLAN_BODY_NO_DEEP_DIVE = [
   '## Pickup Directive',
   '> Follow: `.ai-task-manager/pickup-directive.md`',
   '',
-  '- [ ] Deep dive complete',
-  '',
   '<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":2}} -->',
 ].join('\n');
 
-// Body with all deep-dive signals present.
+// Body with all deep-dive signals present (marker-only, #300).
 const PLAN_BODY_WITH_DEEP_DIVE = [
   '## Scope',
   '- do the thing',
@@ -31,8 +29,6 @@ const PLAN_BODY_WITH_DEEP_DIVE = [
   '',
   '## Pickup Directive',
   '> Follow: `.ai-task-manager/pickup-directive.md`',
-  '',
-  '- [x] Deep dive complete',
   '',
   '<!-- aitm-deep-dive-posted: 2026-06-04 -->',
   '## Deep-Dive Analysis (2026-06-04)',
@@ -47,9 +43,9 @@ const PLAN_BODY_WITH_DEEP_DIVE = [
   const r = planDeepDiveGate({ body: PLAN_BODY_NO_DEEP_DIVE });
   assert.equal(r.ok, false);
   const codes = r.blockers.map((b) => b.split(':')[0]);
-  assert.ok(codes.includes('plan-develop-deep-dive-marker-missing'));
+  assert.ok(codes.includes('plan-develop-deep-dive-posted-marker-missing'));
   assert.ok(codes.includes('plan-develop-deep-dive-section-missing'));
-  assert.ok(codes.includes('plan-develop-deep-dive-checkbox-unticked'));
+  assert.ok(codes.includes('plan-develop-deep-dive-complete-marker-missing'));
 }
 
 // Pass: complete body clears the gate.

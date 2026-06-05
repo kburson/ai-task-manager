@@ -16,6 +16,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { runCloseGates } from '../lib/close-gates.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -398,6 +399,12 @@ export async function verbClose(ctx) {
 // both the board AND the `<!-- aitm-fields -->` body marker. Guards against
 // the silent-swallow class of bug that produced #180 / #165. No env override
 // exists.
+//
+// #300 — delegates to `parseIssueFieldDb`, which uses a line-anchored,
+// last-match regex (`NEW_BLOCK_RE`). The previous inline regex (first-match,
+// no line anchor) caught literal `<!-- aitm-fields: {...} -->` placeholders
+// inside body prose and failed `JSON.parse` on the `{...}` capture. See #298
+// for the production case that surfaced this.
 async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
   let body = '';
   try {
@@ -413,22 +420,20 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
         `Retry when GitHub is reachable.`
     );
   }
-  const m = body.match(/<!--\s*aitm-fields:\s*(\{[\s\S]*?\})\s*-->/);
-  if (!m) {
+  const parsed = parseIssueFieldDb(body);
+  if (!parsed.ok) {
+    if (parsed.reason === 'missing') {
+      throw new Error(
+        `assertFieldsPersisted: <!-- aitm-fields --> marker missing on #${issueNum} after runLogIssueTime. ` +
+          `Board fields almost certainly were not written.`
+      );
+    }
+    // 'invalid-json' | 'invalid-fence' — preserve the legacy "malformed" wording.
     throw new Error(
-      `assertFieldsPersisted: <!-- aitm-fields --> marker missing on #${issueNum} after runLogIssueTime. ` +
-        `Board fields almost certainly were not written.`
+      `assertFieldsPersisted: malformed aitm-fields JSON on #${issueNum}: ${parsed.reason}`
     );
   }
-  let parsed;
-  try {
-    parsed = JSON.parse(m[1]);
-  } catch (err) {
-    throw new Error(
-      `assertFieldsPersisted: malformed aitm-fields JSON on #${issueNum}: ${err.message}`
-    );
-  }
-  const values = parsed?.values || {};
+  const values = parsed.values || {};
   if (values.engagedTime == null) {
     throw new Error(
       `assertFieldsPersisted: aitm-fields.engagedTime is still null on #${issueNum} after runLogIssueTime — ` +
