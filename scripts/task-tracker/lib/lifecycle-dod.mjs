@@ -124,6 +124,30 @@ export function parseLifecycleItems(body) {
   return items;
 }
 
+// Inspect the structural state of a lifecycle item without mutating the body.
+// Lets callers distinguish "label not findable" from "box already ticked" —
+// `tickLifecycleItem` returns the body unchanged in both cases, so its return
+// value alone is ambiguous (see #302).
+//
+// Returns { sectionPresent, labelFound, alreadyTicked }:
+//   - sectionPresent: `#### Lifecycle` heading exists
+//   - labelFound: the human-readable label for `key` exists inside the section
+//     (regardless of tick state)
+//   - alreadyTicked: the label exists AND is `- [x]`
+//
+// Throws on unknown `key` (parity with tickLifecycleItem).
+export function lifecycleItemState({ body, key } = {}) {
+  if (!(key in LIFECYCLE_LABELS)) {
+    throw new Error(`lifecycleItemState: unknown lifecycle key "${key}"`);
+  }
+  const loc = locateLifecycleSection(body);
+  if (!loc) return { sectionPresent: false, labelFound: false, alreadyTicked: false };
+  const items = parseLifecycleItems(body);
+  const match = items.find((it) => it.key === key);
+  if (!match) return { sectionPresent: true, labelFound: false, alreadyTicked: false };
+  return { sectionPresent: true, labelFound: true, alreadyTicked: Boolean(match.checked) };
+}
+
 // Tick the lifecycle item identified by `key`. Idempotent. Returns the
 // (possibly-unchanged) body.
 export function tickLifecycleItem(body, key) {

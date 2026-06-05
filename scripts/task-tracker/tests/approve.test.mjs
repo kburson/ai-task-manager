@@ -291,6 +291,45 @@ function makeDeps(overrides = {}) {
   assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
 }
 
+// #302 — When the Lifecycle box is ALREADY ticked (Full-Auto operator pre-ticked
+// per the manual rule), approve must run silently. No `lifecycle-tick-noop`
+// warning on stderr — that warning is reserved for genuinely-missing labels.
+{
+  const preTickedBody = [
+    '## Acceptance Criteria',
+    '- [x] do thing',
+    '',
+    '### Definition of Done',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+    '',
+  ].join('\n');
+  const { deps } = makeDeps({
+    initialBody: preTickedBody,
+    deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
+  });
+  const origWrite = process.stderr.write.bind(process.stderr);
+  let captured = '';
+  process.stderr.write = (chunk) => {
+    captured += String(chunk);
+    return true;
+  };
+  try {
+    const r = await runApprove({ issueNumber: 58, cfg, deps });
+    assert.equal(r.status, 'approved');
+  } finally {
+    process.stderr.write = origWrite;
+  }
+  assert.doesNotMatch(
+    captured,
+    /lifecycle-tick-noop/,
+    'pre-ticked lifecycle box must not trigger the warning'
+  );
+}
+
 // 17. (#161 / D4) Legacy lifecycle heading: warn to stderr, verb still succeeds
 {
   const legacyBody = [

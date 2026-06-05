@@ -22,7 +22,11 @@ import {
   insertFullAutoApprovedMarker,
   insertFullAutoFootnote,
 } from '../lib/markers.mjs';
-import { tickLifecycleItem, parseLifecycleOptouts } from '../lib/lifecycle-dod.mjs';
+import {
+  tickLifecycleItem,
+  parseLifecycleOptouts,
+  lifecycleItemState,
+} from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { buildReviewNotesComment } from '../lib/review-notes.mjs';
 import { deriveDrivers } from '../lib/derive-drivers.mjs';
@@ -241,8 +245,12 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
       }
       const beforeTick = updated;
       updated = tickLifecycleItem(updated, 'passed-final-review');
+      // #302 — distinguish "label genuinely missing" (warn) from "box already
+      // ticked" (silent happy path). Both produce a no-op write, but only the
+      // former is a signal the operator's DoD has diverged from the template.
+      const state = lifecycleItemState({ body: beforeTick, key: 'passed-final-review' });
       const optouts = parseLifecycleOptouts(beforeTick);
-      if (updated === beforeTick && !optouts.has('passed-final-review')) {
+      if (!state.labelFound && !optouts.has('passed-final-review')) {
         process.stderr.write(
           `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD\n`
         );

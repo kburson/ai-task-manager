@@ -11,6 +11,7 @@ import {
   untickLifecycleItem,
   detectLifecyclePretick,
   locateFunctionalSection,
+  lifecycleItemState,
   LIFECYCLE_LABELS,
   LIFECYCLE_LABEL_SET,
 } from '../lib/lifecycle-dod.mjs';
@@ -120,4 +121,40 @@ test('LIFECYCLE_LABEL_SET: contains all three labels', () => {
   for (const label of Object.values(LIFECYCLE_LABELS)) {
     assert.ok(LIFECYCLE_LABEL_SET.has(label));
   }
+});
+
+// #302 — lifecycleItemState: structural inspection without mutation. Lets
+// `approve.mjs` distinguish "label genuinely missing" from "box already
+// ticked" — both produce a no-op write in tickLifecycleItem.
+
+test('lifecycleItemState: no Lifecycle section → sectionPresent=false', () => {
+  const s = lifecycleItemState({ body: '## DoD\n', key: 'passed-final-review' });
+  assert.deepEqual(s, { sectionPresent: false, labelFound: false, alreadyTicked: false });
+});
+
+test('lifecycleItemState: heading present but label absent (customized DoD)', () => {
+  const body = [
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+    '',
+    '## Pickup Directive',
+  ].join('\n');
+  const s = lifecycleItemState({ body, key: 'passed-final-review' });
+  assert.deepEqual(s, { sectionPresent: true, labelFound: false, alreadyTicked: false });
+});
+
+test('lifecycleItemState: label present and unticked', () => {
+  const s = lifecycleItemState({ body: TEMPLATE, key: 'passed-final-review' });
+  assert.deepEqual(s, { sectionPresent: true, labelFound: true, alreadyTicked: false });
+});
+
+test('lifecycleItemState: label present and already ticked', () => {
+  const ticked = tickLifecycleItem(TEMPLATE, 'passed-final-review');
+  const s = lifecycleItemState({ body: ticked, key: 'passed-final-review' });
+  assert.deepEqual(s, { sectionPresent: true, labelFound: true, alreadyTicked: true });
+});
+
+test('lifecycleItemState: unknown key → throws', () => {
+  assert.throws(() => lifecycleItemState({ body: TEMPLATE, key: 'nope' }), /unknown lifecycle key/);
 });
