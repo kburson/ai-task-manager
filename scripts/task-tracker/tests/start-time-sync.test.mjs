@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 const repoRoot = new URL('../../..', import.meta.url).pathname;
 const script = join(repoRoot, 'scripts/gh/update-event-fields.mjs');
 
 function makeTempEnv(ghScript) {
-  const temp = mkdtempSync('/private/tmp/aitm-start-time-sync-');
+  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-start-time-sync-'));
   const binDir = join(temp, 'bin');
   mkdirSync(binDir);
 

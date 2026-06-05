@@ -77,10 +77,16 @@ STOP. Route through the helpers above.
 
 ## Guard
 
-`npm run lint:tmp` (`scripts/maintenance/lint-no-system-tmp.mjs`) refuses any
-`tmpdir()` / `os.tmpdir()` reference outside `lib/scratch-dir.mjs` and the
-guard itself. It is part of `npm run lint`. CI rejects the diff if you skip
-the helper.
+`npm run lint:tmp` (`scripts/maintenance/lint-no-system-tmp.mjs`) refuses:
+
+- any `tmpdir()` / `os.tmpdir()` reference outside `lib/scratch-dir.mjs` and
+  the guard itself (checked in production and test code),
+- any literal `'/tmp/...'` / `'/private/tmp/...'` string in **non-test**
+  scripts (test fixtures may contain such literals as parser/classifier
+  input — see `gh-edit-guard.test.mjs`, `activity-policy.test.mjs`, etc.).
+
+The guard is part of `npm run lint`. CI rejects the diff if you skip the
+helper.
 
 ## Allowlisted exceptions
 

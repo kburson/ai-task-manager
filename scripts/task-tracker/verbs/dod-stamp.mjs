@@ -9,7 +9,7 @@
 // `checkboxes`) are computed by `verbs/close.mjs` at close time.
 
 import { loadState } from '../state.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, TEST_RUNNER_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import {
   KEY_CLASSIFICATION,
@@ -90,7 +90,14 @@ export async function verbDodStamp(ctx) {
   console.log(
     `[task-tracker] dod-stamp ${key} on ${s.active}: running ${target.evidenceCommands.length} verifier(s)…`
   );
-  const runOptions = { cwd: projectDir, timeout: GH_API_TIMEOUT_MS };
+  // Verifier commands are typically test/lint runs; allow up to TEST_RUNNER_TIMEOUT_MS
+  // and a 64 MiB stdout buffer (default 1 MiB overflows on `npm test`).
+  // (#304 follow-up to #303: GH_API_TIMEOUT_MS — 15s — killed `npm test` mid-run.)
+  const runOptions = {
+    cwd: projectDir,
+    timeout: TEST_RUNNER_TIMEOUT_MS,
+    maxBuffer: 64 * 1024 * 1024,
+  };
   const ran = [];
   for (const raw of target.evidenceCommands) {
     const argv = splitCmd(raw);

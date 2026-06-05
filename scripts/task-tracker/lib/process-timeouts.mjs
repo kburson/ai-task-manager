@@ -27,7 +27,10 @@
 export const GH_API_TIMEOUT_MS = 15000;
 export const GIT_TIMEOUT_MS = 10000;
 export const LOCAL_FAST_TIMEOUT_MS = 5000;
-export const TEST_RUNNER_TIMEOUT_MS = 60000;
+// 10 minutes — the full `npm test` suite (200+ files) runs well past 60s
+// under `dod-stamp tests`; 600_000 gives headroom for CI-equivalent wall-clock
+// while still catching a truly runaway suite.
+export const TEST_RUNNER_TIMEOUT_MS = 600000;
 
 // Convenience: map a class label to its value (used by the helper below).
 export const TIMEOUT_CLASSES = Object.freeze({

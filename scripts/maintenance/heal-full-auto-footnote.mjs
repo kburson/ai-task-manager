@@ -16,6 +16,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import {
@@ -85,7 +87,7 @@ function isHealCandidate(body = '') {
 }
 
 function writeBody(repo, issueNumber, body) {
-  const tmp = `/tmp/heal-footnote-${issueNumber}-${Date.now()}.md`;
+  const tmp = path.join(projectScratchDir('heal'), `heal-footnote-${issueNumber}-${Date.now()}.md`);
   writeFileSync(tmp, body);
   try {
     sh('gh', 'issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp);

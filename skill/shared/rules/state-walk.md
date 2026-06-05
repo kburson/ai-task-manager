@@ -47,6 +47,10 @@ No CLI verb. Agent self-reports `REVIEW_COMPLETE`. The orchestrator confirms the
 
 See [`docs/guides/workflow.md`](../../../docs/guides/workflow.md) → Three-stage estimation for the comment-emitting verbs (`/task promote` from Plan, `/task close`) and their bypass envs.
 
+## Scratch directories during state walks
+
+State-walk verbs that materialize transient files (issue body drafts, plan/heal/inspect scratch, sandbox temp dirs) route through `scripts/task-tracker/lib/scratch-dir.mjs` — `projectScratchDir`, `mkdtempProjectIsolated`, `mkdtempOutsideRepo`. Never write to `/tmp/` / `os.tmpdir()`. Full rule: [`rules/scratch-dirs.md`](scratch-dirs.md). Enforced by `npm run lint:tmp`.
+
 ## Drift detection
 
 If `task-tracker.mjs` reports a state mismatch between the board and `.ai-task-manager/task-tracker-state.json`, run `reconcile` BEFORE any other verb. Running `promote` or `demote` on a drifted issue compounds the drift.

@@ -25,6 +25,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import {
@@ -96,7 +98,7 @@ function fetchComments(n) {
 }
 
 function writeBody(n, body) {
-  const tmp = `/tmp/heal-${n}-${Date.now()}.md`;
+  const tmp = path.join(projectScratchDir('heal'), `heal-${n}-${Date.now()}.md`);
   writeFileSync(tmp, body);
   try {
     gh(['issue', 'edit', n, '-R', cfg.repo, '--body-file', tmp]);
@@ -108,7 +110,7 @@ function writeBody(n, body) {
 }
 
 function postComment(n, body) {
-  const tmp = `/tmp/heal-comment-${n}-${Date.now()}.md`;
+  const tmp = path.join(projectScratchDir('heal'), `heal-comment-${n}-${Date.now()}.md`);
   writeFileSync(tmp, body);
   try {
     gh(['issue', 'comment', n, '-R', cfg.repo, '--body-file', tmp]);
@@ -203,7 +205,7 @@ function healD2DeltaRerender(n, body, comments) {
     console.log(`  D2 skipped: comment missing GraphQL id (cannot edit)`);
     return { ran: false, reason: 'no comment id' };
   }
-  const tmp = `/tmp/heal-delta-${n}-${Date.now()}.md`;
+  const tmp = path.join(projectScratchDir('heal'), `heal-delta-${n}-${Date.now()}.md`);
   writeFileSync(tmp, newBody);
   try {
     gh([

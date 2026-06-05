@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, chmodSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 const repoRoot = new URL('../../..', import.meta.url).pathname;
 const script = join(repoRoot, 'scripts/gh/init-project-config.sh');
-const temp = mkdtempSync('/private/tmp/aitm-init-create-');
+const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-init-create-'));
 const binDir = join(temp, 'bin');
 const targetDir = join(temp, 'target');
 mkdirSync(binDir);

@@ -31,12 +31,24 @@ const files = execSync(`find ${ROOT} -type f -name '*.mjs'`, { encoding: 'utf8' 
 
 const offenders = [];
 
-// Token-level patterns. Each entry: { re, label }.
+// Token-level patterns. `testsToo: false` patterns skip files under
+// `scripts/**/tests/` — test fixtures legitimately contain literal `/tmp/...`
+// strings as parser/classifier input (e.g. `gh-edit-guard.test.mjs` verifies
+// the guard's handling of system-tmp `--body-file` paths). Those are contract
+// literals, not real writes.
 const PATTERNS = [
-  { re: /\btmpdir\s*\(\s*\)/g, label: '`tmpdir()` call' },
-  { re: /\bos\.tmpdir\b/g, label: '`os.tmpdir`' },
-  { re: /from\s+['"]node:os['"][^;]*\btmpdir\b/g, label: '`tmpdir` import from node:os' },
+  { re: /\btmpdir\s*\(\s*\)/g, label: '`tmpdir()` call', testsToo: true },
+  { re: /\bos\.tmpdir\b/g, label: '`os.tmpdir`', testsToo: true },
+  {
+    re: /from\s+['"]node:os['"][^;]*\btmpdir\b/g,
+    label: '`tmpdir` import from node:os',
+    testsToo: true,
+  },
+  { re: /['"`]\/tmp\//g, label: 'literal `/tmp/` path', testsToo: false },
+  { re: /['"`]\/private\/tmp\//g, label: 'literal `/private/tmp/` path', testsToo: false },
 ];
+
+const isTestFile = (abs) => /\/tests\//.test(abs);
 
 for (const f of files) {
   const abs = path.resolve(f);
@@ -45,7 +57,8 @@ for (const f of files) {
   const lines = src.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    for (const { re, label } of PATTERNS) {
+    for (const { re, label, testsToo } of PATTERNS) {
+      if (!testsToo && isTestFile(abs)) continue;
       re.lastIndex = 0;
       if (re.test(line)) {
         offenders.push(

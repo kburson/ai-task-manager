@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 const repoRoot = new URL('../../..', import.meta.url).pathname;
 const script = join(repoRoot, 'scripts/gh/log-issue-time.mjs');
@@ -24,7 +25,7 @@ const SESSION_FIELD = 'F_SESSION';
 const START_FIELD = 'F_START';
 
 function makeEnv(opts = {}) {
-  const temp = mkdtempSync('/private/tmp/aitm-log-time-test-');
+  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-log-time-test-'));
   const binDir = join(temp, 'bin');
   const callLog = join(temp, 'gh-calls.log');
   mkdirSync(binDir);
@@ -125,7 +126,7 @@ exit 0
 
 // 3. No repair when startTime already set in issue body DB
 {
-  const temp2 = mkdtempSync('/private/tmp/aitm-log-time-noop-');
+  const temp2 = mkdtempSync(join(projectScratchDir('test'), 'aitm-log-time-noop-'));
   const binDir2 = join(temp2, 'bin');
   const callLog2 = join(temp2, 'gh-calls.log');
   mkdirSync(binDir2);
