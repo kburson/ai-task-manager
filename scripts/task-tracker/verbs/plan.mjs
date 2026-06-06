@@ -86,7 +86,7 @@ export async function verbPlan(ctx) {
   if (!issueNumber) {
     process.stderr.write('Usage: /task plan <issue#>\n');
     process.stderr.write(
-      "  Promotes <issue#> from Refine to Plan (Sprint-Planning entry). For backlog item generation use `/task discover`.\n"
+      '  Promotes <issue#> from Refine to Plan (Sprint-Planning entry). For backlog item generation use `/task discover`.\n'
     );
     process.exit(2);
   }

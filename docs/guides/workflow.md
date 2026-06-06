@@ -40,17 +40,17 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 
 **Verb-to-state-entry mapping** (state-entry verbs do the prep + transition atomically):
 
-| Verb               | Enters stage           | Notes                                                                                                                         |
-| ------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine.                      |
-| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`. |
+| Verb               | Enters stage           | Notes                                                                                                                                                                                                                                 |
+| ------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine.                                                                                                                              |
+| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`.                                         |
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Refine → Plan (Sprint-Planning ceremony: deep-dive analysis, child story breakdown, estimate revision). Refuses on any current state other than Refine. **Not for backlog item generation** — use `/task discover` for that. |
-| `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                               |
-| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)   |
-| `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                             |
-| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                          |
-| `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                     |
-| `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                          |
+| `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                                                                       |
+| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                                                           |
+| `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                                                                                                                                     |
+| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                                                                  |
+| `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                                                             |
+| `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                                                                                                                                  |
 
 ---
 
