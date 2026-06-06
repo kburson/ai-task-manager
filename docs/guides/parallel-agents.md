@@ -23,6 +23,38 @@ Parallel sub-agents are an **explicit, approved** operation — never the defaul
 - Worktrees are seeded by `scripts/task-tracker/seed-worktree.mjs` (copies `.ai-task-manager/` runtime files). An unseeded worktree fails closed at agent bootstrap; work performed there is discarded.
 - Every worktree starts from fresh `trunk` HEAD. Delete any pre-existing local branch that would collide with the planned worktree branch name before dispatch. Verify post-dispatch that `git -C <worktree> rev-parse HEAD == git rev-parse trunk`.
 
+### 2a. Worktree-isolation dispatch recipe (`Agent({ isolation: "worktree" })`)
+
+Aligned with Anthropic's `superpowers:using-git-worktrees` + `superpowers:dispatching-parallel-agents` skills (consulted under #299). The native isolation mechanism in this harness is `Agent({ isolation: "worktree" })`, with `EnterWorktree` / `ExitWorktree` as deferred tools for explicit orchestrator-side worktrees. Use the native tool; do not shell out to `git worktree add` when a native mechanism exists (the superpowers skill flags that as Red Flag #1).
+
+Two failure modes were diagnosed against this recipe in #299:
+
+- **Stale base.** Symptom: isolation worktree forks off a HEAD that does not include the orchestrator's pending edits. Root cause: dispatch happened before the orchestrator's working tree was committed. **Fix:** the orchestrator MUST commit (or stash) all pending edits to trunk before dispatching an isolated agent. The pre-dispatch checklist is `git status --porcelain` clean + `git rev-parse HEAD` matches intent.
+- **Edit/Write path-restricted to the isolated tree.** Symptom: subagent's `Edit`/`Write` calls refuse to touch paths outside its isolation worktree. **This is correct isolation behavior, not a bug.** Subagents should read AND write inside their isolated worktree; the orchestrator merges the branch back after the agent returns. Do not "cd out of isolation" — that defeats the mechanism. If the subagent legitimately needs to write outside its tree, the work belongs in the orchestrator, not the subagent.
+
+Working recipe:
+
+```
+1. Orchestrator: commit all pending edits to trunk. `git status --porcelain` must be empty.
+2. Orchestrator: dispatch `Agent({ isolation: "worktree", prompt: <self-contained brief> })`.
+   - The subagent receives no conversation history. The brief must carry every
+     fact the agent needs: bound issue #, scope boundaries, verb chain, STOP
+     conditions, and final-report schema (see §3 + worker-context-contract.md).
+3. Subagent: bind `/task #N`, read + edit + commit INSIDE the isolated worktree,
+   return its final report as plain text (per dispatching-parallel-agents).
+4. Orchestrator: after Agent returns, merge the subagent's branch into trunk
+   (fast-forward when possible). The native worktree is auto-cleaned when no
+   changes remain; an explicit cleanup is rarely needed.
+5. For READ-ONLY fan-out (research, grep, audit) omit isolation entirely —
+   isolation costs ~200–500ms of setup per agent and adds no value when no
+   writes will occur.
+```
+
+Skill cross-references (read these before authoring a worktree dispatch):
+
+- `~/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/using-git-worktrees/SKILL.md`
+- `~/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/dispatching-parallel-agents/SKILL.md`
+
 ---
 
 ## 3. Per-agent prompt requirements

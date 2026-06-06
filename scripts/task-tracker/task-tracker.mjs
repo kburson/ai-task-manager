@@ -212,7 +212,7 @@ if (_isMain)
           break;
         }
         case 'plan': {
-          const { verbPlan } = await import('./verbs/discover.mjs');
+          const { verbPlan } = await import('./verbs/plan.mjs');
           await verbPlan(ctx);
           break;
         }

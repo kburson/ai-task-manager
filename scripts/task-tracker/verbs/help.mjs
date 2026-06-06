@@ -6,7 +6,8 @@ Task Tracker — available commands
   /task                     Show active task, elapsed time, words since last marker
   /task #N                  Start or switch to issue #N
   /task new [title]         Create a new issue and start tracking it
-  /task discover            Open an untracked discovery bucket (pre-backlog ideation)
+  /task discover            Open an untracked discovery bucket — backlog item generation / pre-issue ideation
+                            (distinct from Sprint-Planning entry; use \`/task plan\` for that)
   /task cancel              Discard the active discovery bucket (no timing recorded)
   /task pause               Flush timing and pause the active task
   /task resume              Resume the last paused task
@@ -35,6 +36,10 @@ State transitions (7-state kanban):
   /task promote [#N]        Advance one forward state (Backlog→Refine→Plan→Develop→Test→Review→Done)
   /task refine #N --size <S> --estimate <h> --priority <p> --reason <text>
                             Atomic Backlog→Refine: set Priority+Size+Estimate, write rationale marker, promote
+  /task plan #N             Refine→Plan (Sprint-Planning entry) — refuses on any other current state
+                            (NOT for backlog item generation — that is \`/task discover\`)
+  /task test #N             Develop→Test sandbox verification (runs Verification Commands in a worktree)
+  /task review #N           Test→Review (also accepts --duration-minutes / --words for agent-reported timing)
   /task pull-next <epic#>   JIT child-pull: promote the next refine-state child of <epic#> (by sequence) into Plan
   /task next [#N]           Alias of /task promote
   /task demote [#N]         Return to Develop (from Test or Review)

@@ -43,8 +43,8 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | Verb               | Enters stage           | Notes                                                                                                                         |
 | ------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine.                      |
-| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket; promote to an issue with `/task new <title>`. Legacy `/task plan` is a deprecated alias. |
-| `/task plan #N`    | Plan                   | (Reserved; currently use `/task promote` from Refine.)                                                                        |
+| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`. |
+| `/task plan #N`    | Plan (Sprint-Planning) | Promotes Refine → Plan (Sprint-Planning ceremony: deep-dive analysis, child story breakdown, estimate revision). Refuses on any current state other than Refine. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                               |
 | `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)   |
 | `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                             |
@@ -479,7 +479,7 @@ gh issue create \
   --assignee <your-login>
 ```
 
-Use `/task discover` in Claude Code to open an untracked discovery bucket; use `/task new <title>` to promote it to a real issue when the scope is clear. (Legacy `/task plan` still works with a deprecation warning.)
+Use `/task discover` in Claude Code to open an untracked discovery bucket (backlog item generation / pre-issue ideation); use `/task new <title>` to promote it to a real issue when the scope is clear. Do not confuse this with `/task plan #N`, which is the Sprint-Planning entry verb (Refine → Plan).
 
 ---
 

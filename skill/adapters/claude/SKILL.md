@@ -89,6 +89,15 @@ section entirely.
 
 **Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target (the `child-cannot-lead-epic` invariant). Children are **not** required to all reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead a WIP rule applies: at most one child advances out of Refine per epic at a time (`planRefineWipGate`), where a child parked on a dependency (`aitm-blocked-by` marker) does not count and a blocker may run ahead of the parked sibling it unblocks. No env override exists. See `templates/pickup-directive.md` ("Sequence rules") for the full rule.
 
+## Verb disambiguation — `/task plan` vs `/task discover`
+
+These two verbs target distinct workflows and are NOT interchangeable:
+
+- `/task plan #N` — **Sprint-Planning entry**: promotes `#N` from Refine → Plan. Mirrors `/task refine` / `/task test` / `/task review` (one verb per kanban state). Refuses on any current state other than Refine. Use this to start the Sprint-Planning ceremony (deep-dive analysis, child-story breakdown, estimate revision).
+- `/task discover` — **backlog-item generation / pre-issue ideation**: opens an untracked discovery bucket for shaping work that does not yet have a GitHub issue. Promote a bucket to a real issue with `/task new <title>`. No kanban transition occurs.
+
+A historical alias mapped `/task plan` → `/task discover` with a deprecation warning. That alias was removed in #299; the two verbs are now permanently distinct.
+
 ## Checkpoint Pause
 
 Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains an unaddressed question/instruction, halt and respond first — do not advance state. See the full rule in `templates/pickup-directive.md` ("Checkpoint Pause").

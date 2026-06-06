@@ -43,10 +43,7 @@ export async function verbDiscover(ctx) {
   console.log(`Started discovery bucket.${previousNote} Use "/task new [title]" to promote.`);
 }
 
-// Deprecated alias for `verbDiscover`. Remove in a later release.
-export async function verbPlan(ctx) {
-  process.stderr.write(
-    '[task-tracker] DEPRECATED: `/task plan` is now `/task discover`. The old alias will be removed in a future release.\n'
-  );
-  return verbDiscover(ctx);
-}
+// `verbPlan` was previously a deprecated alias here that delegated back to
+// `verbDiscover` with a stderr warning. Removed in #299 Item 2 — `/task plan`
+// is now a dedicated refine→plan promoter in `verbs/plan.mjs`. Discovery
+// (backlog-item generation / pre-issue ideation) is exclusively `/task discover`.
