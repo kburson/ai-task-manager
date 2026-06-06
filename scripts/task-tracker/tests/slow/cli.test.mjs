@@ -68,10 +68,19 @@ assert.match(r5.stdout, /discovery bucket/i);
 r5 = await pexec('node', [CLI, 'status'], { env });
 assert.match(r5.stdout, /discovery bucket/i);
 
-// Test 10b: legacy /task plan alias still works, emits deprecation warning
-r5 = await pexec('node', [CLI, 'plan'], { env });
-assert.match(r5.stdout, /discovery bucket/i);
-assert.match(r5.stderr, /DEPRECATED.*\/task plan/);
+// Test 10b: /task plan with no args prints usage and exits non-zero.
+// Post-#299 plan/discover split: `plan` is a real state-transition verb
+// that requires <issue#>; the deprecated `plan` → `discover` alias is
+// retired (see #322).
+let planNoArgsErr = null;
+try {
+  await pexec('node', [CLI, 'plan'], { env });
+} catch (err) {
+  planNoArgsErr = err;
+}
+assert.ok(planNoArgsErr, '/task plan (no args) must exit non-zero');
+assert.notEqual(planNoArgsErr.code, 0);
+assert.match(planNoArgsErr.stderr || '', /Usage: \/task plan/);
 
 // Test 11: /task new "Title" with network skip just clears bucket
 const envNew = { ...env, TT_FAKE_NEW_ISSUE: '#999' };
