@@ -31,8 +31,8 @@ for (const rel of ['templates/pickup-directive.md', '.ai-task-manager/pickup-dir
   );
   assert.match(
     body,
-    /standard DoD commands.*not.*duplicate|Do not duplicate.*standard DoD commands/is,
-    `${rel} keeps standard DoD commands out of issue-specific Verification Commands`
+    /standard or non-standard.*must appear.*Verification Commands/is,
+    `${rel} requires every command — standard or non-standard — in issue-specific Verification Commands (#326 / #231)`
   );
 }
 

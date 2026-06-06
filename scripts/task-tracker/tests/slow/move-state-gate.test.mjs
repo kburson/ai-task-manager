@@ -28,7 +28,14 @@ function deepDiveAdequate() {
     '## Deep-Dive Analysis (2026-05-08)',
     '',
   ];
-  for (let i = 0; i < 25; i++) lines.push(`line ${i + 1}`);
+  // The deep-dive substantive-chars floor was raised to 2000 in #325. Pad the
+  // fixture so the structural gate passes; per-test assertions still target the
+  // specific guard each case is verifying.
+  for (let i = 0; i < 60; i++) {
+    lines.push(
+      `line ${i + 1}: substantive analysis paragraph providing enough content to clear the substantive-chars floor; describes a tradeoff, references a file path, and notes a risk.`
+    );
+  }
   lines.push('', '<!-- ai-task-manager:fields:start -->', '<!-- ai-task-manager:fields:end -->');
   return lines.join('\n');
 }
