@@ -8,6 +8,7 @@ import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 
 export async function verbReview(ctx) {
   const {
@@ -439,8 +440,39 @@ export async function verbReview(ctx) {
     // parity with the close gate (single source of truth across both paths).
     // On any remaining unticked item: refuse, leave the board in Test, emit no
     // `review-approval` prompt.
+    // #315 — Auto-stamp the two derived Functional DoD keys (`acs`,
+    // `checkboxes`) before the parity scan, mirroring close.mjs. Without this
+    // pass, review refuses promotion on stories whose every AC + every
+    // non-self checkbox is complete but whose derived keys haven't been
+    // stamped yet (close.mjs would stamp them). Best-effort: any failure
+    // (network, version conflict) falls through to the scan with the stale
+    // body — the worst case is the pre-#315 behavior.
+    let scanBody = rawBody;
+    try {
+      const { stdout: _shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {
+        timeout: 5000,
+      });
+      const derivedHeadSha = (_shaOut || '').trim() || 'unknown';
+      const derivedResult = await deriveAndStampFunctionalDod({
+        issueNumber: issueNum,
+        repo: cfg.repo,
+        sha: derivedHeadSha,
+        ts: nowIso(),
+        deps: { pexec },
+      });
+      if (derivedResult && derivedResult.status === 'ok') {
+        const { stdout: refreshedStdout } = await pexec(
+          'gh',
+          ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        scanBody = String(refreshedStdout || scanBody);
+      }
+    } catch {
+      // best-effort — fall through to scan with the pre-derive body
+    }
     const { uncheckedPreCloseCheckboxes } = await import('../close-gate.mjs');
-    const stillUnticked = uncheckedPreCloseCheckboxes(lines.join('\n'));
+    const stillUnticked = uncheckedPreCloseCheckboxes(scanBody);
     if (stillUnticked.length > 0) {
       const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
       const _tsR0 = nowIso();
