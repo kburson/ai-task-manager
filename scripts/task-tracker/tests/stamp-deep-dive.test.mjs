@@ -9,9 +9,11 @@
 import { strict as assert } from 'node:assert';
 import {
   buildDeepDiveBlock,
+  DeepDiveSectionMissingError,
   findInsertOffset,
   insertDeepDiveBlock,
   stampDeepDive,
+  stampDeepDivePostedOnly,
 } from '../lib/deep-dive.mjs';
 import { planDeepDiveGate } from '../lib/deep-dive-gate.mjs';
 
@@ -198,6 +200,102 @@ const BODY_NO_DIRECTIVE = [
     () => stampDeepDive({ issueNumber: 1, repo: 'x', appendix: 123 }),
     /appendix must be a non-empty string/
   );
+}
+
+// #324 — stampDeepDivePostedOnly: writes ONLY the posted marker above an
+// existing `## Deep-Dive Analysis` heading.
+const BODY_WITH_SECTION_NO_MARKER = [
+  '## Scope',
+  'do thing',
+  '',
+  '## Deep-Dive Analysis',
+  '',
+  'undated section authored at refine.',
+  '',
+  '<!-- aitm-fields: {"schema":1,"values":{}} -->',
+  '',
+].join('\n');
+
+// stampDeepDivePostedOnly — section present, marker missing → inserts marker above heading
+{
+  const { fn, log } = fakeMutateFactory(BODY_WITH_SECTION_NO_MARKER);
+  const res = await stampDeepDivePostedOnly({
+    issueNumber: 999,
+    repo: 'fake/repo',
+    ts: TS,
+    deps: { mutateIssueBody: fn },
+  });
+  assert.equal(res.status, 'ok');
+  assert.ok(log.next.includes(`<!-- aitm-deep-dive-posted: ${TS} -->`), 'posted marker injected');
+  // No dated heading authored
+  assert.ok(!log.next.includes('Deep-Dive Analysis (2026'), 'no dated heading injected');
+  // Only one `## Deep-Dive Analysis` heading present (no duplication)
+  const headingMatches = log.next.match(/^##\s+Deep-Dive Analysis/gm) || [];
+  assert.equal(headingMatches.length, 1, `single heading; got ${headingMatches.length}`);
+  // Marker precedes heading
+  const mi = log.next.indexOf('aitm-deep-dive-posted');
+  const hi = log.next.indexOf('## Deep-Dive Analysis');
+  assert.ok(mi !== -1 && mi < hi, 'marker above heading');
+}
+
+// stampDeepDivePostedOnly — diff is a single marker insertion
+{
+  const { fn, log } = fakeMutateFactory(BODY_WITH_SECTION_NO_MARKER);
+  await stampDeepDivePostedOnly({
+    issueNumber: 999,
+    repo: 'fake/repo',
+    ts: TS,
+    deps: { mutateIssueBody: fn },
+  });
+  // Removing the inserted marker (plus the two trailing newlines) from `next`
+  // must reproduce `base` byte-for-byte. Proves no other bytes changed.
+  const insertion = `<!-- aitm-deep-dive-posted: ${TS} -->\n\n`;
+  assert.ok(log.next.includes(insertion), 'insertion present');
+  assert.equal(
+    log.next.replace(insertion, ''),
+    log.base,
+    'removing the single insertion reproduces base'
+  );
+}
+
+// stampDeepDivePostedOnly — idempotent: marker already present → no-op
+{
+  const seeded = BODY_WITH_SECTION_NO_MARKER.replace(
+    '## Deep-Dive Analysis',
+    `<!-- aitm-deep-dive-posted: 2026-06-04T00:00:00Z -->\n\n## Deep-Dive Analysis`
+  );
+  const { fn, log } = fakeMutateFactory(seeded);
+  const res = await stampDeepDivePostedOnly({
+    issueNumber: 999,
+    repo: 'fake/repo',
+    ts: TS,
+    deps: { mutateIssueBody: fn },
+  });
+  assert.equal(res.status, 'no-op');
+  assert.equal(log.next, log.base, 'byte-identical');
+}
+
+// stampDeepDivePostedOnly — refuses (throws) when body has no section
+{
+  const { fn } = fakeMutateFactory(BODY_NO_DIRECTIVE);
+  await assert.rejects(
+    () =>
+      stampDeepDivePostedOnly({
+        issueNumber: 999,
+        repo: 'fake/repo',
+        ts: TS,
+        deps: { mutateIssueBody: fn },
+      }),
+    (err) =>
+      err instanceof DeepDiveSectionMissingError &&
+      /no `## Deep-Dive Analysis` heading/.test(err.message)
+  );
+}
+
+// stampDeepDivePostedOnly — argument validation
+{
+  await assert.rejects(() => stampDeepDivePostedOnly({ repo: 'x' }), /issueNumber is required/);
+  await assert.rejects(() => stampDeepDivePostedOnly({ issueNumber: 1 }), /repo is required/);
 }
 
 console.log('stamp-deep-dive.test.mjs — all assertions passed');

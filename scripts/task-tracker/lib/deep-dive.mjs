@@ -30,6 +30,14 @@ import { mutateIssueBody } from './issue-body-mutate.mjs';
 const POSTED_RE = /<!--\s*aitm-deep-dive-posted:\s*[^>]*?-->/i;
 const PICKUP_HEADING_RE = /^##\s+Pickup Directive\b.*$/im;
 const FIELDS_TRAILER_RE = /<!--\s*aitm-fields:/i;
+const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b.*$/im;
+
+export class DeepDiveSectionMissingError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'DeepDiveSectionMissingError';
+  }
+}
 
 export function buildDeepDiveBlock({ ts, appendix, date } = {}) {
   if (!ts) throw new Error('buildDeepDiveBlock: ts is required');
@@ -95,6 +103,45 @@ export async function stampDeepDive({ issueNumber, repo, appendix, ts, deps = {}
     mutate: (base) => {
       if (POSTED_RE.test(base)) return base;
       return insertDeepDiveBlock(base, block);
+    },
+  });
+}
+
+// #324 — marker-only variant of `stampDeepDive`.
+//
+// `stampDeepDive` always authors its own dated `## Deep-Dive Analysis (yyyy-mm-dd)`
+// heading. When a body already carries an undated `## Deep-Dive Analysis` section
+// written at refine-time, calling `stampDeepDive` duplicates the heading. This
+// helper closes that gap: it writes ONLY the `aitm-deep-dive-posted` marker,
+// immediately above the existing heading, via a single `mutateIssueBody`
+// transaction.
+//
+// - Refuses with `DeepDiveSectionMissingError` if the body has no
+//   `## Deep-Dive Analysis` heading (caller must use `stampDeepDive` instead).
+// - Returns `{ status: 'no-op' }` if the posted marker already exists
+//   (delegated to `mutateIssueBody`'s `base === next` short-circuit).
+// - Does not author prose, headings, or the `aitm-deep-dive-complete` marker.
+export async function stampDeepDivePostedOnly({ issueNumber, repo, ts, deps = {} } = {}) {
+  if (issueNumber == null) {
+    throw new Error('stampDeepDivePostedOnly: issueNumber is required');
+  }
+  if (!repo) throw new Error('stampDeepDivePostedOnly: repo is required');
+  const stamp = ts || new Date().toISOString();
+  const marker = `<!-- aitm-deep-dive-posted: ${stamp} -->`;
+  const mutateIssueBodyFn = deps.mutateIssueBody || mutateIssueBody;
+  return mutateIssueBodyFn({
+    issueNumber,
+    repo,
+    deps,
+    mutate: (base) => {
+      if (POSTED_RE.test(base)) return base;
+      const match = DEEP_DIVE_HEADING_RE.exec(base);
+      if (!match) {
+        throw new DeepDiveSectionMissingError(
+          `stampDeepDivePostedOnly: issue #${issueNumber} body has no \`## Deep-Dive Analysis\` heading — use \`stampDeepDive\` to author the section`
+        );
+      }
+      return `${base.slice(0, match.index)}${marker}\n\n${base.slice(match.index)}`;
     },
   });
 }
