@@ -10,9 +10,15 @@
 import { strict as assert } from 'node:assert';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
 
+// #325 — body-gates `deep-dive-complete` rule changed from
+// `minNonEmptyLines: 20` to `minSectionChars: 2000`. Each generated line
+// carries ~100 chars of substantive prose so 25 lines clears the threshold
+// (~2500 chars) and 5 lines stays well below it (~500 chars).
 function deepDiveSection(lines = 25) {
   const body = ['## Deep-Dive Analysis (2026-05-08)', ''];
-  for (let i = 0; i < lines; i++) body.push(`line ${i + 1} of analysis content`);
+  const filler =
+    'of substantive analysis content describing how the proposed change interacts with the surrounding subsystem and its callers';
+  for (let i = 0; i < lines; i++) body.push(`line ${i + 1} ${filler}.`);
   return body.join('\n');
 }
 
@@ -78,7 +84,8 @@ function deepDiveSection(lines = 25) {
   );
 }
 
-// 4. deep-dive-complete marker with section below minimum lines refuses
+// 4. deep-dive-complete marker with section below minimum char threshold refuses
+//    (#325 — was `line`, now `char(s) of substantive content`)
 {
   const body = [
     '## Acceptance Criteria',
@@ -90,7 +97,7 @@ function deepDiveSection(lines = 25) {
   assert.equal(r.ok, false);
   const dd = r.refusedRules.find((x) => x.rule === 'deep-dive-complete');
   assert.ok(dd, 'expected deep-dive-complete refusal');
-  assert.match(dd.reason, /line/i);
+  assert.match(dd.reason, /char/i);
 }
 
 // 5. multi-rule refusal lists every failing rule
@@ -260,6 +267,46 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, true, `expected ok, refused: ${JSON.stringify(r.refusedRules)}`);
+}
+
+// 14. deep-dive-complete: size-bucketed floor — XS body with ~1400 chars passes
+//     because XS floor is 1200, but the same body fails when size=M (floor 2400).
+{
+  // ~1400-char deep-dive section. deepDiveSection(13) → ~1400 chars (13 * ~108).
+  const ddBody = deepDiveSection(13);
+  const xsBody = [
+    '## Pickup Directive',
+    '',
+    ddBody,
+    '',
+    '<!-- aitm-deep-dive-complete: 2026-06-06T00:00:00Z -->',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
+  ].join('\n');
+  const rXs = validateBody(xsBody, { gates: DEFAULT_GATES });
+  assert.equal(rXs.ok, true, `XS should pass at ~1400 chars: ${JSON.stringify(rXs.refusedRules)}`);
+
+  const mBody = xsBody.replace('"size":"XS"', '"size":"M"');
+  const rM = validateBody(mBody, { gates: DEFAULT_GATES });
+  assert.equal(rM.ok, false, 'M should refuse at ~1400 chars (floor 2400)');
+  const dd = rM.refusedRules.find((x) => x.rule === 'deep-dive-complete');
+  assert.ok(dd, 'expected deep-dive-complete refusal under M');
+  assert.match(dd.reason, /minimum 2400/);
+}
+
+// 15. deep-dive-complete: missing size falls back to 2000 floor
+{
+  const body = [
+    '## Pickup Directive',
+    '',
+    deepDiveSection(13),
+    '',
+    '<!-- aitm-deep-dive-complete: 2026-06-06T00:00:00Z -->',
+    '<!-- aitm-fields: {"schema":1,"values":{}} -->',
+  ].join('\n');
+  const r = validateBody(body, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, false);
+  const dd = r.refusedRules.find((x) => x.rule === 'deep-dive-complete');
+  assert.match(dd.reason, /minimum 2000/);
 }
 
 console.log('body-gates.test.mjs: all passed');

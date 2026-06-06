@@ -126,12 +126,19 @@ export async function verbCheck(ctx) {
       console.error(refusal);
       process.exit(1);
     }
-    const { markDeepDiveComplete } = await import('../lib/markers.mjs');
-    const res = await markDeepDiveComplete({ issueNumber: issueNum, cfg });
-    if (!res.changed) {
+    // #325 — route through consolidated ensureDeepDive resource.
+    const { ensureDeepDive } = await import('../lib/deep-dive.mjs');
+    const ts = new Date().toISOString();
+    const res = await ensureDeepDive({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      complete: true,
+      ts,
+    });
+    if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${s.active}`);
     } else {
-      console.log(`[task-tracker] ✓ Marked deep-dive-complete on ${s.active} at ${res.ts}`);
+      console.log(`[task-tracker] ✓ Marked deep-dive-complete on ${s.active} at ${ts}`);
     }
     return;
   }
@@ -246,12 +253,19 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
   }
 
   for (let i = 0; i < ddLabels.length; i++) {
-    const { markDeepDiveComplete } = await import('../lib/markers.mjs');
-    const res = await markDeepDiveComplete({ issueNumber: issueNum, cfg });
-    if (!res.changed) {
+    // #325 — route through consolidated ensureDeepDive resource.
+    const { ensureDeepDive } = await import('../lib/deep-dive.mjs');
+    const ts = new Date().toISOString();
+    const res = await ensureDeepDive({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      complete: true,
+      ts,
+    });
+    if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${active}`);
     } else {
-      console.log(`[task-tracker] ✓ Marked deep-dive-complete on ${active} at ${res.ts}`);
+      console.log(`[task-tracker] ✓ Marked deep-dive-complete on ${active} at ${ts}`);
     }
   }
 

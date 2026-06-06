@@ -29,6 +29,7 @@ import {
   hasDeepDiveHeading,
   insertDeepDiveCompleteMarker,
 } from './lib/markers.mjs';
+import { insertDeepDivePostedMarker, readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
@@ -83,6 +84,20 @@ export function healIssue({
   ) {
     workingBody = insertDeepDiveCompleteMarker(workingBody, deepDiveBackfillTs);
     result.action.push('backfill-deep-dive-marker');
+  }
+
+  // #325 — symmetric backfill for the `aitm-deep-dive-posted` marker. Legacy
+  // bodies with a `## Deep-Dive Analysis` heading but no posted marker get the
+  // marker stamped at the same backfill ts so `planDeepDiveGate` clears.
+  if (deepDiveBackfillTs) {
+    const sig = readDeepDiveSignals(workingBody);
+    if (sig.hasHeading && !sig.hasPosted) {
+      const next = insertDeepDivePostedMarker(workingBody, deepDiveBackfillTs);
+      if (next !== workingBody) {
+        workingBody = next;
+        result.action.push('backfill-deep-dive-posted');
+      }
+    }
   }
 
   // 1b. Vestigial AC bullet strip (marker-gated; never strips without a marker).

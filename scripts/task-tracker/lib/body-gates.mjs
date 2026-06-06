@@ -7,6 +7,24 @@
 // validateBody(body, { gates }) → { ok: true } | { ok: false, refusedRules: [{ rule, reason }] }
 
 import { LIFECYCLE_LABEL_SET } from './lifecycle-dod.mjs';
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
+
+// #325 — size-bucketed floors for the `deep-dive-complete` rule. Calibrated
+// to match real prose density: XS helpers (1hr) produce ~1416 chars (#324
+// observed); S sub-issues ~1800-2200; M/L/XL epics 2400+.
+export const DEEP_DIVE_SIZE_FLOORS = { XS: 1200, S: 1800, M: 2400, L: 2400, XL: 2400 };
+const DEEP_DIVE_DEFAULT_FLOOR = 2000;
+
+function pickSizeFloor(body, floors) {
+  try {
+    const parsed = parseIssueFieldDb(body);
+    const size = parsed?.values?.size;
+    if (size && floors[size] != null) return floors[size];
+  } catch {
+    /* fall through */
+  }
+  return DEEP_DIVE_DEFAULT_FLOOR;
+}
 
 const SECTION_RULE = 'section';
 const ALL_CHECKED_RULE = 'all-checked-under';
@@ -21,11 +39,16 @@ export const DEFAULT_GATES = [
     mustComeBefore: /^[ \t]*<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/im,
   },
   {
+    // #325 — migrated from `minNonEmptyLines: 20` (eyeballed, no calibration)
+    // to `minSectionChars: 2000` (empirical floor of 2339 across 15 closed
+    // sub-issues of #259). HTML comments are excluded from the measurement.
     name: 'deep-dive-complete',
     kind: SECTION_RULE,
     trigger: /<!--\s*aitm-deep-dive-complete:\s*[^>]+-->/i,
     requireSection: /^##\s+Deep[- ]Dive Analysis\b/im,
-    minNonEmptyLines: 20,
+    // Size-bucketed floors: XS=1200, S=1800, M/L/XL=2400. Fallback 2000 when
+    // size is absent. Set via `sizeFloors` so the rule object stays declarative.
+    sizeFloors: DEEP_DIVE_SIZE_FLOORS,
   },
   {
     name: 'dependency-map',
@@ -55,6 +78,8 @@ function nextSectionEnd(lines, fromIdx) {
   return lines.length;
 }
 
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
+
 function evaluateSectionRule(body, lines, rule) {
   if (!rule.trigger.test(body)) return null; // gate doesn't fire
   const headingIdx = findHeadingIndex(lines, rule.requireSection);
@@ -65,6 +90,22 @@ function evaluateSectionRule(body, lines, rule) {
     };
   }
   const end = nextSectionEnd(lines, headingIdx);
+  // #325 — chars-based threshold (HTML comments stripped) preferred over
+  // line-count when `minSectionChars` is configured. Line-count retained
+  // for `dependency-map` and other small-section rules.
+  if (rule.minSectionChars != null || rule.sizeFloors != null) {
+    const sectionText = lines.slice(headingIdx + 1, end).join('\n');
+    const chars = sectionText.replace(HTML_COMMENT_RE, '').trim().length;
+    const floor =
+      rule.sizeFloors != null ? pickSizeFloor(body, rule.sizeFloors) : rule.minSectionChars;
+    if (chars < floor) {
+      return {
+        rule: rule.name,
+        reason: `section has ${chars} char(s) of substantive content; minimum ${floor}`,
+      };
+    }
+    return null;
+  }
   const nonEmpty = lines.slice(headingIdx + 1, end).filter((l) => l.trim().length > 0).length;
   if (nonEmpty < rule.minNonEmptyLines) {
     return {

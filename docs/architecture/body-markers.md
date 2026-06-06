@@ -31,18 +31,21 @@ promotion, so a draft deep dive cannot accidentally pass the gate.
 
 - **Regex (reader):** `/<!--\s*aitm-deep-dive-posted:\s*[^>]*?-->/i` — defined
   in `scripts/task-tracker/lib/deep-dive-gate.mjs` (`POSTED_RE`).
-- **Writer:** `stampDeepDive` (`scripts/task-tracker/lib/deep-dive.mjs`). One
+- **Writer:** `ensureDeepDive` (`scripts/task-tracker/lib/deep-dive.mjs`). One
   transactional `mutateIssueBody` call that:
   1. Injects the marker immediately above a new `## Deep-Dive Analysis
-(<yyyy-mm-dd>)` heading.
-  2. Splices the heading + appendix prose AFTER the `## Pickup Directive`
+(<yyyy-mm-dd>)` heading when `prose` is supplied; otherwise injects the
+     marker above an existing heading. Refuses with
+     `DeepDiveSectionMissingError` if `posted: true` is requested without
+     `prose` AND the body has no heading.
+  2. Splices the heading + prose AFTER the `## Pickup Directive`
      block and its trailing `---` separator (fallback: before the
      `aitm-fields` trailer).
-  3. Returns `{ status: 'no-op' }` if the marker already exists (idempotent
-     — re-running with a different `appendix` does NOT overwrite).
-- **Reader:** `planDeepDiveGate({ body })` (`lib/deep-dive-gate.mjs`).
+  3. Returns `{ status: 'no-op' }` if the marker already exists (idempotent).
+- **Reader:** `planDeepDiveGate({ body })` (`lib/deep-dive-gate.mjs`),
+  delegating to `readDeepDiveSignals` in `lib/deep-dive.mjs`.
 - **Gate failure code:** `plan-develop-deep-dive-posted-marker-missing`. The
-  blocker string names `stampDeepDive (scripts/task-tracker/lib/deep-dive.mjs)`
+  blocker string names `ensureDeepDive (scripts/task-tracker/lib/deep-dive.mjs)`
   as the canonical remediation.
 
 ### `aitm-deep-dive-complete`
@@ -68,8 +71,8 @@ sail through the promote because no gate distinguished draft from final.
 
 Splitting the signal:
 
-- **`posted`** is mechanical — stamped by the tool that appends the appendix
-  (`stampDeepDive`). Cannot be forgotten while the appendix lands.
+- **`posted`** is mechanical — stamped by the tool that appends the prose
+  (`ensureDeepDive`). Cannot be forgotten while the appendix lands.
 - **`complete`** is intentional — stamped by an explicit `/task check`
   invocation. Forces a beat where the author rereads what they just wrote.
 
@@ -81,11 +84,11 @@ The visible H2/H3 heading is the third signal so a stripped-down body
 ```bash
 # 1. Author the deep dive prose, then stamp posted + heading in one call.
 node -e "
-  import('./scripts/task-tracker/lib/deep-dive.mjs').then(({ stampDeepDive }) =>
-    stampDeepDive({
+  import('./scripts/task-tracker/lib/deep-dive.mjs').then(({ ensureDeepDive }) =>
+    ensureDeepDive({
       issueNumber: 294,
       repo: 'kburson/ai-task-manager',
-      appendix: 'Root cause: ...\\n### Files to edit\\n...\\n### Risks\\n...',
+      prose: 'Root cause: ...\\n### Files to edit\\n...\\n### Risks\\n...',
     }).then(console.log)
   );
 "
@@ -100,13 +103,13 @@ node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
 
 ## Failure modes the gate catches
 
-| Body state                                      | Refusal code                                                         | Fix                                                                                    |
-| ----------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Neither marker, no heading                      | All three blockers fire simultaneously.                              | Call `stampDeepDive`, then `/task check`.                                              |
-| Posted marker only (no heading)                 | `section-missing`                                                    | Heading must be `## Deep-Dive Analysis` or `### …`; `stampDeepDive` writes it for you. |
-| Heading only (no posted marker)                 | `posted-marker-missing`                                              | Use `stampDeepDive` — do not hand-write the marker.                                    |
-| Posted + heading, no `/task check` run          | `complete-marker-missing`                                            | `/task check "Deep dive complete"`.                                                    |
-| Legacy `- [x] Deep dive complete` checkbox only | `complete-marker-missing` + `gh-edit-guard` refusal on future writes | Remove the checkbox; rely on the marker.                                               |
+| Body state                                      | Refusal code                                                         | Fix                                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Neither marker, no heading                      | All three blockers fire simultaneously.                              | Call `ensureDeepDive({ prose, complete: true })`, then `/task check`.                   |
+| Posted marker only (no heading)                 | `section-missing`                                                    | Heading must be `## Deep-Dive Analysis` or `### …`; `ensureDeepDive` writes it for you. |
+| Heading only (no posted marker)                 | `posted-marker-missing`                                              | Use `ensureDeepDive({ posted: true })` — do not hand-write the marker.                  |
+| Posted + heading, no `/task check` run          | `complete-marker-missing`                                            | `/task check "Deep dive complete"`.                                                     |
+| Legacy `- [x] Deep dive complete` checkbox only | `complete-marker-missing` + `gh-edit-guard` refusal on future writes | Remove the checkbox; rely on the marker.                                                |
 
 ## Related
 
@@ -115,6 +118,7 @@ node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
 - [`state-machine.md`](./state-machine.md) — entry markers per state, audit
   trail.
 - `scripts/task-tracker/lib/deep-dive-gate.mjs` — the three-signal gate.
-- `scripts/task-tracker/lib/deep-dive.mjs` — the `stampDeepDive` writer.
+- `scripts/task-tracker/lib/deep-dive.mjs` — the `ensureDeepDive` writer and
+  `readDeepDiveSignals` reader.
 - `scripts/task-tracker/verbs/check.mjs` — the `aitm-deep-dive-complete`
   writer.

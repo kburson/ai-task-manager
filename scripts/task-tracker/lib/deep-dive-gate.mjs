@@ -14,40 +14,46 @@
 // `gh-edit-guard` refuses bodies that reintroduce it; the marker is the sole
 // source of truth.
 
-const POSTED_RE = /<!--\s*aitm-deep-dive-posted:\s*[^>]*?-->/i;
-const COMPLETE_RE = /<!--\s*aitm-deep-dive-complete:\s*[^>]*?-->/i;
-const SECTION_RE = /^#{2,3}\s+Deep-Dive Analysis\b/im;
+// #325 — single source of truth for signal detection now lives in
+// `lib/deep-dive.mjs::readDeepDiveSignals`. This module composes the gate
+// blocker messages on top of that shape.
 
+import { readDeepDiveSignals } from './deep-dive.mjs';
+
+// Legacy back-compat predicate wrappers. New callers should use
+// `readDeepDiveSignals` directly.
 export function hasDeepDivePostedMarker(body = '') {
-  return POSTED_RE.test(body);
+  return readDeepDiveSignals(body).hasPosted;
 }
 
 export function hasDeepDiveCompletedMarker(body = '') {
-  return COMPLETE_RE.test(body);
+  return readDeepDiveSignals(body).hasComplete;
 }
 
 // Back-compat alias: prior callers asked for "both markers" in one shot.
 export function hasDeepDiveMarkers(body = '') {
-  return hasDeepDivePostedMarker(body) && hasDeepDiveCompletedMarker(body);
+  const s = readDeepDiveSignals(body);
+  return s.hasPosted && s.hasComplete;
 }
 
 export function hasDeepDiveSection(body = '') {
-  return SECTION_RE.test(body);
+  return readDeepDiveSignals(body).hasHeading;
 }
 
 export function planDeepDiveGate({ body = '' } = {}) {
+  const signals = readDeepDiveSignals(body);
   const blockers = [];
-  if (!hasDeepDivePostedMarker(body)) {
+  if (!signals.hasPosted) {
     blockers.push(
-      'plan-develop-deep-dive-posted-marker-missing: body must contain `<!-- aitm-deep-dive-posted: ... -->` — call `stampDeepDive (scripts/task-tracker/lib/deep-dive.mjs)` to append the appendix and stamp the marker in one atomic write'
+      'plan-develop-deep-dive-posted-marker-missing: body must contain `<!-- aitm-deep-dive-posted: ... -->` — call `ensureDeepDive (scripts/task-tracker/lib/deep-dive.mjs)` with `posted: true` (and optional `prose`) to stamp the marker in one atomic write'
     );
   }
-  if (!hasDeepDiveSection(body)) {
+  if (!signals.hasHeading) {
     blockers.push(
-      'plan-develop-deep-dive-section-missing: body must contain a `## Deep-Dive Analysis` or `### Deep-Dive Analysis` heading — author the section before promoting to Develop'
+      'plan-develop-deep-dive-section-missing: body must contain a `## Deep-Dive Analysis` heading — author the section before promoting to Develop'
     );
   }
-  if (!hasDeepDiveCompletedMarker(body)) {
+  if (!signals.hasComplete) {
     blockers.push(
       'plan-develop-deep-dive-complete-marker-missing: body must contain `<!-- aitm-deep-dive-complete: ... -->` — run `/task check "Deep dive complete"` to stamp the marker'
     );
