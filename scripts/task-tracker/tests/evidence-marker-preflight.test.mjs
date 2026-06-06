@@ -87,4 +87,34 @@ const baseDeps = {
   assert.equal(r.ok, true, r.reasons.join('\n'));
 }
 
+// #326 regression: standard DoD command (e.g. `npm test`) named in an AC's
+// aitm-verified-by marker but ABSENT from ### Verification Commands must be
+// refused. The directive used to exempt standard DoD commands from
+// Verification Commands ("do not duplicate"); #326 closed that exemption so
+// the sandbox actually runs every named command.
+{
+  const r = await runReviewPreflight({
+    issueNumber: '326-regression',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      ...baseDeps,
+      getIssueBody: async () =>
+        [
+          '## Acceptance Criteria',
+          '- [ ] Standard DoD command may prove an AC <!-- aitm-verified-by: `npm test` -->',
+          '',
+          '### Verification Commands',
+          '- [ ] `node scripts/task-tracker/tests/other.test.mjs`',
+        ].join('\n'),
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(
+    r.reasons.join('\n'),
+    /evidence command missing from Verification Commands: npm test/,
+    '#326: standard DoD commands named in AC evidence markers must appear in Verification Commands'
+  );
+}
+
 console.log('evidence-marker-preflight.test.mjs: all passed');
