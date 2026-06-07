@@ -26,8 +26,8 @@ plus the runtime invariants that make the recursion safe.
      more related defects surface. Filing them all as flat siblings of `#R`
      scatters the planning context. Filing them under a sub-epic `#S` keeps
      the family addressable, lets you sequence them as a unit, and gives the
-     defects their own roll-up surface. Example: `#259 → #340 → {#333, #335,
-#336, #337, #338, #339}`.
+     defects their own roll-up surface. Example:
+     `#259 → #340 → {#333, #335, #336, #337, #338, #339}`.
    - **Scope-of-scope pattern.** The root epic has multiple distinct sub-
      deliverables, each worth its own planning ceremony. Each becomes a
      sub-epic. Example: `#259 → #328 → {#324, #325, #326, #327, #331}` —
