@@ -22,13 +22,12 @@ plus the runtime invariants that make the recursion safe.
 3. **Is the work a coherent _family_ of stories that emerged mid-epic and
    deserves its own planning surface?** → Nested sub-epic. Two patterns
    qualify:
-
    - **Defect-chain pattern.** Mid-implementation of root epic `#R`, three or
      more related defects surface. Filing them all as flat siblings of `#R`
      scatters the planning context. Filing them under a sub-epic `#S` keeps
      the family addressable, lets you sequence them as a unit, and gives the
      defects their own roll-up surface. Example: `#259 → #340 → {#333, #335,
-     #336, #337, #338, #339}`.
+#336, #337, #338, #339}`.
    - **Scope-of-scope pattern.** The root epic has multiple distinct sub-
      deliverables, each worth its own planning ceremony. Each becomes a
      sub-epic. Example: `#259 → #328 → {#324, #325, #326, #327, #331}` —
@@ -45,14 +44,14 @@ Every gate the task-tracker enforces walks **exactly one parent/child edge**,
 and that is sufficient for transitive correctness. The recursion happens
 through normal verb flow because each level applies the same rule.
 
-| Gate | Walk | Why one level is enough |
-| --- | --- | --- |
-| `planEpicDevelopChildrenGate` (plan→develop) | immediate children | Sub-epic only reaches `refine` if its own grandchildren admit it; root sees sub-epic as a normal child. |
-| `child-cannot-lead-epic` (every forward promotion) | immediate parent | Sub-epic was admitted past `develop` only because root was at least `develop`. The chain cascades. |
-| `planRefineWipGate` (refine→plan) | immediate parent + siblings | WIP is per-sub-epic; throttling a grandchild against an unrelated root sibling would be wrong. |
-| `childCreationAllowedAtEpicState` (`--shape sub-issue`) | immediate parent | A sub-epic may grow children at any pre-`done` state; root state is irrelevant at the point of creation. |
-| Close-block (`/task close`) | immediate children | Sub-epic cannot be in `review`/`done` while a grandchild is open (its own review/close gate refuses). |
-| Review-block (`/task review` for epics) | immediate children | Same shape as close-block at one level lower. |
+| Gate                                                    | Walk                        | Why one level is enough                                                                                  |
+| ------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `planEpicDevelopChildrenGate` (plan→develop)            | immediate children          | Sub-epic only reaches `refine` if its own grandchildren admit it; root sees sub-epic as a normal child.  |
+| `child-cannot-lead-epic` (every forward promotion)      | immediate parent            | Sub-epic was admitted past `develop` only because root was at least `develop`. The chain cascades.       |
+| `planRefineWipGate` (refine→plan)                       | immediate parent + siblings | WIP is per-sub-epic; throttling a grandchild against an unrelated root sibling would be wrong.           |
+| `childCreationAllowedAtEpicState` (`--shape sub-issue`) | immediate parent            | A sub-epic may grow children at any pre-`done` state; root state is irrelevant at the point of creation. |
+| Close-block (`/task close`)                             | immediate children          | Sub-epic cannot be in `review`/`done` while a grandchild is open (its own review/close gate refuses).    |
+| Review-block (`/task review` for epics)                 | immediate children          | Same shape as close-block at one level lower.                                                            |
 
 If you find yourself wanting a guard to walk to the root, stop and re-read this
 table. The per-level recursion is the design.

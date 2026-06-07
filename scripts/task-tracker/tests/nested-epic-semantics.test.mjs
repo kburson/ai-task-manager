@@ -181,6 +181,10 @@ test('planRefineWipGate: grandchild promotion fetches parent via fetchParentIssu
     },
   });
   assert.equal(parentQueriedFor, 210);
-  assert.deepEqual(siblingsQueriedFor, [200], 'WIP gate must walk exactly one edge to the immediate parent');
+  assert.deepEqual(
+    siblingsQueriedFor,
+    [200],
+    'WIP gate must walk exactly one edge to the immediate parent'
+  );
   assert.equal(result.ok, true);
 });
