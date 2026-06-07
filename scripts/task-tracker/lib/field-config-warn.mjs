@@ -16,6 +16,10 @@ const warned = new Set();
  * Project-field display names keyed by the cfg.field* key. Used to render
  * a human-readable WARN. Unknown keys fall back to the cfg key itself.
  */
+// NOTE: Keys here must match the canonical cfg keys produced by
+// `scripts/gh/init-project-config.sh` and accepted by `config.mjs`
+// `DEFAULTS`/`TYPES`. Keys absent from `DEFAULTS` get silently stripped on
+// `loadConfig()` and will appear "missing" forever — see #342.
 const DISPLAY_NAMES = {
   fieldBlockedBy: 'Blocked By',
   fieldStartTime: 'Start Time',
@@ -23,10 +27,10 @@ const DISPLAY_NAMES = {
   fieldSessionTime: 'Session Time',
   fieldReviewTime: 'Review Time',
   fieldEstimate: 'Estimate',
-  fieldSize: 'Size',
-  fieldPriority: 'Priority',
   fieldSequence: 'Sequence',
-  fieldKanban: 'Status',
+  sizeFieldId: 'Size',
+  priorityFieldId: 'Priority',
+  kanbanFieldId: 'Status',
 };
 
 /**

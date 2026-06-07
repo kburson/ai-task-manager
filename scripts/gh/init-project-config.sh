@@ -1279,6 +1279,8 @@ while IFS= read -r FIELD_DEF <&3; do
       sequence) FIELD_SEQUENCE="$RESULT_FIELD_ID" ;;
       startTime) FIELD_START_TIME="$RESULT_FIELD_ID" ;;
       blockedBy) FIELD_BLOCKED_BY="$RESULT_FIELD_ID" ;;
+      reviewTime) FIELD_REVIEW_TIME="$RESULT_FIELD_ID" ;;
+      planTime) FIELD_PLAN_TIME="$RESULT_FIELD_ID" ;;
     esac
   fi
   echo ""
@@ -1312,6 +1314,8 @@ FIELD_SESSION_TIME="$FIELD_SESSION_TIME" \
 FIELD_SEQUENCE="$FIELD_SEQUENCE" \
 FIELD_START_TIME="$FIELD_START_TIME" \
 FIELD_BLOCKED_BY="$FIELD_BLOCKED_BY" \
+FIELD_REVIEW_TIME="$FIELD_REVIEW_TIME" \
+FIELD_PLAN_TIME="$FIELD_PLAN_TIME" \
 FIELD_IDS_JSON="$FIELD_IDS_JSON" \
 node -e "
 const fs = require('fs');
@@ -1328,13 +1332,9 @@ const updates = {
   kanbanFieldId:          process.env.KANBAN_FIELD_ID,
   kanbanOptionBacklog:     process.env.OPTION_BACKLOG,
   kanbanOptionRefine:      process.env.OPTION_REFINE,
-  kanbanOptionRefine:       process.env.OPTION_REFINE,
   kanbanOptionPlan:        process.env.OPTION_PLAN,
-  kanbanOptionPlan:     process.env.OPTION_PLAN,
   kanbanOptionDevelop:     process.env.OPTION_DEVELOP,
-  kanbanOptionDevelop: process.env.OPTION_DEVELOP,
   kanbanOptionTest:        process.env.OPTION_TEST,
-  kanbanOptionTest:    process.env.OPTION_TEST,
   kanbanOptionReview:      process.env.OPTION_REVIEW,
   kanbanOptionDone:        process.env.OPTION_DONE,
   priorityFieldId:        process.env.PRIORITY_FIELD_ID,
@@ -1352,6 +1352,8 @@ const optional = {
   sequenceFieldId:        process.env.FIELD_SEQUENCE,
   fieldStartTime:         process.env.FIELD_START_TIME,
   fieldBlockedBy:         process.env.FIELD_BLOCKED_BY,
+  fieldReviewTime:        process.env.FIELD_REVIEW_TIME,
+  fieldPlanTime:          process.env.FIELD_PLAN_TIME,
 };
 for (const [k, v] of Object.entries(optional)) { if (v) updates[k] = v; }
 try {

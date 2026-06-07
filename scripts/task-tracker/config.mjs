@@ -36,6 +36,8 @@ export const DEFAULTS = {
   fieldSequence: '',
   fieldStartTime: '',
   fieldBlockedBy: '',
+  fieldReviewTime: '',
+  fieldPlanTime: '',
   // Priority field + option IDs (set by init script)
   priorityFieldId: '',
   priorityOptionP0: '',
@@ -103,6 +105,8 @@ const TYPES = {
   fieldSequence: 'string',
   fieldStartTime: 'string',
   fieldBlockedBy: 'string',
+  fieldReviewTime: 'string',
+  fieldPlanTime: 'string',
   priorityFieldId: 'string',
   priorityOptionP0: 'string',
   priorityOptionP1: 'string',
@@ -246,6 +250,8 @@ export function loadConfig(paths = {}) {
     merged.sizeFieldId ||= merged.fieldIds.size || '';
     merged.fieldStartTime ||= merged.fieldIds.startTime || '';
     merged.fieldBlockedBy ||= merged.fieldIds.blockedBy || '';
+    merged.fieldReviewTime ||= merged.fieldIds.reviewTime || '';
+    merged.fieldPlanTime ||= merged.fieldIds.planTime || '';
   }
   merged.preferences = mergePreferences(project.preferences);
   merged._sources = sources;

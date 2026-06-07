@@ -111,6 +111,54 @@ test('selfCheckFieldConfig: deduped per process', () => {
   assert.equal(lines.length, 1);
 });
 
+test('#342 — every WELL_KNOWN_FIELD_KEY is enumerated in config.mjs DEFAULTS', async () => {
+  const { DEFAULTS } = await import('../config.mjs');
+  const stripped = WELL_KNOWN_FIELD_KEYS.filter((k) => !(k in DEFAULTS));
+  assert.deepEqual(
+    stripped,
+    [],
+    `WELL_KNOWN_FIELD_KEYS contains keys not in DEFAULTS — loadConfig() will silently strip them: ${stripped.join(', ')}`
+  );
+});
+
+test('#342 — fresh-init cfg fixture populates every WELL_KNOWN_FIELD_KEY via fieldIds auto-mirror', async () => {
+  // Simulates the JSON shape produced by `scripts/gh/init-project-config.sh`
+  // after it discovers every entry in config/project-fields.default.json.
+  const projectJson = {
+    repo: 'o/r',
+    projectId: 'PVT_x',
+    kanbanFieldId: 'PVTSSF_kanban',
+    priorityFieldId: 'PVTSSF_pri',
+    sizeFieldId: 'PVTSSF_sz',
+    fieldEstimate: 'PVTF_est',
+    fieldEngagedTime: 'PVTF_eng',
+    fieldSessionTime: 'PVTF_ses',
+    fieldSequence: 'PVTF_seq',
+    fieldStartTime: 'PVTF_st',
+    fieldBlockedBy: 'PVTF_bb',
+    // reviewTime and planTime are written under fieldIds; the loader's
+    // auto-mirror lifts them to top-level cfg.fieldReviewTime / fieldPlanTime.
+    fieldIds: {
+      reviewTime: 'PVTF_rev',
+      planTime: 'PVTF_plan',
+    },
+  };
+  const { writeFileSync } = await import('node:fs');
+  const path = await import('node:path');
+  const { mkdtempProjectIsolated } = await import('../lib/scratch-dir.mjs');
+  const dir = mkdtempProjectIsolated('aitm-cfg-342-', 'test');
+  const projectPath = path.join(dir, 'task-tracker.json');
+  writeFileSync(projectPath, JSON.stringify(projectJson));
+  const { loadConfig } = await import('../config.mjs');
+  const cfg = loadConfig({ projectPath, userPath: path.join(dir, 'user.json') });
+  __resetFieldConfigWarnings();
+  const stream = makeStream();
+  const r = selfCheckFieldConfig({ cfg, stream });
+  assert.deepEqual(r.missing, [], `expected no missing keys, got: ${r.missing.join(', ')}`);
+  assert.equal(r.warned, false);
+  assert.equal(stream.text(), '');
+});
+
 test('writeBlockedByField: missing cfg.fieldBlockedBy → WARN to stderr', async () => {
   __resetFieldConfigWarnings();
   const captured = [];
