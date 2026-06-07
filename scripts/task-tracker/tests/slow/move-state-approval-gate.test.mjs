@@ -4,7 +4,10 @@
 //
 // Asserts:
 //   1. Body without the ticked approval line, current state Analyze -> exit 4
-//      with `BLOCKED: plan -> develop requires`.
+//      with `BLOCKED:` + `plan -> develop requires` in the stderr line
+//      (post-#277 the runGuards renderer prefixes the reason with
+//      `#<N> is in plan;`, so the substring is no longer literally adjacent
+//      to `BLOCKED:` — the regex tolerates either form).
 //   2. Body WITH the ticked approval line -> exit 0 + `moved to: develop`.
 //   3. Current state != plan (e.g. test) -> gate does NOT fire even
 //      without the approval line, so backwards transitions still work.
@@ -143,7 +146,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
-  assert.match(e.stderr, /BLOCKED: plan -> develop requires/);
+  assert.match(e.stderr, /BLOCKED:.*plan -> develop requires/);
   assert.match(e.stderr, /plan-approve/, 'gate message must name the plan-approve command');
   rmSync(sandbox, { recursive: true });
 }
@@ -165,7 +168,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
     TASK_TRACKER_FORCE_DONE: '1',
   });
   assert.equal(e.code, 4, `expected exit 4 even with FORCE_DONE set, got ${e.code}: ${e.stderr}`);
-  assert.match(e.stderr, /BLOCKED: plan -> develop requires/);
+  assert.match(e.stderr, /BLOCKED:.*plan -> develop requires/);
   rmSync(sandbox, { recursive: true });
 }
 

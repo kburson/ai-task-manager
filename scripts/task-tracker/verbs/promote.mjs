@@ -38,7 +38,7 @@ import {
   planPriorityGate,
 } from '../lib/apply-refinement-estimate.mjs';
 import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
-import { planEpicDevelopChildrenGate, planRefineWipGate } from '../lib/epic-children-gate.mjs';
+import { planRefineWipGate, planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
 import { planDeepDiveGate } from '../lib/deep-dive-gate.mjs';
 import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
@@ -364,16 +364,19 @@ export async function runPromote({
         message: `Refusing to promote #${issueNumber} to Develop: Deep-Dive Analysis signals missing.`,
       };
     }
-    const epicGateResult = await planEpicDevelopChildrenGate({
-      cfg,
-      issueNumber,
-      deps: deps.epicChildren,
-    });
-    if (!epicGateResult.ok) {
+    // #277 — verb-level epic-children pre-check (kept while we migrate the
+    // verb to delegate guard checks to STATES.*.exitGuards via runGuards;
+    // see option C in #277 discussion). The same rule ALSO fires inside
+    // move-state.mjs through `planEpicChildrenGuard` in the registry; the
+    // dual call is intentional for now so the verb can surface a
+    // structured `epic-children-refused` status before delegating.
+    const epicGate = deps.planEpicDevelopChildrenGate || planEpicDevelopChildrenGate;
+    const epicResult = await epicGate({ cfg, issueNumber, deps: deps.epicChildren });
+    if (!epicResult.ok) {
       return {
         status: 'epic-children-refused',
-        blockers: epicGateResult.blockers,
-        message: `Refusing to promote epic #${issueNumber} to Develop: one or more sub-issues still in Backlog.`,
+        blockers: epicResult.blockers,
+        message: `Refusing to promote #${issueNumber} to Develop: epic children not at refine or beyond.`,
       };
     }
   }

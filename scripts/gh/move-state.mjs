@@ -415,11 +415,14 @@ if (!SKIP_NETWORK && resolvedFromState) {
   }
 }
 
-// Approval gate: plan -> develop requires both explicit human approval
-// (`<!-- aitm-plan-approved: <ts> -->`) AND a completed deep-dive analysis
-// (`<!-- aitm-deep-dive-complete: <ts> -->` + substantive ## Deep-Dive Analysis
-// section). Both checks fire only when the current board state is `plan` so
-// transitions back from test/review do not require fresh markers.
+// Deep-dive gate: plan -> develop requires `<!-- aitm-deep-dive-complete: <ts> -->`
+// marker plus a substantive `## Deep-Dive Analysis` section. The companion
+// plan-approval marker check migrated into the guard registry as
+// `planApprovedGuard` at `scripts/task-tracker/lib/plan-approved-guard.mjs`
+// via #277; runGuards (above) fires it before reaching this block. The
+// deep-dive half stays inline here until a dedicated migration child runs.
+// Fires only when current board state is `plan` so transitions back from
+// test/review do not require fresh markers.
 if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !== false) {
   let body = '';
   try {
@@ -430,7 +433,6 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
     /* ignore — missing body falls through */
   }
 
-  const approved = /<!--\s*aitm-plan-approved:\s*[^>]+-->/i.test(body);
   const deepDiveMarker = /<!--\s*aitm-deep-dive-complete:\s*[^>]+-->/i.test(body);
   const deepDiveBodyCheck = deepDiveMarker
     ? validateBody(body, { gates: DEFAULT_GATES.filter((g) => g.name === 'deep-dive-complete') })
@@ -470,10 +472,6 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
   const fromAnalyze = currentStateName === '' || currentStateName === 'plan';
 
   const planDevelopBlockers = [];
-  if (!approved)
-    planDevelopBlockers.push(
-      'plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker in the body (run `/task plan-approve #<N>` to record human approval)'
-    );
   if (!deepDiveMarker)
     planDevelopBlockers.push(
       'plan -> develop requires <!-- aitm-deep-dive-complete: <ts> --> marker — post the deep-dive analysis and run `/task check "Deep dive complete"` first'
