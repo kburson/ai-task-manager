@@ -6,9 +6,11 @@
 // scripts/gh/move-state.mjs:394.
 //
 // Rule: an EPIC moving plan → develop is refused if any sub-issue is still in
-// `backlog` (children must lead by reaching at least `refine`). Solo issues
-// (no `aitm-sub-issues` children) pass trivially — the underlying gate
-// returns `{ ok: true, children: [] }` when GraphQL reports zero children.
+// a pre-refine state (currently only `backlog`). Children that have been
+// refined OR have advanced past refine (plan/develop/test/review/done) all
+// satisfy the admission rule — children may legitimately lead the parent.
+// Solo issues (no `aitm-sub-issues` children) pass trivially — the underlying
+// gate returns `{ ok: true, children: [] }` when GraphQL reports zero children.
 //
 // Context contract:
 //   { cfg: Config, issueNumber: number, deps?: { epicChildren?: GhDeps } }
@@ -40,7 +42,7 @@ export const planEpicChildrenGuard = {
       deps: ctx.deps?.epicChildren,
     });
     if (result.ok) return { ok: true };
-    const reason = (result.blockers || []).join('; ') || 'epic-children-not-at-refine';
+    const reason = (result.blockers || []).join('; ') || 'epic-children-not-refined';
     return { ok: false, reason };
   },
 };

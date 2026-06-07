@@ -42,12 +42,16 @@ test('planEpicDevelopChildrenGate refuses when any child is in backlog', async (
   });
   assert.equal(result.ok, false);
   assert.equal(result.blockers.length, 1);
-  assert.match(result.blockers[0], /epic-children-not-at-refine/);
+  assert.match(result.blockers[0], /epic-children-not-refined/);
   assert.match(result.blockers[0], /#102/);
   assert.equal(result.offendingChildren.length, 1);
 });
 
-test('planEpicDevelopChildrenGate refuses when any child is PAST refine (children must not lead parent)', async () => {
+test('planEpicDevelopChildrenGate passes when children are PAST refine (#335 — children may legitimately lead the parent)', async () => {
+  // Corrected rule (#335): the plan→develop gate exists to confirm every child
+  // has been refined. Children that have already advanced past refine
+  // (plan/develop/test/review/done) trivially satisfy refinement and pass.
+  // Only `backlog` (and other pre-refine) children refuse.
   const result = await planEpicDevelopChildrenGate({
     cfg,
     issueNumber: 100,
@@ -60,13 +64,34 @@ test('planEpicDevelopChildrenGate refuses when any child is PAST refine (childre
       ]),
     },
   });
+  assert.equal(result.ok, true);
+  assert.equal(result.children.length, 4);
+});
+
+for (const acceptState of ['refine', 'plan', 'develop', 'test', 'review', 'done']) {
+  test(`planEpicDevelopChildrenGate passes when sole child is at ${acceptState} (#335)`, async () => {
+    const result = await planEpicDevelopChildrenGate({
+      cfg,
+      issueNumber: 200,
+      deps: {
+        fetchSiblings: stubFetch([{ number: 201, state: acceptState, sequence: 1 }]),
+      },
+    });
+    assert.equal(result.ok, true, `expected ${acceptState} to pass`);
+  });
+}
+
+test('planEpicDevelopChildrenGate refuses sole backlog child (#335 regression)', async () => {
+  const result = await planEpicDevelopChildrenGate({
+    cfg,
+    issueNumber: 300,
+    deps: {
+      fetchSiblings: stubFetch([{ number: 301, state: 'backlog', sequence: 1 }]),
+    },
+  });
   assert.equal(result.ok, false);
-  assert.match(result.blockers[0], /epic-children-not-at-refine/);
-  assert.match(result.blockers[0], /#102/);
-  assert.match(result.blockers[0], /#103/);
-  assert.match(result.blockers[0], /#104/);
-  assert.doesNotMatch(result.blockers[0], /#101/);
-  assert.equal(result.offendingChildren.length, 3);
+  assert.match(result.blockers[0], /epic-children-not-refined/);
+  assert.match(result.blockers[0], /#301/);
 });
 
 test('planEpicDevelopChildrenGate passes when all children are at refine', async () => {

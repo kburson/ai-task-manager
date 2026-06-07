@@ -121,7 +121,7 @@ test('planEpicChildrenGuard: epic with backlog child → refuse', async () => {
     },
   });
   assert.equal(r.ok, false);
-  assert.match(r.reason, /epic-children-not-at-refine/);
+  assert.match(r.reason, /epic-children-not-refined/);
   assert.match(r.reason, /#2/);
 });
 

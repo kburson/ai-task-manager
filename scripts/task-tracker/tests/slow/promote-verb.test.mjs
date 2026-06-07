@@ -261,7 +261,10 @@ test('promote: plan→develop refused when any sub-issue still in Backlog (#135)
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: plan→develop refused when any sub-issue is PAST refine (#149 — children must not lead parent)', async () => {
+test('promote: plan→develop refused only when a sub-issue is in backlog (#335 — corrected rule, children past refine pass)', async () => {
+  // #335: the plan→develop epic-children gate exists to confirm every child
+  // has been refined. Children at refine OR past refine (plan/develop/test/
+  // review/done) all satisfy the rule. Only `backlog` children refuse.
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
   deps.plannedEstimate = {
     listComments: async () => [
@@ -274,15 +277,18 @@ test('promote: plan→develop refused when any sub-issue is PAST refine (#149 �
   deps.epicChildren = {
     fetchSiblings: async () => [
       { number: 201, state: 'refine', sequence: 1 },
-      { number: 202, state: 'plan', sequence: 2 },
-      { number: 203, state: 'develop', sequence: 3 },
+      { number: 202, state: 'plan', sequence: 2 }, // past refine — must pass
+      { number: 203, state: 'develop', sequence: 3 }, // past refine — must pass
+      { number: 204, state: 'backlog', sequence: 4 }, // pre-refine — refuses
     ],
   };
   const r = await runPromote({ issueNumber: 2000, cfg, deps });
   assert.equal(r.status, 'epic-children-refused');
-  assert.ok(r.blockers.some((b) => /epic-children-not-at-refine/.test(b)));
-  assert.ok(r.blockers.some((b) => /#202/.test(b)));
-  assert.ok(r.blockers.some((b) => /#203/.test(b)));
+  assert.ok(r.blockers.some((b) => /epic-children-not-refined/.test(b)));
+  assert.ok(r.blockers.some((b) => /#204/.test(b)));
+  // Children past refine must NOT appear in the offender list.
+  assert.ok(!r.blockers.some((b) => /#202/.test(b)));
+  assert.ok(!r.blockers.some((b) => /#203/.test(b)));
   assert.equal(calls.moves.length, 0);
 });
 

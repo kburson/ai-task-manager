@@ -1,8 +1,11 @@
 // Epic plan→develop gate + JIT child-pull helpers (#135).
 //
 // At plan→develop, an epic (issue with sub-issues) refuses to advance if any
-// child is still in `backlog`. Children must be at least refined before the
-// orchestrator starts driving them. Non-epic issues (no children) pass through.
+// child is still in `backlog` (or any other pre-`refine` state). Children must
+// be at least refined before the orchestrator starts driving them. Children
+// that have already advanced past `refine` (plan/develop/test/review/done)
+// trivially satisfy the refinement requirement and pass. Non-epic issues
+// (no children) pass through.
 //
 // The `/task pull-next` verb consumes `findNextEligibleChild` to pick the
 // next-in-sequence refine-state child to promote refine→plan.
@@ -39,13 +42,20 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'refine');
+  // Refusal criterion: a child is an offender iff its state is `backlog`
+  // (or any state that has not yet entered refine). Children at refine, plan,
+  // develop, test, review, or done all demonstrably satisfy the refinement
+  // requirement and pass.
+  const REFINE_OR_LATER = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
+  const offenders = children.filter(
+    (c) => !REFINE_OR_LATER.has(String(c.state || '').toLowerCase())
+  );
   if (offenders.length) {
     const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
       ok: false,
       blockers: [
-        `epic-children-not-at-refine: every child must be at refine before the epic promotes to Develop (children must not lead the parent): ${lines.join(', ')}`,
+        `epic-children-not-refined: every child must be at refine or later before the epic promotes to Develop: ${lines.join(', ')}`,
       ],
       offendingChildren: offenders,
     };
