@@ -221,10 +221,7 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
   let state = 'unknown';
   for (const item of items) {
     const status =
-      item.status?.optionId ||
-      item.fieldValueByName?.optionId ||
-      item['Status']?.optionId ||
-      null;
+      item.status?.optionId || item.fieldValueByName?.optionId || item['Status']?.optionId || null;
     const mapped = mapKanbanToState(cfg, status);
     if (mapped !== 'unknown') {
       state = mapped;

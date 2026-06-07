@@ -61,10 +61,7 @@ test('liveWorktreeAgents filters active+worktreePath entries', () => {
   };
   const live = liveWorktreeAgents(fleet);
   assert.equal(live.length, 2);
-  assert.deepEqual(
-    live.map((a) => a.ref).sort(),
-    ['#1', '#4']
-  );
+  assert.deepEqual(live.map((a) => a.ref).sort(), ['#1', '#4']);
 });
 
 test('liveWorktreeAgents tolerates null / non-object input', () => {
@@ -74,9 +71,7 @@ test('liveWorktreeAgents tolerates null / non-object input', () => {
 });
 
 test('buildLiveFleetRefusal includes each agent ref + worktreePath', () => {
-  const refusal = buildLiveFleetRefusal([
-    { ref: '#42', branch: '42-foo', worktreePath: '/wt/42' },
-  ]);
+  const refusal = buildLiveFleetRefusal([{ ref: '#42', branch: '42-foo', worktreePath: '/wt/42' }]);
   assert.equal(refusal.code, 'chore-mode-live-fleet');
   assert.match(refusal.message, /#42/);
   assert.match(refusal.message, /\/wt\/42/);

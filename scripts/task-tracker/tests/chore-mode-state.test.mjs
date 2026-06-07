@@ -52,10 +52,7 @@ test('readChoreMode returns defaults when choreMode key is absent', () => {
   const tmp = mkdtempProjectIsolated('chore-state-no-key-');
   try {
     mkdirSync(path.dirname(statePath(tmp)), { recursive: true });
-    writeFileSync(
-      statePath(tmp),
-      JSON.stringify({ active: '#42', lastActive: '#42' })
-    );
+    writeFileSync(statePath(tmp), JSON.stringify({ active: '#42', lastActive: '#42' }));
     const cm = readChoreMode(tmp);
     assert.deepEqual(cm, EMPTY_CHORE_MODE);
   } finally {

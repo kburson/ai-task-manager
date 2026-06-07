@@ -226,10 +226,7 @@ test('isAllowlistedPath matches every documented prefix', () => {
 });
 
 test('ALLOWLIST_PREFIXES is the documented set', () => {
-  assert.deepEqual(ALLOWLIST_PREFIXES.slice().sort(), [
-    '.ai-task-manager/scratch/',
-    '.tmp/',
-  ]);
+  assert.deepEqual(ALLOWLIST_PREFIXES.slice().sort(), ['.ai-task-manager/scratch/', '.tmp/']);
 });
 
 // ── runHook integration with injected deps ─────────────────────────────────
