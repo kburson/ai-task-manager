@@ -38,7 +38,8 @@ Full rules in `docs/guides/workflow.md`. Quick reference:
 - **Always assign new issues to the configured assignee** — every `gh issue create` must include `--assignee <value>`, where `<value>` is the `assignee` key from `.claude/task-tracker.json` (defaults to `@me`, which resolves to the authenticated `gh` user).
 - Move issues through states: `scripts/gh/move-state.mjs <issue#> <state>`
 - Set priority: `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]`
-- Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close. **Note:** GitHub Projects supports only one level of nesting — sub-issues cannot themselves have sub-issues.
+- Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close.
+- **Nesting:** GitHub Projects supports multi-level sub-issue chains (verified live: `#259 → #328 → {#324, #325, #326, #327, #331}`). Use a 2-level structure (sub-epic under a root epic) when a coherent family of work needs its own planning surface inside a larger in-flight epic — e.g. defect chains spawned mid-epic, or deliberate scope-of-scope groupings. The "XL standalone" rule (XL issues are top-level epics, no parent) still applies to new top-level epics; nested sub-epics are an intentional refinement, not the default. See [`docs/guides/sub-issue-nesting.md`](docs/guides/sub-issue-nesting.md).
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
 - At issue close: set `Actual Session Time` on board. See `docs/guides/ai-value-framework.md`.
 
