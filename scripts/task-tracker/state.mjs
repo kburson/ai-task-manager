@@ -48,11 +48,18 @@ function migrateLegacyFields(parsed) {
 // `<projDir>/.claude/task-tracker-state.json`). We derive `projDir` so the
 // per-session active-task.json sits alongside, not in a stray location when
 // callers pass an absolute path.
-function projectDirForState(statePath) {
+//
+// #332: use `lastIndexOf`, not `indexOf`. For worktrees rooted under
+// `<main>/.claude/worktrees/<wt>/`, the path contains TWO `/.claude/`
+// segments — the outer worktree-host one and the inner per-worktree legacy
+// state dir. The rightmost anchor is the one closest to the state file and is
+// always the correct project root. `indexOf` returned the outer (`<main>`)
+// segment, contaminating worktree session state into main.
+export function projectDirForState(statePath) {
   const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
   const norm = abs.split(path.sep).join('/');
   for (const marker of ['/.ai-task-manager/', '/.claude/']) {
-    const idx = norm.indexOf(marker);
+    const idx = norm.lastIndexOf(marker);
     if (idx !== -1) return abs.slice(0, idx);
   }
   return path.dirname(abs);
