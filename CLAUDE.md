@@ -42,6 +42,18 @@ Full rules in `docs/guides/workflow.md`. Quick reference:
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
 - At issue close: set `Actual Session Time` on board. See `docs/guides/ai-value-framework.md`.
 
+## Blocked-Task Annotation (mandatory when spawning a defect mid-task)
+
+When work on issue `#A` discovers a defect that must be fixed before `#A` can proceed and you file a new issue `#B` for that defect, you **must immediately** annotate `#A` as blocked by `#B` before doing anything else:
+
+1. Add the `BLOCKED` label to `#A`: `gh issue edit <A> --add-label "BLOCKED"`.
+2. Set the project board `Blocked By` field on `#A` to reference `#B` (the field id lives in `.claude/task-tracker.json` under `fieldBlockedBy`; see `docs/guides/workflow.md` → Dependency representation).
+3. Write the body marker `<!-- aitm-blocked-by: #B -->` into `#A` (via `mutateIssueBody` or `scripts/task-tracker/verbs/block.mjs <A> --by <B>`).
+4. Drive the blocker chain **deepest-first**: finish `#B` (and any defect it itself spawns) to Done before resuming `#A`. When `#B` reaches Done, `pull-next` auto-unparks `#A`. Never close a higher-level issue while one of its blockers is still open.
+5. If you neglected to annotate at spawn time and only catch it later, post a correction comment on `#A` recording the omission, then perform steps 1-3 retroactively. Do not silently fix.
+
+This rule applies to every defect-spawn-during-task case — refine-stage, plan-stage, develop-stage, test-stage, review-stage. The mechanism is the same; only the surrounding state differs.
+
 ## Cleanup
 
 Full procedure in `docs/guides/workflow.md` → Cleanup Procedure section.
