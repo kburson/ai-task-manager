@@ -23,10 +23,16 @@
 // `stampDeepDivePostedOnly` shims, which were deleted under #325 once
 // `ensureDeepDive` covered all 8 partial-state combinations.
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { insertDeepDiveCompleteMarker } from './markers.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { DEEP_DIVE_SIZE_FLOORS } from './body-gates.mjs';
+import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+
+const pexec = promisify(execFile);
 
 // Fallback floor when size is absent from the field-DB. Matches
 // `body-gates.mjs::DEEP_DIVE_DEFAULT_FLOOR`.
@@ -62,6 +68,18 @@ export class DeepDiveSectionMissingError extends Error {
   constructor(message) {
     super(message);
     this.name = 'DeepDiveSectionMissingError';
+  }
+}
+
+// #331 — thrown by `mirrorDeepDiveFromComment` when the issue body already
+// has a `## Deep-Dive Analysis` heading with hand-authored inline prose but
+// no back-pointer to the comment we are about to mirror. Caller must
+// reconcile manually (hand-merge or delete the inline prose) rather than
+// risk silent overwrite.
+export class DeepDiveAlreadyInlineError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'DeepDiveAlreadyInlineError';
   }
 }
 
@@ -301,4 +319,161 @@ export async function ensureDeepDive({
       return next;
     },
   });
+}
+
+// #331 — parse a `fromComment` argument into a numeric comment id. Accepts:
+//   - raw numeric id: `4640885208`
+//   - hash-prefixed: `#issuecomment-4640885208`
+//   - full URL: `https://github.com/<owner>/<repo>/issues/<n>#issuecomment-4640885208`
+// Returns the numeric id as a string. Throws on unparseable input.
+export function parseFromCommentArg(input) {
+  if (input == null) {
+    throw new Error('parseFromCommentArg: input is required');
+  }
+  const s = String(input).trim();
+  if (!s) throw new Error('parseFromCommentArg: empty input');
+  if (/^\d+$/.test(s)) return s;
+  const m = s.match(/issuecomment[-_]?(\d+)/i);
+  if (m) return m[1];
+  throw new Error(
+    `parseFromCommentArg: cannot extract comment id from "${input}" — expected raw id, #issuecomment-<id>, or full URL`
+  );
+}
+
+// #331 — strip a leading top-level heading from a comment body before it is
+// mirrored into the issue body. Removes any of:
+//   - `## Deep-Dive Analysis [(...)]`
+//   - `## Plan Deep-Dive Analysis [(...)]`
+//   - `## Deep Dive [(...)]`
+// (case-insensitive, optional date/parenthetical suffix). Subordinate
+// `###` headings inside the prose are preserved. Returns the trimmed body.
+export function stripLeadingDeepDiveHeading(body) {
+  const src = String(body || '');
+  const re = /^\s*##\s+(?:plan\s+)?deep[-\s]dive(?:\s+analysis)?\b.*\n+/i;
+  return src.replace(re, '').replace(/^\s+/, '');
+}
+
+// #331 — default comment fetcher. Reads `body` + `html_url` from the
+// REST issue-comments endpoint. Injectable via `deps.fetchCommentBody` for
+// tests.
+async function defaultFetchCommentBody({ repo, commentId }) {
+  const [owner, repoName] = String(repo).split('/');
+  if (!owner || !repoName) {
+    throw new Error(`fetchCommentBody: invalid repo "${repo}" — expected owner/name`);
+  }
+  const { stdout } = await pexec(
+    'gh',
+    ['api', `repos/${owner}/${repoName}/issues/comments/${commentId}`, '--jq', '{body,html_url}'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  let parsed;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(`fetchCommentBody: failed to parse gh api response: ${err.message}`);
+  }
+  return { body: parsed.body || '', url: parsed.html_url || '' };
+}
+
+// #331 — mirror a comment-authored deep-dive into the issue body.
+//
+// Sibling to `ensureDeepDive`: that one stamps signals when prose is already
+// inline; this one fetches prose from a GitHub comment, mirrors it under the
+// canonical `## Deep-Dive Analysis (<date>)` heading with a back-pointer to
+// the source comment, and stamps both posted + complete markers — all in a
+// single `mutateIssueBody` transaction.
+//
+// Idempotency: re-invocation against a body that already has both markers,
+// the heading, AND the back-pointer URL short-circuits to
+// `{ status: 'no-op' }`.
+//
+// Conflict refusal: if the body already has a `## Deep-Dive Analysis`
+// heading but lacks the posted marker AND lacks the back-pointer URL, the
+// helper throws `DeepDiveAlreadyInlineError` — a hand-authored inline deep
+// dive exists and overwriting it silently would lose work.
+export async function mirrorDeepDiveFromComment({
+  issueNumber,
+  repo,
+  fromComment,
+  ts,
+  deps = {},
+} = {}) {
+  if (issueNumber == null) throw new Error('mirrorDeepDiveFromComment: issueNumber is required');
+  if (!repo) throw new Error('mirrorDeepDiveFromComment: repo is required');
+  if (fromComment == null) {
+    throw new Error('mirrorDeepDiveFromComment: fromComment is required');
+  }
+  const commentId = parseFromCommentArg(fromComment);
+  const stamp = ts || new Date().toISOString();
+  const fetchFn = deps.fetchCommentBody || defaultFetchCommentBody;
+  const mutateIssueBodyFn = deps.mutateIssueBody || mutateIssueBody;
+
+  const { body: rawCommentBody, url: commentUrl } = await fetchFn({ repo, commentId });
+  if (!rawCommentBody || !rawCommentBody.trim()) {
+    return { status: 'refused', reason: 'empty-comment-body' };
+  }
+  const stripped = stripLeadingDeepDiveHeading(rawCommentBody).trim();
+  if (!stripped) {
+    return { status: 'refused', reason: 'empty-after-strip' };
+  }
+
+  const backpointer =
+    `> Mirrored from comment #issuecomment-${commentId} (${commentUrl}). ` +
+    `Comment is the diff-history canonical; this body copy is the gate-canonical source.`;
+  const appendix = `${backpointer}\n\n${stripped}`;
+
+  const result = await mutateIssueBodyFn({
+    issueNumber,
+    repo,
+    deps,
+    mutate: (base) => {
+      const signals = readDeepDiveSignals(base);
+      const hasBackpointer = base.includes(`#issuecomment-${commentId}`);
+
+      // 1. Idempotent no-op: heading + posted marker + back-pointer all present.
+      if (signals.hasHeading && signals.hasPosted && hasBackpointer) {
+        let next = base;
+        if (!signals.hasComplete) {
+          const insertFn = deps.insertDeepDiveCompleteMarker || insertDeepDiveCompleteMarker;
+          next = insertFn(next, stamp);
+        }
+        return next;
+      }
+
+      // 2. Conflict: heading present, no posted marker, no back-pointer.
+      //    Hand-authored inline deep dive exists — refuse rather than overwrite.
+      if (signals.hasHeading && !signals.hasPosted && !hasBackpointer) {
+        throw new DeepDiveAlreadyInlineError(
+          `mirrorDeepDiveFromComment: issue #${issueNumber} body has a hand-authored ` +
+            `\`## Deep-Dive Analysis\` section but no back-pointer to comment ` +
+            `#issuecomment-${commentId}. Reconcile manually (hand-merge or delete the ` +
+            `inline prose) before re-running.`
+        );
+      }
+
+      // 3. Heading present but back-pointer absent AND posted marker present:
+      //    treat as already-mirrored from a DIFFERENT comment. No-op rather
+      //    than appending a second mirror block.
+      if (signals.hasHeading && signals.hasPosted && !hasBackpointer) {
+        return base;
+      }
+
+      // 4. Author canonical block (heading + back-pointer + comment prose).
+      let next = base;
+      const block = buildDeepDiveBlock({ ts: stamp, appendix });
+      next = insertDeepDiveBlock(next, block);
+
+      // 5. Complete marker.
+      if (!COMPLETE_RE.test(next)) {
+        const insertFn = deps.insertDeepDiveCompleteMarker || insertDeepDiveCompleteMarker;
+        next = insertFn(next, stamp);
+      }
+      return next;
+    },
+  });
+
+  if (result.status === 'no-op') {
+    return { status: 'no-op' };
+  }
+  return { status: 'mirrored', commentId, url: commentUrl };
 }

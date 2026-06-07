@@ -246,6 +246,11 @@ if (_isMain)
           await verbEvidenceMarkers(ctx);
           break;
         }
+        case 'mirror-deep-dive': {
+          const { verbMirrorDeepDive } = await import('./verbs/mirror-deep-dive.mjs');
+          await verbMirrorDeepDive(ctx);
+          break;
+        }
         case 'fleet': {
           const { verbFleet } = await import('./verbs/fleet.mjs');
           await verbFleet(ctx);
