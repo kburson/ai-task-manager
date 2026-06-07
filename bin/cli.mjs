@@ -221,6 +221,23 @@ export function patchSettingsJson(settingsPath) {
   );
   if (!activityBashRegistered) settings.hooks.PreToolUse.push(activityBashEntry);
 
+  // source-edit-gate (#327): PreToolUse hook on Edit/Write/NotebookEdit that
+  // refuses non-allowlisted source edits when the bound issue is below
+  // `develop` OR lacks both deep-dive markers. Bypassed when chore-mode is
+  // active. Allowlist: `.tmp/**` and `.ai-task-manager/scratch/**`.
+  const sourceEditGateCmd =
+    'node node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs';
+  const sourceEditGateEntry = {
+    matcher: 'Edit|Write|NotebookEdit',
+    hooks: [{ type: 'command', command: sourceEditGateCmd }],
+  };
+  const sourceEditGateRegistered = settings.hooks.PreToolUse.some(
+    (h) =>
+      h.matcher === 'Edit|Write|NotebookEdit' &&
+      h.hooks?.some((inner) => inner.command === sourceEditGateCmd)
+  );
+  if (!sourceEditGateRegistered) settings.hooks.PreToolUse.push(sourceEditGateEntry);
+
   // commit-trail: PostToolUse hook that appends a row to the bound issue's
   // `### 🔗 Commits` comment after each successful `git commit`.
   const trailEntry = {

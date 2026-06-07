@@ -60,5 +60,27 @@ assert.equal(hasCommand(s.hooks.Stop, STOP_CMD), true, 'our Stop hook added alon
 assert.equal(hasCommand(s.hooks.UserPromptSubmit, 'echo user-up'), true);
 assert.equal(hasCommand(s.hooks.UserPromptSubmit, UP_CMD), true);
 
+// #327 — installer must register source-edit-gate.mjs as a PreToolUse hook
+// matching Edit/Write/NotebookEdit, and must be idempotent across re-runs.
+const SOURCE_EDIT_GATE_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs';
+
+// Reset to a clean slate.
+rmSync(settingsPath, { force: true });
+patchSettingsJson(settingsPath);
+let s2 = JSON.parse(readFileSync(settingsPath, 'utf8'));
+const gateEntries = (s2.hooks?.PreToolUse || []).filter(
+  (h) => h.matcher === 'Edit|Write|NotebookEdit' && hasCommand([h], SOURCE_EDIT_GATE_CMD)
+);
+assert.equal(gateEntries.length, 1, 'source-edit-gate registered once on fresh install');
+
+patchSettingsJson(settingsPath);
+patchSettingsJson(settingsPath);
+s2 = JSON.parse(readFileSync(settingsPath, 'utf8'));
+const gateEntriesAfter = (s2.hooks.PreToolUse || []).filter(
+  (h) => h.matcher === 'Edit|Write|NotebookEdit' && hasCommand([h], SOURCE_EDIT_GATE_CMD)
+);
+assert.equal(gateEntriesAfter.length, 1, 'source-edit-gate is idempotent across re-installs');
+
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');
