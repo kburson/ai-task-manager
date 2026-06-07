@@ -216,8 +216,14 @@ async function main() {
   const projectDir = findProjectDir(cwd);
   if (!projectDir) return;
 
-  // Need the commit's subject regardless of bound state — chore-mode commits
-  // have no active issue. Compute git info up-front; tolerate failure.
+  // #327 — chore-mode short-circuit. When chore-mode is active there is no
+  // bound issue (the verb detached it) and no trail row to write — but we
+  // DO need to inspect the commit subject and warn if it lacks the `chore: `
+  // prefix. Otherwise we hand off to the active-issue path below.
+  const choreActive = isChoreModeActive(projectDir);
+  const issueNumber = choreActive ? null : loadActiveIssue(projectDir);
+  if (!choreActive && !issueNumber) return;
+
   let info;
   try {
     info = await gitInfo(cwd);
@@ -227,19 +233,14 @@ async function main() {
   }
   if (!info.sha) return;
 
-  // #327 — chore-mode subject gate. Runs before the active-issue early-return
-  // so it fires even when chore-mode has detached the active task.
-  if (isChoreModeActive(projectDir)) {
+  if (choreActive) {
     const refusal = checkChoreCommitSubject(info.subject);
     if (refusal) {
       process.stderr.write(`[commit-trail] ${refusal.code}: ${refusal.message}\n`);
     }
-    // Either way: chore-mode commits never get a trail row (no bound issue).
     return;
   }
 
-  const issueNumber = loadActiveIssue(projectDir);
-  if (!issueNumber) return;
   const repo = loadRepo(projectDir);
   if (!repo) return;
 
