@@ -23,6 +23,29 @@ import {
   TRAIL_HEADING,
 } from './lib/commit-trail.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { isChoreModeActive } from './lib/chore-mode.mjs';
+
+// #327 — chore-mode commit-subject gate.
+//
+// While chore-mode is active, every commit subject must start with
+// `chore: ` (case-sensitive, colon + space required). The check is exposed
+// as a pure helper so it can be unit-tested without spinning up the full
+// PostToolUse handler shell.
+//
+// Returns `null` when the commit is allowed, or a structured refusal
+// `{ code, message }` when it must be flagged.
+export function checkChoreCommitSubject(subject) {
+  if (typeof subject !== 'string') return null;
+  if (/^chore:\s/.test(subject)) return null;
+  return {
+    code: 'chore-mode-untagged-commit',
+    message:
+      `chore-mode is active — commit subjects must begin with "chore: ".\n` +
+      `Refused subject: ${subject}\n` +
+      `Fix: amend the commit (\`git commit --amend\`) with a \`chore: \` subject,\n` +
+      `     or exit chore-mode first: \`node scripts/task-tracker/task-tracker.mjs chore-mode off\`.`,
+  };
+}
 
 const pexec = promisify(execFile);
 
@@ -192,10 +215,14 @@ async function main() {
   const cwd = payload.cwd || process.cwd();
   const projectDir = findProjectDir(cwd);
   if (!projectDir) return;
-  const issueNumber = loadActiveIssue(projectDir);
-  if (!issueNumber) return;
-  const repo = loadRepo(projectDir);
-  if (!repo) return;
+
+  // #327 — chore-mode short-circuit. When chore-mode is active there is no
+  // bound issue (the verb detached it) and no trail row to write — but we
+  // DO need to inspect the commit subject and warn if it lacks the `chore: `
+  // prefix. Otherwise we hand off to the active-issue path below.
+  const choreActive = isChoreModeActive(projectDir);
+  const issueNumber = choreActive ? null : loadActiveIssue(projectDir);
+  if (!choreActive && !issueNumber) return;
 
   let info;
   try {
@@ -205,6 +232,17 @@ async function main() {
     return;
   }
   if (!info.sha) return;
+
+  if (choreActive) {
+    const refusal = checkChoreCommitSubject(info.subject);
+    if (refusal) {
+      process.stderr.write(`[commit-trail] ${refusal.code}: ${refusal.message}\n`);
+    }
+    return;
+  }
+
+  const repo = loadRepo(projectDir);
+  if (!repo) return;
 
   try {
     await postCommitTrail({ issueNumber, repo, info, cwd });

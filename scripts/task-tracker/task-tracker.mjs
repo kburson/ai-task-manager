@@ -302,6 +302,11 @@ if (_isMain)
           await verbBlock(ctx);
           break;
         }
+        case 'chore-mode': {
+          const { verbChoreMode } = await import('./verbs/chore-mode.mjs');
+          await verbChoreMode(ctx);
+          break;
+        }
         case 'unblock': {
           const { verbUnblock } = await import('./verbs/unblock.mjs');
           await verbUnblock(ctx);
