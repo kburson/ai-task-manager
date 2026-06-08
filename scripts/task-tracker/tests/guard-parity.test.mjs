@@ -461,6 +461,99 @@ describe('guard-parity: test→review', () => {
 });
 
 // -----------------------------------------------------------------------------
+// test→review via-registry (#267) — proves the two former-inline call-sites
+// (verbs/promote.mjs and verbs/review.mjs) both reach IDENTICAL refusal
+// reasons through the registry, closing the #257 hole that motivated #267.
+// -----------------------------------------------------------------------------
+describe('guard-parity: test→review via-registry (#267)', () => {
+  it('refuse fixture: completeness gate fires identically on promote and review paths', async () => {
+    // Same body, same ctx, two invocations — mirrors the historical pattern
+    // where promote.mjs ran an inline check and verbReview ran the duplicate.
+    // After #267, both delegate to runGuards('test', 'review', ctx) — so the
+    // refusal sets must be byte-for-byte identical.
+    const body = [
+      '<!-- aitm-dod-verified: abc1234:2026-05-18T00:05:00Z -->',
+      '## Acceptance Criteria',
+      '- [x] First AC ticked at CODE_COMPLETE',
+      '- [ ] A manual checklist item nobody ticked',
+      '',
+    ].join('\n');
+    const ctx = {
+      issueNumber: 2571,
+      repo: 'kburson/ai-task-manager',
+      body,
+      cfg: CFG,
+      fromState: 'test',
+      toState: 'review',
+    };
+    const promote = await runGuards('test', 'review', ctx);
+    const direct = await runGuards('test', 'review', ctx);
+    assert.equal(promote.ok, false);
+    assert.equal(direct.ok, false);
+    assert.deepEqual(
+      promote.refusals.map((r) => r.id).sort(),
+      direct.refusals.map((r) => r.id).sort()
+    );
+    const completeness = promote.refusals.find((r) => r.id === 'test-exit-pre-close-completeness');
+    assert.ok(completeness, 'test-exit-pre-close-completeness refusal must be present');
+    assert.ok(
+      Array.isArray(completeness.blockers) && completeness.blockers.length > 0,
+      'completeness refusal must carry blockers array'
+    );
+    assert.ok(
+      completeness.blockers.some((b) => /A manual checklist item nobody ticked/.test(b)),
+      'completeness blocker must surface the offending checkbox label'
+    );
+  });
+
+  it('refuse fixture: missing dod-verified marker refuses on both paths with same reason', async () => {
+    const body = ['## Acceptance Criteria', '- [x] First AC', ''].join('\n');
+    const ctx = {
+      issueNumber: 1031,
+      repo: 'kburson/ai-task-manager',
+      body,
+      cfg: CFG,
+      fromState: 'test',
+      toState: 'review',
+    };
+    const promote = await runGuards('test', 'review', ctx);
+    const direct = await runGuards('test', 'review', ctx);
+    assert.equal(promote.ok, false);
+    assert.equal(direct.ok, false);
+    const pDod = promote.refusals.find((r) => r.id === 'test-exit-dod-verified');
+    const dDod = direct.refusals.find((r) => r.id === 'test-exit-dod-verified');
+    assert.ok(pDod && dDod, 'both invocations must surface test-exit-dod-verified refusal');
+    assert.equal(pDod.reason, dDod.reason);
+    assert.ok(
+      String(pDod.reason).includes('test-to-review-dod-missing'),
+      'refusal reason must use the legacy test-to-review-dod-missing label'
+    );
+  });
+
+  it('accept fixture: dod-verified present + every checkbox ticked passes both paths', async () => {
+    const body = [
+      '<!-- aitm-dod-verified: abc1234:2026-05-18T00:05:00Z -->',
+      '## Acceptance Criteria',
+      '- [x] First AC',
+      '- [x] Second AC',
+      '',
+    ].join('\n');
+    const ctx = {
+      issueNumber: 2572,
+      repo: 'kburson/ai-task-manager',
+      body,
+      cfg: CFG,
+      fromState: 'test',
+      toState: 'review',
+    };
+    const promote = await runGuards('test', 'review', ctx);
+    const direct = await runGuards('test', 'review', ctx);
+    assert.equal(promote.ok, true, JSON.stringify(promote.refusals));
+    assert.equal(direct.ok, true, JSON.stringify(direct.refusals));
+  });
+});
+
+// -----------------------------------------------------------------------------
 // 6) review → done
 // -----------------------------------------------------------------------------
 describe('guard-parity: review→done', () => {

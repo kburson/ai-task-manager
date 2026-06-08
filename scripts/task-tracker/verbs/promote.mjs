@@ -42,7 +42,6 @@ import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { hasDodVerifiedMarker } from '../lib/markers.mjs';
-import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
 import { fetchParentIssue as defaultFetchParentIssue } from '../lib/fetch-parent-issue.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
@@ -68,6 +67,11 @@ const REFUSAL_ID_TO_STATUS = {
   // it here would surface refusals at the verb that legacy tests don't expect.
   'develop-exit-code-complete': 'code-complete-refused',
   'develop-exit-commit-trail-head': 'commit-trail-stale',
+  // #267 — test→review gates migrated from inline checks in this file
+  // (former dod-verified + #257 completeness blocks) and from verbReview
+  // (the duplicate copies). Both now live in `STATES.test.exitGuards`.
+  'test-exit-dod-verified': 'dod-verified-missing',
+  'test-exit-pre-close-completeness': 'completeness-refused',
   'blocked-by-not-done': 'blocked-refused',
 };
 
@@ -308,49 +312,14 @@ export async function runPromote({
   if (verbRefusal) return verbRefusal;
   const refinementPlan = guardCtx.refinementPlan || null;
 
-  // #210 (Fix C) — Test → Review pre-flight: require `aitm-dod-verified`.
-  // The sandbox proof is what makes Test→Review legitimate. verbReview's own
-  // gate enforces this when invoked directly, but `promote` from `test` goes
-  // through a direct moveState (no alias verb), bypassing verbReview. Without
-  // this gate, a soft sandbox failure that left the board at `test` without
-  // dod-verified would sail through here, and close-time would be the first
-  // catch — too late.
-  if (recorded === 'test' && target === 'review') {
-    if (!hasDodVerifiedMarker(body)) {
-      return {
-        status: 'dod-verified-missing',
-        blockers: [
-          'test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #' +
-            String(issueNumber).replace(/^#/, '') +
-            '` to produce sandbox evidence before promoting to Review.',
-        ],
-        message: `Refusing to promote #${issueNumber} to Review: sandbox proof (aitm-dod-verified) is missing.`,
-      };
-    }
-
-    // #257 — completeness gate at Test → Review. An incomplete story must not
-    // enter Review and be presented for review → done approval. `promote` from
-    // `test` is a DIRECT moveState (no alias verb), so it bypasses verbReview's
-    // own completeness gate — this is the same bypass that motivated the
-    // duplicated dod-verified check above. Reuse the EXACT close-gate scanner
-    // here so the identical standard applies whether Review is reached via
-    // `/task review` or `/task promote` (single source of truth). Lifecycle +
-    // close-owned items and fenced examples are already excluded by the scanner;
-    // CODE_COMPLETE (develop → test) has already ticked every functional AC, so
-    // anything still unticked here is a genuine, non-lifecycle gap.
-    const stillUnticked = uncheckedPreCloseCheckboxes(body);
-    if (stillUnticked.length > 0) {
-      return {
-        status: 'completeness-refused',
-        blockers: stillUnticked.map(
-          (line) => `test-to-review-incomplete: ${line} (the close gate enforces the same set)`
-        ),
-        message:
-          `Refusing to promote #${issueNumber} to Review: ${stillUnticked.length} incomplete ` +
-          'checkbox(es) — tick every item before promoting (a story cannot enter Review incomplete).',
-      };
-    }
-  }
+  // #267 — Test → Review pre-flight gates (dod-verified marker + #257
+  // completeness scan) migrated into `STATES.test.exitGuards` and reached via
+  // `runGuards('test', 'review', ctx)` above. The verb-status surface
+  // (`dod-verified-missing` / `completeness-refused`) is preserved by the
+  // `REFUSAL_ID_TO_STATUS` mapping for `test-exit-dod-verified` and
+  // `test-exit-pre-close-completeness`. The inline checks that used to live
+  // here are deleted; the duplicate copies in `verbs/review.mjs` are removed
+  // by the same change (single source of truth, parity across both paths).
 
   // #162 — child-cannot-lead-epic gate. Runs on every forward transition.
   // Solo issues (no parent) bypass. When the parent epic's live state is

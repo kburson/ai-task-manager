@@ -1,16 +1,22 @@
-// State object: test (#292).
+// State object: test (#292, #267).
 //
-// Test→review gates (verification-command pass-list, AC-evidence
-// completeness, dod-verified marker) currently live in the test verb and
-// `verbs/promote.mjs`. They migrate into this module's exit list via
-// sub-issue #267, which folds in #257's completeness check and dedupes
-// `aitm-dod-verified`.
+// Test→review gates live in the exit list and are evaluated by
+// `runGuards('test', 'review', ctx)` from both `verbs/promote.mjs` and
+// `verbs/review.mjs`. The two former-inline call-sites in those verbs are
+// retired by #267 in favor of these registry entries (single source of
+// truth, parity across both promote and review paths).
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
+import { testExitDodVerifiedGuard } from '../lib/test-exit-dod-verified-guard.mjs';
+import { testExitPreCloseCompletenessGuard } from '../lib/test-exit-pre-close-completeness-guard.mjs';
 
 export default Object.freeze({
   name: 'test',
   entryGuards: Object.freeze([]),
-  exitGuards: Object.freeze([blockedByGuard]),
+  exitGuards: Object.freeze([
+    blockedByGuard,
+    testExitDodVerifiedGuard,
+    testExitPreCloseCompletenessGuard,
+  ]),
   onEnter: Object.freeze([]),
 });

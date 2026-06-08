@@ -2,7 +2,9 @@ import { loadState, saveState } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
-import { hasDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
+import { parseTestStartedMarker } from '../lib/markers.mjs';
+import { runGuards } from '../lib/guard-registry.mjs';
+import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -173,6 +175,34 @@ export async function verbReview(ctx) {
       { timeout: GH_API_TIMEOUT_MS }
     );
     const rawBody = JSON.parse(stdout).body ?? '';
+
+    // #267 — Early test→review guard fast-path. Evaluate ONLY the
+    // `test-exit-dod-verified` guard here so we refuse missing-sandbox-proof
+    // bodies before doing the full AC verification pass below. The full
+    // exit-guard set (including pre-close completeness) runs again at the
+    // runMoveState boundary below — single source of truth in the registry.
+    {
+      const dodResult = await runGuards('test', 'review', {
+        issueNumber: Number(issueNum),
+        repo: cfg.repo,
+        body: rawBody,
+        cfg,
+        fromState: 'test',
+        toState: 'review',
+      });
+      const dodRefusal = (dodResult.refusals || []).find((r) => r.id === 'test-exit-dod-verified');
+      if (dodRefusal) {
+        process.stderr.write('\n');
+        process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
+        process.stderr.write(
+          '   BLOCKED: missing `aitm-dod-verified` marker — run `/task test ' +
+            `${target}` +
+            '` first.\n\n'
+        );
+        process.exit(4);
+      }
+    }
+
     const lines = rawBody.split('\n');
 
     let inVerifSection = false;
@@ -213,21 +243,12 @@ export async function verbReview(ctx) {
     const regressions = [];
     const commandResults = new Map();
     const proseCheckboxes = [];
-    // #137 — sandboxed /task test stamps `aitm-dod-verified` after green
-    // verification. When present, /task review trusts that evidence and
-    // skips re-running commands. Without the marker, refuse — the test
-    // stage must run first.
-    const sandboxVerified = hasDodVerifiedMarker(rawBody);
-    if (!sandboxVerified) {
-      process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
-      process.stderr.write(
-        '   BLOCKED: missing `aitm-dod-verified` marker — run `/task test ' +
-          `${target}` +
-          '` first.\n\n'
-      );
-      process.exit(4);
-    }
+    // #267 — `aitm-dod-verified` presence is now enforced by the
+    // `test-exit-dod-verified` guard in `STATES.test.exitGuards`, evaluated
+    // by runGuards just before the runMoveState call below. The inline check
+    // that used to live here is retired in favor of the registry. The seed
+    // loop below trusts that we either passed the registry gate (will pass
+    // when reached) or will refuse before runMoveState.
     // #154 — SHA-drift gate. The `aitm-test-started` marker records outer HEAD
     // at the moment Test began; if HEAD has moved since, the sandbox proof is
     // stale and the issue must be re-tested. Tolerates marker absence on
@@ -471,34 +492,60 @@ export async function verbReview(ctx) {
     } catch {
       // best-effort — fall through to scan with the pre-derive body
     }
-    const { uncheckedPreCloseCheckboxes } = await import('../close-gate.mjs');
-    const stillUnticked = uncheckedPreCloseCheckboxes(scanBody);
-    if (stillUnticked.length > 0) {
-      const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
-      const _tsR0 = nowIso();
-      const _dR0 = deriveStateMoveDelta(rawBody, _tsR0);
-      await safePostTiming(
-        target,
-        br0({
-          ts: _tsR0,
-          event: 'gate-refused',
-          activeSec: _dR0.activeSec,
-          idleSec: _dR0.idleSec,
-          deltaWords: 0,
-          // wordMarker:0 audit row — completeness gate refusal, no live session
-          wordMarker: 0,
-          description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
-        })
+    // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
+    // call) now lives in `STATES.test.exitGuards` as the
+    // `test-exit-pre-close-completeness` guard. Evaluate the full test→review
+    // exit-guard set here against `scanBody` (which reflects the auto-tick +
+    // derived-DoD refresh above). Refusal surface preserved bit-for-bit:
+    // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
+    // one indented line per offending checkbox, retry hint, exit 4.
+    {
+      const guardResult = await runGuards('test', 'review', {
+        issueNumber: Number(issueNum),
+        repo: cfg.repo,
+        body: scanBody,
+        cfg,
+        fromState: 'test',
+        toState: 'review',
+      });
+      const completenessRefusal = (guardResult.refusals || []).find(
+        (r) => r.id === 'test-exit-pre-close-completeness'
       );
-      process.stderr.write('\n');
-      process.stderr.write(
-        `⛔ Refusing to move ${target} to Review — ${stillUnticked.length} incomplete checkbox(es):\n`
-      );
-      for (const line of stillUnticked) process.stderr.write(`   ${line}\n`);
-      process.stderr.write(
-        '\nTick every item above (the close gate enforces the same set), then retry `/task review`.\n\n'
-      );
-      process.exit(4);
+      if (completenessRefusal) {
+        const blockers = completenessRefusal.blockers || [];
+        // Recover the original checkbox-label lines from the blocker strings.
+        // Guard formats each blocker as: `test-to-review-incomplete: <line> (the close gate …)`.
+        const stillUnticked = blockers.map((b) =>
+          b
+            .replace(/^test-to-review-incomplete:\s*/, '')
+            .replace(/\s*\(the close gate enforces the same set\)\s*$/, '')
+        );
+        const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
+        const _tsR0 = nowIso();
+        const _dR0 = deriveStateMoveDelta(rawBody, _tsR0);
+        await safePostTiming(
+          target,
+          br0({
+            ts: _tsR0,
+            event: 'gate-refused',
+            activeSec: _dR0.activeSec,
+            idleSec: _dR0.idleSec,
+            deltaWords: 0,
+            // wordMarker:0 audit row — completeness gate refusal, no live session
+            wordMarker: 0,
+            description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
+          })
+        );
+        process.stderr.write('\n');
+        process.stderr.write(
+          `⛔ Refusing to move ${target} to Review — ${stillUnticked.length} incomplete checkbox(es):\n`
+        );
+        for (const line of stillUnticked) process.stderr.write(`   ${line}\n`);
+        process.stderr.write(
+          '\nTick every item above (the close gate enforces the same set), then retry `/task review`.\n\n'
+        );
+        process.exit(4);
+      }
     }
     await runMoveState(target, 'review', { silent: true });
     const reviewTs = nowIso();
