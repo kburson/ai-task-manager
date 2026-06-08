@@ -1,4 +1,4 @@
-// Develop-exit guard: CODE_COMPLETE gate (#336, #136).
+// Develop-exit guard: CODE_COMPLETE gate (#336, #136, #278).
 //
 // Wraps `gateCodeComplete` so the develop→test transition refuses when
 // functional ACs are unticked/unverified, `aitm-commits` is empty, or any
