@@ -532,6 +532,12 @@ describe('guard-parity: test→review via-registry (#267)', () => {
 
   it('accept fixture: dod-verified present + every checkbox ticked passes both paths', async () => {
     const body = [
+      // #355 — contiguity guard now fires on every forward transition.
+      '<!-- aitm-entered-backlog: 2026-05-18T00:00:00Z -->',
+      '<!-- aitm-entered-refine: 2026-05-18T00:01:00Z -->',
+      '<!-- aitm-entered-plan: 2026-05-18T00:02:00Z -->',
+      '<!-- aitm-entered-develop: 2026-05-18T00:03:00Z -->',
+      '<!-- aitm-entered-test: 2026-05-18T00:04:00Z -->',
       '<!-- aitm-dod-verified: abc1234:2026-05-18T00:05:00Z -->',
       '## Acceptance Criteria',
       '- [x] First AC',

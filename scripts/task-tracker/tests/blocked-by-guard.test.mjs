@@ -140,10 +140,18 @@ test('runGuards: invokes registered guard and surfaces refusal', async () => {
 
 test('runGuards: clean transition when all blockers done', async () => {
   bootstrapGuards();
+  // #355 — contiguity guard now fires on every forward transition; need
+  // prior-stage entry markers so develop→test passes contiguity check.
+  const ENTRY_MARKERS = [
+    '<!-- aitm-entered-backlog: 2026-06-07T05:00:00Z -->',
+    '<!-- aitm-entered-refine: 2026-06-07T05:30:00Z -->',
+    '<!-- aitm-entered-plan: 2026-06-07T05:45:00Z -->',
+    '<!-- aitm-entered-develop: 2026-06-07T06:00:00Z -->',
+  ].join('\n');
   const ctx = makeCtx({
-    body: 'x\n<!-- aitm-blocked-by: #5, #7 -->\n',
+    body: `${ENTRY_MARKERS}\nx\n<!-- aitm-blocked-by: #5, #7 -->\n`,
     stateMap: { 5: 'done', 7: 'done' },
   });
   const r = await runGuards('develop', 'test', ctx);
-  assert.equal(r.ok, true);
+  assert.equal(r.ok, true, JSON.stringify(r.refusals));
 });

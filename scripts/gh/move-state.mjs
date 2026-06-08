@@ -31,7 +31,6 @@ import {
   stampEntryMarker,
   getStageVisitCount,
   postReentryAuditComment,
-  evaluateContiguity,
   STAGES,
 } from '../task-tracker/lib/stage-entry-markers.mjs';
 import {
@@ -403,6 +402,27 @@ if (!SKIP_NETWORK && resolvedFromState) {
   });
 
   if (!guardResult.ok) {
+    // Contiguity refusal (story #355): preserve the legacy inline banner
+    // byte-for-byte — different recovery prose and exit code from the
+    // generic guard refusal. The guard itself lives at
+    // `scripts/task-tracker/lib/contiguity-entry-guard.mjs`.
+    const contigRefusal = guardResult.refusals.find((r) => r.id === 'contiguity-entry');
+    if (contigRefusal) {
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+      process.stderr.write(`   BLOCKED: ${contigRefusal.reason}\n`);
+      process.stderr.write(
+        '\nA forward move may not enter a new stage while an earlier stage in the chain is unrecorded.\n'
+      );
+      process.stderr.write('Recovery:\n');
+      process.stderr.write(
+        '   • Backfill the marker(s) if the stage(s) genuinely ran, then retry, or\n'
+      );
+      process.stderr.write(
+        `   • Run \`/task reconcile accept-live ${issueArg}\` if the board and body have drifted.\n\n`
+      );
+      process.exit(6);
+    }
     process.stderr.write('\n');
     process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
     for (const r of guardResult.refusals) {
@@ -516,51 +536,11 @@ if (stateArg === 'backlog' && !SKIP_NETWORK) {
   }
 }
 
-// Forward-transition contiguity guard (#252). On a forward move, every
-// canonical prior forward stage must already carry its `aitm-entered-*` marker
-// in the body. Catches a board that advanced while the marker chain has a hole
-// (clobbered/skipped marker — the #251 class) at the point of the skip, rather
-// than deferring the discovery to the close-time chain check. Forward-only:
-// backward/rework arcs and re-entry (toIdx <= fromIdx) resolve to 'skip' and
-// are never blocked; an empty `resolvedFromState` (offline) is skipped too.
-// Runs BEFORE __mutationBlock so refusal precedes any board write or marker
-// stamp (no partial transition). No env override exists.
-if (!SKIP_NETWORK && resolvedFromState && STAGES.includes(stateArg)) {
-  let contigBody = '';
-  let contigFetched = false;
-  try {
-    contigBody = (
-      await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
-    ).trim();
-    contigFetched = true;
-  } catch {
-    /* body fetch failed — skip (offline-tolerant, like the sibling gates) */
-  }
-  if (contigFetched) {
-    const verdict = evaluateContiguity({
-      fromState: resolvedFromState,
-      toState: stateArg,
-      body: contigBody,
-      force: false,
-    });
-    if (verdict.action === 'refuse') {
-      process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
-      process.stderr.write(`   BLOCKED: ${verdict.message}\n`);
-      process.stderr.write(
-        '\nA forward move may not enter a new stage while an earlier stage in the chain is unrecorded.\n'
-      );
-      process.stderr.write('Recovery:\n');
-      process.stderr.write(
-        '   • Backfill the marker(s) if the stage(s) genuinely ran, then retry, or\n'
-      );
-      process.stderr.write(
-        `   • Run \`/task reconcile accept-live ${issueArg}\` if the board and body have drifted.\n\n`
-      );
-      process.exit(6);
-    }
-  }
-}
+// Forward-transition contiguity guard migrated to the registry as
+// `contiguityEntryGuard` (story #355). Now registered as an `entryGuards`
+// entry on all 6 forward states; the host above special-cases its refusal
+// id to preserve the legacy banner + exit code 6. See
+// `scripts/task-tracker/lib/contiguity-entry-guard.mjs`.
 
 // --- mutation block (per-issue advisory lock — EPIC #207 / #214) ---
 // Wrap every write that touches the issue (board status field, body markers,

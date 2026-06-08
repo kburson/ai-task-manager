@@ -18,10 +18,11 @@ import { planApprovedGuard } from '../lib/plan-approved-guard.mjs';
 import { planEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
 import { planExitPlannedEstimateGuard } from '../lib/plan-exit-planned-estimate-guard.mjs';
 import { planExitDeepDiveGuard } from '../lib/plan-exit-deep-dive-guard.mjs';
+import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 
 export default Object.freeze({
   name: 'plan',
-  entryGuards: Object.freeze([]),
+  entryGuards: Object.freeze([contiguityEntryGuard]),
   exitGuards: Object.freeze([
     blockedByGuard,
     planApprovedGuard,

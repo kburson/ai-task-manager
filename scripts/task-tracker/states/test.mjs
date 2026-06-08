@@ -9,10 +9,11 @@
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { testExitDodVerifiedGuard } from '../lib/test-exit-dod-verified-guard.mjs';
 import { testExitPreCloseCompletenessGuard } from '../lib/test-exit-pre-close-completeness-guard.mjs';
+import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 
 export default Object.freeze({
   name: 'test',
-  entryGuards: Object.freeze([]),
+  entryGuards: Object.freeze([contiguityEntryGuard]),
   exitGuards: Object.freeze([
     blockedByGuard,
     testExitDodVerifiedGuard,

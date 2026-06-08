@@ -84,6 +84,12 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
 const APPROVED_BODY = [
   '## Scope',
   '',
+  // #355 — contiguity guard now fires on every forward transition; the
+  // plan→develop accept fixture needs prior-stage entry markers so the
+  // registry-wired contiguityEntryGuard returns ok.
+  '<!-- aitm-entered-backlog: 2026-06-07T05:00:00Z -->',
+  '<!-- aitm-entered-refine: 2026-06-07T05:30:00Z -->',
+  '<!-- aitm-entered-plan: 2026-06-07T05:45:00Z -->',
   '<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->',
   '<!-- aitm-deep-dive-posted: 2026-06-07T06:00:00Z -->',
   '<!-- aitm-deep-dive-complete: 2026-06-07T06:00:00Z -->',

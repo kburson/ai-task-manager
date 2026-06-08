@@ -7,10 +7,11 @@
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { refineEntryFieldsPriority } from '../lib/guard-adapters-entry-fields.mjs';
 import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-parent-state-guard.mjs';
+import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 
 export default Object.freeze({
   name: 'backlog',
-  entryGuards: Object.freeze([]),
+  entryGuards: Object.freeze([contiguityEntryGuard]),
   exitGuards: Object.freeze([
     blockedByGuard,
     refineEntryFieldsPriority,
