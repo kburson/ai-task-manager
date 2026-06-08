@@ -83,11 +83,30 @@ export class DeepDiveAlreadyInlineError extends Error {
   }
 }
 
+// #301 — banned gate-bearing sub-section headings inside the deep-dive
+// appendix. Mirrors `findDeepDiveEmbeddedCheckboxHeading` in `gh-edit-guard`
+// but runs before any write so the operator gets the failure at the call
+// site (TypeError with the heading name) rather than at the body chokepoint.
+const APPENDIX_BANNED_HEADING_RE =
+  /^#{2,4}\s+(Acceptance Criteria|Verification Commands|Definition of Done)\s*$/im;
+const APPENDIX_FENCED_CODE_RE = /(^|\n)(?:```|~~~)[\s\S]*?(?:```|~~~)(?=\n|$)/g;
+
+export function assertDeepDiveAppendixClean(appendix) {
+  const stripped = String(appendix || '').replace(APPENDIX_FENCED_CODE_RE, '');
+  const m = APPENDIX_BANNED_HEADING_RE.exec(stripped);
+  if (m) {
+    throw new TypeError(
+      `deep-dive appendix may not contain "${m[1]}" — add the items to the root-level section instead`
+    );
+  }
+}
+
 export function buildDeepDiveBlock({ ts, appendix, date } = {}) {
   if (!ts) throw new Error('buildDeepDiveBlock: ts is required');
   if (!appendix || typeof appendix !== 'string') {
     throw new TypeError('buildDeepDiveBlock: appendix must be a non-empty string');
   }
+  assertDeepDiveAppendixClean(appendix);
   const isoDate = date || String(ts).slice(0, 10);
   const marker = `<!-- aitm-deep-dive-posted: ${ts} -->`;
   const heading = `## Deep-Dive Analysis (${isoDate})`;

@@ -77,6 +77,50 @@ Commands`.
   Blocks: #P (reason), #Q (reason)        ← or "none"
   ```
 
+## Appendix root-only rule (#301)
+
+**The Deep-Dive Analysis appendix is narrative-only.** It MUST NOT contain
+`Acceptance Criteria`, `Verification Commands`, or `Definition of Done`
+sub-section headings at any level (H2/H3/H4). These three section names
+each bear a gate; the gate reads ONLY the root-level section. Mirroring
+them inside the `<details>` appendix has caused two real bugs:
+
+1. A partially-complete story can look ready in the collapsed appendix
+   (boxes ticked) while the gate is still refusing (root boxes unticked).
+2. `String.replace` body-mutations against an exact-match pattern silently
+   target the wrong section when the heading appears twice (the #294 bug).
+
+Enforcement:
+
+- `scripts/task-tracker/lib/gh-edit-guard.mjs` refuses any `gh issue
+edit`/`gh issue create` whose body embeds a banned heading inside a
+  `<details>...</details>` block. Refusal code:
+  `deep-dive-embedded-checkbox-section`.
+- `assertDeepDiveAppendixClean` (called by `buildDeepDiveBlock`) throws
+  `TypeError` if the appendix contains a banned heading. The failure
+  surfaces at the call site, before any write.
+
+### Worked example — root-only
+
+During deep dive, you discover a new AC: "Refusal message must name the
+offending heading + line number." Do NOT add it to the appendix. Instead:
+
+1. Append the AC to the root-level `## Acceptance Criteria` section with
+   an `aitm-verified-by` marker bound to a test file:
+
+   ```
+   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified-by: `node --test scripts/task-tracker/tests/gh-edit-guard.test.mjs` -->
+   ```
+
+2. In the appendix prose, reference the root entry without a checkbox:
+
+   > Verification: see `### Acceptance Criteria` above ("Refusal names
+   > heading + line") and the corresponding `### Verification Commands`
+   > entry.
+
+This keeps the gate's view authoritative and prevents wrong-target
+mutations.
+
 ## Step 5 — Epic sequencing & fan-out
 
 Skip this step for plain sub-issues. Only run it when picking up an issue

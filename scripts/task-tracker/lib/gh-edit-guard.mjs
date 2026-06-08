@@ -47,6 +47,54 @@ const MARKER_PATTERNS = [
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
 const DEEP_DIVE_MARKER_RE = /<!--\s*aitm-deep-dive-complete:/i;
 
+// #301 — banned sub-section headings inside Deep-Dive `<details>` blocks.
+// These three headings each bear a gate; mirroring them inside the appendix
+// lets the author tick boxes the gate cannot see, and creates a wrong-target
+// hazard for `String.replace` body mutations (the #294 bug).
+const DETAILS_BLOCK_RE = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
+const FENCED_CODE_RE = /(^|\n)(?:```|~~~)[\s\S]*?(?:```|~~~)(?=\n|$)/g;
+const BANNED_HEADING_RE =
+  /^#{2,4}\s+(Acceptance Criteria|Verification Commands|Definition of Done)\s*$/im;
+
+// Locate a banned heading inside any `<details>...</details>` block of `body`.
+// Strips fenced code blocks inside the details content before scanning so a
+// heading-shaped string inside a code fence is not flagged. Returns
+// `{ heading, line }` (1-indexed line in the FULL body) of the first hit,
+// or `null` if none.
+export function findDeepDiveEmbeddedCheckboxHeading(body) {
+  const src = String(body || '');
+  DETAILS_BLOCK_RE.lastIndex = 0;
+  let m;
+  while ((m = DETAILS_BLOCK_RE.exec(src)) !== null) {
+    const inner = m[1] || '';
+    const blockStart = m.index + m[0].indexOf(inner);
+    // Mask fenced-code-block ranges with spaces (preserve offsets so the
+    // line number we report still aligns with the original body).
+    const masked = inner.replace(FENCED_CODE_RE, (s) => s.replace(/[^\n]/g, ' '));
+    const lines = masked.split('\n');
+    let offset = blockStart;
+    for (let i = 0; i < lines.length; i++) {
+      const lineMatch = BANNED_HEADING_RE.exec(lines[i]);
+      if (lineMatch) {
+        const headingText = lineMatch[1];
+        // Line number in the full body: count newlines from start up to offset.
+        const lineNumber = src.slice(0, offset).split('\n').length;
+        return { heading: headingText, line: lineNumber };
+      }
+      offset += lines[i].length + 1; // +1 for newline
+    }
+  }
+  return null;
+}
+
+function deepDiveEmbeddedCheckboxRefusal({ issueNumber, hit, action }) {
+  const where = issueNumber ? ` on #${issueNumber}` : '';
+  return (
+    `${action}${where} introduces a banned "${hit.heading}" heading at line ${hit.line} inside a \`<details>\` block (deep-dive-embedded-checkbox-section).\n` +
+    `  Deep-Dive Analysis appendices may contain only narrative material. Acceptance Criteria, Verification Commands, and Definition of Done belong in their root-level sections (the gates only see the root). Move the items to the root section and reference them in appendix prose.`
+  );
+}
+
 // State-marker drop/staleness protection (#258). The state mutators write
 // `aitm-last-known-state`, `aitm-last-known-state-ts`, and one
 // `aitm-entered-<stage>` per stage visited, atomically into the LIVE body. A
@@ -109,6 +157,13 @@ export function checkNewBody({ newBody }) {
       reason:
         `gh issue create includes a "## Deep-Dive Analysis" section without the <!-- aitm-deep-dive-complete: ts --> marker.\n` +
         `  Include the marker (presence-only, carries a timestamp) so re-open does not regenerate the deep dive.`,
+    };
+  }
+  const embedded = findDeepDiveEmbeddedCheckboxHeading(src);
+  if (embedded) {
+    return {
+      block: true,
+      reason: deepDiveEmbeddedCheckboxRefusal({ hit: embedded, action: 'gh issue create' }),
     };
   }
   return { block: false };
@@ -200,6 +255,32 @@ export function checkBodyChange({ newBody, currentBody, issueNumber, currentStat
           `gh issue edit on #${issueNumber} is based on a stale snapshot: the body's aitm-last-known-state-ts (${srcTs}) is older than the live body's (${curTs}).\n` +
           `  A state mutator advanced the live body after this scratch was frozen. Re-fetch the current body, re-apply your edit, and re-write — do not re-push the stale scratch (this is the #257 clobber).`,
       };
+    }
+  }
+
+  // #301 — refuse bodies whose Deep-Dive `<details>` appendix embeds a
+  // gate-bearing sub-section heading (Acceptance Criteria / Verification
+  // Commands / Definition of Done). Only flag NEW embeddings — grandfather
+  // any heading already present in the live body so legacy issues remain
+  // editable. The operator strips the embedded section and reattempts.
+  {
+    const embeddedNew = findDeepDiveEmbeddedCheckboxHeading(src);
+    if (embeddedNew) {
+      const embeddedCur = findDeepDiveEmbeddedCheckboxHeading(cur);
+      const introduced =
+        !embeddedCur ||
+        embeddedCur.heading !== embeddedNew.heading ||
+        embeddedCur.line !== embeddedNew.line;
+      if (introduced) {
+        return {
+          block: true,
+          reason: deepDiveEmbeddedCheckboxRefusal({
+            issueNumber,
+            hit: embeddedNew,
+            action: 'gh issue edit',
+          }),
+        };
+      }
     }
   }
 

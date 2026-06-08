@@ -11,6 +11,7 @@ import {
   checkNewBody,
   evaluateGhEdit,
   evaluateGhCreate,
+  findDeepDiveEmbeddedCheckboxHeading,
 } from '../lib/gh-edit-guard.mjs';
 
 // ── parseGhIssueEdit ─────────────────────────────────────────────────────────
@@ -587,6 +588,64 @@ import {
   });
   assert.equal(r.block, true);
   assert.match(r.reason, /aitm-deep-dive-complete/);
+}
+
+// ── #301 deep-dive-embedded-checkbox-section refusal ────────────────────────
+{
+  // Detector: banned heading inside `<details>` → hit with heading + line.
+  const body =
+    '## Deep-Dive Analysis (2026-06-08)\n\n<details>\n<summary>x</summary>\n\nprose\n\n### Acceptance Criteria\n\n- [x] foo\n\n</details>\n';
+  const hit = findDeepDiveEmbeddedCheckboxHeading(body);
+  assert.ok(hit, 'detector should fire on banned heading inside <details>');
+  assert.equal(hit.heading, 'Acceptance Criteria');
+  assert.equal(hit.line, 8);
+
+  // All three banned headings detected.
+  for (const name of ['Acceptance Criteria', 'Verification Commands', 'Definition of Done']) {
+    const b = `<details>\n## ${name}\n- [ ] x\n</details>\n`;
+    const h = findDeepDiveEmbeddedCheckboxHeading(b);
+    assert.ok(h, `should detect ${name}`);
+    assert.equal(h.heading, name);
+  }
+
+  // False positive: same heading at root level (NOT inside <details>) → allow.
+  assert.equal(findDeepDiveEmbeddedCheckboxHeading('## Acceptance Criteria\n\n- [ ] foo\n'), null);
+
+  // False positive: heading text inside a fenced code block inside <details> → allow.
+  const fencedBody =
+    '<details>\n\n```md\n### Acceptance Criteria\n- [ ] in code\n```\n\n</details>\n';
+  assert.equal(findDeepDiveEmbeddedCheckboxHeading(fencedBody), null);
+
+  // False positive: empty <details> → allow.
+  assert.equal(findDeepDiveEmbeddedCheckboxHeading('<details>\n</details>\n'), null);
+
+  // checkNewBody (create path): refuses with refusal-code name.
+  const cn = checkNewBody({
+    newBody:
+      '## Deep-Dive Analysis (2026-06-08)\n<!-- aitm-deep-dive-complete: 2026-06-08T00:00:00Z -->\n<details>\n### Verification Commands\n- [ ] x\n</details>\n',
+  });
+  assert.equal(cn.block, true);
+  assert.match(cn.reason, /deep-dive-embedded-checkbox-section/);
+  assert.match(cn.reason, /Verification Commands/);
+
+  // checkBodyChange (edit path): refuses on NEW embedding, names #N + line.
+  const cur = '## Scope\n\nplain body\n';
+  const r = checkBodyChange({
+    newBody: cur + '\n<details>\n### Definition of Done\n- [ ] x\n</details>\n',
+    currentBody: cur,
+    issueNumber: 301,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /deep-dive-embedded-checkbox-section/);
+  assert.match(r.reason, /Definition of Done/);
+  assert.match(r.reason, /#301/);
+  assert.match(r.reason, /line \d+/);
+
+  // Grandfather: same banned heading already in live body → allow (don't
+  // wedge legacy issues; operator strips on next intentional edit).
+  const grand = cur + '\n<details>\n### Acceptance Criteria\n- [ ] legacy\n</details>\n';
+  const r2 = checkBodyChange({ newBody: grand, currentBody: grand, issueNumber: 301 });
+  assert.equal(r2.block, false);
 }
 
 console.log('gh-edit-guard.test.mjs: all passed');
