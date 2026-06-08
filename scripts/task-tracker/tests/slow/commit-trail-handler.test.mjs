@@ -145,6 +145,9 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
 function makeShim(sandbox, { gitOutputs = {}, ghBehavior = 'success' } = {}) {
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir, { recursive: true });
+  // Opt this bin/ directory into ESM so shim bodies can use `import` (project
+  // convention — see docs/guides/test-authoring.md).
+  writeFileSync(path.join(binDir, 'package.json'), JSON.stringify({ type: 'module' }));
   const logPath = path.join(sandbox, 'shim.log');
   writeFileSync(logPath, '');
 
@@ -152,7 +155,7 @@ function makeShim(sandbox, { gitOutputs = {}, ghBehavior = 'success' } = {}) {
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
-const fs = require('node:fs');
+import fs from 'node:fs';
 const args = process.argv.slice(2).join(' ');
 fs.appendFileSync(${JSON.stringify(logPath)}, 'git ' + args + '\\n');
 const outputs = ${JSON.stringify(gitOutputs)};
@@ -171,7 +174,7 @@ process.exit(0);
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
-const fs = require('node:fs');
+import fs from 'node:fs';
 const args = process.argv.slice(2);
 fs.appendFileSync(${JSON.stringify(logPath)}, 'gh ' + args.join(' ') + '\\n');
 const behavior = ${JSON.stringify(ghBehavior)};

@@ -60,9 +60,19 @@ process.exit(0);
 `;
 ```
 
-For CJS shims (sandbox `package.json` has no `type: module`), use
-`const fs = require('node:fs')` at the top and the same `fs.writeSync(1, ...)`
-call form.
+All shim bodies use ESM `import` (project convention: `type: module`). If
+the shim lives under a sandbox whose root `package.json` has no `type` key
+(e.g. `mkdtempProjectIsolated`), drop a `package.json` containing
+`{"type":"module"}` next to the shim binary so node loads it as ESM:
+
+```js
+const binDir = path.join(sandbox, 'bin');
+mkdirSync(binDir, { recursive: true });
+writeFileSync(path.join(binDir, 'package.json'), JSON.stringify({ type: 'module' }));
+```
+
+Do not author `require`-based shims. The project is `type: module`; CJS
+inside a sandbox is a leak.
 
 ### Shim API coverage
 
