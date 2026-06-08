@@ -18,7 +18,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 import { loadState, saveState } from '../state.mjs';
@@ -74,11 +74,24 @@ async function defaultCreateWorktree({ projectDir, path: wtPath }) {
 }
 
 async function defaultRemoveWorktree({ projectDir, path: wtPath }) {
+  // #346 — two-stage cleanup. `git worktree remove --force` unregisters the
+  // worktree from the parent repo's metadata, but git refuses to descend
+  // through nested .git/ repositories on disk (the slow-suite fixtures with
+  // their own .git/ hit this). Without the rmSync fallback, the next
+  // `git worktree add` aborts on "<wtPath>' already exists" and `runSetupWithRetry`
+  // burns all 3 attempts on the same wall. Git first (clean registration),
+  // then rm -rf (guarantee disk state matches metadata). Both swallowed per
+  // the best-effort contract — neither should bubble to callers.
   try {
     await pexec('git', ['worktree', 'remove', '--force', wtPath], {
       cwd: projectDir,
       timeout: 30_000,
     });
+  } catch {
+    // best-effort
+  }
+  try {
+    rmSync(wtPath, { recursive: true, force: true });
   } catch {
     // best-effort
   }
@@ -504,6 +517,11 @@ export async function runVerbTest({
   if (moveState) await moveState({ issueNumber: issueNum, target: 'develop' });
   return { status: 'failed', sha, results, wtPath };
 }
+
+// #346 — re-exported so the slow regression test (and any future callers that
+// need to exercise the two-stage cleanup) can import it directly without
+// reaching through `runVerbTest` deps injection.
+export { defaultRemoveWorktree, defaultCreateWorktree };
 
 export async function verbTest(ctx) {
   const { cfg, projectDir, rest, SKIP_NETWORK, statePath, runMoveState, runLogIssueTime } = ctx;
