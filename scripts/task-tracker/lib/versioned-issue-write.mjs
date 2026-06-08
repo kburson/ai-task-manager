@@ -49,6 +49,30 @@ function checkStaleInput({ ourLocal, remoteVersion, issueNumber }) {
   }
 }
 
+// Mutate-return type guard (#347).
+//
+// Two issue bodies have been silently destroyed by `mutate(base)` returning a
+// non-string value: the runtime coerces the return via `String(obj) →
+// "[object Object]"` on the way to `gh issue edit --body-file -`, wiping the
+// entire body. The most common shape: `mutate: (b) => buildEvidenceBackfill(b,
+// {})` — that helper returns `{body, ...}`, not a bare string.
+//
+// Detect mechanically here, BEFORE the destructive push runs, so the
+// corruption surfaces as a thrown TypeError at the call site instead of a
+// silent body wipe.
+function assertMutateReturnedString({ ourLocal, issueNumber }) {
+  if (typeof ourLocal === 'string') return;
+  const actual = ourLocal === null ? 'null' : Array.isArray(ourLocal) ? 'array' : typeof ourLocal;
+  throw new TypeError(
+    `versionedWriteBody: refusing to write — mutate() for issue #${issueNumber} returned ` +
+      `${actual}, expected string. This is the body-corruption shape that produces ` +
+      `"[object Object]" issue bodies. Common cause: a helper whose return type is not a ` +
+      `bare string (e.g. \`buildEvidenceBackfill\` returns \`{body, ...}\`) was used as the ` +
+      `mutate() result directly. Unwrap to the string field before returning, or change the ` +
+      `helper to return a bare string.`
+  );
+}
+
 export const DEFAULT_MAX_RETRIES = 3;
 
 function stripVersion(body) {
@@ -195,6 +219,7 @@ export async function versionedWriteBody({
       // First attempt — caller's mutate sees the fresh remote base.
       ourBase = remoteBase;
       ourLocal = await mutate(ourBase);
+      assertMutateReturnedString({ ourLocal, issueNumber });
       checkStaleInput({ ourLocal, remoteVersion, issueNumber });
     } else {
       // Retry — rebase our last edit onto the new remote.

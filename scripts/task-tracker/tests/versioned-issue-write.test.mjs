@@ -283,3 +283,134 @@ test('stale-input gate: mutate with no version marker passes (normal path)', asy
   assert.equal(r.status, 'ok');
   assert.equal(r.version, 6);
 });
+
+// ── #347: mutate-return type guard ───────────────────────────────────────────
+//
+// The corruption shape we are catching: a `mutate` that returns a non-string
+// value (object, array, null, undefined, number). Without the guard, the
+// runtime would coerce via `String(obj) → "[object Object]"` and ship that as
+// the new body. With the guard, we throw a TypeError BEFORE pushBody runs.
+
+function makeGuardServer() {
+  const srv = makeServer(stampBodyVersion('original body', 1));
+  let pushCount = 0;
+  const wrappedPush = async (repo, issue, body) => {
+    pushCount++;
+    return srv.pushBody(repo, issue, body);
+  };
+  return {
+    fetchBody: srv.fetchBody,
+    pushBody: wrappedPush,
+    get pushCount() {
+      return pushCount;
+    },
+    get current() {
+      return srv.current;
+    },
+  };
+}
+
+test('#347 guard: mutate returning object throws TypeError, never pushes', async () => {
+  const srv = makeGuardServer();
+  await assert.rejects(
+    versionedWriteBody({
+      issueNumber: 347,
+      repo: 'o/r',
+      mutate: () => ({ body: 'oops' }), // buildEvidenceBackfill-shaped return
+      deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+    }),
+    (err) => {
+      assert.equal(err.name, 'TypeError');
+      assert.match(err.message, /returned object/);
+      assert.match(err.message, /\[object Object\]/);
+      return true;
+    }
+  );
+  assert.equal(srv.pushCount, 0, 'pushBody must not be called when guard throws');
+  assert.equal(srv.current, stampBodyVersion('original body', 1), 'remote body untouched');
+});
+
+test('#347 guard: mutate returning null throws TypeError', async () => {
+  const srv = makeGuardServer();
+  await assert.rejects(
+    versionedWriteBody({
+      issueNumber: 347,
+      repo: 'o/r',
+      mutate: () => null,
+      deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+    }),
+    (err) => {
+      assert.equal(err.name, 'TypeError');
+      assert.match(err.message, /returned null/);
+      return true;
+    }
+  );
+  assert.equal(srv.pushCount, 0);
+});
+
+test('#347 guard: mutate returning array throws TypeError', async () => {
+  const srv = makeGuardServer();
+  await assert.rejects(
+    versionedWriteBody({
+      issueNumber: 347,
+      repo: 'o/r',
+      mutate: () => ['a', 'b'],
+      deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+    }),
+    (err) => {
+      assert.equal(err.name, 'TypeError');
+      assert.match(err.message, /returned array/);
+      return true;
+    }
+  );
+  assert.equal(srv.pushCount, 0);
+});
+
+test('#347 guard: mutate returning undefined throws TypeError', async () => {
+  const srv = makeGuardServer();
+  await assert.rejects(
+    versionedWriteBody({
+      issueNumber: 347,
+      repo: 'o/r',
+      mutate: () => undefined,
+      deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+    }),
+    (err) => {
+      assert.equal(err.name, 'TypeError');
+      assert.match(err.message, /returned undefined/);
+      return true;
+    }
+  );
+  assert.equal(srv.pushCount, 0);
+});
+
+test('#347 guard: mutate returning number throws TypeError', async () => {
+  const srv = makeGuardServer();
+  await assert.rejects(
+    versionedWriteBody({
+      issueNumber: 347,
+      repo: 'o/r',
+      mutate: () => 42,
+      deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+    }),
+    (err) => {
+      assert.equal(err.name, 'TypeError');
+      assert.match(err.message, /returned number/);
+      return true;
+    }
+  );
+  assert.equal(srv.pushCount, 0);
+});
+
+test('#347 guard: string return passes through unchanged (happy path)', async () => {
+  const srv = makeGuardServer();
+  const r = await versionedWriteBody({
+    issueNumber: 347,
+    repo: 'o/r',
+    mutate: (base) => `${base} + added`,
+    deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
+  });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.version, 2);
+  assert.equal(srv.pushCount, 1);
+});
