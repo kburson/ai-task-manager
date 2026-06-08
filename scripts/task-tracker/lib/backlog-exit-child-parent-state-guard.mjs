@@ -6,9 +6,16 @@
 // live board Status is anything other than `refine` or `plan`.
 //
 // Wave-model invariant: children should join the active planning wave while the
-// parent is itself being planned. Letting a child enter refine while the parent
-// is still in backlog (or has already moved past plan to develop/test/review/
-// done) breaks that wave alignment.
+// parent is itself being planned, OR while the parent is actively developing
+// (mid-develop discovery work — new ACs, defects, sub-tasks spawned during the
+// epic's develop stage are legitimate refinement work). The parent cannot leave
+// `develop` until all children — including discovered ones — reach `done`, so
+// allowing `develop` as an accepted parent state cannot let the parent escape
+// its children (that invariant is enforced by the parent-side guard from #337).
+//
+// Letting a child enter refine while the parent is in backlog (still un-planned)
+// or has already moved into test/review/done (post-develop) breaks the
+// wave alignment.
 //
 // Context contract:
 //   { cfg: Config, issueNumber: number,
@@ -26,14 +33,14 @@
 //   - readParentStatus returns null (parent not on the configured board, or a
 //     transient GraphQL failure inside the reader)
 //
-// Refuses when the parent state is one of {backlog, develop, test, review, done}.
+// Refuses when the parent state is one of {backlog, test, review, done}.
 
 import { fetchParentIssue as defaultFetchParentIssue } from './fetch-parent-issue.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 
 export const GUARD_ID = 'backlog-exit-child-parent-refine-or-plan';
 
-const ALLOWED_PARENT_STATES = new Set(['refine', 'plan']);
+const ALLOWED_PARENT_STATES = new Set(['refine', 'plan', 'develop']);
 
 export const backlogExitChildParentStateGuard = {
   id: GUARD_ID,
@@ -68,7 +75,7 @@ export const backlogExitChildParentStateGuard = {
     const slug = String(parentState).toLowerCase();
     if (ALLOWED_PARENT_STATES.has(slug)) return { ok: true };
 
-    const reason = `parent #${parentNumber} is in ${slug}; child cannot enter refine until parent reaches refine or plan`;
+    const reason = `parent #${parentNumber} is in ${slug}; child cannot enter refine until parent is in refine, plan, or develop`;
     return { ok: false, reason, blockers: [reason] };
   },
 };

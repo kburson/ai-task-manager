@@ -111,7 +111,18 @@ test('passes when parent state is "plan"', async () => {
   assert.deepEqual(result, { ok: true });
 });
 
-for (const parentState of ['backlog', 'develop', 'test', 'review', 'done']) {
+test('passes when parent state is "develop" (mid-develop discovery work)', async () => {
+  const result = await backlogExitChildParentStateGuard.run({
+    cfg,
+    issueNumber: 31,
+    fromState: 'backlog',
+    toState: 'refine',
+    deps: makeDeps({ parent: 100, parentState: 'develop' }),
+  });
+  assert.deepEqual(result, { ok: true });
+});
+
+for (const parentState of ['backlog', 'test', 'review', 'done']) {
   test(`refuses when parent state is "${parentState}"`, async () => {
     const result = await backlogExitChildParentStateGuard.run({
       cfg,
@@ -124,7 +135,7 @@ for (const parentState of ['backlog', 'develop', 'test', 'review', 'done']) {
     assert.match(
       result.reason,
       new RegExp(
-        `parent #100 is in ${parentState}; child cannot enter refine until parent reaches refine or plan`
+        `parent #100 is in ${parentState}; child cannot enter refine until parent is in refine, plan, or develop`
       )
     );
     assert.deepEqual(result.blockers, [result.reason]);
