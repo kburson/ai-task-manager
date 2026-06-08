@@ -32,18 +32,9 @@ import {
   readTimingCommentBody,
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import {
-  planRefinementEstimate,
-  applyRefinementEstimate,
-  planPriorityGate,
-} from '../lib/apply-refinement-estimate.mjs';
-import { planPlannedEstimateGate } from '../lib/refine-estimate-comment.mjs';
-import { planRefineWipGate, planEpicDevelopChildrenGate } from '../lib/epic-children-gate.mjs';
-import { planDeepDiveGate } from '../lib/deep-dive-gate.mjs';
-import { gateRefineToPlan } from '../lib/refine-to-plan-gate.mjs';
+import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
 import { checkParentAdmission } from '../lib/body-gates.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
-import { gateCodeComplete, gateCommitTrailContainsHead } from '../lib/code-complete-gate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -52,9 +43,54 @@ import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { hasDodVerifiedMarker } from '../lib/markers.mjs';
 import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
+import { fetchParentIssue as defaultFetchParentIssue } from '../lib/fetch-parent-issue.mjs';
+import { runGuards } from '../lib/guard-registry.mjs';
+import '../lib/guard-bootstrap.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
+
+// #336 — refusal-id → verb-status translation. promote.mjs delegates pre-
+// transition rule enforcement to `runGuards(from, to, ctx)`; refusals from
+// the registry are translated to the verb's structured `{ status, blockers,
+// message }` vocabulary that `verbs/check`, `auto`, and the slow tests pin.
+// Unknown refusal ids default to `guard-refused`.
+const REFUSAL_ID_TO_STATUS = {
+  'refine-entry-fields-priority': 'refine-gate-refused',
+  'plan-entry-fields-body': 'refine-gate-refused',
+  'plan-entry-fields-board': 'refine-exit-refused',
+  'refine-exit-wip-budget': 'wip-budget-refused',
+  'plan-exit-planned-estimate': 'planned-estimate-refused',
+  'plan-exit-deep-dive': 'deep-dive-refused',
+  'plan-exit-epic-children-refine-or-beyond': 'epic-children-refused',
+  // `plan-exit-plan-approved` intentionally omitted: historical verb didn't
+  // enforce this marker; the central `move-state.mjs` subprocess does. Adding
+  // it here would surface refusals at the verb that legacy tests don't expect.
+  'develop-exit-code-complete': 'code-complete-refused',
+  'develop-exit-commit-trail-head': 'commit-trail-stale',
+  'blocked-by-not-done': 'blocked-refused',
+};
+
+function refusalsToVerbResult(refusals, { issueNumber, target }) {
+  if (!refusals || refusals.length === 0) return null;
+  // Pick the primary refusal as the FIRST refusal whose id has a known
+  // status mapping. Falls back to the literal first refusal.
+  const primary = refusals.find((r) => REFUSAL_ID_TO_STATUS[r.id]) || refusals[0];
+  const status = REFUSAL_ID_TO_STATUS[primary.id] || 'guard-refused';
+  const blockers = [];
+  for (const r of refusals) {
+    if (Array.isArray(r.blockers) && r.blockers.length > 0) {
+      blockers.push(...r.blockers);
+    } else if (r.reason) {
+      blockers.push(r.reason);
+    }
+  }
+  return {
+    status,
+    blockers,
+    message: `Refusing to promote #${issueNumber} to ${target}: ${primary.reason}`,
+  };
+}
 
 // Map source state → stage alias verb. Promote delegates to the alias so its
 // gate stack runs unchanged. States with no alias (`backlog`, `refine`, `plan`,
@@ -150,23 +186,8 @@ async function defaultPostTimingRow({ issueNumber, repo, row }) {
   await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
 }
 
-async function defaultFetchParentIssue({ issueNumber, repo }) {
-  const { owner, repoName } = splitRepo(repo);
-  try {
-    const data = await gql(
-      `
-      query($owner: String!, $repo: String!, $issue: Int!) {
-        repository(owner: $owner, name: $repo) {
-          issue(number: $issue) { parent { number } }
-        }
-      }`,
-      { owner, repo: repoName, issue: Number(issueNumber) }
-    );
-    return data?.repository?.issue?.parent?.number ?? null;
-  } catch {
-    return null;
-  }
-}
+// `defaultFetchParentIssue` is imported from `../lib/fetch-parent-issue.mjs`
+// (top of file). Extracted so guard adapters share the same default deps.
 
 // ---------------------------------------------------------------------------
 // Pure core.
@@ -242,30 +263,13 @@ export async function runPromote({
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
   }
 
-  // Backlog → Refine pre-flight (#133): require only Priority on the board.
-  // Sizing / Estimate / rationale move to the Refine → Plan gate below.
-  let refinementPlan = null;
-  if (target === 'refine') {
-    const gateResult = await planPriorityGate({
-      cfg,
-      issueNumber,
-      deps: deps.refinementEstimate || deps.groomEstimate,
-    });
-    if (!gateResult.ok) {
-      return {
-        status: 'refine-gate-refused',
-        blockers: gateResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Refine: Priority is not set on the project board.`,
-      };
-    }
-  }
-
   // Refine → Plan pre-flight (#282): the `aitm-refine-complete` stage-
   // completion marker must be present. `/task refine` stamps it after fields
   // and rationale are written. Absent marker = user has not signalled that
   // refinement work is done; refuse with a message that names the producing
   // verb. This is the explicit user-signal that replaces the prior implicit
-  // forward-promote out of the refine verb.
+  // forward-promote out of the refine verb. Kept inline because no guard in
+  // the registry checks this stage-completion marker (#336 scope).
   if (target === 'plan') {
     if (!/<!--\s*aitm-refine-complete:[^>]*-->/i.test(body)) {
       return {
@@ -276,140 +280,33 @@ export async function runPromote({
     }
   }
 
-  // Refine → Plan pre-flight (#133): Size + Estimate set, rationale marker
-  // authored, `## Acceptance Criteria` section non-empty. Post-success hook
-  // posts the `### 🛠 Refine estimate` comment.
-  if (target === 'plan') {
-    const planResult = await planRefinementEstimate({
-      cfg,
-      issueNumber,
-      body,
-      deps: deps.refinementEstimate || deps.groomEstimate,
-    });
-    if (!planResult.ok) {
-      return {
-        status: 'refine-gate-refused',
-        blockers: planResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Plan: missing Refine exit signals.`,
-      };
-    }
-    refinementPlan = planResult.plan;
-
-    // #147 — Refine → Plan exit gate: Sequence + Labels + Start time on board,
-    // and (if epic) every child has cleared Backlog.
-    const exitGate = deps.refineToPlanGate || gateRefineToPlan;
-    const exitResult = await exitGate({
-      cfg,
-      issueNumber,
-      deps: deps.refineToPlanGateDeps,
-    });
-    if (!exitResult.ok) {
-      return {
-        status: 'refine-exit-refused',
-        blockers: exitResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Plan: Refine exit gate failed.`,
-      };
-    }
-
-    // #247 — Refine → Plan WIP budget: at most one child may advance out of
-    // Refine per epic (parked-on-dependency children excepted, and a blocker may
-    // run ahead of the sibling it unblocks). Solo issues bypass; fetch failure
-    // fails open. No env override exists. Config override:
-    // `gatePlanRefineWip: false` in task-tracker.json disables the gate for the
-    // whole project (use for sanctioned parallel-agent batches; restore to true
-    // when batch closes).
-    if (cfg?.gatePlanRefineWip !== false) {
-      const wipResult = await planRefineWipGate({
-        cfg,
-        issueNumber,
-        deps: {
-          fetchParentIssue: deps.fetchParentIssue || defaultFetchParentIssue,
-          ...(deps.epicChildren || {}),
-        },
-      });
-      if (!wipResult.ok) {
-        return {
-          status: 'wip-budget-refused',
-          blockers: wipResult.blockers,
-          message: `Refusing to promote #${issueNumber} to Plan: epic WIP budget exceeded.`,
-        };
-      }
-    }
-  }
-
-  // Plan → Develop pre-flight (#134): the `### 🛠 Refine estimate` comment
-  // must carry a `### Planned Estimate` appendix recording any drift from the
-  // initial Refine bucket. Authored during Plan via `appendPlannedEstimate`.
-  if (target === 'develop') {
-    const gateResult = await planPlannedEstimateGate({
-      cfg,
-      issueNumber,
-      deps: deps.plannedEstimate,
-    });
-    if (!gateResult.ok) {
-      return {
-        status: 'planned-estimate-refused',
-        blockers: gateResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Develop: missing planned-estimate appendix on refine-estimate comment.`,
-      };
-    }
-    // #297 — Plan → Develop pre-flight: the Deep-Dive Analysis must have
-    // run (markers + section + ticked Pickup Directive checkbox). Hole
-    // exposed by #296, which reached Develop with no deep dive recorded.
-    const deepDiveGateResult = planDeepDiveGate({ body });
-    if (!deepDiveGateResult.ok) {
-      return {
-        status: 'deep-dive-refused',
-        blockers: deepDiveGateResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Develop: Deep-Dive Analysis signals missing.`,
-      };
-    }
-    // #277 — verb-level epic-children pre-check (kept while we migrate the
-    // verb to delegate guard checks to STATES.*.exitGuards via runGuards;
-    // see option C in #277 discussion). The same rule ALSO fires inside
-    // move-state.mjs through `planEpicChildrenGuard` in the registry; the
-    // dual call is intentional for now so the verb can surface a
-    // structured `epic-children-refused` status before delegating.
-    const epicGate = deps.planEpicDevelopChildrenGate || planEpicDevelopChildrenGate;
-    const epicResult = await epicGate({ cfg, issueNumber, deps: deps.epicChildren });
-    if (!epicResult.ok) {
-      return {
-        status: 'epic-children-refused',
-        blockers: epicResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Develop: epic children not at refine or beyond.`,
-      };
-    }
-  }
-
-  // Develop → Test pre-flight (#136): CODE_COMPLETE gate — every functional AC
-  // ticked + verified, `aitm-commits` non-empty, no dirty files in the union of
-  // SHAs' touch-set. Lifecycle DoD items tick at Review/Close, not here.
-  if (target === 'test') {
-    const codeCompleteGate = deps.codeCompleteGate || gateCodeComplete;
-    const ccResult = await codeCompleteGate({ cfg, issueNumber, body });
-    if (!ccResult.ok) {
-      return {
-        status: 'code-complete-refused',
-        blockers: ccResult.blockers,
-        message: `Refusing to promote #${issueNumber} to Test: CODE_COMPLETE gate failed.`,
-      };
-    }
-
-    // #155 — additionally require the commit-trail comment to contain HEAD.
-    // CODE_COMPLETE's existing commit-trail check accepts any non-empty trail;
-    // this gate is stricter: HEAD itself must appear, so a stale trail (from
-    // a commit-trace run before the latest commit landed) is refused.
-    const headTrailGate = deps.commitTrailHeadGate || gateCommitTrailContainsHead;
-    const projectDir = deps.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd();
-    const headResult = await headTrailGate({ cfg, issueNumber, projectDir });
-    if (!headResult.ok) {
-      return {
-        status: 'commit-trail-stale',
-        blockers: [headResult.blocker],
-        message: `Refusing to promote #${issueNumber} to Test: commit-trail does not contain HEAD.`,
-      };
-    }
-  }
+  // #336 — delegate forward-transition gate enforcement to the guard registry.
+  // Every previously-inline gate for backlog→refine, refine→plan, plan→develop,
+  // and develop→test now lives in `STATES[from].exitGuards`. Side-channel:
+  // `planEntryFieldsBody` stashes the resolved refinement plan on `guardCtx`
+  // so the refine→plan post-success hook can run `applyRefinementEstimate`.
+  //
+  // Refusals from guards NOT in `REFUSAL_ID_TO_STATUS` are intentionally
+  // ignored at verb level — they fall through to the subprocess `move-state.mjs`
+  // call which runs the SAME runGuards and surfaces them as `transition-failed`.
+  // This preserves the historical "verb didn't check X" boundary for guards
+  // like `blocked-by-not-done` (test fixtures don't stub a real blocker lookup)
+  // and `plan-exit-plan-approved` (fixtures don't stub the marker).
+  const guardCtx = {
+    issueNumber,
+    repo: cfg.repo,
+    fromState: recorded,
+    toState: target,
+    body,
+    cfg,
+    deps,
+    projectDir: deps.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd(),
+  };
+  const guardResult = await runGuards(recorded, target, guardCtx);
+  const mappedRefusals = (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
+  const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
+  if (verbRefusal) return verbRefusal;
+  const refinementPlan = guardCtx.refinementPlan || null;
 
   // #210 (Fix C) — Test → Review pre-flight: require `aitm-dod-verified`.
   // The sandbox proof is what makes Test→Review legitimate. verbReview's own

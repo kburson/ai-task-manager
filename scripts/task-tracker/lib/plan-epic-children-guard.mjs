@@ -36,13 +36,14 @@ export const planEpicChildrenGuard = {
     // must NOT trigger an epic-children admission check.
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     if (!ctx || !ctx.cfg || !ctx.issueNumber) return { ok: true };
-    const result = await planEpicDevelopChildrenGate({
+    const gateFn = ctx.deps?.planEpicDevelopChildrenGate || planEpicDevelopChildrenGate;
+    const result = await gateFn({
       cfg: ctx.cfg,
       issueNumber: ctx.issueNumber,
       deps: ctx.deps?.epicChildren,
     });
     if (result.ok) return { ok: true };
     const reason = (result.blockers || []).join('; ') || 'epic-children-not-refined';
-    return { ok: false, reason };
+    return { ok: false, reason, blockers: result.blockers || [] };
   },
 };

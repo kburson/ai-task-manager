@@ -70,7 +70,13 @@ async function invoke(guard, ctx) {
     const result = await guard.run(ctx);
     if (result && result.ok === true) return { ok: true };
     if (result && result.ok === false) {
-      return { ok: false, reason: result.reason ?? '(no reason given)' };
+      // #336 — adapters may include a `blockers: string[]` alongside `reason`
+      // so verb-layer callers (promote.mjs) can preserve the array shape that
+      // legacy structured-status tests pin (e.g. `r.blockers.length >= 2`).
+      // Reason remains the canonical single-string surface.
+      const out = { ok: false, reason: result.reason ?? '(no reason given)' };
+      if (Array.isArray(result.blockers)) out.blockers = result.blockers;
+      return out;
     }
     return {
       ok: false,
@@ -92,13 +98,21 @@ export async function runGuards(fromState, toState, ctx) {
   if (fromSlot) {
     for (const g of fromSlot.exit) {
       const r = await invoke(g, ctx);
-      if (!r.ok) refusals.push({ id: g.id, reason: r.reason });
+      if (!r.ok) {
+        const entry = { id: g.id, reason: r.reason };
+        if (r.blockers) entry.blockers = r.blockers;
+        refusals.push(entry);
+      }
     }
   }
   if (toSlot) {
     for (const g of toSlot.entry) {
       const r = await invoke(g, ctx);
-      if (!r.ok) refusals.push({ id: g.id, reason: r.reason });
+      if (!r.ok) {
+        const entry = { id: g.id, reason: r.reason };
+        if (r.blockers) entry.blockers = r.blockers;
+        refusals.push(entry);
+      }
     }
   }
 

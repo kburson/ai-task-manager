@@ -41,6 +41,10 @@ async function runStateObjectGuards(from, to, ctx) {
   return { ok: refusals.length === 0, refusals };
 }
 
+// #336 — plan exit guards expanded to include planExitPlannedEstimateGuard
+// (needs deps.plannedEstimate.listComments) and planExitDeepDiveGuard
+// (body-only). APPROVED_BODY now carries the full deep-dive marker trio so
+// only the plan-approved / epic-children rules drive accept/refuse here.
 function makeCtx({ body = '', epicChildren = [] } = {}) {
   return {
     issueNumber: 277,
@@ -49,12 +53,46 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
     toState: 'develop',
     body,
     cfg: CFG,
-    deps: { epicChildren: { fetchSiblings: async () => epicChildren } },
+    deps: {
+      epicChildren: { fetchSiblings: async () => epicChildren },
+      plannedEstimate: {
+        listComments: async ({ issueNumber }) => [
+          {
+            id: 'cmt_1',
+            body: [
+              '### 🛠 Refine estimate',
+              '',
+              `<!-- aitm-refined-estimate: ${Number(issueNumber)} -->`,
+              '',
+              '### Planned Estimate',
+              '',
+              '| Field | Refine | Plan | Δ |',
+              '|---|---|---|---|',
+              '| Size | L | L | 0 |',
+              '| Estimate (h) | 8 | 8 | 0 |',
+              '',
+              'rationale stub.',
+            ].join('\n'),
+          },
+        ],
+      },
+    },
     fetchBlockerState: async () => null,
   };
 }
 
-const APPROVED_BODY = '## Scope\n\n<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->\n';
+const APPROVED_BODY = [
+  '## Scope',
+  '',
+  '<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->',
+  '<!-- aitm-deep-dive-posted: 2026-06-07T06:00:00Z -->',
+  '<!-- aitm-deep-dive-complete: 2026-06-07T06:00:00Z -->',
+  '',
+  '## Deep-Dive Analysis',
+  '',
+  'stub',
+  '',
+].join('\n');
 const BARE_BODY = '## Scope\n\nno marker here\n';
 
 describe('guard-parity-plan-develop: registry == state-object walk', () => {

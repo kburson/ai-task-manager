@@ -18,8 +18,49 @@ import { STATES } from '../states/index.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 
-const APPROVED_BODY = '## Scope\n\n<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->\n';
+// #336 — APPROVED_BODY now also carries deep-dive signals so the
+// planExitDeepDiveGuard (newly wired into STATES.plan.exitGuards) passes in
+// integration tests below. Per-guard unit tests above use minimal bodies.
+const APPROVED_BODY = [
+  '## Scope',
+  '',
+  '<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->',
+  '<!-- aitm-deep-dive-posted: 2026-06-07T06:00:00Z -->',
+  '<!-- aitm-deep-dive-complete: 2026-06-07T06:00:00Z -->',
+  '',
+  '## Deep-Dive Analysis',
+  '',
+  'stub',
+  '',
+].join('\n');
 const BARE_BODY = '## Scope\n\nno marker here\n';
+
+// #336 — stub deps for the planned-estimate guard (newly wired into
+// STATES.plan.exitGuards). Returns a refine-estimate comment whose
+// `### Planned Estimate` appendix satisfies the gate.
+const PLANNED_ESTIMATE_OK_DEPS = {
+  plannedEstimate: {
+    listComments: async ({ issueNumber }) => [
+      {
+        id: 'cmt_1',
+        body: [
+          '### 🛠 Refine estimate',
+          '',
+          `<!-- aitm-refined-estimate: ${Number(issueNumber)} -->`,
+          '',
+          '### Planned Estimate',
+          '',
+          '| Bucket | Size | Estimate |',
+          '| --- | --- | --- |',
+          '| Planned | L | 8h |',
+          '| Current | L | 8h |',
+          '',
+          'Rationale: stub.',
+        ].join('\n'),
+      },
+    ],
+  },
+};
 
 const CFG = { repo: 'owner/name', projectId: 'PVT' };
 
@@ -161,7 +202,10 @@ test('runGuards(plan,develop): missing plan-approved marker → refusal', async 
     toState: 'develop',
     body: BARE_BODY,
     cfg: CFG,
-    deps: { epicChildren: { fetchSiblings: async () => [] } },
+    deps: {
+      epicChildren: { fetchSiblings: async () => [] },
+      ...PLANNED_ESTIMATE_OK_DEPS,
+    },
     fetchBlockerState: async () => null,
   });
   assert.equal(r.ok, false);
@@ -192,7 +236,10 @@ test('runGuards(plan,develop): marker present + solo issue → ok', async () => 
     toState: 'develop',
     body: APPROVED_BODY,
     cfg: CFG,
-    deps: { epicChildren: { fetchSiblings: async () => [] } },
+    deps: {
+      epicChildren: { fetchSiblings: async () => [] },
+      ...PLANNED_ESTIMATE_OK_DEPS,
+    },
     fetchBlockerState: async () => null,
   });
   assert.equal(r.ok, true, JSON.stringify(r.refusals));

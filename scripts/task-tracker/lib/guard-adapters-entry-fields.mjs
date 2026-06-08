@@ -54,7 +54,7 @@ export const refineEntryFieldsPriority = {
       deps,
     });
     if (r.ok) return { ok: true };
-    return { ok: false, reason: joinBlockers(r.blockers) };
+    return { ok: false, reason: joinBlockers(r.blockers), blockers: r.blockers || [] };
   },
 };
 
@@ -81,7 +81,7 @@ export const planEntryFieldsBody = {
       ctx.refinementPlan = r.plan;
       return { ok: true };
     }
-    return { ok: false, reason: joinBlockers(r.blockers) };
+    return { ok: false, reason: joinBlockers(r.blockers), blockers: r.blockers || [] };
   },
 };
 
@@ -94,13 +94,14 @@ export const planEntryFieldsBoard = {
       return { ok: false, reason: 'plan-entry-fields-board: missing ctx.cfg / ctx.issueNumber' };
     }
     const deps = ctx.deps?.refineToPlanGateDeps;
-    const r = await gateRefineToPlan({
+    const gateFn = ctx.deps?.refineToPlanGate || gateRefineToPlan;
+    const r = await gateFn({
       cfg: ctx.cfg,
       issueNumber: ctx.issueNumber,
       deps,
     });
     if (r.ok) return { ok: true };
-    return { ok: false, reason: joinBlockers(r.blockers) };
+    return { ok: false, reason: joinBlockers(r.blockers), blockers: r.blockers || [] };
   },
 };
 
