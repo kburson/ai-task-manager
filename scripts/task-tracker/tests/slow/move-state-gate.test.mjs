@@ -66,11 +66,24 @@ function makeSandbox(body) {
   // Fake gh shim: returns the body we want for `issue view`, swallows everything else.
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir);
+  // #343 — move-state.mjs fetches body via `gh issue view ... --jq .body`,
+  // which emits the raw body string. The shim must emit the same — NOT a
+  // JSON-encoded quoted string (escaped \n breaks every line-anchored regex
+  // in body-gates.mjs and the deep-dive-placement guard then misfires).
+  // Shim runs under the project's package.json (type: module), so it must
+  // use ESM-style imports. We use `fs.writeSync(1, ...)` below to flush
+  // synchronously; `process.stdout.write` + `process.exit` would truncate
+  // bodies larger than the pipe high-watermark (~8KB on macOS).
   const shim = `#!/usr/bin/env node
+import fs from 'node:fs';
+const BODY = ${JSON.stringify(body)};
 const args = process.argv.slice(2);
 if (args[0] === 'issue' && args[1] === 'view') {
-  // emulate --jq .body extracting body field
-  process.stdout.write(${JSON.stringify(body)});
+  // emulate --jq .body extracting body field as raw text.
+  // fs.writeSync is required because process.stdout.write is non-blocking
+  // when stdout is a pipe; process.exit(0) on the next line would truncate
+  // any body that exceeded the pipe high-watermark (~8KB on macOS).
+  fs.writeSync(1, BODY);
   process.exit(0);
 }
 // project item-edit, issue comment, api graphql, etc — silent success

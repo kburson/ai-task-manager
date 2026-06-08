@@ -39,6 +39,9 @@ function deepDiveAdequate() {
     '<!-- aitm-entered-plan: 2026-05-09T09:45:00Z -->',
     '',
     '<!-- aitm-deep-dive-complete: 2026-05-09T10:00:00Z -->',
+    // Post-#324 the plan→develop deep-dive guard also requires a `posted`
+    // marker (stamped by ensureDeepDive when the section is published).
+    '<!-- aitm-deep-dive-posted: 2026-05-09T10:00:00Z -->',
     '',
     '## Deep-Dive Analysis (2026-05-09)',
     '',
@@ -86,11 +89,49 @@ function makeSandbox(body, { currentState = 'Analyze' } = {}) {
   //   anything else                          -> silent success
   const binDir = path.join(sandbox, 'bin');
   mkdirSync(binDir);
+  // #343 — move-state.mjs fetches body via `gh issue view ... --jq .body`,
+  // which emits the raw body string. The shim must emit the same — NOT a
+  // JSON-encoded quoted string (escaped \n breaks every line-anchored regex
+  // in body-gates.mjs and the deep-dive-placement guard then misfires).
+  // Shim runs under the project's package.json (type: module), so it must
+  // use ESM-style imports. We use `fs.writeSync(1, ...)` below to flush
+  // synchronously; `process.stdout.write` + `process.exit` would truncate
+  // bodies larger than the pipe high-watermark (~8KB on macOS).
   const shim = `#!/usr/bin/env node
-const fs = require('node:fs');
+import fs from 'node:fs';
+const BODY = ${JSON.stringify(body)};
 const args = process.argv.slice(2);
 if (args[0] === 'issue' && args[1] === 'view') {
-  process.stdout.write(${JSON.stringify(body)});
+  // fs.writeSync is required because process.stdout.write is non-blocking
+  // when stdout is a pipe; process.exit(0) on the next line would truncate
+  // any body that exceeded the pipe high-watermark (~8KB on macOS).
+  fs.writeSync(1, BODY);
+  process.exit(0);
+}
+if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$').test(args[1] || '')) {
+  // Plan→develop gate fetches the refine-estimate comment via REST.
+  // Return a single comment matching the issue number with a non-empty
+  // \`### Planned Estimate\` appendix so planPlannedEstimateGate passes.
+  const issueNum = (args[1].match(new RegExp('issues/([0-9]+)/comments')) || [])[1] || '100';
+  const commentBody = [
+    '<!-- aitm-refined-estimate: ' + issueNum + ' -->',
+    '### 🛠 Refine estimate',
+    '',
+    '| Field | Value |',
+    '|---|---|',
+    '| Size | S |',
+    '| Estimate (h) | 1 |',
+    '',
+    '### Planned Estimate',
+    '',
+    '| Field | Refine | Plan | Δ |',
+    '|---|---|---|---|',
+    '| Size | S | S | 0 |',
+    '| Estimate (h) | 1 | 1 | 0 |',
+    '',
+    'no drift observed',
+  ].join('\\n');
+  process.stdout.write(JSON.stringify([{ id: 1, body: commentBody }]));
   process.exit(0);
 }
 if (args[0] === 'api' && args[1] === 'graphql') {
@@ -200,6 +241,9 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
     '- [x] Deep dive complete',
     '',
     '<!-- aitm-deep-dive-complete: 2026-05-09T10:00:00Z -->',
+    // Include posted marker so planExitDeepDiveGuard's posted-presence check
+    // passes; the assertion under test is the section-substantive-chars floor.
+    '<!-- aitm-deep-dive-posted: 2026-05-09T10:00:00Z -->',
     '',
     '## Deep-Dive Analysis (2026-05-09)',
     '',
