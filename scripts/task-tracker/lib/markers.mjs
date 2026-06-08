@@ -10,6 +10,34 @@ import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../iss
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 
 // ---------------------------------------------------------------------------
+// Phantom-marker hardening (#333)
+//
+// Marker detectors test their `<!-- aitm-X: VALUE -->` regex against the
+// entire issue body. Without further protection, a literal marker occurrence
+// inside a fenced code block (planner prose documenting the marker shape,
+// example bodies, regex literals) is a false positive — the gate using the
+// detector short-circuits as if a real stamp existed.
+//
+// `stripFencedCodeBlocks` removes ```/``` and ~~~/~~~ fenced regions before
+// the detector runs. The three plan/review-gate detectors below
+// (`hasPlanApprovedMarker`, `hasReviewApprovedMarker`,
+// `hasDeepDiveCompleteMarker`) compose against the stripped body. Inline
+// code spans (single backticks) are out of scope: a marker comment inside a
+// single-backtick span is unusual and was not the observed failure mode.
+//
+// Fence pattern: opening fence (```/~~~) at the start of a line (allowing
+// leading whitespace per CommonMark), arbitrary content, closing fence of
+// the SAME shape at the start of a line. Backreference `\\1` enforces the
+// shape match so a ```-opened block doesn't terminate on a stray ~~~.
+// ---------------------------------------------------------------------------
+
+const FENCED_CODE_BLOCK_RE = /^[ \t]*(```|~~~)[\s\S]*?^[ \t]*\1[ \t]*$/gm;
+
+export function stripFencedCodeBlocks(body) {
+  return String(body || '').replace(FENCED_CODE_BLOCK_RE, '');
+}
+
+// ---------------------------------------------------------------------------
 // plan-approved (plan → develop human gate)
 // ---------------------------------------------------------------------------
 
@@ -20,7 +48,7 @@ export function buildPlanApprovedMarker(ts) {
 }
 
 export function hasPlanApprovedMarker(body) {
-  return PLAN_APPROVED_RE.test(String(body || ''));
+  return PLAN_APPROVED_RE.test(stripFencedCodeBlocks(body));
 }
 
 // ---------------------------------------------------------------------------
@@ -34,7 +62,7 @@ export function buildReviewApprovedMarker(ts) {
 }
 
 export function hasReviewApprovedMarker(body) {
-  return REVIEW_APPROVED_RE.test(String(body || ''));
+  return REVIEW_APPROVED_RE.test(stripFencedCodeBlocks(body));
 }
 
 export function insertReviewApprovedMarker(body, ts) {
@@ -254,7 +282,7 @@ export function buildDeepDiveCompleteMarker(ts) {
 }
 
 export function hasDeepDiveCompleteMarker(body) {
-  return DEEP_DIVE_COMPLETE_RE.test(String(body || ''));
+  return DEEP_DIVE_COMPLETE_RE.test(stripFencedCodeBlocks(body));
 }
 
 export function insertDeepDiveCompleteMarker(body, ts) {

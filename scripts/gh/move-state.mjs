@@ -44,6 +44,7 @@ import {
 // runGuards so the two are read together.
 import { runGuards } from '../task-tracker/lib/guard-registry.mjs';
 import '../task-tracker/lib/guard-bootstrap.mjs';
+import { hasDeepDiveCompleteMarker } from '../task-tracker/lib/markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -433,7 +434,10 @@ if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !==
     /* ignore — missing body falls through */
   }
 
-  const deepDiveMarker = /<!--\s*aitm-deep-dive-complete:\s*[^>]+-->/i.test(body);
+  // #333 — delegate to `hasDeepDiveCompleteMarker` so fenced-code-block phantoms
+  // are not detected as real stamps. Prior inline regex matched phantom markers
+  // inside planner prose / example code blocks.
+  const deepDiveMarker = hasDeepDiveCompleteMarker(body);
   const deepDiveBodyCheck = deepDiveMarker
     ? validateBody(body, { gates: DEFAULT_GATES.filter((g) => g.name === 'deep-dive-complete') })
     : { ok: false };

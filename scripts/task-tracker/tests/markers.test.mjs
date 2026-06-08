@@ -149,4 +149,66 @@ const TS = '2026-05-11T12:00:00Z';
   assert.equal(matches.length, 1, 'must not leave a stale marker behind');
 }
 
+// ── #333: phantom-marker hardening — fenced code blocks are stripped before
+//        body-wide marker detection runs. Verifies all three plan/review-gate
+//        detectors (`hasPlanApprovedMarker`, `hasReviewApprovedMarker`,
+//        `hasDeepDiveCompleteMarker`) reject phantoms inside fences and still
+//        detect real markers outside fences.
+{
+  const { stripFencedCodeBlocks } = await import('../lib/markers.mjs');
+
+  // 1. Strip helper drops both ``` and ~~~ fenced blocks.
+  const fenced =
+    'before\n```\n<!-- aitm-plan-approved: PHANTOM -->\n```\nafter\n~~~\n<!-- aitm-review-approved: PHANTOM -->\n~~~\nend';
+  const stripped = stripFencedCodeBlocks(fenced);
+  assert.ok(!stripped.includes('PHANTOM'), 'fenced contents removed');
+  assert.ok(stripped.includes('before') && stripped.includes('after') && stripped.includes('end'));
+
+  // 2. Plan-approved: phantom in a ``` fence does NOT register as a stamp.
+  const planPhantomOnly =
+    '## Plan\n\n```\n<!-- aitm-plan-approved: 2026-06-08T00:00:00Z -->\n```\n';
+  assert.ok(
+    !hasPlanApprovedMarker(planPhantomOnly),
+    'phantom plan-approved inside fenced block must not be detected'
+  );
+
+  // 3. Plan-approved: real marker outside the fence IS detected even when a
+  //    phantom coexists inside one (the #277 repro shape).
+  const planRealPlusPhantom =
+    '## Plan\n\n```\nillustrative: <!-- aitm-plan-approved: PHANTOM -->\n```\n\n' +
+    `${buildPlanApprovedMarker(TS)}\n`;
+  assert.ok(
+    hasPlanApprovedMarker(planRealPlusPhantom),
+    'real plan-approved outside fence still detected alongside phantom'
+  );
+
+  // 4. Review-approved: parallel coverage.
+  const reviewPhantomOnly = '```\n<!-- aitm-review-approved: PHANTOM -->\n```\n';
+  assert.ok(!hasReviewApprovedMarker(reviewPhantomOnly), 'phantom review-approved rejected');
+  const reviewReal = `${buildReviewApprovedMarker(TS)}\n${reviewPhantomOnly}`;
+  assert.ok(hasReviewApprovedMarker(reviewReal), 'real review-approved alongside phantom detected');
+
+  // 5. Deep-dive-complete: parallel coverage — the marker family the
+  //    move-state.mjs:436 inline regex also checked.
+  const ddcPhantomOnly =
+    '## Deep-Dive Analysis\n\n```\n<!-- aitm-deep-dive-complete: PHANTOM -->\n```\n';
+  assert.ok(
+    !hasDeepDiveCompleteMarker(ddcPhantomOnly),
+    'phantom deep-dive-complete inside fence rejected'
+  );
+  const ddcReal = `${buildDeepDiveCompleteMarker(TS)}\n${ddcPhantomOnly}`;
+  assert.ok(
+    hasDeepDiveCompleteMarker(ddcReal),
+    'real deep-dive-complete alongside phantom detected'
+  );
+
+  // 6. Tilde fences are also stripped (CommonMark accepts both).
+  const tildeFence = '~~~\n<!-- aitm-plan-approved: PHANTOM -->\n~~~\n';
+  assert.ok(!hasPlanApprovedMarker(tildeFence), 'phantom inside ~~~ fence rejected');
+
+  // 7. Indented opening fence (up to 3 spaces per CommonMark) still strips.
+  const indentedFence = '  ```\n<!-- aitm-plan-approved: PHANTOM -->\n  ```\n';
+  assert.ok(!hasPlanApprovedMarker(indentedFence), 'phantom inside indented fence rejected');
+}
+
 console.log('markers.test.mjs: all passed');
