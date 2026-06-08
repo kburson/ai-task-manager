@@ -7,6 +7,7 @@
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { planEntryFieldsBody, planEntryFieldsBoard } from '../lib/guard-adapters-entry-fields.mjs';
 import { refineExitWipBudgetGuard } from '../lib/refine-exit-wip-budget-guard.mjs';
+import { refineExitChildParentStateGuard } from '../lib/refine-exit-child-parent-state-guard.mjs';
 
 export default Object.freeze({
   name: 'refine',
@@ -16,6 +17,7 @@ export default Object.freeze({
     planEntryFieldsBody,
     planEntryFieldsBoard,
     refineExitWipBudgetGuard,
+    refineExitChildParentStateGuard,
   ]),
   onEnter: Object.freeze([]),
 });
