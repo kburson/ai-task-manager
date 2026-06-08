@@ -158,7 +158,7 @@ fs.appendFileSync(${JSON.stringify(logPath)}, 'git ' + args + '\\n');
 const outputs = ${JSON.stringify(gitOutputs)};
 for (const [pattern, output] of Object.entries(outputs)) {
   if (args.startsWith(pattern)) {
-    process.stdout.write(output);
+    fs.writeSync(1, output);
     process.exit(0);
   }
 }
@@ -181,7 +181,7 @@ if (behavior === 'fail') {
 }
 // 'issue view ... --json comments' → return no comments by default
 if (args[0] === 'issue' && args[1] === 'view') {
-  process.stdout.write(JSON.stringify({ comments: [] }));
+  fs.writeSync(1, JSON.stringify({ comments: [] }));
   process.exit(0);
 }
 process.exit(0);

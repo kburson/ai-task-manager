@@ -91,13 +91,14 @@ function makeGhShim(
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
+import fs from 'node:fs';
 const argv = process.argv.slice(2);
 if (argv.join(' ') === 'status --porcelain --untracked-files=no') {
-  process.stdout.write(${JSON.stringify(gitStatus)});
+  fs.writeSync(1, ${JSON.stringify(gitStatus)});
   process.exit(0);
 }
 if (argv.join(' ') === 'rev-parse HEAD') {
-  process.stdout.write(${JSON.stringify(`${HEAD_SHA}\n`)});
+  fs.writeSync(1, ${JSON.stringify(`${HEAD_SHA}\n`)});
   process.exit(0);
 }
 process.exit(0);
@@ -109,6 +110,7 @@ process.exit(0);
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
+import fs from 'node:fs';
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 // Only read stdin for graphql (which uses --input -); otherwise it would hang
@@ -124,14 +126,14 @@ appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({argv, stdinBody}) + 
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
   if (argv.includes('comments')) {
     const traceComment = ${JSON.stringify(traceComment)};
-    process.stdout.write(JSON.stringify({ comments: traceComment ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }] : [] }));
+    fs.writeSync(1,JSON.stringify({ comments: traceComment ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }] : [] }));
     process.exit(0);
   }
   const currentBody = readFileSync(${JSON.stringify(bodyStatePath)}, 'utf8');
   if (argv.includes('--jq') || argv.includes('-q')) {
-    process.stdout.write(currentBody);
+    fs.writeSync(1,currentBody);
   } else {
-    process.stdout.write(JSON.stringify({ body: currentBody }));
+    fs.writeSync(1,JSON.stringify({ body: currentBody }));
   }
   process.exit(0);
 }
@@ -161,7 +163,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   // Branch by query content (read from stdin).
   // fieldOptionMap query → 'node(id:' with fields
   if (stdinBody.includes('ProjectV2SingleSelectField')) {
-    process.stdout.write(JSON.stringify({ data: { node: { fields: { nodes: [
+    fs.writeSync(1,JSON.stringify({ data: { node: { fields: { nodes: [
       { id: 'PVTF_x', options: [
         { id: 'OPT_backlog', name: 'Backlog' },
         { id: 'OPT_groom', name: 'Groom' },
@@ -190,7 +192,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
       }
     }
   };
-  process.stdout.write(JSON.stringify(env));
+  fs.writeSync(1,JSON.stringify(env));
   process.exit(0);
 }
 if (argv[0] === 'project' && argv[1] === 'item-edit') {

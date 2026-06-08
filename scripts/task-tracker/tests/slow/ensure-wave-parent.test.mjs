@@ -66,6 +66,7 @@ function makeGhShim(sandbox, fixture) {
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
+import fs from 'node:fs';
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 function loadState() { try { return JSON.parse(readFileSync(${JSON.stringify(stateFile)}, 'utf8')); } catch { return {}; } }
 function saveState(s) { writeFileSync(${JSON.stringify(stateFile)}, JSON.stringify(s)); }
@@ -81,13 +82,13 @@ const fx = JSON.parse(readFileSync(${JSON.stringify(fixturePath)}, 'utf8'));
 
 // gh search issues — return existing parent matches (idempotency probe)
 if (argv[0] === 'search' && argv[1] === 'issues') {
-  process.stdout.write(JSON.stringify(fx.searchIssues || []));
+  fs.writeSync(1,JSON.stringify(fx.searchIssues || []));
   process.exit(0);
 }
 
 // gh issue create — return URL
 if (argv[0] === 'issue' && argv[1] === 'create') {
-  process.stdout.write(\`https://github.com/test-owner/test-repo/issues/\${fx.newIssueNumber || 500}\\n\`);
+  fs.writeSync(1,\`https://github.com/test-owner/test-repo/issues/\${fx.newIssueNumber || 500}\\n\`);
   process.exit(0);
 }
 
@@ -95,14 +96,14 @@ if (argv[0] === 'issue' && argv[1] === 'create') {
 if (argv[0] === 'issue' && (argv[1] === 'edit' || argv[1] === 'comment' || argv[1] === 'view')) {
   if (argv[1] === 'view') {
     // create-issue tether may probe; return minimal
-    process.stdout.write(JSON.stringify({ body: '', state: 'OPEN', projectItems: { nodes: [] } }));
+    fs.writeSync(1,JSON.stringify({ body: '', state: 'OPEN', projectItems: { nodes: [] } }));
   }
   process.exit(0);
 }
 
 // gh project item-edit / item-add — no-op
 if (argv[0] === 'project') {
-  process.stdout.write('{}');
+  fs.writeSync(1,'{}');
   process.exit(0);
 }
 
@@ -120,24 +121,24 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
       repo['i' + i] = { number: childN, parent: parentN == null ? null : { number: parentN } };
       i += 1;
     }
-    process.stdout.write(JSON.stringify({ data: { repository: repo } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: repo } }));
     process.exit(0);
   }
   // node-id lookup: query(...) { repository { issue { id } } }
   if (/issue\\(number:\\$n\\)\\{id\\}/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const n = Number(body.variables.n);
-    process.stdout.write(JSON.stringify({ data: { repository: { issue: { id: 'ISS_' + n } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: { id: 'ISS_' + n } } } }));
     process.exit(0);
   }
   // addSubIssue mutation
   if (/addSubIssue/.test(stdinBody)) {
-    process.stdout.write(JSON.stringify({ data: { addSubIssue: { issue: { id: 'X' }, subIssue: { id: 'Y' } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { addSubIssue: { issue: { id: 'X' }, subIssue: { id: 'Y' } } } }));
     process.exit(0);
   }
   // project-tether internals: fieldOptionMap / projectItemForIssue / writes — return permissive envelopes
   if (/ProjectV2SingleSelectField/.test(stdinBody)) {
-    process.stdout.write(JSON.stringify({ data: { node: { fields: { nodes: [
+    fs.writeSync(1,JSON.stringify({ data: { node: { fields: { nodes: [
       { id: 'PVTF_x', options: [
         { id: 'OPT_backlog', name: 'Backlog' },
         { id: 'OPT_groom', name: 'Groom' },
@@ -154,7 +155,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (/repository\\(owner:.*\\)\\s*\\{\\s*id\\s*issue/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const n = Number(body.variables.issue);
-    process.stdout.write(JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: [] } } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: [] } } } } }));
     process.exit(0);
   }
   // project-tether: node(id:$project) { ... ProjectV2 ... items { nodes } }
@@ -162,7 +163,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
     const body = JSON.parse(stdinBody);
     const st = loadState();
     const nodes = st.added ? [{ id: 'PVTI_new', isArchived: false, content: { number: fx.newIssueNumber || 500, title: 't', url: 'u' } }] : [];
-    process.stdout.write(JSON.stringify({ data: { node: {
+    fs.writeSync(1,JSON.stringify({ data: { node: {
       title: 'Test Project', url: 'https://github.com/test',
       items: { totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null }, nodes }
     } } }));
@@ -170,25 +171,25 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   }
   // project-tether: linkProjectV2ToRepository — no-op
   if (/linkProjectV2ToRepository/.test(stdinBody)) {
-    process.stdout.write(JSON.stringify({ data: { linkProjectV2ToRepository: { repository: { nameWithOwner: 'test-owner/test-repo' } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { linkProjectV2ToRepository: { repository: { nameWithOwner: 'test-owner/test-repo' } } } }));
     process.exit(0);
   }
   // project-tether: addProjectV2ItemById mutation
   if (/addProjectV2ItemById/.test(stdinBody)) {
     const st = loadState(); st.added = true; saveState(st);
-    process.stdout.write(JSON.stringify({ data: { addProjectV2ItemById: { item: { id: 'PVTI_new' } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { addProjectV2ItemById: { item: { id: 'PVTI_new' } } } }));
     process.exit(0);
   }
   // project-tether: updateProjectV2ItemFieldValue
   if (/updateProjectV2ItemFieldValue/.test(stdinBody)) {
-    process.stdout.write(JSON.stringify({ data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: 'PVTI_new' } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: 'PVTI_new' } } } }));
     process.exit(0);
   }
   if (/projectItems/.test(stdinBody)) {
-    process.stdout.write(JSON.stringify({ data: { repository: { issue: { id: 'ISS_new', projectItems: { nodes: [{ id: 'PVTI_new', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] } } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: { id: 'ISS_new', projectItems: { nodes: [{ id: 'PVTI_new', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] } } } } }));
     process.exit(0);
   }
-  process.stdout.write(JSON.stringify({ data: {} }));
+  fs.writeSync(1,JSON.stringify({ data: {} }));
   process.exit(0);
 }
 

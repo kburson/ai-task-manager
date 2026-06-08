@@ -50,10 +50,11 @@ function makeGitShim(sandbox, porcelain) {
   writeFileSync(
     shim,
     `#!/usr/bin/env node
+import fs from 'node:fs';
 const args = process.argv.slice(2);
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
-  process.stdout.write(${JSON.stringify(porcelain)});
+  fs.writeSync(1, ${JSON.stringify(porcelain)});
 }
 process.exit(0);
 `
@@ -217,11 +218,12 @@ try {
     writeFileSync(
       shim,
       `#!/usr/bin/env node
+import fs from 'node:fs';
 const args = process.argv.slice(2);
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   if (process.cwd() === ${JSON.stringify(altWorktree)}) {
-    process.stdout.write(' M alt-only.ts\\n');
+    fs.writeSync(1, ' M alt-only.ts\\n');
   }
 }
 process.exit(0);

@@ -131,7 +131,7 @@ if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$'
     '',
     'no drift observed',
   ].join('\\n');
-  process.stdout.write(JSON.stringify([{ id: 1, body: commentBody }]));
+  fs.writeSync(1, JSON.stringify([{ id: 1, body: commentBody }]));
   process.exit(0);
 }
 if (args[0] === 'api' && args[1] === 'graphql') {
@@ -145,10 +145,10 @@ if (args[0] === 'api' && args[1] === 'graphql') {
           fieldValueByName: { name: ${JSON.stringify(currentState)} } },
       ] } } } },
     };
-    process.stdout.write(JSON.stringify(payload));
+    fs.writeSync(1, JSON.stringify(payload));
     process.exit(0);
   }
-  process.stdout.write('{"data":{}}');
+  fs.writeSync(1, '{"data":{}}');
   process.exit(0);
 }
 process.exit(0);

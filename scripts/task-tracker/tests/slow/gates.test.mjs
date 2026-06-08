@@ -57,7 +57,8 @@ function makeGhShim(sandbox, { bodyOnView, stateOptionId }) {
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
-import { writeFileSync, appendFileSync } from 'node:fs';
+import fs from 'node:fs';
+import { appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 let stdinBody = '';
 if (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && argv.includes('-')) {
@@ -68,14 +69,14 @@ if (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && ar
 appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({argv, stdinBody}) + '\\n');
 
 if (argv[0] === 'issue' && argv[1] === 'view') {
-  process.stdout.write(JSON.stringify({ body: ${JSON.stringify(bodyOnView)} }));
+  fs.writeSync(1, JSON.stringify({ body: ${JSON.stringify(bodyOnView)} }));
   process.exit(0);
 }
 if (argv[0] === 'issue' && argv[1] === 'edit') { process.exit(0); }
 if (argv[0] === 'issue' && argv[1] === 'comment') { process.exit(0); }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (stdinBody.includes('ProjectV2SingleSelectField')) {
-    process.stdout.write(JSON.stringify({ data: { node: { fields: { nodes: [] } } } }));
+    fs.writeSync(1, JSON.stringify({ data: { node: { fields: { nodes: [] } } } }));
     process.exit(0);
   }
   const env = {
@@ -91,7 +92,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
       }
     }
   };
-  process.stdout.write(JSON.stringify(env));
+  fs.writeSync(1, JSON.stringify(env));
   process.exit(0);
 }
 process.exit(0);
