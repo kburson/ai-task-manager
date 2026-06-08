@@ -7,6 +7,7 @@
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { developExitCodeCompleteGuard } from '../lib/develop-exit-code-complete-guard.mjs';
 import { developExitCommitTrailHeadGuard } from '../lib/develop-exit-commit-trail-head-guard.mjs';
+import { developExitEpicChildrenDoneGuard } from '../lib/develop-epic-children-done-guard.mjs';
 
 export default Object.freeze({
   name: 'develop',
@@ -15,6 +16,7 @@ export default Object.freeze({
     blockedByGuard,
     developExitCodeCompleteGuard,
     developExitCommitTrailHeadGuard,
+    developExitEpicChildrenDoneGuard,
   ]),
   onEnter: Object.freeze([]),
 });

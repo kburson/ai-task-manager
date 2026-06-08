@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import {
   fetchEpicChildren,
   planEpicDevelopChildrenGate,
+  developEpicTestChildrenGate,
   findNextEligibleChild,
   enrichChildrenWithBlockedBy,
   wipAdvanceDecision,
@@ -352,4 +353,86 @@ test('childCreationAllowedAtEpicState: true for every state except done', () => 
   assert.equal(childCreationAllowedAtEpicState('DONE'), false);
   assert.equal(childCreationAllowedAtEpicState(undefined), false);
   assert.equal(childCreationAllowedAtEpicState(''), false);
+});
+
+// ------------------------------------------------------------------
+// developEpicTestChildrenGate (#337) — develop → test admission.
+// Predicate: every child must be at `done`.
+// ------------------------------------------------------------------
+
+test('developEpicTestChildrenGate passes for non-epic (no children)', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 1,
+    deps: { fetchSiblings: stubFetch([]) },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.children, []);
+});
+
+for (const pendingState of ['backlog', 'refine', 'plan', 'develop', 'test', 'review']) {
+  test(`developEpicTestChildrenGate refuses when any child is at ${pendingState}`, async () => {
+    const result = await developEpicTestChildrenGate({
+      cfg,
+      issueNumber: 100,
+      deps: {
+        fetchSiblings: stubFetch([
+          { number: 101, state: 'done', sequence: 1 },
+          { number: 102, state: pendingState, sequence: 2 },
+        ]),
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.blockers.length, 1);
+    assert.match(result.blockers[0], /epic-children-not-done/);
+    assert.match(result.blockers[0], /#102/);
+    assert.equal(result.offendingChildren.length, 1);
+    assert.equal(result.offendingChildren[0].number, 102);
+  });
+}
+
+test('developEpicTestChildrenGate passes when every child is done', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([
+        { number: 101, state: 'done', sequence: 1 },
+        { number: 102, state: 'done', sequence: 2 },
+        { number: 103, state: 'done', sequence: 3 },
+      ]),
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.children.length, 3);
+});
+
+test('developEpicTestChildrenGate surfaces fetch failure as blocker', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: async () => {
+        throw new Error('boom');
+      },
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.blockers[0], /epic-children-fetch-failed.*boom/);
+});
+
+test('developEpicTestChildrenGate accepts mixed-case "DONE"', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([{ number: 101, state: 'DONE', sequence: 1 }]),
+    },
+  });
+  assert.equal(result.ok, true);
+});
+
+test('developEpicTestChildrenGate requires cfg and issueNumber', async () => {
+  await assert.rejects(() => developEpicTestChildrenGate({ issueNumber: 1 }), /cfg is required/);
+  await assert.rejects(() => developEpicTestChildrenGate({ cfg }), /issueNumber is required/);
 });

@@ -63,6 +63,39 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   return { ok: true, children };
 }
 
+// Develop→test admission gate (#337): an epic refuses to leave Develop unless
+// every sub-issue is at `done`. Mirrors `planEpicDevelopChildrenGate` but with
+// the stricter predicate. Leaf issues (no children) pass trivially.
+export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} } = {}) {
+  if (!cfg) throw new Error('developEpicTestChildrenGate: cfg is required');
+  if (!issueNumber) throw new Error('developEpicTestChildrenGate: issueNumber is required');
+  let children;
+  try {
+    children = await fetchEpicChildren({
+      cfg,
+      parentEpicNumber: issueNumber,
+      deps,
+    });
+  } catch (err) {
+    return { ok: false, blockers: [`epic-children-fetch-failed: ${err.message}`] };
+  }
+  if (!children.length) {
+    return { ok: true, children: [] };
+  }
+  const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'done');
+  if (offenders.length) {
+    const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+    return {
+      ok: false,
+      blockers: [
+        `epic-children-not-done: every child must be at done before the epic promotes to Test: ${lines.join(', ')}`,
+      ],
+      offendingChildren: offenders,
+    };
+  }
+  return { ok: true, children };
+}
+
 // Normalizes a child's `blockedBy` into an array of positive integers. Accepts
 // the `aitm-blocked-by` parse output (number[]) and defaults to `[]` when the
 // field is absent — so children that were never enriched behave as unblocked
