@@ -142,6 +142,10 @@ import {
 }
 
 // ── evaluateGhEdit: end-to-end wiring with injected deps ─────────────────────
+// #361 — `gh issue edit --body` / `--body-file` are hard-refused regardless
+// of diff content. Diff-based protection still applies to body writes that
+// flow through `mutateIssueBody` (covered by checkBodyChange unit tests
+// above); the bash-level refusal forbids the direct path entirely.
 {
   const fileBody = {
     '/tmp/good.md': '## AC\n- [ ] x\n',
@@ -158,31 +162,33 @@ import {
     return '';
   };
 
-  // File body introduces legacy line → block
+  // --body-file is hard-refused regardless of file content
   let r = evaluateGhEdit({
-    command: 'gh issue edit 65 --body-file /tmp/with-legacy.md',
-    readBodyFile,
-    fetchCurrentBody,
-  });
-  assert.equal(r.block, true);
-  assert.match(r.reason, /Plan approved by human/);
-
-  // File body drops hidden marker → block
-  r = evaluateGhEdit({
-    command: 'gh issue edit 64 --body-file /tmp/drops-marker.md',
-    readBodyFile,
-    fetchCurrentBody,
-  });
-  assert.equal(r.block, true);
-  assert.match(r.reason, /aitm-plan-approved/);
-
-  // Clean file body → pass
-  r = evaluateGhEdit({
     command: 'gh issue edit 65 --body-file /tmp/good.md',
     readBodyFile,
     fetchCurrentBody,
   });
-  assert.equal(r.block, false);
+  assert.equal(r.block, true);
+  assert.match(r.reason, /direct body writes from Bash are forbidden/i);
+  assert.match(r.reason, /mutateIssueBody/);
+
+  // --body-file is hard-refused even when the file would not exist
+  r = evaluateGhEdit({
+    command: 'gh issue edit 65 --body-file /tmp/missing.md',
+    readBodyFile,
+    fetchCurrentBody,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /direct body writes from Bash are forbidden/i);
+
+  // --body inline is hard-refused regardless of content
+  r = evaluateGhEdit({
+    command: `gh issue edit 65 --body "harmless content"`,
+    readBodyFile,
+    fetchCurrentBody,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /direct body writes from Bash are forbidden/i);
 
   // Non-edit command → pass
   r = evaluateGhEdit({
@@ -200,25 +206,44 @@ import {
   });
   assert.equal(r.block, false);
 
-  // File read error → don't block (defensive: surface as gh CLI error instead)
+  // Edit with title/milestone/assignee → pass
   r = evaluateGhEdit({
-    command: 'gh issue edit 65 --body-file /tmp/missing.md',
+    command: 'gh issue edit 64 --title "new" --add-assignee @me --milestone v2',
     readBodyFile,
     fetchCurrentBody,
   });
   assert.equal(r.block, false);
+}
 
-  // Current-body fetch throws → safe-pass on legacy/marker check
-  r = evaluateGhEdit({
-    command: 'gh issue edit 65 --body-file /tmp/with-legacy.md',
-    readBodyFile,
-    fetchCurrentBody: () => {
-      throw new Error('network');
-    },
+// ── checkBodyChange: aitm-body-version / aitm-stage-rollup marker protection (#361)
+{
+  // aitm-body-version drop → block
+  let r = checkBodyChange({
+    newBody: '## AC\n- [ ] x\n',
+    currentBody: '## AC\n- [ ] x\n<!-- aitm-body-version: 7 -->\n',
+    issueNumber: 361,
   });
-  // legacy-line introduction is still caught even when current body is unknown
-  // (treated as empty → legacy line is "introduced")
   assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-body-version/);
+
+  // aitm-stage-rollup drop → block
+  r = checkBodyChange({
+    newBody: '## AC\n- [ ] x\n',
+    currentBody: '## AC\n- [ ] x\n<!-- aitm-stage-rollup: refine=1 -->\n',
+    issueNumber: 361,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-stage-rollup/);
+
+  // both preserved → pass
+  r = checkBodyChange({
+    newBody:
+      '## AC\n- [ ] x\n<!-- aitm-body-version: 8 -->\n<!-- aitm-stage-rollup: refine=2 -->\n',
+    currentBody:
+      '## AC\n- [ ] x\n<!-- aitm-body-version: 7 -->\n<!-- aitm-stage-rollup: refine=1 -->\n',
+    issueNumber: 361,
+  });
+  assert.equal(r.block, false);
 }
 
 // ── checkBodyChange: deep-dive heading must come with marker ─────────────────

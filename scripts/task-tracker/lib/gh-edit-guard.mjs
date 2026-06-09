@@ -39,6 +39,8 @@ const MARKER_PATTERNS = [
   { name: 'aitm-full-auto-footnote:start', re: /<!--\s*aitm-full-auto-footnote:start\s*-->/i },
   { name: 'aitm-full-auto-footnote:end', re: /<!--\s*aitm-full-auto-footnote:end\s*-->/i },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
+  { name: 'aitm-body-version', re: /<!--\s*aitm-body-version:/i },
+  { name: 'aitm-stage-rollup', re: /<!--\s*aitm-stage-rollup:/i },
   { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },
   { name: 'aitm-lifecycle-optout', re: /<!--\s*aitm-lifecycle-optout:/i },
   { name: 'aitm-blocked-by', re: /<!--\s*aitm-blocked-by:/i },
@@ -311,6 +313,29 @@ export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody, resolv
   const parsed = parseGhIssueEdit(command);
   if (!parsed || parsed.source === 'none') return { block: false };
 
+  // #361 — hard refusal of `gh issue edit --body` / `--body-file` regardless
+  // of diff content. The diff guard catches MOST clobbers, but a wholesale
+  // body rewrite that happens to preserve every guarded marker still slips
+  // through (e.g. a stale-but-marker-complete snapshot, an `[object Object]`
+  // serialization, a script that hand-rolls the body). Every legitimate body
+  // write in this repo goes through `mutateIssueBody`, which fetches the live
+  // body inside the same transaction and runs the marker-loss invariant. A
+  // direct `gh issue edit --body*` from agent Bash is always the wrong
+  // contract.
+  if (parsed.source === 'file' || parsed.source === 'inline') {
+    return {
+      block: true,
+      reason:
+        `gh issue edit on #${parsed.issueNumber} uses --${parsed.source === 'file' ? 'body-file' : 'body'}; direct body writes from Bash are forbidden.\n` +
+        `  Route every issue-body write through \`mutateIssueBody({issueNumber, repo, mutate})\` in scripts/task-tracker/lib/issue-body-mutate.mjs so the live body is fetched in the same transaction and the marker-loss invariant runs.\n` +
+        `  See CLAUDE.md "Route issue bodies through scripts".`,
+    };
+  }
+
+  // Unreachable in practice — the source==='none' early return above and the
+  // hard refusal above leave no other parsed.source value. Kept for symmetry
+  // with the original diff-guard contract; if a future parser adds a new
+  // body source the refusal-by-default catches it.
   let newBody;
   if (parsed.source === 'file') {
     try {

@@ -70,6 +70,15 @@ See [`docs/guides/settings-guide.md`](docs/guides/settings-guide.md) for full se
 
 See [`docs/onboarding.md`](docs/onboarding.md) for the Recommended Skills (Superpowers) table and the Key Files index.
 
+## Route issue bodies through scripts
+
+Never hand-roll issue bodies and never write them with `gh issue edit --body` / `--body-file` from Bash. Every issue-body write must flow through `mutateIssueBody({issueNumber, repo, mutate})` (`scripts/task-tracker/lib/issue-body-mutate.mjs`) so the live body is fetched in the same transaction as the write. Two enforcement layers backstop this contract:
+
+1. **Bash-level hard refusal (#361).** The PreToolUse Bash hook (`scripts/task-tracker/bash-guard.mjs`) calls `gh-edit-guard.evaluateGhEdit`, which refuses every `gh issue edit <N> --body <s>` and `gh issue edit <N> --body-file <p>` regardless of diff content. Label/title/milestone/assignee edits still pass.
+2. **Helper-level MarkerLossError (#361).** Inside `mutateIssueBody`, the caller's `mutate` output is diffed against the freshly-fetched base via `findLostMarkers` from `lib/body-invariants.mjs`. If any invariant marker (`aitm-fields`, `aitm-body-version`, `aitm-stage-rollup`, `aitm-refine-complete`, `aitm-plan-approved`, `aitm-deep-dive-posted`, `aitm-deep-dive-complete`, `aitm-last-known-state`, `aitm-last-known-state-ts`, or any `aitm-entered-<stage>`) disappears, the call throws `MarkerLossError` listing each lost marker. Pass `allowMarkerLoss: true` only for the rare legitimate-strip case (correcting a typo'd marker, intentional reset); the override is explicit and grep-able for audit.
+
+For issue creation, use `scripts/task-tracker/lib/preflight-issue.mjs` so the DoD and Pickup-Directive tail are stamped correctly.
+
 ## Tool Usage Rules
 
 - Use Read, Edit, Write for files. Bash only for: git, npm/node, shell scripts.
