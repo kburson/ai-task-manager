@@ -36,7 +36,14 @@ const APPROVED_BODY = [
   '',
   '## Deep-Dive Analysis',
   '',
-  'stub',
+  // #358 — substantive-chars floor folded into planDeepDiveGate; pad section.
+  ...Array.from(
+    { length: 20 },
+    (_, i) =>
+      `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
+  ),
+  '',
+  `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
 ].join('\n');
 const BARE_BODY = '## Scope\n\nno marker here\n';

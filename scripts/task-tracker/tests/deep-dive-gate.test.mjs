@@ -16,10 +16,28 @@ const COMPLETE = '<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->';
 const SECTION_H2 = '## Deep-Dive Analysis (2026-06-04)';
 const SECTION_H3 = '### Deep-Dive Analysis (2026-06-04)';
 
+// #358 — `planDeepDiveGate` now enforces the size-bucketed substantive-chars
+// floor (XS=1200 default fallback=2000). Build a body sized XS with enough
+// section content to clear 1200 chars.
+const XS_FIELDS = `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`;
+const PADDED_DETAILS = Array.from(
+  { length: 20 },
+  (_, i) =>
+    `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
+).join('\n');
+
 function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, trail = '' } = {}) {
-  return ['## Scope', 'do the thing', '', posted, section, 'details here', complete, trail].join(
-    '\n'
-  );
+  return [
+    '## Scope',
+    'do the thing',
+    '',
+    posted,
+    section,
+    PADDED_DETAILS,
+    complete,
+    XS_FIELDS,
+    trail,
+  ].join('\n');
 }
 
 // hasDeepDivePostedMarker

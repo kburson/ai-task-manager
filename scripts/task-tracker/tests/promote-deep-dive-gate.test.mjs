@@ -32,10 +32,16 @@ const PLAN_BODY_WITH_DEEP_DIVE = [
   '',
   '<!-- aitm-deep-dive-posted: 2026-06-04 -->',
   '## Deep-Dive Analysis (2026-06-04)',
-  'details',
+  // #358 — planDeepDiveGate now enforces a size-bucketed substantive-chars
+  // floor (XS=1200, default=2000). Pad past XS floor and tag body as XS.
+  ...Array.from(
+    { length: 20 },
+    (_, i) =>
+      `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
+  ),
   '<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->',
   '',
-  '<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":2}} -->',
+  `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { priority: 'P1', size: 'XS', estimate: 2 } })} -->`,
 ].join('\n');
 
 // Refusal: all three blocker codes named on a body missing every signal.

@@ -88,8 +88,16 @@ const DEEP_DIVE_SIGNALS = [
   '',
   '<!-- aitm-deep-dive-posted: 2026-06-04 -->',
   '## Deep-Dive Analysis (2026-06-04)',
-  'details',
+  // #358 — planDeepDiveGate now enforces a size-bucketed substantive-chars
+  // floor (XS=1200, default=2000). Pad the section past the XS floor and tag
+  // the body as XS so the gate is satisfied.
+  ...Array.from(
+    { length: 20 },
+    (_, i) =>
+      `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
+  ),
   '<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->',
+  `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
 ].join('\n');
 

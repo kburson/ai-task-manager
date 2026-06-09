@@ -17,8 +17,18 @@
 // #325 — single source of truth for signal detection now lives in
 // `lib/deep-dive.mjs::readDeepDiveSignals`. This module composes the gate
 // blocker messages on top of that shape.
+//
+// #358 — the size-bucketed substantive-chars floor (XS=1200, S=1800,
+// M/L/XL=2400, default 2000) used to live as an inline check in
+// `scripts/gh/move-state.mjs` that called `validateBody(body, { gates:
+// [deep-dive-complete] })` directly. When the inline block was deleted, the
+// substantive-chars floor was lost from the plan→develop guard chain. It is
+// now folded into `planDeepDiveGate` so `planExitDeepDiveGuard` covers it.
 
 import { readDeepDiveSignals } from './deep-dive.mjs';
+import { validateBody, DEFAULT_GATES } from './body-gates.mjs';
+
+const DEEP_DIVE_COMPLETE_RULES = DEFAULT_GATES.filter((g) => g.name === 'deep-dive-complete');
 
 // Legacy back-compat predicate wrappers. New callers should use
 // `readDeepDiveSignals` directly.
@@ -57,6 +67,19 @@ export function planDeepDiveGate({ body = '' } = {}) {
     blockers.push(
       'plan-develop-deep-dive-complete-marker-missing: body must contain `<!-- aitm-deep-dive-complete: ... -->` — run `/task check "Deep dive complete"` to stamp the marker'
     );
+  }
+  // #358 — size-tiered substantive-chars floor: only fires when both the
+  // `deep-dive-complete` marker AND the section heading are present. The
+  // section-missing and posted/complete-missing cases are already surfaced
+  // above; running the chars check then would duplicate them with a less
+  // actionable "ticked but no section" reason.
+  if (signals.hasPosted && signals.hasComplete && signals.hasHeading) {
+    const charsCheck = validateBody(body, { gates: DEEP_DIVE_COMPLETE_RULES });
+    if (!charsCheck.ok) {
+      for (const r of charsCheck.refusedRules || []) {
+        blockers.push(`deep-dive-complete: ${r.reason}`);
+      }
+    }
   }
   return blockers.length === 0 ? { ok: true } : { ok: false, blockers };
 }
