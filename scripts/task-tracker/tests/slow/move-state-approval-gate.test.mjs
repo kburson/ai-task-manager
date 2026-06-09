@@ -226,7 +226,15 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 
 // 5. Approval present but deep-dive marker missing -> blocked with deep-dive message
 {
-  const bodyNoDeepDive = `## Acceptance Criteria\n- [ ] AC\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
+  // #355 — contiguity guard is now a registry entry guard that fires on every
+  // forward move; fixture body must carry the prior-stage entry markers so the
+  // deep-dive-missing assertion is the one that surfaces.
+  const entryMarkers = [
+    '<!-- aitm-entered-backlog: 2026-05-09T09:00:00Z -->',
+    '<!-- aitm-entered-refine: 2026-05-09T09:30:00Z -->',
+    '<!-- aitm-entered-plan: 2026-05-09T09:45:00Z -->',
+  ].join('\n');
+  const bodyNoDeepDive = `## Acceptance Criteria\n- [ ] AC\n\n${entryMarkers}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
   const { sandbox, binDir } = makeSandbox(bodyNoDeepDive, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
@@ -239,6 +247,13 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
   const thinDeepDive = [
     '## Pickup Directive',
     '- [x] Deep dive complete',
+    '',
+    // #355 — contiguity guard requires prior-stage entry markers on every
+    // forward move; without them the move exits 6 before the substantive-chars
+    // floor is reached.
+    '<!-- aitm-entered-backlog: 2026-05-09T09:00:00Z -->',
+    '<!-- aitm-entered-refine: 2026-05-09T09:30:00Z -->',
+    '<!-- aitm-entered-plan: 2026-05-09T09:45:00Z -->',
     '',
     '<!-- aitm-deep-dive-complete: 2026-05-09T10:00:00Z -->',
     // Include posted marker so planExitDeepDiveGuard's posted-presence check
