@@ -8,6 +8,7 @@ import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { refineEntryFieldsPriority } from '../lib/guard-adapters-entry-fields.mjs';
 import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-parent-state-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
+import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   name: 'backlog',
@@ -16,6 +17,7 @@ export default Object.freeze({
     blockedByGuard,
     refineEntryFieldsPriority,
     backlogExitChildParentStateGuard,
+    childCannotLeadEpicExitGuard,
   ]),
   onEnter: Object.freeze([]),
 });

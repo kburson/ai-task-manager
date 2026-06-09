@@ -10,6 +10,7 @@ import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { testExitDodVerifiedGuard } from '../lib/test-exit-dod-verified-guard.mjs';
 import { testExitPreCloseCompletenessGuard } from '../lib/test-exit-pre-close-completeness-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
+import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   name: 'test',
@@ -18,6 +19,7 @@ export default Object.freeze({
     blockedByGuard,
     testExitDodVerifiedGuard,
     testExitPreCloseCompletenessGuard,
+    childCannotLeadEpicExitGuard,
   ]),
   onEnter: Object.freeze([]),
 });

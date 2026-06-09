@@ -9,6 +9,7 @@ import { planEntryFieldsBody, planEntryFieldsBoard } from '../lib/guard-adapters
 import { refineExitWipBudgetGuard } from '../lib/refine-exit-wip-budget-guard.mjs';
 import { refineExitChildParentStateGuard } from '../lib/refine-exit-child-parent-state-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
+import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   name: 'refine',
@@ -19,6 +20,7 @@ export default Object.freeze({
     planEntryFieldsBoard,
     refineExitWipBudgetGuard,
     refineExitChildParentStateGuard,
+    childCannotLeadEpicExitGuard,
   ]),
   onEnter: Object.freeze([]),
 });

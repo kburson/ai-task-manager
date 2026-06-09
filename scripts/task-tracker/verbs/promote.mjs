@@ -33,8 +33,6 @@ import {
 } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
-import { checkParentAdmission } from '../lib/body-gates.mjs';
-import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -42,7 +40,6 @@ import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { hasDodVerifiedMarker } from '../lib/markers.mjs';
-import { fetchParentIssue as defaultFetchParentIssue } from '../lib/fetch-parent-issue.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 
@@ -73,6 +70,9 @@ const REFUSAL_ID_TO_STATUS = {
   'test-exit-dod-verified': 'dod-verified-missing',
   'test-exit-pre-close-completeness': 'completeness-refused',
   'blocked-by-not-done': 'blocked-refused',
+  // #356 — child-cannot-lead-epic migrated into the exitGuards registry.
+  // Preserves the legacy verb-level `parent-admission-refused` status.
+  'child-cannot-lead-epic-exit': 'parent-admission-refused',
 };
 
 function refusalsToVerbResult(refusals, { issueNumber, target }) {
@@ -321,43 +321,10 @@ export async function runPromote({
   // here are deleted; the duplicate copies in `verbs/review.mjs` are removed
   // by the same change (single source of truth, parity across both paths).
 
-  // #162 — child-cannot-lead-epic gate. Runs on every forward transition.
-  // Solo issues (no parent) bypass. When the parent epic's live state is
-  // behind the child's target state, refuse. No env override exists.
-  const fetchParentIssue = deps.fetchParentIssue || defaultFetchParentIssue;
-  const readParentStatus = deps.readParentStatus || defaultReadParentStatus;
-  {
-    let parentEpicNumber = null;
-    try {
-      parentEpicNumber = await fetchParentIssue({ issueNumber, repo: cfg.repo });
-    } catch {
-      parentEpicNumber = null;
-    }
-    if (parentEpicNumber != null) {
-      let blockers;
-      try {
-        blockers = await checkParentAdmission({
-          parentEpicNumber,
-          repo: cfg.repo,
-          projectId: cfg.projectId,
-          readParentStatus,
-          targetState: target,
-        });
-      } catch (err) {
-        return {
-          status: 'parent-admission-error',
-          message: `promote: parent-admission gate failed: ${err.message}`,
-        };
-      }
-      if (Array.isArray(blockers) && blockers.length > 0) {
-        return {
-          status: 'parent-admission-refused',
-          blockers: blockers.map((b) => b.message),
-          message: `Refusing to promote #${issueNumber} to ${target}: child-cannot-lead-epic.`,
-        };
-      }
-    }
-  }
+  // #356 — child-cannot-lead-epic gate migrated into the state-keyed
+  // exit-guard registry (`childCannotLeadEpicExitGuard` on all 6 forward
+  // states). The runGuards call above already evaluated it; refusals are
+  // surfaced as `parent-admission-refused` via REFUSAL_ID_TO_STATUS.
 
   const aliasVerb = ALIAS_VERB[recorded] || null;
   const transitionResult = aliasVerb

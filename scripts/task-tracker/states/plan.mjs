@@ -19,6 +19,7 @@ import { planEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
 import { planExitPlannedEstimateGuard } from '../lib/plan-exit-planned-estimate-guard.mjs';
 import { planExitDeepDiveGuard } from '../lib/plan-exit-deep-dive-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
+import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   name: 'plan',
@@ -29,6 +30,7 @@ export default Object.freeze({
     planExitPlannedEstimateGuard,
     planExitDeepDiveGuard,
     planEpicChildrenGuard,
+    childCannotLeadEpicExitGuard,
   ]),
   onEnter: Object.freeze([]),
 });

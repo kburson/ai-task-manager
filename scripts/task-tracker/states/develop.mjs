@@ -9,6 +9,7 @@ import { developExitCodeCompleteGuard } from '../lib/develop-exit-code-complete-
 import { developExitCommitTrailHeadGuard } from '../lib/develop-exit-commit-trail-head-guard.mjs';
 import { developExitEpicChildrenDoneGuard } from '../lib/develop-epic-children-done-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
+import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   name: 'develop',
@@ -18,6 +19,7 @@ export default Object.freeze({
     developExitCodeCompleteGuard,
     developExitCommitTrailHeadGuard,
     developExitEpicChildrenDoneGuard,
+    childCannotLeadEpicExitGuard,
   ]),
   onEnter: Object.freeze([]),
 });
