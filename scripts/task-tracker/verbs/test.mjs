@@ -325,18 +325,12 @@ export async function runVerbTest({
     await removeWorktree({ projectDir, path: wtPath });
   }
 
-  if (moveState) {
-    await moveState({ issueNumber: issueNum, target: 'test' });
-    // #210 — Re-fetch after moveState so subsequent body writes don't clobber
-    // the `aitm-last-known-state` marker that the transition just stamped.
-    body = await fetchBody({ cfg, issueNum });
-  }
-
-  // #210 (Fix A) — Once the board has been moved to `test`, ANY failure before
-  // the sandbox produces a green/red result MUST demote the board back to
-  // `develop`. Otherwise verbTest can crash mid-sandbox (worktree/npm-ci
-  // failure, etc.), leave the board in `test`, and let the next forward
-  // promote sail through with no `aitm-dod-verified` evidence.
+  // #270 — Gate-first flow. The board stays on `develop` for the entire
+  // sandbox run; `moveState('test')` is only called once the sandbox is green
+  // and `aitm-dod-verified` has been stamped. The develop-exit-sandbox-proof
+  // guard then accepts the transition because the marker is present. Red and
+  // setup-crash paths return without ever calling `moveState`, so there is
+  // no scaffolding to undo and no risk of a half-stepped lifecycle.
   const results = [];
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
@@ -403,11 +397,12 @@ export async function runVerbTest({
       });
     }
   } catch (err) {
-    // #210 (Fix A) — sandbox-setup or sandbox-run threw. Roll the board back
-    // to `develop` so the lifecycle chain stays honest, post an audit comment
-    // for visibility, then re-throw so the caller surfaces a non-zero exit.
+    // #270 — sandbox-setup or sandbox-run threw. The board is still on
+    // `develop` (gate-first flow never moved it), so there is nothing to undo.
+    // Post the audit comment for visibility and re-throw so the caller
+    // surfaces a non-zero exit.
     //
-    // #254 — the audit comment now carries durable diagnostics (failing step,
+    // #254 — the audit comment carries durable diagnostics (failing step,
     // exit code, stderr tail, attempt count) drawn from the tagged setup
     // failure, and the post is NOT swallowed: if it fails, surface the failure
     // on stderr instead of silently dropping it (the prior best-effort `catch
@@ -432,13 +427,6 @@ export async function runVerbTest({
         `test: failed to post abort diagnostics for #${issueNum}: ${postErr?.message ?? String(postErr)}\n`
       );
     }
-    if (moveState) {
-      try {
-        await moveState({ issueNumber: issueNum, target: 'develop' });
-      } catch {
-        // best-effort rollback; the audit comment above records the abort
-      }
-    }
     throw err;
   } finally {
     if (cleanupNeeded) {
@@ -450,15 +438,12 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
-    // #210 — Re-fetch before stamping DoD-verified so we don't clobber any
-    // marker writes (entry markers, lifecycle pretick, last-known-state) that
-    // GitHub may have received in the meantime.
-    body = await fetchBody({ cfg, issueNum });
-    // verbTest advances develop→test only. The Test→Review step is a separate
-    // forward verb (`/task review`) — verbTest must not skip it. move-state.mjs
-    // already stamped the `test` entry marker via the earlier moveState call;
-    // we re-stamp here defensively so the chain stays complete even if a stub
-    // moveState (e.g. in unit tests) omits marker stamping.
+    // #270 — Gate-first: stamp `aitm-dod-verified` (and a defensive
+    // `test`-entry marker for stub moveStates that skip stamping) BEFORE
+    // `moveState('test')`. The develop-exit-sandbox-proof guard inside
+    // `runGuards` then sees the marker on the live body and accepts the
+    // transition. verbTest advances develop→test only; Test→Review is a
+    // separate forward verb (`/task review`).
     let stamped = insertDodVerifiedMarker(body, sha, ts);
     const markers = parseEntryMarkers(stamped);
     const latest = markers
@@ -496,6 +481,9 @@ export async function runVerbTest({
         },
       });
     }
+    if (moveState) {
+      await moveState({ issueNumber: issueNum, target: 'test' });
+    }
     await postComment({
       cfg,
       issueNum,
@@ -509,12 +497,12 @@ export async function runVerbTest({
     return { status: 'passed', sha, ts, results, wtPath, target: 'test' };
   }
 
+  // #270 — Red path. Gate-first means the board never moved; nothing to undo.
   await postComment({
     cfg,
     issueNum,
     body: buildResultTable(results, { sha, status: 'red' }),
   });
-  if (moveState) await moveState({ issueNumber: issueNum, target: 'develop' });
   return { status: 'failed', sha, results, wtPath };
 }
 

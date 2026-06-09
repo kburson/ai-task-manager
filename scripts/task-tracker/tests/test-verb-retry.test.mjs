@@ -159,7 +159,8 @@ test('real-red first occurrence: a genuine verification red rolls back without r
       1,
       'setup must not retry when the failure is a verification red'
     );
-    assert.deepEqual(calls.moves, ['test', 'develop'], 'red rolls the board back to develop');
+    // #270 — gate-first: red never moves the board, so there is nothing to undo.
+    assert.deepEqual(calls.moves, [], 'gate-first: red verdict makes no moveState call');
     assert.ok(
       !calls.comments.some((c) => /test-aborted/.test(c)),
       'a red is a normal result, not an abort — no test-aborted comment'
@@ -189,10 +190,11 @@ test('durable diagnostics: exhausted setup retries record step + exit + stderr t
     assert.match(aborted, /registry unreachable/, 'comment includes the stderr tail');
     assert.match(aborted, /Attempts:\*\*\s*3\/3/, 'comment records the attempt count');
     assert.match(aborted, /aitm-test-aborted/, 'comment carries the audit marker');
+    // #270 — gate-first: aborted setup throws before any moveState call.
     assert.deepEqual(
       calls.moves,
-      ['test', 'develop'],
-      'aborted setup rolls the board back to develop'
+      [],
+      'gate-first: aborted setup never calls moveState — board stays on develop'
     );
   });
 });

@@ -48,6 +48,7 @@
 //            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
 //            |                                       | child-cannot-lead-epic
 //   develop  | contiguity                            | blocked-by, develop-exit-code-complete,
+//            |                                       | develop-exit-sandbox-proof,
 //            |                                       | develop-exit-commit-trail-head,
 //            |                                       | develop-epic-children-done, child-cannot-lead-epic
 //   test     | contiguity, body-gates                | blocked-by, test-exit-dod-verified,

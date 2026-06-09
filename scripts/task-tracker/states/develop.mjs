@@ -8,6 +8,7 @@ import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { developExitCodeCompleteGuard } from '../lib/develop-exit-code-complete-guard.mjs';
 import { developExitCommitTrailHeadGuard } from '../lib/develop-exit-commit-trail-head-guard.mjs';
 import { developExitEpicChildrenDoneGuard } from '../lib/develop-epic-children-done-guard.mjs';
+import { developExitSandboxProofGuard } from '../lib/develop-exit-sandbox-proof-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
@@ -17,6 +18,7 @@ export default Object.freeze({
   exitGuards: Object.freeze([
     blockedByGuard,
     developExitCodeCompleteGuard,
+    developExitSandboxProofGuard,
     developExitCommitTrailHeadGuard,
     developExitEpicChildrenDoneGuard,
     childCannotLeadEpicExitGuard,

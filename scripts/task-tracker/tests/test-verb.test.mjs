@@ -177,7 +177,7 @@ test('verbTest: green path stamps marker, posts success comment, moves develop�
   });
 });
 
-test('verbTest: red path posts failure comment, rolls back to develop, does NOT stamp marker', async () => {
+test('verbTest #270: red path posts failure comment, does NOT move board, does NOT stamp dod marker', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps({
       execResults: {
@@ -203,7 +203,12 @@ test('verbTest: red path posts failure comment, rolls back to develop, does NOT 
     assert.equal(calls.comments.length, 1);
     assert.match(calls.comments[0], /Sandboxed verification failed/);
     assert.match(calls.comments[0], /boom/);
-    assert.deepEqual(calls.moves, ['test', 'develop']);
+    // #270 — gate-first: board never moved on red, so nothing to undo.
+    assert.deepEqual(
+      calls.moves,
+      [],
+      'gate-first: moveState must not be called when sandbox is red'
+    );
   });
 });
 
@@ -215,11 +220,12 @@ test('verbTest: worktree cleanup runs even when sandbox exec throws', async () =
   });
 });
 
-// #210 (Fix A) — When the sandbox section throws before producing a green/red
-// result, verbTest must demote the board back to `develop` so the lifecycle
-// chain stays honest. Previously the board was stranded at `test` and the
-// next promote sailed through without `aitm-dod-verified` evidence.
-test('verbTest #210 Fix A: sandbox-setup crash → demotes board back to develop + posts test-aborted audit', async () => {
+// #270 — Gate-first replaces the provisional-move-then-rollback flow from
+// #210 Fix A. The sandbox runs while the board is still on `develop`; on any
+// crash before a green/red verdict, no `moveState` call is ever made. The
+// `test-aborted` audit comment must still be posted so operators have
+// diagnostics.
+test('verbTest #270: sandbox-setup crash → board stays on develop (no move) + posts test-aborted audit', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps();
     // Override createWorktree to throw — simulates a sandbox-setup failure
@@ -230,8 +236,8 @@ test('verbTest #210 Fix A: sandbox-setup crash → demotes board back to develop
     await assert.rejects(() => runVerbTest({ cfg, issueNumber: 2102, projectDir, deps }));
     assert.deepEqual(
       calls.moves,
-      ['test', 'develop'],
-      'must call moveState→test then rollback moveState→develop on setup failure'
+      [],
+      'gate-first: setup crash must not call moveState — board stays on develop'
     );
     assert.ok(
       calls.comments.some((c) => /test-aborted/.test(c) && /aitm-test-aborted/.test(c)),
@@ -240,16 +246,14 @@ test('verbTest #210 Fix A: sandbox-setup crash → demotes board back to develop
   });
 });
 
-test('verbTest #210 Fix A: sandbox-exec crash → demotes board back to develop', async () => {
+test('verbTest #270: sandbox-exec crash → board stays on develop (no move)', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps({ shouldThrowOnExec: true });
     await assert.rejects(() => runVerbTest({ cfg, issueNumber: 2103, projectDir, deps }));
-    // The exec-throw path runs after worktree creation, but the rollback must
-    // still fire. Last move call is the demote.
-    assert.equal(
-      calls.moves[calls.moves.length - 1],
-      'develop',
-      'final moveState call must demote to develop'
+    assert.deepEqual(
+      calls.moves,
+      [],
+      'gate-first: exec crash must not call moveState — board stays on develop'
     );
   });
 });
@@ -304,34 +308,22 @@ test('verbTest: no pretick → no regression comment posted (#139)', async () =>
   });
 });
 
-// #210 — Regression: verbTest must re-fetch the issue body after moveState
-// so the body it writes back reflects the post-transition `aitm-last-known-state`
-// marker. The pre-fix bug was a read-modify-write hazard: fetch body (marker=develop),
-// call moveState (writes marker=test to GitHub), stamp local edits on the stale
-// body and write it back, clobbering marker back to develop. The next promote's
-// preflight then refused with `human-move`.
-test('verbTest #210: re-fetches body after moveState so writes preserve last-known-state marker', async () => {
+// #270 — Gate-first ordering: every body write happens BEFORE moveState, and
+// every write goes through `mutateBody` (which re-fetches FRESH base inside
+// the helper). The #210 read-modify-write hazard is structurally impossible
+// in the gate-first flow because moveState is the last side-effect — there
+// is no post-move body write to clobber the `aitm-last-known-state` marker.
+test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no post-move body write to clobber)', async () => {
   await withTmpDir(async (projectDir) => {
-    const fetchCalls = [];
-    const bodyWrites = [];
-    const moves = [];
+    const events = [];
     const baseBody = bodyWithVc(['npm test']);
     const preTransitionBody = `<!-- aitm-last-known-state: develop -->\n${baseBody}`;
-    const postTransitionBody = `<!-- aitm-last-known-state: test -->\n${baseBody}`;
-    let movedToTest = false;
     const deps = {
-      fetchBody: async () => {
-        fetchCalls.push(movedToTest ? 'after-move' : 'before-move');
-        return movedToTest ? postTransitionBody : preTransitionBody;
-      },
-      // #295 — closure runs over FRESH base. The base reflects the current
-      // post/pre-transition body so the assertion that every write carries
-      // `last-known-state: test` still holds (after moveState has flipped).
+      fetchBody: async () => preTransitionBody,
       mutateBody: async ({ mutate }) => {
-        const base = movedToTest ? postTransitionBody : preTransitionBody;
-        const next = mutate(base);
-        if (next === base) return { status: 'no-op' };
-        bodyWrites.push(next);
+        const next = mutate(preTransitionBody);
+        if (next === preTransitionBody) return { status: 'no-op' };
+        events.push({ kind: 'write', body: next });
         return { status: 'ok' };
       },
       postComment: async () => {},
@@ -342,33 +334,31 @@ test('verbTest #210: re-fetches body after moveState so writes preserve last-kno
       npmCi: async () => {},
       execInSandbox: async () => ({ exit: 0, stdout: '', stderr: '' }),
       moveState: async ({ target }) => {
-        moves.push(target);
-        if (target === 'test') movedToTest = true;
+        events.push({ kind: 'move', target });
       },
       logIssueTime: async () => {},
     };
 
-    const r = await runVerbTest({ cfg, issueNumber: 210, projectDir, deps });
+    const r = await runVerbTest({ cfg, issueNumber: 270, projectDir, deps });
     assert.equal(r.status, 'passed');
 
-    // Must have fetched at least twice: once before moveState, once after.
+    // Locate the dod-verified write and the test-move. The write MUST precede
+    // the move — that is the whole point of gate-first.
+    const moveIdx = events.findIndex((e) => e.kind === 'move' && e.target === 'test');
+    const dodIdx = events.findIndex((e) => e.kind === 'write' && /aitm-dod-verified:/.test(e.body));
+    assert.ok(moveIdx >= 0, 'expected a moveState→test call');
+    assert.ok(dodIdx >= 0, 'expected a body write containing aitm-dod-verified');
     assert.ok(
-      fetchCalls.filter((c) => c === 'after-move').length >= 1,
-      `expected at least one fetch after moveState, got ${JSON.stringify(fetchCalls)}`
+      dodIdx < moveIdx,
+      `gate-first: dod-verified write (idx ${dodIdx}) must precede moveState→test (idx ${moveIdx})`
     );
-
-    // Every body the verb wrote back must reflect the post-transition marker.
-    // Pre-fix, at least one write carried marker=develop.
-    for (const w of bodyWrites) {
-      assert.ok(
-        w.includes('aitm-last-known-state: test'),
-        'body write must preserve post-transition marker (no read-modify-write clobber)'
-      );
-      assert.ok(
-        !w.includes('aitm-last-known-state: develop'),
-        'body write must not regress marker to pre-transition state'
-      );
-    }
+    // No body writes after the move.
+    const writesAfterMove = events.slice(moveIdx + 1).filter((e) => e.kind === 'write');
+    assert.equal(
+      writesAfterMove.length,
+      0,
+      'gate-first: no body writes after moveState — nothing can clobber post-transition markers'
+    );
   });
 });
 
@@ -385,7 +375,8 @@ test('verbTest: sandbox isolation — locally-passing env-dependent command fail
     });
     const r = await runVerbTest({ cfg, issueNumber: 137, projectDir, deps });
     assert.equal(r.status, 'failed');
-    assert.deepEqual(calls.moves, ['test', 'develop']);
+    // #270 — gate-first: red verdict means no moveState call ever happened.
+    assert.deepEqual(calls.moves, []);
     assert.match(calls.comments[0], /MISSING_ENV not set/);
   });
 });
