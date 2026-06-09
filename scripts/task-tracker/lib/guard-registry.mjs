@@ -68,7 +68,16 @@ export function registerGuard(state, kind, guard) {
 async function invoke(guard, ctx) {
   try {
     const result = await guard.run(ctx);
-    if (result && result.ok === true) return { ok: true };
+    if (result && result.ok === true) {
+      // #359 — guards may attach a non-refusing `warn` payload (e.g. the
+      // lifecycle warn-only path on done-entry when
+      // lifecycleCheckboxesRequired=false). The host can read it from
+      // `guardResult.warns` and emit a side effect (timing row, log line,
+      // etc.) without the guard itself doing I/O.
+      const out = { ok: true };
+      if (result.warn != null) out.warn = result.warn;
+      return out;
+    }
     if (result && result.ok === false) {
       // #336 — adapters may include a `blockers: string[]` alongside `reason`
       // so verb-layer callers (promote.mjs) can preserve the array shape that
@@ -76,6 +85,7 @@ async function invoke(guard, ctx) {
       // Reason remains the canonical single-string surface.
       const out = { ok: false, reason: result.reason ?? '(no reason given)' };
       if (Array.isArray(result.blockers)) out.blockers = result.blockers;
+      if (result.warn != null) out.warn = result.warn;
       return out;
     }
     return {
@@ -89,34 +99,41 @@ async function invoke(guard, ctx) {
 
 export async function runGuards(fromState, toState, ctx) {
   const refusals = [];
+  const warns = [];
   const fromSlot = GUARDS[fromState];
   const toSlot = GUARDS[toState];
+
+  function consume(g, r) {
+    if (!r.ok) {
+      const entry = { id: g.id, reason: r.reason };
+      if (r.blockers) entry.blockers = r.blockers;
+      refusals.push(entry);
+    }
+    if (r.warn != null) warns.push({ id: g.id, warn: r.warn });
+  }
 
   // Unknown states are *not* fatal here — runGuards is called from already-
   // validated state transitions. If a caller passes an unknown state we treat
   // it as "no guards" rather than throwing, so transition logging stays clean.
   if (fromSlot) {
     for (const g of fromSlot.exit) {
-      const r = await invoke(g, ctx);
-      if (!r.ok) {
-        const entry = { id: g.id, reason: r.reason };
-        if (r.blockers) entry.blockers = r.blockers;
-        refusals.push(entry);
-      }
+      consume(g, await invoke(g, ctx));
     }
   }
   if (toSlot) {
     for (const g of toSlot.entry) {
-      const r = await invoke(g, ctx);
-      if (!r.ok) {
-        const entry = { id: g.id, reason: r.reason };
-        if (r.blockers) entry.blockers = r.blockers;
-        refusals.push(entry);
-      }
+      consume(g, await invoke(g, ctx));
     }
   }
 
-  return refusals.length === 0 ? { ok: true, refusals: [] } : { ok: false, refusals };
+  if (refusals.length === 0) {
+    const out = { ok: true, refusals: [] };
+    if (warns.length > 0) out.warns = warns;
+    return out;
+  }
+  const out = { ok: false, refusals };
+  if (warns.length > 0) out.warns = warns;
+  return out;
 }
 
 // Exposed for tests; not part of the public registration API.

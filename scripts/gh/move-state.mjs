@@ -14,7 +14,6 @@ import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition, normalizeStateSlug } from '../task-tracker/state-machine.mjs';
-import { assertLifecycleSatisfied } from '../task-tracker/close-gate.mjs';
 import {
   getProjectDir,
   existingRuntimePath,
@@ -248,9 +247,10 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
 // below recognizes any refusal whose `id` begins with `body-gates-entry-`
 // and posts the same fire-and-forget `gate-refused` timing row the inline
 // block used to emit. The done-only lifecycle warn-only path (when
-// `cfg.lifecycleCheckboxesRequired === false`) is preserved by re-running
-// `assertLifecycleSatisfied` after a successful runGuards on done-entry
-// and posting the legacy `lifecycle-warn` timing row.
+// `cfg.lifecycleCheckboxesRequired === false`) is preserved generically:
+// the done guard attaches a `warn: { kind:'lifecycle', labels: [...] }`
+// payload, runGuards propagates it as `guardResult.warns`, and the post-
+// guard handler below emits the legacy `lifecycle-warn` timing row.
 
 // Universal exit-guard pipeline (#286). Runs on every transition once the
 // from-state is known. The blocked-by-not-done guard parses the active
@@ -359,40 +359,38 @@ if (!SKIP_NETWORK && resolvedFromState) {
   }
 
   // #359 — preserve the inline composite's lifecycle warn-only side
-  // effect: when `cfg.lifecycleCheckboxesRequired === false` and labels
-  // are missing on done-entry, post the legacy `lifecycle-warn` timing
-  // row. The bodyGatesEntryGuardDone surfaces this via its `warn`
-  // payload, but runGuards strips non-{ok,reason,blockers} fields; the
-  // re-check below is the side-effect carrier.
-  if (stateArg === 'done' && cfg.lifecycleCheckboxesRequired === false && guardBody) {
-    const lifecycle = assertLifecycleSatisfied({ body: guardBody, required: false });
-    if (!lifecycle.block && lifecycle.missing.length > 0) {
-      try {
-        const { buildRow: _br, postTimingEvent: _pe } =
-          await import('../task-tracker/gh-timing-comment.mjs');
-        const { deriveStateMoveDelta: _dsm } = await import('../task-tracker/lib/timing-rows.mjs');
-        const _ts = new Date().toISOString();
-        // lifecycle-warn: timing-comment body not loaded here — honest 0/0
-        // (no prior reference point available; warn is fire-and-forget).
-        const _d = _dsm('', _ts);
-        const missLabels = lifecycle.missing.map((m) => m.key).join(', ');
-        await _pe({
-          issueNumber: issueArg,
-          repo: cfg.repo,
-          timeoutMs: 3000,
-          row: _br({
-            ts: _ts,
-            event: 'lifecycle-warn',
-            activeSec: _d.activeSec,
-            idleSec: _d.idleSec,
-            deltaWords: 0,
-            wordMarker: 0,
-            description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
-          }),
-        });
-      } catch {
-        /* fire-and-forget */
-      }
+  // effect: bodyGatesEntryGuardDone attaches a `warn: { kind:'lifecycle',
+  // labels: [...] }` payload when lifecycleCheckboxesRequired=false. The
+  // runGuards aggregator propagates it via `guardResult.warns`; emit the
+  // legacy `lifecycle-warn` timing row from that payload here (generic
+  // handler keyed on warn.kind — no helper import needed).
+  const lifecycleWarn = (guardResult.warns ?? []).find((w) => w.warn?.kind === 'lifecycle');
+  if (lifecycleWarn) {
+    try {
+      const { buildRow: _br, postTimingEvent: _pe } =
+        await import('../task-tracker/gh-timing-comment.mjs');
+      const { deriveStateMoveDelta: _dsm } = await import('../task-tracker/lib/timing-rows.mjs');
+      const _ts = new Date().toISOString();
+      // lifecycle-warn: timing-comment body not loaded here — honest 0/0
+      // (no prior reference point available; warn is fire-and-forget).
+      const _d = _dsm('', _ts);
+      const missLabels = (lifecycleWarn.warn.labels ?? []).join(', ');
+      await _pe({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        timeoutMs: 3000,
+        row: _br({
+          ts: _ts,
+          event: 'lifecycle-warn',
+          activeSec: _d.activeSec,
+          idleSec: _d.idleSec,
+          deltaWords: 0,
+          wordMarker: 0,
+          description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
+        }),
+      });
+    } catch {
+      /* fire-and-forget */
     }
   }
 }
