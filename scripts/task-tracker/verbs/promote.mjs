@@ -73,6 +73,10 @@ const REFUSAL_ID_TO_STATUS = {
   // #356 — child-cannot-lead-epic migrated into the exitGuards registry.
   // Preserves the legacy verb-level `parent-admission-refused` status.
   'child-cannot-lead-epic-exit': 'parent-admission-refused',
+  // #357 — refine→plan stage-completion marker check migrated from the
+  // inline pre-flight at promote.mjs L270-285 into the exit-guard registry.
+  // Preserves the legacy verb-level `refine-exit-refused` status.
+  'refine-exit-complete-marker': 'refine-exit-refused',
 };
 
 function refusalsToVerbResult(refusals, { issueNumber, target }) {
@@ -267,22 +271,10 @@ export async function runPromote({
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
   }
 
-  // Refine → Plan pre-flight (#282): the `aitm-refine-complete` stage-
-  // completion marker must be present. `/task refine` stamps it after fields
-  // and rationale are written. Absent marker = user has not signalled that
-  // refinement work is done; refuse with a message that names the producing
-  // verb. This is the explicit user-signal that replaces the prior implicit
-  // forward-promote out of the refine verb. Kept inline because no guard in
-  // the registry checks this stage-completion marker (#336 scope).
-  if (target === 'plan') {
-    if (!/<!--\s*aitm-refine-complete:[^>]*-->/i.test(body)) {
-      return {
-        status: 'refine-exit-refused',
-        blockers: ['missing aitm-refine-complete marker; run `/task refine`'],
-        message: `Refusing to promote #${issueNumber} to Plan: missing aitm-refine-complete marker; run \`/task refine\`.`,
-      };
-    }
-  }
+  // #357 — refine→plan stage-completion marker check migrated into the
+  // exit-guard registry (`refineExitCompleteMarkerGuard`). The runGuards call
+  // below evaluates it; refusals surface as `refine-exit-refused` via
+  // REFUSAL_ID_TO_STATUS.
 
   // #336 — delegate forward-transition gate enforcement to the guard registry.
   // Every previously-inline gate for backlog→refine, refine→plan, plan→develop,
