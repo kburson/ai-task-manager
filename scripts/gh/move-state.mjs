@@ -43,7 +43,6 @@ import {
 // runGuards so the two are read together.
 import { runGuards } from '../task-tracker/lib/guard-registry.mjs';
 import '../task-tracker/lib/guard-bootstrap.mjs';
-import { hasDeepDiveCompleteMarker } from '../task-tracker/lib/markers.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -436,85 +435,11 @@ if (!SKIP_NETWORK && resolvedFromState) {
   }
 }
 
-// Deep-dive gate: plan -> develop requires `<!-- aitm-deep-dive-complete: <ts> -->`
-// marker plus a substantive `## Deep-Dive Analysis` section. The companion
-// plan-approval marker check migrated into the guard registry as
-// `planApprovedGuard` at `scripts/task-tracker/lib/plan-approved-guard.mjs`
-// via #277; runGuards (above) fires it before reaching this block. The
-// deep-dive half stays inline here until a dedicated migration child runs.
-// Fires only when current board state is `plan` so transitions back from
-// test/review do not require fresh markers.
-if (stateArg === 'develop' && !SKIP_NETWORK && cfg.gateAnalysisToDevelopment !== false) {
-  let body = '';
-  try {
-    body = (
-      await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
-    ).trim();
-  } catch {
-    /* ignore — missing body falls through */
-  }
-
-  // #333 — delegate to `hasDeepDiveCompleteMarker` so fenced-code-block phantoms
-  // are not detected as real stamps. Prior inline regex matched phantom markers
-  // inside planner prose / example code blocks.
-  const deepDiveMarker = hasDeepDiveCompleteMarker(body);
-  const deepDiveBodyCheck = deepDiveMarker
-    ? validateBody(body, { gates: DEFAULT_GATES.filter((g) => g.name === 'deep-dive-complete') })
-    : { ok: false };
-
-  // Resolve current state (single-select option name) via the project item.
-  let currentStateName = '';
-  try {
-    const { gql, splitRepo } = await import('./lib/github-projects.mjs');
-    const { owner, repoName } = splitRepo(cfg.repo);
-    const data = await gql(
-      `
-      query($owner: String!, $repo: String!, $issue: Int!) {
-        repository(owner: $owner, name: $repo) {
-          issue(number: $issue) {
-            projectItems(first: 10) {
-              nodes {
-                project { id }
-                fieldValueByName(name: "Status") {
-                  ... on ProjectV2ItemFieldSingleSelectValue { name }
-                }
-              }
-            }
-          }
-        }
-      }`,
-      { owner, repo: repoName, issue: Number(issueArg) }
-    );
-    const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-    const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-    const rawName = String(node?.fieldValueByName?.name || '').toLowerCase();
-    currentStateName = normalizeStateSlug(rawName) || '';
-  } catch {
-    /* offline: fall back to body-only check below */
-  }
-
-  const fromAnalyze = currentStateName === '' || currentStateName === 'plan';
-
-  const planDevelopBlockers = [];
-  if (!deepDiveMarker)
-    planDevelopBlockers.push(
-      'plan -> develop requires <!-- aitm-deep-dive-complete: <ts> --> marker — post the deep-dive analysis and run `/task check "Deep dive complete"` first'
-    );
-  else if (!deepDiveBodyCheck.ok)
-    planDevelopBlockers.push(
-      `deep-dive-complete: ${deepDiveBodyCheck.refusedRules?.[0]?.reason ?? 'section insufficient (<20 non-empty lines)'}`
-    );
-
-  if (fromAnalyze && planDevelopBlockers.length > 0) {
-    process.stderr.write('\n');
-    process.stderr.write(`⛔ Refusing to move #${issueArg} to develop:\n`);
-    planDevelopBlockers.forEach((b) => process.stderr.write(`   BLOCKED: ${b}\n`));
-    process.stderr.write(
-      '\nResolve the blockers, then retry. For legitimate abandonment, move the card in the GitHub Projects UI.\n\n'
-    );
-    process.exit(4);
-  }
-}
+// #358 — the inline plan→develop deep-dive marker + section gate that lived
+// here was a strict duplicate of `planExitDeepDiveGuard` (registered in
+// `STATES.plan.exitGuards` via #277). runGuards above fires the registry
+// guard before this point and refuses with equivalent blockers; the inline
+// block was redundant and has been removed.
 
 // Backlog warning: moving a sized + estimated issue to Backlog is suspicious.
 // Backlog is for unvetted ideas; sized work belongs in the Ready column. Non-blocking.
