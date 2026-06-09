@@ -252,13 +252,16 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
 // payload, runGuards propagates it as `guardResult.warns`, and the post-
 // guard handler below emits the legacy `lifecycle-warn` timing row.
 
-// Universal exit-guard pipeline (#286). Runs on every transition once the
-// from-state is known. The blocked-by-not-done guard parses the active
-// issue's body for `aitm-blocked-by: #M, #P` and refuses if any blocker is
-// not in `done`. Refusals are aggregated into the same `BLOCKED:` stderr
-// format the structural gate uses. Skipped when SKIP_NETWORK is set or the
-// from-state could not be resolved (same fall-through as other gates).
-if (!SKIP_NETWORK && resolvedFromState) {
+// Universal exit-guard pipeline (#286) + entry-guard pipeline.
+// Exit guards (e.g. blocked-by-not-done) require a known `fromState`;
+// runGuards skips the exit-slot iteration when `GUARDS[fromState]` is
+// absent, so passing an unresolved fromState is safe (entry guards on
+// `toState` still fire). #359 — the body-gates entry guards on
+// test/review/done MUST run even when `resolvedFromState` is empty, to
+// preserve the pre-refactor behavior of the inline `GATED_STATES` block
+// (which had no fromState precondition). Therefore the outer condition
+// gates only on SKIP_NETWORK.
+if (!SKIP_NETWORK) {
   let guardBody = '';
   try {
     guardBody = (
@@ -349,7 +352,15 @@ if (!SKIP_NETWORK && resolvedFromState) {
     process.stderr.write('\n');
     process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
     for (const r of guardResult.refusals) {
-      process.stderr.write(`   BLOCKED: #${issueArg} is in ${resolvedFromState}; ${r.reason}\n`);
+      // #359 — preserve pre-refactor "BLOCKED: <reason>" format byte-for-byte
+      // for body-gates-entry refusals so the slow-suite regex
+      // /BLOCKED: deep-dive-complete/ keeps matching. Other guards retain the
+      // `#N is in <fromState>;` contextual prefix that #277 introduced.
+      if (r.id?.startsWith('body-gates-entry-')) {
+        process.stderr.write(`   BLOCKED: ${r.reason}\n`);
+      } else {
+        process.stderr.write(`   BLOCKED: #${issueArg} is in ${resolvedFromState}; ${r.reason}\n`);
+      }
     }
     process.stderr.write('\n');
     process.stderr.write(
