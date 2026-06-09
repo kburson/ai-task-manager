@@ -10,15 +10,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
-import { validateBody, DEFAULT_GATES } from '../task-tracker/lib/body-gates.mjs';
 import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { validateTransition, normalizeStateSlug } from '../task-tracker/state-machine.mjs';
-import {
-  uncheckedPreCloseCheckboxes,
-  assertLifecycleSatisfied,
-} from '../task-tracker/close-gate.mjs';
+import { assertLifecycleSatisfied } from '../task-tracker/close-gate.mjs';
 import {
   getProjectDir,
   existingRuntimePath,
@@ -244,121 +240,17 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
   }
 }
 
-// Structural body gate: applies to test, review, and done.
-// - For all three states: verify "evidence-required" ticked boxes have supporting body content
-//   (Deep-Dive Analysis section, Dependency Map section, Verification Commands all-checked).
-//   Note: verification-commands rule fires only at review/done — at test the auto-runner ticks them.
-// - For done only: also enforce "no unchecked checkboxes" and "Deep dive line is checked".
-const GATED_STATES = new Set(['test', 'review', 'done']);
-if (GATED_STATES.has(stateArg) && !SKIP_NETWORK) {
-  let body = '';
-  try {
-    body = await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body']);
-    body = body.trim();
-  } catch {
-    /* ignore — missing body is not a gate failure */
-  }
-
-  if (body) {
-    const reasons = [];
-    const refusedRuleNames = [];
-
-    // Structural gates (all gated states). At validate, skip verification-commands
-    // because the auto-runner is what ticks those boxes.
-    const activeGates =
-      stateArg === 'done' || stateArg === 'review'
-        ? DEFAULT_GATES
-        : DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
-    const gateResult = validateBody(body, { gates: activeGates });
-    if (!gateResult.ok) {
-      for (const r of gateResult.refusedRules) {
-        reasons.push(`${r.rule}: ${r.reason}`);
-        refusedRuleNames.push(r.rule);
-      }
-    }
-
-    // Done-only legacy checks
-    if (stateArg === 'done') {
-      const unchecked = uncheckedPreCloseCheckboxes(body);
-      if (unchecked.length > 0)
-        reasons.push(`${unchecked.length} unchecked checkbox(es) in issue body`);
-
-      // #179 — Hard Review→Done lifecycle gate (parallel to close.mjs).
-      const lifecycleRequired = cfg.lifecycleCheckboxesRequired !== false;
-      const lifecycleGate = assertLifecycleSatisfied({ body, required: lifecycleRequired });
-      if (lifecycleGate.block) {
-        reasons.push(lifecycleGate.reason);
-        refusedRuleNames.push('lifecycle-incomplete');
-      } else if (!lifecycleRequired && lifecycleGate.missing.length > 0) {
-        try {
-          const { buildRow: _br, postTimingEvent: _pe } =
-            await import('../task-tracker/gh-timing-comment.mjs');
-          const { deriveStateMoveDelta: _dsm } =
-            await import('../task-tracker/lib/timing-rows.mjs');
-          const _ts = new Date().toISOString();
-          const _d = _dsm(body, _ts);
-          const missLabels = lifecycleGate.missing.map((m) => m.key).join(', ');
-          await _pe({
-            issueNumber: issueArg,
-            repo: cfg.repo,
-            timeoutMs: 3000,
-            row: _br({
-              ts: _ts,
-              event: 'lifecycle-warn',
-              activeSec: _d.activeSec,
-              idleSec: _d.idleSec,
-              deltaWords: 0,
-              wordMarker: 0,
-              description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
-            }),
-          });
-        } catch {
-          /* fire-and-forget */
-        }
-      }
-    }
-
-    if (reasons.length > 0) {
-      // No env override exists. Legitimate abandonment requires a human to
-      // move the card directly in the GitHub Projects UI (intentionally not
-      // gated).
-      //
-      // Append a gate-refused row to the timing log (fire-and-forget).
-      if (refusedRuleNames.length > 0) {
-        try {
-          const { buildRow, postTimingEvent } =
-            await import('../task-tracker/gh-timing-comment.mjs');
-          const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
-          const _tsM1 = new Date().toISOString();
-          // Body is not loaded in this branch (we never reached the body
-          // fetch); 0/0 is honest — no prior reference point available.
-          const _dM1 = deriveStateMoveDelta('', _tsM1);
-          const row = buildRow({
-            ts: _tsM1,
-            event: 'gate-refused',
-            activeSec: _dM1.activeSec,
-            idleSec: _dM1.idleSec,
-            deltaWords: 0,
-            wordMarker: 0,
-            description: `→ ${stateArg}: ${refusedRuleNames.join(', ')}`,
-          });
-          await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-        } catch {
-          /* fire-and-forget */
-        }
-      }
-      process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
-      reasons.forEach((r) => process.stderr.write(`   BLOCKED: ${r}\n`));
-      process.stderr.write('\n');
-      process.stderr.write('See .ai-task-manager/pickup-directive.md Hard Rules.\n');
-      process.stderr.write(
-        'Verify each item, check its box, then retry. For legitimate abandonment, move the card in the GitHub Projects UI.\n\n'
-      );
-      process.exit(4);
-    }
-  }
-}
+// #359 — the inline test/review/done structural body gate (formerly the
+// `GATED_STATES` composite block here) has been migrated into three
+// state-keyed entry guards: `bodyGatesEntryGuardTest`/`Review`/`Done` in
+// `scripts/task-tracker/lib/body-gates-entry-guard.mjs`, registered on
+// `STATES.test`/`review`/`done.entryGuards`. The runGuards refusal handler
+// below recognizes any refusal whose `id` begins with `body-gates-entry-`
+// and posts the same fire-and-forget `gate-refused` timing row the inline
+// block used to emit. The done-only lifecycle warn-only path (when
+// `cfg.lifecycleCheckboxesRequired === false`) is preserved by re-running
+// `assertLifecycleSatisfied` after a successful runGuards on done-entry
+// and posting the legacy `lifecycle-warn` timing row.
 
 // Universal exit-guard pipeline (#286). Runs on every transition once the
 // from-state is known. The blocked-by-not-done guard parses the active
@@ -422,6 +314,38 @@ if (!SKIP_NETWORK && resolvedFromState) {
       );
       process.exit(6);
     }
+    // #359 — body-gates-entry-{test,review,done} refusals replay the
+    // inline composite's fire-and-forget `gate-refused` timing row before
+    // exit(4). Keyed on guard id prefix so future entry guards in this
+    // family compose automatically.
+    const bodyGateRefusals = guardResult.refusals.filter((r) =>
+      r.id.startsWith('body-gates-entry-')
+    );
+    if (bodyGateRefusals.length > 0) {
+      try {
+        const { buildRow, postTimingEvent } = await import('../task-tracker/gh-timing-comment.mjs');
+        const { deriveStateMoveDelta } = await import('../task-tracker/lib/timing-rows.mjs');
+        const _tsM1 = new Date().toISOString();
+        // gate-refused: timing-comment body not loaded on the refusal path —
+        // honest 0/0 (no prior reference point available).
+        const _dM1 = deriveStateMoveDelta('', _tsM1);
+        const ruleNames = bodyGateRefusals.flatMap((r) =>
+          (r.blockers ?? [r.reason]).map((b) => String(b).split(':')[0].trim())
+        );
+        const row = buildRow({
+          ts: _tsM1,
+          event: 'gate-refused',
+          activeSec: _dM1.activeSec,
+          idleSec: _dM1.idleSec,
+          deltaWords: 0,
+          wordMarker: 0,
+          description: `→ ${stateArg}: ${ruleNames.join(', ')}`,
+        });
+        await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      } catch {
+        /* fire-and-forget */
+      }
+    }
     process.stderr.write('\n');
     process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
     for (const r of guardResult.refusals) {
@@ -432,6 +356,44 @@ if (!SKIP_NETWORK && resolvedFromState) {
       'Use `/task unblock` (or close the blockers) before retrying this move.\n\n'
     );
     process.exit(4);
+  }
+
+  // #359 — preserve the inline composite's lifecycle warn-only side
+  // effect: when `cfg.lifecycleCheckboxesRequired === false` and labels
+  // are missing on done-entry, post the legacy `lifecycle-warn` timing
+  // row. The bodyGatesEntryGuardDone surfaces this via its `warn`
+  // payload, but runGuards strips non-{ok,reason,blockers} fields; the
+  // re-check below is the side-effect carrier.
+  if (stateArg === 'done' && cfg.lifecycleCheckboxesRequired === false && guardBody) {
+    const lifecycle = assertLifecycleSatisfied({ body: guardBody, required: false });
+    if (!lifecycle.block && lifecycle.missing.length > 0) {
+      try {
+        const { buildRow: _br, postTimingEvent: _pe } =
+          await import('../task-tracker/gh-timing-comment.mjs');
+        const { deriveStateMoveDelta: _dsm } = await import('../task-tracker/lib/timing-rows.mjs');
+        const _ts = new Date().toISOString();
+        // lifecycle-warn: timing-comment body not loaded here — honest 0/0
+        // (no prior reference point available; warn is fire-and-forget).
+        const _d = _dsm('', _ts);
+        const missLabels = lifecycle.missing.map((m) => m.key).join(', ');
+        await _pe({
+          issueNumber: issueArg,
+          repo: cfg.repo,
+          timeoutMs: 3000,
+          row: _br({
+            ts: _ts,
+            event: 'lifecycle-warn',
+            activeSec: _d.activeSec,
+            idleSec: _d.idleSec,
+            deltaWords: 0,
+            wordMarker: 0,
+            description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
+          }),
+        });
+      } catch {
+        /* fire-and-forget */
+      }
+    }
   }
 }
 

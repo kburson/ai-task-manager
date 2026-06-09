@@ -11,9 +11,11 @@
 // `BACKWARD_CHAIN` but not runtime-walkable until a future issue widens
 // `validateTransition`.
 
+import { bodyGatesEntryGuardDone } from '../lib/body-gates-entry-guard.mjs';
+
 export default Object.freeze({
   name: 'done',
-  entryGuards: Object.freeze([]),
+  entryGuards: Object.freeze([bodyGatesEntryGuardDone]),
   exitGuards: Object.freeze([]),
   onEnter: Object.freeze([]),
 });

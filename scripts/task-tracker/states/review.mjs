@@ -8,10 +8,11 @@
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
+import { bodyGatesEntryGuardReview } from '../lib/body-gates-entry-guard.mjs';
 
 export default Object.freeze({
   name: 'review',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardReview]),
   exitGuards: Object.freeze([blockedByGuard, childCannotLeadEpicExitGuard]),
   onEnter: Object.freeze([]),
 });

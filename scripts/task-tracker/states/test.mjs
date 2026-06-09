@@ -11,10 +11,11 @@ import { testExitDodVerifiedGuard } from '../lib/test-exit-dod-verified-guard.mj
 import { testExitPreCloseCompletenessGuard } from '../lib/test-exit-pre-close-completeness-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
+import { bodyGatesEntryGuardTest } from '../lib/body-gates-entry-guard.mjs';
 
 export default Object.freeze({
   name: 'test',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardTest]),
   exitGuards: Object.freeze([
     blockedByGuard,
     testExitDodVerifiedGuard,
