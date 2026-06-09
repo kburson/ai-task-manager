@@ -404,12 +404,19 @@ export async function verbReview(ctx) {
     }
 
     const finalBody = lines.join('\n');
+    // #362 — review's tick logic predates the same-line proof-marker invariant.
+    // Every tick here is backed by machine evidence (commandResults from
+    // sandbox-verified runs or derived `failures.length === 0` gates), so
+    // `allowUnverifiedTicks: true` is correct semantically — the evidence
+    // lives in commandResults, not yet stamped inline. Migrating review to
+    // stamp same-line `aitm-verified-at` markers per tick is a follow-up.
     await mutateIssueBody({
       issueNumber: issueNum,
       repo: cfg.repo,
       mutate: () => finalBody,
       timeout: GH_API_TIMEOUT_MS,
       deps: { pexec },
+      allowUnverifiedTicks: true,
     });
 
     if (failures.length > 0) {

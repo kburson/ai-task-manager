@@ -328,6 +328,7 @@ export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody, resolv
       reason:
         `gh issue edit on #${parsed.issueNumber} uses --${parsed.source === 'file' ? 'body-file' : 'body'}; direct body writes from Bash are forbidden.\n` +
         `  Route every issue-body write through \`mutateIssueBody({issueNumber, repo, mutate})\` in scripts/task-tracker/lib/issue-body-mutate.mjs so the live body is fetched in the same transaction and the marker-loss invariant runs.\n` +
+        `  #362 — body writes must also stamp a proof marker (\`<!-- aitm-verified-at: ... -->\` or \`<!-- aitm-dod-evidence: ... -->\`) on the SAME line as any newly-ticked checkbox; \`mutateIssueBody\` throws \`CheckboxProofMissingError\` otherwise. Pass \`allowUnverifiedTicks: true\` only for legitimate edge cases.\n` +
         `  See CLAUDE.md "Route issue bodies through scripts".`,
     };
   }

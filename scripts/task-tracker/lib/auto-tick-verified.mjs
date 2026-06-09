@@ -39,7 +39,17 @@ function evidenceCommands(label) {
   return commands;
 }
 
-export function autoTickVerified(body, results = []) {
+// #362 — proof marker stamped inline at tick time so the new
+// `findCheckboxesTickedWithoutProof` invariant in `mutateIssueBody` accepts
+// the resulting body. `sha=sandbox proof=none` is a documented sentinel
+// meaning "evidence is the green sandbox exit code in hand at tick time,
+// not a stored artifact reachable by URL." Callers pass `now` (ISO string)
+// for determinism; defaults to `new Date().toISOString()`.
+function buildProofMarker(now, evidence) {
+  return `<!-- aitm-verified-at: ${now} evidence:"${evidence}" sha=sandbox proof=none -->`;
+}
+
+export function autoTickVerified(body, results = [], now = new Date().toISOString()) {
   const source = String(body || '');
   const passed = new Set(
     (Array.isArray(results) ? results : [])
@@ -75,7 +85,8 @@ export function autoTickVerified(body, results = []) {
     if (section === 'vc') {
       const cmd = rest.match(VC_LABEL_RE)?.[1] ?? null;
       if (cmd && passed.has(cmd)) {
-        lines[i] = `${open}x${close}${rest}`;
+        const marker = buildProofMarker(now, `sandbox exit 0 (${cmd})`);
+        lines[i] = `${open}x${close}${rest} ${marker}`;
         tickedVc.push(cmd);
       }
       continue;
@@ -85,7 +96,8 @@ export function autoTickVerified(body, results = []) {
     // referenced command passed.
     const cmds = evidenceCommands(rest);
     if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
-      lines[i] = `${open}x${close}${rest}`;
+      const marker = buildProofMarker(now, `sandbox exit 0 (${cmds.join(', ')})`);
+      lines[i] = `${open}x${close}${rest} ${marker}`;
       tickedFunctional.push(rest.replace(EVIDENCE_RE, '').trim());
     }
   }

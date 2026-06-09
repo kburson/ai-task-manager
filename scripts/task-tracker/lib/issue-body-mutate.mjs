@@ -38,7 +38,13 @@
 // max-retries-exceeded; `MarkerLossError` on dropped invariant markers.
 
 import { versionedWriteBody } from './versioned-issue-write.mjs';
-import { findLostMarkers } from './body-invariants.mjs';
+import {
+  findLostMarkers,
+  findCheckboxesTickedWithoutProof,
+  CheckboxProofMissingError,
+} from './body-invariants.mjs';
+
+export { CheckboxProofMissingError } from './body-invariants.mjs';
 
 export class MarkerLossError extends Error {
   constructor(issueNumber, lostMarkers) {
@@ -60,6 +66,7 @@ export async function mutateIssueBody({
   deps = {},
   maxRetries,
   allowMarkerLoss = false,
+  allowUnverifiedTicks = false,
 } = {}) {
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
   if (!repo) throw new Error('mutateIssueBody: repo is required');
@@ -74,9 +81,17 @@ export async function mutateIssueBody({
   // semantics — the check runs on every retry's fresh base.
   const guardedMutate = (baseBody) => {
     const next = mutate(baseBody);
-    if (!allowMarkerLoss && typeof next === 'string') {
-      const lost = findLostMarkers(baseBody, next);
-      if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
+    if (typeof next === 'string') {
+      if (!allowMarkerLoss) {
+        const lost = findLostMarkers(baseBody, next);
+        if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
+      }
+      // #362 — checkbox proof-marker invariant. Runs after marker-loss so
+      // catastrophic invariant drops surface first.
+      if (!allowUnverifiedTicks) {
+        const offenders = findCheckboxesTickedWithoutProof(baseBody, next);
+        if (offenders.length > 0) throw new CheckboxProofMissingError({ lines: offenders });
+      }
     }
     return next;
   };

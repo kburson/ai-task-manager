@@ -97,6 +97,9 @@ test('mutateIssueBody passes through clean mutate that preserves markers', async
     repo: 'fake/fake',
     mutate: (base) => base.replace('- [ ] x', '- [x] x'),
     deps,
+    // This test exercises marker preservation, not the #362 checkbox-proof
+    // invariant, so the tick is intentionally bare.
+    allowUnverifiedTicks: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /aitm-fields/);
