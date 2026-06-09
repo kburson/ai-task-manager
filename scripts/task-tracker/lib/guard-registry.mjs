@@ -28,6 +28,38 @@
 // register-side-effect module. Production CLI entry-points import the
 // guard-bootstrap module (or call registerGuard themselves) before invoking
 // runGuards.
+//
+// Registered-guard inventory (current as of #360 close, after #259 epic
+// completed the inline-gate → registry migration). Source of truth is the
+// per-state container modules in `scripts/task-tracker/states/`; this table
+// is a maintenance index so a single grep on this file reveals what each
+// state enforces. To verify, run:
+//   grep -E "^import |entryGuards|exitGuards" scripts/task-tracker/states/*.mjs
+//
+//   State    | Entry guards                          | Exit guards
+//   ---------|---------------------------------------|------------------------------------------------------------
+//   backlog  | contiguity                            | blocked-by, refine-entry-fields-priority,
+//            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic
+//   refine   | contiguity                            | refine-exit-complete-marker, blocked-by,
+//            |                                       | plan-entry-fields (body + board adapters),
+//            |                                       | refine-exit-wip-budget, refine-exit-child-parent-state,
+//            |                                       | child-cannot-lead-epic
+//   plan     | contiguity                            | blocked-by, plan-approved, plan-epic-children,
+//            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
+//            |                                       | child-cannot-lead-epic
+//   develop  | contiguity                            | blocked-by, develop-exit-code-complete,
+//            |                                       | develop-exit-commit-trail-head,
+//            |                                       | develop-epic-children-done, child-cannot-lead-epic
+//   test     | contiguity, body-gates                | blocked-by, test-exit-dod-verified,
+//            |                                       | test-exit-pre-close-completeness, child-cannot-lead-epic
+//   review   | contiguity, body-gates                | blocked-by, child-cannot-lead-epic
+//   done     | body-gates                            | (none — terminal state)
+//
+// `contiguity`, `child-cannot-lead-epic`, `body-gates`, `refine-exit-complete`
+// (the `refine-complete` marker exit gate) and the structural body gates are
+// the four cross-cutting families exercised by every transition path. New
+// guards belong here too — register them in the matching state module and
+// append a row above.
 
 const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 const KINDS = ['exit', 'entry'];
