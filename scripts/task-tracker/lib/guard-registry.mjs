@@ -52,7 +52,8 @@
 //            |                                       | develop-epic-children-done, child-cannot-lead-epic
 //   test     | contiguity, body-gates                | blocked-by, test-exit-dod-verified,
 //            |                                       | test-exit-pre-close-completeness, child-cannot-lead-epic
-//   review   | contiguity, body-gates                | blocked-by, child-cannot-lead-epic
+//   review   | contiguity, body-gates                | blocked-by, review-exit-review-approved,
+//            |                                       | review-exit-close-gates, child-cannot-lead-epic
 //   done     | body-gates                            | (none — terminal state)
 //
 // `contiguity`, `child-cannot-lead-epic`, `body-gates`, `refine-exit-complete`

@@ -13,7 +13,8 @@ import {
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
-import { runCloseGates } from '../lib/close-gates.mjs';
+import { runGuards } from '../lib/guard-registry.mjs';
+import '../lib/guard-bootstrap.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -156,32 +157,19 @@ export async function verbClose(ctx) {
       let body = data.body ?? '';
       closeBody = body;
 
+      // #279 — review→done close-gates migrated into the guard registry.
+      // The marker regex and runCloseGates bundle that used to live inline
+      // here now run as `reviewExitReviewApprovedGuard` and
+      // `reviewExitCloseGatesGuard` on `states/review.mjs`. We invoke them
+      // via `runGuards('review', 'done', ctx)` below — once, after
+      // derived-DoD stamping so chain-integrity sees the freshly-ticked
+      // keys. The session/project `gateReviewToDone` toggle still lives in
+      // close.mjs because it controls audit emission, not guard logic.
       const _resolvedReviewGate = resolveGate('reviewToDone', {
         session: loadSession(currentSessionId()),
         projectConfig: rawProjectConfig(),
       });
-      if (_resolvedReviewGate && !force) {
-        const hasApprovalMarker = /<!--\s*aitm-review-approved:/i.test(body);
-        if (!hasApprovalMarker) {
-          const answerIdx = rest.indexOf('--answer');
-          const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
-          if (answerArg === 'yes' || answerArg === 'no') {
-            console.error(
-              `⛔ \`--answer ${answerArg}\` cannot satisfy a human-gate prompt (review-approval).`
-            );
-            console.error(
-              `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
-            );
-            process.exit(8);
-          }
-          console.error(`⛔ Refusing to close ${closeTarget} — no human review approval recorded.`);
-          console.log(`PROMPT_REQUIRED: review-approval ${closeTarget}`);
-          console.error(
-            `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
-          );
-          process.exit(7);
-        }
-      } else if (!_resolvedReviewGate) {
+      if (!_resolvedReviewGate) {
         const { buildRow: gbr } = await import('../gh-timing-comment.mjs');
         const { deriveStateMoveDelta: _dsm2 } = await import('../lib/timing-rows.mjs');
         const _ts2 = nowIso();
@@ -281,21 +269,74 @@ export async function verbClose(ctx) {
         }
       }
       if (!force) {
-        const gateResult = await runCloseGates({
-          cfg,
-          issueNumber: closeIssueNum,
+        // #279 — single guard-registry call covers review→done exit:
+        // blocked-by, review-approved marker, close-gates bundle,
+        // child-cannot-lead-epic. The session/project gateReviewToDone
+        // toggle filters the review-approved refusal post-hoc so the
+        // existing bypass-audit row stays the only side-effect of disabling
+        // human review.
+        const guardResult = await runGuards('review', 'done', {
+          issueNumber: Number(closeIssueNum),
+          repo: cfg.repo,
+          fromState: 'review',
+          toState: 'done',
           body,
+          cfg,
           projectDir,
         });
-        if (!gateResult.ok) {
+
+        const refusals = (guardResult.refusals || []).filter(
+          (r) => !(r.id === 'review-exit-review-approved' && !_resolvedReviewGate)
+        );
+
+        const approvedRefusal = refusals.find((r) => r.id === 'review-exit-review-approved');
+        if (approvedRefusal) {
+          const answerIdx = rest.indexOf('--answer');
+          const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
+          if (answerArg === 'yes' || answerArg === 'no') {
+            console.error(
+              `⛔ \`--answer ${answerArg}\` cannot satisfy a human-gate prompt (review-approval).`
+            );
+            console.error(
+              `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
+            );
+            process.exit(8);
+          }
+          console.error(`⛔ Refusing to close ${closeTarget} — no human review approval recorded.`);
+          console.log(`PROMPT_REQUIRED: review-approval ${closeTarget}`);
+          console.error(
+            `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
+          );
+          process.exit(7);
+        }
+
+        const closeGatesRefusal = refusals.find((r) => r.id === 'review-exit-close-gates');
+        if (closeGatesRefusal) {
           console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
-          gateResult.blockers.forEach((b) => console.error(`   • ${b}`));
+          (closeGatesRefusal.blockers && closeGatesRefusal.blockers.length
+            ? closeGatesRefusal.blockers
+            : [closeGatesRefusal.reason]
+          ).forEach((b) => console.error(`   • ${b}`));
           console.error('');
           process.exit(3);
         }
-        if (gateResult.dirtyCheckSkipped) {
+
+        const otherRefusals = refusals.filter(
+          (r) => r.id !== 'review-exit-review-approved' && r.id !== 'review-exit-close-gates'
+        );
+        if (otherRefusals.length > 0) {
+          console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
+          otherRefusals.forEach((r) => console.error(`   • ${r.reason}`));
+          console.error('');
+          process.exit(3);
+        }
+
+        const closeGatesWarn = (guardResult.warns || []).find(
+          (w) => w.id === 'review-exit-close-gates'
+        );
+        if (closeGatesWarn?.warn?.dirtyCheckSkipped) {
           console.warn(
-            `[task-tracker] issue-scoped dirty check skipped (${gateResult.dirtyCheckSkipped}).`
+            `[task-tracker] issue-scoped dirty check skipped (${closeGatesWarn.warn.dirtyCheckSkipped}).`
           );
         }
       }
