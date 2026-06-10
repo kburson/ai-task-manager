@@ -620,12 +620,24 @@ test('promote: delegate non-zero, marker repair write fails → audit comment po
   assert.match(auditPosts[0], /state-recording-failed/);
 });
 
-test('promote: alias=test exit non-zero AND no aitm-dod-verified → transition-failed + rollback (#210 Fix B)', async () => {
-  // verbTest crashed mid-sandbox: board reached `test` but no green proof was
-  // stamped. The soft-warning path must NOT laundering this into success;
-  // instead promote rolls the board back to `develop` and reports
-  // transition-failed.
-  const bodyAfterNoDod = bodyWithState('test'); // no aitm-dod-verified marker
+test('promote: alias=test exit non-zero, board at target, NO aitm-dod-verified → promoted-with-warning, no rollback (#271 regression guard)', async () => {
+  // #271 removed the #210 (Fix B) defensive post-move rollback. Under #270 the
+  // `test` verb is gate-first: the develop-exit sandbox-proof guard refuses the
+  // Status write before the board ever moves, so "board reached `test` without
+  // an `aitm-dod-verified` proof" is structurally unreachable on the supported
+  // path. The dead rollback branch is gone, and promote no longer requires a
+  // dod-verified marker to take the soft-warning path.
+  //
+  // This test pins that behavioral change: the delegate exits non-zero, the
+  // board reached `test`, and the post-move body carries the sync markers
+  // (last-known-state + entered-test) but NO `aitm-dod-verified` proof. Promote
+  // must return `promoted-with-warning` with markers already in sync (noop
+  // repair, zero body writes) and must NOT roll the board back to `develop`
+  // (zero moveState calls — the alias path spawns `/task test`, never
+  // move-state directly). If a future change reintroduces the rollback this
+  // assertion fails.
+  const bodyAfterNoDod =
+    bodyWithState('test') + '\n<!-- aitm-entered-test: 2026-05-18T00:00:00Z -->\n';
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
@@ -634,15 +646,14 @@ test('promote: alias=test exit non-zero AND no aitm-dod-verified → transition-
     fetchSecondBody: bodyAfterNoDod,
   });
   const r = await runPromote({ issueNumber: 2101, cfg, deps });
-  assert.equal(r.status, 'transition-failed');
+  assert.equal(r.status, 'promoted-with-warning');
+  assert.equal(r.from, 'develop');
+  assert.equal(r.to, 'test');
   assert.equal(r.delegate, 'test');
   assert.equal(r.delegateExitCode, 1);
-  // Rollback moveState call to recorded state ('develop').
-  assert.deepEqual(
-    calls.moves[calls.moves.length - 1],
-    { issueNumber: 2101, target: 'develop' },
-    'last moveState call must be the rollback to develop'
-  );
+  assert.equal(r.markerRepair.status, 'noop');
+  assert.equal(calls.writes.length, 0, 'markers already in sync — no repair write');
+  assert.equal(calls.moves.length, 0, 'no rollback: the #210 Fix B rollback was removed in #271');
 });
 
 test('promote: delegate non-zero AND board drifted to non-target → transition-failed (#175)', async () => {
