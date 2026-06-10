@@ -39,7 +39,6 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
-import { hasDodVerifiedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 
@@ -342,38 +341,12 @@ export async function runPromote({
     }
 
     if (liveAfter === target) {
-      // #210 (Fix B) — Before classifying as a soft warning, if the alias
-      // verb was `/task test` (develop→test), require `aitm-dod-verified` in
-      // the post-move body. Without it, the sandbox never produced a
-      // green result and the board has no business sitting at `test` —
-      // demote back to `develop` and report transition-failed so the caller
-      // surfaces a hard refusal instead of a "promoted-with-warning".
-      if (transitionResult.kind === 'alias' && transitionResult.verb === 'test') {
-        let bodyForDodCheck = null;
-        try {
-          const fetched = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-          bodyForDodCheck = fetched.body;
-        } catch {
-          bodyForDodCheck = null;
-        }
-        if (bodyForDodCheck != null && !hasDodVerifiedMarker(bodyForDodCheck)) {
-          // Best-effort rollback: demote board back to recorded state.
-          try {
-            await runMoveState({ issueNumber, target: recorded, cfg });
-          } catch {
-            // best-effort; if rollback fails, drift-reconcile will catch it
-          }
-          return {
-            status: 'transition-failed',
-            from: recorded,
-            to: target,
-            via: `/task ${transitionResult.verb}`,
-            delegate: transitionResult.verb,
-            delegateExitCode: transitionResult.exitCode,
-            message: `promote: delegate /task ${transitionResult.verb} exited ${transitionResult.exitCode} and produced no \`aitm-dod-verified\` marker; board rolled back to "${recorded}".`,
-          };
-        }
-      }
+      // #271 — the #210 (Fix B) defensive dod-verified post-move rollback was
+      // removed here. With #270 landed, `/task test` is gate-first: the
+      // develop-exit sandbox-proof guard (registry) refuses the move before
+      // the board write, so a board-reached-target / dod-marker-missing combo
+      // is structurally impossible on the happy path. The single source of
+      // truth is `develop-exit-sandbox-proof-guard` on `STATES.develop.exit`.
       // #175 — board reached target. Verify markers, repair if needed,
       // surface delegate exit as soft warning.
       let markerRepair = { status: 'noop' };
