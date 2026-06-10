@@ -58,8 +58,14 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — closure-form body write; mutate is reapplied against the FRESH base
 // on every push attempt, preserving concurrent writes.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
-  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, allowUnverifiedTicks }) {
+  return mutateIssueBody({
+    issueNumber,
+    repo,
+    mutate,
+    deps: { pexec },
+    allowUnverifiedTicks,
+  });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
@@ -278,7 +284,21 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
           /* fire-and-forget */
         }
       }
-      await mutateBody({ issueNumber, repo: cfg.repo, mutate: stamp });
+      // #363 — `stamp` ticks the "Passed final human review" lifecycle box.
+      // The truth-bearing proof for that tick is the audit comment (posted
+      // above as Review Notes) plus the `aitm-full-auto-approved` body marker
+      // (Full-Auto) or the `aitm-review-approved` marker (human reviewer) —
+      // not an inline `aitm-verified-at` HTML comment on the lifecycle row.
+      // #362's checkbox-proof gate is designed to catch agent pre-ticks of
+      // AC / Functional DoD boxes, not verb-driven lifecycle ticks. Stamping
+      // an inline proof marker here would also break lifecycle-dod.mjs's
+      // exact-label match. Bypass the gate scoped to this single call site.
+      await mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: stamp,
+        allowUnverifiedTicks: true,
+      });
       return {
         status: 'approved',
         ts,

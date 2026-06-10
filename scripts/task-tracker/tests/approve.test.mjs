@@ -511,4 +511,95 @@ function makeDeps(overrides = {}) {
   assert.ok(endIdx > lifeIdx, 'footnote block anchors after Lifecycle subsection');
 }
 
+// #363 — Full-Auto approve must pass `allowUnverifiedTicks: true` to
+// mutateIssueBody so the #362 checkbox-proof gate doesn't refuse the
+// lifecycle-line tick of "Passed final human review". The truth-bearing
+// proof for that tick is the audit comment + `aitm-full-auto-approved` body
+// marker, not an inline `aitm-verified-at` HTML comment (which would also
+// break lifecycle-dod.mjs's exact-label match).
+{
+  const body = [
+    '## Acceptance Criteria',
+    '- [x] x',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+    '',
+  ].join('\n');
+  let capturedOpts = null;
+  let liveBody = body;
+  const r = await runApprove({
+    issueNumber: 58,
+    cfg,
+    deps: {
+      fetchIssueBody: async () => liveBody,
+      mutateIssueBody: async (opts) => {
+        capturedOpts = opts;
+        const next = opts.mutate(liveBody);
+        liveBody = next;
+        return { status: 'ok' };
+      },
+      getBoardState: async () => 'review',
+      nowIso: () => FIXED_TS,
+      detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1' }),
+      postComment: async () => {},
+      fetchComments: async () => [],
+      fetchProjectValues: async () => ({}),
+    },
+  });
+  assert.equal(r.status, 'approved');
+  assert.ok(capturedOpts, 'mutateIssueBody must be called');
+  assert.equal(
+    capturedOpts.allowUnverifiedTicks,
+    true,
+    'approve must pass allowUnverifiedTicks:true so the #362 checkbox-proof gate does not refuse the lifecycle tick'
+  );
+  assert.match(liveBody, /- \[x\] Passed final human review/);
+  // Asserting the gate stays clean for non-lifecycle ticks is out of scope
+  // for this regression — covered by mutateIssueBody's own tests.
+}
+
+// #363 — also covers the non-Full-Auto (human-reviewer) path: same bypass is
+// required because the lifecycle line is still ticked by the verb itself,
+// not by an agent attestation.
+{
+  const body = [
+    '## Acceptance Criteria',
+    '- [x] x',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Passed final human review',
+    '',
+  ].join('\n');
+  let capturedOpts = null;
+  let liveBody = body;
+  const r = await runApprove({
+    issueNumber: 58,
+    cfg,
+    deps: {
+      fetchIssueBody: async () => liveBody,
+      mutateIssueBody: async (opts) => {
+        capturedOpts = opts;
+        const next = opts.mutate(liveBody);
+        liveBody = next;
+        return { status: 'ok' };
+      },
+      getBoardState: async () => 'review',
+      nowIso: () => FIXED_TS,
+      detectFullAuto: () => ({ fired: false, signals: '' }),
+      postComment: async () => {},
+      fetchComments: async () => [],
+      fetchProjectValues: async () => ({}),
+    },
+  });
+  assert.equal(r.status, 'approved');
+  assert.equal(
+    capturedOpts.allowUnverifiedTicks,
+    true,
+    'human-reviewer approve must also pass allowUnverifiedTicks:true — verb-driven tick, not agent attestation'
+  );
+}
+
 console.log('approve.test.mjs: all passed');
