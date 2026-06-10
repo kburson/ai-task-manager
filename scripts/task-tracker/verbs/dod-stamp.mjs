@@ -9,37 +9,15 @@
 // `checkboxes`) are computed by `verbs/close.mjs` at close time.
 
 import { loadState } from '../state.mjs';
-import { GH_API_TIMEOUT_MS, TEST_RUNNER_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import {
   KEY_CLASSIFICATION,
   STAMPABLE_KEYS,
   parseFunctionalDodKeys,
   stampEvidenceMarker,
 } from '../lib/functional-dod-evidence.mjs';
-
-function nowIso(deps) {
-  // Tests can inject `deps.now` for determinism. Production: new Date().
-  if (deps && typeof deps.now === 'function') return deps.now();
-  return new Date().toISOString();
-}
-
-async function headSha(pexec) {
-  const { stdout } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {});
-  return String(stdout || '').trim() || 'unknown';
-}
-
-// Split an `aitm-verified-by` command (a backtick-delimited shell string) into
-// argv. Conservative: split on whitespace. Commands declared in the template
-// use simple positional arguments (`npm test`, `npm run lint`,
-// `git log --grep #303`); anything more complex should be wrapped in `bash -c`
-// in the marker itself.
-function splitCmd(cmd) {
-  return String(cmd || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-}
 
 export async function verbDodStamp(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
@@ -90,35 +68,24 @@ export async function verbDodStamp(ctx) {
   console.log(
     `[task-tracker] dod-stamp ${key} on ${s.active}: running ${target.evidenceCommands.length} verifier(s)…`
   );
-  // Verifier commands are typically test/lint runs; allow up to TEST_RUNNER_TIMEOUT_MS
-  // and a 64 MiB stdout buffer (default 1 MiB overflows on `npm test`).
+  // Verifier commands are typically test/lint runs; `runVerifiers` allows up to
+  // TEST_RUNNER_TIMEOUT_MS and a 64 MiB stdout buffer by default (the 1 MiB
+  // default overflows on `npm test`).
   // (#304 follow-up to #303: GH_API_TIMEOUT_MS — 15s — killed `npm test` mid-run.)
-  const runOptions = {
+  const { ran, firstFailure } = await runVerifiers({
+    commands: target.evidenceCommands,
+    pexec,
     cwd: projectDir,
-    timeout: TEST_RUNNER_TIMEOUT_MS,
-    maxBuffer: 64 * 1024 * 1024,
-  };
-  const ran = [];
-  for (const raw of target.evidenceCommands) {
-    const argv = splitCmd(raw);
-    if (!argv.length) continue;
-    const [bin, ...args] = argv;
-    let exit = 0;
-    try {
-      await pexec(bin, args, runOptions);
-    } catch (err) {
-      // pexec convention: throw on non-zero. Best-effort capture exit code.
-      exit = Number(err?.code ?? err?.status ?? 1) || 1;
-    }
-    ran.push({ cmd: raw, exit });
-    const tag = exit === 0 ? '✓' : '✗';
-    console.log(`  ${tag} ${raw} (exit=${exit})`);
-    if (exit !== 0) {
-      console.error(
-        `[task-tracker] dod-stamp ${key}: verifier \`${raw}\` failed (exit=${exit}). No marker stamped.`
-      );
-      process.exit(1);
-    }
+  });
+  for (const r of ran) {
+    const tag = r.exit === 0 ? '✓' : '✗';
+    console.log(`  ${tag} ${r.cmd} (exit=${r.exit})`);
+  }
+  if (firstFailure) {
+    console.error(
+      `[task-tracker] dod-stamp ${key}: verifier \`${firstFailure.cmd}\` failed (exit=${firstFailure.exit}). No marker stamped.`
+    );
+    process.exit(1);
   }
 
   const sha = await headSha(pexec);

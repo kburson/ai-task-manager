@@ -4,6 +4,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readBoundState } from '../lib/bound-state.mjs';
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
 import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-dod-evidence.mjs';
+import { findEvidenceAc } from '../lib/ac-evidence.mjs';
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -155,9 +156,10 @@ export async function verbCheck(ctx) {
     console.error(`[task-tracker] checkbox "${label}" not found in ${s.active}${list}`);
     process.exit(1);
   }
-  // #303 — Functional DoD evidence gate. Refuse stampable ticks without an
-  // `aitm-dod-evidence:KEY` marker; refuse derived keys outright.
-  const gate = gateFunctionalDodTick(body, label);
+  // #303/#345 — evidence gate. Refuse stampable Functional DoD ticks without an
+  // `aitm-dod-evidence:KEY` marker; refuse derived keys outright; refuse AC ticks
+  // carrying `aitm-verified-by` without an `aitm-ac-evidence:<key>` stamp.
+  const gate = gateEvidenceTick(body, label);
   const refusal = formatGateRefusal(gate, s.active);
   if (refusal) {
     console.error(refusal);
@@ -203,14 +205,14 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
     // discipline per-key.
     const gateFailures = [];
     for (const lbl of checklistLabels) {
-      const g = gateFunctionalDodTick(stdout, lbl);
+      const g = gateEvidenceTick(stdout, lbl);
       const msg = formatGateRefusal(g, active);
       if (msg) gateFailures.push(msg);
     }
     if (gateFailures.length) {
       for (const msg of gateFailures) console.error(msg);
       console.error(
-        `[task-tracker] batch tick on ${active} refused: ${gateFailures.length} Functional DoD label(s) lack evidence. Run \`/task dod-stamp <key>\` for each missing key, then retry.`
+        `[task-tracker] batch tick on ${active} refused: ${gateFailures.length} evidence-gated label(s) lack evidence. Run \`/task dod-stamp <key>\` or \`/task ac-stamp "<label>"\` for each, then retry.`
       );
       process.exit(1);
     }
@@ -308,7 +310,42 @@ export function gateFunctionalDodTick(body, requestedLabel) {
   return { kind: 'pass' };
 }
 
+// #345 — generalized evidence gate. Runs the #303 Functional DoD gate first
+// (its `aitm-dod-evidence` path is unchanged); if that passes, applies the AC
+// evidence gate: a checkbox in the `## Acceptance Criteria` section carrying an
+// `aitm-verified-by` marker cannot be ticked unless a matching
+// `aitm-ac-evidence:<key>` stamp (from `/task ac-stamp`) already exists.
+//
+// Returns the Functional DoD gate's verdict when it is non-pass, else one of:
+//   { kind: 'pass' }
+//   { kind: 'refuse-ac-evidence', key, label, commands } — AC needs a stamp
+export function gateEvidenceTick(body, requestedLabel) {
+  const dod = gateFunctionalDodTick(body, requestedLabel);
+  if (dod.kind !== 'pass') return dod;
+  const ac = findEvidenceAc(body, requestedLabel);
+  if (!ac) return { kind: 'pass' };
+  if (ac.checked) return { kind: 'pass' }; // unticking is fine
+  if (!ac.evidenceMarker) {
+    return {
+      kind: 'refuse-ac-evidence',
+      key: ac.key,
+      label: ac.label,
+      commands: ac.evidenceCommands,
+    };
+  }
+  return { kind: 'pass' };
+}
+
 function formatGateRefusal(gate, issueRef) {
+  if (gate.kind === 'refuse-ac-evidence') {
+    const cmd = gate.commands?.[0] || '<verifier>';
+    return [
+      `EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "${gate.label}" on ${issueRef}.`,
+      `  This acceptance criterion declares a verifier (aitm-verified-by) but carries`,
+      `  no aitm-ac-evidence:${gate.key} marker. Run \`/task ac-stamp "${gate.label}"\` to`,
+      `  execute \`${cmd}\` in a sandbox; the evidence marker it stamps unlocks this tick.`,
+    ].join('\n');
+  }
   if (gate.kind === 'refuse-derived') {
     return [
       `[task-tracker] ✗ Refusing to tick Functional DoD "${gate.label}" on ${issueRef}.`,

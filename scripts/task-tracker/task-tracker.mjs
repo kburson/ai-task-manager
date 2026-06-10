@@ -236,6 +236,11 @@ if (_isMain)
           await verbDodStamp(ctx);
           break;
         }
+        case 'ac-stamp': {
+          const { verbAcStamp } = await import('./verbs/ac-stamp.mjs');
+          await verbAcStamp(ctx);
+          break;
+        }
         case 'commit-trace': {
           const { verbCommitTrace } = await import('./verbs/commit-trace.mjs');
           await verbCommitTrace(ctx);
