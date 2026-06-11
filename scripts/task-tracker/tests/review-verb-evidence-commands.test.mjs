@@ -93,4 +93,53 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   console.log('PASS: missing-sandbox-marker refusal preserved');
 }
 
+// ---------------------------------------------------------------------------
+// #384: review.mjs's inline VC/DoD command parser must tolerate a trailing
+// inline `aitm-verified` proof marker (stamped by auto-tick-verified on a green
+// `test` run). The pre-#384 regex `^`(.+)`$` was anchored at end-of-line, so a
+// marker-suffixed VC entry failed to parse — its command never seeded
+// commandResults and any AC verified by a NON-standard command was falsely
+// demoted as "unknown evidence command". The fix mirrors the shared parsers
+// hardened in #368 AC9: stop at the first closing backtick, no `$` anchor.
+// ---------------------------------------------------------------------------
+{
+  // Source-level pin: the anchored form is gone, the tolerant form is present.
+  assert.doesNotMatch(
+    reviewSource,
+    /label\.match\(\/\^`\(\.\+\)`\$\/\)/,
+    'anchored `^`(.+)`$` VC-command regex removed (defeated by trailing markers)'
+  );
+  assert.match(
+    reviewSource,
+    /label\.match\(\/\^`\(\[\^`\]\+\)`\/\)/,
+    'tolerant `^`([^`]+)`` VC-command regex present'
+  );
+  console.log('PASS: review.mjs VC-command regex tolerates trailing proof markers (source pin)');
+
+  // Behavioral: replicate the exact regex the verb uses and confirm it extracts
+  // the command from a realistic auto-ticked VC line, and still extracts a
+  // plain one — while a non-command label still yields no match.
+  const vcRegex = /^`([^`]+)`/;
+  const marked =
+    '`node scripts/task-tracker/tests/review-preflight.test.mjs` ' +
+    '<!-- aitm-verified verified-at="2026-06-11T19:46:35.260Z" ' +
+    'evidence="sandbox exit 0" sha="sandbox" proof="none" -->';
+  assert.equal(
+    marked.match(vcRegex)?.[1],
+    'node scripts/task-tracker/tests/review-preflight.test.mjs',
+    'command extracted from marker-suffixed VC label'
+  );
+  assert.equal(
+    '`npm run test:all`'.match(vcRegex)?.[1],
+    'npm run test:all',
+    'command extracted from plain VC label'
+  );
+  assert.equal(
+    'All automated tests pass <!-- aitm-verified-by: `npm test` -->'.match(vcRegex),
+    null,
+    'prose DoD label (no leading backtick) yields no command match'
+  );
+  console.log('PASS: tolerant VC-command regex extracts command across marker variants');
+}
+
 console.log('\nAll review-verb evidence-command tests passed.');

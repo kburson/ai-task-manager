@@ -223,7 +223,13 @@ export async function verbReview(ctx) {
       const checked = m[1] === 'x';
       const label = m[2].trim();
       const canRunCommand = inVerifSection || currentSection === 'definition of done';
-      const cmdMatch = canRunCommand ? label.match(/^`(.+)`$/) : null;
+      // Stop at the first closing backtick (no `$` anchor) so a VC/DoD entry
+      // whose command carries a trailing inline `aitm-verified` proof marker —
+      // stamped by auto-tick-verified on a green `test` run — still parses.
+      // Mirrors the shared parsers hardened in #368 AC9
+      // (parseVerificationCommands / parseEvidenceChecklist); review.mjs kept
+      // its own un-migrated copy with the anchored `$` that this fixes.
+      const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
       const evidenceMatch = !cmdMatch ? label.match(evidencePattern) : null;
       const evidenceCommands = evidenceMatch
         ? [...evidenceMatch[1].matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1])
