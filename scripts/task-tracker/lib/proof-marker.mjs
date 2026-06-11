@@ -5,7 +5,7 @@
 // so the grammar stays unambiguous. One comment carries all properties.
 //
 // Back-compat READ path (kept until #369 rewrites the corpus): parseProofMarker
-// also recognises the two legacy dual comments —
+// also recognizes the two legacy dual comments —
 //   <!-- aitm-verified-at: <iso> evidence:"..." sha=... proof=... -->  (PROOF stamp)
 //   <!-- aitm-verified-by: `cmd` ... -->                               (DECLARATION)
 //

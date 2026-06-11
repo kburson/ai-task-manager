@@ -60,7 +60,11 @@ import {
   const decl = '- [ ] All tests pass <!-- aitm-verified-by: `npm run test:all` -->';
   const parsed = parseProofMarker(decl);
   assert.equal(parsed['verified-by'], '`npm run test:all`', 'legacy declaration value parsed raw');
-  assert.equal(resolveVerifiedBy(decl), '`npm run test:all`', 'resolveVerifiedBy reads declaration');
+  assert.equal(
+    resolveVerifiedBy(decl),
+    '`npm run test:all`',
+    'resolveVerifiedBy reads declaration'
+  );
   assert.ok(!hasExecutionProof(decl), 'bare declaration is NOT execution proof');
 }
 

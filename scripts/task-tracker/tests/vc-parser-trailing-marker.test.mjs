@@ -8,13 +8,9 @@ import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { parseEvidenceChecklist } from '../lib/evidence-markers.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 
-const BODY = [
-  '## Verification Commands',
-  '',
-  '- [ ] `npm test`',
-  '- [ ] `npm run lint`',
-  '',
-].join('\n');
+const BODY = ['## Verification Commands', '', '- [ ] `npm test`', '- [ ] `npm run lint`', ''].join(
+  '\n'
+);
 
 // Produce a realistic auto-ticked body (each VC line now carries an inline
 // consolidated `aitm-verified` proof marker).
@@ -28,7 +24,10 @@ const { body: ticked } = autoTickVerified(
 );
 
 // Sanity: the ticked lines really do carry a trailing marker.
-assert.ok(/- \[x\] `npm test` <!-- aitm-verified /.test(ticked), 'auto-tick stamped consolidated marker');
+assert.ok(
+  /- \[x\] `npm test` <!-- aitm-verified /.test(ticked),
+  'auto-tick stamped consolidated marker'
+);
 
 // parseVerificationCommands tolerates the trailing marker.
 {
