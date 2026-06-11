@@ -17,6 +17,7 @@ const baseDeps = {
   gitStatus: async () => '',
   gitHeadSha: async () => SHA,
   findTrailComment: async () => ({ body: TRAIL }),
+  gitIsAncestor: async () => true,
 };
 
 {

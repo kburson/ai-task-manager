@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { findTrailComment } from '../commit-trail-handler.mjs';
-import { hasCanonicalCommitTrace } from './commit-trail.mjs';
+import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 
@@ -23,6 +23,20 @@ async function defaultGitHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
+async function defaultGitIsAncestor({ projectDir, sha, head }) {
+  try {
+    await pexec('git', ['merge-base', '--is-ancestor', sha, head], {
+      cwd: projectDir,
+      timeout: GIT_TIMEOUT_MS,
+    });
+    return true;
+  } catch (err) {
+    // exit 1 = not an ancestor; any other exit means git itself failed → re-throw.
+    if (err && err.code === 1) return false;
+    throw err;
+  }
+}
+
 async function defaultGetIssueBody({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
@@ -40,6 +54,8 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
   const gitStatus = deps.gitStatus || (() => defaultGitStatus({ projectDir }));
   const gitHeadSha = deps.gitHeadSha || (() => defaultGitHeadSha({ projectDir }));
   const find = deps.findTrailComment || findTrailComment;
+  const gitIsAncestor =
+    deps.gitIsAncestor || ((sha, head) => defaultGitIsAncestor({ projectDir, sha, head }));
   const getIssueBody = deps.getIssueBody || (() => defaultGetIssueBody({ issueNumber, repo }));
 
   const reasons = [];
@@ -50,10 +66,32 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
 
   const headSha = String(await gitHeadSha()).trim();
   const comment = await find(String(issueNumber), repo);
-  if (!comment?.body) {
-    reasons.push(`missing canonical \`### 🔗 Commits\` comment containing current HEAD ${headSha}`);
-  } else if (!hasCanonicalCommitTrace(comment.body, headSha)) {
-    reasons.push(`canonical \`### 🔗 Commits\` comment does not contain current HEAD ${headSha}`);
+  const trailBody = comment?.body ? String(comment.body) : '';
+  if (!trailBody) {
+    reasons.push(
+      `missing canonical \`### 🔗 Commits\` comment recording this issue's commit trail`
+    );
+  } else if (!trailBody.startsWith(TRAIL_HEADING)) {
+    reasons.push(
+      `canonical \`### 🔗 Commits\` comment is malformed (does not start with \`${TRAIL_HEADING}\` heading)`
+    );
+  } else {
+    const trailShas = [...parseMarker(trailBody).shas];
+    if (trailShas.length === 0) {
+      reasons.push(`canonical \`### 🔗 Commits\` comment records no commits`);
+    } else {
+      const unreachable = [];
+      for (const sha of trailShas) {
+        // eslint-disable-next-line no-await-in-loop
+        const reachable = await gitIsAncestor(sha, headSha);
+        if (!reachable) unreachable.push(sha);
+      }
+      if (unreachable.length > 0) {
+        reasons.push(
+          `commit(s) ${unreachable.join(', ')} recorded in \`### 🔗 Commits\` are not reachable from current HEAD ${headSha} (orphaned — a reset or rebase dropped them)`
+        );
+      }
+    }
   }
 
   const body = String(await getIssueBody());
