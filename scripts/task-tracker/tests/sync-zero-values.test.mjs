@@ -52,8 +52,16 @@ test('buildFieldSyncPlan emits non-zero numbers', () => {
     values: { engagedTime: 5, sessionTime: 10, reviewTime: 2, estimate: 3 },
   });
   assert.equal(plan.length, 4);
+  // #230 — the three timing fields are converted to float-hours (minutes×60 /
+  // 3600 in the no-secondsByKey fallback path); estimate passes through as-is.
   const engaged = plan.find((p) => p.key === 'engagedTime');
-  assert.deepEqual(engaged.value, { number: 5 });
+  assert.deepEqual(engaged.value, { number: 0.08333 }); // 5 min → 0.08333 h
+  const session = plan.find((p) => p.key === 'sessionTime');
+  assert.deepEqual(session.value, { number: 0.16667 }); // 10 min → 0.16667 h
+  const review = plan.find((p) => p.key === 'reviewTime');
+  assert.deepEqual(review.value, { number: 0.03333 }); // 2 min → 0.03333 h
+  const estimate = plan.find((p) => p.key === 'estimate');
+  assert.deepEqual(estimate.value, { number: 3 }); // non-timing, unchanged
 });
 
 test('buildFieldSyncPlan skips empty-string values', () => {

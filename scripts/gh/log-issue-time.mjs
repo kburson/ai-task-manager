@@ -16,6 +16,7 @@ import {
   fieldIdFor,
   loadProjectFieldDefs,
 } from '../task-tracker/project-fields.mjs';
+import { secondsToFloatHours } from '../task-tracker/lib/duration.mjs';
 import {
   applyPauseSpansToRows,
   computeStageDurations,
@@ -162,10 +163,16 @@ async function writeNumberField(itemId, fieldId, value) {
   const issueBodyForPauses = await fetchIssueBody();
   const rows = applyPauseSpansToRows(rawRows, issueBodyForPauses);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
-  const { rowCount, totalActiveMin, reviewMin, planMin, engagedMin } = rollupTotals(
-    rows,
-    thresholdMin
-  );
+  const {
+    rowCount,
+    totalActiveMin,
+    totalActiveSec,
+    reviewMin,
+    reviewSec,
+    planMin,
+    engagedMin,
+    engagedSec,
+  } = rollupTotals(rows, thresholdMin);
 
   if (rowCount === 0) {
     console.error('Timing comment found but contains no data rows');
@@ -236,7 +243,16 @@ async function writeNumberField(itemId, fieldId, value) {
   }
   if (bodyOut !== issueBody) await writeIssueBody(bodyOut);
 
-  const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values });
+  // #230 — board writes carry float-HOURS at second precision. The body
+  // marker (`values`) stays in minutes; `secondsByKey` feeds the true seconds
+  // totals so `buildFieldSyncPlan` converts the four timing fields to hours.
+  const secondsByKey = {
+    engagedTime: engagedSec,
+    sessionTime: totalActiveSec,
+    reviewTime: reviewSec,
+    planTime: planMin * 60,
+  };
+  const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values, secondsByKey });
   if (syncPlan.length) {
     for (const item of syncPlan) {
       await writeProjectFieldValue({
@@ -247,10 +263,12 @@ async function writeNumberField(itemId, fieldId, value) {
       });
     }
   } else {
-    if (engagedFieldId) await writeNumberField(itemId, engagedFieldId, engagedMin);
-    await writeNumberField(itemId, sessionFieldId, totalActiveMin);
-    if (reviewFieldId) await writeNumberField(itemId, reviewFieldId, reviewMin);
-    if (planFieldId) await writeNumberField(itemId, planFieldId, planMin);
+    if (engagedFieldId)
+      await writeNumberField(itemId, engagedFieldId, secondsToFloatHours(engagedSec));
+    await writeNumberField(itemId, sessionFieldId, secondsToFloatHours(totalActiveSec));
+    if (reviewFieldId)
+      await writeNumberField(itemId, reviewFieldId, secondsToFloatHours(reviewSec));
+    if (planFieldId) await writeNumberField(itemId, planFieldId, secondsToFloatHours(planMin * 60));
   }
 
   if (repairedStartTime && startTimeFieldId) {

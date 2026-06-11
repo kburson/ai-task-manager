@@ -2,6 +2,21 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { getProjectDir } from './paths.mjs';
 import { warnMissingFieldId } from './lib/field-config-warn.mjs';
+import { secondsToFloatHours } from './lib/duration.mjs';
+
+// #230 — the four board "actuals" fields are written in float-HOURS (not
+// minute-rounded integers) so `Estimate − Actual` is a one-line subtraction.
+// `buildFieldSyncPlan` converts these keys via `secondsToFloatHours`. Seconds
+// come from the caller's `secondsByKey` map when available (close-time, true
+// second precision); otherwise the field-DB minutes in `values` are used at
+// minute granularity (`values[key] * 60`). The `aitm-fields` body marker is
+// untouched and stays in minutes — only the board write is converted.
+export const TIMING_HOUR_FIELD_KEYS = new Set([
+  'engagedTime',
+  'sessionTime',
+  'reviewTime',
+  'planTime',
+]);
 
 export function loadProjectFieldDefs(dir = getProjectDir()) {
   const local = path.join(dir, '.ai-task-manager', 'project-fields.json');
@@ -40,7 +55,7 @@ export function valueForProjectField(value, type) {
   return null;
 }
 
-export function buildFieldSyncPlan({ cfg, fieldDefs, values }) {
+export function buildFieldSyncPlan({ cfg, fieldDefs, values, secondsByKey = {} }) {
   const plan = [];
   for (const def of fieldDefs) {
     const fieldId = fieldIdFor(cfg, def.key);
@@ -50,7 +65,19 @@ export function buildFieldSyncPlan({ cfg, fieldDefs, values }) {
       warnMissingFieldId({ cfgKey: `field${pascal}`, context: 'field sync skipped' });
       continue;
     }
-    const value = valueForProjectField(values[def.key], def.type);
+    // #230 — timing fields write float-hours, never minutes. Prefer the
+    // caller's seconds (true precision); fall back to field-DB minutes×60.
+    let raw = values[def.key];
+    if (TIMING_HOUR_FIELD_KEYS.has(def.key)) {
+      const sec =
+        secondsByKey[def.key] != null
+          ? secondsByKey[def.key]
+          : typeof values[def.key] === 'number'
+            ? values[def.key] * 60
+            : null;
+      raw = sec == null ? null : secondsToFloatHours(sec);
+    }
+    const value = valueForProjectField(raw, def.type);
     // Accept explicit zero / falsy-but-valid wrapped values. Skip only when
     // the field genuinely had no input (null/undefined upstream rejected by
     // `valueForProjectField`).
