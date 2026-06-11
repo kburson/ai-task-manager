@@ -77,6 +77,32 @@ test('chainIntegrityGate: illegal arc → refuses', () => {
   assert.ok(r.blockers.some((b) => /illegal-arc/.test(b)));
 });
 
+test('chainIntegrityGate: new ts="..." grammar full chain → passes (#374)', () => {
+  const body = [
+    '## Scope',
+    'x',
+    '<!-- aitm-entered-refine ts="2026-05-17T00:00:00Z" -->',
+    '<!-- aitm-entered-plan ts="2026-05-17T00:01:00Z" -->',
+    '<!-- aitm-entered-develop ts="2026-05-17T00:02:00Z" -->',
+    '<!-- aitm-entered-test ts="2026-05-17T00:03:00Z" -->',
+    '<!-- aitm-entered-review ts="2026-05-17T00:04:00Z" -->',
+  ].join('\n');
+  const r = chainIntegrityGate(body);
+  assert.equal(r.ok, true);
+});
+
+test('chainIntegrityGate: mixed grammar (legacy + new) full chain → passes (#374)', () => {
+  const body = [
+    '<!-- aitm-entered-refine: 2026-05-17T00:00:00Z -->',
+    '<!-- aitm-entered-plan ts="2026-05-17T00:01:00Z" -->',
+    '<!-- aitm-entered-develop: 2026-05-17T00:02:00Z -->',
+    '<!-- aitm-entered-test ts="2026-05-17T00:03:00Z" -->',
+    '<!-- aitm-entered-review ts="2026-05-17T00:04:00Z" -->',
+  ].join('\n');
+  const r = chainIntegrityGate(body);
+  assert.equal(r.ok, true);
+});
+
 test('issueDirtyGate: no trail comment → graceful skip', async () => {
   const r = await issueDirtyGate({
     cfg,

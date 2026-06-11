@@ -126,18 +126,20 @@ test('apply: writes backlog entry+audit and cascades refine when needed', () => 
   body = body.replace(/[ \t]*<!--\s*aitm-entered-refine:[^>]*?-->[ \t]*\n?/gi, '');
   body = backfillEntryMarker(body, 'refine', plan.refineBumpTs, 'createdAt-anchored-refine-bump');
   // assertions
-  assert.match(body, /<!--\s*aitm-entered-backlog:\s*[0-9TZ:.-]+\s*-->/);
+  assert.match(body, /<!--\s*aitm-entered-backlog(?::\s*[0-9TZ:.-]+|\s+ts="[^"]*")\s*-->/);
   assert.match(
     body,
     /<!--\s*aitm-backfill:\s*backlog:createdAt-anchored-backlog-fallback:[^>]+-->/
   );
-  assert.match(body, /<!--\s*aitm-entered-refine:\s*[0-9TZ:.-]+\s*-->/);
-  // Strict ordering: createdAt < backlog < refine
-  const backlogMatch = body.match(/aitm-entered-backlog:\s*([^\s-][^\s]*?)\s*-->/);
-  const refineMatch = body.match(/aitm-entered-refine:\s*([^\s-][^\s]*?)\s*-->/);
+  assert.match(body, /<!--\s*aitm-entered-refine(?::\s*[0-9TZ:.-]+|\s+ts="[^"]*")\s*-->/);
+  // Strict ordering: createdAt < backlog < refine (ts captured under either grammar)
+  const TS_BOTH = (stage) =>
+    new RegExp(`aitm-entered-${stage}(?::\\s*([0-9TZ:.+-]+)|\\s+ts="([^"]+)")`);
+  const backlogMatch = body.match(TS_BOTH('backlog'));
+  const refineMatch = body.match(TS_BOTH('refine'));
   assert.ok(backlogMatch && refineMatch, 'both markers present');
-  const backlogMs = Date.parse(backlogMatch[1]);
-  const refineMs = Date.parse(refineMatch[1]);
+  const backlogMs = Date.parse(backlogMatch[1] ?? backlogMatch[2]);
+  const refineMs = Date.parse(refineMatch[1] ?? refineMatch[2]);
   assert.ok(CREATED_MS < backlogMs, 'createdAt must precede backlog after heal');
   assert.ok(backlogMs < refineMs, 'backlog must precede refine after heal');
 });

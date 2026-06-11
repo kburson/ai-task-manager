@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 const pexec = promisify(execFile);
 
@@ -37,11 +38,18 @@ function buildLegalTransitions() {
 }
 export const LEGAL_TRANSITIONS = buildLegalTransitions();
 
-const ENTRY_RE_GLOBAL = /<!--\s*aitm-entered-([a-z]+)(?:-(\d+))?:\s*([^>\s]+)\s*-->/gi;
+// Reader tolerates BOTH the legacy colon form `aitm-entered-<stage>[-N]: <iso>`
+// AND the new property-grammar form `aitm-entered-<stage>[-N] ts="<iso>"` (#374).
+// Group 1 = stage, group 2 = optional visit, group 3 = legacy ts, group 4 = new
+// ts (which may carry `&quot;`-escaped quotes — unescaped by parseEntryMarkers).
+// The migration widens the reader strictly: every body that parsed before still
+// parses. The corpus rewrite of historical bodies is deferred to #369.
+const ENTRY_RE_GLOBAL =
+  /<!--\s*aitm-entered-([a-z]+)(?:-(\d+))?(?::\s*([^>\s]+)|\s+ts="((?:[^"]|&quot;)*)")\s*-->/gi;
 
 function entryMarker(stage, ts, visit = 1) {
   const suffix = visit > 1 ? `-${visit}` : '';
-  return `<!-- aitm-entered-${stage}${suffix}: ${ts} -->`;
+  return serializeMarker(`entered-${stage}${suffix}`, { ts });
 }
 
 function backfillAuditMarker(stage, reason, ts) {
@@ -50,7 +58,11 @@ function backfillAuditMarker(stage, reason, ts) {
 }
 
 function stageMarkerRe(stage) {
-  return new RegExp(`<!--\\s*aitm-entered-${stage}(?:-\\d+)?:\\s*([^>]*?)\\s*-->`, 'i');
+  // Matches both legacy `: <iso>` and new `ts="<iso>"` forms (#374).
+  return new RegExp(
+    `<!--\\s*aitm-entered-${stage}(?:-\\d+)?(?::\\s*[^>]*?|\\s+ts="[^"]*")\\s*-->`,
+    'i'
+  );
 }
 
 function backfillMarkerRe(stage) {
@@ -93,8 +105,9 @@ export function parseEntryMarkers(body) {
   ENTRY_RE_GLOBAL.lastIndex = 0;
   let m;
   while ((m = ENTRY_RE_GLOBAL.exec(src)) !== null) {
-    const [, stage, visitStr, ts] = m;
+    const [, stage, visitStr, legacyTs, newTs] = m;
     const visit = visitStr ? Number(visitStr) : 1;
+    const ts = legacyTs !== undefined ? legacyTs : unescapeValue(newTs);
     out.push({ stage, visit, ts });
   }
   return out;
@@ -178,7 +191,12 @@ export function stripEntryMarkersAfter(body, stage) {
   let out = src;
   for (let i = idx + 1; i < STAGES.length; i++) {
     const future = STAGES[i];
-    const re = new RegExp(`[ \\t]*<!--\\s*aitm-entered-${future}:[^>]*?-->[ \\t]*\\n?`, 'gi');
+    // Strip both legacy `: <iso>` and new `ts="<iso>"` forms, including any
+    // numeric re-entry suffix (`-N`) on the future-stage marker (#374).
+    const re = new RegExp(
+      `[ \\t]*<!--\\s*aitm-entered-${future}(?:-\\d+)?(?::[^>]*?|\\s+ts="[^"]*")\\s*-->[ \\t]*\\n?`,
+      'gi'
+    );
     if (re.test(out)) {
       out = out.replace(re, '');
       stripped.push(future);

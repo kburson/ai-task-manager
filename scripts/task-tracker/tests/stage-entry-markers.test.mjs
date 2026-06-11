@@ -15,9 +15,10 @@ import {
   STAGES,
 } from '../lib/stage-entry-markers.mjs';
 
-// 1. stampEntryMarker adds marker to empty body
+// 1. stampEntryMarker adds marker to empty body — writer now emits the #374
+//    property-grammar form `aitm-entered-<stage> ts="<iso>"`.
 let b = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
-assert.match(b, /aitm-entered-refine: 2026-01-01T00:00:00Z/);
+assert.match(b, /<!-- aitm-entered-refine ts="2026-01-01T00:00:00Z" -->/);
 
 // stampEntryMarker inserts before field-DB when present
 const withFields = 'Body text\n\n<!-- aitm-fields: {"foo":"bar"} -->\n';
@@ -27,10 +28,10 @@ assert.ok(b.indexOf('aitm-entered-plan') < b.indexOf('aitm-fields'));
 // 2. Visit-numbered stamping (#181): second visit emits `-2`, third `-3`, etc.
 let visitBody = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
 visitBody = stampEntryMarker(visitBody, 'refine', '2026-02-02T00:00:00Z');
-assert.match(visitBody, /aitm-entered-refine: 2026-01-01T00:00:00Z/);
-assert.match(visitBody, /aitm-entered-refine-2: 2026-02-02T00:00:00Z/);
+assert.match(visitBody, /<!-- aitm-entered-refine ts="2026-01-01T00:00:00Z" -->/);
+assert.match(visitBody, /<!-- aitm-entered-refine-2 ts="2026-02-02T00:00:00Z" -->/);
 visitBody = stampEntryMarker(visitBody, 'refine', '2026-03-03T00:00:00Z');
-assert.match(visitBody, /aitm-entered-refine-3: 2026-03-03T00:00:00Z/);
+assert.match(visitBody, /<!-- aitm-entered-refine-3 ts="2026-03-03T00:00:00Z" -->/);
 
 // 2b. First-visit idempotency: re-stamping same stage with same ts is no-op
 const onceVisit = stampEntryMarker('', 'refine', '2026-01-01T00:00:00Z');
@@ -186,7 +187,7 @@ assert.deepEqual(r.illegalArcs, []);
 
 // 10. backfillEntryMarker writes marker AND audit comment
 const bf = backfillEntryMarker('', 'refine', '2026-01-02T00:00:00Z', 'recovered-from-drift');
-assert.match(bf, /aitm-entered-refine: 2026-01-02T00:00:00Z/);
+assert.match(bf, /<!-- aitm-entered-refine ts="2026-01-02T00:00:00Z" -->/);
 assert.match(bf, /aitm-backfill: refine:recovered-from-drift:2026-01-02T00:00:00Z/);
 
 // 10b. Backfill idempotency
@@ -423,6 +424,66 @@ await assert.rejects(
   assert.equal(rBroken.illegalArcs.length, 1);
   assert.equal(rBroken.illegalArcs[0].from, 'develop');
   assert.equal(rBroken.illegalArcs[0].to, 'done');
+}
+
+// #374 — marker-grammar migration: writer emits `ts="<iso>"` form; reader
+// tolerates BOTH the new form and the legacy colon form, for a base stage and
+// a re-entry-suffixed stage, including a mixed body carrying both grammars.
+{
+  // serialize — base stage
+  const base = stampEntryMarker('', 'develop', '2026-05-01T00:00:00Z');
+  assert.match(base, /<!-- aitm-entered-develop ts="2026-05-01T00:00:00Z" -->/);
+  assert.doesNotMatch(base, /aitm-entered-develop:/, 'no legacy colon form emitted');
+
+  // serialize — re-entry-suffixed stage
+  const reentry = stampEntryMarker(base, 'develop', '2026-05-02T00:00:00Z');
+  assert.match(reentry, /<!-- aitm-entered-develop-2 ts="2026-05-02T00:00:00Z" -->/);
+
+  // parse-new — round-trips both base + suffixed new-form markers
+  const parsedNew = parseEntryMarkers(reentry);
+  assert.deepEqual(parsedNew, [
+    { stage: 'develop', visit: 1, ts: '2026-05-01T00:00:00Z' },
+    { stage: 'develop', visit: 2, ts: '2026-05-02T00:00:00Z' },
+  ]);
+
+  // parse-legacy — colon form, base + suffixed, still parses (back-compat)
+  const legacyBody =
+    '<!-- aitm-entered-plan: 2026-05-03T00:00:00Z -->\n' +
+    '<!-- aitm-entered-plan-2: 2026-05-04T00:00:00Z -->\n';
+  assert.deepEqual(parseEntryMarkers(legacyBody), [
+    { stage: 'plan', visit: 1, ts: '2026-05-03T00:00:00Z' },
+    { stage: 'plan', visit: 2, ts: '2026-05-04T00:00:00Z' },
+  ]);
+
+  // parse-mixed — a single body holding both grammars (the migration window)
+  const mixed =
+    '<!-- aitm-entered-backlog: 2026-05-01T00:00:00Z -->\n' +
+    '<!-- aitm-entered-refine ts="2026-05-02T00:00:00Z" -->\n';
+  assert.deepEqual(parseEntryMarkers(mixed), [
+    { stage: 'backlog', visit: 1, ts: '2026-05-01T00:00:00Z' },
+    { stage: 'refine', visit: 1, ts: '2026-05-02T00:00:00Z' },
+  ]);
+
+  // detector parity — getStageVisitCount + stripEntryMarkersAfter read the new
+  // form, and strip removes a new-form future-stage marker (incl. suffix).
+  assert.equal(getStageVisitCount(reentry, 'develop'), 2);
+  const futureNew =
+    '<!-- aitm-entered-test ts="2026-05-05T00:00:00Z" -->\n' +
+    '<!-- aitm-entered-review ts="2026-05-06T00:00:00Z" -->\n' +
+    '<!-- aitm-entered-review-2 ts="2026-05-07T00:00:00Z" -->\n';
+  const { body: strippedBody, stripped } = stripEntryMarkersAfter(futureNew, 'test');
+  assert.deepEqual(stripped, ['review']);
+  assert.doesNotMatch(strippedBody, /aitm-entered-review/, 'both review markers stripped');
+  assert.match(strippedBody, /aitm-entered-test/, 'test marker preserved');
+
+  // verifyChainIntegrity treats a mixed-grammar chain as a contiguous chain
+  const mixedChain =
+    '<!-- aitm-entered-backlog: 2026-05-01T00:00:00Z -->\n' +
+    '<!-- aitm-entered-refine ts="2026-05-02T00:00:00Z" -->\n' +
+    '<!-- aitm-entered-plan ts="2026-05-03T00:00:00Z" -->\n';
+  const mr = verifyChainIntegrity(mixedChain, 'plan');
+  assert.equal(mr.ok, true, `mixed-grammar chain should pass: ${JSON.stringify(mr)}`);
+  assert.deepEqual(mr.holes, []);
 }
 
 console.log('stage-entry-markers.test.mjs: all passed');

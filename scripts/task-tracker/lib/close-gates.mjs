@@ -75,7 +75,11 @@ export function chainIntegrityGate(body) {
   // Strict variant: require every REQUIRED_CHAIN_STAGES marker (any visit).
   const holes = [];
   for (const stage of REQUIRED_CHAIN_STAGES) {
-    const re = new RegExp(`<!--\\s*aitm-entered-${stage}(?:-\\d+)?:\\s*[^>]*?-->`, 'i');
+    // Tolerate both legacy `: <iso>` and new `ts="<iso>"` entry-marker forms (#374).
+    const re = new RegExp(
+      `<!--\\s*aitm-entered-${stage}(?:-\\d+)?(?::\\s*[^>]*?|\\s+ts="[^"]*")\\s*-->`,
+      'i'
+    );
     if (!re.test(String(body || ''))) holes.push(stage);
   }
   const illegal = result.illegalArcs || [];

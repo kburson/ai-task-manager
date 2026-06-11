@@ -45,7 +45,7 @@ test('reconcile accept-live: drifted issue writes new state + drift-reconcile ro
   assert.equal(r.to, 'develop');
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state: develop/);
-  assert.match(calls.writes[0], /aitm-entered-develop:/);
+  assert.match(calls.writes[0], /aitm-entered-develop(?::|\s+ts=")/);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /drift-reconcile/);
   assert.match(calls.timings[0], /plan.*develop/);
@@ -69,9 +69,9 @@ test('reconcile accept-live stamps aitm-entered-<live> when absent (#174)', asyn
   assert.equal(r.to, 'test');
   assert.equal(calls.writes.length, 1);
   const written = calls.writes[0];
-  assert.match(written, /aitm-entered-refine:/);
-  assert.match(written, /aitm-entered-develop:/);
-  assert.match(written, /aitm-entered-test:/);
+  assert.match(written, /aitm-entered-refine(?::|\s+ts=")/);
+  assert.match(written, /aitm-entered-develop(?::|\s+ts=")/);
+  assert.match(written, /aitm-entered-test(?::|\s+ts=")/);
   // Monotonic order in body: refine, develop, test.
   const idxRefine = written.indexOf('aitm-entered-refine');
   const idxDevelop = written.indexOf('aitm-entered-develop');
@@ -175,9 +175,9 @@ test('reconcile accept-live: preserves forward markers as history + adds visit m
   assert.deepEqual(r.stripped, []);
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state: review/);
-  assert.match(calls.writes[0], /aitm-entered-review:/);
-  assert.match(calls.writes[0], /aitm-entered-done:/);
-  assert.match(calls.writes[0], /aitm-entered-review-2:/);
+  assert.match(calls.writes[0], /aitm-entered-review(?::|\s+ts=")/);
+  assert.match(calls.writes[0], /aitm-entered-done(?::|\s+ts=")/);
+  assert.match(calls.writes[0], /aitm-entered-review-2(?::|\s+ts=")/);
   assert.equal(calls.timings.length, 1);
   assert.doesNotMatch(calls.timings[0], /stripped:/);
 });

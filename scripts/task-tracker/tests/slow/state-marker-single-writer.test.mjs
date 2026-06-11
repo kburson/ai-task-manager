@@ -145,7 +145,7 @@ test('move-state composite stamp: entry-marker and last-known-state in single bo
   const ts = '2026-05-18T14:00:00Z';
   let after = stampEntryMarker(before, 'plan', ts);
   after = writeLastKnownState(after, 'plan');
-  assert.match(after, /<!--\s*aitm-entered-plan:\s*2026-05-18T14:00:00Z\s*-->/);
+  assert.match(after, /<!--\s*aitm-entered-plan ts="2026-05-18T14:00:00Z"\s*-->/);
   assert.match(after, /<!--\s*aitm-last-known-state:\s*plan\s*-->/);
   assert.equal(readLastKnownState(after).state, 'plan');
 });

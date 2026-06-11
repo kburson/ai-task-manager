@@ -360,7 +360,7 @@ export async function runPromote({
           target,
           mutate: (base) => {
             const { state: stateAfter } = readLastKnownState(base);
-            const hasEntry = new RegExp(`<!--\\s*aitm-entered-${target}:`).test(base);
+            const hasEntry = new RegExp(`<!--\\s*aitm-entered-${target}(?::|\\s+ts=")`).test(base);
             if (stateAfter === target && hasEntry) return base;
             const nowTs = now();
             let repaired = base;

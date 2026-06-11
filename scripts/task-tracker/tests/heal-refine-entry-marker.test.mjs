@@ -52,7 +52,7 @@ test('backfillEntryMarker integration: writes both entry and audit markers', () 
     ts,
     'pre-gate-refine-traversal'
   );
-  assert.match(out, /<!-- aitm-entered-refine: 2026-05-16T12:51:00Z -->/);
+  assert.match(out, /<!-- aitm-entered-refine ts="2026-05-16T12:51:00Z" -->/);
   assert.match(
     out,
     /<!-- aitm-backfill: refine:pre-gate-refine-traversal:2026-05-16T12:51:00Z -->/

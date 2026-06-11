@@ -153,9 +153,13 @@ test('verbTest: green path stamps marker, posts success comment, moves develop�
     // verbTest stamps the 'test' entry marker defensively (move-state.mjs is
     // the production source, but the stubbed moveState in this test does not
     // stamp markers). 'review' must NOT be stamped — verbTest stops at Test.
-    assert.match(stamped, /aitm-entered-test:/, 'must stamp aitm-entered-test on green');
+    assert.match(
+      stamped,
+      /aitm-entered-test(?::|\s+ts=")/,
+      'must stamp aitm-entered-test on green'
+    );
     assert.ok(
-      !/aitm-entered-review:/.test(stamped),
+      !/aitm-entered-review(?::|\s+ts=")/.test(stamped),
       'aitm-entered-review must not be stamped by verbTest — Test→Review is a separate verb'
     );
     const parsed = parseDodVerifiedMarker(stamped);

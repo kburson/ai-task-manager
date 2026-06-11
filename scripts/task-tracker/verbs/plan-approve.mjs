@@ -26,8 +26,10 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
 // all — if `aitm-entered-plan-2` is present (legitimate re-entry), we do
-// not synthesize a phantom visit-1 marker.
-const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?:/i;
+// not synthesize a phantom visit-1 marker. Tolerant of BOTH the legacy
+// `:`-delimited form and the new `ts="..."` property grammar (#374) so the
+// idempotency check still fires after the writer flip.
+const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?(?::|\s+ts=")/i;
 
 const pexec = promisify(execFile);
 

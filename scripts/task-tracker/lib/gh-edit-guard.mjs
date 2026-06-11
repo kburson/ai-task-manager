@@ -103,7 +103,9 @@ function deepDiveEmbeddedCheckboxRefusal({ issueNumber, hit, action }) {
 // stale frozen scratch re-pushed by the manual agent flow reverts those — the
 // exact clobber observed twice in #257. These helpers let `checkBodyChange`
 // refuse such a push at the only choke point that sees the manual flow.
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)\s*:/gi;
+// Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
+// form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374).
+const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 const LAST_KNOWN_STATE_TS_RE = /<!--\s*aitm-last-known-state-ts:\s*([^>]+?)\s*-->/i;
 
 function enteredStages(body) {

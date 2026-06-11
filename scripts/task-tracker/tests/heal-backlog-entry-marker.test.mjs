@@ -58,7 +58,7 @@ test('backfillEntryMarker writes aitm-entered-backlog and aitm-backfill:backlog 
     ts,
     'pre-gate-traversal'
   );
-  assert.match(out, /<!-- aitm-entered-backlog: 2026-05-30T08:00:00.000Z -->/);
+  assert.match(out, /<!-- aitm-entered-backlog ts="2026-05-30T08:00:00.000Z" -->/);
   assert.match(out, /<!-- aitm-backfill: backlog:pre-gate-traversal:2026-05-30T08:00:00.000Z -->/);
 });
 

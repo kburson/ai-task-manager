@@ -22,7 +22,10 @@
 
 import { hasExecutionProof } from './proof-marker.mjs';
 
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)\s*:/gi;
+// Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
+// form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
+// so dropped entry markers are detected under either grammar.
+const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },

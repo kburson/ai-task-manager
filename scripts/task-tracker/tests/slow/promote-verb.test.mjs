@@ -141,7 +141,7 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
   // feedback_single_state_mutator.md). promote.mjs no longer stamps
   // aitm-entered-<stage>; verify it does not write the marker itself.
   assert.ok(
-    !calls.writes.some((b) => /aitm-entered-plan:/.test(b)),
+    !calls.writes.some((b) => /aitm-entered-plan(?::|\s+ts=")/.test(b)),
     'promote must not stamp aitm-entered-plan; that is move-state.mjs responsibility'
   );
 });
@@ -590,7 +590,7 @@ test('promote: delegate non-zero, board at target, marker stale → repair write
   assert.equal(r.markerRepair.attempts, 1);
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state: test/);
-  assert.match(calls.writes[0], /aitm-entered-test:/);
+  assert.match(calls.writes[0], /aitm-entered-test(?::|\s+ts=")/);
 });
 
 test('promote: delegate non-zero, marker repair write fails → audit comment posted (#175, #168)', async () => {

@@ -105,7 +105,7 @@ test('#221: default (no --status) stamps aitm-entered-backlog on the posted body
   const posted = readFileSync(ctx.capturedBodyPath, 'utf8');
   assert.match(
     posted,
-    /<!--\s*aitm-entered-backlog:\s*[0-9TZ:.-]+\s*-->/,
+    /<!--\s*aitm-entered-backlog(?::\s*[0-9TZ:.-]+|\s+ts="[^"]*")\s*-->/,
     'posted body contains aitm-entered-backlog marker'
   );
 });
