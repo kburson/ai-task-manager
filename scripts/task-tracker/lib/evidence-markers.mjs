@@ -67,7 +67,9 @@ export function parseEvidenceChecklist(body = '') {
       }
     }
     if (inVerificationCommands) {
-      const command = rawLabel.match(/^`(.+)`$/)?.[1] ?? null;
+      // #368 — ignore a trailing HTML comment (e.g. an auto-ticked line's inline
+      // `aitm-verified` proof marker) after the backtick command.
+      const command = rawLabel.match(/^`([^`]+)`(?:\s*<!--[\s\S]*?-->)*\s*$/)?.[1] ?? null;
       if (command) verificationCommands.push(command);
     }
   }

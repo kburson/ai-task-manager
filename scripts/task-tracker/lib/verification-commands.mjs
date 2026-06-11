@@ -8,7 +8,10 @@
 const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\s*$/i;
 const ANY_HEADING_RE = /^#{1,6}\s+/;
 const CHECKBOX_RE = /^- \[([ x])\] (.+)$/;
-const BACKTICK_CMD_RE = /^`([^`]+)`$/;
+// #368 — tolerate trailing HTML comment(s) after the backtick command so an
+// auto-ticked VC line (which carries an inline `aitm-verified` proof marker)
+// still parses to its command instead of dropping to zero entries.
+const BACKTICK_CMD_RE = /^`([^`]+)`(?:\s*<!--[\s\S]*?-->)*\s*$/;
 
 export function parseVerificationCommands(body) {
   const src = String(body || '');

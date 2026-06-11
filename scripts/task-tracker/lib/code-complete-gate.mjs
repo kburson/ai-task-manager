@@ -15,13 +15,13 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 
 const pexec = promisify(execFile);
 
 const AC_HEADING_RE = /^##\s+Acceptance Criteria\s*$/im;
 const NEXT_HEADING_RE = /^##\s+/m;
 const CHECKBOX_RE = /^- \[([ x])\] (.+)$/gm;
-const VERIFIED_BY_RE = /<!--\s*aitm-verified-by:\s*(.+?)\s*-->/;
 const COMMITS_MARKER_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
 const TRAIL_HEADING_RE = /^###\s+🔗\s+Commits\s*$/m;
 
@@ -36,8 +36,8 @@ export function parseAcceptanceCriteria(body) {
   for (const cm of section.matchAll(CHECKBOX_RE)) {
     const checked = cm[1] === 'x';
     const label = cm[2];
-    const vm = label.match(VERIFIED_BY_RE);
-    items.push({ label, checked, verifiedBy: vm ? vm[1].trim() : null });
+    const verifiedBy = resolveVerifiedBy(label);
+    items.push({ label, checked, verifiedBy: verifiedBy ? verifiedBy.trim() : null });
   }
   return items;
 }
@@ -217,7 +217,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
     );
   } else {
     for (const ac of acs) {
-      const shortLabel = ac.label.replace(VERIFIED_BY_RE, '').trim();
+      const shortLabel = stripProofMarkers(ac.label);
       if (!ac.checked) {
         blockers.push(`code-complete-ac-unticked: ${shortLabel}`);
       } else if (!ac.verifiedBy || ac.verifiedBy === 'TBD') {

@@ -20,6 +20,8 @@
 //   3. Mirror the entry in `gh-edit-guard.MARKER_PATTERNS` so external
 //      `gh issue edit` invocations are caught by the diff guard too.
 
+import { hasExecutionProof } from './proof-marker.mjs';
+
 const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)\s*:/gi;
 
 export const INVARIANT_MARKER_PATTERNS = [
@@ -69,20 +71,29 @@ export function findLostMarkers(base, next) {
 // #362 — checkbox proof-marker invariant. Every transition from `- [ ]` to
 // `- [x]` (per-line, same line index in `before` vs `after`) must carry an
 // execution-evidence marker on the new line. Valid markers are:
+//   - `<!-- aitm-verified key="value" ... -->`
+//     (the consolidated proof shape — #368)
 //   - `<!-- aitm-verified-at: <iso> evidence:"..." sha=... proof=#... -->`
-//     (the canonical proof shape introduced by this issue)
+//     (legacy proof shape; read until #369 rewrites the corpus)
 //   - `<!-- aitm-dod-evidence: ... -->`
 //     (the existing close-pipeline auto-stamp; grandfathered)
 //
-// The marker MUST live on the same line as the tick — a marker on line N+1
-// does not validate a tick on line N. This co-location requirement makes
-// proof traceable when later readers grep for a checkbox.
+// A bare `aitm-verified-by` DECLARATION is NOT proof — `hasExecutionProof`
+// excludes it. The marker MUST live on the same line as the tick — a marker on
+// line N+1 does not validate a tick on line N. This co-location requirement
+// makes proof traceable when later readers grep for a checkbox.
 //
 // Returns an array of `{ lineIndex, text }` for every offending transition.
 // Empty array means clean.
 const UNCHECKED_LINE_RE = /^\s*- \[ \]/;
 const CHECKED_LINE_RE = /^\s*- \[x\]/;
-const PROOF_MARKER_RE = /<!--\s*aitm-(?:verified-at|dod-evidence):/;
+// Functional-DoD close-pipeline auto-stamp, resolved here (proof-marker.mjs owns
+// the `aitm-verified*` family; dod-evidence stays a local concern).
+const DOD_EVIDENCE_RE = /<!--\s*aitm-dod-evidence:/;
+
+function lineHasProof(line) {
+  return hasExecutionProof(line) || DOD_EVIDENCE_RE.test(String(line || ''));
+}
 
 export function findCheckboxesTickedWithoutProof(before, after) {
   const beforeLines = String(before || '').split('\n');
@@ -92,7 +103,7 @@ export function findCheckboxesTickedWithoutProof(before, after) {
   for (let i = 0; i < limit; i += 1) {
     if (!UNCHECKED_LINE_RE.test(beforeLines[i])) continue;
     if (!CHECKED_LINE_RE.test(afterLines[i])) continue;
-    if (PROOF_MARKER_RE.test(afterLines[i])) continue;
+    if (lineHasProof(afterLines[i])) continue;
     offenders.push({ lineIndex: i, text: afterLines[i] });
   }
   return offenders;

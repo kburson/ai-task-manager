@@ -20,6 +20,8 @@
 // Pure and idempotent. The caller invokes it only on the green path, so a red
 // result ticks nothing by construction.
 
+import { serializeProofMarker } from './proof-marker.mjs';
+
 const EVIDENCE_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/g;
 const HEADING_RE = /^#{1,6}\s+/;
 const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\b/i;
@@ -39,14 +41,23 @@ function evidenceCommands(label) {
   return commands;
 }
 
-// #362 — proof marker stamped inline at tick time so the new
+// #362 — proof marker stamped inline at tick time so the
 // `findCheckboxesTickedWithoutProof` invariant in `mutateIssueBody` accepts
-// the resulting body. `sha=sandbox proof=none` is a documented sentinel
+// the resulting body. `sha="sandbox" proof="none"` is a documented sentinel
 // meaning "evidence is the green sandbox exit code in hand at tick time,
 // not a stored artifact reachable by URL." Callers pass `now` (ISO string)
 // for determinism; defaults to `new Date().toISOString()`.
+//
+// #368 — emits the consolidated `<!-- aitm-verified key="value" ... -->` form
+// via the shared serializer. Keys mirror the legacy `aitm-verified-at` fields so
+// every reader/gate that resolved the old shape resolves the new one.
 function buildProofMarker(now, evidence) {
-  return `<!-- aitm-verified-at: ${now} evidence:"${evidence}" sha=sandbox proof=none -->`;
+  return serializeProofMarker({
+    'verified-at': now,
+    evidence,
+    sha: 'sandbox',
+    proof: 'none',
+  });
 }
 
 export function autoTickVerified(body, results = [], now = new Date().toISOString()) {

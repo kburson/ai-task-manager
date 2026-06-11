@@ -205,6 +205,25 @@ export function removeFullAutoFootnote(body) {
 }
 
 // ---------------------------------------------------------------------------
+// aitm-verified — consolidated PROOF marker (#368, parent epic #367)
+//
+// The single canonical execution-proof marker. The registry delegates to the
+// dedicated `proof-marker.mjs` helper so there is exactly one serializer/parser
+// for the `<!-- aitm-verified key="value" ... -->` grammar (plus the legacy
+// dual-comment read path kept until #369 rewrites the corpus). Re-exported here
+// so callers that resolve markers through the central registry get the proof
+// marker too.
+// ---------------------------------------------------------------------------
+
+export {
+  serializeProofMarker,
+  parseProofMarker,
+  hasExecutionProof,
+  resolveVerifiedBy,
+  stripProofMarkers,
+} from './proof-marker.mjs';
+
+// ---------------------------------------------------------------------------
 // dod-verified (sandboxed /task test stamped this on green — #137)
 // ---------------------------------------------------------------------------
 
