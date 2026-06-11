@@ -32,9 +32,10 @@ const LEGACY_PATTERNS = [
 
 const MARKER_PATTERNS = [
   { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state:/i },
-  { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved:/i },
-  { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete:/i },
-  { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved:/i },
+  // Widened (#375) to detect both legacy colon and new `ts="..."` grammars.
+  { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i },
+  { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i },
+  { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved(?:\s*:|\s+ts=")/i },
   { name: 'aitm-full-auto-approved', re: /<!--\s*aitm-full-auto-approved:/i },
   { name: 'aitm-full-auto-footnote:start', re: /<!--\s*aitm-full-auto-footnote:start\s*-->/i },
   { name: 'aitm-full-auto-footnote:end', re: /<!--\s*aitm-full-auto-footnote:end\s*-->/i },
@@ -47,7 +48,7 @@ const MARKER_PATTERNS = [
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;
-const DEEP_DIVE_MARKER_RE = /<!--\s*aitm-deep-dive-complete:/i;
+const DEEP_DIVE_MARKER_RE = /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i;
 
 // #301 — banned sub-section headings inside Deep-Dive `<details>` blocks.
 // These three headings each bear a gate; mirroring them inside the appendix

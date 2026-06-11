@@ -141,8 +141,8 @@ test('mirrorDeepDiveFromComment: happy path mirrors comment + stamps both marker
   assert.equal(result.commentId, COMMENT_ID);
   assert.equal(result.url, COMMENT_URL);
   assert.match(m.log.next, /## Deep-Dive Analysis \(2026-06-07\)/);
-  assert.match(m.log.next, /<!-- aitm-deep-dive-posted: 2026-06-07T05:00:00\.000Z -->/);
-  assert.match(m.log.next, /<!-- aitm-deep-dive-complete: 2026-06-07T05:00:00\.000Z -->/);
+  assert.match(m.log.next, /<!-- aitm-deep-dive-posted ts="2026-06-07T05:00:00\.000Z" -->/);
+  assert.match(m.log.next, /<!-- aitm-deep-dive-complete ts="2026-06-07T05:00:00\.000Z" -->/);
   assert.match(m.log.next, new RegExp(`#issuecomment-${COMMENT_ID}`));
   // Only ONE `## Deep-Dive Analysis` heading present (the canonical one — not
   // the stripped one from the comment).

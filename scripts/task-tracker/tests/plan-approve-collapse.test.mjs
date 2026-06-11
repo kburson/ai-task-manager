@@ -129,7 +129,7 @@ Plain body.
 }
 
 function hasMarker(s) {
-  return /<!--\s*aitm-plan-approved:/.test(s);
+  return /<!--\s*aitm-plan-approved(?: ts="|:)/.test(s);
 }
 
 console.log('plan-approve-collapse: ok');

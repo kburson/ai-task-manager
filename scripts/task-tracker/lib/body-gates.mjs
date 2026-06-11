@@ -44,7 +44,8 @@ export const DEFAULT_GATES = [
     // sub-issues of #259). HTML comments are excluded from the measurement.
     name: 'deep-dive-complete',
     kind: SECTION_RULE,
-    trigger: /<!--\s*aitm-deep-dive-complete:\s*[^>]+-->/i,
+    // Widened (#375) to trigger on both legacy colon and new `ts="..."` forms.
+    trigger: /<!--\s*aitm-deep-dive-complete(?::\s*[^>]+|\s+ts="[^"]*")\s*-->/i,
     requireSection: /^##\s+Deep[- ]Dive Analysis\b/im,
     // Size-bucketed floors: XS=1200, S=1800, M/L/XL=2400. Fallback 2000 when
     // size is absent. Set via `sizeFloors` so the rule object stays declarative.

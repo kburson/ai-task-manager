@@ -84,7 +84,7 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'approved');
   assert.equal(r.ts, FIXED_TS);
   assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), /<!-- aitm-plan-approved: 2026-05-16T00:00:00Z -->/);
+  assert.match(getBody(), /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
 }
 
 // 4. second call is idempotent
@@ -103,7 +103,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({ initialBody: bodyWithFields });
   await runPlanApprove({ issueNumber: 122, cfg, deps });
   const result = getBody();
-  const markerIdx = result.indexOf('<!-- aitm-plan-approved:');
+  const markerIdx = result.indexOf('<!-- aitm-plan-approved');
   const fieldsIdx = result.indexOf('<!-- aitm-fields:');
   assert.ok(markerIdx !== -1, 'plan-approved marker must be present');
   assert.ok(fieldsIdx !== -1, 'normalized aitm-fields marker must be present');
@@ -120,13 +120,13 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({ initialBody: bodyNoFields });
   await runPlanApprove({ issueNumber: 122, cfg, deps });
   const result = getBody();
-  assert.match(result, /<!-- aitm-plan-approved: 2026-05-16T00:00:00Z -->/);
+  assert.match(result, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
 }
 
 // 7. pure helpers
 {
   const marker = buildPlanApprovedMarker(FIXED_TS);
-  assert.equal(marker, `<!-- aitm-plan-approved: ${FIXED_TS} -->`);
+  assert.equal(marker, `<!-- aitm-plan-approved ts="${FIXED_TS}" -->`);
   assert.equal(hasPlanApprovedMarker(marker), true);
   assert.equal(hasPlanApprovedMarker('no marker here'), false);
   assert.equal(hasPlanApprovedMarker(''), false);
@@ -159,7 +159,7 @@ function makeDeps(overrides = {}) {
   const out = getBody();
   assert.match(out, /<!-- aitm-entered-plan ts="2026-05-16T00:00:00Z" -->/);
   // approval marker preserved (only one — must not be duplicated).
-  const approvalMatches = out.match(/<!-- aitm-plan-approved:/g) || [];
+  const approvalMatches = out.match(/<!-- aitm-plan-approved(?: ts="|:)/g) || [];
   assert.equal(approvalMatches.length, 1, 'approval marker must not be duplicated');
 }
 
@@ -181,7 +181,7 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'approved');
   const out = getBody();
   assert.match(out, /<!-- aitm-entered-plan ts="2026-05-16T00:00:00Z" -->/);
-  assert.match(out, /<!-- aitm-plan-approved: 2026-05-16T00:00:00Z -->/);
+  assert.match(out, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
 }
 
 // 12. visit-suffix safe: if aitm-entered-plan-2 exists (legitimate re-entry)

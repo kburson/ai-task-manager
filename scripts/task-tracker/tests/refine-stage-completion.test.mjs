@@ -94,7 +94,7 @@ function bodyWithState(state) {
   assert.equal(promoteCount, 0, 'no promote calls when state remains refine');
   assert.equal(writes.length, 2, 'body written twice');
   // Only one aitm-refine-complete marker should ever exist in the body.
-  const matches = writes[1].match(/<!--\s*aitm-refine-complete:/g) || [];
+  const matches = writes[1].match(/<!--\s*aitm-refine-complete(?: ts="|:)/g) || [];
   assert.equal(matches.length, 1, 're-stamp replaces, not duplicates, the marker');
   console.log('PASS: refine is idempotent on a Refine-state issue (#282)');
 }
@@ -118,7 +118,7 @@ function bodyWithState(state) {
       verbPromote: async () => {},
     },
   });
-  assert.match(captured, /<!--\s*aitm-refine-complete:\s*\d{4}-/);
+  assert.match(captured, /<!--\s*aitm-refine-complete(?: ts="|:\s*)\d{4}-/);
   console.log('PASS: refine stamps aitm-refine-complete marker (#282)');
 }
 
@@ -131,7 +131,7 @@ function bodyWithState(state) {
   const twice = stampRefineCompleteMarker(once, '2026-06-03T00:00:01Z');
   const matches = twice.match(REFINE_COMPLETE_MARKER_RE) || [];
   assert.equal(matches.length, 1, 'single marker after two stamps');
-  assert.match(twice, /aitm-refine-complete: 2026-06-03T00:00:01Z/);
+  assert.match(twice, /aitm-refine-complete ts="2026-06-03T00:00:01Z"/);
   console.log('PASS: stampRefineCompleteMarker is idempotent');
 }
 

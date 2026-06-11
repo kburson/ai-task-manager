@@ -28,6 +28,7 @@ import { promisify } from 'node:util';
 
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { insertDeepDiveCompleteMarker } from './markers.mjs';
+import { serializeMarker } from './marker-grammar.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { DEEP_DIVE_SIZE_FLOORS } from './body-gates.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
@@ -53,8 +54,10 @@ export function pickDeepDiveFloor(body) {
   return DEEP_DIVE_DEFAULT_FLOOR;
 }
 
-const POSTED_RE = /<!--\s*aitm-deep-dive-posted:\s*[^>]*?-->/i;
-const COMPLETE_RE = /<!--\s*aitm-deep-dive-complete:\s*[^>]*?-->/i;
+// Readers widened (#375) to accept BOTH the legacy colon grammar and the
+// consolidated `ts="..."` property grammar. Legacy branch stays until #369.
+const POSTED_RE = /<!--\s*aitm-deep-dive-posted(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
+const COMPLETE_RE = /<!--\s*aitm-deep-dive-complete(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
 const PICKUP_HEADING_RE = /^##\s+Pickup Directive\b.*$/im;
 const FIELDS_TRAILER_RE = /<!--\s*aitm-fields:/i;
 // Writer regex — `ensureDeepDive` only authors `##`.
@@ -108,7 +111,7 @@ export function buildDeepDiveBlock({ ts, appendix, date } = {}) {
   }
   assertDeepDiveAppendixClean(appendix);
   const isoDate = date || String(ts).slice(0, 10);
-  const marker = `<!-- aitm-deep-dive-posted: ${ts} -->`;
+  const marker = serializeMarker('deep-dive-posted', { ts });
   const heading = `## Deep-Dive Analysis (${isoDate})`;
   const trimmed = appendix.replace(/^\s+|\s+$/g, '');
   return `\n\n${marker}\n\n${heading}\n\n${trimmed}\n`;
@@ -256,7 +259,7 @@ export function insertDeepDivePostedMarker(body, ts) {
   if (POSTED_RE.test(src)) return src;
   const match = DEEP_DIVE_HEADING_DETECT_RE.exec(src);
   if (!match) return src;
-  const marker = `<!-- aitm-deep-dive-posted: ${ts} -->`;
+  const marker = serializeMarker('deep-dive-posted', { ts });
   return `${src.slice(0, match.index)}${marker}\n\n${src.slice(match.index)}`;
 }
 
@@ -311,7 +314,7 @@ export async function ensureDeepDive({
         if (wantPosted && !POSTED_RE.test(next)) {
           const match = DEEP_DIVE_HEADING_RE.exec(next);
           if (match) {
-            const marker = `<!-- aitm-deep-dive-posted: ${stamp} -->`;
+            const marker = serializeMarker('deep-dive-posted', { ts: stamp });
             next = `${next.slice(0, match.index)}${marker}\n\n${next.slice(match.index)}`;
           }
         }
@@ -324,7 +327,7 @@ export async function ensureDeepDive({
             `ensureDeepDive: issue #${issueNumber} body has no \`## Deep-Dive Analysis\` heading — pass \`prose\` to author the section or call \`ensureDeepDive\` after the section is in place`
           );
         }
-        const marker = `<!-- aitm-deep-dive-posted: ${stamp} -->`;
+        const marker = serializeMarker('deep-dive-posted', { ts: stamp });
         next = `${next.slice(0, match.index)}${marker}\n\n${next.slice(match.index)}`;
       }
 

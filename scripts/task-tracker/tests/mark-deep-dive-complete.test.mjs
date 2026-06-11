@@ -45,7 +45,7 @@ const BARE_BODY = [
   assert.equal(res.ts, '2026-05-11T12:00:00Z');
   assert.equal(state.writes, 1, 'mutateBody-closure produced exactly one write');
   assert.ok(hasDeepDiveCompleteMarker(state.body), 'body now carries the marker');
-  assert.match(state.body, /<!-- aitm-deep-dive-complete: 2026-05-11T12:00:00Z -->/);
+  assert.match(state.body, /<!-- aitm-deep-dive-complete ts="2026-05-11T12:00:00Z" -->/);
 }
 
 // ── Test 2: idempotent — second call is a no-op ──────────────────────────────

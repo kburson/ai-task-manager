@@ -8,6 +8,7 @@
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { serializeMarker } from './marker-grammar.mjs';
 
 // ---------------------------------------------------------------------------
 // Phantom-marker hardening (#333)
@@ -41,10 +42,14 @@ export function stripFencedCodeBlocks(body) {
 // plan-approved (plan → develop human gate)
 // ---------------------------------------------------------------------------
 
-export const PLAN_APPROVED_RE = /<!--\s*aitm-plan-approved:\s*([^>]*?)\s*-->/i;
+// Reader widened (#375) to accept BOTH the legacy colon grammar
+// (`aitm-plan-approved: <iso>`) and the consolidated property grammar
+// (`aitm-plan-approved ts="<iso>"`). The legacy branch stays until #369's
+// corpus sweep reports zero residual legacy markers.
+export const PLAN_APPROVED_RE = /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
 
 export function buildPlanApprovedMarker(ts) {
-  return `<!-- aitm-plan-approved: ${ts} -->`;
+  return serializeMarker('plan-approved', { ts });
 }
 
 export function hasPlanApprovedMarker(body) {
@@ -55,10 +60,11 @@ export function hasPlanApprovedMarker(body) {
 // review-approved (review → done human gate)
 // ---------------------------------------------------------------------------
 
-export const REVIEW_APPROVED_RE = /<!--\s*aitm-review-approved:\s*([^>]*?)\s*-->/i;
+// Reader widened (#375) to accept both legacy colon and new `ts="..."` forms.
+export const REVIEW_APPROVED_RE = /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
 
 export function buildReviewApprovedMarker(ts) {
-  return `<!-- aitm-review-approved: ${ts} -->`;
+  return serializeMarker('review-approved', { ts });
 }
 
 export function hasReviewApprovedMarker(body) {
@@ -294,10 +300,12 @@ export function insertTestStartedMarker(body, sha, ts) {
 // deep-dive-complete (structural prerequisite for plan → develop)
 // ---------------------------------------------------------------------------
 
-export const DEEP_DIVE_COMPLETE_RE = /<!--\s*aitm-deep-dive-complete:\s*([^>]*?)\s*-->/i;
+// Reader widened (#375) to accept both legacy colon and new `ts="..."` forms.
+export const DEEP_DIVE_COMPLETE_RE =
+  /<!--\s*aitm-deep-dive-complete(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
 
 export function buildDeepDiveCompleteMarker(ts) {
-  return `<!-- aitm-deep-dive-complete: ${ts} -->`;
+  return serializeMarker('deep-dive-complete', { ts });
 }
 
 export function hasDeepDiveCompleteMarker(body) {

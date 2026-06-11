@@ -28,7 +28,7 @@ const TS = '2026-05-11T12:00:00Z';
 // ── plan-approved: build + has ────────────────────────────────────────────────
 {
   const m = buildPlanApprovedMarker(TS);
-  assert.equal(m, `<!-- aitm-plan-approved: ${TS} -->`);
+  assert.equal(m, `<!-- aitm-plan-approved ts="${TS}" -->`);
   assert.ok(hasPlanApprovedMarker(`prose\n${m}\n`));
   assert.ok(!hasPlanApprovedMarker('prose only'));
   assert.ok(PLAN_APPROVED_RE.test(m));
@@ -37,7 +37,7 @@ const TS = '2026-05-11T12:00:00Z';
 // ── review-approved: build + has + insert ────────────────────────────────────
 {
   const m = buildReviewApprovedMarker(TS);
-  assert.equal(m, `<!-- aitm-review-approved: ${TS} -->`);
+  assert.equal(m, `<!-- aitm-review-approved ts="${TS}" -->`);
   assert.ok(hasReviewApprovedMarker(`x\n${m}`));
   assert.ok(!hasReviewApprovedMarker(''));
   assert.ok(REVIEW_APPROVED_RE.test(m));
@@ -54,7 +54,7 @@ const TS = '2026-05-11T12:00:00Z';
 // ── deep-dive-complete: build + has + insert ─────────────────────────────────
 {
   const m = buildDeepDiveCompleteMarker(TS);
-  assert.equal(m, `<!-- aitm-deep-dive-complete: ${TS} -->`);
+  assert.equal(m, `<!-- aitm-deep-dive-complete ts="${TS}" -->`);
   assert.ok(hasDeepDiveCompleteMarker(`pre\n${m}\npost`));
   assert.ok(!hasDeepDiveCompleteMarker('## Deep-Dive Analysis\n\ntext\n'));
   assert.ok(DEEP_DIVE_COMPLETE_RE.test(m));
@@ -209,6 +209,56 @@ const TS = '2026-05-11T12:00:00Z';
   // 7. Indented opening fence (up to 3 spaces per CommonMark) still strips.
   const indentedFence = '  ```\n<!-- aitm-plan-approved: PHANTOM -->\n  ```\n';
   assert.ok(!hasPlanApprovedMarker(indentedFence), 'phantom inside indented fence rejected');
+}
+
+// ── #375: lifecycle-timestamp markers migrated to `ts="..."` property grammar.
+//        Detectors were widened to accept BOTH the legacy colon form (read
+//        path, kept until #369's corpus sweep) and the new property form
+//        (write path). Covers, for the gate markers, all four AC3 axes:
+//        serialize (new form), parse-new, parse-legacy back-compat, and
+//        fenced-code-block phantom exclusion of the NEW form.
+{
+  // serialize — builders now emit the property grammar.
+  assert.equal(buildPlanApprovedMarker(TS), `<!-- aitm-plan-approved ts="${TS}" -->`);
+  assert.equal(buildReviewApprovedMarker(TS), `<!-- aitm-review-approved ts="${TS}" -->`);
+  assert.equal(buildDeepDiveCompleteMarker(TS), `<!-- aitm-deep-dive-complete ts="${TS}" -->`);
+
+  // parse-new — detectors accept the new property form.
+  assert.ok(hasPlanApprovedMarker(`x\n<!-- aitm-plan-approved ts="${TS}" -->\n`), 'new plan form');
+  assert.ok(
+    hasReviewApprovedMarker(`x\n<!-- aitm-review-approved ts="${TS}" -->\n`),
+    'new review form'
+  );
+  assert.ok(
+    hasDeepDiveCompleteMarker(`x\n<!-- aitm-deep-dive-complete ts="${TS}" -->\n`),
+    'new deep-dive-complete form'
+  );
+
+  // parse-legacy — back-compat: legacy colon form still detected (read path).
+  assert.ok(hasPlanApprovedMarker(`x\n<!-- aitm-plan-approved: ${TS} -->\n`), 'legacy plan form');
+  assert.ok(
+    hasReviewApprovedMarker(`x\n<!-- aitm-review-approved: ${TS} -->\n`),
+    'legacy review form'
+  );
+  assert.ok(
+    hasDeepDiveCompleteMarker(`x\n<!-- aitm-deep-dive-complete: ${TS} -->\n`),
+    'legacy deep-dive-complete form'
+  );
+
+  // fenced phantom exclusion of the NEW form — a property-grammar marker inside
+  // a fence is still a phantom and must not register.
+  assert.ok(
+    !hasPlanApprovedMarker(`## Plan\n\n\`\`\`\n<!-- aitm-plan-approved ts="${TS}" -->\n\`\`\`\n`),
+    'new-form plan-approved inside fence rejected'
+  );
+  assert.ok(
+    !hasReviewApprovedMarker(`\`\`\`\n<!-- aitm-review-approved ts="${TS}" -->\n\`\`\`\n`),
+    'new-form review-approved inside fence rejected'
+  );
+  assert.ok(
+    !hasDeepDiveCompleteMarker(`\`\`\`\n<!-- aitm-deep-dive-complete ts="${TS}" -->\n\`\`\`\n`),
+    'new-form deep-dive-complete inside fence rejected'
+  );
 }
 
 console.log('markers.test.mjs: all passed');

@@ -32,10 +32,26 @@ export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
   { name: 'aitm-body-version', re: /<!--\s*aitm-body-version:/i, kind: 'single' },
   { name: 'aitm-stage-rollup', re: /<!--\s*aitm-stage-rollup:/i, kind: 'single' },
-  { name: 'aitm-refine-complete', re: /<!--\s*aitm-refine-complete:/i, kind: 'single' },
-  { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved:/i, kind: 'single' },
-  { name: 'aitm-deep-dive-posted', re: /<!--\s*aitm-deep-dive-posted:/i, kind: 'single' },
-  { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete:/i, kind: 'single' },
+  // Lifecycle-timestamp invariants widened (#375) to detect the marker under
+  // BOTH the legacy colon grammar and the new `ts="..."` property grammar, so
+  // a writer flipped to the new form is not falsely reported as a dropped
+  // marker by `findLostMarkers`. Legacy branch stays until #369's corpus sweep.
+  {
+    name: 'aitm-refine-complete',
+    re: /<!--\s*aitm-refine-complete(?:\s*:|\s+ts=")/i,
+    kind: 'single',
+  },
+  { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i, kind: 'single' },
+  {
+    name: 'aitm-deep-dive-posted',
+    re: /<!--\s*aitm-deep-dive-posted(?:\s*:|\s+ts=")/i,
+    kind: 'single',
+  },
+  {
+    name: 'aitm-deep-dive-complete',
+    re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i,
+    kind: 'single',
+  },
   { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state:/i, kind: 'single' },
   { name: 'aitm-last-known-state-ts', re: /<!--\s*aitm-last-known-state-ts:/i, kind: 'single' },
   { name: 'aitm-entered-<stage>', re: ENTERED_STAGE_RE, kind: 'multi' },

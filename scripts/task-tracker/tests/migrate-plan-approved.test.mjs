@@ -23,7 +23,7 @@ const NOW = () => '2026-05-11T12:00:00.000Z';
   assert.equal(r.changed, true);
   assert.doesNotMatch(r.body, /Plan approved by human/);
   assert.match(r.body, APPROVAL_MARKER_RE);
-  assert.match(r.body, /<!-- aitm-plan-approved: 2026-05-11T12:00:00\.000Z -->/);
+  assert.match(r.body, /<!-- aitm-plan-approved ts="2026-05-11T12:00:00\.000Z" -->/);
 }
 
 // 2. Legacy unchecked -> strip only.

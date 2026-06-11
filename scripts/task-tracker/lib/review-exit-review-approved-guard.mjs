@@ -16,7 +16,8 @@
 
 export const GUARD_ID = 'review-exit-review-approved';
 
-const APPROVED_RE = /<!--\s*aitm-review-approved:/i;
+// Widened (#375) to accept both legacy colon and new `ts="..."` grammars.
+const APPROVED_RE = /<!--\s*aitm-review-approved(?:\s*:|\s+ts=")/i;
 
 export const reviewExitReviewApprovedGuard = {
   id: GUARD_ID,

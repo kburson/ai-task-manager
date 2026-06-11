@@ -185,7 +185,7 @@ const BODY_WITH_SECTION_NO_MARKERS = [
     deps: { mutateIssueBody: fn },
   });
   assert.equal(res.status, 'ok');
-  assert.ok(log.next.includes(`aitm-deep-dive-complete: ${TS}`));
+  assert.ok(log.next.includes(`aitm-deep-dive-complete ts="${TS}"`));
   // Posted marker preserved (the old one stays; we don't restamp).
   assert.ok(log.next.includes('aitm-deep-dive-posted: 2026-06-05T00:00:00Z'));
 }
@@ -205,7 +205,7 @@ const BODY_WITH_SECTION_NO_MARKERS = [
     deps: { mutateIssueBody: fn },
   });
   assert.equal(res.status, 'ok');
-  assert.ok(log.next.includes(`aitm-deep-dive-posted: ${TS}`));
+  assert.ok(log.next.includes(`aitm-deep-dive-posted ts="${TS}"`));
   // Marker ordered above the heading.
   const mi = log.next.indexOf('aitm-deep-dive-posted');
   const hi = log.next.indexOf('## Deep-Dive Analysis');

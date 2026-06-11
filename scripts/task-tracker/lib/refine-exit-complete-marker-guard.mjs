@@ -23,7 +23,9 @@ export const refineExitCompleteMarkerGuard = {
     if (!ctx) return { ok: true };
     if (ctx.toState && ctx.toState !== 'plan') return { ok: true };
     const body = typeof ctx.body === 'string' ? ctx.body : '';
-    if (/<!--\s*aitm-refine-complete:[^>]*-->/i.test(body)) return { ok: true };
+    // Widened (#375) to accept both legacy colon and new `ts="..."` forms.
+    if (/<!--\s*aitm-refine-complete(?::[^>]*|\s+ts="[^"]*")\s*-->/i.test(body))
+      return { ok: true };
     const reason = 'missing aitm-refine-complete marker; run `/task refine`';
     return {
       ok: false,

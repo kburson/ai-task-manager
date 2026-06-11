@@ -94,7 +94,7 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'approved');
   assert.equal(r.ts, FIXED_TS);
   assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), /<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->/);
+  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->/);
 }
 
 // 3. second call is idempotent
@@ -111,7 +111,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps();
   await runApprove({ issueNumber: 58, cfg, deps });
   const body = getBody();
-  const markerIdx = body.indexOf('<!-- aitm-review-approved:');
+  const markerIdx = body.indexOf('<!-- aitm-review-approved');
   const fieldsIdx = body.indexOf('<!-- aitm-fields:');
   assert.ok(
     markerIdx >= 0 && fieldsIdx > markerIdx,
@@ -127,12 +127,12 @@ function makeDeps(overrides = {}) {
 {
   const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
   await runApprove({ issueNumber: 58, cfg, deps });
-  assert.match(getBody(), /<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->\s*$/);
+  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->\s*$/);
 }
 
 // 6. pure helpers
 {
-  assert.equal(buildMarker(FIXED_TS), `<!-- aitm-review-approved: ${FIXED_TS} -->`);
+  assert.equal(buildMarker(FIXED_TS), `<!-- aitm-review-approved ts="${FIXED_TS}" -->`);
   assert.equal(hasApprovalMarker(''), false);
   assert.equal(hasApprovalMarker(buildMarker(FIXED_TS)), true);
   assert.equal(hasApprovalMarker('<!--aitm-review-approved:foo-->'), true);
@@ -150,7 +150,7 @@ function makeDeps(overrides = {}) {
     !out.includes('ai-task-manager:fields:start'),
     'output must NOT contain legacy fields-start marker'
   );
-  const markerIdx = out.indexOf('<!-- aitm-review-approved:');
+  const markerIdx = out.indexOf('<!-- aitm-review-approved');
   const fieldsIdx = out.indexOf('<!-- aitm-fields:');
   assert.ok(markerIdx >= 0 && fieldsIdx > markerIdx, 'approval marker must precede field-DB');
 }
@@ -200,7 +200,7 @@ function makeDeps(overrides = {}) {
 {
   const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
   await runApprove({ issueNumber: 58, cfg, deps });
-  assert.match(getBody(), /<!-- aitm-review-approved:/);
+  assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
   assert.doesNotMatch(getBody(), /Passed final human review/);
 }
 
@@ -268,7 +268,7 @@ function makeDeps(overrides = {}) {
   const r = await runApprove({ issueNumber: 58, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, true);
-  assert.match(getBody(), /<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->/);
+  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->/);
   assert.match(
     getBody(),
     /<!-- aitm-full-auto-approved: 2026-05-10T00:00:00Z:env=1,tty=0,ci=0 -->/
@@ -285,7 +285,7 @@ function makeDeps(overrides = {}) {
   });
   const r = await runApprove({ issueNumber: 58, cfg, deps });
   assert.equal(r.fullAuto, false);
-  assert.match(getBody(), /<!-- aitm-review-approved:/);
+  assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
   assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
   // #161 / D4 — no footnote in human-review mode.
   assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);

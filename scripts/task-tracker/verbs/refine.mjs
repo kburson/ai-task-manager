@@ -26,6 +26,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { ensureIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { serializeMarker } from '../lib/marker-grammar.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 
 const pexec = promisify(execFile);
@@ -155,12 +156,17 @@ export function applyRationaleMarker(body, marker) {
 // #282 — stage-completion marker for the Refine stage. Promote reads this
 // on the refine→plan transition; absent marker = refuse-with-message.
 // Re-runs of `/task refine` re-stamp with the latest timestamp (idempotent).
-export const REFINE_COMPLETE_MARKER_RE = /<!--\s*aitm-refine-complete:[^>]*-->\s*\n?/gi;
+// Strip-pattern widened (#375) to match BOTH the legacy colon grammar
+// (`aitm-refine-complete: <iso>`) and the consolidated property grammar
+// (`aitm-refine-complete ts="<iso>"`), so a re-stamp on an already-migrated
+// body removes the prior marker cleanly. Legacy branch stays until #369.
+export const REFINE_COMPLETE_MARKER_RE =
+  /<!--\s*aitm-refine-complete(?::[^>]*|\s+ts="[^"]*")\s*-->\s*\n?/gi;
 
 export function stampRefineCompleteMarker(body, ts) {
   const stamp = ts || new Date().toISOString();
   const stripped = String(body || '').replace(REFINE_COMPLETE_MARKER_RE, '');
-  return `<!-- aitm-refine-complete: ${stamp} -->\n${stripped}`;
+  return `${serializeMarker('refine-complete', { ts: stamp })}\n${stripped}`;
 }
 
 // ---------------------------------------------------------------------------

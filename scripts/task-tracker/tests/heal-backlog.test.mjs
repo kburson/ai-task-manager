@@ -85,7 +85,7 @@ const TIMING_LOG_3_ROWS = [
   assert.equal(r.values.engagedTime, 75); // no pauses → reviewMin = 0
   assert.equal(r.values.reviewTime, 0);
   // Plan-approved migration ran (legacy checkbox was checked → marker)
-  assert.match(r.body, /<!--\s*aitm-plan-approved:/);
+  assert.match(r.body, /<!--\s*aitm-plan-approved(?: ts="|:)/);
   assert.equal(r.body.includes('- [x] Plan approved by human'), false);
   // Deltas surfaced for changed timing fields
   const keys = r.deltas.map((d) => d.key).sort();
@@ -376,7 +376,7 @@ const TIMING_LOG_3_ROWS = [
     fieldDefs,
     deepDiveBackfillTs: '2026-01-15T00:00:00Z',
   });
-  assert.match(r.body, /<!--\s*aitm-deep-dive-complete: 2026-01-15T00:00:00Z\s*-->/);
+  assert.match(r.body, /<!--\s*aitm-deep-dive-complete ts="2026-01-15T00:00:00Z" -->/);
   assert.ok(r.action.includes('backfill-deep-dive-marker'));
 
   // No heading → no backfill, no action.

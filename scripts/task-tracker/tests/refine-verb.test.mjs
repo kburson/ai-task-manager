@@ -250,7 +250,7 @@ import { parseRationaleMarker } from '../lib/apply-refinement-estimate.mjs';
 
   // body write contains both stage markers and preserves scope
   assert.match(calls.write, /<!-- aitm-refinement-rationale: /);
-  assert.match(calls.write, /<!-- aitm-refine-complete: /);
+  assert.match(calls.write, /<!-- aitm-refine-complete(?: ts="|: )/);
   assert.match(calls.write, /## Scope/);
 
   // body has no recorded state → treated as backlog entry, so verbPromote
