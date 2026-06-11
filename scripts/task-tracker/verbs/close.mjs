@@ -526,9 +526,10 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
 // Tick the Lifecycle DoD items the close verb is responsible for. Best-effort:
 // missing section or already-ticked items are no-ops; failures do not block
 // the close path since the issue has already moved to Done.
-async function tickLifecycleOnClose({ cfg, issueNum, pexec }) {
+export async function tickLifecycleOnClose({ cfg, issueNum, pexec, deps = {} }) {
+  const mutateBody = deps.mutateIssueBody || mutateIssueBody;
   try {
-    await mutateIssueBody({
+    await mutateBody({
       issueNumber: issueNum,
       repo: cfg.repo,
       mutate: (base) => {
@@ -536,6 +537,13 @@ async function tickLifecycleOnClose({ cfg, issueNum, pexec }) {
         next = tickLifecycleItem(next, 'timing-flushed');
         return next;
       },
+      // These two lifecycle checkboxes (`story-closed`, `timing-flushed`) are
+      // ticked by the close verb itself — the close action is the verifier, not
+      // an agent pre-tick. The #362 checkbox-proof gate would otherwise refuse
+      // them for lacking an adjacent proof marker. Mirror the #363 precedent in
+      // approve.mjs and bypass the gate scoped to this single call site only;
+      // every other mutateIssueBody call in this file keeps the gate enforced.
+      allowUnverifiedTicks: true,
       deps: { pexec },
     });
   } catch (err) {
