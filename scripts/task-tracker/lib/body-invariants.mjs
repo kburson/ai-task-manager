@@ -21,6 +21,7 @@
 //      `gh issue edit` invocations are caught by the diff guard too.
 
 import { hasExecutionProof } from './proof-marker.mjs';
+import { parseAcEvidence } from './ac-evidence.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
@@ -80,6 +81,13 @@ export function findLostMarkers(base, next) {
 //     (legacy proof shape; read until #369 rewrites the corpus)
 //   - `<!-- aitm-dod-evidence: ... -->`
 //     (the existing close-pipeline auto-stamp; grandfathered)
+//   - `<!-- aitm-ac-evidence:<key> cmd="..." exit=N sha=... ts=... -->`
+//     (the AC evidence stamp produced by `/task ac-stamp` — #383). This is the
+//     marker the #345 evidence gate REQUIRES to tick a verifier-declaring AC,
+//     so #362 must accept it too; otherwise the two gates demand incompatible
+//     markers and a correctly-stamped AC can never be ticked. Only the strict
+//     canonical form (all of key/cmd/exit/sha/ts, via `parseAcEvidence`)
+//     qualifies — a bare `aitm-ac-evidence:<key>` fragment is not proof.
 //
 // A bare `aitm-verified-by` DECLARATION is NOT proof — `hasExecutionProof`
 // excludes it. The marker MUST live on the same line as the tick — a marker on
@@ -95,7 +103,11 @@ const CHECKED_LINE_RE = /^\s*- \[x\]/;
 const DOD_EVIDENCE_RE = /<!--\s*aitm-dod-evidence:/;
 
 function lineHasProof(line) {
-  return hasExecutionProof(line) || DOD_EVIDENCE_RE.test(String(line || ''));
+  const s = String(line || '');
+  // `parseAcEvidence` returns a parsed object only for the strict canonical
+  // ac-evidence form (key + cmd + exit + sha + ts); a partial fragment yields
+  // null and therefore does NOT count as proof.
+  return hasExecutionProof(line) || DOD_EVIDENCE_RE.test(s) || parseAcEvidence(s) != null;
 }
 
 export function findCheckboxesTickedWithoutProof(before, after) {

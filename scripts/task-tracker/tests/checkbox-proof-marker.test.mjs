@@ -116,3 +116,78 @@ test('marker on line N+1 does NOT validate a tick on line N (co-location require
     }
   );
 });
+
+// #383 — reconcile the #345 evidence gate with the #362 checkbox-proof
+// invariant: a canonical `aitm-ac-evidence` marker (carrying cmd/exit/sha/ts
+// execution evidence, produced by `/task ac-stamp`) is the marker the
+// sanctioned tick workflow already emits, so #362 must accept it as proof.
+test('tick with same-line canonical aitm-ac-evidence marker is accepted (#383)', async () => {
+  const deps = fakeDeps(BASE);
+  const r = await mutateIssueBody({
+    issueNumber: 106,
+    repo: 'fake/fake',
+    mutate: (b) =>
+      b.replace(
+        '- [ ] verify behavior',
+        '- [x] verify behavior <!-- aitm-ac-evidence:da1b55f9 cmd="npm test" exit=0 sha=abc1234 ts=2026-06-10T00:00:00.000Z -->'
+      ),
+    deps,
+  });
+  assert.equal(r.status, 'ok');
+  assert.match(deps.getBody(), /- \[x\] verify behavior/);
+  assert.match(deps.getBody(), /aitm-ac-evidence:/);
+});
+
+// No blanket weakening: an AC that merely DECLARES a verifier (aitm-verified-by)
+// but carries no execution-evidence marker is still rejected. The reconciliation
+// only admits the canonical ac-evidence form, not the bare declaration.
+test('verifier DECLARATION (aitm-verified-by) alone is still rejected (#383 no-weakening)', async () => {
+  const deps = fakeDeps(BASE);
+  await assert.rejects(
+    mutateIssueBody({
+      issueNumber: 107,
+      repo: 'fake/fake',
+      mutate: (b) =>
+        b.replace(
+          '- [ ] verify behavior',
+          '- [x] verify behavior <!-- aitm-verified-by: `npm test` -->'
+        ),
+      deps,
+    }),
+    (err) => {
+      assert.ok(
+        err instanceof CheckboxProofMissingError,
+        `expected CheckboxProofMissingError, got ${err?.name}`
+      );
+      assert.equal(err.lines.length, 1);
+      assert.match(err.lines[0].text, /- \[x\] verify behavior/);
+      return true;
+    }
+  );
+});
+
+// A malformed/partial ac-evidence fragment (missing the execution fields the
+// strict parser requires) is NOT proof — only the full canonical form qualifies.
+test('partial aitm-ac-evidence fragment (no exec fields) is still rejected (#383 strictness)', async () => {
+  const deps = fakeDeps(BASE);
+  await assert.rejects(
+    mutateIssueBody({
+      issueNumber: 108,
+      repo: 'fake/fake',
+      mutate: (b) =>
+        b.replace(
+          '- [ ] verify behavior',
+          '- [x] verify behavior <!-- aitm-ac-evidence:da1b55f9 -->'
+        ),
+      deps,
+    }),
+    (err) => {
+      assert.ok(
+        err instanceof CheckboxProofMissingError,
+        `expected CheckboxProofMissingError, got ${err?.name}`
+      );
+      assert.equal(err.lines.length, 1);
+      return true;
+    }
+  );
+});
