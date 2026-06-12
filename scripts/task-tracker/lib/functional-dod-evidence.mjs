@@ -17,6 +17,7 @@
 // atomic — if any line in the batch fails the gate, the whole batch refuses.
 
 import { locateFunctionalSection } from './lifecycle-dod.mjs';
+import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -35,8 +36,17 @@ export const DERIVED_KEYS = Object.freeze(
 );
 
 const KEY_MARKER_RE = /<!--\s*dod:functional:([a-z0-9-]+)\s*-->/i;
-const EVIDENCE_MARKER_RE =
+// Legacy half-quoted colon form (read-only back-compat until the #369 corpus
+// sweep): key folded into the marker NAME via `:<key>`, exit/sha/ts bare.
+const EVIDENCE_LEGACY_RE =
   /<!--\s*aitm-dod-evidence:([a-z0-9-]+)\s+cmd="([^"]*)"\s+exit=(-?\d+)\s+sha=([^\s]+)\s+ts=([^\s]+)\s*-->/i;
+// New consolidated property form (#379, parent epic #367): every value
+// double-quoted, the key folded into a `key="..."` property, one comment.
+const EVIDENCE_NEW_RE =
+  /<!--\s*aitm-dod-evidence\s+((?:[a-zA-Z0-9_-]+="(?:[^"]|&quot;)*"\s*)+)-->/i;
+// "Any form" matcher — detect / strip / replace-in-place EITHER shape.
+const EVIDENCE_ANY_RE = /<!--\s*aitm-dod-evidence(?::[a-z0-9-]+)?\s[\s\S]*?-->/i;
+const NEW_ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
 const VERIFIED_BY_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/gi;
 const BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 
@@ -50,7 +60,31 @@ function extractCommands(text) {
 }
 
 function parseEvidence(text) {
-  const m = String(text || '').match(EVIDENCE_MARKER_RE);
+  const src = String(text || '');
+  // New fully-quoted property form first.
+  const nm = src.match(EVIDENCE_NEW_RE);
+  if (nm) {
+    const props = {};
+    for (const a of String(nm[1]).matchAll(NEW_ATTR_RE)) {
+      props[a[1]] = unescapeValue(a[2]);
+    }
+    // Strict canonical form only: all of key/cmd/exit/sha/ts must be present
+    // and exit numeric — a partial fragment does not count as evidence.
+    if (props.key == null || props.cmd == null || props.sha == null || props.ts == null) {
+      return null;
+    }
+    const exit = Number(props.exit);
+    if (!Number.isFinite(exit)) return null;
+    return {
+      key: String(props.key).toLowerCase(),
+      cmd: props.cmd,
+      exit,
+      sha: props.sha,
+      ts: props.ts,
+    };
+  }
+  // Legacy half-quoted colon form.
+  const m = src.match(EVIDENCE_LEGACY_RE);
   if (!m) return null;
   return {
     key: m[1].toLowerCase(),
@@ -86,7 +120,7 @@ export function parseFunctionalDodKeys(body) {
       checked: box[2] === 'x',
       label: rest
         .replace(KEY_MARKER_RE, '')
-        .replace(EVIDENCE_MARKER_RE, '')
+        .replace(EVIDENCE_ANY_RE, '')
         .replace(VERIFIED_BY_RE, '')
         .trim(),
       evidenceCommands: extractCommands(rest),
@@ -117,8 +151,15 @@ export function stampEvidenceMarker(body, key, evidence) {
     throw new Error('stampEvidenceMarker: evidence requires { cmd, sha, ts, exit }');
   }
   const exitN = Number.isFinite(exit) ? Number(exit) : 0;
-  const safeCmd = String(cmd).replace(/"/g, '\\"');
-  const marker = `<!-- aitm-dod-evidence:${k} cmd="${safeCmd}" exit=${exitN} sha=${sha} ts=${ts} -->`;
+  // New consolidated grammar: serializeMarker owns quoting + `&quot;` escaping
+  // of an embedded double-quote in cmd. exit is emitted as a quoted string.
+  const marker = serializeMarker('dod-evidence', {
+    key: k,
+    cmd: String(cmd),
+    exit: String(exitN),
+    sha: String(sha),
+    ts: String(ts),
+  });
 
   const src = String(body || '');
   const lines = src.split('\n');
@@ -129,8 +170,8 @@ export function stampEvidenceMarker(body, key, evidence) {
   }
   const line = lines[target.lineIndex];
   let next;
-  if (EVIDENCE_MARKER_RE.test(line)) {
-    next = line.replace(EVIDENCE_MARKER_RE, marker);
+  if (EVIDENCE_ANY_RE.test(line)) {
+    next = line.replace(EVIDENCE_ANY_RE, marker);
   } else {
     next = `${line.replace(/\s+$/, '')} ${marker}`;
   }

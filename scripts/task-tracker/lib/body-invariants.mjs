@@ -135,8 +135,13 @@ export function findLostMarkers(base, next) {
 const UNCHECKED_LINE_RE = /^\s*- \[ \]/;
 const CHECKED_LINE_RE = /^\s*- \[x\]/;
 // Functional-DoD close-pipeline auto-stamp, resolved here (proof-marker.mjs owns
-// the `aitm-verified*` family; dod-evidence stays a local concern).
-const DOD_EVIDENCE_RE = /<!--\s*aitm-dod-evidence:/;
+// the `aitm-verified*` family; dod-evidence stays a local concern). Widened
+// (#379) to accept BOTH the legacy colon form (`aitm-dod-evidence:<key> ...`)
+// and the new consolidated property form (`aitm-dod-evidence key="..." ...`),
+// so a writer flipped to the new grammar still counts as checkbox proof.
+// Legacy branch stays until the #369 corpus sweep. (The ac-evidence proof path
+// is covered by the widened `parseAcEvidence` in `lineHasProof`.)
+const DOD_EVIDENCE_RE = /<!--\s*aitm-dod-evidence(?::|\s+key=")/;
 
 function lineHasProof(line) {
   const s = String(line || '');

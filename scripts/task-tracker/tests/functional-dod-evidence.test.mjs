@@ -84,9 +84,90 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
   });
   const ev2 = findEvidenceMarker(body, 'tests');
   assert.equal(ev2.sha, 'def456');
-  // Marker count stays at 1.
-  const occurrences = (body.match(/aitm-dod-evidence:tests/g) || []).length;
+  // Marker count stays at 1. `\b` matches BOTH legacy `aitm-dod-evidence:` and
+  // the new `aitm-dod-evidence key="..."` grammar, so the count is form-agnostic.
+  const occurrences = (body.match(/aitm-dod-evidence\b/g) || []).length;
   assert.equal(occurrences, 1, 'marker replaced in place, not duplicated');
+}
+
+// --- #379 — writer emits the new fully-quoted property grammar ---
+{
+  const body = stampEvidenceMarker(bodyWithKeys(), 'tests', {
+    cmd: 'npm test',
+    sha: 'abc123',
+    ts: '2026-06-05T00:00:00Z',
+    exit: 0,
+  });
+  const line = body.split('\n').find((l) => l.includes('All automated tests pass'));
+  assert.match(
+    line,
+    /<!-- aitm-dod-evidence key="tests" cmd="npm test" exit="0" sha="abc123" ts="2026-06-05T00:00:00Z" -->/,
+    'new fully-quoted form emitted'
+  );
+  assert.ok(!/aitm-dod-evidence:/.test(line), 'no legacy colon form emitted');
+}
+
+// --- #379 — parser reads the new fully-quoted form ---
+{
+  const body = bodyWithKeys().replace(
+    '<!-- dod:functional:tests -->',
+    '<!-- dod:functional:tests --> <!-- aitm-dod-evidence key="tests" cmd="npm test" exit="0" sha="abc123" ts="2026-06-05T00:00:00Z" -->'
+  );
+  const ev = findEvidenceMarker(body, 'tests');
+  assert.ok(ev, 'new-form marker parsed');
+  assert.equal(ev.cmd, 'npm test');
+  assert.equal(ev.exit, 0);
+  assert.equal(ev.sha, 'abc123');
+  assert.equal(ev.ts, '2026-06-05T00:00:00Z');
+}
+
+// --- #379 — parser still reads the legacy half-quoted colon form (back-compat) ---
+{
+  const body = bodyWithKeys().replace(
+    '<!-- dod:functional:lint -->',
+    '<!-- dod:functional:lint --> <!-- aitm-dod-evidence:lint cmd="npm run lint" exit=1 sha=deadbee ts=2026-06-05T00:00:00Z -->'
+  );
+  const ev = findEvidenceMarker(body, 'lint');
+  assert.ok(ev, 'legacy-form marker parsed');
+  assert.equal(ev.cmd, 'npm run lint');
+  assert.equal(ev.exit, 1);
+  assert.equal(ev.sha, 'deadbee');
+}
+
+// --- #379 — embedded double-quote in cmd round-trips serialize→parse ---
+{
+  const cmd = 'grep "needle" file';
+  const body = stampEvidenceMarker(bodyWithKeys(), 'tests', {
+    cmd,
+    sha: 'abc123',
+    ts: '2026-06-05T00:00:00Z',
+    exit: 0,
+  });
+  const line = body.split('\n').find((l) => l.includes('All automated tests pass'));
+  assert.match(line, /cmd="grep &quot;needle&quot; file"/, 'embedded quote escaped as &quot;');
+  assert.equal(findEvidenceMarker(body, 'tests').cmd, cmd, 'round-trips back to original cmd');
+}
+
+// --- #379 — re-stamping a legacy-form marker replaces it in place with the new form ---
+{
+  const seeded = bodyWithKeys().replace(
+    '<!-- dod:functional:commits -->',
+    '<!-- dod:functional:commits --> <!-- aitm-dod-evidence:commits cmd="git log" exit=0 sha=old123 ts=2026-06-04T00:00:00Z -->'
+  );
+  const restamped = stampEvidenceMarker(seeded, 'commits', {
+    cmd: 'git log',
+    sha: 'new456',
+    ts: '2026-06-05T00:00:00Z',
+    exit: 0,
+  });
+  const line = restamped.split('\n').find((l) => l.includes('All changes committed'));
+  assert.equal(
+    (line.match(/aitm-dod-evidence\b/g) || []).length,
+    1,
+    'legacy marker replaced, not duplicated'
+  );
+  assert.ok(!/aitm-dod-evidence:/.test(line), 'legacy form replaced with new form');
+  assert.equal(findEvidenceMarker(restamped, 'commits').sha, 'new456');
 }
 
 // --- stampEvidenceMarker rejects unknown key / bad evidence shape ---

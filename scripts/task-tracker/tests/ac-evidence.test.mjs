@@ -77,10 +77,97 @@ test('stampAcEvidenceMarker appends then idempotently replaces', () => {
 
   // Re-stamp with a new sha → replaces in place, does not duplicate.
   const twice = stampAcEvidenceMarker(once, label, { ...ev, sha: 'def5678' });
-  const markers = [...twice.matchAll(/aitm-ac-evidence:/g)];
+  // `\b` matches BOTH the legacy `aitm-ac-evidence:` and the new
+  // `aitm-ac-evidence key="..."` grammars so the count is form-agnostic.
+  const markers = [...twice.matchAll(/aitm-ac-evidence\b/g)];
   // one per stamped line — only the first AC stamped here
   assert.equal(markers.length, 1);
   assert.equal(findEvidenceAc(twice, label).evidenceMarker.sha, 'def5678');
+});
+
+// #379 — writer emits the new fully-quoted property grammar, with the key
+// folded into a `key="..."` property and every value double-quoted.
+test('stampAcEvidenceMarker serializes the new fully-quoted property form (#379)', () => {
+  const label = 'check.mjs refuses to tick verified lines';
+  const body = stampAcEvidenceMarker(AC_BODY, label, {
+    cmd: 'npm test',
+    sha: 'abc1234',
+    ts: '2026-06-10T00:00:00.000Z',
+    exit: 0,
+  });
+  const line = body.split('\n').find((l) => l.includes(label));
+  const key = acKeyForLabel(label);
+  assert.match(
+    line,
+    new RegExp(
+      `<!-- aitm-ac-evidence key="${key}" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->`
+    )
+  );
+  // No legacy half-quoted colon form is emitted.
+  assert.ok(!/aitm-ac-evidence:/.test(line), 'no legacy colon form emitted');
+});
+
+// #379 — parser reads BOTH the new fully-quoted form and the legacy
+// half-quoted colon form (back-compat until the #369 corpus sweep).
+test('parseAcEvidence reads the new fully-quoted form (#379)', () => {
+  const m = parseAcEvidence(
+    'foo <!-- aitm-ac-evidence key="abcd1234" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->'
+  );
+  assert.equal(m.key, 'abcd1234');
+  assert.equal(m.cmd, 'npm test');
+  assert.equal(m.exit, 0);
+  assert.equal(m.sha, 'abc1234');
+  assert.equal(m.ts, '2026-06-10T00:00:00.000Z');
+});
+
+test('parseAcEvidence still reads the legacy half-quoted colon form (#379 back-compat)', () => {
+  const m = parseAcEvidence(
+    'foo <!-- aitm-ac-evidence:abcd1234 cmd="npm run lint" exit=1 sha=deadbee ts=2026-06-10T00:00:00.000Z -->'
+  );
+  assert.equal(m.key, 'abcd1234');
+  assert.equal(m.cmd, 'npm run lint');
+  assert.equal(m.exit, 1);
+  assert.equal(m.sha, 'deadbee');
+});
+
+// #379 — a cmd carrying an embedded double-quote round-trips through
+// serialize (`"` → `&quot;`) and parse (`&quot;` → `"`).
+test('stampAcEvidenceMarker round-trips an embedded double-quote in cmd (#379)', () => {
+  const label = 'check.mjs refuses to tick verified lines';
+  const cmd = 'grep "needle" file';
+  const body = stampAcEvidenceMarker(AC_BODY, label, {
+    cmd,
+    sha: 'abc1234',
+    ts: '2026-06-10T00:00:00.000Z',
+    exit: 0,
+  });
+  const line = body.split('\n').find((l) => l.includes(label));
+  // Serialized form escapes the quote as &quot; (no raw `"` inside the value).
+  assert.match(line, /cmd="grep &quot;needle&quot; file"/);
+  // And it parses back to the original cmd.
+  assert.equal(parseAcEvidence(line).cmd, cmd);
+});
+
+// #379 — re-stamping a line that already carries a LEGACY-form marker replaces
+// it in place with the new form (no duplication, idempotent across grammars).
+test('stampAcEvidenceMarker replaces a legacy-form marker in place (#379)', () => {
+  const label = 'check.mjs refuses to tick verified lines';
+  const key = acKeyForLabel(label);
+  const seeded = AC_BODY.replace(
+    `- [ ] ${label} <!-- aitm-verified-by: \`npm test\` -->`,
+    `- [ ] ${label} <!-- aitm-verified-by: \`npm test\` --> <!-- aitm-ac-evidence:${key} cmd="npm test" exit=0 sha=old1234 ts=2026-06-09T00:00:00.000Z -->`
+  );
+  const restamped = stampAcEvidenceMarker(seeded, label, {
+    cmd: 'npm test',
+    sha: 'new5678',
+    ts: '2026-06-10T00:00:00.000Z',
+    exit: 0,
+  });
+  const line = restamped.split('\n').find((l) => l.includes(label));
+  // Exactly one ac-evidence marker remains, now in the new form, new sha.
+  assert.equal([...line.matchAll(/aitm-ac-evidence\b/g)].length, 1);
+  assert.ok(!/aitm-ac-evidence:/.test(line), 'legacy form replaced, not retained');
+  assert.equal(parseAcEvidence(line).sha, 'new5678');
 });
 
 test('stampAcEvidenceMarker throws when label has no evidence-bearing AC', () => {

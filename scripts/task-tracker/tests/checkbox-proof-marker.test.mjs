@@ -166,6 +166,45 @@ test('verifier DECLARATION (aitm-verified-by) alone is still rejected (#383 no-w
   );
 });
 
+// #379 — the proof invariant accepts the NEW fully-quoted dod-evidence grammar
+// (`aitm-dod-evidence key="..." ...`) as valid checkbox proof, mirroring the
+// legacy colon form accepted above.
+test('tick with same-line NEW fully-quoted aitm-dod-evidence marker is accepted (#379)', async () => {
+  const deps = fakeDeps(BASE);
+  const r = await mutateIssueBody({
+    issueNumber: 109,
+    repo: 'fake/fake',
+    mutate: (b) =>
+      b.replace(
+        '- [ ] verify behavior',
+        '- [x] verify behavior <!-- aitm-dod-evidence key="tests" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->'
+      ),
+    deps,
+  });
+  assert.equal(r.status, 'ok');
+  assert.match(deps.getBody(), /- \[x\] verify behavior/);
+  assert.match(deps.getBody(), /aitm-dod-evidence key="tests"/);
+});
+
+// #379 — the proof invariant accepts the NEW fully-quoted ac-evidence grammar
+// (covered transitively by the widened `parseAcEvidence`).
+test('tick with same-line NEW fully-quoted aitm-ac-evidence marker is accepted (#379)', async () => {
+  const deps = fakeDeps(BASE);
+  const r = await mutateIssueBody({
+    issueNumber: 110,
+    repo: 'fake/fake',
+    mutate: (b) =>
+      b.replace(
+        '- [ ] verify behavior',
+        '- [x] verify behavior <!-- aitm-ac-evidence key="da1b55f9" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->'
+      ),
+    deps,
+  });
+  assert.equal(r.status, 'ok');
+  assert.match(deps.getBody(), /- \[x\] verify behavior/);
+  assert.match(deps.getBody(), /aitm-ac-evidence key="da1b55f9"/);
+});
+
 // A malformed/partial ac-evidence fragment (missing the execution fields the
 // strict parser requires) is NOT proof — only the full canonical form qualifies.
 test('partial aitm-ac-evidence fragment (no exec fields) is still rejected (#383 strictness)', async () => {

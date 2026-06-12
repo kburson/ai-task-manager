@@ -13,20 +13,32 @@
 // across the stamp.
 
 import { createHash } from 'node:crypto';
+import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 const VERIFIED_BY_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/gi;
-const AC_EVIDENCE_MARKER_RE =
+// Legacy half-quoted colon form (read-only back-compat until the #369 corpus
+// sweep): key folded into the marker NAME via `:<key>`, exit/sha/ts bare.
+const AC_EVIDENCE_LEGACY_RE =
   /<!--\s*aitm-ac-evidence:([0-9a-f]+)\s+cmd="([^"]*)"\s+exit=(-?\d+)\s+sha=([^\s]+)\s+ts=([^\s]+)\s*-->/i;
+// New consolidated property form (#379, parent epic #367): every value
+// double-quoted, the key folded into a `key="..."` property, one comment.
+const AC_EVIDENCE_NEW_RE =
+  /<!--\s*aitm-ac-evidence\s+((?:[a-zA-Z0-9_-]+="(?:[^"]|&quot;)*"\s*)+)-->/i;
+// "Any form" matcher — detect / strip / replace-in-place EITHER shape. After
+// `aitm-ac-evidence` the legacy form has `:<hex>` then whitespace and the new
+// form has whitespace, so the two stay disjoint.
+const AC_EVIDENCE_ANY_RE = /<!--\s*aitm-ac-evidence(?::[0-9a-f]+)?\s[\s\S]*?-->/i;
+const NEW_ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
 
 // Strip every hidden marker from a checkbox label so the visible text is what
 // remains. Used both for display and as the hash input for the key.
 function stripMarkers(text) {
   return String(text || '')
     .replace(VERIFIED_BY_RE, '')
-    .replace(AC_EVIDENCE_MARKER_RE, '')
+    .replace(AC_EVIDENCE_ANY_RE, '')
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -50,7 +62,31 @@ function extractCommands(text) {
 }
 
 export function parseAcEvidence(text) {
-  const m = String(text || '').match(AC_EVIDENCE_MARKER_RE);
+  const src = String(text || '');
+  // New fully-quoted property form first.
+  const nm = src.match(AC_EVIDENCE_NEW_RE);
+  if (nm) {
+    const props = {};
+    for (const a of String(nm[1]).matchAll(NEW_ATTR_RE)) {
+      props[a[1]] = unescapeValue(a[2]);
+    }
+    // Strict canonical form only: all of key/cmd/exit/sha/ts must be present
+    // and exit numeric — a partial fragment does not count as evidence.
+    if (props.key == null || props.cmd == null || props.sha == null || props.ts == null) {
+      return null;
+    }
+    const exit = Number(props.exit);
+    if (!Number.isFinite(exit)) return null;
+    return {
+      key: String(props.key).toLowerCase(),
+      cmd: props.cmd,
+      exit,
+      sha: props.sha,
+      ts: props.ts,
+    };
+  }
+  // Legacy half-quoted colon form.
+  const m = src.match(AC_EVIDENCE_LEGACY_RE);
   if (!m) return null;
   return {
     key: m[1].toLowerCase(),
@@ -129,14 +165,21 @@ export function stampAcEvidenceMarker(body, label, evidence) {
   }
   const key = target.key;
   const exitN = Number.isFinite(exit) ? Number(exit) : 0;
-  const safeCmd = String(cmd).replace(/"/g, '\\"');
-  const marker = `<!-- aitm-ac-evidence:${key} cmd="${safeCmd}" exit=${exitN} sha=${sha} ts=${ts} -->`;
+  // New consolidated grammar: serializeMarker owns quoting + `&quot;` escaping
+  // of an embedded double-quote in cmd. exit is emitted as a quoted string.
+  const marker = serializeMarker('ac-evidence', {
+    key,
+    cmd: String(cmd),
+    exit: String(exitN),
+    sha: String(sha),
+    ts: String(ts),
+  });
 
   const lines = src.split('\n');
   const line = lines[target.lineIndex];
   let next;
-  if (AC_EVIDENCE_MARKER_RE.test(line)) {
-    next = line.replace(AC_EVIDENCE_MARKER_RE, marker);
+  if (AC_EVIDENCE_ANY_RE.test(line)) {
+    next = line.replace(AC_EVIDENCE_ANY_RE, marker);
   } else {
     next = `${line.replace(/\s+$/, '')} ${marker}`;
   }
