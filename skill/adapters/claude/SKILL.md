@@ -51,6 +51,12 @@ Refusal contracts (deterministic exit codes):
 
 Use `--dry-run` to print the rendered body without calling `gh`.
 
+### Never promote a "suggested task" chip — offer a tracking issue instead
+
+This is the Claude-session form of hard rule 12 (Track before you start). When you notice follow-up or out-of-scope work, **do not** surface it as a background-task chip (the session `spawn_task` "suggested task"). A chip kicks off work locally with no issue behind it — no board state, no estimate, no timing ledger, no audit trail. That is exactly the untracked work this workflow forbids.
+
+Instead, tell the user what you found and offer to create a GitHub issue to track it: `/task new` (→ `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`). Only after the issue exists and you bind to it does the work begin. If the user explicitly insists on a chip anyway, name the trade-off (untracked) before proceeding.
+
 ## Field units
 
 The project-board `Estimate` is denominated in **hours**; the timing fields

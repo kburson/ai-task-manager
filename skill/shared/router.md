@@ -3,13 +3,13 @@ name: task
 description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, review, close, log, check, fleet, or config.
 ---
 
-<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-skill-version: 1.1.0 -->
 
 # Task Router
 
 Tier-1 router stub. Carries only the hard cross-cutting rules and the verb → rule-file routing table. Every detailed contract is a pointer to a Tier-2 file under `skill/shared/rules/`.
 
-On first read, emit `aitm-skill-loaded:router:1.0.0` once. Tier-2 rule files announce their own sentinels on JIT load.
+On first read, emit `aitm-skill-loaded:router:1.1.0` once. Tier-2 rule files announce their own sentinels on JIT load.
 
 **Full design:** `node_modules/ai-task-manager/docs/DESIGN.md`
 
@@ -28,6 +28,7 @@ These rules apply to every verb. Skipping any is a process failure.
 9. **Pickup-directive contracts.** Deep-dive-before-code, per-AC verification (no bulk-checking), and `/task review` as the agent terminal step are defined in `.ai-task-manager/pickup-directive.md` Hard Rules. Honor them on every pickup.
 10. **Honor project preferences.** Read `.ai-task-manager/task-tracker.json#preferences` at session start (`getPreferences()` from `scripts/task-tracker/config.mjs`). Keys: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`. See `rules/preferences.md`.
 11. **Post-Compact/Clear: follow the boot index before any verb.** If the session was just compacted, cleared, or freshly started — or no `aitm-boot-recovered:*` sentinel is in live context — read [`.ai-task-manager/session-boot.md`](../../.ai-task-manager/session-boot.md) and reload every Tier-1 file it names (this router, `pickup-directive.md`, `task-tracker.json`, the active issue body) BEFORE running any verb. Discard prior `aitm-skill-loaded:*` sentinels; treat compacted summaries as hints, not source-of-truth. Emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel after reload.
+12. **Track before you start — no untracked work.** Every unit of work must be tracked by a GitHub issue before it begins. When you discover follow-up, out-of-scope, or newly-surfaced work worth doing, do not silently begin it and do not stage it as an untracked local or background "suggested task." Instead, offer to create a tracking issue (`/task new` → `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`) and bind to it first. The issue is what gives the work tracking, estimation, and a board state; an untracked task chip only starts work in the dark. No issue, no work.
 
 ## CLI invocation
 
