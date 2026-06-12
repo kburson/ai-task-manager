@@ -44,7 +44,7 @@ test('reconcile accept-live: drifted issue writes new state + drift-reconcile ro
   assert.equal(r.from, 'plan');
   assert.equal(r.to, 'develop');
   assert.equal(calls.writes.length, 1);
-  assert.match(calls.writes[0], /aitm-last-known-state: develop/);
+  assert.match(calls.writes[0], /aitm-last-known-state state="develop"/);
   assert.match(calls.writes[0], /aitm-entered-develop(?::|\s+ts=")/);
   assert.equal(calls.timings.length, 1);
   assert.match(calls.timings[0], /drift-reconcile/);
@@ -174,7 +174,7 @@ test('reconcile accept-live: preserves forward markers as history + adds visit m
   assert.equal(r.status, 'reconciled');
   assert.deepEqual(r.stripped, []);
   assert.equal(calls.writes.length, 1);
-  assert.match(calls.writes[0], /aitm-last-known-state: review/);
+  assert.match(calls.writes[0], /aitm-last-known-state state="review"/);
   assert.match(calls.writes[0], /aitm-entered-review(?::|\s+ts=")/);
   assert.match(calls.writes[0], /aitm-entered-done(?::|\s+ts=")/);
   assert.match(calls.writes[0], /aitm-entered-review-2(?::|\s+ts=")/);

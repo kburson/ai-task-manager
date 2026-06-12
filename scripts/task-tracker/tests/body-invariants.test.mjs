@@ -32,6 +32,23 @@ test('findLostMarkers returns empty list when next preserves all markers', () =>
   assert.deepEqual(findLostMarkers(base, next), []);
 });
 
+test('findLostMarkers reports no loss when last-known-state pair collapses to the new single marker (#378)', () => {
+  const base =
+    '## AC\n<!-- aitm-last-known-state: develop -->\n<!-- aitm-last-known-state-ts: 2026-06-01T10:00:00Z -->\n';
+  const next = '## AC\n<!-- aitm-last-known-state state="review" ts="2026-06-01T12:00:00Z" -->\n';
+  // Both the state and the ts invariants must still be "found" in the new
+  // single marker — the pair→single conversion is loss-free.
+  assert.deepEqual(findLostMarkers(base, next), []);
+});
+
+test('findLostMarkers still reports loss when the new single last-known-state marker is dropped entirely (#378)', () => {
+  const base = '## AC\n<!-- aitm-last-known-state state="review" ts="2026-06-01T12:00:00Z" -->\n';
+  const next = '## AC\nno markers here\n';
+  const lost = findLostMarkers(base, next);
+  assert.ok(lost.includes('aitm-last-known-state'), 'state invariant lost');
+  assert.ok(lost.includes('aitm-last-known-state-ts'), 'ts invariant lost');
+});
+
 test('findLostMarkers reports a single-kind marker by name when dropped', () => {
   const base = '## AC\n<!-- aitm-fields: {"size":"M"} -->\n<!-- aitm-body-version: 5 -->\n';
   const next = '## AC\n<!-- aitm-body-version: 5 -->\n';

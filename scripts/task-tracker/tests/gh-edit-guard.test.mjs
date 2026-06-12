@@ -556,6 +556,70 @@ import {
   assert.equal(r.block, false);
 }
 
+// ── checkBodyChange: NEW single-marker grammar protection (#378) ─────────────
+{
+  const NEW = (state, ts) => `<!-- aitm-last-known-state state="${state}" ts="${ts}" -->`;
+
+  // Dropping the new single marker → block (drop-detector widened to new form).
+  let r = checkBodyChange({
+    newBody: '## Scope\ntext\n',
+    currentBody: `## Scope\ntext\n${NEW('develop', '2026-06-01T10:00:00Z')}\n`,
+    issueNumber: 378,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-last-known-state\b/);
+
+  // Preserving (value may advance forward) → pass.
+  r = checkBodyChange({
+    newBody: `## Scope\n${NEW('test', '2026-06-01T10:00:00Z')}\n`,
+    currentBody: `## Scope\n${NEW('develop', '2026-06-01T10:00:00Z')}\n`,
+    issueNumber: 378,
+  });
+  assert.equal(r.block, false);
+
+  // Stale snapshot in the NEW grammar (older ts) → block.
+  r = checkBodyChange({
+    newBody: `## Scope\n${NEW('develop', '2026-06-01T10:00:00Z')}\n`,
+    currentBody: `## Scope\n${NEW('test', '2026-06-01T12:00:00Z')}\n`,
+    issueNumber: 378,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /stale snapshot/i);
+
+  // MIXED grammar staleness — live in new form, stale push in legacy form
+  // (older ts). The widened ts reader must compare across grammars and block.
+  r = checkBodyChange({
+    newBody:
+      '## Scope\n<!-- aitm-last-known-state: develop -->\n' +
+      '<!-- aitm-last-known-state-ts: 2026-06-01T10:00:00Z -->\n',
+    currentBody: `## Scope\n${NEW('test', '2026-06-01T12:00:00Z')}\n`,
+    issueNumber: 378,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /stale snapshot/i);
+
+  // MIXED grammar staleness — live in legacy form, stale push in new form.
+  r = checkBodyChange({
+    newBody: `## Scope\n${NEW('develop', '2026-06-01T10:00:00Z')}\n`,
+    currentBody:
+      '## Scope\n<!-- aitm-last-known-state: test -->\n' +
+      '<!-- aitm-last-known-state-ts: 2026-06-01T12:00:00Z -->\n',
+    issueNumber: 378,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /stale snapshot/i);
+
+  // Forward push across grammars (legacy live → new, newer ts) → pass.
+  r = checkBodyChange({
+    newBody: `## Scope\n${NEW('review', '2026-06-01T14:00:00Z')}\n`,
+    currentBody:
+      '## Scope\n<!-- aitm-last-known-state: test -->\n' +
+      '<!-- aitm-last-known-state-ts: 2026-06-01T12:00:00Z -->\n',
+    issueNumber: 378,
+  });
+  assert.equal(r.block, false);
+}
+
 // ── #281 stage-bound: Refine refuses Deep-Dive introduction (AC1, AC6) ──────
 {
   const cur = '## AC\n\n- [ ] do thing\n';

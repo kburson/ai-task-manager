@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir } from './paths.mjs';
+import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 const pexec = promisify(execFile);
 
 const TIMING_HEADING = '⏱ Timing Log';
@@ -121,19 +122,36 @@ export function buildRow({
 // Stored as HTML-comment metadata at the top of the issue body (cross-worktree
 // authoritative — local state files don't sync, the issue body does).
 //
+// New canonical single-marker property grammar (#378):
+//
+//   <!-- aitm-last-known-state state="development" ts="2026-05-10T14:32:11Z" -->
+//
+// Legacy two-marker pair (still READ until #369's corpus sweep reports zero
+// residuals):
+//
 //   <!-- aitm-last-known-state: development -->
 //   <!-- aitm-last-known-state-ts: 2026-05-10T14:32:11Z -->
 //
 // `writeLastKnownState` stamps its own ISO timestamp; callers cannot inject
 // a retroactive ts here either.
 
+// New single-marker reader (#378). serializeMarker emits keys in insertion
+// order (state → ts), so the value-bearing form is `state="..." ts="..."`.
+const LAST_KNOWN_STATE_NEW_RE =
+  /<!--\s*aitm-last-known-state\s+state="([^"]*)"\s+ts="([^"]*)"\s*-->/;
+// Legacy two-marker pair readers. Anchored on the literal `:` immediately
+// after the marker name, which the new grammar (space + `state=`) never has —
+// so legacy and new forms are mutually exclusive under their respective REs.
 const LAST_KNOWN_STATE_RE = /<!--\s*aitm-last-known-state:\s*([A-Za-z0-9_-]+)\s*-->/;
 const LAST_KNOWN_STATE_TS_RE = /<!--\s*aitm-last-known-state-ts:\s*([^\s>][^>]*?)\s*-->/;
-const LAST_KNOWN_STATE_PAIR_RE =
-  /<!--\s*aitm-last-known-state:\s*[A-Za-z0-9_-]+\s*-->\s*\n?<!--\s*aitm-last-known-state-ts:\s*[^>]+?\s*-->\s*\n?/;
 
 export function readLastKnownState(body) {
   if (!body || typeof body !== 'string') return { state: null, ts: null };
+  // New single-marker grammar takes precedence over the legacy pair.
+  const neu = body.match(LAST_KNOWN_STATE_NEW_RE);
+  if (neu) {
+    return { state: unescapeValue(neu[1]), ts: unescapeValue(neu[2]).trim() };
+  }
   const stateMatch = body.match(LAST_KNOWN_STATE_RE);
   const tsMatch = body.match(LAST_KNOWN_STATE_TS_RE);
   return {
@@ -148,15 +166,14 @@ export function writeLastKnownState(body, state) {
   }
   const normalized = state.trim();
   const ts = new Date().toISOString();
-  const block = `<!-- aitm-last-known-state: ${normalized} -->\n<!-- aitm-last-known-state-ts: ${ts} -->\n`;
+  const block = `${serializeMarker('last-known-state', { state: normalized, ts })}\n`;
   const src = typeof body === 'string' ? body : '';
 
-  if (LAST_KNOWN_STATE_PAIR_RE.test(src)) {
-    return src.replace(LAST_KNOWN_STATE_PAIR_RE, block);
-  }
-  // Fallback for half-written bodies (state without ts or vice versa) — strip
-  // any stragglers before prepending the fresh pair to avoid duplicates.
+  // Strip every prior form (new single marker, legacy state marker, legacy ts
+  // marker) before prepending the fresh single marker — guarantees exactly one
+  // marker, no duplicates, last-write-wins, across mixed-grammar bodies.
   const stripped = src
+    .replace(new RegExp(LAST_KNOWN_STATE_NEW_RE.source + '\\s*\\n?', 'g'), '')
     .replace(new RegExp(LAST_KNOWN_STATE_RE.source + '\\s*\\n?', 'g'), '')
     .replace(new RegExp(LAST_KNOWN_STATE_TS_RE.source + '\\s*\\n?', 'g'), '');
   return `${block}${stripped}`;

@@ -121,8 +121,8 @@ test('demote: bootstrap then demote from test succeeds', async () => {
   assert.deepEqual(calls.moves, [{ issueNumber: 206, target: 'develop' }]);
   // #295 — bootstrap stamps `test`, post-move stamp lands `develop`.
   assert.equal(calls.writes.length, 2, 'bootstrap + post-move stamp');
-  assert.match(calls.writes[0].after, /aitm-last-known-state: test/);
-  assert.match(calls.writes[1].after, /aitm-last-known-state: develop/);
+  assert.match(calls.writes[0].after, /aitm-last-known-state state="test"/);
+  assert.match(calls.writes[1].after, /aitm-last-known-state state="develop"/);
   // The post-move closure ran over the FRESH base (bootstrap's result),
   // not the original empty body — the bootstrap marker is preserved/replaced
   // in-place rather than blown away.
@@ -136,5 +136,5 @@ test('demote: test→develop landed write carries develop marker (#295 closure s
   // Exactly one write — the post-move develop stamp.
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0].before, /aitm-last-known-state: test/);
-  assert.match(calls.writes[0].after, /aitm-last-known-state: develop/);
+  assert.match(calls.writes[0].after, /aitm-last-known-state state="develop"/);
 });

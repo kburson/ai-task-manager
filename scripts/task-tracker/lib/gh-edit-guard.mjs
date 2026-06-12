@@ -31,7 +31,12 @@ const LEGACY_PATTERNS = [
 ];
 
 const MARKER_PATTERNS = [
-  { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state:/i },
+  // Widened (#378) to detect both the legacy colon marker and the new single
+  // property marker `aitm-last-known-state state="..." ts="..."`. The `-ts:`
+  // legacy companion is deliberately NOT matched here (the `:` branch requires
+  // a `:` immediately after `state`, and `state=` requires a space then
+  // `state="`), so the drop-detector keys only on the state marker.
+  { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state(?:\s*:|\s+state=")/i },
   // Widened (#375) to detect both legacy colon and new `ts="..."` grammars.
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i },
@@ -107,7 +112,12 @@ function deepDiveEmbeddedCheckboxRefusal({ issueNumber, hit, action }) {
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374).
 const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
+// Stale-snapshot ts reader widened (#378) to extract the timestamp from BOTH
+// the legacy `aitm-last-known-state-ts:` marker and the new single property
+// marker `aitm-last-known-state state="..." ts="..."`.
 const LAST_KNOWN_STATE_TS_RE = /<!--\s*aitm-last-known-state-ts:\s*([^>]+?)\s*-->/i;
+const LAST_KNOWN_STATE_NEW_TS_RE =
+  /<!--\s*aitm-last-known-state\s+state="[^"]*"\s+ts="([^"]*)"\s*-->/i;
 
 function enteredStages(body) {
   const set = new Set();
@@ -118,7 +128,11 @@ function enteredStages(body) {
 }
 
 function lastKnownStateTs(body) {
-  const m = String(body || '').match(LAST_KNOWN_STATE_TS_RE);
+  const s = String(body || '');
+  // New single-marker grammar takes precedence over the legacy pair.
+  const neu = s.match(LAST_KNOWN_STATE_NEW_TS_RE);
+  if (neu) return neu[1].trim();
+  const m = s.match(LAST_KNOWN_STATE_TS_RE);
   return m ? m[1].trim() : null;
 }
 

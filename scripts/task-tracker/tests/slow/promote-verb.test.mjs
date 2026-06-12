@@ -516,7 +516,7 @@ test('promote: bootstrap when lastKnownState absent — syncs to live, then prom
   // The bootstrap write happens before the transition; the post-transition
   // re-stamp may also write. At minimum the bootstrap write was made.
   assert.ok(calls.writes.length >= 1);
-  assert.match(calls.writes[0], /aitm-last-known-state: plan/);
+  assert.match(calls.writes[0], /aitm-last-known-state state="plan"/);
 });
 
 test('promote: transition-failed when alias verb exits non-zero — no metadata update', async () => {
@@ -589,7 +589,7 @@ test('promote: delegate non-zero, board at target, marker stale → repair write
   assert.equal(r.markerRepair.status, 'ok');
   assert.equal(r.markerRepair.attempts, 1);
   assert.equal(calls.writes.length, 1);
-  assert.match(calls.writes[0], /aitm-last-known-state: test/);
+  assert.match(calls.writes[0], /aitm-last-known-state state="test"/);
   assert.match(calls.writes[0], /aitm-entered-test(?::|\s+ts=")/);
 });
 

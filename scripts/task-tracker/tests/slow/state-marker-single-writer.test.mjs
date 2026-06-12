@@ -131,7 +131,7 @@ test('bootstrap path still writes aitm-last-known-state (no prior marker)', asyn
 
   await runPromote({ issueNumber: 300, cfg, deps });
   const bootstrapWrite = calls.writes.find((b) =>
-    /<!--\s*aitm-last-known-state:\s*refine\s*-->/.test(b)
+    /<!--\s*aitm-last-known-state state="refine" ts="[^"]+" -->/.test(b)
   );
   assert.ok(bootstrapWrite, 'bootstrap path must seed aitm-last-known-state from live');
 });
@@ -146,7 +146,7 @@ test('move-state composite stamp: entry-marker and last-known-state in single bo
   let after = stampEntryMarker(before, 'plan', ts);
   after = writeLastKnownState(after, 'plan');
   assert.match(after, /<!--\s*aitm-entered-plan ts="2026-05-18T14:00:00Z"\s*-->/);
-  assert.match(after, /<!--\s*aitm-last-known-state:\s*plan\s*-->/);
+  assert.match(after, /<!--\s*aitm-last-known-state state="plan" ts="[^"]+" -->/);
   assert.equal(readLastKnownState(after).state, 'plan');
 });
 
@@ -157,7 +157,7 @@ test('move-state composite stamp is idempotent for last-known-state', () => {
   let body = bodyWithState('plan');
   body = writeLastKnownState(body, 'develop');
   body = writeLastKnownState(body, 'develop');
-  const matches = body.match(/aitm-last-known-state:/g) || [];
+  const matches = body.match(/<!--\s*aitm-last-known-state /g) || [];
   assert.equal(matches.length, 1, 'last-known-state must not duplicate on repeat stamping');
   assert.equal(readLastKnownState(body).state, 'develop');
 });

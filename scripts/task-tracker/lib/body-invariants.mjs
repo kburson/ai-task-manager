@@ -60,8 +60,20 @@ export const INVARIANT_MARKER_PATTERNS = [
     re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i,
     kind: 'single',
   },
-  { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state:/i, kind: 'single' },
-  { name: 'aitm-last-known-state-ts', re: /<!--\s*aitm-last-known-state-ts:/i, kind: 'single' },
+  // Widened (#378) so collapsing the legacy two-marker pair into the new single
+  // property marker `aitm-last-known-state state="..." ts="..."` does not report
+  // either invariant as lost. The new combined marker satisfies BOTH detectors
+  // (it carries state and ts), so the pair→single conversion is loss-free.
+  {
+    name: 'aitm-last-known-state',
+    re: /<!--\s*aitm-last-known-state(?:\s*:|\s+state=")/i,
+    kind: 'single',
+  },
+  {
+    name: 'aitm-last-known-state-ts',
+    re: /<!--\s*aitm-last-known-state(?:-ts\s*:|\s+state=")/i,
+    kind: 'single',
+  },
   { name: 'aitm-entered-<stage>', re: ENTERED_STAGE_RE, kind: 'multi' },
 ];
 

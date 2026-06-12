@@ -169,7 +169,7 @@ assert.throws(
   );
 }
 
-// Test 12: readLastKnownState parses both pair members.
+// Test 12: readLastKnownState parses the LEGACY two-marker pair (#378 back-compat).
 {
   const body = [
     '<!-- aitm-last-known-state: develop -->',
@@ -179,31 +179,86 @@ assert.throws(
     'rest',
   ].join('\n');
   const out = readLastKnownState(body);
-  assert.equal(out.state, 'develop', 'state parsed');
-  assert.equal(out.ts, '2026-05-10T14:32:11Z', 'ts parsed');
+  assert.equal(out.state, 'develop', 'legacy state parsed');
+  assert.equal(out.ts, '2026-05-10T14:32:11Z', 'legacy ts parsed');
 }
 
-// Test 13: writeLastKnownState round-trips through readLastKnownState.
+// Test 12b: readLastKnownState parses the NEW single property marker (#378).
+{
+  const body = [
+    '<!-- aitm-last-known-state state="review" ts="2026-06-12T04:00:00Z" -->',
+    '',
+    '## Title',
+    'rest',
+  ].join('\n');
+  const out = readLastKnownState(body);
+  assert.equal(out.state, 'review', 'new-form state parsed');
+  assert.equal(out.ts, '2026-06-12T04:00:00Z', 'new-form ts parsed');
+}
+
+// Test 12c: bare seeder form (no props) reads as state=null, ts=null (#378).
+{
+  const body = '<!-- aitm-last-known-state -->\n\n## Title\n';
+  const out = readLastKnownState(body);
+  assert.deepEqual(out, { state: null, ts: null }, 'bare seeder -> nulls');
+}
+
+// Test 12d: new form takes precedence when both grammars coexist (#378).
+{
+  const body = [
+    '<!-- aitm-last-known-state state="test" ts="2026-06-12T05:00:00Z" -->',
+    '<!-- aitm-last-known-state: develop -->',
+    '<!-- aitm-last-known-state-ts: 2026-05-10T14:32:11Z -->',
+  ].join('\n');
+  const out = readLastKnownState(body);
+  assert.equal(out.state, 'test', 'new form wins over legacy');
+  assert.equal(out.ts, '2026-06-12T05:00:00Z', 'new ts wins over legacy');
+}
+
+// Test 13: writeLastKnownState round-trips through readLastKnownState in the
+// NEW single-marker grammar (#378).
 {
   const body = '## Title\n\nbody body\n';
   const next = writeLastKnownState(body, 'review');
+  assert.match(
+    next,
+    /<!--\s*aitm-last-known-state state="review" ts="[^"]+" -->/,
+    'emits new single property marker'
+  );
+  assert.ok(!/aitm-last-known-state:/.test(next), 'no legacy colon marker emitted');
   const round = readLastKnownState(next);
   assert.equal(round.state, 'review', 'roundtrip state');
   assert.ok(round.ts && !Number.isNaN(Date.parse(round.ts)), 'roundtrip ts is parseable ISO');
   assert.ok(next.includes('## Title'), 'original body preserved');
 }
 
-// Test 14: writeLastKnownState updates existing pair in place — no duplicates.
+// Test 14: writeLastKnownState produces exactly one marker — no duplicates,
+// last-write-wins — across repeated writes (#378).
 {
   let body = '## Title\n\nbody\n';
   body = writeLastKnownState(body, 'plan');
   body = writeLastKnownState(body, 'develop');
   body = writeLastKnownState(body, 'review');
-  const stateMatches = body.match(/aitm-last-known-state:/g) || [];
-  const tsMatches = body.match(/aitm-last-known-state-ts:/g) || [];
-  assert.equal(stateMatches.length, 1, 'exactly one state marker');
-  assert.equal(tsMatches.length, 1, 'exactly one ts marker');
+  const markers = body.match(/<!--\s*aitm-last-known-state /g) || [];
+  assert.equal(markers.length, 1, 'exactly one combined marker');
   assert.equal(readLastKnownState(body).state, 'review', 'last write wins');
+}
+
+// Test 14b: writeLastKnownState migrates a body holding the LEGACY pair —
+// strips both legacy markers and leaves a single new marker (#378).
+{
+  const legacy = [
+    '<!-- aitm-last-known-state: plan -->',
+    '<!-- aitm-last-known-state-ts: 2026-05-01T00:00:00Z -->',
+    '',
+    '## Title',
+  ].join('\n');
+  const next = writeLastKnownState(legacy, 'develop');
+  assert.ok(!/aitm-last-known-state:/.test(next), 'legacy state marker stripped');
+  assert.ok(!/aitm-last-known-state-ts:/.test(next), 'legacy ts marker stripped');
+  const markers = next.match(/<!--\s*aitm-last-known-state /g) || [];
+  assert.equal(markers.length, 1, 'exactly one new marker after migration');
+  assert.equal(readLastKnownState(next).state, 'develop', 'state updated');
 }
 
 // Test 15: writeLastKnownState refuses empty/non-string state.
