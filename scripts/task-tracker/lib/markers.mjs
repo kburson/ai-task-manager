@@ -124,6 +124,16 @@ export function parseFullAutoApprovedMarker(body) {
   const legacy = s.match(FULL_AUTO_APPROVED_LEGACY_RE);
   if (!legacy) return null;
   const payload = legacy[1].trim();
+  // ISO-8601-aware split (#387): the legacy payload is `<iso>:<signals>`, and
+  // an ISO timestamp is itself colon-rich, so a naive first-colon split lands
+  // inside the time component whenever the signal list does not lead with
+  // `env=` (e.g. heal-stamped `reviewer-unset=`-leading markers). Match the
+  // full timestamp — date + `T` + time + a `Z` or numeric `±HH:MM` offset
+  // terminator — and split on the first colon AFTER it. This runs ahead of the
+  // `:env=` heuristic and produces the identical split for `env=`-leading
+  // markers, so previously-correct parses are preserved.
+  const iso = payload.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})):(.*)$/);
+  if (iso) return { ts: iso[1], signals: iso[2] };
   const idx = payload.indexOf(':env=');
   if (idx < 0) {
     const firstColon = payload.indexOf(':');

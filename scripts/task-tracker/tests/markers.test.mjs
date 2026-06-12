@@ -328,4 +328,59 @@ const TS = '2026-05-11T12:00:00Z';
   );
 }
 
+// ── parseFullAutoApprovedMarker: ISO-aware legacy split (#387) ────────────────
+{
+  const { parseFullAutoApprovedMarker, buildFullAutoApprovedMarker } =
+    await import('../lib/markers.mjs');
+
+  // env=-leading legacy form — preserved behavior (regression guard).
+  {
+    const body = '<!-- aitm-full-auto-approved: 2026-05-19T19:14:27Z:env=1,tty=0,ci=1 -->';
+    const parsed = parseFullAutoApprovedMarker(body);
+    assert.equal(parsed.ts, '2026-05-19T19:14:27Z', 'env=-leading ts');
+    assert.equal(parsed.signals, 'env=1,tty=0,ci=1', 'env=-leading signals');
+  }
+
+  // reviewer-unset=-leading legacy form — previously corrupted by first-colon
+  // fallback (split landed inside the ISO time component).
+  {
+    const body =
+      '<!-- aitm-full-auto-approved: 2026-05-19T19:14:27Z:reviewer-unset=1,env=1,tty=1,ci=0 -->';
+    const parsed = parseFullAutoApprovedMarker(body);
+    assert.equal(parsed.ts, '2026-05-19T19:14:27Z', 'reviewer-unset=-leading ts not corrupted');
+    assert.equal(
+      parsed.signals,
+      'reviewer-unset=1,env=1,tty=1,ci=0',
+      'reviewer-unset=-leading signals'
+    );
+  }
+
+  // Numeric +HH:MM offset terminator — the offset colon must not be the split.
+  {
+    const body =
+      '<!-- aitm-full-auto-approved: 2026-05-19T19:14:27+02:00:reviewer-unset=1,ci=0 -->';
+    const parsed = parseFullAutoApprovedMarker(body);
+    assert.equal(parsed.ts, '2026-05-19T19:14:27+02:00', '+offset ts kept whole');
+    assert.equal(parsed.signals, 'reviewer-unset=1,ci=0', '+offset signals');
+  }
+
+  // Numeric -HH:MM offset terminator.
+  {
+    const body = '<!-- aitm-full-auto-approved: 2026-05-19T19:14:27-05:00:env=0,tty=1 -->';
+    const parsed = parseFullAutoApprovedMarker(body);
+    assert.equal(parsed.ts, '2026-05-19T19:14:27-05:00', '-offset ts kept whole');
+    assert.equal(parsed.signals, 'env=0,tty=1', '-offset signals');
+  }
+
+  // New property-grammar round trip: build → parse yields the same pair.
+  {
+    const ts = '2026-05-19T19:14:27Z';
+    const signals = 'reviewer-unset=1,env=1,tty=1,ci=0';
+    const marker = buildFullAutoApprovedMarker(ts, signals);
+    const parsed = parseFullAutoApprovedMarker(`prose\n${marker}\nmore`);
+    assert.equal(parsed.ts, ts, 'round-trip ts');
+    assert.equal(parsed.signals, signals, 'round-trip signals');
+  }
+}
+
 console.log('markers.test.mjs: all passed');
