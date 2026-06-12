@@ -8,7 +8,7 @@
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
-import { serializeMarker } from './marker-grammar.mjs';
+import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 // ---------------------------------------------------------------------------
 // Phantom-marker hardening (#333)
@@ -233,10 +233,26 @@ export {
 // dod-verified (sandboxed /task test stamped this on green — #137)
 // ---------------------------------------------------------------------------
 
-export const DOD_VERIFIED_RE = /<!--\s*aitm-dod-verified:\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/i;
+// Dedicated capture readers (#377). The legacy reader keeps the historical
+// `<sha>:<iso>` colon grammar; the new reader matches the consolidated
+// property grammar `sha="<sha>" ts="<iso>"` emitted by `serializeMarker`
+// (key order sha→ts). `parseDodVerifiedMarker` attempts legacy first, then
+// new, so both shapes return the same `{sha, ts}` contract the SHA-drift gate
+// and close-gates depend on.
+const DOD_VERIFIED_LEGACY_RE = /<!--\s*aitm-dod-verified:\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/i;
+const DOD_VERIFIED_NEW_RE =
+  /<!--\s*aitm-dod-verified\s+sha="((?:[^"]|&quot;)*)"\s+ts="((?:[^"]|&quot;)*)"\s*-->/i;
+
+// Combined detection/strip RE (#377). Matches BOTH legacy colon and new
+// property grammar. Used presence-only by `hasDodVerifiedMarker`,
+// `close-gates.mjs`, and the dod-verified guards, and as the strip target in
+// `insertDodVerifiedMarker`. The legacy branch stays until #369's corpus
+// sweep reports zero residual legacy markers.
+export const DOD_VERIFIED_RE =
+  /<!--\s*aitm-dod-verified(?::\s*[0-9a-f]{7,40}:[^>\s]+|\s+sha="(?:[^"]|&quot;)*"\s+ts="(?:[^"]|&quot;)*")\s*-->/i;
 
 export function buildDodVerifiedMarker(sha, ts) {
-  return `<!-- aitm-dod-verified: ${sha}:${ts} -->`;
+  return serializeMarker('dod-verified', { sha, ts });
 }
 
 export function hasDodVerifiedMarker(body) {
@@ -244,9 +260,12 @@ export function hasDodVerifiedMarker(body) {
 }
 
 export function parseDodVerifiedMarker(body) {
-  const m = String(body || '').match(DOD_VERIFIED_RE);
-  if (!m) return null;
-  return { sha: m[1], ts: m[2] };
+  const s = String(body || '');
+  const legacy = s.match(DOD_VERIFIED_LEGACY_RE);
+  if (legacy) return { sha: legacy[1], ts: legacy[2] };
+  const neu = s.match(DOD_VERIFIED_NEW_RE);
+  if (neu) return { sha: unescapeValue(neu[1]), ts: unescapeValue(neu[2]) };
+  return null;
 }
 
 export function insertDodVerifiedMarker(body, sha, ts) {
@@ -270,10 +289,19 @@ export function insertDodVerifiedMarker(body, sha, ts) {
 // Mirrors the DOD_VERIFIED_RE shape: `<sha>:<iso-ts>` (sha is 7–40 hex).
 // ---------------------------------------------------------------------------
 
-export const TEST_STARTED_RE = /<!--\s*aitm-test-started:\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/i;
+// Dual-grammar readers (#377), mirroring the dod-verified pair above.
+const TEST_STARTED_LEGACY_RE = /<!--\s*aitm-test-started:\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/i;
+const TEST_STARTED_NEW_RE =
+  /<!--\s*aitm-test-started\s+sha="((?:[^"]|&quot;)*)"\s+ts="((?:[^"]|&quot;)*)"\s*-->/i;
+
+// Combined detection/strip RE (#377) — matches BOTH grammars. `parseTestStarted`
+// feeds the review SHA-drift gate (`{sha}` → `startsWith`), so the `{sha, ts}`
+// contract is preserved across both shapes.
+export const TEST_STARTED_RE =
+  /<!--\s*aitm-test-started(?::\s*[0-9a-f]{7,40}:[^>\s]+|\s+sha="(?:[^"]|&quot;)*"\s+ts="(?:[^"]|&quot;)*")\s*-->/i;
 
 export function buildTestStartedMarker(sha, ts) {
-  return `<!-- aitm-test-started: ${sha}:${ts} -->`;
+  return serializeMarker('test-started', { sha, ts });
 }
 
 export function hasTestStartedMarker(body) {
@@ -281,9 +309,12 @@ export function hasTestStartedMarker(body) {
 }
 
 export function parseTestStartedMarker(body) {
-  const m = String(body || '').match(TEST_STARTED_RE);
-  if (!m) return null;
-  return { sha: m[1], ts: m[2] };
+  const s = String(body || '');
+  const legacy = s.match(TEST_STARTED_LEGACY_RE);
+  if (legacy) return { sha: legacy[1], ts: legacy[2] };
+  const neu = s.match(TEST_STARTED_NEW_RE);
+  if (neu) return { sha: unescapeValue(neu[1]), ts: unescapeValue(neu[2]) };
+  return null;
 }
 
 export function insertTestStartedMarker(body, sha, ts) {

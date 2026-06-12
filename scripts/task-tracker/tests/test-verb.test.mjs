@@ -143,7 +143,11 @@ test('verbTest: green path stamps marker, posts success comment, moves develop�
     assert.equal(calls.sandboxRuns.length, 2);
     // Two writes: aitm-test-started (entry, before sandbox) + aitm-dod-verified (exit, on green).
     assert.equal(calls.bodyWrites.length, 2);
-    assert.match(calls.bodyWrites[0], /aitm-test-started:/, 'entry marker stamped before sandbox');
+    assert.match(
+      calls.bodyWrites[0],
+      /aitm-test-started[: ]/,
+      'entry marker stamped before sandbox'
+    );
     assert.ok(
       !hasDodVerifiedMarker(calls.bodyWrites[0]),
       'dod-verified must NOT be present on entry write'
@@ -199,7 +203,11 @@ test('verbTest #270: red path posts failure comment, does NOT move board, does N
     // Entry marker (aitm-test-started) is stamped before sandbox runs — survives on red.
     // The dod-verified exit marker must NOT be stamped on red.
     assert.equal(calls.bodyWrites.length, 1, 'only entry marker write on red');
-    assert.match(calls.bodyWrites[0], /aitm-test-started:/, 'entry marker stamped before sandbox');
+    assert.match(
+      calls.bodyWrites[0],
+      /aitm-test-started[: ]/,
+      'entry marker stamped before sandbox'
+    );
     assert.ok(
       !hasDodVerifiedMarker(calls.bodyWrites[0]),
       'must NOT stamp dod-verified marker on red'
@@ -349,7 +357,9 @@ test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no po
     // Locate the dod-verified write and the test-move. The write MUST precede
     // the move — that is the whole point of gate-first.
     const moveIdx = events.findIndex((e) => e.kind === 'move' && e.target === 'test');
-    const dodIdx = events.findIndex((e) => e.kind === 'write' && /aitm-dod-verified:/.test(e.body));
+    const dodIdx = events.findIndex(
+      (e) => e.kind === 'write' && /aitm-dod-verified[: ]/.test(e.body)
+    );
     assert.ok(moveIdx >= 0, 'expected a moveState→test call');
     assert.ok(dodIdx >= 0, 'expected a body write containing aitm-dod-verified');
     assert.ok(

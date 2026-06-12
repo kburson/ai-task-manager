@@ -26,7 +26,16 @@ const repoRoot = join(here, '..', '..', '..');
 // --- 1. Marker shape -------------------------------------------------------
 
 const marker = buildTestStartedMarker('abc1234', '2026-05-17T20:00:00.000Z');
-assert.equal(marker, '<!-- aitm-test-started: abc1234:2026-05-17T20:00:00.000Z -->');
+// #377 — writer now emits the consolidated property grammar.
+assert.equal(marker, '<!-- aitm-test-started sha="abc1234" ts="2026-05-17T20:00:00.000Z" -->');
+// Legacy colon grammar still parses (back-compat until #369 corpus sweep).
+assert.deepEqual(
+  parseTestStartedMarker('<!-- aitm-test-started: 9f8e7d6:2026-05-17T20:00:00.000Z -->'),
+  {
+    sha: '9f8e7d6',
+    ts: '2026-05-17T20:00:00.000Z',
+  }
+);
 assert.ok(TEST_STARTED_RE.test(marker));
 assert.ok(hasTestStartedMarker(`# heading\n\n${marker}\n`));
 assert.equal(hasTestStartedMarker('# heading\n\nno marker'), false);

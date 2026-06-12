@@ -190,11 +190,11 @@ process.exit(0);
   if (existsSync(recordedBodyPath)) {
     const writtenBody = readFileSync(recordedBodyPath, 'utf8');
     assert.ok(
-      !/aitm-dod-verified:/.test(writtenBody),
+      !/aitm-dod-verified[: ]/.test(writtenBody),
       'aitm-dod-verified marker must NOT be stamped on red verification'
     );
     assert.ok(
-      /aitm-test-started:/.test(writtenBody),
+      /aitm-test-started[: ]/.test(writtenBody),
       'aitm-test-started entry marker must be stamped before VC runs'
     );
   }

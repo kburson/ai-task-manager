@@ -144,9 +144,76 @@ const TS = '2026-05-11T12:00:00Z';
   const parsed2 = parseDodVerifiedMarker(refreshed);
   assert.equal(parsed2.sha, 'bbb2222');
   assert.equal(parsed2.ts, '2026-05-17T12:00:00Z');
-  // Exactly one marker — no duplicates.
-  const matches = refreshed.match(/aitm-dod-verified:/g) || [];
+  // Exactly one marker — no duplicates (count is grammar-agnostic).
+  const matches = refreshed.match(/aitm-dod-verified[: ]/g) || [];
   assert.equal(matches.length, 1, 'must not leave a stale marker behind');
+}
+
+// ── #377: dod-verified marker-grammar migration ─────────────────────────────
+// build emits property grammar; parse round-trips new form; legacy colon form
+// still parses; insert over a legacy body flips it to new grammar and refreshes.
+{
+  const {
+    DOD_VERIFIED_RE,
+    buildDodVerifiedMarker,
+    hasDodVerifiedMarker,
+    parseDodVerifiedMarker,
+    insertDodVerifiedMarker,
+  } = await import('../lib/markers.mjs');
+
+  // 1. serialize → property grammar (key order sha→ts).
+  const built = buildDodVerifiedMarker('abc1234', TS);
+  assert.equal(built, `<!-- aitm-dod-verified sha="abc1234" ts="${TS}" -->`);
+  assert.ok(DOD_VERIFIED_RE.test(built), 'combined RE detects new grammar');
+  assert.ok(hasDodVerifiedMarker(`prose\n${built}\n`));
+
+  // 2. parse the new grammar.
+  const pNew = parseDodVerifiedMarker(`head\n${built}\ntail`);
+  assert.deepEqual(pNew, { sha: 'abc1234', ts: TS });
+
+  // 3. parse the legacy colon grammar (back-compat until #369 corpus sweep).
+  const legacy = `<!-- aitm-dod-verified: def5678:${TS} -->`;
+  assert.ok(DOD_VERIFIED_RE.test(legacy), 'combined RE detects legacy grammar');
+  assert.ok(hasDodVerifiedMarker(`prose\n${legacy}\n`));
+  assert.deepEqual(parseDodVerifiedMarker(legacy), { sha: 'def5678', ts: TS });
+
+  // 4. re-stamp over a legacy body flips to new grammar, single marker, refreshed SHA.
+  const fromLegacy = insertDodVerifiedMarker(`## AC\n- [ ] x\n\n${legacy}\n`, 'fed9999', TS);
+  assert.deepEqual(parseDodVerifiedMarker(fromLegacy), { sha: 'fed9999', ts: TS });
+  assert.ok(!/aitm-dod-verified:/.test(fromLegacy), 'legacy colon form stripped on re-stamp');
+  assert.equal((fromLegacy.match(/aitm-dod-verified /g) || []).length, 1);
+}
+
+// ── #377: test-started marker-grammar migration ─────────────────────────────
+{
+  const {
+    TEST_STARTED_RE,
+    buildTestStartedMarker,
+    hasTestStartedMarker,
+    parseTestStartedMarker,
+    insertTestStartedMarker,
+  } = await import('../lib/markers.mjs');
+
+  // 1. serialize → property grammar.
+  const built = buildTestStartedMarker('abc1234', TS);
+  assert.equal(built, `<!-- aitm-test-started sha="abc1234" ts="${TS}" -->`);
+  assert.ok(TEST_STARTED_RE.test(built));
+  assert.ok(hasTestStartedMarker(`prose\n${built}\n`));
+
+  // 2. parse new grammar — `.sha` is the SHA-drift gate's prefix-match input.
+  const pNew = parseTestStartedMarker(`head\n${built}\ntail`);
+  assert.deepEqual(pNew, { sha: 'abc1234', ts: TS });
+
+  // 3. parse legacy colon grammar.
+  const legacy = `<!-- aitm-test-started: def5678:${TS} -->`;
+  assert.ok(TEST_STARTED_RE.test(legacy));
+  assert.deepEqual(parseTestStartedMarker(legacy), { sha: 'def5678', ts: TS });
+
+  // 4. re-stamp over a legacy body flips grammar + refreshes, single marker.
+  const fromLegacy = insertTestStartedMarker(`## AC\n- [ ] x\n\n${legacy}\n`, 'fed9999', TS);
+  assert.deepEqual(parseTestStartedMarker(fromLegacy), { sha: 'fed9999', ts: TS });
+  assert.ok(!/aitm-test-started:/.test(fromLegacy), 'legacy colon form stripped on re-stamp');
+  assert.equal((fromLegacy.match(/aitm-test-started /g) || []).length, 1);
 }
 
 // ── #333: phantom-marker hardening — fenced code blocks are stripped before
