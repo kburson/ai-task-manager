@@ -16,13 +16,20 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
+import { unescapeValue } from './marker-grammar.mjs';
 
 const pexec = promisify(execFile);
 
 const AC_HEADING_RE = /^##\s+Acceptance Criteria\s*$/im;
 const NEXT_HEADING_RE = /^##\s+/m;
 const CHECKBOX_RE = /^- \[([ x])\] (.+)$/gm;
-const COMMITS_MARKER_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
+// Dual-grammar (#381): new quoted-attribute form preferred, legacy colon CSV
+// tolerated until the #369 corpus sweep. `COMMITS_MARKER_RE` is the union used
+// for presence detection.
+const COMMITS_MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
+const COMMITS_MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s*-->/;
+const COMMITS_MARKER_RE =
+  /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
 const TRAIL_HEADING_RE = /^###\s+🔗\s+Commits\s*$/m;
 
 export function parseAcceptanceCriteria(body) {
@@ -44,9 +51,10 @@ export function parseAcceptanceCriteria(body) {
 
 export function parseCommitShas(commentBody) {
   const src = String(commentBody || '');
-  const m = src.match(COMMITS_MARKER_RE);
-  if (!m) return [];
-  return m[1]
+  const neu = src.match(COMMITS_MARKER_NEW_RE);
+  const csv = neu ? unescapeValue(neu[1]) : (src.match(COMMITS_MARKER_LEGACY_RE)?.[1] ?? null);
+  if (csv == null) return [];
+  return csv
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);

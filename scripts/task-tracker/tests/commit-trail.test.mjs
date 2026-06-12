@@ -88,6 +88,30 @@ import {
   assert.equal(p.index, -1);
 }
 
+// --- parseMarker: new quoted-attribute grammar (#381 dual-read) ---
+
+// New `shas="..."` form, multi.
+{
+  const body = '### 🔗 Commits\n\n<!-- aitm-commits shas="abc123,def456" -->\n\n| SHA |';
+  const p = parseMarker(body);
+  assert.deepEqual(Array.from(p.shas), ['abc123', 'def456']);
+}
+
+// New form, empty list.
+{
+  const body = '### 🔗 Commits\n\n<!-- aitm-commits shas="" -->\n';
+  const p = parseMarker(body);
+  assert.equal(p.shas.size, 0);
+  assert.notEqual(p.index, -1);
+}
+
+// Legacy and new forms yield identical SHA sets.
+{
+  const legacy = parseMarker('<!-- aitm-commits: abc123,def456 -->');
+  const neu = parseMarker('<!-- aitm-commits shas="abc123,def456" -->');
+  assert.deepEqual(Array.from(legacy.shas), Array.from(neu.shas));
+}
+
 // --- hasWorktreeCols ---
 
 {
@@ -100,7 +124,7 @@ import {
 {
   const trail = buildInitialTrail();
   assert.match(trail, /### 🔗 Commits/);
-  assert.match(trail, /<!-- aitm-commits:\s*-->/);
+  assert.match(trail, /<!-- aitm-commits shas="" -->/);
   assert.match(trail, /\| SHA \| Subject \| Author \| When \|/);
   assert.doesNotMatch(trail, /Branch/);
 }
@@ -173,16 +197,16 @@ import {
   body = appendCommitRow(body, row1);
   body = updateMarker(body, 'aaaa111');
   assert.match(body, /aaaa111/);
-  assert.match(body, /<!-- aitm-commits: aaaa111 -->/);
+  assert.match(body, /<!-- aitm-commits shas="aaaa111" -->/);
 
   const row2 = buildRow({ sha: 'bbbb222', subject: 's2', author: 'a', ts: 't2' });
   body = appendCommitRow(body, row2);
   body = updateMarker(body, 'bbbb222');
   assert.match(body, /aaaa111/);
   assert.match(body, /bbbb222/);
-  assert.match(body, /<!-- aitm-commits: aaaa111,bbbb222 -->/);
+  assert.match(body, /<!-- aitm-commits shas="aaaa111,bbbb222" -->/);
   // Only one marker
-  assert.equal(body.match(/aitm-commits:/g).length, 1);
+  assert.equal(body.match(/<!-- aitm-commits /g).length, 1);
 }
 
 // updateMarker is idempotent for duplicate SHA

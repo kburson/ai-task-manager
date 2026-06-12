@@ -443,6 +443,26 @@ import {
     issueNumber: 246,
   });
   assert.equal(r.block, false);
+
+  // #381 — new `refs="..."` grammar is protected the same as legacy colon CSV.
+  const BLOCKED_MARKER_NEW = '<!-- aitm-blocked-by refs="#247,#248" -->';
+
+  // Dropping the new-form marker → block
+  r = checkBodyChange({
+    newBody: '## Scope\nsome text\n',
+    currentBody: `## Scope\nsome text\n${BLOCKED_MARKER_NEW}\n`,
+    issueNumber: 246,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-blocked-by/);
+
+  // Preserving the new-form marker → pass
+  r = checkBodyChange({
+    newBody: `## Scope\nupdated\n${BLOCKED_MARKER_NEW}\n`,
+    currentBody: `## Scope\noriginal\n${BLOCKED_MARKER_NEW}\n`,
+    issueNumber: 246,
+  });
+  assert.equal(r.block, false);
 }
 
 // ── checkBodyChange: aitm-last-known-state marker protection (#258) ───────────

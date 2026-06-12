@@ -2,7 +2,7 @@
 //
 // A "blocked by" relationship between issues is recorded two ways:
 //   1. A hidden HTML comment in the issue body — the source of truth for which
-//      issues block this one:  `<!-- aitm-blocked-by: #247, #248 -->`
+//      issues block this one:  `<!-- aitm-blocked-by refs="#247,#248" -->`
 //   2. A `BLOCKED` label on the issue — the at-a-glance board signal.
 //
 // This module owns the body-marker format (parse / add / remove / inspect) and
@@ -10,19 +10,29 @@
 // invocation at import or call time. Consumers run the label-arg arrays through
 // their own gh wrapper. The body-guard (lib/gh-edit-guard.mjs) protects the
 // marker from accidental drops on `gh issue edit`.
+//
+// Marker grammar (#381, parent epic #367): the writer emits the consolidated
+// `refs="..."` property form via `serializeMarker`. The reader tolerates BOTH
+// the legacy bare-CSV colon form (`aitm-blocked-by: #M, #P`) and the new
+// quoted-attribute form; the legacy branch stays until the #369 corpus sweep.
+
+import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 export const BLOCKED_LABEL = 'BLOCKED';
 
 // Literal prefix shared with the body guard's MARKER_PATTERNS entry. Keep these
-// in lock-step: `/<!--\s*aitm-blocked-by:/i`.
+// in lock-step: `/<!--\s*aitm-blocked-by(?::|\s+refs=")/i`.
 const MARKER_PREFIX = 'aitm-blocked-by';
 
 // Matches the whole marker line (and any trailing newline) so removal leaves no
-// blank residue. The capture group holds the comma-separated ref list.
-const MARKER_RE = /[ \t]*<!--\s*aitm-blocked-by:\s*([^>]*?)\s*-->[ \t]*\n?/i;
+// blank residue. Two capture groups: m[1] = legacy colon CSV ref list,
+// m[2] = new `refs="..."` quoted-attribute value.
+const MARKER_RE =
+  /[ \t]*<!--\s*aitm-blocked-by(?::\s*([^>]*?)|\s+refs="((?:[^"]|&quot;)*)")\s*-->[ \t]*\n?/i;
 
-// Presence-only probe used by isBlocked — does not require a non-empty list.
-const MARKER_PRESENT_RE = /<!--\s*aitm-blocked-by:/i;
+// Presence-only probe used by isBlocked — matches either grammar, does not
+// require a non-empty list.
+const MARKER_PRESENT_RE = /<!--\s*aitm-blocked-by(?::|\s+refs=")/i;
 
 // Normalizes a `refs` argument (number | number[]) into a sorted, deduped array
 // of positive integers. Non-positive / non-integer / NaN values are dropped.
@@ -36,14 +46,17 @@ function normalizeRefs(refs) {
   return [...out].sort((a, b) => a - b);
 }
 
-// Renders a list of issue numbers as the marker's `#N, #M` ref string.
+// Renders a list of issue numbers as the marker's `#N,#M` ref string. The new
+// grammar normalizes the separator to a bare comma (no space); the reader trims
+// either form so the cosmetic change is semantically inert.
 function renderRefList(nums) {
-  return nums.map((n) => `#${n}`).join(', ');
+  return nums.map((n) => `#${n}`).join(',');
 }
 
-// Builds the full marker line for the given (already-normalized) numbers.
+// Builds the full marker line for the given (already-normalized) numbers using
+// the consolidated `refs="..."` property grammar.
 function renderMarker(nums) {
-  return `<!-- ${MARKER_PREFIX}: ${renderRefList(nums)} -->`;
+  return serializeMarker('blocked-by', { refs: renderRefList(nums) });
 }
 
 /**
@@ -56,7 +69,9 @@ function renderMarker(nums) {
 export function parseBlockedBy(body) {
   const m = String(body ?? '').match(MARKER_RE);
   if (!m) return [];
-  return normalizeRefs(m[1].split(','));
+  // m[1] = legacy colon CSV branch; m[2] = new `refs="..."` branch.
+  const raw = m[1] != null ? m[1] : unescapeValue(m[2] ?? '');
+  return normalizeRefs(raw.split(','));
 }
 
 /**
@@ -76,6 +91,11 @@ export function addBlockedBy(body, refs) {
   const merged = normalizeRefs([...existing, ...add]);
   // Nothing to add and no existing marker → leave body untouched.
   if (merged.length === 0) return src;
+  // No new refs over what's already recorded → genuine no-op; return the body
+  // byte-identical so a redundant add never triggers a legacy→new grammar
+  // rewrite (preserves the documented idempotency contract). The grammar
+  // upgrade happens only on a real add/remove that changes the ref set.
+  if (merged.length === existing.length) return src;
   const marker = renderMarker(merged);
 
   if (MARKER_RE.test(src)) {
@@ -98,7 +118,11 @@ export function removeBlockedBy(body, refs) {
   const src = String(body ?? '');
   if (!MARKER_RE.test(src)) return src;
   const drop = new Set(normalizeRefs(refs));
-  const remaining = parseBlockedBy(src).filter((n) => !drop.has(n));
+  const existing = parseBlockedBy(src);
+  const remaining = existing.filter((n) => !drop.has(n));
+  // Nothing actually removed → genuine no-op; leave the body byte-identical so
+  // a pure read never triggers a legacy→new grammar rewrite.
+  if (remaining.length === existing.length) return src;
   if (remaining.length === 0) {
     return src.replace(MARKER_RE, '');
   }

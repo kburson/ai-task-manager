@@ -43,19 +43,41 @@ test('parseBlockedBy: empty ref list → []', () => {
   assert.deepEqual(parseBlockedBy('<!-- aitm-blocked-by:  -->'), []);
 });
 
+// ── parseBlockedBy: new quoted-attribute grammar (#381 dual-read) ────────────
+
+test('parseBlockedBy: new refs="..." form, single and multi', () => {
+  assert.deepEqual(parseBlockedBy('x\n<!-- aitm-blocked-by refs="#247" -->\n'), [247]);
+  assert.deepEqual(parseBlockedBy('x\n<!-- aitm-blocked-by refs="#247,#248" -->\n'), [247, 248]);
+});
+
+test('parseBlockedBy: new form sorts, dedupes, drops garbage', () => {
+  assert.deepEqual(parseBlockedBy('<!-- aitm-blocked-by refs="#248,#247,#247" -->'), [247, 248]);
+  assert.deepEqual(parseBlockedBy('<!-- aitm-blocked-by refs="#5,#0,#-3,#x" -->'), [5]);
+});
+
+test('parseBlockedBy: new form empty refs → []', () => {
+  assert.deepEqual(parseBlockedBy('<!-- aitm-blocked-by refs="" -->'), []);
+});
+
+test('parseBlockedBy: legacy and new forms yield identical results', () => {
+  const legacy = parseBlockedBy('<!-- aitm-blocked-by: #247, #248 -->');
+  const neu = parseBlockedBy('<!-- aitm-blocked-by refs="#247,#248" -->');
+  assert.deepEqual(legacy, neu);
+});
+
 // ── addBlockedBy: create / merge / idempotency ───────────────────────────────
 
-test('addBlockedBy: creates marker at end of body', () => {
+test('addBlockedBy: creates marker at end of body (new grammar)', () => {
   const out = addBlockedBy('## AC\n- [ ] x', 247);
-  assert.match(out, /<!-- aitm-blocked-by: #247 -->/);
+  assert.match(out, /<!-- aitm-blocked-by refs="#247" -->/);
   // appended after existing content
   assert.ok(out.indexOf('aitm-blocked-by') > out.indexOf('## AC'));
   assert.deepEqual(parseBlockedBy(out), [247]);
 });
 
-test('addBlockedBy: creates marker for empty body', () => {
+test('addBlockedBy: creates marker for empty body (new grammar)', () => {
   const out = addBlockedBy('', 9);
-  assert.equal(out, '<!-- aitm-blocked-by: #9 -->\n');
+  assert.equal(out, '<!-- aitm-blocked-by refs="#9" -->\n');
 });
 
 test('addBlockedBy: accepts array, unions/dedupes/sorts', () => {
@@ -80,7 +102,7 @@ test('addBlockedBy: empty refs and no existing marker → body unchanged', () =>
 test('removeBlockedBy: removes one ref, keeps rest', () => {
   const out = removeBlockedBy('body\n<!-- aitm-blocked-by: #247, #248 -->\n', 247);
   assert.deepEqual(parseBlockedBy(out), [248]);
-  assert.match(out, /<!-- aitm-blocked-by: #248 -->/);
+  assert.match(out, /<!-- aitm-blocked-by refs="#248" -->/);
 });
 
 test('removeBlockedBy: full remove deletes the marker line entirely', () => {

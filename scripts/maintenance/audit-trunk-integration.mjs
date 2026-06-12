@@ -8,7 +8,10 @@ const REPO = 'kburson/ai-task-manager';
 const TRUNK = 'trunk';
 const MAIN_REPO = '/Users/kpburson/projects/Vibe-Coding/ai-task-manager';
 
-const MARKER_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/g;
+// Dual-grammar (#381): match both the legacy colon CSV form and the new
+// consolidated `shas="..."` property form. One capture group per branch.
+const MARKER_RE =
+  /<!--\s*aitm-commits(?::\s*([^-]*?)|\s+shas="((?:[^"]|&quot;)*)")\s*-->/g;
 
 function gh(args) {
   return execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 });
@@ -33,7 +36,9 @@ function extractShas(text) {
   let m;
   MARKER_RE.lastIndex = 0;
   while ((m = MARKER_RE.exec(text)) !== null) {
-    for (const s of m[1]
+    // m[1] = legacy CSV branch, m[2] = new quoted-attribute branch.
+    const payload = m[1] ?? (m[2] != null ? m[2].replace(/&quot;/g, '"') : '');
+    for (const s of payload
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean)) {

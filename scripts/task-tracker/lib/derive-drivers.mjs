@@ -5,11 +5,15 @@
 // Detectors are intentionally cheap — no external API calls, just regex
 // against material already fetched by the approve verb.
 
+import { unescapeValue } from './marker-grammar.mjs';
+
 /** @typedef {{ body:string, comments:Array<{body:string,createdAt:string}>, fields:Record<string,any> }} Signals */
 
 const SANDBOX_FAIL_RE = /##\s+✗\s+Sandboxed verification failed/;
 const ENTERED_DEVELOP_RE = /<!--\s*aitm-entered-develop[: ]/g;
-const COMMITS_MARKER_RE = /<!--\s*aitm-commits:\s*([\s\S]*?)\s*-->/;
+// Dual-grammar (#381): legacy colon CSV + new quoted-attribute `shas="..."`.
+const COMMITS_MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([\s\S]*?)\s*-->/;
+const COMMITS_MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s*-->/;
 
 /** Δ% misestimate detector — emits when |Δ%| > 100. */
 export function detectMisestimate({ fields }) {
@@ -53,10 +57,10 @@ export function detectRepickup({ body }) {
 /** Large diff vs Size — emits when commit lines-changed exceeds Size threshold. */
 export function detectLargeDiff({ body, fields }) {
   if (typeof body !== 'string' || !fields) return null;
-  const m = body.match(COMMITS_MARKER_RE);
-  if (!m) return null;
+  const neu = body.match(COMMITS_MARKER_NEW_RE);
+  const payload = neu ? unescapeValue(neu[1]) : (body.match(COMMITS_MARKER_LEGACY_RE)?.[1] ?? null);
+  if (payload == null) return null;
   // Lines-changed is a rough heuristic; parse `+N -M` patterns and sum.
-  const payload = m[1];
   let total = 0;
   for (const lc of payload.matchAll(/\+(\d+)\s*[/\-]\s*-?(\d+)/g)) {
     total += Number(lc[1]) + Number(lc[2]);

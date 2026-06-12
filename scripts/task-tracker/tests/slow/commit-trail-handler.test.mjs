@@ -52,7 +52,7 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   assert.match(body, /### 🔗 Commits/);
   assert.match(body, /abc123/);
   assert.match(body, /\[`abc123`\]\(https:\/\/github\.com\/o\/r\/commit\/abc12340000000\)/);
-  assert.match(body, /<!-- aitm-commits: abc12340000000 -->/);
+  assert.match(body, /<!-- aitm-commits shas="abc12340000000" -->/);
 }
 
 // 2. Second commit → updates existing comment
@@ -67,7 +67,7 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   const body = fake.calls.update[0].body;
   assert.match(body, /abc123/);
   assert.match(body, /def567/);
-  assert.match(body, /<!-- aitm-commits: abc12340000000,def56780000000 -->/);
+  assert.match(body, /<!-- aitm-commits shas="abc12340000000,def56780000000" -->/);
 }
 
 // 3. Re-fire with same SHA → noop

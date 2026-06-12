@@ -50,7 +50,8 @@ const MARKER_PATTERNS = [
   { name: 'aitm-stage-rollup', re: /<!--\s*aitm-stage-rollup:/i },
   { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },
   { name: 'aitm-lifecycle-optout', re: /<!--\s*aitm-lifecycle-optout:/i },
-  { name: 'aitm-blocked-by', re: /<!--\s*aitm-blocked-by:/i },
+  // Widened (#381) to protect both legacy colon CSV and new `refs="..."` grammars.
+  { name: 'aitm-blocked-by', re: /<!--\s*aitm-blocked-by(?:\s*:|\s+refs=")/i },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;

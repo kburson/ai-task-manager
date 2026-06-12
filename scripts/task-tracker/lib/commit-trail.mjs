@@ -1,11 +1,32 @@
 // Pure helpers for the per-commit comment trail.
 //
 // Manages a single "### 🔗 Commits" comment per bound issue. A hidden marker
-// <!-- aitm-commits: SHA1,SHA2,... --> tracks SHAs already recorded so that
-// hook re-fires are idempotent.
+// <!-- aitm-commits shas="SHA1,SHA2,..." --> tracks SHAs already recorded so
+// that hook re-fires are idempotent.
+//
+// Marker grammar (#381, parent epic #367): the writer emits the consolidated
+// `shas="..."` property form via `serializeMarker`. The reader is tolerant of
+// BOTH the legacy bare-CSV colon form (`aitm-commits: SHA1,SHA2`) and the new
+// quoted-attribute form; the legacy branch stays until the #369 corpus sweep
+// reports zero residual legacy markers.
+
+import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 export const TRAIL_HEADING = '### 🔗 Commits';
-export const MARKER_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
+
+// Legacy bare-CSV colon form. `[^-]*?` is lazy and SHAs are hex (no hyphen),
+// so it captures the whole comma list up to the closing `-->`.
+const MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
+// New consolidated property form emitted by `serializeMarker('commits', …)`.
+const MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s*-->/;
+// Presence/union pattern (exported for back-compat). Matches either grammar.
+export const MARKER_RE =
+  /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
+
+// Serialize a SHA list (array or Set) into the new property-form marker.
+function renderCommitsMarker(shas) {
+  return serializeMarker('commits', { shas: Array.from(shas).join(',') });
+}
 
 const TABLE_HEADER_4 = ['| SHA | Subject | Author | When |', '|---|---|---|---|'].join('\n');
 
@@ -16,9 +37,17 @@ const TABLE_HEADER_6 = [
 
 export function parseMarker(body) {
   if (!body) return { shas: new Set(), index: -1, raw: '' };
-  const m = body.match(MARKER_RE);
-  if (!m) return { shas: new Set(), index: -1, raw: '' };
-  const list = m[1]
+  // Prefer the new quoted-attribute form; fall back to the legacy colon CSV.
+  let m = body.match(MARKER_NEW_RE);
+  let csv;
+  if (m) {
+    csv = unescapeValue(m[1]);
+  } else {
+    m = body.match(MARKER_LEGACY_RE);
+    if (!m) return { shas: new Set(), index: -1, raw: '' };
+    csv = m[1];
+  }
+  const list = csv
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
@@ -32,7 +61,7 @@ export function hasWorktreeCols(body) {
 
 export function buildInitialTrail({ worktreeCols = false } = {}) {
   const header = worktreeCols ? TABLE_HEADER_6 : TABLE_HEADER_4;
-  return [TRAIL_HEADING, '', '<!-- aitm-commits:  -->', '', header].join('\n');
+  return [TRAIL_HEADING, '', renderCommitsMarker([]), '', header].join('\n');
 }
 
 // Short SHA used in the visible table column. The marker keeps the full SHA
@@ -117,7 +146,7 @@ export async function pruneUnreachable(body, { existsSha } = {}) {
     else drop.add(sha);
   }
   if (drop.size === 0) return body;
-  const nextMarker = `<!-- aitm-commits: ${keep.join(',')} -->`;
+  const nextMarker = renderCommitsMarker(keep);
   const next =
     body.slice(0, parsed.index) + nextMarker + body.slice(parsed.index + parsed.raw.length);
   const droppedShorts = new Set([...drop].map((s) => String(s).slice(0, 6)));
@@ -140,7 +169,7 @@ export function updateMarker(body, sha) {
   const parsed = parseMarker(body);
   if (parsed.shas.has(sha)) return body;
   parsed.shas.add(sha);
-  const next = `<!-- aitm-commits: ${Array.from(parsed.shas).join(',')} -->`;
+  const next = renderCommitsMarker(parsed.shas);
   if (parsed.index === -1) {
     // Insert marker just after the heading line.
     const lines = body.split('\n');
