@@ -35,6 +35,7 @@ import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs
 import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
+import { serializeMarker } from './lib/marker-grammar.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -269,7 +270,8 @@ function emitShape(args, dodPath, root) {
   if (fieldsTrailer) process.stdout.write(fieldsTrailer);
   // Epic #288: stamp the optimistic-concurrency marker on every newly-rendered
   // body. `pushIssueBody` bumps subsequent writes; this seeds version 1.
-  process.stdout.write('<!-- aitm-body-version: 1 -->\n');
+  // #376: emit the new `version="..."` property grammar.
+  process.stdout.write(`${serializeMarker('body-version', { version: '1' })}\n`);
 }
 
 // #179 — Emit a stderr WARN if any reserved lifecycle label is absent from the
@@ -371,7 +373,8 @@ async function main() {
 
   // Legacy tail-only mode.
   process.stdout.write(tailBlock(dodPath));
-  process.stdout.write('<!-- aitm-body-version: 1 -->\n');
+  // #376: emit the new `version="..."` property grammar.
+  process.stdout.write(`${serializeMarker('body-version', { version: '1' })}\n`);
 }
 
 main().catch((err) => {

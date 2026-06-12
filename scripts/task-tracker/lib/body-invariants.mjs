@@ -30,7 +30,15 @@ const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/
 
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
-  { name: 'aitm-body-version', re: /<!--\s*aitm-body-version:/i, kind: 'single' },
+  // Widened (#376) to detect the body-version marker under BOTH the legacy
+  // colon grammar and the new `version="..."` property grammar, so a writer
+  // flipped to the new form is not falsely reported as a dropped marker by
+  // `findLostMarkers`. Legacy branch stays until #369's corpus sweep.
+  {
+    name: 'aitm-body-version',
+    re: /<!--\s*aitm-body-version(?:\s*:|\s+version=")/i,
+    kind: 'single',
+  },
   { name: 'aitm-stage-rollup', re: /<!--\s*aitm-stage-rollup:/i, kind: 'single' },
   // Lifecycle-timestamp invariants widened (#375) to detect the marker under
   // BOTH the legacy colon grammar and the new `ts="..."` property grammar, so

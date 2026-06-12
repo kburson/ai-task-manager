@@ -202,7 +202,8 @@ test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
   });
 
   await t.test('body-version marker emitted', () => {
-    assert.match(body, /<!--\s*aitm-body-version:\s*\d+\s*-->/);
+    // #376: preflight now seeds the new `version="N"` property grammar.
+    assert.match(body, /<!--\s*aitm-body-version\s+version="\d+"\s*-->/);
   });
 
   await t.test('parent epic marker emitted exactly once', () => {

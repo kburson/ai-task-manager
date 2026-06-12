@@ -131,7 +131,7 @@ test('max-retries-exceeded refusal: every push race-loses', async () => {
     // Bump again (concurrent writer): non-overlapping append.
     srv.inject(
       stampBodyVersion(
-        `${srv.current.replace(/<!-- aitm-body-version: \d+ -->/, '')}\nintruder`,
+        `${srv.current.replace(/<!-- aitm-body-version(?:: \d+| version="\d+") -->/, '')}\nintruder`,
         v + 1
       )
     );

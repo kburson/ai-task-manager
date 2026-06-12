@@ -40,7 +40,7 @@ const MARKER_PATTERNS = [
   { name: 'aitm-full-auto-footnote:start', re: /<!--\s*aitm-full-auto-footnote:start\s*-->/i },
   { name: 'aitm-full-auto-footnote:end', re: /<!--\s*aitm-full-auto-footnote:end\s*-->/i },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
-  { name: 'aitm-body-version', re: /<!--\s*aitm-body-version:/i },
+  { name: 'aitm-body-version', re: /<!--\s*aitm-body-version(?:\s*:|\s+version=")/i },
   { name: 'aitm-stage-rollup', re: /<!--\s*aitm-stage-rollup:/i },
   { name: 'aitm-refinement-rationale', re: /<!--\s*aitm-refinement-rationale:/i },
   { name: 'aitm-lifecycle-optout', re: /<!--\s*aitm-lifecycle-optout:/i },

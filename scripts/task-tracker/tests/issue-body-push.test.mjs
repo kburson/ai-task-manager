@@ -57,7 +57,7 @@ function makeDeps({ pexecImpl } = {}) {
   // `aitm-body-version` marker appended (epic #288 wire-up).
   assert.equal(calls.writes.length, 1);
   assert.equal(calls.writes[0].p, '/tmp/scratch-258.md');
-  assert.match(calls.writes[0].body, /^new body\n+<!-- aitm-body-version: 1 -->/);
+  assert.match(calls.writes[0].body, /^new body\n+<!-- aitm-body-version version="1" -->/);
   assert.equal(calls.writes[0].enc, 'utf8');
 
   // pexec sequence: fetch (view) → push (edit) → verify (view).
