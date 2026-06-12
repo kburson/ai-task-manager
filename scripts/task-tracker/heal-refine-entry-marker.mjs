@@ -32,7 +32,9 @@ const pexec = promisify(execFile);
 const LATER_STAGE_RE = /<!--\s*aitm-entered-(plan|develop|test|review|done):/i;
 const REFINE_ENTRY_RE = /<!--\s*aitm-entered-refine:/i;
 const REFINE_ENTRY_TS_RE = /<!--\s*aitm-entered-refine:\s*([^\s-][^\s]*?)\s*-->/i;
-const REFINE_BACKFILL_AUDIT_RE = /<!--\s*aitm-backfill:\s*refine:/i;
+// Widened (#380) to detect both legacy `aitm-backfill: refine:…` and new
+// `aitm-backfill stage="refine" …` forms.
+const REFINE_BACKFILL_AUDIT_RE = /<!--\s*aitm-backfill(?::\s*refine:|\s+stage="refine")/i;
 const BACKFILL_REASON = 'pre-gate-refine-traversal';
 
 function parseArgs(argv) {

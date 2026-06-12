@@ -22,12 +22,18 @@ import { promisify } from 'node:util';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from './state-recording.mjs';
+import { serializeMarker } from './marker-grammar.mjs';
 
 const pexec = promisify(execFile);
 
 export const HUMAN_REVIEWER_ENV = 'TASK_TRACKER_HUMAN_REVIEWER';
 export const FULL_AUTO_AUDIT_RE = /<!--\s*aitm-full-auto-approval\s*-->/i;
-export const HUMAN_REVIEWER_MARKER_RE = /<!--\s*aitm-human-reviewer:\s*([^>]*?)\s*-->/i;
+// Reader widened (#380) to accept BOTH the legacy `<handle> @ <ts>` colon form
+// and the new property grammar `handle="<handle>" ts="<iso>"`. Presence-only
+// (`.test`) at both consumers; the legacy branch stays until #369's corpus
+// sweep reports zero residual legacy markers.
+export const HUMAN_REVIEWER_MARKER_RE =
+  /<!--\s*aitm-human-reviewer(?::\s*[^>]*?|\s+handle="(?:[^"]|&quot;)*"\s+ts="(?:[^"]|&quot;)*")\s*-->/i;
 
 export function getHumanReviewer(env = process.env) {
   const raw = env?.[HUMAN_REVIEWER_ENV];
@@ -46,7 +52,7 @@ export function isFullAuto(env = process.env) {
 }
 
 export function buildHumanReviewerMarker(handle, ts) {
-  return `<!-- aitm-human-reviewer: ${handle} @ ${ts} -->`;
+  return serializeMarker('human-reviewer', { handle, ts });
 }
 
 export function buildAuditCommentBody({ ts, reviewScope } = {}) {

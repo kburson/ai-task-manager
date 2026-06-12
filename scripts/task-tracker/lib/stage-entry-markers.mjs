@@ -53,8 +53,10 @@ function entryMarker(stage, ts, visit = 1) {
 }
 
 function backfillAuditMarker(stage, reason, ts) {
+  // Reason is still sanitized of `:` and `>` so a stray `-->` cannot terminate
+  // the comment early; `serializeMarker` additionally escapes `"` (#380).
   const safeReason = String(reason || '').replace(/[:>]/g, '_');
-  return `<!-- aitm-backfill: ${stage}:${safeReason}:${ts} -->`;
+  return serializeMarker('backfill', { stage, reason: safeReason, ts });
 }
 
 function stageMarkerRe(stage) {
@@ -66,7 +68,12 @@ function stageMarkerRe(stage) {
 }
 
 function backfillMarkerRe(stage) {
-  return new RegExp(`<!--\\s*aitm-backfill:\\s*${stage}:[^>]*?\\s*-->`, 'i');
+  // Matches both legacy `aitm-backfill: <stage>:…` and new
+  // `aitm-backfill stage="<stage>" …` forms (#380).
+  return new RegExp(
+    `<!--\\s*aitm-backfill(?::\\s*${stage}:[^>]*?|\\s+stage="${stage}"[^>]*?)\\s*-->`,
+    'i'
+  );
 }
 
 function insertBeforeFieldDb(body, marker) {
@@ -268,10 +275,15 @@ export function evaluateContiguity({ fromState, toState, body, force = false }) 
 }
 
 // Hidden marker for re-entry audit comments. One per (stage, visit) pair.
-export const REENTRY_AUDIT_MARKER_RE = /<!--\s*aitm-reentry-audit:\s*([a-z]+)-(\d+)\s*-->/i;
+// Reader widened (#380) to accept BOTH the legacy `<stage>-<visit>` colon form
+// and the new property grammar `stage="<stage>" visit="<visit>"`. Capture
+// groups: 1/2 = legacy stage/visit, 3/4 = new stage/visit. The legacy branch
+// stays until #369's corpus sweep reports zero residual legacy markers.
+export const REENTRY_AUDIT_MARKER_RE =
+  /<!--\s*aitm-reentry-audit(?::\s*([a-z]+)-(\d+)|\s+stage="([a-z]+)"\s+visit="(\d+)")\s*-->/i;
 
 export function buildReentryAuditMarker(stage, visit) {
-  return `<!-- aitm-reentry-audit: ${stage}-${visit} -->`;
+  return serializeMarker('reentry-audit', { stage, visit });
 }
 
 export function buildReentryAuditCommentBody({ stage, visit, ts }) {
@@ -307,8 +319,14 @@ async function defaultListComments({ repo, issueNumber }) {
 
 function hasReentryAuditCommentFor(comments, stage, visit) {
   if (!Array.isArray(comments)) return false;
-  const expect = `aitm-reentry-audit: ${stage}-${visit}`;
-  return comments.some((c) => String(c?.body ?? '').includes(expect));
+  // Form-tolerant (#380): accept the legacy `<stage>-<visit>` colon substring
+  // OR the new `stage="…" visit="…"` property grammar.
+  const legacy = `aitm-reentry-audit: ${stage}-${visit}`;
+  const newRe = new RegExp(`aitm-reentry-audit\\s+stage="${stage}"\\s+visit="${visit}"`, 'i');
+  return comments.some((c) => {
+    const b = String(c?.body ?? '');
+    return b.includes(legacy) || newRe.test(b);
+  });
 }
 
 // Idempotent re-entry audit-comment poster. Call AFTER stampEntryMarker when

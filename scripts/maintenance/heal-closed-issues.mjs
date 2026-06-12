@@ -30,7 +30,7 @@ import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import {
-  FULL_AUTO_APPROVED_RE,
+  parseFullAutoApprovedMarker,
   hasFullAutoFootnote,
   insertFullAutoFootnote,
 } from '../task-tracker/lib/markers.mjs';
@@ -123,20 +123,11 @@ function postComment(n, body) {
 
 // ---- Heal classes ----
 
+// Decodes `{ ts, signals }` from BOTH the legacy `<ts>:<signals>` colon payload
+// and the new `ts="…" signals="…"` property grammar (#380). The dual-grammar
+// logic lives in `parseFullAutoApprovedMarker` so there is one decoder.
 function parseFullAutoMarker(body) {
-  const m = FULL_AUTO_APPROVED_RE.exec(body);
-  if (!m) return null;
-  // Marker payload: `<ts>:<signals>` where signals = `env=N,tty=N,ci=N`.
-  const payload = m[1].trim();
-  const idx = payload.indexOf(':env=');
-  if (idx < 0) {
-    // Older marker shape — fall back to splitting on first colon.
-    const firstColon = payload.indexOf(':');
-    return firstColon > 0
-      ? { ts: payload.slice(0, firstColon), signals: payload.slice(firstColon + 1) }
-      : { ts: payload, signals: '' };
-  }
-  return { ts: payload.slice(0, idx), signals: payload.slice(idx + 1) };
+  return parseFullAutoApprovedMarker(body);
 }
 
 function healD4Footnote(n, body) {

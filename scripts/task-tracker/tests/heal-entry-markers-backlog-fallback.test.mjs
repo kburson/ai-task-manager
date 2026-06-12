@@ -127,9 +127,10 @@ test('apply: writes backlog entry+audit and cascades refine when needed', () => 
   body = backfillEntryMarker(body, 'refine', plan.refineBumpTs, 'createdAt-anchored-refine-bump');
   // assertions
   assert.match(body, /<!--\s*aitm-entered-backlog(?::\s*[0-9TZ:.-]+|\s+ts="[^"]*")\s*-->/);
+  // #380: backfill audit marker now uses the property grammar.
   assert.match(
     body,
-    /<!--\s*aitm-backfill:\s*backlog:createdAt-anchored-backlog-fallback:[^>]+-->/
+    /<!--\s*aitm-backfill stage="backlog" reason="createdAt-anchored-backlog-fallback" ts="[^"]+" -->/
   );
   assert.match(body, /<!--\s*aitm-entered-refine(?::\s*[0-9TZ:.-]+|\s+ts="[^"]*")\s*-->/);
   // Strict ordering: createdAt < backlog < refine (ts captured under either grammar)

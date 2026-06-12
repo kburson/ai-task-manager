@@ -59,7 +59,11 @@ test('backfillEntryMarker writes aitm-entered-backlog and aitm-backfill:backlog 
     'pre-gate-traversal'
   );
   assert.match(out, /<!-- aitm-entered-backlog ts="2026-05-30T08:00:00.000Z" -->/);
-  assert.match(out, /<!-- aitm-backfill: backlog:pre-gate-traversal:2026-05-30T08:00:00.000Z -->/);
+  // #380: backfill audit marker now uses the property grammar.
+  assert.match(
+    out,
+    /<!-- aitm-backfill stage="backlog" reason="pre-gate-traversal" ts="2026-05-30T08:00:00.000Z" -->/
+  );
 });
 
 // ---------- 4. no-false-heal: clean backlog-only issue is NOT a candidate ----------

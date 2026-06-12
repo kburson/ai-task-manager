@@ -269,9 +269,10 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, true);
   assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->/);
+  // #380: full-auto-approved marker now uses the property grammar.
   assert.match(
     getBody(),
-    /<!-- aitm-full-auto-approved: 2026-05-10T00:00:00Z:env=1,tty=0,ci=0 -->/
+    /<!-- aitm-full-auto-approved ts="2026-05-10T00:00:00Z" signals="env=1,tty=0,ci=0" -->/
   );
   // #161 / D4 — visible footnote also present.
   assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
@@ -382,7 +383,7 @@ function makeDeps(overrides = {}) {
     const r = await runApprove({ issueNumber: 58, cfg, deps });
     assert.equal(r.status, 'approved');
     assert.equal(r.fullAuto, true);
-    assert.match(getBody(), /<!-- aitm-full-auto-approved: /);
+    assert.match(getBody(), /<!-- aitm-full-auto-approved ts="/);
     assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
     assert.match(getBody(), /reviewer-unset=1/);
   } finally {
@@ -409,7 +410,7 @@ function makeDeps(overrides = {}) {
     const r = await runApprove({ issueNumber: 58, cfg, deps });
     assert.equal(r.status, 'approved');
     assert.notEqual(r.fullAuto, true);
-    assert.doesNotMatch(getBody(), /<!-- aitm-full-auto-approved:/);
+    assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
     assert.doesNotMatch(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
   } finally {
     if (prevReviewer !== undefined) process.env.TASK_TRACKER_HUMAN_REVIEWER = prevReviewer;

@@ -126,8 +126,10 @@ function normalizeTs(iso) {
 // re-stamping out-of-order entries.
 export function stripStageMarkers(body, stage) {
   const entryRe = new RegExp(`[ \\t]*<!--\\s*aitm-entered-${stage}:[^>]*?-->[ \\t]*\\n?`, 'gi');
+  // Strip both legacy `aitm-backfill: <stage>:…` and new
+  // `aitm-backfill stage="<stage>" …` forms (#380).
   const auditRe = new RegExp(
-    `[ \\t]*<!--\\s*aitm-backfill:\\s*${stage}:[^>]*?-->[ \\t]*\\n?`,
+    `[ \\t]*<!--\\s*aitm-backfill(?::\\s*${stage}:[^>]*?|\\s+stage="${stage}"[^>]*?)-->[ \\t]*\\n?`,
     'gi'
   );
   return body
@@ -277,7 +279,10 @@ export function backlogCreatedAtFallback({ markers, createdAt }) {
 export function planStageHeal({ stage, body, createdAt }) {
   const markers = parseEntryMarkers(body);
   const hasEntry = stage in markers;
-  const hasAudit = new RegExp(`<!--\\s*aitm-backfill:\\s*${stage}:`, 'i').test(body);
+  const hasAudit = new RegExp(
+    `<!--\\s*aitm-backfill(?::\\s*${stage}:|\\s+stage="${stage}")`,
+    'i'
+  ).test(body);
   const hasLater = Object.entries(markers).some(([s]) => STAGE_INDEX[s] > STAGE_INDEX[stage]);
   const outOfOrder = outOfOrderHealableStages(markers).has(stage);
 

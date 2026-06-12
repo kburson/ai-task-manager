@@ -188,7 +188,11 @@ assert.deepEqual(r.illegalArcs, []);
 // 10. backfillEntryMarker writes marker AND audit comment
 const bf = backfillEntryMarker('', 'refine', '2026-01-02T00:00:00Z', 'recovered-from-drift');
 assert.match(bf, /<!-- aitm-entered-refine ts="2026-01-02T00:00:00Z" -->/);
-assert.match(bf, /aitm-backfill: refine:recovered-from-drift:2026-01-02T00:00:00Z/);
+// #380: backfill audit marker now uses the property grammar.
+assert.match(
+  bf,
+  /<!-- aitm-backfill stage="refine" reason="recovered-from-drift" ts="2026-01-02T00:00:00Z" -->/
+);
 
 // 10b. Backfill idempotency
 const bf2 = backfillEntryMarker(bf, 'refine', '2026-02-02T00:00:00Z', 'different-reason');
@@ -226,7 +230,11 @@ assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
 
 // 13. buildReentryAuditMarker + buildReentryAuditCommentBody — #184
 {
-  assert.equal(buildReentryAuditMarker('plan', 2), '<!-- aitm-reentry-audit: plan-2 -->');
+  // #380: reentry-audit marker now uses the property grammar.
+  assert.equal(
+    buildReentryAuditMarker('plan', 2),
+    '<!-- aitm-reentry-audit stage="plan" visit="2" -->'
+  );
   const body = buildReentryAuditCommentBody({
     stage: 'plan',
     visit: 2,
@@ -235,7 +243,7 @@ assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
   assert.match(body, /plan/);
   assert.match(body, /visit 2/);
   assert.match(body, /2026-01-01T00:00:00Z/);
-  assert.match(body, /<!-- aitm-reentry-audit: plan-2 -->/);
+  assert.match(body, /<!-- aitm-reentry-audit stage="plan" visit="2" -->/);
   // Validation
   assert.throws(() => buildReentryAuditCommentBody({ stage: 'plan', visit: 1, ts: 't' }));
   assert.throws(() => buildReentryAuditCommentBody({ stage: 'plan', visit: 2, ts: '' }));
@@ -283,7 +291,7 @@ assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
   assert.equal(posted.length, 1, 'one comment posted');
   assert.equal(posted[0].repo, 'o/r');
   assert.equal(posted[0].issueNumber, 42);
-  assert.match(posted[0].body, /<!-- aitm-reentry-audit: plan-2 -->/);
+  assert.match(posted[0].body, /<!-- aitm-reentry-audit stage="plan" visit="2" -->/);
 }
 
 // 16. postReentryAuditComment — repeat-stamp does not duplicate — #184
@@ -325,7 +333,7 @@ assert.throws(() => stripEntryMarkersAfter('', 'mystery'));
   });
   assert.equal(res.mode, 'posted');
   assert.equal(posted.length, 1);
-  assert.match(posted[0].body, /<!-- aitm-reentry-audit: plan-3 -->/);
+  assert.match(posted[0].body, /<!-- aitm-reentry-audit stage="plan" visit="3" -->/);
 }
 
 // 18. postReentryAuditComment — post failure degrades gracefully (no throw) — #184

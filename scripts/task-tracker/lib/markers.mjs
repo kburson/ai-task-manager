@@ -89,14 +89,49 @@ export function insertPlanApprovedMarker(body, ts) {
 // explains its own confidence later.
 // ---------------------------------------------------------------------------
 
-export const FULL_AUTO_APPROVED_RE = /<!--\s*aitm-full-auto-approved:\s*([^>]*?)\s*-->/i;
+// Dual-grammar readers (#380), mirroring the dod-verified pair. The legacy
+// reader keeps the historical `<ts>:<signals>` colon payload; the new reader
+// matches the consolidated property grammar `ts="<iso>" signals="<env=…>"`
+// emitted by `serializeMarker` (key order ts→signals).
+const FULL_AUTO_APPROVED_LEGACY_RE = /<!--\s*aitm-full-auto-approved:\s*([^>]*?)\s*-->/i;
+const FULL_AUTO_APPROVED_NEW_RE =
+  /<!--\s*aitm-full-auto-approved\s+ts="((?:[^"]|&quot;)*)"\s+signals="((?:[^"]|&quot;)*)"\s*-->/i;
+
+// Combined detection/strip RE (#380). Matches BOTH legacy colon and new
+// property grammar. Used presence-only by `hasFullAutoApprovedMarker`,
+// `preflight-issue.mjs`, `close-gate.mjs`, and `heal-full-auto-footnote.mjs`,
+// and as the strip target in `insertFullAutoApprovedMarker`. The legacy branch
+// stays until #369's corpus sweep reports zero residual legacy markers.
+export const FULL_AUTO_APPROVED_RE =
+  /<!--\s*aitm-full-auto-approved(?::\s*[^>]*?|\s+ts="(?:[^"]|&quot;)*"\s+signals="(?:[^"]|&quot;)*")\s*-->/i;
 
 export function buildFullAutoApprovedMarker(ts, signals) {
-  return `<!-- aitm-full-auto-approved: ${ts}:${signals} -->`;
+  return serializeMarker('full-auto-approved', { ts, signals });
 }
 
 export function hasFullAutoApprovedMarker(body) {
   return FULL_AUTO_APPROVED_RE.test(String(body || ''));
+}
+
+// Decode the marker payload back to `{ ts, signals }` from BOTH grammars
+// (#380). The new property form is tried first; the legacy branch reproduces
+// the historical `:env=` payload split (and the older first-colon fallback) so
+// `heal-closed-issues` recovers the same shape regardless of marker vintage.
+export function parseFullAutoApprovedMarker(body) {
+  const s = String(body || '');
+  const neu = s.match(FULL_AUTO_APPROVED_NEW_RE);
+  if (neu) return { ts: unescapeValue(neu[1]), signals: unescapeValue(neu[2]) };
+  const legacy = s.match(FULL_AUTO_APPROVED_LEGACY_RE);
+  if (!legacy) return null;
+  const payload = legacy[1].trim();
+  const idx = payload.indexOf(':env=');
+  if (idx < 0) {
+    const firstColon = payload.indexOf(':');
+    return firstColon > 0
+      ? { ts: payload.slice(0, firstColon), signals: payload.slice(firstColon + 1) }
+      : { ts: payload, signals: '' };
+  }
+  return { ts: payload.slice(0, idx), signals: payload.slice(idx + 1) };
 }
 
 export function insertFullAutoApprovedMarker(body, ts, signals) {

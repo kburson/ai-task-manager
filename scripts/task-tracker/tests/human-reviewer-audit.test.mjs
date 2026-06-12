@@ -49,9 +49,17 @@ test('buildAuditCommentBody contains stable HTML marker and env-var name', () =>
 
 test('buildHumanReviewerMarker round-trips via HUMAN_REVIEWER_MARKER_RE', () => {
   const m = buildHumanReviewerMarker('alice', '2026-05-18T13:30:00Z');
-  const matched = m.match(HUMAN_REVIEWER_MARKER_RE);
-  assert.ok(matched, 'marker should match HUMAN_REVIEWER_MARKER_RE');
-  assert.match(matched[1], /alice/);
+  // #380: writer now emits the property grammar
+  // `<!-- aitm-human-reviewer handle="alice" ts="..." -->`.
+  assert.match(m, /^<!-- aitm-human-reviewer handle="alice" ts="2026-05-18T13:30:00Z" -->$/);
+  assert.ok(HUMAN_REVIEWER_MARKER_RE.test(m), 'marker should match HUMAN_REVIEWER_MARKER_RE');
+});
+
+test('HUMAN_REVIEWER_MARKER_RE still matches the legacy colon form', () => {
+  // #380: dual-tolerant reader keeps decoding the pre-migration shape until
+  // #369's corpus sweep confirms zero residual legacy markers.
+  const legacy = '<!-- aitm-human-reviewer: alice @ 2026-05-18T12:00:00Z -->';
+  assert.ok(HUMAN_REVIEWER_MARKER_RE.test(legacy), 'legacy colon form should still match');
 });
 
 test('Full-Auto path (env absent) posts audit comment with marker', async () => {

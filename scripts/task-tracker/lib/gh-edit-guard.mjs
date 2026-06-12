@@ -41,7 +41,8 @@ const MARKER_PATTERNS = [
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i },
   { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved(?:\s*:|\s+ts=")/i },
-  { name: 'aitm-full-auto-approved', re: /<!--\s*aitm-full-auto-approved:/i },
+  // Widened (#380) to protect both legacy colon and new `ts="..."` grammars.
+  { name: 'aitm-full-auto-approved', re: /<!--\s*aitm-full-auto-approved(?:\s*:|\s+ts=")/i },
   { name: 'aitm-full-auto-footnote:start', re: /<!--\s*aitm-full-auto-footnote:start\s*-->/i },
   { name: 'aitm-full-auto-footnote:end', re: /<!--\s*aitm-full-auto-footnote:end\s*-->/i },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
