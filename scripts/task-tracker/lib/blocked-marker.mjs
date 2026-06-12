@@ -20,10 +20,6 @@ import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 export const BLOCKED_LABEL = 'BLOCKED';
 
-// Literal prefix shared with the body guard's MARKER_PATTERNS entry. Keep these
-// in lock-step: `/<!--\s*aitm-blocked-by(?::|\s+refs=")/i`.
-const MARKER_PREFIX = 'aitm-blocked-by';
-
 // Matches the whole marker line (and any trailing newline) so removal leaves no
 // blank residue. Two capture groups: m[1] = legacy colon CSV ref list,
 // m[2] = new `refs="..."` quoted-attribute value.

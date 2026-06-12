@@ -28,8 +28,7 @@ const CHECKBOX_RE = /^- \[([ x])\] (.+)$/gm;
 // for presence detection.
 const COMMITS_MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
 const COMMITS_MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s*-->/;
-const COMMITS_MARKER_RE =
-  /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
+const COMMITS_MARKER_RE = /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
 const TRAIL_HEADING_RE = /^###\s+🔗\s+Commits\s*$/m;
 
 export function parseAcceptanceCriteria(body) {

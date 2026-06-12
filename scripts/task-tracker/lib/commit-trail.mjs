@@ -20,8 +20,7 @@ const MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
 // New consolidated property form emitted by `serializeMarker('commits', …)`.
 const MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s*-->/;
 // Presence/union pattern (exported for back-compat). Matches either grammar.
-export const MARKER_RE =
-  /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
+export const MARKER_RE = /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
 
 // Serialize a SHA list (array or Set) into the new property-form marker.
 function renderCommitsMarker(shas) {

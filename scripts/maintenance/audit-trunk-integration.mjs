@@ -10,8 +10,7 @@ const MAIN_REPO = '/Users/kpburson/projects/Vibe-Coding/ai-task-manager';
 
 // Dual-grammar (#381): match both the legacy colon CSV form and the new
 // consolidated `shas="..."` property form. One capture group per branch.
-const MARKER_RE =
-  /<!--\s*aitm-commits(?::\s*([^-]*?)|\s+shas="((?:[^"]|&quot;)*)")\s*-->/g;
+const MARKER_RE = /<!--\s*aitm-commits(?::\s*([^-]*?)|\s+shas="((?:[^"]|&quot;)*)")\s*-->/g;
 
 function gh(args) {
   return execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 });
