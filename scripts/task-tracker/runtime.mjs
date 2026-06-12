@@ -42,6 +42,35 @@ export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
 }
 
+// #385 — classify a non-zero `move-state.mjs` outcome as benign or genuine.
+// The ONLY benign non-zero is a `done → done` self-loop: GitHub Projects'
+// auto-close workflow moves the board item to Done on `gh issue close`, so a
+// subsequent manual move to `done` is an illegal self-transition that
+// move-state.mjs rejects with exit 5 and an `illegal transition: done → done`
+// reason. Every other non-zero (a real gate refusal, a spawn `ENOENT`, an
+// unknown state) is genuine and must be surfaced. Pure + exported for tests.
+export function classifyMoveStateBenign({ state, status, stderr } = {}) {
+  return (
+    state === 'done' &&
+    status === 5 &&
+    /illegal transition:\s*done\s*→\s*done/i.test(String(stderr || ''))
+  );
+}
+
+// #385 — map a rejected `move-state.mjs` subprocess (promisify(execFile) error
+// shape: numeric `.code` for a non-zero exit, string e.g. 'ENOENT' for a spawn
+// failure, plus `.stderr`/`.stdout`) to the structured result callers consume.
+// Pure + exported for regression tests so the swallow-vs-surface decision can
+// be exercised without spawning a real process.
+export function buildMoveStateErrorResult({ state, err } = {}) {
+  const e = err || {};
+  const status = typeof e.code === 'number' ? e.code : null;
+  const stderr = String(e.stderr || '');
+  const stdout = String(e.stdout || '');
+  const benign = classifyMoveStateBenign({ state, status, stderr });
+  return { ok: false, status, benign, stdout, stderr, error: e };
+}
+
 import { CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes } from './close-gate.mjs';
 export { CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes };
 
@@ -263,8 +292,26 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     handleMigrateResult(result);
   };
 
+  // #385 — returns a STRUCTURED result `{ ok, status, stdout, stderr, benign }`
+  // instead of warn-and-return-undefined. Callers (notably close.mjs) can now
+  // distinguish three outcomes:
+  //   - ok:true                      → board reached the target state.
+  //   - ok:false, benign:true        → the only non-failure non-zero: a
+  //                                    `done → done` self-loop, which happens
+  //                                    when GitHub Projects' auto-close workflow
+  //                                    already moved the item to Done before the
+  //                                    manual move ran. move-state.mjs exits 5
+  //                                    with an `illegal transition` reason. This
+  //                                    must NOT be surfaced as a failure, and we
+  //                                    suppress the spurious warning for it.
+  //   - ok:false, benign:false       → a genuine failure. We surface the
+  //                                    captured stderr (the real refusal reason)
+  //                                    so the caller can report it instead of
+  //                                    falsely claiming success.
   ctx.runMoveState = async (issue, state, { env: envOverride, silent = false } = {}) => {
-    if (SKIP_NETWORK) return;
+    if (SKIP_NETWORK) {
+      return { ok: true, status: 0, benign: false, skipped: true, stdout: '', stderr: '' };
+    }
     const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
     const issueNum = String(issue).replace(/^#/, '');
     try {
@@ -279,9 +326,15 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         env: mergedEnv,
       });
       if (!silent && stdout.trim()) console.log(stdout.trim());
+      return { ok: true, status: 0, benign: false, stdout: String(stdout || ''), stderr: '' };
     } catch (err) {
-      console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
-      console.warn(`[task-tracker] Run manually: node ${scriptPath} ${issueNum} ${state}`);
+      const result = buildMoveStateErrorResult({ state, err });
+      if (!result.benign) {
+        console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
+        if (result.stderr.trim()) console.warn(result.stderr.trim());
+        console.warn(`[task-tracker] Run manually: node ${scriptPath} ${issueNum} ${state}`);
+      }
+      return result;
     }
   };
 

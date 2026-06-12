@@ -404,7 +404,19 @@ export async function verbClose(ctx) {
                 description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
               })
             );
-            await runMoveState(child.num, 'done', { env: { AITM_CASCADE: '1' }, silent: true });
+            // #385 — structured result; a genuine per-child board-move failure
+            // is surfaced (with its real stderr) but does not abort the cascade.
+            // The benign `done → done` no-op stays silent.
+            const childMove = await runMoveState(child.num, 'done', {
+              env: { AITM_CASCADE: '1' },
+              silent: true,
+            });
+            if (childMove && !childMove.ok && !childMove.benign) {
+              const detail =
+                (childMove.stderr || '').trim() ||
+                `move-state.mjs exited ${childMove.status ?? 'non-zero'}`;
+              console.warn(`  ⚠ #${child.num} board move to "done" failed: ${detail}`);
+            }
             await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
               timeout: GH_API_TIMEOUT_MS,
             });
@@ -471,8 +483,24 @@ export async function verbClose(ctx) {
   try {
     deregisterTask(projectDir, s.active);
   } catch {}
-  await runMoveStateDone(s.active, { silent: true });
+  // #385 — branch on the structured result. A genuine board-move failure must
+  // NOT be reported as a clean "Closed": the issue is already closed on GitHub
+  // (the `gh issue close` above), but if the board never reached `done` the
+  // user needs to see the real reason and a non-zero exit. The benign
+  // `done → done` no-op (auto-close already moved the board) is treated as
+  // success and produces no warning.
+  const moveResult = await runMoveStateDone(s.active, { silent: true });
   await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
+  if (moveResult && !moveResult.ok && !moveResult.benign) {
+    const detail =
+      (moveResult.stderr || '').trim() ||
+      `move-state.mjs exited ${moveResult.status ?? 'non-zero'}`;
+    console.error(
+      `[task-tracker] ✗ #${s.active.replace(/^#/, '')} closed on GitHub but the board move to "done" failed: ${detail}`
+    );
+    process.exitCode = 1;
+    return;
+  }
   console.log(`Closed ${s.active}.`);
 }
 
