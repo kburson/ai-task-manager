@@ -125,13 +125,13 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
 {
   const body = bodyWithKeys().replace(
     '<!-- dod:functional:lint -->',
-    '<!-- dod:functional:lint --> <!-- aitm-dod-evidence:lint cmd="npm run lint" exit=1 sha=deadbee ts=2026-06-05T00:00:00Z -->'
+    '<!-- dod:functional:lint --> <!-- aitm-dod-evidence:lint cmd="npm run lint" exit=1 sha=deadbeef ts=2026-06-05T00:00:00Z -->'
   );
   const ev = findEvidenceMarker(body, 'lint');
   assert.ok(ev, 'legacy-form marker parsed');
   assert.equal(ev.cmd, 'npm run lint');
   assert.equal(ev.exit, 1);
-  assert.equal(ev.sha, 'deadbee');
+  assert.equal(ev.sha, 'deadbeef');
 }
 
 // --- #379 — embedded double-quote in cmd round-trips serialize→parse ---

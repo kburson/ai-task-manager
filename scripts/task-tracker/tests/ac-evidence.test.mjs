@@ -122,12 +122,12 @@ test('parseAcEvidence reads the new fully-quoted form (#379)', () => {
 
 test('parseAcEvidence still reads the legacy half-quoted colon form (#379 back-compat)', () => {
   const m = parseAcEvidence(
-    'foo <!-- aitm-ac-evidence:abcd1234 cmd="npm run lint" exit=1 sha=deadbee ts=2026-06-10T00:00:00.000Z -->'
+    'foo <!-- aitm-ac-evidence:abcd1234 cmd="npm run lint" exit=1 sha=deadbeef ts=2026-06-10T00:00:00.000Z -->'
   );
   assert.equal(m.key, 'abcd1234');
   assert.equal(m.cmd, 'npm run lint');
   assert.equal(m.exit, 1);
-  assert.equal(m.sha, 'deadbee');
+  assert.equal(m.sha, 'deadbeef');
 });
 
 // #379 — a cmd carrying an embedded double-quote round-trips through
