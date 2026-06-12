@@ -4,10 +4,21 @@
 // Every value is double-quoted; an embedded double-quote is escaped as &quot;
 // so the grammar stays unambiguous. One comment carries all properties.
 //
+// #382 — normalized key contract: the writer emits `cmd`, `sha`, `ts`,
+// `evidence`, `proof`. `ts` replaces the old `verified-at` key; the timestamp
+// and the commit `sha` are separate properties (no packed `<sha>:<iso>` value);
+// `cmd` replaces the old `verified-by` key on a proof stamp.
+//
 // Back-compat READ path (kept until #369 rewrites the corpus): parseProofMarker
-// also recognizes the two legacy dual comments —
+// recognizes the legacy keys and the two legacy dual comments, then normalizes
+// them onto the new key names so consumers read one shape regardless of vintage:
+//   <!-- aitm-verified verified-at="<iso>" sha=... ... -->       (#368 consolidated)
+//   <!-- aitm-verified verified-at="<sha>:<iso>" ... -->         (packed legacy form)
 //   <!-- aitm-verified-at: <iso> evidence:"..." sha=... proof=... -->  (PROOF stamp)
 //   <!-- aitm-verified-by: `cmd` ... -->                               (DECLARATION)
+// Normalization: legacy `verified-at` -> `ts` (splitting a packed `<sha>:<iso>`
+// into `sha`+`ts`); legacy `verified-by` -> `cmd`. The legacy keys are retained
+// alongside the normalized ones so nothing that still reads them breaks.
 //
 // An execution PROOF (consolidated `aitm-verified` or legacy `aitm-verified-at`)
 // is distinct from a bare `aitm-verified-by` DECLARATION: only the former
@@ -70,10 +81,40 @@ function parseLegacyAtInner(inner) {
   return out;
 }
 
+// A packed legacy `verified-at` value: `<sha>:<iso>`, where the sha is a short
+// hex token and the ISO timestamp begins with `YYYY-MM-DDT`. The ISO half also
+// contains colons, so the split is anchored on the sha prefix, not a bare
+// `.split(':')`.
+const PACKED_VERIFIED_AT_RE = /^([0-9a-f]{4,40}):(\d{4}-\d{2}-\d{2}T.*)$/i;
+
+// #382 — normalize legacy proof-marker keys onto the new contract so every
+// consumer reads one shape regardless of body vintage. Mutates and returns the
+// parsed object. Legacy keys are retained alongside the normalized ones.
+//   - `verified-at` -> `ts` (splitting a packed `<sha>:<iso>` into `sha`+`ts`)
+//   - `verified-by` -> `cmd`
+// New-form markers already carry `ts`/`cmd`/`sha`, so the `in` guards make this
+// a no-op for them.
+function normalizeProofKeys(out) {
+  if ('verified-at' in out && !('ts' in out)) {
+    const packed = PACKED_VERIFIED_AT_RE.exec(String(out['verified-at']));
+    if (packed) {
+      if (!('sha' in out)) out.sha = packed[1];
+      out.ts = packed[2];
+    } else {
+      out.ts = out['verified-at'];
+    }
+  }
+  if ('verified-by' in out && !('cmd' in out)) {
+    out.cmd = out['verified-by'];
+  }
+  return out;
+}
+
 // Parse every proof marker on a line and merge into one key/value object.
 // Returns null when the line carries no recognized marker. Consolidated and
 // legacy-at PROOF fields take precedence; a legacy-by DECLARATION only fills a
-// `verified-by` that no proof marker already supplied.
+// `verified-by` that no proof marker already supplied. Legacy keys are
+// normalized onto the new `ts`/`cmd` contract before returning (#382).
 export function parseProofMarker(line) {
   const src = String(line || '');
   let found = false;
@@ -90,7 +131,7 @@ export function parseProofMarker(line) {
     found = true;
     if (!('verified-by' in out)) out['verified-by'] = m[1].trim();
   }
-  return found ? out : null;
+  return found ? normalizeProofKeys(out) : null;
 }
 
 // True when the line carries an execution PROOF (consolidated or legacy-at),
@@ -100,12 +141,16 @@ export function hasExecutionProof(line) {
   return EXECUTION_PROOF_RE.test(String(line || ''));
 }
 
-// Resolve the `verified-by` declaration value (raw, may carry backtick
-// commands) from either marker form, or null.
+// Resolve the declaration command (raw, may carry backtick commands) from
+// either marker form, or null. Dual-tolerant (#382): prefers the legacy
+// `verified-by` key but falls back to the new `cmd` key so a proof stamp
+// carrying `cmd` still resolves during the transition.
 export function resolveVerifiedBy(line) {
   const props = parseProofMarker(line);
   if (!props) return null;
-  return 'verified-by' in props ? props['verified-by'] : null;
+  if ('verified-by' in props) return props['verified-by'];
+  if ('cmd' in props) return props.cmd;
+  return null;
 }
 
 // Remove every proof/declaration marker from a label for display.

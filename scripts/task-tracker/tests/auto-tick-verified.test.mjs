@@ -55,6 +55,28 @@ const ALL_GREEN = [
     'tickedVc reported'
   );
   assert.equal(tickedFunctional.length, 2, 'two Functional items reported');
+
+  // #382 — stamped proof markers use the normalized cmd/sha/ts key set: a `cmd`
+  // property carrying the command, `ts` (not the legacy `verified-at`), and a
+  // single `sha`. No packed `<sha>:<iso>` value.
+  assert.ok(
+    body.includes('aitm-verified cmd="npm test" sha="sandbox" ts='),
+    'VC proof marker emits cmd/sha/ts in order'
+  );
+  assert.ok(!body.includes('verified-at='), 'no legacy verified-at key in stamped markers');
+  assert.ok(
+    body.includes('cmd="npm run lint, npm run format:check"'),
+    'multi-command Functional item joins commands into one cmd value'
+  );
+}
+
+// --- #382: stamped marker timestamp is the injected `now` -------------------
+{
+  const { body } = autoTickVerified(fixtureBody(), ALL_GREEN, '2026-06-12T17:30:00.000Z');
+  assert.ok(
+    body.includes('ts="2026-06-12T17:30:00.000Z"'),
+    'ts carries the injected now timestamp'
+  );
 }
 
 // --- judgment item (no marker) left unticked on green -----------------------

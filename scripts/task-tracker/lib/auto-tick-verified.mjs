@@ -49,13 +49,20 @@ function evidenceCommands(label) {
 // for determinism; defaults to `new Date().toISOString()`.
 //
 // #368 — emits the consolidated `<!-- aitm-verified key="value" ... -->` form
-// via the shared serializer. Keys mirror the legacy `aitm-verified-at` fields so
-// every reader/gate that resolved the old shape resolves the new one.
-function buildProofMarker(now, evidence) {
+// via the shared serializer.
+//
+// #382 (parent epic #367) — normalized key contract: `cmd` (the backtick
+// command(s) whose green exit backs the tick), `sha`, `ts` (the timestamp,
+// renamed from the legacy `verified-at`), `evidence`, `proof`. No packed
+// `<sha>:<iso>` value and no duplicate `sha`. Readers stay dual-tolerant
+// (`parseProofMarker` maps legacy `verified-at`->`ts` and `verified-by`->`cmd`),
+// so bodies written by the old shape still resolve until the #369 corpus sweep.
+function buildProofMarker(now, evidence, cmd) {
   return serializeProofMarker({
-    'verified-at': now,
-    evidence,
+    cmd,
     sha: 'sandbox',
+    ts: now,
+    evidence,
     proof: 'none',
   });
 }
@@ -96,7 +103,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     if (section === 'vc') {
       const cmd = rest.match(VC_LABEL_RE)?.[1] ?? null;
       if (cmd && passed.has(cmd)) {
-        const marker = buildProofMarker(now, `sandbox exit 0 (${cmd})`);
+        const marker = buildProofMarker(now, `sandbox exit 0 (${cmd})`, cmd);
         lines[i] = `${open}x${close}${rest} ${marker}`;
         tickedVc.push(cmd);
       }
@@ -107,7 +114,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     // referenced command passed.
     const cmds = evidenceCommands(rest);
     if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
-      const marker = buildProofMarker(now, `sandbox exit 0 (${cmds.join(', ')})`);
+      const marker = buildProofMarker(now, `sandbox exit 0 (${cmds.join(', ')})`, cmds.join(', '));
       lines[i] = `${open}x${close}${rest} ${marker}`;
       tickedFunctional.push(rest.replace(EVIDENCE_RE, '').trim());
     }
