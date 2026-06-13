@@ -293,4 +293,86 @@ function roundtrip(fn, legacy, expects, legacyRe) {
   assert.deepEqual(clean.families, []);
 }
 
+// 15. sha-ts NON-PAIR forms (#392/C6) — date-only, datetime-without-sha, and
+//     `<ts> sha=<sha>` space-joined. None match the `<sha>:<ts>` pair RE; the
+//     non-pair pass must still produce canonical `ts="…"` (+ sha when present).
+{
+  // 15a. date-only (#126 `aitm-dod-verified: 2026-05-19`).
+  roundtrip(
+    migrateShaTsPair,
+    '<!-- aitm-dod-verified: 2026-05-19 -->',
+    [/<!-- aitm-dod-verified ts="2026-05-19" -->/],
+    /aitm-dod-verified:/
+  );
+  // 15b. datetime without sha.
+  roundtrip(
+    migrateShaTsPair,
+    '<!-- aitm-test-started: 2026-05-18T13:35:00Z -->',
+    [/<!-- aitm-test-started ts="2026-05-18T13:35:00Z" -->/],
+    /aitm-test-started:/
+  );
+  // 15c. `<ts> sha=<sha>` space-joined (#169/#170).
+  roundtrip(
+    migrateShaTsPair,
+    '<!-- aitm-dod-verified: 2026-05-18T13:35:00Z sha=8348f0b -->',
+    [/aitm-dod-verified sha="8348f0b" ts="2026-05-18T13:35:00Z"/],
+    /aitm-dod-verified:/
+  );
+  // 15d. canonical `<sha>:<ts>` pair still wins and is untouched by the non-pair
+  //      pass (regression — the pair RE runs first, non-pair never re-fires).
+  const pair = migrateShaTsPair('<!-- aitm-dod-verified: a1b2c3d:2026-06-01T00:00:00.000Z -->');
+  assert.match(pair, /aitm-dod-verified sha="a1b2c3d" ts="2026-06-01T00:00:00\.000Z"/);
+  assert.equal(migrateShaTsPair(pair), pair, 'pair form idempotent through non-pair pass');
+}
+
+// 16. legacy-keyed CONSOLIDATED proof markers (#392/C6) — a single
+//     `<!-- aitm-verified ... -->` comment still carrying the legacy
+//     `verified-at=` / `verified-by=` attribute names. The colon-form gate never
+//     fired on these; the consolidated-legacy gate must now catch and rewrite
+//     them onto cmd/sha/ts, preserving surviving evidence/proof attributes.
+{
+  // 16a. verified-by only (declaration form).
+  {
+    const line = '- [x] tests <!-- aitm-verified verified-by="npm run test:all" -->';
+    const out = migrateProofMarkers(line);
+    assert.match(out, /aitm-verified /, 'consolidated marker emitted');
+    assert.match(out, /cmd="npm run test:all"/, 'verified-by normalized to cmd');
+    assert.doesNotMatch(out, /verified-by=/, 'legacy verified-by key dropped');
+    assert.equal(migrateProofMarkers(out), out, '16a idempotent');
+  }
+  // 16b. verified-at only with packed sha:ts + evidence/sha/proof preserved.
+  {
+    const line =
+      '- [x] dod <!-- aitm-verified verified-at="d1c7866:2026-06-11T14:00:34.048Z" evidence="log" sha="sandbox" proof="none" -->';
+    const out = migrateProofMarkers(line);
+    assert.match(out, /ts="2026-06-11T14:00:34\.048Z"/, 'packed ts split out');
+    // verified-at carried its own sha prefix; an explicit sha= attr already
+    // present takes precedence, so sha stays "sandbox".
+    assert.match(out, /sha="sandbox"/, 'explicit sha attribute preserved');
+    assert.match(out, /evidence="log"/, 'evidence preserved');
+    assert.match(out, /proof="none"/, 'proof preserved');
+    assert.doesNotMatch(out, /verified-at=/, 'legacy verified-at key dropped');
+    assert.equal(migrateProofMarkers(out), out, '16b idempotent');
+  }
+  // 16c. both legacy keys on one consolidated marker.
+  {
+    const line =
+      '- [x] both <!-- aitm-verified verified-by="npm test" verified-at="abc1234:2026-06-01T00:00:00.000Z" -->';
+    const out = migrateProofMarkers(line);
+    const count = (out.match(/<!--\s*aitm-verified\s/g) || []).length;
+    assert.equal(count, 1, `exactly one consolidated marker, got ${count}:\n${out}`);
+    assert.match(out, /cmd="npm test"/);
+    assert.match(out, /sha="abc1234"/, 'packed sha split out');
+    assert.match(out, /ts="2026-06-01T00:00:00\.000Z"/);
+    assert.doesNotMatch(out, /verified-(?:at|by)=/, 'both legacy keys dropped');
+    assert.equal(migrateProofMarkers(out), out, '16c idempotent');
+  }
+  // 16d. an already-canonical consolidated marker (cmd/sha/ts) is left untouched.
+  {
+    const line =
+      '- [x] clean <!-- aitm-verified cmd="npm test" sha="abc1234" ts="2026-06-01T00:00:00.000Z" -->';
+    assert.equal(migrateProofMarkers(line), line, 'canonical proof marker untouched');
+  }
+}
+
 console.log('corpus-marker-transforms.test.mjs: all passed');

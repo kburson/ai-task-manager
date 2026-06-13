@@ -55,8 +55,26 @@ const RESIDUAL_DETECTORS = [
   ['proof', /<!--\s*aitm-verified-at:|<!--\s*aitm-verified\s[^>]*(?:verified-at|verified-by)=/i],
 ];
 
-function residualFamilies(body) {
-  const src = String(body ?? '');
+// #392 (C6) — legacy marker grammar that appears purely as DOCUMENTATION trips
+// the residual detectors as false positives: inside fenced code blocks, inline
+// `code` spans, and angle-bracket placeholders (`<iso-ts>`, `<ts>`, `<N>`) on the
+// issues that introduce or document the grammar. A real functional marker is
+// always a bare HTML comment outside any code context with a concrete value, so
+// redacting these documentation contexts before detection cannot hide a true
+// marker — verified by the regression test that a bare legacy marker outside any
+// code context is still reported.
+export function redactDocContexts(body) {
+  let s = String(body ?? '');
+  s = s.replace(/```[\s\S]*?```/g, ''); // fenced code blocks
+  s = s.replace(/`[^`\n]*`/g, ''); // inline-code spans
+  // Marker comments whose value is an angle-bracket placeholder are template
+  // documentation, never real markers (real values are timestamps/shas/ints).
+  s = s.replace(/<!--[\s\S]*?-->/g, (c) => (/<[a-z][a-z0-9-]*>/i.test(c) ? '' : c));
+  return s;
+}
+
+export function residualFamilies(body) {
+  const src = redactDocContexts(body);
   // The deep-dive-complete JSON-payload relics are intentionally NOT migrated
   // (C2/#388 handled them by hand); a `{`-payload marker is not residual.
   return RESIDUAL_DETECTORS.filter(([name, re]) => {
@@ -240,7 +258,14 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err?.stack || err);
-  process.exit(1);
-});
+// Only run as a CLI entry point — importing the module (e.g. from the unit
+// tests that exercise redactDocContexts / residualFamilies) must not execute
+// the live enumeration.
+const invokedDirectly =
+  process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error(err?.stack || err);
+    process.exit(1);
+  });
+}

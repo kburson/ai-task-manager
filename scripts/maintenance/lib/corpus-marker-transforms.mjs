@@ -1,3 +1,4 @@
+// cspell:ignore nonpair
 // Corpus marker-grammar migration transforms (#389 / C3 of EPIC #369).
 //
 // One pure, idempotent `(body) => body` transform per hidden-marker FAMILY that
@@ -114,14 +115,36 @@ export function migrateBodyVersion(body) {
 // ---------------------------------------------------------------------------
 // 6. sha:ts pair — `aitm-dod-verified: <sha>:<ts>` / `aitm-test-started: …`
 //    → sha="<sha>" ts="<ts>" (#377)
+//
+//    #392 (C6) — the pair RE only matched the packed `<sha>:<ts>` value. Three
+//    legacy non-pair shapes survived the C3 migration and showed up as residual:
+//      * date-only:        `aitm-dod-verified: 2026-05-19`            → ts only
+//      * date-time no sha:  `aitm-dod-verified: 2026-05-18T13:35:00Z`  → ts only
+//      * space-joined sha:  `aitm-dod-verified: <ts> sha=<sha>`        → ts + sha
+//    The pair RE runs FIRST and rewrites every packed value into canonical
+//    `sha="…" ts="…"` (space-separated, no trailing colon after the name), so
+//    the non-pair RE — which keys on the legacy `aitm-…:` colon form — never
+//    re-matches an already-canonical marker. Both passes are idempotent.
 // ---------------------------------------------------------------------------
 const SHA_TS_LEGACY_RE =
   /<!--\s*aitm-(dod-verified|test-started):\s*([0-9a-f]{7,40}):([^>\s]+)\s*-->/gi;
+const SHA_TS_NONPAIR_RE = /<!--\s*aitm-(dod-verified|test-started):\s*([^>\n]+?)\s*-->/gi;
 
 export function migrateShaTsPair(body) {
-  return String(body ?? '').replace(SHA_TS_LEGACY_RE, (_m, name, sha, ts) =>
+  let out = String(body ?? '').replace(SHA_TS_LEGACY_RE, (_m, name, sha, ts) =>
     serializeMarker(name, { sha, ts })
   );
+  out = out.replace(SHA_TS_NONPAIR_RE, (_m, name, value) => {
+    const v = String(value).trim();
+    // `<ts> sha=<sha>` — timestamp followed by an explicit `sha=` token.
+    const withSha = v.match(/^(.*?)\s+sha=(\S+)$/);
+    if (withSha) {
+      return serializeMarker(name, { sha: withSha[2], ts: withSha[1].trim() });
+    }
+    // Bare timestamp / date — no sha component.
+    return serializeMarker(name, { ts: v });
+  });
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,18 +245,33 @@ export function migrateCommits(body) {
 //     marker in their place (appended at the original tail position).
 // ---------------------------------------------------------------------------
 const PROOF_LEGACY_ANY_RE = /<!--\s*aitm-verified-(?:at|by):/i;
+// #392 (C6) — a consolidated `aitm-verified` marker can still carry the LEGACY
+// key names `verified-at=` / `verified-by=` (issues that closed before #382
+// normalized the proof keys). The colon-form gate above never fires on these,
+// so the line was skipped and the legacy-keyed marker left as residual. This
+// gate catches the consolidated-with-legacy-keys form; `parseProofMarker`
+// already normalizes the keys, so the migrate path below rewrites it cleanly.
+const PROOF_LEGACY_CONSOLIDATED_RE = /<!--\s*aitm-verified\s[^>\n]*\b(?:verified-at|verified-by)=/i;
 const PROOF_LEGACY_STRIP_RE = /\s*<!--\s*aitm-verified-(?:at|by):\s*[^>\n]*?\s*-->/gi;
 // An already-canonical consolidated marker on the same line. The `\s` boundary
 // after `aitm-verified` excludes the legacy `-at`/`-by` names (next char `-`),
 // so this strips ONLY the consolidated form.
 const PROOF_CONSOLIDATED_STRIP_RE = /\s*<!--\s*aitm-verified\s[^>\n]*?-->/gi;
 
+// A line carries a legacy proof marker when it has either a colon-form
+// `aitm-verified-at:` / `aitm-verified-by:` marker OR a consolidated
+// `aitm-verified` marker that still uses the legacy `verified-at=`/`verified-by=`
+// attribute names.
+function lineHasLegacyProof(line) {
+  return PROOF_LEGACY_ANY_RE.test(line) || PROOF_LEGACY_CONSOLIDATED_RE.test(line);
+}
+
 export function migrateProofMarkers(body) {
   const src = String(body ?? '');
   return src
     .split('\n')
     .map((line) => {
-      if (!PROOF_LEGACY_ANY_RE.test(line)) return line;
+      if (!lineHasLegacyProof(line)) return line;
       const props = parseProofMarker(line);
       if (!props) return line;
       // Drop the legacy alias keys; #382's normalizeProofKeys already mapped
