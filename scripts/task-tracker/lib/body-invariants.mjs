@@ -125,8 +125,13 @@ export function findLostMarkers(base, next) {
 //     canonical form (all of key/cmd/exit/sha/ts, via `parseAcEvidence`)
 //     qualifies — a bare `aitm-ac-evidence:<key>` fragment is not proof.
 //
-// A bare `aitm-verified-by` DECLARATION is NOT proof — `hasExecutionProof`
-// excludes it. The marker MUST live on the same line as the tick — a marker on
+// A verifier DECLARATION is NOT proof. The distinction is content-based, not
+// name-based (#391): `hasExecutionProof` parses the marker and accepts it only
+// when it carries a record-of-run key (`ts`/`sha`/`evidence`). A marker carrying
+// only `cmd` is a declaration of HOW an AC will be checked — whether spelled the
+// legacy way (`aitm-verified-by`) or the post-#369 consolidated way
+// (`aitm-verified cmd="..."`, name-indistinguishable from a proof stamp) — and
+// is excluded. The marker MUST live on the same line as the tick — a marker on
 // line N+1 does not validate a tick on line N. This co-location requirement
 // makes proof traceable when later readers grep for a checkbox.
 //

@@ -174,4 +174,29 @@ import {
   assert.equal(resolveVerifiedBy(line), '`npm run lint`', 'resolveVerifiedBy falls back to cmd');
 }
 
+// --- #391: a cmd-only consolidated marker is a DECLARATION, not proof -------
+// After the #369 corpus migration a verifier declaration becomes
+// `<!-- aitm-verified cmd="`cmd`" -->` — name-indistinguishable from a proof
+// stamp. Recognition must be content-based: a marker carrying only `cmd`
+// (intent) and no `ts`/`sha`/`evidence` (record-of-run) is NOT execution proof.
+{
+  const decl = serializeProofMarker({ cmd: '`npm test`' });
+  assert.equal(decl, '<!-- aitm-verified cmd="`npm test`" -->', 'cmd-only consolidated form');
+  const parsed = parseProofMarker(decl);
+  assert.equal(parsed.cmd, '`npm test`', 'cmd parsed off the consolidated declaration');
+  assert.ok(
+    !hasExecutionProof(decl),
+    'cmd-only consolidated aitm-verified is a declaration, not execution proof'
+  );
+  // A consolidated marker that DOES carry a record-of-run key still counts.
+  assert.ok(
+    hasExecutionProof(serializeProofMarker({ cmd: '`npm test`', ts: '2026-06-12T00:00:00Z' })),
+    'cmd + ts consolidated marker is execution proof'
+  );
+  assert.ok(
+    hasExecutionProof(serializeProofMarker({ cmd: '`npm test`', sha: 'abc1234' })),
+    'cmd + sha consolidated marker is execution proof'
+  );
+}
+
 console.log('proof-marker.test.mjs: all assertions passed');

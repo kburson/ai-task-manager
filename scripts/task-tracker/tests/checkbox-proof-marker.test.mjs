@@ -166,6 +166,54 @@ test('verifier DECLARATION (aitm-verified-by) alone is still rejected (#383 no-w
   );
 });
 
+// #391 — a cmd-only consolidated `aitm-verified cmd="..."` is a DECLARATION,
+// not execution proof. After the #369 migration it is name-indistinguishable
+// from a proof stamp, so the invariant must reject a tick backed only by it
+// (content-based `hasExecutionProof`), exactly as it rejects bare
+// `aitm-verified-by`.
+test('cmd-only consolidated aitm-verified declaration alone is rejected (#391)', async () => {
+  const deps = fakeDeps(BASE);
+  await assert.rejects(
+    mutateIssueBody({
+      issueNumber: 111,
+      repo: 'fake/fake',
+      mutate: (b) =>
+        b.replace(
+          '- [ ] verify behavior',
+          '- [x] verify behavior <!-- aitm-verified cmd="`npm test`" -->'
+        ),
+      deps,
+    }),
+    (err) => {
+      assert.ok(
+        err instanceof CheckboxProofMissingError,
+        `expected CheckboxProofMissingError, got ${err?.name}`
+      );
+      assert.equal(err.lines.length, 1);
+      assert.match(err.lines[0].text, /- \[x\] verify behavior/);
+      return true;
+    }
+  );
+});
+
+// #391 — a consolidated `aitm-verified` carrying a record-of-run key (ts/sha)
+// IS execution proof and validates the tick.
+test('consolidated aitm-verified with ts/sha is accepted as proof (#391)', async () => {
+  const deps = fakeDeps(BASE);
+  const r = await mutateIssueBody({
+    issueNumber: 112,
+    repo: 'fake/fake',
+    mutate: (b) =>
+      b.replace(
+        '- [ ] verify behavior',
+        '- [x] verify behavior <!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-06-12T00:00:00.000Z" -->'
+      ),
+    deps,
+  });
+  assert.equal(r.status, 'ok');
+  assert.match(deps.getBody(), /- \[x\] verify behavior/);
+});
+
 // #379 — the proof invariant accepts the NEW fully-quoted dod-evidence grammar
 // (`aitm-dod-evidence key="..." ...`) as valid checkbox proof, mirroring the
 // legacy colon form accepted above.

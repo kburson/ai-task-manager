@@ -66,6 +66,45 @@ test('parseEvidenceAcs ignores plain criteria with no aitm-verified-by', () => {
   assert.ok(!labels.includes('A plain criterion with no verifier'));
 });
 
+// #391 — after the #369 corpus migration a verifier declaration becomes the
+// consolidated `aitm-verified cmd="..."` form. The evidence reader must still
+// recognize that AC as evidence-gated (extract the cmd, surface a key) so
+// findEvidenceAc/gateEvidenceTick keep gating it exactly as the pre-migration
+// `aitm-verified-by` form.
+test('parseEvidenceAcs recognizes a migrated consolidated aitm-verified declaration (#391)', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '',
+    '- [ ] migrated AC declares a verifier <!-- aitm-verified cmd="`npm test`" -->',
+    '',
+    '## Definition of Done',
+    '',
+  ].join('\n');
+  const acs = parseEvidenceAcs(body);
+  assert.equal(acs.length, 1);
+  assert.equal(acs[0].label, 'migrated AC declares a verifier');
+  assert.deepEqual(acs[0].evidenceCommands, ['npm test']);
+  const found = findEvidenceAc(body, 'migrated AC declares a verifier');
+  assert.ok(found, 'findEvidenceAc locates the migrated declaration');
+  const r = gateEvidenceTick(body, 'migrated AC declares a verifier');
+  assert.equal(r.kind, 'refuse-ac-evidence', 'unstamped migrated AC is still gated');
+});
+
+// #391 no-regression — a consolidated `aitm-verified` carrying a record-of-run
+// key (a PROOF stamp, not a declaration) must NOT be treated as a verifier
+// declaration by the evidence reader; only cmd-only declarations gate.
+test('parseEvidenceAcs ignores a consolidated aitm-verified PROOF stamp (#391)', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '',
+    '- [ ] proof-stamped line <!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-06-12T00:00:00Z" -->',
+    '',
+    '## Definition of Done',
+    '',
+  ].join('\n');
+  assert.equal(parseEvidenceAcs(body).length, 0);
+});
+
 test('stampAcEvidenceMarker appends then idempotently replaces', () => {
   const label = 'check.mjs refuses to tick verified lines';
   const ev = { cmd: 'npm test', sha: 'abc1234', ts: '2026-06-10T00:00:00.000Z', exit: 0 };

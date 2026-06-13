@@ -20,9 +20,14 @@
 // into `sha`+`ts`); legacy `verified-by` -> `cmd`. The legacy keys are retained
 // alongside the normalized ones so nothing that still reads them breaks.
 //
-// An execution PROOF (consolidated `aitm-verified` or legacy `aitm-verified-at`)
-// is distinct from a bare `aitm-verified-by` DECLARATION: only the former
-// satisfies the checkbox-proof invariant. `hasExecutionProof` encodes that.
+// An execution PROOF is distinguished from a verifier DECLARATION by its
+// CONTENT, not its marker name (#391). After the #369 corpus migration a
+// declaration becomes `<!-- aitm-verified cmd="`cmd`" -->` — byte-identical at
+// the name level to a proof stamp. The distinction the grammar makes
+// machine-checkable: `cmd` is intent; `ts`/`sha`/`evidence` are record-of-run.
+// `hasExecutionProof` parses the line and accepts it only when a record-of-run
+// key is present, so a cmd-only marker (consolidated or legacy `aitm-verified-by`)
+// is correctly read as a declaration, not proof.
 
 export function escapeValue(v) {
   return String(v).replace(/"/g, '&quot;');
@@ -52,10 +57,6 @@ const LEGACY_BY_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/g;
 // Any consolidated or legacy proof/declaration marker on the line. Used to
 // strip markers from a label for display.
 const ANY_MARKER_RE = /<!--\s*aitm-verified(?:-at|-by)?(?:\s|:)[\s\S]*?-->/g;
-
-// An EXECUTION proof: consolidated `aitm-verified ` or legacy `aitm-verified-at:`.
-// Deliberately excludes the bare `aitm-verified-by` declaration.
-const EXECUTION_PROOF_RE = /<!--\s*aitm-verified-at:|<!--\s*aitm-verified\s/;
 
 function parseConsolidatedAttrs(text) {
   const out = {};
@@ -134,11 +135,15 @@ export function parseProofMarker(line) {
   return found ? normalizeProofKeys(out) : null;
 }
 
-// True when the line carries an execution PROOF (consolidated or legacy-at),
-// the signal the checkbox-proof invariant accepts. A bare `aitm-verified-by`
-// declaration does NOT count.
+// True when the line carries an execution PROOF — the signal the checkbox-proof
+// invariant accepts. Content-based (#391): parse the line and accept only when a
+// record-of-run key (`ts`, `sha`, or `evidence`) is present. A marker carrying
+// only `cmd` is a verifier DECLARATION (consolidated `aitm-verified cmd="..."`
+// or legacy `aitm-verified-by`) and does NOT count.
 export function hasExecutionProof(line) {
-  return EXECUTION_PROOF_RE.test(String(line || ''));
+  const props = parseProofMarker(line);
+  if (!props) return false;
+  return 'ts' in props || 'sha' in props || 'evidence' in props;
 }
 
 // Resolve the declaration command (raw, may carry backtick commands) from

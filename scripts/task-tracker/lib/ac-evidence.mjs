@@ -14,6 +14,7 @@
 
 import { createHash } from 'node:crypto';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
+import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
@@ -57,6 +58,19 @@ function extractCommands(text) {
   const haystack = String(text || '');
   for (const m of haystack.matchAll(VERIFIED_BY_RE)) {
     for (const c of String(m[1]).matchAll(/`([^`]+)`/g)) out.push(c[1]);
+  }
+  // #391 — after the #369 corpus migration a verifier DECLARATION is the
+  // consolidated `aitm-verified cmd="..."` form, not the legacy `aitm-verified-by`
+  // name. Fall back to it only when no legacy declaration was found (legacy-first
+  // avoids double-counting a dual-marker line) and only when the consolidated
+  // marker is a declaration — `hasExecutionProof` rejects a marker carrying a
+  // record-of-run key (ts/sha/evidence), which is a proof stamp, not a verifier
+  // declaration, and must not re-gate the AC.
+  if (!out.length && !hasExecutionProof(haystack)) {
+    const props = parseProofMarker(haystack);
+    if (props && typeof props.cmd === 'string') {
+      for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);
+    }
   }
   return out;
 }
