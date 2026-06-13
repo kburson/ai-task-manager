@@ -82,7 +82,6 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
     } else {
       const unreachable = [];
       for (const sha of trailShas) {
-        // eslint-disable-next-line no-await-in-loop
         const reachable = await gitIsAncestor(sha, headSha);
         if (!reachable) unreachable.push(sha);
       }

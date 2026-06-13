@@ -87,7 +87,7 @@ test('round-trip: parseDuration(formatDuration(n)) === n across the domain', () 
   for (const n of samples) {
     assert.equal(parseDuration(formatDuration(n)), n, `round-trip failed for ${n}`);
   }
-  // strided sweep across the full range
+  // stepped sweep across the full range
   for (let n = 0; n <= MAX_DURATION_SECONDS; n += 97777) {
     assert.equal(parseDuration(formatDuration(n)), n, `round-trip failed for ${n}`);
   }
