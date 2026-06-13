@@ -18,6 +18,7 @@
 
 import { locateFunctionalSection } from './lifecycle-dod.mjs';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
+import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -55,6 +56,20 @@ function extractCommands(text) {
   const haystack = String(text || '');
   for (const m of haystack.matchAll(VERIFIED_BY_RE)) {
     for (const c of String(m[1]).matchAll(/`([^`]+)`/g)) out.push(c[1]);
+  }
+  // #393 — mirror of #391 (ac-evidence.mjs). After the #369 corpus migration a
+  // Functional-DoD verifier DECLARATION is the consolidated `aitm-verified
+  // cmd="..."` form, not the legacy `aitm-verified-by` name. Fall back to it
+  // only when no legacy declaration was found (legacy-first avoids
+  // double-counting a dual-marker line) and only when the consolidated marker
+  // is a declaration — `hasExecutionProof` rejects a marker carrying a
+  // record-of-run key (ts/sha/evidence), which is a proof stamp, not a verifier
+  // declaration, and must not re-gate the DoD line.
+  if (!out.length && !hasExecutionProof(haystack)) {
+    const props = parseProofMarker(haystack);
+    if (props && typeof props.cmd === 'string') {
+      for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);
+    }
   }
   return out;
 }

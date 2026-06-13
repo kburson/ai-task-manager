@@ -230,4 +230,58 @@ assert.throws(
   assert.equal(ps.allTicked, false);
 }
 
+// --- #393 — migrated consolidated `aitm-verified cmd="..."` DECLARATION is
+// read by extractCommands (mirror of #391 for the Functional-DoD reader). The
+// #369 corpus migration rewrote DoD verifier declarations from the legacy
+// `aitm-verified-by:` name to the consolidated form; the reader must still
+// surface the declared command so dod-stamp keeps gating the line.
+{
+  const migrated = bodyWithKeys()
+    .replace(
+      '<!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->',
+      '<!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->'
+    )
+    .replace(
+      '<!-- aitm-verified-by: `npm run lint` --> <!-- dod:functional:lint -->',
+      '<!-- dod:functional:lint -->'
+    );
+  const items = parseFunctionalDodKeys(migrated);
+  const byKey = Object.fromEntries(items.map((it) => [it.key, it]));
+  assert.deepEqual(
+    byKey.tests.evidenceCommands,
+    ['npm test'],
+    'migrated consolidated declaration read by Functional-DoD reader'
+  );
+  // No legacy and no consolidated declaration → no commands, no double-count.
+  assert.deepEqual(byKey.lint.evidenceCommands, [], 'declaration-less line yields no commands');
+}
+
+// --- #393 no-regression — a consolidated `aitm-verified` carrying execution
+// proof (ts + sha) is a record-of-run, not a declaration: it must NOT re-gate
+// the Functional-DoD line (mirror of #391's hasExecutionProof guard).
+{
+  const proofStamped = bodyWithKeys().replace(
+    '<!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->',
+    '<!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-06-12T00:00:00Z" --> <!-- dod:functional:tests -->'
+  );
+  const byKey = Object.fromEntries(parseFunctionalDodKeys(proofStamped).map((it) => [it.key, it]));
+  assert.deepEqual(
+    byKey.tests.evidenceCommands,
+    [],
+    'proof stamp (ts+sha) is not treated as a verifier declaration'
+  );
+}
+
+// --- #393 — legacy `aitm-verified-by:` declarations still read (back-compat,
+// legacy-first, no double-count when both legacy + consolidated are absent).
+{
+  const items = parseFunctionalDodKeys(bodyWithKeys());
+  const byKey = Object.fromEntries(items.map((it) => [it.key, it]));
+  assert.deepEqual(
+    byKey.tests.evidenceCommands,
+    ['npm test'],
+    'legacy aitm-verified-by still read'
+  );
+}
+
 console.log('ok functional-dod-evidence');
