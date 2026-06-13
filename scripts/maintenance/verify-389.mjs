@@ -19,9 +19,7 @@ import { spawnSync } from 'node:child_process';
 import { migrateBody, migrateBodyWithFamilies, FAMILIES } from './lib/corpus-marker-transforms.mjs';
 
 const LIB_PATH = fileURLToPath(new URL('./lib/corpus-marker-transforms.mjs', import.meta.url));
-const RUNNER_PATH = fileURLToPath(
-  new URL('../../.tmp/heal/migrate-markers-corpus.mjs', import.meta.url)
-);
+const RUNNER_PATH = fileURLToPath(new URL('./migrate-markers-corpus.mjs', import.meta.url));
 const TEST_PATH = fileURLToPath(
   new URL('../task-tracker/tests/corpus-marker-transforms.test.mjs', import.meta.url)
 );
