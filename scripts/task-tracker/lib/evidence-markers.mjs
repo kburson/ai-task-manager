@@ -1,5 +1,7 @@
 // `npm test` (fast lane) stays in the set so legacy bodies keep passing;
 // `npm run test:all` is the new canonical Functional-DoD command (#305).
+import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
+
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
   'npm run test:all',
@@ -19,6 +21,20 @@ function evidenceCommands(label) {
   const commands = [];
   for (const marker of label.matchAll(EVIDENCE_RE)) {
     for (const cmd of marker[1].matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
+  }
+  // #395 — consolidated-declaration fallback (mirrors `extractCommands` in
+  // `ac-evidence.mjs` #391 / `functional-dod-evidence.mjs` #393). When no
+  // legacy `aitm-verified-by:` marker is present AND the label carries no
+  // execution proof, read the declared command(s) from a consolidated
+  // `aitm-verified cmd="..."` declaration. Legacy-first ordering avoids
+  // double-counting a dual-marker line; the `hasExecutionProof` guard keeps a
+  // record-of-run proof stamp (ts/sha/evidence) from being misread as a
+  // re-gating verifier declaration.
+  if (!commands.length && !hasExecutionProof(label)) {
+    const props = parseProofMarker(label);
+    if (props && typeof props.cmd === 'string') {
+      for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
+    }
   }
   return commands;
 }
