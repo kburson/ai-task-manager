@@ -113,6 +113,16 @@ function checkInit(ctx) {
   }
 }
 
+// #394 — global help-flag detection. Returns true when any argv element is
+// exactly `--help`, `-h`, or `?`. Exact match only: an embedded `?` in a title
+// (`new "what now?"`) or a `--help-me` substring must NOT trip it. Used by the
+// `_isMain` dispatch to print help and exit before `buildContext()` runs any
+// config/network side-effect or a verb swallows the flag as positional data
+// (which once created a junk issue titled "--help" via `task new --help`).
+export function hasHelpFlag(argv) {
+  return (argv || []).some((a) => a === '--help' || a === '-h' || a === '?');
+}
+
 // Re-export for tests that import these from task-tracker.mjs.
 export { handleMigrateResult };
 export async function fetchSubIssues(issueNum) {
@@ -135,6 +145,15 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
+    // #394 — intercept a help flag in ANY argv position before buildContext()
+    // touches config/network or a verb consumes it as positional data. Help is
+    // INIT_EXEMPT and must work in an unconfigured directory; this early exit
+    // mutates no state (no issue create, board write, or bind switch).
+    if (hasHelpFlag(process.argv.slice(2))) {
+      const { verbHelp } = await import('./verbs/help.mjs');
+      verbHelp();
+      process.exit(0);
+    }
     const ctx = buildContext();
     checkRepoMismatch(ctx);
     checkInit(ctx);
