@@ -1,3 +1,4 @@
+// cspell:ignore rescan Multiset fams
 // #369 — one-time corpus marker-grammar migration (EPIC #367).
 //
 // Enumerates EVERY issue in the repo (open + closed, GraphQL cursor pagination,
