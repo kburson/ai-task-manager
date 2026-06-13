@@ -1,0 +1,60 @@
+#389 (C3 of EPIC #369) — corpus marker-migration dry-run evidence
+==================================================================
+
+Command:
+    node .tmp/heal/migrate-markers-corpus.mjs        # dry-run is the default; writes nothing
+
+Run against the LIVE corpus (every issue, open + closed) via the paginated
+GraphQL issues connection. No live writes performed — this is the validation
+dry-run that AC-9 requires recorded as evidence. The matching live execution
+is C4 (#390), which is BLOCKED by this issue (#389) and by #391 until the
+proof-reader hardening lands.
+
+Representative per-issue diffs (head of the run)
+------------------------------------------------
+#1  [last-known-state, lifecycle, body-version]  -4/+3
+  - <!-- aitm-last-known-state: plan -->
+  - <!-- aitm-last-known-state-ts: 2026-06-05T02:24:05.773Z -->
+  - <!-- aitm-deep-dive-complete: 2026-05-09T02:36:06Z -->
+  - <!-- aitm-body-version: 6 -->
+  + <!-- aitm-last-known-state state="plan" ts="2026-06-05T02:24:05.773Z" -->
+  + <!-- aitm-deep-dive-complete ts="2026-05-09T02:36:06Z" -->
+  + <!-- aitm-body-version version="6" -->
+
+#4  [lifecycle]  -2/+2
+  - <!-- aitm-plan-approved: 2026-05-11T19:20:49.329Z -->
+  - <!-- aitm-deep-dive-complete: 2026-05-11T03:24:25Z -->
+  + <!-- aitm-plan-approved ts="2026-05-11T19:20:49.329Z" -->
+  + <!-- aitm-deep-dive-complete ts="2026-05-11T03:24:25Z" -->
+
+Proof-family sample (the declaration -> unified aitm-verified rewrite)
+----------------------------------------------------------------------
+  - - [ ] All automated tests pass <!-- aitm-verified-by: `npm run test:all` --> <!-- dod:functional:tests -->
+  + - [ ] All automated tests pass <!-- dod:functional:tests --> <!-- aitm-verified cmd="`npm run test:all`" -->
+  - - [ ] Lint and format checks pass <!-- aitm-verified-by: `npm run lint` `npm run format:check` --> <!-- dod:functional:lint -->
+  + - [ ] Lint and format checks pass <!-- dod:functional:lint --> <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" -->
+  - - [ ] All changes committed; commit messages follow project convention <!-- aitm-verified-by: `git log --oneline -1` --> <!-- dod:functional:commits -->
+  + - [ ] All changes committed; commit messages follow project convention <!-- dod:functional:commits --> <!-- aitm-verified cmd="`git log --oneline -1`" -->
+
+NOTE: this proof-family rewrite collapses a verifier DECLARATION into the
+unified `aitm-verified cmd="..."` form. The execution-proof reader currently
+treats any `aitm-verified ` marker as proof regardless of content, so this
+rewrite would silently satisfy the checkbox-proof invariant for unexecuted
+lines. That reader gap is tracked and fixed by #391 (C5), which BLOCKS the
+C4 (#390) live write. The migration transform here is correct and unchanged.
+
+Run summary
+-----------
+=== DRY-RUN: scanned 384, would change 373 ===
+  lifecycle: 320
+  proof: 277
+  last-known-state: 274
+  stage-entry: 247
+  sha-ts: 189
+  full-auto-approved: 167
+  body-version: 107
+  evidence: 53
+  backfill: 23
+  blocked-by: 9
+  commits: 7
+  human-reviewer: 1
