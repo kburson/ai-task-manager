@@ -6,6 +6,7 @@ import { parseTestStartedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
+import { parseProofMarker, hasExecutionProof } from '../lib/proof-marker.mjs';
 import { postTimingEvent } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
@@ -231,9 +232,28 @@ export async function verbReview(ctx) {
       // its own un-migrated copy with the anchored `$` that this fixes.
       const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
       const evidenceMatch = !cmdMatch ? label.match(evidencePattern) : null;
-      const evidenceCommands = evidenceMatch
+      let evidenceCommands = evidenceMatch
         ? [...evidenceMatch[1].matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1])
         : [];
+      // #396 — consolidated-declaration fallback. The #367/#368/#369/#382
+      // corpus migration rewrote AC verifier declarations from the legacy
+      // `aitm-verified-by:` marker to the consolidated `aitm-verified cmd="..."`
+      // form. #395 taught the shared reader (lib/evidence-markers.mjs
+      // `evidenceCommands`) the fallback, but review.mjs's private parser kept
+      // its un-migrated copy (see #368 AC9 note above) and therefore yielded an
+      // empty command list for migrated ACs — false-bouncing them at line ~343.
+      // Mirror the shared reader exactly: when this is a prose-evidence checkbox
+      // with no legacy marker AND no execution proof on the line, read the
+      // declared command(s) from the consolidated declaration. Legacy-first
+      // ordering avoids double-counting a dual-marker line; the
+      // `hasExecutionProof` guard keeps a record-of-run proof stamp
+      // (ts/sha/evidence) from being misread as a re-gating verifier declaration.
+      if (!cmdMatch && !evidenceCommands.length && !hasExecutionProof(label)) {
+        const props = parseProofMarker(label);
+        if (props && typeof props.cmd === 'string') {
+          evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
+        }
+      }
       const cleanLabel = label.replace(evidencePattern, '').trim();
       checkboxes.push({
         lineIndex: i,
