@@ -15,7 +15,9 @@ import { serializeMarker, parseMarker } from './marker-grammar.mjs';
 const MARKER_LINE_RE = /^<!--\s*aitm-superseded-by(\s|-->).*$/m;
 
 function normalizeRef(ref) {
-  const m = String(ref).trim().match(/^#?(\d+)$/);
+  const m = String(ref)
+    .trim()
+    .match(/^#?(\d+)$/);
   if (!m) throw new Error(`superseded-marker: invalid issue ref ${JSON.stringify(ref)}`);
   return `#${m[1]}`;
 }

@@ -79,11 +79,17 @@ test('happy path: stamps marker, moves done, comments both, closes not-planned',
   assert.deepEqual(calls.issueExists, [399]);
   // AC1/AC2 marker written to the dead story
   assert.deepEqual(parseSupersededBy(getBody()), { ref: '#399', ts: TS });
-  assert.deepEqual(calls.mutateIssueBody.map((c) => c.issueNumber), [230]);
+  assert.deepEqual(
+    calls.mutateIssueBody.map((c) => c.issueNumber),
+    [230]
+  );
   // AC3 move-state ran on the dead story
   assert.deepEqual(calls.runMoveState, [230]);
   // AC4 + back-ref: comment on both
-  assert.deepEqual(calls.postComment.map((c) => c.issueNumber), [230, 399]);
+  assert.deepEqual(
+    calls.postComment.map((c) => c.issueNumber),
+    [230, 399]
+  );
   // AC7 closed not-planned
   assert.deepEqual(calls.closeNotPlanned, [230]);
 });
@@ -105,7 +111,10 @@ test('transition-failed: marker written, no comments/close on nonzero move exit'
 
   assert.equal(result.status, 'transition-failed');
   assert.equal(result.exitCode, 5);
-  assert.deepEqual(calls.mutateIssueBody.map((c) => c.issueNumber), [230]);
+  assert.deepEqual(
+    calls.mutateIssueBody.map((c) => c.issueNumber),
+    [230]
+  );
   assert.deepEqual(calls.runMoveState, [230]);
   assert.deepEqual(calls.postComment, []);
   assert.deepEqual(calls.closeNotPlanned, []);
