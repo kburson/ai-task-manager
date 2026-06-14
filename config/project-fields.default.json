@@ -32,31 +32,27 @@
   },
   {
     "key": "engagedTime",
-    "name": "Engaged Time",
-    "type": "number",
-    "unit": "minutes",
-    "aliases": ["Actual Hours"]
+    "name": "Engaged",
+    "type": "text",
+    "aliases": ["Engaged Time", "Actual Hours"]
   },
   {
     "key": "sessionTime",
-    "name": "Session Time",
-    "type": "number",
-    "unit": "minutes",
-    "aliases": ["Actual Session Time"]
+    "name": "Session",
+    "type": "text",
+    "aliases": ["Session Time", "Actual Session Time"]
   },
   {
     "key": "reviewTime",
-    "name": "Review Time",
-    "type": "number",
-    "unit": "minutes",
-    "aliases": []
+    "name": "Review",
+    "type": "text",
+    "aliases": ["Review Time"]
   },
   {
     "key": "planTime",
-    "name": "Plan Time",
-    "type": "number",
-    "unit": "minutes",
-    "aliases": []
+    "name": "Plan",
+    "type": "text",
+    "aliases": ["Plan Time"]
   },
   {
     "key": "sequence",
@@ -66,9 +62,9 @@
   },
   {
     "key": "startTime",
-    "name": "Start time",
+    "name": "Started",
     "type": "text",
-    "aliases": ["Start Time", "Start date", "Start Date"]
+    "aliases": ["Start time", "Start Time", "Start date", "Start Date"]
   },
   {
     "key": "blockedBy",

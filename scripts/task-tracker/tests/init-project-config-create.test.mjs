@@ -94,9 +94,6 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     {"id":"XL","name":"XL","color":"RED","description":""}
   ]},
   {"id":"F_ESTIMATE","name":"Estimate","dataType":"NUMBER"},
-  {"id":"F_ACTUAL","name":"Actual Hours","dataType":"NUMBER"},
-  {"id":"F_SESSION","name":"Actual Session Time","dataType":"NUMBER"},
-  {"id":"F_CONTEXT","name":"Context Length","dataType":"NUMBER"},
   {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
   {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
 ]
@@ -124,7 +121,7 @@ const input =
     '', // default title
     '', // default Feature Release template
     '', // status field default
-    '', // Review missing — accept default [new] to create it
+    '', // Engaged/Session/Review/Plan/BlockedBy missing — accept default [new] to create each
     '', // spare prompt response
     '', // spare prompt response
     '', // spare prompt response

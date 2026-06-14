@@ -88,9 +88,10 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     {"id":"XL","name":"XL","color":"RED","description":""}
   ]},
   {"id":"F_ESTIMATE","name":"Estimate","dataType":"NUMBER"},
-  {"id":"F_ENGAGED","name":"Engaged Time","dataType":"NUMBER"},
-  {"id":"F_SESSION","name":"Session Time","dataType":"NUMBER"},
-  {"id":"F_CONTEXT","name":"Context Length","dataType":"NUMBER"},
+  {"id":"F_ENGAGED","name":"Engaged","dataType":"TEXT"},
+  {"id":"F_SESSION","name":"Session","dataType":"TEXT"},
+  {"id":"F_REVIEW","name":"Review","dataType":"TEXT"},
+  {"id":"F_PLAN","name":"Plan","dataType":"TEXT"},
   {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
   {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
 ]
@@ -120,12 +121,13 @@ const input =
     '', // use detected repo
     '1', // select linked project
     '', // status field default
-    '', // estimate field default
-    '', // engaged time field default
-    '', // session time field default
-    '', // context length field default
-    '', // sequence field default
-    '', // start time field default
+    '', // estimate field default (auto-matched)
+    '', // engaged field default (Engaged text, auto-matched)
+    '', // session field default (Session text, auto-matched)
+    '', // review field default (Review text, auto-matched)
+    '', // plan field default (Plan text, auto-matched)
+    '', // sequence field default (auto-matched)
+    '', // started field default (Start time → Started alias match)
     '', // spare prompt response
     '', // spare prompt response
     '', // spare prompt response
