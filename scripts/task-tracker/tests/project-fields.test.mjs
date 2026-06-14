@@ -43,7 +43,8 @@ assert.deepEqual(plan, [
   },
 ]);
 
-// #230 — the four timing fields are written in float-HOURS, never minutes.
+// #399 — the four timing fields are Text fields (migrated in #398) written as
+// fixed-width duration strings ("DDd HHh MMm SSs"), never minutes or float-hours.
 const timingCfg = {
   fieldIds: {
     estimate: 'F_EST',
@@ -55,30 +56,55 @@ const timingCfg = {
 };
 const timingDefs = [
   { key: 'estimate', type: 'number' },
-  { key: 'engagedTime', type: 'number' },
-  { key: 'sessionTime', type: 'number' },
-  { key: 'reviewTime', type: 'number' },
-  { key: 'planTime', type: 'number' },
+  { key: 'engagedTime', type: 'text' },
+  { key: 'sessionTime', type: 'text' },
+  { key: 'reviewTime', type: 'text' },
+  { key: 'planTime', type: 'text' },
 ];
 
-// With secondsByKey: true second precision → float-hours; non-timing estimate
-// passes through unchanged.
-const hoursPlan = buildFieldSyncPlan({
+// With secondsByKey: true second precision → duration strings; non-timing
+// estimate passes through unchanged as a number.
+const durationPlan = buildFieldSyncPlan({
   cfg: timingCfg,
   fieldDefs: timingDefs,
   values: { estimate: 1.5, engagedTime: 24, sessionTime: 23, reviewTime: 1, planTime: 0 },
   secondsByKey: { engagedTime: 1415, sessionTime: 1380, reviewTime: 60, planTime: 0 },
 });
-assert.deepEqual(hoursPlan, [
+assert.deepEqual(durationPlan, [
   { key: 'estimate', type: 'number', fieldId: 'F_EST', value: { number: 1.5 } },
-  { key: 'engagedTime', type: 'number', fieldId: 'F_ENG', value: { number: 0.39306 } },
-  { key: 'sessionTime', type: 'number', fieldId: 'F_SES', value: { number: 0.38333 } },
-  { key: 'reviewTime', type: 'number', fieldId: 'F_REV', value: { number: 0.01667 } },
-  { key: 'planTime', type: 'number', fieldId: 'F_PLN', value: { number: 0 } },
+  { key: 'engagedTime', type: 'text', fieldId: 'F_ENG', value: { text: '00d 00h 23m 35s' } },
+  { key: 'sessionTime', type: 'text', fieldId: 'F_SES', value: { text: '00d 00h 23m 00s' } },
+  { key: 'reviewTime', type: 'text', fieldId: 'F_REV', value: { text: '00d 00h 01m 00s' } },
+  { key: 'planTime', type: 'text', fieldId: 'F_PLN', value: { text: '00d 00h 00m 00s' } },
 ]);
+// Every timing field emits a duration string, never a number.
+for (const item of durationPlan) {
+  if (item.key === 'estimate') continue;
+  assert.ok(typeof item.value.text === 'string', `${item.key} emits text`);
+  assert.match(item.value.text, /^\d{2}d \d{2}h \d{2}m \d{2}s$/, `${item.key} is DDd HHh MMm SSs`);
+  assert.ok(!('number' in item.value), `${item.key} emits no number`);
+}
+
+// Fractional seconds are rounded to whole seconds before formatting.
+const roundPlan = buildFieldSyncPlan({
+  cfg: timingCfg,
+  fieldDefs: timingDefs,
+  values: {},
+  secondsByKey: { engagedTime: 90.6, sessionTime: 90.4 },
+});
+assert.deepEqual(
+  roundPlan.find((p) => p.key === 'engagedTime').value,
+  { text: '00d 00h 01m 31s' },
+  'engagedTime 90.6s rounds up to 91s'
+);
+assert.deepEqual(
+  roundPlan.find((p) => p.key === 'sessionTime').value,
+  { text: '00d 00h 01m 30s' },
+  'sessionTime 90.4s rounds down to 90s'
+);
 
 // Without secondsByKey (migration tools): fall back to field-DB minutes × 60,
-// still emitting float-hours — no call site writes raw minutes.
+// still emitting duration strings — no call site writes raw minutes or numbers.
 const minutesFallback = buildFieldSyncPlan({
   cfg: timingCfg,
   fieldDefs: timingDefs,
@@ -86,10 +112,10 @@ const minutesFallback = buildFieldSyncPlan({
 });
 assert.deepEqual(minutesFallback, [
   { key: 'estimate', type: 'number', fieldId: 'F_EST', value: { number: 2 } },
-  { key: 'engagedTime', type: 'number', fieldId: 'F_ENG', value: { number: 1.5 } },
-  { key: 'sessionTime', type: 'number', fieldId: 'F_SES', value: { number: 1.5 } },
-  { key: 'reviewTime', type: 'number', fieldId: 'F_REV', value: { number: 0.08333 } },
-  { key: 'planTime', type: 'number', fieldId: 'F_PLN', value: { number: 0.5 } },
+  { key: 'engagedTime', type: 'text', fieldId: 'F_ENG', value: { text: '00d 01h 30m 00s' } },
+  { key: 'sessionTime', type: 'text', fieldId: 'F_SES', value: { text: '00d 01h 30m 00s' } },
+  { key: 'reviewTime', type: 'text', fieldId: 'F_REV', value: { text: '00d 00h 05m 00s' } },
+  { key: 'planTime', type: 'text', fieldId: 'F_PLN', value: { text: '00d 00h 30m 00s' } },
 ]);
 
 console.log('project-fields.test.mjs: all passed');

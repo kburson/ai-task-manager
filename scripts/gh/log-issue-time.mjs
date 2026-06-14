@@ -16,7 +16,6 @@ import {
   fieldIdFor,
   loadProjectFieldDefs,
 } from '../task-tracker/project-fields.mjs';
-import { secondsToFloatHours } from '../task-tracker/lib/duration.mjs';
 import {
   applyPauseSpansToRows,
   computeStageDurations,
@@ -134,15 +133,6 @@ async function fetchProjectMeta() {
   };
 }
 
-async function writeNumberField(itemId, fieldId, value) {
-  await writeProjectFieldValue({
-    projectId: cfg.projectId,
-    itemId,
-    fieldId,
-    value: { number: value },
-  });
-}
-
 // ---- Main ----
 
 (async () => {
@@ -207,8 +197,7 @@ async function writeNumberField(itemId, fieldId, value) {
     process.exit(0);
   }
 
-  const { itemId, engagedFieldId, sessionFieldId, reviewFieldId, planFieldId, startTimeFieldId } =
-    await fetchProjectMeta();
+  const { itemId, startTimeFieldId } = await fetchProjectMeta();
   const fieldDefs = loadProjectFieldDefs();
   const issueBody = issueBodyForPauses;
 
@@ -243,9 +232,10 @@ async function writeNumberField(itemId, fieldId, value) {
   }
   if (bodyOut !== issueBody) await writeIssueBody(bodyOut);
 
-  // #230 — board writes carry float-HOURS at second precision. The body
-  // marker (`values`) stays in minutes; `secondsByKey` feeds the true seconds
-  // totals so `buildFieldSyncPlan` converts the four timing fields to hours.
+  // #399 — board writes carry fixed-width duration strings at second
+  // precision. The body marker (`values`) stays in minutes; `secondsByKey`
+  // feeds the true seconds totals so `buildFieldSyncPlan` formats the four
+  // timing Text fields via `formatDuration`. This is the sole board-write path.
   const secondsByKey = {
     engagedTime: engagedSec,
     sessionTime: totalActiveSec,
@@ -253,22 +243,13 @@ async function writeNumberField(itemId, fieldId, value) {
     planTime: planMin * 60,
   };
   const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values, secondsByKey });
-  if (syncPlan.length) {
-    for (const item of syncPlan) {
-      await writeProjectFieldValue({
-        projectId: cfg.projectId,
-        itemId,
-        fieldId: item.fieldId,
-        value: item.value,
-      });
-    }
-  } else {
-    if (engagedFieldId)
-      await writeNumberField(itemId, engagedFieldId, secondsToFloatHours(engagedSec));
-    await writeNumberField(itemId, sessionFieldId, secondsToFloatHours(totalActiveSec));
-    if (reviewFieldId)
-      await writeNumberField(itemId, reviewFieldId, secondsToFloatHours(reviewSec));
-    if (planFieldId) await writeNumberField(itemId, planFieldId, secondsToFloatHours(planMin * 60));
+  for (const item of syncPlan) {
+    await writeProjectFieldValue({
+      projectId: cfg.projectId,
+      itemId,
+      fieldId: item.fieldId,
+      value: item.value,
+    });
   }
 
   if (repairedStartTime && startTimeFieldId) {

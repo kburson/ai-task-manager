@@ -2,16 +2,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { getProjectDir } from './paths.mjs';
 import { warnMissingFieldId } from './lib/field-config-warn.mjs';
-import { secondsToFloatHours } from './lib/duration.mjs';
+import { formatDuration } from './lib/duration.mjs';
 
-// #230 — the four board "actuals" fields are written in float-HOURS (not
-// minute-rounded integers) so `Estimate − Actual` is a one-line subtraction.
-// `buildFieldSyncPlan` converts these keys via `secondsToFloatHours`. Seconds
-// come from the caller's `secondsByKey` map when available (close-time, true
-// second precision); otherwise the field-DB minutes in `values` are used at
-// minute granularity (`values[key] * 60`). The `aitm-fields` body marker is
-// untouched and stays in minutes — only the board write is converted.
-export const TIMING_HOUR_FIELD_KEYS = new Set([
+// #399 — the four board "actuals" fields are Text fields (migrated in #398) and
+// are written as fixed-width duration strings ("DDd HHh MMm SSs") via
+// `formatDuration`. `buildFieldSyncPlan` converts these keys from seconds:
+// the caller's `secondsByKey` map is preferred (close-time, true second
+// precision); otherwise the field-DB minutes in `values` are used at minute
+// granularity (`values[key] * 60`). `formatDuration` requires a non-negative
+// integer, so seconds are rounded to whole seconds first. The body field
+// marker stays in minutes (consumer migration is #243) — only the board write
+// is converted.
+export const TIMING_DURATION_FIELD_KEYS = new Set([
   'engagedTime',
   'sessionTime',
   'reviewTime',
@@ -65,17 +67,18 @@ export function buildFieldSyncPlan({ cfg, fieldDefs, values, secondsByKey = {} }
       warnMissingFieldId({ cfgKey: `field${pascal}`, context: 'field sync skipped' });
       continue;
     }
-    // #230 — timing fields write float-hours, never minutes. Prefer the
-    // caller's seconds (true precision); fall back to field-DB minutes×60.
+    // #399 — timing fields write fixed-width duration strings, never minutes
+    // or float-hours. Prefer the caller's seconds (true precision); fall back
+    // to field-DB minutes×60. Round to whole seconds before formatting.
     let raw = values[def.key];
-    if (TIMING_HOUR_FIELD_KEYS.has(def.key)) {
+    if (TIMING_DURATION_FIELD_KEYS.has(def.key)) {
       const sec =
         secondsByKey[def.key] != null
           ? secondsByKey[def.key]
           : typeof values[def.key] === 'number'
             ? values[def.key] * 60
             : null;
-      raw = sec == null ? null : secondsToFloatHours(sec);
+      raw = sec == null ? null : formatDuration(Math.round(sec));
     }
     const value = valueForProjectField(raw, def.type);
     // Accept explicit zero / falsy-but-valid wrapped values. Skip only when
