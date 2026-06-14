@@ -308,12 +308,20 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   //                                    captured stderr (the real refusal reason)
   //                                    so the caller can report it instead of
   //                                    falsely claiming success.
-  ctx.runMoveState = async (issue, state, { env: envOverride, silent = false } = {}) => {
+  // `extraArgs` forwards additional CLI flags to move-state.mjs (e.g.
+  // `--supersede`, `--from <state>`). The base `[scriptPath, issueNum, state]`
+  // shape is preserved; callers append flags the chokepoint understands.
+  ctx.runMoveState = async (
+    issue,
+    state,
+    { env: envOverride, silent = false, extraArgs = [] } = {}
+  ) => {
     if (SKIP_NETWORK) {
       return { ok: true, status: 0, benign: false, skipped: true, stdout: '', stderr: '' };
     }
     const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
     const issueNum = String(issue).replace(/^#/, '');
+    const moveArgs = [scriptPath, issueNum, state, ...extraArgs];
     try {
       const mergedEnv = {
         ...process.env,
@@ -321,7 +329,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         AITM_INTERNAL: '1',
         AITM_VERB_CONTEXT: 'runtime',
       };
-      const { stdout } = await pexec(process.execPath, [scriptPath, issueNum, state], {
+      const { stdout } = await pexec(process.execPath, moveArgs, {
         timeout: GH_API_TIMEOUT_MS,
         env: mergedEnv,
       });

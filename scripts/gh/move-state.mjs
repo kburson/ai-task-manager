@@ -91,8 +91,9 @@ const STATE_TO_CONFIG_KEY = {
 
 function usage() {
   process.stderr.write(
-    'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>]\n' +
-      'States: backlog | refine | plan | develop | test | review | done\n'
+    'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede]\n' +
+      'States: backlog | refine | plan | develop | test | review | done\n' +
+      '--supersede: bypass the matrix + close gates (reserved for the `supersede` verb)\n'
   );
   process.exit(1);
 }
@@ -103,6 +104,14 @@ const stateArg = cliArgs[1];
 let itemIdOverride = '';
 let fromOverride = '';
 let demoteFlag = false;
+// #401 — supersede bypass. When set, the move skips the state-machine matrix
+// gate AND the runGuards entry/exit pipeline, allowing a dead story to jump
+// directly to Done from any non-done source state. Every done-path side-effect
+// (entry marker, full-auto audit, unparkDependents, phase rows, event fields,
+// tracker-state sync) still fires. Reserved for the `supersede` verb; the verb
+// owns the marker write, superseder-existence check, audit comment, and the
+// not-planned close. The flag only relaxes the forward-progress gates.
+let supersedeFlag = false;
 
 for (let i = 2; i < cliArgs.length; i++) {
   if (cliArgs[i] === '--item-id' && cliArgs[i + 1]) {
@@ -113,6 +122,8 @@ for (let i = 2; i < cliArgs.length; i++) {
     i++;
   } else if (cliArgs[i] === '--demote') {
     demoteFlag = true;
+  } else if (cliArgs[i] === '--supersede') {
+    supersedeFlag = true;
   }
 }
 
@@ -204,7 +215,7 @@ if (fromOverride) {
   resolvedFromState = await resolveLiveStateName(issueArg);
 }
 
-if (resolvedFromState) {
+if (resolvedFromState && !supersedeFlag) {
   const v = validateTransition(resolvedFromState, stateArg);
   if (!v.ok) {
     process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
@@ -261,7 +272,11 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
 // preserve the pre-refactor behavior of the inline `GATED_STATES` block
 // (which had no fromState precondition). Therefore the outer condition
 // gates only on SKIP_NETWORK.
-if (!SKIP_NETWORK) {
+// #401 — `--supersede` also skips this pipeline: a superseded story is being
+// abandoned, not delivered, so the close gates (deep-dive, review-approved,
+// blocked-by-not-done, lifecycle) must not apply. The done-path side-effects
+// below still run, so unparkDependents/audit/markers are preserved.
+if (!SKIP_NETWORK && !supersedeFlag) {
   let guardBody = '';
   try {
     guardBody = (

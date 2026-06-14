@@ -100,6 +100,40 @@ scripts/gh/move-state.mjs 42 develop
 - Move to **Review** automatically when verification passes (ready-for-review).
 - Move to **Done** only by `/task close` after a human approves.
 
+### Superseding a story (abandonment)
+
+Sometimes a story is abandoned mid-flight: development pivots, the real work
+lands on trunk under a _different_ issue, and the original story can never
+satisfy its own verification gates (acceptance criteria stay un-green, the
+test/review/close gates refuse it). Closing it by hand bypasses the audit trail
+and leaves the board lying about why it stopped.
+
+The `supersede` verb is the sanctioned way to retire such a story:
+
+```bash
+/task #<dead#>                       # bind the abandoned story first
+/task supersede <dead#> --by <superseding#>
+```
+
+What it does, in order:
+
+1. Confirms the superseding issue exists; refuses otherwise.
+2. Stamps a hidden `aitm-superseded-by refs="#<superseding#>" ts="<iso>"` marker
+   into the dead story's body (records _what_ replaced it and _when_).
+3. Drives the dead story straight to **Done** from whatever state it sits in,
+   via a narrow `move-state.mjs --supersede` bypass that skips the matrix and
+   verification gates **but preserves every done-path side-effect** — entry
+   markers, full-auto audit, paired phase rows, tracker-state sync, and
+   `unparkDependents` (so anything the dead story was blocking is released).
+4. Posts an audit comment on the dead story naming the superseder and stating
+   that verification was bypassed because the work was abandoned.
+5. Closes the GitHub issue as **not planned** (abandonment, not delivery), and
+   posts a back-reference comment on the superseding issue.
+
+The bypass is deliberately narrow: it is only reachable through `supersede`,
+only moves to Done, only with a validated superseder, and always leaves an
+audit trail. There is no general `--skip-gates` surface.
+
 ### Human Gates
 
 Two transitions require explicit human approval. Both are toggleable via config; defaults preserve today's behavior (human required).

@@ -51,6 +51,7 @@ const PREFLIGHT_MODE = {
   next: 'target-required',
   refine: 'target-required',
   demote: 'target-required',
+  supersede: 'target-required',
   close: 'target-optional',
   end: 'target-optional',
   review: 'target-optional',
@@ -339,6 +340,11 @@ if (_isMain)
         case 'unblock': {
           const { verbUnblock } = await import('./verbs/unblock.mjs');
           await verbUnblock(ctx);
+          break;
+        }
+        case 'supersede': {
+          const { verbSupersede } = await import('./verbs/supersede.mjs');
+          await verbSupersede(ctx);
           break;
         }
         case 'move':
