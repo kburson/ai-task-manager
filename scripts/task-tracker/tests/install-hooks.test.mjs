@@ -82,5 +82,46 @@ const gateEntriesAfter = (s2.hooks.PreToolUse || []).filter(
 );
 assert.equal(gateEntriesAfter.length, 1, 'source-edit-gate is idempotent across re-installs');
 
+// #240 — installer must register the AskUserQuestion pause/resume hooks under
+// PreToolUse / PostToolUse (matcher 'AskUserQuestion'), idempotently.
+const ON_ASK_PAUSE_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs pause';
+const ON_ASK_RESUME_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume';
+
+function askEntries(entries, cmd) {
+  return (entries || []).filter((h) => h.matcher === 'AskUserQuestion' && hasCommand([h], cmd));
+}
+
+// Fresh install registers both, once each.
+rmSync(settingsPath, { force: true });
+patchSettingsJson(settingsPath);
+let s3 = JSON.parse(readFileSync(settingsPath, 'utf8'));
+assert.equal(
+  askEntries(s3.hooks?.PreToolUse, ON_ASK_PAUSE_CMD).length,
+  1,
+  'AskUserQuestion pause hook registered once on fresh install'
+);
+assert.equal(
+  askEntries(s3.hooks?.PostToolUse, ON_ASK_RESUME_CMD).length,
+  1,
+  'AskUserQuestion resume hook registered once on fresh install'
+);
+
+// Idempotent across re-installs.
+patchSettingsJson(settingsPath);
+patchSettingsJson(settingsPath);
+s3 = JSON.parse(readFileSync(settingsPath, 'utf8'));
+assert.equal(
+  askEntries(s3.hooks.PreToolUse, ON_ASK_PAUSE_CMD).length,
+  1,
+  'AskUserQuestion pause hook is idempotent across re-installs'
+);
+assert.equal(
+  askEntries(s3.hooks.PostToolUse, ON_ASK_RESUME_CMD).length,
+  1,
+  'AskUserQuestion resume hook is idempotent across re-installs'
+);
+
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');
