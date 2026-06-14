@@ -265,4 +265,63 @@ assert.throws(
 assert.throws(() => writeLastKnownState('body', ''), /non-empty string/);
 assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
 
+// ---- #239 seconds-precision row rendering ----------------------------------
+
+// Test 16: when activeSec/idleSec are supplied, the Active and Idle cells render
+// the fixed-width `Xh Ym Zs` duration form and a trailing row-sec marker carries
+// the raw seconds. A sub-minute move is NO LONGER rounded away to 0 (AC5).
+{
+  const ts = new Date().toISOString();
+  const tsLocal = localMinuteWithOffset(ts);
+  const subMinute = buildRow({
+    ts,
+    event: 'plan',
+    activeSec: 37,
+    idleSec: 0,
+    deltaWords: 0,
+    wordMarker: 100,
+    description: 'refine -> plan',
+  });
+  assert.equal(
+    subMinute,
+    `| ${tsLocal} | plan | 0h 00m 37s | 0h 00m 00s | 0 | 100 | refine -> plan | <!-- row-sec: a=37 i=0 -->`,
+    'sub-minute active renders 0h 00m 37s, not 0'
+  );
+  // AC5: the Active cell shows 0h 00m Ns with N > 0.
+  const activeCell = subMinute.split('|')[3].trim();
+  assert.match(activeCell, /^0h 00m \d{2}s$/, 'sub-minute active is 0h 00m Ns');
+  assert.notEqual(activeCell, '0h 00m 00s', 'sub-minute active N > 0');
+}
+
+// Test 17: multi-minute seconds render with rollover, marker preserved.
+{
+  const ts = new Date().toISOString();
+  const row = buildRow({
+    ts,
+    event: 'review',
+    activeSec: 3852, // 1h 04m 12s
+    idleSec: 90, // 0h 01m 30s
+    deltaWords: 0,
+    wordMarker: 1,
+    description: 'agent session',
+  });
+  assert.ok(row.includes('| 1h 04m 12s | 0h 01m 30s |'), 'rollover rendered');
+  assert.ok(row.endsWith('<!-- row-sec: a=3852 i=90 -->'), 'raw-seconds marker preserved');
+}
+
+// Test 18: fractional/negative seconds are floored/clamped before formatting.
+{
+  const ts = new Date().toISOString();
+  const row = buildRow({
+    ts,
+    event: 'start',
+    activeSec: 47.9,
+    idleSec: -5,
+    deltaWords: 0,
+    wordMarker: 1,
+  });
+  assert.ok(row.includes('| 0h 00m 47s | 0h 00m 00s |'), 'floored + clamped');
+  assert.ok(row.endsWith('<!-- row-sec: a=47 i=0 -->'), 'marker reflects floored/clamped values');
+}
+
 console.log('gh-timing-comment.test.mjs: all passed');

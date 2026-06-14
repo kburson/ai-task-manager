@@ -115,8 +115,8 @@ export async function verbReview(ctx) {
     const row = buildRow({
       ts,
       event: 'review',
-      activeMin,
-      idleMin: 0,
+      activeSec: activeMin * 60,
+      idleSec: 0,
       deltaWords,
       wordMarker: s.wordsAtEntryStart + deltaWords,
       description: 'agent session — starting review',

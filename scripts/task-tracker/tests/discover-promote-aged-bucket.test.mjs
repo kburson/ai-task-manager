@@ -9,6 +9,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbNew } from '../verbs/new.mjs';
+import { parseDurationSeconds } from '../lib/timing-rows.mjs';
 
 function parseRow(row) {
   // | ts | event | activeMin | idleMin | dWords | wMarker | desc | <!-- ... -->
@@ -102,12 +103,17 @@ assert.ok(
   `row ts must NOT be the stale bucket-open ts, got ${recon.ts}`
 );
 
-// Elapsed bucket time recorded as idle, ~10 minutes.
-const idle = Number(recon.idleMin.replaceAll(',', ''));
-assert.equal(idle, 10, `expected idleMin=10, got ${recon.idleMin}`);
+// Elapsed bucket time recorded as idle, ~10 minutes. The Idle cell now renders
+// the seconds-precision `Xh Ym Zs` duration form (#239); parse it back.
+const idleSec = parseDurationSeconds(recon.idleMin);
+assert.equal(idleSec, 600, `expected idle=600s (0h 10m 00s), got ${recon.idleMin}`);
 
 // No fabricated active work.
-assert.equal(recon.activeMin, '0', `expected activeMin=0, got ${recon.activeMin}`);
+assert.equal(
+  parseDurationSeconds(recon.activeMin),
+  0,
+  `expected active=0 (0h 00m 00s), got ${recon.activeMin}`
+);
 
 // Description names the original discover window.
 assert.ok(

@@ -8,6 +8,7 @@ import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import { formatDurationSeconds } from './lib/timing-rows.mjs';
 const pexec = promisify(execFile);
 
 const TIMING_HEADING = '⏱ Timing Log';
@@ -98,23 +99,29 @@ export function buildRow({
       if (!description) description = resolved.description;
     }
   }
-  // When second precision is supplied, derive minute display values from
-  // it so the visible cells match the hidden marker. The visible 7-col
-  // schema is preserved; a trailing `<!-- row-sec: a=N i=N -->` comment
-  // carries the second-precision values for downstream rollup.
-  let activeMinOut = activeMin;
-  let idleMinOut = idleMin;
+  // When second precision is supplied, render the Active and Idle cells with
+  // the fixed-width `Xh Ym Zs` duration form so sub-minute moves are no longer
+  // rounded away to 0. A trailing `<!-- row-sec: a=N i=N -->` comment carries
+  // the raw second values as the canonical numeric source for downstream
+  // rollup; the visible duration strings are presentation only. When only
+  // minute values are supplied (legacy heartbeat callers), the cells fall back
+  // to the integer-minute form.
+  let activeCell;
+  let idleCell;
   let trailingMarker = '';
   if (Number.isFinite(Number(activeSec)) || Number.isFinite(Number(idleSec))) {
     const aSec = Number.isFinite(Number(activeSec))
       ? Math.max(0, Math.floor(Number(activeSec)))
       : 0;
     const iSec = Number.isFinite(Number(idleSec)) ? Math.max(0, Math.floor(Number(idleSec))) : 0;
-    activeMinOut = Math.round(aSec / 60);
-    idleMinOut = Math.round(iSec / 60);
+    activeCell = formatDurationSeconds(aSec);
+    idleCell = formatDurationSeconds(iSec);
     trailingMarker = ` <!-- row-sec: a=${aSec} i=${iSec} -->`;
+  } else {
+    activeCell = fmtNum(activeMin);
+    idleCell = fmtNum(idleMin);
   }
-  return `| ${fmtTs(ts)} | ${event} | ${fmtNum(activeMinOut)} | ${fmtNum(idleMinOut)} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
+  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
 }
 
 // ---- lastKnownState metadata helpers ---------------------------------------

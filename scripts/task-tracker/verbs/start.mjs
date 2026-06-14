@@ -94,8 +94,8 @@ export async function verbStart(ctx, reasonOverride) {
   const row = buildRow({
     ts,
     event: 'resumed',
-    activeMin: 0,
-    idleMin: 0,
+    activeSec: 0,
+    idleSec: 0,
     deltaWords: 0,
     wordMarker: wordsAtStart,
     description: reason ?? 'task resumed',

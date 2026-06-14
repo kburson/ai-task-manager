@@ -103,10 +103,10 @@ export async function verbNew(ctx) {
       buildRow({
         ts: createdTs,
         event: 'discovery: idle-reconciled',
-        // activeMin:0 honest — discovery has no active session; the entire
+        // activeSec:0 honest — discovery has no active session; the entire
         // bucket window is recorded as idle below, nothing is fabricated.
-        activeMin: 0,
-        idleMin,
+        activeSec: 0,
+        idleSec: idleMin * 60,
         deltaWords: 0,
         wordMarker: wordsAtStart,
         description: `discovery session reconciled as idle (opened ${startedAt})`,

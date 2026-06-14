@@ -109,8 +109,8 @@ export async function verbSwitch(ctx, target) {
   const row = buildRow({
     ts,
     event: 'start',
-    activeMin: 0,
-    idleMin: 0,
+    activeSec: 0,
+    idleSec: 0,
     deltaWords: 0,
     wordMarker: wordsAtStart,
     description: role,
