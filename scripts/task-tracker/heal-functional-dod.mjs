@@ -76,7 +76,12 @@ export function classifyLabel(text) {
 export function detectMissingKeys(body) {
   const loc = locateFunctionalSection(body);
   if (!loc) {
-    return { sectionPresent: false, presentKeys: [], missingKeys: [...CANONICAL_KEYS], affected: false };
+    return {
+      sectionPresent: false,
+      presentKeys: [],
+      missingKeys: [...CANONICAL_KEYS],
+      affected: false,
+    };
   }
   const present = new Set(parseFunctionalDodKeys(body).map((it) => it.key));
   const presentKeys = CANONICAL_KEYS.filter((k) => present.has(k));
