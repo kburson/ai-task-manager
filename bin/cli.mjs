@@ -122,6 +122,13 @@ const COMMIT_TRAIL_HOOK_CMD =
 const ON_STOP_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
 const ON_USER_PROMPT_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
+// EPIC #238 / #240 — AskUserQuestion pause/resume hooks. The same module is
+// invoked twice with a phase argument: `pause` (PreToolUse) brackets the
+// question open, `resume` (PostToolUse) closes it with the measured wait.
+const ON_ASK_PAUSE_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs pause';
+const ON_ASK_RESUME_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume';
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
@@ -265,6 +272,23 @@ export function patchSettingsJson(settingsPath) {
     if (!already) {
       settings.hooks[event].push({
         matcher: '',
+        hooks: [{ type: 'command', command: cmd }],
+      });
+    }
+  }
+
+  // EPIC #238 / #240 — AskUserQuestion pause/resume hooks. Matched on the
+  // tool name so they fire only around clarifying questions. Idempotent:
+  // matched by command string so re-running the installer does not duplicate.
+  for (const [event, cmd] of [
+    ['PreToolUse', ON_ASK_PAUSE_HOOK_CMD],
+    ['PostToolUse', ON_ASK_RESUME_HOOK_CMD],
+  ]) {
+    if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
+    const already = settings.hooks[event].some((h) => hookEntryHasCommand(h, cmd));
+    if (!already) {
+      settings.hooks[event].push({
+        matcher: 'AskUserQuestion',
         hooks: [{ type: 'command', command: cmd }],
       });
     }
