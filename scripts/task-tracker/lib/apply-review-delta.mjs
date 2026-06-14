@@ -4,13 +4,12 @@
 // imports neither `writeProjectFieldValue` nor any `gh issue edit` path.
 // Failures must not block the calling verb (verbClose).
 //
-// Note on units: `estimate` is HOURS (board field, `unit: hours`).
-// `engagedTime` is MINUTES (board field, `unit: minutes` — see
-// config/project-fields.default.json). We convert minutes → seconds here
-// (`* 60`) before passing to computeReviewDelta, which does all math in
-// seconds. When D3 ships second-precision rollup, this multiplication
-// stays correct as a no-op (rollup already integers) until we change the
-// board field's stored unit; the renderer is the source of truth.
+// Note on units: `estimate` is HOURS (board Number field, `unit: hours`).
+// `engagedTime` and `planTime` are board TEXT fields holding fixed-width
+// `DDd HHh MMm SSs` duration strings whose canonical unit is integer SECONDS
+// (#398/#399). We parse them with `parseDuration` at the boundary and pass the
+// resulting seconds straight to computeReviewDelta, which does all math in
+// seconds. No minutes→seconds multiplication remains.
 //
 // Deps are injectable for tests.
 
@@ -19,6 +18,7 @@ import { promisify } from 'node:util';
 
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { computeReviewDelta, buildDeltaCommentBody, DELTA_HEADER } from './review-delta.mjs';
+import { parseDuration } from './duration.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
@@ -69,15 +69,28 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
 
   const fieldDefs = fieldDefsLoader();
 
+  // The four board "actuals" fields are Text duration strings (`DDd HHh MMm SSs`,
+  // integer seconds) since #398/#399. Parse to seconds at the boundary; tolerate
+  // an absent/blank/malformed value by yielding null so the delta degrades
+  // gracefully rather than throwing.
+  const boardSeconds = (v) => {
+    if (typeof v !== 'string' || v.trim() === '') return null;
+    try {
+      return parseDuration(v);
+    } catch {
+      return null;
+    }
+  };
+
   let estimateHr = null;
-  let engagedMin = null;
-  let planMin = null;
+  let engagedSec = null;
+  let planSec = null;
   if (cfg.projectId) {
     try {
       const projVals = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
       if (typeof projVals.estimate === 'number') estimateHr = projVals.estimate;
-      if (typeof projVals.engagedTime === 'number') engagedMin = projVals.engagedTime;
-      if (typeof projVals.planTime === 'number') planMin = projVals.planTime;
+      engagedSec = boardSeconds(projVals.engagedTime);
+      planSec = boardSeconds(projVals.planTime);
     } catch {}
   }
 
@@ -88,11 +101,9 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
     }
   }
 
-  // Convert engaged minutes → seconds at the boundary. D3 will eventually
-  // surface seconds directly; until then, this is a faithful conversion at
-  // minute granularity.
-  const actualSec = engagedMin === null ? null : engagedMin * 60;
-  const result = computeReviewDelta({ estimateHr, actualSec, planMin });
+  // engagedSec/planSec are already canonical integer seconds (parsed from the
+  // board duration strings above); no minutes→seconds conversion needed.
+  const result = computeReviewDelta({ estimateHr, actualSec: engagedSec, planSec });
 
   // Drivers: pull from the most-recent `### 📝 Review Notes` comment, if any.
   let drivers = [];

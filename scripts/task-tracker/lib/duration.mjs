@@ -1,15 +1,18 @@
-// #230 (child c of #238) — duration unit conversion for board fields.
+// Duration unit helpers for board timing fields.
 //
-// The four board "actuals" fields (Engaged Time, Session Time, Review Time,
-// Plan Time) are written in float-HOURS so that `Estimate − Actual` is a
-// single subtraction in Estimate's native unit. `secondsToFloatHours`
-// converts a seconds total to hours at fixed decimal precision (default 5
-// digits ≈ 0.036s granularity — lossless for any realistic session).
+// CURRENT MODEL (#397/#398/#399): the four board "actuals" fields (Engaged
+// Time, Session Time, Review Time, Plan Time) are TEXT fields holding fixed-
+// width `DDd HHh MMm SSs` duration strings whose canonical unit is integer
+// SECONDS. Use `formatDuration`/`parseDuration` (below) for all board reads and
+// writes. Downstream consumers were migrated to this representation in #243.
 //
-// The `<!-- aitm-fields -->` body marker stays in MINUTES; only the board
-// write uses this helper. Downstream consumer migration to seconds is #243.
+// LEGACY (pre-#399): the same fields were Number fields written in float-HOURS
+// via `secondsToFloatHours`. That converter is retained only for the unit tests
+// that pin its historical behavior; no live code path feeds the board with it
+// anymore. The `<!-- aitm-fields -->` body marker remains in MINUTES by design.
 
 // Convert a seconds count to float-hours rounded to `digits` decimal places.
+// LEGACY — see the module header; retained for test coverage only.
 // Returns a Number (trailing zeros are not preserved — the board renders the
 // column at fixed precision). Returns null for non-finite input so callers
 // skip the write rather than push NaN onto the board.

@@ -31,7 +31,9 @@
  */
 //
 // Measured fields read from GitHub Projects:
-//   "Session Time"        — minutes of active AI-assisted session time
+//   "Session Time"        — a Text duration string (`DDd HHh MMm SSs`, integer
+//                           seconds) since #398/#399; parsed via the shared
+//                           `parseDuration` and converted to minutes here.
 //
 // Context words (words of *reader-visible* chat context — text actually
 // rendered in the chat window, EXCLUDING system-reminders, skill bodies,
@@ -50,6 +52,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
+import { parseDuration } from '../task-tracker/lib/duration.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -160,6 +163,10 @@ async function fetchProject() {
                     name
                     field { ... on ProjectV2SingleSelectField { name } }
                   }
+                  ... on ProjectV2ItemFieldTextValue {
+                    text
+                    field { ... on ProjectV2Field { name } }
+                  }
                 }
               }
             }
@@ -184,8 +191,28 @@ function fields(item) {
     if (!fv.field?.name) continue;
     if (fv.number != null) out[fv.field.name] = fv.number;
     else if (fv.name   != null) out[fv.field.name] = fv.name;
+    else if (fv.text   != null) out[fv.field.name] = fv.text;
   }
   return out;
+}
+
+// The board "Session Time" field is a Text duration string (`DDd HHh MMm SSs`,
+// integer seconds) since #398/#399. Convert to MINUTES — the unit the rest of
+// this report's math assumes. A legacy numeric "Actual Session Time" fallback
+// is still treated as already-minutes.
+function sessionToMinutes(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    if (t === '') return null;
+    try {
+      return parseDuration(t) / 60;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function parseStartInfo(comments) {
@@ -219,7 +246,7 @@ function processItems(raw) {
         closedAt:     n.content.closedAt  ? new Date(n.content.closedAt)  : null,
         ...parseStartInfo(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
-        sessionMin:   f['Session Time'] ?? f['Actual Session Time'] ?? null,
+        sessionMin:   sessionToMinutes(f['Session Time'] ?? f['Actual Session Time']),
         // The board "Context Length" field was retired (#260). Per-item context
         // words are no longer sourced from the board; the report's reading-time /
         // leverage aggregate is fed by the --chat-words flag instead.

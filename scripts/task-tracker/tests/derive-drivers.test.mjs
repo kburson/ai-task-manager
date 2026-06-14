@@ -18,6 +18,16 @@ test('detectMisestimate fires when |Δ%| > 100', () => {
   assert.match(r2, /\+400%/);
 });
 
+test('detectMisestimate parses board duration strings (#243)', () => {
+  // engagedTime arrives as a board Text duration string (integer seconds).
+  // est 1h (60min) vs actual "00d 05h 00m 00s" (300min) => +400%.
+  const r = detectMisestimate({ fields: { estimate: 1, engagedTime: '00d 05h 00m 00s' } });
+  assert.match(r, /significant misestimate/);
+  assert.match(r, /\+400%/);
+  // Malformed string => clean no-op, not a throw.
+  assert.equal(detectMisestimate({ fields: { estimate: 1, engagedTime: 'garbage' } }), null);
+});
+
 test('detectMisestimate returns null on missing inputs', () => {
   assert.equal(detectMisestimate({ fields: {} }), null);
   assert.equal(detectMisestimate({ fields: { estimate: 0, engagedTime: 5 } }), null);

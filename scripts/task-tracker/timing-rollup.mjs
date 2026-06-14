@@ -217,6 +217,12 @@ export function upsertStageRollupMarker(body, rollup) {
   return src.endsWith('\n') ? `${src}${line}\n` : `${src}\n${line}\n`;
 }
 
+// Canonical seconds path (#243): `totalActiveSec`/`reviewSec`/`engagedSec` are
+// the second-precision totals downstream consumers read. `totalActiveSec` sums
+// each row's `activeSec`, which comes from the `row-sec` marker (true seconds);
+// only legacy rows lacking that marker fall back to minutes×60 (see
+// parseTimingRows). `reviewSec`/`planMin` are timestamp-delta derived at minute
+// granularity — there is no finer source — and never use float hours.
 export function rollupTotals(rows, thresholdMin) {
   let totalActiveMin = 0;
   let totalActiveSec = 0;

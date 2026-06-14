@@ -6,6 +6,25 @@
 // against material already fetched by the approve verb.
 
 import { unescapeValue } from './marker-grammar.mjs';
+import { parseDuration } from './duration.mjs';
+
+// Normalize an engaged-time field to MINUTES. Two callers feed this detector:
+//   - the approve verb passes board values, where engagedTime is a Text
+//     duration string (`DDd HHh MMm SSs`, integer seconds) since #398/#399;
+//   - the heal-closed-issues path passes the body field-DB cache, where
+//     engagedTime is a number already in minutes.
+// Return null for anything unparseable so the detector cleanly no-ops.
+function engagedToMinutes(v) {
+  if (typeof v === 'string') {
+    try {
+      return parseDuration(v) / 60;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  return null;
+}
 
 /** @typedef {{ body:string, comments:Array<{body:string,createdAt:string}>, fields:Record<string,any> }} Signals */
 
@@ -19,9 +38,9 @@ const COMMITS_MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s
 export function detectMisestimate({ fields }) {
   if (!fields) return null;
   const estHr = Number(fields.estimate);
-  const actMin = Number(fields.engagedTime);
+  const actMin = engagedToMinutes(fields.engagedTime);
   if (!Number.isFinite(estHr) || estHr <= 0) return null;
-  if (!Number.isFinite(actMin)) return null;
+  if (actMin === null || !Number.isFinite(actMin)) return null;
   const estMin = estHr * 60;
   if (estMin === 0) return null;
   const deltaPct = ((actMin - estMin) / estMin) * 100;

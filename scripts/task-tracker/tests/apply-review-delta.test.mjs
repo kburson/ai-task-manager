@@ -4,6 +4,10 @@
 //   1. Auto path: estimate=16, actual=22.5 → +40.6% delta comment.
 //   2. Missing-actual fallback: '—' cells + read-only footer, no crash.
 //   3. TASK_TRACKER_SKIP_DELTA=1 short-circuits with a bypass comment.
+//
+// Board "actuals" fields are Text duration strings (`DDd HHh MMm SSs`, integer
+// seconds) since #398/#399/#243; the stubs feed those strings and assertions
+// expect formatDuration-rendered cells.
 
 import { strict as assert } from 'node:assert';
 import { applyReviewDelta } from '../lib/apply-review-delta.mjs';
@@ -25,7 +29,7 @@ const FIXTURE_BODY = `## ACs
 
 function buildDeps({
   estimate = 16,
-  engagedTime = 22.5,
+  engagedTime = '00d 22h 30m 00s',
   planTime = null,
   fetchedComments = [],
 } = {}) {
@@ -38,8 +42,8 @@ function buildDeps({
       },
       loadProjectFieldDefs: () => [
         { key: 'estimate', name: 'Estimate', type: 'number' },
-        { key: 'engagedTime', name: 'Actual Hours', type: 'number' },
-        { key: 'planTime', name: 'Plan Time', type: 'number' },
+        { key: 'engagedTime', name: 'Engaged Time', type: 'text' },
+        { key: 'planTime', name: 'Plan Time', type: 'text' },
       ],
       projectValuesForIssue: async () => {
         const out = {};
@@ -53,11 +57,11 @@ function buildDeps({
   };
 }
 
-// Test 1: auto path — estimate=16 hours (57600s), engagedTime=1350 minutes
-// (=81000s = 22.5h, +40.6% over). Verifies unit normalization in
-// apply-review-delta (minutes→seconds boundary conversion).
+// Test 1: auto path — estimate=16 hours (57600s), engagedTime board string
+// "00d 22h 30m 00s" (=81000s = 22.5h, +40.6% over). Verifies the board duration
+// string is parsed to seconds at the boundary (parseDuration), no minutes math.
 {
-  const { state, deps } = buildDeps({ estimate: 16, engagedTime: 1350 });
+  const { state, deps } = buildDeps({ estimate: 16, engagedTime: '00d 22h 30m 00s' });
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   assert.equal(state.comments.length, 1);
@@ -65,8 +69,8 @@ function buildDeps({
   assert.ok(c.startsWith('### 📊 Review delta'), 'header present');
   assert.match(
     c,
-    /\| Story effort \| 16:00:00 \| 22:30:00 \| \+40\.6% \|/,
-    'row shows +40.6% in H:MM:SS'
+    /\| Story effort \| 00d 16h 00m 00s \| 00d 22h 30m 00s \| \+40\.6% \|/,
+    'row shows +40.6% in DDd HHh MMm SSs'
   );
   assert.match(c, /read-only/i, 'read-only footer present');
 }
@@ -77,7 +81,11 @@ function buildDeps({
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
-  assert.match(c, /\| Story effort \| 16:00:00 \| — \| — \|/, 'em-dash cells when actual missing');
+  assert.match(
+    c,
+    /\| Story effort \| 00d 16h 00m 00s \| — \| — \|/,
+    'em-dash cells when actual missing'
+  );
   assert.match(c, /Actual Session Time.*not set/i, 'fallback note present');
 }
 
@@ -105,7 +113,7 @@ function buildDeps({
   ].join('\n');
   const { state, deps } = buildDeps({
     estimate: 16,
-    engagedTime: 1350,
+    engagedTime: '00d 22h 30m 00s',
     fetchedComments: [{ body: notesBody, createdAt: '2026-05-17T00:00:00Z' }],
   });
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
@@ -118,33 +126,38 @@ function buildDeps({
 
 // Test 5 (D1) — no review-notes comment → no Drivers section.
 {
-  const { state, deps } = buildDeps({ estimate: 16, engagedTime: 1350, fetchedComments: [] });
+  const { state, deps } = buildDeps({
+    estimate: 16,
+    engagedTime: '00d 22h 30m 00s',
+    fetchedComments: [],
+  });
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
   assert.doesNotMatch(c, /Drivers:/, 'no Drivers section when no notes comment');
 }
 
-// Test 6 (#187): planTime present → comment includes Plan minutes row.
+// Test 6 (#187/#243): planTime present (board string "00d 00h 25m 00s") →
+// comment includes a Plan time row rendered via formatDuration.
 {
-  const { state, deps } = buildDeps({ planTime: 25 });
+  const { state, deps } = buildDeps({ planTime: '00d 00h 25m 00s' });
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
   assert.match(
     c,
-    /\| Plan minutes \| — \| 25 \| — \|/,
-    'Plan minutes row present when planTime set'
+    /\| Plan time \| — \| 00d 00h 25m 00s \| — \|/,
+    'Plan time row present when planTime set'
   );
 }
 
-// Test 7 (#187): planTime absent → no Plan minutes row.
+// Test 7 (#187): planTime absent → no Plan time row.
 {
   const { state, deps } = buildDeps({ planTime: null });
   const res = await applyReviewDelta({ cfg: CFG, issueNumber: 999, body: FIXTURE_BODY, deps });
   assert.equal(res.status, 'applied');
   const c = state.comments[0];
-  assert.ok(!/Plan minutes/.test(c), 'Plan minutes row absent when planTime missing');
+  assert.ok(!/Plan time/.test(c), 'Plan time row absent when planTime missing');
 }
 
 console.log('apply-review-delta.test.mjs: all passed');
