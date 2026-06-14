@@ -129,6 +129,12 @@ const ON_ASK_PAUSE_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs pause';
 const ON_ASK_RESUME_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume';
+// EPIC #238 / #241 — Stop hook that audits the bound issue's ⏱ Timing Log for
+// the current session and warns when pause/resume rows do not balance. Warn-
+// only, fail-open; the safety net for chat-only questions that never trip the
+// AskUserQuestion hook (#240).
+const STOP_AUDIT_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs';
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
@@ -265,6 +271,7 @@ export function patchSettingsJson(settingsPath) {
   // command string so re-running the installer does not duplicate entries.
   for (const [event, cmd] of [
     ['Stop', ON_STOP_HOOK_CMD],
+    ['Stop', STOP_AUDIT_HOOK_CMD],
     ['UserPromptSubmit', ON_USER_PROMPT_HOOK_CMD],
   ]) {
     if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];

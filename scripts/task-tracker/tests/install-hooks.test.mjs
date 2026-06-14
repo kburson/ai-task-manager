@@ -123,5 +123,27 @@ assert.equal(
   'AskUserQuestion resume hook is idempotent across re-installs'
 );
 
+// #241 — installer must register the stop-audit-pause-resume hook under Stop,
+// alongside the on-stop hook, once each and idempotently.
+const STOP_AUDIT_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs';
+
+rmSync(settingsPath, { force: true });
+patchSettingsJson(settingsPath);
+let s4 = JSON.parse(readFileSync(settingsPath, 'utf8'));
+const stopAuditEntries = (entries) =>
+  (entries || []).filter((e) => e?.hooks?.some((h) => h.command === STOP_AUDIT_CMD));
+assert.equal(stopAuditEntries(s4.hooks?.Stop).length, 1, 'stop-audit hook registered once');
+assert.equal(hasCommand(s4.hooks?.Stop, STOP_CMD), true, 'on-stop hook still present alongside');
+
+patchSettingsJson(settingsPath);
+patchSettingsJson(settingsPath);
+s4 = JSON.parse(readFileSync(settingsPath, 'utf8'));
+assert.equal(
+  stopAuditEntries(s4.hooks.Stop).length,
+  1,
+  'stop-audit hook is idempotent across re-installs'
+);
+
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');
