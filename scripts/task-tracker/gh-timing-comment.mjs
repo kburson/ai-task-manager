@@ -221,7 +221,7 @@ async function ghExec(args, { timeoutMs = 2000 } = {}) {
   return stdout;
 }
 
-async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
+export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
   const num = issueNumber.replace('#', '');
   const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
@@ -235,7 +235,7 @@ async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) 
   return out.trim(); // URL of new comment
 }
 
-async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
+export async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
   // gh doesn't have edit-comment by id for issues directly;
   // use GraphQL mutation.
   const mutation = `
