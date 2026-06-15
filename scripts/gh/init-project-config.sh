@@ -378,9 +378,34 @@ create_project_field_if_missing() {
   [[ -n "$created" ]] && ok "Created '$name' field." || warn "Could not create '$name' field — it can be mapped or created later."
 }
 
+# ── Canonical Status palette — SINGLE SOURCE OF TRUTH (#415) ───────────────
+# Every place this script declares a Status option name, color, or description
+# MUST derive from this one ordered array. Three paths consume it: the fresh-
+# field create path (apply_project_template), the existing-field create path
+# (STATES_TO_CREATE), and the rename/recolor-on-match normalize step. Keeping a
+# second hardcoded copy is the bug this constant exists to prevent — the copies
+# drifted (Refine/Plan/Review/Done came out mis-colored on fresh installs) and
+# matched default options ("Todo"/"In Progress") were never renamed or
+# recolored at all. Verified live against the ai-task-manager board (project
+# #11). GitHub single-select color enum: GRAY BLUE GREEN YELLOW ORANGE RED PINK
+# PURPLE.
+CANONICAL_STATUS_PALETTE='[
+  {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
+  {"name":"Refine","color":"GREEN","description":"Items being shaped: AC, sizing, estimates."},
+  {"name":"Plan","color":"BLUE","description":"Items being deep-dived: design + caller analysis."},
+  {"name":"Develop","color":"YELLOW","description":"Implementation in progress."},
+  {"name":"Test","color":"ORANGE","description":"Agent verification in progress."},
+  {"name":"Review","color":"BLUE","description":"All checks passed; awaiting human approval."},
+  {"name":"Done","color":"PURPLE","description":""}
+]'
+
+# canon_color <state-name> → canonical color for that state (empty if unknown).
+canon_color() {
+  echo "$CANONICAL_STATUS_PALETTE" | jq -r --arg n "$1" '.[] | select(.name == $n) | .color'
+}
+
 apply_project_template() {
   local template="$1"
-  local status_opts
   # Status (kanban) is the ONLY field this bootstrap provisions. Every other
   # project property — Priority, Size, Estimate, Sequence, the timing fields,
   # the "Started" start-time field, Blocked By — is owned by the
@@ -391,18 +416,8 @@ apply_project_template() {
   # and redundant, and it caused interactive type-conflict prompts when the
   # config loop then tried to create the canonical Text fields over them.
   # See #233.
-  status_opts='[
-    {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
-    {"name":"Refine","color":"BLUE","description":"Items being shaped: AC, sizing, estimates."},
-    {"name":"Plan","color":"PURPLE","description":"Items being deep-dived: design + caller analysis."},
-    {"name":"Develop","color":"YELLOW","description":"Implementation in progress."},
-    {"name":"Test","color":"ORANGE","description":"Agent verification in progress."},
-    {"name":"Review","color":"PURPLE","description":"All checks passed; awaiting human approval."},
-    {"name":"Done","color":"GREEN","description":""}
-  ]'
-
   info "Applying ${template} project workflow..."
-  create_project_field_if_missing "Status" "SINGLE_SELECT" "$status_opts"
+  create_project_field_if_missing "Status" "SINGLE_SELECT" "$CANONICAL_STATUS_PALETTE"
 }
 
 create_and_link_project() {
@@ -663,15 +678,16 @@ auto_or_pick "Review"  "review,r4r,ready for release,ready-for-release"       "r
 auto_or_pick "Done"    "done,closed,complete,completed"                       "required"; OPTION_DONE="$PICKED_ID"
 
 
-# Build list of options that need to be created
+# Build list of options that need to be created. Colors come from the single
+# canonical palette (#415) so this list cannot drift from the fresh-field path.
 STATES_TO_CREATE=()
-[[ "$OPTION_BACKLOG" == "__NEW__" ]] && STATES_TO_CREATE+=("Backlog:GRAY")
-[[ "$OPTION_REFINE"  == "__NEW__" ]] && STATES_TO_CREATE+=("Refine:BLUE")
-[[ "$OPTION_PLAN"    == "__NEW__" ]] && STATES_TO_CREATE+=("Plan:PURPLE")
-[[ "$OPTION_DEVELOP" == "__NEW__" ]] && STATES_TO_CREATE+=("Develop:YELLOW")
-[[ "$OPTION_TEST"    == "__NEW__" ]] && STATES_TO_CREATE+=("Test:ORANGE")
-[[ "$OPTION_REVIEW"  == "__NEW__" ]] && STATES_TO_CREATE+=("Review:PURPLE")
-[[ "$OPTION_DONE"    == "__NEW__" ]] && STATES_TO_CREATE+=("Done:GREEN")
+[[ "$OPTION_BACKLOG" == "__NEW__" ]] && STATES_TO_CREATE+=("Backlog:$(canon_color Backlog)")
+[[ "$OPTION_REFINE"  == "__NEW__" ]] && STATES_TO_CREATE+=("Refine:$(canon_color Refine)")
+[[ "$OPTION_PLAN"    == "__NEW__" ]] && STATES_TO_CREATE+=("Plan:$(canon_color Plan)")
+[[ "$OPTION_DEVELOP" == "__NEW__" ]] && STATES_TO_CREATE+=("Develop:$(canon_color Develop)")
+[[ "$OPTION_TEST"    == "__NEW__" ]] && STATES_TO_CREATE+=("Test:$(canon_color Test)")
+[[ "$OPTION_REVIEW"  == "__NEW__" ]] && STATES_TO_CREATE+=("Review:$(canon_color Review)")
+[[ "$OPTION_DONE"    == "__NEW__" ]] && STATES_TO_CREATE+=("Done:$(canon_color Done)")
 
 # If any new options needed, append them via updateProjectV2Field
 if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
@@ -732,12 +748,24 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
   [[ "$OPTION_DONE"    == "__NEW__" ]] && OPTION_DONE=$(remap_state "Done")
 fi
 
-# ── Reorder columns if only the 6 standard states exist ───────────────────
+# ── Normalize the 7 managed options to the canonical palette (#415) ────────
+# A single updateProjectV2Field rewrite that, for each of the 7 managed states,
+# forces the canonical name + color + description while PRESERVING the matched
+# option's id (so items already sitting in that column are not orphaned). This
+# is what renames GitHub's default "Todo"→"Refine" / "In Progress"→"Develop"
+# and recolors any mismatched option. The 7 managed options are placed in
+# canonical order; any unmanaged custom columns are preserved as-is and
+# appended after, so this runs safely regardless of how many columns exist
+# (the old logic only ran when exactly 7 existed, leaving renames undone on
+# boards with extra columns).
 
-TOTAL_OPTIONS=$(echo "$KANBAN_FIELD_JSON" | jq '.options | length' 2>/dev/null || echo '0')
-if [[ "$TOTAL_OPTIONS" -eq 7 ]]; then
-  info "Setting column order: Backlog → Refine → Plan → Develop → Test → Review → Done"
-  ORDERED_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq -c \
+if [[ -z "$OPTION_BACKLOG" || -z "$OPTION_REFINE" || -z "$OPTION_PLAN" || \
+      -z "$OPTION_DEVELOP" || -z "$OPTION_TEST" || -z "$OPTION_REVIEW" || -z "$OPTION_DONE" ]]; then
+  warn "One or more managed Status options did not resolve to an id — skipping palette normalization. Set names/colors manually in the GitHub Project board."
+else
+  info "Normalizing Status columns to canonical names + colors: Backlog → Refine → Plan → Develop → Test → Review → Done"
+  NORMALIZED_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq -c \
+    --argjson canon "$CANONICAL_STATUS_PALETTE" \
     --arg b   "$OPTION_BACKLOG" \
     --arg rf  "$OPTION_REFINE" \
     --arg pl  "$OPTION_PLAN" \
@@ -745,36 +773,32 @@ if [[ "$TOTAL_OPTIONS" -eq 7 ]]; then
     --arg t   "$OPTION_TEST" \
     --arg rv  "$OPTION_REVIEW" \
     --arg d   "$OPTION_DONE" \
-    --argjson desc '{
-      "Backlog": "Unvetted ideas; not yet shaped.",
-      "Refine":  "Items being shaped: AC, sizing, estimates.",
-      "Plan":    "Items being deep-dived: design + caller analysis.",
-      "Develop": "Implementation in progress.",
-      "Test":    "Agent verification in progress.",
-      "Review":  "All checks passed; awaiting human approval.",
-      "Done":    ""
-    }' \
-    '.options as $opts |
-     [$b,$rf,$pl,$dev,$t,$rv,$d] |
-     map(. as $id | $opts[] | select(.id == $id) | {id, name, color, description: ($desc[.name] // .description)})' \
+    '
+    [{name:"Backlog",id:$b},{name:"Refine",id:$rf},{name:"Plan",id:$pl},
+     {name:"Develop",id:$dev},{name:"Test",id:$t},{name:"Review",id:$rv},
+     {name:"Done",id:$d}] as $managed |
+    ($managed | map(.id)) as $managedIds |
+    ($managed | map(. as $m | ($canon[] | select(.name == $m.name)) as $c |
+       {id:$m.id, name:$c.name, color:$c.color, description:$c.description})) as $managedOpts |
+    (.options | map(select((.id as $oid | $managedIds | index($oid)) | not))
+              | map({id, name, color, description})) as $extraOpts |
+    $managedOpts + $extraOpts' \
     2>/dev/null || echo '')
 
-  if [[ -n "$ORDERED_OPTS" && "$ORDERED_OPTS" != "null" ]]; then
-    REORDER_OK=$(jq -n \
+  if [[ -n "$NORMALIZED_OPTS" && "$NORMALIZED_OPTS" != "null" ]]; then
+    NORMALIZE_OK=$(jq -n \
       --arg field "$KANBAN_FIELD_ID" \
-      --argjson opts "$ORDERED_OPTS" \
+      --argjson opts "$NORMALIZED_OPTS" \
       '{query:"mutation($field:ID!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$field,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{field:$field,opts:$opts}}' \
       | gh api graphql --input - --jq '.data.updateProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
-    if [[ -n "$REORDER_OK" ]]; then
-      ok "Column order and descriptions set."
+    if [[ -n "$NORMALIZE_OK" ]]; then
+      ok "Status names, colors, and order normalized to canonical palette."
       info "WIP limits cannot be set via API — set them manually in the GitHub Project board:"
       info "  Develop: 3   |   Test: 5   |   Review: 10"
     else
-      warn "Could not reorder columns — arrange manually in the GitHub Project board."
+      warn "Could not normalize Status columns — set names/colors/order manually in the GitHub Project board."
     fi
   fi
-else
-  info "Project has $TOTAL_OPTIONS status columns — column order not changed (arrange manually in GitHub)."
 fi
 echo ""
 

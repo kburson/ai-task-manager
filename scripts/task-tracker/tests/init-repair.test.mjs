@@ -3,7 +3,7 @@
 //   - fills empty kanbanOption* keys via case-insensitive name match
 //   - never overwrites populated keys
 //   - reports unmatched options (column missing on Status field)
-//   - static parse: init-project-config.sh status_opts has 7 entries in expected order
+//   - static parse: init-project-config.sh CANONICAL_STATUS_PALETTE has 7 entries in expected order
 
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -142,18 +142,21 @@ const FULL_OPTS = [
   rmSync(sandbox, { recursive: true });
 }
 
-// Test 5: static parse — init-project-config.sh status_opts contains 7 columns in order
+// Test 5: static parse — init-project-config.sh canonical Status palette has the
+// 7 columns in order. (#415 renamed the former `status_opts` literal to the
+// single CANONICAL_STATUS_PALETTE source of truth; name+color coverage lives in
+// init-status-palette.test.mjs.)
 {
   const sh = readFileSync(INIT_SH, 'utf8');
-  const m = sh.match(/status_opts='(\[[\s\S]*?\])'/);
-  assert.ok(m, 'should find status_opts assignment in init-project-config.sh');
+  const m = sh.match(/CANONICAL_STATUS_PALETTE='(\[[\s\S]*?\])'/);
+  assert.ok(m, 'should find CANONICAL_STATUS_PALETTE assignment in init-project-config.sh');
   const arr = JSON.parse(m[1]);
-  assert.equal(arr.length, 7, `status_opts must have 7 entries, got ${arr.length}`);
+  assert.equal(arr.length, 7, `canonical palette must have 7 entries, got ${arr.length}`);
   const names = arr.map((o) => o.name);
   assert.deepEqual(
     names,
     ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'],
-    'status_opts names must be in canonical order'
+    'canonical palette names must be in canonical order'
   );
 }
 
