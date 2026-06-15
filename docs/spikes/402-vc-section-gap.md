@@ -13,6 +13,7 @@ how that happens, names the responsible rule, audits the live blast radius, and
 records a recommendation plus the follow-up implementation issue.
 
 <!-- AC1-anchor: creation-paths -->
+
 ## AC1 — Creation paths and whether each stamps a Verification Commands section
 
 Issue bodies are rendered by `scripts/task-tracker/preflight-issue.mjs` and
@@ -25,13 +26,14 @@ paths:
 - **Shape create** (`create-issue.mjs --shape` with scope/ac/plan-metadata
   files): same — before #410 the rendered body carried no VC section.
 
-#410 (closed earlier this session) added creation-time VC-section seeding in
+Issue #410 (closed earlier this session) added creation-time VC-section seeding in
 `preflight-issue.mjs` (the `auditEvidenceMarkers(assembled).missingVerificationCommands`
 branch, ~lines 265-281), which inserts the section before the Pickup-Directive
 anchor. **Conclusion:** as of #410 both creation paths now stamp the section;
 the gap was real for every issue created before #410.
 
 <!-- AC2-anchor: promotion-paths -->
+
 ## AC2 — Plan→Develop promotion paths and whether each requires the section
 
 The plan→develop transition runs the body gates in
@@ -39,9 +41,10 @@ The plan→develop transition runs the body gates in
 `plan-approve` (gate verb) and `promote` (plan→develop move), both of which run
 the `DEFAULT_GATES` rule set. The relevant rule is `verification-commands`
 (kind `ALL_CHECKED_RULE`, heading `/^#{2,3}\s+Verification Commands\b/im`).
-**Conclusion:** no promotion path requires the section to *exist* — see AC3.
+**Conclusion:** no promotion path requires the section to _exist_ — see AC3.
 
 <!-- AC3-anchor: root-cause -->
+
 ## AC3 — Root cause: the rule and file responsible
 
 File: `scripts/task-tracker/lib/body-gates.mjs`, function
@@ -64,6 +67,7 @@ entries and soft non-advances ("nothing to verify"), so the issue stalls
 silently rather than failing loudly.
 
 <!-- AC4-anchor: recommendation -->
+
 ## AC4 — Recommendation: do both (creation-stamp + Plan-exit presence gate)
 
 Two complementary fixes are needed; #410 already shipped the first half.
@@ -86,6 +90,7 @@ before failing. Together they make the invariant true at creation and enforced
 at exit.
 
 <!-- AC5-anchor: open-issue-audit -->
+
 ## AC5 — Audit of currently-open issues missing a Verification Commands section
 
 Read-only audit (`.tmp/inspect/audit-vc-section.mjs`, `gh issue list/view`) over
@@ -94,9 +99,13 @@ all open issues on 2026-06-15:
 - **Open issues scanned: 36**
 - **Open issues MISSING a `## Verification Commands` section: 33**
 
-The 33: #125, #206, #274, #306, #307, #308, #309, #310, #311, #312, #313, #316,
+The 33:
+
+```text
+#125, #206, #274, #306, #307, #308, #309, #310, #311, #312, #313, #316,
 #317, #318, #319, #320, #321, #330, #334, #349, #370, #371, #372, #386, #402,
-#405, #406, #408, #409, #411, #413, #414, #416.
+#405, #406, #408, #409, #411, #413, #414, #416
+```
 
 (#402 — this spike — is itself a victim, created 2026-06-14 before #410.) Only 3
 open issues currently carry a VC section. **Implication:** once the plan-exit
@@ -105,6 +114,7 @@ heal/back-fill pass over open issues should accompany or precede the gate's
 activation to avoid mass false-blocks.
 
 <!-- AC6-anchor: follow-up-issue -->
+
 ## AC6 — Follow-up implementation issue
 
 The plan-exit gate + loud-test fix is tracked by **#386** ("BUG: Plan→Develop
