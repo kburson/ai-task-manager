@@ -29,6 +29,7 @@ import {
   checkRequiredBodySections,
   checkRequiredFields,
   validateBody,
+  DEFAULT_GATES,
 } from '../../scripts/task-tracker/lib/body-gates.mjs';
 import {
   planPriorityGate,
@@ -107,7 +108,14 @@ test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
   const values = parseFieldsBlock(body);
 
   await t.test('structural body gates (validateBody)', () => {
-    const r = validateBody(body);
+    // #410 — create-issue now seeds a `## Verification Commands` section with
+    // intentionally-unchecked `- [ ]` boxes (so the body is a fixed point of
+    // the test→review evidence audit). The `verification-commands` ALL_CHECKED
+    // rule is a review→done EXIT gate — `review.mjs` itself excludes it from
+    // its active set — so a freshly-created pre-review body legitimately has
+    // unchecked VC items. Mirror review.mjs's exclusion here.
+    const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
+    const r = validateBody(body, { gates: activeGates });
     assert.deepEqual(r, { ok: true }, `structural refusals: ${JSON.stringify(r)}`);
   });
 

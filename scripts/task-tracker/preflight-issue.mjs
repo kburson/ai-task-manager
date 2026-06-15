@@ -34,6 +34,7 @@ import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
 import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
+import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 
@@ -261,8 +262,24 @@ function emitShape(args, dodPath, root) {
       `preflight-issue: WARN ac-evidence-marker:${w.lineIndex + 1} — marker payload "${w.command}" has no backtick-quoted commands (rule: ${w.rule})\n`
     );
   }
-  process.stdout.write(body);
-  process.stdout.write(tailBlock(dodPath));
+  // #410 — Seed a `## Verification Commands` section so a freshly-rendered body
+  // is a fixed point of the test→review evidence audit. The seed set is derived
+  // from the assembled body itself (DoD Functional commands + any AC-level
+  // `aitm-verified-by` commands) via the same audit review-preflight runs, so
+  // the rendered issue passes VC-membership with no manual post-creation edit.
+  const seedCmds = auditEvidenceMarkers(assembled).missingVerificationCommands;
+  let finalBody = assembled;
+  if (seedCmds.length) {
+    const vcSection =
+      '## Verification Commands\n\n' + seedCmds.map((c) => `- [ ] \`${c}\``).join('\n') + '\n\n';
+    const anchor = '## Pickup Directive — MANDATORY, DO NOT SKIP';
+    const idx = finalBody.indexOf(anchor);
+    finalBody =
+      idx === -1
+        ? finalBody + vcSection
+        : finalBody.slice(0, idx) + vcSection + finalBody.slice(idx);
+  }
+  process.stdout.write(finalBody);
   // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded
   // by create-issue.mjs. Goes BEFORE `aitm-body-version` so the body-shape
   // matches the canonical trailer order seen on healed issues.
