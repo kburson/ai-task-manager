@@ -32,7 +32,13 @@ const CANONICAL_BODY = [
   '',
   '### Definition of Done',
   '',
+  '#### Functional (verified at Test)',
+  '',
   '- [ ] npm test passes',
+  '',
+  '#### Lifecycle (auto-ticked at Review/Close)',
+  '',
+  '- [ ] Story closed and moved to Done',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '> Follow: `.ai-task-manager/pickup-directive.md`',
@@ -51,7 +57,27 @@ test('verifyIssueBody: missing Scope', () => {
   const body = CANONICAL_BODY.replace('## Scope', '## Other');
   const res = verifyIssueBody(body);
   assert.equal(res.ok, false);
-  assert.ok(res.missing.includes('## Scope'));
+  assert.ok(res.missing.includes('## Scope (or ## Problem)'));
+});
+
+test('verifyIssueBody: ## Problem accepted in place of ## Scope', () => {
+  const body = CANONICAL_BODY.replace('## Scope', '## Problem');
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, true, `unexpected missing: ${JSON.stringify(res.missing)}`);
+});
+
+test('verifyIssueBody: DoD present but missing #### Functional subheader', () => {
+  const body = CANONICAL_BODY.replace('#### Functional (verified at Test)', '#### Foo');
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.some((m) => /Functional/.test(m)));
+});
+
+test('verifyIssueBody: DoD present but missing #### Lifecycle subheader', () => {
+  const body = CANONICAL_BODY.replace('#### Lifecycle (auto-ticked at Review/Close)', '#### Bar');
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.some((m) => /Lifecycle/.test(m)));
 });
 
 test('verifyIssueBody: missing Acceptance Criteria', () => {

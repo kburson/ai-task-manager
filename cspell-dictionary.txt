@@ -101,6 +101,8 @@ statusline
 Statusline
 subfolder
 subfolders
+subheader
+subheaders
 toggleable
 toplevel
 TOTP

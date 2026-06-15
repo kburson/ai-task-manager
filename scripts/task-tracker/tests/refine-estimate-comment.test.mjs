@@ -8,9 +8,11 @@ import {
   findRefineEstimateComment,
   ensureRefineEstimateComment,
   appendPlannedEstimate,
+  repopulateEmptyPlannedAppendix,
   planPlannedEstimateGate,
   buildPlannedAppendix,
   hasPlannedAppendix,
+  hasEmptyPlannedAppendix,
   PLANNED_ESTIMATE_HEADER,
 } from '../lib/refine-estimate-comment.mjs';
 
@@ -18,6 +20,9 @@ const cfg = { repo: 'o/r' };
 
 const baseComment = (n) =>
   `<!-- aitm-refined-estimate: ${n} -->\n### 🛠 Refine estimate\n\nInitial sizing.\n`;
+
+const emptyAppendixComment = (n) =>
+  `${baseComment(n)}\n${PLANNED_ESTIMATE_HEADER}\n\n| Field | Refine | Plan | Δ |\n|---|---|---|---|\n| Size | — | — | 0 |\n| Estimate (h) | — | — | n/a |\n\n_no rationale supplied_\n`;
 
 test('hasPlannedAppendix detects header', () => {
   assert.equal(hasPlannedAppendix('### Planned Estimate'), true);
@@ -304,6 +309,79 @@ test('planPlannedEstimateGate captures listComments failure', async () => {
   });
   assert.equal(r.ok, false);
   assert.ok(r.blockers[0].startsWith('planned-estimate-fetch-failed'));
+});
+
+// ── AC8 (#171): repopulateEmptyPlannedAppendix healer ──────────────────────
+
+test('repopulateEmptyPlannedAppendix rebuilds an all-em-dash appendix in place', async () => {
+  const patchCalls = [];
+  const r = await repopulateEmptyPlannedAppendix({
+    cfg,
+    issueNumber: 191,
+    planned: { size: 'M', estimate: 4 },
+    current: { size: 'M', estimate: 4 },
+    rationale: 'healed: concrete values',
+    deps: {
+      listComments: async () => [{ id: 'IC_E', body: emptyAppendixComment(191) }],
+      patchComment: async ({ commentId, body }) => {
+        patchCalls.push({ commentId, body });
+      },
+    },
+  });
+  assert.equal(r.status, 'repopulated');
+  assert.equal(r.commentId, 'IC_E');
+  assert.equal(patchCalls.length, 1);
+  // The healed body must no longer be empty and must carry exactly one header.
+  assert.equal(hasEmptyPlannedAppendix(patchCalls[0].body), false);
+  assert.equal(patchCalls[0].body.match(/### Planned Estimate/g).length, 1);
+  assert.match(patchCalls[0].body, /\| Size \| M \| M \| 0 \|/);
+  assert.match(patchCalls[0].body, /healed: concrete values/);
+});
+
+test('repopulateEmptyPlannedAppendix leaves a non-empty appendix untouched', async () => {
+  const patchCalls = [];
+  const nonEmpty = `${baseComment(191)}\n${PLANNED_ESTIMATE_HEADER}\n\n| Field | Refine | Plan | Δ |\n|---|---|---|---|\n| Size | M | L | M→L |\n| Estimate (h) | 4 | 8 | +4 |\n\nreal rationale\n`;
+  const r = await repopulateEmptyPlannedAppendix({
+    cfg,
+    issueNumber: 191,
+    planned: { size: 'M', estimate: 4 },
+    current: { size: 'M', estimate: 4 },
+    deps: {
+      listComments: async () => [{ id: 'IC_NE', body: nonEmpty }],
+      patchComment: async ({ commentId, body }) => {
+        patchCalls.push({ commentId, body });
+      },
+    },
+  });
+  assert.equal(r.status, 'not-empty');
+  assert.equal(patchCalls.length, 0);
+});
+
+test('repopulateEmptyPlannedAppendix reports no-appendix when none present', async () => {
+  const r = await repopulateEmptyPlannedAppendix({
+    cfg,
+    issueNumber: 191,
+    planned: { size: 'M', estimate: 4 },
+    current: { size: 'M', estimate: 4 },
+    deps: {
+      listComments: async () => [{ id: 'IC_NA', body: baseComment(191) }],
+      patchComment: async () => {
+        throw new Error('should not patch');
+      },
+    },
+  });
+  assert.equal(r.status, 'no-appendix');
+});
+
+test('repopulateEmptyPlannedAppendix reports no-refine-comment when missing', async () => {
+  const r = await repopulateEmptyPlannedAppendix({
+    cfg,
+    issueNumber: 191,
+    planned: { size: 'M', estimate: 4 },
+    current: { size: 'M', estimate: 4 },
+    deps: { listComments: async () => [], patchComment: async () => {} },
+  });
+  assert.equal(r.status, 'no-refine-comment');
 });
 
 console.log('All refine-estimate-comment tests defined.');

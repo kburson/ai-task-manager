@@ -168,6 +168,52 @@ export async function appendPlannedEstimate({
   return { status: 'appended', commentId: comment.id };
 }
 
+// AC8 (#171) — re-populate an already-appended EMPTY Planned Estimate table.
+//
+// `appendPlannedEstimate` is terminal on `hasPlannedAppendix` (returns
+// `{status:'duplicate'}`), so an all-em-dash appendix that slipped in before
+// the #171/84743da validation can never self-heal through it. This healer
+// locates the refine comment and, IF the appendix exists AND is the empty
+// table, strips the stale `### Planned Estimate` block and rebuilds it in place
+// with concrete planned/current values. A non-empty appendix is left untouched.
+export async function repopulateEmptyPlannedAppendix({
+  cfg,
+  issueNumber,
+  planned,
+  current,
+  rationale,
+  deps = {},
+} = {}) {
+  if (!cfg) throw new Error('repopulateEmptyPlannedAppendix: cfg is required');
+  if (!issueNumber) throw new Error('repopulateEmptyPlannedAppendix: issueNumber is required');
+  validateSizeEstimateArg('planned', 'repopulateEmptyPlannedAppendix', planned);
+  validateSizeEstimateArg('current', 'repopulateEmptyPlannedAppendix', current);
+  const patchComment = deps.patchComment || defaultPatchComment;
+
+  const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
+  if (!comment) {
+    return { status: 'no-refine-comment' };
+  }
+  if (!comment.hasPlannedAppendix) {
+    return { status: 'no-appendix', commentId: comment.id };
+  }
+  if (!hasEmptyPlannedAppendix(comment.body)) {
+    return { status: 'not-empty', commentId: comment.id };
+  }
+  // Strip everything from the `### Planned Estimate` header onward, then
+  // re-append a freshly-built (non-empty) appendix.
+  const headerMatch = comment.body.match(PLANNED_HEADER_RE);
+  const head = comment.body.slice(0, headerMatch.index).replace(/\s+$/, '');
+  const appendix = buildPlannedAppendix({ planned, current, rationale });
+  const nextBody = `${head}${appendix}\n`;
+  try {
+    await patchComment({ cfg, commentId: comment.id, body: nextBody });
+  } catch (err) {
+    return { status: 'patch-failed', error: err.message, commentId: comment.id };
+  }
+  return { status: 'repopulated', commentId: comment.id };
+}
+
 // Pre-flight gate for plan → develop: refuse unless the refine-estimate
 // comment exists AND has the `### Planned Estimate` appendix.
 export async function planPlannedEstimateGate({ cfg, issueNumber, deps = {} } = {}) {

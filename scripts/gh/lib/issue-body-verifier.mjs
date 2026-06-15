@@ -7,41 +7,72 @@
 //
 // Required sections (anchored heading regex; allow lifecycle marker blocks
 // between sections):
-//   ## Scope
+//   ## Scope  (or ## Problem — either framing is canonical)
 //   ## Acceptance Criteria
 //   ### Definition of Done       (under any parent — top-level or nested)
+//     #### Functional            (required subheader, present DoD only)
+//     #### Lifecycle             (required subheader, present DoD only)
 //   ## Pickup Directive — MANDATORY, DO NOT SKIP
 //
 // The Pickup Directive section must also contain the literal line
 //   > Follow: `.ai-task-manager/pickup-directive.md`
 // otherwise the directive is malformed (truncated/placeholder).
+//
+// #171: a `### Definition of Done` heading alone is not enough — the
+// #169/#170 failure mode shipped bodies whose DoD was a placeholder with no
+// Functional/Lifecycle subsections. When the DoD heading is present we also
+// require both subheaders, so an empty/stub DoD is reported as malformed.
+
+const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
+const DOD_REGEX = /^###\s+Definition of Done\s*$/m;
+// Subheaders are matched tolerantly: the canonical text is
+// "#### Functional (verified at Test)" / "#### Lifecycle (auto-ticked at
+// Review/Close)", but only the leading word is load-bearing.
+const DOD_FUNCTIONAL_REGEX = /^####\s+Functional\b/m;
+const DOD_LIFECYCLE_REGEX = /^####\s+Lifecycle\b/m;
 
 const SECTION_CHECKS = [
-  { name: '## Scope', regex: /^##\s+Scope\s*$/m },
+  { name: '## Scope (or ## Problem)', regex: SCOPE_REGEX },
   { name: '## Acceptance Criteria', regex: /^##\s+Acceptance Criteria\s*$/m },
-  { name: '### Definition of Done', regex: /^###\s+Definition of Done\s*$/m },
+  { name: '### Definition of Done', regex: DOD_REGEX },
   {
     name: '## Pickup Directive — MANDATORY, DO NOT SKIP',
     regex: /^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m,
   },
 ];
 
+const PICKUP_HEADING_REGEX = SECTION_CHECKS[3].regex;
 const PICKUP_FOLLOW_LINE = '> Follow: `.ai-task-manager/pickup-directive.md`';
 
 export function verifyIssueBody(body) {
   const missing = [];
   if (typeof body !== 'string' || body.length === 0) {
-    return { ok: false, missing: SECTION_CHECKS.map((c) => c.name) };
+    return {
+      ok: false,
+      missing: [
+        ...SECTION_CHECKS.map((c) => c.name),
+        '#### Functional (DoD subheader)',
+        '#### Lifecycle (DoD subheader)',
+      ],
+    };
   }
 
   for (const check of SECTION_CHECKS) {
     if (!check.regex.test(body)) missing.push(check.name);
   }
 
+  // #171 — when the DoD heading is present, both subheaders must be too. We
+  // only flag missing subheaders when the parent heading exists, so a
+  // DoD-absent body reports the single "### Definition of Done" miss without
+  // a confusing pile of subheader misses.
+  if (DOD_REGEX.test(body)) {
+    if (!DOD_FUNCTIONAL_REGEX.test(body)) missing.push('#### Functional (DoD subheader)');
+    if (!DOD_LIFECYCLE_REGEX.test(body)) missing.push('#### Lifecycle (DoD subheader)');
+  }
+
   // Pickup Directive heading present but the canonical "Follow:" line absent
   // counts as a malformed Pickup Directive.
-  const hasPickupHeading = SECTION_CHECKS[3].regex.test(body);
-  if (hasPickupHeading && !body.includes(PICKUP_FOLLOW_LINE)) {
+  if (PICKUP_HEADING_REGEX.test(body) && !body.includes(PICKUP_FOLLOW_LINE)) {
     missing.push(
       'Pickup Directive: missing canonical `> Follow: `.ai-task-manager/pickup-directive.md`` line'
     );
