@@ -158,6 +158,41 @@ export function resolveVerifiedBy(line) {
   return null;
 }
 
+// #418 — Shared dual-form DECLARATION extractor. Returns the backtick-wrapped
+// command(s) declared on a label by EITHER the legacy `aitm-verified-by` marker
+// or the consolidated `aitm-verified cmd="..."` form, in document order. This is
+// the single source of truth for the per-reader fallbacks that #391/#393/#395
+// each open-coded; new dual-form upgrades route through here instead of copying
+// a fourth inline regex.
+//
+// Contract (identical to those helpers): legacy `aitm-verified-by` matches are
+// collected unconditionally — that name is always a declaration, never a proof.
+// The consolidated `cmd` is read only when no legacy declaration was found (so a
+// dual-marker line is not double-counted) AND the line carries no execution
+// proof (`hasExecutionProof` false), so a record-of-run stamp (ts/sha/evidence)
+// is never mistaken for a verifier declaration.
+export function extractVerifiedCommands(label) {
+  const haystack = String(label || '');
+  const commands = [];
+  for (const marker of haystack.matchAll(LEGACY_BY_RE)) {
+    for (const cmd of String(marker[1]).matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
+  }
+  if (!commands.length && !hasExecutionProof(haystack)) {
+    const props = parseProofMarker(haystack);
+    if (props && typeof props.cmd === 'string') {
+      for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
+    }
+  }
+  return commands;
+}
+
+// True when a label carries a verifier DECLARATION in either form. The boolean
+// counterpart to `extractVerifiedCommands`; use this where a reader only needs
+// to know "is this line command-backed?" rather than the commands themselves.
+export function hasVerifiedDeclaration(label) {
+  return extractVerifiedCommands(label).length > 0;
+}
+
 // Remove every proof/declaration marker from a label for display.
 export function stripProofMarkers(label) {
   return String(label || '')

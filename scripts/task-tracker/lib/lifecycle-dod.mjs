@@ -1,4 +1,6 @@
 // cspell:ignore optout optouts Optouts
+import { hasVerifiedDeclaration } from './proof-marker.mjs';
+
 // Lifecycle DoD parser and ticker (#138).
 //
 // The Functional vs Lifecycle DoD split (#139 will template this) defines a
@@ -197,13 +199,17 @@ export function detectLifecyclePretick(body) {
 // same trust-attestation pattern that the lifecycle pretick guard catches —
 // un-tick so the sandbox-driven re-tick is the only path to green. Judgment
 // items (no marker) are untouched. Returns { body, regressions: [{ label }] }.
-const FUNC_MARKER_RE = /<!--\s*aitm-verified-by:/i;
+// #418 — command-backed detection routes through the shared dual-form
+// `hasVerifiedDeclaration`, so a consolidated `aitm-verified cmd="..."`
+// declaration triggers the pre-tick guard identically to the legacy
+// `aitm-verified-by` form. A consolidated proof stamp (ts/sha) is not a
+// declaration and is left to the legitimate green-tick path.
 export function detectFunctionalPretick(body) {
   const loc = locateFunctionalSection(body);
   if (!loc) return { body: String(body || ''), regressions: [] };
   const regressions = [];
   const nextSection = loc.section.replace(/^- \[x\](\s+)(.+)$/gm, (line, sp, rest) => {
-    if (!FUNC_MARKER_RE.test(rest)) return line;
+    if (!hasVerifiedDeclaration(rest)) return line;
     const label = rest.replace(/<!--[\s\S]*?-->/g, '').trim();
     regressions.push({ label });
     return `- [ ]${sp}${rest}`;

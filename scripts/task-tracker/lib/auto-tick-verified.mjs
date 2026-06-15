@@ -20,9 +20,12 @@
 // Pure and idempotent. The caller invokes it only on the green path, so a red
 // result ticks nothing by construction.
 
-import { serializeProofMarker } from './proof-marker.mjs';
+import {
+  serializeProofMarker,
+  extractVerifiedCommands,
+  stripProofMarkers,
+} from './proof-marker.mjs';
 
-const EVIDENCE_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/g;
 const HEADING_RE = /^#{1,6}\s+/;
 const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\b/i;
 const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
@@ -31,14 +34,12 @@ const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
 const UNCHECKED_RE = /^(\s*- \[) (\]\s+)(.*)$/;
 const VC_LABEL_RE = /^`([^`]+)`\s*$/;
 
-// Extract the backtick-wrapped commands from any `aitm-verified-by` markers in
-// a Functional item's label. Returns [] when the item carries no marker.
+// Extract the backtick-wrapped commands declared on a Functional item's label.
+// #418 — routed through the shared dual-form extractor so a consolidated
+// `aitm-verified cmd="..."` declaration is recognized identically to the legacy
+// `aitm-verified-by` form. Returns [] when the item carries no declaration.
 function evidenceCommands(label) {
-  const commands = [];
-  for (const marker of label.matchAll(EVIDENCE_RE)) {
-    for (const cmd of marker[1].matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
-  }
-  return commands;
+  return extractVerifiedCommands(label);
 }
 
 // #362 — proof marker stamped inline at tick time so the
@@ -116,7 +117,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
       const marker = buildProofMarker(now, `sandbox exit 0 (${cmds.join(', ')})`, cmds.join(', '));
       lines[i] = `${open}x${close}${rest} ${marker}`;
-      tickedFunctional.push(rest.replace(EVIDENCE_RE, '').trim());
+      tickedFunctional.push(stripProofMarkers(rest));
     }
   }
 
