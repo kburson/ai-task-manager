@@ -216,6 +216,26 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       const marker = loadMarker(markerPathFor(sid));
       deltaWords = countWords(jsonlPath(sid), marker.line).count;
     }
+    // #407 — bound-but-paused state (no open timing session): a non-terminal
+    // verb (test/review) now leaves `active` set while nulling `entryStartTs`.
+    // Without an open session there is no wall-time to flush, so emit a
+    // zero-duration row rather than dereferencing a null timestamp (which
+    // `new Date(null)` would resolve to epoch 0 → garbage delta).
+    if (!state.entryStartTs) {
+      const wordMarker = state.wordsAtEntryStart + deltaWords;
+      const { buildRow } = await import('./gh-timing-comment.mjs');
+      const row = buildRow({
+        ts,
+        event: effectiveEvent,
+        activeMin: 0,
+        idleMin: 0,
+        deltaWords,
+        wordMarker,
+        description: effectiveDescription,
+      });
+      await ctx.safePostTiming(state.active, row);
+      return { ts, deltaMin: 0, idleMin: 0, deltaWallMin: 0, deltaWords, wordMarker };
+    }
     const startMs = new Date(state.entryStartTs).getTime();
     const endMs = new Date(ts).getTime();
     const deltaWallMin = Math.round((endMs - startMs) / 60000);

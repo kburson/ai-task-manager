@@ -29,7 +29,12 @@ assert.match(r.stdout, /paused/i);
 let state = JSON.parse(
   readFileSync(path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
 );
-assert.equal(state.active, null);
+// #407 — a non-terminal verb (`review`) closes the timing session but KEEPS the
+// issue bound, so the next verb needs no intervening `start <N>` re-bind. The
+// binding is dropped only by an explicit `pause`/session-end. Pre-#407 this
+// asserted `state.active === null`, which encoded the very bug #407 fixes.
+assert.equal(state.active, '#321');
+assert.equal(state.entryStartTs, null);
 assert.equal(state.lastActive, '#321');
 
 r = await pexec('node', [CLI, 'close', '#321'], { env });

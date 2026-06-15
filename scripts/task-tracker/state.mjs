@@ -131,6 +131,22 @@ export function saveState(state, statePath) {
   writeFileSync(statePath, JSON.stringify(globalPayload, null, 2) + '\n', 'utf8');
 }
 
+// #407 — next-state for a successful NON-terminal verb (test, review) that
+// closes the open timing session but MUST keep the issue bound. Resets
+// `entryStartTs`/`wordsAtEntryStart` (session closed) and records `lastActive`,
+// while preserving `active` so the following verb needs no intervening
+// `start <N>` re-bind. Contrast `pause` (the sole explicit unbind), which
+// nulls `active`. Pure; exported for the #407 regression test.
+export function pauseTimingKeepBinding(state, ref) {
+  return {
+    ...state,
+    active: ref,
+    entryStartTs: null,
+    wordsAtEntryStart: 0,
+    lastActive: ref,
+  };
+}
+
 export function clearActive(statePath) {
   const s = loadState(statePath);
   s.active = null;

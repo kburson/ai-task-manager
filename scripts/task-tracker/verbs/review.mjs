@@ -1,4 +1,4 @@
-import { loadState, saveState } from '../state.mjs';
+import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
@@ -122,26 +122,19 @@ export async function verbReview(ctx) {
       description: 'agent session — starting review',
     });
     await safePostTiming(target, row);
-    saveState(
-      { ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target },
-      statePath
-    );
+    // #407 — preserve the binding across review (a non-terminal verb). Only
+    // the timing session closes; the issue stays bound so a follow-up verb
+    // needs no intervening re-`start`. `pause` is the sole verb that nulls
+    // `active`.
+    saveState(pauseTimingKeepBinding(s, target), statePath);
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
     await runMoveState(target, 'test', { silent: true });
   } else if (s.active === target) {
     await flushActiveToGH(s, 'review', 'starting review');
-    saveState(
-      {
-        ...s,
-        active: null,
-        entryStartTs: null,
-        wordsAtEntryStart: 0,
-        lastActive: target,
-      },
-      statePath
-    );
+    // #407 — preserve binding (see note above).
+    saveState(pauseTimingKeepBinding(s, target), statePath);
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
@@ -162,10 +155,8 @@ export async function verbReview(ctx) {
     });
     await safePostTiming(target, row);
     await runMoveState(target, 'test', { silent: true });
-    saveState(
-      { ...s, active: null, entryStartTs: null, wordsAtEntryStart: 0, lastActive: target },
-      statePath
-    );
+    // #407 — preserve binding (see note above).
+    saveState(pauseTimingKeepBinding(s, target), statePath);
   }
   console.log(`Review ${target}: task paused.`);
   if (!SKIP_NETWORK) {

@@ -21,7 +21,7 @@ import { promisify } from 'node:util';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
-import { loadState, saveState } from '../state.mjs';
+import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
@@ -553,16 +553,11 @@ export async function verbTest(ctx) {
       break;
     case 'passed': {
       console.log(buildPassedMessage(issueNumber, result.target));
-      saveState(
-        {
-          ...s,
-          active: null,
-          entryStartTs: null,
-          wordsAtEntryStart: 0,
-          lastActive: `#${issueNumber}`,
-        },
-        statePath
-      );
+      // #407 — preserve the binding (`active`) across a successful non-terminal
+      // verb. Only the timing session closes; the issue stays bound so the next
+      // verb needs no intervening re-`start`. `pause` remains the sole verb that
+      // nulls `active`.
+      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
     }
     case 'failed': {

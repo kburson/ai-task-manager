@@ -66,6 +66,11 @@ async function safePost(issue, row) {
 async function onPreCompact(sid) {
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') return;
+  // #407 — bound-but-paused state: a non-terminal verb (test/review) leaves
+  // `active` set with no open timing session (`entryStartTs` null). There is
+  // no wall-time window to flush on pre-compact, so skip rather than
+  // dereference a null timestamp.
+  if (!s.entryStartTs) return;
   const marker = loadMarker(markerPathFor(sid));
   const { count: newWords, totalLines } = countWords(jsonlPath(sid), marker.line);
   const ts = new Date().toISOString();

@@ -31,6 +31,16 @@ export async function verbStatus(ctx) {
     const { count } = countWords(jsonlPath(sid), marker.line);
     wordsNow = s.wordsAtEntryStart + count;
   }
+  // #407 — bound-but-paused state: a non-terminal verb (test/review) leaves
+  // the issue bound with no open timing session (`entryStartTs` null). Report
+  // the binding without a bogus elapsed time rather than computing against
+  // `new Date(null)` (epoch 0).
+  if (!s.entryStartTs) {
+    console.log(
+      `Active: ${s.active} [${cfg.repo || 'repo not set'}] (paused — no open timing session).`
+    );
+    return;
+  }
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
   const wallMin = Math.round((endMs - startMs) / 60000);
