@@ -113,4 +113,31 @@ import { redactDocContexts, residualFamilies } from '../../maintenance/migrate-m
   );
 }
 
+// 9. prose-cleanup detector (#421) — spurious consolidated `aitm-verified`
+//    markers appended to PROSE lines are residual. Unlike every other family,
+//    this detector runs on the RAW body, so placeholder-valued spurious markers
+//    (which `redactDocContexts` would hide) are still caught.
+{
+  // 9a. concrete-valued spurious prose marker is flagged.
+  const body = 'Writers emit consolidated markers. <!-- aitm-verified cmd="npm test" -->';
+  assert.deepEqual(residualFamilies(body), ['prose-cleanup'], 'concrete prose marker flagged');
+  // 9b. placeholder-valued spurious prose marker is STILL flagged (the
+  //     redactDocContexts blind spot this detector closes).
+  const placeholder = 'See the grammar. <!-- aitm-verified cmd="<short>" -->';
+  assert.deepEqual(
+    residualFamilies(placeholder),
+    ['prose-cleanup'],
+    'placeholder-valued prose marker still flagged'
+  );
+  // 9c. a genuine consolidated marker on a real checklist line is NOT residual.
+  const canon = '- [x] tests <!-- aitm-verified cmd="npm test" -->';
+  assert.deepEqual(residualFamilies(canon), [], 'genuine checklist marker not prose-cleanup');
+  // 9d. inline-code mention of the consolidated marker is documentation — not flagged.
+  const inline = 'The marker is `<!-- aitm-verified cmd="x" -->` in the body.';
+  assert.deepEqual(residualFamilies(inline), [], 'inline-code consolidated mention not flagged');
+  // 9e. fenced example of the consolidated marker is documentation — not flagged.
+  const fenced = ['```', '<!-- aitm-verified cmd="x" -->', '```'].join('\n');
+  assert.deepEqual(residualFamilies(fenced), [], 'fenced consolidated example not flagged');
+}
+
 console.log('migrate-markers-corpus-redaction.test.mjs: all passed');

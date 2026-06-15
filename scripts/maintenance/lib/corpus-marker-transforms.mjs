@@ -328,6 +328,95 @@ export function migrateProofMarkers(body) {
     .join('\n');
 }
 
+// A checklist item line: `- [ ]` / `- [x]`, possibly indented. Genuine
+// functional declaration / proof markers ONLY ever live on these lines
+// (including `### Verification Commands` items, which are checklist lines).
+const CHECKLIST_ITEM_RE = /^\s*- \[[ x]\] /;
+
+// #421 — remove spurious appended consolidated `aitm-verified` markers from
+// PROSE lines. Before #420 made `migrateProofMarkers` prose-safe, the #390 live
+// corpus pass mistook backticked *example* mentions of the legacy
+// `aitm-verified-by:` marker (in epic/docs bodies documenting the grammar) for
+// real declarations: it stripped/garbled the example and APPENDED a consolidated
+// `<!-- aitm-verified ... -->` marker to the end of the prose. Non-idempotent on
+// prose, so some lines carry two or more. This transform reverses that damage.
+//
+// Discriminator (>95% confidence, empirically grounded over all corpus issues):
+// on a line that is NOT a checklist item and NOT inside a fenced block, a bare
+// consolidated `<!-- aitm-verified <space>... -->` comment lying OUTSIDE
+// inline-code spans is ALWAYS spurious. Genuine markers live only on checklist
+// lines. Placeholder-valued appended markers (e.g. `cmd="<short>"`) are likewise
+// corruption here and must be stripped. The `\s` boundary after `aitm-verified`
+// (in PROOF_CONSOLIDATED_STRIP_RE) means legacy `aitm-verified-by`/`-at`
+// documentation TEXT is never matched. Corruption is always trailing-appended,
+// so a trailing-trim after the strip restores the original line; a line that becomes
+// whitespace-only *as a result of* the strip is dropped, but pre-existing blank
+// lines are preserved.
+function stripConsolidatedFromNonCode(line) {
+  // A spurious marker's value can itself contain backticks (e.g.
+  // `cmd="`npm test`"`), so we CANNOT simply preserve every inline-code span —
+  // that would split the marker apart and leave it unmatched. Instead: find each
+  // consolidated marker on the raw line, and keep it ONLY when its `<!--`
+  // delimiter sits INSIDE an inline-code span (a genuine documentation mention
+  // like `` `<!-- aitm-verified cmd="x" -->` ``). A marker whose delimiter is
+  // bare is spurious — remove it, value-backticks and all.
+  const codeRanges = [];
+  INLINE_CODE_RE.lastIndex = 0;
+  let cm;
+  while ((cm = INLINE_CODE_RE.exec(line)) !== null) {
+    codeRanges.push([cm.index, cm.index + cm[0].length]);
+  }
+  const startInCode = (i) => codeRanges.some(([s, e]) => i >= s && i < e);
+  let out = '';
+  let last = 0;
+  let stripped = false;
+  PROOF_CONSOLIDATED_STRIP_RE.lastIndex = 0;
+  let mm;
+  while ((mm = PROOF_CONSOLIDATED_STRIP_RE.exec(line)) !== null) {
+    // The strip regex includes leading `\s*`; the real delimiter is the `<!--`.
+    const markerStart = mm.index + mm[0].indexOf('<!--');
+    if (startInCode(markerStart)) continue; // genuine in-code mention — keep
+    out += line.slice(last, mm.index);
+    last = mm.index + mm[0].length;
+    stripped = true;
+  }
+  // No spurious marker on this line — return it byte-identical. Crucially, do NOT
+  // trailing-trim an untouched line: a whitespace-only prose line (e.g. `"   "`) would
+  // otherwise collapse to `""` and be dropped by the caller, shifting the body.
+  if (!stripped) return line;
+  out += line.slice(last);
+  return out.replace(/\s+$/, '');
+}
+
+export function stripSpuriousProseMarkers(body) {
+  const src = String(body ?? '');
+  let inFence = false;
+  const out = [];
+  for (const line of src.split('\n')) {
+    if (FENCE_DELIM_RE.test(line)) {
+      inFence = !inFence;
+      out.push(line);
+      continue;
+    }
+    // Fenced documentation and genuine checklist declarations are never touched.
+    if (inFence || CHECKLIST_ITEM_RE.test(line)) {
+      out.push(line);
+      continue;
+    }
+    const cleaned = stripConsolidatedFromNonCode(line);
+    if (cleaned === line) {
+      out.push(line);
+      continue;
+    }
+    // The strip changed the line. If what remains is whitespace-only, the line
+    // was nothing but an appended marker (plus stripped trailing space) — drop
+    // it. Otherwise keep the restored prose.
+    if (cleaned.trim() === '') continue;
+    out.push(cleaned);
+  }
+  return out.join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Ordered, named transform chain. Order matters only for last-known-state
 // (pair-merge must run before any generic single-marker pass could touch its
@@ -348,6 +437,7 @@ export const FAMILIES = [
   { name: 'full-auto-approved', fn: migrateFullAutoApproved },
   { name: 'human-reviewer', fn: migrateHumanReviewer },
   { name: 'proof', fn: migrateProofMarkers },
+  { name: 'prose-cleanup', fn: stripSpuriousProseMarkers },
 ];
 
 // Back-compat: bare ordered function list.

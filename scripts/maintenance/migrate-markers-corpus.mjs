@@ -30,7 +30,10 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gql } from '../gh/lib/github-projects.mjs';
 import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
-import { migrateBodyWithFamilies } from './lib/corpus-marker-transforms.mjs';
+import {
+  migrateBodyWithFamilies,
+  stripSpuriousProseMarkers,
+} from './lib/corpus-marker-transforms.mjs';
 
 const STATE_PATH = new URL('../../.tmp/heal/migrate-markers-corpus.state.json', import.meta.url);
 
@@ -97,11 +100,24 @@ export function redactDocContexts(body) {
   return s;
 }
 
+// #421 — prose-cleanup residual. Unlike every other family this detector runs
+// on the RAW body, NOT via `redactDocContexts`: the spurious markers it targets
+// can carry angle-bracket placeholder values (e.g. `cmd="<short>"` on #362/#367),
+// which `redactDocContexts` would strip and thereby HIDE the corruption. The
+// faithful inverse of an idempotent transform is "the transform still changes the
+// body": `stripSpuriousProseMarkers` only touches genuinely-corrupted prose
+// lines (checklist and fenced lines are left byte-identical), so a residual
+// exists iff a second pass would change something.
+export function hasProseCleanupResidual(body) {
+  const src = String(body ?? '');
+  return stripSpuriousProseMarkers(src) !== src;
+}
+
 export function residualFamilies(body) {
   const src = redactDocContexts(body);
   // The deep-dive-complete JSON-payload relics are intentionally NOT migrated
   // (C2/#388 handled them by hand); a `{`-payload marker is not residual.
-  return RESIDUAL_DETECTORS.filter(([name, re]) => {
+  const fams = RESIDUAL_DETECTORS.filter(([name, re]) => {
     if (!re.test(src)) return false;
     if (name === 'lifecycle' && /<!--\s*aitm-deep-dive-complete:\s*\{/.test(src)) {
       // Re-test excluding the JSON relic form.
@@ -113,6 +129,8 @@ export function residualFamilies(body) {
     }
     return true;
   }).map(([name]) => name);
+  if (hasProseCleanupResidual(body)) fams.push('prose-cleanup');
+  return fams;
 }
 
 // ---------------------------------------------------------------------------
