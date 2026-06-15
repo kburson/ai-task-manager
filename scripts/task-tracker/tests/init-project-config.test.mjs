@@ -147,6 +147,8 @@ assert.doesNotMatch(result.stderr, /array .* and object .* cannot be added/);
 
 const config = readFileSync(join(targetDir, '.ai-task-manager/task-tracker.json'), 'utf8');
 assert.match(config, /"projectId": "PVT_LINKED"/);
+// #404 — config-writer maps the P3 ("Chore") option through to priorityOptionP3.
+assert.match(config, /"priorityOptionP3": "P3"/);
 
 const generatedTaskTemplate = readFileSync(
   join(targetDir, '.github/ISSUE_TEMPLATE/task.yml'),
