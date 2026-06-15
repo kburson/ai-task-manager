@@ -32,9 +32,13 @@ root before running the command.
 
 ## Creating issues
 
-`scripts/gh/create-issue.mjs --shape epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly** — bodies authored that way miss the assignee, project tether, fields block, `## Scope`, `- [ ]` Acceptance Criteria, Definition of Done, and Pickup Directive (see issue #103 for the failure mode). The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic.
+`scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly** — bodies authored that way miss the assignee, project tether, fields block, `## Scope`, `- [ ]` Acceptance Criteria, Definition of Done, and Pickup Directive (see issue #103 for the failure mode). The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders — atomic.
 
 Required content fragments (default `./.tmp/plan/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
+
+### Stub shape — capturing a raw idea at Backlog (#426)
+
+For fast idea-capture, use `--shape stub`: it requires **only** `--title` and takes an optional `--idea-file <path>` whose free text seeds the Scope section. It does **not** require `scope.md` / `acs.md` / `plan-meta.md` — those sections are placeholders the Refine stage fills. Reach for `stub` when capturing a raw idea where the acceptance criteria, scope decomposition, and plan-metadata block do not yet exist and should not be invented; use `solo` when you already have all three worked out. **Do not volunteer `Size` or `Estimate` at Backlog creation** — those are Refine-exit gate fields, not creation-time fields; set them at Refine.
 
 During deep dive, bind every Acceptance Criterion to automated evidence with an
 `aitm-verified cmd="…"` HTML comment marker. Every non-standard command named in

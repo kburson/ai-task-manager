@@ -40,7 +40,15 @@ import { serializeMarker } from './lib/marker-grammar.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
-const VALID_SHAPES = ['epic', 'sub-issue', 'solo'];
+const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'stub'];
+
+// #426 — placeholder fills for the lightweight `stub` shape. These deliberately
+// fail the Refine→Plan gate (no substantive ACs, no Plan Metadata) until the
+// Refine stage replaces them; a stub is fast idea-capture, not a planned story.
+const STUB_SCOPE_PLACEHOLDER = '_Stub — describe the work at Refine._';
+const STUB_AC_PLACEHOLDER = '- [ ] _TBD — define acceptance criteria at Refine._';
+const STUB_PLAN_METADATA_PLACEHOLDER =
+  '_TBD — set Size, Estimate, Priority, and Sequence at Refine._';
 
 function repoRoot() {
   try {
@@ -222,19 +230,34 @@ function emitShape(args, dodPath, root) {
   if (!VALID_SHAPES.includes(shape)) {
     die(`--shape must be one of: ${VALID_SHAPES.join(', ')} (got: ${shape})`);
   }
-  const required = ['scope-file', 'ac-file', 'plan-metadata-file'];
-  for (const flag of required) {
-    if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
-  }
   if (shape === 'sub-issue' && typeof args.parent !== 'string') {
     die('--parent <N> required with --shape sub-issue');
   }
 
-  const rawFills = {
-    scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
-    acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),
-    plan_metadata: readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim(),
-  };
+  let rawFills;
+  if (shape === 'stub') {
+    // #426 — stub: no section files required. An optional --idea-file seeds
+    // Scope; AC and Plan Metadata are placeholders the Refine stage fills.
+    const idea =
+      typeof args['idea-file'] === 'string'
+        ? readFileOrDie(args['idea-file'], '--idea-file').trim()
+        : '';
+    rawFills = {
+      scope: idea || STUB_SCOPE_PLACEHOLDER,
+      acceptance_criteria: STUB_AC_PLACEHOLDER,
+      plan_metadata: STUB_PLAN_METADATA_PLACEHOLDER,
+    };
+  } else {
+    const required = ['scope-file', 'ac-file', 'plan-metadata-file'];
+    for (const flag of required) {
+      if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
+    }
+    rawFills = {
+      scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
+      acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),
+      plan_metadata: readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim(),
+    };
+  }
   const fills = normalizeFills(rawFills);
   if (shape === 'sub-issue') fills.parent_epic = `#${args.parent}`;
   if (shape === 'epic') {

@@ -34,9 +34,15 @@ root before running the command.
 
 ## Creating issues
 
-`scripts/gh/create-issue.mjs --shape epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly.** The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, then runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders atomically.
+`scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly.** The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, then runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders atomically.
 
 Required content fragments (default `./.tmp/plan/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
+
+### Stub shape — capturing a raw idea at Backlog (#426)
+
+For fast idea-capture, use `--shape stub`: it requires **only** `--title` and takes an optional `--idea-file <path>` whose free text seeds the Scope section. It does **not** require `scope.md` / `acs.md` / `plan-meta.md` — those sections are placeholders the Refine stage fills. Reach for `stub` when capturing a raw idea where the acceptance criteria, scope decomposition, and plan-metadata block do not yet exist and should not be invented; use `solo` when you already have all three worked out and want to chain straight into `promote`.
+
+**Do not volunteer `Size` or `Estimate` at Backlog creation.** Those are Refine-exit gate fields, not creation-time fields — offering them on a stub (or any freshly-filed Backlog idea) invites premature, low-confidence sizing. Set them at Refine, where the Refine→Plan gate enforces them.
 
 During deep dive, bind every Acceptance Criterion to automated evidence with an
 `aitm-verified cmd="…"` HTML comment marker. Every non-standard command named in

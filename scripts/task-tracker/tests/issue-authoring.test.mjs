@@ -127,6 +127,44 @@ test('#272: --status flag is rejected on shape-based creation', () => {
   assert.match(res.stderr, /--status is no longer accepted/);
 });
 
+test('stub shape: canonical structure without scope/ac/plan-metadata files', () => {
+  // #426 — the stub shape is the lightweight idea-capture path: only a title
+  // (and an optional --idea-file) are supplied. It must NOT require the three
+  // section files, yet must still render the canonical heading skeleton plus
+  // the DoD / Pickup / Verification-Commands tail so it can be refined later.
+  const dir = fixtureDir();
+  const args = [script, '--title', 'parity stub', '--shape', 'stub', '--dry-run'];
+  const res = spawnSync('node', args, { cwd: dir, encoding: 'utf8' });
+  assert.equal(res.status, 0, `dry-run failed for stub: ${res.stderr}`);
+  const body = res.stdout;
+  assertCanonicalOrder(body, 'stub');
+  assert.match(body, /^## Verification Commands\s*$/m);
+  assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
+  // Placeholders the Refine stage fills in.
+  assert.match(body, /Stub — describe the work at Refine\./);
+  assert.match(body, /TBD — define acceptance criteria at Refine\./);
+  assert.match(body, /TBD — set Size, Estimate, Priority, and Sequence at Refine\./);
+});
+
+test('stub shape: --idea-file seeds the Scope section', () => {
+  const dir = fixtureDir();
+  writeFileSync(join(dir, 'idea.md'), 'A one-line idea seed for the stub.\n');
+  const args = [
+    script,
+    '--title',
+    'parity stub idea',
+    '--shape',
+    'stub',
+    '--idea-file',
+    join(dir, 'idea.md'),
+    '--dry-run',
+  ];
+  const res = spawnSync('node', args, { cwd: dir, encoding: 'utf8' });
+  assert.equal(res.status, 0, `dry-run failed for stub idea: ${res.stderr}`);
+  assert.match(res.stdout, /A one-line idea seed for the stub\./);
+  assert.doesNotMatch(res.stdout, /Stub — describe the work at Refine\./);
+});
+
 test('sub-issue shape requires --parent', () => {
   const dir = fixtureDir();
   const res = spawnSync(

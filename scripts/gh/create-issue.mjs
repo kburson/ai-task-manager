@@ -26,10 +26,10 @@ const TETHER_SCRIPT =
 const PREFLIGHT_SCRIPT = path.resolve(SCRIPT_DIR, '..', 'task-tracker', 'preflight-issue.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
-const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo']);
+const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -104,10 +104,16 @@ function validateArgs(args) {
   if (hasBody && hasShape) die(`--body-file and --shape are mutually exclusive`, 2);
   if (hasShape) {
     if (!VALID_SHAPES.has(args.shape)) {
-      die(`--shape must be one of: epic, sub-issue, solo (got: ${args.shape})`, 2);
+      die(`--shape must be one of: epic, sub-issue, solo, stub (got: ${args.shape})`, 2);
     }
-    for (const flag of ['scope-file', 'ac-file', 'plan-metadata-file']) {
-      if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`, 2);
+    // #426 — the stub shape is a lightweight idea-capture path: only --title is
+    // required (an optional --idea-file seeds Scope). Scope / AC / Plan Metadata
+    // are placeholders the Refine stage fills, so the three section files are NOT
+    // required at creation. The Refine→Plan gate still enforces them later.
+    if (args.shape !== 'stub') {
+      for (const flag of ['scope-file', 'ac-file', 'plan-metadata-file']) {
+        if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`, 2);
+      }
     }
     if (args.shape === 'sub-issue' && typeof args.parent !== 'string') {
       die('--parent <N> required with --shape sub-issue', 2);
@@ -116,16 +122,21 @@ function validateArgs(args) {
 }
 
 function renderShapeBody(args) {
-  const flags = [
-    '--shape',
-    args.shape,
-    '--scope-file',
-    args['scope-file'],
-    '--ac-file',
-    args['ac-file'],
-    '--plan-metadata-file',
-    args['plan-metadata-file'],
-  ];
+  const flags = ['--shape', args.shape];
+  // #426 — stub forwards only an optional --idea-file (no section files);
+  // every other shape forwards the three required section files.
+  if (args.shape === 'stub') {
+    if (typeof args['idea-file'] === 'string') flags.push('--idea-file', args['idea-file']);
+  } else {
+    flags.push(
+      '--scope-file',
+      args['scope-file'],
+      '--ac-file',
+      args['ac-file'],
+      '--plan-metadata-file',
+      args['plan-metadata-file']
+    );
+  }
   if (typeof args.parent === 'string') flags.push('--parent', args.parent);
   if (typeof args['sub-issue-list-file'] === 'string') {
     flags.push('--sub-issue-list-file', args['sub-issue-list-file']);

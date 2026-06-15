@@ -215,6 +215,17 @@ All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-i
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 
+### Creation shapes: stub vs solo (and epic / sub-issue)
+
+`scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
+
+- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope / Acceptance Criteria / Plan Metadata are placeholders the Refine stage fills. Use this when you are capturing a raw idea at Backlog and the ACs, scope decomposition, and plan-metadata block do not yet exist and should not be invented. **Do not** set Size or Estimate on a stub — those are Refine-exit gate fields, not creation-time fields.
+- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--plan-metadata-file`. Use this when you already have the scope, acceptance criteria, and plan worked out at creation time and want to chain straight into `promote`.
+- **`epic`** — a parent/XL story; same three-file requirement as solo.
+- **`sub-issue`** — a child story; same three-file requirement plus `--parent <N>`.
+
+A stub deliberately fails the Refine→Plan gate (which still demands Sequence, labels, Start Time, and substantive ACs) until Refine fleshes it out. Creation is cheap; promotion past Refine still enforces the full contract.
+
 ---
 
 ## Priority Tiers

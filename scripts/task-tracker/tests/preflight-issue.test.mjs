@@ -91,6 +91,37 @@ describe('preflight-issue --shape lint wiring', () => {
   });
 });
 
+describe('preflight-issue --shape stub (#426)', () => {
+  it('renders without scope/ac/plan-metadata files, using placeholders', async () => {
+    const r = await runPreflight(['--shape', 'stub']);
+    assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+    assert.match(r.stdout, /^## Scope\b/m);
+    assert.match(r.stdout, /^## Acceptance Criteria\b/m);
+    assert.match(r.stdout, /^## Plan Metadata\b/m);
+    assert.match(r.stdout, /Stub — describe the work at Refine\./);
+    assert.match(r.stdout, /TBD — define acceptance criteria at Refine\./);
+    assert.match(r.stdout, /TBD — set Size, Estimate, Priority, and Sequence at Refine\./);
+    // Tail still appended.
+    assert.match(r.stdout, /^### Definition of Done\b/m);
+    assert.match(r.stdout, /^## Pickup Directive\b/m);
+    assert.match(r.stdout, /^## Verification Commands\s*$/m);
+  });
+
+  it('seeds the Scope section from --idea-file', async () => {
+    const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-stub-idea-'));
+    const idea = path.join(dir, 'idea.md');
+    writeFileSync(idea, 'Capture the gist of the idea here.\n', 'utf8');
+    try {
+      const r = await runPreflight(['--shape', 'stub', '--idea-file', idea]);
+      assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+      assert.match(r.stdout, /Capture the gist of the idea here\./);
+      assert.doesNotMatch(r.stdout, /Stub — describe the work at Refine\./);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
   it('seeds a ## Verification Commands section that makes the body a fixed point of the evidence audit', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
