@@ -2,6 +2,7 @@
 // Unit tests for commit-trail lib helpers.
 
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import {
   detectGitCommit,
   parseMarker,
@@ -365,6 +366,31 @@ function makeTrail(shas, repo = 'o/r') {
   };
   const ok = await defaultIsReachable(SHA_A, { cwd: '/repo', pexec });
   assert.equal(ok, false);
+}
+
+// --- pruneUnreachable doc comment (#424 AC3) ---
+// The doc comment above `pruneUnreachable` must describe the merge-base
+// reachability semantics and must NOT mislabel `git cat-file -e` as a
+// reachability check (the original wording that induced the bug).
+{
+  const libPath = new URL('../lib/commit-trail.mjs', import.meta.url);
+  const src = readFileSync(libPath, 'utf8');
+  const idx = src.indexOf('export async function pruneUnreachable');
+  assert.notEqual(idx, -1, 'pruneUnreachable not found in commit-trail.mjs');
+  const before = src.slice(0, idx);
+  const commentStart = before.lastIndexOf('\n// Drop SHAs');
+  assert.notEqual(commentStart, -1, 'pruneUnreachable doc comment (// Drop SHAs) not found');
+  const comment = before.slice(commentStart);
+  assert.match(
+    comment,
+    /merge-base --is-ancestor/,
+    'doc comment must describe merge-base reachability'
+  );
+  assert.doesNotMatch(
+    comment,
+    /cat-file[^\n]*reachability/i,
+    'doc comment must not label cat-file -e a reachability check'
+  );
 }
 
 console.log('commit-trail: ok');
