@@ -7,7 +7,8 @@
     "options": [
       { "name": "P0", "color": "RED", "description": "Critical - blocking" },
       { "name": "P1", "color": "ORANGE", "description": "High - this sprint" },
-      { "name": "P2", "color": "BLUE", "description": "Normal - backlog" }
+      { "name": "P2", "color": "BLUE", "description": "Normal - backlog" },
+      { "name": "P3", "color": "GRAY", "description": "Chore" }
     ]
   },
   {

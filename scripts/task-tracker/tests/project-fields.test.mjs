@@ -12,6 +12,15 @@ const keys = defaultDefs.map((d) => d.key);
 assert.ok(keys.includes('reviewTime'), 'default field defs include reviewTime');
 assert.ok(!keys.includes('contextLength'), 'default field defs no longer include contextLength');
 
+// #404 — Priority taxonomy includes P3 ("Chore"), GitHub's non-default lowest level.
+// Guards against an accidental drop of P3 from the fresh-create source of truth.
+const priorityDef = defaultDefs.find((d) => d.key === 'priority');
+assert.ok(priorityDef, 'default field defs include a priority field');
+const p3Option = priorityDef.options.find((o) => o.name === 'P3');
+assert.ok(p3Option, 'priority field options include P3');
+assert.equal(p3Option.color, 'GRAY', 'P3 option uses GRAY');
+assert.equal(p3Option.description, 'Chore', 'P3 option is described as Chore');
+
 assert.deepEqual(valueForProjectField(12, 'number'), { number: 12 });
 assert.deepEqual(valueForProjectField('2026-05-06', 'date'), { date: '2026-05-06' });
 assert.deepEqual(valueForProjectField('P1', 'single_select'), { singleSelectOptionName: 'P1' });

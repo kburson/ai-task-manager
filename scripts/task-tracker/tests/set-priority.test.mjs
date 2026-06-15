@@ -58,17 +58,18 @@ async function runExpectFail(args, env = {}) {
         priorityOptionP0: 'PVTO_p0',
         priorityOptionP1: 'PVTO_p1',
         priorityOptionP2: 'PVTO_p2',
+        priorityOptionP3: 'PVTO_p3',
       },
       null,
       2
     )
   );
-  for (const priority of ['p0', 'p1', 'p2', 'P0', 'P1', 'P2']) {
+  for (const priority of ['p0', 'p1', 'p2', 'p3', 'P0', 'P1', 'P2', 'P3']) {
     const r = await run(['123', priority], {
       TT_SKIP_NETWORK: '1',
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     });
-    assert.match(r.stdout, /P[012]/, `priority ${priority} should print success`);
+    assert.match(r.stdout, /P[0123]/, `priority ${priority} should print success`);
   }
   rmSync(sandbox, { recursive: true });
 }

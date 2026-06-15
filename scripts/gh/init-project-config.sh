@@ -1226,7 +1226,7 @@ mutation($proj:ID!,$name:String!){
 info "Custom fields from .ai-task-manager/project-fields.json..."
 echo ""
 FIELD_IDS_JSON="{}"
-PRIORITY_FIELD_ID="" OPTION_P0="" OPTION_P1="" OPTION_P2=""
+PRIORITY_FIELD_ID="" OPTION_P0="" OPTION_P1="" OPTION_P2="" OPTION_P3=""
 SIZE_FIELD_ID=""
 FIELD_ESTIMATE=""
 FIELD_ENGAGED_TIME=""
@@ -1279,6 +1279,49 @@ while IFS= read -r FIELD_DEF <&3; do
           auto_or_pick "P0 (critical)" "p0,critical,urgent"   "optional"; OPTION_P0="$PICKED_ID"
           auto_or_pick "P1 (high)"     "p1,high,important"    "optional"; OPTION_P1="$PICKED_ID"
           auto_or_pick "P2 (normal)"   "p2,normal,medium,low" "optional"; OPTION_P2="$PICKED_ID"
+          auto_or_pick "P3 (chore)"    "p3,chore"             "optional"; OPTION_P3="$PICKED_ID"
+
+          # P0/P1/P2 are GitHub's default Priority options, so they always
+          # auto-match above. P3 ("Chore") is NOT a GitHub default — on an
+          # existing Priority field it is absent and auto_or_pick returns the
+          # __NEW__ sentinel. Create-and-append it (preserving the existing
+          # options with their ids so items already set are not orphaned), then
+          # re-fetch the field and remap to the real id. Mirrors the Status
+          # STATES_TO_CREATE path (#404).
+          if [[ "$OPTION_P3" == "__NEW__" ]]; then
+            info "Adding new priority option: P3 (Chore)"
+            EXISTING_PRI_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq '[.options[] | {id, name, color, description}]')
+            ALL_PRI_OPTS=$(echo "$EXISTING_PRI_OPTS" | jq '. + [{name:"P3", color:"GRAY", description:"Chore"}]')
+            PRI_MUT_OK=$(jq -n \
+              --arg field "$PRIORITY_FIELD_ID" \
+              --argjson opts "$ALL_PRI_OPTS" \
+              '{query:"mutation($field:ID!,$opts:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$field,singleSelectOptions:$opts}){projectV2Field{...on ProjectV2SingleSelectField{id}}}}",variables:{field:$field,opts:$opts}}' \
+              | gh api graphql --input - --jq '.data.updateProjectV2Field.projectV2Field.id' 2>/dev/null || echo '')
+            if [[ -z "$PRI_MUT_OK" ]]; then
+              warn "Failed to add P3 priority option — set it manually in the GitHub Project (name 'P3', color GRAY, description 'Chore')."
+              OPTION_P3=""
+            else
+              _PRI_REFETCH=$(gh api graphql -f query="
+{
+  node(id: \"$PROJECT_NODE_ID\") {
+    ... on ProjectV2 {
+      fields(first: 30) {
+        nodes {
+          ... on ProjectV2SingleSelectField { id name options { id name color description } }
+        }
+      }
+    }
+  }
+}" 2>/dev/null || echo '{}')
+              KANBAN_FIELD_JSON=$(echo "$_PRI_REFETCH" | jq --arg fid "$PRIORITY_FIELD_ID" '
+                (if type == "array" then . else (.data.node.fields.nodes // []) end)
+                | map(select(.id == $fid)) | first // empty
+              ' 2>/dev/null || echo '')
+              OPTION_P3=$(echo "$KANBAN_FIELD_JSON" | jq -r '.options[] | select(.name == "P3") | .id')
+              ok "Priority option P3 (Chore) added."
+            fi
+          fi
+
           KANBAN_FIELD_JSON=""
         fi
         ;;
@@ -1317,6 +1360,7 @@ PRIORITY_FIELD_ID="$PRIORITY_FIELD_ID" \
 OPTION_P0="$OPTION_P0" \
 OPTION_P1="$OPTION_P1" \
 OPTION_P2="$OPTION_P2" \
+OPTION_P3="$OPTION_P3" \
 SIZE_FIELD_ID="$SIZE_FIELD_ID" \
 FIELD_ESTIMATE="$FIELD_ESTIMATE" \
 FIELD_ENGAGED_TIME="$FIELD_ENGAGED_TIME" \
@@ -1351,6 +1395,7 @@ const updates = {
   priorityOptionP0:       process.env.OPTION_P0,
   priorityOptionP1:       process.env.OPTION_P1,
   priorityOptionP2:       process.env.OPTION_P2,
+  priorityOptionP3:       process.env.OPTION_P3,
 };
 // Only write IDs when we got them — don't clobber manually configured values with empty strings
 const optional = {
@@ -1421,6 +1466,7 @@ body:
         - P0 - Critical / blocking
         - P1 - High / this sprint
         - P2 - Normal / backlog
+        - P3 - Chore
     validations:
       required: true
 
@@ -1516,6 +1562,7 @@ body:
         - P0 - Critical / blocking
         - P1 - High / this sprint
         - P2 - Normal / backlog
+        - P3 - Chore
     validations:
       required: true
 

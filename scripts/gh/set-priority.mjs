@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Set Priority field on a GitHub issue (and optionally all sub-issues).
 // Usage: node scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]
-// Priorities: p0 | p1 | p2
+// Priorities: p0 | p1 | p2 | p3
 // --cascade: also set the same priority on all direct sub-issues
 
 import { loadConfig } from '../task-tracker/config.mjs';
@@ -13,12 +13,13 @@ const PRIORITY_TO_CONFIG_KEY = {
   p0: 'priorityOptionP0',
   p1: 'priorityOptionP1',
   p2: 'priorityOptionP2',
+  p3: 'priorityOptionP3',
 };
 
 function usage() {
   process.stderr.write(
     'Usage: node scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]\n' +
-      'Priorities: p0 | p1 | p2\n'
+      'Priorities: p0 | p1 | p2 | p3\n'
   );
   process.exit(1);
 }
@@ -34,7 +35,7 @@ if (!/^\d+$/.test(issueArg)) usage();
 const priority = priorityArg.toLowerCase();
 const configKey = PRIORITY_TO_CONFIG_KEY[priority];
 if (!configKey) {
-  process.stderr.write(`Unknown priority: ${priorityArg}\nPriorities: p0 | p1 | p2\n`);
+  process.stderr.write(`Unknown priority: ${priorityArg}\nPriorities: p0 | p1 | p2 | p3\n`);
   process.exit(1);
 }
 
