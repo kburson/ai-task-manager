@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 
 import { planApprovedGuard } from '../lib/plan-approved-guard.mjs';
 import { planEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
+import { planExitVcPresenceGuard } from '../lib/plan-exit-vc-presence-guard.mjs';
 import { STATES } from '../states/index.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
@@ -42,6 +43,13 @@ const APPROVED_BODY = [
     (_, i) =>
       `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
   ),
+  '',
+  // #386 — planExitVcPresenceGuard (newly wired into STATES.plan.exitGuards)
+  // refuses plan→develop on a body with no parseable Verification Commands
+  // entry; the integration "ok" test needs at least one.
+  '## Verification Commands',
+  '',
+  '- [ ] `npm run test:all`',
   '',
   `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
@@ -177,6 +185,71 @@ test('planEpicChildrenGuard: epic with backlog child → refuse', async () => {
   assert.equal(r.ok, false);
   assert.match(r.reason, /epic-children-not-refined/);
   assert.match(r.reason, /#2/);
+});
+
+// ── planExitVcPresenceGuard (#386) ───────────────────────────────────────────
+
+test('planExitVcPresenceGuard: body with a parseable VC entry → ok', () => {
+  const body = '## Verification Commands\n\n- [ ] `npm run test:all`\n';
+  assert.deepEqual(planExitVcPresenceGuard.run({ toState: 'develop', body }), { ok: true });
+});
+
+test('planExitVcPresenceGuard: no VC section, toState=develop → refuse', () => {
+  const r = planExitVcPresenceGuard.run({ toState: 'develop', body: BARE_BODY });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /verification-commands-missing/);
+  assert.ok(Array.isArray(r.blockers) && r.blockers.length === 1);
+});
+
+test('planExitVcPresenceGuard: VC heading present but no parseable entry → refuse', () => {
+  // Heading with zero `- [ ] `cmd`` lines is treated as absent (parser-defined).
+  const body = '## Verification Commands\n\nnothing parseable here\n';
+  const r = planExitVcPresenceGuard.run({ toState: 'develop', body });
+  assert.equal(r.ok, false);
+});
+
+test('planExitVcPresenceGuard: unchecked entry still passes (presence, not completion)', () => {
+  const body = '## Verification Commands\n\n- [ ] `npm run lint`\n';
+  assert.deepEqual(planExitVcPresenceGuard.run({ toState: 'develop', body }), { ok: true });
+});
+
+test('planExitVcPresenceGuard: toState=refine (rollback) → ok regardless of body', () => {
+  assert.deepEqual(planExitVcPresenceGuard.run({ toState: 'refine', body: BARE_BODY }), {
+    ok: true,
+  });
+});
+
+test('planExitVcPresenceGuard: undefined body → fail-open', () => {
+  assert.deepEqual(planExitVcPresenceGuard.run({ toState: 'develop' }), { ok: true });
+});
+
+test('STATES.plan.exitGuards: includes plan-exit-vc-presence', () => {
+  const ids = STATES.plan.exitGuards.map((g) => g.id);
+  assert.ok(
+    ids.includes('plan-exit-vc-presence'),
+    `expected plan-exit-vc-presence in [${ids.join(', ')}]`
+  );
+});
+
+test('runGuards(plan,develop): no VC section → surfaces plan-exit-vc-presence refusal', async () => {
+  const r = await runGuards('plan', 'develop', {
+    issueNumber: 277,
+    repo: 'owner/name',
+    fromState: 'plan',
+    toState: 'develop',
+    // APPROVED_BODY minus its VC section: passes every OTHER plan-exit guard so
+    // the only refusal surfaced is the new presence guard.
+    body: APPROVED_BODY.replace(/## Verification Commands\n\n- \[ \] `npm run test:all`\n\n/, ''),
+    cfg: CFG,
+    deps: {
+      epicChildren: { fetchSiblings: async () => [] },
+      ...PLANNED_ESTIMATE_OK_DEPS,
+    },
+    fetchBlockerState: async () => null,
+  });
+  assert.equal(r.ok, false);
+  const ids = r.refusals.map((x) => x.id);
+  assert.ok(ids.includes('plan-exit-vc-presence'), JSON.stringify(r));
 });
 
 // ── states/plan.mjs wiring ───────────────────────────────────────────────────

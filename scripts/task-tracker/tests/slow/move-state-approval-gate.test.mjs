@@ -54,6 +54,11 @@ function deepDiveAdequate() {
       `line ${i + 1}: substantive analysis paragraph providing enough content to clear the substantive-chars floor; describes a tradeoff, references a file path, and notes a risk.`
     );
   }
+  // #386 — plan→develop now refuses a body with no Verification Commands
+  // section (>= 1 parseable entry). The success-path fixtures route through
+  // here, so include one; fail-path fixtures that build bodies inline already
+  // expect refusal for their own reason.
+  lines.push('', '## Verification Commands', '', '- [ ] `npm run test:all`');
   lines.push('', '<!-- ai-task-manager:fields:start -->', '<!-- ai-task-manager:fields:end -->');
   return lines.join('\n');
 }

@@ -57,6 +57,10 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-exit-wip-budget': 'wip-budget-refused',
   'plan-exit-planned-estimate': 'planned-estimate-refused',
   'plan-exit-deep-dive': 'deep-dive-refused',
+  // #386 — plan→develop refuses a body with no `## Verification Commands`
+  // section (>= 1 parseable entry); the gate-first `test` verb would otherwise
+  // dead-end at "nothing to verify".
+  'plan-exit-vc-presence': 'vc-presence-refused',
   'plan-exit-epic-children-refine-or-beyond': 'epic-children-refused',
   // `plan-exit-plan-approved` intentionally omitted: historical verb didn't
   // enforce this marker; the central `move-state.mjs` subprocess does. Adding
@@ -565,6 +569,7 @@ export async function verbPromote(rest, cfg) {
     case 'parent-admission-refused':
     case 'code-complete-refused':
     case 'dod-verified-missing':
+    case 'vc-presence-refused':
     case 'completeness-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);

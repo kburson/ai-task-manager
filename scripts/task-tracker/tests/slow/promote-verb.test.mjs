@@ -97,6 +97,12 @@ const DEEP_DIVE_SIGNALS = [
       `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
   ),
   '<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->',
+  // #386 — plan→develop now refuses a body lacking a Verification Commands
+  // section with >= 1 parseable entry (planExitVcPresenceGuard). Plan-state
+  // fixtures that exercise the deeper promote gates need it present.
+  '## Verification Commands',
+  '',
+  '- [ ] `npm run test:all`',
   `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
 ].join('\n');

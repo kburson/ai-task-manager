@@ -278,6 +278,11 @@ test('verbTest: no-vc body returns no-vc status (does not create worktree)', asy
     assert.equal(r.status, 'no-vc');
     assert.equal(calls.worktreesCreated, 0);
     assert.equal(calls.worktreesRemoved, 0);
+    // #386 — the no-vc path must be a LOUD refusal, not a benign
+    // "nothing to verify" shrug: the message names the refusal and the
+    // missing section so an orchestrator cannot mistake it for a green run.
+    assert.match(r.message, /REFUSING/);
+    assert.match(r.message, /Verification Commands/);
   });
 });
 

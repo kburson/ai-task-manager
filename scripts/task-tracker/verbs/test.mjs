@@ -315,7 +315,13 @@ export async function runVerbTest({
   if (vcs.length === 0) {
     return {
       status: 'no-vc',
-      message: `#${issueNum}: no \`## Verification Commands\` entries — nothing to verify.`,
+      message:
+        `⛔ #${issueNum}: REFUSING to verify — body has no \`## Verification ` +
+        `Commands\` section with a parseable \`- [ ] \`command\`\` entry. This is ` +
+        `a failure, not a clean pass: there is nothing to run, so the issue ` +
+        `cannot advance to review. Seed a Verification Commands section (a ` +
+        `plan→develop gate now enforces presence; pre-#410 issues need a ` +
+        `back-fill) and re-run \`test\`.`,
     };
   }
 

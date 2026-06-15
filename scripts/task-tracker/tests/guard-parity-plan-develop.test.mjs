@@ -104,6 +104,12 @@ const APPROVED_BODY = [
       `line ${i + 1}: substantive analysis paragraph describing the change, the surrounding subsystem, the risk surface, and the verification approach.`
   ),
   '',
+  // #386 — planExitVcPresenceGuard now gates plan→develop; the accept fixture
+  // needs a Verification Commands section with >= 1 parseable entry.
+  '## Verification Commands',
+  '',
+  '- [ ] `npm run test:all`',
+  '',
   `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`,
   '',
 ].join('\n');
