@@ -47,7 +47,8 @@ fi
 if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   args="$*"
   if [[ "$args" == *"--input"* ]]; then
-    cat >/dev/null
+    cat >> "${temp}/gh-input.log"
+    printf '\n===PAYLOAD-BOUNDARY===\n' >> "${temp}/gh-input.log"
     echo "F_CREATED"
     exit 0
   fi
@@ -81,21 +82,8 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     {"id":"O_REVIEW","name":"In Review","color":"ORANGE","description":""},
     {"id":"O_DONE","name":"Done","color":"GREEN","description":""}
   ]},
-  {"id":"F_PRIORITY","name":"Priority","options":[
-    {"id":"P0","name":"P0","color":"RED","description":""},
-    {"id":"P1","name":"P1","color":"ORANGE","description":""},
-    {"id":"P2","name":"P2","color":"YELLOW","description":""}
-  ]},
-  {"id":"F_SIZE","name":"Size","options":[
-    {"id":"XS","name":"XS","color":"BLUE","description":""},
-    {"id":"S","name":"S","color":"GREEN","description":""},
-    {"id":"M","name":"M","color":"YELLOW","description":""},
-    {"id":"L","name":"L","color":"ORANGE","description":""},
-    {"id":"XL","name":"XL","color":"RED","description":""}
-  ]},
   {"id":"F_ESTIMATE","name":"Estimate","dataType":"NUMBER"},
-  {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
-  {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
+  {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"}
 ]
 JSON
     exit 0
@@ -114,22 +102,12 @@ exit 1
 );
 chmodSync(ghMock, 0o755);
 
-const input =
-  [
-    '', // use detected repo
-    '', // default to new project
-    '', // default title
-    '', // default Feature Release template
-    '', // status field default
-    '', // Engaged/Session/Review/Plan/BlockedBy missing — accept default [new] to create each
-    '', // spare prompt response
-    '', // spare prompt response
-    '', // spare prompt response
-    '', // spare prompt response
-    '', // spare prompt response
-    '', // spare prompt response
-    '', // spare prompt response
-  ].join('\n') + '\n';
+// Every interactive prompt accepts its default on an empty line (detected repo,
+// new project, default title, Feature Release template, and "[new]" create
+// choices for fields not present on the mock board). Supply a generous margin
+// of empty lines so the run never runs short regardless of how many missing
+// fields the config loop creates; extra lines are harmless.
+const input = Array(24).fill('').join('\n') + '\n';
 
 const result = spawnSync('bash', [script, '--target', targetDir], {
   input,
@@ -148,3 +126,39 @@ assert.match(calls, /project create --owner kburson --title new-repo Board --for
 
 const config = readFileSync(join(targetDir, '.ai-task-manager/task-tracker.json'), 'utf8');
 assert.match(config, /"projectId": "PVT_CREATED"/);
+
+// ── #233 AC6: assert the rendered field set ────────────────────────────────
+// Single-select create payloads (sent via `gh api graphql --input -`) are
+// captured verbatim. jq pretty-prints the payload, so allow whitespace between
+// JSON tokens while keeping the literal spaces inside each description value.
+const inputLog = readFileSync(join(temp, 'gh-input.log'), 'utf8');
+const optionMatch = (name, color, description) =>
+  new RegExp(
+    `"name":\\s*"${name}"[\\s\\S]*?"color":\\s*"${color}"[\\s\\S]*?"description":\\s*"${description}"`
+  );
+
+// AC2/AC6: Priority and Size are created as single-select with every option
+// carrying both a color and a non-empty description sourced from
+// config/project-fields.default.json.
+assert.match(inputLog, /"name":\s*"Priority"/, 'Priority single-select not created');
+assert.match(inputLog, optionMatch('P0', 'RED', 'Critical - blocking'));
+assert.match(inputLog, optionMatch('P1', 'ORANGE', 'High - this sprint'));
+assert.match(inputLog, optionMatch('P2', 'BLUE', 'Normal - backlog'));
+assert.match(inputLog, /"name":\s*"Size"/, 'Size single-select not created');
+assert.match(inputLog, optionMatch('XS', 'BLUE', '1-2 hours'));
+assert.match(inputLog, optionMatch('XL', 'RED', '24\\+ hours'));
+
+// AC3/AC4: timing fields and the start-time field are created as TEXT, by their
+// canonical names, and NO DATE or NUMBER field is ever created (the config loop
+// owns the schema; estimate/sequence map to the existing NUMBER fields).
+for (const name of ['Engaged', 'Session', 'Review', 'Plan', 'Started', 'Blocked By']) {
+  assert.match(
+    calls,
+    new RegExp(`dataType:TEXT[\\s\\S]*?name=${name}\\b`),
+    `${name} not created as TEXT`
+  );
+}
+assert.doesNotMatch(calls, /dataType:DATE/, 'installer must not create any DATE field');
+assert.doesNotMatch(calls, /dataType:NUMBER/, 'installer must not create any NUMBER field');
+// AC1: the legacy apply_project_template "End date" field is gone for good.
+assert.doesNotMatch(calls, /End date/, 'legacy End date field must not be created');

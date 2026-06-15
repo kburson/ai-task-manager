@@ -380,7 +380,17 @@ create_project_field_if_missing() {
 
 apply_project_template() {
   local template="$1"
-  local status_opts priority_opts size_opts
+  local status_opts
+  # Status (kanban) is the ONLY field this bootstrap provisions. Every other
+  # project property — Priority, Size, Estimate, Sequence, the timing fields,
+  # the "Started" start-time field, Blocked By — is owned by the
+  # config-driven creation loop, which sources its full schema (names, types,
+  # single-select option colors + descriptions) from
+  # config/project-fields.default.json. Provisioning those fields here too
+  # was both stale (timing fields as NUMBER, a DATE "Start date" — pre-#398)
+  # and redundant, and it caused interactive type-conflict prompts when the
+  # config loop then tried to create the canonical Text fields over them.
+  # See #233.
   status_opts='[
     {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
     {"name":"Refine","color":"BLUE","description":"Items being shaped: AC, sizing, estimates."},
@@ -390,33 +400,9 @@ apply_project_template() {
     {"name":"Review","color":"PURPLE","description":"All checks passed; awaiting human approval."},
     {"name":"Done","color":"GREEN","description":""}
   ]'
-  priority_opts='[
-    {"name":"P0","color":"RED","description":"Critical — blocking"},
-    {"name":"P1","color":"ORANGE","description":"High — this sprint"},
-    {"name":"P2","color":"BLUE","description":"Normal — backlog"}
-  ]'
-  size_opts='[
-    {"name":"XS","color":"BLUE","description":"1-2 hours"},
-    {"name":"S","color":"GREEN","description":"3-4 hours"},
-    {"name":"M","color":"YELLOW","description":"6-10 hours"},
-    {"name":"L","color":"ORANGE","description":"12-20 hours"},
-    {"name":"XL","color":"RED","description":"24+ hours"}
-  ]'
 
   info "Applying ${template} project workflow..."
   create_project_field_if_missing "Status" "SINGLE_SELECT" "$status_opts"
-  if [[ "$template" == "feature-release" ]]; then
-    create_project_field_if_missing "Priority" "SINGLE_SELECT" "$priority_opts"
-    create_project_field_if_missing "Size" "SINGLE_SELECT" "$size_opts"
-    create_project_field_if_missing "Estimate" "NUMBER"
-    create_project_field_if_missing "Engaged Time" "NUMBER"
-    create_project_field_if_missing "Session Time" "NUMBER"
-    create_project_field_if_missing "Review Time" "NUMBER"
-    create_project_field_if_missing "Plan Time" "NUMBER"
-    create_project_field_if_missing "Sequence" "NUMBER"
-    create_project_field_if_missing "Start date" "DATE"
-    create_project_field_if_missing "End date" "DATE"
-  fi
 }
 
 create_and_link_project() {
