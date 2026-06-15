@@ -140,18 +140,6 @@ async function addIssueToProject({ cfg, issueId, runGql }) {
   return data.addProjectV2ItemById.item.id;
 }
 
-async function deleteProjectItem({ cfg, itemId, runGql }) {
-  await runGql(
-    `
-    mutation($project: ID!, $item: ID!) {
-      deleteProjectV2Item(input: { projectId: $project, itemId: $item }) {
-        deletedItemId
-      }
-    }`,
-    { project: cfg.projectId, item: itemId }
-  );
-}
-
 async function linkSubIssue({ parentId, childId, runGql }) {
   await runGql(
     `
@@ -268,14 +256,14 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, sequ
   }
 }
 
-function failureMessage({ cfg, issueNumber, project, phantomItems }) {
+function failureMessage({ cfg, issueNumber, project }) {
   const projectRef = project?.url
     ? `${project.title || cfg.projectId} (${project.url})`
     : cfg.projectId;
   return [
     `Unable to tether issue #${issueNumber} to project ${projectRef}.`,
-    `ProjectV2.items did not contain the issue after retries.`,
-    `Issue.projectItems phantom item count: ${phantomItems.length}.`,
+    `Neither repository.issue.projectItems (authoritative reverse lookup) nor ProjectV2.items`,
+    `pagination contained the issue after retries.`,
     `Manual remediation: add #${issueNumber} to the project in GitHub UI, then rerun project-tether.`,
   ].join(' ');
 }
@@ -325,16 +313,54 @@ export async function tetherIssueToProject({
   if (!cfg.projectId) throw new Error('projectId not configured');
   if (!issueNumber) throw new Error('issueNumber is required');
 
-  const { repositoryId, issue } = await fetchIssue({ cfg, issueNumber, runGql });
+  const initial = await fetchIssue({ cfg, issueNumber, runGql });
+  const repositoryId = initial.repositoryId;
+  let issue = initial.issue;
   await ensureProjectLinked({ cfg, repositoryId, runGql });
 
   let lastProject = null;
-  let phantomItems = [];
   let added = false;
-  const deletedPhantomIds = new Set();
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    // Re-fetch the issue node each retry so the reverse lookup reflects the
+    // live link state (an add we just performed, or an eventual-consistency
+    // lag that has since resolved). The first attempt reuses the initial fetch.
+    if (attempt > 1) {
+      issue = (await fetchIssue({ cfg, issueNumber, runGql })).issue;
+    }
+
+    // PRIMARY, authoritative lookup: `repository.issue(N).projectItems` is
+    // returned from the issue node itself, so it cannot miss an item that is
+    // genuinely linked. Use it directly — never delete it as a "phantom".
+    const sideItems = issueSideProjectItems(issue, cfg.projectId);
+    if (sideItems.length > 0) {
+      const item = sideItems[0];
+      lastProject = item.project || lastProject;
+      await writeFields({
+        cfg,
+        itemId: item.id,
+        status,
+        priority,
+        size,
+        estimate,
+        sequence,
+        runGql,
+      });
+      if (parentIssueNumber) {
+        const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
+        await linkSubIssue({ parentId: parent.issue.id, childId: issue.id, runGql });
+      }
+      return {
+        issueId: issue.id,
+        itemId: item.id,
+        projectTitle: item.project?.title || '',
+        projectUrl: item.project?.url || '',
+      };
+    }
+
+    // FALLBACK: the reverse lookup is empty (issue may genuinely not be linked
+    // yet). Scan `ProjectV2.items` forward pagination as a secondary check.
     const verified = await projectItemForIssue({ cfg, issueNumber, runGql });
-    lastProject = verified.project;
+    lastProject = verified.project || lastProject;
     if (verified.item?.id) {
       await writeFields({
         cfg,
@@ -358,14 +384,9 @@ export async function tetherIssueToProject({
       };
     }
 
-    phantomItems = issueSideProjectItems(issue, cfg.projectId);
-    for (const item of phantomItems) {
-      if (deletedPhantomIds.has(item.id)) continue;
-      try {
-        await deleteProjectItem({ cfg, itemId: item.id, runGql });
-        deletedPhantomIds.add(item.id);
-      } catch {}
-    }
+    // Neither lookup found the item: add the issue to the project once, then
+    // retry. The next attempt re-fetches the issue node and the authoritative
+    // reverse lookup should then surface the newly-added item.
     if (!added) {
       await addIssueToProject({ cfg, issueId: issue.id, runGql });
       added = true;
@@ -373,5 +394,5 @@ export async function tetherIssueToProject({
     if (attempt < maxAttempts) await sleepFn(retryDelayMs);
   }
 
-  throw new Error(failureMessage({ cfg, issueNumber, project: lastProject, phantomItems }));
+  throw new Error(failureMessage({ cfg, issueNumber, project: lastProject }));
 }

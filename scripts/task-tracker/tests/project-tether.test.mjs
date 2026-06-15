@@ -146,22 +146,111 @@ async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
   assert.equal(calls.filter((c) => c.query.includes('addProjectV2ItemById')).length, 1);
 }
 
-async function testPhantomItemIsDeletedAndRetried() {
+// #349 — the reverse lookup `repository.issue(N).projectItems` is authoritative.
+// An item it returns is NEVER a phantom: it is reused in place (fields written
+// to its id), never deleted, and the forward `ProjectV2.items` scan is not even
+// consulted. This is the inverted-trust fix for the destructive delete/re-add
+// path that the old `testPhantomItemIsDeletedAndRetried` asserted.
+async function testProjectSideItemIsAuthoritativeAndReused() {
   const { runGql, calls } = makeRunner({
-    projectItemOnAttempt: 2,
-    issueSideItems: [{ id: 'PHANTOM_1', project: { id: cfg.projectId } }],
+    // forward scan would NEVER show the item — proves we don't depend on it.
+    projectItemOnAttempt: 99,
+    issueSideItems: [{ id: 'SIDE_1', project: { id: cfg.projectId, title: 'AITM Board' } }],
   });
   const result = await tetherIssueToProject({
     cfg,
     issueNumber: 14,
+    size: 'M',
+    estimate: 2,
     runGql,
     sleep: async () => {},
   });
 
-  assert.equal(result.itemId, 'VISIBLE_ITEM');
-  assert.deepEqual(
-    calls.filter((c) => c.query.includes('deleteProjectV2Item')).map((c) => c.variables.item),
-    ['PHANTOM_1']
+  assert.equal(result.itemId, 'SIDE_1');
+  // No destructive delete, ever.
+  assert.equal(
+    calls.some((c) => c.query.includes('deleteProjectV2Item')),
+    false
+  );
+  // No re-add: the existing item was reused.
+  assert.equal(
+    calls.some((c) => c.query.includes('addProjectV2ItemById')),
+    false
+  );
+  // Forward pagination not consulted — reverse lookup short-circuited it.
+  assert.equal(
+    calls.some((c) => c.query.includes('... on ProjectV2')),
+    false
+  );
+}
+
+// #349 — eventual-consistency window: the issue is added on attempt 1, the
+// reverse lookup is empty until the link settles, and forward pagination NEVER
+// surfaces the item. The tether must still succeed via the re-fetched
+// reverse lookup on a later attempt.
+async function testEventualConsistencyResolvesViaReverseLookup() {
+  const calls = [];
+  let issueFetches = 0;
+  let added = 0;
+  const runGql = async (query, variables) => {
+    calls.push({ query, variables });
+    if (query.includes('linkProjectV2ToRepository')) {
+      return { linkProjectV2ToRepository: { repository: { nameWithOwner: cfg.repo } } };
+    }
+    if (query.includes('repository(owner:') && query.includes('issue(number:')) {
+      issueFetches += 1;
+      // Reverse lookup is empty until AFTER the add has happened (settle lag).
+      const nodes =
+        added > 0
+          ? [{ id: 'SETTLED_ITEM', project: { id: cfg.projectId, title: 'AITM Board' } }]
+          : [];
+      return {
+        repository: {
+          id: 'REPO_1',
+          issue: {
+            id: `ISSUE_${variables.issue}`,
+            number: Number(variables.issue),
+            url: `https://github.com/${cfg.repo}/issues/${variables.issue}`,
+            projectItems: { nodes },
+          },
+        },
+      };
+    }
+    if (query.includes('addProjectV2ItemById')) {
+      added += 1;
+      return { addProjectV2ItemById: { item: { id: 'ADDED_1' } } };
+    }
+    if (query.includes('updateProjectV2ItemFieldValue')) {
+      return { updateProjectV2ItemFieldValue: { projectV2Item: { id: variables.item } } };
+    }
+    if (query.includes('node(id:') && query.includes('... on ProjectV2')) {
+      // Forward pagination NEVER surfaces the item.
+      return {
+        node: {
+          title: 'AITM Board',
+          url: 'https://github.com/users/kburson/projects/1',
+          items: { totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+        },
+      };
+    }
+    throw new Error(`unexpected query: ${query}`);
+  };
+
+  const result = await tetherIssueToProject({
+    cfg,
+    issueNumber: 20,
+    maxAttempts: 3,
+    retryDelayMs: 0,
+    runGql,
+    sleep: async () => {},
+  });
+
+  assert.equal(result.itemId, 'SETTLED_ITEM');
+  assert.equal(added, 1, 'issue added exactly once');
+  assert.ok(issueFetches >= 2, 'issue node re-fetched across attempts');
+  assert.equal(
+    calls.some((c) => c.query.includes('deleteProjectV2Item')),
+    false
   );
 }
 
@@ -289,7 +378,8 @@ function testBacklogMoveWarning() {
 
 await testExistingProjectSideItemIsReused();
 await testMissingItemIsAddedAndVerifiedFromProjectSide();
-await testPhantomItemIsDeletedAndRetried();
+await testProjectSideItemIsAuthoritativeAndReused();
+await testEventualConsistencyResolvesViaReverseLookup();
 await testRetryExhaustionMentionsProjectSideVerification();
 await testParentLinksAfterProjectVerification();
 await testLooseLeafDoesNotLinkParent();
