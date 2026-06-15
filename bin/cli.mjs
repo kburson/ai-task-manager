@@ -331,7 +331,7 @@ function patchGitignore(targetDir) {
     '.claude/task-tracker-state.json',
     '.claude/task-tracker-queue.json',
     '.claude/task-fleet.json',
-    'tmp/',
+    '.tmp/',
   ];
   const COMMENT = '# ai-task-manager — user configuration files (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
