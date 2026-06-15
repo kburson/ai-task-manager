@@ -18,7 +18,11 @@ for (const rel of docs) {
   const abs = path.join(root, rel);
   assert.ok(existsSync(abs), `${rel} exists`);
   const body = readFileSync(abs, 'utf8');
-  assert.match(body, /aitm-verified-by/, `${rel} documents aitm-verified-by markers`);
+  assert.match(
+    body,
+    /aitm-verified cmd="…"/,
+    `${rel} documents consolidated aitm-verified cmd="…" markers`
+  );
   assert.match(body, /Verification\s+Commands/, `${rel} mentions Verification Commands`);
 }
 
@@ -26,7 +30,7 @@ for (const rel of ['templates/pickup-directive.md', '.ai-task-manager/pickup-dir
   const body = readFileSync(path.join(root, rel), 'utf8');
   assert.match(
     body,
-    /Acceptance Criteria[\s\S]+aitm-verified-by[\s\S]+Verification Commands/i,
+    /Acceptance Criteria[\s\S]+aitm-verified cmd="…"[\s\S]+Verification Commands/i,
     `${rel} links AC evidence markers to Verification Commands`
   );
   assert.match(
