@@ -51,6 +51,8 @@ required box is unchecked will be refused.
 
 14. **On mistakes — stop and surface, do not self-correct.** If you discover you have taken a wrong action (created a duplicate issue, used `gh issue close` directly, skipped the deep dive, dispatched agents without verifying state), STOP. Announce what happened, why it was wrong, and propose 2–3 resolution options. Wait for explicit instruction before proceeding.
 
+15. **Never hand-roll an issue body.** Hand-rolled `gh issue create --body`/`--body-file` and `gh issue edit --body`/`--body-file` are forbidden — they skip the canonical DoD + Pickup-Directive tail and the body-shape verifier (the failure mode that shipped #169/#170 without a `### Definition of Done`). Create issues through `scripts/task-tracker/lib/preflight-issue.mjs` (or `scripts/gh/create-issue.mjs`), which stamps the DoD/Pickup-Directive tail and runs the verifier. Edit live bodies only through `mutateIssueBody({ issueNumber, repo, mutate })` (`scripts/task-tracker/lib/issue-body-mutate.mjs`), which fetches and writes in one transaction and refuses on invariant-marker loss. The `gh-edit-guard` PreToolUse Bash hook hard-refuses every `gh issue edit <N> --body`/`--body-file`; do not route around it. See CLAUDE.md → "Route issue bodies through scripts".
+
 ## Sequence rules
 
 **Child sub-issues may not lead the parent epic in state.** The `promote <child> <target>` verb refuses when the parent epic's state is lower than the child's requested target. The gate is the `child-cannot-lead-epic` invariant.
