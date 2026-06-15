@@ -1,6 +1,6 @@
 // `npm test` (fast lane) stays in the set so legacy bodies keep passing;
 // `npm run test:all` is the new canonical Functional-DoD command (#305).
-import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
+import { parseProofMarker, hasExecutionProof, serializeProofMarker } from './proof-marker.mjs';
 
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
@@ -132,7 +132,9 @@ export function auditEvidenceMarkers(body = '', _opts = {}) {
 }
 
 function buildMarker(commands) {
-  return `<!-- aitm-verified-by: ${commands.map((cmd) => `\`${cmd}\``).join(' ')} -->`;
+  // #419 (C2): emit the consolidated declaration form. C1 (#418) made every
+  // reader dual-form, so this flip is read-compatible with legacy bodies.
+  return serializeProofMarker({ cmd: commands.map((cmd) => `\`${cmd}\``).join(' ') });
 }
 
 function insertVerificationCommands(lines, commands) {

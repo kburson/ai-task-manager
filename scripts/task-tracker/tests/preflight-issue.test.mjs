@@ -81,7 +81,10 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.meta,
       ]);
       assert.equal(r.code, 0, `stderr: ${r.stderr}`);
-      assert.match(r.stdout, /aitm-verified-by/);
+      // #419 — the preflight-emitted Functional DoD tail now carries the
+      // consolidated declaration form. (The author-supplied AC marker above
+      // stays legacy on purpose to prove the reader back-compat.)
+      assert.match(r.stdout, /aitm-verified cmd=/);
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });
     }

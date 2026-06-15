@@ -33,12 +33,12 @@ const preflightBlock = execFileSync(
 );
 
 // DoD template uses Functional/Lifecycle split (#139). Verification commands
-// now live in the `aitm-verified-by` comments on each Functional item rather
-// than as standalone DoD lines.
+// now live in the consolidated `aitm-verified cmd="..."` declarations on each
+// Functional item (#419) rather than as standalone DoD lines.
 for (const fragment of [
   '#### Functional (verified at Test)',
-  'aitm-verified-by: `npm run test:all`',
-  'aitm-verified-by: `npm run lint` `npm run format:check`',
+  'aitm-verified cmd="`npm run test:all`"',
+  'aitm-verified cmd="`npm run lint` `npm run format:check`"',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
   '#### Lifecycle (auto-ticked at Review/Close)',

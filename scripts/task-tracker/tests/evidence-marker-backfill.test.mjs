@@ -71,7 +71,7 @@ const metadata = [
   assert.equal(result.ok, true, JSON.stringify(result));
   assert.match(
     result.body,
-    /Plain AC <!-- aitm-verified-by: `node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs` -->/
+    /Plain AC <!-- aitm-verified cmd="`node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs`" -->/
   );
   assert.match(
     result.body,
@@ -107,7 +107,7 @@ const metadata = [
     },
   });
   assert.equal(result.status, 'backfilled');
-  assert.match(written, /aitm-verified-by/);
+  assert.match(written, /aitm-verified cmd=/);
 }
 
 // #296 — regression: when `### Verification Commands` (H3) is nested under
