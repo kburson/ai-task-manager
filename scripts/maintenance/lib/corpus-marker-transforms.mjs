@@ -252,26 +252,65 @@ const PROOF_LEGACY_ANY_RE = /<!--\s*aitm-verified-(?:at|by):/i;
 // gate catches the consolidated-with-legacy-keys form; `parseProofMarker`
 // already normalizes the keys, so the migrate path below rewrites it cleanly.
 const PROOF_LEGACY_CONSOLIDATED_RE = /<!--\s*aitm-verified\s[^>\n]*\b(?:verified-at|verified-by)=/i;
-const PROOF_LEGACY_STRIP_RE = /\s*<!--\s*aitm-verified-(?:at|by):\s*[^>\n]*?\s*-->/gi;
+// The value is matched with a tempered token `(?:(?!-->).)*?` — "any non-newline
+// char that does not begin the closing `-->`" — NOT `[^>\n]`. A marker value can
+// legitimately contain `>` (e.g. a command with a `<child>` placeholder, as on
+// #328). `[^>\n]` halted at that interior `>`, so the strip never reached `-->`:
+// the legacy marker survived (permanent residual) AND the consolidated form was
+// never deduped, so every `--live` run appended another copy (non-idempotent).
+// `.` already excludes `\n`, keeping the match single-line; comment values can
+// never contain `-->` (it would close the comment), so the tempered token is safe.
+const PROOF_LEGACY_STRIP_RE = /\s*<!--\s*aitm-verified-(?:at|by):\s*(?:(?!-->).)*?-->/gi;
 // An already-canonical consolidated marker on the same line. The `\s` boundary
 // after `aitm-verified` excludes the legacy `-at`/`-by` names (next char `-`),
 // so this strips ONLY the consolidated form.
-const PROOF_CONSOLIDATED_STRIP_RE = /\s*<!--\s*aitm-verified\s[^>\n]*?-->/gi;
+const PROOF_CONSOLIDATED_STRIP_RE = /\s*<!--\s*aitm-verified\s(?:(?!-->).)*?-->/gi;
 
-// A line carries a legacy proof marker when it has either a colon-form
-// `aitm-verified-at:` / `aitm-verified-by:` marker OR a consolidated
-// `aitm-verified` marker that still uses the legacy `verified-at=`/`verified-by=`
-// attribute names.
+// A fenced-code-block delimiter (``` or ~~~, possibly indented / with an info
+// string). Toggling on these lets the transform skip every line inside a fence.
+const FENCE_DELIM_RE = /^\s*(?:```|~~~)/;
+// Inline-code span on a single line. Redacting these before the legacy-marker
+// test means a marker that exists ONLY inside backticks (documentation /
+// example prose that quotes the marker grammar) is not mistaken for a real
+// declaration. Mirrors `redactDocContexts`' inline-code rule, line-scoped.
+// A span is a run of N backticks, the shortest content, then a matching run of N
+// backticks (`\1`). Matching the run length lets a `` ``-delimited span legally
+// CONTAIN single backticks — which is exactly how the marker grammar is quoted in
+// prose, e.g. `` <!-- aitm-verified-by: `cmd` --> ``. A naive single-backtick
+// regex stopped at the inner backticks, leaving the comment prefix exposed and
+// re-corrupting that documentation on every run.
+const INLINE_CODE_RE = /(`+)(.+?)\1/g;
+
+// #420 — prose-safe discriminator. A line carries a REAL legacy proof marker
+// only when the colon-form / consolidated-legacy-keys marker SURVIVES
+// inline-code-span redaction. Callers additionally skip lines inside a fenced
+// code block (tracked across lines in `migrateProofMarkers`). Without this the
+// line-based transform corrupted documentation that merely *quotes* the legacy
+// grammar in backticks, and — because it appended a fresh consolidated marker
+// each run — was non-idempotent on that prose.
 function lineHasLegacyProof(line) {
-  return PROOF_LEGACY_ANY_RE.test(line) || PROOF_LEGACY_CONSOLIDATED_RE.test(line);
+  const redacted = String(line).replace(INLINE_CODE_RE, '');
+  return PROOF_LEGACY_ANY_RE.test(redacted) || PROOF_LEGACY_CONSOLIDATED_RE.test(redacted);
 }
 
 export function migrateProofMarkers(body) {
   const src = String(body ?? '');
+  let inFence = false;
   return src
     .split('\n')
     .map((line) => {
+      // Fence delimiters toggle the in-fence state and are themselves never
+      // marker lines — leave them byte-untouched.
+      if (FENCE_DELIM_RE.test(line)) {
+        inFence = !inFence;
+        return line;
+      }
+      // Inside a fenced code block every line is documentation, never a real
+      // marker — leave it untouched (prose-safety, #420).
+      if (inFence) return line;
       if (!lineHasLegacyProof(line)) return line;
+      // Parse the ORIGINAL line (not the redacted form) so a backticked command
+      // value inside the real marker is preserved.
       const props = parseProofMarker(line);
       if (!props) return line;
       // Drop the legacy alias keys; #382's normalizeProofKeys already mapped

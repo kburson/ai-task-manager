@@ -57,7 +57,7 @@ For each item:
 - Verify every relevant issue-specific command in `### Verification
 Commands` has been run successfully, its output read, and its checkbox
   checked.
-- Verify every Acceptance Criterion has at least one `aitm-verified-by`
+- Verify every Acceptance Criterion has at least one `aitm-verified cmd="…"`
   marker and that every non-standard command named there appears under
   `### Verification Commands`.
 - Verify that all issue body checkboxes are ticked — this item is

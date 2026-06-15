@@ -341,7 +341,7 @@ function formatGateRefusal(gate, issueRef) {
     const cmd = gate.commands?.[0] || '<verifier>';
     return [
       `EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "${gate.label}" on ${issueRef}.`,
-      `  This acceptance criterion declares a verifier (aitm-verified-by) but carries`,
+      `  This acceptance criterion declares a verifier (aitm-verified cmd="…") but carries`,
       `  no aitm-ac-evidence:${gate.key} marker. Run \`/task ac-stamp "${gate.label}"\` to`,
       `  execute \`${cmd}\` in a sandbox; the evidence marker it stamps unlocks this tick.`,
     ].join('\n');

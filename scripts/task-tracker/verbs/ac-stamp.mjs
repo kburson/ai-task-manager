@@ -43,7 +43,7 @@ export async function verbAcStamp(ctx) {
   }
   if (!target.evidenceCommands.length) {
     console.error(
-      `[task-tracker] ac-stamp: AC "${target.label}" carries no \`aitm-verified-by\` command. Add one (e.g. \`<!-- aitm-verified-by: \\\`npm test\\\` -->\`) before stamping.`
+      `[task-tracker] ac-stamp: AC "${target.label}" carries no verifier command. Add one (e.g. \`<!-- aitm-verified cmd="\\\`npm test\\\`" -->\`) before stamping.`
     );
     process.exit(1);
   }

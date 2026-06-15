@@ -375,4 +375,94 @@ function roundtrip(fn, legacy, expects, legacyRe) {
   }
 }
 
+// 17. prose-safe transform (#420) — `migrateProofMarkers` must NOT rewrite
+//     legacy-marker grammar that appears only as documentation: inside inline-code
+//     spans or fenced code blocks. Doing so corrupted prose example lines and was
+//     non-idempotent (a fresh marker was appended each run).
+{
+  // 17a. inline-code mention — the legacy grammar lives inside a backtick span,
+  //      so it is documentation, not a real declaration. Left byte-untouched.
+  {
+    const prose = 'The writer used to emit `<!-- aitm-verified-by: \\`cmd\\` -->` on each line.';
+    assert.equal(migrateProofMarkers(prose), prose, 'inline-code mention untouched');
+    assert.equal(migrateProofMarkers(prose), prose, 'inline-code mention idempotent');
+  }
+  // 17b. fenced code block — every line between fences is documentation.
+  {
+    const fenced = [
+      'Example:',
+      '```',
+      '<!-- aitm-verified-at: abc1234:2026-06-01T00:00:00.000Z -->',
+      '<!-- aitm-verified-by: `npm test` -->',
+      '```',
+      'end.',
+    ].join('\n');
+    assert.equal(migrateProofMarkers(fenced), fenced, 'fenced block untouched');
+    assert.equal(migrateProofMarkers(fenced), fenced, 'fenced block idempotent');
+  }
+  // 17c. a genuine bare declaration on a real checklist line is STILL migrated —
+  //      the prose-safety guard must not suppress real markers.
+  {
+    const line = '- [x] tests pass <!-- aitm-verified-by: `npm test` -->';
+    const out = migrateProofMarkers(line);
+    assert.match(out, /aitm-verified /, 'real declaration consolidated');
+    assert.match(out, /cmd="`npm test`"/, 'cmd preserved');
+    assert.doesNotMatch(out, /aitm-verified-by:/, 'legacy by stripped');
+    assert.equal(migrateProofMarkers(out), out, 'real declaration idempotent');
+  }
+  // 17c2. double-backtick inline span — the legacy grammar is quoted inside a
+  //       `` ``-delimited span (legal because the content holds single backticks).
+  //       A naive single-backtick redaction stopped at the inner backticks and
+  //       re-corrupted the prose every run; the run-length match must skip it.
+  {
+    const prose =
+      '`commits` gains a marker: `` <!-- aitm-verified-by: `git log` --> `` for the audit.';
+    assert.equal(migrateProofMarkers(prose), prose, 'double-backtick mention untouched');
+    assert.equal(migrateProofMarkers(prose), prose, 'double-backtick mention idempotent');
+  }
+  // 17d. mixed body — a real checklist declaration above a fenced documentation
+  //      block: only the real one is rewritten; the fenced example is preserved.
+  {
+    const body = [
+      '- [x] real <!-- aitm-verified-by: `npm test` -->',
+      '```',
+      '<!-- aitm-verified-by: `example` -->',
+      '```',
+    ].join('\n');
+    const out = migrateProofMarkers(body);
+    const lines = out.split('\n');
+    assert.match(lines[0], /aitm-verified /, 'real line migrated');
+    assert.doesNotMatch(lines[0], /aitm-verified-by:/);
+    assert.equal(lines[2], '<!-- aitm-verified-by: `example` -->', 'fenced example preserved');
+    assert.equal(migrateProofMarkers(out), out, 'mixed body idempotent');
+  }
+}
+
+// 18. `>`-bearing value dedup + idempotency (#420/#328) — a marker value may
+//     legitimately contain `>` (e.g. a `<child>` placeholder in the command). The
+//     strip regexes must tolerate it: the legacy marker is removed and ALL prior
+//     consolidated copies collapse to exactly one. The old `[^>\n]` strip halted
+//     at the interior `>`, leaving the legacy marker AND appending a fresh copy
+//     each run (the #328 corruption: three identical consolidated markers).
+{
+  // 18a. legacy + three duplicate consolidated copies, all sharing a `>` value →
+  //      one consolidated marker, no legacy, no duplicates.
+  const dup = '<!-- aitm-verified cmd="`gh issue view <child> --json state` returned CLOSED" -->';
+  const line = [
+    '- [x] `#324` reaches Done.',
+    '<!-- aitm-verified-by: `gh issue view <child> --json state` returned CLOSED -->',
+    dup,
+    dup,
+    dup,
+  ].join(' ');
+  const out = migrateProofMarkers(line);
+  assert.doesNotMatch(out, /aitm-verified-by:/, '18a legacy stripped despite > in value');
+  assert.equal(
+    (out.match(/<!--\s*aitm-verified\s/g) || []).length,
+    1,
+    '18a collapses to exactly one consolidated marker'
+  );
+  assert.equal(migrateProofMarkers(out), out, '18a idempotent (no append on re-run)');
+}
+
 console.log('corpus-marker-transforms.test.mjs: all passed');

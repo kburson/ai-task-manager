@@ -71,4 +71,46 @@ import { redactDocContexts, residualFamilies } from '../../maintenance/migrate-m
   assert.deepEqual(residualFamilies(body), ['body-version'], 'only the real marker flagged');
 }
 
+// 7. proof detector (#420) — post-#419 a bare `aitm-verified-by:` declaration is
+//    non-canonical, so a genuine one on a checklist line is now residual; the
+//    consolidated `aitm-verified cmd="…"` form is NOT.
+{
+  // 7a. genuine bare declaration on a real checklist item is flagged.
+  const real = '- [x] tests pass <!-- aitm-verified-by: `npm test` -->';
+  assert.deepEqual(residualFamilies(real), ['proof'], 'bare verified-by declaration flagged');
+  // 7b. a bare `aitm-verified-at:` proof marker stays flagged (unchanged behavior).
+  const at = '- [x] dod <!-- aitm-verified-at: abc1234:2026-06-01T00:00:00.000Z -->';
+  assert.deepEqual(residualFamilies(at), ['proof'], 'bare verified-at flagged');
+  // 7c. inline-code mention of the legacy grammar is documentation — not flagged.
+  const prose = 'Writers used to emit `<!-- aitm-verified-by: \\`cmd\\` -->` per line.';
+  assert.deepEqual(residualFamilies(prose), [], 'inline-code verified-by mention not flagged');
+  // 7c2. double-backtick span quoting the grammar (content holds single backticks).
+  const prose2 = '`commits` gains: `` <!-- aitm-verified-by: `git log` --> `` for audit.';
+  assert.deepEqual(residualFamilies(prose2), [], 'double-backtick mention not flagged');
+  // 7d. fenced example — not flagged.
+  const fenced = ['```', '<!-- aitm-verified-by: `npm test` -->', '```'].join('\n');
+  assert.deepEqual(residualFamilies(fenced), [], 'fenced verified-by example not flagged');
+  // 7e. the consolidated canonical declaration form is NOT residual.
+  const canon = '- [x] tests <!-- aitm-verified cmd="npm test" -->';
+  assert.deepEqual(residualFamilies(canon), [], 'consolidated declaration not residual');
+}
+
+// 8. Cross-line swallow regression (#420/#411) — an unbalanced backtick in prose
+//    on an EARLIER line must not redact a genuine marker many lines below. Inline
+//    code cannot span line breaks, so redaction is per-line; a body-wide match
+//    would let the stray backtick eat the real DoD checklist (the #411 blind-spot
+//    where the transform changed the line but the detector failed to flag it).
+{
+  const body = [
+    'Prose with one stray backtick ` that never closes on this line.',
+    'more prose, still no closing backtick on its own line',
+    '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->',
+  ].join('\n');
+  assert.deepEqual(
+    residualFamilies(body),
+    ['proof'],
+    'genuine marker below a stray backtick is still flagged'
+  );
+}
+
 console.log('migrate-markers-corpus-redaction.test.mjs: all passed');

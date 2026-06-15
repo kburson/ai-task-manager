@@ -106,10 +106,10 @@ During deep dive, you discover a new AC: "Refusal message must name the
 offending heading + line number." Do NOT add it to the appendix. Instead:
 
 1. Append the AC to the root-level `## Acceptance Criteria` section with
-   an `aitm-verified-by` marker bound to a test file:
+   an `aitm-verified cmd="…"` marker bound to a test file:
 
    ```
-   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified-by: `node --test scripts/task-tracker/tests/gh-edit-guard.test.mjs` -->
+   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified cmd="`node --test scripts/task-tracker/tests/gh-edit-guard.test.mjs`" -->
    ```
 
 2. In the appendix prose, reference the root entry without a checkbox:

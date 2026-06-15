@@ -37,11 +37,11 @@ current state of the repo.
 For each DoD checkbox, verify by inspection AND by running the relevant
 tests, builds, or commands. Read the output, then check the box. Same rule
 for every Acceptance Criterion (including any added during the deep dive).
-Every AC must carry automated evidence metadata via an `aitm-verified-by`
-HTML comment marker. Standard DoD commands (`npm test`, `npm run test:all`,
+Every AC must carry automated evidence metadata via an
+`aitm-verified cmd="…"` HTML comment marker. Standard DoD commands (`npm test`, `npm run test:all`,
 `npm run lint`, `npm run format:check`) are DoD checkboxes — do not duplicate them under
 the deep-dive `### Verification Commands` section. Every non-standard
-command named in an AC `aitm-verified-by` marker must also appear as a
+command named in an AC `aitm-verified cmd="…"` marker must also appear as a
 checkbox under the issue-specific `### Verification Commands` section.
 Never bulk-check. Never check preemptively. "It looks done" is not
 verification.

@@ -36,9 +36,15 @@ const STATE_PATH = new URL('../../.tmp/heal/migrate-markers-corpus.state.json', 
 
 // ---------------------------------------------------------------------------
 // Residual legacy-form detectors (inverse of each transform). Used by --rescan.
-// The proof detector deliberately EXCLUDES bare `aitm-verified-by:` declarations
-// (current canonical form) — only execution proofs / consolidated markers
-// carrying legacy keys count as residual.
+// #420 — post-#419 the writers emit the consolidated `aitm-verified cmd="…"`
+// declaration form, so a bare `aitm-verified-by:` declaration is NO LONGER
+// canonical and now counts as residual. The proof detector therefore flags bare
+// `aitm-verified-at:`/`aitm-verified-by:` colon-form markers and consolidated
+// markers still carrying legacy `verified-at=`/`verified-by=` keys. Prose,
+// fixture, fenced-code and inline-code mentions are excluded upstream by
+// `redactDocContexts` (the documented discriminator), so a surviving bare
+// declaration is a genuine checklist-line marker — a faithful inverse of the
+// now prose-safe `migrateProofMarkers` transform.
 // ---------------------------------------------------------------------------
 const RESIDUAL_DETECTORS = [
   ['stage-entry', /<!--\s*aitm-entered-[a-z]+(?:-\d+)?:\s/i],
@@ -52,7 +58,10 @@ const RESIDUAL_DETECTORS = [
   ['evidence', /<!--\s*aitm-(?:ac|dod)-evidence:[0-9a-z-]+\s/i],
   ['audit', /<!--\s*aitm-(?:full-auto-approved|human-reviewer|backfill|reentry-audit):\s/i],
   ['csv-list', /<!--\s*aitm-(?:commits|blocked-by):\s/i],
-  ['proof', /<!--\s*aitm-verified-at:|<!--\s*aitm-verified\s[^>]*(?:verified-at|verified-by)=/i],
+  [
+    'proof',
+    /<!--\s*aitm-verified-(?:at|by):|<!--\s*aitm-verified\s[^>]*(?:verified-at|verified-by)=/i,
+  ],
 ];
 
 // #392 (C6) — legacy marker grammar that appears purely as DOCUMENTATION trips
@@ -66,7 +75,22 @@ const RESIDUAL_DETECTORS = [
 export function redactDocContexts(body) {
   let s = String(body ?? '');
   s = s.replace(/```[\s\S]*?```/g, ''); // fenced code blocks
-  s = s.replace(/`[^`\n]*`/g, ''); // inline-code spans
+  // Inline-code spans — a run of N backticks ... matching run of N backticks. The
+  // run-length match (`\1`) lets a `` ``-delimited span legally contain single
+  // backticks, which is how the marker grammar is quoted in prose
+  // (`` <!-- aitm-verified-by: `cmd` --> ``). Mirrors the transform's
+  // `INLINE_CODE_RE` so the scan is a faithful inverse (#420).
+  //
+  // Applied PER LINE with `(.+?)` (never `[\s\S]`): markdown inline code cannot
+  // span a line break, and a body-wide match would let an unbalanced backtick on
+  // one line greedily swallow genuine markers many lines below (observed on #411,
+  // whose line-4 footgun prose left an odd backtick that ate the DoD checklist).
+  // The transform processes line-by-line, so the detector must too, or the two
+  // disagree and changed⊋flagged (transform migrates a line the scan can't see).
+  s = s
+    .split('\n')
+    .map((line) => line.replace(/(`+)(.+?)\1/g, '')) // inline-code spans, per line
+    .join('\n');
   // Marker comments whose value is an angle-bracket placeholder are template
   // documentation, never real markers (real values are timestamps/shas/ints).
   s = s.replace(/<!--[\s\S]*?-->/g, (c) => (/<[a-z][a-z0-9-]*>/i.test(c) ? '' : c));
