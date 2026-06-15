@@ -151,9 +151,20 @@ export async function updateTrailComment(commentId, body, { timeoutMs } = {}) {
   );
 }
 
-async function defaultExistsSha(sha, { cwd } = {}) {
+// Trail-prune predicate: keep a recorded SHA only if it is REACHABLE from HEAD,
+// not merely if the object still exists. This mirrors `review-preflight.mjs`
+// (`defaultGitIsAncestor`) so prune and the review gate agree — a SHA orphaned
+// by `git reset --soft`/amend/rebase is dropped here instead of lingering until
+// GC and deadlocking review. `git merge-base --is-ancestor <sha> HEAD` exits 0
+// when ancestor, 1 when not, and 128 when the object is unknown/GC'd; `execFile`
+// rejects on any non-zero exit, so the catch maps both 1 and 128 → false.
+// `pexec` is injectable purely so the exit-code mapping is unit-testable.
+export async function defaultIsReachable(sha, { cwd, pexec: pexecDep = pexec } = {}) {
   try {
-    await pexec('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd, timeout: GIT_TIMEOUT_MS });
+    await pexecDep('git', ['merge-base', '--is-ancestor', sha, 'HEAD'], {
+      cwd,
+      timeout: GIT_TIMEOUT_MS,
+    });
     return true;
   } catch {
     return false;
@@ -171,7 +182,7 @@ export async function postCommitTrail({
   const find = deps.find || findTrailComment;
   const create = deps.create || createTrailComment;
   const update = deps.update || updateTrailComment;
-  const existsSha = deps.existsSha || (cwd ? (sha) => defaultExistsSha(sha, { cwd }) : null);
+  const existsSha = deps.existsSha || (cwd ? (sha) => defaultIsReachable(sha, { cwd }) : null);
 
   const existing = await find(issueNumber, repo, { timeoutMs });
   const worktreeCols = existing ? hasWorktreeCols(existing.body) : info.isWorktree;

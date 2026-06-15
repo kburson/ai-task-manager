@@ -13,6 +13,7 @@ import {
   hasCanonicalCommitTrace,
   pruneUnreachable,
 } from '../lib/commit-trail.mjs';
+import { defaultIsReachable } from '../commit-trail-handler.mjs';
 
 // --- detectGitCommit ---
 
@@ -322,6 +323,48 @@ function makeTrail(shas, repo = 'o/r') {
   });
   const parsed = parseMarker(out);
   assert.deepEqual(Array.from(parsed.shas), [SHA_A]);
+}
+
+// --- defaultIsReachable (#424) ---
+// The production prune predicate must agree with the review gate: keep a SHA
+// only when it is REACHABLE from HEAD (`git merge-base --is-ancestor`), not
+// merely when the object still exists. execFile rejects on any non-zero exit,
+// so exit 1 (non-ancestor) AND exit 128 (unknown/GC'd object) must both map to
+// false. This is the exact contract that diverged from review-preflight.
+
+// exit 0 (ancestor) → true.
+{
+  let calledArgs = null;
+  const pexec = async (cmd, args) => {
+    calledArgs = { cmd, args };
+    return { stdout: '', stderr: '' };
+  };
+  const ok = await defaultIsReachable(SHA_A, { cwd: '/repo', pexec });
+  assert.equal(ok, true);
+  assert.equal(calledArgs.cmd, 'git');
+  assert.deepEqual(calledArgs.args, ['merge-base', '--is-ancestor', SHA_A, 'HEAD']);
+}
+
+// exit 1 (non-ancestor / orphaned-but-existing) → false.
+{
+  const pexec = async () => {
+    const err = new Error('non-ancestor');
+    err.code = 1;
+    throw err;
+  };
+  const ok = await defaultIsReachable(SHA_A, { cwd: '/repo', pexec });
+  assert.equal(ok, false);
+}
+
+// exit 128 (unknown / GC'd object) → false.
+{
+  const pexec = async () => {
+    const err = new Error('bad object');
+    err.code = 128;
+    throw err;
+  };
+  const ok = await defaultIsReachable(SHA_A, { cwd: '/repo', pexec });
+  assert.equal(ok, false);
 }
 
 console.log('commit-trail: ok');

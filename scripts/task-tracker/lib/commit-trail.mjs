@@ -130,9 +130,12 @@ export function appendCommitRow(body, row) {
 
 // Drop SHAs from the marker (and their table rows) that fail `existsSha`.
 // `existsSha(sha)` may return a boolean or a Promise<boolean>. Caller supplies
-// the reachability check — typically `git cat-file -e <sha>^{commit}` so the
-// trail self-heals after `git reset --soft HEAD~N` + recommit flows that
-// orphan previously-recorded SHAs.
+// a REACHABILITY predicate — production uses `git merge-base --is-ancestor
+// <sha> HEAD` (see `commit-trail-handler.mjs` `defaultIsReachable`), which
+// mirrors the review gate's `defaultGitIsAncestor`. Mere object existence is
+// NOT sufficient: a SHA orphaned by `git reset --soft HEAD~N`/amend/rebase still
+// exists until GC, so an existence check would keep dangling commits and deadlock
+// review. Using reachability lets the trail self-heal after history-rewrite flows.
 export async function pruneUnreachable(body, { existsSha } = {}) {
   if (typeof existsSha !== 'function') return body;
   const parsed = parseMarker(body);
