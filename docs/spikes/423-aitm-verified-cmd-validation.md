@@ -2,11 +2,16 @@
 
 **Status:** complete (2026-06-16)
 **Type:** defect analysis + fix
-**Trigger:** a malformed declaration was observed on closed epic #328 —
-`cmd="`gh issue view <child> --json state` returned CLOSED"` — carrying an
-unsubstituted `<child>` placeholder and trailing prose (`returned CLOSED`).
-This doc records the writer-path investigation (AC1) and the chosen fix
-decision (AC2). The full code change lives behind AC3–AC6 (test-verified).
+**Trigger:** a malformed declaration was observed on closed epic #328:
+
+```text
+cmd="`gh issue view <child> --json state` returned CLOSED"
+```
+
+It carries an unsubstituted `<child>` placeholder and trailing prose
+("returned CLOSED"). This doc records the writer-path investigation (AC1) and
+the chosen fix decision (AC2). The full code change lives behind AC3–AC6
+(test-verified).
 
 ## Summary
 
@@ -39,8 +44,13 @@ commands; `verbs/ac-stamp.mjs` RUNS the declared verifier and stamps a canonical
 command. None of these can emit a `<placeholder>` token or trailing prose —
 every input is a real command string.
 
-The malformed value on #328
-(`cmd="`gh issue view <child> --json state` returned CLOSED"`) was therefore NOT
+The malformed value on #328:
+
+```text
+cmd="`gh issue view <child> --json state` returned CLOSED"
+```
+
+was therefore NOT
 produced by any code path. It was hand-authored by an agent driving the epic's
 AC ticking under full-auto, written directly into the body through
 `mutateIssueBody`, which bypasses every serializer. The `<child>` placeholder and
