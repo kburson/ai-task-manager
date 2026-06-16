@@ -130,7 +130,11 @@ export async function verbReview(ctx) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
-    await runMoveState(target, 'test', { silent: true });
+    // #408 — no test→test self-move here. By the time `review` runs, the issue
+    // is already in `test` (the test-exit-dod-verified guard below refuses
+    // otherwise), so a move-state to `test` is a self-loop the transition
+    // matrix rejects as `illegal transition: test → test`, producing spurious
+    // doubled BLOCKED noise. The authoritative test→review move is below.
   } else if (s.active === target) {
     await flushActiveToGH(s, 'review', 'starting review');
     // #407 — preserve binding (see note above).
@@ -138,7 +142,7 @@ export async function verbReview(ctx) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {}
-    await runMoveState(target, 'test', { silent: true });
+    // #408 — redundant test→test self-move removed (see note above).
   } else {
     const ts = nowIso();
     const { buildRow } = await import('../gh-timing-comment.mjs');
@@ -154,7 +158,7 @@ export async function verbReview(ctx) {
       description: 'starting review',
     });
     await safePostTiming(target, row);
-    await runMoveState(target, 'test', { silent: true });
+    // #408 — redundant test→test self-move removed (see note above).
     // #407 — preserve binding (see note above).
     saveState(pauseTimingKeepBinding(s, target), statePath);
   }

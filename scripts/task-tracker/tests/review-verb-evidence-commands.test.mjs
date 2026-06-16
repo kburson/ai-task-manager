@@ -194,4 +194,64 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   console.log('PASS: #406 refusal predicate fires only on genuine refusals');
 }
 
+// ---------------------------------------------------------------------------
+// #408: the review verb must NOT issue a `test → test` self-move. Before #408
+// each of the three timing/binding branches ran
+// `runMoveState(target, 'test', { silent: true })` as a vestigial test-entry
+// re-stamp. By the time `review` runs the issue is already in `test` (the
+// `test-exit-dod-verified` guard refuses otherwise), so the call is a self-loop
+// the transition matrix rejects with `illegal transition: test → test`. The
+// refusal is printed by move-state.mjs and echoed again by runMoveState (its
+// error path uses console.warn regardless of `silent`), producing spurious
+// doubled noise on stderr of an otherwise-successful review. The fix removes all
+// three self-moves; the authoritative test→review move (captured as `reviewMove`)
+// is the only state change. These pins ensure the noise source cannot return.
+// ---------------------------------------------------------------------------
+{
+  // AC1 + AC2 (source pin): no `runMoveState(target, 'test', …)` remains.
+  assert.doesNotMatch(
+    reviewSource,
+    /runMoveState\(\s*target,\s*'test'/,
+    'no review-verb test→test self-move remains (was the illegal-transition noise source)'
+  );
+
+  // The removal is documented against the issue so a future refactor sees why.
+  assert.match(
+    reviewSource,
+    /#408 —/,
+    'review.mjs carries a #408 rationale comment for the removal'
+  );
+
+  // The only runMoveState calls left target 'develop' (epic branch) and the
+  // authoritative 'review' move — never 'test'.
+  const moveTargets = [...reviewSource.matchAll(/runMoveState\(\s*target,\s*'([a-z]+)'/g)].map(
+    (m) => m[1]
+  );
+  assert.deepEqual(
+    [...new Set(moveTargets)].sort(),
+    ['develop', 'review'],
+    'review.mjs only moves to develop or review — never test'
+  );
+  console.log('PASS: review.mjs issues no test→test self-move (#408)');
+
+  // AC3 (behavioral): the transition matrix rejects test→test, which is exactly
+  // why the removed self-move emitted `illegal transition: test → test` on a
+  // successful review. Replicate the matrix decision to prove the noise was real
+  // and that removing the self-move is what eliminates it.
+  const { validateTransition } = await import('../state-machine.mjs');
+  const selfLoop = validateTransition('test', 'test');
+  assert.equal(selfLoop.ok, false, 'matrix rejects the test→test self-move');
+  assert.match(
+    selfLoop.reason ?? '',
+    /illegal transition: test → test/,
+    'rejected self-move yields the exact illegal-transition text that polluted stderr'
+  );
+  // The real move review performs (test→review) is allowed — no noise.
+  const realMove = validateTransition('test', 'review');
+  assert.equal(realMove.ok, true, 'test→review (the authoritative review move) is allowed');
+  console.log(
+    'PASS: removing the test→test self-move eliminates the illegal-transition stderr noise (#408)'
+  );
+}
+
 console.log('\nAll review-verb evidence-command tests passed.');
