@@ -20,7 +20,11 @@
 //   3. Mirror the entry in `gh-edit-guard.MARKER_PATTERNS` so external
 //      `gh issue edit` invocations are caught by the diff guard too.
 
-import { hasExecutionProof } from './proof-marker.mjs';
+import {
+  hasExecutionProof,
+  validateDeclarationCmd,
+  collectDeclarationCmds,
+} from './proof-marker.mjs';
 import { parseAcEvidence } from './ac-evidence.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
@@ -168,6 +172,46 @@ export function findCheckboxesTickedWithoutProof(before, after) {
     offenders.push({ lineIndex: i, text: afterLines[i] });
   }
   return offenders;
+}
+
+// #423 — malformed-declaration invariant. A consolidated `aitm-verified cmd="…"`
+// declaration must carry an actual command, not an unsubstituted `<…>`
+// placeholder or trailing prose. We flag a malformed declaration in `after`
+// ONLY when its exact marker text is not already present in `before`, so:
+//   - a write never INTRODUCES new corruption (the bug #423 targets), yet
+//   - a pre-existing malformed marker carried through untouched never blocks an
+//     unrelated edit to the same body, and
+//   - the corpus migration (which re-serializes historical markers but does not
+//     route through `mutateIssueBody`) is unaffected.
+// Returns `{ marker, cmd, reason }` for each newly-introduced offender; an empty
+// array means clean.
+export function findNewMalformedVerifiedCmds(before, after) {
+  const beforeMarkers = new Set(collectDeclarationCmds(before).map((d) => d.marker));
+  const offenders = [];
+  for (const { marker, cmd } of collectDeclarationCmds(after)) {
+    if (beforeMarkers.has(marker)) continue; // pre-existing — not newly introduced
+    const reason = validateDeclarationCmd(cmd);
+    if (reason) offenders.push({ marker, cmd, reason });
+  }
+  return offenders;
+}
+
+export class MalformedDeclarationCmdError extends Error {
+  constructor({ offenders } = {}) {
+    const list = Array.isArray(offenders) ? offenders : [];
+    const sample = list
+      .slice(0, 5)
+      .map((o) => `    cmd="${o.cmd}" — ${o.reason}`)
+      .join('\n');
+    const msg =
+      `mutateIssueBody refused: ${list.length} malformed \`aitm-verified cmd="…"\` declaration(s).\n` +
+      `  A declaration's \`cmd\` must name an actual command (each backtick-wrapped), not a placeholder or prose.\n` +
+      `  Offending declarations:\n${sample}\n` +
+      `  Substitute the placeholder / remove the prose so \`cmd\` is a real verifier command.`;
+    super(msg);
+    this.name = 'MalformedDeclarationCmdError';
+    this.offenders = list.slice();
+  }
 }
 
 export class CheckboxProofMissingError extends Error {

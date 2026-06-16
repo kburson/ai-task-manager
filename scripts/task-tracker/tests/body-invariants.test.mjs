@@ -4,7 +4,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { INVARIANT_MARKER_PATTERNS, findLostMarkers } from '../lib/body-invariants.mjs';
+import {
+  INVARIANT_MARKER_PATTERNS,
+  findLostMarkers,
+  findNewMalformedVerifiedCmds,
+} from '../lib/body-invariants.mjs';
 
 test('INVARIANT_MARKER_PATTERNS includes the canonical invariant marker set', () => {
   const names = INVARIANT_MARKER_PATTERNS.map((p) => p.name);
@@ -82,4 +86,36 @@ test('findLostMarkers ignores markers that were never in base', () => {
   const base = '## AC\n';
   const next = '## AC\n<!-- aitm-fields: {} -->\n';
   assert.deepEqual(findLostMarkers(base, next), []);
+});
+
+// #423 — findNewMalformedVerifiedCmds(before, after)
+test('findNewMalformedVerifiedCmds flags a newly-introduced malformed declaration', () => {
+  const before = '- [ ] alpha\n';
+  const after =
+    '- [ ] alpha <!-- aitm-verified cmd="`gh issue view <child>` returned CLOSED" -->\n';
+  const offenders = findNewMalformedVerifiedCmds(before, after);
+  assert.equal(offenders.length, 1, 'the new malformed declaration is flagged');
+  assert.match(offenders[0].reason, /placeholder/, 'reason names the placeholder defect');
+});
+
+test('findNewMalformedVerifiedCmds passes a newly-introduced well-formed declaration', () => {
+  const before = '- [ ] alpha\n';
+  const after = '- [ ] alpha <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" -->\n';
+  assert.deepEqual(
+    findNewMalformedVerifiedCmds(before, after),
+    [],
+    'a real backticked command declaration is not flagged'
+  );
+});
+
+test('findNewMalformedVerifiedCmds does not flag a pre-existing malformed declaration', () => {
+  const malformed = '- [x] gamma <!-- aitm-verified cmd="`run <thing>` done" -->';
+  const before = `${malformed}\n`;
+  // An unrelated edit elsewhere; the malformed marker is carried through verbatim.
+  const after = `${malformed}\n- [ ] delta\n`;
+  assert.deepEqual(
+    findNewMalformedVerifiedCmds(before, after),
+    [],
+    'pre-existing corruption carried unchanged never blocks an unrelated edit'
+  );
 });

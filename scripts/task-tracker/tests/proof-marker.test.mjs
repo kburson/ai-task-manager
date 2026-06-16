@@ -8,6 +8,8 @@ import {
   stripProofMarkers,
   escapeValue,
   unescapeValue,
+  validateDeclarationCmd,
+  collectDeclarationCmds,
 } from '../lib/proof-marker.mjs';
 
 // --- round-trip: spaces, backticks, embedded double-quote -------------------
@@ -196,6 +198,67 @@ import {
   assert.ok(
     hasExecutionProof(serializeProofMarker({ cmd: '`npm test`', sha: 'abc1234' })),
     'cmd + sha consolidated marker is execution proof'
+  );
+}
+
+// --- #423: validateDeclarationCmd rejects placeholders/prose, accepts commands
+{
+  // Malformed: unsubstituted placeholder.
+  assert.ok(
+    validateDeclarationCmd('`gh issue view <child> --json state`'),
+    'rejects a cmd carrying an unsubstituted <…> placeholder'
+  );
+  // Malformed: prose outside backtick spans (the #328 corruption shape).
+  assert.ok(
+    validateDeclarationCmd('`gh issue view 328 --json state` returned CLOSED'),
+    'rejects a cmd carrying trailing prose outside backticks'
+  );
+  // Well-formed: single backtick-wrapped command.
+  assert.equal(
+    validateDeclarationCmd('`node scripts/task-tracker/tests/check.test.mjs`'),
+    null,
+    'accepts a single backtick-wrapped command (buildMarker output)'
+  );
+  // Well-formed: space-separated backtick groups (buildMarker multi-command).
+  assert.equal(
+    validateDeclarationCmd('`npm run lint` `npm run format:check`'),
+    null,
+    'accepts space-separated backtick command groups'
+  );
+  // Well-formed: bare comma-joined list (auto-tick Functional cmd).
+  assert.equal(
+    validateDeclarationCmd('npm run lint, npm run format:check'),
+    null,
+    'accepts a bare comma-joined command list (auto-tick output)'
+  );
+  // Well-formed: bare single command (auto-tick VC cmd) and derive: form.
+  assert.equal(validateDeclarationCmd('npm run lint'), null, 'accepts a bare single command');
+  assert.equal(
+    validateDeclarationCmd('derive:functional:lint'),
+    null,
+    'accepts a derive: pseudo-command'
+  );
+  // A real shell redirection is not a placeholder (no word-char after `<`).
+  assert.equal(
+    validateDeclarationCmd('`sort < a.txt > b.txt`'),
+    null,
+    'a shell redirection inside backticks is not mistaken for a placeholder'
+  );
+}
+
+// --- #423: collectDeclarationCmds returns only cmd-bearing consolidated markers
+{
+  const body = [
+    '- [x] alpha <!-- aitm-verified cmd="`npm run lint`" -->',
+    '- [x] beta <!-- aitm-verified ts="2026-06-16T00:00:00Z" sha="abc1234" -->',
+    '- [x] gamma <!-- aitm-verified cmd="`npm test` <leftover>" -->',
+  ].join('\n');
+  const decls = collectDeclarationCmds(body);
+  assert.equal(decls.length, 2, 'only the two cmd-bearing declarations are collected');
+  assert.deepEqual(
+    decls.map((d) => d.cmd),
+    ['`npm run lint`', '`npm test` <leftover>'],
+    'decoded cmd values returned in document order'
   );
 }
 

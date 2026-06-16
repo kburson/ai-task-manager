@@ -42,9 +42,11 @@ import {
   findLostMarkers,
   findCheckboxesTickedWithoutProof,
   CheckboxProofMissingError,
+  findNewMalformedVerifiedCmds,
+  MalformedDeclarationCmdError,
 } from './body-invariants.mjs';
 
-export { CheckboxProofMissingError } from './body-invariants.mjs';
+export { CheckboxProofMissingError, MalformedDeclarationCmdError } from './body-invariants.mjs';
 
 export class MarkerLossError extends Error {
   constructor(issueNumber, lostMarkers) {
@@ -92,6 +94,12 @@ export async function mutateIssueBody({
         const offenders = findCheckboxesTickedWithoutProof(baseBody, next);
         if (offenders.length > 0) throw new CheckboxProofMissingError({ lines: offenders });
       }
+      // #423 — malformed-declaration invariant. A write may not INTRODUCE an
+      // `aitm-verified cmd="…"` declaration whose cmd is a placeholder or prose
+      // rather than a real command. Diff-based so pre-existing markers and the
+      // (non-mutateIssueBody) corpus migration are unaffected.
+      const malformed = findNewMalformedVerifiedCmds(baseBody, next);
+      if (malformed.length > 0) throw new MalformedDeclarationCmdError({ offenders: malformed });
     }
     return next;
   };

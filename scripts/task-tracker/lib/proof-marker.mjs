@@ -193,6 +193,52 @@ export function hasVerifiedDeclaration(label) {
   return extractVerifiedCommands(label).length > 0;
 }
 
+// #423 — validate a declaration `cmd` value. A declaration's `cmd` records HOW
+// an AC will be verified, so it must name an actual command (optionally several,
+// each backtick-wrapped) — never an unsubstituted placeholder or free prose.
+// Returns a human-readable reason string when the value is malformed, or null
+// when it is acceptable.
+//
+// Two malformation signatures (the pair observed corrupting epic #328's
+// hand-authored markers, e.g. `cmd="`gh issue view <child> ...` returned CLOSED"`):
+//   (a) an unsubstituted angle-bracket placeholder like `<child>` or `<issue#>`.
+//       The pattern requires a word-char immediately after `<`, so a real shell
+//       redirection (`sort < a > b`) does NOT match — its `<` is followed by
+//       whitespace.
+//   (b) prose outside backtick spans. This rule fires ONLY when the value
+//       contains at least one backtick group: strip every `` `…` `` span and, if
+//       any non-whitespace residue remains, that residue is prose (e.g.
+//       `returned CLOSED`). A wholly-bare value — a single command, or the
+//       comma-joined bare list `auto-tick` emits (`npm run lint, npm run
+//       format:check`) — has no backtick group, so this rule is inert and the
+//       value passes unchanged.
+const DECLARATION_PLACEHOLDER_RE = /<[A-Za-z][^<>]*>/;
+export function validateDeclarationCmd(cmd) {
+  const s = String(cmd ?? '');
+  if (DECLARATION_PLACEHOLDER_RE.test(s)) {
+    return 'contains an unsubstituted <…> placeholder';
+  }
+  if (s.includes('`')) {
+    const residue = s.replace(/`[^`]*`/g, '').trim();
+    if (residue) return 'carries prose outside backtick-delimited command spans';
+  }
+  return null;
+}
+
+// #423 — collect every consolidated `aitm-verified cmd="…"` declaration in a
+// body, returning `{ marker, cmd }` for each (the raw marker text plus its
+// decoded cmd value). The raw marker text lets callers de-dupe identical markers
+// across a before/after diff. Only markers that actually carry a `cmd` attribute
+// are returned; bare proof stamps without `cmd` are skipped.
+export function collectDeclarationCmds(body) {
+  const out = [];
+  for (const m of String(body || '').matchAll(CONSOLIDATED_RE)) {
+    const attrs = parseConsolidatedAttrs(m[1]);
+    if (typeof attrs.cmd === 'string') out.push({ marker: m[0], cmd: attrs.cmd });
+  }
+  return out;
+}
+
 // Remove every proof/declaration marker from a label for display.
 export function stripProofMarkers(label) {
   return String(label || '')
