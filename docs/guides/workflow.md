@@ -8,16 +8,17 @@ Full workflow rules for projects using `ai-task-manager`. These rules define how
 
 Stage names are nouns describing a process; the corresponding activity is a verb. We shorten both to the verb form for brevity (e.g., we say "Refine stage" rather than "Refinement stage" — same column, shorter label).
 
-| Stage (column)                     | Full process name | Activity verb | Also known as               | What happens here                                                                                                               |
-| ---------------------------------- | ----------------- | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Discover _(agent-side, pre-issue)_ | Discovery         | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                  |
-| Backlog                            | Backlog           | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                  |
-| Refine                             | Refinement        | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                         |
-| Plan                               | Planning          | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                           |
-| Develop                            | Development       | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                               |
-| Test                               | Testing           | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                         |
-| Review                             | Review            | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met. |
-| Done                               | Done              | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                   |
+| Stage (column)                     | Full process name | Activity verb | Also known as               | What happens here                                                                                                                                                                                                              |
+| ---------------------------------- | ----------------- | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Discover _(agent-side, pre-issue)_ | Discovery         | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                                                                                                                 |
+| Backlog                            | Backlog           | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                                                 |
+| On Deck                            | On Deck           | —             | —                           | Inert, gateless tranche waiting room between Backlog and Refine. `backlog → on-deck` carries no entry gate; the Priority gate lives on `on-deck → refine`. Every item passes through On Deck (no `backlog → refine` shortcut). |
+| Refine                             | Refinement        | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                                        |
+| Plan                               | Planning          | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                                                                                                          |
+| Develop                            | Development       | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                                                                                              |
+| Test                               | Testing           | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                                                                                                        |
+| Review                             | Review            | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                                                                                                |
+| Done                               | Done              | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                                                                                                  |
 
 **Retired terms** (do not use):
 
@@ -72,10 +73,10 @@ Immediately after creating, set **both** `Estimate` (hours) and `Size` on the Gi
 
 ## Kanban Board States
 
-Issues move through seven states:
+Issues move through eight states:
 
 ```
-Backlog → Refine → Plan → Develop → Test → Review → Done
+Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
 ```
 
 Each state is a first-class object (`scripts/task-tracker/states/<state>.mjs`)
@@ -211,7 +212,7 @@ Backlog and Refine are not interchangeable — they encode different states of i
 - **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
 - **Refine** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Refine never requires additional shaping.
 
-All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. When an agent or human files a new issue with full ACs and sizing already set, create it (lands in Backlog and stamps `aitm-entered-backlog`) and immediately chain `node scripts/task-tracker/task-tracker.mjs promote <N>` to advance through Refine. The previous "tether straight to Refine" shortcut left `aitm-entered-backlog` unstamped and broke the contiguity guard on later forward transitions.
+All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. When an agent or human files a new issue with full ACs and sizing already set, create it (lands in Backlog and stamps `aitm-entered-backlog`) and immediately chain `node scripts/task-tracker/task-tracker.mjs promote <N>` to advance through On Deck and Refine (every item now passes through On Deck — the inert tranche waiting room; #433). The previous "tether straight to Refine" shortcut left `aitm-entered-backlog` unstamped and broke the contiguity guard on later forward transitions.
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 

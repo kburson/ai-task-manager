@@ -93,7 +93,7 @@ AI Task Manager provides three connected capabilities:
 | Capability               | What it does                                                                                           | Why it matters                                                   |
 | ------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
 | Session tracking         | Binds every agent session to one GitHub issue and logs active time, idle time, and context words       | Makes AI work measurable instead of anecdotal                    |
-| Workflow control         | Moves issues through Backlog, Refine, Plan, Develop, Test, Review, and Done with gates                 | Prevents agents from skipping analysis, tests, or human approval |
+| Workflow control         | Moves issues through Backlog, On Deck, Refine, Plan, Develop, Test, Review, and Done with gates        | Prevents agents from skipping analysis, tests, or human approval |
 | Backlog orchestration    | Creates epics, sub-issues, labels, estimates, priorities, sequences, and pickup directives from a spec | Turns product plans into agent-ready execution queues            |
 | Multi-agent coordination | Keeps orchestrators on epics and workers on child issues, with fleet visibility across worktrees       | Lets parallel AI work stay traceable and recoverable             |
 | ROI reporting            | Compares estimated human effort with measured AI-engaged effort and review burden                      | Gives leadership a credible cost and leverage story              |
