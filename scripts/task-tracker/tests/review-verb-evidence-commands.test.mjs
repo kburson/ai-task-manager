@@ -142,4 +142,56 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   console.log('PASS: tolerant VC-command regex extracts command across marker variants');
 }
 
+// ---------------------------------------------------------------------------
+// #406: review.mjs must capture the structured `runMoveState` result and gate
+// the success banner on it. Before #406 the call discarded its return value and
+// printed "✓ … moved to Review — all verification passed." unconditionally —
+// even when the matrix gate (`validateTransition`) refused the move live (the
+// #233 illegal-transition case), which review's inline guards do NOT replicate.
+// Source-level pins so a future refactor cannot silently restore the noisy-
+// success path.
+// ---------------------------------------------------------------------------
+{
+  // The move result is captured into a named binding, not discarded.
+  assert.match(
+    reviewSource,
+    /const\s+reviewMove\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true\s*\}\)/,
+    'review.mjs captures the runMoveState result into `reviewMove`'
+  );
+
+  // A genuine refusal (ok:false, not the benign done→done self-loop) gates the
+  // banner: it writes a refusal and exits before any success line.
+  assert.match(
+    reviewSource,
+    /if\s*\(reviewMove\s*&&\s*reviewMove\.ok\s*===\s*false\s*&&\s*reviewMove\.benign\s*!==\s*true\)/,
+    'review.mjs gates on `ok === false && benign !== true`'
+  );
+
+  // The refusal must process.exit before the success banner is reachable.
+  const gateIdx = reviewSource.indexOf('reviewMove.ok === false');
+  const exitIdx = reviewSource.indexOf('process.exit(reviewMove.status', gateIdx);
+  const bannerIdx = reviewSource.indexOf('moved to Review — all verification passed', gateIdx);
+  assert.ok(gateIdx > 0, 'refusal gate exists');
+  assert.ok(exitIdx > gateIdx, 'gate exits non-zero on refusal');
+  assert.ok(
+    bannerIdx > exitIdx,
+    'success banner sits after the refusal exit (unreachable on refusal)'
+  );
+  console.log('PASS: review.mjs gates the success banner on the runMoveState result (#406)');
+
+  // Behavioral: replicate the exact gate predicate the verb uses and confirm it
+  // fires only on a genuine refusal — not on a benign self-loop, a success, or
+  // a legacy stub returning undefined.
+  const refused = (r) => Boolean(r && r.ok === false && r.benign !== true);
+  assert.equal(refused({ ok: false, benign: false, status: 5 }), true, 'genuine refusal → gated');
+  assert.equal(
+    refused({ ok: false, benign: true }),
+    false,
+    'benign done→done self-loop → not gated'
+  );
+  assert.equal(refused({ ok: true }), false, 'successful move → not gated');
+  assert.equal(refused(undefined), false, 'legacy undefined result → not gated');
+  console.log('PASS: #406 refusal predicate fires only on genuine refusals');
+}
+
 console.log('\nAll review-verb evidence-command tests passed.');

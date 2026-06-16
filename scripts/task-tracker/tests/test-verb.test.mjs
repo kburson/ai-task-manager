@@ -381,6 +381,69 @@ test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no po
   });
 });
 
+// #406 — noisy-success regression. `runVerbTest` must treat the structured
+// `moveState` result as authoritative: a genuine refusal (ok:false and not the
+// benign done→done self-loop) yields a distinct `move-failed` status so the
+// caller suppresses the "verified in sandbox — moved to Test" banner. The
+// sandbox itself genuinely passed, so the green table and time-log still fire.
+test('verbTest #406: sandbox green but moveState refuses → status move-failed, no passed banner', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    deps.moveState = async ({ target }) => {
+      calls.moves.push(target);
+      return {
+        ok: false,
+        benign: false,
+        status: 5,
+        stderr: '⛔ illegal-transition: develop → test refused',
+      };
+    };
+    const r = await runVerbTest({ cfg, issueNumber: 406, projectDir, deps });
+    assert.equal(r.status, 'move-failed', 'refused move must NOT report passed');
+    assert.equal(r.move.status, 5, 'carries the move-state child exit code');
+    assert.match(r.move.stderr, /illegal-transition/, 'carries the real refusal reason');
+    // Sandbox genuinely passed: green table posted and time logged before the
+    // move was attempted.
+    assert.equal(calls.comments.length, 1);
+    assert.match(calls.comments[0], /Sandboxed verification passed/);
+    assert.deepEqual(calls.logs, ['406']);
+  });
+});
+
+test('verbTest #406: benign done→done self-loop is NOT a failure → status passed', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    deps.moveState = async ({ target }) => {
+      calls.moves.push(target);
+      return { ok: false, benign: true, status: 0 };
+    };
+    const r = await runVerbTest({ cfg, issueNumber: 406, projectDir, deps });
+    assert.equal(r.status, 'passed', 'benign self-loop must still report passed');
+  });
+});
+
+test('verbTest #406: structured ok:true move → status passed', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps, calls } = makeDeps();
+    deps.moveState = async ({ target }) => {
+      calls.moves.push(target);
+      return { ok: true, status: 0 };
+    };
+    const r = await runVerbTest({ cfg, issueNumber: 406, projectDir, deps });
+    assert.equal(r.status, 'passed');
+  });
+});
+
+test('verbTest #406: legacy stub moveState returning undefined still reports passed', async () => {
+  await withTmpDir(async (projectDir) => {
+    // makeDeps()'s default moveState returns undefined — only an explicit
+    // ok===false is treated as a failure, so existing stubs keep passing.
+    const { deps } = makeDeps();
+    const r = await runVerbTest({ cfg, issueNumber: 406, projectDir, deps });
+    assert.equal(r.status, 'passed');
+  });
+});
+
 test('verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox', async () => {
   // Models the spec: a command that relies on a local-only env var passes
   // when run in the author's shell but fails in the clean worktree. We do

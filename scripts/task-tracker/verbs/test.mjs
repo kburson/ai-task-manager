@@ -487,8 +487,15 @@ export async function runVerbTest({
         },
       });
     }
+    // #406 — capture the move result so a refused promotion does not read as a
+    // pass. The sandbox genuinely went green (post the table + log time below),
+    // but the success banner in `verbTest` must be gated on the move actually
+    // landing. Only an explicit `ok === false` (and not the benign done→done
+    // self-loop) is a failure; legacy stub deps that return `undefined` keep
+    // the `passed` path.
+    let moveResult;
     if (moveState) {
-      await moveState({ issueNumber: issueNum, target: 'test' });
+      moveResult = await moveState({ issueNumber: issueNum, target: 'test' });
     }
     await postComment({
       cfg,
@@ -500,6 +507,9 @@ export async function runVerbTest({
       }),
     });
     if (logIssueTime) await logIssueTime(issueNum);
+    if (moveResult && moveResult.ok === false && moveResult.benign !== true) {
+      return { status: 'move-failed', sha, ts, results, wtPath, target: 'test', move: moveResult };
+    }
     return { status: 'passed', sha, ts, results, wtPath, target: 'test' };
   }
 
@@ -532,9 +542,8 @@ export async function verbTest(ctx) {
   }
   const issueNumber = String(target).replace(/^#/, '');
 
-  const moveState = async ({ issueNumber: n, target: t }) => {
-    await runMoveState(`#${n}`, t, { silent: true });
-  };
+  const moveState = async ({ issueNumber: n, target: t }) =>
+    runMoveState(`#${n}`, t, { silent: true });
   const logIssueTime = async (n) => {
     await runLogIssueTime(`#${n}`);
   };
@@ -565,6 +574,20 @@ export async function verbTest(ctx) {
       // nulls `active`.
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
+    }
+    case 'move-failed': {
+      // #406 — sandbox passed but the board move was refused. Do NOT print the
+      // success banner; surface the move-state child's real refusal reason and
+      // exit non-zero.
+      process.stderr.write('\n');
+      process.stderr.write(
+        `⛔ #${issueNumber} verified in sandbox but the move to Test was refused:\n`
+      );
+      for (const line of String(result.move?.stderr || '').split('\n')) {
+        if (line.trim()) process.stderr.write(`   ${line}\n`);
+      }
+      process.stderr.write('\n');
+      process.exit(result.move?.status || 3);
     }
     case 'failed': {
       const fails = result.results.filter((r) => !r.passed).length;

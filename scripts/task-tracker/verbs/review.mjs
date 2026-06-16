@@ -571,7 +571,23 @@ export async function verbReview(ctx) {
         process.exit(4);
       }
     }
-    await runMoveState(target, 'review', { silent: true });
+    // #406 — the move is authoritative. `runMoveState` returns a structured
+    // result; a genuine refusal (`ok:false` and not the benign done→done
+    // self-loop) must NOT print the success banner. The matrix gate
+    // (`validateTransition`) that refused live on #233 is not replicated by the
+    // inline guards above, so gating on this result is the only correct fix.
+    const reviewMove = await runMoveState(target, 'review', { silent: true });
+    if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
+      process.stderr.write('\n');
+      process.stderr.write(
+        `⛔ ${target} verification passed but the move to Review was refused:\n`
+      );
+      for (const line of String(reviewMove.stderr || '').split('\n')) {
+        if (line.trim()) process.stderr.write(`   ${line}\n`);
+      }
+      process.stderr.write('\n');
+      process.exit(reviewMove.status || 4);
+    }
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
     const _dR2 = deriveStateMoveDelta(rawBody, reviewTs);
