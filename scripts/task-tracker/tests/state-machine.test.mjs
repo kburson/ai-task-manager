@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { STATES, FORWARD, BACKWARD, validateTransition } from '../state-machine.mjs';
+import {
+  STATES,
+  FORWARD,
+  BACKWARD,
+  validateTransition,
+  normalizeStateSlug,
+} from '../state-machine.mjs';
 
 test('STATES is the canonical 8-state chain in order', () => {
   assert.deepEqual(STATES, [
@@ -100,6 +106,39 @@ test('unknown state strings refuse with unknown-state message', () => {
   const r3 = validateTransition('', '');
   assert.equal(r3.ok, false);
   assert.match(r3.reason, /unknown state/);
+});
+
+// #436 — regression: normalizeStateSlug must collapse a multi-word board
+// display name to its canonical kebab slug. Before the fix it only lowercased,
+// so "On Deck" (the first multi-word state, added in #433) resolved to
+// "on deck" (space) and downstream consumers — the live-board-status → slug
+// path #433's AC5 never exercised — rejected it as an unknown stage.
+test('normalizeStateSlug maps the multi-word display name "On Deck" to "on-deck"', () => {
+  assert.equal(normalizeStateSlug('On Deck'), 'on-deck');
+});
+
+test('normalizeStateSlug collapses interior whitespace runs and trims', () => {
+  assert.equal(normalizeStateSlug('  On   Deck  '), 'on-deck');
+  assert.equal(normalizeStateSlug('On\tDeck'), 'on-deck');
+  assert.equal(normalizeStateSlug('On Deck Soon'), 'on-deck-soon');
+});
+
+test('normalizeStateSlug leaves every single-word state slug unchanged', () => {
+  const displayNames = ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'];
+  for (const name of displayNames) {
+    const slug = name.toLowerCase();
+    assert.equal(normalizeStateSlug(name), slug, `${name} should normalize to ${slug}`);
+    assert.ok(STATES.includes(slug), `${slug} should be a canonical state`);
+  }
+  // the canonical slug round-trips unchanged (idempotent)
+  for (const slug of STATES) {
+    assert.equal(normalizeStateSlug(slug), slug, `${slug} should be idempotent`);
+  }
+});
+
+test('normalizeStateSlug returns null for null/undefined input', () => {
+  assert.equal(normalizeStateSlug(null), null);
+  assert.equal(normalizeStateSlug(undefined), null);
 });
 
 test('refusal message lists allowed next states', () => {

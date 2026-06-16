@@ -5,6 +5,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { runReconcile } from '../verbs/reconcile.mjs';
+import { normalizeStateSlug } from '../state-machine.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
@@ -100,6 +101,30 @@ test('reconcile accept-live is idempotent for entry marker (#174)', async () => 
   assert.ok(written.includes(`aitm-entered-develop: ${existingTs}`));
   // Single drift-reconcile timing row (no phantom re-fire).
   assert.equal(calls.timings.length, 1);
+});
+
+// #436 — regression for the live-board-status → slug → stampEntryMarker path
+// that #433's AC5 never exercised. `defaultGetLiveState` resolves the live
+// status by passing the raw board display name through `normalizeStateSlug`;
+// for the On Deck column that name is "On Deck" (a space). Before the fix the
+// slug was "on deck", which `stampEntryMarker` rejected with `unknown stage`,
+// crashing every `reconcile accept-live` of an On-Deck issue. We feed the raw
+// display name through the SAME resolver the production default uses so the
+// test covers the whole chain end-to-end.
+test('reconcile accept-live: On Deck live status stamps aitm-entered-on-deck without throwing (#436)', async () => {
+  const liveSlug = normalizeStateSlug('On Deck'); // mirrors defaultGetLiveState
+  assert.equal(liveSlug, 'on-deck', 'resolver must produce the kebab slug');
+  const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: liveSlug });
+  let result;
+  await assert.doesNotReject(async () => {
+    result = await runReconcile({ issueNumber: 436, mode: 'accept-live', cfg, deps });
+  }, /unknown stage/);
+  assert.equal(result.status, 'reconciled');
+  assert.equal(result.from, 'backlog');
+  assert.equal(result.to, 'on-deck');
+  assert.equal(calls.writes.length, 1);
+  assert.match(calls.writes[0], /aitm-last-known-state state="on-deck"/);
+  assert.match(calls.writes[0], /aitm-entered-on-deck(?::|\s+ts=")/);
 });
 
 test('reconcile revert-to-recorded: drifted issue pushes board back + drift-revert row', async () => {

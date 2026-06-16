@@ -1,4 +1,5 @@
 import { gql, splitRepo } from './github-projects.mjs';
+import { normalizeStateSlug } from '../../task-tracker/state-machine.mjs';
 
 export async function fetchLiveKanbanState({ repo, projectId, issueNumber }) {
   if (process.env.TT_SKIP_NETWORK === '1') return '';
@@ -24,7 +25,10 @@ export async function fetchLiveKanbanState({ repo, projectId, issueNumber }) {
     );
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
     const node = nodes.find((n) => n?.project?.id === projectId);
-    return String(node?.fieldValueByName?.name || '').toLowerCase();
+    // #436 — route the live board display name through normalizeStateSlug so
+    // multi-word states (e.g. "On Deck") resolve to their kebab slug
+    // ("on-deck"), not a space-separated string that downstream consumers reject.
+    return normalizeStateSlug(node?.fieldValueByName?.name) || '';
   } catch {
     return '';
   }

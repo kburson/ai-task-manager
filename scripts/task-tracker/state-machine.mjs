@@ -39,9 +39,16 @@ export const BACKWARD = {
 // Canonical state slugs only. Boards using retired vocabulary
 // (Groom/Analyze/Development/Validate) must be migrated via
 // `scripts/migrate/rename-status-2026-05.mjs` before consumption.
+//
+// #436 — collapse interior whitespace runs to a single hyphen (after trim +
+// lowercase) so multi-word board display names map to their kebab slugs.
+// Every state was a single word until #433 added "On Deck"; lowercasing alone
+// yielded "on deck" (space) instead of the canonical "on-deck" (hyphen),
+// which `stampEntryMarker` rejected as an unknown stage. Single-word states
+// have no interior whitespace and are unaffected.
 export function normalizeStateSlug(input) {
   if (input == null) return null;
-  return String(input).toLowerCase();
+  return String(input).trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 export function validateTransition(from, to) {
