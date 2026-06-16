@@ -1,0 +1,30 @@
+name: User Request
+description: Capture a raw idea; AITM opens a brainstorming session at pickup
+title: '[Request] '
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe what you want in plain language — rough is fine. When an agent
+        picks this up with `/task #<issue-number>`, the `{discuss}` token below
+        triggers a brainstorming session that turns this into a refine-ready
+        definition. Leave the trigger field as-is.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What do you want? A sentence or two is enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: aitm-directive
+    attributes:
+      label: AITM directive
+      description: Do not edit — this token tells AITM to brainstorm at pickup.
+      value: |
+        {discuss}
+    validations:
+      required: false

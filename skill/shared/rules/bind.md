@@ -33,6 +33,26 @@ The pickup directive enforces:
 - Per-AC verification with `/task check "<label>"`, never bulk-checking.
 - `aitm-verified-by` HTML comment markers on each AC.
 
+## `{discuss}` brainstorming trigger (#405)
+
+If, on bind, the CLI prints a `DISCUSS REQUESTED — #N` banner (the issue body
+carries a visible `{discuss}` token and has not yet been discussed), run an
+open-ended brainstorming dialog with the user **before** any deep-dive or refine
+step. The token marks a sparse, user-filed request that needs to be fleshed into
+a refine-ready definition.
+
+1. Brainstorm: clarify purpose, constraints, and success criteria one question at
+   a time (see the brainstorming skill if available).
+2. On resolution, call `finalizeDiscussion({ issueNumber, repo, scope, acs })`
+   from `scripts/task-tracker/lib/discuss-marker.mjs`. It rewrites `## Scope`
+   (and optional preliminary `## Acceptance Criteria` from `acs`), strips the
+   `{discuss}` token, and stamps a hidden `aitm-discussed` audit marker so the
+   dialog does not re-fire — all in one `mutateIssueBody` transaction.
+3. Then proceed to deep-dive / refine as normal.
+
+Detection keys on the visible token, not the audit marker: deliberately
+re-adding `{discuss}` after a prior discussion re-triggers the dialog.
+
 ## Legacy state recovery
 
 If `.ai-task-manager/task-tracker-state.json` is missing but `.claude/task-tracker-state.json` exists, the CLI reads the legacy path as a one-time fallback. No manual action required; the next state write lands in the new location.

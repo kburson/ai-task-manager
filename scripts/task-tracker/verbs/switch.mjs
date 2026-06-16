@@ -118,6 +118,36 @@ export async function verbSwitch(ctx, target) {
   await safePostTiming(target, row);
   console.log(`Active: ${target}.${previousNote}`);
 
+  // #405 — `{discuss}` banner. If the bound issue's body carries the visible
+  // `{discuss}` token, surface a non-blocking advisory directing the agent to
+  // run a brainstorming dialog before deep-dive/refine (see rules/bind.md).
+  // Detection keys on the live token, not the `aitm-discussed` audit marker, so
+  // a deliberately re-added token re-fires. Never blocks the bind.
+  if (cfg?.repo) {
+    try {
+      const { gql, splitRepo } = await import('../../gh/lib/github-projects.mjs');
+      const { hasDiscussMarker } = await import('../lib/discuss-marker.mjs');
+      const { owner, repoName } = splitRepo(cfg.repo);
+      const issueNumber = Number(target.replace(/^#/, ''));
+      const data = await gql(
+        `query($owner: String!, $repo: String!, $issue: Int!) {
+          repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
+        }`,
+        { owner, repo: repoName, issue: issueNumber }
+      );
+      const body = data?.repository?.issue?.body ?? '';
+      if (hasDiscussMarker(body)) {
+        console.log(
+          `\nDISCUSS REQUESTED — ${target}\n` +
+            `   This issue requests a brainstorming session before refine.\n` +
+            `   Run the dialog, then call finalizeDiscussion. See rules/bind.md.`
+        );
+      }
+    } catch {
+      /* advisory only — never block the bind on a banner-fetch failure */
+    }
+  }
+
   try {
     const rawCfg = rawProjectConfig();
     if (!bothGatesExplicit(rawCfg)) {
