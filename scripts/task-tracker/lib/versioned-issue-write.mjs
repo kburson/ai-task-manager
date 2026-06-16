@@ -136,6 +136,50 @@ function rebaseOnto({ ourEdit, theirEdit, remote }) {
   );
 }
 
+// AC1 instrumentation (#437) — characterize the GitHub server-side body
+// normalization that makes the post-push byte-equality verify false-reject a
+// landed write. Logs the first codepoint divergence (with context) and global
+// CR / HTML-entity deltas between what we pushed (`stamped`) and what GitHub
+// stored+returned (`verifyRemote`). Whole-string trailing-ws is stripped to
+// match the verify's own `norm`. Env-gated via AITM_VERIFY_DEBUG.
+function debugVerifyDivergence({ issueNumber, stamped, verifyRemote, targetVersion }) {
+  const norm = (s) => String(s ?? '').replace(/\s+$/, '');
+  const a = norm(stamped);
+  const b = norm(verifyRemote);
+  const log = (...args) =>
+    process.stderr.write(`[AITM_VERIFY_DEBUG #${issueNumber}] ` + args.join(' ') + '\n');
+  log(
+    `targetVersion=${targetVersion} pushed.len=${a.length} refetch.len=${b.length} bodyVersion(refetch)=${parseBodyVersion(verifyRemote)}`
+  );
+  const min = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < min && a[i] === b[i]) i++;
+  const cp = (ch) =>
+    ch ? `U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}` : '(end)';
+  const show = (s, from, to) =>
+    [...s.slice(from, to)]
+      .map((ch) => {
+        const c = ch.codePointAt(0);
+        return c < 0x20 || c > 0x7e ? `<U+${c.toString(16).toUpperCase().padStart(4, '0')}>` : ch;
+      })
+      .join('');
+  if (i === min && a.length === b.length) {
+    log('no codepoint divergence after trailing-ws norm (difference is interior whitespace only)');
+  } else {
+    log(`first divergence at index ${i}: pushed=${cp(a[i])} refetch=${cp(b[i])}`);
+    log('pushed ctx :', JSON.stringify(show(a, Math.max(0, i - 50), i + 50)));
+    log('refetch ctx:', JSON.stringify(show(b, Math.max(0, i - 50), i + 50)));
+  }
+  const crA = (a.match(/\r/g) || []).length;
+  const crB = (b.match(/\r/g) || []).length;
+  if (crA !== crB) log(`CR delta: pushed=${crA} refetch=${crB}`);
+  for (const ent of ['&quot;', '&amp;', '&lt;', '&gt;', '&#39;', '&#x27;']) {
+    const ca = a.split(ent).length - 1;
+    const cb = b.split(ent).length - 1;
+    if (ca !== cb) log(`entity ${ent} delta: pushed=${ca} refetch=${cb}`);
+  }
+}
+
 export class BodyWriteRefusalError extends Error {
   constructor(message, { reason, ourDiff, theirDiff, attempts } = {}) {
     super(message);
@@ -147,6 +191,26 @@ export class BodyWriteRefusalError extends Error {
   }
 }
 
+// #439 — collect a readable stream's chunks as raw Buffers and decode the FULL
+// concatenated buffer ONCE as UTF-8. The previous `out += chunk` accumulator
+// coerced each `data` chunk to a string independently; Node delivers chunk
+// boundaries that do not respect multibyte UTF-8 sequences, so any sequence
+// straddling a boundary split into U+FFFD replacement characters (one per
+// dangling fragment). Buffer.concat preserves the byte stream, so the single
+// trailing decode reconstructs every codepoint exactly. Resolves '' for a
+// stream that emits no data.
+export function collectStreamUtf8(stream) {
+  return new Promise((resolve, reject) => {
+    if (!stream) return resolve('');
+    const chunks = [];
+    stream.on('data', (d) => {
+      chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d));
+    });
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
 function ghFetchBody(_repo, issueNumber) {
   return new Promise((resolve, reject) => {
     const proc = spawn(
@@ -156,17 +220,17 @@ function ghFetchBody(_repo, issueNumber) {
         stdio: ['ignore', 'pipe', 'pipe'],
       }
     );
-    let out = '',
-      err = '';
-    proc.stdout.on('data', (d) => {
-      out += d;
-    });
-    proc.stderr.on('data', (d) => {
-      err += d;
-    });
-    proc.on('close', (code) => {
-      if (code !== 0) return reject(new Error(`gh fetch failed (${code}): ${err}`));
-      resolve(out);
+    const outP = collectStreamUtf8(proc.stdout);
+    const errP = collectStreamUtf8(proc.stderr);
+    proc.on('error', reject);
+    proc.on('close', async (code) => {
+      try {
+        const [out, err] = await Promise.all([outP, errP]);
+        if (code !== 0) return reject(new Error(`gh fetch failed (${code}): ${err}`));
+        resolve(out);
+      } catch (e) {
+        reject(e);
+      }
     });
   });
 }
@@ -176,14 +240,17 @@ function ghPushBody(_repo, issueNumber, body) {
     const proc = spawn('gh', ['issue', 'edit', String(issueNumber), '--body-file', '-'], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    let err = '';
-    proc.stderr.on('data', (d) => {
-      err += d;
-    });
+    const errP = collectStreamUtf8(proc.stderr);
+    proc.on('error', reject);
     proc.stdin.end(body);
-    proc.on('close', (code) => {
-      if (code !== 0) return reject(new Error(`gh push failed (${code}): ${err}`));
-      resolve();
+    proc.on('close', async (code) => {
+      try {
+        const err = await errP;
+        if (code !== 0) return reject(new Error(`gh push failed (${code}): ${err}`));
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
     });
   });
 }
@@ -258,6 +325,13 @@ export async function versionedWriteBody({
     const norm = (s) => String(s ?? '').replace(/\s+$/, '');
     if (norm(verifyRemote) === norm(stamped)) {
       return { status: 'ok', attempts, version: targetVersion };
+    }
+
+    // AC1 instrumentation (#437): when the byte-equality verify rejects a write
+    // that may actually have landed, dump the exact divergence so the
+    // GitHub-side normalization can be characterized. Env-gated; off by default.
+    if (process.env.AITM_VERIFY_DEBUG) {
+      debugVerifyDivergence({ issueNumber, stamped, verifyRemote, targetVersion });
     }
 
     // Race lost — record for next iteration.
