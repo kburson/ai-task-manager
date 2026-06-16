@@ -101,3 +101,73 @@ test('batch: empty label list is a no-op returning the body unchanged', () => {
   assert.equal(updated, body);
   assert.deepEqual(results, []);
 });
+
+// #411 — after ac-stamp / dod-stamp append hidden evidence markers to a
+// checkbox line, the visible (bare) label must still match it, the full-line
+// argument (label + markers) must still match it for backward-compat, an
+// ambiguous stripped-label collision must tick neither line, and the toggled
+// line must retain its trailing markers byte-for-byte.
+
+test('#411 bare visible label ticks a marker-bearing line', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] all good <!-- aitm-ac-evidence key="abc12345" cmd="`npm test`" exit="0" sha="deadbeef" ts="2026-06-14T00:00:00Z" -->',
+  ].join('\n');
+  const r = toggleChecklistLine(body, 'all good');
+  assert.equal(r.status, 'toggled');
+  assert.equal(r.alreadyChecked, false);
+  // Glyph flipped, markers preserved verbatim.
+  assert.match(
+    r.body,
+    /^- \[x\] all good <!-- aitm-ac-evidence key="abc12345" cmd="`npm test`" exit="0" sha="deadbeef" ts="2026-06-14T00:00:00Z" -->$/m
+  );
+});
+
+test('#411 full-line argument (label + markers) still ticks the line (backward compat)', () => {
+  const marker =
+    '<!-- aitm-ac-evidence key="abc12345" cmd="`npm test`" exit="0" sha="deadbeef" ts="2026-06-14T00:00:00Z" -->';
+  const body = ['## Acceptance Criteria', `- [ ] all good ${marker}`].join('\n');
+  // Caller reconstructs the whole post-glyph content (the legacy #233 workaround).
+  const r = toggleChecklistLine(body, `all good ${marker}`);
+  assert.equal(r.status, 'toggled');
+  assert.match(
+    r.body,
+    new RegExp(`^- \\[x\\] all good ${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm')
+  );
+});
+
+test('#411 marker-bearing line retains its trailing markers after toggle', () => {
+  const marker =
+    '<!-- aitm-ac-evidence key="abc12345" cmd="`npm test`" exit="0" sha="deadbeef" ts="2026-06-14T00:00:00Z" -->';
+  const body = ['## Acceptance Criteria', `- [ ] all good ${marker}`].join('\n');
+  const r = toggleChecklistLine(body, 'all good');
+  assert.equal(r.status, 'toggled');
+  assert.ok(r.body.includes(marker), 'trailing evidence marker must survive byte-for-byte');
+});
+
+test('#411 ambiguous: two lines sharing a stripped label yield ambiguous and tick neither', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] shared label <!-- aitm-ac-evidence key="aaaaaaaa" cmd="`x`" exit="0" sha="a" ts="t" -->',
+    '- [ ] shared label <!-- aitm-ac-evidence key="bbbbbbbb" cmd="`y`" exit="0" sha="b" ts="t" -->',
+  ].join('\n');
+  const r = toggleChecklistLine(body, 'shared label');
+  assert.equal(r.status, 'ambiguous');
+  assert.equal(r.count, 2);
+  assert.equal(r.body, undefined);
+});
+
+test('#411 batch reports ambiguous independently without dropping other labels', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] uniq',
+    '- [ ] dup <!-- aitm-ac-evidence key="aaaaaaaa" cmd="`x`" exit="0" sha="a" ts="t" -->',
+    '- [ ] dup <!-- aitm-ac-evidence key="bbbbbbbb" cmd="`y`" exit="0" sha="b" ts="t" -->',
+  ].join('\n');
+  const { body: updated, results } = toggleChecklistLines(body, ['uniq', 'dup']);
+  assert.match(updated, /^- \[x\] uniq$/m);
+  assert.deepEqual(results, [
+    { label: 'uniq', status: 'toggled', alreadyChecked: false },
+    { label: 'dup', status: 'ambiguous', alreadyChecked: false, count: 2 },
+  ]);
+});

@@ -36,7 +36,10 @@ const NEW_ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
 
 // Strip every hidden marker from a checkbox label so the visible text is what
 // remains. Used both for display and as the hash input for the key.
-function stripMarkers(text) {
+// #411 — exported as the canonical label-cleaner so `check`'s toggle can match
+// a bare visible label against marker-bearing checkbox lines without re-deriving
+// the strip logic.
+export function stripMarkers(text) {
   return String(text || '')
     .replace(VERIFIED_BY_RE, '')
     .replace(AC_EVIDENCE_ANY_RE, '')

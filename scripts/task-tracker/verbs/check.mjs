@@ -4,31 +4,41 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readBoundState } from '../lib/bound-state.mjs';
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
 import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-dod-evidence.mjs';
-import { findEvidenceAc } from '../lib/ac-evidence.mjs';
+import { findEvidenceAc, stripMarkers } from '../lib/ac-evidence.mjs';
 
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// Toggle a single checklist line whose text exactly matches `label`.
-// Matching is line-anchored so a label that is a prefix of a longer checklist
-// row never matches the longer row.
+// Toggle a single checklist line whose VISIBLE label matches `label`.
+//
+// #411 — matching is on the marker-stripped visible text, not the whole raw
+// line. Once `ac-stamp` / `dod-stamp` append hidden evidence markers
+// (`aitm-ac-evidence`, `aitm-verified-by`, `aitm-dod-evidence`, …) to a
+// checkbox line, the natural call carrying only the visible label used to fail
+// "not-found", forcing the caller to reproduce the full marker-bearing line.
+// We now strip markers from BOTH the requested label and each checkbox line's
+// post-glyph content before comparing, and toggle by rewriting ONLY the `[ ]`
+// ↔ `[x]` glyph so the trailing markers survive intact. A full-line argument
+// (label + markers) still matches because it strips to the same key.
 //
 // Returns one of:
 //   { status: 'not-found' }
+//   { status: 'ambiguous', count: <n> }   — >1 line shares the stripped label
 //   { status: 'toggled', body: <new>, alreadyChecked: <bool> }
 export function toggleChecklistLine(body, label) {
-  const esc = escapeRegex(label);
-  const checked = new RegExp(`^- \\[x\\] ${esc}\\s*$`, 'm');
-  const unchecked = new RegExp(`^- \\[ \\] ${esc}\\s*$`, 'm');
-  const alreadyChecked = checked.test(body);
-  if (!alreadyChecked && !unchecked.test(body)) {
-    return { status: 'not-found' };
+  const wanted = stripMarkers(label);
+  const lines = String(body).split('\n');
+  const matches = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^- \[([ x])\] (.+)$/);
+    if (!m) continue;
+    if (stripMarkers(m[2]) === wanted) {
+      matches.push({ index: i, checked: m[1] === 'x' });
+    }
   }
-  const next = alreadyChecked
-    ? body.replace(checked, `- [ ] ${label}`)
-    : body.replace(unchecked, `- [x] ${label}`);
-  return { status: 'toggled', body: next, alreadyChecked };
+  if (matches.length === 0) return { status: 'not-found' };
+  if (matches.length > 1) return { status: 'ambiguous', count: matches.length };
+  const { index, checked: alreadyChecked } = matches[0];
+  // Rewrite only the glyph; preserve the rest of the line (label + markers).
+  lines[index] = lines[index].replace(/^- \[[ x]\]/, alreadyChecked ? '- [ ]' : '- [x]');
+  return { status: 'toggled', body: lines.join('\n'), alreadyChecked };
 }
 
 // Toggle many checklist lines against a single body, folding `toggleChecklistLine`
@@ -36,7 +46,7 @@ export function toggleChecklistLine(body, label) {
 // label is recorded and skipped — it never aborts the batch.
 //
 // Returns { body, results } where results is
-//   [{ label, status: 'toggled'|'not-found', alreadyChecked: <bool> }]
+//   [{ label, status: 'toggled'|'not-found'|'ambiguous', alreadyChecked: <bool> }]
 export function toggleChecklistLines(body, labels) {
   let current = body;
   const results = [];
@@ -44,6 +54,10 @@ export function toggleChecklistLines(body, labels) {
     const r = toggleChecklistLine(current, label);
     if (r.status === 'not-found') {
       results.push({ label, status: 'not-found', alreadyChecked: false });
+      continue;
+    }
+    if (r.status === 'ambiguous') {
+      results.push({ label, status: 'ambiguous', alreadyChecked: false, count: r.count });
       continue;
     }
     current = r.body;
@@ -156,6 +170,13 @@ export async function verbCheck(ctx) {
     console.error(`[task-tracker] checkbox "${label}" not found in ${s.active}${list}`);
     process.exit(1);
   }
+  if (diag.status === 'ambiguous') {
+    // #411 — refuse rather than silently tick the wrong line.
+    console.error(
+      `[task-tracker] checkbox "${label}" is ambiguous in ${s.active}: ${diag.count} lines share this visible label. Disambiguate with a longer label or the full line text.`
+    );
+    process.exit(1);
+  }
   // #303/#345 — evidence gate. Refuse stampable Functional DoD ticks without an
   // `aitm-dod-evidence:KEY` marker; refuse derived keys outright; refuse AC ticks
   // carrying `aitm-verified-by` without an `aitm-ac-evidence:<key>` stamp.
@@ -171,7 +192,7 @@ export async function verbCheck(ctx) {
     repo: cfg.repo,
     mutate: (base) => {
       const r = toggleChecklistLine(base, label);
-      if (r.status === 'not-found') return base;
+      if (r.status !== 'toggled') return base;
       landed = r;
       return r.body;
     },
@@ -230,6 +251,12 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
     for (const r of results) {
       if (r.status === 'not-found') {
         console.error(`[task-tracker] ✗ checkbox "${r.label}" not found in ${active}`);
+        exitCode = 1;
+      } else if (r.status === 'ambiguous') {
+        // #411 — ambiguous match: report, never silently tick the wrong line.
+        console.error(
+          `[task-tracker] ✗ checkbox "${r.label}" is ambiguous in ${active}: ${r.count} lines share this visible label.`
+        );
         exitCode = 1;
       } else {
         const action = r.alreadyChecked ? 'Unchecked' : 'Checked';
@@ -291,8 +318,11 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
 export function gateFunctionalDodTick(body, requestedLabel) {
   const items = parseFunctionalDodKeys(body);
   if (!items.length) return { kind: 'pass' };
-  const wanted = String(requestedLabel || '').trim();
-  const match = items.find((it) => it.label === wanted);
+  // #411 — compare on the marker-stripped label so a bare visible label matches
+  // a Functional DoD item whose parsed label retains its `aitm-verified cmd="…"`
+  // declaration (and a full-line argument strips to the same key).
+  const wanted = stripMarkers(requestedLabel);
+  const match = items.find((it) => stripMarkers(it.label) === wanted);
   if (!match) return { kind: 'pass' };
   if (match.checked) return { kind: 'pass' }; // unticking is fine
   const klass = KEY_CLASSIFICATION[match.key] || null;
