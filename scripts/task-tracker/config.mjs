@@ -19,6 +19,11 @@ export const DEFAULTS = {
   // `STATUS_CONFIG_KEYS` maps the new state slugs onto these keys.
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
+  // On Deck (#433) — inert holding state inserted between Backlog and Refine.
+  // The option ID lives in task-tracker.json; this DEFAULTS entry (#439 AC7) is
+  // what lets loadConfig retain it (loadConfig drops any key absent from
+  // DEFAULTS), so move-state can resolve the board option for the backlog→on-deck hop.
+  kanbanOptionOnDeck: '',
   kanbanOptionRefine: '',
   kanbanOptionPlan: '',
   kanbanOptionDevelop: '',
@@ -90,6 +95,7 @@ const TYPES = {
   projectId: 'string',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
+  kanbanOptionOnDeck: 'string',
   kanbanOptionRefine: 'string',
   kanbanOptionPlan: 'string',
   kanbanOptionDevelop: 'string',
@@ -333,6 +339,7 @@ const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId',
   'kanbanOptionBacklog',
+  'kanbanOptionOnDeck',
   'kanbanOptionRefine',
   'kanbanOptionPlan',
   'kanbanOptionDevelop',

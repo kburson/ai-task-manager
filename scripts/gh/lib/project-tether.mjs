@@ -5,6 +5,7 @@ const DEFAULT_RETRY_DELAY_MS = 1500;
 
 const STATUS_CONFIG_KEYS = {
   backlog: 'kanbanOptionBacklog',
+  'on-deck': 'kanbanOptionOnDeck',
   refine: 'kanbanOptionRefine',
   plan: 'kanbanOptionPlan',
   develop: 'kanbanOptionDevelop',
