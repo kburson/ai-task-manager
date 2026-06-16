@@ -17,12 +17,14 @@
 // - **Same-Sequence siblings (newcomers).** Never block. Members of the same
 //   wave advance independently.
 // - **Higher-Sequence siblings.** Never block (they are the next wave).
-// - **Backlog siblings.** Excluded — backlog is unvetted ideas; not in flight.
+// - **Backlog / On Deck siblings.** Excluded — backlog is unvetted ideas and
+//   On Deck (#433) is an inert tranche waiting room; neither is in flight.
 // - **Review / Done siblings.** Excluded — terminal states never block.
 //
 // `fetchSiblings({ parentEpicNumber, repo, projectId })` must return an array
 // of sibling descriptors `{ number, sequence, state }` where `state` is one
-// of the lower-cased 7-state slugs (or `'backlog'`, `'review'`, `'done'`).
+// of the lower-cased 8-state slugs (e.g. `'backlog'`, `'on-deck'`, `'review'`,
+// `'done'`).
 
 import { gql, splitRepo } from './github-projects.mjs';
 

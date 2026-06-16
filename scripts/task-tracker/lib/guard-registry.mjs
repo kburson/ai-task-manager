@@ -63,7 +63,7 @@
 // guards belong here too — register them in the matching state module and
 // append a row above.
 
-const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const STATES = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 const KINDS = ['exit', 'entry'];
 
 function makeEmptyRegistry() {

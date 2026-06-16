@@ -3,7 +3,7 @@
 //   - fills empty kanbanOption* keys via case-insensitive name match
 //   - never overwrites populated keys
 //   - reports unmatched options (column missing on Status field)
-//   - static parse: init-project-config.sh CANONICAL_STATUS_PALETTE has 7 entries in expected order
+//   - static parse: init-project-config.sh CANONICAL_STATUS_PALETTE has 8 entries in expected order
 
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -50,6 +50,7 @@ const EMPTY_CFG = {
   projectId: 'PVT_x',
   kanbanFieldId: 'PVTSSF_status',
   kanbanOptionBacklog: '',
+  kanbanOptionOnDeck: '',
   kanbanOptionRefine: '',
   kanbanOptionPlan: '',
   kanbanOptionDevelop: '',
@@ -60,6 +61,7 @@ const EMPTY_CFG = {
 
 const FULL_OPTS = [
   { id: 'OP_b', name: 'Backlog' },
+  { id: 'OP_od', name: 'On Deck' },
   { id: 'OP_g', name: 'Refine' },
   { id: 'OP_a', name: 'Plan' },
   { id: 'OP_d', name: 'Develop' },
@@ -75,6 +77,7 @@ const FULL_OPTS = [
   assert.match(r.stdout, /Filled:.*kanbanOptionRefine/);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'OP_b');
+  assert.equal(cfg.kanbanOptionOnDeck, 'OP_od');
   assert.equal(cfg.kanbanOptionRefine, 'OP_g');
   assert.equal(cfg.kanbanOptionPlan, 'OP_a');
   assert.equal(cfg.kanbanOptionDevelop, 'OP_d');
@@ -91,6 +94,7 @@ const FULL_OPTS = [
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'EXISTING_B',
+    kanbanOptionOnDeck: 'EXISTING_OD',
     kanbanOptionRefine: 'EXISTING_G',
     kanbanOptionPlan: 'EXISTING_A',
     kanbanOptionDevelop: 'EXISTING_D',
@@ -130,6 +134,7 @@ const FULL_OPTS = [
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'OP_b',
+    kanbanOptionOnDeck: 'OP_od',
     kanbanOptionRefine: 'OP_g',
     kanbanOptionPlan: 'OP_a',
     kanbanOptionDevelop: 'OP_d',
@@ -143,19 +148,20 @@ const FULL_OPTS = [
 }
 
 // Test 5: static parse — init-project-config.sh canonical Status palette has the
-// 7 columns in order. (#415 renamed the former `status_opts` literal to the
-// single CANONICAL_STATUS_PALETTE source of truth; name+color coverage lives in
+// 8 columns in order. (#415 renamed the former `status_opts` literal to the
+// single CANONICAL_STATUS_PALETTE source of truth; #433 inserted "On Deck"
+// between Backlog and Refine. name+color coverage lives in
 // init-status-palette.test.mjs.)
 {
   const sh = readFileSync(INIT_SH, 'utf8');
   const m = sh.match(/CANONICAL_STATUS_PALETTE='(\[[\s\S]*?\])'/);
   assert.ok(m, 'should find CANONICAL_STATUS_PALETTE assignment in init-project-config.sh');
   const arr = JSON.parse(m[1]);
-  assert.equal(arr.length, 7, `canonical palette must have 7 entries, got ${arr.length}`);
+  assert.equal(arr.length, 8, `canonical palette must have 8 entries, got ${arr.length}`);
   const names = arr.map((o) => o.name);
   assert.deepEqual(
     names,
-    ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'],
+    ['Backlog', 'On Deck', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'],
     'canonical palette names must be in canonical order'
   );
 }

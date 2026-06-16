@@ -1,9 +1,13 @@
-// Backlog-exit guard: child sub-issues may not enter refine while their parent
-// epic sits outside the active planning window (#338, parent epic #259).
+// Pre-refine-exit guard: child sub-issues may not enter refine while their
+// parent epic sits outside the active planning window (#338, parent epic #259;
+// relocated from backlog-exit to on-deck-exit in #433).
 //
 // Mirrors the parent-side `planEpicChildrenGuard` from #277 but from the child's
-// perspective: a sub-issue moving backlog → refine is refused when its parent's
-// live board Status is anything other than `refine` or `plan`.
+// perspective: a sub-issue moving on-deck → refine (the 8-state predecessor of
+// refine) is refused when its parent's live board Status is anything other than
+// `refine`, `plan`, or `develop`. The earlier backlog → on-deck hop is gateless
+// (On Deck is an inert tranche waiting room), so the parent-state floor moved
+// with the real refinement-entry transition.
 //
 // Wave-model invariant: children should join the active planning wave while the
 // parent is itself being planned, OR while the parent is actively developing
@@ -13,9 +17,9 @@
 // allowing `develop` as an accepted parent state cannot let the parent escape
 // its children (that invariant is enforced by the parent-side guard from #337).
 //
-// Letting a child enter refine while the parent is in backlog (still un-planned)
-// or has already moved into test/review/done (post-develop) breaks the
-// wave alignment.
+// Letting a child enter refine while the parent is in backlog/on-deck (still
+// un-planned) or has already moved into test/review/done (post-develop) breaks
+// the wave alignment.
 //
 // Context contract:
 //   { cfg: Config, issueNumber: number,
@@ -23,7 +27,7 @@
 //     deps?: { fetchParentIssue?, readParentStatus? } }
 //
 // Short-circuit cases (return `{ok: true}` without consulting the API):
-//   - ctx.fromState is present and not 'backlog'
+//   - ctx.fromState is present and not 'on-deck'
 //   - ctx.toState is present and not 'refine'
 //   - ctx or ctx.cfg or ctx.issueNumber missing (fail-open per planEpicChildren-
 //     Guard convention — refusal here would mask the real blocker)
@@ -45,7 +49,7 @@ const ALLOWED_PARENT_STATES = new Set(['refine', 'plan', 'develop']);
 export const backlogExitChildParentStateGuard = {
   id: GUARD_ID,
   async run(ctx) {
-    if (ctx?.fromState && ctx.fromState !== 'backlog') return { ok: true };
+    if (ctx?.fromState && ctx.fromState !== 'on-deck') return { ok: true };
     if (ctx?.toState && ctx.toState !== 'refine') return { ok: true };
     if (!ctx || !ctx.cfg || !ctx.issueNumber) return { ok: true };
 

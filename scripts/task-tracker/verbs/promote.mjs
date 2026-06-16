@@ -1,7 +1,7 @@
 // `promote` verb — directional forward state-change (#81 rename of `/task move`).
 //
 // One verb advances the issue by exactly one state along the FORWARD chain:
-//   backlog → refine → plan → develop → test → review → done.
+//   backlog → on-deck → refine → plan → develop → test → review → done.
 //
 // Promote is the only sanctioned forward chokepoint. Existing stage verbs
 // (refine / plan-approve / approve / review / close) remain as aliases — promote
@@ -280,7 +280,7 @@ export async function runPromote({
   // REFUSAL_ID_TO_STATUS.
 
   // #336 — delegate forward-transition gate enforcement to the guard registry.
-  // Every previously-inline gate for backlog→refine, refine→plan, plan→develop,
+  // Every previously-inline gate for on-deck→refine, refine→plan, plan→develop,
   // and develop→test now lives in `STATES[from].exitGuards`. Side-channel:
   // `planEntryFieldsBody` stashes the resolved refinement plan on `guardCtx`
   // so the refine→plan post-success hook can run `applyRefinementEstimate`.
@@ -450,7 +450,7 @@ export async function runPromote({
 
   // Transition succeeded. Entry-marker AND lastKnownState stamping are both
   // centralized in move-state.mjs's success path (#170 — single mutator).
-  // #147 — Backlog → Refine success hook: stamp the "Start time" field on the
+  // #147 — On Deck → Refine success hook: stamp the "Start time" field on the
   // project board so the refine→plan exit gate has a value to verify. Idempotent
   // (skips when already set). Best-effort — board state is already committed.
   if (target === 'refine') {

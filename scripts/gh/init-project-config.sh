@@ -391,6 +391,7 @@ create_project_field_if_missing() {
 # PURPLE.
 CANONICAL_STATUS_PALETTE='[
   {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
+  {"name":"On Deck","color":"GRAY","description":"Current tranche pulled from Backlog; inert waiting room."},
   {"name":"Refine","color":"GREEN","description":"Items being shaped: AC, sizing, estimates."},
   {"name":"Plan","color":"BLUE","description":"Items being deep-dived: design + caller analysis."},
   {"name":"Develop","color":"YELLOW","description":"Implementation in progress."},
@@ -670,6 +671,7 @@ auto_or_pick() {
 # boards; the canonical Scrum vocab is the first entry of each list.
 # Backlog only auto-matches "backlog" — not "todo" (that belongs to Refine).
 auto_or_pick "Backlog" "backlog"                                              "required"; OPTION_BACKLOG="$PICKED_ID"
+auto_or_pick "On Deck" "on deck,on-deck,ondeck"                              "required"; OPTION_ON_DECK="$PICKED_ID"
 auto_or_pick "Refine"  "refine,groom,grooming,refined,ready,todo,to do"       "required"; OPTION_REFINE="$PICKED_ID"
 auto_or_pick "Plan"    "plan,analyze,analysis"                                "required"; OPTION_PLAN="$PICKED_ID"
 auto_or_pick "Develop" "develop,development,in progress,in-progress,doing,wip" "required"; OPTION_DEVELOP="$PICKED_ID"
@@ -682,6 +684,7 @@ auto_or_pick "Done"    "done,closed,complete,completed"                       "r
 # canonical palette (#415) so this list cannot drift from the fresh-field path.
 STATES_TO_CREATE=()
 [[ "$OPTION_BACKLOG" == "__NEW__" ]] && STATES_TO_CREATE+=("Backlog:$(canon_color Backlog)")
+[[ "$OPTION_ON_DECK" == "__NEW__" ]] && STATES_TO_CREATE+=("On Deck:$(canon_color "On Deck")")
 [[ "$OPTION_REFINE"  == "__NEW__" ]] && STATES_TO_CREATE+=("Refine:$(canon_color Refine)")
 [[ "$OPTION_PLAN"    == "__NEW__" ]] && STATES_TO_CREATE+=("Plan:$(canon_color Plan)")
 [[ "$OPTION_DEVELOP" == "__NEW__" ]] && STATES_TO_CREATE+=("Develop:$(canon_color Develop)")
@@ -740,6 +743,7 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
     echo "$KANBAN_FIELD_JSON" | jq -r --arg n "$1" '.options[] | select(.name == $n) | .id'
   }
   [[ "$OPTION_BACKLOG" == "__NEW__" ]] && OPTION_BACKLOG=$(remap_state "Backlog")
+  [[ "$OPTION_ON_DECK" == "__NEW__" ]] && OPTION_ON_DECK=$(remap_state "On Deck")
   [[ "$OPTION_REFINE"  == "__NEW__" ]] && OPTION_REFINE=$(remap_state "Refine")
   [[ "$OPTION_PLAN"    == "__NEW__" ]] && OPTION_PLAN=$(remap_state "Plan")
   [[ "$OPTION_DEVELOP" == "__NEW__" ]] && OPTION_DEVELOP=$(remap_state "Develop")
@@ -759,14 +763,15 @@ fi
 # (the old logic only ran when exactly 7 existed, leaving renames undone on
 # boards with extra columns).
 
-if [[ -z "$OPTION_BACKLOG" || -z "$OPTION_REFINE" || -z "$OPTION_PLAN" || \
+if [[ -z "$OPTION_BACKLOG" || -z "$OPTION_ON_DECK" || -z "$OPTION_REFINE" || -z "$OPTION_PLAN" || \
       -z "$OPTION_DEVELOP" || -z "$OPTION_TEST" || -z "$OPTION_REVIEW" || -z "$OPTION_DONE" ]]; then
   warn "One or more managed Status options did not resolve to an id — skipping palette normalization. Set names/colors manually in the GitHub Project board."
 else
-  info "Normalizing Status columns to canonical names + colors: Backlog → Refine → Plan → Develop → Test → Review → Done"
+  info "Normalizing Status columns to canonical names + colors: Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done"
   NORMALIZED_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq -c \
     --argjson canon "$CANONICAL_STATUS_PALETTE" \
     --arg b   "$OPTION_BACKLOG" \
+    --arg od  "$OPTION_ON_DECK" \
     --arg rf  "$OPTION_REFINE" \
     --arg pl  "$OPTION_PLAN" \
     --arg dev "$OPTION_DEVELOP" \
@@ -774,7 +779,7 @@ else
     --arg rv  "$OPTION_REVIEW" \
     --arg d   "$OPTION_DONE" \
     '
-    [{name:"Backlog",id:$b},{name:"Refine",id:$rf},{name:"Plan",id:$pl},
+    [{name:"Backlog",id:$b},{name:"On Deck",id:$od},{name:"Refine",id:$rf},{name:"Plan",id:$pl},
      {name:"Develop",id:$dev},{name:"Test",id:$t},{name:"Review",id:$rv},
      {name:"Done",id:$d}] as $managed |
     ($managed | map(.id)) as $managedIds |
@@ -821,7 +826,7 @@ else
   info "  1. Open the project in the GitHub web UI"
   info "  2. Click 'New view' → choose 'Board' layout"
   info "  3. Group by 'Status'"
-  info "  4. Confirm columns: Backlog → Refine → Plan → Develop → Test → Review → Done"
+  info "  4. Confirm columns: Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done"
 fi
 echo ""
 
@@ -1350,6 +1355,7 @@ REPO="$REPO" \
 PROJECT_NODE_ID="$PROJECT_NODE_ID" \
 KANBAN_FIELD_ID="$KANBAN_FIELD_ID" \
 OPTION_BACKLOG="$OPTION_BACKLOG" \
+OPTION_ON_DECK="$OPTION_ON_DECK" \
 OPTION_REFINE="$OPTION_REFINE" \
 OPTION_PLAN="$OPTION_PLAN" \
 OPTION_DEVELOP="$OPTION_DEVELOP" \
@@ -1385,6 +1391,7 @@ const updates = {
   projectId:              process.env.PROJECT_NODE_ID,
   kanbanFieldId:          process.env.KANBAN_FIELD_ID,
   kanbanOptionBacklog:     process.env.OPTION_BACKLOG,
+  kanbanOptionOnDeck:      process.env.OPTION_ON_DECK,
   kanbanOptionRefine:      process.env.OPTION_REFINE,
   kanbanOptionPlan:        process.env.OPTION_PLAN,
   kanbanOptionDevelop:     process.env.OPTION_DEVELOP,

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Move a GitHub issue through board states: Backlog → Refine → Plan → Develop → Test → Review → Done
+// Move a GitHub issue through board states: Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
-// States: backlog | refine | plan | develop | test | review | done
+// States: backlog | on-deck | refine | plan | develop | test | review | done
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -72,7 +72,7 @@ let outOfBandReason = '';
 }
 
 function refusalVerbHint(targetState) {
-  const forward = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
+  const forward = new Set(['on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
   const backward = new Set(['backlog']);
   if (forward.has(targetState)) return '/task promote';
   if (backward.has(targetState)) return '/task demote';
@@ -81,6 +81,7 @@ function refusalVerbHint(targetState) {
 
 const STATE_TO_CONFIG_KEY = {
   backlog: 'kanbanOptionBacklog',
+  'on-deck': 'kanbanOptionOnDeck',
   refine: 'kanbanOptionRefine',
   plan: 'kanbanOptionPlan',
   develop: 'kanbanOptionDevelop',
@@ -92,7 +93,7 @@ const STATE_TO_CONFIG_KEY = {
 function usage() {
   process.stderr.write(
     'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede]\n' +
-      'States: backlog | refine | plan | develop | test | review | done\n' +
+      'States: backlog | on-deck | refine | plan | develop | test | review | done\n' +
       '--supersede: bypass the matrix + close gates (reserved for the `supersede` verb)\n'
   );
   process.exit(1);
@@ -133,7 +134,7 @@ if (!/^\d+$/.test(issueArg)) usage();
 const configKey = STATE_TO_CONFIG_KEY[stateArg];
 if (!configKey) {
   process.stderr.write(
-    `Unknown state: ${stateArg}\nStates: backlog | refine | plan | develop | test | review | done\n`
+    `Unknown state: ${stateArg}\nStates: backlog | on-deck | refine | plan | develop | test | review | done\n`
   );
   process.exit(1);
 }

@@ -3,7 +3,7 @@
 //
 // Asserts each `scripts/task-tracker/states/<state>.mjs` module exports the
 // `{ name, entryGuards, exitGuards, onEnter }` container shape, that `STATES`
-// contains exactly the seven kanban state names, and that `FORWARD_CHAIN` /
+// contains exactly the eight kanban state names, and that `FORWARD_CHAIN` /
 // `BACKWARD_CHAIN` cover the documented edges. Shape-only — no behavior
 // assertions; the parity test covers guard behavior.
 
@@ -12,7 +12,16 @@ import assert from 'node:assert/strict';
 
 import { STATES, FORWARD_CHAIN, BACKWARD_CHAIN, getState } from '../states/index.mjs';
 
-const EXPECTED_NAMES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const EXPECTED_NAMES = [
+  'backlog',
+  'on-deck',
+  'refine',
+  'plan',
+  'develop',
+  'test',
+  'review',
+  'done',
+];
 
 function assertGuard(guard, label) {
   assert.equal(typeof guard.id, 'string', `${label}: guard.id must be a string`);
@@ -27,7 +36,7 @@ function assertAction(action, label) {
 }
 
 describe('states-skeleton: STATES map', () => {
-  it('contains exactly the seven kanban states', () => {
+  it('contains exactly the eight kanban states', () => {
     assert.deepEqual(Object.keys(STATES).sort(), [...EXPECTED_NAMES].sort());
   });
 
@@ -74,7 +83,8 @@ describe('states-skeleton: FORWARD_CHAIN', () => {
     // Mirrors state-machine.mjs FORWARD: each non-terminal state has exactly
     // one canonical forward successor; done is terminal.
     const expected = {
-      backlog: 'refine',
+      backlog: 'on-deck',
+      'on-deck': 'refine',
       refine: 'plan',
       plan: 'develop',
       develop: 'test',

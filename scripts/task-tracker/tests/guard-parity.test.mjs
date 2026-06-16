@@ -220,7 +220,9 @@ describe('guard-parity: refine→plan', () => {
 });
 
 // -----------------------------------------------------------------------------
-// via-registry: backlog→refine + refine→plan through runGuards (#276)
+// via-registry: on-deck→refine + refine→plan through runGuards (#276; the
+// Priority entry-field adapter relocated from backlog-exit to on-deck-exit in
+// #433, so it now fires on the on-deck→refine hop).
 // -----------------------------------------------------------------------------
 // Asserts that the in-registry entry-field adapters produce the SAME refusal
 // content as the underlying gate libraries when invoked through the
@@ -228,17 +230,17 @@ describe('guard-parity: refine→plan', () => {
 // Pre-flight in promote.mjs and in-registry guards both wrap the same gates;
 // these tests prove the registry path agrees with the library-baseline path
 // the other describes already cover.
-describe('guard-parity: backlog→refine via-registry', () => {
+describe('guard-parity: on-deck→refine via-registry', () => {
   it('accept fixture: runGuards passes when Priority is set', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     const deps = makeRefineDeps({
       ...f,
-      // Adapter expects Priority on the board; the backlog→refine accept
+      // Adapter expects Priority on the board; the on-deck→refine accept
       // fixture has no projectValues block (validateBody-only). Stamp one
       // in so the registry path mirrors the post-Refine reality.
       projectValues: { priority: 'P2' },
     });
-    const r = await runGuards('backlog', 'refine', {
+    const r = await runGuards('on-deck', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -250,7 +252,7 @@ describe('guard-parity: backlog→refine via-registry', () => {
   it('refuse fixture: runGuards refuses when Priority missing', async () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const deps = makeRefineDeps({ ...f, projectValues: {} }); // no priority
-    const r = await runGuards('backlog', 'refine', {
+    const r = await runGuards('on-deck', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -594,21 +596,22 @@ describe('guard-parity: review→done', () => {
 });
 
 // -----------------------------------------------------------------------------
-// via-state-objects: backlog→refine + refine→plan through STATES (#292)
+// via-state-objects: on-deck→refine + refine→plan through STATES (#292; the
+// Priority guard relocated to on-deck-exit in #433)
 // -----------------------------------------------------------------------------
 // Exercises `STATES[from].exitGuards` + `STATES[to].entryGuards` DIRECTLY,
 // bypassing the flat registry. Asserts the refusal-reason set is identical
 // to the via-registry baseline above. Proves the state-object containers and
 // the registry agree, so callers can be migrated to read from STATES with no
 // behavior drift.
-describe('guard-parity: backlog→refine via-state-objects', () => {
+describe('guard-parity: on-deck→refine via-state-objects', () => {
   it('accept fixture: state-object walk passes when Priority is set', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     const deps = makeRefineDeps({
       ...f,
       projectValues: { priority: 'P2' },
     });
-    const r = await runStateObjectGuards('backlog', 'refine', {
+    const r = await runStateObjectGuards('on-deck', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -620,7 +623,7 @@ describe('guard-parity: backlog→refine via-state-objects', () => {
   it('refuse fixture: state-object walk refuses when Priority missing', async () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const deps = makeRefineDeps({ ...f, projectValues: {} });
-    const r = await runStateObjectGuards('backlog', 'refine', {
+    const r = await runStateObjectGuards('on-deck', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -646,8 +649,8 @@ describe('guard-parity: backlog→refine via-state-objects', () => {
       body: f.body,
       deps: { refinementEstimate: deps },
     };
-    const reg = await runGuards('backlog', 'refine', ctxRegistry);
-    const obj = await runStateObjectGuards('backlog', 'refine', ctxStates);
+    const reg = await runGuards('on-deck', 'refine', ctxRegistry);
+    const obj = await runStateObjectGuards('on-deck', 'refine', ctxStates);
     const regKeys = new Set((reg.refusals || []).map((x) => x.id));
     const objKeys = new Set((obj.refusals || []).map((x) => x.id));
     assert.deepEqual(objKeys, regKeys);

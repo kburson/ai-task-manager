@@ -3,13 +3,23 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { STATES, FORWARD, BACKWARD, validateTransition } from '../state-machine.mjs';
 
-test('STATES is the canonical 7-state chain in order', () => {
-  assert.deepEqual(STATES, ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
+test('STATES is the canonical 8-state chain in order', () => {
+  assert.deepEqual(STATES, [
+    'backlog',
+    'on-deck',
+    'refine',
+    'plan',
+    'develop',
+    'test',
+    'review',
+    'done',
+  ]);
 });
 
 test('FORWARD covers every adjacent forward pair', () => {
   const pairs = [
-    ['backlog', 'refine'],
+    ['backlog', 'on-deck'],
+    ['on-deck', 'refine'],
     ['refine', 'plan'],
     ['plan', 'develop'],
     ['develop', 'test'],
@@ -22,9 +32,18 @@ test('FORWARD covers every adjacent forward pair', () => {
   }
 });
 
-test('BACKWARD allows test→develop and review→develop', () => {
+test('no backlog→refine shortcut — every item passes through On Deck', () => {
+  assert.equal(FORWARD.backlog, 'on-deck');
+  const r = validateTransition('backlog', 'refine');
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /illegal transition/);
+});
+
+test('BACKWARD allows on-deck→backlog, test→develop and review→develop', () => {
+  assert.equal(BACKWARD['on-deck'], 'backlog');
   assert.equal(BACKWARD.test, 'develop');
   assert.equal(BACKWARD.review, 'develop');
+  assert.deepEqual(validateTransition('on-deck', 'backlog'), { ok: true });
   assert.deepEqual(validateTransition('test', 'develop'), { ok: true });
   assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
 });

@@ -1,18 +1,20 @@
-<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-skill-version: 1.1.0 -->
 
 # rules/state-walk.md
 
 Tier-2. Loaded JIT on `/task promote`, `/task demote`, `/task next`, `/task reconcile`. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/state-walk:1.0.0
+aitm-skill-loaded:rules/state-walk:1.1.0
 ```
 
-## 7-state model
+## 8-state model
 
 ```
-backlog → refine → plan → develop → test → review → done
+backlog → on-deck → refine → plan → develop → test → review → done
 ```
+
+`on-deck` (display: "On Deck") is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → on-deck` carries no entry gate; the Priority entry gate lives on `on-deck → refine`. Backward arc `on-deck → backlog` drops an item out of the current tranche. Every item passes through On Deck — there is no `backlog → refine` shortcut.
 
 State slugs are canonical. There is no slug shim — the renamed states are the only recognized inputs. See `docs/migration-history.md` for the migration from the prior 4-state vocabulary.
 

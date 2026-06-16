@@ -40,7 +40,7 @@ export function buildReason({ activityClass, target, state, activeIssue, toolNam
 }
 
 export function suggestTransition(activityClass, currentState, activeIssue, STATE_MATRIX) {
-  const order = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+  const order = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
   const curIdx = order.indexOf(currentState);
   for (const s of order) {
     if (s === currentState) continue;

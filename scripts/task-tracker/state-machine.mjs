@@ -1,9 +1,15 @@
-// Canonical 7-state kanban transition matrix. Pure data + a validator.
+// Canonical 8-state kanban transition matrix. Pure data + a validator.
 // Consumers: move-state.mjs hardening (W2.3), /task move verb (W3.1),
 // parent-admission gate (W1.3), activity-policy lookup (W1.2).
+//
+// On Deck (#433) is an inert, gateless waiting room inserted between Backlog
+// and Refine: a positional tranche filter, identical in issue content to
+// Backlog. Every item passes through it (no backlog→refine shortcut); the
+// long-standing Priority entry gate lives on the on-deck→refine boundary.
 
 export const KANBAN_STATES = Object.freeze({
   BACKLOG: 'backlog',
+  ON_DECK: 'on-deck',
   REFINE: 'refine',
   PLAN: 'plan',
   DEVELOP: 'develop',
@@ -12,10 +18,11 @@ export const KANBAN_STATES = Object.freeze({
   DONE: 'done',
 });
 
-export const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+export const STATES = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 
 export const FORWARD = {
-  backlog: 'refine',
+  backlog: 'on-deck',
+  'on-deck': 'refine',
   refine: 'plan',
   plan: 'develop',
   develop: 'test',
@@ -24,6 +31,7 @@ export const FORWARD = {
 };
 
 export const BACKWARD = {
+  'on-deck': 'backlog',
   test: 'develop',
   review: 'develop',
 };

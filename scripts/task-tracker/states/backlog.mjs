@@ -1,23 +1,18 @@
 // State object: backlog (#292).
 //
-// Backlog is the entry state for every new issue. Exit-gates enforce that an
-// issue cannot leave Backlog for Refine without the refine-entry Priority
-// field set on the board (the #276 entry-field adapter).
+// Backlog is the entry state for every new issue. Its only successor is the
+// gateless On Deck waiting room (#433) — Backlog → On Deck carries no field
+// gate. The refine-entry Priority gate and the child/parent contiguity floors
+// that formerly fired on backlog-exit have relocated to `states/on-deck.mjs`,
+// so they now guard the On Deck → Refine boundary. Backlog keeps only the
+// universally-applicable blocked-by guard on exit.
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
-import { refineEntryFieldsPriority } from '../lib/guard-adapters-entry-fields.mjs';
-import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-parent-state-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
-import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
 export default Object.freeze({
   name: 'backlog',
   entryGuards: Object.freeze([contiguityEntryGuard]),
-  exitGuards: Object.freeze([
-    blockedByGuard,
-    refineEntryFieldsPriority,
-    backlogExitChildParentStateGuard,
-    childCannotLeadEpicExitGuard,
-  ]),
+  exitGuards: Object.freeze([blockedByGuard]),
   onEnter: Object.freeze([]),
 });

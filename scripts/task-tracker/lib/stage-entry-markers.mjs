@@ -11,14 +11,21 @@ import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 const pexec = promisify(execFile);
 
-export const STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+export const STAGES = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 const KNOWN_STAGES = new Set(STAGES);
 
-// Legal transitions in the 7-state machine. Forward arcs follow the linear
-// chain; rollback arcs cover legitimate rewinds (review/test → develop on
-// rework, develop → plan/refine on re-plan, plan → refine/backlog on cancel,
-// refine → backlog on demote). Used by verifyChainIntegrity to validate the
+// On Deck (#433) is an inert, gateless waiting room. Pre-#433 issues never
+// recorded an `aitm-entered-on-deck` marker, so the contiguity check below
+// treats it as optional in the required-prior set — it must never manufacture
+// a hard forward-move prerequisite for the in-flight corpus.
+const OPTIONAL_CONTIGUITY_STAGES = new Set(['on-deck']);
+
+// Legal transitions in the 8-state machine. Forward arcs follow the linear
+// chain (backlog → on-deck → refine → …); rollback arcs cover legitimate
+// rewinds (review/test → develop on rework, develop → plan/refine on re-plan,
+// plan → refine/backlog on cancel, refine → backlog on demote, on-deck →
+// backlog on tranche-drop). Used by verifyChainIntegrity to validate the
 // timestamp-ordered sequence of visit-numbered entry markers.
 function buildLegalTransitions() {
   const set = new Set();
@@ -31,6 +38,7 @@ function buildLegalTransitions() {
     'plan->refine',
     'plan->backlog',
     'refine->backlog',
+    'on-deck->backlog',
   ]) {
     set.add(arc);
   }
@@ -44,8 +52,11 @@ export const LEGAL_TRANSITIONS = buildLegalTransitions();
 // ts (which may carry `&quot;`-escaped quotes — unescaped by parseEntryMarkers).
 // The migration widens the reader strictly: every body that parsed before still
 // parses. The corpus rewrite of historical bodies is deferred to #369.
+// Stage group accepts hyphenated slugs (`on-deck`, #433) via `[a-z]+(?:-[a-z]+)*`
+// — this matches whole alpha-hyphen words but stops before the `-<digits>` visit
+// suffix, so `aitm-entered-on-deck-2` still parses as stage `on-deck`, visit 2.
 const ENTRY_RE_GLOBAL =
-  /<!--\s*aitm-entered-([a-z]+)(?:-(\d+))?(?::\s*([^>\s]+)|\s+ts="((?:[^"]|&quot;)*)")\s*-->/gi;
+  /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-(\d+))?(?::\s*([^>\s]+)|\s+ts="((?:[^"]|&quot;)*)")\s*-->/gi;
 
 function entryMarker(stage, ts, visit = 1) {
   const suffix = visit > 1 ? `-${visit}` : '';
@@ -256,6 +267,7 @@ export function evaluateContiguity({ fromState, toState, body, force = false }) 
   }
   const missing = [];
   for (let i = 0; i < toIdx; i++) {
+    if (OPTIONAL_CONTIGUITY_STAGES.has(STAGES[i])) continue;
     if (getStageVisitCount(body || '', STAGES[i]) === 0) missing.push(STAGES[i]);
   }
   if (missing.length === 0) return { action: 'allow', missing: [] };

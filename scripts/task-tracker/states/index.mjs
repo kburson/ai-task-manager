@@ -51,6 +51,7 @@
 import { FORWARD } from '../state-machine.mjs';
 
 import backlog from './backlog.mjs';
+import onDeck from './on-deck.mjs';
 import refine from './refine.mjs';
 import plan from './plan.mjs';
 import develop from './develop.mjs';
@@ -60,6 +61,7 @@ import done from './done.mjs';
 
 export const STATES = Object.freeze({
   backlog,
+  'on-deck': onDeck,
   refine,
   plan,
   develop,
@@ -83,10 +85,14 @@ export const FORWARD_CHAIN = Object.freeze({ ...FORWARD });
 // gate which edges are walkable today.
 //
 // Canonical defaults match the existing `BACKWARD` map in
-// `state-machine.mjs` (`test → develop`, `review → develop`); additional
-// targets (`review → test`, `review → plan`, `done → plan`) are
-// non-walkable until a future issue widens `validateTransition`.
+// `state-machine.mjs` (`on-deck → backlog`, `test → develop`,
+// `review → develop`); additional targets (`review → test`, `review → plan`,
+// `done → plan`) are non-walkable until a future issue widens
+// `validateTransition`. The `on-deck → backlog` edge (#433) IS walkable —
+// it mirrors `state-machine.mjs`'s `BACKWARD['on-deck']` so a deferred
+// tranche item can be demoted back to the raw Backlog.
 export const BACKWARD_CHAIN = Object.freeze({
+  'on-deck': Object.freeze(['backlog']),
   test: Object.freeze(['develop']),
   review: Object.freeze(['develop', 'test', 'plan']),
   done: Object.freeze(['plan']),

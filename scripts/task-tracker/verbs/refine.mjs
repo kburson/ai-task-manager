@@ -3,9 +3,10 @@
 // Sets Priority + Size + Estimate on the GitHub project board (via
 // tetherIssueToProject), prepends a `<!-- aitm-refinement-rationale: {...} -->`
 // marker AND stamps a `<!-- aitm-refine-complete: <ts> -->` stage-completion
-// marker to the issue body. When the issue is still in Backlog, executes the
-// one-step Backlog → Refine entry transition (the verb-name entry). Does NOT
-// forward-promote out of Refine — `/task promote` must be called explicitly.
+// marker to the issue body. When the issue is still pre-Refine (Backlog or On
+// Deck), executes the entry transition up to Refine (the verb-name entry):
+// backlog → on-deck → refine, or on-deck → refine. Does NOT forward-promote
+// out of Refine — `/task promote` must be called explicitly.
 //
 // CLI:
 //   /task refine <issue#> --size <XS|S|M|L|XL> --estimate <hours>
@@ -229,11 +230,14 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   }
 
   // 1b. Read the issue body up front so we can decide whether this run is a
-  //     Backlog → Refine entry transition (the one legitimate transitive
-  //     advance for this verb) or a Refine-state field/rationale refresh.
+  //     pre-Refine entry transition (the one legitimate transitive advance for
+  //     this verb) or a Refine-state field/rationale refresh. Under the 8-state
+  //     model the predecessor of Refine is On Deck, so an entry can start from
+  //     either Backlog (2 hops: backlog → on-deck → refine) or On Deck (1 hop).
   const body = await fetchBody({ issueNumber, repo: cfg.repo });
   const { state: recordedState } = readLastKnownState(body);
-  const isBacklogEntry = recordedState == null || recordedState === 'backlog';
+  const PRE_REFINE_STATES = new Set(['backlog', 'on-deck']);
+  const isPreRefineEntry = recordedState == null || PRE_REFINE_STATES.has(recordedState);
 
   // 2. Set Priority + Size + Estimate (+ Sequence when supplied) atomically on
   //    the project board.
@@ -303,14 +307,22 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     throw new Error(`refine: wrote rationale marker but parse failed: ${parsed.reason}`);
   }
 
-  // 4. Backlog → Refine entry transition (#282). This is the verb-name
-  //     entry transition — the one legitimate transitive advance for this
-  //     verb. When the issue is already in Refine (or any later state) we
-  //     do NOT advance; the user must call `/task promote` explicitly to
-  //     exit Refine. No forward EXIT advancement from a stage verb.
+  // 4. Pre-Refine → Refine entry transition (#282, #433). This is the
+  //     verb-name entry transition — the one legitimate transitive advance for
+  //     this verb. Under the 8-state model the issue may start in Backlog or On
+  //     Deck; advance one state at a time until it reaches Refine (backlog →
+  //     on-deck → refine, or on-deck → refine). backlog → on-deck is gateless;
+  //     on-deck → refine runs the Priority gate, which step 2's tether already
+  //     satisfied. When the issue is already in Refine (or any later state) we
+  //     do NOT advance; the user must call `/task promote` explicitly to exit
+  //     Refine. No forward EXIT advancement from a stage verb.
   let promoted = false;
-  if (isBacklogEntry) {
-    await promote([String(issueNumber)], cfg);
+  if (isPreRefineEntry) {
+    const startState = recordedState == null ? 'backlog' : recordedState;
+    const hops = startState === 'backlog' ? 2 : 1;
+    for (let i = 0; i < hops; i += 1) {
+      await promote([String(issueNumber)], cfg);
+    }
     promoted = true;
   }
 
@@ -344,7 +356,7 @@ export async function verbRefine(rest, cfg) {
   try {
     const result = await runRefine({ args, cfg });
     const tail = result.promoted
-      ? '; moved Backlog → Refine'
+      ? `; moved ${result.recordedState ?? 'backlog'} → Refine`
       : `; stayed at ${result.recordedState ?? 'refine'} (no forward promote — run \`/task promote\` to advance)`;
     process.stdout.write(
       `✓ #${result.issueNumber} refined: size=${result.size}, estimate=${result.estimate}h, priority=${result.priority}${tail}\n`

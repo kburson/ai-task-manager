@@ -23,6 +23,7 @@ const scriptSrc = readFileSync(script, 'utf8');
 
 const EXPECTED = [
   { name: 'Backlog', color: 'GRAY' },
+  { name: 'On Deck', color: 'GRAY' },
   { name: 'Refine', color: 'GREEN' },
   { name: 'Plan', color: 'BLUE' },
   { name: 'Develop', color: 'YELLOW' },
@@ -46,7 +47,7 @@ const EXPECTED = [
   // not carry its own hardcoded color literals (the #415 drift bug).
   assert.doesNotMatch(
     scriptSrc,
-    /STATES_TO_CREATE\+=\("(?:Backlog|Refine|Plan|Develop|Test|Review|Done):[A-Z]+"\)/,
+    /STATES_TO_CREATE\+=\("(?:Backlog|On Deck|Refine|Plan|Develop|Test|Review|Done):[A-Z]+"\)/,
     'STATES_TO_CREATE still hardcodes colors — it must use canon_color so it cannot drift'
   );
   assert.match(
@@ -69,9 +70,10 @@ const targetDir = join(temp, 'target');
 const inputsDir = join(temp, 'inputs');
 spawnSync('mkdir', ['-p', binDir, targetDir, inputsDir], { check: true });
 
-// Board mirroring the broken real-world install: all 7 columns already
+// Board mirroring the broken real-world install: all 8 columns already
 // exist (so STATES_TO_CREATE is empty and no refetch is needed), but with the
-// GitHub default names "Todo"/"In Progress" and pre-fix wrong colors.
+// GitHub default names "Todo"/"In Progress" and pre-fix wrong colors (incl.
+// "On Deck" carrying a wrong BLUE so normalization must recolor it to GRAY).
 const ghMock = join(binDir, 'gh');
 writeFileSync(
   ghMock,
@@ -137,6 +139,7 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
 [
   {"id":"F_STATUS","name":"Status","options":[
     {"id":"O_BACKLOG","name":"Backlog","color":"GRAY","description":""},
+    {"id":"O_ON_DECK","name":"On Deck","color":"BLUE","description":""},
     {"id":"O_TODO","name":"Todo","color":"GREEN","description":""},
     {"id":"O_PLAN","name":"Plan","color":"PURPLE","description":""},
     {"id":"O_PROGRESS","name":"In Progress","color":"YELLOW","description":""},
@@ -218,9 +221,9 @@ assert.ok(payloads.length > 0, 'no updateProjectV2Field mutation was emitted');
 
 const opts = payloads[payloads.length - 1].variables.opts;
 
-// First 7 (managed) options, in canonical order, with canonical name + color.
+// First 8 (managed) options, in canonical order, with canonical name + color.
 assert.deepEqual(
-  opts.slice(0, 7).map(({ name, color }) => ({ name, color })),
+  opts.slice(0, 8).map(({ name, color }) => ({ name, color })),
   EXPECTED,
   'normalize payload did not rewrite managed options to the canonical palette'
 );
@@ -234,8 +237,13 @@ assert.equal(
   'O_PROGRESS',
   'Develop must reuse the matched "In Progress" option id'
 );
+assert.equal(
+  byName['On Deck'].id,
+  'O_ON_DECK',
+  'On Deck must reuse the matched "On Deck" option id (recolored in place, not recreated)'
+);
 // Every managed option carries an id (in-place edit, never create).
-for (const o of opts.slice(0, 7)) {
+for (const o of opts.slice(0, 8)) {
   assert.ok(o.id && o.id.length > 0, `managed option ${o.name} must carry an id`);
 }
 

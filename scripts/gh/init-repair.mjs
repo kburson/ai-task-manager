@@ -17,6 +17,7 @@ const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
 const OPTION_KEYS = {
   kanbanOptionBacklog: 'backlog',
+  kanbanOptionOnDeck: 'on deck',
   kanbanOptionRefine: 'refine',
   kanbanOptionPlan: 'plan',
   kanbanOptionDevelop: 'develop',

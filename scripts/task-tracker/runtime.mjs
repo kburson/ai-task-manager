@@ -382,6 +382,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     Object.fromEntries(
       [
         [cfg.kanbanOptionBacklog, 'backlog'],
+        [cfg.kanbanOptionOnDeck, 'on-deck'],
         [cfg.kanbanOptionRefine, 'refine'],
         [cfg.kanbanOptionPlan, 'plan'],
         [cfg.kanbanOptionDevelop, 'develop'],

@@ -30,7 +30,7 @@ export const CACHE_TTL_MS = 30_000;
 export const ALLOWLIST_PREFIXES = ['.tmp/', '.ai-task-manager/scratch/'];
 
 // States that LACK source-edit permission (below `develop`).
-const PRE_DEVELOP_STATES = new Set(['backlog', 'refine', 'plan', 'unknown']);
+const PRE_DEVELOP_STATES = new Set(['backlog', 'on-deck', 'refine', 'plan', 'unknown']);
 
 const DEEP_DIVE_POSTED_MARKER = 'aitm-deep-dive-posted';
 const DEEP_DIVE_COMPLETE_MARKER = 'aitm-deep-dive-complete';
