@@ -137,6 +137,18 @@ function buildMarker(commands) {
   return serializeProofMarker({ cmd: commands.map((cmd) => `\`${cmd}\``).join(' ') });
 }
 
+// #422 — a line already carrying a rich `aitm-dod-evidence` marker (the
+// functional-DoD execution proof from #303/#345) needs no separate
+// `aitm-verified` declaration: the evidence marker is a strict content superset
+// (same `cmd` plus exit/sha/ts/key). Emitting the declaration there is redundant
+// and can trip `detectFunctionalPretick`'s spurious un-tick. Matches both the
+// keyed (`aitm-dod-evidence:key`) and new (`aitm-dod-evidence key="…"`) forms.
+const DOD_EVIDENCE_RE = /<!--\s*aitm-dod-evidence(?::[a-z0-9-]+)?\s[\s\S]*?-->/i;
+
+function lineHasDodEvidence(line) {
+  return DOD_EVIDENCE_RE.test(String(line));
+}
+
 function insertVerificationCommands(lines, commands) {
   if (commands.length === 0) return lines;
   const out = [...lines];
@@ -189,7 +201,16 @@ export function buildEvidenceBackfill(body = '', { mappings = {} } = {}) {
   if (ambiguousLabels.length > 0) return { ok: false, ambiguousLabels, audit };
 
   let lines = [...parsed.lines];
+  const skippedDodEvidenceLabels = [];
   for (const item of audit.missingEvidence) {
+    // #422 — never append a redundant `aitm-verified` declaration to a line
+    // that already carries an `aitm-dod-evidence` marker. The evidence marker
+    // is a strict content superset of the declaration, so the declaration adds
+    // nothing and risks a `detectFunctionalPretick` spurious un-tick.
+    if (lineHasDodEvidence(lines[item.lineIndex])) {
+      skippedDodEvidenceLabels.push(item.label);
+      continue;
+    }
     lines[item.lineIndex] =
       `${lines[item.lineIndex].trimEnd()} ${buildMarker(mappings[item.label])}`;
   }

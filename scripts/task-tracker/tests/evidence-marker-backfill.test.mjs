@@ -175,4 +175,49 @@ const metadata = [
   );
 }
 
+// #422 — the declaration writer must NOT append a redundant `aitm-verified`
+// declaration to a line that already carries an `aitm-dod-evidence` marker (the
+// evidence marker is a strict content superset). A plain line with no evidence
+// still gets the declaration. Both cases in one backfill.
+{
+  const dodEvidence =
+    '<!-- aitm-dod-evidence key="tests" cmd="npm run test:all" exit="0" sha="abc1234" ts="2026-06-16T00:00:00.000Z" -->';
+  const body = [
+    '## Acceptance Criteria',
+    `- [ ] Evidence-bearing AC ${dodEvidence}`,
+    '- [ ] Plain AC',
+    '',
+    '## Pickup Directive',
+    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '',
+    metadata,
+  ].join('\n');
+  // Key mappings off the audit's own labels (markers are retained in the
+  // label text), mirroring how the real caller assembles `mappings`.
+  const pre = auditEvidenceMarkers(body);
+  const mappings = {};
+  for (const item of pre.missingEvidence) {
+    mappings[item.label] = item.label.startsWith('Evidence-bearing')
+      ? ['npm run test:all']
+      : ['node scripts/task-tracker/tests/evidence-marker-backfill.test.mjs'];
+  }
+  const result = buildEvidenceBackfill(body, { mappings });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const lines = result.body.split('\n');
+  const evLine = lines.find((l) => l.includes('Evidence-bearing AC'));
+  const plainLine = lines.find((l) => l.startsWith('- [ ] Plain AC'));
+  // Case 1: evidence-bearing line keeps its aitm-dod-evidence and gains NO
+  // redundant aitm-verified declaration.
+  assert.ok(evLine.includes('aitm-dod-evidence'), 'evidence marker preserved');
+  assert.ok(
+    !evLine.includes('aitm-verified'),
+    `no redundant declaration on evidence-bearing line; got: ${evLine}`
+  );
+  // Case 2: plain line (no evidence) still receives the declaration.
+  assert.match(
+    plainLine,
+    /Plain AC <!-- aitm-verified cmd="`node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs`" -->/
+  );
+}
+
 console.log('evidence-marker-backfill.test.mjs: all passed');
