@@ -6,11 +6,10 @@
 //
 // Usage: node log-issue-time.mjs <issue#> [--dry-run]
 
-import { writeFileSync, unlinkSync } from 'node:fs';
-import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
+import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
+import { withRetry } from './lib/with-retry.mjs';
 import {
   buildFieldSyncPlan,
   fieldIdFor,
@@ -37,7 +36,6 @@ if (!issueArg) {
 
 const issueNumber = issueArg.replace('#', '');
 const cfg = loadConfig();
-const projectDir = getProjectDir();
 
 if (!cfg.repo) {
   console.error('repo not configured. Run: /task config repo owner/repo');
@@ -53,18 +51,6 @@ const { owner, repoName } = splitRepo(cfg.repo);
 async function fetchIssueBody() {
   const out = await gh(['issue', 'view', issueNumber, '-R', cfg.repo, '--json', 'body']);
   return JSON.parse(out).body ?? '';
-}
-
-async function writeIssueBody(body) {
-  const tmp = path.join(projectTmpDir(projectDir), `aitm-fields-${issueNumber}-${Date.now()}.md`);
-  try {
-    writeFileSync(tmp, body, 'utf8');
-    await gh(['issue', 'edit', issueNumber, '-R', cfg.repo, '--body-file', tmp]);
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-  }
 }
 
 // ---- GitHub queries ----
@@ -213,24 +199,37 @@ async function fetchProjectMeta() {
   // succeeds but the `<!-- aitm-fields -->` cache stays null. That is the #180 bug.
   const overrideKeys = ['engagedTime', 'sessionTime', 'reviewTime', 'planTime'];
   if (repairedStartTime) overrideKeys.push('startTime');
-  const updated = ensureIssueFieldDb(
-    issueBody,
-    fieldDefs,
-    {
-      engagedTime: engagedMin,
-      sessionTime: totalActiveMin,
-      reviewTime: reviewMin,
-      planTime: planMin,
-      ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
-    },
-    { overrideKeys }
+  const writeUpdates = {
+    engagedTime: engagedMin,
+    sessionTime: totalActiveMin,
+    reviewTime: reviewMin,
+    planTime: planMin,
+    ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
+  };
+
+  // `values` feeds the board-field sync below. Derived once from the body we
+  // already fetched; the override keys force the authoritative timing values
+  // (see #180), so this is stable regardless of any concurrent body edit.
+  const values = ensureIssueFieldDb(issueBody, fieldDefs, writeUpdates, { overrideKeys }).values;
+
+  // Body write goes through mutateIssueBody — fetch-and-write in one
+  // transaction, marker-invariant safe (#361/#409) — wrapped in bounded
+  // retry/backoff so a transient gh failure neither aborts the flush nor
+  // tears the body. The `mutate` recomputes the transform against the FRESH
+  // base mutateIssueBody fetches, not the earlier read. The timing data lives
+  // in the ⏱ comment (read-only here), so an exhausted retry rethrows loudly
+  // without dropping a row or corrupting the body.
+  await withRetry(() =>
+    mutateIssueBody({
+      issueNumber: Number(issueNumber),
+      repo: cfg.repo,
+      mutate: (base) => {
+        let next = ensureIssueFieldDb(base, fieldDefs, writeUpdates, { overrideKeys }).body;
+        if (stageRollup.visits.length) next = upsertStageRollupMarker(next, stageRollup);
+        return next;
+      },
+    })
   );
-  const values = updated.values;
-  let bodyOut = updated.body;
-  if (stageRollup.visits.length) {
-    bodyOut = upsertStageRollupMarker(bodyOut, stageRollup);
-  }
-  if (bodyOut !== issueBody) await writeIssueBody(bodyOut);
 
   // #399 — board writes carry fixed-width duration strings at second
   // precision. The body marker (`values`) stays in minutes; `secondsByKey`
