@@ -36,6 +36,7 @@ import {
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
+import { isChoreModeActive } from './lib/chore-mode.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -109,6 +110,20 @@ if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') 
 // ---------------------------------------------------------------------------
 // Decision
 // ---------------------------------------------------------------------------
+
+// chore-mode bypass (#440). chore-mode is the sanctioned escape hatch for
+// editing source files when no issue can legitimately reach `develop` (e.g. an
+// infrastructure prerequisite that must land before the verb chain can run).
+// By design `chore-mode on` detaches the active task, so `state` is null and
+// the no-active-task policy (activity-policy.mjs) would refuse every
+// WRITE_CODE/COMMIT_CODE — silently defeating the hatch. Allow every activity
+// class while chore-mode is active, mirroring source-edit-gate.mjs's
+// `chore-mode-bypass` (line 76) so the two PreToolUse gates that the installer
+// wires on Edit|Write|NotebookEdit never disagree about whether chore-mode
+// grants a bypass (#440 AC2). The commit-subject contract is unaffected: the
+// PostToolUse commit-trail still requires `chore:` subjects while chore-mode is
+// on, so loosening the edit gate does not loosen the commit gate (#440 AC5).
+if (isChoreModeActive(projectRoot)) process.exit(0);
 
 // Active task bound but no kanban state recorded → drift. Refuse all write
 // activity classes and point at reconcile. READ_* still passes.
