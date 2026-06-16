@@ -462,5 +462,28 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
   };
 
+  // #425 — actual GitHub open/closed state of the primary issue, independent of
+  // the board Status field. true = CLOSED, false = OPEN, null = unknown
+  // (SKIP_NETWORK or any error). Lets close.mjs distinguish a genuinely-closed
+  // issue from a board=Done + issue-OPEN drift the auto-close workflow missed.
+  ctx.getIssueClosedState = async (issueNum) => {
+    if (SKIP_NETWORK) return null;
+    try {
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', String(issueNum), '-R', cfg.repo, '--json', 'state', '--jq', '.state'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const state = String(stdout || '')
+        .trim()
+        .toUpperCase();
+      if (state === 'CLOSED') return true;
+      if (state === 'OPEN') return false;
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   return ctx;
 }

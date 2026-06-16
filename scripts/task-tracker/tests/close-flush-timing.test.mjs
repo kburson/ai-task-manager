@@ -35,9 +35,14 @@ assert.equal(
 );
 
 // Ordering: terminal `approved` row must precede runLogIssueTime, which must precede runMoveStateDone.
+// #425 added an earlier `runMoveStateDone` call in the close-convergence
+// short-circuit (board-drift recovery on an already-CLOSED issue), so anchor
+// this ordering check to the TERMINAL (last) board move in the full pipeline,
+// not the first textual occurrence.
 const doneIdx = src.search(/closeBr\(\{[^}]*event:\s*_PE3\.done\.enter\.event/);
 const flushIdx = src.indexOf('await runLogIssueTime(closeTarget)');
-const moveDoneIdx = src.search(/runMoveStateDone\(/);
+const moveDoneMatches = [...src.matchAll(/runMoveStateDone\(/g)];
+const moveDoneIdx = moveDoneMatches.length ? moveDoneMatches[moveDoneMatches.length - 1].index : -1;
 assert.ok(doneIdx >= 0 && flushIdx >= 0 && moveDoneIdx >= 0);
 assert.ok(doneIdx < flushIdx, 'runLogIssueTime must come after the terminal approved row');
 assert.ok(flushIdx < moveDoneIdx, 'runLogIssueTime must come before runMoveStateDone');

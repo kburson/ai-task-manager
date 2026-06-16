@@ -19,6 +19,7 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
+import { decideCloseConvergence } from '../lib/close-convergence.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -36,6 +37,7 @@ export async function verbClose(ctx) {
     runLogIssueTime,
     fetchSubIssues,
     getIssueBoardState,
+    getIssueClosedState,
     uncheckedPreCloseCheckboxes,
     nowIso,
   } = ctx;
@@ -63,16 +65,71 @@ export async function verbClose(ctx) {
     return;
   }
 
+  // #425 — converge board-Done ↔ issue-CLOSED instead of issuing a no-op on
+  // board Status alone. The board and the GitHub open/closed state are
+  // decoupled: a
+  // board=Done + issue-OPEN pair (auto-close workflow missed) must re-close the
+  // issue, not be treated as "already Done" and stranded forever. We gate the
+  // clean no-op on the issue being verifiably CLOSED, and converge the board if
+  // it has drifted behind a closed issue.
   if (!SKIP_NETWORK && closeIssueNum) {
-    const currentState = await getIssueBoardState(closeIssueNum);
-    if (currentState === 'done') {
+    const [boardState, issueClosed] = await Promise.all([
+      getIssueBoardState(closeIssueNum),
+      getIssueClosedState ? getIssueClosedState(closeIssueNum) : Promise.resolve(null),
+    ]);
+    const decision = decideCloseConvergence({ boardState, issueClosed });
+
+    if (decision.action === 'close-issue') {
+      // Board reads Done but the issue is still OPEN — the Projects auto-close
+      // workflow did not fire. Close the primary explicitly. On failure, surface
+      // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
+      try {
+        await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
+          timeout: GH_API_TIMEOUT_MS,
+        });
+      } catch (err) {
+        console.error(
+          `Failed to close ${closeTarget} on GitHub (board is Done but the issue was still OPEN): ${err.message}\n` +
+            `Local state left intact — re-run \`/task close ${closeTarget}\` once GitHub is reachable.`
+        );
+        process.exitCode = 1;
+        return;
+      }
       clearActive(statePath);
       try {
         deregisterTask(projectDir, closeTarget);
       } catch {}
-      console.log(`${closeTarget} is already Done — local state and fleet cleaned up.`);
+      console.log(
+        `${closeTarget} board was Done but the GitHub issue was still OPEN — closed it now; local state and fleet cleaned up.`
+      );
       return;
     }
+
+    if (decision.action === 'noop') {
+      // Issue is verifiably CLOSED. Converge the board if it lagged behind.
+      if (decision.boardDrift) {
+        const moveResult = await runMoveStateDone(closeTarget, { silent: true });
+        if (!moveResult.ok && !moveResult.benign) {
+          console.error(
+            `${closeTarget} is closed on GitHub but the board move to Done failed: ${moveResult.stderr || moveResult.status}\n` +
+              `Local state left intact — re-run \`/task close ${closeTarget}\` to retry the board move.`
+          );
+          process.exitCode = 1;
+          return;
+        }
+      }
+      clearActive(statePath);
+      try {
+        deregisterTask(projectDir, closeTarget);
+      } catch {}
+      console.log(
+        decision.boardDrift
+          ? `${closeTarget} was already closed on GitHub — converged the board to Done; local state and fleet cleaned up.`
+          : `${closeTarget} is already fully closed (issue CLOSED, board Done) — local state and fleet cleaned up.`
+      );
+      return;
+    }
+    // decision.action === 'proceed' → fall through to the full close pipeline.
   }
 
   if (closeTarget === 'discover') {
@@ -479,16 +536,38 @@ export async function verbClose(ctx) {
       `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
     );
   }
+  // #425 — explicitly close the primary issue rather than relying on the
+  // GitHub Projects auto-close workflow firing off the board move below. The
+  // workflow is best-effort; when it misses, board=Done + issue-OPEN drift
+  // results (see close-convergence.mjs). Closing here makes issue-close a
+  // first-class, separately-recoverable step: on failure we surface it and
+  // exit non-zero WITHOUT clearing local state, so a re-run finishes the job
+  // (and the short-circuit above will converge the lagging side). `gh issue
+  // close` is idempotent — closing an already-closed issue is a no-op.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    try {
+      await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
+        timeout: GH_API_TIMEOUT_MS,
+      });
+    } catch (err) {
+      console.error(
+        `[task-tracker] ✗ Failed to close ${closeTarget} on GitHub: ${err.message}\n` +
+          `Local state left intact — re-run \`/task close ${closeTarget}\` once GitHub is reachable.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
   clearActive(statePath);
   try {
     deregisterTask(projectDir, s.active);
   } catch {}
   // #385 — branch on the structured result. A genuine board-move failure must
-  // NOT be reported as a clean "Closed": the issue is already closed on GitHub
-  // (the `gh issue close` above), but if the board never reached `done` the
-  // user needs to see the real reason and a non-zero exit. The benign
-  // `done → done` no-op (auto-close already moved the board) is treated as
-  // success and produces no warning.
+  // NOT be reported as a clean "Closed": the issue was just closed on GitHub
+  // (the explicit `gh issue close` above), but if the board never reached
+  // `done` the user needs to see the real reason and a non-zero exit. The
+  // benign `done → done` no-op (auto-close already moved the board) is treated
+  // as success and produces no warning.
   const moveResult = await runMoveStateDone(s.active, { silent: true });
   await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
   if (moveResult && !moveResult.ok && !moveResult.benign) {
