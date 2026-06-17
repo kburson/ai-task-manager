@@ -201,7 +201,21 @@ async function onSessionStart(sid) {
   if (!s.active) {
     let fleet = {};
     try {
-      fleet = readFleet(fleetRegistryPath(findMainWorktreePath(projectDir)));
+      // #441 — guard-time lazy auto-reap. This is the only readFleet on the
+      // SessionEnd path, so opt into reap here: it stays a pure scan when the
+      // registry is clean and only locks+rewrites when stale entries exist
+      // (gone worktrees, aged-out actives, leaked active main binds). activeRef
+      // is undefined in this no-active branch, so paused binds survive while
+      // leaked active main binds get cleaned.
+      const mainPath = findMainWorktreePath(projectDir);
+      fleet = readFleet(fleetRegistryPath(mainPath), {
+        reap: true,
+        reapCtx: {
+          nowMs: Date.now(),
+          activeRef: s.active || undefined,
+          mainWorktreePath: mainPath,
+        },
+      });
     } catch {
       // Fall through with empty fleet → treated as no-active.
     }

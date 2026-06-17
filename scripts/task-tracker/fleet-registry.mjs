@@ -81,18 +81,113 @@ export function currentBranch(projectDir) {
   }
 }
 
-export function readFleet(registryPath) {
+// #441 — default 24h staleness horizon for active entries. Exported so callers
+// (fleet prune, guard-time reap) and tests share one constant.
+export const STALE_MS_DEFAULT = 24 * 60 * 60 * 1000;
+
+// #441 — discriminate a main-thread bind from a worktree sub-agent bind. The
+// robust test is "is this worktreePath the main worktree?", which stays correct
+// whether the caller runs on the main thread or inside a sub-agent's worktree.
+export function classifyBindKind(projectDir, worktreePath) {
+  return worktreePath === findMainWorktreePath(projectDir) ? 'main' : 'worktree';
+}
+
+// #441 — effective kind for any entry: honor a stored `kind`, else infer from
+// path (legacy/migration entries lacking the tag). When mainWorktreePath is
+// unknown, inference is skipped and anything untagged is treated as a worktree.
+export function effectiveKind(entry, mainWorktreePath) {
+  if (entry?.kind === 'main' || entry?.kind === 'worktree') return entry.kind;
+  if (mainWorktreePath && entry?.worktreePath === mainWorktreePath) return 'main';
+  return 'worktree';
+}
+
+// #441 — pure, injectable staleness predicate. Evicts when: the entry is
+// malformed; a `main`-kind bind that is not the currently-active issue; a
+// worktree whose directory no longer exists; or an active worktree older than
+// the staleness horizon. Clock + fs are injected via ctx so it unit-tests
+// without touching the real clock or disk.
+export function isStaleEntry(ref, entry, ctx = {}) {
+  if (!entry || typeof entry !== 'object') return true;
+  const {
+    nowMs = Date.now(),
+    staleMs = STALE_MS_DEFAULT,
+    activeRef,
+    mainWorktreePath,
+    dirExists = existsSync,
+  } = ctx;
+  const kind = effectiveKind(entry, mainWorktreePath);
+  if (kind === 'main') {
+    // A live main bind is owned by the main-thread state. A *paused* main bind
+    // is intentional (the user paused and will resume) — keep it. Only an
+    // `active` main bind that is not the currently-active issue is leaked
+    // garbage (the #405@trunk-class entry).
+    if (entry.status !== 'active') return false;
+    return ref !== activeRef;
+  }
+  // worktree kind
+  if (typeof entry.worktreePath !== 'string' || !entry.worktreePath) return true;
+  if (!dirExists(entry.worktreePath)) return true;
+  if (entry.status === 'active') {
+    const started = Date.parse(entry.startedAt);
+    if (!Number.isNaN(started) && nowMs - started > staleMs) return true;
+  }
+  return false;
+}
+
+// #441 — pure partition of a fleet into kept vs evicted refs.
+export function reapStaleEntries(fleet, ctx = {}) {
+  const kept = {};
+  const evicted = [];
+  for (const [ref, entry] of Object.entries(fleet || {})) {
+    if (isStaleEntry(ref, entry, ctx)) evicted.push(ref);
+    else kept[ref] = entry;
+  }
+  return { kept, evicted };
+}
+
+export function readFleet(registryPath, opts) {
+  let fleet;
   try {
     let readPath = registryPath;
     if (!existsSync(readPath)) {
       const legacy = legacyPathFor(registryPath);
       if (legacy && existsSync(legacy)) readPath = legacy;
     }
-    if (!existsSync(readPath)) return {};
-    return JSON.parse(readFileSync(readPath, 'utf8'));
+    fleet = !existsSync(readPath) ? {} : JSON.parse(readFileSync(readPath, 'utf8'));
   } catch {
-    return {};
+    fleet = {};
   }
+  // #441 — opt-in lazy auto-reap. Default (one-arg) call stays pure: no lock,
+  // no write — every hot path is unaffected. With opts.reap we compute the
+  // stale set and only take the lock + rewrite when at least one entry is
+  // stale, so a clean registry costs one extra in-memory scan and nothing more.
+  if (!opts?.reap) return fleet;
+  const ctx = { staleMs: STALE_MS_DEFAULT, dirExists: existsSync, ...(opts.reapCtx || {}) };
+  const { kept, evicted } = reapStaleEntries(fleet, ctx);
+  if (evicted.length === 0) return fleet;
+  withLock(registryPath, () => {
+    const fresh = readFleet(registryPath);
+    const recomputed = reapStaleEntries(fresh, ctx);
+    writeFleet(registryPath, recomputed.kept);
+  });
+  return kept;
+}
+
+// #441 — operator-facing prune. Shares isStaleEntry with the guard-time reap so
+// `fleet prune` and lazy auto-reap never diverge. dryRun computes without
+// writing; otherwise evicts under lock and returns the plan either way.
+export function pruneFleet(registryPath, ctx = {}, { dryRun = false } = {}) {
+  const fullCtx = { staleMs: STALE_MS_DEFAULT, dirExists: existsSync, ...ctx };
+  const fleet = readFleet(registryPath);
+  const { kept, evicted } = reapStaleEntries(fleet, fullCtx);
+  if (!dryRun && evicted.length > 0) {
+    withLock(registryPath, () => {
+      const fresh = readFleet(registryPath);
+      const recomputed = reapStaleEntries(fresh, fullCtx);
+      writeFleet(registryPath, recomputed.kept);
+    });
+  }
+  return { kept, evicted };
 }
 
 export function writeFleet(registryPath, data) {
@@ -107,9 +202,13 @@ function testRmwDelay() {
   if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-export function registerTask(projectDir, issueRef, worktreePath, branch) {
+export function registerTask(projectDir, issueRef, worktreePath, branch, kind) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);
+  // #441 — derive kind when the caller omits it (back-compat): a bind whose
+  // worktreePath is the main worktree is a `main` bind, everything else is a
+  // `worktree` sub-agent bind. An explicit kind arg always wins.
+  const effKind = kind ?? (worktreePath === mainPath ? 'main' : 'worktree');
   withLock(rPath, () => {
     const fleet = readFleet(rPath);
     testRmwDelay();
@@ -117,6 +216,7 @@ export function registerTask(projectDir, issueRef, worktreePath, branch) {
     fleet[issueRef] = {
       worktreePath,
       branch,
+      kind: effKind,
       startedAt: existing?.startedAt ?? new Date().toISOString(),
       status: 'active',
     };

@@ -14,19 +14,33 @@
 
 import { loadState, saveState } from '../state.mjs';
 import { readChoreMode, writeChoreMode } from '../lib/chore-mode.mjs';
-import { readFleet, fleetRegistryPath, findMainWorktreePath } from '../fleet-registry.mjs';
+import {
+  readFleet,
+  fleetRegistryPath,
+  findMainWorktreePath,
+  effectiveKind,
+} from '../fleet-registry.mjs';
 
 // Returns the list of fleet entries that look like a live worktree-scoped
 // agent. Used by the `on` refusal gate. An entry is considered live if its
-// `status === 'active'` AND it has a non-empty `worktreePath` (the marker of
-// a worktree-scoped spawn vs the main-thread bind).
-export function liveWorktreeAgents(fleet) {
+// `status === 'active'` AND its effective kind is `worktree` (a real
+// worktree-scoped spawn, not a main-thread bind).
+//
+// #441 — a main-thread `/task #N` bind stores `worktreePath = projectDir`
+// (= the main worktree), which is byte-identical to a real agent's path. The
+// old "non-empty worktreePath" test therefore false-blocked chore-mode on
+// every main bind (the #405@trunk class). We now key on the stored `kind`,
+// falling back to path-inference against `mainWorktreePath` for legacy entries
+// that predate the tag. When `mainWorktreePath` is omitted, only the stored
+// kind is honored (still strictly better than the old behavior).
+export function liveWorktreeAgents(fleet, mainWorktreePath) {
   const out = [];
   if (!fleet || typeof fleet !== 'object') return out;
   for (const [ref, entry] of Object.entries(fleet)) {
     if (!entry || typeof entry !== 'object') continue;
     if (entry.status !== 'active') continue;
     if (!entry.worktreePath || typeof entry.worktreePath !== 'string') continue;
+    if (effectiveKind(entry, mainWorktreePath) !== 'worktree') continue;
     out.push({ ref, ...entry });
   }
   return out;
@@ -86,14 +100,16 @@ export async function choreModeOn(ctx, deps = {}) {
 
   // Refuse if a live worktree-scoped agent is recorded in the fleet registry.
   let fleet = {};
+  let mainPath;
   try {
-    fleet = readFleetImpl(fleetRegistryPath(findMainImpl(projectDir)));
+    mainPath = findMainImpl(projectDir);
+    fleet = readFleetImpl(fleetRegistryPath(mainPath));
   } catch {
     // Missing/unreadable registry is treated as "no live agents" — chore-mode
     // is a developer-only flow and a missing fleet file means no fan-out is
     // even possible.
   }
-  const live = liveWorktreeAgents(fleet);
+  const live = liveWorktreeAgents(fleet, mainPath);
   if (live.length > 0) {
     const refusal = buildLiveFleetRefusal(live);
     err.write(`[task-tracker] ${refusal.code}: ${refusal.message}\n`);
