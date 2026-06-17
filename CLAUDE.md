@@ -79,6 +79,29 @@ Never hand-roll issue bodies and never write them with `gh issue edit --body` / 
 
 For issue creation, use `scripts/task-tracker/preflight-issue.mjs` so the DoD and Pickup-Directive tail are stamped correctly.
 
+## Develop-Phase Verification Contract
+
+**Never run `npm run test:all` during Develop.** Full regression runs exclusively at the Test stage (isolated worktree, CI emulation).
+
+In the Develop phase, run instead:
+
+```
+node scripts/task-tracker/verify-develop.mjs
+```
+
+This script (implemented in #447) enforces lint-first ordering and targeted test execution:
+
+1. `npm run lint:js -- --fix` — auto-fix eslint violations; aborts if unfixable errors remain
+2. `npm run format` — prettier auto-format; code is now in final committed shape
+3. `git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'` — collect test files changed vs HEAD
+4. `node --test <file>` for each collected file; aborts on first failure
+
+If the diff is empty (no test files changed), the script exits 0 with "nothing to verify." Run the script before every commit in Develop.
+
+`npm run test:all` belongs in the VC section of Test-stage issues, not Develop.
+
+---
+
 ## Tool Usage Rules
 
 - Use Read, Edit, Write for files. Bash only for: git, npm/node, shell scripts.
