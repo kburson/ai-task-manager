@@ -74,7 +74,11 @@ async function defaultWriteIssueBody({ issueNumber, repo, body }) {
     projectScratchDir('test'),
     `aitm-reconcile-${process.pid}-${Date.now()}.md`
   );
-  await pushIssueBody({ issueNumber, repo, body, scratchPath: tmp, deps: { pexec } });
+  // quiet: true (#435) — this is the known-internal, deliberately-retained
+  // pushIssueBody call site (see the `// keep:` note on the import). Suppress
+  // the maintainer-facing DEPRECATED warning so routine `reconcile accept-live`
+  // repairs the operator is told to run do not leak it.
+  await pushIssueBody({ issueNumber, repo, body, scratchPath: tmp, quiet: true, deps: { pexec } });
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {

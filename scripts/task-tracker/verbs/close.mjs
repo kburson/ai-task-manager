@@ -19,7 +19,7 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
-import { decideCloseConvergence } from '../lib/close-convergence.mjs';
+import { decideCloseConvergence, decideBoardMoveFailure } from '../lib/close-convergence.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -110,12 +110,19 @@ export async function verbClose(ctx) {
       if (decision.boardDrift) {
         const moveResult = await runMoveStateDone(closeTarget, { silent: true });
         if (!moveResult.ok && !moveResult.benign) {
-          console.error(
-            `${closeTarget} is closed on GitHub but the board move to Done failed: ${moveResult.stderr || moveResult.status}\n` +
-              `Local state left intact — re-run \`/task close ${closeTarget}\` to retry the board move.`
-          );
-          process.exitCode = 1;
-          return;
+          // #435 — re-read the board before surfacing. A race can leave the
+          // board already at Done (auto-close/converge won out-of-band) even
+          // though the move reported a non-benign failure. Only a board that is
+          // NOT Done is a genuine failure.
+          const postBoardState = await getIssueBoardState(closeTarget);
+          if (decideBoardMoveFailure({ moveResult, boardState: postBoardState }).surface) {
+            console.error(
+              `${closeTarget} is closed on GitHub but the board move to Done failed: ${moveResult.stderr || moveResult.status}\n` +
+                `Local state left intact — re-run \`/task close ${closeTarget}\` to retry the board move.`
+            );
+            process.exitCode = 1;
+            return;
+          }
         }
       }
       clearActive(statePath);
@@ -571,14 +578,22 @@ export async function verbClose(ctx) {
   const moveResult = await runMoveStateDone(s.active, { silent: true });
   await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
   if (moveResult && !moveResult.ok && !moveResult.benign) {
-    const detail =
-      (moveResult.stderr || '').trim() ||
-      `move-state.mjs exited ${moveResult.status ?? 'non-zero'}`;
-    console.error(
-      `[task-tracker] ✗ #${s.active.replace(/^#/, '')} closed on GitHub but the board move to "done" failed: ${detail}`
-    );
-    process.exitCode = 1;
-    return;
+    // #435 — the move reported a non-benign failure, but a race can leave the
+    // board already at Done (the auto-close workflow or a prior converge moved
+    // it out-of-band between the decision above and this move). Re-read the
+    // board: swallow when it is verifiably Done (the close succeeded), surface
+    // only when it is NOT Done (a genuine board-move failure).
+    const postBoardState = await getIssueBoardState(s.active);
+    if (decideBoardMoveFailure({ moveResult, boardState: postBoardState }).surface) {
+      const detail =
+        (moveResult.stderr || '').trim() ||
+        `move-state.mjs exited ${moveResult.status ?? 'non-zero'}`;
+      console.error(
+        `[task-tracker] ✗ #${s.active.replace(/^#/, '')} closed on GitHub but the board move to "done" failed: ${detail}`
+      );
+      process.exitCode = 1;
+      return;
+    }
   }
   console.log(`Closed ${s.active}.`);
 }

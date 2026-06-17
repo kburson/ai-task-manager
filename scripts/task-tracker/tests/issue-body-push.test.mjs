@@ -258,4 +258,57 @@ function makeDeps({ pexecImpl } = {}) {
   assert.equal(warnCalls.length, 2, 'reset must allow a fresh single warning');
 }
 
+// ── quiet: true suppresses the deprecation warning (#435) ───────────────────
+// The reconcile recovery-snapshot path is a deliberately-retained internal
+// caller; `quiet: true` must suppress the maintainer-facing DEPRECATED warning
+// so routine `reconcile accept-live` repairs do not leak it to the operator.
+{
+  _resetDeprecationWarningForTest();
+  const warnCalls = [];
+  const { deps } = makeDeps();
+  deps.warn = (msg) => warnCalls.push(msg);
+  const res = await pushIssueBody({
+    issueNumber: 435,
+    repo: 'o/r',
+    body: 'a',
+    scratchPath: '/tmp/quiet-1.md',
+    quiet: true,
+    deps,
+  });
+  assert.equal(res.status, 'ok', 'quiet push still succeeds');
+  assert.equal(warnCalls.length, 0, 'quiet: true must suppress the DEPRECATED warning');
+}
+
+// ── quiet does NOT consume the once-per-process latch (#435) ────────────────
+// A quiet call must not disarm the one-shot warning: a subsequent NON-quiet
+// (accidental new) caller in the same process still gets the nudge exactly once.
+{
+  _resetDeprecationWarningForTest();
+  const warnCalls = [];
+
+  const { deps: dq } = makeDeps();
+  dq.warn = (msg) => warnCalls.push(msg);
+  await pushIssueBody({
+    issueNumber: 1,
+    repo: 'o/r',
+    body: 'a',
+    scratchPath: '/tmp/quiet-latch-1.md',
+    quiet: true,
+    deps: dq,
+  });
+  assert.equal(warnCalls.length, 0, 'quiet call emits nothing');
+
+  const { deps: dn } = makeDeps();
+  dn.warn = (msg) => warnCalls.push(msg);
+  await pushIssueBody({
+    issueNumber: 2,
+    repo: 'o/r',
+    body: 'b',
+    scratchPath: '/tmp/quiet-latch-2.md',
+    deps: dn,
+  });
+  assert.equal(warnCalls.length, 1, 'a later non-quiet caller still warns once');
+  assert.match(warnCalls[0], /DEPRECATED/);
+}
+
 console.log('issue-body-push.test.mjs: all passed');

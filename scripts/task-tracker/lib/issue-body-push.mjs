@@ -49,6 +49,7 @@ export async function pushIssueBody({
   body,
   scratchPath,
   timeout = GH_API_TIMEOUT_MS,
+  quiet = false,
   deps = {},
 } = {}) {
   if (issueNumber == null) throw new Error('pushIssueBody: issueNumber is required');
@@ -60,8 +61,13 @@ export async function pushIssueBody({
   const pexec = deps.pexec || defaultPexec;
   const warn = deps.warn || ((msg) => console.warn(msg));
 
-  // One-time deprecation notice per process (#293).
-  if (!_deprecationWarned) {
+  // One-time deprecation notice per process (#293). The `quiet` opt-out
+  // (#435) suppresses it for known-internal, deliberately-retained call sites
+  // (e.g. reconcile's recovery-snapshot write) whose `// keep:` justification
+  // documents why they stay on pushIssueBody — so routine operator-facing
+  // close/reconcile flows do not leak a maintainer-targeted warning. Any NEW
+  // (accidental) caller omits `quiet` and still gets the nudge.
+  if (!quiet && !_deprecationWarned) {
     _deprecationWarned = true;
     warn(
       '[pushIssueBody] DEPRECATED: the snapshot-body signature is fragile under ' +

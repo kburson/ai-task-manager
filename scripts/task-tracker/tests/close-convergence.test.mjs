@@ -11,7 +11,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { decideCloseConvergence } from '../lib/close-convergence.mjs';
+import { decideCloseConvergence, decideBoardMoveFailure } from '../lib/close-convergence.mjs';
 
 test('REGRESSION: board=Done + issue OPEN → close the issue (the #425 drift)', () => {
   const d = decideCloseConvergence({ boardState: 'done', issueClosed: false });
@@ -53,6 +53,63 @@ test('issueClosed unknown (null) → always proceed, never a blind no-op', () =>
 test('no args / empty object → proceed (safe default)', () => {
   assert.deepEqual(decideCloseConvergence(), { action: 'proceed' });
   assert.deepEqual(decideCloseConvergence({}), { action: 'proceed' });
+});
+
+// ── decideBoardMoveFailure: swallow-vs-surface after runMoveStateDone (#435) ──
+//
+// Defect B: `close` could surface a spurious `board move to "done" failed` +
+// non-zero exit when the board had ALREADY reached Done out-of-band (the
+// Projects auto-close workflow or a prior converge) between close's decision
+// and its move call. The residual false positive is a race that a pure stderr
+// classifier cannot distinguish from a genuine failure without masking real
+// failures — so close re-reads the board state after the move and feeds it here.
+
+test('move succeeded (ok) → never surface', () => {
+  assert.deepEqual(decideBoardMoveFailure({ moveResult: { ok: true }, boardState: 'develop' }), {
+    surface: false,
+    reason: 'ok-or-benign',
+  });
+});
+
+test('move already classified benign → never surface (regardless of board)', () => {
+  assert.deepEqual(decideBoardMoveFailure({ moveResult: { benign: true }, boardState: null }), {
+    surface: false,
+    reason: 'ok-or-benign',
+  });
+});
+
+test('CAPTURED RACE: move failed but board is verifiably Done → swallow (#435 Defect B)', () => {
+  // The reproducing case: issue closed, board reached Done out-of-band, the
+  // move-state call then reports failure. close must print `Closed #N.` exit 0.
+  const d = decideBoardMoveFailure({
+    moveResult: { ok: false, benign: false, status: 'error', stderr: 'illegal transition' },
+    boardState: 'done',
+  });
+  assert.deepEqual(d, { surface: false, reason: 'board-already-done' });
+});
+
+test('GENUINE FAILURE: move failed and board NOT Done → surface + exit non-zero', () => {
+  // The negative test guarding AC4: a real failure must still surface. The fix
+  // narrows false positives without masking real failures.
+  assert.deepEqual(
+    decideBoardMoveFailure({
+      moveResult: { ok: false, benign: false, stderr: 'boom' },
+      boardState: 'develop',
+    }),
+    { surface: true, reason: 'board-not-done' }
+  );
+  // Unknown board state (re-read failed) is treated as not-Done → surface.
+  assert.deepEqual(
+    decideBoardMoveFailure({ moveResult: { ok: false, benign: false }, boardState: null }),
+    { surface: true, reason: 'board-not-done' }
+  );
+});
+
+test('decideBoardMoveFailure: no args / missing moveResult → surface (safe default)', () => {
+  // A missing moveResult is not ok/benign and board is unknown → treat as a
+  // real failure rather than silently swallowing.
+  assert.deepEqual(decideBoardMoveFailure(), { surface: true, reason: 'board-not-done' });
+  assert.deepEqual(decideBoardMoveFailure({}), { surface: true, reason: 'board-not-done' });
 });
 
 console.log('close-convergence.test.mjs: all passed');
