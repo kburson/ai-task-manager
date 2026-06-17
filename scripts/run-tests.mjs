@@ -14,6 +14,11 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
+import {
+  findMainWorktreePath,
+  fleetRegistryPath,
+  readFleet,
+} from './task-tracker/fleet-registry.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');
@@ -81,6 +86,25 @@ const files =
 
 console.log(`▶ lane=${lane} (${files.length} files)\n`);
 
+// AC2 (#442) — authoritative runtime guard against test-sandbox registry leaks.
+// A test that creates a non-git sandbox and then reaches `registerTask` will
+// have its registry path escape the sandbox (via findMainWorktreePath →
+// git rev-parse) and land on THIS repo's live `.ai-task-manager/task-fleet.json`,
+// injecting bogus issue entries (#777/#888/#999/#108/#200/...). We snapshot the
+// live registry key-SET before the suite and fail if the suite ADDS any key.
+// Comparing key-sets (not contents) ignores benign timestamp churn on entries
+// that legitimately already exist (e.g. the active task driving this run).
+function liveRegistryKeySet() {
+  try {
+    const regPath = fleetRegistryPath(findMainWorktreePath(repoRoot));
+    const fleet = readFleet(regPath) || {};
+    return new Set(Object.keys(fleet));
+  } catch {
+    return new Set();
+  }
+}
+const registryKeysBefore = liveRegistryKeySet();
+
 let failed = 0;
 const failures = [];
 for (const entry of files) {
@@ -111,6 +135,20 @@ if (failed > 0) {
     if (fail.stdout) console.error(fail.stdout);
     if (fail.stderr) console.error(fail.stderr);
   }
+  process.exit(1);
+}
+
+const registryKeysAfter = liveRegistryKeySet();
+const leaked = [...registryKeysAfter].filter((k) => !registryKeysBefore.has(k));
+if (leaked.length) {
+  console.error(
+    `\nAC2 (#442) FAIL — the test suite leaked ${leaked.length} ` +
+      `${leaked.length === 1 ? 'entry' : 'entries'} into the live fleet ` +
+      `registry: ${leaked.join(', ')}\n` +
+      `A test created a non-git sandbox and reached registerTask. Use ` +
+      `mkdtempProjectIsolated(...) from scripts/task-tracker/lib/scratch-dir.mjs so ` +
+      `the sandbox is git-isolated. Run "npm run lint:fleet-sandbox" to locate it.\n`
+  );
   process.exit(1);
 }
 

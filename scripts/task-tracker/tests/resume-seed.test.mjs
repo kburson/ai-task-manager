@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { getActiveTask, setSessionKanbanState } from '../session-state.mjs';
 import { loadState } from '../state.mjs';
@@ -12,7 +12,10 @@ import { loadState } from '../state.mjs';
 // the guard refused every WRITE activity class — dead-locking post-compact
 // orchestrators and every parallel sub-agent in a fresh worktree.
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-resume-seed-'));
+// #442 — verbResume registers a fleet entry; the sandbox must be git-isolated
+// (mkdtempProjectIsolated git-inits it) so registerTask cannot escape into the
+// live .ai-task-manager/task-fleet.json.
+const tmp = mkdtempProjectIsolated('tt-resume-seed-');
 
 // Isolate every AITM path writer (markerDir, transcriptDir, fleet registry,
 // session records) under the tmp project so the test never touches real state.

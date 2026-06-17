@@ -5,8 +5,8 @@
 // flag defeats) and deadlocks `/task new`. Instead the elapsed bucket time is
 // reconciled as a single fresh-stamped idle row. See issue #234.
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { writeFileSync } from 'node:fs';
+import { mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbNew } from '../verbs/new.mjs';
 import { parseDurationSeconds } from '../lib/timing-rows.mjs';
@@ -29,7 +29,9 @@ function parseRow(row) {
   };
 }
 
-const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-aged-bucket-'));
+// #442 — verbNew (with TT_FAKE_NEW_ISSUE) registers a fleet entry; git-isolate
+// the sandbox so registerTask cannot escape into the live registry.
+const dir = mkdtempProjectIsolated('aitm-aged-bucket-');
 const statePath = path.join(dir, 'state.json');
 
 // Bucket opened 10 minutes ago — well beyond the 60s freshness window.

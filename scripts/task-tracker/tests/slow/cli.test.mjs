@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../lib/scratch-dir.mjs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
@@ -11,7 +11,9 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
-const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cli-'));
+// #442 — this sandbox binds #999/#108 via the CLI, which registers a fleet
+// entry; git-isolate it so registerTask cannot escape into the live registry.
+const sandbox = mkdtempProjectIsolated('tt-cli-');
 mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
   path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -91,7 +93,9 @@ assert.match(r5.stdout, /Active: #999/);
 // Bug: case 'start' previously called verbStart() directly, which ignores
 // positional #N and always resumes lastActive. Routing through verbResume
 // makes `start #N` switch like `resume #N`.
-const startSwitchSandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-start-switch-'));
+// #442 — this sandbox binds #200/#201/#202 via the CLI, which registers a fleet
+// entry; git-isolate it so registerTask cannot escape into the live registry.
+const startSwitchSandbox = mkdtempProjectIsolated('tt-start-switch-');
 mkdirSync(path.join(startSwitchSandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
   path.join(startSwitchSandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -132,6 +136,7 @@ rmSync(sandbox, { recursive: true });
 
 // ---- Uninitialized guard tests ----
 // Dir has .ai-task-manager/ but no task-tracker.json — fail-closed `config-not-found`.
+// fleet-sandbox-ok: deliberately uninitialized (no task-tracker.json) — every verb fails config-not-found before reaching registerTask, so no leak is possible.
 const noRepoDirBase = mkdtempSync(path.join(projectScratchDir('test'), 'tt-norepo-'));
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
 const noRepoEnv = {
@@ -177,6 +182,7 @@ rmSync(noRepoDirBase, { recursive: true });
 // ---- Fail-closed bootstrap: --role agent with no .ai-task-manager/ ----
 // Worktree pipeline regression guard. Must exit non-zero with "config-not-found at <path>"
 // when an agent boots into a worktree that wasn't seeded with .ai-task-manager/.
+// fleet-sandbox-ok: deliberately unseeded worktree — --role agent must fail config-not-found before reaching registerTask, so no leak is possible.
 const bareWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'tt-bare-wt-'));
 const bareEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: bareWorktree, TT_SKIP_NETWORK: '1' };
 try {
