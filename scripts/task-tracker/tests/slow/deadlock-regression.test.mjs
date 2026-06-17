@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #438
 // #438 AC5 — Deadlock regression (the #436/#437 shape).
 //
 // Reproduce two mutually-entangled issues — one whose body could not be

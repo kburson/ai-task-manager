@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #82
 // Unit tests for commit-trail lib helpers.
 
 import { strict as assert } from 'node:assert';

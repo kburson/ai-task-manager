@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #130
 // Switch scenario — issue #130.
 //
 // Asserts the outgoing-only `switch-out → task #N` semantics of the

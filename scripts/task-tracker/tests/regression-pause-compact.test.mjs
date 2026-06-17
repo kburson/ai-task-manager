@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #130
 // Regression — pause/compact during a state — issue #130.
 //
 // The chokepoint-based phase rows added by #128 must NOT displace the

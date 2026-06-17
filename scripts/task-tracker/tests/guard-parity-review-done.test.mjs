@@ -1,3 +1,4 @@
+// @story #279
 // Parity test for the review → done guard-registry migration (#279).
 //
 // Before #279, review → done was gated by inline checks at one call site

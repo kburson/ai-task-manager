@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #170
 // #170 — Single state-mutator: move-state.mjs writes both `aitm-entered-<state>`
 // and `aitm-last-known-state` markers. promote.mjs no longer writes
 // `aitm-last-known-state` on successful transitions (the bootstrap path is

@@ -1,3 +1,4 @@
+// @story #168
 // #168 — drift-reconcile description records WHY it fired:
 //   - "marker-write-failed at <ts>" when a recent state-recording-failed
 //     audit comment is present

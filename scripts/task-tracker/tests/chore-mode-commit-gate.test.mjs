@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // #327 — commit-trail-handler chore-mode subject gate.
 //
 // Case (f) of AC #9: while chore-mode.active === true, the commit-trail

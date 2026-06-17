@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #216
 // #216 AC7 — `withLock` from `scripts/task-tracker/locks.mjs` (the async
 // primitive Seq 1 settled on) serializes concurrent acquirers. Exactly one
 // holder runs at a time; the others retry within the timeout.

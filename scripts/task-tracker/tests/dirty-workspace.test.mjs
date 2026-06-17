@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #46
 // Unit tests for scripts/gh/lib/dirty-workspace.mjs
 
 import { strict as assert } from 'node:assert';

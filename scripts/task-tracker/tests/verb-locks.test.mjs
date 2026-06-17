@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #214
 // Verb-level per-issue lock — EPIC #207 / #214.
 //
 // Static-source assertions only (avoid spinning up real GitHub I/O in unit

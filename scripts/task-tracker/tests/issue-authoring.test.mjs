@@ -1,3 +1,4 @@
+// @story #104
 // Parity test for issue authoring: every shape produced via
 // `create-issue.mjs --shape … --dry-run` must contain the canonical headings
 // in canonical order. Locks Codex/Claude to byte-equivalent structure.

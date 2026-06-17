@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #28
 // Tests for scripts/gh/init-repair.mjs
 //   - fills empty kanbanOption* keys via case-insensitive name match
 //   - never overwrites populated keys

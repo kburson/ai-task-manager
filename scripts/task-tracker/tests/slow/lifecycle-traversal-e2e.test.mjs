@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #438
 // #438 AC1 — Full-lifecycle traversal E2E.
 //
 // Walk the canonical FORWARD chain backlog → on-deck → refine → plan →

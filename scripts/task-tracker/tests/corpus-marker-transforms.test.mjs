@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #389
 // Unit tests for scripts/maintenance/lib/corpus-marker-transforms.mjs (#389/C3).
 //
 // Per-family: (a) legacy → canonical conversion; (b) idempotency — a second

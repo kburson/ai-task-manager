@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #440
 // #440 — chore-mode bypass in the activity-guard PreToolUse hook.
 //
 // chore-mode is the sanctioned escape hatch for editing source files when no

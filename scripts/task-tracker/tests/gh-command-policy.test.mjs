@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #111
 // Tests for the gh issue command policy enforced by bash-guard.mjs.
 //
 // Coverage:

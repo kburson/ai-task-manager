@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #253
 // Regression tests for the backlog-entry-marker backfill in heal-entry-markers.mjs (#253).
 //
 // The #252 contiguity guard checks the full prior-stage prefix (STAGES[0..toIdx-1])

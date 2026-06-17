@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #209
 // Regression for #209 — sub-agent status verb vocabulary.
 //
 // Asserts the parallel.md Status Reporting table encodes the distinction

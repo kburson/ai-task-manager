@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #50
 // Integration tests for the plan -> develop approval gate in
 // scripts/gh/move-state.mjs. Mirrors the harness in move-state-gate.test.mjs.
 //

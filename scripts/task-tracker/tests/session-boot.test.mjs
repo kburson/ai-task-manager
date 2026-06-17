@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #190
 // Asserts that .ai-task-manager/session-boot.md (and its template source) exists,
 // lists each required Tier-1 file by exact path, and contains a recovery-protocol
 // section. Source-of-truth file is templates/session-boot.md (installed copy is

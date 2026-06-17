@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #179
 // cspell:ignore optout optouts Optouts
 // Unit tests for lifecycleSatisfaction + assertLifecycleSatisfied (#179).
 // Covers the full {ticked, audited, optout, missing} matrix per key.

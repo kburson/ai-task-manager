@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #7
 import { strict as assert } from 'node:assert';
 import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, utimesSync } from 'node:fs';

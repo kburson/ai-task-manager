@@ -1,3 +1,4 @@
+// @story #309
 // #314 — Regression tests for the silent-skip → WARN contract.
 //
 // Covers:

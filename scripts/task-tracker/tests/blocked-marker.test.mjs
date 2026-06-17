@@ -1,3 +1,4 @@
+// @story #246
 // Tests for scripts/task-tracker/lib/blocked-marker.mjs — the BLOCKED-marker
 // foundation: body-marker parse/add/remove/inspect plus label-arg helpers.
 

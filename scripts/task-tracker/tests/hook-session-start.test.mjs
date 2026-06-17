@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #189
 // Unit tests for isPausedTask in scripts/task-tracker/hook-handler.mjs.
 //
 // Regression coverage for #189: SessionStart hook used to interpret any

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #441
 // #441 — fleet-registry GC: kind tag, staleness predicate, opt-in auto-reap on
 // readFleet, fleet prune, and back-compat path-inference migration.
 import { strict as assert } from 'node:assert';

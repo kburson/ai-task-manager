@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #272
 // #272 — Regression tests for the createdAt-anchored backlog fallback in
 // heal-entry-markers.mjs.
 //

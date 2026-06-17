@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #346
 // verbs/test.mjs `defaultRemoveWorktree` — issue #346.
 //
 // Regression: when a sandboxed test creates a fixture directory carrying

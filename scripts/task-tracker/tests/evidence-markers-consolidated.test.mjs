@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #395
 // #395 — the third verifier-declaration reader. `lib/evidence-markers.mjs`
 // (`evidenceCommands`, surfaced through `parseEvidenceChecklist` and
 // `auditEvidenceMarkers`, which back the review-preflight evidence audit) must

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #23
 // Unit test for bin/cli.mjs colorize helper + ANSI wrappers.
 // Asserts TTY gate: when process.stdout.isTTY is false, helpers return input
 // unchanged (no \x1b[ escape sequences). When TTY, escape codes are present.

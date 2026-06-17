@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #259
 // #303 — Gate tests for the Functional DoD evidence-marker contract enforced
 // by `verbs/check.mjs::gateFunctionalDodTick`.
 //

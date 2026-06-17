@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #425
 // Regression tests for the close-convergence decision (#425).
 //
 // The bug: `/task close` treated board Status == 'done' as a no-op, without

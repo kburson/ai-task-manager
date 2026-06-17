@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #191
 // Asserts the worker context contract (#191) is wired correctly:
 //   - docs/guides/worker-context-contract.md exists with every required section
 //   - templates/worker-report.md exists with every required report field

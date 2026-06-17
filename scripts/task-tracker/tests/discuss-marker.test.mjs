@@ -1,3 +1,4 @@
+// @story #405
 // Unit tests for the `{discuss}` marker convention (#405).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

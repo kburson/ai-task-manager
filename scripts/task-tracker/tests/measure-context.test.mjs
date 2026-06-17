@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #115
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

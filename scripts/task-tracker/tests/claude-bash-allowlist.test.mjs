@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #199
 // Tests for the positive Bash allowlist installed into .claude/settings.json
 // (issue #199). Verifies:
 //  - The allowlist contains canonical commands.

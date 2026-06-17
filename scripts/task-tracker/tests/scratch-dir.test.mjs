@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #259
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';

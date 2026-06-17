@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #32
 // Tests for scripts/task-tracker/lib/body-gates.mjs
 //   - ticked-without-section refuses
 //   - unticked is allowed

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #442
 // #442 — Unit tests for the scoped fleet-sandbox-isolation lint guard.
 //
 // The guard forbids bare `mkdtempSync(path.join(projectScratchDir(...), ...))`

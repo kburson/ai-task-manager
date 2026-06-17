@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #165
 // Unit tests for commitsOnTrunkGate (#B / #165).
 
 import { strict as assert } from 'node:assert';

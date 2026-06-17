@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #66
 // W2.3 / issue #66: verify move-state.mjs internal-only gate and matrix gate.
 //
 // Coverage:

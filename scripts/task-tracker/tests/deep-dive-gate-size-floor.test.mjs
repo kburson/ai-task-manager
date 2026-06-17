@@ -1,3 +1,4 @@
+// @story #358
 // #358 — `planDeepDiveGate` must enforce the size-tiered substantive-chars
 // floor (XS=1200, S=1800, M/L/XL=2400, default 2000). This check used to live
 // inline in `scripts/gh/move-state.mjs` and was lost when that block was

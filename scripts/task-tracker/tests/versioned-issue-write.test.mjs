@@ -1,3 +1,4 @@
+// @story #309
 // Tests for scripts/task-tracker/lib/versioned-issue-write.mjs (#290 / epic #288).
 //
 // All scenarios use fake `fetchBody` / `pushBody` deps — no real GitHub I/O.

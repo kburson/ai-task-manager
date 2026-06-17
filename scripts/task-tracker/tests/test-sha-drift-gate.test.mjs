@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #154
 // #154 — Test→Review SHA drift gate.
 //
 // Coverage:

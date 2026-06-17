@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #231
 // #231 — End-to-end proof that the sandbox results path (the `results` array
 // shape `runVerbTest` produces) ticks Functional DoD items via `autoTickVerified`
 // when their `aitm-verified-by` command passed, and leaves them unticked when it

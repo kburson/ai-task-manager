@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #43
 // E2E tests for scripts/gh/ensure-wave-parent.mjs (#43).
 //
 // Coverage:

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #383
 // #383 — end-to-end slow-lane test proving the #345 evidence gate and the #362
 // checkbox-proof invariant are reconciled: a verifier-declaring AC carrying a
 // canonical `aitm-ac-evidence` stamp can be ticked through the REAL write path.

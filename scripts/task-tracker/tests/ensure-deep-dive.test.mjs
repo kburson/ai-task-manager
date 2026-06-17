@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #325
 // #325 — unit tests for the consolidated `ensureDeepDive` resource and the
 // `readDeepDiveSignals` introspection helper. Covers the 8 (heading ×
 // posted × complete) partial-state combinations + idempotence + the

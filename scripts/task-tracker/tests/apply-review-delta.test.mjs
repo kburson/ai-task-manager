@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #75
 // Unit: drive `applyReviewDelta` with deps stubs. Asserts the close-time
 // review-delta hook (#75):
 //   1. Auto path: estimate=16, actual=22.5 → +40.6% delta comment.

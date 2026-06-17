@@ -1,3 +1,4 @@
+// @story #252
 // Tests for evaluateContiguity (scripts/task-tracker/lib/stage-entry-markers.mjs)
 // — the #252 forward-transition contiguity guard's pure decision function. The
 // single state-mutator (move-state.mjs) wraps this with body-fetch + stderr +

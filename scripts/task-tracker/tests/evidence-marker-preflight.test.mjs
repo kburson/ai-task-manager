@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #113
 import { strict as assert } from 'node:assert';
 import { runReviewPreflight } from '../lib/review-preflight.mjs';
 

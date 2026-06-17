@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #58
 // Tests for the human-gate config flags introduced in #58.
 //
 //   gateAnalysisToDevelopment (boolean, default true)

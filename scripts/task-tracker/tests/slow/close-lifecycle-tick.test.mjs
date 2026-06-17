@@ -1,3 +1,4 @@
+// @story #365
 // #365 — close.mjs's `tickLifecycleOnClose` ticks the two lifecycle DoD
 // checkboxes the close verb owns ("Story closed and moved to Done" /
 // `story-closed`, and "Timing data flushed to issue" / `timing-flushed`).

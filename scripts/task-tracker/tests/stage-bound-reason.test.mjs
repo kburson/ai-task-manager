@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #281
 // #281 — pure-formatter coverage for stage-bound-reason.mjs.
 //
 // Pin the refusal-message shape so future edits don't silently drop the

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #392
 // cspell:ignore rescan
 // Unit tests for the residual-detector documentation redaction (#392/C6).
 //

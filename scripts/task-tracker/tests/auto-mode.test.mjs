@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #89
 // #89 — session-scoped auto-mode toggles + per-parent prompting.
 //
 // 8 unit cases covering loadSession/saveSession, applyChoice (and `reset`),

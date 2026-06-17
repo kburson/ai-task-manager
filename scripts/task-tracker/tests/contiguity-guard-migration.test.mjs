@@ -1,3 +1,4 @@
+// @story #355
 // #355 — asserts the contiguity check has been migrated out of move-state.mjs
 // into the state-keyed entryGuards registry. Reads move-state.mjs as text and
 // confirms it no longer references `evaluateContiguity` directly.

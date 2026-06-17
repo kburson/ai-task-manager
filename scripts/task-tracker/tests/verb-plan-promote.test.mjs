@@ -1,3 +1,4 @@
+// @story #309
 // #299 Item 2 — `/task plan #N` is a dedicated refine→plan promoter.
 // These tests pin the behavior the deprecation alias used to drop.
 

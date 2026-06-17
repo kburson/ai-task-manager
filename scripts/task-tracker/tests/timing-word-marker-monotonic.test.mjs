@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #152
 // Behavioral lock: when a verb computes wordMarker live (the
 // `s.wordsAtEntryStart + deltaWords` pattern used by start.mjs, switch.mjs,
 // update.mjs, and the agent-timing branch of review.mjs), a sequence of

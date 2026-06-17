@@ -1,3 +1,4 @@
+// @story #273
 // #273 — the seeder must (1) retry GraphQL once, (2) tag its failure modes,
 // and (3) actually populate the cache on success. The pre-#273 swallowing
 // try/catch is gone.

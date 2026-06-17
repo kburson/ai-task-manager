@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #69
 // Unit tests for scripts/task-tracker/verbs/reconcile.mjs.
 
 import { strict as assert } from 'node:assert';

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #254
 // #254 — Unit tests for the bounded setup retry + durable abort diagnostics
 // added to scripts/task-tracker/verbs/test.mjs.
 //

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #152
 // Regression: every `buildRow({ ... wordMarker: 0 ... })` site in
 // scripts/task-tracker/verbs/*.mjs must carry an inline justifying comment
 // on the `wordMarker: 0` line. Sites that flow live word counts MUST NOT use

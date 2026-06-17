@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #68
 // Unit tests for scripts/task-tracker/verbs/promote.mjs.
 //
 // All cases drive runPromote with stubbed deps — no network, no spawn.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #11
 // Unit tests for the shared close-gate predicate (#11).
 
 import { strict as assert } from 'node:assert';

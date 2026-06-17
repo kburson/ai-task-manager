@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #82
 // E2E tests for commit-trail-handler.mjs.
 // Mocks git + gh via injected fakes (no PATH shim — handler exports postCommitTrail).
 // Then runs the full handler via spawn with stdin payload + git shim for end-to-end.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #438
 // #438 AC4 — Recovery-path independence.
 //
 // The recovery verbs (`demote`, `unblock`) must not themselves fail on the

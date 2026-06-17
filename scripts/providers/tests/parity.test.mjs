@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #205
 // Parity contract for the ProviderAdapter registry (#205).
 //
 // Locks in current Claude and Codex behavior across every capability the

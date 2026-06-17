@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #153
 // Source-level lock: the shipped pickup-directive.md and the Claude adapter
 // SKILL.md must both document the Checkpoint Pause rule with its four trigger
 // bullets. This is what downstream users get when they install the package —

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #331
 // #331 — unit tests for `mirrorDeepDiveFromComment` + helpers
 // (`parseFromCommentArg`, `stripLeadingDeepDiveHeading`). Hermetic: injects
 // a fake `mutateIssueBody` AND a fake `fetchCommentBody` so no GH I/O

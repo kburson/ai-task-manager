@@ -1,3 +1,4 @@
+// @story #168
 // #168 — Anti-pattern lint: empty `catch {}` or `catch (_) {}` blocks
 // must not wrap correctness-critical writeIssueBody / postTimingEvent
 // calls. Offenders must either retry+warn or carry a justifying comment

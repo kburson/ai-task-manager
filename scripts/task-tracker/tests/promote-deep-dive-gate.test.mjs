@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #296
 // #297 — e2e refusal: promote plan→develop must surface
 // `deep-dive-refused` when the body lacks Deep-Dive Analysis signals,
 // even after the planned-estimate gate passes.

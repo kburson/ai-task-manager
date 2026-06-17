@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #212
 // Tests for scripts/task-tracker/session-state.mjs (#212). Validates the per-
 // session active-task storage, the paths.mjs helpers, and the missing-dir
 // tolerance contract.

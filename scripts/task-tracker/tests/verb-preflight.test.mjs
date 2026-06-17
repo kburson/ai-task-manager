@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #208
 // Unit: `runPreflight` from lib/verb-preflight.mjs (#208, refactored in #218).
 //
 // Under #218 the issue body `aitm-last-known-state` marker IS the local state.

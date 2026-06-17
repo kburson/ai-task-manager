@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // #327 — `/task chore-mode` verb shape.
 //
 // Covers AC #3, #4, #5, #8, and #9(e)/(g):

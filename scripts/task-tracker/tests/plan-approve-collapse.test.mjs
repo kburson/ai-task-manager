@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #121
 // Tests for #121: plan-approve auto-collapses the Deep-Dive Analysis appendix
 // into a <details> block on the success path.
 //

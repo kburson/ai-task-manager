@@ -1,3 +1,4 @@
+// @story #236
 // #236 — Wiring test for preflight-issue.mjs.
 //
 // Asserts that when `--shape sub-issue` is given user-supplied AC content

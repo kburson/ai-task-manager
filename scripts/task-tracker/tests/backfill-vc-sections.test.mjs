@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #427
 // #427 — buildVcBackfill: VC-section back-fill for the pre-#410 corpus.
 import { strict as assert } from 'node:assert';
 import { buildVcBackfill, DEFAULT_VC_COMMANDS } from '../backfill-vc-sections.mjs';

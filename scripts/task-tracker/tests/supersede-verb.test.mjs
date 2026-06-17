@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #401
 // Tests for scripts/task-tracker/verbs/supersede.mjs — pure core, DI fakes.
 
 import { strict as assert } from 'node:assert';

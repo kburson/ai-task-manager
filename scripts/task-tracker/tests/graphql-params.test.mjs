@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #3
 // Verifies fetchSubIssues / fetchParentIssue / getIssueBoardState use
 // JSON-on-stdin GraphQL via the shared `gql()` helper:
 //   - argv is ['api','graphql','--input','-']

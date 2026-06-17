@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // #327 — PreToolUse source-edit gate.
 //
 // Covers AC #1, #2, #4, #6, and AC #9 cases (a)-(e):

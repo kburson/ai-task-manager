@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #338
 // Unit tests for backlog-exit-child-parent-state-guard (#338; relocated to
 // on-deck-exit in #433).
 //

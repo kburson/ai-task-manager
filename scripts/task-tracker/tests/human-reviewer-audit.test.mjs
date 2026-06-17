@@ -1,3 +1,4 @@
+// @story #169
 // #169 — Full-Auto review-gate enforcement: env var present → marker stamped,
 // no audit comment; env var absent → audit comment posted with stable marker;
 // idempotent on both paths.

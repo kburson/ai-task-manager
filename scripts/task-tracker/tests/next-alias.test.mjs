@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #79
 // #79 — /task next is a dispatch alias of /task promote.
 //
 // Structural assertion: the verb table maps `next` to the same handler module

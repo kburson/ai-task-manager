@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 import { strict as assert } from 'node:assert';
 import { buildRow, readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import {

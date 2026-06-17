@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #262
 // Unit tests for scripts/task-tracker/lib/guard-registry.mjs (#262).
 //
 // Skeleton-stage registry: GUARDS map, runGuards iterator, registerGuard

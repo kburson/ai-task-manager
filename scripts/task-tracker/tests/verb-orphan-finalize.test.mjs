@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #215
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

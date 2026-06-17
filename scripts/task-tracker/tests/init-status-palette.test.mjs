@@ -1,3 +1,4 @@
+// @story #415
 // #415 — guards the canonical Status palette in scripts/gh/init-project-config.sh.
 //
 // Two layers:

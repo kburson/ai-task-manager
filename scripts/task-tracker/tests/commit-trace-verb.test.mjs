@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #109
 import { strict as assert } from 'node:assert';
 import { runCommitTrace } from '../verbs/commit-trace.mjs';
 

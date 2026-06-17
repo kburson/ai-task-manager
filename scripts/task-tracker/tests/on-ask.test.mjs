@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #240
 // EPIC #238 / #240 — AskUserQuestion pause/resume bracket hooks.
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';

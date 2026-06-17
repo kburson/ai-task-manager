@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #183
 // Visit-aware diagnostics for heal-entry-markers.mjs (#183): the heal script
 // consults LEGAL_TRANSITIONS via detectIllegalArcs so legitimate loops
 // (review→develop, etc.) are not flagged as bugs while genuine illegal arcs

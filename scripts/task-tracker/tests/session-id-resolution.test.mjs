@@ -1,3 +1,4 @@
+// @story #273
 // #273 — pin the contract of `resolveSessionId` so the writer (state.mjs)
 // and the readers (activity-guard, move-state, seed-kanban-cache) cannot
 // silently diverge again.

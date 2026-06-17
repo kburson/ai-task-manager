@@ -1,3 +1,4 @@
+// @story #65
 // Tests for scripts/task-tracker/activity-guard.mjs
 //
 // Spawns the hook as a subprocess, feeds stdin JSON, asserts exit/stdout.

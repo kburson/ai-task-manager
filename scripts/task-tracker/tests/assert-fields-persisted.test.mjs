@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #300
 // #300 — `assertFieldsPersisted` must not be fooled by prose placeholders
 // shaped like `<!-- aitm-fields: {...} -->`. It delegates to
 // `parseIssueFieldDb`, whose line-anchored, last-match regex ignores

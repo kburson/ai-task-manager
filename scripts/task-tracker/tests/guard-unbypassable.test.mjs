@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #234
 // AC guard (#234): the `buildRow` 60s freshness window must reject every
 // backdated timestamp, with no escape token to defeat it. The fix reconciles
 // aged discovery buckets as a fresh-stamped idle row rather than poking a hole

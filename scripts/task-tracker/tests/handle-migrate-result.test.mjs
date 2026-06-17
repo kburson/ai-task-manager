@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #5
 import { strict as assert } from 'node:assert';
 import { handleMigrateResult } from '../task-tracker.mjs';
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #216
 // #216 AC8 — Two concurrent sessions A and B posting to DIFFERENT issues
 // hold DIFFERENT per-issue lock paths. Their critical sections may overlap
 // freely; no collision, no contention.

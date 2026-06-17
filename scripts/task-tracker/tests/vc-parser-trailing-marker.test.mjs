@@ -1,3 +1,4 @@
+// @story #368
 // #368 AC9 — the two `## Verification Commands` label parsers must still parse
 // an entry whose backtick command carries a trailing inline proof marker (the
 // `aitm-verified` comment that `auto-tick-verified` stamps on a green test).

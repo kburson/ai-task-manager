@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #80
 // E2E tests for #80 — review-approval prompt.
 //
 // Coverage:

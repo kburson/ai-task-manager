@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #138
 // Unit tests for lib/lifecycle-dod.mjs (#138).
 
 import { strict as assert } from 'node:assert';

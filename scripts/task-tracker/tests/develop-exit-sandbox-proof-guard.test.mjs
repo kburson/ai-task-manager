@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #270
 // Unit tests for the develop→test sandbox-proof guard (#270).
 
 import { strict as assert } from 'node:assert';

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #142
 // Unit tests for the cross-close refusal (#142 / #208).
 //
 // `/task close <N>` must refuse when state.active is set and target !== active.

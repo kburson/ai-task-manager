@@ -1,3 +1,4 @@
+// @story #273
 // #273 — end-to-end: the writer (session-state.setActiveTask) and the reader
 // (lib/session-id.resolveSessionId) must land on the SAME file. Pre-#273 the
 // writer used `'default-session'` while the reader returned a mtime-sorted

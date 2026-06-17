@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #190
 // Asserts that .ai-task-manager/session-state-template.md (and its template
 // source) exists and contains the 9 required field headings in order.
 

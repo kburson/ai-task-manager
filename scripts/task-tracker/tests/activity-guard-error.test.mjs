@@ -1,3 +1,4 @@
+// @story #273
 // #273 — when an active task is bound but its kanbanState cache is absent,
 // the guard's block message must name the issue and include a concrete
 // repair command. Pre-#273 it said "no recorded kanban state" with no path

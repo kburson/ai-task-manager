@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #219
 // #219 — Integration: assignee guard end-to-end through the CLI.
 //
 // Two scenarios via the task-tracker.mjs CLI with a gh shim:

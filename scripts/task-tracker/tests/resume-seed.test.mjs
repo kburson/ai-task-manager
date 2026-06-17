@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #251
 import { strict as assert } from 'node:assert';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';

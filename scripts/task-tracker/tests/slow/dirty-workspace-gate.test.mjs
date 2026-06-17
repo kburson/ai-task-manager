@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #46
 // E2E tests for the dirty-workspace gate on /task close and the move-state.mjs review warning.
 // Uses PATH-based git shim to control porcelain output; SKIP_NETWORK skips gh.
 

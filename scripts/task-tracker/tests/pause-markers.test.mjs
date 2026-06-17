@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #166
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { deriveStateMoveDelta, parsePauseMarkers, pauseSpansBetween } from '../lib/timing-rows.mjs';

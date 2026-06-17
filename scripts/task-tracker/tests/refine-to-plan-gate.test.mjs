@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #147
 // Unit tests for scripts/task-tracker/lib/refine-to-plan-gate.mjs.
 
 import { strict as assert } from 'node:assert';

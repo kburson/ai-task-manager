@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #324
 // #324 / #325 follow-on regression: `lib/deep-dive.mjs` must NOT contain a
 // direct `gh issue edit` invocation. All body writes from this module must
 // route through `mutateIssueBody`.

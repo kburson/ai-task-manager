@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #208
 // Wiring: dispatcher runs preflightVerb before invoking close/approve/promote/etc.
 // Verifies bind-mismatch refusal (#208) at the dispatcher chokepoint.
 

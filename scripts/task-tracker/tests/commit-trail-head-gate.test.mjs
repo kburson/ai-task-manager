@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #155
 // #155 — Develop→Test commit-trail-contains-HEAD gate.
 
 import { strict as assert } from 'node:assert';

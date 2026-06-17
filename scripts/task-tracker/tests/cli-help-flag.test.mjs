@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #394
 // #394 — global help-flag interception. A help flag (`--help`, `-h`, or `?`)
 // in ANY argument position must be detected so the dispatcher can print help
 // and exit, instead of swallowing the flag as positional data (which once

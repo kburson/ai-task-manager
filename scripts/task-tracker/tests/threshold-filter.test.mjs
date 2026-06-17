@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #216
 // #216 AC2 — `pauseThresholdSeconds` filter behavior.
 // Sub-threshold gaps produce ZERO timing rows (marker is deleted silently).
 // Supra-threshold gaps produce EXACTLY ONE timing row.

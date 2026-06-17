@@ -1,3 +1,4 @@
+// @story #309
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, chmodSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';

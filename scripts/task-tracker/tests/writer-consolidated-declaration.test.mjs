@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #419
 // cspell:ignore tmpl backticked
 // #419 (epic #417, C2) — the three declaration WRITERS now emit the consolidated
 // `aitm-verified cmd="…"` form. This test pins both halves of the contract:

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #216
 // #216 AC1 — `on-stop.mjs` and `on-user-prompt.mjs` correctly consume the
 // hook payload shape Claude Code provides. In this implementation the
 // session id is read from `CLAUDE_SESSION_ID` (the documented Claude Code

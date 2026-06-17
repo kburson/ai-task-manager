@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #77
 // Regression tripwire: the review-delta hook is read-only. If anyone later
 // adds a `writeProjectFieldValue(` call to `lib/apply-review-delta.mjs` or
 // to the `verbClose` block in `task-tracker.mjs`, this test fails loudly.

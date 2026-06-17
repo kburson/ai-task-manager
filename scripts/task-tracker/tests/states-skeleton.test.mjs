@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // State-object skeleton tests (#292, parent epic #259).
 //
 // Asserts each `scripts/task-tracker/states/<state>.mjs` module exports the

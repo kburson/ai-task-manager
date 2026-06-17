@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #438
 // #438 AC3 — Body-write round-trip under server normalization.
 //
 // Two regression shapes from the #437→#439 incident:

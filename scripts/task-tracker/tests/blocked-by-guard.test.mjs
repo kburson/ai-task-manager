@@ -1,3 +1,4 @@
+// @story #309
 // Tests for scripts/task-tracker/lib/blocked-by-guard.mjs and the
 // guard-bootstrap that registers it at every exit slot (#286).
 

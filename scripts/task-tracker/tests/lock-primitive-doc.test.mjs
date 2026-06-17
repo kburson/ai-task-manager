@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #212
 // Verifies the lock-primitive decision is recorded in the settings guide
 // (#212 AC). The sandbox allowlist forbids `grep` and `node -e`, so the
 // check is expressed as a runnable test.

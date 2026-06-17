@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #438
 // #438 AC2 — Config-completeness invariant.
 //
 // Parametrized over EVERY slug in the canonical state chain (STATES). For each

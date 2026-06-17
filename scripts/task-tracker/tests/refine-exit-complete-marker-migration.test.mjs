@@ -1,3 +1,4 @@
+// @story #357
 // #357 — asserts the `aitm-refine-complete` stage-completion marker check
 // has been migrated out of promote.mjs into the state-keyed exitGuards
 // registry. Reads promote.mjs as text and confirms it no longer matches the

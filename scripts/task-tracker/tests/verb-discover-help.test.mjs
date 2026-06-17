@@ -1,3 +1,4 @@
+// @story #309
 // #299 Item 2 — `/task discover` and `/task plan` must be distinct in the
 // help text. Discover is backlog-item generation / pre-issue ideation; plan
 // is the Sprint-Planning entry (refine→plan). Neither description may

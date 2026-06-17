@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #64
 // Tests for scripts/task-tracker/agent-guard.mjs — the PreToolUse hook that
 // refuses `Agent` tool spawns from the main git worktree.
 

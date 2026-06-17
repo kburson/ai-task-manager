@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #213
 // EPIC #207 / #213 — verifies that two concurrent appenders to the same
 // issue's `⏱ Timing Log` comment BOTH land their rows. The lock primitive
 // from `locks.mjs` plus the read-modify-write inside `postTimingEvent`

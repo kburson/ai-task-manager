@@ -1,3 +1,4 @@
+// @story #236
 // #236 — Tests for the author-time checklist command lint.
 //
 // Verifies that compound CLI commands in AC `aitm-verified-by:` markers and

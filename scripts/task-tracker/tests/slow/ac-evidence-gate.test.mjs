@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #345
 // #345 — end-to-end slow-lane test for the Acceptance Criteria evidence gate.
 //
 // Drives the real `task-tracker.mjs check` CLI against a `gh` shim that serves

@@ -1,3 +1,4 @@
+// @story #356
 // #356 — asserts the child-cannot-lead-epic check has been migrated out of
 // promote.mjs into the state-keyed exitGuards registry. Reads promote.mjs as
 // text and confirms it no longer references `checkParentAdmission`.

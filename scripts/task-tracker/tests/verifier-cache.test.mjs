@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #446
 // #446 (Strategy C from spike #445) — unit tests for the content-addressed
 // verifier-result cache (`lib/verifier-cache.mjs`) and its integration into
 // `runVerifiers` (`lib/evidence-runner.mjs`).

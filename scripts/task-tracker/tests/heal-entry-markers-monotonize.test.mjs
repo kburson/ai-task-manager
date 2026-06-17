@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #173
 // Regression tests for heal-entry-markers.mjs HEALABLE_STAGES extension
 // (#173): covers develop/test/review in addition to the original refine/plan.
 // Validates restamp (out-of-order), backfill (missing-with-later-present),

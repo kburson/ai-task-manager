@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #127
 // Tests for the canonical PHASE_EVENTS lifecycle table (epic #126, sub-issue
 // #127). Asserts: table completeness (all 11 events), slug uniqueness,
 // descriptor pass-through through `buildRow`, and back-compat (callers that

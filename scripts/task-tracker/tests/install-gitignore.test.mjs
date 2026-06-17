@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #212
 // Tests for bin/cli.mjs ensureGitignoreEntry (#212). Validates that the
 // installer writes `.ai-task-manager/sessions/` inside a managed block and
 // that re-running is idempotent (no duplicates, block markers not repeated).

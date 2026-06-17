@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #332
 // Regression tests for projectDirForState (#332).
 //
 // Worktrees rooted under `<main>/.claude/worktrees/<wt>/` produce paths that

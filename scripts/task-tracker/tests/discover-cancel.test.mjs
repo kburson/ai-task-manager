@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #234
 // Regression: `/task cancel` is the escape hatch for a stuck discovery
 // bucket. It clears the bucket and active binding WITHOUT emitting any timing
 // rows, and is a clean no-op when no bucket is active. See issue #234.

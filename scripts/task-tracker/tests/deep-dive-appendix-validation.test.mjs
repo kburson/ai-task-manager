@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #301
 // #301 — `assertDeepDiveAppendixClean` rejects gate-bearing sub-section
 // headings (Acceptance Criteria / Verification Commands / Definition of Done)
 // before any write. `buildDeepDiveBlock` calls it so the failure surfaces at

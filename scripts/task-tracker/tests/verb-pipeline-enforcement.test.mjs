@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #141
 // Issue #141: verify move-state.mjs verb-pipeline enforcement.
 //
 // Coverage:

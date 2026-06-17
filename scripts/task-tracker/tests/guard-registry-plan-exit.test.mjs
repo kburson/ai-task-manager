@@ -1,3 +1,4 @@
+// @story #277
 // Unit tests for the plan-exit guards introduced in #277:
 //   - planApprovedGuard       (lib/plan-approved-guard.mjs)
 //   - planEpicChildrenGuard   (lib/plan-epic-children-guard.mjs)

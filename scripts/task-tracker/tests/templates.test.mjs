@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

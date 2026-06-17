@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #219
 // Unit: `checkAssigneeMatch` from lib/assignee-guard.mjs (#219).
 
 import { strict as assert } from 'node:assert';

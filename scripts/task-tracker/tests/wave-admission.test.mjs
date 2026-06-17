@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #49
 // Unit tests for scripts/gh/lib/wave-admission.mjs
 //
 // Covers:

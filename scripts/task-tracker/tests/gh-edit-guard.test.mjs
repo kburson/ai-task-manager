@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // Tests for scripts/task-tracker/lib/gh-edit-guard.mjs — the body-write
 // chokepoint that protects against legacy-checkbox reintroduction and
 // hidden-marker drops on `gh issue edit ... --body-file/--body ...`.

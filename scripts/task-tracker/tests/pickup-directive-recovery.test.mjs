@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #190
 // Asserts that the pickup-directive template references session-boot.md and
 // contains a Post-Compact/Clear Recovery section in the "Required steps before
 // writing any code" block. Source-of-truth is templates/pickup-directive.md.

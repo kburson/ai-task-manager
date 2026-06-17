@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #31
 // Regression test for issue #31: fractional Float! variables must round-trip.
 //
 // Before the fix, gql() flattened variables to `gh api graphql -F val=1.5`,

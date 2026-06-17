@@ -1,3 +1,4 @@
+// @story #243
 // Guard (#243): no live source outside the duration helper may read board
 // timing values as legacy float-hours. The four board "actuals" fields are now
 // Text duration strings (`DDd HHh MMm SSs`, integer seconds); consumers parse

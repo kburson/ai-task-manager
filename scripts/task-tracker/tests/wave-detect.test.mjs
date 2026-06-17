@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #43
 // Unit tests for scripts/gh/lib/wave-detect.mjs
 
 import { strict as assert } from 'node:assert';

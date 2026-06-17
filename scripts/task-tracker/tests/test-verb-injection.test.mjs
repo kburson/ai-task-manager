@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #137
 // E2E: drive `/task test` against an issue body that contains a malicious
 // backtick-wrapped verification command. Asserts:
 //   1. The malicious payload is REJECTED by the allowlist validator — no shell side effect.

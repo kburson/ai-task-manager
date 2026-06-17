@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #231
 // #231 — `detectFunctionalPretick` un-ticks command-backed Functional DoD
 // items so the sandbox-driven re-tick (autoTickVerified) is the only path to
 // green. Judgment items (no `aitm-verified-by` marker) must be left alone.

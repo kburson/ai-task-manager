@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #296
 // #297 — unit tests for the Plan→Develop Deep-Dive Analysis gate.
 // #300 — migrated from the deprecated `- [x] Deep dive complete` checkbox
 //        signal to the hidden `aitm-deep-dive-complete` marker.

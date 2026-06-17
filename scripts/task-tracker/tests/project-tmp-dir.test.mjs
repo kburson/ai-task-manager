@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #256
 // Regression tests for projectTmpDir (#256).
 //
 // The single scratch-directory chokepoint must resolve under the gitignored

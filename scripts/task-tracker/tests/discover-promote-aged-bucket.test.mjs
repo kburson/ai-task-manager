@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #234
 // Regression: promoting a discovery bucket older than the 60s buildRow
 // freshness window must succeed. The replay loop must NOT re-stamp the
 // bucket's original (stale) ts — that trips the freshness guard (which no

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #171
 // #171 AC3: the prohibition on hand-rolled issue bodies must be documented
 // in both CLAUDE.md and the pickup-directive (source template + deployed copy)
 // so agents see it on every pickup. The hand-rolled `--body`/`--body-file`

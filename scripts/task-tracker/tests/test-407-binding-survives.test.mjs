@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #407
 // #407 regression — verb→verb sequencing must preserve the active binding.
 //
 // Before #407, the `test` and `review` verbs wrote `active: null` in their

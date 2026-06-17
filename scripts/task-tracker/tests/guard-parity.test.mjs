@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #263
 // Guard-parity baseline harness (#263, parent epic #259).
 //
 // For each forward transition, this file snapshots the CURRENT refusal-reason

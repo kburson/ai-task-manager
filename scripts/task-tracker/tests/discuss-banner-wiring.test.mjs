@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #405
 // AC1 coverage for #405: binding to an issue whose body carries a visible
 // `{discuss}` token must (a) print a `DISCUSS REQUESTED — #N` banner gated on
 // hasDiscussMarker, and (b) be matched by a rules/bind.md clause directing the

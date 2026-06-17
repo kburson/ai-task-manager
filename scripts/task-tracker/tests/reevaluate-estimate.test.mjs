@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #34
 import { strict as assert } from 'node:assert';
 import {
   parseDeepDiveSignals,

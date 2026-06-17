@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #401
 // Unit tests for scripts/task-tracker/lib/superseded-marker.mjs.
 
 import { strict as assert } from 'node:assert';

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #52
 // Tests for the pure mapping helper at scripts/migrate/lib/state-map.mjs.
 // Six cases: each legacy state's expected mapping, no-op for already-migrated,
 // throw for unknown source, throw when the target option is absent on the board.

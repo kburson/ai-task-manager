@@ -1,3 +1,4 @@
+// @story #309
 // Integration test for #298: a body emitted by `scripts/gh/create-issue.mjs
 // --dry-run` must be gate-compliant — i.e. it must satisfy every body-shape
 // requirement of the five state-transition gates in the 7-state machine:

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #32
 // Integration tests for the structural body gate in scripts/gh/move-state.mjs.
 // Drives move-state.mjs against a sandboxed config + fake `gh` shim that returns
 // a body we control. Asserts:

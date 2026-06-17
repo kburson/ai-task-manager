@@ -1,3 +1,4 @@
+// @story #362
 // Tests for the #362 CheckboxProofMissingError invariant inside mutateIssueBody.
 //
 // Every `- [ ]` → `- [x]` transition must carry a same-line proof marker —

@@ -1,3 +1,4 @@
+// @story #273
 // #273 — when board and body agree but the per-session derived cache is
 // absent, reconcile must seed the cache and return `cache-seeded` instead
 // of refusing with `no-drift-refused`. Refusing forces users to fabricate

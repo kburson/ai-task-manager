@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #345
 // #345 — unit tests for the Acceptance Criteria evidence surface
 // (`lib/ac-evidence.mjs`) and the generalized `gateEvidenceTick` in
 // `verbs/check.mjs`.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #130
 // Lifecycle integration — issue #130.
 //
 // Asserts that walking the canonical state graph

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #130
 // Worktree isolation — issue #130.
 //
 // Asserts that two sub-agent worktrees, each with their own

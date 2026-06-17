@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #216
 // #216 AC9 — Two concurrent sessions A and B posting to the SAME issue
 // MUST serialize on the per-issue lock. Critical sections must not overlap;
 // both eventually complete; no deadlock.

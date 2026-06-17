@@ -1,3 +1,4 @@
+// @story #54
 // Integration smoke test: a fixture epic with sub-issues across two waves runs
 // through the 7-state lifecycle (Backlog → Groom → Analyze → Development →
 // Validate → Review → Done). Wave-admission and cascade-grooming gates are

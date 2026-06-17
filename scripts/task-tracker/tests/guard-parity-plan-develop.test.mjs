@@ -1,3 +1,4 @@
+// @story #277
 // Parity test for the plan → develop guard-registry migration (#277).
 //
 // Before #277, plan → develop was gated by inline checks at two call sites

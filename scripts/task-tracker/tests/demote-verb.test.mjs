@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #68
 // Unit tests for scripts/task-tracker/verbs/demote.mjs.
 
 import { strict as assert } from 'node:assert';

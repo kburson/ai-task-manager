@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #199
 // Tests for the bash-guard `/tmp` contract (issue #199, Option A).
 //
 // Contract: project-local `./.tmp/` is the canonical scratch directory.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #162
 // Verifies that the "Sequence rules" subsection is present in both
 // the pickup-directive template and the Claude adapter SKILL.md so
 // agents see the child-cannot-lead-epic invariant on every pickup (#162).

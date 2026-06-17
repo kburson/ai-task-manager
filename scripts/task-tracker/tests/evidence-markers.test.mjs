@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #231
 // #231 — Closes Hole 1 (standard-command exemption) and the AC-only parse
 // scope. `auditEvidenceMarkers` must require every `aitm-verified-by` command
 // — including the previously-exempt standard set — to appear in

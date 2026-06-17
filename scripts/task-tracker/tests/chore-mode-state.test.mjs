@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // #327 — chore-mode state read/write helpers.
 //
 // Covers:

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #359
 // Tests for body-gates-entry guards (#359, parent epic #269).
 //
 // Verifies the three migrated guards behave as the inline composite did:

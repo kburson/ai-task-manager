@@ -29,7 +29,8 @@
     "lint:spell": "cspell --no-progress \"**/*.{md,mjs,js,json}\"",
     "lint:tmp": "node scripts/maintenance/lint-no-system-tmp.mjs",
     "lint:fleet-sandbox": "node scripts/maintenance/lint-fleet-sandbox-isolation.mjs",
-    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox",
+    "lint:story-tags": "node scripts/task-tracker/tests/audit-story-tags.mjs",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:story-tags",
     "quality": "npm run format:check && npm run lint && npm test"
   },
   "files": [

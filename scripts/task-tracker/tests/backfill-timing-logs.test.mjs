@@ -1,3 +1,4 @@
+// @story #242
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
