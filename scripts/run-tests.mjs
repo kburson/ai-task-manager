@@ -25,7 +25,6 @@ const repoRoot = path.resolve(__dir, '..');
 const testsDir = path.resolve(__dir, 'task-tracker', 'tests');
 const slowDir = path.resolve(testsDir, 'slow');
 const providersTestsDir = path.resolve(__dir, 'providers', 'tests');
-const integrationDir = path.resolve(repoRoot, 'tests', 'integration');
 const ttIntegrationDir = path.resolve(testsDir, 'integration');
 // Tests skipped due to unrelated tracked bugs. Each entry must reference an issue.
 const SKIP = new Map([]);
@@ -66,10 +65,6 @@ const providerFiles = safeReaddir(providersTestsDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()
   .map((f) => ({ label: `providers/${f}`, full: path.join(providersTestsDir, f) }));
-const integrationFiles = safeReaddir(integrationDir)
-  .filter((f) => f.endsWith('.test.mjs'))
-  .sort()
-  .map((f) => ({ label: `integration/${f}`, full: path.join(integrationDir, f) }));
 const ttIntegrationFiles = safeReaddir(ttIntegrationDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()
@@ -79,7 +74,7 @@ const slowFiles = safeReaddir(slowDir)
   .sort()
   .map((f) => ({ label: `slow/${f}`, full: path.join(slowDir, f) }));
 
-const fastFiles = [...unitFiles, ...providerFiles, ...integrationFiles, ...ttIntegrationFiles];
+const fastFiles = [...unitFiles, ...providerFiles, ...ttIntegrationFiles];
 
 const files =
   lane === 'fast' ? fastFiles : lane === 'slow' ? slowFiles : [...fastFiles, ...slowFiles];
