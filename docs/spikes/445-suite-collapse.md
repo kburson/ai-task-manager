@@ -109,8 +109,8 @@ when **all** hold:
 A cache hit therefore certifies the same real execution the marker would have
 recorded anyway: same command, same commit, same tree. The stamped marker keeps
 its real `cmd` / `exit=0` / `sha=<HEAD>` / `ts`, where `ts` is the timestamp of
-the **original** real run. The invariant is "run once, attribute the *same real
-run* to each marker," never "skip the run." Any doubt about tree state resolves
+the **original** real run. The invariant is "run once, attribute the _same real
+run_ to each marker," never "skip the run." Any doubt about tree state resolves
 to a miss (re-run), never a hit.
 
 <!-- AC4-anchor: eligibility-boundary -->
