@@ -8,7 +8,7 @@ import path from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
-import { runVerbTest, buildPassedMessage } from '../verbs/test.mjs';
+import { runVerbTest, buildPassedMessage, buildReverifiedMessage } from '../verbs/test.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { hasDodVerifiedMarker, parseDodVerifiedMarker } from '../lib/markers.mjs';
 
@@ -102,6 +102,17 @@ test('buildPassedMessage: develop→test promotion success message names "Test",
   assert.match(msg, /moved to Test\b/, 'success message must say "moved to Test"');
   assert.doesNotMatch(msg, /moved to Review\b/, 'success message must NOT say "moved to Review"');
   assert.equal(msg, '✓ #137 verified in sandbox — moved to Test.');
+});
+
+test('buildReverifiedMessage #444: in-place re-verify banner is loud and does not claim a move', () => {
+  const msg = buildReverifiedMessage(444);
+  assert.match(msg, /re-verified in sandbox/, 'must announce a re-verify');
+  assert.match(msg, /board unchanged/, 'must state the board column did not move');
+  assert.doesNotMatch(msg, /moved to/, 'must NOT claim a develop→test promotion');
+  assert.equal(
+    msg,
+    '✓ #444 re-verified in sandbox — already in Test (in-place re-verify, board unchanged).'
+  );
 });
 
 test('parseVerificationCommands: extracts VC checkboxes only, in order', () => {
@@ -410,15 +421,32 @@ test('verbTest #406: sandbox green but moveState refuses → status move-failed,
   });
 });
 
-test('verbTest #406: benign done→done self-loop is NOT a failure → status passed', async () => {
+// #444 — a benign move result from the test verb can only be a test→test
+// self-loop (the verb always targets 'test'), which is the supported in-place
+// re-verify path: the sandbox already re-ran the current VC set; the board
+// column stays put. This must NOT be a failure and must NOT claim a fresh
+// develop→test promotion — it returns the distinct `reverified` status.
+test('verbTest #444: benign test→test self-loop → status reverified (in-place re-verify)', async () => {
   await withTmpDir(async (projectDir) => {
     const { deps, calls } = makeDeps();
     deps.moveState = async ({ target }) => {
       calls.moves.push(target);
-      return { ok: false, benign: true, status: 0 };
+      return {
+        ok: false,
+        benign: true,
+        status: 5,
+        stderr: '⛔ illegal transition: test → test. Allowed: review, develop.',
+      };
     };
-    const r = await runVerbTest({ cfg, issueNumber: 406, projectDir, deps });
-    assert.equal(r.status, 'passed', 'benign self-loop must still report passed');
+    const r = await runVerbTest({ cfg, issueNumber: 444, projectDir, deps });
+    assert.equal(r.status, 'reverified', 'benign test→test self-loop is an in-place re-verify');
+    assert.equal(r.target, 'test');
+    // AC2 — the re-verify exercised the full VC set and re-stamped results:
+    // the green table is posted and time is logged on the same path as a fresh
+    // develop→test pass.
+    assert.equal(calls.comments.length, 1);
+    assert.match(calls.comments[0], /Sandboxed verification passed/);
+    assert.deepEqual(calls.logs, ['444']);
   });
 });
 

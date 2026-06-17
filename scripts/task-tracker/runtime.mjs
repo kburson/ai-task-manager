@@ -42,18 +42,23 @@ export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
 }
 
-// #385 — classify a non-zero `move-state.mjs` outcome as benign or genuine.
-// The ONLY benign non-zero is a `done → done` self-loop: GitHub Projects'
-// auto-close workflow moves the board item to Done on `gh issue close`, so a
-// subsequent manual move to `done` is an illegal self-transition that
-// move-state.mjs rejects with exit 5 and an `illegal transition: done → done`
-// reason. Every other non-zero (a real gate refusal, a spawn `ENOENT`, an
-// unknown state) is genuine and must be surfaced. Pure + exported for tests.
+// #385 / #444 — classify a non-zero `move-state.mjs` outcome as benign or
+// genuine. Two benign non-zero cases, both exit-5 illegal self-loops:
+//   1. `done → done` (#385): GitHub Projects' auto-close workflow moves the
+//      board item to Done on `gh issue close`, so a subsequent manual move to
+//      `done` is an illegal self-transition. No-op re-entry.
+//   2. `test → test` (#444): once an issue is already in `test`, re-running the
+//      `test` verb to re-exercise newly-added `## Verification Commands` issues
+//      a `test → test` move. This is the supported in-place re-verify path — the
+//      sandbox run already happened on the green path; the board column simply
+//      stays put. Same shape/intent as the done self-loop.
+// Every other non-zero (a real gate refusal, a spawn `ENOENT`, an unknown
+// state) is genuine and must be surfaced. Pure + exported for tests.
 export function classifyMoveStateBenign({ state, status, stderr } = {}) {
+  const text = String(stderr || '');
   return (
-    state === 'done' &&
-    status === 5 &&
-    /illegal transition:\s*done\s*→\s*done/i.test(String(stderr || ''))
+    (state === 'done' && status === 5 && /illegal transition:\s*done\s*→\s*done/i.test(text)) ||
+    (state === 'test' && status === 5 && /illegal transition:\s*test\s*→\s*test/i.test(text))
   );
 }
 

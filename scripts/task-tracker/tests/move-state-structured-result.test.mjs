@@ -46,6 +46,45 @@ assert.equal(
   'benign classifier tolerates case/spacing in the reason'
 );
 
+// --- #444: the exit-5 test→test self-loop (in-place re-verify) -------------
+
+assert.equal(
+  classifyMoveStateBenign({
+    state: 'test',
+    status: 5,
+    stderr:
+      '⛔ Refusing to move #1 to test:\n   BLOCKED: illegal transition: test → test. Allowed: review, develop.',
+  }),
+  true,
+  'test→test exit-5 illegal-transition must classify benign (in-place re-verify)'
+);
+
+assert.equal(
+  classifyMoveStateBenign({
+    state: 'test',
+    status: 5,
+    stderr: 'Illegal Transition: test  →  test',
+  }),
+  true,
+  'test→test benign classifier tolerates case/spacing in the reason'
+);
+
+assert.equal(
+  classifyMoveStateBenign({ state: 'test', status: 4, stderr: 'illegal transition: test → test' }),
+  false,
+  'a non-5 exit with the test→test reason is NOT benign'
+);
+
+assert.equal(
+  classifyMoveStateBenign({
+    state: 'test',
+    status: 5,
+    stderr: 'BLOCKED: develop→test some-other-gate refused',
+  }),
+  false,
+  'exit 5 in test state with a different reason (real gate refusal) is NOT benign'
+);
+
 // --- genuine failures must NOT classify benign ------------------------------
 
 assert.equal(

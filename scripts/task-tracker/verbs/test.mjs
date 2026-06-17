@@ -58,6 +58,14 @@ export function buildPassedMessage(issueNumber, target) {
   return `✓ #${issueNumber} verified in sandbox — moved to ${label}.`;
 }
 
+// #444 — loud-success banner for an in-place re-verify: the issue was already
+// in Test, the sandbox re-ran the current Verification Commands set, and the
+// board column stayed put (a benign test→test self-loop). Distinct from
+// `buildPassedMessage` so it never falsely claims a develop→test promotion.
+export function buildReverifiedMessage(issueNumber) {
+  return `✓ #${issueNumber} re-verified in sandbox — already in Test (in-place re-verify, board unchanged).`;
+}
+
 async function defaultGetHeadSha({ projectDir }) {
   const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
     cwd: projectDir,
@@ -510,6 +518,14 @@ export async function runVerbTest({
     if (moveResult && moveResult.ok === false && moveResult.benign !== true) {
       return { status: 'move-failed', sha, ts, results, wtPath, target: 'test', move: moveResult };
     }
+    // #444 — a benign move result with target 'test' can only be a test→test
+    // self-loop: the issue was already in `test` and the sandbox just re-ran the
+    // current VC set in place (an in-place re-verify, not a fresh entry). The
+    // board column is unchanged; surface a distinct loud-success status so the
+    // banner does not falsely claim a develop→test promotion.
+    if (moveResult && moveResult.ok === false && moveResult.benign === true) {
+      return { status: 'reverified', sha, ts, results, wtPath, target: 'test', move: moveResult };
+    }
     return { status: 'passed', sha, ts, results, wtPath, target: 'test' };
   }
 
@@ -572,6 +588,14 @@ export async function verbTest(ctx) {
       // verb. Only the timing session closes; the issue stays bound so the next
       // verb needs no intervening re-`start`. `pause` remains the sole verb that
       // nulls `active`.
+      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      return;
+    }
+    case 'reverified': {
+      // #444 — already in Test; the sandbox re-ran the current VC set in place
+      // and re-stamped results. Loud success, board column unchanged. Same
+      // timing/binding handling as `passed`.
+      console.log(buildReverifiedMessage(issueNumber));
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
     }
