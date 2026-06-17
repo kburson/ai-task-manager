@@ -6,11 +6,8 @@
 // no live `gh` invocations.
 
 import assert from 'node:assert/strict';
-import { admit } from '../../scripts/gh/lib/wave-admission.mjs';
-import {
-  checkCascadeGrooming,
-  checkWaveAdmission,
-} from '../../scripts/task-tracker/lib/body-gates.mjs';
+import { admit } from '../../../../scripts/gh/lib/wave-admission.mjs';
+import { checkCascadeGrooming, checkWaveAdmission } from '../../lib/body-gates.mjs';
 
 const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 

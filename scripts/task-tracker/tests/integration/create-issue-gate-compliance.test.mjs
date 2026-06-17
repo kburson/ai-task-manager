@@ -30,16 +30,18 @@ import {
   checkRequiredFields,
   validateBody,
   DEFAULT_GATES,
-} from '../../scripts/task-tracker/lib/body-gates.mjs';
-import {
-  planPriorityGate,
-  planRefinementEstimate,
-} from '../../scripts/task-tracker/lib/apply-refinement-estimate.mjs';
-import { gateRefineToPlan } from '../../scripts/task-tracker/lib/refine-to-plan-gate.mjs';
-import { planDeepDiveGate } from '../../scripts/task-tracker/lib/deep-dive-gate.mjs';
+} from '../../lib/body-gates.mjs';
+import { planPriorityGate, planRefinementEstimate } from '../../lib/apply-refinement-estimate.mjs';
+import { gateRefineToPlan } from '../../lib/refine-to-plan-gate.mjs';
+import { planDeepDiveGate } from '../../lib/deep-dive-gate.mjs';
 
-const repoRoot = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
-const FIXTURE_DIR = path.join(repoRoot, 'tests', 'fixtures', 'create-issue-gate-compliance');
+const repoRoot = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
+const FIXTURE_DIR = path.resolve(
+  fileURLToPath(import.meta.url),
+  '..',
+  'fixtures',
+  'create-issue-gate-compliance'
+);
 
 const SEED = {
   priority: 'P1',
