@@ -149,7 +149,7 @@ function lineHasDodEvidence(line) {
   return DOD_EVIDENCE_RE.test(String(line));
 }
 
-function insertVerificationCommands(lines, commands) {
+export function insertVerificationCommands(lines, commands) {
   if (commands.length === 0) return lines;
   const out = [...lines];
   const headingIdx = out.findIndex((line) => /^#{2,3}\s+Verification Commands\b/i.test(line));

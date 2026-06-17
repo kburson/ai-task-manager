@@ -20,7 +20,9 @@ import {
   parseAcEvidence,
   findEvidenceAc,
   stampAcEvidenceMarker,
+  stampAcEvidenceAndReconcile,
 } from '../lib/ac-evidence.mjs';
+import { auditEvidenceMarkers } from '../lib/evidence-markers.mjs';
 import { gateEvidenceTick } from '../verbs/check.mjs';
 
 const AC_BODY = [
@@ -276,4 +278,94 @@ test('gateEvidenceTick leaves the Functional DoD path intact (regression)', () =
   const r = gateEvidenceTick(dodBody, 'All automated tests pass');
   assert.equal(r.kind, 'refuse-missing-evidence');
   assert.equal(r.key, 'tests');
+});
+
+// #443 — an AC declaring a non-standard verifier that is NOT mirrored into
+// `## Verification Commands` triggers the exact `review-preflight` refusal that
+// blocked #429: `auditEvidenceMarkers(body).missingVerificationCommands` is
+// non-empty even after `ac-stamp` records the inline evidence proof marker.
+const SPIKE_BODY = [
+  '## Acceptance Criteria',
+  '',
+  '- [ ] spike probe passes <!-- aitm-verified-by: `grep -qF needle file` -->',
+  '',
+  '## Definition of Done',
+  '',
+  '## Verification Commands',
+  '',
+  '## Pickup Directive',
+  '',
+].join('\n');
+
+test('#443 reproduces the #429 refusal — non-standard AC command missing from Verification Commands', () => {
+  // Pre-fix behavior: stamping only the inline marker leaves the command
+  // unlisted, so the audit still reports it missing → preflight refuses.
+  const stamped = stampAcEvidenceMarker(SPIKE_BODY, 'spike probe passes', {
+    cmd: 'grep -qF needle file',
+    sha: 'abc1234',
+    ts: '2026-06-16T00:00:00.000Z',
+    exit: 0,
+  });
+  const audit = auditEvidenceMarkers(stamped);
+  assert.deepEqual(audit.missingVerificationCommands, ['grep -qF needle file']);
+  assert.equal(audit.ok, false);
+});
+
+test('#443 stampAcEvidenceAndReconcile clears the refusal and keeps the AC marker', () => {
+  const out = stampAcEvidenceAndReconcile(SPIKE_BODY, 'spike probe passes', {
+    cmd: 'grep -qF needle file',
+    sha: 'abc1234',
+    ts: '2026-06-16T00:00:00.000Z',
+    exit: 0,
+  });
+  // The inline evidence proof marker is present…
+  const ac = findEvidenceAc(out, 'spike probe passes');
+  assert.ok(ac.evidenceMarker, 'AC evidence marker stamped');
+  assert.equal(ac.evidenceMarker.cmd, 'grep -qF needle file');
+  // …and the declared command is now reconciled into Verification Commands, so
+  // the audit passes and preflight would no longer refuse.
+  const audit = auditEvidenceMarkers(out);
+  assert.deepEqual(audit.missingVerificationCommands, []);
+  assert.ok(out.includes('- [ ] `grep -qF needle file`'), 'command listed under VC');
+});
+
+test('#443 stampAcEvidenceAndReconcile is idempotent — no duplicate VC entry on re-run', () => {
+  const ev = {
+    cmd: 'grep -qF needle file',
+    sha: 'abc1234',
+    ts: '2026-06-16T00:00:00.000Z',
+    exit: 0,
+  };
+  const once = stampAcEvidenceAndReconcile(SPIKE_BODY, 'spike probe passes', ev);
+  const twice = stampAcEvidenceAndReconcile(once, 'spike probe passes', { ...ev, sha: 'def5678' });
+  const vcCount = [...twice.matchAll(/- \[ \] `grep -qF needle file`/g)].length;
+  assert.equal(vcCount, 1, 'command appears exactly once in Verification Commands');
+  assert.equal(auditEvidenceMarkers(twice).missingVerificationCommands.length, 0);
+});
+
+test('#443 reconcile scopes to the stamped AC — an unrelated AC gap is left untouched', () => {
+  const twoAcBody = [
+    '## Acceptance Criteria',
+    '',
+    '- [ ] first probe <!-- aitm-verified-by: `grep -qF one file` -->',
+    '- [ ] second probe <!-- aitm-verified-by: `grep -qF two file` -->',
+    '',
+    '## Definition of Done',
+    '',
+    '## Verification Commands',
+    '',
+    '## Pickup Directive',
+    '',
+  ].join('\n');
+  const out = stampAcEvidenceAndReconcile(twoAcBody, 'first probe', {
+    cmd: 'grep -qF one file',
+    sha: 'abc1234',
+    ts: '2026-06-16T00:00:00.000Z',
+    exit: 0,
+  });
+  assert.ok(out.includes('- [ ] `grep -qF one file`'), 'stamped AC command reconciled');
+  assert.ok(
+    !out.includes('- [ ] `grep -qF two file`'),
+    'unrelated AC command NOT dragged into this transaction'
+  );
 });

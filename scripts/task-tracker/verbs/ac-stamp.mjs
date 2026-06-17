@@ -13,7 +13,7 @@ import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
-import { findEvidenceAc, stampAcEvidenceMarker } from '../lib/ac-evidence.mjs';
+import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
 
 export async function verbAcStamp(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
@@ -75,7 +75,8 @@ export async function verbAcStamp(ctx) {
     issueNumber: issueNum,
     repo: cfg.repo,
     deps: { pexec },
-    mutate: (base) => stampAcEvidenceMarker(base, label, { cmd: canonicalCmd, sha, ts, exit: 0 }),
+    mutate: (base) =>
+      stampAcEvidenceAndReconcile(base, label, { cmd: canonicalCmd, sha, ts, exit: 0 }),
   });
 
   console.log(

@@ -15,6 +15,7 @@
 import { createHash } from 'node:crypto';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
+import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
@@ -203,4 +204,30 @@ export function stampAcEvidenceMarker(body, label, evidence) {
   if (next === line) return src;
   lines[target.lineIndex] = next;
   return lines.join('\n');
+}
+
+// #443 — stamp the AC evidence marker AND reconcile that AC's declared verifier
+// command(s) into `## Verification Commands` in one body transform. `ac-stamp`
+// historically stamped only the inline `aitm-ac-evidence` proof marker and left
+// the command unlisted in the VC section, so `review-preflight`'s
+// `auditEvidenceMarkers().missingVerificationCommands` refused `test → review`
+// for any AC carrying a non-standard verifier (e.g. a spike's `grep -qF …`
+// probe). #429 had to be unblocked by hand with `buildEvidenceBackfill`; this
+// closes the gap at the moment evidence is recorded.
+//
+// Scope: only the just-stamped AC's own declared commands are reconciled, so an
+// unrelated AC's gap is not silently dragged into this transaction. Idempotent:
+// on a re-run the command is already in the VC set, so the intersection is empty
+// and the body returns unchanged (no duplicate VC entry). Reuses the shared
+// `insertVerificationCommands` primitive — no logic copy — which carries the
+// #296 heading-level-aware section-end detection.
+export function stampAcEvidenceAndReconcile(body, label, evidence) {
+  const stamped = stampAcEvidenceMarker(body, label, evidence);
+  const target = findEvidenceAc(stamped, label);
+  if (!target) return stamped;
+  const declared = new Set(target.evidenceCommands);
+  const audit = auditEvidenceMarkers(stamped);
+  const toInsert = audit.missingVerificationCommands.filter((cmd) => declared.has(cmd));
+  if (!toInsert.length) return stamped;
+  return insertVerificationCommands(stamped.split('\n'), toInsert).join('\n');
 }
