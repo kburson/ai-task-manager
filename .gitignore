@@ -22,6 +22,9 @@ node_modules/
 # Runtime project-field caches (ephemeral)
 .ai-task-manager/project-fields.json
 .ai-task-manager/project-field-events.json
+# Content-addressed verifier-result cache (#446) — ephemeral; MUST stay ignored
+# so writing it never dirties the tree (a dirty tree disables every cache hit).
+.ai-task-manager/cache/
 .ai-task-manager/orchestrator.lock
 # Per-issue advisory lock dirs (mkdir-based; ephemeral) — #214
 .ai-task-manager/locks/

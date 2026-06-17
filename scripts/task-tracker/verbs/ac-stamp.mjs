@@ -9,6 +9,7 @@
 // runner in `lib/evidence-runner.mjs`. The AC key is the label hash (ACs carry
 // no human-assigned key), derived by `acKeyForLabel`.
 
+import path from 'node:path';
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -51,14 +52,23 @@ export async function verbAcStamp(ctx) {
   console.log(
     `[task-tracker] ac-stamp on ${s.active}: running ${target.evidenceCommands.length} verifier(s) for AC "${target.label}"…`
   );
-  const { ran, firstFailure } = await runVerifiers({
+  const {
+    ran,
+    firstFailure,
+    sha: runSha,
+  } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    // #446 — content-addressed suite-run cache. The store lives in the REAL
+    // project `.ai-task-manager`, decoupled from `cwd`, so repeat stamps of the
+    // same heavyweight command at one clean HEAD collapse to a single real run.
+    cache: { dir: path.join(projectDir, '.ai-task-manager') },
   });
   for (const r of ran) {
     const tag = r.exit === 0 ? '✓' : '✗';
-    console.log(`  ${tag} ${r.cmd} (exit=${r.exit})`);
+    const cachedNote = r.cached ? ' ↺ cached' : '';
+    console.log(`  ${tag} ${r.cmd} (exit=${r.exit})${cachedNote}`);
   }
   if (firstFailure) {
     console.error(
@@ -67,8 +77,12 @@ export async function verbAcStamp(ctx) {
     process.exit(1);
   }
 
-  const sha = await headSha(pexec);
-  const ts = nowIso(ctx.deps);
+  // #446 — on a cache hit the marker must attribute the ORIGINAL real run: use
+  // the recorded `sha`/`ts` returned by the runner, never a fresh clock. The
+  // returned `runSha` equals the recorded sha by construction (a hit is only
+  // admitted at the matching HEAD).
+  const sha = runSha && runSha !== 'unknown' ? runSha : await headSha(pexec);
+  const ts = ran[0]?.ts || nowIso(ctx.deps);
   const canonicalCmd = ran[0]?.cmd || '';
 
   await mutateIssueBody({

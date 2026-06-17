@@ -8,6 +8,11 @@
 // this module owns only command execution + the small shared helpers.
 
 import { TEST_RUNNER_TIMEOUT_MS } from './process-timeouts.mjs';
+import {
+  isCacheEligible,
+  lookup as cacheLookup,
+  record as cacheRecord,
+} from './verifier-cache.mjs';
 
 // Split an `aitm-verified-by` command (a backtick-delimited shell string) into
 // argv. Conservative: split on whitespace. Commands declared in the templates
@@ -32,29 +37,75 @@ export function nowIso(deps) {
   return new Date().toISOString();
 }
 
+// Resolve the (HEAD sha, clean-tree) identity of `cwd` once, before the command
+// loop. Any git failure → { sha: 'unknown', clean: false } so the caller's cache
+// is disabled for the whole invocation (fail-safe — never a false reuse).
+async function treeIdentity(pexec, cwd) {
+  try {
+    const { stdout: shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], { cwd });
+    const sha = String(shaOut || '').trim();
+    if (!sha) return { sha: 'unknown', clean: false };
+    const { stdout: statusOut } = await pexec('git', ['status', '--porcelain'], { cwd });
+    const clean = String(statusOut || '').trim() === '';
+    return { sha, clean };
+  } catch {
+    return { sha: 'unknown', clean: false };
+  }
+}
+
 // Run each command in `commands` (raw backtick-stripped strings) sequentially
 // via `pexec(bin, args, runOptions)`. Stops at the first non-zero exit.
 //
-// Returns { ran: [{ cmd, exit }], allPassed, firstFailure }.
-//   - `ran` records every command actually attempted, in order, with its exit.
+// Returns { ran: [{ cmd, exit, cached, ts }], allPassed, firstFailure, sha, clean }.
+//   - `ran` records every command actually attempted (or served from cache), in
+//     order, with its exit. `cached` is true when the result was served from the
+//     content-addressed store instead of a fresh run; `ts` carries the ISO time
+//     of the originating real run (for a hit, the ORIGINAL run's ts).
 //   - `allPassed` is true iff every command exited 0 (and at least one ran).
 //   - `firstFailure` is the first `{ cmd, exit }` with exit !== 0, or null.
+//   - `sha` / `clean` are the resolved tree identity (present only when caching).
 //
 // `runOptions` defaults: { cwd, timeout: TEST_RUNNER_TIMEOUT_MS,
 // maxBuffer: 64 MiB } — verifier commands are typically test/lint runs whose
 // stdout overflows the 1 MiB default.
-export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer } = {}) {
+//
+// `cache` (opt-in, #446): { dir, now? }. When supplied, eligible heavyweight
+// suite commands consult/record a content-addressed result cache keyed on
+// (normalized command, HEAD sha) at a clean tree. Callers that omit `cache`
+// behave byte-identically to the pre-#446 runner. `now` is an injectable clock
+// (() => ISO string) used to timestamp fresh runs that get recorded; defaults to
+// `new Date().toISOString()`.
+export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, cache } = {}) {
   const list = Array.isArray(commands) ? commands : [];
   const runOptions = {
     cwd,
     timeout: timeout ?? TEST_RUNNER_TIMEOUT_MS,
     maxBuffer: maxBuffer ?? 64 * 1024 * 1024,
   };
+  const cacheDir = cache && cache.dir;
+  const nowFn =
+    cache && typeof cache.now === 'function' ? cache.now : () => new Date().toISOString();
+
+  let sha = 'unknown';
+  let clean = false;
+  if (cacheDir) ({ sha, clean } = await treeIdentity(pexec, cwd));
+
   const ran = [];
   let firstFailure = null;
   for (const raw of list) {
     const argv = splitCmd(raw);
     if (!argv.length) continue;
+
+    // Cache read: only at a clean tree, only for eligible commands, only when a
+    // recorded green result exists at the current sha.
+    if (cacheDir && clean && isCacheEligible(raw)) {
+      const hit = cacheLookup({ dir: cacheDir, cmd: raw, sha });
+      if (hit) {
+        ran.push({ cmd: raw, exit: 0, cached: true, ts: hit.ts });
+        continue;
+      }
+    }
+
     const [bin, ...args] = argv;
     let exit = 0;
     try {
@@ -63,7 +114,16 @@ export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer } 
       // pexec convention: throw on non-zero. Best-effort capture exit code.
       exit = Number(err?.code ?? err?.status ?? 1) || 1;
     }
-    ran.push({ cmd: raw, exit });
+    const ts = nowFn();
+    ran.push({ cmd: raw, exit, cached: false, ts });
+
+    // Cache write: record only genuine green runs at a clean tree for eligible
+    // commands. `record` itself re-asserts these preconditions and prunes the
+    // store to the current sha before inserting.
+    if (cacheDir && clean && exit === 0) {
+      cacheRecord({ dir: cacheDir, cmd: raw, sha, exit, ts });
+    }
+
     if (exit !== 0 && firstFailure === null) {
       firstFailure = { cmd: raw, exit };
       break;
@@ -73,5 +133,7 @@ export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer } 
     ran,
     allPassed: ran.length > 0 && firstFailure === null,
     firstFailure,
+    sha,
+    clean,
   };
 }

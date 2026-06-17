@@ -8,6 +8,7 @@
 // Stampable keys (`tests`, `lint`, `commits`) only. Derived keys (`acs`,
 // `checkboxes`) are computed by `verbs/close.mjs` at close time.
 
+import path from 'node:path';
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -72,14 +73,21 @@ export async function verbDodStamp(ctx) {
   // TEST_RUNNER_TIMEOUT_MS and a 64 MiB stdout buffer by default (the 1 MiB
   // default overflows on `npm test`).
   // (#304 follow-up to #303: GH_API_TIMEOUT_MS — 15s — killed `npm test` mid-run.)
-  const { ran, firstFailure } = await runVerifiers({
+  const {
+    ran,
+    firstFailure,
+    sha: runSha,
+  } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    // #446 — content-addressed suite-run cache (see ac-stamp for rationale).
+    cache: { dir: path.join(projectDir, '.ai-task-manager') },
   });
   for (const r of ran) {
     const tag = r.exit === 0 ? '✓' : '✗';
-    console.log(`  ${tag} ${r.cmd} (exit=${r.exit})`);
+    const cachedNote = r.cached ? ' ↺ cached' : '';
+    console.log(`  ${tag} ${r.cmd} (exit=${r.exit})${cachedNote}`);
   }
   if (firstFailure) {
     console.error(
@@ -88,8 +96,10 @@ export async function verbDodStamp(ctx) {
     process.exit(1);
   }
 
-  const sha = await headSha(pexec);
-  const ts = nowIso(ctx.deps);
+  // #446 — on a cache hit attribute the ORIGINAL real run (recorded sha/ts),
+  // never a fresh clock.
+  const sha = runSha && runSha !== 'unknown' ? runSha : await headSha(pexec);
+  const ts = ran[0]?.ts || nowIso(ctx.deps);
   // Stamp under one combined marker. Use the first command as the canonical
   // `cmd` field; future readers can re-parse `aitm-verified-by` if they need
   // the full list. Idempotent — replaces an existing marker in place.
