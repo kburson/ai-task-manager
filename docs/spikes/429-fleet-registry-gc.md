@@ -26,7 +26,7 @@ Three mutators:
 
 - **`registerTask(projectDir, issueRef, worktreePath, branch)`** — sets
   `fleet[issueRef] = { worktreePath, branch, startedAt: existing?.startedAt ?? now, status: 'active' }`.
-  This is the only *append* path. Three callers, **all of which pass
+  This is the only _append_ path. Three callers, **all of which pass
   `worktreePath = projectDir`** (the resolved project dir, i.e. the repo root on
   the main thread):
   - `verbs/switch.mjs:86`
@@ -36,7 +36,7 @@ Three mutators:
   place; no-op if the entry is absent. Callers: pause / start / resume / review.
   Never creates or removes an entry.
 - **`deregisterTask(projectDir, issueRef)`** — `delete fleet[issueRef]`. The
-  only *removal* path. Callers: switch-away-from-previous (`switch.mjs`) and
+  only _removal_ path. Callers: switch-away-from-previous (`switch.mjs`) and
   close (×4 in the close lifecycle).
 
 **Stale / bogus producers identified:**
@@ -48,9 +48,9 @@ entry whose `worktreePath` equals the repo root — byte-identical in shape to a
 real parallel-worktree agent. `#429` itself is exactly this class: its
 `worktreePath` is the live repo root.
 
-(b) **Test sandboxes leak into the *real* registry.** Tests that allocate a
+(b) **Test sandboxes leak into the _real_ registry.** Tests that allocate a
 scratch dir with a bare `mkdtempSync(path.join(projectScratchDir('test'), ...))`
-and then *skip* git-init produce entries in the live registry. Because the
+and then _skip_ git-init produce entries in the live registry. Because the
 sandbox has no `.git`, `findMainWorktreePath` walks up and out of the sandbox and
 resolves to this repo's real root (the leak documented in `lib/scratch-dir.mjs`
 lines 36-43), so `registerTask` writes to the live
@@ -64,7 +64,7 @@ spike time were test-leak garbage.**
 ## AC2 — Root cause: entries are never removed
 
 `deregisterTask` fires on exactly two events: an explicit `close`, and switching
-*away from* a previously-bound issue. There is:
+_away from_ a previously-bound issue. There is:
 
 - no session-end / stop-hook reap,
 - no staleness sweep (`startedAt` is recorded but used for display only),
@@ -93,8 +93,8 @@ for (const [ref, entry] of Object.entries(fleet)) {
 }
 ```
 
-The test "is this a live worktree agent?" is *status active + non-empty
-worktreePath*. But **every** entry has a non-empty `worktreePath` (per AC1(a),
+The test "is this a live worktree agent?" is _status active + non-empty
+worktreePath_. But **every** entry has a non-empty `worktreePath` (per AC1(a),
 even main-thread binds store the repo root), so a plain main-thread bind such as
 `#405@trunk` / `#429@trunk` is misclassified as a live worktree agent and blocks
 chore-mode. The discriminator has no way to tell "agent running in its own
@@ -118,7 +118,7 @@ A four-part remediation, ordered by value:
 
 2. **GC trigger points.** Keep the existing close / switch-away
    `deregisterTask`. Add: (a) a stop-hook / session-end reap that deregisters the
-   session's own bind, and (b) a bounded *lazy auto-reap* on `readFleet`
+   session's own bind, and (b) a bounded _lazy auto-reap_ on `readFleet`
    (guard-time) that evicts stale entries whenever the registry is read.
 
 3. **Staleness criteria for the reap:** evict an entry when any of — its
