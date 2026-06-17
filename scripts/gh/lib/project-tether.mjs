@@ -3,7 +3,7 @@ import { gql, splitRepo } from './github-projects.mjs';
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
 
-const STATUS_CONFIG_KEYS = {
+export const STATUS_CONFIG_KEYS = {
   backlog: 'kanbanOptionBacklog',
   'on-deck': 'kanbanOptionOnDeck',
   refine: 'kanbanOptionRefine',

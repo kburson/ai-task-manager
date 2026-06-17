@@ -89,7 +89,7 @@ export const DEFAULTS = {
   pauseThresholdSeconds: 30,
 };
 
-const TYPES = {
+export const TYPES = {
   wpm: 'number',
   repo: 'string',
   projectId: 'string',
