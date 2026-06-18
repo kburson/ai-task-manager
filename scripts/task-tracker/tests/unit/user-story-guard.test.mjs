@@ -1,3 +1,4 @@
+// @story #432
 // Unit tests for user-story-guard.mjs (#432).
 // Covers: validateUserStory, userStoryWarnGuard, userStoryBlockGuard.
 
