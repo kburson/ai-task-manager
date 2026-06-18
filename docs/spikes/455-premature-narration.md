@@ -15,13 +15,13 @@ Premature narration is a structural consequence of how Claude streaming works. T
 
 **Source:** Issue #453 timing log (retrieved via `gh issue view 453 --comments`) + user-reported wall-clock messages.
 
-| Wall-clock time | Event | Evidence |
-|---|---|---|
-| 2026-06-18 00:23:09 | `plan:start` marker stamped in timing log | #453 timing log row `plan:start` |
+| Wall-clock time     | Event                                                                                 | Evidence                                      |
+| ------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 2026-06-18 00:23:09 | `plan:start` marker stamped in timing log                                             | #453 timing log row `plan:start`              |
 | 2026-06-18 00:23:18 | Claude emits: "Now promoting to Develop, then doing the deep dive and implementation" | User-reported; appeared 9s after `plan:start` |
-| 2026-06-18 00:24:15 | User checks #453 — still in Plan, no deep-dive section visible | User-reported (57s after narration) |
-| 2026-06-18 00:27:38 | User observes deep-dive section present in issue body | User-reported (~4m 20s after narration) |
-| 2026-06-18 00:27:58 | `plan:done` marker stamped; issue moves to Develop | #453 timing log row `plan:done` |
+| 2026-06-18 00:24:15 | User checks #453 — still in Plan, no deep-dive section visible                        | User-reported (57s after narration)           |
+| 2026-06-18 00:27:38 | User observes deep-dive section present in issue body                                 | User-reported (~4m 20s after narration)       |
+| 2026-06-18 00:27:58 | `plan:done` marker stamped; issue moves to Develop                                    | #453 timing log row `plan:done`               |
 
 **Total false-impression window:** 4m 40s (narration at 00:23:18 → `plan:done` at 00:27:58).
 
@@ -35,10 +35,10 @@ Each premature message site, labeled by category:
 
 **(a) Claude free-text reasoning** — model outputs intent in the same streaming response as tool calls. Text appears in the stream before any tool executes.
 
-| Site | Category | Description |
-|---|---|---|
-| "Now promoting to Develop, then doing the deep dive and implementation" | **(a)** | Written as intent statement at plan:start, before any tool call runs |
-| General "I'll now..." / "Next, I'll..." / "Now doing..." sentences | **(a)** | Standard LLM behavior: describe the plan, then execute it. Text streams before tools. |
+| Site                                                                    | Category | Description                                                                           |
+| ----------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| "Now promoting to Develop, then doing the deep dive and implementation" | **(a)**  | Written as intent statement at plan:start, before any tool call runs                  |
+| General "I'll now..." / "Next, I'll..." / "Now doing..." sentences      | **(a)**  | Standard LLM behavior: describe the plan, then execute it. Text streams before tools. |
 
 **(b) SKILL.md narration directives** — skill instructions that explicitly request Claude to announce transitions.
 
@@ -86,6 +86,7 @@ All verbs already emit post-hoc stdout (`✓ Issue #N promoted: plan → develop
 ### Recommended approach
 
 **A + C combined**: update SKILL.md / pickup-directive.md with two rules:
+
 1. "Do not write 'I will now do X' when X involves tool calls in the same turn."
 2. "After a multi-step operation completes, quote the verb's stdout confirmation rather than rephrasing it."
 
