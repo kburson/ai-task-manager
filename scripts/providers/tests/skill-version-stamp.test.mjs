@@ -1,12 +1,13 @@
 #!/usr/bin/env node
+// @story #454
 // Verifies that SKILL_DETAIL_FILES includes the Codex adapter, and that
 // stampSkillVersion writes the version marker correctly.
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 
+import { mkdtempOutsideRepo } from '../../task-tracker/lib/scratch-dir.mjs';
 import { getProvider } from '../index.mjs';
 import { SKILL_DETAIL_FILES, stampSkillVersion } from '../../../bin/lib/stamp-skill-version.mjs';
 
@@ -50,7 +51,7 @@ test('SKILL_DETAIL_FILES includes adapter entry for claude', () => {
 // ---- stampSkillVersion behavior ----
 
 test('stampSkillVersion inserts marker into file without one', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'aitm-stamp-test-'));
+  const dir = mkdtempOutsideRepo('aitm-stamp-test-');
   try {
     const file = join(dir, 'SKILL.md');
     writeFileSync(file, '# My Skill\n\nSome content.\n', 'utf8');
@@ -68,7 +69,7 @@ test('stampSkillVersion inserts marker into file without one', () => {
 });
 
 test('stampSkillVersion replaces existing marker', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'aitm-stamp-test-'));
+  const dir = mkdtempOutsideRepo('aitm-stamp-test-');
   try {
     const file = join(dir, 'SKILL.md');
     writeFileSync(file, '<!-- aitm-skill-version: 0.0.0 -->\n# My Skill\n', 'utf8');
@@ -83,7 +84,7 @@ test('stampSkillVersion replaces existing marker', () => {
 });
 
 test('stampSkillVersion is no-op when version unchanged', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'aitm-stamp-test-'));
+  const dir = mkdtempOutsideRepo('aitm-stamp-test-');
   try {
     const file = join(dir, 'SKILL.md');
     writeFileSync(file, '<!-- aitm-skill-version: 1.2.3 -->\n# Skill\n', 'utf8');
