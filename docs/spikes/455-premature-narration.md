@@ -1,5 +1,7 @@
 # Spike #455 — Premature progress narration: state-change messages appear before operations complete
 
+<!-- AC4-anchor: findings-committed -->
+
 **Status:** complete (2026-06-18)
 **Type:** investigation spike
 **Trigger:** During an AFK session driving #453, a progress message "Now promoting to Develop, then doing the deep dive and implementation" appeared at 00:23:18, but at 00:24:15 the user found #453 still in Plan with no deep-dive section. The deep-dive section finally appeared at 00:27:38 — a 4m 40s gap.
@@ -10,6 +12,8 @@
 Premature narration is a structural consequence of how Claude streaming works. Text content and tool_use blocks are emitted in the same response turn; text appears before any tool results arrive. When Claude writes "Now doing X" in the same turn as the tool calls that implement X, the sentence reads as a completion statement but is actually an intent statement. Operations with multiple network round-trips (like the plan→develop transition, which involves `appendPlannedEstimate`, `ensureDeepDive`, and `promote`) can take 4-5 minutes — making the false impression window significant.
 
 ---
+
+<!-- AC1-anchor: timeline-reconstruction -->
 
 ## AC1 — Timeline reconstruction
 
@@ -28,6 +32,8 @@ Premature narration is a structural consequence of how Claude streaming works. T
 The plan stage consumed 4m 49s of active time (00:23:09 → 00:27:58), nearly all of it executing the plan verb chain: `appendPlannedEstimate` (fetch refine-estimate comment + write planned-estimate appendix), `ensureDeepDive` (fetch issue body + write deep-dive section + stamp `aitm-deep-dive-posted`), and the final `promote` to Develop.
 
 ---
+
+<!-- AC2-anchor: source-classification -->
 
 ## AC2 — Source classification
 
@@ -54,6 +60,8 @@ Searching `node_modules/ai-task-manager/skill/adapters/claude/SKILL.md` and `sha
 **Conclusion:** All verb stdout is post-hoc (printed after the operation completes). The only premature site is **(a): Claude's own free-text reasoning** emitted in the streaming response before tool calls execute.
 
 ---
+
+<!-- AC3-anchor: proposed-fixes -->
 
 ## AC3 — Proposed fixes
 
