@@ -218,6 +218,7 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
     },
     cfg: { repo: 'owner/repo', projectId: 'PVT_FAKE' },
     deps: {
+      assertBound: () => {},
       tetherIssueToProject: async (opts) => {
         calls.tether = opts;
         return { itemId: 'ITEM_X' };
@@ -277,6 +278,7 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
       },
       cfg: { repo: 'o/r', projectId: 'PVT' },
       deps: {
+        assertBound: () => {},
         tetherIssueToProject: async () => {
           throw new Error('graphql boom');
         },
@@ -313,6 +315,7 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
     },
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
+      assertBound: () => {},
       tetherIssueToProject: async (opts) => {
         calls.tether = opts;
       },
@@ -346,6 +349,7 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
     args: { issueNumber: 201, size: 'S', estimate: '2', priority: 'p1', reason: 'r' },
     cfg: { repo: 'o/r', projectId: 'P' },
     deps: {
+      assertBound: () => {},
       tetherIssueToProject: async (opts) => {
         calls.tether = opts;
       },

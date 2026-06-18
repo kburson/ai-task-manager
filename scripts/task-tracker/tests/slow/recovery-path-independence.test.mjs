@@ -55,6 +55,7 @@ function makeDemoteDeps({ body, live, moveCode = 0 }) {
   return {
     calls,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => ({ body: remote }),
       mutateIssueBody: async ({ mutate }) => {
         const next = mutate(remote);
@@ -97,6 +98,7 @@ test('AC4: runUnblock clears a stale blocker on a marker-heavy body (non-manual 
     refs: null, // drop ALL
     cfg,
     deps: {
+      assertBound: () => {},
       mutateIssueBody: async ({ mutate }) => {
         const next = mutate(remote);
         if (next !== remote) remote = next;

@@ -18,6 +18,7 @@ function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
   return {
     calls,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => {
         calls.fetches++;
         return { body: remote };

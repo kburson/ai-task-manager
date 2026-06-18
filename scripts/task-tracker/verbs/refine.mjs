@@ -29,6 +29,7 @@ import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { serializeMarker } from '../lib/marker-grammar.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
+import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 const pexec = promisify(execFile);
 
@@ -204,6 +205,8 @@ async function defaultAddLabels({ issueNumber, repo, labels }) {
 export async function runRefine({ args, cfg, deps = {} } = {}) {
   if (!cfg) throw new Error('refine: cfg is required');
   validateArgs(args);
+  const assertBound = deps.assertBound ?? assertBoundToIssue;
+  assertBound(args?.issueNumber);
 
   const { issueNumber, size, estimate, priority, reason, sequence, labels } = args;
   const estimateNum = parseFloat(String(estimate).replace(/h$/i, ''));

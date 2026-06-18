@@ -14,6 +14,7 @@ function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = 
   return {
     posted,
     written,
+    assertBound: () => {},
     fetchIssueBody: async () => body,
     // #295 — verb writes through `mutateIssueBody({mutate})`; closure runs on FRESH base.
     mutateIssueBody: async ({ mutate }) => {

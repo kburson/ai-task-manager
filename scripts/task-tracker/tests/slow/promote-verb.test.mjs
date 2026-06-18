@@ -33,6 +33,7 @@ function makeDeps({
   return {
     calls,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => {
         calls.fetches++;
         if (secondFetch && fetchSecondBody !== undefined) return { body: fetchSecondBody };

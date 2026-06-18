@@ -21,6 +21,7 @@ import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -100,6 +101,8 @@ function defaultRunMoveState({ issueNumber, target }) {
 export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('demote: issueNumber is required');
   if (!cfg) throw new Error('demote: cfg is required');
+  const assertBound = deps.assertBound ?? assertBoundToIssue;
+  assertBound(issueNumber);
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;

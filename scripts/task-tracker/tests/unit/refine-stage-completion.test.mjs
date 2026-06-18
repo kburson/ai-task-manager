@@ -39,6 +39,7 @@ function bodyWithState(state) {
     },
     cfg: baseCfg,
     deps: {
+      assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'X' }),
       fetchBody: async () => bodyWithState('refine'),
       mutateBody: async ({ mutate }) => {
@@ -68,6 +69,7 @@ function bodyWithState(state) {
   let promoteCount = 0;
   let currentBody = bodyWithState('refine');
   const deps = {
+    assertBound: () => {},
     tetherIssueToProject: async () => ({ itemId: 'X' }),
     fetchBody: async () => currentBody,
     mutateBody: async ({ mutate }) => {
@@ -109,6 +111,7 @@ function bodyWithState(state) {
     args: { issueNumber: 702, size: 'S', estimate: '2', priority: 'p1', reason: 'stamp it' },
     cfg: baseCfg,
     deps: {
+      assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'X' }),
       fetchBody: async () => bodyWithState('refine'),
       mutateBody: async ({ mutate }) => {
@@ -145,6 +148,7 @@ function bodyWithState(state) {
     issueNumber: 703,
     cfg: baseCfg,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async () => {},
       getLiveState: async () => 'refine',
@@ -167,6 +171,7 @@ function bodyWithState(state) {
     issueNumber: 704,
     cfg: baseCfg,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async () => {},
       getLiveState: async () => 'refine',
@@ -193,6 +198,7 @@ function bodyWithState(state) {
       issueNumber: 705,
       cfg: baseCfg,
       deps: {
+        assertBound: () => {},
         fetchIssueBody: async () => ({ body: bodyWithState('refine') }),
         writeIssueBody: async () => {},
         getLiveState: async () => 'refine',
@@ -207,6 +213,7 @@ function bodyWithState(state) {
       issueNumber: 706,
       cfg: baseCfg,
       deps: {
+        assertBound: () => {},
         fetchIssueBody: async () => ({
           body: bodyWithState('refine') + '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->\n',
         }),

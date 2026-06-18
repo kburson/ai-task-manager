@@ -33,6 +33,7 @@ function makeDeps(overrides = {}) {
   return {
     calls,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => {
         calls.bodies.push(body);
         return body;
@@ -242,6 +243,7 @@ function makeDeps(overrides = {}) {
     issueNumber: 58,
     cfg,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => liveBody,
       mutateIssueBody: async (opts) => {
         capturedOpts = opts;
@@ -287,6 +289,7 @@ function makeDeps(overrides = {}) {
     issueNumber: 58,
     cfg,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => liveBody,
       mutateIssueBody: async (opts) => {
         capturedOpts = opts;

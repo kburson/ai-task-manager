@@ -33,6 +33,7 @@ import { deriveDrivers } from '../lib/derive-drivers.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 const pexec = promisify(execFile);
 
@@ -170,6 +171,8 @@ export function detectFullAuto({ env = process.env, tty = process.stdin?.isTTY }
 export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {}) {
   if (!issueNumber) throw new Error('approve: issueNumber is required');
   if (!cfg) throw new Error('approve: cfg is required');
+  const assertBound = deps.assertBound ?? assertBoundToIssue;
+  assertBound(issueNumber);
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;

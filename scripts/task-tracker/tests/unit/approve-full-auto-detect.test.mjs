@@ -33,6 +33,7 @@ function makeDeps(overrides = {}) {
   return {
     calls,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => {
         calls.bodies.push(body);
         return body;

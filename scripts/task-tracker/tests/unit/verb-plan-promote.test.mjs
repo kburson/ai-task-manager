@@ -14,6 +14,7 @@ const cfg = { repo: 'kburson/ai-task-manager', projectId: 'PVT_TEST' };
     issueNumber: 299,
     cfg,
     deps: {
+      assertBound: () => {},
       getLiveState: async ({ issueNumber }) => {
         calls.push(['live', issueNumber]);
         return 'refine';
@@ -42,6 +43,7 @@ for (const wrong of ['backlog', 'plan', 'develop', 'test', 'review', 'done', nul
     issueNumber: 42,
     cfg,
     deps: {
+      assertBound: () => {},
       getLiveState: async () => wrong,
       verbPromote: async () => {
         promoteCalled = true;

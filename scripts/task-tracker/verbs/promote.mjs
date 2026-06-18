@@ -41,6 +41,7 @@ import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
+import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -212,6 +213,8 @@ export async function runPromote({
 } = {}) {
   if (!issueNumber) throw new Error('promote: issueNumber is required');
   if (!cfg) throw new Error('promote: cfg is required');
+  const assertBound = deps.assertBound ?? assertBoundToIssue;
+  assertBound(issueNumber);
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;

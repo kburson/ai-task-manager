@@ -21,6 +21,7 @@
 import { verbPromote } from './promote.mjs';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
+import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 function parseArgs(rest = []) {
   for (const a of rest) {
@@ -60,6 +61,8 @@ export async function runPlan({ issueNumber, cfg, deps = {} } = {}) {
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
     throw new Error('plan: issue# must be a positive integer');
   }
+  const assertBound = deps.assertBound ?? assertBoundToIssue;
+  assertBound(issueNumber);
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const promote = deps.verbPromote || verbPromote;
 

@@ -35,6 +35,7 @@ function makeDeps({ writtenBodyRef, fetchRef }) {
       return { status: 'ok' };
     },
     addLabels: async () => {},
+    assertBound: () => {},
     verbPromote: async () => {},
     ensureIssueFieldDb: undefined,
     loadProjectFieldDefs: () => FIELD_DEFS,

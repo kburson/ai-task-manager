@@ -34,6 +34,7 @@ function makeDeps({ body, live, moveCode = 0 } = {}) {
   return {
     calls,
     deps: {
+      assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async ({ body: b }) => {
         calls.writes.push(b);
