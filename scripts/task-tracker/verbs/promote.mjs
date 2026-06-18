@@ -571,6 +571,10 @@ export async function verbPromote(rest, cfg) {
     case 'refine-exit-refused':
     case 'refine-stub-placeholder-refused':
     case 'planned-estimate-refused':
+    case 'deep-dive-refused':
+    case 'wip-budget-refused':
+    case 'commit-trail-stale':
+    case 'blocked-refused':
     case 'epic-children-refused':
     case 'parent-admission-refused':
     case 'code-complete-refused':
