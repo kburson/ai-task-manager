@@ -11,6 +11,7 @@ import { refineExitChildParentStateGuard } from '../lib/refine-exit-child-parent
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 import { refineExitCompleteMarkerGuard } from '../lib/refine-exit-complete-marker-guard.mjs';
+import { refineExitStubPlaceholderGuard } from '../lib/refine-exit-stub-placeholder-guard.mjs';
 
 export default Object.freeze({
   name: 'refine',
@@ -20,6 +21,8 @@ export default Object.freeze({
     // signal; check it FIRST so the absence surfaces before downstream gates
     // (matches the original inline pre-flight ordering at promote.mjs L270-285).
     refineExitCompleteMarkerGuard,
+    // #450 — stub TBD placeholders must be replaced before advancing to plan.
+    refineExitStubPlaceholderGuard,
     blockedByGuard,
     planEntryFieldsBody,
     planEntryFieldsBoard,

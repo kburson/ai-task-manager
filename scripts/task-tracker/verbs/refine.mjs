@@ -30,6 +30,10 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { serializeMarker } from '../lib/marker-grammar.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
+import {
+  STUB_AC_PLACEHOLDER,
+  STUB_PLAN_META_PLACEHOLDER,
+} from '../lib/refine-exit-stub-placeholder-guard.mjs';
 
 const pexec = promisify(execFile);
 
@@ -279,6 +283,18 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     repo: cfg.repo,
     mutate: (base) => {
       let next = applyRationaleMarker(base, marker);
+      // #450 — defense-in-depth: refuse to stamp refine-complete if stub
+      // placeholders are still present (guard layer also catches this at promote).
+      if (next.includes(STUB_AC_PLACEHOLDER)) {
+        throw new Error(
+          'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
+        );
+      }
+      if (next.includes(STUB_PLAN_META_PLACEHOLDER)) {
+        throw new Error(
+          'stub Plan Metadata placeholder still present — replace the TBD plan metadata before running refine'
+        );
+      }
       // 2d. Stamp the Refine stage-completion marker (#282).
       next = stampRefineCompleteMarker(next);
       // #223 — refresh the aitm-fields body cache.

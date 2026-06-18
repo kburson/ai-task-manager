@@ -81,6 +81,8 @@ const REFUSAL_ID_TO_STATUS = {
   // inline pre-flight at promote.mjs L270-285 into the exit-guard registry.
   // Preserves the legacy verb-level `refine-exit-refused` status.
   'refine-exit-complete-marker': 'refine-exit-refused',
+  // #450 — stub TBD placeholder check at refine→plan.
+  'refine-exit-stub-placeholder': 'refine-stub-placeholder-refused',
 };
 
 function refusalsToVerbResult(refusals, { issueNumber, target }) {
@@ -567,6 +569,7 @@ export async function verbPromote(rest, cfg) {
     }
     case 'refine-gate-refused':
     case 'refine-exit-refused':
+    case 'refine-stub-placeholder-refused':
     case 'planned-estimate-refused':
     case 'epic-children-refused':
     case 'parent-admission-refused':
