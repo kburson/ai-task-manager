@@ -14,7 +14,7 @@ const defs = [
   { key: 'priority', name: 'Priority', type: 'single_select' },
   { key: 'size', name: 'Size', type: 'single_select' },
   { key: 'estimate', name: 'Estimate', type: 'number' },
-  { key: 'sequence', name: 'Sequence', type: 'number' },
+  { key: 'rank', name: 'Rank', type: 'number' },
   { key: 'sessionTime', name: 'Session Time', aliases: ['Actual Session Time'], type: 'number' },
   { key: 'startTime', name: 'Start time', type: 'text' },
 ];
@@ -99,7 +99,7 @@ const defs = [
     '',
     '4h',
     '',
-    '### Sequence',
+    '### Rank',
     '',
     '2',
   ].join('\n');
@@ -108,7 +108,7 @@ const defs = [
   assert.equal(ensured.values.priority, 'P1');
   assert.equal(ensured.values.size, 'M');
   assert.equal(ensured.values.estimate, 4);
-  assert.equal(ensured.values.sequence, 2);
+  assert.equal(ensured.values.rank, 2);
 }
 
 // 5. New encoding round-trip — parse, ensure (no change), strip.
@@ -121,7 +121,7 @@ const defs = [
       estimate: 2,
       sessionTime: 5,
       startTime: '2026-05-11T10:00Z',
-      sequence: 1,
+      rank: 1,
     },
   });
   const body = `Hello.\n\n<!-- aitm-fields: ${inner} -->\n`;

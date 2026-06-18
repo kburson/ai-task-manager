@@ -145,7 +145,7 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
   writeFileSync(acFile, '- [ ] Something works\n');
   writeFileSync(
     pmFile,
-    '**Size:** S\n**Estimate:** 2h\n**Priority:** P1\n**Sequence:** 1\n**Parent:** #1\n'
+    '**Size:** S\n**Estimate:** 2h\n**Priority:** P1\n**Rank:** 1\n**Parent:** #1\n'
   );
 
   const res = spawnSync(

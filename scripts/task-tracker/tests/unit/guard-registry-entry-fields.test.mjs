@@ -31,7 +31,7 @@ const CFG = {
     priority: 'F_priority',
     size: 'F_size',
     estimate: 'F_estimate',
-    sequence: 'F_sequence',
+    rank: 'F_rank',
     startTime: 'F_startTime',
   },
 };
@@ -41,7 +41,7 @@ function fieldDefs() {
     priority: { type: 'singleSelect', id: 'F_priority' },
     size: { type: 'singleSelect', id: 'F_size' },
     estimate: { type: 'number', id: 'F_estimate' },
-    sequence: { type: 'number', id: 'F_sequence' },
+    rank: { type: 'number', id: 'F_rank' },
     startTime: { type: 'text', id: 'F_startTime' },
   };
 }
@@ -170,7 +170,7 @@ describe('planEntryFieldsBody adapter', () => {
 });
 
 describe('planEntryFieldsBoard adapter', () => {
-  it('refuses on missing Sequence and joins blockers', async () => {
+  it('refuses on missing Rank and joins blockers', async () => {
     const ctx = {
       cfg: CFG,
       issueNumber: 1,

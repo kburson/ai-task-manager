@@ -53,7 +53,7 @@ const HEAL_COMMENT_HEADER = '### 🛠 Backlog heal';
 const HEAL_COMMENT_MARKER_PREFIX = '<!-- aitm-heal:';
 const HEAL_COMMENT_MARKER_RE = /<!--\s*aitm-heal:\s*[^>]+-->/i;
 const RECONCILE_KEYS = ['engagedTime', 'sessionTime', 'reviewTime', 'startTime'];
-const STATIC_KEYS = ['priority', 'size', 'estimate', 'sequence'];
+const STATIC_KEYS = ['priority', 'size', 'estimate', 'rank'];
 const CANONICAL_STATUS_OPTIONS = ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'];
 
 // ----- Pure helpers (unit-tested) -----

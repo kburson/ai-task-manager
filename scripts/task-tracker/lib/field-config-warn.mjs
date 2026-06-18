@@ -27,7 +27,7 @@ const DISPLAY_NAMES = {
   fieldSessionTime: 'Session Time',
   fieldReviewTime: 'Review Time',
   fieldEstimate: 'Estimate',
-  fieldSequence: 'Sequence',
+  fieldRank: 'Rank',
   sizeFieldId: 'Size',
   priorityFieldId: 'Priority',
   kanbanFieldId: 'Status',

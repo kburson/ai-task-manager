@@ -19,7 +19,7 @@ function stub(siblings) {
 
 // 1. Solo bypass — no parentEpicNumber
 {
-  const r = await admit({ parentEpicNumber: null, sequence: 3 });
+  const r = await admit({ parentEpicNumber: null, rank: 3 });
   assert.equal(r.ok, true, 'solo issue with no parent should pass');
   assert.deepEqual(r.blockers, []);
 }
@@ -28,10 +28,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'develop' }]),
+    fetchSiblings: stub([{ number: 47, rank: 1, state: 'develop' }]),
   });
   assert.equal(r.ok, false);
   assert.equal(r.blockers.length, 1);
@@ -42,10 +42,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'backlog' }]),
+    fetchSiblings: stub([{ number: 47, rank: 1, state: 'backlog' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -54,10 +54,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'r4r' }]),
+    fetchSiblings: stub([{ number: 47, rank: 1, state: 'r4r' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -66,10 +66,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'done' }]),
+    fetchSiblings: stub([{ number: 47, rank: 1, state: 'done' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -78,10 +78,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 50, sequence: 3, state: 'develop' }]),
+    fetchSiblings: stub([{ number: 50, rank: 3, state: 'develop' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -90,10 +90,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 51, sequence: 4, state: 'develop' }]),
+    fetchSiblings: stub([{ number: 51, rank: 4, state: 'develop' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -102,15 +102,15 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
     fetchSiblings: stub([
-      { number: 47, sequence: 1, state: 'done' }, // ignored
-      { number: 48, sequence: 2, state: 'review' }, // BLOCKS (in-flight, lower)
-      { number: 50, sequence: 3, state: 'develop' }, // same wave, ignored
-      { number: 51, sequence: 4, state: 'refine' }, // higher, ignored
-      { number: 52, sequence: 1, state: 'backlog' }, // backlog, ignored
+      { number: 47, rank: 1, state: 'done' }, // ignored
+      { number: 48, rank: 2, state: 'review' }, // BLOCKS (in-flight, lower)
+      { number: 50, rank: 3, state: 'develop' }, // same wave, ignored
+      { number: 51, rank: 4, state: 'refine' }, // higher, ignored
+      { number: 52, rank: 1, state: 'backlog' }, // backlog, ignored
     ]),
   });
   assert.equal(r.ok, false);
@@ -123,10 +123,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 99, sequence: null, state: 'develop' }]),
+    fetchSiblings: stub([{ number: 99, rank: null, state: 'develop' }]),
   });
   assert.equal(r.ok, true, JSON.stringify(r));
 }
@@ -135,10 +135,10 @@ function stub(siblings) {
 {
   const r = await admit({
     parentEpicNumber: 41,
-    sequence: 3,
+    rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, sequence: 1, state: 'plan' }]),
+    fetchSiblings: stub([{ number: 47, rank: 1, state: 'plan' }]),
   });
   assert.equal(r.ok, false);
   assert.equal(r.blockers[0].state, 'plan');

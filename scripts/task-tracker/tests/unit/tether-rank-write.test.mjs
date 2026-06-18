@@ -49,22 +49,22 @@ function makeRunGql({ itemId = 'PVTI_test' } = {}) {
   return { runGql, calls };
 }
 
-test('#222: sequence write fires exactly one number-write mutation when fieldSequence is configured', async () => {
+test('#222: rank write fires exactly one number-write mutation when fieldRank is configured', async () => {
   const cfg = {
     repo: 'kburson/ai-task-manager',
     projectId: 'PVT_test',
-    fieldSequence: 'PVTF_sequence',
+    fieldRank: 'PVTF_sequence',
   };
   const { runGql, calls } = makeRunGql();
-  await tetherIssueToProject({ cfg, issueNumber: 222, sequence: 222, runGql });
+  await tetherIssueToProject({ cfg, issueNumber: 222, rank: 222, runGql });
   const writes = calls.filter(
     (c) => /updateProjectV2ItemFieldValue/.test(c.query) && c.vars.field === 'PVTF_sequence'
   );
-  assert.equal(writes.length, 1, 'exactly one sequence write mutation');
+  assert.equal(writes.length, 1, 'exactly one rank write mutation');
   assert.equal(writes[0].vars.val, 222, 'mutation carries val=222');
 });
 
-test('#222: missing Sequence fieldId emits stderr warning and skips write', async () => {
+test('#222: missing Rank fieldId emits stderr warning and skips write', async () => {
   const cfg = { repo: 'kburson/ai-task-manager', projectId: 'PVT_test' };
   const { runGql, calls } = makeRunGql();
 
@@ -75,7 +75,7 @@ test('#222: missing Sequence fieldId emits stderr warning and skips write', asyn
     return true;
   };
   try {
-    await tetherIssueToProject({ cfg, issueNumber: 222, sequence: 222, runGql });
+    await tetherIssueToProject({ cfg, issueNumber: 222, rank: 222, runGql });
   } finally {
     process.stderr.write = origWrite;
   }
@@ -83,5 +83,5 @@ test('#222: missing Sequence fieldId emits stderr warning and skips write', asyn
   const writes = calls.filter((c) => /updateProjectV2ItemFieldValue/.test(c.query));
   assert.equal(writes.length, 0, 'no field-write mutation when fieldId is missing');
   const warned = captured.join('');
-  assert.match(warned, /sequence=222 supplied but no Sequence field id configured/);
+  assert.match(warned, /rank=222 supplied but no Rank field id configured/);
 });

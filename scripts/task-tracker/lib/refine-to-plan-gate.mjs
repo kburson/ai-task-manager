@@ -74,9 +74,9 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
 
   const blockers = [];
 
-  if (projectValues.sequence == null || projectValues.sequence === '') {
+  if (projectValues.rank == null || projectValues.rank === '') {
     blockers.push(
-      'refine-exit-missing: Sequence is not set on the project board — set it before promoting to Plan'
+      'refine-exit-missing: Rank is not set on the project board — set it before promoting to Plan'
     );
   }
   if (!Array.isArray(labels) || labels.length === 0) {

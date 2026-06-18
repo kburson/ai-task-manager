@@ -15,16 +15,16 @@ const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'
 function makeProject() {
   const issues = new Map();
   return {
-    add(n, { status = 'backlog', sequence = null, parent = null } = {}) {
-      issues.set(n, { number: n, status, sequence, parent, children: [] });
+    add(n, { status = 'backlog', rank = null, parent = null } = {}) {
+      issues.set(n, { number: n, status, rank, parent, children: [] });
       if (parent != null) issues.get(parent).children.push(n);
     },
     move(n, target) {
       assert.ok(STATES.includes(target), `unknown target ${target}`);
       issues.get(n).status = target;
     },
-    setSequence(n, s) {
-      issues.get(n).sequence = s;
+    setRank(n, s) {
+      issues.get(n).rank = s;
     },
     read(n) {
       return issues.get(n);
@@ -36,7 +36,7 @@ function makeProject() {
       return issues
         .get(parentEpicNumber)
         .children.map((c) => issues.get(c))
-        .map((c) => ({ number: c.number, sequence: c.sequence, state: c.status }));
+        .map((c) => ({ number: c.number, rank: c.rank, state: c.status }));
     },
     fetchSubIssueStates({ epicNumber }) {
       return issues
@@ -50,7 +50,7 @@ function makeProject() {
 async function admitFor(proj, child) {
   return admit({
     parentEpicNumber: child.parent,
-    sequence: child.sequence,
+    rank: child.rank,
     repo: 'x/y',
     projectId: 'p',
     fetchSiblings: proj.fetchSiblings,
@@ -73,10 +73,10 @@ async function cascadeFor(proj, epicNumber) {
 async function testFullFlow() {
   const p = makeProject();
   p.add(100, { status: 'refine' });
-  p.add(101, { sequence: 1, parent: 100 });
-  p.add(102, { sequence: 1, parent: 100 });
-  p.add(103, { sequence: 2, parent: 100 });
-  p.add(104, { sequence: 2, parent: 100 });
+  p.add(101, { rank: 1, parent: 100 });
+  p.add(102, { rank: 1, parent: 100 });
+  p.add(103, { rank: 2, parent: 100 });
+  p.add(104, { rank: 2, parent: 100 });
 
   // Cascade-grooming refuses while sub-issues are still in Backlog.
   let refusals = await cascadeFor(p, 100);
@@ -90,13 +90,13 @@ async function testFullFlow() {
   p.move(100, 'plan');
   p.move(100, 'develop');
 
-  // Wave-1 (Sequence=1) admission: S1 and S2 are admitted.
+  // Wave-1 (Rank=1) admission: S1 and S2 are admitted.
   for (const n of [101, 102]) {
     const r = await admitFor(p, p.read(n));
     assert.equal(r.ok, true, `wave-1 sub-issue #${n} should be admitted`);
   }
 
-  // Wave-2 (Sequence=2) admission: blocked while wave-1 is in flight.
+  // Wave-2 (Rank=2) admission: blocked while wave-1 is in flight.
   p.move(101, 'plan');
   p.move(102, 'plan');
   for (const n of [103, 104]) {
@@ -123,18 +123,18 @@ async function testFullFlow() {
 
 // -----------------------------------------------------------------------
 // Test 2: same-wave newcomer rule.
-// A discovered sub-issue inserted at Sequence=1 mid-flight does NOT halt
+// A discovered sub-issue inserted at Rank=1 mid-flight does NOT halt
 // already-flowing wave-1 members, but DOES extend wave-2 admission.
 // -----------------------------------------------------------------------
 async function testSameWaveNewcomer() {
   const p = makeProject();
   p.add(200, { status: 'develop' });
-  p.add(201, { sequence: 1, parent: 200, status: 'develop' });
-  p.add(202, { sequence: 1, parent: 200, status: 'review' });
-  p.add(203, { sequence: 2, parent: 200, status: 'backlog' });
+  p.add(201, { rank: 1, parent: 200, status: 'develop' });
+  p.add(202, { rank: 1, parent: 200, status: 'review' });
+  p.add(203, { rank: 2, parent: 200, status: 'backlog' });
 
   // Newcomer S5 joins wave-1 mid-flight.
-  p.add(205, { sequence: 1, parent: 200, status: 'plan' });
+  p.add(205, { rank: 1, parent: 200, status: 'plan' });
 
   // Existing wave-1 members are NOT blocked by the newcomer (same-wave rule).
   for (const n of [201, 202]) {
@@ -174,7 +174,7 @@ async function testSoloIssue() {
   const child = p.read(300);
   const r = await admit({
     parentEpicNumber: child.parent, // null
-    sequence: child.sequence,
+    rank: child.rank,
     fetchSiblings: () => {
       throw new Error('solo must not call fetchSiblings');
     },
@@ -183,7 +183,7 @@ async function testSoloIssue() {
 
   const cascade = await checkWaveAdmission({
     parentEpicNumber: null,
-    sequence: null,
+    rank: null,
     admit: () => {
       throw new Error('solo must not call admit');
     },

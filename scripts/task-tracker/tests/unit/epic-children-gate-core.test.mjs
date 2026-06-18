@@ -36,8 +36,8 @@ test('planEpicDevelopChildrenGate refuses when any child is in backlog', async (
     issueNumber: 100,
     deps: {
       fetchSiblings: stubFetch([
-        { number: 101, state: 'refine', sequence: 1 },
-        { number: 102, state: 'backlog', sequence: 2 },
+        { number: 101, state: 'refine', rank: 1 },
+        { number: 102, state: 'backlog', rank: 2 },
       ]),
     },
   });
@@ -58,10 +58,10 @@ test('planEpicDevelopChildrenGate passes when children are PAST refine (#335 —
     issueNumber: 100,
     deps: {
       fetchSiblings: stubFetch([
-        { number: 101, state: 'refine', sequence: 1 },
-        { number: 102, state: 'plan', sequence: 2 },
-        { number: 103, state: 'develop', sequence: 3 },
-        { number: 104, state: 'done', sequence: 4 },
+        { number: 101, state: 'refine', rank: 1 },
+        { number: 102, state: 'plan', rank: 2 },
+        { number: 103, state: 'develop', rank: 3 },
+        { number: 104, state: 'done', rank: 4 },
       ]),
     },
   });
@@ -75,7 +75,7 @@ for (const acceptState of ['refine', 'plan', 'develop', 'test', 'review', 'done'
       cfg,
       issueNumber: 200,
       deps: {
-        fetchSiblings: stubFetch([{ number: 201, state: acceptState, sequence: 1 }]),
+        fetchSiblings: stubFetch([{ number: 201, state: acceptState, rank: 1 }]),
       },
     });
     assert.equal(result.ok, true, `expected ${acceptState} to pass`);
@@ -87,7 +87,7 @@ test('planEpicDevelopChildrenGate refuses sole backlog child (#335 regression)',
     cfg,
     issueNumber: 300,
     deps: {
-      fetchSiblings: stubFetch([{ number: 301, state: 'backlog', sequence: 1 }]),
+      fetchSiblings: stubFetch([{ number: 301, state: 'backlog', rank: 1 }]),
     },
   });
   assert.equal(result.ok, false);
@@ -101,9 +101,9 @@ test('planEpicDevelopChildrenGate passes when all children are at refine', async
     issueNumber: 100,
     deps: {
       fetchSiblings: stubFetch([
-        { number: 101, state: 'refine', sequence: 1 },
-        { number: 102, state: 'refine', sequence: 2 },
-        { number: 103, state: 'refine', sequence: 3 },
+        { number: 101, state: 'refine', rank: 1 },
+        { number: 102, state: 'refine', rank: 2 },
+        { number: 103, state: 'refine', rank: 3 },
       ]),
     },
   });
@@ -125,27 +125,27 @@ test('planEpicDevelopChildrenGate surfaces fetch failures as blockers', async ()
   assert.match(result.blockers[0], /epic-children-fetch-failed/);
 });
 
-test('findNextEligibleChild returns lowest-sequence refine-state child', () => {
+test('findNextEligibleChild returns lowest-rank refine-state child', () => {
   const next = findNextEligibleChild([
-    { number: 5, state: 'refine', sequence: 3 },
-    { number: 6, state: 'refine', sequence: 1 },
-    { number: 7, state: 'plan', sequence: 2 },
+    { number: 5, state: 'refine', rank: 3 },
+    { number: 6, state: 'refine', rank: 1 },
+    { number: 7, state: 'plan', rank: 2 },
   ]);
   assert.equal(next.number, 6);
 });
 
-test('findNextEligibleChild skips children with null sequence', () => {
+test('findNextEligibleChild skips children with null rank', () => {
   const next = findNextEligibleChild([
-    { number: 5, state: 'refine', sequence: null },
-    { number: 6, state: 'refine', sequence: 4 },
+    { number: 5, state: 'refine', rank: null },
+    { number: 6, state: 'refine', rank: 4 },
   ]);
   assert.equal(next.number, 6);
 });
 
 test('findNextEligibleChild returns null when no refine-state children', () => {
   const next = findNextEligibleChild([
-    { number: 5, state: 'plan', sequence: 1 },
-    { number: 6, state: 'develop', sequence: 2 },
+    { number: 5, state: 'plan', rank: 1 },
+    { number: 6, state: 'develop', rank: 2 },
   ]);
   assert.equal(next, null);
 });

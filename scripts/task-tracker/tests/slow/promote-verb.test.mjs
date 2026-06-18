@@ -109,8 +109,11 @@ const DEEP_DIVE_SIGNALS = [
   '',
 ].join('\n');
 
+const USER_STORY_SECTION =
+  '## User Story\n\nAs a developer\nI want to test the promote verb\nSo that the gate suite stays green\n';
+
 function bodyWithState(state) {
-  const base = `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
+  const base = `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n\n${USER_STORY_SECTION}`;
   return state === 'plan' ? base + DEEP_DIVE_SIGNALS : base;
 }
 
@@ -197,11 +200,11 @@ test('promote: refine→plan refused when refine-exit gate returns blockers (#14
   };
   deps.refineToPlanGate = async () => ({
     ok: false,
-    blockers: ['refine-exit-missing: Sequence is not set on the project board'],
+    blockers: ['refine-exit-missing: Rank is not set on the project board'],
   });
   const r = await runPromote({ issueNumber: 1471, cfg, deps });
   assert.equal(r.status, 'refine-exit-refused');
-  assert.ok(r.blockers.some((b) => /Sequence/.test(b)));
+  assert.ok(r.blockers.some((b) => /Rank/.test(b)));
   assert.equal(calls.moves.length, 0);
   assert.equal(calls.spawns.length, 0);
 });
@@ -287,8 +290,8 @@ test('promote: plan→develop refused when any sub-issue still in Backlog (#135)
   };
   deps.epicChildren = {
     fetchSiblings: async () => [
-      { number: 201, state: 'refine', sequence: 1 },
-      { number: 202, state: 'backlog', sequence: 2 },
+      { number: 201, state: 'refine', rank: 1 },
+      { number: 202, state: 'backlog', rank: 2 },
     ],
   };
   const r = await runPromote({ issueNumber: 200, cfg, deps });
@@ -312,10 +315,10 @@ test('promote: plan→develop refused only when a sub-issue is in backlog (#335 
   };
   deps.epicChildren = {
     fetchSiblings: async () => [
-      { number: 201, state: 'refine', sequence: 1 },
-      { number: 202, state: 'plan', sequence: 2 }, // past refine — must pass
-      { number: 203, state: 'develop', sequence: 3 }, // past refine — must pass
-      { number: 204, state: 'backlog', sequence: 4 }, // pre-refine — refuses
+      { number: 201, state: 'refine', rank: 1 },
+      { number: 202, state: 'plan', rank: 2 }, // past refine — must pass
+      { number: 203, state: 'develop', rank: 3 }, // past refine — must pass
+      { number: 204, state: 'backlog', rank: 4 }, // pre-refine — refuses
     ],
   };
   const r = await runPromote({ issueNumber: 2000, cfg, deps });

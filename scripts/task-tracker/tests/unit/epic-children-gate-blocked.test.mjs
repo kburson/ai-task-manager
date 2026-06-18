@@ -29,9 +29,9 @@ test('findNextEligibleChild excludes a child whose blocker is not Done', () => {
   // #6 is blocked by #9 (still in develop, not Done) → must be skipped even
   // though it has the lower sequence. #7 (unblocked) is chosen instead.
   const next = findNextEligibleChild([
-    { number: 6, state: 'refine', sequence: 1, blockedBy: [9] },
-    { number: 7, state: 'refine', sequence: 2, blockedBy: [] },
-    { number: 9, state: 'develop', sequence: 0 },
+    { number: 6, state: 'refine', rank: 1, blockedBy: [9] },
+    { number: 7, state: 'refine', rank: 2, blockedBy: [] },
+    { number: 9, state: 'develop', rank: 0 },
   ]);
   assert.equal(next.number, 7);
 });
@@ -39,18 +39,18 @@ test('findNextEligibleChild excludes a child whose blocker is not Done', () => {
 test('findNextEligibleChild prefers a child that blocks a sibling (blocking-first)', () => {
   // #8 blocks #6, so #8 sorts ahead of the lower-sequence leaf child #5.
   const next = findNextEligibleChild([
-    { number: 5, state: 'refine', sequence: 1, blockedBy: [] },
-    { number: 8, state: 'refine', sequence: 3, blockedBy: [] },
-    { number: 6, state: 'refine', sequence: 4, blockedBy: [8] },
+    { number: 5, state: 'refine', rank: 1, blockedBy: [] },
+    { number: 8, state: 'refine', rank: 3, blockedBy: [] },
+    { number: 6, state: 'refine', rank: 4, blockedBy: [8] },
   ]);
   assert.equal(next.number, 8);
 });
 
-test('findNextEligibleChild keeps sequence-ascending tiebreak among equals', () => {
+test('findNextEligibleChild keeps rank-ascending tiebreak among equals', () => {
   // No blockers anywhere → reduces to lowest-sequence (original behavior).
   const next = findNextEligibleChild([
-    { number: 5, state: 'refine', sequence: 3, blockedBy: [] },
-    { number: 6, state: 'refine', sequence: 1, blockedBy: [] },
+    { number: 5, state: 'refine', rank: 3, blockedBy: [] },
+    { number: 6, state: 'refine', rank: 1, blockedBy: [] },
   ]);
   assert.equal(next.number, 6);
 });
@@ -59,8 +59,8 @@ test('findNextEligibleChild makes a child eligible once its blocker is Done', ()
   // #6 blocked by #9; #9 is now Done → #6 becomes selectable (and it blocks
   // nobody, but it is the only eligible refine child here).
   const next = findNextEligibleChild([
-    { number: 6, state: 'refine', sequence: 2, blockedBy: [9] },
-    { number: 9, state: 'done', sequence: 1 },
+    { number: 6, state: 'refine', rank: 2, blockedBy: [9] },
+    { number: 9, state: 'done', rank: 1 },
   ]);
   assert.equal(next.number, 6);
 });
@@ -72,8 +72,8 @@ test('enrichChildrenWithBlockedBy attaches parsed blockedBy per child', async ()
   };
   const enriched = await enrichChildrenWithBlockedBy({
     children: [
-      { number: 6, state: 'refine', sequence: 1 },
-      { number: 7, state: 'refine', sequence: 2 },
+      { number: 6, state: 'refine', rank: 1 },
+      { number: 7, state: 'refine', rank: 2 },
     ],
     cfg,
     deps: { fetchBody: async ({ issueNumber }) => bodies[issueNumber] ?? '' },
@@ -84,7 +84,7 @@ test('enrichChildrenWithBlockedBy attaches parsed blockedBy per child', async ()
 
 test('enrichChildrenWithBlockedBy treats a fetch failure as no blockers', async () => {
   const enriched = await enrichChildrenWithBlockedBy({
-    children: [{ number: 6, state: 'refine', sequence: 1 }],
+    children: [{ number: 6, state: 'refine', rank: 1 }],
     cfg,
     deps: {
       fetchBody: async () => {
@@ -228,8 +228,8 @@ for (const pendingState of ['backlog', 'refine', 'plan', 'develop', 'test', 'rev
       issueNumber: 100,
       deps: {
         fetchSiblings: stubFetch([
-          { number: 101, state: 'done', sequence: 1 },
-          { number: 102, state: pendingState, sequence: 2 },
+          { number: 101, state: 'done', rank: 1 },
+          { number: 102, state: pendingState, rank: 2 },
         ]),
       },
     });
@@ -248,9 +248,9 @@ test('developEpicTestChildrenGate passes when every child is done', async () => 
     issueNumber: 100,
     deps: {
       fetchSiblings: stubFetch([
-        { number: 101, state: 'done', sequence: 1 },
-        { number: 102, state: 'done', sequence: 2 },
-        { number: 103, state: 'done', sequence: 3 },
+        { number: 101, state: 'done', rank: 1 },
+        { number: 102, state: 'done', rank: 2 },
+        { number: 103, state: 'done', rank: 3 },
       ]),
     },
   });
@@ -277,7 +277,7 @@ test('developEpicTestChildrenGate accepts mixed-case "DONE"', async () => {
     cfg,
     issueNumber: 100,
     deps: {
-      fetchSiblings: stubFetch([{ number: 101, state: 'DONE', sequence: 1 }]),
+      fetchSiblings: stubFetch([{ number: 101, state: 'DONE', rank: 1 }]),
     },
   });
   assert.equal(result.ok, true);

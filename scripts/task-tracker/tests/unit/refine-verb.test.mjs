@@ -138,27 +138,27 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
   assert.equal(json.estimate, '1h');
   assert.equal(json.priority, 'P1');
   assert.equal(json.rationale, 'long explanation of why this is small and urgent');
-  assert.equal('sequence' in json, false, 'sequence omitted when not supplied');
+  assert.equal('rank' in json, false, 'rank omitted when not supplied');
   console.log(
     'PASS: buildRationaleMarker four-flag combo lands tokens in slots, reason in rationale'
   );
 }
 
 // ---------------------------------------------------------------------------
-// #220: sequence flag emits as number when supplied.
+// #220: rank flag emits as number when supplied.
 // ---------------------------------------------------------------------------
 {
   const marker = buildRationaleMarker({
     size: 'M',
     estimate: 4,
     priority: 'p0',
-    sequence: 240,
-    reason: 'with sequence',
+    rank: 240,
+    reason: 'with rank',
   });
   const json = JSON.parse(marker.match(/\{[\s\S]*\}/)[0]);
-  assert.equal(json.sequence, 240);
-  assert.equal(typeof json.sequence, 'number');
-  console.log('PASS: buildRationaleMarker emits sequence as number');
+  assert.equal(json.rank, 240);
+  assert.equal(typeof json.rank, 'number');
+  console.log('PASS: buildRationaleMarker emits rank as number');
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +299,7 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
 }
 
 // ---------------------------------------------------------------------------
-// runRefine — --sequence + --labels pass through (#147)
+// runRefine — --rank + --labels pass through (#147)
 // ---------------------------------------------------------------------------
 {
   const calls = { tether: null, addLabels: null };
@@ -310,7 +310,7 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
       estimate: '2',
       priority: 'p1',
       reason: 'r',
-      sequence: '5.1',
+      rank: '5.1',
       labels: 'bug, backend , epic-107',
     },
     cfg: { repo: 'o/r', projectId: 'P' },
@@ -330,14 +330,14 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
       verbPromote: async () => {},
     },
   });
-  assert.equal(calls.tether.sequence, 5.1, 'sequence forwarded to tetherIssueToProject');
+  assert.equal(calls.tether.rank, 5.1, 'rank forwarded to tetherIssueToProject');
   assert.deepEqual(
     calls.addLabels.labels,
     ['bug', 'backend', 'epic-107'],
     'labels parsed (trimmed, split) and forwarded'
   );
   assert.equal(calls.addLabels.issueNumber, 200);
-  console.log('PASS: runRefine forwards --sequence + --labels');
+  console.log('PASS: runRefine forwards --rank + --labels');
 }
 
 // ---------------------------------------------------------------------------
@@ -364,9 +364,9 @@ import { parseRationaleMarker } from '../../lib/apply-refinement-estimate.mjs';
       verbPromote: async () => {},
     },
   });
-  assert.equal(calls.tether.sequence, undefined, 'sequence omitted when not supplied');
+  assert.equal(calls.tether.rank, undefined, 'rank omitted when not supplied');
   assert.equal(calls.addLabels, null, 'addLabels not called when labels not supplied');
-  console.log('PASS: runRefine omits sequence/labels when not supplied');
+  console.log('PASS: runRefine omits rank/labels when not supplied');
 }
 
 console.log('\nAll refine verb tests passed.');

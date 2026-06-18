@@ -165,7 +165,7 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   {"id":"F_SESSION","name":"Session","dataType":"TEXT"},
   {"id":"F_REVIEW","name":"Review","dataType":"TEXT"},
   {"id":"F_PLAN","name":"Plan","dataType":"TEXT"},
-  {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
+  {"id":"F_SEQUENCE","name":"Rank","dataType":"NUMBER"},
   {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
 ]
 JSON
@@ -199,7 +199,7 @@ const input =
     '', // session field default
     '', // review field default
     '', // plan field default
-    '', // sequence field default
+    '', // rank field default
     '', // started field default
     '',
     '',

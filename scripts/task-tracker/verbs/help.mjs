@@ -40,7 +40,7 @@ State transitions (7-state kanban):
                             (NOT for backlog item generation — that is \`/task discover\`)
   /task test #N             Develop→Test sandbox verification (runs Verification Commands in a worktree)
   /task review #N           Test→Review (also accepts --duration-minutes / --words for agent-reported timing)
-  /task pull-next <epic#>   JIT child-pull: promote the next refine-state child of <epic#> (by sequence) into Plan
+  /task pull-next <epic#>   JIT child-pull: promote the next refine-state child of <epic#> (by rank) into Plan
   /task next [#N]           Alias of /task promote
   /task demote [#N]         Return to Develop (from Test or Review)
   /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded

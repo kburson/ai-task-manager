@@ -97,9 +97,9 @@ The close-time `### 📊 Review delta` comment reads the most-recent notes comme
 and renders its bullets under a `Drivers:` section; empty drivers omit the
 section entirely.
 
-## Sequence rules
+## Rank rules
 
-**Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target (the `child-cannot-lead-epic` invariant). Children are **not** required to all reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead a WIP rule applies: at most one child advances out of Refine per epic at a time (`planRefineWipGate`), where a child parked on a dependency (`aitm-blocked-by` marker) does not count and a blocker may run ahead of the parked sibling it unblocks. No env override exists. See `templates/pickup-directive.md` ("Sequence rules") for the full rule.
+**Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target (the `child-cannot-lead-epic` invariant). Children are **not** required to all reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead a WIP rule applies: at most one child advances out of Refine per epic at a time (`planRefineWipGate`), where a child parked on a dependency (`aitm-blocked-by` marker) does not count and a blocker may run ahead of the parked sibling it unblocks. No env override exists. See `templates/pickup-directive.md` ("Rank rules") for the full rule.
 
 ## Verb disambiguation — `/task plan` vs `/task discover`
 

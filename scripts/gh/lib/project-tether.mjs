@@ -179,7 +179,7 @@ async function writeField({ cfg, itemId, fieldId, value, runGql }) {
   }
 }
 
-async function writeFields({ cfg, itemId, status, priority, size, estimate, sequence, runGql }) {
+async function writeFields({ cfg, itemId, status, priority, size, estimate, rank, runGql }) {
   const statusKey = STATUS_CONFIG_KEYS[String(status || '').toLowerCase()];
   if (statusKey) {
     await writeField({
@@ -235,22 +235,27 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, sequ
     });
   }
 
-  if (sequence !== undefined) {
-    const sequenceFieldId = cfg.fieldSequence || cfg.sequenceFieldId || cfg.fieldIds?.sequence;
-    if (!sequenceFieldId) {
-      // #222 — surface the silent-failure case where --sequence was passed but
-      // no Sequence field id is configured. Without this warning the caller
-      // sees a successful tether and an empty board field.
+  if (rank !== undefined) {
+    const rankFieldId =
+      cfg.fieldRank ||
+      cfg.rankFieldId ||
+      cfg.fieldIds?.rank ||
+      cfg.fieldSequence ||
+      cfg.sequenceFieldId ||
+      cfg.fieldIds?.sequence;
+    if (!rankFieldId) {
+      // #222 — surface the silent-failure case where --rank was passed but
+      // no Rank field id is configured.
       process.stderr.write(
-        `[project-tether] WARN: sequence=${sequence} supplied but no Sequence field id configured ` +
-          `(checked cfg.fieldSequence, cfg.sequenceFieldId, cfg.fieldIds.sequence). Skipping write.\n`
+        `[project-tether] WARN: rank=${rank} supplied but no Rank field id configured ` +
+          `(checked cfg.fieldRank, cfg.rankFieldId, cfg.fieldIds.rank). Skipping write.\n`
       );
     } else {
       await writeField({
         cfg,
         itemId,
-        fieldId: sequenceFieldId,
-        value: { number: Number(sequence) },
+        fieldId: rankFieldId,
+        value: { number: Number(rank) },
         runGql,
       });
     }
@@ -304,7 +309,7 @@ export async function tetherIssueToProject({
   priority,
   size,
   estimate,
-  sequence,
+  rank,
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
   runGql = defaultRunGql,
@@ -343,7 +348,7 @@ export async function tetherIssueToProject({
         priority,
         size,
         estimate,
-        sequence,
+        rank,
         runGql,
       });
       if (parentIssueNumber) {
@@ -370,7 +375,7 @@ export async function tetherIssueToProject({
         priority,
         size,
         estimate,
-        sequence,
+        rank,
         runGql,
       });
       if (parentIssueNumber) {

@@ -30,15 +30,15 @@ export const DEFAULTS = {
   kanbanOptionTest: '',
   kanbanOptionReview: '',
   kanbanOptionDone: '',
-  // Sequence field ID (set by init script) — numeric field on the project board
-  sequenceFieldId: '',
+  // Rank field ID (set by init script) — numeric field on the project board
+  rankFieldId: '',
   // Size field ID (set by init script) — single-select field on the project board
   sizeFieldId: '',
   fieldIds: {},
   fieldEstimate: '',
   fieldEngagedTime: '',
   fieldSessionTime: '',
-  fieldSequence: '',
+  fieldRank: '',
   fieldStartTime: '',
   fieldBlockedBy: '',
   fieldReviewTime: '',
@@ -102,13 +102,13 @@ export const TYPES = {
   kanbanOptionTest: 'string',
   kanbanOptionReview: 'string',
   kanbanOptionDone: 'string',
-  sequenceFieldId: 'string',
+  rankFieldId: 'string',
   sizeFieldId: 'string',
   fieldIds: 'object',
   fieldEstimate: 'string',
   fieldEngagedTime: 'string',
   fieldSessionTime: 'string',
-  fieldSequence: 'string',
+  fieldRank: 'string',
   fieldStartTime: 'string',
   fieldBlockedBy: 'string',
   fieldReviewTime: 'string',
@@ -251,8 +251,11 @@ export function loadConfig(paths = {}) {
     merged.fieldEstimate ||= merged.fieldIds.estimate || '';
     merged.fieldEngagedTime ||= merged.fieldIds.engagedTime || merged.fieldIds.actualHours || '';
     merged.fieldSessionTime ||= merged.fieldIds.sessionTime || '';
-    merged.fieldSequence ||= merged.fieldIds.sequence || '';
-    merged.sequenceFieldId ||= merged.fieldIds.sequence || '';
+    merged.fieldRank ||= merged.fieldIds.rank || '';
+    merged.rankFieldId ||= merged.fieldIds.rank || '';
+    // backward-compat: installed projects may still have the old keys
+    merged.fieldRank ||= project.fieldSequence || '';
+    merged.rankFieldId ||= project.sequenceFieldId || '';
     merged.sizeFieldId ||= merged.fieldIds.size || '';
     merged.fieldStartTime ||= merged.fieldIds.startTime || '';
     merged.fieldBlockedBy ||= merged.fieldIds.blockedBy || '';
@@ -346,13 +349,13 @@ const INTERNAL_KEYS = [
   'kanbanOptionTest',
   'kanbanOptionReview',
   'kanbanOptionDone',
-  'sequenceFieldId',
+  'rankFieldId',
   'sizeFieldId',
   'fieldIds',
   'fieldEstimate',
   'fieldEngagedTime',
   'fieldSessionTime',
-  'fieldSequence',
+  'fieldRank',
   'fieldStartTime',
   'fieldBlockedBy',
   'priorityFieldId',

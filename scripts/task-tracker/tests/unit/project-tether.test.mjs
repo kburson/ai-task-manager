@@ -24,7 +24,7 @@ const cfg = {
   sizeFieldId: 'SIZE_FIELD',
   sizeOptionMap: { S: 'SIZE_S', M: 'SIZE_M' },
   fieldEstimate: 'ESTIMATE_FIELD',
-  fieldSequence: 'SEQUENCE_FIELD',
+  fieldRank: 'SEQUENCE_FIELD',
 };
 
 function makeRunner({
@@ -112,7 +112,7 @@ async function testExistingProjectSideItemIsReused() {
     priority: 'P0',
     size: 'M',
     estimate: 3,
-    sequence: 2,
+    rank: 2,
     runGql,
     sleep: async () => {},
   });
@@ -138,7 +138,7 @@ async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
     priority: 'P1',
     size: 'S',
     estimate: 1,
-    sequence: 1,
+    rank: 1,
     runGql,
     sleep: async () => {},
   });

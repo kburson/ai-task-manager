@@ -22,7 +22,7 @@ function makeDeps({ liveState = 'develop', children = [], promoteResult = { stat
       epicChildren: {
         fetchSiblings: async () => children,
       },
-      // No-op body fetch → no blockers → selection stays pure-sequence (#248).
+      // No-op body fetch → no blockers → selection stays pure-rank (#248).
       enrich: {
         fetchBody: async () => '',
       },
@@ -50,8 +50,8 @@ test('runPullNext returns no-children for epic with no sub-issues', async () => 
 test('runPullNext returns no-eligible when no refine-state children', async () => {
   const { deps } = makeDeps({
     children: [
-      { number: 101, state: 'plan', sequence: 1 },
-      { number: 102, state: 'done', sequence: 2 },
+      { number: 101, state: 'plan', rank: 1 },
+      { number: 102, state: 'done', rank: 2 },
     ],
   });
   const result = await runPullNext({ epicNumber: 100, cfg, deps });
@@ -59,29 +59,29 @@ test('runPullNext returns no-eligible when no refine-state children', async () =
   assert.deepEqual(result.counts, { plan: 1, done: 1 });
 });
 
-test('runPullNext promotes lowest-sequence refine child', async () => {
+test('runPullNext promotes lowest-rank refine child', async () => {
   const { deps, calls } = makeDeps({
     children: [
-      { number: 105, state: 'refine', sequence: 5 },
-      { number: 103, state: 'refine', sequence: 3 },
-      { number: 104, state: 'plan', sequence: 4 },
+      { number: 105, state: 'refine', rank: 5 },
+      { number: 103, state: 'refine', rank: 3 },
+      { number: 104, state: 'plan', rank: 4 },
     ],
   });
   const result = await runPullNext({ epicNumber: 100, cfg, deps });
   assert.equal(result.status, 'pulled');
   assert.equal(result.childNumber, 103);
-  assert.equal(result.childSequence, 3);
+  assert.equal(result.childRank, 3);
   assert.deepEqual(calls.promotes, [['103']]);
 });
 
 test('runPullNext skips a child whose blocker is not Done (#248)', async () => {
-  // #103 (lowest sequence) is blocked by #105, which is still in develop.
+  // #103 (lowest rank) is blocked by #105, which is still in develop.
   // Enrichment surfaces that marker, so #104 is pulled instead.
   const { deps, calls } = makeDeps({
     children: [
-      { number: 103, state: 'refine', sequence: 3 },
-      { number: 104, state: 'refine', sequence: 4 },
-      { number: 105, state: 'develop', sequence: 5 },
+      { number: 103, state: 'refine', rank: 3 },
+      { number: 104, state: 'refine', rank: 4 },
+      { number: 105, state: 'develop', rank: 5 },
     ],
   });
   deps.enrich = {

@@ -84,7 +84,7 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     {"id":"O_DONE","name":"Done","color":"GREEN","description":""}
   ]},
   {"id":"F_ESTIMATE","name":"Estimate","dataType":"NUMBER"},
-  {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"}
+  {"id":"F_SEQUENCE","name":"Rank","dataType":"NUMBER"}
 ]
 JSON
     exit 0
@@ -151,7 +151,7 @@ assert.match(inputLog, optionMatch('XL', 'RED', '24\\+ hours'));
 
 // AC3/AC4: timing fields and the start-time field are created as TEXT, by their
 // canonical names, and NO DATE or NUMBER field is ever created (the config loop
-// owns the schema; estimate/sequence map to the existing NUMBER fields).
+// owns the schema; estimate/rank map to the existing NUMBER fields).
 for (const name of ['Engaged', 'Session', 'Review', 'Plan', 'Started', 'Blocked By']) {
   assert.match(
     calls,

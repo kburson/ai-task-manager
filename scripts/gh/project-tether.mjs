@@ -4,7 +4,7 @@ import { fieldOptionMap } from './lib/github-projects.mjs';
 import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
 
 function usage() {
-  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|on-deck|refine|plan|develop|test|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <N>]`;
+  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|on-deck|refine|plan|develop|test|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <N>]`;
 }
 
 function parseArgs(args) {
@@ -78,7 +78,7 @@ async function main() {
     priority: args.priority,
     size: args.size,
     estimate: numberFlag(args.estimate, '--estimate'),
-    sequence: numberFlag(args.sequence, '--sequence'),
+    rank: numberFlag(args.rank, '--rank'),
   });
 
   console.log(

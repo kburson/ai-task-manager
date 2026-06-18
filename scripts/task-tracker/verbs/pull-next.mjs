@@ -4,7 +4,7 @@
 //
 // Behavior:
 // 1. Verify the epic is in `develop` (the orchestrator must be active).
-// 2. Fetch the epic's children and pick the first-in-sequence whose state is
+// 2. Fetch the epic's children and pick the first-in-rank whose state is
 //    `refine`.
 // 3. Promote that child refine→plan via `verbPromote`. The agent then performs
 //    the JIT deep-dive in Plan, appends the planned-estimate, and runs promote
@@ -109,9 +109,9 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
   return {
     status: 'pulled',
     childNumber: next.number,
-    childSequence: next.sequence,
+    childRank: next.rank,
     promoteResult,
-    message: `Pulled #${next.number} (sequence=${next.sequence}) refine→plan. Perform deep-dive + planned-estimate, then run /task promote ${next.number}.`,
+    message: `Pulled #${next.number} (rank=${next.rank}) refine→plan. Perform deep-dive + planned-estimate, then run /task promote ${next.number}.`,
   };
 }
 

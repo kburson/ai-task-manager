@@ -320,7 +320,7 @@ prompt_project_template() {
   info "GitHub's built-in web templates are not exposed by the supported gh/API project-create command."
   info "AI Task Manager can create a compatible project shape and link it to this repo."
   echo ""
-  echo "    [1] Feature Release (recommended) - Status, Priority, Size, Estimate, Actuals, Sequence"
+  echo "    [1] Feature Release (recommended) - Status, Priority, Size, Estimate, Actuals, Rank"
   echo "    [2] Basic Kanban - Status columns only; remaining fields are mapped/created later"
   echo ""
   while true; do
@@ -408,7 +408,7 @@ canon_color() {
 apply_project_template() {
   local template="$1"
   # Status (kanban) is the ONLY field this bootstrap provisions. Every other
-  # project property — Priority, Size, Estimate, Sequence, the timing fields,
+  # project property — Priority, Size, Estimate, Rank, the timing fields,
   # the "Started" start-time field, Blocked By — is owned by the
   # config-driven creation loop, which sources its full schema (names, types,
   # single-select option colors + descriptions) from
@@ -1236,7 +1236,7 @@ SIZE_FIELD_ID=""
 FIELD_ESTIMATE=""
 FIELD_ENGAGED_TIME=""
 FIELD_SESSION_TIME=""
-FIELD_SEQUENCE=""
+FIELD_RANK=""
 FIELD_START_TIME=""
 FIELD_BLOCKED_BY=""
 
@@ -1334,7 +1334,7 @@ while IFS= read -r FIELD_DEF <&3; do
       estimate) FIELD_ESTIMATE="$RESULT_FIELD_ID" ;;
       engagedTime) FIELD_ENGAGED_TIME="$RESULT_FIELD_ID" ;;
       sessionTime) FIELD_SESSION_TIME="$RESULT_FIELD_ID" ;;
-      sequence) FIELD_SEQUENCE="$RESULT_FIELD_ID" ;;
+      rank) FIELD_RANK="$RESULT_FIELD_ID" ;;
       startTime) FIELD_START_TIME="$RESULT_FIELD_ID" ;;
       blockedBy) FIELD_BLOCKED_BY="$RESULT_FIELD_ID" ;;
       reviewTime) FIELD_REVIEW_TIME="$RESULT_FIELD_ID" ;;
@@ -1371,7 +1371,7 @@ SIZE_FIELD_ID="$SIZE_FIELD_ID" \
 FIELD_ESTIMATE="$FIELD_ESTIMATE" \
 FIELD_ENGAGED_TIME="$FIELD_ENGAGED_TIME" \
 FIELD_SESSION_TIME="$FIELD_SESSION_TIME" \
-FIELD_SEQUENCE="$FIELD_SEQUENCE" \
+FIELD_RANK="$FIELD_RANK" \
 FIELD_START_TIME="$FIELD_START_TIME" \
 FIELD_BLOCKED_BY="$FIELD_BLOCKED_BY" \
 FIELD_REVIEW_TIME="$FIELD_REVIEW_TIME" \
@@ -1410,8 +1410,8 @@ const optional = {
   fieldEstimate:          process.env.FIELD_ESTIMATE,
   fieldEngagedTime:       process.env.FIELD_ENGAGED_TIME,
   fieldSessionTime:       process.env.FIELD_SESSION_TIME,
-  fieldSequence:          process.env.FIELD_SEQUENCE,
-  sequenceFieldId:        process.env.FIELD_SEQUENCE,
+  fieldRank:              process.env.FIELD_RANK,
+  rankFieldId:            process.env.FIELD_RANK,
   fieldStartTime:         process.env.FIELD_START_TIME,
   fieldBlockedBy:         process.env.FIELD_BLOCKED_BY,
   fieldReviewTime:        process.env.FIELD_REVIEW_TIME,
@@ -1501,9 +1501,9 @@ body:
       required: true
 
   - type: input
-    id: sequence
+    id: rank
     attributes:
-      label: Sequence
+      label: Rank
       description: Optional fan-out/order number used by AITM orchestration.
       placeholder: "1"
     validations:
@@ -1597,9 +1597,9 @@ body:
       required: true
 
   - type: input
-    id: sequence
+    id: rank
     attributes:
-      label: Sequence
+      label: Rank
       description: Optional fan-out/order number used by AITM orchestration.
       placeholder: "1"
     validations:

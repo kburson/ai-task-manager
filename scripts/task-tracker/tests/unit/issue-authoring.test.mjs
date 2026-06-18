@@ -33,7 +33,7 @@ function fixtureDir() {
   writeFileSync(join(dir, 'acs.md'), '- [ ] First criterion\n- [ ] Second criterion\n');
   writeFileSync(
     join(dir, 'meta.md'),
-    '**Size:** S\n**Estimate:** 2h\n**Priority:** P2\n**Sequence:** 1\n'
+    '**Size:** S\n**Estimate:** 2h\n**Priority:** P2\n**Rank:** 1\n'
   );
   return dir;
 }
@@ -144,7 +144,7 @@ test('stub shape: canonical structure without scope/ac/plan-metadata files', () 
   // Placeholders the Refine stage fills in.
   assert.match(body, /Stub — describe the work at Refine\./);
   assert.match(body, /TBD — define acceptance criteria at Refine\./);
-  assert.match(body, /TBD — set Size, Estimate, Priority, and Sequence at Refine\./);
+  assert.match(body, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
 });
 
 test('stub shape: --idea-file seeds the Scope section', () => {

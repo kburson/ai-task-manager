@@ -142,10 +142,7 @@ function makeDeps(overrides = {}) {
   const planFile = path.join(dir, 'plan.md');
   writeFileSync(scopeFile, 'Scope text.\n');
   writeFileSync(acFile, '- [ ] one\n');
-  writeFileSync(
-    planFile,
-    '- **Size:** S\n- **Estimate:** 1h\n- **Priority:** P2\n- **Sequence:** —\n'
-  );
+  writeFileSync(planFile, '- **Size:** S\n- **Estimate:** 1h\n- **Priority:** P2\n- **Rank:** —\n');
   const rendered = execFileSync(
     'node',
     [

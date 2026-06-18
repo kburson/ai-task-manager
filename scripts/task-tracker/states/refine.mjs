@@ -1,7 +1,7 @@
 // State object: refine (#292).
 //
 // Refine is the issue-shaping state: scope, ACs, plan metadata, board
-// fields (Sequence, Labels, Start time). Exit-gates enforce the
+// fields (Rank, Labels, Start time). Exit-gates enforce the
 // plan-entry contract via the #276 body + board adapters.
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';

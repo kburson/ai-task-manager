@@ -16,7 +16,7 @@
 // pieces — proving the created body is "as ready as creation can make it".
 //
 // Board values are synthesized by parsing the `aitm-fields:` JSON block the
-// new (#298) `--priority/--size/--estimate/--sequence/--start-time`
+// new (#298) `--priority/--size/--estimate/--rank/--start-time`
 // forwarding emits at the body tail. Labels are stubbed because they live on
 // the issue, not in the body.
 
@@ -48,7 +48,7 @@ const SEED = {
   priority: 'P1',
   size: 'M',
   estimate: 4,
-  sequence: 99,
+  rank: 99,
   startTime: '2026-06-04 22:46:35 -05:00',
 };
 const SEED_LABELS = ['test', 'demo'];
@@ -74,8 +74,8 @@ function runDryRun() {
     SEED.size,
     '--estimate',
     String(SEED.estimate),
-    '--sequence',
-    String(SEED.sequence),
+    '--rank',
+    String(SEED.rank),
     '--start-time',
     SEED.startTime,
     '--dry-run',
@@ -98,7 +98,7 @@ const CFG = Object.freeze({ repo: 'fixture/repo', projectId: 0 });
 function fakeFieldDefs() {
   return {
     project: { id: 0, number: 0, title: 'fixture' },
-    fields: { priority: {}, size: {}, estimate: {}, sequence: {}, startTime: {} },
+    fields: { priority: {}, size: {}, estimate: {}, rank: {}, startTime: {} },
   };
 }
 

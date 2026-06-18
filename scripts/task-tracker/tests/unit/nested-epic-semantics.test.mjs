@@ -47,13 +47,13 @@ test('planEpicDevelopChildrenGate: root epic with sole sub-epic at refine passes
   // non-refine states and refuse. It must NOT — it only inspects immediate
   // children of #100.
   const siblings = new Map([
-    [100, [{ number: 200, state: 'refine', sequence: 1 }]],
+    [100, [{ number: 200, state: 'refine', rank: 1 }]],
     [
       200,
       [
-        { number: 201, state: 'develop', sequence: 1 },
-        { number: 202, state: 'plan', sequence: 2 },
-        { number: 203, state: 'done', sequence: 3 },
+        { number: 201, state: 'develop', rank: 1 },
+        { number: 202, state: 'plan', rank: 2 },
+        { number: 203, state: 'done', rank: 3 },
       ],
     ],
   ]);
@@ -74,8 +74,8 @@ test('planEpicDevelopChildrenGate: sub-epic with all grandchildren at refine pas
     [
       200,
       [
-        { number: 201, state: 'refine', sequence: 1 },
-        { number: 202, state: 'refine', sequence: 2 },
+        { number: 201, state: 'refine', rank: 1 },
+        { number: 202, state: 'refine', rank: 2 },
       ],
     ],
   ]);

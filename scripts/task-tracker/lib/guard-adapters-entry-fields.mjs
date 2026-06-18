@@ -86,7 +86,7 @@ export const planEntryFieldsBody = {
   },
 };
 
-// refine.exit #2 — Sequence / Labels / Start time on the board, plus
+// refine.exit #2 — Rank / Labels / Start time on the board, plus
 // AC-command lint.
 export const planEntryFieldsBoard = {
   id: 'plan-entry-fields-board',

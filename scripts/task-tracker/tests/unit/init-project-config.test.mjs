@@ -93,7 +93,7 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   {"id":"F_SESSION","name":"Session","dataType":"TEXT"},
   {"id":"F_REVIEW","name":"Review","dataType":"TEXT"},
   {"id":"F_PLAN","name":"Plan","dataType":"TEXT"},
-  {"id":"F_SEQUENCE","name":"Sequence","dataType":"NUMBER"},
+  {"id":"F_SEQUENCE","name":"Rank","dataType":"NUMBER"},
   {"id":"F_START_TIME","name":"Start time","dataType":"TEXT"}
 ]
 JSON
@@ -127,7 +127,7 @@ const input =
     '', // session field default (Session text, auto-matched)
     '', // review field default (Review text, auto-matched)
     '', // plan field default (Plan text, auto-matched)
-    '', // sequence field default (auto-matched)
+    '', // rank field default (auto-matched)
     '', // started field default (Start time → Started alias match)
     '', // spare prompt response
     '', // spare prompt response
@@ -161,7 +161,7 @@ const generatedBugTemplate = readFileSync(
 );
 for (const template of [generatedTaskTemplate, generatedBugTemplate]) {
   assert.match(template, /label: Estimate/);
-  assert.match(template, /label: Sequence/);
+  assert.match(template, /label: Rank/);
   assert.doesNotMatch(template, /Engaged Time/);
   assert.doesNotMatch(template, /Session Time/);
   assert.doesNotMatch(template, /Context Length/);

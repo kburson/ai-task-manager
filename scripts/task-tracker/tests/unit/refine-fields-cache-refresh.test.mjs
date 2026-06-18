@@ -8,7 +8,7 @@ const FIELD_DEFS = [
   { key: 'priority', name: 'Priority' },
   { key: 'size', name: 'Size' },
   { key: 'estimate', name: 'Estimate' },
-  { key: 'sequence', name: 'Sequence' },
+  { key: 'rank', name: 'Rank' },
 ];
 
 const STARTING_BODY = `## Scope
@@ -19,7 +19,7 @@ something
 
 - [ ] foo
 
-<!-- aitm-fields: {"schema":1,"values":{"priority":null,"size":null,"estimate":null,"sequence":null}} -->
+<!-- aitm-fields: {"schema":1,"values":{"priority":null,"size":null,"estimate":null,"rank":null}} -->
 `;
 
 function makeDeps({ writtenBodyRef, fetchRef }) {
@@ -48,7 +48,7 @@ const CFG = {
   projectId: 'PVT_test',
 };
 
-test('#223: refine refreshes aitm-fields cache with priority/size/estimate/sequence', async () => {
+test('#223: refine refreshes aitm-fields cache with priority/size/estimate/rank', async () => {
   const writtenBodyRef = { value: null };
   const deps = makeDeps({ writtenBodyRef });
   await runRefine({
@@ -58,7 +58,7 @@ test('#223: refine refreshes aitm-fields cache with priority/size/estimate/seque
       estimate: 1,
       priority: 'p2',
       reason: 'unit test',
-      sequence: 223,
+      rank: 223,
       labels: null,
     },
     cfg: CFG,
@@ -70,7 +70,7 @@ test('#223: refine refreshes aitm-fields cache with priority/size/estimate/seque
   assert.equal(parsed.values.priority, 'P2');
   assert.equal(parsed.values.size, 'S');
   assert.equal(parsed.values.estimate, 1);
-  assert.equal(parsed.values.sequence, 223);
+  assert.equal(parsed.values.rank, 223);
 });
 
 test('#223: refine overrides stale prior values in aitm-fields cache', async () => {
@@ -88,7 +88,7 @@ test('#223: refine overrides stale prior values in aitm-fields cache', async () 
       estimate: 2,
       priority: 'p1',
       reason: 'override stale',
-      sequence: null,
+      rank: null,
       labels: null,
     },
     cfg: CFG,

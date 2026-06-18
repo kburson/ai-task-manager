@@ -47,8 +47,7 @@ const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'stub'];
 // Refine stage replaces them; a stub is fast idea-capture, not a planned story.
 const STUB_SCOPE_PLACEHOLDER = '_Stub — describe the work at Refine._';
 const STUB_AC_PLACEHOLDER = '- [ ] _TBD — define acceptance criteria at Refine._';
-const STUB_PLAN_METADATA_PLACEHOLDER =
-  '_TBD — set Size, Estimate, Priority, and Sequence at Refine._';
+const STUB_PLAN_METADATA_PLACEHOLDER = '_TBD — set Size, Estimate, Priority, and Rank at Refine._';
 
 function repoRoot() {
   try {
@@ -176,10 +175,10 @@ export function normalizeFills(fills) {
 }
 
 // #298 AC3 — Build the `aitm-fields` trailer block from seed values forwarded
-// by create-issue.mjs (priority/size/estimate/sequence/start-time). Returns
+// by create-issue.mjs (priority/size/estimate/rank/start-time). Returns
 // null when no values were forwarded; caller then omits the trailer block.
 function buildFieldsTrailer(args) {
-  const keys = ['priority', 'size', 'estimate', 'sequence', 'start-time'];
+  const keys = ['priority', 'size', 'estimate', 'rank', 'start-time'];
   const out = {
     priority: null,
     size: null,
@@ -187,7 +186,7 @@ function buildFieldsTrailer(args) {
     engagedTime: null,
     sessionTime: null,
     reviewTime: null,
-    sequence: null,
+    rank: null,
     startTime: null,
     blockedBy: null,
   };
@@ -199,9 +198,9 @@ function buildFieldsTrailer(args) {
     if (k === 'estimate') {
       const n = parseFloat(String(raw).replace(/h$/i, ''));
       out.estimate = Number.isFinite(n) ? n : null;
-    } else if (k === 'sequence') {
+    } else if (k === 'rank') {
       const n = parseInt(raw, 10);
-      out.sequence = Number.isFinite(n) ? n : null;
+      out.rank = Number.isFinite(n) ? n : null;
     } else if (k === 'start-time') {
       out.startTime = raw;
     } else {

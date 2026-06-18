@@ -88,11 +88,11 @@ const CFG = {
     priority: 'F_priority',
     size: 'F_size',
     estimate: 'F_estimate',
-    sequence: 'F_sequence',
+    rank: 'F_rank',
     startTime: 'F_startTime',
   },
   fieldStartTime: 'F_startTime',
-  sequenceFieldId: 'F_sequence',
+  rankFieldId: 'F_rank',
 };
 
 // Convert a result object (varies by gate) into a sorted Set of substring keys
@@ -114,7 +114,7 @@ function makeRefineDeps(fixture) {
       priority: { type: 'singleSelect', id: 'F_priority' },
       size: { type: 'singleSelect', id: 'F_size' },
       estimate: { type: 'number', id: 'F_estimate' },
-      sequence: { type: 'number', id: 'F_sequence' },
+      rank: { type: 'number', id: 'F_rank' },
       startTime: { type: 'text', id: 'F_startTime' },
     }),
     projectValuesForIssue: async () => fixture.projectValues || {},

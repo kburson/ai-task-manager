@@ -28,7 +28,7 @@ const fieldDefs = [
     options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }],
   },
   { key: 'estimate', name: 'Estimate', type: 'number' },
-  { key: 'sequence', name: 'Sequence', type: 'number' },
+  { key: 'rank', name: 'Rank', type: 'number' },
   { key: 'engagedTime', name: 'Engaged Time', type: 'number' },
   { key: 'sessionTime', name: 'Session Time', type: 'number' },
   { key: 'reviewTime', name: 'Review Time', type: 'number' },
@@ -61,7 +61,7 @@ const TIMING_LOG_3_ROWS = [
     '',
     FIELD_DB_START,
     '```json',
-    '{"schema":1,"values":{"priority":"P0","size":"M","estimate":4,"engagedTime":99,"sessionTime":80,"reviewTime":19,"sequence":1,"startTime":"2026-05-10 09:00 -05:00"}}',
+    '{"schema":1,"values":{"priority":"P0","size":"M","estimate":4,"engagedTime":99,"sessionTime":80,"reviewTime":19,"rank":1,"startTime":"2026-05-10 09:00 -05:00"}}',
     '```',
     FIELD_DB_END,
   ].join('\n');
@@ -80,7 +80,7 @@ const TIMING_LOG_3_ROWS = [
   assert.equal(r.values.priority, 'P0');
   assert.equal(r.values.size, 'M');
   assert.equal(r.values.estimate, 4);
-  assert.equal(r.values.sequence, 1);
+  assert.equal(r.values.rank, 1);
   // Timing reconciled from log (3 rows: 0 + 30 + 45 = 75 active min)
   assert.equal(r.values.sessionTime, 75);
   assert.equal(r.values.engagedTime, 75); // no pauses → reviewMin = 0
@@ -105,7 +105,7 @@ const TIMING_LOG_3_ROWS = [
     '',
     'Body.',
     '',
-    `${FIELDS_COMMENT_PREFIX} {"schema":1,"values":{"priority":"P0","size":"L","estimate":8,"engagedTime":9999,"sessionTime":9999,"reviewTime":9999,"sequence":2,"startTime":"old-value"}} -->`,
+    `${FIELDS_COMMENT_PREFIX} {"schema":1,"values":{"priority":"P0","size":"L","estimate":8,"engagedTime":9999,"sessionTime":9999,"reviewTime":9999,"rank":2,"startTime":"old-value"}} -->`,
   ].join('\n');
 
   const r = healIssue({
@@ -121,7 +121,7 @@ const TIMING_LOG_3_ROWS = [
   assert.equal(r.values.priority, 'P0');
   assert.equal(r.values.size, 'L');
   assert.equal(r.values.estimate, 8);
-  assert.equal(r.values.sequence, 2);
+  assert.equal(r.values.rank, 2);
   // Deltas list shows the four changed fields
   const changedKeys = new Set(r.deltas.map((d) => d.key));
   assert.ok(changedKeys.has('engagedTime'));
@@ -129,7 +129,7 @@ const TIMING_LOG_3_ROWS = [
   assert.ok(changedKeys.has('reviewTime'));
   assert.ok(changedKeys.has('startTime'));
   // No delta for any static key
-  for (const k of ['priority', 'size', 'estimate', 'sequence']) {
+  for (const k of ['priority', 'size', 'estimate', 'rank']) {
     assert.ok(!changedKeys.has(k), `static key ${k} must not be in deltas`);
   }
 })();
@@ -160,7 +160,7 @@ const TIMING_LOG_3_ROWS = [
   const body = [
     '# Item',
     '',
-    `${FIELDS_COMMENT_PREFIX} {"schema":1,"values":{"priority":"P0","size":"S","estimate":3,"engagedTime":null,"sessionTime":null,"reviewTime":null,"sequence":1,"startTime":null}} -->`,
+    `${FIELDS_COMMENT_PREFIX} {"schema":1,"values":{"priority":"P0","size":"S","estimate":3,"engagedTime":null,"sessionTime":null,"reviewTime":null,"rank":1,"startTime":null}} -->`,
   ].join('\n');
 
   const r = healIssue({
@@ -194,7 +194,7 @@ const TIMING_LOG_3_ROWS = [
       options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'XL' }],
     }, // missing L
     // missing Estimate
-    { name: 'Sequence', dataType: 'NUMBER' },
+    { name: 'Rank', dataType: 'NUMBER' },
     { name: 'Engaged Time', dataType: 'NUMBER' },
     { name: 'Session Time', dataType: 'NUMBER' },
     { name: 'Review Time', dataType: 'NUMBER' },
@@ -244,7 +244,7 @@ const TIMING_LOG_3_ROWS = [
       options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }],
     },
     { name: 'Estimate', dataType: 'NUMBER' },
-    { name: 'Sequence', dataType: 'NUMBER' },
+    { name: 'Rank', dataType: 'NUMBER' },
     { name: 'Engaged Time', dataType: 'NUMBER' },
     { name: 'Session Time', dataType: 'NUMBER' },
     { name: 'Review Time', dataType: 'NUMBER' },

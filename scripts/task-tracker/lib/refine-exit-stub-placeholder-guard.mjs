@@ -2,7 +2,7 @@
 //
 // Stub issues are created with two placeholder strings in their body:
 //   1. AC placeholder:   "- [ ] _TBD — define acceptance criteria at Refine._"
-//   2. Plan Metadata:    "_TBD — set Size, Estimate, Priority, and Sequence at Refine._"
+//   2. Plan Metadata:    "_TBD — set Size, Estimate, Priority, and Rank at Refine._"
 //
 // Neither should survive to the refine→plan transition. If either placeholder
 // is still present when promote runs, the issue was not properly refined.
@@ -20,7 +20,7 @@ export const GUARD_ID = 'refine-exit-stub-placeholder';
 
 export const STUB_AC_PLACEHOLDER = '_TBD — define acceptance criteria at Refine._';
 export const STUB_PLAN_META_PLACEHOLDER =
-  '_TBD — set Size, Estimate, Priority, and Sequence at Refine._';
+  '_TBD — set Size, Estimate, Priority, and Rank at Refine._';
 
 export const refineExitStubPlaceholderGuard = {
   id: GUARD_ID,
@@ -36,7 +36,7 @@ export const refineExitStubPlaceholderGuard = {
     }
     if (body.includes(STUB_PLAN_META_PLACEHOLDER)) {
       blockers.push(
-        'stub Plan Metadata placeholder still present — replace "TBD — set Size, Estimate, Priority, and Sequence at Refine" with substantive plan metadata before promoting'
+        'stub Plan Metadata placeholder still present — replace "TBD — set Size, Estimate, Priority, and Rank at Refine" with substantive plan metadata before promoting'
       );
     }
     if (blockers.length === 0) return { ok: true };

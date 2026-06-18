@@ -29,7 +29,7 @@ const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--sequence <n>] [--parent <N>] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -143,7 +143,7 @@ function renderShapeBody(args) {
   }
   // #298 AC3 — forward seed values so preflight emits the `aitm-fields`
   // trailer block at creation time (Refine→Plan `fields-block marker` gate).
-  for (const k of ['priority', 'size', 'estimate', 'sequence', 'start-time']) {
+  for (const k of ['priority', 'size', 'estimate', 'rank', 'start-time']) {
     if (typeof args[k] === 'string' && args[k]) flags.push(`--${k}`, args[k]);
   }
   const result = run('node', [PREFLIGHT_SCRIPT, ...flags], { timeout: GH_API_TIMEOUT_MS });
@@ -192,7 +192,7 @@ function buildTetherArgs(issueNumber, args, priority) {
   if (priority) tArgs.push('--priority', priority);
   if (typeof args.size === 'string') tArgs.push('--size', args.size);
   if (typeof args.estimate === 'string') tArgs.push('--estimate', args.estimate);
-  if (typeof args.sequence === 'string') tArgs.push('--sequence', args.sequence);
+  if (typeof args.rank === 'string') tArgs.push('--rank', args.rank);
   if (typeof args.parent === 'string') tArgs.push('--parent', args.parent);
   return tArgs;
 }

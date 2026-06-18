@@ -134,7 +134,7 @@ test('#342 — fresh-init cfg fixture populates every WELL_KNOWN_FIELD_KEY via f
     fieldEstimate: 'PVTF_est',
     fieldEngagedTime: 'PVTF_eng',
     fieldSessionTime: 'PVTF_ses',
-    fieldSequence: 'PVTF_seq',
+    fieldRank: 'PVTF_seq',
     fieldStartTime: 'PVTF_st',
     fieldBlockedBy: 'PVTF_bb',
     // reviewTime and planTime are written under fieldIds; the loader's

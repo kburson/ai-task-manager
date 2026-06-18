@@ -28,7 +28,7 @@ const fieldDefs = [
     options: [{ name: 'XS' }, { name: 'S' }, { name: 'M' }, { name: 'L' }, { name: 'XL' }],
   },
   { key: 'estimate', name: 'Estimate', type: 'number' },
-  { key: 'sequence', name: 'Sequence', type: 'number' },
+  { key: 'rank', name: 'Rank', type: 'number' },
   { key: 'engagedTime', name: 'Engaged Time', type: 'number' },
   { key: 'sessionTime', name: 'Session Time', type: 'number' },
   { key: 'reviewTime', name: 'Review Time', type: 'number' },
@@ -60,7 +60,7 @@ const TIMING_LOG_3_ROWS = [
     '',
     FIELD_DB_START,
     '```json',
-    '{"schema":1,"values":{"priority":"P1","size":"S","estimate":2,"engagedTime":1,"sessionTime":1,"reviewTime":0,"sequence":3,"startTime":"stale"}}',
+    '{"schema":1,"values":{"priority":"P1","size":"S","estimate":2,"engagedTime":1,"sessionTime":1,"reviewTime":0,"rank":3,"startTime":"stale"}}',
     '```',
     FIELD_DB_END,
   ].join('\n');

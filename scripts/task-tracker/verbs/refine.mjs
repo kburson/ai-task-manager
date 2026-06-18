@@ -52,7 +52,7 @@ export function parseArgs(argv = []) {
     estimate: null,
     priority: null,
     reason: null,
-    sequence: null,
+    rank: null,
     labels: null,
   };
 
@@ -77,8 +77,8 @@ export function parseArgs(argv = []) {
         parsed.reason = val;
         i += 2;
         break;
-      case '--sequence':
-        parsed.sequence = val;
+      case '--rank':
+        parsed.rank = val;
         i += 2;
         break;
       case '--labels':
@@ -101,7 +101,7 @@ export function parseLabelsArg(raw) {
   return parts;
 }
 
-export function validateArgs({ issueNumber, size, estimate, priority, reason, sequence, labels }) {
+export function validateArgs({ issueNumber, size, estimate, priority, reason, rank, labels }) {
   const errs = [];
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
     errs.push('issue# must be a positive integer');
@@ -119,9 +119,9 @@ export function validateArgs({ issueNumber, size, estimate, priority, reason, se
     errs.push(`--priority must be one of: ${PRIORITY_ENUM.join(', ')}`);
   }
   if (!reason || !String(reason).trim()) errs.push('--reason is required (non-empty)');
-  if (sequence != null && sequence !== '') {
-    const sn = Number(sequence);
-    if (!Number.isFinite(sn)) errs.push('--sequence must be a number');
+  if (rank != null && rank !== '') {
+    const sn = Number(rank);
+    if (!Number.isFinite(sn)) errs.push('--rank must be a number');
   }
   if (labels != null) {
     const parts = parseLabelsArg(labels);
@@ -132,10 +132,10 @@ export function validateArgs({ issueNumber, size, estimate, priority, reason, se
 }
 
 // #220: emit the canonical four-key shape — bucket tokens stay in their slots,
-// the reason text lives in its own `rationale` key. `sequence` is included as a
+// the reason text lives in its own `rationale` key. `rank` is included as a
 // number when supplied (omitted otherwise so round-trip equality doesn't carry
 // a stray null).
-export function buildRationaleMarker({ size, estimate, priority, sequence, reason } = {}) {
+export function buildRationaleMarker({ size, estimate, priority, rank, reason } = {}) {
   if (typeof reason !== 'string' || reason.trim() === '') {
     throw new Error('buildRationaleMarker: reason is required');
   }
@@ -145,9 +145,9 @@ export function buildRationaleMarker({ size, estimate, priority, sequence, reaso
     priority: String(priority),
     rationale: reason,
   };
-  if (sequence != null && sequence !== '') {
-    const seqNum = Number(sequence);
-    if (Number.isFinite(seqNum)) payload.sequence = seqNum;
+  if (rank != null && rank !== '') {
+    const rankNum = Number(rank);
+    if (Number.isFinite(rankNum)) payload.rank = rankNum;
   }
   return `<!-- aitm-refinement-rationale: ${JSON.stringify(payload)} -->`;
 }
@@ -212,10 +212,10 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   const assertBound = deps.assertBound ?? assertBoundToIssue;
   assertBound(args?.issueNumber);
 
-  const { issueNumber, size, estimate, priority, reason, sequence, labels } = args;
+  const { issueNumber, size, estimate, priority, reason, rank, labels } = args;
   const estimateNum = parseFloat(String(estimate).replace(/h$/i, ''));
   const priorityNorm = String(priority).toLowerCase();
-  const sequenceNum = sequence == null || sequence === '' ? null : Number(sequence);
+  const rankNum = rank == null || rank === '' ? null : Number(rank);
   const labelList = parseLabelsArg(labels) || [];
 
   const tether = deps.tetherIssueToProject || tetherIssueToProject;
@@ -255,8 +255,8 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     size,
     estimate: estimateNum,
   };
-  if (sequenceNum != null && Number.isFinite(sequenceNum)) {
-    tetherArgs.sequence = sequenceNum;
+  if (rankNum != null && Number.isFinite(rankNum)) {
+    tetherArgs.rank = rankNum;
   }
   await tether(tetherArgs);
 
@@ -270,7 +270,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     size,
     estimate: estimateNum,
     priority: priorityNorm,
-    sequence: sequenceNum,
+    rank: rankNum,
     reason,
   });
 
@@ -307,9 +307,9 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
             priority: priorityNorm.toUpperCase(),
             size,
             estimate: estimateNum,
-            sequence: sequenceNum,
+            rank: rankNum,
           },
-          { overrideKeys: ['priority', 'size', 'estimate', 'sequence'] }
+          { overrideKeys: ['priority', 'size', 'estimate', 'rank'] }
         );
         next = refreshed.body;
       } catch (err) {

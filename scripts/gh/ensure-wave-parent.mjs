@@ -16,7 +16,7 @@
 //
 // Usage:
 //   ensure-wave-parent.mjs --children 12,13,14 --purpose "<text>"
-//                          [--priority p0|p1|p2] [--sequence <n>]
+//                          [--priority p0|p1|p2] [--rank <n>]
 //                          [--dry-run]
 //
 // stdout (on a real or reused parent): `PARENT: #<N>`
@@ -61,7 +61,7 @@ function parseArgs(argv) {
       out.children.push(argv[++i]);
     } else if (a === '--purpose') out.purpose = argv[++i];
     else if (a === '--priority') out.priority = argv[++i];
-    else if (a === '--sequence') out.sequence = argv[++i];
+    else if (a === '--rank') out.rank = argv[++i];
     else if (a === '--dry-run') out.dryRun = true;
     else if (a === '-h' || a === '--help') out.help = true;
   }
@@ -69,7 +69,7 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return 'Usage: ensure-wave-parent.mjs --children N1,N2,... --purpose "<text>" [--priority p0|p1|p2] [--sequence <n>] [--dry-run]';
+  return 'Usage: ensure-wave-parent.mjs --children N1,N2,... --purpose "<text>" [--priority p0|p1|p2] [--rank <n>] [--dry-run]';
 }
 
 function waveId(children) {
@@ -129,7 +129,7 @@ async function addSubIssue({ parentId, childId }) {
   );
 }
 
-function createParentIssue({ purpose, children, waveIdValue, priority, sequence, cfg }) {
+function createParentIssue({ purpose, children, waveIdValue, priority, rank, cfg }) {
   const body = renderTemplate({ purpose, children, waveIdValue });
   const tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'wave-parent-'));
   const bodyFile = path.join(tmpDir, 'body.md');
@@ -150,7 +150,7 @@ function createParentIssue({ purpose, children, waveIdValue, priority, sequence,
     '--internal',
   ];
   if (priority) args.push('--priority', priority);
-  if (sequence) args.push('--sequence', String(sequence));
+  if (rank) args.push('--rank', String(rank));
   if (cfg.assignee) args.push('--assignee', cfg.assignee);
 
   // create-issue.mjs makes multiple gh calls; allow gh-class budget plus headroom.
@@ -292,7 +292,7 @@ async function main() {
       children: result.solos,
       waveIdValue,
       priority: args.priority,
-      sequence: args.sequence,
+      rank: args.rank,
       cfg,
     });
   }

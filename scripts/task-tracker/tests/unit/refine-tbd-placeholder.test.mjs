@@ -40,7 +40,7 @@ function bodyWithMarkers({ state = 'refine', extras = '' } = {}) {
     '',
     '## Plan Metadata',
     '',
-    'Priority: P2-High | Size: S | Estimate: 2h | Sequence: 1',
+    'Priority: P2-High | Size: S | Estimate: 2h | Rank: 1',
     '',
     extras,
   ]
@@ -59,7 +59,7 @@ function bodyWithACPlaceholder(state = 'refine') {
     '',
     '## Plan Metadata',
     '',
-    'Priority: P2-High | Size: S | Estimate: 2h | Sequence: 1',
+    'Priority: P2-High | Size: S | Estimate: 2h | Rank: 1',
   ].join('\n');
 }
 

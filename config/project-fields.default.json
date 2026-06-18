@@ -56,8 +56,8 @@
     "aliases": ["Plan Time"]
   },
   {
-    "key": "sequence",
-    "name": "Sequence",
+    "key": "rank",
+    "name": "Rank",
     "type": "number",
     "aliases": []
   },

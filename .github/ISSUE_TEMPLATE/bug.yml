@@ -73,9 +73,9 @@ body:
       required: true
 
   - type: input
-    id: sequence
+    id: rank
     attributes:
-      label: Sequence
+      label: Rank
       description: Optional fan-out/order number used by AITM orchestration.
       placeholder: '1'
     validations:

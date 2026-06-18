@@ -15,7 +15,7 @@
 //   "Actual Hours"         → engagedTime      (number, alias)
 //   "Actual Session Time"  → sessionTime      (number, alias)
 //   "Context Length"       → contextLength    (preserved verbatim, retired in AITM)
-//   "Sequence"             → sequence         (number)
+//   "Rank"                 → rank             (number)
 //
 // Status, Iteration, and the GitHub built-ins (Title/Assignees/etc.) are not
 // part of the body block and are ignored here.
@@ -39,7 +39,7 @@ const FIELD_DEFS = [
   { key: 'engagedTime', name: 'Actual Hours', type: 'number' },
   { key: 'sessionTime', name: 'Actual Session Time', type: 'number' },
   { key: 'contextLength', name: 'Context Length', type: 'number' },
-  { key: 'sequence', name: 'Sequence', type: 'number' },
+  { key: 'rank', name: 'Rank', type: 'number' },
 ];
 
 const args = process.argv.slice(2);

@@ -159,7 +159,7 @@ async function main() {
         continue;
       }
       const values = { ...parsed.values };
-      if (issue.state === 'closed') delete values.sequence;
+      if (issue.state === 'closed') delete values.rank;
       const plan = buildFieldSyncPlan({ cfg, fieldDefs, values });
       for (const step of plan) {
         if (dryRun) {

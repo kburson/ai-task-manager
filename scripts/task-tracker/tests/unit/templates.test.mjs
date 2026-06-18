@@ -134,10 +134,7 @@ for (const form of [taskIssueForm, bugIssueForm]) {
     form.includes('label: Estimate'),
     'manual issue form exposes Estimate section for DB healing'
   );
-  assert.ok(
-    form.includes('label: Sequence'),
-    'manual issue form exposes Sequence section for DB healing'
-  );
+  assert.ok(form.includes('label: Rank'), 'manual issue form exposes Rank section for DB healing');
   assert.ok(
     !form.includes('Engaged Time'),
     'manual issue form does not ask for task-event managed Engaged Time'

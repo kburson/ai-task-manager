@@ -8,7 +8,7 @@
 // (no children) pass through.
 //
 // The `/task pull-next` verb consumes `findNextEligibleChild` to pick the
-// next-in-sequence refine-state child to promote refine→plan.
+// next-in-rank refine-state child to promote refine→plan.
 
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
@@ -99,7 +99,7 @@ export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} 
 // Normalizes a child's `blockedBy` into an array of positive integers. Accepts
 // the `aitm-blocked-by` parse output (number[]) and defaults to `[]` when the
 // field is absent — so children that were never enriched behave as unblocked
-// and the selector degrades to pure sequence ordering (back-compat).
+// and the selector degrades to pure rank ordering (back-compat).
 function childBlockers(child) {
   const raw = child && Array.isArray(child.blockedBy) ? child.blockedBy : [];
   return raw.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0);
@@ -108,15 +108,15 @@ function childBlockers(child) {
 /**
  * Pick the next child to pull refine→plan, dependency-aware.
  *
- * Eligibility: state `refine`, finite `sequence`, and every `aitm-blocked-by`
+ * Eligibility: state `refine`, finite `rank`, and every `aitm-blocked-by`
  * blocker already Done. Ordering: children that block a sibling sort ahead of
- * leaf children (so blockers clear first), then `sequence` ascending.
+ * leaf children (so blockers clear first), then `rank` ascending.
  *
- * Pure: reads `c.state`, `c.sequence`, and the optional `c.blockedBy` (number[],
+ * Pure: reads `c.state`, `c.rank`, and the optional `c.blockedBy` (number[],
  * attached by `enrichChildrenWithBlockedBy`). With no `blockedBy` anywhere this
- * reduces to the original lowest-sequence-refine-child behavior.
+ * reduces to the original lowest-rank-refine-child behavior.
  *
- * @param {Array<{number:number, state?:string, sequence?:number, blockedBy?:number[]}>} children
+ * @param {Array<{number:number, state?:string, rank?:number, blockedBy?:number[]}>} children
  * @returns {object|null} the chosen child, or null when none eligible.
  */
 export function findNextEligibleChild(children = []) {
@@ -138,7 +138,7 @@ export function findNextEligibleChild(children = []) {
 
   const eligible = list
     .filter((c) => String(c.state || '').toLowerCase() === 'refine')
-    .filter((c) => c.sequence != null && Number.isFinite(Number(c.sequence)))
+    .filter((c) => (c.rank ?? c.sequence) != null && Number.isFinite(Number(c.rank ?? c.sequence)))
     // Exclude any child whose blockers are not all Done.
     .filter((c) => childBlockers(c).every((b) => doneNumbers.has(b)))
     .sort((a, b) => {
@@ -146,8 +146,8 @@ export function findNextEligibleChild(children = []) {
       const aBlocks = blockingNumbers.has(Number(a.number)) ? 0 : 1;
       const bBlocks = blockingNumbers.has(Number(b.number)) ? 0 : 1;
       if (aBlocks !== bBlocks) return aBlocks - bBlocks;
-      // Sequence ascending tiebreak (preserves original behavior).
-      return Number(a.sequence) - Number(b.sequence);
+      // Rank ascending tiebreak (preserves original behavior).
+      return Number(a.rank ?? a.sequence) - Number(b.rank ?? b.sequence);
     });
 
   return eligible[0] || null;

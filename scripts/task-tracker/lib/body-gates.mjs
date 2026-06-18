@@ -305,14 +305,14 @@ export async function checkParentAdmission({
   ];
 }
 
-export async function checkWaveAdmission({ parentEpicNumber, sequence, repo, projectId, admit }) {
+export async function checkWaveAdmission({ parentEpicNumber, rank, repo, projectId, admit }) {
   // Solo bypass: no parent epic.
   if (parentEpicNumber == null) return [];
-  const result = await admit({ parentEpicNumber, sequence, repo, projectId });
+  const result = await admit({ parentEpicNumber, rank, repo, projectId });
   if (result.ok) return [];
   return result.blockers.map((b) => ({
     kind: 'wave-admission',
-    message: `wave-admission: sibling #${b.issue} (sequence ${b.sequence}, state ${b.state}) blocks lower-Sequence wait`,
+    message: `wave-admission: sibling #${b.issue} (rank ${b.rank}, state ${b.state}) blocks lower-Rank wait`,
   }));
 }
 
