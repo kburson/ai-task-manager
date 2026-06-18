@@ -71,7 +71,9 @@ test('promote does not write aitm-last-known-state on successful refine→plan',
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const refineComplete = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${refineComplete}\n${rationale}\n\n${ac}`;
+  const userStory =
+    '## User Story\nAs a developer\nI want to rename a field\nSo that the terminology is consistent\n';
+  const body = `${bodyWithState('refine')}\n${refineComplete}\n${rationale}\n\n${userStory}\n${ac}`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
