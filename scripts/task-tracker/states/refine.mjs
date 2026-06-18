@@ -12,6 +12,7 @@ import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 import { refineExitCompleteMarkerGuard } from '../lib/refine-exit-complete-marker-guard.mjs';
 import { refineExitStubPlaceholderGuard } from '../lib/refine-exit-stub-placeholder-guard.mjs';
+import { userStoryBlockGuard } from '../lib/user-story-guard.mjs';
 
 export default Object.freeze({
   name: 'refine',
@@ -29,6 +30,8 @@ export default Object.freeze({
     refineExitWipBudgetGuard,
     refineExitChildParentStateGuard,
     childCannotLeadEpicExitGuard,
+    // #432 — hard-refuse if ## User Story is missing or still a placeholder.
+    userStoryBlockGuard,
   ]),
   onEnter: Object.freeze([]),
 });

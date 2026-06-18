@@ -13,6 +13,7 @@ import { refineEntryFieldsPriority } from '../lib/guard-adapters-entry-fields.mj
 import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-parent-state-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
+import { userStoryWarnGuard } from '../lib/user-story-guard.mjs';
 
 export default Object.freeze({
   name: 'on-deck',
@@ -22,6 +23,8 @@ export default Object.freeze({
     refineEntryFieldsPriority,
     backlogExitChildParentStateGuard,
     childCannotLeadEpicExitGuard,
+    // #432 — warn (non-blocking) if ## User Story is missing or still a placeholder.
+    userStoryWarnGuard,
   ]),
   onEnter: Object.freeze([]),
 });

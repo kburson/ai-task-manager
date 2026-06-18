@@ -83,6 +83,8 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-exit-complete-marker': 'refine-exit-refused',
   // #450 — stub TBD placeholder check at refine→plan.
   'refine-exit-stub-placeholder': 'refine-stub-placeholder-refused',
+  // #432 — ## User Story hard-refuse at refine→plan.
+  'user-story-block': 'user-story-refused',
 };
 
 function refusalsToVerbResult(refusals, { issueNumber, target }) {

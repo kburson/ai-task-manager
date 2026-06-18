@@ -40,10 +40,13 @@
 //   ---------|---------------------------------------|------------------------------------------------------------
 //   backlog  | contiguity                            | blocked-by, refine-entry-fields-priority,
 //            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic
-//   refine   | contiguity                            | refine-exit-complete-marker, blocked-by,
-//            |                                       | plan-entry-fields (body + board adapters),
+//   on-deck  | contiguity                            | blocked-by, refine-entry-fields-priority,
+//            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic,
+//            |                                       | user-story-warn (non-blocking)
+//   refine   | contiguity                            | refine-exit-complete-marker, refine-exit-stub-placeholder,
+//            |                                       | blocked-by, plan-entry-fields (body + board adapters),
 //            |                                       | refine-exit-wip-budget, refine-exit-child-parent-state,
-//            |                                       | child-cannot-lead-epic
+//            |                                       | child-cannot-lead-epic, user-story-block
 //   plan     | contiguity                            | blocked-by, plan-approved, plan-epic-children,
 //            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
 //            |                                       | child-cannot-lead-epic

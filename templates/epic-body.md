@@ -2,6 +2,7 @@
 EPIC issue body template.
 
 Canonical heading order (the parity test enforces this):
+  ## User Story
   ## Scope
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Plan Metadata
@@ -21,6 +22,12 @@ Stub policy — DO NOT include implementation plan, task breakdown, code snippet
 file maps, or step-by-step instructions. The deep-dive happens at pickup time
 against the current state of the repo, not at creation time. See SKILL.md:355.
 -->
+
+## User Story
+
+As a [who wants to accomplish something]
+I want to [what they want to accomplish]
+So that [why they want to accomplish that thing]
 
 ## Scope
 
