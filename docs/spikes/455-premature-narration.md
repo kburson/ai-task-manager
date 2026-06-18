@@ -42,7 +42,7 @@ Each premature message site, labeled by category:
 
 **(b) SKILL.md narration directives** — skill instructions that explicitly request Claude to announce transitions.
 
-Searching `node_modules/ai-task-manager/skill/adapters/claude/SKILL.md` and `shared/SKILL.md` for phrases "narrat", "announce", "Now doing", "progress message", "Now promoting" found **no explicit narration directives**. The premature narration in the #453 session was **not skill-instructed** — it was organic model behavior (the model explains what it's about to do as part of its visible reasoning).
+Searching `node_modules/ai-task-manager/skill/adapters/claude/SKILL.md` and `shared/SKILL.md` for phrases "narration", "announce", "Now doing", "progress message", "Now promoting" found **no explicit narration directives**. The premature narration in the #453 session was **not skill-instructed** — it was organic model behavior (the model explains what it's about to do as part of its visible reasoning).
 
 **(c) Verb stdout emitted before operation completes** — scan of verb files:
 
