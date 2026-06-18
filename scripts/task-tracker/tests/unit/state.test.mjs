@@ -121,6 +121,7 @@ assert.equal(s.active, '#201');
     CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,
     CODEX_SESSION_ID: process.env.CODEX_SESSION_ID,
     AI_TASK_MANAGER_SESSION_ID: process.env.AI_TASK_MANAGER_SESSION_ID,
+    AI_TASK_MANAGER_PROJECT_DIR: process.env.AI_TASK_MANAGER_PROJECT_DIR,
   };
   for (const k of Object.keys(savedEnv)) delete process.env[k];
   try {

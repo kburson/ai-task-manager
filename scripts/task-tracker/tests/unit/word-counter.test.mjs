@@ -117,7 +117,9 @@ assert.equal(injResult.count, 7, `injection filter: expected 4+3=7 words, got ${
 // Test 6: projectKey() cross-platform separator flattening (#14)
 // Uses CLAUDE_PROJECT_DIR override so the test is identical on POSIX & Windows.
 const origProjectDir = process.env.CLAUDE_PROJECT_DIR;
+const origAitmProjectDir6 = process.env.AI_TASK_MANAGER_PROJECT_DIR;
 try {
+  delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.CLAUDE_PROJECT_DIR = '/Users/foo/bar';
   assert.equal(projectKey(), '-Users-foo-bar', 'POSIX path should flatten forward slashes');
 
@@ -137,6 +139,8 @@ try {
 } finally {
   if (origProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR;
   else process.env.CLAUDE_PROJECT_DIR = origProjectDir;
+  if (origAitmProjectDir6 === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = origAitmProjectDir6;
 }
 
 // Test 7: currentSessionId() — env-first with project-local mtime fallback (#15)
