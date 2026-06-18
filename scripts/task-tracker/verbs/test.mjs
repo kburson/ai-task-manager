@@ -119,12 +119,13 @@ async function defaultNpmCi({ path: wtPath }) {
   });
 }
 
-async function defaultExecInSandbox({ argv, path: wtPath }) {
+async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
   try {
     const { stdout, stderr } = await pexec(argv[0], argv.slice(1), {
       cwd: wtPath,
       timeout: SANDBOX_TIMEOUT_MS,
       maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: projectDir },
     });
     return { exit: 0, stdout: String(stdout || ''), stderr: String(stderr || '') };
   } catch (err) {
@@ -401,7 +402,7 @@ export async function runVerbTest({
         });
         continue;
       }
-      const r = await execInSandbox({ argv: validation.argv, path: wtPath });
+      const r = await execInSandbox({ argv: validation.argv, path: wtPath, projectDir });
       results.push({
         command: vc.command,
         passed: r.exit === 0,
@@ -541,7 +542,7 @@ export async function runVerbTest({
 // #346 — re-exported so the slow regression test (and any future callers that
 // need to exercise the two-stage cleanup) can import it directly without
 // reaching through `runVerbTest` deps injection.
-export { defaultRemoveWorktree, defaultCreateWorktree };
+export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox };
 
 export async function verbTest(ctx) {
   const { cfg, projectDir, rest, SKIP_NETWORK, statePath, runMoveState, runLogIssueTime } = ctx;
