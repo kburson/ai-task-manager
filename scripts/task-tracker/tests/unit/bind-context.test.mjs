@@ -2,8 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -11,9 +10,10 @@ import {
   BindMissingError,
   BindMismatchError,
 } from '../../lib/bind-context.mjs';
+import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 
 function makeProjectDir(active) {
-  const root = mkdtempSync(path.join(tmpdir(), 'aitm-test-'));
+  const root = mkdtempOutsideRepo('aitm-test-');
   const dir = path.join(root, '.ai-task-manager');
   mkdirSync(dir, { recursive: true });
   const state = active === undefined ? {} : { active };
