@@ -43,8 +43,8 @@ const SCENARIO_BUDGETS = {
   },
   codex: {
     bind: 12000,
-    'bind+review+close': 13000, // measured 10173 + ~28% headroom (2827 tokens / 21.7%)
-    'parallel-orchestration': 13000, // measured 10288 + ~26% headroom (2712 tokens / 20.9%)
+    'bind+review+close': 17000, // measured 13286 after #454 + ~21% headroom (3714 tokens / 21.8%)
+    'parallel-orchestration': 17500, // measured 13805 after #454 + ~21% headroom (3695 tokens / 21.1%)
   },
 };
 
