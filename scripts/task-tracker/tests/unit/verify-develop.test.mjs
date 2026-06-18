@@ -1,4 +1,4 @@
-// @story #447
+// @story #447 #448
 /**
  * Unit tests for verify-develop.mjs logic.
  *
@@ -72,6 +72,47 @@ describe('buildTestCommands', () => {
 
   it('returns empty array for empty file list', () => {
     assert.deepEqual(buildTestCommands([]), []);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// C2 (#448): merge helpers
+// ---------------------------------------------------------------------------
+
+function mergeTestFiles(direct, discovered) {
+  return [...new Set([...direct, ...discovered])];
+}
+
+describe('mergeTestFiles (C2 — source-to-unit-test merge)', () => {
+  it('returns direct list when no discovered tests', () => {
+    const result = mergeTestFiles(['tests/unit/foo.test.mjs'], []);
+    assert.deepEqual(result, ['tests/unit/foo.test.mjs']);
+  });
+
+  it('appends discovered tests after direct changes', () => {
+    const result = mergeTestFiles(['tests/unit/foo.test.mjs'], ['tests/unit/bar.test.mjs']);
+    assert.deepEqual(result, ['tests/unit/foo.test.mjs', 'tests/unit/bar.test.mjs']);
+  });
+
+  it('deduplicates when a discovered test is already in direct list', () => {
+    const result = mergeTestFiles(['tests/unit/foo.test.mjs'], ['tests/unit/foo.test.mjs']);
+    assert.deepEqual(result, ['tests/unit/foo.test.mjs']);
+  });
+
+  it('direct list order is preserved; discovered appended', () => {
+    const result = mergeTestFiles(
+      ['tests/unit/b.test.mjs', 'tests/unit/a.test.mjs'],
+      ['tests/unit/c.test.mjs']
+    );
+    assert.deepEqual(result, [
+      'tests/unit/b.test.mjs',
+      'tests/unit/a.test.mjs',
+      'tests/unit/c.test.mjs',
+    ]);
+  });
+
+  it('returns empty when both lists are empty', () => {
+    assert.deepEqual(mergeTestFiles([], []), []);
   });
 });
 
