@@ -49,12 +49,15 @@ there are exactly two test roots: `scripts/task-tracker/tests/` and
 
 ### 2. Subdirectory taxonomy under `scripts/task-tracker/tests/`
 
-| Path                                      | Contents                                                                                                                          |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/task-tracker/tests/*.test.mjs`   | Unit tests — one file per module, named after the module (e.g., `deep-dive.test.mjs` tests `deep-dive.mjs`)                       |
-| `scripts/task-tracker/tests/integration/` | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees |
-| `scripts/task-tracker/tests/slow/`        | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                             |
-| `scripts/task-tracker/tests/fixtures/`    | Shared fixture data — JSON, markdown, or static files referenced by multiple tests                                                |
+| Path                                         | Contents                                                                                                                          |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/task-tracker/tests/unit/*.test.mjs` | Unit tests — one file per module, named after the module (e.g., `deep-dive.test.mjs` tests `deep-dive.mjs`)                       |
+| `scripts/task-tracker/tests/integration/`    | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees |
+| `scripts/task-tracker/tests/slow/`           | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                             |
+| `scripts/task-tracker/tests/fixtures/`       | Shared fixture data — JSON, markdown, or static files referenced by multiple tests                                                |
+
+The three fast-lane subdirectories (`unit/`, `slow/`, `integration/`) are siblings under
+`tests/`. The `tests/` root retains only audit scripts and the subdirectories themselves.
 
 No additional nesting level is introduced unless a single category exceeds 20 files and
 a coherent sub-grouping is obvious. Depth is a last resort, not a default.

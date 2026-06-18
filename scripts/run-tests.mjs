@@ -56,11 +56,12 @@ function safeReaddir(dir) {
   }
 }
 
-// Fast-lane: unit tests excluding the slow/ subdir.
-const unitFiles = readdirSync(testsDir)
+// Fast-lane: unit tests from tests/unit/ subfolder.
+const unitDir = path.resolve(testsDir, 'unit');
+const unitFiles = readdirSync(unitDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()
-  .map((f) => ({ label: f, full: path.join(testsDir, f) }));
+  .map((f) => ({ label: f, full: path.join(unitDir, f) }));
 const providerFiles = safeReaddir(providersTestsDir)
   .filter((f) => f.endsWith('.test.mjs'))
   .sort()

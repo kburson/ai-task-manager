@@ -11,7 +11,7 @@ for the full taxonomy, integration vs unit boundary, and the slow-lane split pol
 
 | Path                                      | Contains                            |
 | ----------------------------------------- | ----------------------------------- |
-| `scripts/task-tracker/tests/`             | Unit tests (fast lane)              |
+| `scripts/task-tracker/tests/unit/`        | Unit tests (fast lane)              |
 | `scripts/task-tracker/tests/slow/`        | Integration / slow tests (≥2s each) |
 | `scripts/task-tracker/tests/integration/` | Cross-stage E2E tests               |
 | `scripts/providers/tests/`                | Provider package tests (co-located) |
@@ -29,4 +29,4 @@ npm test                  # fast lane (unit tests + providers)
 npm run test:all          # all lanes including slow
 ```
 
-**Worked example:** To add a test for issue #500 covering a change in `scripts/task-tracker/lib/foo.mjs`, create `scripts/task-tracker/tests/foo.test.mjs`. Start the file with `// @story #500`, write your tests using Node's built-in `node:test` runner, and confirm the file is under 400 lines. Run `npm test` to verify it passes in the fast lane.
+**Worked example:** To add a test for issue #500 covering a change in `scripts/task-tracker/lib/foo.mjs`, create `scripts/task-tracker/tests/unit/foo.test.mjs`. Start the file with `// @story #500`, write your tests using Node's built-in `node:test` runner, and confirm the file is under 400 lines. Run `npm test` to verify it passes in the fast lane.
