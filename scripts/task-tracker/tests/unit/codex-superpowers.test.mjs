@@ -101,6 +101,42 @@ try {
   );
   assert.match(twice, /using-superpowers/, 'bootstrap block names using-superpowers');
   assert.match(twice, /\.agents\/skills\/task\/SKILL\.md/, 'keeps the AITM task skill separate');
+  assert.match(
+    twice,
+    /State Transition Verb Map \(8-state model\)/,
+    'bootstrap names the 8-state model'
+  );
+  assert.match(
+    twice,
+    /Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done/,
+    'bootstrap state map includes On Deck'
+  );
+  assert.match(twice, /\/task plan #N/, 'bootstrap map names the dedicated Refine → Plan verb');
+  assert.match(twice, /\/task test #N/, 'bootstrap map names the Develop → Test verb');
+  assert.match(twice, /\/task promote #N/, 'bootstrap map keeps one-step generic promotion');
+
+  const staleManaged = [
+    '# Existing Project Instructions',
+    '',
+    '<!-- ai-task-manager:codex-superpowers:start -->',
+    'old managed content',
+    'State Transition Verb Map (7-state model)',
+    'Backlog → Refine → Plan → Develop → Test → Review → Done',
+    '<!-- ai-task-manager:codex-superpowers:end -->',
+    '',
+  ].join('\n');
+  const refreshed = upsertManagedBlock(staleManaged, block);
+  assert.doesNotMatch(
+    refreshed,
+    /old managed content/,
+    'managed block refresh replaces stale content'
+  );
+  assert.doesNotMatch(
+    refreshed,
+    /7-state model/,
+    'managed block refresh removes stale state count'
+  );
+  assert.match(refreshed, /On Deck/, 'managed block refresh installs current generated content');
 
   const missingHome = mkdtempSync(
     path.join(projectScratchDir('test'), 'aitm-codex-superpowers-missing-')

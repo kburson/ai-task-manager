@@ -104,6 +104,27 @@ try {
     /skill\/adapters\/codex\/SKILL\.md/,
     'Codex stub must point to adapter'
   );
+  const codexSkillBody = readFileSync(codexSkill, 'utf8');
+  assert.match(
+    codexSkillBody,
+    /## Load-Once Procedure/,
+    'Codex stub must include load-once procedure'
+  );
+  assert.match(
+    codexSkillBody,
+    /aitm-skill-loaded:<id>:<version>/,
+    'Codex stub must explain sentinel-based load detection'
+  );
+  assert.match(
+    codexSkillBody,
+    /`codex-adapter` — `node_modules\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md`/,
+    'Codex stub must load the Codex adapter with codex-adapter stamp id'
+  );
+  assert.match(
+    codexSkillBody,
+    /`shared` — `node_modules\/ai-task-manager\/skill\/shared\/SKILL\.md`/,
+    'Codex stub must include shared skill in load-once file list'
+  );
 
   // Timing and commit-trail hooks are direct Node settings commands, not installed shell stubs.
   assert.equal(
@@ -312,6 +333,18 @@ try {
     'Codex Superpowers opt-in must update repo AGENTS.md'
   );
   assert.match(agents, /using-superpowers/, 'AGENTS.md bootstrap must mention using-superpowers');
+  assert.match(
+    agents,
+    /State Transition Verb Map \(8-state model\)/,
+    'AGENTS.md bootstrap must name the current state model'
+  );
+  assert.match(
+    agents,
+    /Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done/,
+    'AGENTS.md bootstrap must include On Deck in the state chain'
+  );
+  assert.match(agents, /\/task plan #N/, 'AGENTS.md bootstrap must name the plan verb');
+  assert.match(agents, /\/task test #N/, 'AGENTS.md bootstrap must name the test verb');
 
   assertDocsDoNotDescribeLegacyHookStubs();
 

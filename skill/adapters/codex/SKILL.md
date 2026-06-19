@@ -5,6 +5,17 @@ description: Bind AI work sessions to GitHub issues and track time, context word
 
 # Task For Codex
 
+## Load-once sentinel
+
+Installed packages stamp this adapter with `<!-- aitm-skill-version: X.Y.Z -->`.
+On load:
+
+1. Read this adapter's marker version.
+2. If `aitm-skill-loaded:codex-adapter:<version>` is already present in live context, skip re-reading this adapter.
+3. Otherwise read this file fully, follow it, and emit `aitm-skill-loaded:codex-adapter:<version>` once so later task invocations can detect the load.
+
+After `/clear`, `/compact`, or a package update, treat the sentinel as absent and reload.
+
 Load and follow the canonical shared task workflow:
 
 `node_modules/ai-task-manager/skill/shared/router.md`

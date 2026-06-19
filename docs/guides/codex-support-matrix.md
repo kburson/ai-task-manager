@@ -16,7 +16,7 @@ Features delivered entirely through skill text — present in `skill/adapters/co
 | ---------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Issue creation via `create-issue.mjs` only (no bare `gh issue create`) | AGENTS.md FORBIDDEN rule                                    |
 | One-step state advance via `promote` (no bare `move-state.mjs`)        | AGENTS.md FORBIDDEN rule                                    |
-| State Transition Verb Map (7-state model)                              | AGENTS.md bootstrap block                                   |
+| State Transition Verb Map (8-state model)                              | AGENTS.md bootstrap block                                   |
 | Workflow rules: kanban states, issue lifecycle, timing log             | `skill/shared/router.md`                                    |
 | Field units (hours vs minutes)                                         | Codex adapter `## Field units`                              |
 | Full-Auto footnote semantics                                           | Codex adapter `## Full-Auto footnote`                       |
@@ -29,6 +29,16 @@ Features delivered entirely through skill text — present in `skill/adapters/co
 | Project preferences                                                    | Codex adapter `## Project preferences`                      |
 | Version-stamp load-once path                                           | `bin/lib/stamp-skill-version.mjs` `SKILL_DETAIL_FILES`      |
 
+Current generated bootstrap state chain:
+
+`Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done`
+
+The generated map names both generic and dedicated verbs: `/task promote #N`
+for one-step advancement, `/task refine #N ...` for Refine field entry,
+`/task plan #N` for Refine → Plan, `/task plan-approve #N` for the Plan gate,
+`/task test #N` for Develop → Test, `/task approve #N` for human Review
+approval, and `/task close #N` for Review → Done.
+
 ## Enforcement parity (Claude-only, require hooks)
 
 Features that require the `.claude/settings.json` hook surface — absent for Codex by design:
@@ -36,11 +46,15 @@ Features that require the `.claude/settings.json` hook surface — absent for Co
 | Feature                                                        | Claude enforcement                        | Codex status                                        |
 | -------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------- |
 | Bash-guard (`gh issue edit --body` refusal)                    | `PreToolUse` Bash hook → `bash-guard.mjs` | Prompt-only (cannot block at tool level)            |
-| Source-edit gate (blocks Edit/Write before deep-dive-complete) | `PreToolUse` Edit/Write hook              | Prompt-only                                         |
-| `gh-edit-guard` (marker-loss protection)                       | Bash hook                                 | Prompt-only                                         |
+| Source-edit gate (blocks Edit/Write before deep-dive-complete) | `PreToolUse` Edit/Write hook              | Prompt-only (cannot block at tool level)            |
+| `gh-edit-guard` (marker-loss protection)                       | Bash hook                                 | Prompt-only (cannot block at tool level)            |
 | Timing log hooks (session start/stop)                          | `PostToolUse` + Stop hook                 | Not available; manual `/task start` / `/task pause` |
 
 For Codex users, these rules are documented in the skill but cannot be mechanically enforced. The workflow relies on behavioral compliance.
+
+## Manual Codex steps
+
+Codex users must keep manual `/task start` / `/task pause` / `/task resume` discipline when switching issues, asking blocking questions, or returning after idle time. Codex must also voluntarily use the task scripts for issue body mutation and state movement because no Codex hook can intercept a direct shell command before it runs.
 
 ## Version stamping
 
