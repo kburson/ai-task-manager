@@ -75,12 +75,13 @@ async function treeIdentity(pexec, cwd) {
 // behave byte-identically to the pre-#446 runner. `now` is an injectable clock
 // (() => ISO string) used to timestamp fresh runs that get recorded; defaults to
 // `new Date().toISOString()`.
-export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, cache } = {}) {
+export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, cache, env } = {}) {
   const list = Array.isArray(commands) ? commands : [];
   const runOptions = {
     cwd,
     timeout: timeout ?? TEST_RUNNER_TIMEOUT_MS,
     maxBuffer: maxBuffer ?? 64 * 1024 * 1024,
+    ...(env !== undefined ? { env } : {}),
   };
   const cacheDir = cache && cache.dir;
   const nowFn =

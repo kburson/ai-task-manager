@@ -13,6 +13,7 @@ import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
+import { ISSUE_LOCK_HELD_ENV } from '../issue-mutator-lock.mjs';
 import {
   KEY_CLASSIFICATION,
   STAMPABLE_KEYS,
@@ -73,6 +74,13 @@ export async function verbDodStamp(ctx) {
   // TEST_RUNNER_TIMEOUT_MS and a 64 MiB stdout buffer by default (the 1 MiB
   // default overflows on `npm test`).
   // (#304 follow-up to #303: GH_API_TIMEOUT_MS — 15s — killed `npm test` mid-run.)
+  // Strip the lock-held signal so verifier subprocesses don't inherit it.
+  // A subprocess that sees AITM_ISSUE_LOCK_HELD=1 will bypass its own lock
+  // acquisition inside the state transition script, causing a deadlock if a
+  // slow verifier test also tries to acquire the same per-issue lock (#456).
+  const cleanEnv = { ...process.env };
+  delete cleanEnv[ISSUE_LOCK_HELD_ENV];
+
   const {
     ran,
     firstFailure,
@@ -81,6 +89,7 @@ export async function verbDodStamp(ctx) {
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    env: cleanEnv,
     // #446 — content-addressed suite-run cache (see ac-stamp for rationale).
     cache: { dir: path.join(projectDir, '.ai-task-manager') },
   });
