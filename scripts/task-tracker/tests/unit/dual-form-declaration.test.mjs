@@ -29,24 +29,24 @@ const PROOF = serializeProofMarker({
   proof: 'none',
 });
 
-// --- shared extractor: both forms yield identical commands ------------------
+// --- #468 retired the legacy colon-form: only consolidated form recognized ---
+// After #468, extractVerifiedCommands and hasVerifiedDeclaration ignore the
+// `aitm-verified-by:` colon-form; only `aitm-verified cmd="..."` is canonical.
 {
   assert.deepEqual(
     extractVerifiedCommands(`item ${LEGACY}`),
-    ['npm test'],
-    'legacy declaration extracts command'
+    [],
+    'legacy colon-form (retired by #468) yields no commands'
   );
   assert.deepEqual(
     extractVerifiedCommands(`item ${CONSOLIDATED}`),
     ['npm test'],
-    'consolidated declaration extracts command identically'
+    'consolidated declaration extracts command'
   );
-  assert.deepEqual(
-    extractVerifiedCommands(`item ${LEGACY}`),
-    extractVerifiedCommands(`item ${CONSOLIDATED}`),
-    'legacy and consolidated declarations extract equal command lists'
+  assert.ok(
+    !hasVerifiedDeclaration(`item ${LEGACY}`),
+    'legacy form is not a recognized declaration after #468'
   );
-  assert.ok(hasVerifiedDeclaration(`item ${LEGACY}`), 'legacy is a declaration');
   assert.ok(hasVerifiedDeclaration(`item ${CONSOLIDATED}`), 'consolidated is a declaration');
 }
 
@@ -74,16 +74,16 @@ const PROOF = serializeProofMarker({
   );
 }
 
-// --- dual-marker line not double-counted -----------------------------------
+// --- dual-marker line: consolidated is the only source after #468 -----------
 {
   assert.deepEqual(
     extractVerifiedCommands(`item ${LEGACY} ${CONSOLIDATED}`),
     ['npm test'],
-    'legacy+consolidated on one line counts the command once (legacy wins)'
+    'legacy+consolidated on one line: consolidated is the source, no double-count'
   );
 }
 
-// --- auto-tick: consolidated-declared Functional item ticks like legacy -----
+// --- auto-tick: only consolidated-declared Functional item ticks after #468 --
 {
   function body(marker) {
     return [
@@ -105,13 +105,14 @@ const PROOF = serializeProofMarker({
   const legacy = autoTickVerified(body(LEGACY), green, now);
   const consolidated = autoTickVerified(body(CONSOLIDATED), green, now);
 
+  // After #468, legacy form is not recognized — item stays unticked.
   assert.ok(
-    legacy.body.includes('- [x] All automated tests pass'),
-    'legacy-declared Functional item ticks on green'
+    !legacy.body.includes('- [x] All automated tests pass'),
+    'legacy-declared Functional item NOT ticked after #468 (form retired)'
   );
   assert.ok(
     consolidated.body.includes('- [x] All automated tests pass'),
-    'consolidated-declared Functional item ticks on green identically'
+    'consolidated-declared Functional item ticks on green'
   );
   assert.equal(
     consolidated.tickedFunctional.length,
@@ -120,7 +121,7 @@ const PROOF = serializeProofMarker({
   );
 }
 
-// --- pre-tick guard: consolidated-declared pre-tick is un-ticked ------------
+// --- pre-tick guard: only consolidated-declared pre-tick caught after #468 ---
 {
   function preticked(marker) {
     return [
@@ -133,12 +134,13 @@ const PROOF = serializeProofMarker({
   const legacy = detectFunctionalPretick(preticked(LEGACY));
   const consolidated = detectFunctionalPretick(preticked(CONSOLIDATED));
 
-  assert.equal(legacy.regressions.length, 1, 'legacy pre-tick caught');
+  // After #468, legacy form is not recognized — pre-tick not caught.
   assert.equal(
-    consolidated.regressions.length,
-    1,
-    'consolidated-declared pre-tick caught identically'
+    legacy.regressions.length,
+    0,
+    'legacy pre-tick NOT caught after #468 (form retired)'
   );
+  assert.equal(consolidated.regressions.length, 1, 'consolidated-declared pre-tick caught');
   assert.ok(
     consolidated.body.includes('- [ ] All automated tests pass'),
     'consolidated-declared pre-tick un-ticked'
@@ -154,22 +156,22 @@ const PROOF = serializeProofMarker({
   );
 }
 
-// --- bare-marker lint: consolidated cmd without backticks warns -------------
+// --- bare-marker lint: only consolidated cmd without backticks warns after #468
 {
   function lintBody(acMarker) {
     return ['## Acceptance Criteria', '', `- [ ] criterion ${acMarker}`, ''].join('\n');
   }
-  // Bare (no backticks) in both forms must warn 'missing-backticks'.
+  // After #468, legacy colon-form is not recognized by the linter — no warning.
   const legacyBare = lintChecklistCommands(lintBody('<!-- aitm-verified-by: npm test -->'));
   const consolidatedBare = lintChecklistCommands(lintBody('<!-- aitm-verified cmd="npm test" -->'));
 
   assert.ok(
-    legacyBare.violations.some((v) => v.rule === 'missing-backticks'),
-    'legacy bare marker warns missing-backticks'
+    !legacyBare.violations.some((v) => v.rule === 'missing-backticks'),
+    'legacy bare colon-form is not linted after #468 (form retired)'
   );
   assert.ok(
     consolidatedBare.violations.some((v) => v.rule === 'missing-backticks'),
-    'consolidated bare cmd warns missing-backticks identically'
+    'consolidated bare cmd warns missing-backticks'
   );
 
   // Properly backticked consolidated cmd must NOT warn.

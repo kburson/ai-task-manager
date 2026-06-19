@@ -35,18 +35,18 @@ assert.deepEqual(
   'consolidated-only line yields the declared command'
 );
 
-// 2. Dual-marker line reads the legacy marker only — no double-count.
+// 2. Dual-marker line: after #468 legacy is ignored; consolidated is the source.
 assert.deepEqual(
   acCommands(`dual ${legacyDecl} ${consolidatedDecl}`),
   [CMD],
-  'dual-marker line reads legacy only, command not double-counted'
+  'dual-marker line reads consolidated; legacy ignored after #468'
 );
 
-// 3. Legacy-only line is unchanged by the new fallback.
+// 3. Legacy-only line: after #468 the colon-form is no longer recognized.
 assert.deepEqual(
   acCommands(`legacy ${legacyDecl}`),
-  [CMD],
-  'legacy-only line still reads from the legacy marker'
+  [],
+  'legacy-only line yields no commands after #468 (form retired)'
 );
 
 // 4. `hasExecutionProof` guard: a record-of-run proof stamp (ts/sha) is NOT a

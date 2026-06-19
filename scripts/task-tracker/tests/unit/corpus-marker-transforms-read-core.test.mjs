@@ -205,7 +205,8 @@ function roundtrip(fn, legacy, expects, legacyRe) {
   assert.match(out, /aitm-verified /, 'consolidated marker emitted');
   assert.match(out, /ts="2026-06-01T00:00:00\.000Z"/);
   assert.match(out, /sha="abc1234"/);
-  assert.match(out, /cmd="`npm test`"/);
+  // #468 retired the colon-form `aitm-verified-by:` — command not migrated to cmd=.
+  assert.doesNotMatch(out, /cmd=/, 'legacy by colon-form command not migrated after #468');
   assert.doesNotMatch(out, /aitm-verified-at:/, 'legacy at stripped');
   assert.doesNotMatch(out, /aitm-verified-by:/, 'legacy by stripped');
   assert.match(out, /^- \[x\] thing /, 'label text preserved');

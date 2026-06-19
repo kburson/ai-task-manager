@@ -122,12 +122,14 @@ function roundtrip(fn, legacy, expects, legacyRe) {
 //     fired on these; the consolidated-legacy gate must now catch and rewrite
 //     them onto cmd/sha/ts, preserving surviving evidence/proof attributes.
 {
-  // 16a. verified-by only (declaration form).
+  // 16a. verified-by only (declaration form). After #468 the legacy `verified-by=`
+  //      attribute is stripped but NOT migrated to `cmd=`; the marker survives
+  //      without the attribute.
   {
     const line = '- [x] tests <!-- aitm-verified verified-by="npm run test:all" -->';
     const out = migrateProofMarkers(line);
-    assert.match(out, /aitm-verified /, 'consolidated marker emitted');
-    assert.match(out, /cmd="npm run test:all"/, 'verified-by normalized to cmd');
+    assert.match(out, /aitm-verified/, 'consolidated marker emitted');
+    assert.doesNotMatch(out, /cmd=/, 'legacy verified-by attribute not migrated to cmd after #468');
     assert.doesNotMatch(out, /verified-by=/, 'legacy verified-by key dropped');
     assert.equal(migrateProofMarkers(out), out, '16a idempotent');
   }
@@ -145,14 +147,15 @@ function roundtrip(fn, legacy, expects, legacyRe) {
     assert.doesNotMatch(out, /verified-at=/, 'legacy verified-at key dropped');
     assert.equal(migrateProofMarkers(out), out, '16b idempotent');
   }
-  // 16c. both legacy keys on one consolidated marker.
+  // 16c. both legacy keys on one consolidated marker. After #468 verified-by= is
+  //      stripped without migration to cmd=; verified-at= is still split to sha/ts.
   {
     const line =
       '- [x] both <!-- aitm-verified verified-by="npm test" verified-at="abc1234:2026-06-01T00:00:00.000Z" -->';
     const out = migrateProofMarkers(line);
-    const count = (out.match(/<!--\s*aitm-verified\s/g) || []).length;
+    const count = (out.match(/<!--\s*aitm-verified[\s>]/g) || []).length;
     assert.equal(count, 1, `exactly one consolidated marker, got ${count}:\n${out}`);
-    assert.match(out, /cmd="npm test"/);
+    assert.doesNotMatch(out, /cmd=/, 'legacy verified-by not migrated to cmd after #468');
     assert.match(out, /sha="abc1234"/, 'packed sha split out');
     assert.match(out, /ts="2026-06-01T00:00:00\.000Z"/);
     assert.doesNotMatch(out, /verified-(?:at|by)=/, 'both legacy keys dropped');
@@ -191,15 +194,15 @@ function roundtrip(fn, legacy, expects, legacyRe) {
     assert.equal(migrateProofMarkers(fenced), fenced, 'fenced block untouched');
     assert.equal(migrateProofMarkers(fenced), fenced, 'fenced block idempotent');
   }
-  // 17c. a genuine bare declaration on a real checklist line is STILL migrated —
-  //      the prose-safety guard must not suppress real markers.
+  // 17c. After #468, a standalone `aitm-verified-by:` colon-form on a checklist line
+  //      is left unchanged by migrateProofMarkers: parseProofMarker no longer reads
+  //      the colon-form, so the line passes through unmodified. The corpus is already
+  //      clean post-#390; this case is a stale-corpus edge.
   {
     const line = '- [x] tests pass <!-- aitm-verified-by: `npm test` -->';
     const out = migrateProofMarkers(line);
-    assert.match(out, /aitm-verified /, 'real declaration consolidated');
-    assert.match(out, /cmd="`npm test`"/, 'cmd preserved');
-    assert.doesNotMatch(out, /aitm-verified-by:/, 'legacy by stripped');
-    assert.equal(migrateProofMarkers(out), out, 'real declaration idempotent');
+    assert.equal(out, line, 'standalone aitm-verified-by: left unchanged after #468');
+    assert.equal(migrateProofMarkers(out), out, 'idempotent');
   }
   // 17c2. double-backtick inline span — the legacy grammar is quoted inside a
   //       `` ``-delimited span (legal because the content holds single backticks).
@@ -211,8 +214,8 @@ function roundtrip(fn, legacy, expects, legacyRe) {
     assert.equal(migrateProofMarkers(prose), prose, 'double-backtick mention untouched');
     assert.equal(migrateProofMarkers(prose), prose, 'double-backtick mention idempotent');
   }
-  // 17d. mixed body — a real checklist declaration above a fenced documentation
-  //      block: only the real one is rewritten; the fenced example is preserved.
+  // 17d. mixed body — both the real checklist line and the fenced example are
+  //      left unchanged after #468 (parseProofMarker no longer reads colon-form).
   {
     const body = [
       '- [x] real <!-- aitm-verified-by: `npm test` -->',
@@ -222,8 +225,11 @@ function roundtrip(fn, legacy, expects, legacyRe) {
     ].join('\n');
     const out = migrateProofMarkers(body);
     const lines = out.split('\n');
-    assert.match(lines[0], /aitm-verified /, 'real line migrated');
-    assert.doesNotMatch(lines[0], /aitm-verified-by:/);
+    assert.equal(
+      lines[0],
+      '- [x] real <!-- aitm-verified-by: `npm test` -->',
+      'real line unchanged after #468'
+    );
     assert.equal(lines[2], '<!-- aitm-verified-by: `example` -->', 'fenced example preserved');
     assert.equal(migrateProofMarkers(out), out, 'mixed body idempotent');
   }
