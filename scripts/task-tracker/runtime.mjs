@@ -200,7 +200,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     );
   };
 
-  ctx.flushActiveToGH = async (state, event, description, phase) => {
+  ctx.flushActiveToGH = async (state, event, description, phase, opts = {}) => {
     // Phase descriptor (optional): `{state, phase}` where state is a lifecycle
     // state slug (backlog/refine/plan/develop/test/review/done) and phase is
     // `enter` or `complete`. When supplied and resolvable against
@@ -238,8 +238,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         wordMarker,
         description: effectiveDescription,
       });
-      await ctx.safePostTiming(state.active, row);
-      return { ts, deltaMin: 0, idleMin: 0, deltaWallMin: 0, deltaWords, wordMarker };
+      if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
+      return { row, ts, deltaMin: 0, idleMin: 0, deltaWallMin: 0, deltaWords, wordMarker };
     }
     const startMs = new Date(state.entryStartTs).getTime();
     const endMs = new Date(ts).getTime();
@@ -266,8 +266,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       wordMarker,
       description: effectiveDescription,
     });
-    await ctx.safePostTiming(state.active, row);
-    return { ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
+    if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
+    return { row, ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
   };
 
   ctx.runLogIssueTime = async (issue) => {

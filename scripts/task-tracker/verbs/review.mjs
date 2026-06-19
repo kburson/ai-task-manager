@@ -107,12 +107,17 @@ export async function verbReview(ctx) {
   const agentWords = wordsIdx >= 0 ? parseFlag(rest[wordsIdx + 1]) : null;
   const hasAgentTiming = agentDurationMin !== null || agentWords !== null;
 
+  // #463 — compute the verb-level "starting review" timing row here but defer
+  // posting it until after runMoveState (line ~583) emits the test:done +
+  // review:waiting phase-pair rows. Posting before the board move produced
+  // out-of-order timing logs (#458 symptom).
+  let pendingReviewRow = null;
   if (hasAgentTiming) {
     const ts = nowIso();
     const activeMin = agentDurationMin ?? 0;
     const deltaWords = agentWords ?? 0;
     const { buildRow } = await import('../gh-timing-comment.mjs');
-    const row = buildRow({
+    pendingReviewRow = buildRow({
       ts,
       event: 'review',
       activeSec: activeMin * 60,
@@ -121,7 +126,6 @@ export async function verbReview(ctx) {
       wordMarker: s.wordsAtEntryStart + deltaWords,
       description: 'agent session — starting review',
     });
-    await safePostTiming(target, row);
     // #407 — preserve the binding across review (a non-terminal verb). Only
     // the timing session closes; the issue stays bound so a follow-up verb
     // needs no intervening re-`start`. `pause` is the sole verb that nulls
@@ -136,7 +140,11 @@ export async function verbReview(ctx) {
     // matrix rejects as `illegal transition: test → test`, producing spurious
     // doubled BLOCKED noise. The authoritative test→review move is below.
   } else if (s.active === target) {
-    await flushActiveToGH(s, 'review', 'starting review');
+    // computeOnly: true — row is built from the live session but not posted yet.
+    const flush = await flushActiveToGH(s, 'review', 'starting review', undefined, {
+      computeOnly: true,
+    });
+    pendingReviewRow = flush.row;
     // #407 — preserve binding (see note above).
     saveState(pauseTimingKeepBinding(s, target), statePath);
     try {
@@ -147,7 +155,7 @@ export async function verbReview(ctx) {
     const ts = nowIso();
     const { buildRow } = await import('../gh-timing-comment.mjs');
     // Body not loaded in this branch; honest 0/0.
-    const row = buildRow({
+    pendingReviewRow = buildRow({
       ts,
       event: 'review',
       activeSec: 0,
@@ -157,7 +165,6 @@ export async function verbReview(ctx) {
       wordMarker: 0,
       description: 'starting review',
     });
-    await safePostTiming(target, row);
     // #408 — redundant test→test self-move removed (see note above).
     // #407 — preserve binding (see note above).
     saveState(pauseTimingKeepBinding(s, target), statePath);
@@ -591,6 +598,11 @@ export async function verbReview(ctx) {
       }
       process.stderr.write('\n');
       process.exit(reviewMove.status || 4);
+    }
+    // #463 — post deferred verb-level "starting review" row AFTER move-state
+    // emits test:done + review:waiting, so timing log order matches lifecycle order.
+    if (pendingReviewRow) {
+      await safePostTiming(target, pendingReviewRow);
     }
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
