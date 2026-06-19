@@ -3,8 +3,9 @@
 //
 // Asserts that when `--shape sub-issue` is given user-supplied AC content
 // containing a forbidden compound CLI command (e.g. `&&`) inside an
-// `aitm-verified-by:` marker, preflight refuses with exit 12 and the
+// `aitm-verified cmd="..."` marker, preflight refuses with exit 12 and the
 // deterministic stderr tag `preflight-issue: checklist-forbidden-command`.
+// (#468 retired the legacy `aitm-verified-by:` form; fixtures updated.)
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,8 +42,8 @@ async function runPreflight(args) {
 }
 
 describe('preflight-issue --shape lint wiring', () => {
-  it('rejects && in an AC aitm-verified-by marker with exit 12', async () => {
-    const acBody = '- [ ] Bad. <!-- aitm-verified-by: `npm run lint && npm test` -->\n';
+  it('rejects && in an AC aitm-verified cmd marker with exit 12', async () => {
+    const acBody = '- [ ] Bad. <!-- aitm-verified cmd="`npm run lint && npm test`" -->\n';
     const fx = makeFixture(acBody);
     try {
       const r = await runPreflight([
@@ -65,8 +66,8 @@ describe('preflight-issue --shape lint wiring', () => {
     }
   });
 
-  it('accepts a clean AC with separate backtick-quoted commands', async () => {
-    const acBody = '- [ ] Good. <!-- aitm-verified-by: `npm run lint` `npm test` -->\n';
+  it('accepts a clean AC with a single backtick-quoted command', async () => {
+    const acBody = '- [ ] Good. <!-- aitm-verified cmd="`npm run lint`" -->\n';
     const fx = makeFixture(acBody);
     try {
       const r = await runPreflight([
@@ -82,9 +83,8 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.meta,
       ]);
       assert.equal(r.code, 0, `stderr: ${r.stderr}`);
-      // #419 — the preflight-emitted Functional DoD tail now carries the
-      // consolidated declaration form. (The author-supplied AC marker above
-      // stays legacy on purpose to prove the reader back-compat.)
+      // #419 — the preflight-emitted Functional DoD tail carries the
+      // consolidated declaration form; #468 retired the legacy reader.
       assert.match(r.stdout, /aitm-verified cmd=/);
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });
