@@ -84,7 +84,7 @@ function makeDeps({
 // new gate passes and the deeper gate under test runs.
 const DEEP_DIVE_SIGNALS = [
   '',
-  '## Pickup Directive',
+  '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '',
   '- [x] Deep dive complete',
   '',
