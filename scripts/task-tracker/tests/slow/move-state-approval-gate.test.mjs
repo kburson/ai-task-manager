@@ -29,7 +29,7 @@ const SCRIPT = path.resolve(__dir, '../../../gh/move-state.mjs');
 // structural gate. Tests that need to isolate one gate can omit the other.
 function deepDiveAdequate() {
   const lines = [
-    '## Pickup Directive',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
     '- [x] Deep dive complete',
     '',
     // A real plan->develop issue carries the full prior entry-marker chain.
@@ -251,7 +251,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 6. Deep-dive marker present but section has < 20 non-empty lines -> blocked
 {
   const thinDeepDive = [
-    '## Pickup Directive',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
     '- [x] Deep dive complete',
     '',
     // #355 — contiguity guard requires prior-stage entry markers on every

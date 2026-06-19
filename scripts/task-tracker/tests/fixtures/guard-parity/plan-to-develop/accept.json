@@ -1,7 +1,7 @@
 {
   "transition": "plan→develop",
   "kind": "accept",
-  "body": "## Scope\n\n## Acceptance Criteria\n\n- [ ] AC1 <!-- aitm-verified-by: inspection -->\n\n## Pickup Directive\n\n## Deep-Dive Analysis\n\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12\nLine 13\nLine 14\nLine 15\nLine 16\nLine 17\nLine 18\nLine 19\nLine 20\nLine 21\n\n<!-- aitm-deep-dive-complete: 2026-06-01T00:00:00Z -->\n",
+  "body": "## Scope\n\n## Acceptance Criteria\n\n- [ ] AC1 <!-- aitm-verified-by: inspection -->\n\n## Pickup Directive — MANDATORY, DO NOT SKIP\n\n## Deep-Dive Analysis\n\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12\nLine 13\nLine 14\nLine 15\nLine 16\nLine 17\nLine 18\nLine 19\nLine 20\nLine 21\n\n<!-- aitm-deep-dive-complete: 2026-06-01T00:00:00Z -->\n",
   "labels": ["refactor"],
   "plannedAppendixPresent": true
 }
