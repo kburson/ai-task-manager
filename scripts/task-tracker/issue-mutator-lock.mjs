@@ -98,6 +98,7 @@ export async function withIssueLock(opts, fn) {
     projDir,
     sessionId = process.env.CLAUDE_SESSION_ID ||
       process.env.AI_TASK_MANAGER_SESSION_ID ||
+      process.env.CODEX_SESSION_ID ||
       `pid-${process.pid}`,
     timeoutMs = ISSUE_LOCK_DEFAULT_RETRY_MS,
     retries = ISSUE_LOCK_DEFAULT_RETRIES,
