@@ -36,6 +36,8 @@ const APPROVED_BODY = [
   '<!-- aitm-deep-dive-posted: 2026-06-07T06:00:00Z -->',
   '<!-- aitm-deep-dive-complete: 2026-06-07T06:00:00Z -->',
   '',
+  '## Pickup Directive — MANDATORY, DO NOT SKIP',
+  '',
   '## Deep-Dive Analysis',
   '',
   // #358 — substantive-chars floor folded into planDeepDiveGate; pad section.
