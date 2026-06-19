@@ -28,7 +28,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const AC_LABEL_VISIBLE = 'check refuses to tick verified lines without a stamp';
-const AC_LINE_VERIFY = '<!-- aitm-verified-by: `npm test` -->';
+const AC_LINE_VERIFY = '<!-- aitm-verified cmd="`npm test`" -->';
 // The operator ticks by the full line text (the trailing marker is part of the
 // line; `toggleChecklistLine` is line-anchored). The gate strips markers before
 // matching, so the full label still resolves to the stripped AC label.

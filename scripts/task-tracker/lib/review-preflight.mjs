@@ -98,7 +98,7 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
     const audit = auditEvidenceMarkers(body);
     for (const item of audit.missingEvidence) {
       reasons.push(
-        `acceptance criterion "${item.label}" is missing \`aitm-verified-by\` automated evidence marker`
+        `acceptance criterion "${item.label}" is missing \`aitm-verified cmd="..."\` evidence declaration`
       );
     }
     for (const cmd of audit.missingVerificationCommands) {

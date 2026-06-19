@@ -476,7 +476,7 @@ async function run(sandbox, binDir, args) {
     assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/, `stdout:\n${r.stdout}`);
     assert.match(
       r.stderr,
-      /missing `aitm-verified-by` automated evidence marker/,
+      /missing `aitm-verified cmd="..."` evidence declaration/,
       `expected missing evidence failure; stderr:\n${r.stderr}`
     );
     assert.equal(
@@ -517,8 +517,8 @@ async function run(sandbox, binDir, args) {
     const fixtureBody = [
       '## Acceptance Criteria',
       '',
-      '- [ ] Fresh install registers direct Node hook commands. <!-- aitm-verified-by: `npm test` -->',
-      '- [ ] Existing installs migrate legacy shell hook commands. <!-- aitm-verified-by: `npm run lint` -->',
+      '- [ ] Fresh install registers direct Node hook commands. <!-- aitm-verified cmd="`npm test`" -->',
+      '- [ ] Existing installs migrate legacy shell hook commands. <!-- aitm-verified cmd="`npm run lint`" -->',
       '',
       '### Verification Commands',
       '',

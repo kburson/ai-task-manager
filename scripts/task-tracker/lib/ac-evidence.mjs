@@ -1,6 +1,6 @@
 // #345 — Acceptance Criteria evidence markers. Parallel to #303's Functional
 // DoD evidence path (`functional-dod-evidence.mjs`), but for AC checkbox lines
-// that carry an `aitm-verified-by: <cmd>` marker and no human-assigned key.
+// that carry an `aitm-verified cmd="<cmd>"` marker and no human-assigned key.
 //
 // An AC line is gated like a stampable Functional DoD item: `/task check`
 // refuses to tick it unless a matching `aitm-ac-evidence:<key>` marker exists,
@@ -20,7 +20,6 @@ import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-mar
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
-const VERIFIED_BY_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/gi;
 // Legacy half-quoted colon form (read-only back-compat until the #369 corpus
 // sweep): key folded into the marker NAME via `:<key>`, exit/sha/ts bare.
 const AC_EVIDENCE_LEGACY_RE =
@@ -42,7 +41,6 @@ const NEW_ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
 // the strip logic.
 export function stripMarkers(text) {
   return String(text || '')
-    .replace(VERIFIED_BY_RE, '')
     .replace(AC_EVIDENCE_ANY_RE, '')
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\s+/g, ' ')
@@ -60,17 +58,10 @@ export function acKeyForLabel(label) {
 function extractCommands(text) {
   const out = [];
   const haystack = String(text || '');
-  for (const m of haystack.matchAll(VERIFIED_BY_RE)) {
-    for (const c of String(m[1]).matchAll(/`([^`]+)`/g)) out.push(c[1]);
-  }
-  // #391 — after the #369 corpus migration a verifier DECLARATION is the
-  // consolidated `aitm-verified cmd="..."` form, not the legacy `aitm-verified-by`
-  // name. Fall back to it only when no legacy declaration was found (legacy-first
-  // avoids double-counting a dual-marker line) and only when the consolidated
-  // marker is a declaration — `hasExecutionProof` rejects a marker carrying a
-  // record-of-run key (ts/sha/evidence), which is a proof stamp, not a verifier
-  // declaration, and must not re-gate the AC.
-  if (!out.length && !hasExecutionProof(haystack)) {
+  // #391/#468 — consolidated `aitm-verified cmd="..."` is the sole declaration form.
+  // `hasExecutionProof` rejects a marker carrying a record-of-run key (ts/sha/evidence)
+  // so a proof stamp is never misread as a verifier declaration.
+  if (!hasExecutionProof(haystack)) {
     const props = parseProofMarker(haystack);
     if (props && typeof props.cmd === 'string') {
       for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);

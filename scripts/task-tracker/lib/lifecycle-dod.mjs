@@ -193,17 +193,16 @@ export function detectLifecyclePretick(body) {
   return { body: next, regressions };
 }
 
-// #231 — Detect any Functional DoD items that carry an `aitm-verified-by`
-// marker AND are already ticked. The green tick is owned by `autoTickVerified`
+// #231 — Detect any Functional DoD items that carry an `aitm-verified cmd="..."`
+// declaration AND are already ticked. The green tick is owned by `autoTickVerified`
 // (only after the sandbox records a passing exit code). A pre-tick here is the
 // same trust-attestation pattern that the lifecycle pretick guard catches —
 // un-tick so the sandbox-driven re-tick is the only path to green. Judgment
 // items (no marker) are untouched. Returns { body, regressions: [{ label }] }.
-// #418 — command-backed detection routes through the shared dual-form
-// `hasVerifiedDeclaration`, so a consolidated `aitm-verified cmd="..."`
-// declaration triggers the pre-tick guard identically to the legacy
-// `aitm-verified-by` form. A consolidated proof stamp (ts/sha) is not a
-// declaration and is left to the legitimate green-tick path.
+// Detection routes through the shared `hasVerifiedDeclaration`, so a consolidated
+// `aitm-verified cmd="..."` declaration triggers the pre-tick guard. A
+// consolidated proof stamp (ts/sha) is not a declaration and is left to the
+// legitimate green-tick path.
 export function detectFunctionalPretick(body) {
   const loc = locateFunctionalSection(body);
   if (!loc) return { body: String(body || ''), regressions: [] };

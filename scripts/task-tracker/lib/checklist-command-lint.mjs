@@ -1,7 +1,7 @@
 // Author-time lint that rejects compound CLI commands in issue-body checklists
 // before they reach `gh issue create` / `gh issue edit`. Symmetric with the
 // `/task test` sandbox: same FORBIDDEN needle list, same two checklist sources
-// (AC `aitm-verified-by:` markers + `## Verification Commands` section).
+// (AC `aitm-verified cmd="..."` markers + `## Verification Commands` section).
 //
 // Single source of truth: `FORBIDDEN_TOKENS` is re-exported from
 // `verification-allowlist.mjs` so author-time and run-time can't drift.
@@ -61,12 +61,10 @@ export function lintChecklistCommands(body = '') {
   return { ok, violations };
 }
 
-const EVIDENCE_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/g;
-// #418 — bare-marker matcher for the consolidated declaration form. A
-// `cmd="..."` whose value carries no backticks is the consolidated equivalent
-// of a bare legacy marker. Restricted to declarations: a proof stamp (ts/sha)
-// is excluded via `hasExecutionProof`, and we read `cmd` through the same parser
-// the readers use so escaping stays consistent.
+// Bare-marker matcher for the consolidated declaration form. A `cmd="..."` whose
+// value carries no backticks is a malformed marker. Restricted to declarations:
+// a proof stamp (ts/sha) is excluded via `hasExecutionProof`, and we read `cmd`
+// through the same parser the readers use so escaping stays consistent.
 const CONSOLIDATED_DECL_RE = /<!--\s*aitm-verified\s+[\s\S]*?-->/;
 
 function collectBareMarkerWarnings(src) {
@@ -74,26 +72,7 @@ function collectBareMarkerWarnings(src) {
   const lines = src.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    let sawLegacy = false;
-    for (const m of line.matchAll(EVIDENCE_RE)) {
-      sawLegacy = true;
-      const payload = (m[1] || '').trim();
-      if (!payload) continue;
-      const backtickHits = payload.match(/`[^`]+`/g);
-      if (!backtickHits || backtickHits.length === 0) {
-        warnings.push({
-          section: 'ac-evidence-marker',
-          lineIndex: i,
-          command: payload,
-          rule: 'missing-backticks',
-          severity: 'warn',
-        });
-      }
-    }
-    // Consolidated declaration: only when the line carries no legacy marker
-    // (avoids double-warning a dual-marker line) and is a declaration, not a
-    // record-of-run proof stamp.
-    if (!sawLegacy && CONSOLIDATED_DECL_RE.test(line) && !hasExecutionProof(line)) {
+    if (CONSOLIDATED_DECL_RE.test(line) && !hasExecutionProof(line)) {
       const props = parseProofMarker(line);
       const cmd = props && typeof props.cmd === 'string' ? props.cmd.trim() : '';
       if (cmd && !/`[^`]+`/.test(cmd)) {

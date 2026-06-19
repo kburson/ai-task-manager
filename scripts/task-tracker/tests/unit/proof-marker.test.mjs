@@ -15,8 +15,8 @@ import {
 
 // --- round-trip: spaces, backticks, embedded double-quote -------------------
 // The round-trip identity holds for a canonical new-form map (cmd/sha/ts/...).
-// Legacy keys (`verified-at`/`verified-by`) are intentionally normalized on read
-// — that behavior is covered by the #382 dual-tolerance blocks below.
+// Legacy `verified-at` (proof stamp) is still normalized on read; `verified-by`
+// (declaration) is retired as of #468 and no longer recognized.
 {
   const props = {
     cmd: '`npm test` `npm run lint`',
@@ -61,17 +61,17 @@ import {
   assert.ok(hasExecutionProof(legacy), 'legacy verified-at counts as execution proof');
 }
 
-// --- legacy verified-by DECLARATION read path -------------------------------
+// --- consolidated cmd-only marker is a DECLARATION, not execution proof -----
 {
-  const decl = '- [ ] All tests pass <!-- aitm-verified-by: `npm run test:all` -->';
+  const decl = '- [ ] All tests pass <!-- aitm-verified cmd="`npm run test:all`" -->';
   const parsed = parseProofMarker(decl);
-  assert.equal(parsed['verified-by'], '`npm run test:all`', 'legacy declaration value parsed raw');
+  assert.equal(parsed.cmd, '`npm run test:all`', 'consolidated declaration cmd parsed');
   assert.equal(
     resolveVerifiedBy(decl),
     '`npm run test:all`',
-    'resolveVerifiedBy reads declaration'
+    'resolveVerifiedBy reads cmd from consolidated declaration'
   );
-  assert.ok(!hasExecutionProof(decl), 'bare declaration is NOT execution proof');
+  assert.ok(!hasExecutionProof(decl), 'bare cmd-only declaration is NOT execution proof');
 }
 
 // --- consolidated marker is execution proof ---------------------------------
@@ -89,16 +89,16 @@ import {
 
 // --- resolveVerifiedBy from consolidated form -------------------------------
 {
-  const line = serializeProofMarker({ 'verified-by': 'npm run lint' });
-  assert.equal(resolveVerifiedBy(line), 'npm run lint', 'verified-by resolved from consolidated');
+  const line = serializeProofMarker({ cmd: 'npm run lint' });
+  assert.equal(resolveVerifiedBy(line), 'npm run lint', 'cmd resolved from consolidated form');
 }
 
-// --- a line with declaration AND inline proof merges ------------------------
+// --- a line with consolidated declaration AND inline proof merges -----------
 {
   const line =
-    '- [x] All tests pass <!-- aitm-verified-by: `npm run test:all` --> <!-- aitm-verified verified-at="2026-06-10T17:00:00Z" sha="sandbox" -->';
+    '- [x] All tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- aitm-verified verified-at="2026-06-10T17:00:00Z" sha="sandbox" -->';
   const parsed = parseProofMarker(line);
-  assert.equal(parsed['verified-by'], '`npm run test:all`', 'declaration preserved');
+  assert.equal(parsed.cmd, '`npm run test:all`', 'cmd from declaration preserved');
   assert.equal(parsed['verified-at'], '2026-06-10T17:00:00Z', 'consolidated proof field merged');
   assert.equal(parsed.sha, 'sandbox', 'consolidated sha merged');
   assert.ok(hasExecutionProof(line), 'line has execution proof');
@@ -112,9 +112,12 @@ import {
 
 // --- stripProofMarkers cleans label for display -----------------------------
 {
-  const line =
-    '`npm test` <!-- aitm-verified verified-at="x" --> <!-- aitm-verified-by: `npm test` -->';
-  assert.equal(stripProofMarkers(line), '`npm test`', 'all markers stripped, label preserved');
+  const line = '`npm test` <!-- aitm-verified verified-at="x" -->';
+  assert.equal(
+    stripProofMarkers(line),
+    '`npm test`',
+    'consolidated marker stripped, label preserved'
+  );
 }
 
 // --- #382: new key set (cmd/sha/ts/evidence/proof) round-trips --------------
@@ -152,23 +155,18 @@ import {
   assert.ok(hasExecutionProof(packed), 'packed legacy form still counts as execution proof');
 }
 
-// --- #382: dual-tolerant read of a legacy-form body -------------------------
+// --- #382: consolidated cmd declaration + proof stamp on same line ----------
 {
-  // Legacy consolidated proof (verified-at=iso only, separate sha) PLUS a
-  // legacy-by declaration on the same line. Both legacy keys normalize onto the
-  // new contract while the originals are retained.
-  const legacy =
-    '- [x] All tests pass <!-- aitm-verified-by: `npm run test:all` --> <!-- aitm-verified verified-at="2026-06-11T14:45:00.000Z" sha="sandbox" proof="none" -->';
-  const parsed = parseProofMarker(legacy);
-  assert.equal(parsed.ts, '2026-06-11T14:45:00.000Z', 'legacy verified-at normalized to ts');
-  assert.equal(parsed.cmd, '`npm run test:all`', 'legacy verified-by normalized to cmd');
-  assert.equal(parsed['verified-at'], '2026-06-11T14:45:00.000Z', 'legacy verified-at retained');
-  assert.equal(parsed['verified-by'], '`npm run test:all`', 'legacy verified-by retained');
-  assert.equal(
-    resolveVerifiedBy(legacy),
-    '`npm run test:all`',
-    'resolveVerifiedBy prefers verified-by'
-  );
+  // After #468: only the consolidated form is recognized.
+  // A cmd-only declaration and a proof stamp on the same line both parse and merge.
+  const combined =
+    '- [x] All tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- aitm-verified verified-at="2026-06-11T14:45:00.000Z" sha="sandbox" proof="none" -->';
+  const parsed = parseProofMarker(combined);
+  assert.equal(parsed.ts, '2026-06-11T14:45:00.000Z', 'verified-at normalized to ts');
+  assert.equal(parsed.cmd, '`npm run test:all`', 'cmd from consolidated declaration');
+  assert.equal(parsed['verified-at'], '2026-06-11T14:45:00.000Z', 'verified-at retained');
+  assert.ok(hasExecutionProof(combined), 'combined line has execution proof');
+  assert.equal(resolveVerifiedBy(combined), '`npm run test:all`', 'resolveVerifiedBy reads cmd');
 }
 
 // --- #382: resolveVerifiedBy falls back to cmd ------------------------------

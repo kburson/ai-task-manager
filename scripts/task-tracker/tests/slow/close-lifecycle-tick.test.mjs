@@ -21,7 +21,7 @@ const cfg = { repo: 'kburson/ai-task-manager' };
 
 const FIXTURE = [
   '## Acceptance Criteria',
-  '- [x] x <!-- aitm-verified-by: `npm run test:all` -->',
+  '- [x] x <!-- aitm-verified cmd="`npm run test:all`" -->',
   '',
   '#### Lifecycle (auto-ticked at Review/Close)',
   '- [ ] Passed final human review',

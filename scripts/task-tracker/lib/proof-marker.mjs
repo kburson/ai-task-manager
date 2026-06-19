@@ -9,25 +9,26 @@
 // and the commit `sha` are separate properties (no packed `<sha>:<iso>` value);
 // `cmd` replaces the old `verified-by` key on a proof stamp.
 //
-// Back-compat READ path (kept until #369 rewrites the corpus): parseProofMarker
-// recognizes the legacy keys and the two legacy dual comments, then normalizes
-// them onto the new key names so consumers read one shape regardless of vintage:
+// Back-compat READ path: parseProofMarker recognizes the legacy-at colon comment
+// and normalizes it onto the new key names so consumers read one shape regardless
+// of body vintage:
 //   <!-- aitm-verified verified-at="<iso>" sha=... ... -->       (#368 consolidated)
 //   <!-- aitm-verified verified-at="<sha>:<iso>" ... -->         (packed legacy form)
 //   <!-- aitm-verified-at: <iso> evidence:"..." sha=... proof=... -->  (PROOF stamp)
-//   <!-- aitm-verified-by: `cmd` ... -->                               (DECLARATION)
 // Normalization: legacy `verified-at` -> `ts` (splitting a packed `<sha>:<iso>`
-// into `sha`+`ts`); legacy `verified-by` -> `cmd`. The legacy keys are retained
-// alongside the normalized ones so nothing that still reads them breaks.
+// into `sha`+`ts`). The legacy key is retained alongside the normalized one so
+// nothing that still reads it breaks.
+//
+// The legacy `aitm-verified-by:` DECLARATION form is retired (#468). All
+// declaration markers use the consolidated `<!-- aitm-verified cmd="..." -->` form.
 //
 // An execution PROOF is distinguished from a verifier DECLARATION by its
-// CONTENT, not its marker name (#391). After the #369 corpus migration a
-// declaration becomes `<!-- aitm-verified cmd="`cmd`" -->` — byte-identical at
-// the name level to a proof stamp. The distinction the grammar makes
-// machine-checkable: `cmd` is intent; `ts`/`sha`/`evidence` are record-of-run.
-// `hasExecutionProof` parses the line and accepts it only when a record-of-run
-// key is present, so a cmd-only marker (consolidated or legacy `aitm-verified-by`)
-// is correctly read as a declaration, not proof.
+// CONTENT, not its marker name (#391). A declaration becomes
+// `<!-- aitm-verified cmd="`cmd`" -->` — byte-identical at the name level to a
+// proof stamp. The distinction the grammar makes machine-checkable: `cmd` is
+// intent; `ts`/`sha`/`evidence` are record-of-run. `hasExecutionProof` parses
+// the line and accepts it only when a record-of-run key is present, so a
+// cmd-only consolidated marker is correctly read as a declaration, not proof.
 
 export function escapeValue(v) {
   return String(v).replace(/"/g, '&quot;');
@@ -52,11 +53,10 @@ export function serializeProofMarker(props = {}) {
 const CONSOLIDATED_RE = /<!--\s*aitm-verified\s+([\s\S]*?)\s*-->/g;
 const ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
 const LEGACY_AT_RE = /<!--\s*aitm-verified-at:\s*([\s\S]*?)\s*-->/g;
-const LEGACY_BY_RE = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/g;
 
-// Any consolidated or legacy proof/declaration marker on the line. Used to
+// Any consolidated or legacy-at proof/declaration marker on the line. Used to
 // strip markers from a label for display.
-const ANY_MARKER_RE = /<!--\s*aitm-verified(?:-at|-by)?(?:\s|:)[\s\S]*?-->/g;
+const ANY_MARKER_RE = /<!--\s*aitm-verified(?:-at)?(?:\s|:)[\s\S]*?-->/g;
 
 function parseConsolidatedAttrs(text) {
   const out = {};
@@ -90,11 +90,11 @@ const PACKED_VERIFIED_AT_RE = /^([0-9a-f]{4,40}):(\d{4}-\d{2}-\d{2}T.*)$/i;
 
 // #382 — normalize legacy proof-marker keys onto the new contract so every
 // consumer reads one shape regardless of body vintage. Mutates and returns the
-// parsed object. Legacy keys are retained alongside the normalized ones.
+// parsed object. The legacy `verified-at` key is retained alongside the
+// normalized `ts` so nothing that still reads it breaks.
 //   - `verified-at` -> `ts` (splitting a packed `<sha>:<iso>` into `sha`+`ts`)
-//   - `verified-by` -> `cmd`
-// New-form markers already carry `ts`/`cmd`/`sha`, so the `in` guards make this
-// a no-op for them.
+// New-form markers already carry `ts`/`sha`, so the `in` guard makes this a
+// no-op for them.
 function normalizeProofKeys(out) {
   if ('verified-at' in out && !('ts' in out)) {
     const packed = PACKED_VERIFIED_AT_RE.exec(String(out['verified-at']));
@@ -105,17 +105,13 @@ function normalizeProofKeys(out) {
       out.ts = out['verified-at'];
     }
   }
-  if ('verified-by' in out && !('cmd' in out)) {
-    out.cmd = out['verified-by'];
-  }
   return out;
 }
 
 // Parse every proof marker on a line and merge into one key/value object.
 // Returns null when the line carries no recognized marker. Consolidated and
-// legacy-at PROOF fields take precedence; a legacy-by DECLARATION only fills a
-// `verified-by` that no proof marker already supplied. Legacy keys are
-// normalized onto the new `ts`/`cmd` contract before returning (#382).
+// legacy-at PROOF fields take precedence. Legacy keys are normalized onto the
+// new `ts` contract before returning (#382).
 export function parseProofMarker(line) {
   const src = String(line || '');
   let found = false;
@@ -127,10 +123,6 @@ export function parseProofMarker(line) {
   for (const m of src.matchAll(LEGACY_AT_RE)) {
     found = true;
     Object.assign(out, parseLegacyAtInner(m[1]));
-  }
-  for (const m of src.matchAll(LEGACY_BY_RE)) {
-    found = true;
-    if (!('verified-by' in out)) out['verified-by'] = m[1].trim();
   }
   return found ? normalizeProofKeys(out) : null;
 }
@@ -147,37 +139,23 @@ export function hasExecutionProof(line) {
 }
 
 // Resolve the declaration command (raw, may carry backtick commands) from
-// either marker form, or null. Dual-tolerant (#382): prefers the legacy
-// `verified-by` key but falls back to the new `cmd` key so a proof stamp
-// carrying `cmd` still resolves during the transition.
+// the consolidated marker, or null.
 export function resolveVerifiedBy(line) {
   const props = parseProofMarker(line);
   if (!props) return null;
-  if ('verified-by' in props) return props['verified-by'];
   if ('cmd' in props) return props.cmd;
   return null;
 }
 
-// #418 — Shared dual-form DECLARATION extractor. Returns the backtick-wrapped
-// command(s) declared on a label by EITHER the legacy `aitm-verified-by` marker
-// or the consolidated `aitm-verified cmd="..."` form, in document order. This is
-// the single source of truth for the per-reader fallbacks that #391/#393/#395
-// each open-coded; new dual-form upgrades route through here instead of copying
-// a fourth inline regex.
-//
-// Contract (identical to those helpers): legacy `aitm-verified-by` matches are
-// collected unconditionally — that name is always a declaration, never a proof.
-// The consolidated `cmd` is read only when no legacy declaration was found (so a
-// dual-marker line is not double-counted) AND the line carries no execution
-// proof (`hasExecutionProof` false), so a record-of-run stamp (ts/sha/evidence)
+// #418 — Shared DECLARATION extractor. Returns the backtick-wrapped command(s)
+// declared on a label by the consolidated `aitm-verified cmd="..."` form.
+// The `cmd` is read only when the line carries no execution proof
+// (`hasExecutionProof` false), so a record-of-run stamp (ts/sha/evidence)
 // is never mistaken for a verifier declaration.
 export function extractVerifiedCommands(label) {
   const haystack = String(label || '');
   const commands = [];
-  for (const marker of haystack.matchAll(LEGACY_BY_RE)) {
-    for (const cmd of String(marker[1]).matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
-  }
-  if (!commands.length && !hasExecutionProof(haystack)) {
+  if (!hasExecutionProof(haystack)) {
     const props = parseProofMarker(haystack);
     if (props && typeof props.cmd === 'string') {
       for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);

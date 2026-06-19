@@ -5,9 +5,9 @@
 // `verbs/check.mjs`.
 //
 // Coverage:
-//   - acKeyForLabel: stable across stamping (strips aitm-verified-by AND
+//   - acKeyForLabel: stable across stamping (strips aitm-verified cmd="..." AND
 //     aitm-ac-evidence before hashing), deterministic, 8 hex chars.
-//   - parseEvidenceAcs: only AC-section checkbox lines carrying aitm-verified-by;
+//   - parseEvidenceAcs: only AC-section checkbox lines carrying aitm-verified cmd="...";
 //     reports checked state, commands, key, and any existing evidence marker.
 //   - stampAcEvidenceMarker: append + idempotent replace; throws on no match.
 //   - gateEvidenceTick: refuses unticked evidence-AC without stamp; passes once
@@ -29,8 +29,8 @@ import { gateEvidenceTick } from '../../verbs/check.mjs';
 const AC_BODY = [
   '## Acceptance Criteria',
   '',
-  '- [ ] check.mjs refuses to tick verified lines <!-- aitm-verified-by: `npm test` -->',
-  '- [ ] An ac-stamp capability runs the verifier <!-- aitm-verified-by: `npm run lint` -->',
+  '- [ ] check.mjs refuses to tick verified lines <!-- aitm-verified cmd="`npm test`" -->',
+  '- [ ] An ac-stamp capability runs the verifier <!-- aitm-verified cmd="`npm run lint`" -->',
   '- [ ] A plain criterion with no verifier',
   '',
   '## Definition of Done',
@@ -43,11 +43,11 @@ test('acKeyForLabel is 8 hex chars and deterministic', () => {
   assert.equal(k, acKeyForLabel('check.mjs refuses to tick verified lines'));
 });
 
-test('acKeyForLabel strips aitm-verified-by and aitm-ac-evidence before hashing', () => {
+test('acKeyForLabel strips aitm-verified cmd="..." and aitm-ac-evidence before hashing', () => {
   const bare = acKeyForLabel('All tests pass');
-  const withVerify = acKeyForLabel('All tests pass <!-- aitm-verified-by: `npm test` -->');
+  const withVerify = acKeyForLabel('All tests pass <!-- aitm-verified cmd="`npm test`" -->');
   const withStamp = acKeyForLabel(
-    'All tests pass <!-- aitm-verified-by: `npm test` --> <!-- aitm-ac-evidence:deadbeef cmd="npm test" exit=0 sha=abc ts=2026-01-01T00:00:00Z -->'
+    'All tests pass <!-- aitm-verified cmd="`npm test`" --> <!-- aitm-ac-evidence:deadbeef cmd="npm test" exit=0 sha=abc ts=2026-01-01T00:00:00Z -->'
   );
   assert.equal(withVerify, bare);
   assert.equal(withStamp, bare);
@@ -64,7 +64,7 @@ test('parseEvidenceAcs returns only verified AC lines with commands + key', () =
   assert.deepEqual(acs[1].evidenceCommands, ['npm run lint']);
 });
 
-test('parseEvidenceAcs ignores plain criteria with no aitm-verified-by', () => {
+test('parseEvidenceAcs ignores plain criteria with no aitm-verified declaration', () => {
   const labels = parseEvidenceAcs(AC_BODY).map((a) => a.label);
   assert.ok(!labels.includes('A plain criterion with no verifier'));
 });
@@ -196,8 +196,8 @@ test('stampAcEvidenceMarker replaces a legacy-form marker in place (#379)', () =
   const label = 'check.mjs refuses to tick verified lines';
   const key = acKeyForLabel(label);
   const seeded = AC_BODY.replace(
-    `- [ ] ${label} <!-- aitm-verified-by: \`npm test\` -->`,
-    `- [ ] ${label} <!-- aitm-verified-by: \`npm test\` --> <!-- aitm-ac-evidence:${key} cmd="npm test" exit=0 sha=old1234 ts=2026-06-09T00:00:00.000Z -->`
+    `- [ ] ${label} <!-- aitm-verified cmd="\`npm test\`" -->`,
+    `- [ ] ${label} <!-- aitm-verified cmd="\`npm test\`" --> <!-- aitm-ac-evidence:${key} cmd="npm test" exit=0 sha=old1234 ts=2026-06-09T00:00:00.000Z -->`
   );
   const restamped = stampAcEvidenceMarker(seeded, label, {
     cmd: 'npm test',
@@ -288,7 +288,7 @@ test('gateEvidenceTick leaves the Functional DoD path intact (regression)', () =
 const SPIKE_BODY = [
   '## Acceptance Criteria',
   '',
-  '- [ ] spike probe passes <!-- aitm-verified-by: `grep -qF needle file` -->',
+  '- [ ] spike probe passes <!-- aitm-verified cmd="`grep -qF needle file`" -->',
   '',
   '## Definition of Done',
   '',
@@ -348,8 +348,8 @@ test('#443 reconcile scopes to the stamped AC — an unrelated AC gap is left un
   const twoAcBody = [
     '## Acceptance Criteria',
     '',
-    '- [ ] first probe <!-- aitm-verified-by: `grep -qF one file` -->',
-    '- [ ] second probe <!-- aitm-verified-by: `grep -qF two file` -->',
+    '- [ ] first probe <!-- aitm-verified cmd="`grep -qF one file`" -->',
+    '- [ ] second probe <!-- aitm-verified cmd="`grep -qF two file`" -->',
     '',
     '## Definition of Done',
     '',

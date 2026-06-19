@@ -1,7 +1,7 @@
 // @story #236
 // #236 — Tests for the author-time checklist command lint.
 //
-// Verifies that compound CLI commands in AC `aitm-verified-by:` markers and
+// Verifies that compound CLI commands in AC `aitm-verified cmd="..."` markers and
 // `## Verification Commands` section are rejected before the body reaches
 // `gh issue create` / `gh issue edit`, mirroring the `/task test` sandbox.
 
@@ -17,8 +17,8 @@ const CLEAN_BODY = `# Title
 
 ## Acceptance Criteria
 
-- [ ] Lints cleanly. <!-- aitm-verified-by: \`npm run lint\` -->
-- [ ] Tests pass. <!-- aitm-verified-by: \`npm test\` \`npm run format:check\` -->
+- [ ] Lints cleanly. <!-- aitm-verified cmd="\`npm run lint\`" -->
+- [ ] Tests pass. <!-- aitm-verified cmd="\`npm test\` \`npm run format:check\`" -->
 
 ## Verification Commands
 
@@ -42,7 +42,7 @@ describe('lintChecklistCommands', () => {
   it('accepts multi-command markers (each command separately)', () => {
     const body = `## Acceptance Criteria
 
-- [ ] Multi. <!-- aitm-verified-by: \`npm run lint\` \`npm test\` \`npm run format:check\` -->
+- [ ] Multi. <!-- aitm-verified cmd="\`npm run lint\` \`npm test\` \`npm run format:check\`" -->
 `;
     const r = lintChecklistCommands(body);
     assert.equal(r.ok, true);
@@ -51,7 +51,7 @@ describe('lintChecklistCommands', () => {
   it('warns when a marker payload has no backtick-quoted command', () => {
     const body = `## Acceptance Criteria
 
-- [ ] Bare. <!-- aitm-verified-by: npm run lint -->
+- [ ] Bare. <!-- aitm-verified cmd="npm run lint" -->
 `;
     const r = lintChecklistCommands(body);
     assert.equal(r.ok, true);
@@ -93,7 +93,7 @@ describe('lintChecklistCommands', () => {
       if (needle === '`') continue;
       const body = `## Acceptance Criteria
 
-- [ ] AC. <!-- aitm-verified-by: \`npm test ${needle}rm -rf /\` -->
+- [ ] AC. <!-- aitm-verified cmd="\`npm test ${needle}rm -rf /\`" -->
 `;
       const r = lintChecklistCommands(body);
       const errs = r.violations.filter((v) => v.severity === 'error');
@@ -108,7 +108,7 @@ describe('lintChecklistCommands', () => {
   it('rejects the classic && compound in both AC and VC', () => {
     const body = `## Acceptance Criteria
 
-- [ ] AC. <!-- aitm-verified-by: \`npm run lint && npm test\` -->
+- [ ] AC. <!-- aitm-verified cmd="\`npm run lint && npm test\`" -->
 
 ## Verification Commands
 

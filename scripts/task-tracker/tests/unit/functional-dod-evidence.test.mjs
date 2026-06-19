@@ -23,9 +23,9 @@ function bodyWithKeys() {
     '',
     '#### Functional (verified at Test)',
     '',
-    '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->',
-    '- [ ] Lint and format checks pass <!-- aitm-verified-by: `npm run lint` --> <!-- dod:functional:lint -->',
-    '- [ ] All changes committed <!-- aitm-verified-by: `git log --grep #303` --> <!-- dod:functional:commits -->',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->',
+    '- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" --> <!-- dod:functional:lint -->',
+    '- [ ] All changes committed <!-- aitm-verified cmd="`git log --grep #303`" --> <!-- dod:functional:commits -->',
     '- [ ] Acceptance criteria met <!-- dod:functional:acs -->',
     '- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
     '',
@@ -239,11 +239,11 @@ assert.throws(
 {
   const migrated = bodyWithKeys()
     .replace(
-      '<!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->',
+      '<!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->',
       '<!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->'
     )
     .replace(
-      '<!-- aitm-verified-by: `npm run lint` --> <!-- dod:functional:lint -->',
+      '<!-- aitm-verified cmd="`npm run lint`" --> <!-- dod:functional:lint -->',
       '<!-- dod:functional:lint -->'
     );
   const items = parseFunctionalDodKeys(migrated);
@@ -262,7 +262,7 @@ assert.throws(
 // the Functional-DoD line (mirror of #391's hasExecutionProof guard).
 {
   const proofStamped = bodyWithKeys().replace(
-    '<!-- aitm-verified-by: `npm test` --> <!-- dod:functional:tests -->',
+    '<!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->',
     '<!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-06-12T00:00:00Z" --> <!-- dod:functional:tests -->'
   );
   const byKey = Object.fromEntries(parseFunctionalDodKeys(proofStamped).map((it) => [it.key, it]));
@@ -273,15 +273,14 @@ assert.throws(
   );
 }
 
-// --- #393 — legacy `aitm-verified-by:` declarations still read (back-compat,
-// legacy-first, no double-count when both legacy + consolidated are absent).
+// --- #393/#468 — consolidated declarations are read correctly. ---------------
 {
   const items = parseFunctionalDodKeys(bodyWithKeys());
   const byKey = Object.fromEntries(items.map((it) => [it.key, it]));
   assert.deepEqual(
     byKey.tests.evidenceCommands,
     ['npm test'],
-    'legacy aitm-verified-by still read'
+    'consolidated aitm-verified cmd declaration read by parseFunctionalDodKeys'
   );
 }
 

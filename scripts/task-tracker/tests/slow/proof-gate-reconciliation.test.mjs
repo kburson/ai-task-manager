@@ -35,7 +35,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const AC_LABEL_VISIBLE = 'reconciled gate ticks a stamped verifier line';
-const AC_LINE_VERIFY = '<!-- aitm-verified-by: `npm test` -->';
+const AC_LINE_VERIFY = '<!-- aitm-verified cmd="`npm test`" -->';
 const FULL_LABEL = `${AC_LABEL_VISIBLE} ${AC_LINE_VERIFY}`;
 const KEY = acKeyForLabel(AC_LABEL_VISIBLE);
 const STAMP = ` <!-- aitm-ac-evidence:${KEY} cmd="npm test" exit=0 sha=abc1234 ts=2026-06-10T00:00:00.000Z -->`;

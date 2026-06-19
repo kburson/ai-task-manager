@@ -211,7 +211,6 @@ export async function verbReview(ctx) {
     let inVerifSection = false;
     let currentSection = '';
     const checkboxes = [];
-    const evidencePattern = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
@@ -233,30 +232,19 @@ export async function verbReview(ctx) {
       // (parseVerificationCommands / parseEvidenceChecklist); review.mjs kept
       // its own un-migrated copy with the anchored `$` that this fixes.
       const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
-      const evidenceMatch = !cmdMatch ? label.match(evidencePattern) : null;
-      let evidenceCommands = evidenceMatch
-        ? [...evidenceMatch[1].matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1])
-        : [];
-      // #396 — consolidated-declaration fallback. The #367/#368/#369/#382
-      // corpus migration rewrote AC verifier declarations from the legacy
-      // `aitm-verified-by:` marker to the consolidated `aitm-verified cmd="..."`
-      // form. #395 taught the shared reader (lib/evidence-markers.mjs
-      // `evidenceCommands`) the fallback, but review.mjs's private parser kept
-      // its un-migrated copy (see #368 AC9 note above) and therefore yielded an
-      // empty command list for migrated ACs — false-bouncing them at line ~343.
-      // Mirror the shared reader exactly: when this is a prose-evidence checkbox
-      // with no legacy marker AND no execution proof on the line, read the
-      // declared command(s) from the consolidated declaration. Legacy-first
-      // ordering avoids double-counting a dual-marker line; the
-      // `hasExecutionProof` guard keeps a record-of-run proof stamp
-      // (ts/sha/evidence) from being misread as a re-gating verifier declaration.
-      if (!cmdMatch && !evidenceCommands.length && !hasExecutionProof(label)) {
+      // #396/#468 — consolidated declaration is the sole path. When this is a
+      // prose-evidence checkbox and the line is not a record-of-run proof stamp,
+      // read the declared command(s) from the `aitm-verified cmd="..."` form.
+      // The `hasExecutionProof` guard keeps a proof stamp (ts/sha/evidence) from
+      // being misread as a re-gating verifier declaration.
+      let evidenceCommands = [];
+      if (!cmdMatch && !hasExecutionProof(label)) {
         const props = parseProofMarker(label);
         if (props && typeof props.cmd === 'string') {
           evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
         }
       }
-      const cleanLabel = label.replace(evidencePattern, '').trim();
+      const cleanLabel = label.trim();
       checkboxes.push({
         lineIndex: i,
         checked,
@@ -311,7 +299,7 @@ export async function verbReview(ctx) {
     }
     // #226 — under sandbox-verified authority, the standard DoD commands
     // (`npm test`, `npm run lint`, `npm run format:check`) are trusted-passed.
-    // Seed commandResults so AC lines whose `aitm-verified-by` annotation
+    // Seed commandResults so AC lines whose `aitm-verified cmd="..."` declaration
     // references these commands resolve as passed evidence instead of
     // false-positive `unknown evidence command` regressions.
     for (const cmd of STANDARD_DOD_COMMANDS) {

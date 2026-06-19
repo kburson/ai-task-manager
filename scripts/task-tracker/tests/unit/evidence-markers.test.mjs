@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @story #231
 // #231 — Closes Hole 1 (standard-command exemption) and the AC-only parse
-// scope. `auditEvidenceMarkers` must require every `aitm-verified-by` command
+// scope. `auditEvidenceMarkers` must require every `aitm-verified cmd="..."` command
 // — including the previously-exempt standard set — to appear in
 // `## Verification Commands`, and it must see Functional DoD items the same
 // way it sees ACs.
@@ -12,7 +12,7 @@ import { auditEvidenceMarkers, parseEvidenceChecklist } from '../../lib/evidence
 {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] Tests cover the new behavior <!-- aitm-verified-by: `npm test` -->',
+    '- [ ] Tests cover the new behavior <!-- aitm-verified cmd="`npm test`" -->',
     '',
     '### Verification Commands',
     '',
@@ -27,7 +27,7 @@ import { auditEvidenceMarkers, parseEvidenceChecklist } from '../../lib/evidence
 {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] Tests cover the new behavior <!-- aitm-verified-by: `npm test` -->',
+    '- [ ] Tests cover the new behavior <!-- aitm-verified cmd="`npm test`" -->',
     '',
     '### Verification Commands',
     '- [ ] `npm test`',
@@ -41,7 +41,7 @@ import { auditEvidenceMarkers, parseEvidenceChecklist } from '../../lib/evidence
 for (const cmd of ['npm run lint', 'npm run format:check']) {
   const missing = [
     '## Acceptance Criteria',
-    `- [ ] Quality bar holds <!-- aitm-verified-by: \`${cmd}\` -->`,
+    `- [ ] Quality bar holds <!-- aitm-verified cmd="\`${cmd}\`" -->`,
     '',
     '### Verification Commands',
     '',
@@ -63,7 +63,7 @@ for (const cmd of ['npm run lint', 'npm run format:check']) {
 {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] Behavior change <!-- aitm-verified-by: `node --test tests/a.mjs` -->',
+    '- [ ] Behavior change <!-- aitm-verified cmd="`node --test tests/a.mjs`" -->',
     '',
     '### Verification Commands',
     '- [ ] `node --test tests/a.mjs`',
@@ -72,7 +72,7 @@ for (const cmd of ['npm run lint', 'npm run format:check']) {
     '',
     '#### Functional (verified at Test)',
     '',
-    '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` -->',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" -->',
   ].join('\n');
   const a = auditEvidenceMarkers(body);
   assert.equal(a.ok, false, 'functional DoD npm test must force VC entry');
@@ -88,7 +88,7 @@ for (const cmd of ['npm run lint', 'npm run format:check']) {
 {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] Behavior change <!-- aitm-verified-by: `node --test tests/a.mjs` -->',
+    '- [ ] Behavior change <!-- aitm-verified cmd="`node --test tests/a.mjs`" -->',
     '',
     '### Verification Commands',
     '- [ ] `node --test tests/a.mjs`',
@@ -98,7 +98,7 @@ for (const cmd of ['npm run lint', 'npm run format:check']) {
     '',
     '#### Functional (verified at Test)',
     '',
-    '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` -->',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" -->',
   ].join('\n');
   const a = auditEvidenceMarkers(body);
   assert.equal(a.ok, true, a.missingVerificationCommands.join(','));
@@ -109,7 +109,7 @@ for (const cmd of ['npm run lint', 'npm run format:check']) {
 {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] AC has its own evidence <!-- aitm-verified-by: `node --test tests/a.mjs` -->',
+    '- [ ] AC has its own evidence <!-- aitm-verified cmd="`node --test tests/a.mjs`" -->',
     '',
     '### Verification Commands',
     '- [ ] `node --test tests/a.mjs`',
