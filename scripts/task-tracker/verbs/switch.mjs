@@ -35,6 +35,7 @@ export async function verbSwitch(ctx, target) {
   let previousNote = '';
   if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
     const previous = s.active;
+    const isSelfBind = previous === target;
     // #215 — a switch IS a pause: force-finalize any pending-pause row
     // against the OUTGOING issue regardless of sub-threshold gap. This must
     // happen BEFORE flushActiveToGH so the row lands on the old binding.
@@ -50,16 +51,20 @@ export async function verbSwitch(ctx, target) {
     } catch {
       /* never block switch on finalize failure */
     }
-    const { deltaMin, deltaWords } = await flushActiveToGH(
-      s,
-      'switch-out',
-      `switch-out → task ${target}`
-    );
-    previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
+    // #460 — self-bind (rebinding to the already-active issue) is a resume,
+    // not a switch-out. Guard prevents self-referential timing log entries.
+    const eventSlug = isSelfBind ? 'resumed' : 'switch-out';
+    const eventDesc = isSelfBind ? `resumed ${target}` : `switch-out → task ${target}`;
+    const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc);
+    previousNote = isSelfBind
+      ? ` Resumed: ${previous} (+${deltaMin} min, +${deltaWords} words).`
+      : ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
     await runLogIssueTime(previous);
-    try {
-      deregisterTask(projectDir, previous);
-    } catch {}
+    if (!isSelfBind) {
+      try {
+        deregisterTask(projectDir, previous);
+      } catch {}
+    }
   } else if (s.active === 'discover') {
     console.log('Discarding discovery bucket (switch to concrete issue).');
   }
