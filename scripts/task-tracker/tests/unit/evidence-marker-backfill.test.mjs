@@ -33,8 +33,8 @@ const metadata = [
 {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] Covered AC <!-- aitm-verified-by: `node scripts/task-tracker/tests/new.test.mjs` -->',
-    '- [ ] Standard DoD AC <!-- aitm-verified-by: `npm run lint` -->',
+    '- [ ] Covered AC <!-- aitm-verified cmd="`node scripts/task-tracker/tests/new.test.mjs`" -->',
+    '- [ ] Standard DoD AC <!-- aitm-verified cmd="`npm run lint`" -->',
     '',
     '### Verification Commands',
     '- [ ] `node scripts/task-tracker/tests/existing.test.mjs`',

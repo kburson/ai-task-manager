@@ -5,9 +5,9 @@ import { autoTickVerified } from '../../lib/auto-tick-verified.mjs';
 
 // ---------------------------------------------------------------------------
 // Fixture: an issue body with a Verification Commands section and a DoD whose
-// Functional items carry `aitm-verified-by` markers (command-backed) plus one
+// Functional items carry `aitm-verified cmd="..."` markers (command-backed) plus one
 // judgment item with no marker, and a Lifecycle section that must never be
-// touched here.
+// touched here. (#468 retired the legacy `aitm-verified-by:` form.)
 // ---------------------------------------------------------------------------
 function fixtureBody() {
   return [
@@ -21,8 +21,8 @@ function fixtureBody() {
     '',
     '#### Functional (verified at Test)',
     '',
-    '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` -->',
-    '- [ ] Lint/format pass <!-- aitm-verified-by: `npm run lint` `npm run format:check` -->',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" -->',
+    '- [ ] Lint/format pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" -->',
     '- [ ] Acceptance criteria met',
     '',
     '#### Lifecycle (auto-ticked at Review/Close)',

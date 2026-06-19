@@ -19,7 +19,7 @@ const PICKUP = '## Pickup Directive — MANDATORY, DO NOT SKIP';
   const cmd = 'node scripts/task-tracker/tests/new.test.mjs';
   const body = [
     '## Acceptance Criteria',
-    `- [ ] Some AC <!-- aitm-verified-by: \`${cmd}\` -->`,
+    `- [ ] Some AC <!-- aitm-verified cmd="\`${cmd}\`" -->`,
     '',
     PICKUP,
   ].join('\n');

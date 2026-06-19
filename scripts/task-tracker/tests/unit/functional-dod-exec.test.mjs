@@ -2,17 +2,18 @@
 // @story #231
 // #231 — End-to-end proof that the sandbox results path (the `results` array
 // shape `runVerbTest` produces) ticks Functional DoD items via `autoTickVerified`
-// when their `aitm-verified-by` command passed, and leaves them unticked when it
-// failed. `autoTickVerified` is invoked by `verbs/test.mjs` on the green path
-// with one entry per `## Verification Commands` line; this test exercises the
-// same contract with synthetic results.
+// when their `aitm-verified cmd="..."` command passed, and leaves them unticked
+// when it failed. `autoTickVerified` is invoked by `verbs/test.mjs` on the green
+// path with one entry per `## Verification Commands` line; this test exercises
+// the same contract with synthetic results.
+// (#468 retired the legacy `aitm-verified-by:` form; fixtures updated.)
 import { strict as assert } from 'node:assert';
 import { autoTickVerified } from '../../lib/auto-tick-verified.mjs';
 
 const BODY = [
   '## Acceptance Criteria',
   '',
-  '- [ ] Hole 1 closed <!-- aitm-verified-by: `node --test scripts/task-tracker/tests/evidence-markers.test.mjs` -->',
+  '- [ ] Hole 1 closed <!-- aitm-verified cmd="`node --test scripts/task-tracker/tests/evidence-markers.test.mjs`" -->',
   '',
   '### Verification Commands',
   '',
@@ -24,8 +25,8 @@ const BODY = [
   '',
   '#### Functional (verified at Test)',
   '',
-  '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` -->',
-  '- [ ] Lint clean <!-- aitm-verified-by: `npm run lint` -->',
+  '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" -->',
+  '- [ ] Lint clean <!-- aitm-verified cmd="`npm run lint`" -->',
   '- [ ] Acceptance criteria met (judgment item — no marker)',
   '',
   '#### Lifecycle (auto-ticked at Review/Close)',
@@ -58,7 +59,7 @@ const BODY = [
   // Lifecycle item left alone.
   assert.match(out.body, /- \[ \] Passed final human review/);
   // AC checkbox is NOT ticked by autoTickVerified — that's outside its scope.
-  assert.match(out.body, /- \[ \] Hole 1 closed <!-- aitm-verified-by:/);
+  assert.match(out.body, /- \[ \] Hole 1 closed <!-- aitm-verified cmd=/);
   console.log('PASS: all-green ticks VC + Functional command-backed items only');
 }
 
@@ -80,7 +81,7 @@ const BODY = [
   assert.match(out.body, /- \[ \] `npm test`/);
   // `npm test`-backed Functional item not ticked.
   assert.ok(!out.tickedFunctional.includes('All automated tests pass'));
-  assert.match(out.body, /- \[ \] All automated tests pass <!-- aitm-verified-by: `npm test` -->/);
+  assert.match(out.body, /- \[ \] All automated tests pass <!-- aitm-verified cmd=/);
   // Lint Functional item still ticked.
   assert.ok(out.tickedFunctional.includes('Lint clean'));
   console.log('PASS: failed exit leaves command-backed Functional item unticked');

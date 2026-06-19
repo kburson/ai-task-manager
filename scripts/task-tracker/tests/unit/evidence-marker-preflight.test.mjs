@@ -40,7 +40,7 @@ const baseDeps = {
   });
   assert.equal(r.ok, false);
   assert.match(r.reasons.join('\n'), /Existing issue can be audited/);
-  assert.match(r.reasons.join('\n'), /missing `aitm-verified-by` automated evidence marker/);
+  assert.match(r.reasons.join('\n'), /missing `aitm-verified cmd="..."` evidence declaration/);
 }
 
 {
@@ -53,7 +53,7 @@ const baseDeps = {
       getIssueBody: async () =>
         [
           '## Acceptance Criteria',
-          '- [ ] Existing issue can be audited <!-- aitm-verified-by: `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs` -->',
+          '- [ ] Existing issue can be audited <!-- aitm-verified cmd="`node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs`" -->',
           '',
           '### Verification Commands',
           '- [ ] `node scripts/task-tracker/tests/other.test.mjs`',
@@ -77,8 +77,8 @@ const baseDeps = {
       getIssueBody: async () =>
         [
           '## Acceptance Criteria',
-          '- [ ] Existing issue can be audited <!-- aitm-verified-by: `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs` -->',
-          '- [ ] Standard DoD command may prove an AC <!-- aitm-verified-by: `npm test` -->',
+          '- [ ] Existing issue can be audited <!-- aitm-verified cmd="`node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs`" -->',
+          '- [ ] Standard DoD command may prove an AC <!-- aitm-verified cmd="`npm test`" -->',
           '',
           '### Verification Commands',
           '- [ ] `node scripts/task-tracker/tests/evidence-marker-preflight.test.mjs`',
@@ -104,7 +104,7 @@ const baseDeps = {
       getIssueBody: async () =>
         [
           '## Acceptance Criteria',
-          '- [ ] Standard DoD command may prove an AC <!-- aitm-verified-by: `npm test` -->',
+          '- [ ] Standard DoD command may prove an AC <!-- aitm-verified cmd="`npm test`" -->',
           '',
           '### Verification Commands',
           '- [ ] `node scripts/task-tracker/tests/other.test.mjs`',

@@ -2,7 +2,8 @@
 // @story #231
 // #231 — `detectFunctionalPretick` un-ticks command-backed Functional DoD
 // items so the sandbox-driven re-tick (autoTickVerified) is the only path to
-// green. Judgment items (no `aitm-verified-by` marker) must be left alone.
+// green. Judgment items (no `aitm-verified cmd="..."` marker) must be left alone.
+// (#468 retired the legacy `aitm-verified-by:` form; fixtures updated.)
 import { strict as assert } from 'node:assert';
 import { detectFunctionalPretick } from '../../lib/lifecycle-dod.mjs';
 
@@ -13,9 +14,9 @@ import { detectFunctionalPretick } from '../../lib/lifecycle-dod.mjs';
     '',
     '#### Functional (verified at Test)',
     '',
-    '- [x] All automated tests pass <!-- aitm-verified-by: `npm test` -->',
+    '- [x] All automated tests pass <!-- aitm-verified cmd="`npm test`" -->',
     '- [x] Acceptance criteria met (including additions from deep dive)',
-    '- [ ] Lint passes <!-- aitm-verified-by: `npm run lint` -->',
+    '- [ ] Lint passes <!-- aitm-verified cmd="`npm run lint`" -->',
     '',
     '#### Lifecycle (auto-ticked at Review/Close)',
     '',
@@ -26,7 +27,7 @@ import { detectFunctionalPretick } from '../../lib/lifecycle-dod.mjs';
   assert.match(out.regressions[0].label, /All automated tests pass/);
   // Judgment item still ticked, command-backed item now un-ticked.
   assert.match(out.body, /- \[x\] Acceptance criteria met \(including additions from deep dive\)/);
-  assert.match(out.body, /- \[ \] All automated tests pass <!-- aitm-verified-by: `npm test` -->/);
+  assert.match(out.body, /- \[ \] All automated tests pass <!-- aitm-verified cmd=/);
   // Lifecycle section untouched.
   assert.match(out.body, /- \[ \] Passed final human review/);
   console.log('PASS: command-backed pretick un-ticked, judgment item preserved');
@@ -37,7 +38,7 @@ import { detectFunctionalPretick } from '../../lib/lifecycle-dod.mjs';
   const body = [
     '#### Functional (verified at Test)',
     '',
-    '- [ ] All automated tests pass <!-- aitm-verified-by: `npm test` -->',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" -->',
   ].join('\n');
   const out = detectFunctionalPretick(body);
   assert.equal(out.regressions.length, 0);
@@ -59,9 +60,9 @@ import { detectFunctionalPretick } from '../../lib/lifecycle-dod.mjs';
   const body = [
     '#### Functional (verified at Test)',
     '',
-    '- [x] Tests <!-- aitm-verified-by: `npm test` -->',
-    '- [x] Lint <!-- aitm-verified-by: `npm run lint` -->',
-    '- [x] Format <!-- aitm-verified-by: `npm run format:check` -->',
+    '- [x] Tests <!-- aitm-verified cmd="`npm test`" -->',
+    '- [x] Lint <!-- aitm-verified cmd="`npm run lint`" -->',
+    '- [x] Format <!-- aitm-verified cmd="`npm run format:check`" -->',
   ].join('\n');
   const out = detectFunctionalPretick(body);
   assert.equal(out.regressions.length, 3);

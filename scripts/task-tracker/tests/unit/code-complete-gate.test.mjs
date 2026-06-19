@@ -15,8 +15,8 @@ const PASSING_BODY = `# Title
 
 ## Acceptance Criteria
 
-- [x] First AC <!-- aitm-verified-by: \`node scripts/run-tests.mjs\` -->
-- [x] Second AC <!-- aitm-verified-by: \`gh issue view 1\` -->
+- [x] First AC <!-- aitm-verified cmd="\`node scripts/run-tests.mjs\`" -->
+- [x] Second AC <!-- aitm-verified cmd="\`gh issue view 1\`" -->
 
 ## Definition of Done
 
@@ -92,7 +92,7 @@ test('gateCodeComplete: missing AC section → blocker', async () => {
 test('gateCodeComplete: unticked AC → blocker', async () => {
   const body = `## Acceptance Criteria
 - [ ] Unticked AC
-- [x] Ticked <!-- aitm-verified-by: \`x\` -->
+- [x] Ticked <!-- aitm-verified cmd="\`x\`" -->
 `;
   const r = await gateCodeComplete({
     cfg,
@@ -126,9 +126,9 @@ test('gateCodeComplete: ticked without aitm-verified-by → blocker', async () =
   assert.ok(r.blockers.some((b) => b.includes('ac-unverified: Ticked but unverified')));
 });
 
-test('gateCodeComplete: aitm-verified-by:TBD treated as unverified', async () => {
+test('gateCodeComplete: aitm-verified cmd="TBD" treated as unverified', async () => {
   const body = `## Acceptance Criteria
-- [x] AC with TBD <!-- aitm-verified-by: TBD -->
+- [x] AC with TBD <!-- aitm-verified cmd="TBD" -->
 `;
   const r = await gateCodeComplete({
     cfg,
