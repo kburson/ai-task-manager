@@ -161,6 +161,20 @@ export function normalizeAcceptanceCriteria(value) {
   return out.join('\n');
 }
 
+// AC3 — Plan Metadata label emphasis: any `word:` or `hyphenated-word:` at the
+// start of a line is wrapped in `**...**`. Idempotent — already-bold labels
+// pass through unchanged.
+export function normalizePlanMetadata(value) {
+  return value
+    .split('\n')
+    .map((line) =>
+      line.replace(/^(\*\*[\w][\w-]*\*\*:|[\w][\w-]*:)/, (m) =>
+        m.startsWith('**') ? m : `**${m.slice(0, -1)}**:`
+      )
+    )
+    .join('\n');
+}
+
 export function normalizeFills(fills) {
   const out = { ...fills };
   for (const [key, heading] of Object.entries(SECTION_HEADINGS)) {
@@ -170,6 +184,9 @@ export function normalizeFills(fills) {
   }
   if (typeof out.acceptance_criteria === 'string') {
     out.acceptance_criteria = normalizeAcceptanceCriteria(out.acceptance_criteria);
+  }
+  if (typeof out.plan_metadata === 'string') {
+    out.plan_metadata = normalizePlanMetadata(out.plan_metadata);
   }
   return out;
 }

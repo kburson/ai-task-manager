@@ -13,6 +13,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
+import { normalizePlanMetadata } from '../../preflight-issue.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditEvidenceMarkers } from '../../lib/evidence-markers.mjs';
@@ -169,5 +170,29 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('normalizePlanMetadata (#416)', () => {
+  it('bolds a simple word label', () => {
+    assert.equal(normalizePlanMetadata('origin: foo'), '**origin**: foo');
+  });
+
+  it('bolds a hyphenated label', () => {
+    assert.equal(normalizePlanMetadata('root-cause: bar'), '**root-cause**: bar');
+  });
+
+  it('is idempotent on already-bold labels', () => {
+    assert.equal(normalizePlanMetadata('**origin**: foo'), '**origin**: foo');
+  });
+
+  it('leaves non-label lines unchanged', () => {
+    assert.equal(normalizePlanMetadata('Some free text here.'), 'Some free text here.');
+  });
+
+  it('handles multi-line input, bolding only label lines', () => {
+    const input = 'origin: foo\nroot-cause: bar\nSome prose.\n**impact**: baz';
+    const expected = '**origin**: foo\n**root-cause**: bar\nSome prose.\n**impact**: baz';
+    assert.equal(normalizePlanMetadata(input), expected);
   });
 });
