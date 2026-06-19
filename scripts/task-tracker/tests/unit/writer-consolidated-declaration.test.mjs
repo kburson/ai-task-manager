@@ -94,7 +94,11 @@ const LEGACY_RE = /aitm-verified-by:/;
     return acceptanceCriteria[0].evidenceCommands;
   }
   assert.deepEqual(acCommands(legacy), [], 'legacy-declared AC yields no commands after #468');
-  assert.deepEqual(acCommands(consolidated), [CMD], 'consolidated-declared AC still yields command');
+  assert.deepEqual(
+    acCommands(consolidated),
+    [CMD],
+    'consolidated-declared AC still yields command'
+  );
 }
 
 console.log('writer-consolidated-declaration.test.mjs: OK');
