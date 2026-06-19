@@ -43,7 +43,6 @@ const CANONICAL_DOCS = [
   'skill/adapters/claude/SKILL.md',
   'skill/shared/SKILL.md',
 ];
-
 function hookCommands(settings, event) {
   return (settings.hooks?.[event] ?? []).flatMap((entry) => [
     ...(typeof entry === 'string' ? [entry] : []),

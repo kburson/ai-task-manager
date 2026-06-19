@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #466
 import { strict as assert } from 'node:assert';
 
 import {
