@@ -24,7 +24,7 @@ function buildBody({ size = 'XS', sectionChars = 2000 } = {}) {
   }
 
   return [
-    '## Pickup Directive',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
     '- [x] Deep dive complete',
     '',
     '<!-- aitm-deep-dive-posted: 2026-06-08T10:00:00Z -->',
@@ -73,7 +73,7 @@ test('planDeepDiveGate: floors exported and unchanged from #325', () => {
 
 test('planDeepDiveGate: missing complete marker — no double blocker from chars check', () => {
   const body = [
-    '## Pickup Directive',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
     '<!-- aitm-deep-dive-posted: 2026-06-08T10:00:00Z -->',
     '## Deep-Dive Analysis',
     'short',

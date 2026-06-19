@@ -68,6 +68,14 @@ export function planDeepDiveGate({ body = '' } = {}) {
       'plan-develop-deep-dive-complete-marker-missing: body must contain `<!-- aitm-deep-dive-complete: ... -->` — run `/task check "Deep dive complete"` to stamp the marker'
     );
   }
+  // #469 — Pickup Directive must be present at the top level (not inside
+  // a <details> block) before Plan→Develop is allowed.
+  const strippedForPickup = body.replace(/<details[\s\S]*?<\/details>/gi, '');
+  if (!/^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m.test(strippedForPickup)) {
+    blockers.push(
+      'plan-develop-pickup-directive-missing: body must contain a top-level `## Pickup Directive — MANDATORY, DO NOT SKIP` heading (not inside a `<details>` block) before promoting to Develop'
+    );
+  }
   // #358 — size-tiered substantive-chars floor: only fires when both the
   // `deep-dive-complete` marker AND the section heading are present. The
   // section-missing and posted/complete-missing cases are already surfaced
