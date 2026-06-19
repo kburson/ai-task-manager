@@ -15,12 +15,12 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 
 import { verbReview } from '../../verbs/review.mjs';
 
 function makeTmpStatePath(state) {
-  const dir = mkdtempSync(join(tmpdir(), 'aitm-463-'));
+  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-463-'));
   const p = join(dir, 'state.json');
   writeFileSync(p, JSON.stringify(state));
   return { statePath: p, dir };
