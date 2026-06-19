@@ -1,10 +1,12 @@
 node_modules/
 
 *.tgz
-
-/reports/
 .DS_Store
 
+output/
+reports/
+.tmp/
+tmp/
 
 # ai-task-manager — user configuration files (do not commit)
 .ai-task-manager/task-tracker-state.json
@@ -34,9 +36,6 @@ node_modules/
 # Per-host install artifacts (Claude Code / Codex / Agents — regenerable from skill/)
 .claude/
 .agents/
-AGENTS.md
-
-.tmp/
 
 .worktrees/
 .claude/task-tracker.json
