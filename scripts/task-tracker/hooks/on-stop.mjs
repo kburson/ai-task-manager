@@ -17,13 +17,37 @@
 // active-task file (no-ops). Never throws — a misbehaving hook must not
 // break the session.
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getProjectDir, sessionDir } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
 
-function currentSid(env = process.env) {
-  return env.CLAUDE_SESSION_ID || env.AI_TASK_MANAGER_SESSION_ID || null;
+function parseHookPayload(stdin = '') {
+  if (!stdin) return {};
+  try {
+    return JSON.parse(stdin);
+  } catch {
+    return {};
+  }
+}
+
+function readHookStdin() {
+  if (process.stdin.isTTY) return '';
+  try {
+    return readFileSync(0, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+function currentSid(env = process.env, payload = {}) {
+  return (
+    env.CLAUDE_SESSION_ID ||
+    env.AI_TASK_MANAGER_SESSION_ID ||
+    env.CODEX_SESSION_ID ||
+    payload.session_id ||
+    null
+  );
 }
 
 export function pendingPausePath(sid, projDir = getProjectDir()) {
@@ -41,8 +65,10 @@ export function buildPayload(active, sid, nowIso = new Date().toISOString()) {
 export function recordPendingPause({
   env = process.env,
   now = () => new Date().toISOString(),
+  hookInput = {},
 } = {}) {
-  const sid = currentSid(env);
+  const hookPayload = typeof hookInput === 'string' ? parseHookPayload(hookInput) : hookInput;
+  const sid = currentSid(env, hookPayload);
   if (!sid) return { status: 'no-session' };
   const projDir = getProjectDir(env);
   let active = null;
@@ -71,7 +97,7 @@ const invokedDirectly =
   process.argv[1]?.endsWith('\\on-stop.mjs');
 if (invokedDirectly) {
   try {
-    recordPendingPause();
+    recordPendingPause({ hookInput: readHookStdin() });
   } catch {
     /* swallow */
   }

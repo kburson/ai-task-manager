@@ -27,6 +27,12 @@ const fakeHome = mkdtempSync(
 const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
 const COMMIT_TRAIL_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs';
+const BASH_GUARD_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
+const ON_STOP_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
+const ON_USER_PROMPT_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
+const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
 const LEGACY_TIMING_HOOK_CMD = '.claude/hooks/task-tracker.sh';
 const LEGACY_COMMIT_TRAIL_HOOK_CMD = '.claude/hooks/commit-trail.sh';
 const CANONICAL_DOCS = [
@@ -126,6 +132,36 @@ try {
     'Codex stub must include shared skill in load-once file list'
   );
 
+  const codexHooksPath = path.join(target, '.codex', 'hooks.json');
+  assert.ok(existsSync(codexHooksPath), 'Codex hooks.json missing');
+  const codexHooks = JSON.parse(readFileSync(codexHooksPath, 'utf8'));
+  for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
+    assert.ok(
+      hasHookCommand(codexHooks, event, TIMING_HOOK_CMD),
+      `Codex ${event} timing hook missing`
+    );
+  }
+  assert.ok(
+    hasHookCommand(codexHooks, 'PreToolUse', BASH_GUARD_HOOK_CMD),
+    'Codex PreToolUse bash guard missing'
+  );
+  assert.ok(
+    hasHookCommand(codexHooks, 'PostToolUse', COMMIT_TRAIL_HOOK_CMD),
+    'Codex PostToolUse commit-trail hook missing'
+  );
+  assert.ok(
+    hasHookCommand(codexHooks, 'UserPromptSubmit', ON_USER_PROMPT_HOOK_CMD),
+    'Codex UserPromptSubmit timing hook missing'
+  );
+  assert.ok(
+    hasHookCommand(codexHooks, 'UserPromptSubmit', CODEX_PROMPT_TIMESTAMP_HOOK_CMD),
+    'Codex UserPromptSubmit timestamp hook missing'
+  );
+  assert.ok(
+    hasHookCommand(codexHooks, 'Stop', ON_STOP_HOOK_CMD),
+    'Codex Stop pending-pause hook missing'
+  );
+
   // Timing and commit-trail hooks are direct Node settings commands, not installed shell stubs.
   assert.equal(
     existsSync(path.join(target, '.claude', 'hooks', 'task-tracker.sh')),
@@ -185,11 +221,18 @@ try {
   // #70: Idempotency — re-running install produces zero net change to settings
   // or to activity-policy.json.
   const settingsBefore = readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8');
+  const codexHooksBefore = readFileSync(codexHooksPath, 'utf8');
   const policyBefore = readFileSync(policyPath, 'utf8');
   await pexec('node', [CLI, 'install', '--target', target]);
   const settingsAfter = readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8');
+  const codexHooksAfter = readFileSync(codexHooksPath, 'utf8');
   const policyAfter = readFileSync(policyPath, 'utf8');
   assert.equal(settingsAfter, settingsBefore, 'second install must be a no-op on settings.json');
+  assert.equal(
+    codexHooksAfter,
+    codexHooksBefore,
+    'second install must be a no-op on .codex/hooks.json'
+  );
   assert.equal(policyAfter, policyBefore, 'second install must not touch activity-policy.json');
 
   // #70: User edits to activity-policy.json must be preserved across re-install.

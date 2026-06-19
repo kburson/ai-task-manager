@@ -1,12 +1,12 @@
 # Codex Support Matrix
 
-This document records which ai-task-manager features Codex agents receive at prompt level versus enforcement level, and explains why `hookCapability: false` is the correct permanent value for the Codex provider.
+This document records which ai-task-manager features Codex agents receive at prompt level versus hook-enforced level.
 
-## Why `hookCapability: false` is permanent
+## Hook Capability
 
-Claude Code exposes a hook surface (`.claude/settings.json` → `hooks`) that allows the package to intercept tool calls pre/post and enforce guards — the bash-guard, source-edit-gate, and similar hard gates depend on this surface. Codex has no equivalent: there is no global settings file, no lifecycle-event dispatch, and no pre-tool-use interception point the package can reach.
+Codex exposes project hooks through `.codex/hooks.json` and `.codex/config.toml`. AITM installs `.codex/hooks.json` when the Codex provider is selected, so `scripts/providers/codex.mjs` sets `hookCapability: true`.
 
-`hookCapability: false` in `scripts/providers/codex.mjs` is therefore a permanent fact about the runtime, not a missing feature to be implemented. Raising it to `true` would require Codex to gain a hooks API first.
+Project-local Codex hooks require the project to be trusted and may need review with `/hooks` before they run. The installed commands are fail-open where appropriate so a hook failure does not break the chat session.
 
 ## Prompt parity (Codex receives these)
 
@@ -39,22 +39,32 @@ for one-step advancement, `/task refine #N ...` for Refine field entry,
 `/task test #N` for Develop → Test, `/task approve #N` for human Review
 approval, and `/task close #N` for Review → Done.
 
-## Enforcement parity (Claude-only, require hooks)
+## Enforcement Parity
 
-Features that require the `.claude/settings.json` hook surface — absent for Codex by design:
+AITM maps Claude's hook coverage to Codex hook events where Codex exposes an equivalent event:
 
-| Feature                                                        | Claude enforcement                        | Codex status                                        |
-| -------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------- |
-| Bash-guard (`gh issue edit --body` refusal)                    | `PreToolUse` Bash hook → `bash-guard.mjs` | Prompt-only (cannot block at tool level)            |
-| Source-edit gate (blocks Edit/Write before deep-dive-complete) | `PreToolUse` Edit/Write hook              | Prompt-only (cannot block at tool level)            |
-| `gh-edit-guard` (marker-loss protection)                       | Bash hook                                 | Prompt-only (cannot block at tool level)            |
-| Timing log hooks (session start/stop)                          | `PostToolUse` + Stop hook                 | Not available; manual `/task start` / `/task pause` |
+| Feature                                                     | Claude hook                                              | Codex hook                                                                        |
+| ----------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Timing rows for session/compact lifecycle                   | `SessionStart`, `PreCompact`, `PostCompact`              | Same events via `.codex/hooks.json`                                               |
+| Bash guard (`gh issue edit --body` refusal and path safety) | `PreToolUse` matcher `Bash`                              | `PreToolUse` matcher `Bash`                                                       |
+| Activity guard                                              | `PreToolUse` matcher `Bash`, edit tools                  | `PreToolUse` matcher `Bash`, `apply_patch&#124;Edit&#124;Write&#124;NotebookEdit` |
+| Source-edit gate before deep-dive/develop                   | `PreToolUse` matcher `Edit&#124;Write&#124;NotebookEdit` | `PreToolUse` matcher `apply_patch&#124;Edit&#124;Write&#124;NotebookEdit`         |
+| Commit trail after `git commit`                             | `PostToolUse` matcher `Bash`                             | `PostToolUse` matcher `Bash`                                                      |
+| Natural idle pause/resume                                   | `Stop` + `UserPromptSubmit`                              | `Stop` + `UserPromptSubmit`, using Codex `session_id` payloads                    |
+| Stop audit warning for unbalanced pause/resume rows         | `Stop`                                                   | `Stop`                                                                            |
+| Prompt timestamp context                                    | Not installed                                            | `UserPromptSubmit` adds timestamp context                                         |
 
-For Codex users, these rules are documented in the skill but cannot be mechanically enforced. The workflow relies on behavioral compliance.
+The Codex-only prompt timestamp hook cannot rewrite the submitted prompt. It returns Codex's documented `hookSpecificOutput.additionalContext` for `UserPromptSubmit`, which adds a line such as `User prompt submitted at 2026-06-19T14:00:00.000Z (turn turn-456). Use this timestamp when reasoning about conversation drift or relative-time references.`
 
-## Manual Codex steps
+## Remaining Differences
 
-Codex users must keep manual `/task start` / `/task pause` / `/task resume` discipline when switching issues, asking blocking questions, or returning after idle time. Codex must also voluntarily use the task scripts for issue body mutation and state movement because no Codex hook can intercept a direct shell command before it runs.
+| Capability                   | Claude                                        | Codex                                                              |
+| ---------------------------- | --------------------------------------------- | ------------------------------------------------------------------ |
+| Native transcript locator    | `.claude/projects` homedir JSONL fallback     | `null`; AITM relies on local session state                         |
+| `AskUserQuestion` bracketing | Hooked around Claude's `AskUserQuestion` tool | No installed equivalent unless Codex exposes a matching tool event |
+| User prompt rewriting        | Not used                                      | Not supported; timestamp is extra context                          |
+
+Codex users should still use `/task start` when binding a new issue and `/task pause` for explicit long-running pauses. The hook layer covers normal lifecycle events, but manual commands remain the visible workflow API and are required for state transitions.
 
 ## Version stamping
 

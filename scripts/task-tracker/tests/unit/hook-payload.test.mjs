@@ -14,6 +14,7 @@
 //      marker payload `{stoppedAt, issue, state, sessionId}` matching the sid.
 //   4. `AI_TASK_MANAGER_SESSION_ID` fallback works when `CLAUDE_SESSION_ID`
 //      is absent.
+//   5. Codex hook payload `session_id` works when session env vars are absent.
 
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -99,6 +100,20 @@ function setActive(sid, issue) {
     issue: '#x',
     sessionId: 'sid-x',
   });
+}
+
+// 6. Codex hook payload `session_id` fallback when env vars are absent
+{
+  const sid = 'sid-codex-payload';
+  setActive(sid, '#hp-3');
+  const env = {
+    AI_TASK_MANAGER_PROJECT_DIR: tmp,
+  };
+  const hookInput = JSON.stringify({ session_id: sid, hook_event_name: 'Stop' });
+  const r = recordPendingPause({ env, hookInput });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.payload.sessionId, sid);
+  assert.equal(r.payload.issue, '#hp-3');
 }
 
 rmSync(tmp, { recursive: true });

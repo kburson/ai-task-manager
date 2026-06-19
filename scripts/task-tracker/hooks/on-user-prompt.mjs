@@ -9,9 +9,34 @@
 
 import { getProjectDir } from '../paths.mjs';
 import { finalizeOrphanPause, computeGapSeconds } from '../orphan-finalize.mjs';
+import { readFileSync } from 'node:fs';
 
-function currentSid(env = process.env) {
-  return env.CLAUDE_SESSION_ID || env.AI_TASK_MANAGER_SESSION_ID || null;
+function parseHookPayload(stdin = '') {
+  if (!stdin) return {};
+  try {
+    return JSON.parse(stdin);
+  } catch {
+    return {};
+  }
+}
+
+function readHookStdin() {
+  if (process.stdin.isTTY) return '';
+  try {
+    return readFileSync(0, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+function currentSid(env = process.env, payload = {}) {
+  return (
+    env.CLAUDE_SESSION_ID ||
+    env.AI_TASK_MANAGER_SESSION_ID ||
+    env.CODEX_SESSION_ID ||
+    payload.session_id ||
+    null
+  );
 }
 
 // Backwards-compatible export — older tests/imports may still call this.
@@ -21,8 +46,10 @@ export async function processPendingPause({
   env = process.env,
   now = () => new Date(),
   deps = {},
+  hookInput = {},
 } = {}) {
-  const sid = currentSid(env);
+  const payload = typeof hookInput === 'string' ? parseHookPayload(hookInput) : hookInput;
+  const sid = currentSid(env, payload);
   if (!sid) return { status: 'no-session' };
   const projDir = getProjectDir(env);
   const result = await finalizeOrphanPause({
@@ -54,7 +81,7 @@ const invokedDirectly =
   process.argv[1]?.endsWith('/on-user-prompt.mjs') ||
   process.argv[1]?.endsWith('\\on-user-prompt.mjs');
 if (invokedDirectly) {
-  processPendingPause()
+  processPendingPause({ hookInput: readHookStdin() })
     .catch(() => {})
     .finally(() => process.exit(0));
 }

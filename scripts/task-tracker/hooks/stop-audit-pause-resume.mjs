@@ -28,9 +28,34 @@ import { getProjectDir } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
 import { loadConfig } from '../config.mjs';
 import { readTimingCommentBody } from '../gh-timing-comment.mjs';
+import { readFileSync } from 'node:fs';
 
-function currentSid(env = process.env) {
-  return env.CLAUDE_SESSION_ID || env.AI_TASK_MANAGER_SESSION_ID || null;
+function parseHookPayload(stdin = '') {
+  if (!stdin) return {};
+  try {
+    return JSON.parse(stdin);
+  } catch {
+    return {};
+  }
+}
+
+function readHookStdin() {
+  if (process.stdin.isTTY) return '';
+  try {
+    return readFileSync(0, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+function currentSid(env = process.env, payload = {}) {
+  return (
+    env.CLAUDE_SESSION_ID ||
+    env.AI_TASK_MANAGER_SESSION_ID ||
+    env.CODEX_SESSION_ID ||
+    payload.session_id ||
+    null
+  );
 }
 
 // Pure parser. Counts `pause` vs `resume` rows in the slice of the timing
@@ -73,8 +98,9 @@ export function formatWarning(issue, audit) {
 
 // Resolve the bound issue, fetch its timing log, audit the session slice, and
 // warn on imbalance. Never throws.
-export async function runStopAudit({ env = process.env, deps = {} } = {}) {
-  const sid = currentSid(env);
+export async function runStopAudit({ env = process.env, deps = {}, hookInput = {} } = {}) {
+  const payload = typeof hookInput === 'string' ? parseHookPayload(hookInput) : hookInput;
+  const sid = currentSid(env, payload);
   if (!sid) return { status: 'no-session' };
 
   const projDir = getProjectDir(env);
@@ -115,7 +141,7 @@ const invokedDirectly =
   process.argv[1]?.endsWith('/stop-audit-pause-resume.mjs') ||
   process.argv[1]?.endsWith('\\stop-audit-pause-resume.mjs');
 if (invokedDirectly) {
-  runStopAudit()
+  runStopAudit({ hookInput: readHookStdin() })
     .catch(() => {})
     .finally(() => process.exit(0));
 }

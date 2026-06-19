@@ -13,8 +13,10 @@ assert.match(body, /Backlog → On Deck → Refine → Plan → Develop → Test
 assert.match(body, /State Transition Verb Map \(8-state model\)/);
 assert.match(body, /\/task plan #N/);
 assert.match(body, /\/task test #N/);
-assert.match(body, /Manual Codex steps/);
-assert.match(body, /manual `\/task start` \/ `\/task pause` \/ `\/task resume` discipline/);
-assert.match(body, /Prompt-only \(cannot block at tool level\)/);
+assert.match(body, /Hook Capability/);
+assert.match(body, /`hookCapability: true`/);
+assert.match(body, /`UserPromptSubmit` adds timestamp context/);
+assert.match(body, /Project-local Codex hooks require the project to be trusted/);
+assert.match(body, /Remaining Differences/);
 
 console.log('codex-support-matrix.test.mjs: all assertions passed');

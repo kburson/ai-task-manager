@@ -86,6 +86,7 @@ The installer writes stable skill stubs by default:
 
 - Claude Code: `.claude/skills/task/SKILL.md`
 - Codex: `.agents/skills/task/SKILL.md`
+- Codex hooks: `.codex/hooks.json`
 - Shared templates and runtime state: `.ai-task-manager/`
 
 ### Optional Codex Superpowers Bootstrap
@@ -616,7 +617,7 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 
 **`gh: command not found`** — Install the GitHub CLI: [cli.github.com](https://cli.github.com)
 
-**Timing not appearing on issues** — Verify hooks are registered in `.claude/settings.json` (the install command adds them). Run `gh auth status` to confirm authentication.
+**Timing not appearing on issues** — Verify hooks are registered in `.claude/settings.json` for Claude Code or `.codex/hooks.json` for Codex (the install command adds them). Run `gh auth status` to confirm authentication.
 
 **Backlog creation stalls on a permission prompt** — Check that your `.claude/settings.json` includes the `gh api graphql*` and `gh issue create*` allow rules. See [Permissions](#permissions) above.
 

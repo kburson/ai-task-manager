@@ -52,7 +52,7 @@ const EXPECTED_CODEX = Object.freeze({
   transcriptLocator: null,
   sessionIdEnvKeys: ['CODEX_SESSION_ID'],
   detectionEnvKeys: ['CODEX_SESSION_ID', 'CODEX_HOME'],
-  hookCapability: false,
+  hookCapability: true,
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
 });
 

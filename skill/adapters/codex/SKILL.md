@@ -28,6 +28,7 @@ Codex-specific conventions:
 - Use executable scripts from `node_modules/ai-task-manager/scripts/`.
 - Runtime project state lives in `.ai-task-manager/`; read legacy `.claude/` state only as fallback when the shared file is absent.
 - Codex repo-local skills are installed under `.agents/skills/task/SKILL.md`.
+- Codex hooks are installed under `.codex/hooks.json`; project-local hooks require a trusted project and may need `/hooks` review before they run.
 - Respect Codex sandbox and approval requirements. If a `gh`, `git push`, or networked script fails because credentials or network access are sandboxed, rerun with the required approval instead of bypassing the task workflow.
 - Do not assume Claude hooks or `.claude/settings.json` are available unless the project was installed with `--agent claude` or `--agent both`.
 

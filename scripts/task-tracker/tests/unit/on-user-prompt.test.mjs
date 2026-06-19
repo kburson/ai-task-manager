@@ -98,5 +98,26 @@ const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-up-'));
 assert.equal(computeGapSeconds(new Date(Date.now() - 60_000).toISOString()), 60);
 assert.equal(computeGapSeconds('not-a-date'), 0);
 
+// Test 7: Codex hook payload `session_id` fallback drains pending pause.
+{
+  const sid = 'u-codex';
+  setActiveTask(sid, { issue: '#213', state: 'develop' }, tmp);
+  const env = { AI_TASK_MANAGER_PROJECT_DIR: tmp };
+  recordPendingPause({
+    env,
+    hookInput: { session_id: sid },
+    now: () => new Date(Date.now() - 5 * 60_000).toISOString(),
+  });
+  const calls = [];
+  const r = await processPendingPause({
+    env,
+    hookInput: JSON.stringify({ session_id: sid, hook_event_name: 'UserPromptSubmit' }),
+    deps: { postTimingEvent: async (a) => calls.push(a) },
+  });
+  assert.equal(r.status, 'posted');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].row, /sess: u-codex reason: natural/);
+}
+
 rmSync(tmp, { recursive: true });
 console.log('on-user-prompt.test.mjs: all passed');

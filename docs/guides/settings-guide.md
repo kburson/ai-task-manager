@@ -276,22 +276,24 @@ shape from `fleet-registry.mjs`. Do NOT introduce a competing lock primitive.
 
 ## Hook-driven pause/resume
 
-Two Claude Code hooks turn natural conversational pauses into mechanical timing
-events — no `/task pause` discipline required.
+Two hooks turn natural conversational pauses into mechanical timing events — no
+`/task pause` discipline required for ordinary inter-turn idle gaps. Claude Code
+registers them in `.claude/settings.json`; Codex registers them in
+`.codex/hooks.json`.
 
 - **`Stop` hook → `scripts/task-tracker/hooks/on-stop.mjs`**: when Claude
-  finishes a turn, the hook writes a JSON marker at
+  Code or Codex finishes a turn, the hook writes a JSON marker at
   `.ai-task-manager/sessions/<sid>/pending-pause.json` containing
-  `{stoppedAt, issue, state, sessionId}`. Zero network I/O.
+  `{stoppedAt, issue, sessionId}`. Zero network I/O.
 - **`UserPromptSubmit` hook → `scripts/task-tracker/hooks/on-user-prompt.mjs`**:
   when the user sends the next turn, the hook reads the marker, computes the
   inter-turn gap, and (above `pauseThresholdSeconds`) appends one `idle` row to
   the bound issue's `⏱ Timing Log` comment. The marker is then deleted.
 
-Both hooks key on `CLAUDE_SESSION_ID` (Claude Code sets this env var per
-session) with `AI_TASK_MANAGER_SESSION_ID` as a self-test fallback. Both
-tolerate missing env / missing active task / write failures — a misbehaving
-hook must never break the user's session.
+Both hooks key on `CLAUDE_SESSION_ID`, `AI_TASK_MANAGER_SESSION_ID`,
+`CODEX_SESSION_ID`, or Codex's hook stdin `session_id` field. They tolerate
+missing env / missing active task / write failures — a misbehaving hook must
+never break the user's session.
 
 ## Per-session state layout
 

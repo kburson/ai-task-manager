@@ -122,6 +122,8 @@ const COMMIT_TRAIL_HOOK_CMD =
 const ON_STOP_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
 const ON_USER_PROMPT_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
+const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
 // EPIC #238 / #240 — AskUserQuestion pause/resume hooks. The same module is
 // invoked twice with a phase argument: `pause` (PreToolUse) brackets the
 // question open, `resume` (PostToolUse) closes it with the measured wait.
@@ -316,6 +318,69 @@ export function patchSettingsJson(settingsPath) {
 
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+}
+
+export function patchCodexHooksJson(hooksPath) {
+  let config = {};
+  if (existsSync(hooksPath)) {
+    try {
+      config = JSON.parse(readFileSync(hooksPath, 'utf8'));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (!config.hooks) config.hooks = {};
+
+  function add(event, matcher, command, extra = {}) {
+    if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
+    const already = config.hooks[event].some((entry) => hookEntryHasCommand(entry, command));
+    if (already) return;
+    const entry = {
+      ...extra,
+      hooks: [{ type: 'command', command }],
+    };
+    if (matcher != null) entry.matcher = matcher;
+    config.hooks[event].push(entry);
+  }
+
+  for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
+    add(
+      event,
+      event === 'SessionStart' ? 'startup|resume|clear|compact' : 'manual|auto',
+      TIMING_HOOK_CMD
+    );
+  }
+
+  add(
+    'PreToolUse',
+    'Bash',
+    'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs'
+  );
+  add(
+    'PreToolUse',
+    'Bash',
+    'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs'
+  );
+  add(
+    'PreToolUse',
+    'apply_patch|Edit|Write|NotebookEdit',
+    'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs'
+  );
+  add(
+    'PreToolUse',
+    'apply_patch|Edit|Write|NotebookEdit',
+    'node node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs'
+  );
+  add('PostToolUse', 'Bash', COMMIT_TRAIL_HOOK_CMD);
+
+  add('Stop', null, ON_STOP_HOOK_CMD, { timeout: 30 });
+  add('Stop', null, STOP_AUDIT_HOOK_CMD, { timeout: 30 });
+  add('UserPromptSubmit', null, ON_USER_PROMPT_HOOK_CMD, { timeout: 30 });
+  add('UserPromptSubmit', null, CODEX_PROMPT_TIMESTAMP_HOOK_CMD, { timeout: 30 });
+
+  mkdirSync(dirname(hooksPath), { recursive: true });
+  writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
 
 function patchGitignore(targetDir) {
@@ -549,6 +614,10 @@ function installCodex(targetDir, linkMode) {
     );
   } else {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
+  }
+  if (getProvider('codex').hookCapability) {
+    patchCodexHooksJson(join(targetDir, '.codex', 'hooks.json'));
+    ok(`Hooks ${dim('.codex/hooks.json')}`);
   }
 }
 

@@ -40,7 +40,7 @@ const EXPECTED_CODEX_SESSION_ID_ENV_KEYS = ['CODEX_SESSION_ID'];
 const EXPECTED_CLAUDE_DETECTION_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
 const EXPECTED_CODEX_DETECTION_ENV_KEYS = ['CODEX_SESSION_ID', 'CODEX_HOME'];
 const EXPECTED_CLAUDE_HOOK_CAPABILITY = true;
-const EXPECTED_CODEX_HOOK_CAPABILITY = false;
+const EXPECTED_CODEX_HOOK_CAPABILITY = true;
 
 const tests = [];
 function test(name, fn) {
@@ -212,7 +212,7 @@ test('parity: claude.hookCapability is true', () => {
   assert.equal(claudeAdapter.hookCapability, EXPECTED_CLAUDE_HOOK_CAPABILITY);
 });
 
-test('parity: codex.hookCapability is false', () => {
+test('parity: codex.hookCapability is true', () => {
   assert.equal(codexAdapter.hookCapability, EXPECTED_CODEX_HOOK_CAPABILITY);
 });
 

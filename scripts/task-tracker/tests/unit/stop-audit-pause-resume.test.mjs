@@ -141,4 +141,24 @@ function bodyOf(...rows) {
   assert.equal(warnings.length, 0);
 }
 
+// Test 10: Codex hook payload `session_id` fallback is audited.
+{
+  const sid = 's-codex-audit';
+  const body = bodyOf(row('pause', sid), row('resume', sid), row('pause', sid));
+  const warnings = [];
+  const r = await runStopAudit({
+    env: {},
+    hookInput: JSON.stringify({ session_id: sid, hook_event_name: 'Stop' }),
+    deps: {
+      getActiveTask: () => ({ issue: '101' }),
+      loadConfig: () => ({ repo: 'o/r' }),
+      readTimingCommentBody: async () => body,
+      warn: (m) => warnings.push(m),
+    },
+  });
+  assert.equal(r.status, 'warned');
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /#101/);
+}
+
 console.log('stop-audit-pause-resume.test.mjs: all assertions passed');
