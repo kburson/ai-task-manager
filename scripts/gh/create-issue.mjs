@@ -177,6 +177,14 @@ function ghCreate(args, assignee) {
   const created = run('gh', ghArgs, { timeout: GH_API_TIMEOUT_MS });
   if (created.status !== 0) {
     process.stderr.write(created.stderr);
+    const partialNumber = extractIssueNumber(created.stdout);
+    if (partialNumber) {
+      process.stderr.write(
+        `partial-success: #${partialNumber} — issue was created but gh exited ${created.status}.\n` +
+          `  Tether/update #${partialNumber} before retrying rather than creating a duplicate.\n`
+      );
+      process.exit(6);
+    }
     die(`gh issue create failed (exit ${created.status})`, created.status || 1);
   }
   const issueNumber = extractIssueNumber(created.stdout);

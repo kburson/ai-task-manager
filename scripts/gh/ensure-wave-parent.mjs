@@ -92,7 +92,7 @@ function renderTemplate({ purpose, children, waveIdValue }) {
 
 async function findExistingParentByWaveId({ repo, waveIdValue, assignee }) {
   const marker = `wave-id: ${waveIdValue}`;
-  const q = `"<!-- ${marker} -->" in:body repo:${repo} state:open`;
+  const q = `"${marker}" in:body repo:${repo} state:open`;
   const args = ['search', 'issues', q, '--json', 'number,body', '--limit', '20'];
   if (assignee) args.push('--author', assignee.replace(/^@/, ''));
   let stdout;

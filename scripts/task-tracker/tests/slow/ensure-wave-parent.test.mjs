@@ -370,4 +370,33 @@ function readCalls(callsLog) {
   }
 }
 
+// ─── Test 7 (#459 Bug B): search query must NOT contain HTML comment syntax ────
+{
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-7-'));
+  try {
+    writeConfig(sandbox);
+    const { binDir, callsLog } = makeGhShim(sandbox, {
+      parents: { 70: null, 71: null },
+      searchIssues: [],
+      newIssueNumber: 800,
+    });
+    // Run with two solo children — triggers findExistingParentByWaveId search.
+    await runHelper(sandbox, binDir, ['--children', '70,71', '--purpose', 'search-query-test']);
+    const calls = readCalls(callsLog);
+    const searchCall = calls.find((c) => c.argv[0] === 'search' && c.argv[1] === 'issues');
+    assert.ok(searchCall, 'expected a gh search issues call');
+    // The search query argument must not contain HTML comment wrappers.
+    const queryArg = searchCall.argv.join(' ');
+    assert.ok(
+      !queryArg.includes('<!--') && !queryArg.includes('-->'),
+      `search query must not contain HTML comment syntax; got: ${queryArg}`
+    );
+    // The query must still contain the plain wave-id marker text.
+    assert.match(queryArg, /wave-id:/, 'search query must contain plain "wave-id:" text');
+    console.log('test 7 passed: search query does not contain HTML comment syntax');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
 console.log('ensure-wave-parent: all tests passed');
