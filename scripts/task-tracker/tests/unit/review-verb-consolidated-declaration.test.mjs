@@ -43,16 +43,13 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 }
 
 // Behavioral replication of review.mjs's exact AC command-extraction (lines
-// ~232-246). Kept byte-faithful to the verb so this test fails if the verb's
-// extraction drifts from the form pinned above.
+// ~235-246). Kept byte-faithful to the verb so this test fails if the verb's
+// extraction drifts from the form pinned above. #468 removed the legacy
+// evidencePattern branch — only the consolidated form is now recognized.
 function extractAcCommands(label) {
-  const evidencePattern = /<!--\s*aitm-verified-by:\s*([\s\S]*?)\s*-->/;
   const cmdMatch = label.match(/^`([^`]+)`/); // canRunCommand=false for AC prose
-  const evidenceMatch = !cmdMatch ? label.match(evidencePattern) : null;
-  let evidenceCommands = evidenceMatch
-    ? [...evidenceMatch[1].matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1])
-    : [];
-  if (!cmdMatch && !evidenceCommands.length && !hasExecutionProof(label)) {
+  let evidenceCommands = [];
+  if (!cmdMatch && !hasExecutionProof(label)) {
     const props = parseProofMarker(label);
     if (props && typeof props.cmd === 'string') {
       evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
@@ -73,11 +70,11 @@ function extractAcCommands(label) {
   console.log('PASS: consolidated-only AC declaration parses a non-empty command list');
 }
 
-// AC #2 — a legacy declaration parses exactly as before.
+// AC #2 — after #468, a legacy aitm-verified-by: declaration is no longer recognized.
 {
   const label = 'Help text renders <!-- aitm-verified-by: `npm test` -->';
-  assert.deepEqual(extractAcCommands(label), ['npm test'], 'legacy AC declaration unchanged');
-  console.log('PASS: legacy AC declaration parses unchanged');
+  assert.deepEqual(extractAcCommands(label), [], 'legacy AC declaration ignored after #468');
+  console.log('PASS: legacy AC declaration ignored after #468');
 }
 
 // AC #3 — an execution-proof stamp (record-of-run keys, no declaration intent)

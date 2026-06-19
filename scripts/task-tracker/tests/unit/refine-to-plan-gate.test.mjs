@@ -97,7 +97,7 @@ test('compound CLI command in AC marker → refine-exit-forbidden-command blocke
     labels: ['x'],
     body: `## Acceptance Criteria
 
-- [ ] AC. <!-- aitm-verified-by: \`npm run lint && npm test\` -->
+- [ ] AC. <!-- aitm-verified cmd="\`npm run lint && npm test\`" -->
 `,
   });
   const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });

@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 // @story #419
 // cspell:ignore tmpl backticked
-// #419 (epic #417, C2) — the three declaration WRITERS now emit the consolidated
+// #419/#468 — the three declaration WRITERS emit only the consolidated
 // `aitm-verified cmd="…"` form. This test pins both halves of the contract:
 //   (a) WRITE: each flipped writer emits the consolidated declaration, never the
 //       legacy `aitm-verified-by:` form.
-//   (b) READ back-compat: a body still carrying legacy `aitm-verified-by`
-//       declarations gates identically to the same body in consolidated form.
-// The flip is write-only and read-compatible — C1 (#418) already made every
-// reader dual-form, so a legacy corpus stays valid forever.
+//   (b) READ: #468 retired the legacy reader arm. Legacy markers are silently
+//       ignored; consolidated form is the sole recognized declaration syntax.
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -71,17 +69,22 @@ const LEGACY_RE = /aitm-verified-by:/;
   assert.ok(!LEGACY_RE.test(res.body), 'backfill writer emits no legacy marker');
 }
 
-// --- (b) READ back-compat: legacy and consolidated gate identically --------
+// --- (b) READ: #468 retired legacy form — consolidated is the sole declaration
 {
   const CMD = 'npm run test:all';
   const legacy = `<!-- aitm-verified-by: \`${CMD}\` -->`;
   const consolidated = `<!-- aitm-verified cmd="\`${CMD}\`" -->`;
 
-  // Shared low-level reader.
+  // Shared low-level reader: legacy form no longer recognized.
   assert.deepEqual(
     extractVerifiedCommands(`item ${legacy}`),
+    [],
+    'extractVerifiedCommands ignores legacy aitm-verified-by: form after #468'
+  );
+  assert.deepEqual(
     extractVerifiedCommands(`item ${consolidated}`),
-    'extractVerifiedCommands reads both declaration forms identically'
+    [CMD],
+    'extractVerifiedCommands reads consolidated declaration'
   );
 
   // Evidence-checklist reader (backs the review-preflight evidence audit).
@@ -90,12 +93,8 @@ const LEGACY_RE = /aitm-verified-by:/;
     const { acceptanceCriteria } = parseEvidenceChecklist(b);
     return acceptanceCriteria[0].evidenceCommands;
   }
-  assert.deepEqual(
-    acCommands(legacy),
-    acCommands(consolidated),
-    'a legacy-declared AC and a consolidated-declared AC yield identical evidence commands'
-  );
-  assert.deepEqual(acCommands(legacy), [CMD], 'legacy declaration still reads its command');
+  assert.deepEqual(acCommands(legacy), [], 'legacy-declared AC yields no commands after #468');
+  assert.deepEqual(acCommands(consolidated), [CMD], 'consolidated-declared AC still yields command');
 }
 
 console.log('writer-consolidated-declaration.test.mjs: OK');
