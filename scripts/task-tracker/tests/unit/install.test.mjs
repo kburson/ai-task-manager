@@ -131,6 +131,32 @@ try {
     'Codex stub must include shared skill in load-once file list'
   );
 
+  // Claude command stub must describe the current 8-state workflow (#464)
+  const claudeCommandStub = readFileSync(
+    path.join(target, '.claude', 'commands', 'task.md'),
+    'utf8'
+  );
+  assert.match(
+    claudeCommandStub,
+    /State Transition Verb Map \(8-state model\)/,
+    'Claude task.md stub must name the 8-state model'
+  );
+  assert.match(
+    claudeCommandStub,
+    /Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done/,
+    'Claude task.md stub must include On Deck in the state chain'
+  );
+  assert.match(
+    claudeCommandStub,
+    /\/task plan #N/,
+    'Claude task.md stub must name the dedicated Refine → Plan verb'
+  );
+  assert.match(
+    claudeCommandStub,
+    /\/task test #N/,
+    'Claude task.md stub must name the dedicated Develop → Test verb'
+  );
+
   const codexHooksPath = path.join(target, '.codex', 'hooks.json');
   assert.ok(existsSync(codexHooksPath), 'Codex hooks.json missing');
   const codexHooks = JSON.parse(readFileSync(codexHooksPath, 'utf8'));
