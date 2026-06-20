@@ -6,7 +6,7 @@
 // flag defeats) and deadlocks `/task new`. Instead the elapsed bucket time is
 // reconciled as a single fresh-stamped idle row. See issue #234.
 import { strict as assert } from 'node:assert';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbNew } from '../../verbs/new.mjs';
@@ -41,6 +41,14 @@ const now = new Date();
 const startedAt = new Date(now.getTime() - TEN_MIN_MS).toISOString();
 const nowIso = now.toISOString();
 
+// #414 — verbNew from discover state requires savedPlanFile. Write a minimal
+// plan file and stamp its path into the bucket so the title-resolution guard
+// does not abort before we reach the timing-reconciliation logic under test.
+const plansDir = path.join(dir, 'docs', 'plans');
+mkdirSync(plansDir, { recursive: true });
+const savedPlanFile = path.join(plansDir, '20260619-aged-bucket-promotion.md');
+writeFileSync(savedPlanFile, '# Aged bucket promotion\n\n## Scope\nregression test\n', 'utf8');
+
 writeFileSync(
   statePath,
   JSON.stringify({
@@ -52,6 +60,7 @@ writeFileSync(
       startedAt,
       wordsAtStart: 1234,
       entries: [{ ts: startedAt, event: 'discover-start', deltaMin: null, deltaWords: null }],
+      savedPlanFile,
     },
   }),
   'utf8'
@@ -70,7 +79,7 @@ const ctx = {
   },
   statePath,
   projectDir: dir,
-  rest: ['Aged', 'bucket', 'promotion'],
+  rest: [],
   role: 'dev',
   SKIP_NETWORK: false,
   drainQueueIfAny: async () => {},
