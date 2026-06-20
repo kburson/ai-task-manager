@@ -241,7 +241,7 @@ const scratch = projectScratchDir('test');
     'utf8'
   );
 
-  const planPath = path.join(dir, 'myplan.md');
+  const planPath = path.join(dir, 'plan-branch-two.md');
   writeFileSync(planPath, '# Branch Two Plan\n\n## Scope\ndemo\n', 'utf8');
 
   let createdTitle = null;
