@@ -14,6 +14,7 @@ import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-pare
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 import { userStoryWarnGuard } from '../lib/user-story-guard.mjs';
+import { discussBlockGuard } from '../lib/discuss-block-guard.mjs';
 
 export default Object.freeze({
   name: 'on-deck',
@@ -25,6 +26,10 @@ export default Object.freeze({
     childCannotLeadEpicExitGuard,
     // #432 — warn (non-blocking) if ## User Story is missing or still a placeholder.
     userStoryWarnGuard,
+    // #473 — an unresolved `{discuss}` directive hard-blocks On Deck → Refine,
+    // covering issues that start in On Deck. Resolution strips the token, so it
+    // fires at most once across the Backlog/On Deck boundary.
+    discussBlockGuard,
   ]),
   onEnter: Object.freeze([]),
 });

@@ -158,6 +158,28 @@ export async function verbCheck(ctx) {
     return;
   }
 
+  if (/^discussion complete$/i.test(label)) {
+    // #473 — resolve a `{discuss}` directive (#405). Strip the token and stamp
+    // the non-invariant `aitm-discussed` marker so `discussBlockGuard` passes
+    // and forward promotion resumes. Idempotent via markDiscussed.
+    const { markDiscussed } = await import('../lib/discuss-marker.mjs');
+    const { mutateIssueBody } = await import('../lib/issue-body-mutate.mjs');
+    const ts = new Date().toISOString();
+    const res = await mutateIssueBody({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      mutate: (base) => markDiscussed(base, { ts }),
+    });
+    if (res.status === 'no-op') {
+      console.log(`[task-tracker] ✓ Discussion already resolved on ${s.active}`);
+    } else {
+      console.log(
+        `[task-tracker] ✓ Marked discussion complete on ${s.active} at ${ts} (token stripped, aitm-discussed stamped)`
+      );
+    }
+    return;
+  }
+
   // Diagnostic check (pre-fetched body — best-effort for the not-found
   // error message). The authoritative write below re-runs the toggle on
   // FRESH base.

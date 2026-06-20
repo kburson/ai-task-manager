@@ -9,10 +9,13 @@
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
+import { discussBlockGuard } from '../lib/discuss-block-guard.mjs';
 
 export default Object.freeze({
   name: 'backlog',
   entryGuards: Object.freeze([contiguityEntryGuard]),
-  exitGuards: Object.freeze([blockedByGuard]),
+  // #473 — an unresolved `{discuss}` directive hard-blocks the first forward
+  // promotion out of Backlog, regardless of TT_FULL_AUTO.
+  exitGuards: Object.freeze([blockedByGuard, discussBlockGuard]),
   onEnter: Object.freeze([]),
 });

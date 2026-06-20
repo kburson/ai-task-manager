@@ -85,6 +85,9 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-exit-stub-placeholder': 'refine-stub-placeholder-refused',
   // #432 — ## User Story hard-refuse at refine→plan.
   'user-story-block': 'user-story-refused',
+  // #473 — unresolved `{discuss}` directive hard-blocks the first forward
+  // promotion out of Backlog/On Deck, regardless of TT_FULL_AUTO.
+  'discuss-unresolved': 'discuss-refused',
 };
 
 function refusalsToVerbResult(refusals, { issueNumber, target }) {
@@ -582,6 +585,7 @@ export async function verbPromote(rest, cfg) {
     case 'code-complete-refused':
     case 'dod-verified-missing':
     case 'vc-presence-refused':
+    case 'discuss-refused':
     case 'completeness-refused': {
       process.stderr.write(`\n⛔ ${result.message}\n`);
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
