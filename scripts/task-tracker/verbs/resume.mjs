@@ -8,40 +8,107 @@ import {
   countWords,
 } from '../word-counter.mjs';
 import { verbSwitch } from './switch.mjs';
-import { verbStart } from './start.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 
-// `/task resume` writes a canonical `resumed` row on the incoming task,
-// regardless of how it was last paused or switched. The `resumed` row is the
-// only event emitted on the incoming bind path — there is no `switch-in`,
-// no `<state>:enter`.
+// `/task resume` — two paths:
+//   no arg: only valid after `/task pause` (s.paused === true). Rebinds lastActive.
+//   #N arg: unrestricted rebind to a specific issue (works after pause OR stop).
 export async function verbResume(ctx) {
+  const { cfg, statePath, projectDir, role, drainQueueIfAny, safePostTiming, nowIso } = ctx;
   const target = ctx.rest[0];
-  if (!target || !/^#\d+$/.test(target)) {
-    await verbStart(ctx);
+
+  if (!target || !/^#?\d+$/.test(String(target))) {
+    // No-arg path: require s.paused === true
+    await drainQueueIfAny();
+    const s = loadState(statePath);
+    if (!s.paused) {
+      console.log(
+        'nothing to resume. Use "/task start <N>" to bind a task, or "/task resume <N>" to return to a specific paused/stopped issue.'
+      );
+      return;
+    }
+    if (!s.lastActive) {
+      console.log('no previous task on record.');
+      return;
+    }
+    // Inline the lastActive-bind logic (previously in verbStart)
+    try {
+      const sidPre = currentSessionId();
+      if (sidPre) {
+        await finalizeOrphanPause({ sid: sidPre, reason: 'orphan-finalize', projDir: projectDir });
+      }
+    } catch {
+      /* never block resume on finalize failure */
+    }
+    const ts = nowIso();
+    const sid = currentSessionId();
+    let wordsAtStart = 0;
+    if (sid) {
+      const { totalLines, count } = countWords(jsonlPath(sid), 0);
+      saveMarker(markerPathFor(sid), totalLines, count, s.lastActive);
+      wordsAtStart = count;
+    }
+    saveState(
+      {
+        ...s,
+        active: s.lastActive,
+        entryStartTs: ts,
+        wordsAtEntryStart: wordsAtStart,
+        paused: undefined,
+      },
+      statePath
+    );
+    try {
+      setTaskStatus(projectDir, s.lastActive, 'active');
+    } catch {}
+    if (sid && cfg?.repo) {
+      const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
+      try {
+        await seed({
+          sid,
+          issue: s.lastActive,
+          projDir: projectDir,
+          repo: cfg.repo,
+        });
+      } catch (err) {
+        process.stderr.write(
+          `[resume] ${s.lastActive}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+        );
+        process.stderr.write(
+          `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(s.lastActive).replace(/^#/, '')}\n`
+        );
+      }
+    }
+    const { buildRow } = await import('../gh-timing-comment.mjs');
+    const row = buildRow({
+      ts,
+      event: 'resumed',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: wordsAtStart,
+      description: role ?? 'task resumed',
+    });
+    await safePostTiming(s.lastActive, row);
+    console.log(`Resumed ${s.lastActive}.`);
     return;
   }
 
-  const { cfg, statePath, projectDir, role, drainQueueIfAny, safePostTiming, nowIso } = ctx;
+  // #N path: unrestricted rebind to a specific issue (pause OR stop, or fresh bind)
+  const normalizedTarget = /^#/.test(String(target)) ? String(target) : `#${target}`;
   const s = loadState(statePath);
 
-  // If there is an active task different from the resume target, fall back to
-  // switch-style behavior (outgoing flush + start row). This is not the
-  // "returning to a previously-switched-out task" case.
-  if (s.active && s.active !== target) {
-    await verbSwitch(ctx, target);
+  if (s.active && s.active !== normalizedTarget) {
+    await verbSwitch(ctx, normalizedTarget);
     return;
   }
-  if (s.active === target) {
-    console.log(`already active: ${target}`);
+  if (s.active === normalizedTarget) {
+    console.log(`already active: ${normalizedTarget}`);
     return;
   }
 
   await drainQueueIfAny();
-  // #215 — finalize any orphaned pending-pause from a prior turn BEFORE
-  // binding the resumed issue. The idle row lands on the issue named in
-  // the marker (which may differ from `target`).
   try {
     const sidPre = currentSessionId();
     if (sidPre) {
@@ -59,49 +126,41 @@ export async function verbResume(ctx) {
   let wordsAtStart = 0;
   if (sid) {
     const { totalLines, count } = countWords(jsonlPath(sid), 0);
-    saveMarker(markerPathFor(sid), totalLines, count, target);
+    saveMarker(markerPathFor(sid), totalLines, count, normalizedTarget);
     wordsAtStart = count;
   }
   saveState(
     {
       ...s,
-      active: target,
-      lastActive: target,
+      active: normalizedTarget,
+      lastActive: normalizedTarget,
       entryStartTs: ts,
       wordsAtEntryStart: wordsAtStart,
+      paused: undefined,
     },
     statePath
   );
   try {
-    setTaskStatus(projectDir, target, 'active');
+    setTaskStatus(projectDir, normalizedTarget, 'active');
   } catch {}
   try {
-    registerTask(projectDir, target, projectDir, currentBranch(projectDir));
+    registerTask(projectDir, normalizedTarget, projectDir, currentBranch(projectDir));
   } catch {}
-  // #251 — seed the per-session `kanbanState` derived cache so the
-  // activity-guard hook can read state synchronously without a network call.
-  // Mirrors verbStart; the resume fresh-bind path previously skipped this,
-  // dead-locking freshly bound sessions (post-compact orchestrators and every
-  // parallel sub-agent) out of all WRITE activity. Best-effort: failures are
-  // swallowed and never block the bind.
   if (sid && cfg?.repo) {
-    // Seam is injectable for tests; production passes nothing and uses the real
-    // body-marker seed.
     const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
     try {
       await seed({
         sid,
-        issue: target,
+        issue: normalizedTarget,
         projDir: projectDir,
         repo: cfg.repo,
       });
     } catch (err) {
-      // #273: surface tagged seeder errors instead of swallowing.
       process.stderr.write(
-        `[resume] ${target}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+        `[resume] ${normalizedTarget}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
       );
       process.stderr.write(
-        `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(target).replace(/^#/, '')}\n`
+        `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(normalizedTarget).replace(/^#/, '')}\n`
       );
     }
   }
@@ -115,6 +174,6 @@ export async function verbResume(ctx) {
     wordMarker: wordsAtStart,
     description: role ?? 'task resumed',
   });
-  await safePostTiming(target, row);
-  console.log(`Resumed ${target}.`);
+  await safePostTiming(normalizedTarget, row);
+  console.log(`Resumed ${normalizedTarget}.`);
 }

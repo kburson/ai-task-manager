@@ -9,9 +9,11 @@ Task Tracker — available commands
   /task discover            Open an untracked discovery bucket — backlog item generation / pre-issue ideation
                             (distinct from Sprint-Planning entry; use \`/task plan\` for that)
   /task cancel              Discard the active discovery bucket (no timing recorded)
-  /task pause               Flush timing and pause the active task
-  /task resume              Resume the last paused task
-  /task resume #N           Switch back to a specific paused task
+  /task start <N>           Bind to issue #N (same as /task #N)
+  /task pause               Flush timing and pause the active task; sets paused flag
+  /task resume              Resume the last paused task (requires prior /task pause)
+  /task resume #N           Return to a specific paused or stopped issue
+  /task stop                End the current session; unbinds active task
   /task update [msg]        Checkpoint — flush timing, reset counters, keep task active
   /task review #N           Move issue through Test to Review, flush timing, and pause
   /task review #N --duration-minutes N --words N  Agent-reported timing (skips JSONL read)
@@ -45,7 +47,7 @@ State transitions (7-state kanban):
   /task demote [#N]         Return to Develop (from Test or Review)
   /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded
 
-Aliases: start = resume, end = close, next = promote
+Aliases: end = close, next = promote
 `.trim()
   );
 }

@@ -57,6 +57,7 @@ const PREFLIGHT_MODE = {
   review: 'target-optional',
   reject: 'target-optional',
   pause: 'active-only',
+  stop: 'active-only',
   update: 'active-only',
   resume: 'active-only',
   start: 'active-only',
@@ -182,10 +183,19 @@ if (_isMain)
           await verbPause(ctx);
           break;
         }
-        case 'resume':
-        case 'start': {
+        case 'resume': {
           const { verbResume } = await import('./verbs/resume.mjs');
           await verbResume(ctx);
+          break;
+        }
+        case 'start': {
+          const { verbStart } = await import('./verbs/start.mjs');
+          await verbStart(ctx);
+          break;
+        }
+        case 'stop': {
+          const { verbStop } = await import('./verbs/stop.mjs');
+          await verbStop(ctx);
           break;
         }
         case 'update': {
