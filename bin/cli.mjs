@@ -40,7 +40,6 @@ const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
 
 const PKG_NAME = 'ai-task-manager';
-const LEGACY_BIN = 'claude-gh-task-manager';
 
 // TTY gate: return raw string when stdout is not a TTY (pipe, file, CI log) so
 // downstream consumers don't see raw escape sequences as garbage characters.
@@ -1147,9 +1146,6 @@ ${bold('  Usage')}
     ${cyan('npx ai-task-manager statusline')}              ${dim('Install Claude Code status line')}
     ${cyan('npx ai-task-manager configure preferences')}  ${dim('Interactive team-workflow preferences editor')}
     ${cyan('npx ai-task-manager version')}                ${dim('Print version')}
-
-${bold('  Compatibility')}
-    ${cyan(`npx ${LEGACY_BIN} <command>`)} ${dim('continues to work as a bin alias for this release')}
 
 ${bold('  Quickstart')}
     ${green('1.')} ${cyan('npx ai-task-manager install')}

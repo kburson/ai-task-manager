@@ -113,8 +113,6 @@ npx ai-task-manager install --codex-superpowers-global
 
 If Superpowers is missing, install continues normally and prints a follow-up command to rerun later. The AITM task skill remains separate at `.agents/skills/task/SKILL.md`.
 
-The old `claude-gh-task-manager` bin remains as a compatibility alias for this release, but new installs should use `ai-task-manager`.
-
 ---
 
 ## Session Tracking

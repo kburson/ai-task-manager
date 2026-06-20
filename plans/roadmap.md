@@ -1,4 +1,4 @@
-# claude-gh-task-manager — Roadmap
+# ai-task-manager — Roadmap
 
 ## What's Done (as of 2026-04-25)
 
@@ -8,7 +8,7 @@
 - [x] `scripts/gh/init-project-config.sh` — GH auth, project listing/creation, field discovery, issue templates
 - [x] Issue templates: `.github/ISSUE_TEMPLATE/task.yml` and `bug.yml` (written to target project by init)
 - [x] All 7 unit tests passing
-- [x] `move-state.sh` errors with `Run: npx claude-gh-task-manager init` when unconfigured
+- [x] `move-state.sh` errors with `Run: npx ai-task-manager init` when unconfigured
 - [x] `docs/guides/workflow.md` — full GitHub/Kanban/sub-issues/cleanup rules (generalized)
 - [x] `docs/guides/settings-guide.md` — autoCompactWindow, Superpowers plugin, statusLine, nvm hook, Ref MCP
 - [x] `docs/guides/ai-value-framework.md` — ROI model, sizing guide, session log template, GraphQL mutations
@@ -17,8 +17,8 @@
 
 - [ ] Push to GitHub remote (`git push origin trunk`)
 - [ ] Publish to npm (`npm publish`)
-- [ ] `npx claude-gh-task-manager uninstall` command
-- [ ] `npx claude-gh-task-manager update` command (re-copies scripts without touching config)
+- [ ] `npx ai-task-manager uninstall` command
+- [ ] `npx ai-task-manager update` command (re-copies scripts without touching config)
 - [ ] GitHub Action to run tests on PR
 - [ ] Make init org-aware (currently tries user then org for project node ID lookup)
 - [ ] Value report script (`generate-value-report.mjs`) — optional port from ocp-services
@@ -27,7 +27,7 @@
 
 ### Config system
 
-All GitHub-specific IDs live in the **target project's** `.claude/task-tracker.json` (not in this repo). Populated by `npx claude-gh-task-manager init`.
+All GitHub-specific IDs live in the **target project's** `.claude/task-tracker.json` (not in this repo). Populated by `npx ai-task-manager init`.
 
 Config precedence: project-local > user-global (`~/.claude/task-tracker-config.json`) > code defaults.
 
