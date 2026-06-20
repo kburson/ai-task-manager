@@ -12,7 +12,7 @@
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../lib/scratch-dir.mjs';
+import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   extractTitle,
@@ -56,7 +56,7 @@ assert.equal(planFileName('My Plan', new Date('2026-06-19T12:00:00Z')), '2026061
 
 // savePlanFile + loadPlanFile round-trip
 {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'nfp-roundtrip-'));
+  const dir = mkdtempProjectIsolated('nfp-roundtrip-');
   const content = '# Round Trip\n\n## Scope\ntest\n';
   const saved = savePlanFile({
     title: 'Round Trip',
@@ -72,7 +72,7 @@ assert.equal(planFileName('My Plan', new Date('2026-06-19T12:00:00Z')), '2026061
 
 // savePlanFile — collision handling
 {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'nfp-collision-'));
+  const dir = mkdtempProjectIsolated('nfp-collision-');
   const content = '# Same\n\n## Scope\ntest\n';
   const p1 = savePlanFile({
     title: 'Same',
