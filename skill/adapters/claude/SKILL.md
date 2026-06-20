@@ -101,6 +101,18 @@ section entirely.
 
 **Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target (the `child-cannot-lead-epic` invariant). Children are **not** required to all reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead a WIP rule applies: at most one child advances out of Refine per epic at a time (`planRefineWipGate`), where a child parked on a dependency (`aitm-blocked-by` marker) does not count and a blocker may run ahead of the parked sibling it unblocks. No env override exists. See `templates/pickup-directive.md` ("Rank rules") for the full rule.
 
+## Discover workflow — completing a session and promoting to an issue
+
+When the user says "save the plan", "generate the plan", "write up the plan", or similar during an active `/task discover` session:
+
+1. Compose the discovery findings into a markdown file at `.tmp/plan/<draft>.md` using the template at `templates/plan-file.md` (H1 title + `## Scope` required).
+2. Run `/task save-plan --from-file .tmp/plan/<draft>.md` — this validates the file, saves it to `docs/plans/YYYYMMDD-<slug>.md`, and stamps `savedPlanFile` into the discover bucket.
+3. Confirm the saved path to the user.
+
+When the user then says "create the issue", "new issue", or `/task new` while still in discover state, run `/task new` — it reads `savedPlanFile` from the bucket and uses it as the title source. No arguments are needed in discover state.
+
+To load a previously saved plan file outside of a discover session: `/task new docs/plans/<file>.md`.
+
 ## Verb disambiguation — `/task plan` vs `/task discover`
 
 These two verbs target distinct workflows and are NOT interchangeable:

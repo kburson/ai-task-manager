@@ -8,6 +8,10 @@ Task Tracker — available commands
   /task new [title]         Create a new issue and start tracking it
   /task discover            Open an untracked discovery bucket — backlog item generation / pre-issue ideation
                             (distinct from Sprint-Planning entry; use \`/task plan\` for that)
+  /task save-plan --from-file <path>
+                            Save a discovery plan markdown file to docs/plans/ and stamp its path
+                            into the active discover bucket. Requires active discover state.
+                            Optional: --title <override>
   /task cancel              Discard the active discovery bucket (no timing recorded)
   /task start <N>           Bind to issue #N (same as /task #N)
   /task pause               Flush timing and pause the active task; sets paused flag

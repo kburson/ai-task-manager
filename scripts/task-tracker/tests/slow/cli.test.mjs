@@ -85,9 +85,13 @@ assert.ok(planNoArgsErr, '/task plan (no args) must exit non-zero');
 assert.notEqual(planNoArgsErr.code, 0);
 assert.match(planNoArgsErr.stderr || '', /Usage: \/task plan/);
 
-// Test 11: /task new "Title" with network skip just clears bucket
+// Test 11: /task new from discover state requires a saved plan.
+// Save a plan first, then /task new reads it and clears the bucket.
 const envNew = { ...env, TT_FAKE_NEW_ISSUE: '#999' };
-r5 = await pexec('node', [CLI, 'new', 'Fake Title'], { env: envNew });
+const planDraftPath = path.join(sandbox, 'draft-plan.md');
+writeFileSync(planDraftPath, '# Fake Title\n\n## Scope\ntest scope\n', 'utf8');
+await pexec('node', [CLI, 'save-plan', '--from-file', planDraftPath], { env: envNew });
+r5 = await pexec('node', [CLI, 'new'], { env: envNew });
 assert.match(r5.stdout, /Active: #999/);
 
 // ---- Regression: /task start #N must switch (not resume lastActive) ----
@@ -129,7 +133,11 @@ assert.match(rs.stdout, /Resumed #202/, '/task resume #N should resume #N');
 // `/task resume` with no arg and after pause resumes lastActive.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 rs = await pexec('node', [CLI, 'resume'], { env: switchEnv });
-assert.match(rs.stdout, /Resumed #202/, '/task resume (no arg) after pause should resume lastActive');
+assert.match(
+  rs.stdout,
+  /Resumed #202/,
+  '/task resume (no arg) after pause should resume lastActive'
+);
 
 rmSync(startSwitchSandbox, { recursive: true });
 

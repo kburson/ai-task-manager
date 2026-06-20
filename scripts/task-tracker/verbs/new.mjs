@@ -7,6 +7,9 @@ import {
   saveMarker,
   countWords,
 } from '../word-counter.mjs';
+import { loadPlanFile } from '../lib/plan-file.mjs';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 async function createNewIssue(title, ctx) {
   const { cfg, SKIP_NETWORK, pexec } = ctx;
@@ -35,6 +38,53 @@ async function createNewIssue(title, ctx) {
   return `#${m[1]}`;
 }
 
+// Resolve title + plan file path from args and current state.
+// Returns { title, planFile } where planFile may be null.
+function resolveTitleAndPlan(rest, s, projectDir) {
+  const firstArg = (rest[0] || '').trim();
+  const inDiscover = s.active === 'discover' && s.discoverBucket;
+
+  // Branch 1: in discover state
+  if (inDiscover) {
+    const savedPlanFile = s.discoverBucket.savedPlanFile || null;
+    if (!savedPlanFile) {
+      process.stderr.write(
+        'new: no saved plan in the active discover bucket.\n' +
+          '  Compose your plan to a file, then run:\n' +
+          '    `/task save-plan --from-file .tmp/plan/<draft>.md`\n' +
+          '  Then retry `/task new`.\n'
+      );
+      process.exit(1);
+    }
+    const { title } = loadPlanFile(savedPlanFile);
+    return { title, planFile: savedPlanFile };
+  }
+
+  // Branch 2: plan file path given (ends in .md and resolves to a file)
+  if (firstArg.endsWith('.md')) {
+    const resolved = path.resolve(projectDir, firstArg);
+    if (!existsSync(resolved)) {
+      process.stderr.write(`new: plan file not found: ${resolved}\n`);
+      process.exit(1);
+    }
+    const { title } = loadPlanFile(resolved);
+    return { title, planFile: resolved };
+  }
+
+  // Branch 3: not in discover state, no plan file — print guidance
+  if (!firstArg) {
+    process.stderr.write(
+      'new: no active discovery plan and no plan file given.\n' +
+        '  Start a discovery session:    `/task discover`\n' +
+        '  Or provide a saved plan file: `/task new docs/plans/<file>.md`\n'
+    );
+    process.exit(1);
+  }
+
+  // Legacy: plain title passed directly (backwards compat for callers that pass a title string)
+  return { title: rest.join(' ').trim(), planFile: null };
+}
+
 export async function verbNew(ctx) {
   const {
     cfg,
@@ -49,8 +99,8 @@ export async function verbNew(ctx) {
     nowIso,
   } = ctx;
   await drainQueueIfAny();
-  const title = rest.join(' ').trim() || `Task ${new Date().toISOString().slice(0, 10)}`;
   const s = loadState(statePath);
+  const { title } = resolveTitleAndPlan(rest, s, projectDir);
   const wasDiscover = s.active === 'discover' && s.discoverBucket;
   let previousNote = '';
   const previousActive = s.active;
