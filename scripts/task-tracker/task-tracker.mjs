@@ -5,7 +5,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { buildContext, handleMigrateResult } from './runtime.mjs';
 import { currentSessionId, jsonlPath, countWords } from './word-counter.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
@@ -139,7 +139,12 @@ export async function getIssueBoardState(issueNum) {
 
 const _isMain = (() => {
   try {
-    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+    if (!process.argv[1]) return false;
+    // `import.meta.url` is realpath-resolved by Node's ESM loader, so realpath
+    // `argv[1]` too — otherwise a symlinked invocation path (notably
+    // `node_modules/ai-task-manager -> ..`) makes the two strings differ, the
+    // guard returns false, and the entire CLI silently no-ops with exit 0 (#478).
+    return fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
   } catch {
     return true;
   }
