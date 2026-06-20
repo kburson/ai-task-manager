@@ -20,13 +20,36 @@ import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
 
 const pexec = promisify(execFile);
 
+// #480 AC9 — strict `{discuss}` detection: a line that is the bare token alone
+// (after trim). This deliberately does NOT reuse `hasDiscussMarker` from
+// lib/discuss-marker.mjs, whose substring match (`includes('{discuss}')`) yields
+// false positives on prose/backtick mentions — that bug is tracked as #479. A
+// `{discuss}` body is a user-request stub whose work is undefined until a Refine
+// brainstorm; it is exempt from the canonical-structure requirement and reported
+// as skipped (pending Refine), never as a failure.
+export function hasStrictDiscussMarker(body) {
+  return String(body ?? '')
+    .split('\n')
+    .some((line) => line.trim() === '{discuss}');
+}
+
 // ── pure reporting core (unit-tested) ──────────────────────────────────────
 // Takes [{ number, title, body }], returns { reports, failCount } where each
-// report is { number, title, ok, missing }.
+// report is { number, title, ok, missing, skipped }. `{discuss}` stubs are
+// reported with skipped:true and excluded from failCount.
 export function buildSweepReport(issues) {
   const reports = issues.map((issue) => {
+    if (hasStrictDiscussMarker(issue.body)) {
+      return {
+        number: issue.number,
+        title: issue.title ?? '',
+        ok: true,
+        skipped: true,
+        missing: [],
+      };
+    }
     const { ok, missing } = verifyIssueBody(issue.body ?? '');
-    return { number: issue.number, title: issue.title ?? '', ok, missing };
+    return { number: issue.number, title: issue.title ?? '', ok, missing, skipped: false };
   });
   const failCount = reports.filter((r) => !r.ok).length;
   return { reports, failCount };
@@ -39,11 +62,18 @@ export function formatSweepReport({ reports, failCount }) {
     lines.push(`#${r.number} — ${r.title}`);
     for (const m of r.missing) lines.push(`  ✗ ${m}`);
   }
+  const skipped = reports.filter((r) => r.skipped);
+  for (const r of skipped) {
+    lines.push(`#${r.number} — ${r.title}`);
+    lines.push('  ⏭ skipped — {discuss} stub, pending Refine');
+  }
   lines.push('');
+  const scored = reports.length - skipped.length;
+  const skipNote = skipped.length ? ` (${skipped.length} skipped: {discuss} stubs)` : '';
   lines.push(
     failCount === 0
-      ? `All ${reports.length} open issue bodies are canonical.`
-      : `${failCount}/${reports.length} open issue bodies failed the verifier.`
+      ? `All ${scored} open issue bodies are canonical${skipNote}.`
+      : `${failCount}/${scored} open issue bodies failed the verifier${skipNote}.`
   );
   return lines.join('\n');
 }

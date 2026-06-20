@@ -1,7 +1,11 @@
 // @story #171
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSweepReport, formatSweepReport } from '../../../gh/verify-open-issue-bodies.mjs';
+import {
+  buildSweepReport,
+  formatSweepReport,
+  hasStrictDiscussMarker,
+} from '../../../gh/verify-open-issue-bodies.mjs';
 
 const CANONICAL_BODY = [
   '## Scope',
@@ -69,4 +73,44 @@ test('formatSweepReport: failure summary lists offending issue and ratio', () =>
   );
   assert.match(out, /#2 — bad/);
   assert.match(out, /1\/1 open issue bodies failed the verifier\./);
+});
+
+// ── #480 AC9: {discuss} backlog stubs are exempt (pending Refine) ────────────
+test('hasStrictDiscussMarker: matches only a bare-token line, not prose/backtick mentions', () => {
+  assert.equal(hasStrictDiscussMarker('foo\n{discuss}\nbar'), true);
+  assert.equal(hasStrictDiscussMarker('foo\n  {discuss}  \nbar'), true, 'trims whitespace');
+  // #479 false-positive shapes the strict rule must REJECT:
+  assert.equal(hasStrictDiscussMarker('we should {discuss} this later'), false);
+  assert.equal(hasStrictDiscussMarker('use the `{discuss}` token'), false);
+  assert.equal(hasStrictDiscussMarker(''), false);
+  assert.equal(hasStrictDiscussMarker(undefined), false);
+});
+
+test('buildSweepReport: {discuss} stub is skipped, not failed', () => {
+  const stub = '# Request\n\n{discuss}\n\nSomething to brainstorm later.\n';
+  const issues = [
+    { number: 1, title: 'good', body: CANONICAL_BODY },
+    { number: 451, title: 'stub', body: stub },
+    { number: 2, title: 'bad', body: '## Scope\nonly\n' },
+  ];
+  const { reports, failCount } = buildSweepReport(issues);
+  assert.equal(failCount, 1, 'only the genuinely-malformed body counts as a failure');
+  const stubReport = reports.find((r) => r.number === 451);
+  assert.equal(stubReport.skipped, true);
+  assert.equal(stubReport.ok, true);
+  assert.deepEqual(stubReport.missing, []);
+});
+
+test('formatSweepReport: skipped stubs are listed distinctly and noted in the summary', () => {
+  const stub = '# Request\n\n{discuss}\n';
+  const out = formatSweepReport(
+    buildSweepReport([
+      { number: 10, title: 'good', body: CANONICAL_BODY },
+      { number: 451, title: 'stub', body: stub },
+    ])
+  );
+  assert.match(out, /#451 — stub/);
+  assert.match(out, /⏭ skipped — \{discuss\} stub, pending Refine/);
+  // scored count excludes the skip; summary notes the skip.
+  assert.match(out, /All 1 open issue bodies are canonical \(1 skipped: \{discuss\} stubs\)\./);
 });
