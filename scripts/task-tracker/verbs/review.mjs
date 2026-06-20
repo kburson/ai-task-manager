@@ -1,4 +1,4 @@
-import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
+import { loadState, saveState, pauseTimingKeepBinding, advanceWordMarker } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
@@ -84,8 +84,8 @@ export async function verbReview(ctx) {
             activeSec: 0,
             idleSec: 0,
             deltaWords: 0,
-            // wordMarker:0 audit row — gate-refused, no active session
-            wordMarker: 0,
+            // #475 AC1 — carried-forward durable marker (gate-refused, no active session)
+            wordMarker: s.lastWordMarker ?? 0,
             description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
           });
           await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -123,7 +123,8 @@ export async function verbReview(ctx) {
       activeSec: activeMin * 60,
       idleSec: 0,
       deltaWords,
-      wordMarker: s.wordsAtEntryStart + deltaWords,
+      // #475 AC1 — monotonic carry-forward over the durable marker
+      wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + deltaWords),
       description: 'agent session — starting review',
     });
     // #407 — preserve the binding across review (a non-terminal verb). Only
@@ -161,8 +162,8 @@ export async function verbReview(ctx) {
       activeSec: 0,
       idleSec: 0,
       deltaWords: 0,
-      // wordMarker:0 ok — no active session for this target on review entry
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker (no active session for this target on review entry)
+      wordMarker: s.lastWordMarker ?? 0,
       description: 'starting review',
     });
     // #408 — redundant test→test self-move removed (see note above).
@@ -451,8 +452,8 @@ export async function verbReview(ctx) {
           activeSec: _dR1.activeSec,
           idleSec: _dR1.idleSec,
           deltaWords: 0,
-          // wordMarker:0 audit row — verification-failed revert, no live session
-          wordMarker: 0,
+          // #475 AC1 — carried-forward durable marker (verification-failed revert, no live session)
+          wordMarker: s.lastWordMarker ?? 0,
           description: 'verification failed — reverted to Develop',
         })
       );
@@ -554,8 +555,8 @@ export async function verbReview(ctx) {
             activeSec: _dR0.activeSec,
             idleSec: _dR0.idleSec,
             deltaWords: 0,
-            // wordMarker:0 audit row — completeness gate refusal, no live session
-            wordMarker: 0,
+            // #475 AC1 — carried-forward durable marker (completeness gate refusal, no live session)
+            wordMarker: s.lastWordMarker ?? 0,
             description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
           })
         );
@@ -601,8 +602,8 @@ export async function verbReview(ctx) {
       activeSec: _dR2.activeSec,
       idleSec: _dR2.idleSec,
       deltaWords: 0,
-      // wordMarker:0 audit row — post-move state event, no active session
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker (post-move state event, no active session)
+      wordMarker: s.lastWordMarker ?? 0,
       description: 'task is now in Review',
     });
     await safePostTiming(target, reviewRow);

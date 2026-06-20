@@ -1,4 +1,4 @@
-import { saveState, loadState, EMPTY_STATE } from '../state.mjs';
+import { saveState, loadState, EMPTY_STATE, advanceWordMarker } from '../state.mjs';
 import { registerTask, deregisterTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -83,6 +83,9 @@ export async function verbSwitch(ctx, target) {
     lastActive: target,
     entryStartTs: ts,
     wordsAtEntryStart: wordsAtStart,
+    // #475 AC1 — carry the durable session-global marker across the switch
+    // (…EMPTY_STATE would otherwise reset it to 0).
+    lastWordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
   };
   saveState(newState, statePath);
   // #218: state hydration removed — the issue body's `aitm-last-known-state`
@@ -117,7 +120,8 @@ export async function verbSwitch(ctx, target) {
     activeSec: 0,
     idleSec: 0,
     deltaWords: 0,
-    wordMarker: wordsAtStart,
+    // #475 AC1 — monotonic carry-forward of the durable marker
+    wordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
     description: role,
   });
   await safePostTiming(target, row);

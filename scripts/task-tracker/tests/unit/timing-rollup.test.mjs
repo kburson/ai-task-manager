@@ -131,4 +131,52 @@ rows = parseTimingRows(body);
 const totalsP = rollupTotals(rows, 5);
 assert.equal(totalsP.planMin, 25, 'rollupTotals exposes planMin');
 
+// #475 AC1/AC2 — rollupTotals aggregates idle seconds across rows.
+// Idle seconds come from the trailing `<!-- row-sec: a=N i=N -->` marker, which
+// ROW_SEC_RE matches anywhere in the row line — so we smuggle markers in via the
+// Description column.
+body = buildLog([
+  {
+    ts: '2026-05-09 10:00 -07:00',
+    event: 'start',
+    active: 5,
+    wm: 100,
+    desc: 'start <!-- row-sec: a=300 i=0 -->',
+  },
+  {
+    ts: '2026-05-09 10:30 -07:00',
+    event: 'resumed',
+    active: 5,
+    wm: 200,
+    desc: 'question answered <!-- row-sec: a=300 i=120 -->',
+  },
+  {
+    ts: '2026-05-09 11:00 -07:00',
+    event: 'develop:done',
+    active: 5,
+    wm: 300,
+    desc: 'development complete <!-- row-sec: a=300 i=45 -->',
+  },
+]);
+rows = parseTimingRows(body);
+const totalsIdle = rollupTotals(rows, 5);
+assert.equal(totalsIdle.totalIdleSec, 165, 'idle seconds summed across all rows (0+120+45)');
+assert.equal(totalsIdle.totalIdleMin, Math.round(165 / 60), 'totalIdleMin derived from seconds');
+assert.equal(totalsIdle.lastWordMarker, 300, 'lastWordMarker is the monotonic max');
+
+// #475 AC1 — lastWordMarker never decreases even when a later row carries a
+// smaller marker (defensive: monotonic max, not last-write-wins).
+body = buildLog([
+  { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5, wm: 900 },
+  { ts: '2026-05-09 10:10 -07:00', event: 'approved', active: 0, wm: 0 },
+  { ts: '2026-05-09 10:11 -07:00', event: 'closed', active: 1, wm: 0 },
+]);
+rows = parseTimingRows(body);
+const totalsMono = rollupTotals(rows, 5);
+assert.equal(
+  totalsMono.lastWordMarker,
+  900,
+  'lastWordMarker holds the max despite later wm=0 rows'
+);
+
 console.log('timing-rollup.test.mjs: all passed');

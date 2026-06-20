@@ -34,6 +34,8 @@ import { classify, rejectionMessage } from './lib/wave-detect.mjs';
 import { gql, splitRepo } from './lib/github-projects.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
+import { durableWordMarker } from '../task-tracker/state.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.join(
@@ -317,7 +319,8 @@ async function main() {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker (orchestrator wave-parent start row)
+      wordMarker: durableWordMarker(getProjectDir()),
       description: `orchestration start — wave fan-out (${result.solos.length} children)`,
     });
     await postTimingEvent({

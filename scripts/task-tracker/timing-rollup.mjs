@@ -226,11 +226,22 @@ export function upsertStageRollupMarker(body, rollup) {
 export function rollupTotals(rows, thresholdMin) {
   let totalActiveMin = 0;
   let totalActiveSec = 0;
+  // #475 AC2 — idle is now aggregated alongside active time. Each row carries
+  // `idleSec` (from the `row-sec` marker or pause-span subtraction); the rollup
+  // sums them so total idle surfaces in the summary instead of being dropped.
+  let totalIdleSec = 0;
+  // #475 AC1 — the cumulative Word Marker is monotonic non-decreasing. Take the
+  // running max rather than the last value so a stray `0` audit row (legacy
+  // logs predating the durable carry-forward) can never collapse the total.
   let lastWordMarker = null;
   for (const r of rows) {
     if (r.activeMin != null) totalActiveMin += r.activeMin;
     if (r.activeSec != null && Number.isFinite(r.activeSec)) totalActiveSec += r.activeSec;
-    if (r.wordMarker != null) lastWordMarker = r.wordMarker;
+    if (r.idleSec != null && Number.isFinite(r.idleSec)) totalIdleSec += r.idleSec;
+    if (r.wordMarker != null) {
+      lastWordMarker =
+        lastWordMarker == null ? r.wordMarker : Math.max(lastWordMarker, r.wordMarker);
+    }
   }
   const reviewMin = computeReviewMin(rows, thresholdMin);
   const reviewSec = reviewMin * 60;
@@ -240,6 +251,8 @@ export function rollupTotals(rows, thresholdMin) {
     rowCount: rows.length,
     totalActiveMin,
     totalActiveSec,
+    totalIdleSec,
+    totalIdleMin: Math.round(totalIdleSec / 60),
     reviewMin,
     reviewSec,
     planMin,

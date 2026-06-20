@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { getProjectDir } from '../paths.mjs';
+import { durableWordMarker } from '../state.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
@@ -278,8 +279,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
               activeSec: _d.activeSec,
               idleSec: _d.idleSec,
               deltaWords: 0,
-              // wordMarker:0 audit row — lifecycle-noop warning, no active session work
-              wordMarker: 0,
+              // #475 AC1 — carried-forward durable marker (lifecycle-noop warning, no active session work)
+              wordMarker: durableWordMarker(getProjectDir()),
               description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
             }),
           });

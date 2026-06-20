@@ -59,6 +59,8 @@ export async function verbReject(ctx) {
     // best-effort — fall through with empty body (delta is 0/0)
   }
   const descReason = reason.trim().slice(0, 40);
+  // #475 AC1 — stamp the durable carried-forward Word Marker, not 0.
+  const _lwm = loadState(statePath).lastWordMarker ?? 0;
   const _ts = nowIso();
   const _d = deriveStateMoveDelta(rejectBody, _ts);
   await safePostTiming(
@@ -69,8 +71,8 @@ export async function verbReject(ctx) {
       activeSec: _d.activeSec,
       idleSec: _d.idleSec,
       deltaWords: 0,
-      // wordMarker:0 audit row — review-rejected revert, no live session
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker, not 0 (review-rejected revert, no live session)
+      wordMarker: _lwm,
       description: `review rejected: ${descReason}`,
     })
   );

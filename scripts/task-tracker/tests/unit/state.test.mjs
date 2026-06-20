@@ -4,7 +4,14 @@ import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
-import { loadState, saveState, clearActive, EMPTY_STATE } from '../../state.mjs';
+import {
+  loadState,
+  saveState,
+  clearActive,
+  EMPTY_STATE,
+  advanceWordMarker,
+  durableWordMarker,
+} from '../../state.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-'));
 const statePath = path.join(tmp, 'state.json');
@@ -157,6 +164,55 @@ assert.equal(s.active, '#201');
   } finally {
     process.chdir(cwdBefore);
     rmSync(relTmp, { recursive: true });
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+// Test 9 (#475 AC1): EMPTY_STATE carries the durable marker fields.
+assert.equal(EMPTY_STATE.lastWordMarker, 0, 'EMPTY_STATE seeds lastWordMarker to 0');
+assert.equal(EMPTY_STATE.pausedAtTs, null, 'EMPTY_STATE seeds pausedAtTs to null');
+
+// Test 10 (#475 AC1): advanceWordMarker is monotonic and floors junk to 0.
+assert.equal(advanceWordMarker(100, 150), 150, 'advances upward');
+assert.equal(advanceWordMarker(150, 100), 150, 'never decreases — holds prior max');
+assert.equal(advanceWordMarker(0, 0), 0, 'zero stays zero');
+assert.equal(advanceWordMarker(-5, 200), 200, 'negative prev floors to 0');
+assert.equal(advanceWordMarker(200, -5), 200, 'negative candidate floors to 0');
+assert.equal(advanceWordMarker('abc', 300), 300, 'non-numeric prev floors to 0');
+assert.equal(advanceWordMarker(300, 'xyz'), 300, 'non-numeric candidate floors to 0');
+assert.equal(advanceWordMarker(undefined, undefined), 0, 'both missing => 0');
+
+// Test 11 (#475 AC1): durableWordMarker reads lastWordMarker off the on-disk
+// global ledger, and returns 0 when the project has no state yet.
+{
+  const cwdBefore = process.cwd();
+  const dwTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-dw-'));
+  const savedEnv = {
+    CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID,
+    CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,
+    CODEX_SESSION_ID: process.env.CODEX_SESSION_ID,
+    AI_TASK_MANAGER_SESSION_ID: process.env.AI_TASK_MANAGER_SESSION_ID,
+    AI_TASK_MANAGER_PROJECT_DIR: process.env.AI_TASK_MANAGER_PROJECT_DIR,
+  };
+  for (const k of Object.keys(savedEnv)) delete process.env[k];
+  try {
+    process.chdir(dwTmp);
+    // No state file yet => 0.
+    assert.equal(durableWordMarker(dwTmp), 0, 'durableWordMarker returns 0 when no state on disk');
+    // Persist a marker into the canonical global ledger and read it back.
+    const ledger = path.join(dwTmp, '.ai-task-manager', 'task-tracker-state.json');
+    saveState({ active: '#475', lastActive: '#475', lastWordMarker: 4242 }, ledger);
+    assert.equal(
+      durableWordMarker(dwTmp),
+      4242,
+      'durableWordMarker reads persisted lastWordMarker'
+    );
+  } finally {
+    process.chdir(cwdBefore);
+    rmSync(dwTmp, { recursive: true });
     for (const [k, v] of Object.entries(savedEnv)) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;

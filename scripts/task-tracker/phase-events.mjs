@@ -1,6 +1,6 @@
 // PHASE_EVENTS — canonical lifecycle event table.
 //
-// Defines the 11 lifecycle events emitted by the task-tracker as issues move
+// Defines the 12 lifecycle events emitted by the task-tracker as issues move
 // through the kanban states. Each entry exposes a stable `event` slug (the
 // string that lands in the `Event` column of the ⏱ Timing Log) and a
 // human-readable `description`.
@@ -9,7 +9,14 @@
 //   state ∈ { backlog, refine, plan, develop, test, review, done }
 //   kind  ∈ { enter, complete }
 //
-// Terminal states (backlog, review, done) only have an `enter` event.
+// Terminal states (backlog, review) only have an `enter` event. `done` is the
+// exception (#475 AC4): it carries BOTH an `enter` event (`approved` — the
+// approval moment, auto-Full-Auto or human) and a `complete` event (`closed` —
+// the terminal "ready for next story" moment emitted AFTER post-approval
+// cleanup: timing flushed, body updated, board moved to Done, `gh issue close`).
+// The `approved → closed` interval is the cleanup elapsed time stamped on the
+// `closed` row, which is why the two are distinct rows, not duplicate
+// "story approved" rows.
 //
 // Downstream verbs (promote, demote, review, close, new, switch — landing in
 // later sub-issues of epic #126) will use this table via `flushActiveToGH`'s
@@ -44,6 +51,13 @@ export const PHASE_EVENTS = Object.freeze({
   }),
   done: Object.freeze({
     enter: Object.freeze({ event: 'approved', description: 'story approved' }),
+    // #475 AC4 — terminal "ready for next story" event. Emitted by move-state's
+    // phase-pair on the board move to Done (which runs after `gh issue close`),
+    // carrying the approved→closed cleanup elapsed in its Active cell.
+    complete: Object.freeze({
+      event: 'closed',
+      description: 'story closed — ready for next story',
+    }),
   }),
 });
 

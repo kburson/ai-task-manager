@@ -13,6 +13,14 @@ const pexec = promisify(execFile);
 
 const TIMING_HEADING = '⏱ Timing Log';
 
+// #475 AC3 — column legend. Documents that a `0` in the Δ Words column on a
+// lifecycle/audit row is CORRECT, not a defect: Δ Words is the per-segment word
+// delta for that row, not a running total. Lifecycle/audit rows (state moves,
+// gate refusals, recovery, close) have no live transcript segment, so their
+// delta is legitimately 0 while the cumulative Word Marker still carries forward.
+const COLUMN_LEGEND =
+  '<sub>Δ Words = words added during this row’s segment (per-row delta; `0` on lifecycle/audit rows is expected). Word Marker = cumulative session word count, carried forward monotonically.</sub>';
+
 const TABLE_HEADER = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |',
   '|---|---|---|---|---|---|---|',
@@ -187,7 +195,7 @@ export function writeLastKnownState(body, state) {
 }
 
 function buildInitialComment() {
-  return [TIMING_HEADING, '', TABLE_HEADER].join('\n');
+  return [TIMING_HEADING, '', COLUMN_LEGEND, '', TABLE_HEADER].join('\n');
 }
 
 function appendRow(body, row) {

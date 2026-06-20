@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
+import { durableWordMarker } from '../task-tracker/state.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -73,7 +75,8 @@ async function main() {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker (orchestrator dispatch start row)
+      wordMarker: durableWordMarker(getProjectDir()),
       description: args.description,
     });
     await postTimingEvent({

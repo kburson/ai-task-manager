@@ -36,6 +36,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import path from 'node:path';
 import { getProjectDir, sessionDir } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
+import { durableWordMarker } from '../state.mjs';
 import { loadConfig } from '../config.mjs';
 import { postTimingEvent, buildRow } from '../gh-timing-comment.mjs';
 import { enqueue } from '../queue.mjs';
@@ -181,7 +182,8 @@ export async function recordAskPause({
     activeSec: 0,
     idleSec: 0,
     deltaWords: 0,
-    wordMarker: null,
+    // #475 AC1 — carried-forward durable marker, never null (auto ask-pause, no live session)
+    wordMarker: durableWordMarker(projDir),
     description: `<!-- sess: ${sid} reason: ask-pause -->`,
   });
   await postOrEnqueue({ cfg, projDir, issue, row, deps });
@@ -234,7 +236,8 @@ export async function finalizeAskResume({
     activeSec: 0,
     idleSec,
     deltaWords: 0,
-    wordMarker: null,
+    // #475 AC1 — carried-forward durable marker, never null (auto ask-resume, no live session)
+    wordMarker: durableWordMarker(projDir),
     description: `<!-- sess: ${sid} reason: ask-resume -->`,
   });
   await postOrEnqueue({ cfg, projDir, issue: marker.issue, row, deps });

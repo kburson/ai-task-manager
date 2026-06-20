@@ -10,7 +10,7 @@ export async function verbPause(ctx) {
     return;
   }
   const reason = rest.join(' ').trim() || undefined;
-  const { deltaMin, deltaWallMin, deltaWords } = await flushActiveToGH(s, 'pause', reason);
+  const { deltaMin, deltaWallMin, deltaWords, ts } = await flushActiveToGH(s, 'pause', reason);
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   saveState(
     {
@@ -20,6 +20,9 @@ export async function verbPause(ctx) {
       wordsAtEntryStart: 0,
       lastActive: s.active,
       paused: true,
+      // #475 AC2 — record the pause instant so `resume` can compute the idle
+      // span of the pause window and stamp it on the `resumed` row.
+      pausedAtTs: ts,
     },
     statePath
   );

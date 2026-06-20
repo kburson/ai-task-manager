@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
-import { loadState, saveState } from './state.mjs';
+import { loadState, saveState, advanceWordMarker } from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
 import {
   jsonlPath,
@@ -74,7 +74,8 @@ async function onPreCompact(sid) {
   const marker = loadMarker(markerPathFor(sid));
   const { count: newWords, totalLines } = countWords(jsonlPath(sid), marker.line);
   const ts = new Date().toISOString();
-  const wordMarker = s.wordsAtEntryStart + newWords;
+  // #475 AC1 — advance + persist the durable monotonic marker on every flush.
+  const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + newWords);
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
   const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
@@ -95,7 +96,10 @@ async function onPreCompact(sid) {
   });
   await safePost(s.active, row);
   saveMarker(markerPathFor(sid), totalLines, 0, s.active);
-  saveState({ ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker }, statePath);
+  saveState(
+    { ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker, lastWordMarker: wordMarker },
+    statePath
+  );
 }
 
 async function onPostCompact(sid) {
@@ -109,7 +113,8 @@ async function onPostCompact(sid) {
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,
-    wordMarker: s.wordsAtEntryStart,
+    // #475 AC1 — carry the durable marker forward across compact
+    wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
     description: 'resumed after compact',
   });
   await safePost(s.active, row);
@@ -254,7 +259,8 @@ async function onSessionStart(sid) {
       activeMin: wallMin,
       idleMin: 0,
       deltaWords: 0,
-      wordMarker: s.wordsAtEntryStart,
+      // #475 AC1 — carried-forward durable marker (recovery row, no live session)
+      wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
       description: 'recovered — session closed without /task pause (wall time only)',
     });
     await safePost(s.active, recoveryRow);
@@ -271,13 +277,23 @@ async function onSessionStart(sid) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      wordMarker: newWordBaseline,
+      // #475 AC1 — monotonic carry-forward of the durable marker
+      wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
       description: 'session resumed',
     });
     await safePost(s.active, startRow);
   }
 
-  saveState({ ...s, entryStartTs: nowTs, wordsAtEntryStart: newWordBaseline }, statePath);
+  saveState(
+    {
+      ...s,
+      entryStartTs: nowTs,
+      wordsAtEntryStart: newWordBaseline,
+      // #475 AC1 — persist the durable monotonic marker across the recovery.
+      lastWordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+    },
+    statePath
+  );
 
   const recoveryNote =
     wallMin > 0 ? ` — logged ~${wallMin} min from prior session (wall time only)` : '';

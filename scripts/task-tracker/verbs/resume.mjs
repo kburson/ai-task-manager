@@ -1,4 +1,4 @@
-import { loadState, saveState } from '../state.mjs';
+import { loadState, saveState, advanceWordMarker } from '../state.mjs';
 import { setTaskStatus, registerTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -10,6 +10,18 @@ import {
 import { verbSwitch } from './switch.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
+
+// #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
+// `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
+// a legacy state file predating the field) or when the clock would yield a
+// negative span.
+export function computePauseIdleSec(pausedAtTs, resumeTs) {
+  if (!pausedAtTs) return 0;
+  const a = new Date(pausedAtTs).getTime();
+  const b = new Date(resumeTs).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+  return Math.max(0, Math.round((b - a) / 1000));
+}
 
 // `/task resume` — two paths:
 //   no arg: only valid after `/task pause` (s.paused === true). Rebinds lastActive.
@@ -49,6 +61,10 @@ export async function verbResume(ctx) {
       saveMarker(markerPathFor(sid), totalLines, count, s.lastActive);
       wordsAtStart = count;
     }
+    // #475 AC2 — idle span of the pause window = resume_ts − pausedAtTs.
+    const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
+    // #475 AC1 — carry the durable marker forward across the pause.
+    const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
     saveState(
       {
         ...s,
@@ -56,6 +72,8 @@ export async function verbResume(ctx) {
         entryStartTs: ts,
         wordsAtEntryStart: wordsAtStart,
         paused: undefined,
+        pausedAtTs: null,
+        lastWordMarker: carriedMarker,
       },
       statePath
     );
@@ -85,9 +103,9 @@ export async function verbResume(ctx) {
       ts,
       event: 'resumed',
       activeSec: 0,
-      idleSec: 0,
+      idleSec,
       deltaWords: 0,
-      wordMarker: wordsAtStart,
+      wordMarker: carriedMarker,
       description: role ?? 'task resumed',
     });
     await safePostTiming(s.lastActive, row);
@@ -129,6 +147,10 @@ export async function verbResume(ctx) {
     saveMarker(markerPathFor(sid), totalLines, count, normalizedTarget);
     wordsAtStart = count;
   }
+  // #475 AC2 — idle span of the pause window (if this #N resume follows a pause).
+  const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
+  // #475 AC1 — carry the durable marker forward across the rebind.
+  const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
   saveState(
     {
       ...s,
@@ -137,6 +159,8 @@ export async function verbResume(ctx) {
       entryStartTs: ts,
       wordsAtEntryStart: wordsAtStart,
       paused: undefined,
+      pausedAtTs: null,
+      lastWordMarker: carriedMarker,
     },
     statePath
   );
@@ -169,9 +193,9 @@ export async function verbResume(ctx) {
     ts,
     event: 'resumed',
     activeSec: 0,
-    idleSec: 0,
+    idleSec,
     deltaWords: 0,
-    wordMarker: wordsAtStart,
+    wordMarker: carriedMarker,
     description: role ?? 'task resumed',
   });
   await safePostTiming(normalizedTarget, row);

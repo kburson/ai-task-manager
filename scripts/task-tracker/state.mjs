@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { legacyPathFor } from './paths.mjs';
+import { legacyPathFor, existingRuntimePath, SHARED_DIR } from './paths.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
 import { currentSessionId } from './word-counter.mjs';
 
@@ -11,7 +11,38 @@ export const EMPTY_STATE = {
   wordsAtEntryStart: 0,
   totalActiveMinutes: 0,
   discoverBucket: null,
+  // #475 AC1 — durable monotonic Word Marker. Carried across bindings and
+  // stamped on EVERY timing row (including audit/lifecycle rows that have no
+  // live session) so the cumulative total never collapses to 0. Lives in the
+  // global ledger, not the per-session overlay, so it survives rebinds.
+  lastWordMarker: 0,
+  // #475 AC2 — timestamp of the most recent `/task pause`. `resume` uses it to
+  // compute the idle span of the pause window, then clears it.
+  pausedAtTs: null,
 };
+
+// #475 AC1 — monotonic advance of the durable Word Marker. Never decreases:
+// returns the larger of the prior durable value and the freshly-computed
+// candidate. Non-numeric / negative inputs floor to 0.
+export function advanceWordMarker(prev, candidate) {
+  const p = Number.isFinite(Number(prev)) ? Math.max(0, Number(prev)) : 0;
+  const c = Number.isFinite(Number(candidate)) ? Math.max(0, Number(candidate)) : 0;
+  return Math.max(p, c);
+}
+
+// #475 AC1 — read the durable Word Marker for audit/lifecycle rows emitted by
+// verbs that hold a `projDir` (or nothing) rather than a loaded `state`/`statePath`
+// (approve, reconcile, promote, hook events). Returns 0 on any failure so a row
+// is still emitted. Callers that already have a loaded state should use
+// `state.lastWordMarker ?? 0` directly instead of reloading.
+export function durableWordMarker(projDir) {
+  try {
+    const sp = existingRuntimePath(projDir, `${SHARED_DIR}/task-tracker-state.json`);
+    return loadState(sp).lastWordMarker ?? 0;
+  } catch {
+    return 0;
+  }
+}
 
 // Fields owned by per-session active-task.json (#212). The authoritative copy
 // lives under .ai-task-manager/sessions/<sid>/active-task.json. During the

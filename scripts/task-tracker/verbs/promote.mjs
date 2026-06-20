@@ -24,6 +24,7 @@ import { promisify } from 'node:util';
 import { FORWARD, STATES, normalizeStateSlug } from '../state-machine.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { getProjectDir } from '../paths.mjs';
+import { durableWordMarker } from '../state.mjs';
 import {
   readLastKnownState,
   writeLastKnownState,
@@ -429,8 +430,8 @@ export async function runPromote({
           activeSec,
           idleSec,
           deltaWords: 0,
-          // wordMarker:0 audit row — drift-reconcile event, no active session
-          wordMarker: 0,
+          // #475 AC1 — carried-forward durable marker (drift-reconcile event, no active session)
+          wordMarker: durableWordMarker(getProjectDir()),
           description: `${recorded} → ${liveAfter} (${
             transitionResult.kind === 'alias'
               ? `alias /task ${transitionResult.verb}`

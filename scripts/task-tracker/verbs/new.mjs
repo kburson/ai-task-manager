@@ -1,4 +1,4 @@
-import { loadState, saveState, EMPTY_STATE } from '../state.mjs';
+import { loadState, saveState, EMPTY_STATE, advanceWordMarker } from '../state.mjs';
 import { registerTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -130,8 +130,8 @@ export async function verbNew(ctx) {
       activeSec: 0,
       idleSec: 0,
       deltaWords: 0,
-      // wordMarker:0 ok — issue just created, no session yet
-      wordMarker: 0,
+      // #475 AC1 — carry the durable session-global marker forward; never 0
+      wordMarker: s.lastWordMarker ?? 0,
       description: PHASE_EVENTS.backlog.enter.description,
     })
   );
@@ -158,7 +158,8 @@ export async function verbNew(ctx) {
         activeSec: 0,
         idleSec: idleMin * 60,
         deltaWords: 0,
-        wordMarker: wordsAtStart,
+        // #475 AC1 — monotonic carry-forward, never below the durable marker
+        wordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
         description: `discovery session reconciled as idle (opened ${startedAt})`,
       })
     );
@@ -178,6 +179,9 @@ export async function verbNew(ctx) {
       lastActive: issue,
       entryStartTs: ts,
       wordsAtEntryStart: wordsAtStart,
+      // #475 AC1 — preserve the durable session-global marker across the new
+      // binding (…EMPTY_STATE would otherwise reset it to 0).
+      lastWordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
     },
     statePath
   );
@@ -193,7 +197,8 @@ export async function verbNew(ctx) {
       activeSec: 0,
       idleSec: 0,
       deltaWords: 0,
-      wordMarker: wordsAtStart,
+      // #475 AC1 — monotonic carry-forward of the durable marker
+      wordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
       description: role,
     })
   );

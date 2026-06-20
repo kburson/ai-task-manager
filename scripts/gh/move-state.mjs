@@ -20,7 +20,7 @@ import {
   SHARED_DIR,
   projectTmpDir,
 } from '../task-tracker/paths.mjs';
-import { loadState, saveState } from '../task-tracker/state.mjs';
+import { loadState, saveState, durableWordMarker } from '../task-tracker/state.mjs';
 import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import {
   stampEntryMarker,
@@ -357,7 +357,8 @@ if (!SKIP_NETWORK && !supersedeFlag) {
           activeSec: _dM1.activeSec,
           idleSec: _dM1.idleSec,
           deltaWords: 0,
-          wordMarker: 0,
+          // #475 AC1 — carried-forward durable marker (gate-refused audit row)
+          wordMarker: durableWordMarker(getProjectDir()),
           description: `→ ${stateArg}: ${ruleNames.join(', ')}`,
         });
         await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -412,7 +413,8 @@ if (!SKIP_NETWORK && !supersedeFlag) {
           activeSec: _d.activeSec,
           idleSec: _d.idleSec,
           deltaWords: 0,
-          wordMarker: 0,
+          // #475 AC1 — carried-forward durable marker (lifecycle-warn audit row)
+          wordMarker: durableWordMarker(getProjectDir()),
           description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
         }),
       });
@@ -646,6 +648,9 @@ const __mutationBlock = async () => {
       });
       const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
 
+      // #475 AC1 — every phase-pair row carries the carried-forward durable
+      // marker rather than collapsing to 0.
+      const _phaseMarker = durableWordMarker(getProjectDir());
       // First row: completion of the previous state (or `demoted` for demote).
       if (demoteFlag) {
         const row = buildRow({
@@ -654,7 +659,7 @@ const __mutationBlock = async () => {
           activeSec,
           idleSec,
           deltaWords: 0,
-          wordMarker: 0,
+          wordMarker: _phaseMarker,
           description: prev ? `demoted from ${prev}` : 'demoted',
         });
         await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -665,14 +670,33 @@ const __mutationBlock = async () => {
           activeSec,
           idleSec,
           deltaWords: 0,
-          wordMarker: 0,
+          wordMarker: _phaseMarker,
         });
         await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
       }
 
       // Second row: entry into the new state. Share the same `ts` so the
       // pair is co-located in the table.
-      if (PHASE_EVENTS[stateArg]?.enter) {
+      //
+      // #475 AC4 — the move to `done` is special. The board reaches Done only
+      // AFTER post-approval cleanup (timing flushed, body updated, `gh issue
+      // close`), so this is the terminal "ready for next story" moment. Emit
+      // the `done.complete` (`closed`) event here carrying the approved→closed
+      // cleanup interval (the `activeSec/idleSec` delta derived above), instead
+      // of a second `approved` row — the approval moment itself was already
+      // logged by the close verb (`done.enter`). This is what eliminates the
+      // old duplicate "story approved" pair.
+      if (stateArg === 'done' && !demoteFlag && PHASE_EVENTS.done?.complete) {
+        const row = buildRow({
+          ts,
+          phase: { state: 'done', phase: 'complete' },
+          activeSec,
+          idleSec,
+          deltaWords: 0,
+          wordMarker: _phaseMarker,
+        });
+        await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      } else if (PHASE_EVENTS[stateArg]?.enter) {
         // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
         // paired emission shares ts with the completion row above — no
         // elapsed delta is possible between the two halves.
@@ -682,7 +706,7 @@ const __mutationBlock = async () => {
           activeSec: 0,
           idleSec: 0,
           deltaWords: 0,
-          wordMarker: 0,
+          wordMarker: _phaseMarker,
         });
         await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
       }
@@ -799,7 +823,8 @@ const __mutationBlock = async () => {
         activeSec: _dM2.activeSec,
         idleSec: _dM2.idleSec,
         deltaWords: 0,
-        wordMarker: 0,
+        // #475 AC1 — carried-forward durable marker (out-of-band audit row)
+        wordMarker: durableWordMarker(getProjectDir()),
         description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });

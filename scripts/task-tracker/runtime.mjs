@@ -27,6 +27,7 @@ import {
   countWords,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
+import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { getProjectDir } from './paths.mjs';
@@ -227,7 +228,14 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // zero-duration row rather than dereferencing a null timestamp (which
     // `new Date(null)` would resolve to epoch 0 → garbage delta).
     if (!state.entryStartTs) {
-      const wordMarker = state.wordsAtEntryStart + deltaWords;
+      // #475 AC1 — carry the durable marker forward. With no open session the
+      // raw `wordsAtEntryStart + deltaWords` can be 0; the monotonic durable
+      // value keeps the row from collapsing the cumulative total.
+      const wordMarker = advanceWordMarker(
+        state.lastWordMarker,
+        state.wordsAtEntryStart + deltaWords
+      );
+      state.lastWordMarker = wordMarker;
       const { buildRow } = await import('./gh-timing-comment.mjs');
       const row = buildRow({
         ts,
@@ -239,7 +247,16 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         description: effectiveDescription,
       });
       if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
-      return { row, ts, deltaMin: 0, idleMin: 0, deltaWallMin: 0, deltaWords, wordMarker };
+      return {
+        row,
+        ts,
+        deltaMin: 0,
+        idleMin: 0,
+        deltaWallMin: 0,
+        deltaWords,
+        wordMarker,
+        lastWordMarker: wordMarker,
+      };
     }
     const startMs = new Date(state.entryStartTs).getTime();
     const endMs = new Date(ts).getTime();
@@ -255,7 +272,13 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
       }));
     }
-    const wordMarker = state.wordsAtEntryStart + deltaWords;
+    // #475 AC1 — advance the durable monotonic marker and stamp it (not the
+    // raw per-session sum) so the cumulative total never regresses.
+    const wordMarker = advanceWordMarker(
+      state.lastWordMarker,
+      state.wordsAtEntryStart + deltaWords
+    );
+    state.lastWordMarker = wordMarker;
     const { buildRow } = await import('./gh-timing-comment.mjs');
     const row = buildRow({
       ts,
@@ -267,7 +290,16 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       description: effectiveDescription,
     });
     if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
-    return { row, ts, deltaMin: activeMin, idleMin, deltaWallMin, deltaWords, wordMarker };
+    return {
+      row,
+      ts,
+      deltaMin: activeMin,
+      idleMin,
+      deltaWallMin,
+      deltaWords,
+      wordMarker,
+      lastWordMarker: wordMarker,
+    };
   };
 
   ctx.runLogIssueTime = async (issue) => {

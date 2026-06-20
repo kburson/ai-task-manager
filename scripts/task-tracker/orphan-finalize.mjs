@@ -32,6 +32,7 @@ import { getProjectDir, SHARED_DIR } from './paths.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
 import { enqueue } from './queue.mjs';
 import { pendingPausePath } from './hooks/on-stop.mjs';
+import { durableWordMarker } from './state.mjs';
 
 const VALID_REASONS = new Set(['natural', 'orphan-finalize', 'switch', 'stale-session']);
 
@@ -69,7 +70,8 @@ async function postOrEnqueue({ cfg, projDir, marker, sid, reason, idleSeconds, n
     idleSec: idleSeconds,
     activeSec: 0,
     deltaWords: 0,
-    wordMarker: null,
+    // #475 AC1 — carried-forward durable marker, never null (idle finalize, no live session)
+    wordMarker: durableWordMarker(projDir),
     description: `<!-- sess: ${sid} reason: ${reason} -->`,
   });
   try {

@@ -198,8 +198,8 @@ export async function verbClose(ctx) {
           activeSec: _d1.activeSec,
           idleSec: _d1.idleSec,
           deltaWords: 0,
-          // wordMarker:0 audit row — closed-with-dirty-tree audit, no active session
-          wordMarker: 0,
+          // #475 AC1 — carried-forward durable marker (closed-with-dirty-tree audit, no active session)
+          wordMarker: s.lastWordMarker ?? 0,
           description: shortAuditDescription(dirty),
         });
       } else {
@@ -246,8 +246,8 @@ export async function verbClose(ctx) {
             activeSec: _d2.activeSec,
             idleSec: _d2.idleSec,
             deltaWords: 0,
-            // wordMarker:0 audit row — gate-bypass audit, no active session
-            wordMarker: 0,
+            // #475 AC1 — carried-forward durable marker (gate-bypass audit, no active session)
+            wordMarker: s.lastWordMarker ?? 0,
             description:
               'gateReviewToDone=false (session/project override) — bypassing human review',
           })
@@ -323,8 +323,8 @@ export async function verbClose(ctx) {
               activeSec: _dL.activeSec,
               idleSec: _dL.idleSec,
               deltaWords: 0,
-              // wordMarker:0 audit row — lifecycle WARN bypass, no active session work
-              wordMarker: 0,
+              // #475 AC1 — carried-forward durable marker (lifecycle WARN bypass, no active session work)
+              wordMarker: s.lastWordMarker ?? 0,
               description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
             })
           );
@@ -463,8 +463,10 @@ export async function verbClose(ctx) {
                 activeSec: 0,
                 idleSec: 0,
                 deltaWords: 0,
-                // wordMarker:0 audit row — cascade close, no per-child session
-                wordMarker: 0,
+                // #475 AC1 — stamp the epic session's durable marker (the session
+                // performing the cascade); the per-log monotonic-max in
+                // rollupTotals protects each child's own running total.
+                wordMarker: s.lastWordMarker ?? 0,
                 description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
               })
             );
@@ -524,8 +526,8 @@ export async function verbClose(ctx) {
       activeSec: _d3.activeSec,
       idleSec: _d3.idleSec,
       deltaWords: 0,
-      // wordMarker:0 ok — timing already flushed at Review, this is the close audit row
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
+      wordMarker: s.lastWordMarker ?? 0,
       description: _PE3.done.enter.description,
     })
   );

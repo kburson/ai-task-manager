@@ -37,6 +37,7 @@ import { currentSessionId } from '../word-counter.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
+import { durableWordMarker } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 // keep: recovery snapshot semantics intentional — reconcile force-rewrites the
 // body verbatim (no closure), so pushIssueBody is the correct primitive here.
@@ -267,8 +268,8 @@ export async function runReconcile({
         activeSec,
         idleSec,
         deltaWords: 0,
-        // wordMarker:0 audit row — drift-reconcile event, no active session
-        wordMarker: 0,
+        // #475 AC1 — carried-forward durable marker (drift-reconcile event, no active session)
+        wordMarker: durableWordMarker(getProjectDir()),
         description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}" (${reason})${strippedNote}`,
       });
       await postTimingRow({ issueNumber, repo: cfg.repo, row });
@@ -301,8 +302,8 @@ export async function runReconcile({
       activeSec,
       idleSec,
       deltaWords: 0,
-      // wordMarker:0 audit row — drift-revert event, no active session
-      wordMarker: 0,
+      // #475 AC1 — carried-forward durable marker (drift-revert event, no active session)
+      wordMarker: durableWordMarker(getProjectDir()),
       description: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
     });
     await postTimingRow({ issueNumber, repo: cfg.repo, row });
