@@ -75,7 +75,7 @@ and later `/task resume`, the wall-clock interval between them is unambiguous,
 user-declared idle ("pregnant pause"). This is far more reliable than gap-inference
 because both endpoints are explicit user actions with timestamps.
 
-**Wireability check:** `pause` currently persists **no timestamp**
+**Wire-up check:** `pause` currently persists **no timestamp**
 (`scripts/task-tracker/verbs/pause.mjs`) — it only flips `paused: true`. So this needs
 **one new persisted field**:
 
