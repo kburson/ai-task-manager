@@ -8,7 +8,7 @@ its marker; run `/task dod-stamp <key>` to produce one. The two derived keys
 See `skill/shared/rules/functional-dod.md` for the full contract.
 -->
 
-#### Functional (verified at Test)
+### Functional (verified at Test)
 
 - [ ] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->
 - [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->
@@ -16,7 +16,7 @@ See `skill/shared/rules/functional-dod.md` for the full contract.
 - [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->
 - [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->
 
-#### Lifecycle (auto-ticked at Review/Close)
+### Lifecycle (auto-ticked at Review/Close)
 
 - [ ] Passed final human review
 - [ ] Story closed and moved to Done

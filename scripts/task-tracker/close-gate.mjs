@@ -8,7 +8,7 @@
 // paths in sync.
 
 import { LIFECYCLE_LABEL_SET, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
-import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
+import { hasFullAutoApproved } from './lib/markers.mjs';
 
 export const CLOSE_OWNED_CHECKBOXES = new Set([
   'Issue moved to Done',
@@ -49,7 +49,7 @@ export const CLOSE_OWNED_LIFECYCLE_KEYS = new Set(['story-closed', 'timing-flush
 // excluded from blocking via CLOSE_OWNED_LIFECYCLE_KEYS.
 export function assertLifecycleSatisfied({ body, required = true } = {}) {
   const src = String(body || '');
-  const fullAutoApproved = FULL_AUTO_APPROVED_RE.test(src);
+  const fullAutoApproved = hasFullAutoApproved(src);
   const results = lifecycleSatisfaction(src, { fullAutoApproved });
   const missing = results.filter(
     (r) => r.status === 'missing' && !CLOSE_OWNED_LIFECYCLE_KEYS.has(r.key)

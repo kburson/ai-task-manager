@@ -151,4 +151,51 @@ const ALL_GREEN = [
   assert.equal(tickedFunctional.length, 0, 'no Functional ticked');
 }
 
+// --- #480 AC8: a KEYED Functional line records ONE aitm-dod-evidence marker,
+// not a second execution-form aitm-verified proof ---------------------------
+{
+  const keyedBody = [
+    '## Verification Commands',
+    '',
+    '- [ ] `npm test`',
+    '',
+    '## Definition of Done',
+    '',
+    '### Functional (verified at Test)',
+    '',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->',
+    '',
+    '### Lifecycle (auto-ticked at Review/Close)',
+    '',
+    '- [ ] Passed final human review',
+    '',
+  ].join('\n');
+  const greenTests = [{ command: 'npm test', passed: true, exit: 0 }];
+  const { body } = autoTickVerified(keyedBody, greenTests, '2026-06-20T00:00:00Z');
+
+  assert.ok(body.includes('- [x] All automated tests pass'), 'keyed Functional item ticked');
+
+  // Exactly one aitm-dod-evidence marker (keyed to the line), form-agnostic.
+  assert.equal(
+    (body.match(/aitm-dod-evidence\b/g) || []).length,
+    1,
+    'single consolidated evidence marker for the keyed line'
+  );
+  assert.match(body, /<!-- aitm-dod-evidence key="tests" cmd="npm test"[^>]*sha="sandbox"[^>]*-->/);
+
+  // On the Functional line itself, the original `aitm-verified cmd=`
+  // DECLARATION stays, but NO second execution-form proof
+  // (`aitm-verified ... sha="sandbox"`) is appended — the evidence lives in the
+  // single aitm-dod-evidence marker instead. (The VC box line legitimately
+  // carries its own aitm-verified proof; scope the check to the DoD line.)
+  const funcLine = body.split('\n').find((l) => l.includes('All automated tests pass'));
+  assert.ok(funcLine, 'functional line present');
+  assert.doesNotMatch(
+    funcLine,
+    /aitm-verified[^>]*sha="sandbox"/,
+    'keyed line must not also get a redundant execution-form aitm-verified proof'
+  );
+  assert.match(funcLine, /aitm-verified cmd="`npm test`"/, 'declaration marker retained');
+}
+
 console.log('auto-tick-verified.test.mjs: all assertions passed');

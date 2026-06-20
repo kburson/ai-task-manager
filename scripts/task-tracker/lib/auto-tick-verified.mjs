@@ -25,6 +25,14 @@ import {
   extractVerifiedCommands,
   stripProofMarkers,
 } from './proof-marker.mjs';
+import { stampEvidenceMarker, KEY_CLASSIFICATION } from './functional-dod-evidence.mjs';
+
+// A Functional DoD line's canonical `dod:functional:<key>` tag. When present we
+// record the run as ONE `aitm-dod-evidence` marker (upserted by
+// `stampEvidenceMarker`) rather than appending a second `aitm-verified` proof
+// next to the line's existing `aitm-verified cmd="…"` declaration — the
+// double-`aitm-verified` redundancy #480 (AC8) removes.
+const FUNCTIONAL_KEY_RE = /<!--\s*dod:functional:([a-z0-9-]+)\s*-->/i;
 
 const HEADING_RE = /^#{1,6}\s+/;
 const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\b/i;
@@ -84,6 +92,10 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
 
   const lines = source.split('\n');
   let section = null; // 'vc' | 'functional' | null
+  // Keyed Functional lines ticked this run; their evidence markers are upserted
+  // after the line scan so `stampEvidenceMarker` re-locates against the final
+  // (box-flipped) body. `{ key, cmd }`.
+  const pendingEvidence = [];
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
@@ -115,11 +127,37 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     // referenced command passed.
     const cmds = evidenceCommands(rest);
     if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
-      const marker = buildProofMarker(now, `sandbox exit 0 (${cmds.join(', ')})`, cmds.join(', '));
-      lines[i] = `${open}x${close}${rest} ${marker}`;
+      const keyMatch = rest.match(FUNCTIONAL_KEY_RE);
+      const key = keyMatch ? keyMatch[1].toLowerCase() : null;
+      if (key && key in KEY_CLASSIFICATION) {
+        // #480 AC8 — canonical keyed item: flip the box now, record the run as a
+        // single `aitm-dod-evidence` marker below. The existing
+        // `aitm-verified cmd="…"` declaration stays; no second `aitm-verified`.
+        lines[i] = `${open}x${close}${rest}`;
+        pendingEvidence.push({ key, cmd: cmds.join(', ') });
+      } else {
+        // Non-keyed (custom/legacy) declared item — no key to form a dod-evidence
+        // marker, so stamp the consolidated `aitm-verified` proof inline.
+        const marker = buildProofMarker(
+          now,
+          `sandbox exit 0 (${cmds.join(', ')})`,
+          cmds.join(', ')
+        );
+        lines[i] = `${open}x${close}${rest} ${marker}`;
+      }
       tickedFunctional.push(stripProofMarkers(rest));
     }
   }
 
-  return { body: lines.join('\n'), tickedVc, tickedFunctional };
+  let outBody = lines.join('\n');
+  for (const ev of pendingEvidence) {
+    outBody = stampEvidenceMarker(outBody, ev.key, {
+      cmd: ev.cmd,
+      sha: 'sandbox',
+      ts: now,
+      exit: 0,
+    });
+  }
+
+  return { body: outBody, tickedVc, tickedFunctional };
 }

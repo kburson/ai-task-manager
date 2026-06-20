@@ -9,32 +9,33 @@
 // between sections):
 //   ## Scope  (or ## Problem — either framing is canonical)
 //   ## Acceptance Criteria
-//   ### Definition of Done       (under any parent — top-level or nested)
-//     #### Functional            (required subheader, present DoD only)
-//     #### Lifecycle             (required subheader, present DoD only)
+//   ## Definition of Done       (top-level sibling; legacy ### still accepted)
+//     ### Functional            (required subheader, present DoD only)
+//     ### Lifecycle             (required subheader, present DoD only)
 //   ## Pickup Directive — MANDATORY, DO NOT SKIP
 //
 // The Pickup Directive section must also contain the literal line
 //   > Follow: `.ai-task-manager/pickup-directive.md`
 // otherwise the directive is malformed (truncated/placeholder).
 //
-// #171: a `### Definition of Done` heading alone is not enough — the
+// #171: a `## Definition of Done` heading alone is not enough — the
 // #169/#170 failure mode shipped bodies whose DoD was a placeholder with no
 // Functional/Lifecycle subsections. When the DoD heading is present we also
 // require both subheaders, so an empty/stub DoD is reported as malformed.
 
 const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
-const DOD_REGEX = /^###\s+Definition of Done\s*$/m;
+const DOD_REGEX = /^#{2,3}\s+Definition of Done\s*$/m;
 // Subheaders are matched tolerantly: the canonical text is
-// "#### Functional (verified at Test)" / "#### Lifecycle (auto-ticked at
-// Review/Close)", but only the leading word is load-bearing.
-const DOD_FUNCTIONAL_REGEX = /^####\s+Functional\b/m;
-const DOD_LIFECYCLE_REGEX = /^####\s+Lifecycle\b/m;
+// "### Functional (verified at Test)" / "### Lifecycle (auto-ticked at
+// Review/Close)" (#480 promoted DoD to a 2-hash top-level section and its
+// subsections from #### to ###), but only the leading word is load-bearing.
+const DOD_FUNCTIONAL_REGEX = /^#{3,4}\s+Functional\b/m;
+const DOD_LIFECYCLE_REGEX = /^#{3,4}\s+Lifecycle\b/m;
 
 const SECTION_CHECKS = [
   { name: '## Scope (or ## Problem)', regex: SCOPE_REGEX },
   { name: '## Acceptance Criteria', regex: /^##\s+Acceptance Criteria\s*$/m },
-  { name: '### Definition of Done', regex: DOD_REGEX },
+  { name: '## Definition of Done', regex: DOD_REGEX },
   {
     name: '## Pickup Directive — MANDATORY, DO NOT SKIP',
     regex: /^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m,
@@ -51,8 +52,8 @@ export function verifyIssueBody(body) {
       ok: false,
       missing: [
         ...SECTION_CHECKS.map((c) => c.name),
-        '#### Functional (DoD subheader)',
-        '#### Lifecycle (DoD subheader)',
+        '### Functional (DoD subheader)',
+        '### Lifecycle (DoD subheader)',
       ],
     };
   }
@@ -63,11 +64,11 @@ export function verifyIssueBody(body) {
 
   // #171 — when the DoD heading is present, both subheaders must be too. We
   // only flag missing subheaders when the parent heading exists, so a
-  // DoD-absent body reports the single "### Definition of Done" miss without
+  // DoD-absent body reports the single "## Definition of Done" miss without
   // a confusing pile of subheader misses.
   if (DOD_REGEX.test(body)) {
-    if (!DOD_FUNCTIONAL_REGEX.test(body)) missing.push('#### Functional (DoD subheader)');
-    if (!DOD_LIFECYCLE_REGEX.test(body)) missing.push('#### Lifecycle (DoD subheader)');
+    if (!DOD_FUNCTIONAL_REGEX.test(body)) missing.push('### Functional (DoD subheader)');
+    if (!DOD_LIFECYCLE_REGEX.test(body)) missing.push('### Lifecycle (DoD subheader)');
   }
 
   // Pickup Directive heading present but the canonical "Follow:" line absent

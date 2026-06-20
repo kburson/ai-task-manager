@@ -18,26 +18,29 @@ const repoRoot = new URL('../../../..', import.meta.url).pathname;
 const createIssueScript = join(repoRoot, 'scripts/gh/create-issue.mjs');
 const preflightScript = join(repoRoot, 'scripts/task-tracker/preflight-issue.mjs');
 
+// #480 — canonical structure: Plan Metadata precedes Acceptance Criteria,
+// Definition of Done is a 2-hash top-level sibling with 3-hash
+// Functional/Lifecycle children.
 const CANONICAL_BODY = [
   '## Scope',
   '',
   'Some scope text.',
   '',
-  '## Acceptance Criteria',
-  '',
-  '- [ ] Something works',
-  '',
   '## Plan Metadata',
   '',
   '**Size:** S',
   '',
-  '### Definition of Done',
+  '## Acceptance Criteria',
   '',
-  '#### Functional (verified at Test)',
+  '- [ ] Something works',
+  '',
+  '## Definition of Done',
+  '',
+  '### Functional (verified at Test)',
   '',
   '- [ ] npm test passes',
   '',
-  '#### Lifecycle (auto-ticked at Review/Close)',
+  '### Lifecycle (auto-ticked at Review/Close)',
   '',
   '- [ ] Story closed and moved to Done',
   '',
@@ -67,15 +70,15 @@ test('verifyIssueBody: ## Problem accepted in place of ## Scope', () => {
   assert.equal(res.ok, true, `unexpected missing: ${JSON.stringify(res.missing)}`);
 });
 
-test('verifyIssueBody: DoD present but missing #### Functional subheader', () => {
-  const body = CANONICAL_BODY.replace('#### Functional (verified at Test)', '#### Foo');
+test('verifyIssueBody: DoD present but missing ### Functional subheader', () => {
+  const body = CANONICAL_BODY.replace('### Functional (verified at Test)', '### Foo');
   const res = verifyIssueBody(body);
   assert.equal(res.ok, false);
   assert.ok(res.missing.some((m) => /Functional/.test(m)));
 });
 
-test('verifyIssueBody: DoD present but missing #### Lifecycle subheader', () => {
-  const body = CANONICAL_BODY.replace('#### Lifecycle (auto-ticked at Review/Close)', '#### Bar');
+test('verifyIssueBody: DoD present but missing ### Lifecycle subheader', () => {
+  const body = CANONICAL_BODY.replace('### Lifecycle (auto-ticked at Review/Close)', '### Bar');
   const res = verifyIssueBody(body);
   assert.equal(res.ok, false);
   assert.ok(res.missing.some((m) => /Lifecycle/.test(m)));
@@ -89,10 +92,10 @@ test('verifyIssueBody: missing Acceptance Criteria', () => {
 });
 
 test('verifyIssueBody: missing Definition of Done', () => {
-  const body = CANONICAL_BODY.replace('### Definition of Done', '### DoD');
+  const body = CANONICAL_BODY.replace('## Definition of Done', '## DoD');
   const res = verifyIssueBody(body);
   assert.equal(res.ok, false);
-  assert.ok(res.missing.includes('### Definition of Done'));
+  assert.ok(res.missing.includes('## Definition of Done'));
 });
 
 test('verifyIssueBody: missing Pickup Directive heading', () => {

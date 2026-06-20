@@ -134,12 +134,13 @@ function makeDeps(overrides = {}) {
   const r = await runApprove({ issueNumber: 58, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.fullAuto, true);
-  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->/);
-  // #380: full-auto-approved marker now uses the property grammar.
+  // #480 AC6 — full-auto is now folded into the single aitm-review-approved
+  // marker; the separate aitm-full-auto-approved marker is no longer written.
   assert.match(
     getBody(),
-    /<!-- aitm-full-auto-approved ts="2026-05-10T00:00:00Z" signals="env=1,tty=0,ci=0" -->/
+    /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" full-auto="yes" signals="env=1,tty=0,ci=0" -->/
   );
+  assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
   // #161 / D4 — visible footnote also present.
   assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
   assert.match(getBody(), /Full-Auto mode enabled: human review skipped/);

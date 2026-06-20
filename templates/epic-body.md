@@ -4,10 +4,10 @@ EPIC issue body template.
 Canonical heading order (the parity test enforces this):
   ## User Story
   ## Scope
-  ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Plan Metadata
+  ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Sub-Issues                   (list inserted after sub-issue loop)
-  ### Definition of Done          (appended by preflight tail)
+  ## Definition of Done           (2-hash; appended by preflight tail, #480)
   ## Pickup Directive             (appended by preflight tail)
   <!-- aitm-fields: ... -->       (appended by project-tether)
 
@@ -33,12 +33,12 @@ So that [why they want to accomplish that thing]
 
 {{scope}}
 
-## Acceptance Criteria
-
-{{acceptance_criteria}}
-
 ## Plan Metadata
 
 {{plan_metadata}}
+
+## Acceptance Criteria
+
+{{acceptance_criteria}}
 
 {{sub_issue_list}}

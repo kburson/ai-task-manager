@@ -32,7 +32,7 @@ import path from 'node:path';
 import { existingRuntimePath } from './paths.mjs';
 import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
-import { FULL_AUTO_APPROVED_RE } from './lib/markers.mjs';
+import { hasFullAutoApproved } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
@@ -229,14 +229,19 @@ function buildFieldsTrailer(args) {
 
 function tailBlock(dodPath) {
   const dod = readFileSync(dodPath, 'utf8').replace(/\s+$/, '');
+  // #480 — `## Definition of Done` (2-hash) is a top-level sibling of
+  // `## Acceptance Criteria` / `## Verification Commands`, so the CODE_COMPLETE
+  // AC slice (`NEXT_HEADING_RE = /^##\s+/`) terminates at it and stops slurping
+  // the DoD Functional/Lifecycle items. Canonical order is
+  // DoD → `---` → Pickup Directive.
   return [
-    '### Definition of Done',
+    '## Definition of Done',
     dod,
+    '',
+    '---',
     '',
     '## Pickup Directive — MANDATORY, DO NOT SKIP',
     '> Follow: `.ai-task-manager/pickup-directive.md`',
-    '',
-    '---',
     '',
   ].join('\n');
 }
@@ -311,7 +316,9 @@ function emitShape(args, dodPath, root) {
   if (seedCmds.length) {
     const vcSection =
       '## Verification Commands\n\n' + seedCmds.map((c) => `- [ ] \`${c}\``).join('\n') + '\n\n';
-    const anchor = '## Pickup Directive — MANDATORY, DO NOT SKIP';
+    // #480 — VC sits BETWEEN `## Acceptance Criteria` and `## Definition of Done`
+    // (canonical order), so anchor on the DoD heading rather than Pickup.
+    const anchor = '## Definition of Done';
     const idx = finalBody.indexOf(anchor);
     finalBody =
       idx === -1
@@ -367,7 +374,7 @@ async function checkIntegrity(issueNumber) {
     die(`gh issue view #${num} failed: ${err.message}`);
     return;
   }
-  const fullAutoApproved = FULL_AUTO_APPROVED_RE.test(String(body));
+  const fullAutoApproved = hasFullAutoApproved(String(body));
   const results = lifecycleSatisfaction(String(body), { fullAutoApproved });
   process.stderr.write(`[task-tracker] integrity check for #${num}:\n`);
   for (const r of results) {

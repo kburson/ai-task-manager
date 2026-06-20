@@ -68,8 +68,8 @@ export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
   return out;
 }
 
-const LIFECYCLE_HEADING_RE = /^####\s+Lifecycle\b[^\n]*$/im;
-const FUNCTIONAL_HEADING_RE = /^####\s+Functional\b[^\n]*$/im;
+const LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\b[^\n]*$/im;
+const FUNCTIONAL_HEADING_RE = /^#{3,4}\s+Functional\b[^\n]*$/im;
 // Section ends at the next heading of equal-or-shallower depth, the field-DB
 // block, or end-of-body — whichever comes first.
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;

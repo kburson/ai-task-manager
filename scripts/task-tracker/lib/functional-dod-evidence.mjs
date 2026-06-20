@@ -231,7 +231,7 @@ export function deriveCheckboxesStatus(body, { lifecyclePresent = false } = {}) 
   const skip = new Set();
 
   if (lifecyclePresent) {
-    const lcStart = src.match(/^####\s+Lifecycle\b[^\n]*$/im);
+    const lcStart = src.match(/^#{3,4}\s+Lifecycle\b[^\n]*$/im);
     if (lcStart) {
       const startIdx = lcStart.index + lcStart[0].length;
       const rest = src.slice(startIdx);

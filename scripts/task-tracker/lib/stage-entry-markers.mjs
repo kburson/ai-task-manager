@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
+import { PROGRESS_MARKERS_HEADING } from './markers.mjs';
 
 const pexec = promisify(execFile);
 
@@ -87,14 +88,25 @@ function backfillMarkerRe(stage) {
   );
 }
 
+// #480 AC5 — entry/backfill markers join the bottom progress-marker cluster
+// under the shared `## AITM Progress Markers` heading (created on first stamp).
+function placeUnderProgressHeading(main, marker) {
+  const trimmed = String(main || '').replace(/\s+$/, '');
+  if (trimmed.includes(PROGRESS_MARKERS_HEADING)) {
+    return `${trimmed}\n${marker}`;
+  }
+  return `${trimmed}\n\n${PROGRESS_MARKERS_HEADING}\n\n${marker}`;
+}
+
 function insertBeforeFieldDb(body, marker) {
   const src = String(body || '');
   const parsed = parseIssueFieldDb(src);
   if (parsed.ok) {
     const stripped = stripIssueFieldDb(src);
-    return `${stripped}\n\n${marker}\n\n${formatIssueFieldDb(parsed.values)}\n`;
+    const placed = placeUnderProgressHeading(stripped, marker);
+    return `${placed}\n\n${formatIssueFieldDb(parsed.values)}\n`;
   }
-  return `${src.replace(/\s+$/, '')}\n\n${marker}\n`;
+  return `${placeUnderProgressHeading(src, marker)}\n`;
 }
 
 export function stampEntryMarker(body, stage, ts) {

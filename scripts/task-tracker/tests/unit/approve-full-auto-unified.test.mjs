@@ -74,7 +74,7 @@ function makeDeps(overrides = {}) {
 
 // 17. Claude Code shape: TASK_TRACKER_HUMAN_REVIEWER unset, stdin is a TTY
 // (legacy signals all inert). The footnote MUST be inserted and the
-// aitm-full-auto-approved body marker stamped.
+// consolidated aitm-review-approved marker carries full-auto="yes" (#480 AC6).
 {
   const prevReviewer = process.env.TASK_TRACKER_HUMAN_REVIEWER;
   const prevAuto = process.env.TT_FULL_AUTO;
@@ -91,7 +91,9 @@ function makeDeps(overrides = {}) {
     const r = await runApprove({ issueNumber: 58, cfg, deps });
     assert.equal(r.status, 'approved');
     assert.equal(r.fullAuto, true);
-    assert.match(getBody(), /<!-- aitm-full-auto-approved ts="/);
+    // #480 AC6 — full-auto folded into the single aitm-review-approved marker.
+    assert.match(getBody(), /<!-- aitm-review-approved ts="[^"]*" full-auto="yes"/);
+    assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
     assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
     assert.match(getBody(), /reviewer-unset=1/);
   } finally {
@@ -169,7 +171,8 @@ function makeDeps(overrides = {}) {
   });
   assert.equal(r.status, 'approved');
   const body = getBody();
-  const lifecycleIdx = body.indexOf('#### Lifecycle');
+  // #480 — preflight now emits a 3-hash `### Lifecycle` subheader.
+  const lifecycleIdx = body.indexOf('### Lifecycle');
   const footnoteIdx = body.indexOf('<!-- aitm-full-auto-footnote:start -->');
   assert.ok(lifecycleIdx > -1, 'preflight body contains Lifecycle subsection');
   assert.ok(footnoteIdx > lifecycleIdx, 'footnote anchors after Lifecycle subsection');
@@ -220,8 +223,9 @@ function makeDeps(overrides = {}) {
 // #363 — Full-Auto approve must pass `allowUnverifiedTicks: true` to
 // mutateIssueBody so the #362 checkbox-proof gate doesn't refuse the
 // lifecycle-line tick of "Passed final human review". The truth-bearing
-// proof for that tick is the audit comment + `aitm-full-auto-approved` body
-// marker, not an inline `aitm-verified-at` HTML comment (which would also
+// proof for that tick is the audit comment + the consolidated
+// `aitm-review-approved full-auto="yes"` body marker (#480 AC6), not an
+// inline `aitm-verified-at` HTML comment (which would also
 // break lifecycle-dod.mjs's exact-label match).
 {
   const body = [

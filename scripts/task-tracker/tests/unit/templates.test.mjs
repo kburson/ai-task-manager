@@ -36,13 +36,15 @@ const preflightBlock = execFileSync(
 // DoD template uses Functional/Lifecycle split (#139). Verification commands
 // now live in the consolidated `aitm-verified cmd="..."` declarations on each
 // Functional item (#419) rather than as standalone DoD lines.
+// #480 — DoD is now a 2-hash top-level section with 3-hash Functional/Lifecycle
+// children (was a 3-hash section with 4-hash children).
 for (const fragment of [
-  '#### Functional (verified at Test)',
+  '### Functional (verified at Test)',
   'aitm-verified cmd="`npm run test:all`"',
   'aitm-verified cmd="`npm run lint` `npm run format:check`"',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
-  '#### Lifecycle (auto-ticked at Review/Close)',
+  '### Lifecycle (auto-ticked at Review/Close)',
   '- [ ] Passed final human review',
   '- [ ] Story closed and moved to Done',
   '- [ ] Timing data flushed to issue',
@@ -153,7 +155,7 @@ for (const form of [taskIssueForm, bugIssueForm]) {
   );
 }
 
-const dodIdx = preflightBlock.indexOf('### Definition of Done');
+const dodIdx = preflightBlock.indexOf('## Definition of Done');
 const pickupIdx = preflightBlock.indexOf('## Pickup Directive');
 assert.ok(dodIdx !== -1, 'preflight block includes Definition of Done');
 assert.ok(pickupIdx !== -1, 'preflight block includes Pickup Directive after DoD');

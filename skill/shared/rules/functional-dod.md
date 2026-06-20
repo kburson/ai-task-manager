@@ -58,13 +58,42 @@ and when_. The audit trail is the marker; the checkbox is the index into it.
 A ticked box with no marker means somebody decided without evidence — the
 gate's job is to prevent that decision from reaching `gh`.
 
+## One evidence marker per tick (#480)
+
+A canonical Functional item carries two hidden parts on its line, plus the
+visible box:
+
+```
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->
+```
+
+- `aitm-verified cmd="…"` — the **declaration** of which command(s) back this
+  item. Carries `cmd` only; no `ts`/`sha`/`proof` (those would make it read as
+  execution proof, which a declaration is not).
+- `dod:functional:<key>` — the **key tag** that binds the line to a stampable
+  key.
+
+When `/task test` runs green, `autoTickVerified` flips the box and records the
+run as **one** `<!-- aitm-dod-evidence key="…" cmd="…" exit=0 sha=<head> ts=<ISO> -->`
+marker (upserted in place by `stampEvidenceMarker`). It does **not** append a
+second `aitm-verified` proof next to the existing declaration — that
+double-`aitm-verified` redundancy is what #480 (AC8) removed. The
+`aitm-dod-evidence` marker satisfies the checkbox-proof invariant identically to
+an execution-form `aitm-verified`.
+
+Non-keyed declared items (custom/legacy, no `dod:functional:<key>` tag) still
+get a single inline `aitm-verified` proof, since there is no key to form a
+`dod-evidence` marker. Readers stay tolerant of bodies that carry a legacy
+double `aitm-verified` (declaration + proof) until the corpus is swept.
+
 ## Custom verifiers
 
 The verifier command for each stampable key comes from the
-`<!-- aitm-verified-by: \`…\` -->`markers on the same line. Override the
-default by editing your project's`templates/definition-of-done.md`and
-keeping the`dod:functional:<key>`marker intact.`dod-stamp <key>` reads
-the live body; whatever commands appear on the keyed line are what it runs.
+`<!-- aitm-verified cmd="`…`" -->` declaration on the same line (the legacy
+`aitm-verified-by:` form is still read). Override the default by editing your
+project's `templates/definition-of-done.md` and keeping the
+`dod:functional:<key>` marker intact. `dod-stamp <key>` reads the live body;
+whatever commands appear on the keyed line are what it runs.
 
 ## Backward compatibility
 

@@ -11,9 +11,9 @@ full scope/AC/plan worked out at creation time.
 
 Canonical heading order (the parity test enforces this):
   ## Scope
-  ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Plan Metadata
-  ### Definition of Done          (appended by preflight tail)
+  ## Acceptance Criteria          (must use `- [ ]` checkboxes)
+  ## Definition of Done           (2-hash; appended by preflight tail, #480)
   ## Pickup Directive             (appended by preflight tail)
   <!-- aitm-fields: ... -->       (appended by project-tether)
 
@@ -31,10 +31,10 @@ against the current state of the repo, not at creation time.
 
 {{scope}}
 
-## Acceptance Criteria
-
-{{acceptance_criteria}}
-
 ## Plan Metadata
 
 {{plan_metadata}}
+
+## Acceptance Criteria
+
+{{acceptance_criteria}}

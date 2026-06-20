@@ -20,7 +20,6 @@ import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
   insertReviewApprovedMarker,
-  insertFullAutoApprovedMarker,
   insertFullAutoFootnote,
 } from '../lib/markers.mjs';
 import {
@@ -237,9 +236,16 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
       // actual write transform reads its own base.
       const stamp = (base) => {
         if (hasApprovalMarker(base)) return base;
-        let updated = insertApprovalMarker(base, ts);
+        // #480 — single consolidated marker: the full-auto audit props ride on
+        // `aitm-review-approved` itself, replacing the separate hidden
+        // `aitm-full-auto-approved` marker. The visible footnote stays as a
+        // human-readable audit signal.
+        let updated = insertApprovalMarker(
+          base,
+          ts,
+          auto.fired ? { fullAuto: true, signals: auto.signals } : {}
+        );
         if (auto.fired) {
-          updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
           updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
         }
         return tickLifecycleItem(updated, 'passed-final-review');
@@ -248,9 +254,12 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
       // legacy-DoD warning. This duplicates the early transform but is
       // observability rather than correctness — the closure above is the
       // authoritative write.
-      let updated = insertApprovalMarker(body, ts);
+      let updated = insertApprovalMarker(
+        body,
+        ts,
+        auto.fired ? { fullAuto: true, signals: auto.signals } : {}
+      );
       if (auto.fired) {
-        updated = insertFullAutoApprovedMarker(updated, ts, auto.signals);
         updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
       }
       const beforeTick = updated;

@@ -104,7 +104,7 @@ describe('preflight-issue --shape stub (#426)', () => {
     assert.match(r.stdout, /TBD — define acceptance criteria at Refine\./);
     assert.match(r.stdout, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
     // Tail still appended.
-    assert.match(r.stdout, /^### Definition of Done\b/m);
+    assert.match(r.stdout, /^## Definition of Done\b/m);
     assert.match(r.stdout, /^## Pickup Directive\b/m);
     assert.match(r.stdout, /^## Verification Commands\s*$/m);
   });

@@ -8,7 +8,7 @@
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
-import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
+import { serializeMarker, unescapeValue, parseMarker } from './marker-grammar.mjs';
 
 // ---------------------------------------------------------------------------
 // Phantom-marker hardening (#333)
@@ -61,18 +61,51 @@ export function hasPlanApprovedMarker(body) {
 // ---------------------------------------------------------------------------
 
 // Reader widened (#375) to accept both legacy colon and new `ts="..."` forms.
-export const REVIEW_APPROVED_RE = /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
+// Widened again (#480) so the new property form tolerates trailing attributes
+// (`full-auto="yes" signals="…"`) consolidated onto the same marker.
+export const REVIEW_APPROVED_RE =
+  /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+ts="[^"]*"[^>]*?)\s*-->/i;
 
-export function buildReviewApprovedMarker(ts) {
-  return serializeMarker('review-approved', { ts });
+// #480 — the consolidated review-approved marker now optionally carries the
+// full-auto approval audit props. `full-auto="yes" signals="<env=…>"` collapse
+// what used to be a separate `aitm-full-auto-approved` marker + visible footnote
+// into a single marker. Pass `{ fullAuto: true, signals }` from the approve verb
+// when no human reviewed the work.
+export function buildReviewApprovedMarker(ts, { fullAuto = false, signals = '' } = {}) {
+  const props = { ts };
+  if (fullAuto) {
+    props['full-auto'] = 'yes';
+    props.signals = signals || '';
+  }
+  return serializeMarker('review-approved', props);
 }
 
 export function hasReviewApprovedMarker(body) {
   return REVIEW_APPROVED_RE.test(stripFencedCodeBlocks(body));
 }
 
-export function insertReviewApprovedMarker(body, ts) {
-  return insertMarkerBeforeFieldDb(body, REVIEW_APPROVED_RE, buildReviewApprovedMarker(ts));
+// Matches a consolidated review-approved marker that carries the full-auto prop.
+const REVIEW_APPROVED_FULL_AUTO_RE =
+  /<!--\s*aitm-review-approved\s+[^>]*\bfull-auto="(?:yes|true)"[^>]*-->/i;
+
+// Decode a consolidated review-approved marker to `{ ts, fullAuto, signals }`,
+// or null when absent. Uses the generic marker parser so prop order is
+// irrelevant.
+export function parseReviewApprovedMarker(body) {
+  const m = String(body || '').match(REVIEW_APPROVED_RE);
+  if (!m) return null;
+  const parsed = parseMarker(m[0]);
+  if (!parsed) return { ts: '', fullAuto: false, signals: '' };
+  const props = parsed.props || {};
+  return {
+    ts: props.ts || '',
+    fullAuto: props['full-auto'] === 'yes' || props['full-auto'] === 'true',
+    signals: props.signals || '',
+  };
+}
+
+export function insertReviewApprovedMarker(body, ts, opts = {}) {
+  return insertMarkerBeforeFieldDb(body, REVIEW_APPROVED_RE, buildReviewApprovedMarker(ts, opts));
 }
 
 export function insertPlanApprovedMarker(body, ts) {
@@ -152,6 +185,15 @@ export function insertFullAutoApprovedMarker(body, ts, signals) {
   );
 }
 
+// #480 — single source of truth for "this approval was machine-generated."
+// Recognises BOTH the legacy standalone `aitm-full-auto-approved` marker AND
+// the consolidated `aitm-review-approved … full-auto="yes"` form. close-gate
+// and any auditor should read through this so old and new corpora both resolve.
+export function hasFullAutoApproved(body) {
+  const s = String(body || '');
+  return FULL_AUTO_APPROVED_RE.test(s) || REVIEW_APPROVED_FULL_AUTO_RE.test(s);
+}
+
 // ---------------------------------------------------------------------------
 // full-auto footnote — visible audit signal under DoD when no human reviewed
 // (#161). The hidden `aitm-full-auto-approved` marker records the truth but is
@@ -183,7 +225,7 @@ export function buildFullAutoFootnoteBlock({ ts, signals }) {
     FULL_AUTO_FOOTNOTE_START,
     '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
     `> Approval was stamped by an autonomous agent (\`${sigStr}\`) at ${tsStr}.`,
-    '> Hidden marker: `aitm-full-auto-approved`.',
+    '> Hidden marker: `aitm-review-approved full-auto="yes"`.',
     FULL_AUTO_FOOTNOTE_END,
   ].join('\n');
 }
@@ -218,7 +260,7 @@ export function insertFullAutoFootnote(body, { ts, signals } = {}) {
 
   // Anchor 1 — Lifecycle subsection. Find `#### Lifecycle` heading; insert
   // after the last checklist line under it.
-  const lifeIdx = lines.findIndex((l) => /^####\s+Lifecycle\b/i.test(l));
+  const lifeIdx = lines.findIndex((l) => /^#{3,4}\s+Lifecycle\b/i.test(l));
   if (lifeIdx !== -1) {
     let last = lifeIdx;
     for (let i = lifeIdx + 1; i < lines.length; i++) {
@@ -230,7 +272,7 @@ export function insertFullAutoFootnote(body, { ts, signals } = {}) {
   }
 
   // Anchor 2 — Definition of Done section.
-  const dodIdx = lines.findIndex((l) => /^###\s+Definition of Done\b/i.test(l));
+  const dodIdx = lines.findIndex((l) => /^#{2,3}\s+Definition of Done\b/i.test(l));
   if (dodIdx !== -1) {
     let endIdx = lines.length;
     for (let i = dodIdx + 1; i < lines.length; i++) {
@@ -532,13 +574,36 @@ export async function markDeepDiveComplete({ issueNumber, cfg, now, deps = {} } 
 // Idempotent: if the marker is already present, returns the body unchanged.
 // ---------------------------------------------------------------------------
 
+// #480 AC5 — the bottom progress-marker cluster lives under a dedicated
+// `## AITM Progress Markers` heading so the lifecycle stamps (`aitm-entered-*`,
+// `aitm-deep-dive-complete`, `aitm-plan-approved`, `aitm-test-started`,
+// `aitm-dod-verified`, `aitm-review-approved`, `aitm-entered-done`,
+// `aitm-story-closed`) form one visually-grouped section instead of trailing
+// loose comments. The top markers (`aitm-body-version`, `aitm-last-known-state`,
+// prepended by other writers) and the inline evidence markers (`aitm-verified`,
+// `ac-evidence`, `aitm-dod-evidence`) are deliberately NOT relocated here.
+export const PROGRESS_MARKERS_HEADING = '## AITM Progress Markers';
+
+// Place `marker` under the progress-markers heading at the tail of `main` (a
+// body fragment with the field-DB already stripped). When the heading is absent
+// it is created; when present the marker is appended to the existing cluster
+// (which always sits at the tail, since every progress marker is inserted here).
+function placeProgressMarker(main, marker) {
+  const trimmed = String(main || '').replace(/\s+$/, '');
+  if (trimmed.includes(PROGRESS_MARKERS_HEADING)) {
+    return `${trimmed}\n${marker}`;
+  }
+  return `${trimmed}\n\n${PROGRESS_MARKERS_HEADING}\n\n${marker}`;
+}
+
 function insertMarkerBeforeFieldDb(body, markerRe, marker) {
   const src = String(body || '');
   if (markerRe.test(src)) return src;
   const parsed = parseIssueFieldDb(src);
   if (parsed.ok) {
     const stripped = stripIssueFieldDb(src);
-    return `${stripped}\n\n${marker}\n\n${formatIssueFieldDb(parsed.values)}\n`;
+    const placed = placeProgressMarker(stripped, marker);
+    return `${placed}\n\n${formatIssueFieldDb(parsed.values)}\n`;
   }
-  return `${src.replace(/\s+$/, '')}\n\n${marker}\n`;
+  return `${placeProgressMarker(src, marker)}\n`;
 }
