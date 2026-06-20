@@ -55,8 +55,8 @@ assert.match(r5.stdout, /Paused #107/);
 r5 = await pexec('node', [CLI, 'status'], { env });
 assert.match(r5.stdout, /Last active: #107/);
 
-// Test 8: /task start resumes
-r5 = await pexec('node', [CLI, 'start'], { env });
+// Test 8: /task resume (no arg) resumes after pause
+r5 = await pexec('node', [CLI, 'resume'], { env });
 assert.match(r5.stdout, /Resumed #107/);
 
 // Test 9: /task #108 auto-ends #107
@@ -126,10 +126,10 @@ await pexec('node', [CLI, 'pause'], { env: switchEnv });
 rs = await pexec('node', [CLI, 'resume', '#202'], { env: switchEnv });
 assert.match(rs.stdout, /Resumed #202/, '/task resume #N should resume #N');
 
-// `/task start` with no arg and no active still resumes lastActive.
+// `/task resume` with no arg and after pause resumes lastActive.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
-rs = await pexec('node', [CLI, 'start'], { env: switchEnv });
-assert.match(rs.stdout, /Resumed #202/, '/task start (no arg) should resume lastActive');
+rs = await pexec('node', [CLI, 'resume'], { env: switchEnv });
+assert.match(rs.stdout, /Resumed #202/, '/task resume (no arg) after pause should resume lastActive');
 
 rmSync(startSwitchSandbox, { recursive: true });
 

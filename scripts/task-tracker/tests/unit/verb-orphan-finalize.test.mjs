@@ -22,26 +22,17 @@ function read(p) {
 const startSrc = read(path.join(root, 'start.mjs'));
 const resumeSrc = read(path.join(root, 'resume.mjs'));
 
-// start.mjs
+// start.mjs — now a thin redirect to verbResume; orphan-finalize is handled there
 {
   assert.match(
     startSrc,
-    /import\s*\{[^}]*finalizeOrphanPause[^}]*\}\s*from\s*['"]\.\.\/orphan-finalize\.mjs['"]/,
-    'start.mjs imports finalizeOrphanPause from ../orphan-finalize.mjs'
+    /import\s*\{[^}]*verbResume[^}]*\}\s*from\s*['"]\.\/resume\.mjs['"]/,
+    'start.mjs imports verbResume from ./resume.mjs (thin delegation)'
   );
   assert.match(
     startSrc,
-    /finalizeOrphanPause\([\s\S]*?reason:\s*['"]orphan-finalize['"]/,
-    'start.mjs calls finalizeOrphanPause with reason: orphan-finalize'
-  );
-  // The finalize call must appear BEFORE the saveState that flips `active`.
-  const finalizeIdx = startSrc.search(/finalizeOrphanPause\(/);
-  const saveActiveIdx = startSrc.search(/saveState\([\s\S]*?active:\s*s\.lastActive/);
-  assert.ok(finalizeIdx > 0, 'finalizeOrphanPause call present');
-  assert.ok(saveActiveIdx > 0, 'saveState(active:...) present');
-  assert.ok(
-    finalizeIdx < saveActiveIdx,
-    'finalizeOrphanPause must run BEFORE the saveState that binds active'
+    /await\s+verbResume\(/,
+    'start.mjs delegates to verbResume (which calls finalizeOrphanPause)'
   );
 }
 
@@ -58,7 +49,7 @@ const resumeSrc = read(path.join(root, 'resume.mjs'));
     'resume.mjs calls finalizeOrphanPause with reason: orphan-finalize'
   );
   const finalizeIdx = resumeSrc.search(/finalizeOrphanPause\(/);
-  const saveActiveIdx = resumeSrc.search(/saveState\([\s\S]*?active:\s*target/);
+  const saveActiveIdx = resumeSrc.search(/saveState\([\s\S]*?active:\s*normalizedTarget/);
   assert.ok(finalizeIdx > 0);
   assert.ok(saveActiveIdx > 0);
   assert.ok(
