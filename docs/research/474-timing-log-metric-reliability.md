@@ -20,10 +20,10 @@ to adjust. **Compaction is dropped from scope.**
 
 ## Column-by-column verdict
 
-| Column          | Verdict          | Reason |
-|-----------------|------------------|--------|
-| **Word Marker** | **FIX**          | Cumulative total — must never read 0 after any words exist. Two root causes below. |
-| **Δ Words**     | **KEEP**         | A delta. On a lifecycle/audit row no session work happened, so `0` is *correct*. Document this. |
+| Column          | Verdict             | Reason                                                                                                                                |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Word Marker** | **FIX**             | Cumulative total — must never read 0 after any words exist. Two root causes below.                                                    |
+| **Δ Words**     | **KEEP**            | A delta. On a lifecycle/audit row no session work happened, so `0` is _correct_. Document this.                                       |
 | **Idle**        | **FIX (new model)** | Today's sub-threshold inference is unreliable and never aggregated. Replace/augment with explicit pause→resume "pregnant pause" idle. |
 
 ## Word Marker — two root causes for "frequently 0"
@@ -31,7 +31,7 @@ to adjust. **Compaction is dropped from scope.**
 **Root cause 1 — ~15 audit-row sites hardcode `wordMarker: 0`.** Every one is tagged
 with the same rationalization, e.g. `// wordMarker:0 audit row — no active session`
 (in `close.mjs`, `review.mjs`, `reconcile.mjs`, `approve.mjs`, `reject.mjs`,
-`promote.mjs`). These conflate the *delta* (correctly 0) with the *running total*
+`promote.mjs`). These conflate the _delta_ (correctly 0) with the _running total_
 (which is available in state and should be carried forward). Two outliers
 (`orphan-finalize.mjs`, `on-ask.mjs`) emit `null` instead, rendering differently again.
 
@@ -41,17 +41,18 @@ persisted.** `pause` zeroes the baseline: `wordsAtEntryStart: 0`
 **only when a session id exists**: `if (sid) { wordsAtStart = count } else
 { wordsAtStart = 0 }` (`scripts/task-tracker/verbs/resume.mjs`). So whenever `sid`
 is absent — remote/iOS sessions, or session-id detection failing — the cumulative
-total collapses to 0. Proof the pattern *can* work: `resume`, `switch`, `new`
+total collapses to 0. Proof the pattern _can_ work: `resume`, `switch`, `new`
 already stamp `wordMarker: wordsAtStart` correctly when `sid` is present (matches
 the observation that #414 had valid values at resume/pause).
 
 **Recommended fix (Word Marker):**
+
 - Persist a durable monotonic `lastWordMarker` in state, updated at every flush.
 - Every row stamps `lastWordMarker` (carry-forward), never a hardcoded `0` and never
   a smaller value than the row above.
-- **Scope expansion (requested):** apply the carry-forward to *every* recorded timing
+- **Scope expansion (requested):** apply the carry-forward to _every_ recorded timing
   event, not just start/resume/pause/stop — including all audit/lifecycle rows.
-- Invariant to assert in tests: *no row may emit a Word Marker smaller than the row above it.*
+- Invariant to assert in tests: _no row may emit a Word Marker smaller than the row above it._
 
 ## Δ Words — keep, document
 
@@ -62,7 +63,7 @@ one-line column-doc note so `0` is not misread as "measurement failed."
 ## Idle — replace the model with "pregnant pause" capture
 
 **Why today's idle is ~always 0:** `computeActiveAndIdleMinutes`
-(`scripts/task-tracker/active-time.mjs`) infers idle only as the *excess* of an
+(`scripts/task-tracker/active-time.mjs`) infers idle only as the _excess_ of an
 intra-session JSONL event gap over `idleThresholdMinutes` (default 5 min). In active
 work nearly all gaps are sub-threshold, so it rarely fires. Compounding this, idle is
 carried in the per-row `i=N` marker but is **never aggregated** by `rollupTotals`
@@ -77,6 +78,7 @@ because both endpoints are explicit user actions with timestamps.
 **Wireability check:** `pause` currently persists **no timestamp**
 (`scripts/task-tracker/verbs/pause.mjs`) — it only flips `paused: true`. So this needs
 **one new persisted field**:
+
 - On `pause`: store `pausedAtTs` (in state and/or fleet registry).
 - On `resume`: compute `idle = resume_ts − pausedAtTs`, stamp it as idle on the
   `resumed` row, then clear `pausedAtTs`.
@@ -88,7 +90,7 @@ These surfaced while tracing the timing path and became their own stories rather
 expanding this spike:
 
 - **Terminal-event taxonomy (#475 AC group 4).** #414 has two `story approved` rows
-  12s apart and no `closed` event. `done`≡`closed` must appear *after* `approved`
+  12s apart and no `closed` event. `done`≡`closed` must appear _after_ `approved`
   (approval is sometimes automatic, sometimes human), capturing post-approval cleanup
   time (flush timing, update body, close) as the `closed` row's elapsed.
 - **Session-ref marker (#476).** Persist an append-only `aitm-session-ref`
