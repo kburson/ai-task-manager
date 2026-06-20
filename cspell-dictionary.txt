@@ -138,3 +138,6 @@ Backpointer
 backticked
 footgun
 Connextra
+upsert
+upserted
+recognises
