@@ -9,17 +9,17 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 test('CLI runs through a symlinked invocation path (no silent exit-0 no-op)', async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'tt-symlink-'));
+  const dir = mkdtempProjectIsolated('tt-symlink-');
   const link = path.join(dir, 'task-tracker.mjs');
   symlinkSync(CLI, link);
 
