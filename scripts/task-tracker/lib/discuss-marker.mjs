@@ -22,21 +22,31 @@ import { mutateIssueBody } from './issue-body-mutate.mjs';
 const DISCUSS_TOKEN = '{discuss}';
 const DISCUSSED_MARKER_RE = /^<!--\s*aitm-discussed(\s|-->)/;
 
-// True iff a visible `{discuss}` token is present anywhere in the body.
+// True iff some line of the body is a *bare* `{discuss}` marker — a line whose
+// trimmed content is exactly the token and nothing else. Detection is purely
+// per-line (newline-delimited); there is no code-fence awareness. Inline prose,
+// backticked spans, and prefixed/quoted forms (`- {discuss}`, `> {discuss}`,
+// `key: {discuss}`) are deliberately NOT detected, so an issue that merely
+// mentions the token in its text does not trip the discussion guard.
 export function hasDiscussMarker(body) {
-  return String(body || '').includes(DISCUSS_TOKEN);
+  return String(body || '')
+    .split('\n')
+    .some((line) => line.trim() === DISCUSS_TOKEN);
 }
 
-// Strip every visible `{discuss}` token and append an `aitm-discussed` audit
-// marker iff one is not already present. Idempotent: a second call is a no-op.
+// Strip the bare line-alone `{discuss}` marker(s) and append an `aitm-discussed`
+// audit marker iff one is not already present. Only lines whose trimmed content
+// equals exactly the token are removed (matching `hasDiscussMarker`); inline /
+// prose / backticked mentions are left byte-for-byte intact. Idempotent: a
+// second call is a no-op.
 export function markDiscussed(body, { ts } = {}) {
   const src = String(body || '');
-  // Remove the bare token. Collapse a token left alone on its own line so we
-  // don't leave a stray blank line behind.
+  // Drop only the line-alone marker(s); removing the whole line avoids leaving
+  // a stray blank line behind. Lines that merely contain the token inline are
+  // preserved untouched.
   let next = src
     .split('\n')
-    .map((line) => (line.trim() === DISCUSS_TOKEN ? null : line.split(DISCUSS_TOKEN).join('')))
-    .filter((line) => line !== null)
+    .filter((line) => line.trim() !== DISCUSS_TOKEN)
     .join('\n');
 
   const alreadyStamped = next.split('\n').some((l) => DISCUSSED_MARKER_RE.test(l.trim()));

@@ -26,7 +26,7 @@ const cfg = { repo: 'owner/name' };
 // transition under test is backlog → on-deck (smallest exit-guard surface:
 // blockedByGuard passes with no aitm-blocked-by marker, leaving only the
 // discuss guard in play).
-const blockedBody = writeLastKnownState(`## Scope\n\nNeed direction here ${TOKEN}\n`, 'backlog');
+const blockedBody = writeLastKnownState(`## Scope\n\nNeed direction here\n\n${TOKEN}\n`, 'backlog');
 
 function baseDeps() {
   return {
@@ -59,8 +59,8 @@ test('runPromote: TT_FULL_AUTO=1 cannot bypass an unresolved {discuss} directive
     assert.match(res.message, /discuss/i);
     // the surfaced context line points the human at the directive
     assert.ok(
-      res.blockers.some((b) => /Need direction here/.test(b)),
-      'refusal should surface the directive context line'
+      res.blockers.some((b) => /\{discuss\}/.test(b)),
+      'refusal should surface the directive token line'
     );
   } finally {
     if (prev === undefined) delete process.env.TT_FULL_AUTO;
