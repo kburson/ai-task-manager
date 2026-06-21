@@ -1,0 +1,27 @@
+<!-- Archived memories live in ./archive/ — recall on demand via grep over the memory directory. -->
+
+- [STOP banner 🛑 + timer-pause ⏱️ emoji](feedback_stop_banner_emoji.md) — lead STOP-mistake reports with a 🛑 banner heading; add ⏱️ to any timer-pause line; rare exceptions to no-emoji rule.
+- [Plan Metadata everywhere (feature TODO)](project_plan_metadata_everywhere.md) — every issue must carry `## Plan Metadata`; freeform label:value + fixed core set; brainstorm & file after #369/#367, don't start mid-epic.
+- [Chips are not how we work](feedback_no_chips_only_issues.md) — never spawn work-chips; out-of-scope items get filed as GitHub issues; we only commit against established issues. Check the chat queue at every checkpoint.
+- [Board columns mirror verb states](project_board_columns_2026_05.md) — Backlog/On Deck/Refine/Plan/Develop/Test/Review/Done (On Deck added #433 ~2026-06-16); Groom/Analyze/Todo retired, old Review→Test ~2026-05-13.
+- [XL epics standalone + "EPIC:" prefix](feedback_xl_epics_standalone.md) — XL issues are epics: no parent, title prefixed `EPIC: `; check & fix before any state transition or sub-issue work.
+- [PBI Refine entry/exit gate fields](feedback_pbi_refine_gates.md) — Backlog→Refine needs Priority only; Refine→Plan needs Priority+Sequence+Size+Estimate+Labels+StartTime (and child recursion for epics).
+- [Drive stories to Review without check-ins](feedback_drive_to_review.md) — orchestrator drives sub-issues end-to-end through the verb chain until the Review column; "R4R" is retired vocabulary.
+- [Deep-Dive placement after Pickup Directive](feedback_deep_dive_placement.md) — Deep-Dive Analysis goes AFTER the Pickup Directive block, as an appendix, not before ACs.
+- [No confirmation after deep dive](feedback_no_confirm_after_deep_dive.md) — once the deep dive is posted, proceed straight to implementation; don't ask to review.
+- [Pause timer on blocking questions](feedback_pause_on_blocking_question.md) — `/task pause "pause for question"` before asking the user; `/task start "question answered"` on resume.
+- [Wave model — same-wave newcomers](project_wave_newcomer_semantics.md) — discovered sub-issues joining current wave don't block flowing members; epic next-wave admission waits for all wave members to reach Done.
+- [Solo project — local-only, no push, no PRs](feedback_no_pr_to_origin.md) — commit/merge to trunk and stop; never push to origin, never open PRs (user manages origin).
+- [Main-thread-only overrides feature branches](feedback_main_thread_only.md) — when user says "main thread only" / "sequential", commit straight to trunk; no feature branches, no worktrees.
+- [/task #N bind is mandatory](feedback_task_bind_mandatory.md) — never call move-state.mjs or verbApprove directly; always /task bind first so timing-log rows accumulate.
+- [Invoke task-tracker via scripts/, not node_modules/](project_task_tracker_invocation_path.md) — node_modules/ai-task-manager is a symlink; CLI silently no-ops if invoked through it.
+- [./tmp/ is the canonical scratch directory](feedback_scratch_dir_canonical.md) — all transient/staging files go in ./tmp/, never .git/restart/ or elsewhere.
+- [Ask which gates to toggle before parallel batch](feedback_parallel_gate_toggle.md) — before parallel sub-agent dispatch, ask user which human gates (analyze→dev, review→done, both) to disable; encode into prompts; restore after.
+- [Reload skill context after compact, not every invocation](feedback_skill_reload_after_compact.md) — check for `aitm-skill-loaded` sentinel; reload only when absent (post-compact or first run), not unconditionally.
+- [Checkpoint Pause — no steamrolling queued messages](feedback_no_steamroll.md) — before any state transition, re-read recent user messages and respond to unaddressed input before advancing.
+- [Single state-mutator — only move-state.mjs writes Status](feedback_single_state_mutator.md) — verbs verify-then-delegate; entry-marker stamping centralizes in move-state.mjs so every transition is audited.
+- [Full-Auto review requires audit comment](feedback_full_auto_review_audit.md) — when ticking "Passed final human review" / running `approve` without a human, post an audit-correction comment documenting the auto-approval.
+- [Full-Auto must tick "Passed final human review"](feedback_full_auto_tick_review_box.md) — audit comment is not enough; flip the body checkbox too before close.
+- [Route issue bodies through scripts](feedback_route_issue_bodies_through_scripts.md) — never hand-roll issue bodies; always use preflight-issue.mjs (DoD+Pickup-Directive tail). Gates/requirements must have script-level enforcement, not behavioral discipline.
+- [Pickup directive doesn't block Develop→Test](feedback_pickup_directive_test_promotion.md) — CODE_COMPLETE means promote to Test; the directive only forbids skipping to Review/Done.
+- [End-of-task worktree cleanup options](feedback_end_of_task_worktree_cleanup.md) — after commit-to-trunk + Done, ask user: delete worktree, OR drop branches + rebase to main-thread trunk (not origin). #125 PR work will change merge target.
