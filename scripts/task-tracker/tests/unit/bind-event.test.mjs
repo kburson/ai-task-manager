@@ -1,3 +1,4 @@
+// @story #482
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveBindEvent, timingCommentHasRows } from '../../lib/bind-event.mjs';
