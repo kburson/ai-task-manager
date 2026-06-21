@@ -59,6 +59,18 @@ function fmtNum(n) {
   return n == null ? '—' : Number(n).toLocaleString('en-US');
 }
 
+// #489 — render an effective-zero scalar as a blank cell so the timing-log
+// table is not cluttered with zero-value formats. `null`/missing keeps the `—`
+// "no data" sentinel (a distinct meaning from zero); a literal 0 collapses to
+// an empty cell. Used for the ΔWords cell and the legacy minute-form Active/Idle
+// cells. WordMarker deliberately keeps `fmtNum` — a 0 WordMarker marks a genuine
+// session start and must retain its signal. This is display-only: the trailing
+// `<!-- row-sec: a=N i=N -->` marker keeps the raw numeric seconds untouched.
+function fmtNumBlankZero(n) {
+  if (n == null) return '—';
+  return Number(n) === 0 ? '' : Number(n).toLocaleString('en-US');
+}
+
 // Maximum allowed skew (ms) between a caller-supplied `ts` and `Date.now()`.
 // Beyond this window in either direction, `buildRow` refuses to construct a
 // row. This closes the data-fabrication hole where a caller backdates an
@@ -122,14 +134,16 @@ export function buildRow({
       ? Math.max(0, Math.floor(Number(activeSec)))
       : 0;
     const iSec = Number.isFinite(Number(idleSec)) ? Math.max(0, Math.floor(Number(idleSec))) : 0;
-    activeCell = formatDurationSeconds(aSec);
-    idleCell = formatDurationSeconds(iSec);
+    // #489 — blank an effective-zero duration cell; the row-sec marker below
+    // still carries the raw seconds, so rollup/aggregation is unaffected.
+    activeCell = aSec === 0 ? '' : formatDurationSeconds(aSec);
+    idleCell = iSec === 0 ? '' : formatDurationSeconds(iSec);
     trailingMarker = ` <!-- row-sec: a=${aSec} i=${iSec} -->`;
   } else {
-    activeCell = fmtNum(activeMin);
-    idleCell = fmtNum(idleMin);
+    activeCell = fmtNumBlankZero(activeMin);
+    idleCell = fmtNumBlankZero(idleMin);
   }
-  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
+  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
 }
 
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every

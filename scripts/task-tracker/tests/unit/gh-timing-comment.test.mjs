@@ -36,7 +36,9 @@ const row = buildRow({
   description: 'task opened',
 });
 const ts1 = localMinuteWithOffset(tsNow1);
-assert.equal(row, `| ${ts1} | start | 0 | 0 | 0 | 8,541 | task opened |`);
+// #489 — effective-zero Active/Idle/ΔWords cells render blank; WordMarker (0 is
+// a genuine session-start signal) is left untouched, here a non-zero 8,541.
+assert.equal(row, `| ${ts1} | start |  |  |  | 8,541 | task opened |`);
 
 // Test 2: buildRow with deltas
 const row2 = buildRow({
@@ -283,10 +285,13 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
     wordMarker: 100,
     description: 'refine -> plan',
   });
+  // #489: idle=0 and deltaWords=0 are effective-zero -> blank cells; the
+  // non-zero sub-minute active still renders 0h 00m 37s; wordMarker 0 preserved
+  // (here non-zero 100); row-sec marker carries raw seconds unchanged.
   assert.equal(
     subMinute,
-    `| ${tsLocal} | plan | 0h 00m 37s | 0h 00m 00s | 0 | 100 | refine -> plan | <!-- row-sec: a=37 i=0 -->`,
-    'sub-minute active renders 0h 00m 37s, not 0'
+    `| ${tsLocal} | plan | 0h 00m 37s |  |  | 100 | refine -> plan | <!-- row-sec: a=37 i=0 -->`,
+    'sub-minute active renders 0h 00m 37s; zero idle/ΔWords blank (#489)'
   );
   // AC5: the Active cell shows 0h 00m Ns with N > 0.
   const activeCell = subMinute.split('|')[3].trim();
@@ -321,7 +326,8 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
     deltaWords: 0,
     wordMarker: 1,
   });
-  assert.ok(row.includes('| 0h 00m 47s | 0h 00m 00s |'), 'floored + clamped');
+  // #489: idle clamps to 0 -> effective-zero -> blank cell (was `0h 00m 00s`).
+  assert.ok(row.includes('| 0h 00m 47s |  |'), 'floored active; clamped-zero idle blank (#489)');
   assert.ok(row.endsWith('<!-- row-sec: a=47 i=0 -->'), 'marker reflects floored/clamped values');
 }
 

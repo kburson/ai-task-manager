@@ -120,12 +120,11 @@ assert.ok(
 const idleSec = parseDurationSeconds(recon.idleMin);
 assert.equal(idleSec, 600, `expected idle=600s (0h 10m 00s), got ${recon.idleMin}`);
 
-// No fabricated active work.
-assert.equal(
-  parseDurationSeconds(recon.activeMin),
-  0,
-  `expected active=0 (0h 00m 00s), got ${recon.activeMin}`
-);
+// No fabricated active work. #489: an effective-zero Active cell now renders
+// blank rather than `0h 00m 00s`, so the visible cell is empty; the canonical
+// `row-sec` marker still carries a=0. Treat a blank cell as 0 seconds.
+const activeSec = recon.activeMin === '' ? 0 : parseDurationSeconds(recon.activeMin);
+assert.equal(activeSec, 0, `expected active=0 (blank cell under #489), got "${recon.activeMin}"`);
 
 // Description names the original discover window.
 assert.ok(

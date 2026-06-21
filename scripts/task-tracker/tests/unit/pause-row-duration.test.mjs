@@ -6,6 +6,13 @@
 // `Xh Ym Zs` duration form. These tests pin the fix: flushed rows render the
 // duration form AND carry the canonical `row-sec` marker, with no change to the
 // numeric content rollup consumes (minutes * 60).
+//
+// #489 supersedes #484's display choice for effective-zero cells: an
+// effective-zero Active/Idle/ΔWords cell now renders BLANK (empty cell) rather
+// than `0h 00m 00s` / `0`. The numeric invariant #484 established is unchanged —
+// the `row-sec` marker still carries `minutes * 60` — only the visible zero-cell
+// rendering flipped from duration-form to blank. Assertions below that exercised
+// a zero cell are updated accordingly; non-zero cells render identically to #484.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,8 +32,9 @@ test('buildFlushRow: a pause row renders Active/Idle in Xh Ym Zs duration form (
     wordMarker: 0,
     description: 'pause for question',
   });
-  // Active cell is the duration form, not the bare scalar `6`.
-  assert.match(row, /\| 0h 06m 00s \| 0h 00m 00s \|/, 'duration-form cells');
+  // Active cell is the duration form, not the bare scalar `6`. Idle is
+  // effective-zero, so under #489 it renders blank (not `0h 00m 00s`).
+  assert.match(row, /\| 0h 06m 00s \| {2}\|/, 'non-zero Active duration-form, blank Idle (#489)');
   assert.doesNotMatch(row, /\| pause \| 6 \|/, 'no bare minute scalar in Active');
 });
 
@@ -61,7 +69,7 @@ test('buildFlushRow: row-sec seconds round-trip through the duration cells (#484
   assert.equal(parseDurationSeconds(cell), 16 * 60, 'rendered Active cell parses back to 960s');
 });
 
-test('buildFlushRow: zero minutes render as 0h 00m 00s, not a bare 0 (#484)', () => {
+test('buildFlushRow: effective-zero Active/Idle render blank, not a bare 0 or 0h 00m 00s (#489 supersedes #484)', () => {
   const row = buildFlushRow({
     ts: ts(),
     event: 'review',
@@ -71,7 +79,15 @@ test('buildFlushRow: zero minutes render as 0h 00m 00s, not a bare 0 (#484)', ()
     wordMarker: 0,
     description: '',
   });
-  assert.match(row, /\| 0h 00m 00s \| 0h 00m 00s \|/, 'zero renders in duration form');
+  // #489: effective-zero Active/Idle/ΔWords cells collapse to a blank cell.
+  // WordMarker stays untouched — a 0 marker is a genuine session-start signal —
+  // so it still renders `0`. The row-sec marker keeps the raw seconds.
+  assert.match(
+    row,
+    /\| review \| {2}\| {2}\| {2}\| 0 \| {2}\| <!-- row-sec: a=0 i=0 -->/,
+    'effective-zero Active/Idle/ΔWords blank; wordMarker 0 preserved; row-sec marker intact'
+  );
+  assert.doesNotMatch(row, /0h 00m 00s/, 'no duration-form zero cells under #489');
 });
 
 test('buildFlushRow: non-numeric / missing minute values clamp to zero (#484)', () => {
