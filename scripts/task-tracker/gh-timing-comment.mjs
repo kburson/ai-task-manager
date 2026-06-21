@@ -132,6 +132,39 @@ export function buildRow({
   return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNum(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
 }
 
+// #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every
+// timing-emitting verb, `pause` included) historically passed minute scalars to
+// `buildRow`, so its rows rendered the bare-integer Active/Idle form while the
+// `resume` verb — which passes `activeSec` directly — rendered the `Xh Ym Zs`
+// duration form. That asymmetry is the #484 defect (pause rows showed a lone
+// minute number). Routing every flushed row through this helper converts the
+// minute values to whole seconds (`min * 60`) and delegates to `buildRow` with
+// `activeSec`/`idleSec`, so all flushed rows render the duration form AND carry
+// the canonical `row-sec` marker. The seconds are the minute value times sixty,
+// so the numeric content rollup consumes is unchanged — no total regression.
+export function buildFlushRow({
+  ts,
+  event,
+  activeMin,
+  idleMin,
+  deltaWords,
+  wordMarker,
+  description = '',
+  phase,
+}) {
+  const toSec = (min) => Math.max(0, Math.round(Number(min) || 0) * 60);
+  return buildRow({
+    ts,
+    event,
+    activeSec: toSec(activeMin),
+    idleSec: toSec(idleMin),
+    deltaWords,
+    wordMarker,
+    description,
+    phase,
+  });
+}
+
 // ---- lastKnownState metadata helpers ---------------------------------------
 //
 // Stored as HTML-comment metadata at the top of the issue body (cross-worktree

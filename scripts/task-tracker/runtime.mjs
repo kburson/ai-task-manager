@@ -280,8 +280,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       if (!opts.computeOnly && sid && markerLineToPersist != null) {
         saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
       }
-      const { buildRow } = await import('./gh-timing-comment.mjs');
-      const row = buildRow({
+      const { buildFlushRow } = await import('./gh-timing-comment.mjs');
+      const row = buildFlushRow({
         ts,
         event: effectiveEvent,
         activeMin: 0,
@@ -328,8 +328,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     if (!opts.computeOnly && sid && markerLineToPersist != null) {
       saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
     }
-    const { buildRow } = await import('./gh-timing-comment.mjs');
-    const row = buildRow({
+    const { buildFlushRow } = await import('./gh-timing-comment.mjs');
+    const row = buildFlushRow({
       ts,
       event: effectiveEvent,
       activeMin,
