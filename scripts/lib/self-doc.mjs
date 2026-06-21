@@ -107,6 +107,33 @@ export const SELF_DOC = {
     audience: 'Operator running a corpus migration. Dry-run by default; --apply to write.',
     usage: 'aitm rename-estimation-headers [--apply]',
   },
+  'seed-worktree': {
+    group: 'Parallel',
+    path: 'scripts/task-tracker/seed-worktree.mjs',
+    synopsis:
+      'Copy .ai-task-manager/ runtime config into a fresh git worktree after `git worktree add`.',
+    audience:
+      'Orchestrator seeding an agent worktree. Run immediately after `git worktree add`, before agent boot.',
+    usage: 'aitm seed-worktree <worktree-path> [--source <parent-repo>] [--backfill]',
+  },
+  'ensure-wave-parent': {
+    group: 'Parallel',
+    path: 'scripts/gh/ensure-wave-parent.mjs',
+    synopsis:
+      'Pre-flight a fan-out: create/reuse a shared wave-parent issue and re-parent solo children.',
+    audience:
+      'Orchestrator before a parallel dispatch loop. Emits `PARENT: #<N>` or `NO_WAVE_PARENT_NEEDED`.',
+    usage:
+      'aitm ensure-wave-parent --children 12,13,14 --purpose "<text>" [--priority p0|p1|p2] [--rank <n>] [--dry-run]',
+  },
+  'dispatch-prep': {
+    group: 'Parallel',
+    path: 'scripts/gh/dispatch-prep.mjs',
+    synopsis:
+      'Claim a sub-issue for an agent: flip the board to In Progress and post a start timing row.',
+    audience: 'Orchestrator just before handing a sub-issue to an agent.',
+    usage: 'aitm dispatch-prep <issue#> [--description "<text>"]',
+  },
 };
 
 // Print the full self-doc for one command to stdout. Called by each exposed

@@ -31,7 +31,7 @@ The lesson, learned the hard way: **all three are mandatory, every time.** Do no
 Always go through the `block` verb:
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs block <A> --by <B>
+npx aitm block <A> --by <B>
 ```
 
 The verb writes all three annotations atomically. Do **not** hand-roll any of:

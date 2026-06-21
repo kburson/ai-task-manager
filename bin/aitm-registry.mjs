@@ -23,6 +23,10 @@ import { SELF_DOC } from '../scripts/lib/self-doc.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
 export const TASK_TRACKER_PATH = path.join(REPO_ROOT, 'scripts/task-tracker/task-tracker.mjs');
+// Repo-root-relative form of the verb hub — the resolution target for a direct
+// `node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs`
+// invocation, which `aitm-path-guard` steers to `npx aitm <verb>`.
+export const TASK_TRACKER_REL = 'scripts/task-tracker/task-tracker.mjs';
 
 // Verbs that exist as `case` labels but are NOT user commands: `move` is a
 // guard stub that errors with a "did you mean promote/demote" hint, and
@@ -76,6 +80,24 @@ export const INTERNAL = {
 export function kind(name) {
   if (VERBS.has(name)) return 'verb';
   if (Object.prototype.hasOwnProperty.call(SCRIPTS, name)) return 'script';
+  return null;
+}
+
+// Reverse index: repo-root-relative script path → exposed command name.
+const SCRIPT_PATH_TO_NAME = new Map(Object.entries(SCRIPTS).map(([name, doc]) => [doc.path, name]));
+
+// #487 — resolve a repo-root-relative `scripts/...` path (as extracted from a
+// direct `node node_modules/ai-task-manager/<path>` invocation) to its `aitm`
+// command. Returns `{ target: 'verb-hub' }` for the task-tracker verb hub (the
+// concrete verb is the caller's first arg), `{ target: 'script', name }` for an
+// exposed standalone script, or `null` when the path maps to no registered
+// command (internal-only — deliberately not steered).
+export function resolveAitmPath(scriptRelPath) {
+  const rel = String(scriptRelPath || '').replace(/^\.\//, '');
+  if (!rel) return null;
+  if (rel === TASK_TRACKER_REL) return { target: 'verb-hub' };
+  const name = SCRIPT_PATH_TO_NAME.get(rel);
+  if (name) return { target: 'script', name };
   return null;
 }
 

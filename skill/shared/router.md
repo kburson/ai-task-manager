@@ -33,7 +33,7 @@ These rules apply to every verb. Skipping any is a process failure.
 ## CLI invocation
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]
+npx aitm <verb> [args...]
 ```
 
 Print stdout verbatim. On non-zero exit, print stderr and surface the error. Exit code 3 from `/task review` or `/task close` means unchecked items — see `rules/review.md` / `rules/close.md`.

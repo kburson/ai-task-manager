@@ -28,6 +28,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { evaluateGhEdit, evaluateGhCreate } from './lib/gh-edit-guard.mjs';
+import { evaluateAitmPath } from './lib/aitm-path-guard.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
 
@@ -152,6 +153,14 @@ if (/\bgh\s+issue\s+close\b/.test(scanned)) {
       '  Use `/task close` — it validates the DoD, flushes timing, and moves the issue to Done atomically.'
   );
 }
+
+// #487 — refuse direct `node node_modules/ai-task-manager/scripts/...`
+// invocations of commands the `aitm` orchestrator already exposes, steering to
+// `npx aitm <name>`. Checked against the quote-stripped command so path-like
+// substrings inside quoted argument strings (grep patterns, descriptions) are
+// not flagged. Hook-runner wiring and internal-only scripts pass through.
+const aitmPathResult = evaluateAitmPath({ command: scanned });
+if (aitmPathResult.block) block(aitmPathResult.reason);
 
 // --- Extract write targets ---
 

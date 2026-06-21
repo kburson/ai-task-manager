@@ -20,6 +20,7 @@ import {
   kind,
   groupedListing,
 } from '../../../../bin/aitm-registry.mjs';
+import { findOffendingDocLines } from '../../lib/aitm-path-guard.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..', '..', '..');
@@ -168,12 +169,11 @@ test('AC8: docs do not instruct direct node_modules script invocation', () => {
 
   // Exception: hook-runner wiring legitimately names the real plumbing filepath.
   // The Claude hook runner invokes hook-handler.mjs by direct path — it is NOT an
-  // `aitm` command, so settings.json examples must keep the node_modules path.
-  const forbidden = /node\s+node_modules\/ai-task-manager\/scripts\//;
-  const isHookWiring = (line) => /hook-handler\.mjs/.test(line);
-  const hasOffendingLine = (text) =>
-    text.split('\n').some((line) => forbidden.test(line) && !isHookWiring(line));
-  const offenders = docFiles.filter((f) => hasOffendingLine(readFileSync(f, 'utf8')));
+  // `aitm` command, so settings.json examples must keep the node_modules path. The
+  // detector + hook-wiring carve-out live in the #487 guard lib (single boundary).
+  const offenders = docFiles.filter(
+    (f) => findOffendingDocLines(readFileSync(f, 'utf8')).length > 0
+  );
   assert.deepEqual(
     offenders.map((f) => path.relative(ROOT, f)),
     [],

@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'no
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SRC_FILES = ['task-tracker.json', 'pickup-directive.md', 'definition-of-done.md'];
 const EMPTY_FILES = ['task-tracker-state.json'];
@@ -160,12 +161,17 @@ function isMain() {
 }
 
 if (isMain()) {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.target) {
-    process.stdout.write(
+  const rawArgs = process.argv.slice(2);
+  if (wantsHelp(rawArgs)) {
+    emitSelfDoc('seed-worktree');
+    process.exit(0);
+  }
+  const args = parseArgs(rawArgs);
+  if (!args.target) {
+    process.stderr.write(
       'Usage: seed-worktree.mjs <worktree-path> [--source <parent-repo>] [--backfill]\n'
     );
-    process.exit(args.help ? 0 : 2);
+    process.exit(2);
   }
   try {
     const r = args.backfill

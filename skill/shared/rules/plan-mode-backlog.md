@@ -30,7 +30,7 @@ Process ALL epics in document order — do not stop between epics.
 ## Preflight — MANDATORY before any issue create
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/preflight-issue.mjs --check-only
+npx aitm preflight-issue --check-only
 ```
 
 Non-zero exit: STOP. Surface stderr verbatim. The user must reinstall the skill. Do not create any issues. Resume only after the user confirms install completed.
@@ -66,7 +66,7 @@ Stage three fragments under `./.tmp/plan/`:
 Create + tether atomically:
 
 ```bash
-node node_modules/ai-task-manager/scripts/gh/create-issue.mjs \
+npx aitm create-issue \
   --shape epic \
   --title "EPIC: <title>" \
   --scope-file ./.tmp/plan/scope.md \
@@ -96,7 +96,7 @@ For each sub-issue in document order:
 3. Create + tether:
 
 ```bash
-node node_modules/ai-task-manager/scripts/gh/create-issue.mjs \
+npx aitm create-issue \
   --shape sub-issue \
   --title "<title>" \
   --scope-file ./.tmp/plan/scope.md \

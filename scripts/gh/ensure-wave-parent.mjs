@@ -36,6 +36,7 @@ import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 import { durableWordMarker } from '../task-tracker/state.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.join(
@@ -235,11 +236,12 @@ function promoteWaveParentToDevelop({ parentNumber, cfg }) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help) {
-    process.stdout.write(usage() + '\n');
+  const rawArgs = process.argv.slice(2);
+  if (wantsHelp(rawArgs)) {
+    emitSelfDoc('ensure-wave-parent');
     process.exit(0);
   }
+  const args = parseArgs(rawArgs);
   if (args.children.length === 0) {
     process.stderr.write(`ensure-wave-parent: --children is required\n${usage()}\n`);
     process.exit(2);

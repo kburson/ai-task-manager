@@ -14,6 +14,7 @@ import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { durableWordMarker } from '../task-tracker/state.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -39,10 +40,15 @@ function parseArgs(argv) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.issue) {
-    process.stdout.write('Usage: dispatch-prep.mjs <issue#> [--description "<text>"]\n');
-    process.exit(args.help ? 0 : 2);
+  const rawArgs = process.argv.slice(2);
+  if (wantsHelp(rawArgs)) {
+    emitSelfDoc('dispatch-prep');
+    process.exit(0);
+  }
+  const args = parseArgs(rawArgs);
+  if (!args.issue) {
+    process.stderr.write('Usage: dispatch-prep.mjs <issue#> [--description "<text>"]\n');
+    process.exit(2);
   }
   if (!/^\d+$/.test(args.issue)) {
     process.stderr.write(`dispatch-prep: invalid issue: ${args.issue}\n`);

@@ -41,7 +41,7 @@ Every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool
 4. If they differ: STOP. Report "stale base; please relaunch" and exit.
    Do NOT rebase/merge/reset — risks corrupting state across worktrees.
 5. npm install --no-audit --no-fund
-6. node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs "#<N>" --role agent
+6. npx aitm "#<N>" --role agent
 7. Read .ai-task-manager/pickup-directive.md IN FULL.
 ```
 
@@ -54,7 +54,7 @@ Every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool
 Run the seed helper **immediately after `git worktree add` and before the agent boots**:
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/seed-worktree.mjs <worktree-path>
+npx aitm seed-worktree <worktree-path>
 ```
 
 Copies `task-tracker.json`, `pickup-directive.md`, `definition-of-done.md` from the parent repo, creates an empty `task-tracker-state.json`. Refuses to overwrite a populated target.
@@ -64,7 +64,7 @@ Copies `task-tracker.json`, `pickup-directive.md`, `definition-of-done.md` from 
 **Before** the per-child `dispatch-prep.mjs` loop, when the planned fan-out spans **2 or more candidate children**, run:
 
 ```bash
-node node_modules/ai-task-manager/scripts/gh/ensure-wave-parent.mjs \
+npx aitm ensure-wave-parent \
   --children <N1>,<N2>,<N3> \
   --purpose "<one-line summary>"
 ```
@@ -95,7 +95,7 @@ Sub-issues about to be picked up by an agent MUST be moved to `In Progress` **by
 For each sub-issue about to be dispatched:
 
 ```bash
-node node_modules/ai-task-manager/scripts/gh/dispatch-prep.mjs <SUB_N> --description "agent dispatch (sequence <S>)"
+npx aitm dispatch-prep <SUB_N> --description "agent dispatch (sequence <S>)"
 ```
 
 `dispatch-prep.mjs` runs `move-state.mjs <N> in-progress`, posts a `start` row to ⏱ Timing Log. Both happen before the agent boots. The agent's own bootstrap will call them again as idempotent confirmations.

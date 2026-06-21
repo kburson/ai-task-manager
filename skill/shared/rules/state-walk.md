@@ -58,7 +58,7 @@ State-walk verbs that materialize transient files (issue body drafts, plan/heal/
 If `task-tracker.mjs` reports a state mismatch between the board and `.ai-task-manager/task-tracker-state.json`, run `reconcile` BEFORE any other verb. Running `promote` or `demote` on a drifted issue compounds the drift.
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs reconcile <accept-live|revert-to-recorded> <N>
+npx aitm reconcile <accept-live|revert-to-recorded> <N>
 ```
 
 Choose `accept-live` when the board reflects an out-of-band human move; `revert-to-recorded` when an unintended board edit happened and the recorded state was correct.
