@@ -24,6 +24,7 @@ import {
   jsonlPath,
   markerPathFor,
   loadMarker,
+  saveMarker,
   countWords,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
@@ -239,9 +240,17 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     const ts = nowIso();
     const sid = currentSessionId();
     let deltaWords = 0;
+    // #483 — capture the live transcript line count so the cursor can be
+    // advanced after this flush. Without persisting the cursor, every flush
+    // re-counts from the same (bind-time) offset, so `Δ Words` is never a
+    // true per-segment delta and the cumulative `Word Marker` is computed off
+    // a frozen base — the symptom seen in #481 (every row identical, Δ=0).
+    let markerLineToPersist = null;
     if (sid) {
       const marker = loadMarker(markerPathFor(sid));
-      deltaWords = countWords(jsonlPath(sid), marker.line).count;
+      const counted = countWords(jsonlPath(sid), marker.line);
+      deltaWords = counted.count;
+      markerLineToPersist = counted.totalLines;
     }
     // #476 — append-only session-reference chain. On every timing-emitting verb
     // (incl. first bind via `start`), compare the live { sid, jsonlPath } against
@@ -259,13 +268,18 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // `new Date(null)` would resolve to epoch 0 → garbage delta).
     if (!state.entryStartTs) {
       // #475 AC1 — carry the durable marker forward. With no open session the
-      // raw `wordsAtEntryStart + deltaWords` can be 0; the monotonic durable
-      // value keeps the row from collapsing the cumulative total.
-      const wordMarker = advanceWordMarker(
-        state.lastWordMarker,
-        state.wordsAtEntryStart + deltaWords
-      );
+      // raw delta can be 0; the monotonic durable value keeps the row from
+      // collapsing the cumulative total.
+      // #483 — base the candidate on the durable cumulative (`lastWordMarker`),
+      // not the frozen `wordsAtEntryStart`, so the marker grows by this
+      // segment's words rather than being recomputed off the bind snapshot.
+      const wordMarker = advanceWordMarker(state.lastWordMarker, state.lastWordMarker + deltaWords);
       state.lastWordMarker = wordMarker;
+      // #483 — advance and persist the per-sid cursor so the next flush counts
+      // only words added after this row's segment (no re-count, no frozen cursor).
+      if (!opts.computeOnly && sid && markerLineToPersist != null) {
+        saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
+      }
       const { buildRow } = await import('./gh-timing-comment.mjs');
       const row = buildRow({
         ts,
@@ -304,11 +318,16 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
     // #475 AC1 — advance the durable monotonic marker and stamp it (not the
     // raw per-session sum) so the cumulative total never regresses.
-    const wordMarker = advanceWordMarker(
-      state.lastWordMarker,
-      state.wordsAtEntryStart + deltaWords
-    );
+    // #483 — candidate base is the durable cumulative (`lastWordMarker`) plus
+    // this segment's words; combined with the cursor advance below this makes
+    // `Δ Words` a true per-row delta and `Word Marker` a growing cumulative.
+    const wordMarker = advanceWordMarker(state.lastWordMarker, state.lastWordMarker + deltaWords);
     state.lastWordMarker = wordMarker;
+    // #483 — advance and persist the per-sid cursor so the next flush counts
+    // only words added after this row's segment (no re-count, no frozen cursor).
+    if (!opts.computeOnly && sid && markerLineToPersist != null) {
+      saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
+    }
     const { buildRow } = await import('./gh-timing-comment.mjs');
     const row = buildRow({
       ts,
