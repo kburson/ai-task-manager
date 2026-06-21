@@ -1,3 +1,4 @@
+// @story #413
 // #413 — `aitm` orchestrator dispatcher + registry contract.
 //
 // One test per acceptance criterion. Behavioral ACs spawn `node bin/aitm.mjs`
