@@ -35,6 +35,7 @@ import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs
 import { hasFullAutoApproved } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
+import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -162,18 +163,13 @@ export function normalizeAcceptanceCriteria(value) {
   return out.join('\n');
 }
 
-// AC3 — Plan Metadata label emphasis: any `word:` or `hyphenated-word:` at the
-// start of a line is wrapped in `**...**`. Idempotent — already-bold labels
-// pass through unchanged.
+// Plan Metadata label emphasis (#416, fixed in #488). Delegates to the shared
+// `lib/plan-metadata.mjs` core so creation, back-fill, and the enforcement lint
+// share one definition of a label. Handles both the bulleted list form
+// (`- label: value`) used by real metadata and the bare form, and is idempotent
+// on already-bold labels. Kept as a named export for the existing test surface.
 export function normalizePlanMetadata(value) {
-  return value
-    .split('\n')
-    .map((line) =>
-      line.replace(/^(\*\*[\w][\w-]*\*\*:|[\w][\w-]*:)/, (m) =>
-        m.startsWith('**') ? m : `**${m.slice(0, -1)}**:`
-      )
-    )
-    .join('\n');
+  return normalizePlanMetadataValue(value);
 }
 
 export function normalizeFills(fills) {

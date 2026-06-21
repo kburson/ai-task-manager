@@ -195,4 +195,24 @@ describe('normalizePlanMetadata (#416)', () => {
     const expected = '**origin**: foo\n**root-cause**: bar\nSome prose.\n**impact**: baz';
     assert.equal(normalizePlanMetadata(input), expected);
   });
+
+  // #488 — the bulleted list form is the form templates and issues actually use;
+  // #416 never matched it (regex anchored at `^label:`), so the fix was a no-op.
+  it('bolds a bulleted word label, preserving the bullet (#488)', () => {
+    assert.equal(normalizePlanMetadata('- domain: x'), '- **domain**: x');
+  });
+
+  it('bolds a bulleted hyphenated label, colon outside the span (#488)', () => {
+    assert.equal(normalizePlanMetadata('- root-cause: y'), '- **root-cause**: y');
+  });
+
+  it('is idempotent on an already-bold bulleted label (#488)', () => {
+    assert.equal(normalizePlanMetadata('- **domain**: x'), '- **domain**: x');
+  });
+
+  it('bolds a realistic bulleted metadata block, leaving prose untouched (#488)', () => {
+    const input = '- domain: tooling\n- root-cause: regex\n- **risk**: low\nfree prose';
+    const expected = '- **domain**: tooling\n- **root-cause**: regex\n- **risk**: low\nfree prose';
+    assert.equal(normalizePlanMetadata(input), expected);
+  });
 });

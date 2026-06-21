@@ -45,6 +45,7 @@ import {
   findNewMalformedVerifiedCmds,
   MalformedDeclarationCmdError,
 } from './body-invariants.mjs';
+import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
 
 export { CheckboxProofMissingError, MalformedDeclarationCmdError } from './body-invariants.mjs';
 
@@ -70,6 +71,7 @@ export async function mutateIssueBody({
   allowMarkerLoss = false,
   allowUnverifiedTicks = false,
 } = {}) {
+  const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
   if (!repo) throw new Error('mutateIssueBody: repo is required');
   if (typeof mutate !== 'function') {
@@ -100,6 +102,20 @@ export async function mutateIssueBody({
       // (non-mutateIssueBody) corpus migration are unaffected.
       const malformed = findNewMalformedVerifiedCmds(baseBody, next);
       if (malformed.length > 0) throw new MalformedDeclarationCmdError({ offenders: malformed });
+      // #488 — Plan Metadata bold-label enforcement. Non-fatal: the pre-#416
+      // corpus is unbold until the back-fill runs, so a hard refusal would
+      // block every edit to a stale issue (including back-fill itself). A
+      // stderr warning makes a plan-stage regression visible instead of silent.
+      const unbold = findUnboldPlanMetadataLabels(next);
+      if (unbold.length > 0) {
+        warn(
+          `mutate: plan-metadata-unbold-labels on #${issueNumber}: ${unbold
+            .map((u) => u.label)
+            .join(
+              ', '
+            )} — run \`node scripts/task-tracker/backfill-plan-metadata.mjs --apply\` to bold Plan Metadata labels`
+        );
+      }
     }
     return next;
   };

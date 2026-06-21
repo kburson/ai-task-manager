@@ -138,6 +138,7 @@ Backpointer
 backticked
 footgun
 Connextra
+unbold
 upsert
 upserted
 upserting
