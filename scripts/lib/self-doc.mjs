@@ -43,7 +43,7 @@ export const SELF_DOC = {
     group: 'GitHub',
     path: 'scripts/gh/set-priority.mjs',
     synopsis: 'Set the Priority field on an issue (optionally cascading to sub-issues).',
-    audience: 'AI/operator triaging priority. Priorities: p0|p1|p2|p3.',
+    audience: 'AI/operator setting priority. Priorities: p0|p1|p2|p3.',
     usage: 'aitm set-priority <issue#> <p0|p1|p2|p3> [--cascade]',
   },
   'update-event-fields': {

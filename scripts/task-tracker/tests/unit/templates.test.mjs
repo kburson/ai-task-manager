@@ -281,23 +281,29 @@ for (const [file, text] of pickupDirectiveFiles) {
   );
 }
 
+// #413 — adapters route operator commands through the `aitm` orchestrator, the
+// same invocation a user types; they must NOT instruct a direct node_modules
+// script filepath.
 for (const [file, text] of [
   ['skill/adapters/codex/SKILL.md', codexAdapter],
   ['skill/adapters/claude/SKILL.md', claudeAdapter],
 ]) {
   assert.ok(
-    text.includes(
-      'node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]'
-    ),
-    `${file} must document the portable task-tracker command`
+    text.includes('npx aitm <verb> [args...]'),
+    `${file} must document the aitm orchestrator command`
+  );
+  assert.ok(
+    !text.includes('node node_modules/ai-task-manager/scripts/'),
+    `${file} must not instruct a direct node_modules script invocation`
   );
 }
 
 assert.ok(
-  claudeAdapter.includes(
-    'node node_modules/ai-task-manager/scripts/gh/move-state.mjs <N> in-progress'
-  ),
-  'skill/adapters/claude/SKILL.md must invoke move-state.mjs through node'
+  claudeAdapter.includes('npx aitm promote') &&
+    !claudeAdapter.includes(
+      'node node_modules/ai-task-manager/scripts/gh/move-state.mjs <N> in-progress'
+    ),
+  'skill/adapters/claude/SKILL.md must drive board state via `npx aitm promote`, not move-state.mjs directly'
 );
 
 // ── references/ byte-identity (#204) ───────────────────────────────────────
