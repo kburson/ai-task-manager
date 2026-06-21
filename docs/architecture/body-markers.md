@@ -142,6 +142,20 @@ can be traced back to the conversation that produced it.
   `mutateIssueBody` and the bash backstop both flag a dropped prior entry.
 - **Reader/writer:** `scripts/task-tracker/lib/session-ref.mjs`
   (`parseSessionRefs`, `mostRecentSessionRef`, `recordSessionRefOnChange`).
+- **Cross-provider source (`#477`).** The `jsonl` path is provider-agnostic: it
+  comes from `jsonlPath(sid)`, which delegates to the active adapter's
+  declarative `transcriptLayout` via `providers/transcript-resolver.mjs`. No
+  `if (claude)`/`if (codex)` branching exists in the recording path.
+  - **Claude** (`transcriptLayout: 'flat'`): `~/.claude/projects/<projectKey>/<sid>.jsonl`.
+    Deterministic without the file — recorded even before the transcript exists.
+  - **Codex** (`transcriptLayout: 'date-bucketed'`): transcripts live at
+    `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<sid>.jsonl` (sid is the trailing
+    UUID; `payload.cwd` in line 1 records the project). The resolver searches
+    the date buckets for the file whose basename ends `-<sid>.jsonl`.
+  - **Degradation.** When a date-bucketed provider's transcript cannot be
+    resolved (sid known from `CODEX_SESSION_ID` but no rollout file yet on disk,
+    or remote/iOS), `jsonlPath` returns `''` and a **sid-only** entry is written
+    (`jsonl=""`) — never a placeholder or deterministic-but-wrong path.
 
 ## Related
 

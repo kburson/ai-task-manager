@@ -10,6 +10,7 @@ export const claudeAdapter = {
   installTarget: '.claude/skills/task',
   stateDir: '.ai-task-manager/claude',
   transcriptLocator: '.claude/projects',
+  transcriptLayout: 'flat',
   sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   detectionEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   hookCapability: true,

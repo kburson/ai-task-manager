@@ -34,7 +34,7 @@ const EXPECTED_CODEX_INSTALL_TARGET = '.agents/skills/task';
 const EXPECTED_CLAUDE_STATE_DIR = '.ai-task-manager/claude';
 const EXPECTED_CODEX_STATE_DIR = '.ai-task-manager/codex';
 const EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR = '.claude/projects';
-const EXPECTED_CODEX_TRANSCRIPT_LOCATOR = null;
+const EXPECTED_CODEX_TRANSCRIPT_LOCATOR = '.codex/sessions'; // #477 — date-bucketed rollout dir
 const EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
 const EXPECTED_CODEX_SESSION_ID_ENV_KEYS = ['CODEX_SESSION_ID'];
 const EXPECTED_CLAUDE_DETECTION_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
@@ -183,7 +183,7 @@ test('parity: claude.transcriptLocator matches previous hard-coded homedir-relat
   assert.equal(claudeAdapter.transcriptLocator, EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR);
 });
 
-test('parity: codex.transcriptLocator is null (no homedir fallback)', () => {
+test('parity: codex.transcriptLocator is the date-bucketed rollout dir (#477)', () => {
   assert.equal(codexAdapter.transcriptLocator, EXPECTED_CODEX_TRANSCRIPT_LOCATOR);
 });
 

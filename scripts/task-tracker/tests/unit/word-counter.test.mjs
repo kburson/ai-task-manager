@@ -242,16 +242,28 @@ try {
     path.join(markerProject, '.ai-task-manager', 'codex', 'session-tracking', 'session-123.json'),
     'session tracking file must live under app-scoped project-local .ai-task-manager'
   );
+  // When the AITM-managed local transcript file actually exists, jsonlPath
+  // returns it for every provider (codex included) — this is the project-local
+  // contract. Create it, then assert it is resolved.
+  const managedDir = path.join(markerProject, '.ai-task-manager', 'codex', 'session-transcripts');
+  mkdirSync(managedDir, { recursive: true });
+  const managedFile = path.join(managedDir, 'session-123.jsonl');
+  writeFileSync(managedFile, '{}\n');
   assert.equal(
     jsonlPath('session-123'),
-    path.join(
-      markerProject,
-      '.ai-task-manager',
-      'codex',
-      'session-transcripts',
-      'session-123.jsonl'
-    ),
+    managedFile,
     'transcript path must live under app-scoped project-local .ai-task-manager'
+  );
+  // Remove it again so it does not pollute the resolveSessionId transcript scan
+  // exercised by the currentSessionId assertion below.
+  rmSync(managedFile, { force: true });
+  // #477 — codex is date-bucketed: with NO managed file and no resolvable
+  // homedir rollout, jsonlPath degrades to '' (sid-only session-ref) rather
+  // than returning a deterministic-but-nonexistent placeholder path.
+  assert.equal(
+    jsonlPath('no-such-codex-session'),
+    '',
+    'codex jsonlPath degrades to empty string when no transcript can be resolved'
   );
 
   const oldHome = process.env.HOME;
@@ -260,17 +272,10 @@ try {
   mkdirSync(legacyDir, { recursive: true });
   writeFileSync(path.join(legacyDir, 'legacy-only.jsonl'), '{}\n');
   process.env.HOME = fakeHome;
-  assert.equal(
-    jsonlPath('legacy-only'),
-    path.join(
-      markerProject,
-      '.ai-task-manager',
-      'codex',
-      'session-transcripts',
-      'legacy-only.jsonl'
-    ),
-    'jsonlPath must not fall back to ~/.claude/projects'
-  );
+  // A legacy transcript sitting in ~/.claude/projects must never be used by a
+  // codex session. With no managed file and no codex rollout, jsonlPath degrades
+  // to '' — proving it does not leak to ~/.claude (#477 date-bucketed codex).
+  assert.equal(jsonlPath('legacy-only'), '', 'jsonlPath must not fall back to ~/.claude/projects');
   // #273 — resolveSessionId no longer returns null; with no env keys and no
   // local transcripts, the last-resort fallback is the non-empty literal
   // 'default-session' (always a stable, non-empty string so the writer and
