@@ -133,7 +133,7 @@ export function buildRow({
 }
 
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every
-// timing-emitting verb, `pause` included) historically passed minute scalars to
+// timing-emitting verb, `pause` included) previously passed minute scalars to
 // `buildRow`, so its rows rendered the bare-integer Active/Idle form while the
 // `resume` verb — which passes `activeSec` directly — rendered the `Xh Ym Zs`
 // duration form. That asymmetry is the #484 defect (pause rows showed a lone
