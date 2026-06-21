@@ -27,6 +27,8 @@ import {
   countWords,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
+import { recordSessionRefOnChange } from './lib/session-ref.mjs';
+import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
@@ -168,6 +170,25 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
   };
 
+  // #476 — append-only session-ref recorder. Routed through `mutateIssueBody`
+  // so the diff/version guards apply; the mutate only ever ADDS a marker, so it
+  // cannot trip `MarkerLossError`. Failures are swallowed: a session-ref write
+  // problem must never break the timing flush (parity with `safePostTiming`).
+  ctx.safeRecordSessionRef = async (issue, { sid, jsonlPath: jp, ts }) => {
+    if (SKIP_NETWORK) return { ok: true, skipped: true };
+    try {
+      const res = await mutateIssueBody({
+        issueNumber: String(issue).replace(/^#/, ''),
+        repo: cfg.repo,
+        mutate: (base) => recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts }).body,
+        deps: { pexec },
+      });
+      return { ok: true, status: res?.status };
+    } catch (err) {
+      return { ok: false, err: err.message };
+    }
+  };
+
   ctx.drainQueueIfAny = async () => {
     if (SKIP_NETWORK) return;
     await drain(async (evt) => {
@@ -221,6 +242,15 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     if (sid) {
       const marker = loadMarker(markerPathFor(sid));
       deltaWords = countWords(jsonlPath(sid), marker.line).count;
+    }
+    // #476 — append-only session-reference chain. On every timing-emitting verb
+    // (incl. first bind via `start`), compare the live { sid, jsonlPath } against
+    // the most-recent recorded entry and append a new timestamped entry only on
+    // change. `mutateIssueBody` returns `no-op` and skips the wire write when the
+    // body is unchanged, so the steady-state event is a cheap fetch-and-compare.
+    // Read-only (`computeOnly`) and no-sid (remote/iOS) paths skip cleanly.
+    if (!opts.computeOnly && sid) {
+      await ctx.safeRecordSessionRef(state.active, { sid, jsonlPath: jsonlPath(sid), ts });
     }
     // #407 — bound-but-paused state (no open timing session): a non-terminal
     // verb (test/review) now leaves `active` set while nulling `entryStartTs`.

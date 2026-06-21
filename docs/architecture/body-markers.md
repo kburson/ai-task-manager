@@ -111,6 +111,38 @@ node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
 | Posted + heading, no `/task check` run          | `complete-marker-missing`                                            | `/task check "Deep dive complete"`.                                                     |
 | Legacy `- [x] Deep dive complete` checkbox only | `complete-marker-missing` + `gh-edit-guard` refusal on future writes | Remove the checkbox; rely on the marker.                                                |
 
+## Session-Reference Chain (`aitm-session-ref`) — #476
+
+An **append-only** chain of markers records which Claude Code session(s) worked
+the story and where each session's JSONL transcript lives, so any timing-log row
+can be traced back to the conversation that produced it.
+
+```
+<!-- aitm-session-ref sid="<session-id>" jsonl="<absolute path>" ts="<iso>" -->
+```
+
+- **Entry format.** Each entry carries the session id (`sid`), the on-disk
+  transcript path (`jsonl`, from `jsonlPath(sid)`), and a timestamp (`ts`) of
+  when that reference became active.
+- **Append-only.** Entries accumulate in document order (just above the
+  `aitm-fields` trailer). The **last** entry is the currently-active reference.
+  Prior entries are never modified or removed — a mid-story session changeover is
+  preserved as history, not overwritten.
+- **When written.** On every timing-emitting verb, `runtime.mjs → flushActiveToGH`
+  compares the live `sid`/`jsonl` against the most-recent entry. Normally a no-op
+  sanity check; a new entry is appended only when either value changes (or on the
+  first bind, when no entry yet exists). With no `sid` (remote/iOS) the check is
+  skipped cleanly — no placeholder is written.
+- **Going from an entry to the transcript.** Read the last `aitm-session-ref`
+  marker; its `jsonl` path **is** the transcript file. Its `sid` is the session
+  behind every timing-log row whose timestamp falls at or after that entry's `ts`
+  (and before the next entry's `ts`, if any).
+- **Invariants.** Registered in `body-invariants.mjs` as a `count`-kind marker
+  (occurrence count must never decrease) and mirrored in `gh-edit-guard.mjs`, so
+  `mutateIssueBody` and the bash backstop both flag a dropped prior entry.
+- **Reader/writer:** `scripts/task-tracker/lib/session-ref.mjs`
+  (`parseSessionRefs`, `mostRecentSessionRef`, `recordSessionRefOnChange`).
+
 ## Related
 
 - [`body-writes.md`](./body-writes.md) — `mutateIssueBody` contract,

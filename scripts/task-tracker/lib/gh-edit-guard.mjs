@@ -52,6 +52,9 @@ const MARKER_PATTERNS = [
   { name: 'aitm-lifecycle-optout', re: /<!--\s*aitm-lifecycle-optout:/i },
   // Widened (#381) to protect both legacy colon CSV and new `refs="..."` grammars.
   { name: 'aitm-blocked-by', re: /<!--\s*aitm-blocked-by(?:\s*:|\s+refs=")/i },
+  // #476 — append-only session-reference chain; presence backstop against an
+  // external `gh issue edit` dropping the family.
+  { name: 'aitm-session-ref', re: /<!--\s*aitm-session-ref\s+sid="/i },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;

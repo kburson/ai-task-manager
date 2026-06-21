@@ -32,6 +32,11 @@ import { parseAcEvidence } from './ac-evidence.mjs';
 // so dropped entry markers are detected under either grammar.
 const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 
+// #476 — global counter for the append-only session-ref family. Kept separate
+// from the non-global presence pattern in `lib/session-ref.mjs` because
+// `matchAll` requires the /g flag.
+const SESSION_REF_COUNT_RE = /<!--\s*aitm-session-ref\s+sid="/gi;
+
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
   // Widened (#376) to detect the body-version marker under BOTH the legacy
@@ -79,7 +84,17 @@ export const INVARIANT_MARKER_PATTERNS = [
     kind: 'single',
   },
   { name: 'aitm-entered-<stage>', re: ENTERED_STAGE_RE, kind: 'multi' },
+  // #476 — append-only session-reference chain. Entries accumulate and are
+  // never removed; the invariant is "occurrence count must not decrease". A
+  // dropped prior entry on an unrelated edit is a loss. Uses the `count` kind
+  // so `findLostMarkers` compares occurrence counts rather than a stage set.
+  { name: 'aitm-session-ref', re: SESSION_REF_COUNT_RE, kind: 'count' },
 ];
+
+function countMarkers(body, re) {
+  re.lastIndex = 0;
+  return [...String(body || '').matchAll(re)].length;
+}
 
 function enteredStages(body) {
   const set = new Set();
@@ -107,6 +122,9 @@ export function findLostMarkers(base, next) {
       for (const stage of baseStages) {
         if (!nextStages.has(stage)) lost.push(`aitm-entered-${stage}`);
       }
+    } else if (kind === 'count') {
+      // Append-only family (#476): the occurrence count must never decrease.
+      if (countMarkers(nextStr, re) < countMarkers(baseStr, re)) lost.push(name);
     }
   }
   return lost;
