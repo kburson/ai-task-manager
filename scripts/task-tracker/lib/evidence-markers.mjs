@@ -1,6 +1,6 @@
 // `npm test` (fast lane) stays in the set so legacy bodies keep passing;
 // `npm run test:all` is the new canonical Functional-DoD command (#305).
-import { parseProofMarker, hasExecutionProof, serializeProofMarker } from './proof-marker.mjs';
+import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
 
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
@@ -18,14 +18,16 @@ function cleanLabel(label) {
 
 function evidenceCommands(label) {
   const commands = [];
-  // #395/#468 — consolidated declaration is the sole path. The `hasExecutionProof`
-  // guard keeps a record-of-run proof stamp (ts/sha/evidence) from being misread
-  // as a re-gating verifier declaration.
-  if (!hasExecutionProof(label)) {
-    const props = parseProofMarker(label);
-    if (props && typeof props.cmd === 'string') {
-      for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
-    }
+  // #481 — `cmd` is the PERSISTENT declaration component, read regardless of any
+  // run-props upserted onto the same `aitm-verified` marker. The pre-#481
+  // `hasExecutionProof` guard hid the declared command once proof and declaration
+  // shared one comment, which made a stamped AC's command vanish from the audit
+  // and re-opened the #429 missing-Verification-Commands gap. A declared command
+  // still needs to be listed in `## Verification Commands` whether or not it has
+  // been run, so the command is always surfaced.
+  const props = parseProofMarker(label);
+  if (props && typeof props.cmd === 'string') {
+    for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
   }
   return commands;
 }

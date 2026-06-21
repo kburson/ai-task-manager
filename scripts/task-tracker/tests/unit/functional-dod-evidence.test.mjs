@@ -61,7 +61,7 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
   assert.equal(byKey.acs.classification, 'derived');
 }
 
-// --- findEvidenceMarker / stampEvidenceMarker ---
+// --- #481 — findEvidenceMarker / stampEvidenceMarker upsert the single marker ---
 {
   let body = bodyWithKeys();
   assert.equal(findEvidenceMarker(body, 'tests'), null);
@@ -73,7 +73,9 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
   });
   const ev = findEvidenceMarker(body, 'tests');
   assert.ok(ev, 'marker stamped');
-  assert.equal(ev.cmd, 'npm test');
+  // #481 — cmd reflects the line's persistent DECLARATION (backtick form), not
+  // the bare cmd passed in; the run is proven by exit/sha/ts.
+  assert.equal(ev.cmd, '`npm test`');
   assert.equal(ev.exit, 0);
   assert.equal(ev.sha, 'abc123');
   // Idempotent / replace-in-place: re-stamp with different sha replaces.
@@ -85,13 +87,21 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
   });
   const ev2 = findEvidenceMarker(body, 'tests');
   assert.equal(ev2.sha, 'def456');
-  // Marker count stays at 1. `\b` matches BOTH legacy `aitm-dod-evidence:` and
-  // the new `aitm-dod-evidence key="..."` grammar, so the count is form-agnostic.
-  const occurrences = (body.match(/aitm-dod-evidence\b/g) || []).length;
-  assert.equal(occurrences, 1, 'marker replaced in place, not duplicated');
+  // #481 — single marker: no aitm-dod-evidence sibling, exactly one aitm-verified.
+  const testsLine = body.split('\n').find((l) => l.includes('All automated tests pass'));
+  assert.equal(
+    (testsLine.match(/aitm-dod-evidence\b/g) || []).length,
+    0,
+    'no sibling evidence marker'
+  );
+  assert.equal(
+    (testsLine.match(/aitm-verified/g) || []).length,
+    1,
+    'exactly one aitm-verified marker, run-props merged in place'
+  );
 }
 
-// --- #379 — writer emits the new fully-quoted property grammar ---
+// --- #481 — stamp upserts run-props onto the line's single aitm-verified marker ---
 {
   const body = stampEvidenceMarker(bodyWithKeys(), 'tests', {
     cmd: 'npm test',
@@ -100,23 +110,41 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
     exit: 0,
   });
   const line = body.split('\n').find((l) => l.includes('All automated tests pass'));
+  // Declaration cmd preserved; run-props appended in canonical order; the
+  // dod:functional locator tag stays separate (the key is NOT folded in).
   assert.match(
     line,
-    /<!-- aitm-dod-evidence key="tests" cmd="npm test" exit="0" sha="abc123" ts="2026-06-05T00:00:00Z" -->/,
-    'new fully-quoted form emitted'
+    /<!-- aitm-verified cmd="`npm test`" exit="0" sha="abc123" ts="2026-06-05T00:00:00Z" --> <!-- dod:functional:tests -->/,
+    'run-props upserted onto the declaration marker; dod:functional tag separate'
   );
-  assert.ok(!/aitm-dod-evidence:/.test(line), 'no legacy colon form emitted');
+  assert.ok(!/aitm-dod-evidence/.test(line), 'no sibling evidence marker emitted');
+  assert.ok(!/aitm-verified[^>]*key=/.test(line), 'no functional key folded into the marker');
 }
 
-// --- #379 — parser reads the new fully-quoted form ---
+// --- #481 — parser reads run-props from the single aitm-verified marker ---
+{
+  const body = bodyWithKeys().replace(
+    '<!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->',
+    '<!-- aitm-verified cmd="`npm test`" exit="0" sha="abc123" ts="2026-06-05T00:00:00Z" --> <!-- dod:functional:tests -->'
+  );
+  const ev = findEvidenceMarker(body, 'tests');
+  assert.ok(ev, 'single-marker run-props parsed');
+  assert.equal(ev.cmd, '`npm test`');
+  assert.equal(ev.exit, 0);
+  assert.equal(ev.sha, 'abc123');
+  assert.equal(ev.ts, '2026-06-05T00:00:00Z');
+}
+
+// --- #481 — back-compat: parser still reads the legacy fully-quoted sibling ---
 {
   const body = bodyWithKeys().replace(
     '<!-- dod:functional:tests -->',
     '<!-- dod:functional:tests --> <!-- aitm-dod-evidence key="tests" cmd="npm test" exit="0" sha="abc123" ts="2026-06-05T00:00:00Z" -->'
   );
   const ev = findEvidenceMarker(body, 'tests');
-  assert.ok(ev, 'new-form marker parsed');
-  assert.equal(ev.cmd, 'npm test');
+  assert.ok(ev, 'legacy new-form sibling still parsed (read-only back-compat)');
+  // The aitm-verified declaration carries proof too here; the line's own
+  // declaration cmd wins on read.
   assert.equal(ev.exit, 0);
   assert.equal(ev.sha, 'abc123');
   assert.equal(ev.ts, '2026-06-05T00:00:00Z');
@@ -135,21 +163,24 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
   assert.equal(ev.sha, 'deadbeef');
 }
 
-// --- #379 — embedded double-quote in cmd round-trips serialize→parse ---
+// --- #481 — embedded double-quote in a SEEDED cmd round-trips serialize→parse.
+// Uses a derived key (`acs`) whose line has no declaration, so the upsert seeds
+// `cmd` from the evidence (a declared line would preserve its backtick cmd).
 {
   const cmd = 'grep "needle" file';
-  const body = stampEvidenceMarker(bodyWithKeys(), 'tests', {
+  const body = stampEvidenceMarker(bodyWithKeys(), 'acs', {
     cmd,
     sha: 'abc123',
     ts: '2026-06-05T00:00:00Z',
     exit: 0,
   });
-  const line = body.split('\n').find((l) => l.includes('All automated tests pass'));
+  const line = body.split('\n').find((l) => l.includes('Acceptance criteria met'));
   assert.match(line, /cmd="grep &quot;needle&quot; file"/, 'embedded quote escaped as &quot;');
-  assert.equal(findEvidenceMarker(body, 'tests').cmd, cmd, 'round-trips back to original cmd');
+  assert.equal(findEvidenceMarker(body, 'acs').cmd, cmd, 'round-trips back to original cmd');
 }
 
-// --- #379 — re-stamping a legacy-form marker replaces it in place with the new form ---
+// --- #481 — re-stamping a line carrying a legacy sibling strips the sibling and
+// records the run on the single `aitm-verified` marker (declaration preserved) ---
 {
   const seeded = bodyWithKeys().replace(
     '<!-- dod:functional:commits -->',
@@ -164,10 +195,16 @@ assert.deepEqual([...DERIVED_KEYS].sort(), ['acs', 'checkboxes']);
   const line = restamped.split('\n').find((l) => l.includes('All changes committed'));
   assert.equal(
     (line.match(/aitm-dod-evidence\b/g) || []).length,
-    1,
-    'legacy marker replaced, not duplicated'
+    0,
+    'legacy sibling stripped on restamp'
   );
-  assert.ok(!/aitm-dod-evidence:/.test(line), 'legacy form replaced with new form');
+  assert.equal(
+    (line.match(/aitm-verified/g) || []).length,
+    1,
+    'run recorded on the single aitm-verified marker'
+  );
+  // Declaration cmd preserved; run sha taken from the new stamp.
+  assert.match(line, /aitm-verified cmd="`git log --grep #303`"/, 'declaration cmd preserved');
   assert.equal(findEvidenceMarker(restamped, 'commits').sha, 'new456');
 }
 
@@ -257,9 +294,10 @@ assert.throws(
   assert.deepEqual(byKey.lint.evidenceCommands, [], 'declaration-less line yields no commands');
 }
 
-// --- #393 no-regression — a consolidated `aitm-verified` carrying execution
-// proof (ts + sha) is a record-of-run, not a declaration: it must NOT re-gate
-// the Functional-DoD line (mirror of #391's hasExecutionProof guard).
+// --- #481 — `cmd` is the PERSISTENT declaration component, read regardless of
+// run-props. Once run-props (ts+sha) are upserted onto the same `aitm-verified`
+// marker, the declared command MUST still surface so the line keeps gating
+// (inverts the pre-#481 hasExecutionProof guard, which would have hidden it).
 {
   const proofStamped = bodyWithKeys().replace(
     '<!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->',
@@ -268,9 +306,12 @@ assert.throws(
   const byKey = Object.fromEntries(parseFunctionalDodKeys(proofStamped).map((it) => [it.key, it]));
   assert.deepEqual(
     byKey.tests.evidenceCommands,
-    [],
-    'proof stamp (ts+sha) is not treated as a verifier declaration'
+    ['npm test'],
+    'declared cmd still read after run-props are merged into the marker'
   );
+  // The same marker is now also a record-of-run: evidenceMarker reads the proof.
+  assert.equal(byKey.tests.evidenceMarker.sha, 'abc1234');
+  assert.equal(byKey.tests.evidenceMarker.ts, '2026-06-12T00:00:00Z');
 }
 
 // --- #393/#468 — consolidated declarations are read correctly. ---------------
@@ -282,6 +323,37 @@ assert.throws(
     ['npm test'],
     'consolidated aitm-verified cmd declaration read by parseFunctionalDodKeys'
   );
+}
+
+// --- #481 (AC8, routed from #480) — deriveCheckboxesStatus strips fenced code
+// blocks before tallying, so example checkboxes shown inside a ```fence``` no
+// longer false-count toward the derived `checkboxes` total. ----------------
+{
+  const body = [
+    '## Acceptance Criteria',
+    '',
+    '- [x] AC one',
+    '- [x] AC two',
+    '',
+    '## Notes',
+    '',
+    'The body might illustrate the checkbox grammar in a fenced example:',
+    '',
+    '```md',
+    '- [ ] not a real task, just documentation',
+    '- [x] also illustrative only',
+    '```',
+    '',
+    '~~~',
+    '- [ ] tilde-fenced example, also ignored',
+    '~~~',
+    '',
+  ].join('\n');
+  const status = deriveCheckboxesStatus(body, { lifecyclePresent: false });
+  // Only the two real ACs count; the three fenced example boxes are excluded.
+  assert.equal(status.total, 2, 'fenced example checkboxes excluded from tally');
+  assert.equal(status.ticked, 2);
+  assert.equal(status.allTicked, true);
 }
 
 console.log('ok functional-dod-evidence');

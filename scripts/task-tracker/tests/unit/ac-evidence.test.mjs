@@ -93,22 +93,28 @@ test('parseEvidenceAcs recognizes a migrated consolidated aitm-verified declarat
   assert.equal(r.kind, 'refuse-ac-evidence', 'unstamped migrated AC is still gated');
 });
 
-// #391 no-regression — a consolidated `aitm-verified` carrying a record-of-run
-// key (a PROOF stamp, not a declaration) must NOT be treated as a verifier
-// declaration by the evidence reader; only cmd-only declarations gate.
-test('parseEvidenceAcs ignores a consolidated aitm-verified PROOF stamp (#391)', () => {
+// #481 — `cmd` is the PERSISTENT declaration component, read regardless of any
+// run-props on the same `aitm-verified` marker (inverts the pre-#481 guard). A
+// line whose declaration also carries a record-of-run still surfaces its command
+// AND its proof, so the AC keeps gating and the marker reads as evidence.
+test('parseEvidenceAcs reads cmd + proof from a single combined aitm-verified marker (#481)', () => {
+  const key = acKeyForLabel('proof-stamped line');
   const body = [
     '## Acceptance Criteria',
     '',
-    '- [ ] proof-stamped line <!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-06-12T00:00:00Z" -->',
+    `- [ ] proof-stamped line <!-- aitm-verified cmd="\`npm test\`" exit="0" sha="abc1234" ts="2026-06-12T00:00:00Z" key="${key}" -->`,
     '',
     '## Definition of Done',
     '',
   ].join('\n');
-  assert.equal(parseEvidenceAcs(body).length, 0);
+  const acs = parseEvidenceAcs(body);
+  assert.equal(acs.length, 1);
+  assert.deepEqual(acs[0].evidenceCommands, ['npm test']);
+  assert.ok(acs[0].evidenceMarker, 'combined marker also reads as evidence');
+  assert.equal(acs[0].evidenceMarker.sha, 'abc1234');
 });
 
-test('stampAcEvidenceMarker appends then idempotently replaces', () => {
+test('stampAcEvidenceMarker upserts run-props onto the single marker, idempotently', () => {
   const label = 'check.mjs refuses to tick verified lines';
   const ev = { cmd: 'npm test', sha: 'abc1234', ts: '2026-06-10T00:00:00.000Z', exit: 0 };
   const once = stampAcEvidenceMarker(AC_BODY, label, ev);
@@ -117,19 +123,23 @@ test('stampAcEvidenceMarker appends then idempotently replaces', () => {
   assert.equal(parsedAc.evidenceMarker.key, acKeyForLabel(label));
   assert.equal(parsedAc.evidenceMarker.exit, 0);
 
-  // Re-stamp with a new sha → replaces in place, does not duplicate.
+  // Re-stamp with a new sha → replaces run-props in place, does not duplicate.
   const twice = stampAcEvidenceMarker(once, label, { ...ev, sha: 'def5678' });
-  // `\b` matches BOTH the legacy `aitm-ac-evidence:` and the new
-  // `aitm-ac-evidence key="..."` grammars so the count is form-agnostic.
-  const markers = [...twice.matchAll(/aitm-ac-evidence\b/g)];
-  // one per stamped line — only the first AC stamped here
-  assert.equal(markers.length, 1);
+  const line = twice.split('\n').find((l) => l.includes(label));
+  // #481 — no sibling aitm-ac-evidence marker; exactly one aitm-verified marker.
+  assert.equal([...twice.matchAll(/aitm-ac-evidence\b/g)].length, 0, 'no sibling marker');
+  assert.equal(
+    [...line.matchAll(/aitm-verified/g)].length,
+    1,
+    'run recorded on the single aitm-verified marker'
+  );
   assert.equal(findEvidenceAc(twice, label).evidenceMarker.sha, 'def5678');
 });
 
-// #379 — writer emits the new fully-quoted property grammar, with the key
-// folded into a `key="..."` property and every value double-quoted.
-test('stampAcEvidenceMarker serializes the new fully-quoted property form (#379)', () => {
+// #481 — the writer records the run on the line's single `aitm-verified` marker:
+// the declaration `cmd` is preserved (backtick form) and run-props + the AC
+// `key` are appended in canonical order. No sibling `aitm-ac-evidence` is emitted.
+test('stampAcEvidenceMarker records run-props on the single aitm-verified marker (#481)', () => {
   const label = 'check.mjs refuses to tick verified lines';
   const body = stampAcEvidenceMarker(AC_BODY, label, {
     cmd: 'npm test',
@@ -142,11 +152,12 @@ test('stampAcEvidenceMarker serializes the new fully-quoted property form (#379)
   assert.match(
     line,
     new RegExp(
-      `<!-- aitm-ac-evidence key="${key}" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->`
-    )
+      `<!-- aitm-verified cmd="\`npm test\`" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" key="${key}" -->`
+    ),
+    'declaration cmd preserved; run-props + key appended in canonical order'
   );
-  // No legacy half-quoted colon form is emitted.
-  assert.ok(!/aitm-ac-evidence:/.test(line), 'no legacy colon form emitted');
+  // No sibling ac-evidence marker, old or new form.
+  assert.ok(!/aitm-ac-evidence/.test(line), 'no sibling ac-evidence marker emitted');
 });
 
 // #379 — parser reads BOTH the new fully-quoted form and the legacy
@@ -172,27 +183,35 @@ test('parseAcEvidence still reads the legacy half-quoted colon form (#379 back-c
   assert.equal(m.sha, 'deadbeef');
 });
 
-// #379 — a cmd carrying an embedded double-quote round-trips through
-// serialize (`"` → `&quot;`) and parse (`&quot;` → `"`).
-test('stampAcEvidenceMarker round-trips an embedded double-quote in cmd (#379)', () => {
-  const label = 'check.mjs refuses to tick verified lines';
-  const cmd = 'grep "needle" file';
-  const body = stampAcEvidenceMarker(AC_BODY, label, {
-    cmd,
+// #481 — a DECLARATION carrying an embedded double-quote round-trips through
+// serialize (`"` → `&quot;`) and parse (`&quot;` → `"`). For AC lines the cmd is
+// the preserved declaration, so the embedded quote lives in the declared command.
+test('stampAcEvidenceMarker preserves a declaration with an embedded double-quote (#481)', () => {
+  const cmd = '`grep "needle" file`';
+  const body = [
+    '## Acceptance Criteria',
+    '',
+    '- [ ] quote AC <!-- aitm-verified cmd="`grep &quot;needle&quot; file`" -->',
+    '',
+    '## Definition of Done',
+    '',
+  ].join('\n');
+  const stamped = stampAcEvidenceMarker(body, 'quote AC', {
+    cmd: 'ignored — declaration wins',
     sha: 'abc1234',
     ts: '2026-06-10T00:00:00.000Z',
     exit: 0,
   });
-  const line = body.split('\n').find((l) => l.includes(label));
-  // Serialized form escapes the quote as &quot; (no raw `"` inside the value).
-  assert.match(line, /cmd="grep &quot;needle&quot; file"/);
-  // And it parses back to the original cmd.
+  const line = stamped.split('\n').find((l) => l.includes('quote AC'));
+  // The declaration's escaped quote is preserved verbatim (no raw `"`).
+  assert.match(line, /cmd="`grep &quot;needle&quot; file`"/);
+  // And it parses back to the original declared cmd.
   assert.equal(parseAcEvidence(line).cmd, cmd);
 });
 
-// #379 — re-stamping a line that already carries a LEGACY-form marker replaces
-// it in place with the new form (no duplication, idempotent across grammars).
-test('stampAcEvidenceMarker replaces a legacy-form marker in place (#379)', () => {
+// #481 — re-stamping a line that still carries a LEGACY sibling marker strips the
+// sibling and records the run on the single `aitm-verified` marker.
+test('stampAcEvidenceMarker strips a legacy sibling and records on the single marker (#481)', () => {
   const label = 'check.mjs refuses to tick verified lines';
   const key = acKeyForLabel(label);
   const seeded = AC_BODY.replace(
@@ -206,9 +225,9 @@ test('stampAcEvidenceMarker replaces a legacy-form marker in place (#379)', () =
     exit: 0,
   });
   const line = restamped.split('\n').find((l) => l.includes(label));
-  // Exactly one ac-evidence marker remains, now in the new form, new sha.
-  assert.equal([...line.matchAll(/aitm-ac-evidence\b/g)].length, 1);
-  assert.ok(!/aitm-ac-evidence:/.test(line), 'legacy form replaced, not retained');
+  // No sibling ac-evidence marker remains; exactly one aitm-verified marker.
+  assert.equal([...line.matchAll(/aitm-ac-evidence\b/g)].length, 0, 'legacy sibling stripped');
+  assert.equal([...line.matchAll(/aitm-verified/g)].length, 1, 'single marker');
   assert.equal(parseAcEvidence(line).sha, 'new5678');
 });
 
@@ -322,7 +341,8 @@ test('#443 stampAcEvidenceAndReconcile clears the refusal and keeps the AC marke
   // The inline evidence proof marker is present…
   const ac = findEvidenceAc(out, 'spike probe passes');
   assert.ok(ac.evidenceMarker, 'AC evidence marker stamped');
-  assert.equal(ac.evidenceMarker.cmd, 'grep -qF needle file');
+  // #481 — the single marker preserves the declaration cmd (backtick form).
+  assert.equal(ac.evidenceMarker.cmd, '`grep -qF needle file`');
   // …and the declared command is now reconciled into Verification Commands, so
   // the audit passes and preflight would no longer refuse.
   const audit = auditEvidenceMarkers(out);

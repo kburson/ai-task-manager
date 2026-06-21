@@ -149,17 +149,20 @@ export function resolveVerifiedBy(line) {
 
 // #418 — Shared DECLARATION extractor. Returns the backtick-wrapped command(s)
 // declared on a label by the consolidated `aitm-verified cmd="..."` form.
-// The `cmd` is read only when the line carries no execution proof
-// (`hasExecutionProof` false), so a record-of-run stamp (ts/sha/evidence)
-// is never mistaken for a verifier declaration.
+//
+// #481 — `cmd` is the PERSISTENT declaration component: it is read regardless of
+// whether the marker also carries run-props (`ts`/`sha`/`evidence`/`exit`). The
+// pre-#481 guard skipped cmd extraction once `hasExecutionProof` flipped true,
+// which made the single-expandable marker (declaration + run-props in one
+// comment) unreadable as a declaration — `ac-stamp`/re-verification could no
+// longer find the command to re-run. `hasExecutionProof` keeps its "has this run
+// yet?" meaning but no longer gates `cmd`.
 export function extractVerifiedCommands(label) {
   const haystack = String(label || '');
   const commands = [];
-  if (!hasExecutionProof(haystack)) {
-    const props = parseProofMarker(haystack);
-    if (props && typeof props.cmd === 'string') {
-      for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
-    }
+  const props = parseProofMarker(haystack);
+  if (props && typeof props.cmd === 'string') {
+    for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
   }
   return commands;
 }
@@ -215,6 +218,43 @@ export function collectDeclarationCmds(body) {
     if (typeof attrs.cmd === 'string') out.push({ marker: m[0], cmd: attrs.cmd });
   }
   return out;
+}
+
+// #481 — canonical attribute order for a consolidated `aitm-verified` marker.
+// `cmd` is the persistent declaration; `exit`/`sha`/`ts`/`evidence` are the
+// record-of-run props upserted at stamp time; `key` is the 8-hex AC digest on
+// AC lines only. Keys outside this list keep their first-seen order, appended
+// after the canonical ones.
+const PROOF_KEY_ORDER = ['cmd', 'exit', 'sha', 'ts', 'evidence', 'key'];
+
+function orderProofProps(props) {
+  const ordered = {};
+  for (const k of PROOF_KEY_ORDER) {
+    if (k in props && props[k] !== undefined && props[k] !== null) ordered[k] = props[k];
+  }
+  for (const k of Object.keys(props)) {
+    if (!(k in ordered) && props[k] !== undefined && props[k] !== null) ordered[k] = props[k];
+  }
+  return ordered;
+}
+
+// #481 — upsert run-props into the line's existing consolidated `aitm-verified`
+// marker, preserving its `cmd` declaration and re-emitting all attrs in
+// canonical order. When the line carries no `aitm-verified` marker, a fresh one
+// is appended (single-space separated). This is the single-expandable-marker
+// collapse: NO sibling `aitm-dod-evidence`/`aitm-ac-evidence` comment and NO
+// second `aitm-verified` proof are written. Returns the rewritten line.
+export function upsertProofMarker(line, props = {}) {
+  const src = String(line == null ? '' : line);
+  const incoming = props || {};
+  const match = src.match(/<!--\s*aitm-verified\s+([\s\S]*?)\s*-->/);
+  if (match) {
+    const existing = parseConsolidatedAttrs(match[1]);
+    const marker = serializeProofMarker(orderProofProps({ ...existing, ...incoming }));
+    return src.slice(0, match.index) + marker + src.slice(match.index + match[0].length);
+  }
+  const marker = serializeProofMarker(orderProofProps(incoming));
+  return `${src.replace(/\s+$/, '')} ${marker}`;
 }
 
 // Remove every proof/declaration marker from a label for display.

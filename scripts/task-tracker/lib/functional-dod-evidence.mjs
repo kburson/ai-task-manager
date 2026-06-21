@@ -17,8 +17,13 @@
 // atomic — if any line in the batch fails the gate, the whole batch refuses.
 
 import { locateFunctionalSection } from './lifecycle-dod.mjs';
-import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
-import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
+import { unescapeValue } from './marker-grammar.mjs';
+import {
+  parseProofMarker,
+  hasExecutionProof,
+  extractVerifiedCommands,
+  upsertProofMarker,
+} from './proof-marker.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -50,19 +55,12 @@ const EVIDENCE_ANY_RE = /<!--\s*aitm-dod-evidence(?::[a-z0-9-]+)?\s[\s\S]*?-->/i
 const NEW_ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
 const BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 
+// #481 — `cmd` is the persistent declaration component (read regardless of
+// run-props), so this delegates to the shared extractor. The pre-#481 local copy
+// guarded on `hasExecutionProof`, which broke once run-props were upserted onto
+// the same `aitm-verified` marker.
 function extractCommands(text) {
-  const out = [];
-  const haystack = String(text || '');
-  // #393/#468 — consolidated `aitm-verified cmd="..."` is the sole declaration form.
-  // `hasExecutionProof` rejects a marker carrying a record-of-run key (ts/sha/evidence)
-  // so a proof stamp is never misread as a verifier declaration.
-  if (!hasExecutionProof(haystack)) {
-    const props = parseProofMarker(haystack);
-    if (props && typeof props.cmd === 'string') {
-      for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);
-    }
-  }
-  return out;
+  return extractVerifiedCommands(text);
 }
 
 function parseEvidence(text) {
@@ -101,6 +99,31 @@ function parseEvidence(text) {
   };
 }
 
+// #481 — read a Functional line's run-evidence. The single-marker form keeps
+// run-props (`cmd`/`exit`/`sha`/`ts`) on the line's `aitm-verified` marker while
+// the `dod:functional:<key>` tag stays separate (the key is NOT folded in, per
+// the Refine decision), so the key is supplied by the caller from that tag.
+// Falls back to the legacy sibling `aitm-dod-evidence` marker (read-only
+// back-compat until the #369 corpus sweep). Returns `{key,cmd,exit,sha,ts}` or
+// null when the line carries no run proof yet (a declaration-only line).
+function parseFunctionalEvidence(text, key) {
+  const src = String(text || '');
+  if (hasExecutionProof(src)) {
+    const props = parseProofMarker(src);
+    if (props && typeof props.cmd === 'string' && props.sha != null && props.ts != null) {
+      const exit = Number(props.exit);
+      return {
+        key: String(key).toLowerCase(),
+        cmd: props.cmd,
+        exit: Number.isFinite(exit) ? exit : 0,
+        sha: props.sha,
+        ts: props.ts,
+      };
+    }
+  }
+  return parseEvidence(src);
+}
+
 // Parse every `dod:functional:KEY`-keyed checkbox in the Functional subsection.
 // Returns objects keyed by the marker — items without a marker (legacy/custom
 // templates) are skipped.
@@ -130,7 +153,7 @@ export function parseFunctionalDodKeys(body) {
         .replace(/<!--[\s\S]*?-->/g, '')
         .trim(),
       evidenceCommands: extractCommands(rest),
-      evidenceMarker: parseEvidence(rest),
+      evidenceMarker: parseFunctionalEvidence(rest, km[1]),
       classification: KEY_CLASSIFICATION[km[1].toLowerCase()] || null,
     });
   }
@@ -143,10 +166,15 @@ export function findEvidenceMarker(body, key) {
   return match ? match.evidenceMarker : null;
 }
 
-// Idempotently stamp (or replace) the evidence marker on the `dod:functional:KEY`
-// line. The marker is appended to the line text; if one is already present it is
-// replaced in place. Returns the (possibly-unchanged) body string. Throws on
-// unknown key or when the keyed line is absent.
+// #481 — Idempotently record a run on the `dod:functional:KEY` line by upserting
+// run-props (`exit`/`sha`/`ts`) onto the line's existing `aitm-verified`
+// declaration — the single-expandable marker. The `dod:functional:<key>` tag is
+// left in place as the locator; NO sibling `aitm-dod-evidence` is written, and
+// any legacy sibling on the line is stripped so a migrated line ends with
+// exactly one marker. When the line has no declaration (e.g. derived acs/
+// checkboxes lines), the upsert seeds `cmd` from the evidence so the resulting
+// marker still carries a command record. Returns the (possibly-unchanged) body.
+// Throws on unknown key or when the keyed line is absent.
 export function stampEvidenceMarker(body, key, evidence) {
   const k = String(key || '').toLowerCase();
   if (!(k in KEY_CLASSIFICATION)) {
@@ -157,15 +185,6 @@ export function stampEvidenceMarker(body, key, evidence) {
     throw new Error('stampEvidenceMarker: evidence requires { cmd, sha, ts, exit }');
   }
   const exitN = Number.isFinite(exit) ? Number(exit) : 0;
-  // New consolidated grammar: serializeMarker owns quoting + `&quot;` escaping
-  // of an embedded double-quote in cmd. exit is emitted as a quoted string.
-  const marker = serializeMarker('dod-evidence', {
-    key: k,
-    cmd: String(cmd),
-    exit: String(exitN),
-    sha: String(sha),
-    ts: String(ts),
-  });
 
   const src = String(body || '');
   const lines = src.split('\n');
@@ -175,12 +194,16 @@ export function stampEvidenceMarker(body, key, evidence) {
     throw new Error(`stampEvidenceMarker: no dod:functional:${k} line found`);
   }
   const line = lines[target.lineIndex];
-  let next;
-  if (EVIDENCE_ANY_RE.test(line)) {
-    next = line.replace(EVIDENCE_ANY_RE, marker);
-  } else {
-    next = `${line.replace(/\s+$/, '')} ${marker}`;
-  }
+  // Strip any legacy sibling marker first, then upsert run-props onto the
+  // line's `aitm-verified` marker (preserving its persistent `cmd` declaration).
+  const stripped = line
+    .replace(EVIDENCE_ANY_RE, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+$/, '');
+  const hasDecl = /<!--\s*aitm-verified\s/.test(stripped);
+  const props = { exit: String(exitN), sha: String(sha), ts: String(ts) };
+  if (!hasDecl) props.cmd = String(cmd);
+  const next = upsertProofMarker(stripped, props);
   if (next === line) return src;
   lines[target.lineIndex] = next;
   return lines.join('\n');
@@ -229,6 +252,21 @@ export function deriveCheckboxesStatus(body, { lifecyclePresent = false } = {}) 
   const lines = src.split('\n');
   // Mark line ranges that are excluded from the tally.
   const skip = new Set();
+
+  // #481 (routed from #480) — exclude lines inside fenced code blocks so an
+  // example checkbox shown in a ```fence``` no longer false-counts toward the
+  // derived `checkboxes` total. Matches the completeness-gate scanner in
+  // review.mjs. A fence opens/closes on a line whose first non-space content is
+  // ``` or ~~~ (≥3); the fence lines themselves are skipped too.
+  let inFence = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^\s*(```|~~~)/.test(lines[i])) {
+      skip.add(i);
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) skip.add(i);
+  }
 
   if (lifecyclePresent) {
     const lcStart = src.match(/^#{3,4}\s+Lifecycle\b[^\n]*$/im);

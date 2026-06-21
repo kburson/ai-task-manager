@@ -57,17 +57,26 @@ const ALL_GREEN = [
   );
   assert.equal(tickedFunctional.length, 2, 'two Functional items reported');
 
-  // #382 — stamped proof markers use the normalized cmd/sha/ts key set: a `cmd`
-  // property carrying the command, `ts` (not the legacy `verified-at`), and a
-  // single `sha`. No packed `<sha>:<iso>` value.
+  // #481 — VC entries have no declaration, so the upsert seeds cmd and records
+  // the run in ONE consolidated marker: cmd → exit → sha → ts → evidence.
   assert.ok(
-    body.includes('aitm-verified cmd="npm test" sha="sandbox" ts='),
-    'VC proof marker emits cmd/sha/ts in order'
+    body.includes('aitm-verified cmd="npm test" exit="0" sha="sandbox" ts='),
+    'VC proof marker emits cmd/exit/sha/ts in canonical order'
   );
   assert.ok(!body.includes('verified-at='), 'no legacy verified-at key in stamped markers');
+  assert.ok(!body.includes('proof="none"'), 'vestigial proof="none" sentinel dropped');
+  // The Functional item already carried a `cmd` declaration; the upsert PRESERVES
+  // it (backtick form) rather than re-seeding a bare joined cmd, and appends
+  // run-props. No second aitm-verified marker on the line.
   assert.ok(
-    body.includes('cmd="npm run lint, npm run format:check"'),
-    'multi-command Functional item joins commands into one cmd value'
+    body.includes('cmd="`npm run lint` `npm run format:check`" exit="0" sha="sandbox" ts='),
+    'multi-command Functional declaration cmd preserved, run-props appended in place'
+  );
+  const lintLine = body.split('\n').find((l) => l.includes('Lint/format pass'));
+  assert.equal(
+    (lintLine.match(/aitm-verified/g) || []).length,
+    1,
+    'Functional line carries exactly one aitm-verified marker'
   );
 }
 
@@ -151,8 +160,8 @@ const ALL_GREEN = [
   assert.equal(tickedFunctional.length, 0, 'no Functional ticked');
 }
 
-// --- #480 AC8: a KEYED Functional line records ONE aitm-dod-evidence marker,
-// not a second execution-form aitm-verified proof ---------------------------
+// --- #481: a KEYED Functional line records run-props on its SINGLE
+// aitm-verified marker — no sibling aitm-dod-evidence, no second aitm-verified.
 {
   const keyedBody = [
     '## Verification Commands',
@@ -175,27 +184,34 @@ const ALL_GREEN = [
 
   assert.ok(body.includes('- [x] All automated tests pass'), 'keyed Functional item ticked');
 
-  // Exactly one aitm-dod-evidence marker (keyed to the line), form-agnostic.
+  // No sibling evidence marker anywhere — the form #481 collapsed.
   assert.equal(
     (body.match(/aitm-dod-evidence\b/g) || []).length,
-    1,
-    'single consolidated evidence marker for the keyed line'
+    0,
+    'no aitm-dod-evidence sibling marker emitted'
   );
-  assert.match(body, /<!-- aitm-dod-evidence key="tests" cmd="npm test"[^>]*sha="sandbox"[^>]*-->/);
 
-  // On the Functional line itself, the original `aitm-verified cmd=`
-  // DECLARATION stays, but NO second execution-form proof
-  // (`aitm-verified ... sha="sandbox"`) is appended — the evidence lives in the
-  // single aitm-dod-evidence marker instead. (The VC box line legitimately
-  // carries its own aitm-verified proof; scope the check to the DoD line.)
   const funcLine = body.split('\n').find((l) => l.includes('All automated tests pass'));
   assert.ok(funcLine, 'functional line present');
+  // Exactly one aitm-verified marker, carrying the declaration cmd AND run-props.
+  assert.equal(
+    (funcLine.match(/aitm-verified/g) || []).length,
+    1,
+    'keyed line carries exactly one aitm-verified marker'
+  );
+  assert.match(funcLine, /aitm-verified cmd="`npm test`"/, 'declaration cmd retained');
+  assert.match(
+    funcLine,
+    /exit="0"[^>]*sha="sandbox"[^>]*ts="2026-06-20T00:00:00Z"/,
+    'run-props recorded'
+  );
+  // The dod:functional tag stays separate (the key is NOT folded into the marker).
+  assert.match(funcLine, /<!-- dod:functional:tests -->/, 'dod:functional locator tag untouched');
   assert.doesNotMatch(
     funcLine,
-    /aitm-verified[^>]*sha="sandbox"/,
-    'keyed line must not also get a redundant execution-form aitm-verified proof'
+    /aitm-verified[^>]*key=/,
+    'no functional key folded into the marker'
   );
-  assert.match(funcLine, /aitm-verified cmd="`npm test`"/, 'declaration marker retained');
 }
 
 console.log('auto-tick-verified.test.mjs: all assertions passed');

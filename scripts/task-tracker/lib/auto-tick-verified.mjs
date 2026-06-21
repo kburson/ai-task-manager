@@ -20,18 +20,13 @@
 // Pure and idempotent. The caller invokes it only on the green path, so a red
 // result ticks nothing by construction.
 
-import {
-  serializeProofMarker,
-  extractVerifiedCommands,
-  stripProofMarkers,
-} from './proof-marker.mjs';
+import { upsertProofMarker, extractVerifiedCommands, stripProofMarkers } from './proof-marker.mjs';
 import { stampEvidenceMarker, KEY_CLASSIFICATION } from './functional-dod-evidence.mjs';
 
 // A Functional DoD line's canonical `dod:functional:<key>` tag. When present we
-// record the run as ONE `aitm-dod-evidence` marker (upserted by
-// `stampEvidenceMarker`) rather than appending a second `aitm-verified` proof
-// next to the line's existing `aitm-verified cmd="…"` declaration — the
-// double-`aitm-verified` redundancy #480 (AC8) removes.
+// record the run by upserting run-props into that line's single `aitm-verified`
+// marker (via `stampEvidenceMarker`) rather than emitting a sibling evidence
+// comment — the two-marker form #481 collapses.
 const FUNCTIONAL_KEY_RE = /<!--\s*dod:functional:([a-z0-9-]+)\s*-->/i;
 
 const HEADING_RE = /^#{1,6}\s+/;
@@ -50,30 +45,22 @@ function evidenceCommands(label) {
   return extractVerifiedCommands(label);
 }
 
-// #362 — proof marker stamped inline at tick time so the
-// `findCheckboxesTickedWithoutProof` invariant in `mutateIssueBody` accepts
-// the resulting body. `sha="sandbox" proof="none"` is a documented sentinel
-// meaning "evidence is the green sandbox exit code in hand at tick time,
-// not a stored artifact reachable by URL." Callers pass `now` (ISO string)
-// for determinism; defaults to `new Date().toISOString()`.
+// #481 — run-props upserted into the line's single `aitm-verified` marker at
+// tick time so the `findCheckboxesTickedWithoutProof` invariant in
+// `mutateIssueBody` accepts the resulting body. `sha="sandbox"` is the
+// documented sentinel meaning "evidence is the green sandbox exit code in hand
+// at tick time, not a stored artifact reachable by URL"; the vestigial
+// `proof="none"` sentinel is dropped. `exit="0"` records the passing exit code.
+// Callers pass `now` (ISO string) for determinism; defaults to now.
 //
-// #368 — emits the consolidated `<!-- aitm-verified key="value" ... -->` form
-// via the shared serializer.
-//
-// #382 (parent epic #367) — normalized key contract: `cmd` (the backtick
-// command(s) whose green exit backs the tick), `sha`, `ts` (the timestamp,
-// renamed from the legacy `verified-at`), `evidence`, `proof`. No packed
-// `<sha>:<iso>` value and no duplicate `sha`. Readers stay dual-tolerant
-// (`parseProofMarker` maps legacy `verified-at`->`ts` and `verified-by`->`cmd`),
-// so bodies written by the old shape still resolve until the #369 corpus sweep.
-function buildProofMarker(now, evidence, cmd) {
-  return serializeProofMarker({
-    cmd,
-    sha: 'sandbox',
-    ts: now,
-    evidence,
-    proof: 'none',
-  });
+// `cmd` is included only when the line carries no existing `aitm-verified`
+// declaration — `upsertProofMarker` preserves a present declaration's cmd, so
+// re-seeding it would be redundant. VC entries have no declaration, so they
+// always seed cmd.
+function runProps(now, evidence, { cmd } = {}) {
+  const props = { exit: '0', sha: 'sandbox', ts: now, evidence };
+  if (cmd != null) props.cmd = cmd;
+  return props;
 }
 
 export function autoTickVerified(body, results = [], now = new Date().toISOString()) {
@@ -116,8 +103,8 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     if (section === 'vc') {
       const cmd = rest.match(VC_LABEL_RE)?.[1] ?? null;
       if (cmd && passed.has(cmd)) {
-        const marker = buildProofMarker(now, `sandbox exit 0 (${cmd})`, cmd);
-        lines[i] = `${open}x${close}${rest} ${marker}`;
+        const flipped = upsertProofMarker(rest, runProps(now, `sandbox exit 0 (${cmd})`, { cmd }));
+        lines[i] = `${open}x${close}${flipped}`;
         tickedVc.push(cmd);
       }
       continue;
@@ -130,20 +117,20 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
       const keyMatch = rest.match(FUNCTIONAL_KEY_RE);
       const key = keyMatch ? keyMatch[1].toLowerCase() : null;
       if (key && key in KEY_CLASSIFICATION) {
-        // #480 AC8 — canonical keyed item: flip the box now, record the run as a
-        // single `aitm-dod-evidence` marker below. The existing
-        // `aitm-verified cmd="…"` declaration stays; no second `aitm-verified`.
+        // #481 — canonical keyed item: flip the box now, upsert run-props into
+        // the line's single `aitm-verified` marker below (located by its
+        // `dod:functional:<key>` tag). The declaration's `cmd` is preserved.
         lines[i] = `${open}x${close}${rest}`;
         pendingEvidence.push({ key, cmd: cmds.join(', ') });
       } else {
-        // Non-keyed (custom/legacy) declared item — no key to form a dod-evidence
-        // marker, so stamp the consolidated `aitm-verified` proof inline.
-        const marker = buildProofMarker(
-          now,
-          `sandbox exit 0 (${cmds.join(', ')})`,
-          cmds.join(', ')
+        // Non-keyed (custom/legacy) declared item — upsert run-props into the
+        // existing `aitm-verified cmd="…"` declaration in place. cmd is omitted
+        // so the declaration's command survives unchanged (no second marker).
+        const flipped = upsertProofMarker(
+          rest,
+          runProps(now, `sandbox exit 0 (${cmds.join(', ')})`)
         );
-        lines[i] = `${open}x${close}${rest} ${marker}`;
+        lines[i] = `${open}x${close}${flipped}`;
       }
       tickedFunctional.push(stripProofMarkers(rest));
     }

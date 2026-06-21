@@ -13,8 +13,8 @@
 // across the stamp.
 
 import { createHash } from 'node:crypto';
-import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
-import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
+import { unescapeValue } from './marker-grammar.mjs';
+import { parseProofMarker, hasExecutionProof, upsertProofMarker } from './proof-marker.mjs';
 import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
@@ -58,21 +58,38 @@ export function acKeyForLabel(label) {
 function extractCommands(text) {
   const out = [];
   const haystack = String(text || '');
-  // #391/#468 — consolidated `aitm-verified cmd="..."` is the sole declaration form.
-  // `hasExecutionProof` rejects a marker carrying a record-of-run key (ts/sha/evidence)
-  // so a proof stamp is never misread as a verifier declaration.
-  if (!hasExecutionProof(haystack)) {
-    const props = parseProofMarker(haystack);
-    if (props && typeof props.cmd === 'string') {
-      for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);
-    }
+  // #481 — `cmd` is the persistent declaration component, read regardless of any
+  // run-props upserted onto the same `aitm-verified` marker. The pre-#481 guard
+  // on `hasExecutionProof` broke `ac-stamp` re-verification once the proof and
+  // declaration shared one comment.
+  const props = parseProofMarker(haystack);
+  if (props && typeof props.cmd === 'string') {
+    for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);
   }
   return out;
 }
 
 export function parseAcEvidence(text) {
   const src = String(text || '');
-  // New fully-quoted property form first.
+  // #481 — single-marker form first: run-props on the line's `aitm-verified`
+  // marker, the AC digest folded in as `key`. Requires cmd/sha/ts/key present
+  // and exit numeric.
+  if (hasExecutionProof(src)) {
+    const props = parseProofMarker(src);
+    if (props && props.cmd != null && props.sha != null && props.ts != null && props.key != null) {
+      const exit = Number(props.exit);
+      if (Number.isFinite(exit)) {
+        return {
+          key: String(props.key).toLowerCase(),
+          cmd: props.cmd,
+          exit,
+          sha: props.sha,
+          ts: props.ts,
+        };
+      }
+    }
+  }
+  // Legacy sibling `aitm-ac-evidence` forms (read-only back-compat).
   const nm = src.match(AC_EVIDENCE_NEW_RE);
   if (nm) {
     const props = {};
@@ -156,9 +173,12 @@ export function findEvidenceAc(body, requestedLabel) {
   return parseEvidenceAcs(body).find((it) => it.label === wanted) || null;
 }
 
-// Idempotently stamp (or replace) the `aitm-ac-evidence:<key>` marker on the AC
-// line matching `label`. Appends to the line text; replaces an existing marker
-// in place. Returns the (possibly-unchanged) body. Throws when no matching
+// #481 — Idempotently record a run on the AC line matching `label` by upserting
+// run-props (`exit`/`sha`/`ts`) plus the AC `key` onto the line's existing
+// `aitm-verified` declaration — the single-expandable marker. The declaration's
+// `cmd` is preserved by the upsert. Any legacy sibling `aitm-ac-evidence` marker
+// on the line is stripped so a migrated line ends with exactly one marker.
+// Returns the (possibly-unchanged) body. Throws when no matching
 // evidence-bearing AC line exists or when evidence fields are malformed.
 export function stampAcEvidenceMarker(body, label, evidence) {
   const { cmd, sha, ts, exit } = evidence || {};
@@ -174,24 +194,21 @@ export function stampAcEvidenceMarker(body, label, evidence) {
   }
   const key = target.key;
   const exitN = Number.isFinite(exit) ? Number(exit) : 0;
-  // New consolidated grammar: serializeMarker owns quoting + `&quot;` escaping
-  // of an embedded double-quote in cmd. exit is emitted as a quoted string.
-  const marker = serializeMarker('ac-evidence', {
-    key,
-    cmd: String(cmd),
-    exit: String(exitN),
-    sha: String(sha),
-    ts: String(ts),
-  });
 
   const lines = src.split('\n');
   const line = lines[target.lineIndex];
-  let next;
-  if (AC_EVIDENCE_ANY_RE.test(line)) {
-    next = line.replace(AC_EVIDENCE_ANY_RE, marker);
-  } else {
-    next = `${line.replace(/\s+$/, '')} ${marker}`;
-  }
+  // Strip any legacy sibling marker, then upsert run-props onto the line's
+  // `aitm-verified` declaration (the `cmd` declaration is preserved).
+  const stripped = line
+    .replace(AC_EVIDENCE_ANY_RE, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+$/, '');
+  const next = upsertProofMarker(stripped, {
+    exit: String(exitN),
+    sha: String(sha),
+    ts: String(ts),
+    key: String(key),
+  });
   if (next === line) return src;
   lines[target.lineIndex] = next;
   return lines.join('\n');

@@ -43,6 +43,46 @@ test('parseAcceptanceCriteria: parses only ## Acceptance Criteria section, ignor
   assert.match(items[1].verifiedBy, /gh issue view/);
 });
 
+test('parseAcceptanceCriteria: recognizes a combined single-marker AC (cmd + run-props) as verified (#481)', () => {
+  // #481 — after the collapse, a verified AC carries ONE aitm-verified marker
+  // bearing both the cmd declaration AND the run-props (exit/sha/ts/key). The
+  // gate reads the cmd DECLARATION via resolveVerifiedBy; the upserted run-props
+  // must not mask it.
+  const body = `## Acceptance Criteria
+
+- [x] Combined AC <!-- aitm-verified cmd="\`npm test\`" exit="0" sha="abc1234" ts="2026-06-20T00:00:00Z" key="deadbeef" -->
+`;
+  const items = parseAcceptanceCriteria(body);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].checked, true);
+  assert.match(items[0].verifiedBy, /npm test/);
+});
+
+test('gateCodeComplete: combined single-marker AC passes the verification gate (#481)', async () => {
+  const body = `## Acceptance Criteria
+
+- [x] Combined AC <!-- aitm-verified cmd="\`npm test\`" exit="0" sha="abc1234" ts="2026-06-20T00:00:00Z" key="deadbeef" -->
+
+## Definition of Done
+
+### Lifecycle
+
+- [ ] Closed via /task close
+`;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1,
+    body,
+    deps: {
+      listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits: abc1234 -->' }],
+      filesForSha: async () => ['src/foo.js'],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.blockers, []);
+});
+
 test('parseCommitShas: extracts comma-separated SHAs', () => {
   const body = '### 🔗 Commits\n<!-- aitm-commits: abc123, def456,ghi789 -->';
   assert.deepEqual(parseCommitShas(body), ['abc123', 'def456', 'ghi789']);

@@ -94,6 +94,6 @@ export async function verbAcStamp(ctx) {
   });
 
   console.log(
-    `[task-tracker] ✓ ac-stamp on ${s.active}: aitm-ac-evidence:${target.key} marker stamped (sha=${sha}).`
+    `[task-tracker] ✓ ac-stamp on ${s.active}: run-props (key=${target.key}) upserted onto the AC line's aitm-verified marker (sha=${sha}).`
   );
 }

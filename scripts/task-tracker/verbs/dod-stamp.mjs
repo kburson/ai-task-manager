@@ -128,6 +128,6 @@ export async function verbDodStamp(ctx) {
   });
 
   console.log(
-    `[task-tracker] ✓ dod-stamp ${key} on ${s.active}: aitm-dod-evidence:${key} marker stamped (sha=${sha}).`
+    `[task-tracker] ✓ dod-stamp ${key} on ${s.active}: run-props upserted onto the dod:functional:${key} line's aitm-verified marker (sha=${sha}).`
   );
 }

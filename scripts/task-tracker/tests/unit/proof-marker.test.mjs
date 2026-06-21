@@ -11,6 +11,8 @@ import {
   unescapeValue,
   validateDeclarationCmd,
   collectDeclarationCmds,
+  upsertProofMarker,
+  extractVerifiedCommands,
 } from '../../lib/proof-marker.mjs';
 
 // --- round-trip: spaces, backticks, embedded double-quote -------------------
@@ -259,6 +261,85 @@ import {
     ['`npm run lint`', '`npm test` <leftover>'],
     'decoded cmd values returned in document order'
   );
+}
+
+// --- #481: extractVerifiedCommands reads cmd REGARDLESS of run-props ---------
+// The pre-#481 guard skipped cmd extraction once a marker carried run-props.
+// `cmd` is now the persistent declaration component: a combined marker still
+// yields its declared commands so re-verification can find them.
+{
+  const decl = '- [ ] x <!-- aitm-verified cmd="`npm test` `npm run lint`" -->';
+  assert.deepEqual(
+    extractVerifiedCommands(decl),
+    ['npm test', 'npm run lint'],
+    'declaration-only marker yields both commands'
+  );
+  const combined =
+    '- [x] x <!-- aitm-verified cmd="`npm test` `npm run lint`" exit="0" sha="sandbox" ts="2026-06-20T00:00:00Z" -->';
+  assert.ok(hasExecutionProof(combined), 'combined marker has execution proof');
+  assert.deepEqual(
+    extractVerifiedCommands(combined),
+    ['npm test', 'npm run lint'],
+    'combined marker (cmd + run-props) still yields the declared commands'
+  );
+  assert.deepEqual(extractVerifiedCommands('- [ ] no marker'), [], 'no marker → no commands');
+}
+
+// --- #481: upsertProofMarker merges run-props into the single marker ---------
+{
+  const decl = '- [ ] does a thing <!-- aitm-verified cmd="`node --test x.test.mjs`" -->';
+  const up = upsertProofMarker(decl, {
+    exit: '0',
+    sha: 'sandbox',
+    ts: '2026-06-20T00:00:00Z',
+    evidence: 'sandbox exit 0',
+  });
+  assert.equal(
+    (up.match(/aitm-verified/g) || []).length,
+    1,
+    'upsert keeps exactly one aitm-verified marker'
+  );
+  const parsed = parseProofMarker(up);
+  assert.equal(parsed.cmd, '`node --test x.test.mjs`', 'declaration cmd preserved through upsert');
+  assert.equal(parsed.exit, '0', 'exit recorded');
+  assert.equal(parsed.sha, 'sandbox', 'sha recorded');
+  assert.equal(parsed.ts, '2026-06-20T00:00:00Z', 'ts recorded');
+  assert.ok(hasExecutionProof(up), 'upserted marker now counts as execution proof');
+
+  // Canonical key order: cmd → exit → sha → ts → evidence → key.
+  assert.equal(
+    up,
+    '- [ ] does a thing <!-- aitm-verified cmd="`node --test x.test.mjs`" exit="0" sha="sandbox" ts="2026-06-20T00:00:00Z" evidence="sandbox exit 0" -->',
+    'upsert emits props in canonical order with cmd first'
+  );
+
+  // Re-upsert is idempotent in marker count and overwrites changed props.
+  const re = upsertProofMarker(up, { exit: '0', sha: 'sandbox', ts: '2026-06-20T11:11:11Z' });
+  assert.equal(
+    (re.match(/aitm-verified/g) || []).length,
+    1,
+    're-upsert still leaves exactly one marker'
+  );
+  assert.equal(parseProofMarker(re).ts, '2026-06-20T11:11:11Z', 're-upsert overwrites ts');
+  assert.equal(parseProofMarker(re).cmd, '`node --test x.test.mjs`', 're-upsert keeps cmd');
+}
+
+// --- #481: upsertProofMarker appends a fresh marker when none present --------
+{
+  const bare = '- [x] `npm test`';
+  const up = upsertProofMarker(bare, {
+    cmd: 'npm test',
+    exit: '0',
+    sha: 'sandbox',
+    ts: '2026-06-20T00:00:00Z',
+    evidence: 'sandbox exit 0 (npm test)',
+  });
+  assert.equal(
+    up,
+    '- [x] `npm test` <!-- aitm-verified cmd="npm test" exit="0" sha="sandbox" ts="2026-06-20T00:00:00Z" evidence="sandbox exit 0 (npm test)" -->',
+    'fresh marker appended in canonical order'
+  );
+  assert.ok(hasExecutionProof(up), 'appended marker counts as execution proof');
 }
 
 console.log('proof-marker.test.mjs: all assertions passed');
