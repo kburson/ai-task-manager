@@ -11,6 +11,7 @@
   },
   "bin": {
     "ai-task-manager": "bin/cli.mjs",
+    "aitm": "bin/aitm.mjs",
     "github-project-report": "scripts/reports/generate-value-report.mjs"
   },
   "scripts": {

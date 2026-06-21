@@ -8,10 +8,15 @@ import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const VALID_STATES = ['refine', 'plan', 'develop', 'test', 'review', 'done'];
 
 const args = process.argv.slice(2);
+if (wantsHelp(args)) {
+  emitSelfDoc('update-event-fields');
+  process.exit(0);
+}
 const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
 const state = args.find((a) => VALID_STATES.includes(a));
 const itemId = args[args.indexOf('--item-id') + 1] || '';

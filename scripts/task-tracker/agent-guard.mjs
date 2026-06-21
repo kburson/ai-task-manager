@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
+// Plumbing: invoked only by the Claude Code hook runner, never by a human or
+// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+//
 // PreToolUse hook — gates `Agent` tool spawns from the main git worktree.
 //
 // Background (epic #61): an orchestrator running in the main worktree once

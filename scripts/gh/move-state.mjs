@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// INTERNAL — DO NOT INVOKE DIRECTLY. Direct invocation is refused at runtime.
+// The board Status field has exactly one audited mutator; callers go through
+// `aitm promote` / `aitm demote` / `aitm reconcile`. Deliberately NOT exposed
+// through `aitm` script routing. See bin/aitm-registry.mjs (INTERNAL map).
+//
 // Move a GitHub issue through board states: Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
 // States: backlog | on-deck | refine | plan | develop | test | review | done

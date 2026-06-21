@@ -24,8 +24,13 @@ import {
 } from '../task-tracker/timing-rollup.mjs';
 import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const args = process.argv.slice(2);
+if (wantsHelp(args)) {
+  emitSelfDoc('log-issue-time');
+  process.exit(0);
+}
 const issueArg = args.find((a) => /^#?\d+$/.test(a));
 const dryRun = args.includes('--dry-run');
 

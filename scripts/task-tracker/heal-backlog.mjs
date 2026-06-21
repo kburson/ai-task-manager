@@ -31,6 +31,7 @@ import {
 } from './lib/markers.mjs';
 import { insertDeepDivePostedMarker, readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
 // only when the corresponding marker is present; otherwise left alone to
@@ -469,6 +470,11 @@ function summaryRow(n, r) {
 }
 
 async function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('heal-backlog');
+    printUsage();
+    process.exit(0);
+  }
   const args = parseArgs(process.argv.slice(2));
   const cfg = loadConfig();
   if (!cfg.repo) {

@@ -6,6 +6,7 @@
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, gql } from './lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
@@ -25,6 +26,10 @@ function usage() {
 }
 
 const cliArgs = process.argv.slice(2);
+if (wantsHelp(cliArgs)) {
+  emitSelfDoc('set-priority');
+  process.exit(0);
+}
 const issueArg = cliArgs[0];
 const priorityArg = cliArgs[1];
 const cascade = cliArgs.includes('--cascade');

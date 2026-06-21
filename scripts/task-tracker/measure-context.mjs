@@ -25,6 +25,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dir, '..', '..');
@@ -224,8 +225,10 @@ function listScenarios() {
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help) {
+  const argv = process.argv.slice(2);
+  const args = parseArgs(argv);
+  if (args.help || wantsHelp(argv)) {
+    emitSelfDoc('measure-context');
     console.log(help());
     process.exit(0);
   }

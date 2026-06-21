@@ -1,3 +1,6 @@
+// INTERNAL — library module, imported, never executed as a CLI and not exposed
+// through `aitm`. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+//
 // Canonical 8-state kanban transition matrix. Pure data + a validator.
 // Consumers: move-state.mjs hardening (W2.3), /task move verb (W3.1),
 // parent-admission gate (W1.3), activity-policy lookup (W1.2).

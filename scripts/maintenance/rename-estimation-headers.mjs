@@ -16,6 +16,7 @@ import { promisify } from 'node:util';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { listAllIssues } from '../gh/lib/list-issues.mjs';
@@ -100,6 +101,10 @@ function parseArgs(argv) {
 }
 
 async function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('rename-estimation-headers');
+    process.exit(0);
+  }
   const { dryRun, repo: repoArg } = parseArgs(process.argv.slice(2));
   const cfg = loadConfig();
   const repo = repoArg || cfg.repo;

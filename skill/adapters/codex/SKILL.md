@@ -32,15 +32,17 @@ Codex-specific conventions:
 - Respect Codex sandbox and approval requirements. If a `gh`, `git push`, or networked script fails because credentials or network access are sandboxed, rerun with the required approval instead of bypassing the task workflow.
 - Do not assume Claude hooks or `.claude/settings.json` are available unless the project was installed with `--agent claude` or `--agent both`.
 
-Primary script form:
+Primary command form — invoke through the `aitm` orchestrator, never by a
+support script's `node_modules/ai-task-manager/scripts/...` filepath:
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]
+npx aitm <verb> [args...]      # /task state-machine verbs
+npx aitm <name> help           # any command self-documents its full API
 ```
 
 Run task commands from the project root. If an environment must invoke the
-script from another directory, set `AI_TASK_MANAGER_PROJECT_DIR` to the project
-root before running the command.
+command from another directory, set `AI_TASK_MANAGER_PROJECT_DIR` to the project
+root before running it.
 
 ## Creating issues
 

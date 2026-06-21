@@ -1,3 +1,6 @@
+// INTERNAL — library module, imported, never executed as a CLI and not exposed
+// through `aitm`. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+
 export const FIELD_DB_START = '<!-- ai-task-manager:fields:start -->';
 export const FIELD_DB_END = '<!-- ai-task-manager:fields:end -->';
 export const FIELDS_COMMENT_PREFIX = '<!-- aitm-fields:';

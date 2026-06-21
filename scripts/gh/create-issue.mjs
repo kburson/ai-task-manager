@@ -14,6 +14,7 @@ import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 import { readParentStatus } from './lib/parent-status.mjs';
 import { childCreationAllowedAtEpicState } from '../task-tracker/lib/epic-children-gate.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -264,6 +265,10 @@ function enforcePriorityGate(_args) {
 }
 
 async function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('create-issue');
+    process.exit(0);
+  }
   const args = parseArgs(process.argv.slice(2));
   validateArgs(args);
 

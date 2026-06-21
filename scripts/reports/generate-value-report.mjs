@@ -53,6 +53,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { parseDuration } from '../task-tracker/lib/duration.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -71,6 +72,10 @@ const ttCfg = loadConfig({
 });
 
 const argv = process.argv.slice(2);
+if (wantsHelp(argv)) {
+  emitSelfDoc('value-report');
+  process.exit(0);
+}
 const flag = (f, def = null) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : def; };
 const has  = f => argv.includes(f);
 

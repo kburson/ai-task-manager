@@ -16,6 +16,12 @@
 
 import { execSync, spawnSync } from 'node:child_process';
 import { findUnitTests } from './find-unit-tests.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('verify-develop');
+  process.exit(0);
+}
 
 function run(cmd, args = [], { label = cmd, allowFailure = false } = {}) {
   const result = spawnSync(cmd, args, { stdio: 'inherit', shell: false });

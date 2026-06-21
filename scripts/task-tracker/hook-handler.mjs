@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
+// Plumbing: invoked only by the Claude Code hook runner, never by a human or
+// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+//
 // Invoked by .claude/hooks/task-tracker.sh with hook JSON on stdin.
 // Routes PreCompact / PostCompact / SessionStart to appropriate handlers.
 

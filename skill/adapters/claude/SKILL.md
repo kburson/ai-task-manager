@@ -16,21 +16,20 @@ The router is a Tier-1 stub: hard cross-cutting rules + verb → rule-file routi
 Claude-specific conventions:
 
 - `/task ...` is the primary user interface through `.claude/commands/task.md`.
-- Use executable scripts from `node_modules/ai-task-manager/scripts/`.
+- Invoke support scripts via the `aitm` orchestrator, never by filepath (see below).
 - Runtime project state lives in `.ai-task-manager/`; read legacy `.claude/` state only as fallback when the shared file is absent.
 - Claude hook settings run direct Node commands from `node_modules/ai-task-manager/scripts/task-tracker/`.
 - The status line remains Claude-specific and reads `.ai-task-manager/task-tracker-state.json` with a legacy `.claude/task-tracker-state.json` fallback.
 
-When the shared skill mentions command examples, prefer these package paths:
+Command examples run through the `aitm` orchestrator (the form a user types):
 
 ```bash
-node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs <verb> [args...]
-node node_modules/ai-task-manager/scripts/gh/move-state.mjs <N> in-progress
+npx aitm <verb> [args...]   # /task verbs (refine, plan, promote, ...)
+npx aitm <name> help        # any command self-documents its API
 ```
 
-Run task commands from the project root. If an environment must invoke the
-script from another directory, set `AI_TASK_MANAGER_PROJECT_DIR` to the project
-root before running the command.
+`move-state` is internal — drive board state with `npx aitm promote`/`demote`.
+Run from the project root, or set `AI_TASK_MANAGER_PROJECT_DIR` first.
 
 ## Creating issues
 

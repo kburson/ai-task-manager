@@ -2,6 +2,7 @@
 import { loadConfig } from '../task-tracker/config.mjs';
 import { fieldOptionMap } from './lib/github-projects.mjs';
 import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 function usage() {
   return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|on-deck|refine|plan|develop|test|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <N>]`;
@@ -43,6 +44,10 @@ const VALID_STATUSES = new Set([
 ]);
 
 async function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('project-tether');
+    process.exit(0);
+  }
   const args = parseArgs(process.argv.slice(2));
   const issueNumber = numberFlag(args.issue, '--issue');
   if (!issueNumber) {

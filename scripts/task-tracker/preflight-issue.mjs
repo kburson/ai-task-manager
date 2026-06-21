@@ -37,6 +37,7 @@ import { lintChecklistCommands, formatViolations } from './lib/checklist-command
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -389,6 +390,10 @@ async function checkIntegrity(issueNumber) {
 }
 
 async function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('preflight-issue');
+    process.exit(0);
+  }
   const args = parseArgs(process.argv.slice(2));
   if (typeof args['check-integrity'] === 'string') {
     await checkIntegrity(args['check-integrity']);

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
+// Plumbing: invoked only by the Claude Code hook runner, never by a human or
+// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+//
 // PostToolUse hook handler — appends a row to the `### 🔗 Commits` comment
 // on the bound issue when a `git commit` succeeds while a task is bound.
 //
