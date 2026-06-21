@@ -42,6 +42,8 @@ function makeCtx({ rest, statePath }) {
       role: 'agent',
       drainQueueIfAny: async () => {},
       safePostTiming: async (issue, row) => posts.push({ issue, row }),
+      // #482 — keep the fresh-bind history probe offline; no real `gh` call.
+      readTimingCommentBody: async () => '',
       flushActiveToGH: mockFlush,
       nowIso: () => new Date().toISOString(),
       seedKanban: async () => {},
@@ -81,8 +83,10 @@ function captureLog(fn) {
   const { ctx, posts } = makeCtx({ rest: ['#453'], statePath });
   await verbStart(ctx);
   assert.equal(loadState(statePath).active, '#453', 'start #N binds to issue');
-  assert.equal(posts.length, 1, 'resumed row posted');
-  assert.match(posts[0].row, /resumed/, 'row event is resumed');
+  assert.equal(posts.length, 1, 'first-bind row posted');
+  // #482 — a fresh first-ever bind (no timing history, not mid-pause) records a
+  // `start` row, not `resumed` (you cannot resume without a prior start/pause).
+  assert.match(posts[0].row, /\| start \|/, 'fresh-bind row event is start');
 }
 
 // ─── start bare digits → normalized bind ─────────────────────────────────────

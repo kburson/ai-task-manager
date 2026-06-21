@@ -10,6 +10,7 @@ import {
 import { verbSwitch } from './switch.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
+import { resolveBindEvent, timingCommentHasRows } from '../lib/bind-event.mjs';
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
@@ -188,16 +189,32 @@ export async function verbResume(ctx) {
       );
     }
   }
-  const { buildRow } = await import('../gh-timing-comment.mjs');
+  // #482 — the first-ever bind of an issue must record a `start` row, not
+  // `resumed` (you cannot resume without a prior start/pause). Discriminate by
+  // whether the issue already has timing-log history; a genuine resume (history
+  // present, or this #N resume follows a pause) keeps `resumed`.
+  const gh = await import('../gh-timing-comment.mjs');
+  const { buildRow } = gh;
+  const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
+  let hasTimingHistory = false;
+  if (cfg?.repo) {
+    const tcBody = await readTimingCommentBody({
+      issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
+      repo: cfg.repo,
+    });
+    hasTimingHistory = timingCommentHasRows(tcBody);
+  }
+  const bindEvent = resolveBindEvent({ hasTimingHistory, paused: !!s.pausedAtTs });
+  const isStart = bindEvent === 'start';
   const row = buildRow({
     ts,
-    event: 'resumed',
+    event: bindEvent,
     activeSec: 0,
     idleSec,
     deltaWords: 0,
     wordMarker: carriedMarker,
-    description: role ?? 'task resumed',
+    description: role ?? (isStart ? 'task started' : 'task resumed'),
   });
   await safePostTiming(normalizedTarget, row);
-  console.log(`Resumed ${normalizedTarget}.`);
+  console.log(`${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`);
 }
