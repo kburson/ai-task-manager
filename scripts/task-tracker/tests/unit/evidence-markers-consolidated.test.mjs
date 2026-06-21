@@ -49,12 +49,15 @@ assert.deepEqual(
   'legacy-only line yields no commands after #468 (form retired)'
 );
 
-// 4. `hasExecutionProof` guard: a record-of-run proof stamp (ts/sha) is NOT a
-//    re-gating verifier declaration, so it yields no command.
+// 4. #481 — `cmd` is the PERSISTENT declaration component, read regardless of any
+//    run-props (ts/sha) upserted onto the same marker. The pre-#481
+//    `hasExecutionProof` guard hid the declared command once proof and
+//    declaration shared one comment, re-opening the #429 missing-Verification-
+//    Commands gap. A combined marker now still yields its declared command.
 assert.deepEqual(
   acCommands(`record of run ${proofStamp}`),
-  [],
-  'proof stamp (ts/sha) is not a declaration — yields no command'
+  [CMD],
+  'combined marker (cmd + run-props) still yields the declared command (#481)'
 );
 
 // 5. `auditEvidenceMarkers` reports ok for an AC + Verification-Commands body

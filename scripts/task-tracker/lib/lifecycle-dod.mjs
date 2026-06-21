@@ -1,5 +1,5 @@
 // cspell:ignore optout optouts Optouts
-import { hasVerifiedDeclaration } from './proof-marker.mjs';
+import { hasVerifiedDeclaration, hasExecutionProof } from './proof-marker.mjs';
 
 // Lifecycle DoD parser and ticker (#138).
 //
@@ -200,15 +200,20 @@ export function detectLifecyclePretick(body) {
 // un-tick so the sandbox-driven re-tick is the only path to green. Judgment
 // items (no marker) are untouched. Returns { body, regressions: [{ label }] }.
 // Detection routes through the shared `hasVerifiedDeclaration`, so a consolidated
-// `aitm-verified cmd="..."` declaration triggers the pre-tick guard. A
-// consolidated proof stamp (ts/sha) is not a declaration and is left to the
-// legitimate green-tick path.
+// `aitm-verified cmd="..."` declaration triggers the pre-tick guard.
+//
+// #481 — `cmd` is now read regardless of run-props, so `hasVerifiedDeclaration`
+// alone is true even for the legitimate green path (the single-expandable marker
+// carrying declaration + run-props in one comment). The pre-tick is "ticked WITH
+// a declaration but WITHOUT execution proof": a marker that also carries run-props
+// (`ts`/`sha`/`evidence`) is the sandbox-stamped green tick and must be left
+// alone. Gate on `!hasExecutionProof(rest)` so only declaration-only ticks regress.
 export function detectFunctionalPretick(body) {
   const loc = locateFunctionalSection(body);
   if (!loc) return { body: String(body || ''), regressions: [] };
   const regressions = [];
   const nextSection = loc.section.replace(/^- \[x\](\s+)(.+)$/gm, (line, sp, rest) => {
-    if (!hasVerifiedDeclaration(rest)) return line;
+    if (!hasVerifiedDeclaration(rest) || hasExecutionProof(rest)) return line;
     const label = rest.replace(/<!--[\s\S]*?-->/g, '').trim();
     regressions.push({ label });
     return `- [ ]${sp}${rest}`;

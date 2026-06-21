@@ -140,4 +140,6 @@ footgun
 Connextra
 upsert
 upserted
+upserting
+upserts
 recognises

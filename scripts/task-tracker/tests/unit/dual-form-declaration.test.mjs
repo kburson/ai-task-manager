@@ -60,17 +60,21 @@ const PROOF = serializeProofMarker({
   );
 }
 
-// --- proof stamp is NOT a declaration (discrimination via hasExecutionProof)
+// --- #481: a combined marker (cmd + run-props) still yields its declaration ---
+// `cmd` is the PERSISTENT declaration component, read regardless of any run-props
+// (`ts`/`sha`/`evidence`) on the same marker. The single-expandable marker carries
+// declaration AND proof in one comment, so the declared command must remain
+// readable for re-verification — the pre-#481 `hasExecutionProof` gate hid it.
 {
   assert.deepEqual(
     extractVerifiedCommands(`item ${PROOF}`),
-    [],
-    'a ts/sha proof stamp yields no declaration commands'
+    ['npm test'],
+    'combined marker (cmd + run-props) still yields the declared command (#481)'
   );
   assert.equal(
     hasVerifiedDeclaration(`item ${PROOF}`),
-    false,
-    'a ts/sha proof stamp is not a declaration'
+    true,
+    'combined marker (cmd + run-props) is still a declaration (#481)'
   );
 }
 
