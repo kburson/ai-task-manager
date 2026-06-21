@@ -234,15 +234,25 @@ export async function verbReview(ctx) {
       // its own un-migrated copy with the anchored `$` that this fixes.
       const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
       // #396/#468 — consolidated declaration is the sole path. When this is a
-      // prose-evidence checkbox and the line is not a record-of-run proof stamp,
-      // read the declared command(s) from the `aitm-verified cmd="..."` form.
-      // The `hasExecutionProof` guard keeps a proof stamp (ts/sha/evidence) from
-      // being misread as a re-gating verifier declaration.
+      // prose-evidence checkbox, read the declared command(s) from the
+      // `aitm-verified cmd="..."` form.
+      // #481 — `cmd` is the persistent declaration component, read regardless of
+      // run-props. The consolidated single-marker form carries declaration AND
+      // run-props (`exit`/`sha`/`ts`) in one comment; `ac-stamp`/`dod-stamp`
+      // upsert the passing sandbox run there. The pre-#481 `!hasExecutionProof`
+      // guard hid the declaration once proof landed, so review rejected the very
+      // markers `ac-stamp` produces ("missing automated evidence"). Read the cmd
+      // always; when run-props show `exit="0"` the marker itself is the passing
+      // sandbox evidence (`proofPassed`), seeded into `commandResults` below.
       let evidenceCommands = [];
-      if (!cmdMatch && !hasExecutionProof(label)) {
+      let proofPassed = false;
+      if (!cmdMatch) {
         const props = parseProofMarker(label);
         if (props && typeof props.cmd === 'string') {
           evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
+        }
+        if (props && hasExecutionProof(label)) {
+          proofPassed = String(props.exit) === '0';
         }
       }
       const cleanLabel = label.trim();
@@ -252,6 +262,7 @@ export async function verbReview(ctx) {
         label: cleanLabel,
         command: cmdMatch ? cmdMatch[1] : null,
         evidenceCommands,
+        proofPassed,
         section: currentSection,
       });
     }
@@ -305,6 +316,16 @@ export async function verbReview(ctx) {
     // false-positive `unknown evidence command` regressions.
     for (const cmd of STANDARD_DOD_COMMANDS) {
       commandResults.set(cmd, true);
+    }
+    // #481 — a prose-evidence checkbox carrying run-props with `exit="0"` is
+    // backed by the sandbox run `ac-stamp`/`dod-stamp` recorded on its single
+    // `aitm-verified` marker. Seed its declared commands as passed so the
+    // evidence audit recognizes the consolidated single-marker proof instead of
+    // demanding a retired sibling `aitm-ac-evidence` marker.
+    for (const cb of checkboxes) {
+      if (cb.proofPassed) {
+        for (const cmd of cb.evidenceCommands) commandResults.set(cmd, true);
+      }
     }
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
     for (const cb of checkboxes) {

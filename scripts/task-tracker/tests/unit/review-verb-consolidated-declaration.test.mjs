@@ -14,48 +14,64 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 // ---------------------------------------------------------------------------
 // #396: review.mjs's private AC checkbox parser must recognize the consolidated
 // `aitm-verified cmd="..."` verifier declaration, not only the legacy
-// `aitm-verified-by:` marker. The #367/#368/#369/#382 corpus migration rewrote
-// AC declarations to the consolidated form; #395 taught the SHARED reader
-// (lib/evidence-markers.mjs) the fallback but review.mjs kept its own
-// un-migrated copy, so migrated ACs parsed with an empty command list and were
-// false-bounced from Test to Develop at the "missing automated evidence" branch.
+// `aitm-verified-by:` marker.
+//
+// #481: the verifier declaration and its run-props (`exit`/`sha`/`ts`) now live
+// in ONE `aitm-verified` marker (single-expandable form). `cmd` is the
+// persistent declaration component — it must be read REGARDLESS of run-props.
+// The pre-#481 `!hasExecutionProof(label)` guard hid the declaration once
+// `ac-stamp`/`dod-stamp` stamped a passing run onto the same marker, so review
+// false-bounced the very markers `ac-stamp` produces ("missing automated
+// evidence"). The guard is removed; a marker whose run-props show `exit="0"` is
+// itself the passing sandbox evidence (`proofPassed`).
 // ---------------------------------------------------------------------------
 
-// Source-level pin: the consolidated-declaration fallback (parseProofMarker
-// guarded by hasExecutionProof) is present in review.mjs.
+// Source-level pin: the consolidated-declaration extraction is NO LONGER gated
+// by hasExecutionProof, and the exit="0" run-props seed passing evidence.
 {
   assert.match(
     reviewSource,
     /import\s+\{\s*parseProofMarker,\s*hasExecutionProof\s*\}\s+from\s+['"]\.\.\/lib\/proof-marker\.mjs['"]/,
     'review.mjs imports parseProofMarker + hasExecutionProof from lib/proof-marker.mjs'
   );
-  assert.match(
+  assert.doesNotMatch(
     reviewSource,
-    /!hasExecutionProof\(label\)/,
-    'review.mjs guards the consolidated fallback with hasExecutionProof'
+    /!cmdMatch && !hasExecutionProof\(label\)/,
+    'review.mjs no longer gates cmd extraction on hasExecutionProof (#481)'
   );
   assert.match(
     reviewSource,
     /parseProofMarker\(label\)/,
     'review.mjs reads the consolidated declaration via parseProofMarker'
   );
-  console.log('PASS: review.mjs consolidated-declaration fallback present (source pin)');
+  assert.match(
+    reviewSource,
+    /String\(props\.exit\) === '0'/,
+    'review.mjs derives proofPassed from the marker exit="0" run-prop (#481)'
+  );
+  console.log('PASS: review.mjs single-marker extraction + proofPassed present (source pin)');
 }
 
-// Behavioral replication of review.mjs's exact AC command-extraction (lines
-// ~235-246). Kept byte-faithful to the verb so this test fails if the verb's
-// extraction drifts from the form pinned above. #468 removed the legacy
-// evidencePattern branch — only the consolidated form is now recognized.
+// Behavioral replication of review.mjs's exact AC command-extraction. Kept
+// byte-faithful to the verb so this test fails if the verb's extraction drifts.
 function extractAcCommands(label) {
   const cmdMatch = label.match(/^`([^`]+)`/); // canRunCommand=false for AC prose
   let evidenceCommands = [];
-  if (!cmdMatch && !hasExecutionProof(label)) {
+  if (!cmdMatch) {
     const props = parseProofMarker(label);
     if (props && typeof props.cmd === 'string') {
       evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
     }
   }
   return evidenceCommands;
+}
+// Replication of the verb's proofPassed derivation (single-marker run-props).
+function proofPassedFor(label) {
+  const cmdMatch = label.match(/^`([^`]+)`/);
+  if (cmdMatch) return false;
+  const props = parseProofMarker(label);
+  if (props && hasExecutionProof(label)) return String(props.exit) === '0';
+  return false;
 }
 
 // AC #1 — a consolidated-only declaration yields a non-empty command list (no
@@ -77,35 +93,49 @@ function extractAcCommands(label) {
   console.log('PASS: legacy AC declaration ignored after #468');
 }
 
-// AC #3 — an execution-proof stamp (record-of-run keys, no declaration intent)
-// is NOT misread as a re-gating verifier declaration.
+// AC #3 (#481) — a single-marker line carrying cmd + run-props (the form
+// `ac-stamp` stamps) now yields the declared command. `cmd` is the persistent
+// declaration component, read regardless of run-props.
 {
   const label =
     'Flag intercepted ' +
-    '<!-- aitm-verified cmd="`npm test`" sha="78912dd" ts="2026-06-13T00:00:00Z" -->';
-  // The line DOES carry a cmd, but it also carries record-of-run keys, so
-  // hasExecutionProof short-circuits the fallback. Legacy path is also empty.
-  assert.equal(hasExecutionProof(label), true, 'record-of-run stamp is execution proof');
+    '<!-- aitm-verified cmd="`npm test`" exit="0" sha="78912dd" ts="2026-06-13T00:00:00Z" -->';
+  assert.equal(hasExecutionProof(label), true, 'cmd + run-props line carries execution proof');
   assert.deepEqual(
     extractAcCommands(label),
-    [],
-    'execution-proof stamp is not read as a verifier declaration'
+    ['npm test'],
+    'single-marker (cmd + run-props) still yields its declared command (#481)'
   );
-  console.log('PASS: execution-proof stamp respected by hasExecutionProof guard');
+  assert.equal(
+    proofPassedFor(label),
+    true,
+    'exit="0" run-props mark the single marker as passing sandbox evidence (#481)'
+  );
+  console.log('PASS: single-marker cmd + exit="0" run-props read as passing evidence (#481)');
+}
+
+// AC #3b (#481) — a single-marker line with a NON-zero exit is not passing.
+{
+  const label =
+    'Broken behavior ' +
+    '<!-- aitm-verified cmd="`npm test`" exit="1" sha="78912dd" ts="2026-06-13T00:00:00Z" -->';
+  assert.deepEqual(extractAcCommands(label), ['npm test'], 'declared command still read');
+  assert.equal(proofPassedFor(label), false, 'exit="1" run-props are not passing evidence (#481)');
+  console.log('PASS: single-marker with exit="1" is not treated as passing (#481)');
 }
 
 // AC #4 — review.mjs's extraction and the shared evidence-markers reader agree
-// on the command set for the same AC line (no parser drift).
+// on the command set for the same AC line (no parser drift). Both read cmd
+// regardless of run-props after #481.
 {
   const body = [
     '## Acceptance Criteria',
     '',
     '- [x] Help text renders <!-- aitm-verified cmd="`npm run test:all`" -->',
-    '- [x] Flag is global <!-- aitm-verified-by: `npm test` -->',
+    '- [x] Flag is global <!-- aitm-verified cmd="`npm test`" exit="0" sha="abc1234" ts="2026-06-13T00:00:00Z" -->',
   ].join('\n');
   const { acceptanceCriteria } = parseEvidenceChecklist(body);
   assert.equal(acceptanceCriteria.length, 2, 'both ACs parsed by shared reader');
-  // Compare on the raw labels (re-derive from body so both readers see the same input).
   const rawLines = body
     .split('\n')
     .filter((l) => /^- \[[ x]\] /.test(l))
@@ -120,12 +150,11 @@ function extractAcCommands(label) {
 }
 
 // AC #5 — regression scenario: a consolidated-only AC that is checked must NOT
-// be demoted. Replicate the verb's "missing automated evidence" decision: with
-// a non-empty command list the regression branch is not taken.
+// be demoted. With a non-empty command list the regression branch is not taken.
 {
   const label = 'Help text renders <!-- aitm-verified cmd="`npm run test:all`" -->';
   const evidenceCommands = extractAcCommands(label);
-  const wouldRegress = evidenceCommands.length === 0; // verb line ~343 condition
+  const wouldRegress = evidenceCommands.length === 0;
   assert.equal(wouldRegress, false, 'consolidated-only checked AC is not false-regressed');
   console.log('PASS: consolidated-only AC survives verbReview without false regression');
 }
