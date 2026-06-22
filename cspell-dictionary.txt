@@ -27,6 +27,7 @@ Dogfood
 dogfooding
 Dogfooding
 drai
+duplicative
 ensp
 fanout
 Flesch
@@ -35,6 +36,7 @@ Heredocs
 HOABCEY
 idempotently
 igate
+inlines
 jqlang
 kburson
 kburson's
