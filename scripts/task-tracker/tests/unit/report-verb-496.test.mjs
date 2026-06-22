@@ -8,11 +8,11 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { verbReport } from '../../verbs/report.mjs';
+import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 
 // Capture console output without leaking to the test reporter.
 function capture(fn) {
@@ -33,7 +33,7 @@ function capture(fn) {
 describe('verbReport two-phase gate', () => {
   let projectDir;
   before(() => {
-    projectDir = mkdtempSync(path.join(tmpdir(), 'report-verb-496-'));
+    projectDir = mkdtempProjectIsolated('report-verb-496-');
   });
   after(() => {
     rmSync(projectDir, { recursive: true, force: true });
