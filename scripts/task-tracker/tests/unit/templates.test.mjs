@@ -243,7 +243,7 @@ if (runtimePickupDirective !== null) {
   assert.equal(
     runtimePickupDirective,
     pickupDirective,
-    '.ai-task-manager/pickup-directive.md must stay byte-identical with templates/pickup-directive.md'
+    '.ai-task-manager/pickup-directive.md drifted from templates/pickup-directive.md — run `npm run sync:templates` to refresh the runtime mirror'
   );
 }
 

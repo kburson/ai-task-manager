@@ -22,6 +22,7 @@
     "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
     "release": "npm publish --access public",
+    "sync:templates": "node scripts/sync-templates.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:js": "eslint .",

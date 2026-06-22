@@ -29,6 +29,7 @@ import {
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
+import { TEMPLATE_FILES } from './lib/template-manifest.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 import { getProvider } from '../scripts/providers/index.mjs';
@@ -668,16 +669,7 @@ function installTemplates(targetDir) {
   step('Shared templates and gitignore');
   const templateDest = join(targetDir, '.ai-task-manager');
   mkdirSync(templateDest, { recursive: true });
-  for (const name of [
-    'pickup-directive.md',
-    'definition-of-done.md',
-    'epic-body.md',
-    'sub-issue-body.md',
-    'solo-issue-body.md',
-    'session-boot.md',
-    'session-state-template.md',
-    'worker-report.md',
-  ]) {
+  for (const name of TEMPLATE_FILES) {
     const src = join(PKG_ROOT, 'templates', name);
     const out = join(templateDest, name);
     let suffix = '';
