@@ -18,6 +18,7 @@
 //      hasn't entered the verb chain). Only network/parse failures throw.
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
+import { formatDefectHint } from './defect-hint.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { setSessionKanbanState } from '../session-state.mjs';
 
@@ -38,6 +39,11 @@ export class SeederMarkerMissingError extends Error {
     );
     this.name = 'SeederMarkerMissingError';
     this.issueNumber = issueNumber;
+    // #498 — durable defect-hint the top-level catch surfaces to the AI.
+    this.defectHint = formatDefectHint(
+      'seed-kanban-cache',
+      `issue #${issueNumber} body has no aitm-last-known-state marker`
+    );
   }
 }
 

@@ -46,6 +46,7 @@ import {
   MalformedDeclarationCmdError,
 } from './body-invariants.mjs';
 import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
+import { formatDefectHint } from './defect-hint.mjs';
 
 export { CheckboxProofMissingError, MalformedDeclarationCmdError } from './body-invariants.mjs';
 
@@ -59,6 +60,11 @@ export class MarkerLossError extends Error {
     this.name = 'MarkerLossError';
     this.issueNumber = issueNumber;
     this.lostMarkers = list.slice();
+    // #498 — durable defect-hint the top-level catch surfaces to the AI.
+    this.defectHint = formatDefectHint(
+      'mutateIssueBody',
+      `dropped invariant marker(s) on #${issueNumber}: ${list.join(', ')}`
+    );
   }
 }
 

@@ -9,6 +9,7 @@
 // Pure logic — caller injects body sources so this is fully unit-testable.
 
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound-reason.mjs';
+import { appendDefectHint } from './defect-hint.mjs';
 
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
@@ -345,13 +346,20 @@ export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody, resolv
   // direct `gh issue edit --body*` from agent Bash is always the wrong
   // contract.
   if (parsed.source === 'file' || parsed.source === 'inline') {
+    const reason =
+      `gh issue edit on #${parsed.issueNumber} uses --${parsed.source === 'file' ? 'body-file' : 'body'}; direct body writes from Bash are forbidden.\n` +
+      `  Route every issue-body write through \`mutateIssueBody({issueNumber, repo, mutate})\` in scripts/task-tracker/lib/issue-body-mutate.mjs so the live body is fetched in the same transaction and the marker-loss invariant runs.\n` +
+      `  #362 — body writes must also stamp a proof marker (\`<!-- aitm-verified-at: ... -->\` or \`<!-- aitm-dod-evidence: ... -->\`) on the SAME line as any newly-ticked checkbox; \`mutateIssueBody\` throws \`CheckboxProofMissingError\` otherwise. Pass \`allowUnverifiedTicks: true\` only for legitimate edge cases.\n` +
+      `  See CLAUDE.md "Route issue bodies through scripts".`;
+    // #498 — emit a machine-readable defect-hint trailer so the AI can offer a
+    // pre-filled `/task report` if this refusal turns out to be a false block.
     return {
       block: true,
-      reason:
-        `gh issue edit on #${parsed.issueNumber} uses --${parsed.source === 'file' ? 'body-file' : 'body'}; direct body writes from Bash are forbidden.\n` +
-        `  Route every issue-body write through \`mutateIssueBody({issueNumber, repo, mutate})\` in scripts/task-tracker/lib/issue-body-mutate.mjs so the live body is fetched in the same transaction and the marker-loss invariant runs.\n` +
-        `  #362 — body writes must also stamp a proof marker (\`<!-- aitm-verified-at: ... -->\` or \`<!-- aitm-dod-evidence: ... -->\`) on the SAME line as any newly-ticked checkbox; \`mutateIssueBody\` throws \`CheckboxProofMissingError\` otherwise. Pass \`allowUnverifiedTicks: true\` only for legitimate edge cases.\n` +
-        `  See CLAUDE.md "Route issue bodies through scripts".`,
+      reason: appendDefectHint(
+        reason,
+        'gh issue edit --body',
+        'direct body write from Bash refused; route through mutateIssueBody'
+      ),
     };
   }
 

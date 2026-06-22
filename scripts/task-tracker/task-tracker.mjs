@@ -397,6 +397,10 @@ if (_isMain)
       }
     } catch (err) {
       console.error(`task-tracker error: ${err.message}`);
+      // #498 — surface a machine-readable defect-hint when the error carries one
+      // (MarkerLossError, SeederMarkerMissingError) so the AI can offer a
+      // pre-filled `/task report`. Additive stderr line; exit code unchanged.
+      if (err && err.defectHint) console.error(err.defectHint);
       process.exit(1);
     }
   })();
