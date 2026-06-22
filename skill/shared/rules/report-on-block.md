@@ -28,7 +28,7 @@ When you see an `aitm-defect-hint:` line, **offer** — do not auto-run — to f
 /task report --kind defect --from-hint "<verb> <reason>"
 ```
 
-Lift the `<verb> <reason>` text verbatim from the trailer (everything after `aitm-defect-hint: `). The `report` verb's two-phase mandatory-review gate still applies — it drafts, you confirm, the user approves the actual submission. Never auto-submit, and never offer a _feature_ report off a block hint (blocks are defects).
+Lift the `<verb> <reason>` text verbatim from the trailer (everything after the `aitm-defect-hint:` prefix). The `report` verb's two-phase mandatory-review gate still applies — it drafts, you confirm, the user approves the actual submission. Never auto-submit, and never offer a _feature_ report off a block hint (blocks are defects).
 
 ## Directive 2 — behavioral fallback (no structured hint)
 
