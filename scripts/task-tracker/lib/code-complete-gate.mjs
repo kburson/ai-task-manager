@@ -17,6 +17,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
+import { isAuditKind, hasDeliverableMarker, isAcWaived } from './issue-kind.mjs';
 
 const pexec = promisify(execFile);
 
@@ -216,6 +217,11 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   const dirtyFiles = deps.dirtyFiles || defaultDirtyFiles;
 
   const blockers = [];
+  // #494 — audit/research lane. An audit-kind issue (`aitm-issue-kind kind=…`)
+  // swaps the commit-trail requirement for a deliverable-evidence marker and
+  // permits analytical ACs to be audited-waived. Code-kind issues (the default)
+  // are unaffected: the branch below only diverges when `audit` is true.
+  const audit = isAuditKind(body);
 
   const acs = parseAcceptanceCriteria(body);
   if (acs === null) {
@@ -228,12 +234,29 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
       if (!ac.checked) {
         blockers.push(`code-complete-ac-unticked: ${shortLabel}`);
       } else if (!ac.verifiedBy || ac.verifiedBy === 'TBD') {
-        blockers.push(`code-complete-ac-unverified: ${shortLabel}`);
+        // Audit lane: an analytical AC may be audited-waived via a sanctioned
+        // `aitm-ac-waived` marker in place of `aitm-verified-by`. Code-kind
+        // issues never reach this branch — they still require evidence.
+        if (!(audit && isAcWaived(ac.label))) {
+          blockers.push(`code-complete-ac-unverified: ${shortLabel}`);
+        }
       }
     }
   }
 
   let shas = [];
+  if (audit) {
+    // Deliverable-evidence gate: a posted deliverable (comment/document/
+    // decision) recorded by an `aitm-deliverable-posted` marker stands in for
+    // the `### 🔗 Commits` trail. No SHA/dirty inspection on the audit lane.
+    if (!hasDeliverableMarker(body)) {
+      blockers.push(
+        'code-complete-deliverable-missing: audit-kind issue requires an `aitm-deliverable-posted` marker (the deliverable comment/document/decision) in place of a `### 🔗 Commits` trail'
+      );
+    }
+    return { ok: blockers.length === 0, blockers, shas };
+  }
+
   try {
     const comments = await listComments({ cfg, issueNumber });
     const trail = findCommitTrailComment(comments);

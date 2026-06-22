@@ -14,6 +14,7 @@
 // inside the underlying gate's deps factory.
 
 import { gateCommitTrailContainsHead } from './code-complete-gate.mjs';
+import { isAuditKind } from './issue-kind.mjs';
 
 export const GUARD_ID = 'develop-exit-commit-trail-head';
 
@@ -22,6 +23,10 @@ export const developExitCommitTrailHeadGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
+    // #494 — audit-lane issues carry no `### 🔗 Commits` trail (their evidence
+    // is an `aitm-deliverable-posted` marker checked by `gateCodeComplete`), so
+    // a HEAD-in-trail requirement is inapplicable. Skip when audit-kind.
+    if (isAuditKind(ctx.body)) return { ok: true };
     const projectDir = ctx.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd();
     const gateFn = ctx.deps?.commitTrailHeadGate || gateCommitTrailContainsHead;
     const result = await gateFn({

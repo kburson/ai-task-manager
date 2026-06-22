@@ -281,6 +281,11 @@ if (_isMain)
           await verbAcStamp(ctx);
           break;
         }
+        case 'kind': {
+          const { verbKind } = await import('./verbs/kind.mjs');
+          await verbKind(ctx);
+          break;
+        }
         case 'commit-trace': {
           const { verbCommitTrace } = await import('./verbs/commit-trace.mjs');
           await verbCommitTrace(ctx);

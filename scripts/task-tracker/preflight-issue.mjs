@@ -38,6 +38,7 @@ import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
+import { setIssueKindMarker, normalizeKind } from './lib/issue-kind.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -321,6 +322,18 @@ function emitShape(args, dodPath, root) {
       idx === -1
         ? finalBody + vcSection
         : finalBody.slice(0, idx) + vcSection + finalBody.slice(idx);
+  }
+  // #494 — `--kind <audit|research|spike>` stamps the issue-kind marker at
+  // creation, routing the new issue onto the deliverable-evidence lane. `code`
+  // (the default) leaves the body unmarked.
+  if (typeof args.kind === 'string') {
+    let kind;
+    try {
+      kind = normalizeKind(args.kind);
+    } catch (err) {
+      die(err.message);
+    }
+    finalBody = setIssueKindMarker(finalBody, kind);
   }
   process.stdout.write(finalBody);
   // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded
