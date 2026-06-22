@@ -1,0 +1,59 @@
+name: Beta defect report
+description: Report a defect hit while using the ai-task-manager beta. Mirrors the `/task report --kind defect` CLI form.
+title: '[BETA-DEFECT] '
+labels: ['beta-defect']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. This form mirrors the CLI `/task report --kind defect`
+        path so web and CLI submissions converge on the same shape. The
+        `beta-defect` label is applied automatically; a maintainer triages from
+        there.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the defect you hit and what you expected instead.
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Which command or verb blocked you, if any (for example `promote`).
+      placeholder: 'promote'
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Environment
+
+        If you can, paste the three facts the CLI reports: ai-task-manager
+        version, Node version, and OS. No paths or tokens, please.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      value: |
+        - ai-task-manager:
+        - Node:
+        - OS:
+    validations:
+      required: false

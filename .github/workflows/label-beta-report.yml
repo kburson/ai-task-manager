@@ -1,0 +1,70 @@
+# Labels beta defect/feature reports filed against this repo.
+#
+# Why this exists: CLI-filed reports (`/task report`) bypass the web issue-form
+# picker, and a non-collaborator submitter cannot self-apply labels. So the
+# label must be derived server-side from signals already present in the issue:
+#   - title prefix `[BETA-DEFECT]` / `[BETA-FEATURE]` (set by `buildTitle`), or
+#   - body marker `aitm-beta-defect` / `aitm-beta-feature` (set by `buildBody`).
+# The body marker is the durable source — title prefixes can be hand-edited.
+#
+# SETUP (one-time, manual): the `beta-defect` and `beta-feature` labels must
+# exist in this repo before this workflow can apply them. `addLabels` does NOT
+# create-on-demand. Create them once via the Issues > Labels UI or:
+#   gh label create beta-defect  --color d73a4a --description "Beta defect report"
+#   gh label create beta-feature --color a2eeef --description "Beta feature request"
+#
+# Idempotent: re-fires on `edited` without erroring or duplicating, and no-ops
+# when neither signal matches. Needs only the default GITHUB_TOKEN.
+name: Label beta report
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply beta label from title prefix or body marker
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title || '';
+            const body = issue.body || '';
+
+            // Map each target label to the signals that imply it. Marker is the
+            // durable source; title prefix is the human-editable convenience.
+            const RULES = [
+              { label: 'beta-defect',  prefix: '[BETA-DEFECT]',  marker: 'aitm-beta-defect' },
+              { label: 'beta-feature', prefix: '[BETA-FEATURE]', marker: 'aitm-beta-feature' },
+            ];
+
+            const want = RULES.find(
+              (r) => title.startsWith(r.prefix) || body.includes(r.marker)
+            );
+            if (!want) {
+              core.info('No beta-report signal in title or body; nothing to label.');
+              return;
+            }
+
+            // Idempotency: skip when the label is already attached so the
+            // `edited` re-fire stays a clean no-op.
+            const has = (issue.labels || []).some(
+              (l) => (typeof l === 'string' ? l : l.name) === want.label
+            );
+            if (has) {
+              core.info(`Label "${want.label}" already present; skipping.`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: [want.label],
+            });
+            core.info(`Applied label "${want.label}" to #${issue.number}.`);

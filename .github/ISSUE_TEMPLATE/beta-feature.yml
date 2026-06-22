@@ -1,0 +1,36 @@
+name: Beta feature request
+description: Request a capability while using the ai-task-manager beta. Mirrors the `/task report --kind feature` CLI form.
+title: '[BETA-FEATURE] '
+labels: ['beta-feature']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. This form mirrors the CLI `/task report --kind feature`
+        path so web and CLI submissions converge on the same shape. The
+        `beta-feature` label is applied automatically; a maintainer triages from
+        there.
+
+  - type: textarea
+    id: what-i-want
+    attributes:
+      label: What I want
+      description: Describe the capability you wish the skill had.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why-it-matters
+    attributes:
+      label: Why it matters
+      description: What does this unblock or make easier?
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else maintainers should know.
+    validations:
+      required: false
