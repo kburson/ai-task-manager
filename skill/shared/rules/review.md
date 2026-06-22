@@ -65,3 +65,37 @@ No env override exists. The pre-review checkbox gate cannot be skipped from the 
 When all sub-issues in the current sequence reach Review, the orchestrator MUST call `/task review #<epic>` on the parent epic **before** notifying the human. Running `/task review` on the epic is orchestrator work, not human work. The epic gate enforces this — the epic cannot move to Review until all its sub-issues are already in Review.
 
 Do not report `ISSUE_READY_FOR_REVIEW` or notify the human until the epic itself is in Review.
+
+## Field units
+
+The project-board `Estimate` is denominated in **hours**; the timing fields
+(`engagedTime`, `sessionTime`, `reviewTime`) are denominated in **minutes**.
+The Review delta renderer normalizes both to seconds and displays `H:MM:SS`.
+If you read these values directly (board API or `aitm-fields` JSON), **do not
+compare them raw** — a 3-hour estimate vs. a 22.5-minute actual is −87%, not
++650%. Internal compute is second-precision; the board still stores rounded
+minutes.
+
+## Full-Auto footnote
+
+When `/task approve` runs under `TT_FULL_AUTO=1` (or any signal `detectFullAuto`
+fires on), it appends a visible blockquote footnote under the Lifecycle DoD
+subsection between `<!-- aitm-full-auto-footnote:start -->` and
+`<!-- aitm-full-auto-footnote:end -->` delimiters so a reader can see at a
+glance that no human reviewed the issue. The hidden `aitm-full-auto-approved`
+marker still records the audit signals. The footnote is idempotent (re-runs
+replace the block in place). `gh-edit-guard` protects the delimiters from
+accidental drop. If the body lacks a recognized `Passed final human review`
+checklist line, approve emits a stderr warning
+(`approve: lifecycle-tick-noop`) but does not fail.
+
+## Review Notes → Drivers
+
+`/task approve` posts a `### 📝 Review Notes` comment with bullet drivers before
+stamping `aitm-review-approved`. In human-review mode it prompts stdin (one
+bullet per line, blank line to finish); under `TT_FULL_AUTO=1` it auto-derives
+drivers from misestimate Δ%, sandbox-failure count, develop-stage re-entry, and
+oversized commit diffs, tagging the comment `<!-- aitm-review-notes-source: auto -->`.
+The close-time `### 📊 Review delta` comment reads the most-recent notes comment
+and renders its bullets under a `Drivers:` section; empty drivers omit the
+section entirely.

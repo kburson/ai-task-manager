@@ -33,68 +33,15 @@ Run from the project root, or set `AI_TASK_MANAGER_PROJECT_DIR` first.
 
 ## Creating issues
 
-`scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly.** The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, then runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders atomically.
+Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo` — never `gh issue create`. The shape menu, required `./.tmp/plan/` fragments, the deterministic refusal contracts (`assignee-required`, `priority-required-at-groom`), binding each Acceptance Criterion to an `aitm-verified cmd="…"` marker listed under `### Verification Commands`, and the never-promote-a-"suggested task"-chip rule all live in `rules/create-issue.md` (loads JIT on `/task new`).
 
-Required content fragments (default `./.tmp/plan/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
+## Review & approve details
 
-### Stub shape — capturing a raw idea at Backlog (#426)
-
-For fast idea-capture, use `--shape stub`: it requires **only** `--title` and takes an optional `--idea-file <path>` whose free text seeds the Scope section. It does **not** require `scope.md` / `acs.md` / `plan-meta.md` — those sections are placeholders the Refine stage fills. Reach for `stub` when capturing a raw idea where the acceptance criteria, scope decomposition, and plan-metadata block do not yet exist and should not be invented; use `solo` when you already have all three worked out and want to chain straight into `promote`.
-
-**Do not volunteer `Size` or `Estimate` at Backlog creation.** Those are Refine-exit gate fields, not creation-time fields — offering them on a stub (or any freshly-filed Backlog idea) invites premature, low-confidence sizing. Set them at Refine, where the Refine→Plan gate enforces them.
-
-During deep dive, bind every Acceptance Criterion to automated evidence with an
-`aitm-verified cmd="…"` HTML comment marker. Every non-standard command named in
-those markers must be listed under the issue-specific `### Verification
-Commands` section. Standard DoD commands may be used as evidence markers but
-must not be duplicated there.
-
-Refusal contracts (deterministic exit codes):
-
-- `assignee-required` — no `--assignee` and no `assignee` in `.ai-task-manager/task-tracker.json`.
-- `priority-required-at-groom` — `--status groom|refine|ready` without `--priority`.
-
-Use `--dry-run` to print the rendered body without calling `gh`.
-
-### Never promote a "suggested task" chip — offer a tracking issue instead
-
-This is the Claude-session form of hard rule 12 (Track before you start). When you notice follow-up or out-of-scope work, **do not** surface it as a background-task chip (the session `spawn_task` "suggested task"). A chip kicks off work locally with no issue behind it — no board state, no estimate, no timing ledger, no audit trail. That is exactly the untracked work this workflow forbids.
-
-Instead, tell the user what you found and offer to create a GitHub issue to track it: `/task new` (→ `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`). Only after the issue exists and you bind to it does the work begin. If the user explicitly insists on a chip anyway, name the trade-off (untracked) before proceeding.
-
-## Field units
-
-The project-board `Estimate` is denominated in **hours**; the timing fields
-(`engagedTime`, `sessionTime`, `reviewTime`) are denominated in **minutes**.
-The Review delta renderer normalizes both to seconds and displays `H:MM:SS`.
-If you read these values directly (board API or `aitm-fields` JSON), **do not
-compare them raw** — a 3-hour estimate vs. a 22.5-minute actual is −87%, not
-+650%. Internal compute is second-precision; the board still stores rounded
-minutes.
-
-## Full-Auto footnote
-
-When `/task approve` runs under `TT_FULL_AUTO=1` (or any signal `detectFullAuto`
-fires on), it appends a visible blockquote footnote under the Lifecycle DoD
-subsection between `<!-- aitm-full-auto-footnote:start -->` and
-`<!-- aitm-full-auto-footnote:end -->` delimiters so a reader can see at a
-glance that no human reviewed the issue. The hidden `aitm-full-auto-approved`
-marker still records the audit signals. The footnote is idempotent (re-runs
-replace the block in place). `gh-edit-guard` protects the delimiters from
-accidental drop. If the body lacks a recognized `Passed final human review`
-checklist line, approve emits a stderr warning
-(`approve: lifecycle-tick-noop`) but does not fail.
-
-## Review Notes → Drivers
-
-`/task approve` posts a `### 📝 Review Notes` comment with bullet drivers before
-stamping `aitm-review-approved`. In human-review mode it prompts stdin (one
-bullet per line, blank line to finish); under `TT_FULL_AUTO=1` it auto-derives
-drivers from misestimate Δ%, sandbox-failure count, develop-stage re-entry, and
-oversized commit diffs, tagging the comment `<!-- aitm-review-notes-source: auto -->`.
-The close-time `### 📊 Review delta` comment reads the most-recent notes comment
-and renders its bullets under a `Drivers:` section; empty drivers omit the
-section entirely.
+Field units (board `Estimate` is hours, timing fields are minutes — never
+compare them raw), the Full-Auto approve footnote (`TT_FULL_AUTO=1` stamps a
+visible "no human reviewed" blockquote plus the hidden `aitm-full-auto-approved`
+marker), and the Review-Notes → Drivers comment flow all live in
+`rules/review.md` (loads JIT on `/task review`).
 
 ## Rank rules
 
@@ -114,12 +61,7 @@ To load a previously saved plan file outside of a discover session: `/task new d
 
 ## Verb disambiguation — `/task plan` vs `/task discover`
 
-These two verbs target distinct workflows and are NOT interchangeable:
-
-- `/task plan #N` — **Sprint-Planning entry**: promotes `#N` from Refine → Plan. Mirrors `/task refine` / `/task test` / `/task review` (one verb per kanban state). Refuses on any current state other than Refine. Use this to start the Sprint-Planning ceremony (deep-dive analysis, child-story breakdown, estimate revision).
-- `/task discover` — **backlog-item generation / pre-issue ideation**: opens an untracked discovery bucket for shaping work that does not yet have a GitHub issue. Promote a bucket to a real issue with `/task new <title>`. No kanban transition occurs.
-
-A historical alias mapped `/task plan` → `/task discover` with a deprecation warning. That alias was removed in #299; the two verbs are now permanently distinct.
+`/task plan #N` (Refine → Plan sprint-planning entry, refuses on any other state) and `/task discover` (untracked pre-issue ideation bucket, no kanban move) are permanently distinct verbs — the historical `plan → discover` alias was removed in #299. The full note lives in `shared/router.md`.
 
 ## Checkpoint Pause
 

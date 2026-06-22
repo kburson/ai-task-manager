@@ -56,6 +56,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | `/task review #N`                                                       | `rules/review.md`                                               |
 | `/task close #N`, `/task close --force`                                 | `rules/close.md`                                                |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`        | `rules/state-walk.md`                                           |
+| `/task new` (issue creation, any state)                                 | `rules/create-issue.md`                                         |
 | `/task new` while `active=="plan"`                                      | `rules/plan-mode-backlog.md`                                    |
 | `/task config init`                                                     | `rules/config-init.md`                                          |
 | Parallel fan-out (≥2 candidate children, any worktree dispatch)         | `rules/parallel.md`                                             |
@@ -66,7 +67,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | Writing transient/scratch file (sandbox, issue body, plan/heal/inspect) | `rules/scratch-dirs.md`                                         |
 | `/task block`, `/task unblock`, spawning a defect mid-task              | `rules/block.md`                                                |
 
-Verbs not listed (`/task`, `/task new` without plan mode, `/task discover`, `/task plan`, `/task resume`, `/task pause`, `/task update`, `/task log`, `/task migrate`, `/task check`, `/task fleet`, `/task config`) need no Tier-2 file — invoke the CLI and print output.
+Verbs not listed (`/task`, `/task discover`, `/task plan`, `/task resume`, `/task pause`, `/task update`, `/task log`, `/task migrate`, `/task check`, `/task fleet`, `/task config`) need no Tier-2 file — invoke the CLI and print output.
 
 > `/task plan #N` is the Refine → Plan (Sprint-Planning) entry verb — refuses on any other current state. `/task discover` is the separate backlog-item-generation / pre-issue ideation bucket. The two are not interchangeable; the historical `plan → discover` deprecation alias was removed in #299.
 
