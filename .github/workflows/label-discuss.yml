@@ -1,0 +1,85 @@
+# Auto-applies the `Discuss` label to issues that carry the `{discuss}` token.
+#
+# Why this exists: the skill's client-side `reconcileDiscuss` only runs at
+# `/task` bind time, so an issue filed via the GitHub web form with a bare
+# `{discuss}` line stays unlabeled until someone binds it. This Action labels it
+# immediately on open/edit, mirroring the same `Discuss` label the client syncs.
+#
+# Detection mirrors `lib/discuss-marker.mjs hasDiscussMarker`: a trigger is a
+# line whose TRIMMED content is exactly `{discuss}` and nothing else. Inline,
+# backticked, quoted, or prefixed mentions are deliberately NOT triggers.
+#
+# Coexistence with the client reconciler (does not fight it):
+#   - It keys ONLY on the VISIBLE `{discuss}` token. At bind the client's
+#     `convergeDiscuss` strips that visible token (leaving a hidden
+#     `aitm-discuss-requested` marker), so this Action naturally quiesces once
+#     the client owns the lifecycle — it never re-fires off the hidden marker.
+#   - It no-ops when the body carries the `aitm-discussed` audit marker, so a
+#     resolved discussion is never re-labeled.
+#
+# Idempotent: re-fires on `edited` without erroring or duplicating, and no-ops
+# when the token is absent. Needs only the default GITHUB_TOKEN.
+#
+# SETUP (one-time, manual): the `Discuss` label must exist in this repo before
+# this workflow can apply it. `addLabels` does NOT create-on-demand. Create it
+# once via the Issues > Labels UI or:
+#   gh label create Discuss --color 0e8a16 --description "Needs discussion before refine"
+name: Label discuss
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply Discuss label from a bare {discuss} token line
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const DISCUSS_LABEL = 'Discuss';
+            const DISCUSS_TOKEN = '{discuss}';
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+
+            // Respect the client-side `aitm-discussed` audit marker: a resolved
+            // discussion is never re-labeled (mirrors `hasDiscussedMarker`).
+            const discussed = body
+              .split('\n')
+              .some((l) => /^<!--\s*aitm-discussed(\s|-->)/.test(l.trim()));
+            if (discussed) {
+              core.info('aitm-discussed marker present; discussion resolved, nothing to label.');
+              return;
+            }
+
+            // Detection mirrors `hasDiscussMarker`: a bare line equal to the
+            // token. Inline/backticked/prefixed mentions are NOT triggers.
+            const pending = body
+              .split('\n')
+              .some((l) => l.trim() === DISCUSS_TOKEN);
+            if (!pending) {
+              core.info('No bare {discuss} token line; nothing to label.');
+              return;
+            }
+
+            // Idempotency: skip when the label is already attached so the
+            // `edited` re-fire stays a clean no-op.
+            const has = (issue.labels || []).some(
+              (l) => (typeof l === 'string' ? l : l.name) === DISCUSS_LABEL
+            );
+            if (has) {
+              core.info(`Label "${DISCUSS_LABEL}" already present; skipping.`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: [DISCUSS_LABEL],
+            });
+            core.info(`Applied label "${DISCUSS_LABEL}" to #${issue.number}.`);
