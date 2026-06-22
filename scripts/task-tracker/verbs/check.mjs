@@ -163,7 +163,7 @@ export async function verbCheck(ctx) {
     // durable `aitm-discuss-requested` marker (#486) and stamp the non-invariant
     // `aitm-discussed` marker so `discussBlockGuard` passes and forward promotion
     // resumes. Idempotent via markDiscussed.
-    const { markDiscussed } = await import('../lib/discuss-marker.mjs');
+    const { markDiscussed, formatDiscussEndBanner } = await import('../lib/discuss-marker.mjs');
     const { mutateIssueBody } = await import('../lib/issue-body-mutate.mjs');
     const ts = new Date().toISOString();
     const res = await mutateIssueBody({
@@ -191,6 +191,9 @@ export async function verbCheck(ctx) {
       console.log(
         `[task-tracker] ✓ Marked discussion complete on ${s.active} at ${ts} (token stripped, aitm-discussed stamped, Discuss label removed)`
       );
+      // #495 — colorful ✅ conclusion delimiter via the shared formatter, the
+      // same banner finalizeDiscussion emits, so both conclusion paths match.
+      console.log(formatDiscussEndBanner(s.active));
     }
     return;
   }

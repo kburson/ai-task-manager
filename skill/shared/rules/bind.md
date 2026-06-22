@@ -35,10 +35,20 @@ The pickup directive enforces:
 
 ## `{discuss}` brainstorming trigger (#405, #486)
 
-If, on bind, the CLI prints a `DISCUSS REQUESTED — #N` banner, run an open-ended
-brainstorming dialog with the user **before** any deep-dive or refine step. The
-request marks a sparse, user-filed item that needs to be fleshed into a
+If, on bind, the CLI prints a `💬 DISCUSSION REQUESTED — #N` banner, run an
+open-ended brainstorming dialog with the user **before** any deep-dive or refine
+step. The request marks a sparse, user-filed item that needs to be fleshed into a
 refine-ready definition.
+
+**Chat-delimiter convention (#495).** Mirror the CLI banners in your own chat log
+so the session scroll-back reads consistently across both surfaces. When you
+pause to open the discussion, emit a blank line then a 💬-led delimiter
+(`💬 DISCUSSION REQUESTED — #N`). When agreement is reached and implementation is
+about to begin, emit a blank line then a ✅-led delimiter
+(`✅ DISCUSSION RESOLVED — #N · implementation may commence`). Use the same two
+icons the CLI uses (`DISCUSS_START_ICON` / `DISCUSS_END_ICON` in
+`discuss-marker.mjs`); these delimiters are presentation only and never replace
+the marker writes below.
 
 **Carrier model (#486).** The signal has two synced carriers: the authoritative
 hidden marker `aitm-discuss-requested`, and a visible mirror label (default

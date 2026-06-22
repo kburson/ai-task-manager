@@ -139,14 +139,12 @@ export async function verbSwitch(ctx, target) {
   if (cfg?.repo) {
     try {
       const { reconcileDiscuss } = await import('../lib/discuss-label.mjs');
+      const { formatDiscussStartBanner } = await import('../lib/discuss-marker.mjs');
       const issueNumber = Number(target.replace(/^#/, ''));
       const { pending } = await reconcileDiscuss({ issueNumber, repo: cfg.repo, cfg });
       if (pending) {
-        console.log(
-          `\nDISCUSS REQUESTED — ${target}\n` +
-            `   This issue requests a brainstorming session before refine.\n` +
-            `   Run the dialog, then call finalizeDiscussion. See rules/bind.md.`
-        );
+        // #495 — colorful 💬 start delimiter via the shared formatter.
+        console.log(formatDiscussStartBanner(target));
       }
     } catch {
       /* advisory only — never block the bind on a reconcile/banner failure */

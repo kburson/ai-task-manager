@@ -30,6 +30,33 @@ const DISCUSSED_MARKER_RE = /^<!--\s*aitm-discussed(\s|-->)/;
 export const DISCUSS_REQUEST_MARKER = 'discuss-requested';
 const DISCUSS_REQUEST_MARKER_RE = /^<!--\s*aitm-discuss-requested(\s|-->)/;
 
+// #495 — colorful chat delimiters for a `{discuss}` pause. The same two icons
+// are used by the CLI banners (bind start banner in `switch.mjs`, the
+// conclusion banners in `finalizeDiscussion` + `check.mjs`) AND by the agent's
+// own chat-log delimiters (documented in `rules/bind.md`), so a session's
+// scroll-back reads consistently across both surfaces. These are advisory
+// presentation strings only — they never gate bind or promotion, and discuss
+// detection/convergence is unaffected.
+export const DISCUSS_START_ICON = '💬';
+export const DISCUSS_END_ICON = '✅';
+
+// Single source of truth for the start banner text. `ref` is the issue
+// reference already in hand at the call site (e.g. `#495`).
+export function formatDiscussStartBanner(ref) {
+  return (
+    `\n${DISCUSS_START_ICON} DISCUSSION REQUESTED — ${ref}\n` +
+    `   This issue requests a brainstorming session before refine.\n` +
+    `   Run the dialog, then call finalizeDiscussion. See rules/bind.md.`
+  );
+}
+
+// Single source of truth for the conclusion banner text, shared by BOTH
+// discussion-conclusion paths (`finalizeDiscussion` and `check.mjs`'s
+// `"discussion complete"` branch) so the two cannot drift.
+export function formatDiscussEndBanner(ref) {
+  return `\n${DISCUSS_END_ICON} DISCUSSION RESOLVED — ${ref} · implementation may commence`;
+}
+
 // True iff some line of the body is a *bare* `{discuss}` marker — a line whose
 // trimmed content is exactly the token and nothing else. Detection is purely
 // per-line (newline-delimited); there is no code-fence awareness. Inline prose,
@@ -173,11 +200,11 @@ function replaceAcceptanceCriteria(body, acs) {
 // Resolve a brainstorming discussion in a single `mutateIssueBody` transaction:
 // rewrite `## Scope`, optionally rewrite `## Acceptance Criteria` from `acs`,
 // then consume the `{discuss}` token and stamp the `aitm-discussed` marker.
-export async function finalizeDiscussion({ issueNumber, repo, scope, acs, ts, deps } = {}) {
+export async function finalizeDiscussion({ issueNumber, repo, scope, acs, ts, deps = {} } = {}) {
   if (!scope || !String(scope).trim()) {
     throw new Error('finalizeDiscussion: `scope` is required');
   }
-  return mutateIssueBody({
+  const res = await mutateIssueBody({
     issueNumber,
     repo,
     deps,
@@ -188,4 +215,13 @@ export async function finalizeDiscussion({ issueNumber, repo, scope, acs, ts, de
       return next;
     },
   });
+  // #495 — print the conclusion banner only AFTER the body write succeeds and
+  // only when it actually changed something (skip an idempotent no-op re-run).
+  // `deps.log` is injectable so tests can assert emission without capturing
+  // global stdout; defaults to console.log.
+  if (res?.status !== 'no-op') {
+    const log = deps.log || console.log;
+    log(formatDiscussEndBanner(`#${issueNumber}`));
+  }
+  return res;
 }
