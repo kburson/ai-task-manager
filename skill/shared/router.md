@@ -36,15 +36,9 @@ These rules apply to every verb. Skipping any is a process failure.
 npx aitm <verb> [args...]
 ```
 
-Print stdout verbatim. On non-zero exit, print stderr and surface the error. Exit code 3 from `/task review` or `/task close` means unchecked items — see `rules/review.md` / `rules/close.md`.
+Print stdout verbatim. On non-zero exit, print stderr and surface the error. Exit code 3 from `/task review` or `/task close` means unchecked items (`rules/review.md` / `rules/close.md`).
 
-For `/task #N` and `/task resume #N`, after the CLI succeeds, fetch issue metadata silently — do not print the body to chat:
-
-```bash
-gh issue view <N> --json title,body,state,projectItems,parent
-```
-
-Reopen if closed (`gh issue reopen <N>`), move to in-progress, and follow the Pickup Directive (`.ai-task-manager/pickup-directive.md`).
+The post-bind metadata fetch (`gh issue view`), reopen-if-closed, and Pickup-Directive follow-up for `/task #N` / `/task resume #N` live in `rules/bind.md`.
 
 ## Verb → rule-file routing
 
@@ -73,13 +67,4 @@ Verbs not listed (`/task`, `/task discover`, `/task plan`, `/task resume`, `/tas
 
 ## gh issue command policy (bash-guard)
 
-| Command                                                               | Policy                                                                                                 |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `gh issue view`, `gh issue list`                                      | Allowed                                                                                                |
-| `gh issue edit --add-label`, `--remove-label`, label/state-meta flags | Allowed                                                                                                |
-| `gh issue edit --body` / `--body-file`                                | Guarded — hidden markers (`aitm-fields`, `aitm-plan-approved`, …) must be preserved                    |
-| `gh issue comment`                                                    | Allowed; prefer structured helpers (`task-tracker.mjs`, `gh-timing-comment.mjs`) for workflow comments |
-| `gh issue reopen`                                                     | Allowed (session recovery)                                                                             |
-| `gh issue create`                                                     | **BLOCKED** — use `scripts/gh/create-issue.mjs --shape …`                                              |
-| `gh issue close`                                                      | **BLOCKED** — use `/task close`                                                                        |
-| `gh api graphql` (mutations)                                          | Allowed but exceptional; prefer helpers; document the site                                             |
+The PreToolUse Bash hook (`scripts/task-tracker/bash-guard.mjs` → `lib/gh-edit-guard.mjs`) is the authoritative gh-issue policy — this is a pointer, not a second source of truth. Summary: `gh issue view`/`list`, label & state-meta `gh issue edit` flags, `gh issue comment` (prefer structured helpers), and `gh issue reopen` are allowed; `gh issue create` and `gh issue close` are **BLOCKED** (hard rules 3–4 — use `scripts/gh/create-issue.mjs --shape …` / `/task close`); `gh issue edit --body` / `--body-file` is refused — route every body write through `mutateIssueBody` so hidden markers survive (`rules/create-issue.md`, `rules/state-walk.md`). `gh api graphql` mutations are allowed but exceptional (prefer helpers; document the site).
