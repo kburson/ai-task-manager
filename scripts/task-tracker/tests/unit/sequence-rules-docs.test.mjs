@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 // @story #162
-// Verifies that the "Rank rules" subsection is present in both
-// the pickup-directive template and the Claude adapter SKILL.md so
-// agents see the child-cannot-lead-epic invariant on every pickup (#162).
+// Verifies that the "Rank rules" subsection is present in both the pickup
+// rationale reference and the Claude adapter SKILL.md so agents can reach the
+// child-cannot-lead-epic invariant on pickup (#162). The full Rank-rules prose
+// was tiered out of the resident directive into the JIT rationale by #491.
 
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const FILES = ['templates/pickup-directive.md', 'skill/adapters/claude/SKILL.md'];
+const FILES = [
+  'templates/references/pickup-directive-rationale.md',
+  'skill/adapters/claude/SKILL.md',
+];
 
 for (const file of FILES) {
   test(`${file} contains a Rank rules subsection`, () => {

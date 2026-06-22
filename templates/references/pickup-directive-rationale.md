@@ -101,10 +101,14 @@ asked to revisit scope or expand the deep dive.
 
 ## Rule 9 — Checkpoint Pause
 
-Before any `/task` state move (`refine`, `plan`, `develop`, `test`,
-`review`, `done`), before switching the active issue (`/task #N` when
-already bound to a different `#M`), before closing an issue, and before
-parallel-agent fan-out, pause and re-read the most recent user messages.
+Pause and re-read the most recent user messages before each of these
+transitions:
+
+- Before `/task` state moves (`refine`, `plan`, `develop`, `test`, `review`, `done`).
+- Before switching active issue (`/task #N` when already bound to a different `#M`).
+- Before closing an issue.
+- Before parallel-agent fan-out.
+
 If the latest user message is unacknowledged or contains a question or
 instruction not yet addressed, halt and respond first — do not advance
 state. There is no programmatic signal for "unread chat queue"; this is
@@ -164,3 +168,65 @@ without verifying state), STOP immediately. Do not attempt to fix the
 mistake yourself. Announce what happened, why it was wrong, and propose
 2–3 resolution options. Wait for explicit orchestrator or human
 instruction before proceeding.
+
+## Rule 15 — Never hand-roll an issue body
+
+Every issue-body write flows through a script so the live body is fetched
+in the same transaction as the write. Create issues via
+`scripts/task-tracker/preflight-issue.mjs` (it stamps the DoD and
+Pickup-Directive tail). Edit live bodies only through `mutateIssueBody`
+(`scripts/task-tracker/lib/issue-body-mutate.mjs`), which diffs the
+caller's output against the freshly-fetched base and throws
+`MarkerLossError` if an invariant marker disappears (pass
+`allowMarkerLoss: true` only for a deliberate strip). The PreToolUse Bash
+guard (`scripts/task-tracker/bash-guard.mjs`) hard-refuses every `gh issue
+edit <N> --body <s>` and `--body-file <p>` regardless of diff; label,
+title, milestone, and assignee edits still pass.
+
+## Rank rules
+
+These ordering and capacity rules govern the board; they are consulted
+rarely, so they live here rather than in the resident directive.
+
+- **`child-cannot-lead-epic`** — a child sub-issue may not lead its parent
+  epic's wave. The epic's own Sequence/Rank governs admission; a child
+  inherits, it does not set, the epic's position. Discovered sub-issues
+  joining the current wave do not block already-flowing wave members, but
+  next-wave admission waits for every current-wave member to reach Done.
+- **Refine WIP rule** — Refine is a single-item-in-flight column. Do not
+  pull a second issue into Refine while one is still being groomed; finish
+  or park the first.
+- **Dependency representation** — a blocked issue carries the `BLOCKED`
+  label, a `Blocked By` project-field reference to its blocker, and a
+  `<!-- aitm-blocked-by: #N -->` body marker. Drive blocker chains
+  deepest-first; `pull-next` auto-unparks a blocked issue when its blocker
+  reaches Done.
+
+There is no force-promote env override — promotion gates are fail-closed by
+design.
+
+## Worked examples
+
+### Step 6 — commit message convention
+
+Branch `<this-issue-#>-<short-slug>`, then use this commit-message shape so
+the close-time rollup can link the work to its issue and epic:
+
+```
+<scope>: short summary
+
+Closes #<this-issue-#>
+EPIC: #<parent-epic-#>
+```
+
+Omit the `EPIC:` trailer for a standalone (non-sub) issue.
+
+### Step 3 — appending the deep dive
+
+The canonical writer is `ensureDeepDive`
+(`scripts/task-tracker/lib/deep-dive.mjs`); call it with the narrative
+prose and let it place the appendix AFTER the Pickup Directive block (it is
+narrative-only — the structural markers are managed for you). After it
+returns, run `/task check "Deep dive complete"` to flip the gate checkbox.
+Do not write the appendix by hand and do not place it before the Acceptance
+Criteria.
