@@ -22,7 +22,7 @@ Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a proc
 7. **Pause the timer before blocking questions** — `/task pause "pause for question"` before, `/task start "question answered"` after.
 8. **Checkpoint Pause — re-read the conversation queue before any state transition.** Before any `/task` state move, active-issue switch, close, or parallel-agent fan-out, re-read the most recent user messages; if the latest is unaddressed, halt and respond first.
 9. **On mistakes — STOP, surface what/why with 2–3 options, wait for instruction.** Do not self-correct.
-10. **Never hand-roll an issue body.** Create issues via `scripts/task-tracker/preflight-issue.mjs`; edit live bodies only through `mutateIssueBody`. `gh-edit-guard` refuses every `gh issue edit <N> --body`/`--body-file`.
+10. **Never hand-roll an issue body** — no `gh issue create`/`edit … --body`/`--body-file` (`gh-edit-guard` refuses). Make issues via `preflight-issue.mjs`; edit live bodies only through `mutateIssueBody`.
 11. **Reference rules — in the rationale:** skip collapsed `<details>` unless told to expand; field units (`estimate` hours, `engagedTime`/`sessionTime`/`reviewTime` minutes); Review-Notes → close-time Review-delta; Full-Auto footnote delimiters must not be stripped; Post-Compact/Clear recovery via [`session-boot.md`](./session-boot.md); the **Rank rules** (`child-cannot-lead-epic`, Refine WIP, dependency representation).
 
 ## Required steps before writing any code

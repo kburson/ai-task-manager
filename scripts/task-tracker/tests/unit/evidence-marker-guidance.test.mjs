@@ -27,7 +27,10 @@ for (const rel of docs) {
   assert.match(body, /Verification\s+Commands/, `${rel} mentions Verification Commands`);
 }
 
-for (const rel of ['templates/pickup-directive.md', '.ai-task-manager/pickup-directive.md']) {
+// #491 relocated the verbose AC↔Verification-Commands guidance out of the
+// resident core into the JIT rationale (it is loaded on pickup, just not on
+// the persistent token floor). The contract is unchanged — only its file moved.
+for (const rel of ['templates/references/pickup-directive-rationale.md']) {
   const body = readFileSync(path.join(root, rel), 'utf8');
   assert.match(
     body,
