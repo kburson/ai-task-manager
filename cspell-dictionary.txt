@@ -1,6 +1,7 @@
 ACMR
 actuals
 Actuals
+affordances
 aitm
 AITM
 apolicy
@@ -41,6 +42,7 @@ Kincaid
 kpburson
 metachars
 misattributed
+misconfig
 mktemp
 modelcontextprotocol
 mortems
@@ -106,6 +108,7 @@ subheader
 subheaders
 toggleable
 toplevel
+touchpoint
 TOTP
 unconfigured
 ungroomed
