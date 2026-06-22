@@ -48,6 +48,7 @@ export const DEFAULTS = {
   priorityOptionP0: '',
   priorityOptionP1: '',
   priorityOptionP2: '',
+  priorityOptionP3: '',
   // GitHub assignee for new issues created via /task new (default: current gh user)
   assignee: '@me',
   defaultLabels: [],
@@ -122,6 +123,7 @@ export const TYPES = {
   priorityOptionP0: 'string',
   priorityOptionP1: 'string',
   priorityOptionP2: 'string',
+  priorityOptionP3: 'string',
   assignee: 'string',
   defaultLabels: 'array',
   autoEndOnSwitch: 'boolean',
@@ -368,6 +370,7 @@ const INTERNAL_KEYS = [
   'priorityOptionP0',
   'priorityOptionP1',
   'priorityOptionP2',
+  'priorityOptionP3',
 ];
 
 function marker(src) {

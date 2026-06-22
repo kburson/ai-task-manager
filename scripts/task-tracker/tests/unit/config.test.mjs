@@ -133,5 +133,15 @@ cfg = loadConfig({ projectPath, userPath });
 assert.equal(cfg.discussLabel, 'Needs Discussion', 'project override wins');
 assert.equal(cfg._sources.discussLabel, 'project');
 
+// Test 17 (#490): priorityOptionP3 survives loadConfig (defaults, schema, allow-list)
+assert.equal(DEFAULTS.priorityOptionP3, '', 'priorityOptionP3 is a known default key');
+writeFileSync(projectPath, JSON.stringify({ priorityOptionP3: 'P3_OPTION_ID' }));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(
+  cfg.priorityOptionP3,
+  'P3_OPTION_ID',
+  'configured priorityOptionP3 must survive loadConfig (not be dropped by the allow-list)'
+);
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');
