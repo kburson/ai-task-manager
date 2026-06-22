@@ -286,6 +286,11 @@ if (_isMain)
           await verbKind(ctx);
           break;
         }
+        case 'report': {
+          const { verbReport } = await import('./verbs/report.mjs');
+          await verbReport(ctx);
+          break;
+        }
         case 'commit-trace': {
           const { verbCommitTrace } = await import('./verbs/commit-trace.mjs');
           await verbCommitTrace(ctx);
