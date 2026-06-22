@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { discussBlockGuard, GUARD_ID } from '../../lib/discuss-block-guard.mjs';
-import { markDiscussed } from '../../lib/discuss-marker.mjs';
+import { markDiscussed, convergeDiscuss } from '../../lib/discuss-marker.mjs';
 import { runGuards } from '../../lib/guard-registry.mjs';
 import '../../lib/state-bootstrap.mjs';
 
@@ -49,6 +49,26 @@ test('discussBlockGuard: bare token alone on its line → refuse with context', 
   assert.match(r.reason, /\{discuss\}/);
 });
 
+// #486 — after convergence the visible token is gone but the durable
+// `aitm-discuss-requested` marker remains; the guard must STILL block, keyed on
+// `isDiscussPending`, so stripping the token at bind never disables the gate.
+test('discussBlockGuard: converged request-marker-only body → still refuse (#486)', async () => {
+  const converged = convergeDiscuss(`## Scope\n\nNeed direction\n\n${TOKEN}\n`, { ts: 'T' });
+  assert.ok(!converged.includes(TOKEN), 'token is stripped post-converge');
+  const r = await discussBlockGuard.run(ctx(converged));
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /aitm-discuss-requested marker present/);
+  assert.ok(Array.isArray(r.blockers) && r.blockers.length === 1);
+});
+
+// #486 — completing the discussion (request marker stripped + aitm-discussed
+// stamped) clears the gate.
+test('discussBlockGuard: aitm-discussed marker → ok (#486)', async () => {
+  const done = markDiscussed(convergeDiscuss(`x\n${TOKEN}`, { ts: 'T' }), { ts: 'T' });
+  const r = await discussBlockGuard.run(ctx(done));
+  assert.deepEqual(r, { ok: true });
+});
+
 test('discussBlockGuard: fail-open when ctx missing', async () => {
   assert.deepEqual(await discussBlockGuard.run(undefined), { ok: true });
 });
@@ -87,6 +107,14 @@ test('runGuards backlog→on-deck passes on an inline-only mention (#479)', asyn
   const res = await runGuards('backlog', 'on-deck', ctx(`body mentions ${TOKEN} inline`));
   const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
   assert.ok(!refusal, 'inline mention is not a marker; no refusal');
+});
+
+// #486 — a converged (token-stripped, marker-bearing) body still refuses.
+test('runGuards backlog→on-deck refuses on a converged request marker (#486)', async () => {
+  const converged = convergeDiscuss(`body\n${TOKEN}`, { ts: 'T' });
+  const res = await runGuards('backlog', 'on-deck', ctx(converged));
+  const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
+  assert.ok(refusal, 'request marker keeps the gate live after token convergence');
 });
 
 test('runGuards backlog→on-deck passes once token is stripped', async () => {

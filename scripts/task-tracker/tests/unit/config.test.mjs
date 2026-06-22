@@ -123,5 +123,15 @@ assert.throws(
   /integer/i
 );
 
+// Test 16 (#486): discussLabel default + project override
+writeFileSync(projectPath, JSON.stringify({}));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.discussLabel, 'Discuss', 'default discussLabel is "Discuss"');
+assert.equal(DEFAULTS.discussLabel, 'Discuss');
+setConfigValue('discussLabel', 'Needs Discussion', { projectPath, userPath });
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.discussLabel, 'Needs Discussion', 'project override wins');
+assert.equal(cfg._sources.discussLabel, 'project');
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

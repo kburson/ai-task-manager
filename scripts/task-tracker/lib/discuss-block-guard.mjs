@@ -20,13 +20,21 @@
 // full-auto.
 //
 // Resolution: `/task check "discussion complete"` calls `markDiscussed`, which
-// strips the token and stamps the non-invariant `aitm-discussed` marker. Once
-// the token is gone `hasDiscussMarker` is false and this guard passes.
+// strips the token AND the durable `aitm-discuss-requested` marker and stamps
+// the non-invariant `aitm-discussed` marker. Once the discussion is complete
+// `isDiscussPending` is false and this guard passes.
+//
+// #486 — the guard keys on `isDiscussPending`, NOT the raw `{discuss}` token.
+// `convergeDiscuss` (run at bind) strips the visible token but leaves the hidden
+// `aitm-discuss-requested` marker, so keying on the token alone would silently
+// disable this blocking gate the moment an issue was bound. `isDiscussPending`
+// survives convergence (token OR request marker, not-yet-discussed), keeping the
+// gate live across the token→marker transition.
 //
 // Context contract: { body?: string }. Fail-open when ctx or body is missing —
 // parity with sibling adapters; lets non-promote runGuards callers no-op.
 
-import { hasDiscussMarker } from './discuss-marker.mjs';
+import { hasDiscussMarker, isDiscussPending } from './discuss-marker.mjs';
 
 export const GUARD_ID = 'discuss-unresolved';
 
@@ -52,12 +60,16 @@ export const discussBlockGuard = {
   async run(ctx) {
     if (!ctx) return { ok: true };
     const body = typeof ctx.body === 'string' ? ctx.body : '';
-    if (!hasDiscussMarker(body)) return { ok: true };
+    if (!isDiscussPending(body)) return { ok: true };
 
     const context = collectContext(body);
+    // When the visible token has already converged to the hidden request marker
+    // there are no token lines to quote; fall back to a marker-present note.
     const contextLines = context.length
       ? context.map((l) => `    > ${l}`).join('\n')
-      : '    > (token present in body)';
+      : hasDiscussMarker(body)
+        ? '    > (token present in body)'
+        : '    > (aitm-discuss-requested marker present — discussion not yet completed)';
     const reason =
       'unresolved {discuss} directive — the author asked for a human discussion before this ' +
       'story is driven forward. Full-auto cannot bypass this. Discuss it, then run ' +

@@ -21,6 +21,14 @@ import { mutateIssueBody } from './issue-body-mutate.mjs';
 
 const DISCUSS_TOKEN = '{discuss}';
 const DISCUSSED_MARKER_RE = /^<!--\s*aitm-discussed(\s|-->)/;
+// #486 — hidden, durable "pending discussion" carrier. Distinct from
+// `aitm-discussed` (which records that the discussion is DONE): the two regexes
+// are disjoint because `aitm-discuss-requested` continues with `-requested`
+// where `aitm-discussed` continues with `ed`. Like `aitm-discussed`, this
+// marker is deliberately NOT in `body-invariants.mjs`, so `convergeDiscuss` and
+// `markDiscussed` may strip/stamp it freely without tripping `MarkerLossError`.
+export const DISCUSS_REQUEST_MARKER = 'discuss-requested';
+const DISCUSS_REQUEST_MARKER_RE = /^<!--\s*aitm-discuss-requested(\s|-->)/;
 
 // True iff some line of the body is a *bare* `{discuss}` marker — a line whose
 // trimmed content is exactly the token and nothing else. Detection is purely
@@ -34,19 +42,78 @@ export function hasDiscussMarker(body) {
     .some((line) => line.trim() === DISCUSS_TOKEN);
 }
 
-// Strip the bare line-alone `{discuss}` marker(s) and append an `aitm-discussed`
-// audit marker iff one is not already present. Only lines whose trimmed content
-// equals exactly the token are removed (matching `hasDiscussMarker`); inline /
-// prose / backticked mentions are left byte-for-byte intact. Idempotent: a
-// second call is a no-op.
+// True iff some line is a hidden `aitm-discuss-requested` marker (#486). This is
+// the durable, invisible mirror of the "Discuss" project label.
+export function hasDiscussRequest(body) {
+  return String(body || '')
+    .split('\n')
+    .some((line) => DISCUSS_REQUEST_MARKER_RE.test(line.trim()));
+}
+
+// True iff the discussion has already been completed (an `aitm-discussed` audit
+// marker is present). Used to short-circuit re-detection / re-convergence.
+export function hasDiscussedMarker(body) {
+  return String(body || '')
+    .split('\n')
+    .some((line) => DISCUSSED_MARKER_RE.test(line.trim()));
+}
+
+// #486 — the single detection predicate every touchpoint keys on. A discussion
+// is PENDING when it has not yet been completed AND at least one entry signal is
+// live: the visible `{discuss}` token OR the durable request marker. Surviving
+// token-convergence (which strips the token but leaves the marker) is the whole
+// point — the bind banner and `discussBlockGuard` both consult this so that
+// stripping the visible token never silently disables the #473 blocking gate.
+export function isDiscussPending(body) {
+  if (hasDiscussedMarker(body)) return false;
+  return hasDiscussMarker(body) || hasDiscussRequest(body);
+}
+
+// #486 — converge any entry affordance to the canonical resting state: hidden
+// `aitm-discuss-requested` marker present, visible `{discuss}` token stripped.
+// Pure and idempotent.
+//   - Already discussed (`aitm-discussed` present) → returned unchanged, so a
+//     completed issue never re-acquires a request marker.
+//   - No token and no request marker → unchanged (nothing to converge).
+//   - Otherwise → strip every bare token line AND every existing request marker,
+//     then append exactly one fresh request marker. Strip-all-then-append-one
+//     guarantees a single marker and a byte-stable fixed point on re-runs.
+export function convergeDiscuss(body, { ts } = {}) {
+  const src = String(body || '');
+  if (hasDiscussedMarker(src)) return src;
+  if (!hasDiscussMarker(src) && !hasDiscussRequest(src)) return src;
+  const stripped = src
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      if (t === DISCUSS_TOKEN) return false;
+      if (DISCUSS_REQUEST_MARKER_RE.test(t)) return false;
+      return true;
+    })
+    .join('\n');
+  const marker = serializeMarker(DISCUSS_REQUEST_MARKER, ts ? { ts } : {});
+  return `${stripped.replace(/\s+$/, '')}\n\n${marker}`;
+}
+
+// Strip the bare line-alone `{discuss}` marker(s) AND any hidden
+// `aitm-discuss-requested` request marker (#486), then append an
+// `aitm-discussed` audit marker iff one is not already present. Only lines whose
+// trimmed content equals exactly the token are removed (matching
+// `hasDiscussMarker`); inline / prose / backticked mentions are left
+// byte-for-byte intact. Idempotent: a second call is a no-op.
 export function markDiscussed(body, { ts } = {}) {
   const src = String(body || '');
-  // Drop only the line-alone marker(s); removing the whole line avoids leaving
-  // a stray blank line behind. Lines that merely contain the token inline are
-  // preserved untouched.
+  // Drop only the line-alone token marker(s) and the durable request marker;
+  // removing the whole line avoids leaving a stray blank line behind. Lines that
+  // merely contain the token inline are preserved untouched.
   let next = src
     .split('\n')
-    .filter((line) => line.trim() !== DISCUSS_TOKEN)
+    .filter((line) => {
+      const t = line.trim();
+      if (t === DISCUSS_TOKEN) return false;
+      if (DISCUSS_REQUEST_MARKER_RE.test(t)) return false;
+      return true;
+    })
     .join('\n');
 
   const alreadyStamped = next.split('\n').some((l) => DISCUSSED_MARKER_RE.test(l.trim()));

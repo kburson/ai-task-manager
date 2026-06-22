@@ -268,3 +268,39 @@ const TIMING_LOG_3_ROWS = [
   const drift = diffSchema(projectFields, fieldDefs);
   assert.equal(drift.hasDrift, false);
 })();
+
+// ---------- #486: discuss convergence in healIssue ----------
+
+(function convergeDiscussTokenBearing() {
+  const body = ['# Item', '', '## Scope', '', 'sparse', '', '{discuss}', ''].join('\n');
+  const r = healIssue({ body, timingCommentBody: null, fieldDefs });
+  assert.ok(r.action.includes('converge-discuss'), 'converge-discuss action recorded');
+  assert.ok(r.discussPending, 'discussPending true for a token-bearing body');
+  assert.ok(!/^\{discuss\}$/m.test(r.body), 'visible token stripped from healed body');
+  assert.match(r.body, /<!--\s*aitm-discuss-requested/, 'request marker stamped');
+  assert.ok(r.changedBody, 'body changed');
+})();
+
+(function convergeDiscussAlreadyDiscussed() {
+  const body = [
+    '# Item',
+    '',
+    '## Scope',
+    '',
+    'done',
+    '',
+    '<!-- aitm-discussed ts="2026-06-20T00:00:00Z" -->',
+    '',
+  ].join('\n');
+  const r = healIssue({ body, timingCommentBody: null, fieldDefs });
+  assert.ok(!r.action.includes('converge-discuss'), 'no converge action on already-discussed body');
+  assert.equal(r.discussPending, false, 'discussPending false once discussed');
+  assert.ok(!/aitm-discuss-requested/.test(r.body), 'no request marker added to a discussed body');
+})();
+
+(function convergeDiscussNoSignal() {
+  const body = ['# Item', '', '## Scope', '', 'plain body', ''].join('\n');
+  const r = healIssue({ body, timingCommentBody: null, fieldDefs });
+  assert.ok(!r.action.includes('converge-discuss'), 'no converge action without a signal');
+  assert.equal(r.discussPending, false, 'discussPending false without a signal');
+})();

@@ -159,9 +159,10 @@ export async function verbCheck(ctx) {
   }
 
   if (/^discussion complete$/i.test(label)) {
-    // #473 — resolve a `{discuss}` directive (#405). Strip the token and stamp
-    // the non-invariant `aitm-discussed` marker so `discussBlockGuard` passes
-    // and forward promotion resumes. Idempotent via markDiscussed.
+    // #473 — resolve a `{discuss}` directive (#405). Strip the token AND the
+    // durable `aitm-discuss-requested` marker (#486) and stamp the non-invariant
+    // `aitm-discussed` marker so `discussBlockGuard` passes and forward promotion
+    // resumes. Idempotent via markDiscussed.
     const { markDiscussed } = await import('../lib/discuss-marker.mjs');
     const { mutateIssueBody } = await import('../lib/issue-body-mutate.mjs');
     const ts = new Date().toISOString();
@@ -170,11 +171,25 @@ export async function verbCheck(ctx) {
       repo: cfg.repo,
       mutate: (base) => markDiscussed(base, { ts }),
     });
+    // #486 — the completed discussion is no longer pending, so remove the
+    // visible "Discuss" label to keep it a pure mirror of the marker state.
+    // Best-effort: a label failure must not abort the resolution write above.
+    try {
+      const { syncDiscussLabel, getDiscussLabel } = await import('../lib/discuss-label.mjs');
+      await syncDiscussLabel({
+        issueNumber: issueNum,
+        repo: cfg.repo,
+        label: getDiscussLabel(cfg),
+        present: false,
+      });
+    } catch {
+      /* label sync is advisory; the marker state is authoritative */
+    }
     if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Discussion already resolved on ${s.active}`);
     } else {
       console.log(
-        `[task-tracker] ✓ Marked discussion complete on ${s.active} at ${ts} (token stripped, aitm-discussed stamped)`
+        `[task-tracker] ✓ Marked discussion complete on ${s.active} at ${ts} (token stripped, aitm-discussed stamped, Discuss label removed)`
       );
     }
     return;

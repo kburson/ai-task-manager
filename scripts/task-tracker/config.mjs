@@ -87,6 +87,11 @@ export const DEFAULTS = {
   // the next event implies a pause. Used by per-session pause detection in a
   // later sub-issue. Integer (seconds).
   pauseThresholdSeconds: 30,
+  // #486 — name of the project label that visibly mirrors the hidden
+  // `aitm-discuss-requested` marker (pending pre-implementation discussion).
+  // Configurable so a project can rename the visible label without touching
+  // the durable marker convention.
+  discussLabel: 'Discuss',
 };
 
 export const TYPES = {
@@ -135,6 +140,7 @@ export const TYPES = {
   deadSessionMaxAgeMs: 'number',
   sessionRetentionDays: 'integer',
   pauseThresholdSeconds: 'integer',
+  discussLabel: 'string',
 };
 
 function defaultPaths() {

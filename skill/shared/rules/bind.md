@@ -33,25 +33,51 @@ The pickup directive enforces:
 - Per-AC verification with `/task check "<label>"`, never bulk-checking.
 - `aitm-verified-by` HTML comment markers on each AC.
 
-## `{discuss}` brainstorming trigger (#405)
+## `{discuss}` brainstorming trigger (#405, #486)
 
-If, on bind, the CLI prints a `DISCUSS REQUESTED — #N` banner (the issue body
-carries a visible `{discuss}` token and has not yet been discussed), run an
-open-ended brainstorming dialog with the user **before** any deep-dive or refine
-step. The token marks a sparse, user-filed request that needs to be fleshed into
-a refine-ready definition.
+If, on bind, the CLI prints a `DISCUSS REQUESTED — #N` banner, run an open-ended
+brainstorming dialog with the user **before** any deep-dive or refine step. The
+request marks a sparse, user-filed item that needs to be fleshed into a
+refine-ready definition.
+
+**Carrier model (#486).** The "needs pre-implementation discussion" signal has
+two carriers that bind keeps in sync:
+
+- a hidden, durable body marker `aitm-discuss-requested` — the authoritative
+  state that travels with the issue body, and
+- a visible project label (default **Discuss**, configurable via
+  `task-tracker.json#discussLabel`) — its mirror on boards and tables.
+
+There are three entry affordances, all converging to the same resting state on
+first reference (bind, or a `heal-backlog` sweep): typing the visible `{discuss}`
+token into the body, clicking the **Discuss** label, or AITM stamping at
+creation. On bind, `reconcileDiscuss` **converges** the body — strips the visible
+`{discuss}` token and ensures exactly one hidden `aitm-discuss-requested` marker
+— and syncs the label to the pending state, in one pass. The banner and the
+blocking promotion guard (#473) both key on `isDiscussPending` (token **or**
+request marker, not-yet-discussed), so stripping the visible token never silently
+disables the gate.
 
 1. Brainstorm: clarify purpose, constraints, and success criteria one question at
    a time (see the brainstorming skill if available).
 2. On resolution, call `finalizeDiscussion({ issueNumber, repo, scope, acs })`
    from `scripts/task-tracker/lib/discuss-marker.mjs`. It rewrites `## Scope`
    (and optional preliminary `## Acceptance Criteria` from `acs`), strips the
-   `{discuss}` token, and stamps a hidden `aitm-discussed` audit marker so the
-   dialog does not re-fire — all in one `mutateIssueBody` transaction.
+   `{discuss}` token **and** the `aitm-discuss-requested` marker, and stamps a
+   hidden `aitm-discussed` audit marker so the dialog does not re-fire — all in
+   one `mutateIssueBody` transaction. Equivalently, `/task check "discussion
+complete"` resolves it and additionally removes the visible label.
 3. Then proceed to deep-dive / refine as normal.
 
-Detection keys on the visible token, not the audit marker: deliberately
-re-adding `{discuss}` after a prior discussion re-triggers the dialog.
+Re-adding `{discuss}` after a prior discussion does **not** re-trigger: once
+`aitm-discussed` is stamped, `isDiscussPending` short-circuits to false and
+convergence is a no-op (completed issues never re-acquire a request marker).
+
+**v1 limitation — no label-based cancel.** The label is a pure mirror of the
+marker. Removing the **Discuss** label by hand does not cancel a pending request;
+the next bind/sweep re-adds it from the surviving `aitm-discuss-requested`
+marker. Cancellation is only via completing the discussion. Label-based cancel is
+an explicit v1 non-goal.
 
 ## Legacy state recovery
 

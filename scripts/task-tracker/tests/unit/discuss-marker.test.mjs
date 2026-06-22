@@ -8,7 +8,15 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { hasDiscussMarker, markDiscussed, finalizeDiscussion } from '../../lib/discuss-marker.mjs';
+import {
+  hasDiscussMarker,
+  markDiscussed,
+  finalizeDiscussion,
+  hasDiscussRequest,
+  hasDiscussedMarker,
+  isDiscussPending,
+  convergeDiscuss,
+} from '../../lib/discuss-marker.mjs';
 import { findLostMarkers } from '../../lib/body-invariants.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -202,6 +210,113 @@ test('finalizeDiscussion: rejects empty scope', () =>
     /scope` is required/,
     'empty scope rejected'
   ));
+
+// --- #486: durable request marker + convergence -----------------------------
+const REQUEST_MARKER = '<!-- aitm-discuss-requested -->';
+
+test('hasDiscussRequest: detects the durable request marker; disjoint from aitm-discussed', () => {
+  assert.equal(hasDiscussRequest(`x\n${REQUEST_MARKER}\n`), true, 'bare request marker → true');
+  assert.equal(
+    hasDiscussRequest('<!-- aitm-discuss-requested ts="T" -->'),
+    true,
+    'request marker with ts → true'
+  );
+  assert.equal(hasDiscussRequest('<!-- aitm-discussed -->'), false, 'discussed is NOT a request');
+  assert.equal(hasDiscussRequest('no markers'), false, 'absent → false');
+});
+
+test('hasDiscussedMarker: detects completion; disjoint from request', () => {
+  assert.equal(hasDiscussedMarker('<!-- aitm-discussed ts="T" -->'), true, 'discussed → true');
+  assert.equal(hasDiscussedMarker(REQUEST_MARKER), false, 'request marker is NOT discussed');
+  assert.equal(hasDiscussedMarker(''), false, 'empty → false');
+});
+
+test('isDiscussPending: token OR request marker while not yet discussed', () => {
+  assert.equal(isDiscussPending('idea\n{discuss}\n'), true, 'token-only → pending');
+  assert.equal(isDiscussPending(`idea\n${REQUEST_MARKER}\n`), true, 'marker-only → pending');
+  assert.equal(isDiscussPending(`{discuss}\n${REQUEST_MARKER}`), true, 'both → pending');
+  assert.equal(
+    isDiscussPending(`{discuss}\n${REQUEST_MARKER}\n<!-- aitm-discussed -->`),
+    false,
+    'discussed short-circuits even with token + marker present'
+  );
+  assert.equal(isDiscussPending('plain body'), false, 'no signal → not pending');
+});
+
+test('convergeDiscuss: strips token, ensures exactly one request marker', () => {
+  const out = convergeDiscuss('idea\n\n{discuss}\n', { ts: 'T' });
+  assert.ok(!hasDiscussMarker(out), 'visible token stripped');
+  assert.ok(out.includes('<!-- aitm-discuss-requested ts="T" -->'), 'request marker stamped');
+  assert.ok(out.includes('idea'), 'surrounding prose preserved');
+  assert.equal(
+    (out.match(/aitm-discuss-requested/g) || []).length,
+    1,
+    'exactly one request marker'
+  );
+});
+
+test('convergeDiscuss: idempotent — byte-stable fixed point on re-run', () => {
+  const once = convergeDiscuss('idea\n{discuss}', { ts: 'T' });
+  const twice = convergeDiscuss(once, { ts: 'T' });
+  assert.equal(twice, once, 'second convergence is a no-op');
+  assert.equal((twice.match(/aitm-discuss-requested/g) || []).length, 1, 'still one marker');
+});
+
+test('convergeDiscuss: collapses duplicate request markers to one', () => {
+  const dup = `idea\n${REQUEST_MARKER}\n${REQUEST_MARKER}\n{discuss}\n`;
+  const out = convergeDiscuss(dup, { ts: 'T' });
+  assert.equal((out.match(/aitm-discuss-requested/g) || []).length, 1, 'collapsed to one marker');
+  assert.ok(!hasDiscussMarker(out), 'token stripped');
+});
+
+test('convergeDiscuss: marker-only body keeps the marker, stays pending', () => {
+  const out = convergeDiscuss(`idea\n${REQUEST_MARKER}\n`, { ts: 'T' });
+  assert.ok(hasDiscussRequest(out), 'request marker preserved');
+  assert.ok(isDiscussPending(out), 'still pending');
+});
+
+test('convergeDiscuss: already-discussed body is returned unchanged', () => {
+  const done = `idea\n{discuss}\n<!-- aitm-discussed ts="T" -->`;
+  assert.equal(convergeDiscuss(done, { ts: 'T2' }), done, 'completed issue never re-converges');
+});
+
+test('convergeDiscuss: no signal → unchanged', () => {
+  const plain = '## Scope\n\nplain body';
+  assert.equal(convergeDiscuss(plain, { ts: 'T' }), plain, 'nothing to converge');
+});
+
+test('markDiscussed: also strips the durable request marker on completion', () => {
+  const src = `idea\n{discuss}\n${REQUEST_MARKER}\n`;
+  const out = markDiscussed(src, { ts: 'T' });
+  assert.ok(!hasDiscussMarker(out), 'token stripped');
+  assert.ok(!hasDiscussRequest(out), 'request marker stripped');
+  assert.ok(hasDiscussedMarker(out), 'aitm-discussed stamped');
+  assert.equal(isDiscussPending(out), false, 'no longer pending after completion');
+});
+
+test('markDiscussed: converge → complete round-trip strips both carriers', () => {
+  const converged = convergeDiscuss('idea\n{discuss}', { ts: 'T' });
+  assert.ok(hasDiscussRequest(converged) && !hasDiscussMarker(converged), 'converged state');
+  const done = markDiscussed(converged, { ts: 'T' });
+  assert.ok(!hasDiscussRequest(done) && !hasDiscussMarker(done), 'both carriers gone');
+  assert.ok(hasDiscussedMarker(done), 'discussed stamped');
+});
+
+test('convergeDiscuss: preserves invariant markers', () => {
+  const base = [
+    '<!-- aitm-last-known-state state="backlog" ts="T" -->',
+    '',
+    '## Scope',
+    '',
+    'sparse',
+    '',
+    '{discuss}',
+    '',
+    '<!-- aitm-fields: size=M -->',
+  ].join('\n');
+  const out = convergeDiscuss(base, { ts: 'T' });
+  assert.deepEqual(findLostMarkers(base, out), [], 'no invariant markers lost');
+});
 
 // --- template parity --------------------------------------------------------
 test('template parity: user-request.yml hardcodes the token; task/bug do not', () => {

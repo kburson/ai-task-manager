@@ -127,25 +127,21 @@ export async function verbSwitch(ctx, target) {
   await safePostTiming(target, row);
   console.log(`Active: ${target}.${previousNote}`);
 
-  // #405 — `{discuss}` banner. If the bound issue's body carries the visible
-  // `{discuss}` token, surface a non-blocking advisory directing the agent to
-  // run a brainstorming dialog before deep-dive/refine (see rules/bind.md).
-  // Detection keys on the live token, not the `aitm-discussed` audit marker, so
-  // a deliberately re-added token re-fires. Never blocks the bind.
+  // #486 — discuss reconcile + banner. On first reference (bind), converge any
+  // entry affordance to the canonical resting state — strip the visible
+  // `{discuss}` token, ensure exactly one hidden `aitm-discuss-requested`
+  // marker — and sync the configured "Discuss" label to the pending state, in a
+  // single pass (`reconcileDiscuss`). Then surface a non-blocking advisory
+  // directing the agent to run a brainstorming dialog before deep-dive/refine
+  // (see rules/bind.md). The banner keys on `isDiscussPending` of the converged
+  // body, which survives token-strip via the durable marker, so the signal is
+  // never lost. Advisory-only: never blocks the bind.
   if (cfg?.repo) {
     try {
-      const { gql, splitRepo } = await import('../../gh/lib/github-projects.mjs');
-      const { hasDiscussMarker } = await import('../lib/discuss-marker.mjs');
-      const { owner, repoName } = splitRepo(cfg.repo);
+      const { reconcileDiscuss } = await import('../lib/discuss-label.mjs');
       const issueNumber = Number(target.replace(/^#/, ''));
-      const data = await gql(
-        `query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
-        }`,
-        { owner, repo: repoName, issue: issueNumber }
-      );
-      const body = data?.repository?.issue?.body ?? '';
-      if (hasDiscussMarker(body)) {
+      const { pending } = await reconcileDiscuss({ issueNumber, repo: cfg.repo, cfg });
+      if (pending) {
         console.log(
           `\nDISCUSS REQUESTED — ${target}\n` +
             `   This issue requests a brainstorming session before refine.\n` +
@@ -153,7 +149,7 @@ export async function verbSwitch(ctx, target) {
         );
       }
     } catch {
-      /* advisory only — never block the bind on a banner-fetch failure */
+      /* advisory only — never block the bind on a reconcile/banner failure */
     }
   }
 

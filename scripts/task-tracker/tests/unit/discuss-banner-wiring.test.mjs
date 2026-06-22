@@ -18,24 +18,25 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..', '..', '..');
 
-// (a) switch.mjs wiring: banner string + hasDiscussMarker gate.
+// (a) switch.mjs wiring: #486 — bind reconciles (converge body + sync label) via
+// reconcileDiscuss, then gates the banner on the returned `pending` state.
 const switchSrc = readFileSync(
   path.join(repoRoot, 'scripts/task-tracker/verbs/switch.mjs'),
   'utf8'
 );
 assert.ok(
-  /hasDiscussMarker/.test(switchSrc),
-  'switch.mjs must gate the banner on hasDiscussMarker'
+  /reconcileDiscuss/.test(switchSrc),
+  'switch.mjs must reconcile discuss state at bind via reconcileDiscuss'
 );
 assert.ok(
   /DISCUSS REQUESTED — \$\{target\}/.test(switchSrc),
   'switch.mjs must emit a `DISCUSS REQUESTED — #N` banner interpolating the bound issue'
 );
-const gateIdx = switchSrc.indexOf('hasDiscussMarker(body)');
+const gateIdx = switchSrc.indexOf('if (pending)');
 const bannerIdx = switchSrc.indexOf('DISCUSS REQUESTED');
 assert.ok(
   gateIdx >= 0 && bannerIdx >= 0 && gateIdx < bannerIdx,
-  'the DISCUSS REQUESTED banner must be emitted inside the hasDiscussMarker(body) guard'
+  'the DISCUSS REQUESTED banner must be emitted inside the `if (pending)` guard keyed on reconcileDiscuss'
 );
 
 // (b) bind.md directive: brainstorm-before-refine + finalizeDiscussion.

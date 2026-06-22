@@ -30,6 +30,8 @@ import {
   insertDeepDiveCompleteMarker,
 } from './lib/markers.mjs';
 import { insertDeepDivePostedMarker, readDeepDiveSignals } from './lib/deep-dive.mjs';
+import { convergeDiscuss, isDiscussPending } from './lib/discuss-marker.mjs';
+import { getDiscussLabel, syncDiscussLabel } from './lib/discuss-label.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
@@ -67,7 +69,14 @@ export function healIssue({
   thresholdMin = 5,
   deepDiveBackfillTs = null,
 }) {
-  const result = { changedBody: false, deltas: [], skipped: false, skipReason: null, action: [] };
+  const result = {
+    changedBody: false,
+    deltas: [],
+    skipped: false,
+    skipReason: null,
+    action: [],
+    discussPending: false,
+  };
 
   // 1. Plan-approved migration
   const migrated = migratePlanApprovedBody(body, { now });
@@ -107,6 +116,18 @@ export function healIssue({
     result.action.push('strip-vestigial-ac');
     workingBody = afterStrip;
   }
+
+  // 1c. #486 — converge any discuss entry affordance to the canonical resting
+  // state: strip the visible `{discuss}` token, ensure exactly one hidden
+  // `aitm-discuss-requested` marker. Pure + idempotent; already-discussed bodies
+  // pass through untouched. `discussPending` is surfaced so the apply loop can
+  // reconcile the visible "Discuss" label to match.
+  const afterConverge = convergeDiscuss(workingBody, { ts: now() });
+  if (afterConverge !== workingBody) {
+    result.action.push('converge-discuss');
+    workingBody = afterConverge;
+  }
+  result.discussPending = isDiscussPending(workingBody);
 
   // 2. Parse existing fields-DB (if any)
   const parsed = parseIssueFieldDb(workingBody);
@@ -570,6 +591,18 @@ async function main() {
         if (heal.changedBody) {
           await writeIssueBody(n, cfg.repo, heal.body, projectDir);
           row.encodingChanged = true;
+        }
+        // #486 — sync the visible "Discuss" label to the converged pending
+        // state. Best-effort: a label failure must not abort the sweep.
+        try {
+          await syncDiscussLabel({
+            issueNumber: n,
+            repo: cfg.repo,
+            label: getDiscussLabel(cfg),
+            present: heal.discussPending,
+          });
+        } catch {
+          /* label sync is advisory; the marker state is authoritative */
         }
         if (heal.deltas.length && !priorHeal) {
           await postHealComment(
