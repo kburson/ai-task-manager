@@ -33,6 +33,11 @@ function parseRow(row) {
 // #442 — verbNew (with TT_FAKE_NEW_ISSUE) registers a fleet entry; git-isolate
 // the sandbox so registerTask cannot escape into the live registry.
 const dir = mkdtempProjectIsolated('aitm-aged-bucket-');
+// word-counter.mjs resolves its state dir from AI_TASK_MANAGER_PROJECT_DIR (not
+// ctx.projectDir). Without this, verbNew's word-count marker write falls back to
+// process.cwd() and pollutes the live worktree's session-tracking marker with
+// the fake #999 issue, breaking every later state-reading test in the run.
+process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
 const statePath = path.join(dir, 'state.json');
 
 // Bucket opened 10 minutes ago — well beyond the 60s freshness window.

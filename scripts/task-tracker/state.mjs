@@ -89,9 +89,23 @@ function migrateLegacyFields(parsed) {
 export function projectDirForState(statePath) {
   const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
   const norm = abs.split(path.sep).join('/');
-  for (const marker of ['/.ai-task-manager/', '/.claude/']) {
-    const idx = norm.lastIndexOf(marker);
-    if (idx !== -1) return abs.slice(0, idx);
+  // `.ai-task-manager/` is always a real state container — anchor on the
+  // rightmost one (worktree-local wins over main, per #332).
+  const aimIdx = norm.lastIndexOf('/.ai-task-manager/');
+  if (aimIdx !== -1) return abs.slice(0, aimIdx);
+  // `.claude/` is trickier: `<main>/.claude/worktrees/<wt>/…` uses `.claude`
+  // as a worktree HOST, not a state container. A state file living deeper
+  // under such a worktree (e.g. a test sandbox at `<wt>/.tmp/test/…/state.json`)
+  // must NOT mis-anchor to `<main>`. Walk `.claude/` matches right-to-left and
+  // skip any whose next segment is `worktrees/` (the host marker); the first
+  // real container wins. Legacy inner state (`…/<wt>/.claude/state.json`) is
+  // followed by the state file, so it still anchors correctly. (#486 follow-up)
+  for (let from = norm.length; ; ) {
+    const idx = norm.lastIndexOf('/.claude/', from);
+    if (idx === -1) break;
+    const after = norm.slice(idx + '/.claude/'.length);
+    if (!after.startsWith('worktrees/')) return abs.slice(0, idx);
+    from = idx - 1;
   }
   return path.dirname(abs);
 }
