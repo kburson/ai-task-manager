@@ -17,7 +17,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
-import { isAuditKind, hasDeliverableMarker, isAcWaived } from './issue-kind.mjs';
+import { isNoCommitKind, hasDeliverableMarker, isAcWaived } from './issue-kind.mjs';
 
 const pexec = promisify(execFile);
 
@@ -217,11 +217,12 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   const dirtyFiles = deps.dirtyFiles || defaultDirtyFiles;
 
   const blockers = [];
-  // #494 — audit/research lane. An audit-kind issue (`aitm-issue-kind kind=…`)
-  // swaps the commit-trail requirement for a deliverable-evidence marker and
-  // permits analytical ACs to be audited-waived. Code-kind issues (the default)
-  // are unaffected: the branch below only diverges when `audit` is true.
-  const audit = isAuditKind(body);
+  // #494, #500 — no-commit deliverable lane. A no-commit-kind issue
+  // (`aitm-issue-kind kind=…`, one of audit/research/spike/epic) swaps the
+  // commit-trail requirement for a deliverable-evidence marker and permits ACs
+  // to be waived. Code-kind issues (the default) are unaffected: the branch
+  // below only diverges when `audit` is true.
+  const audit = isNoCommitKind(body);
 
   const acs = parseAcceptanceCriteria(body);
   if (acs === null) {

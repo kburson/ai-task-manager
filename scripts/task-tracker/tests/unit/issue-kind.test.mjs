@@ -9,10 +9,12 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_KIND,
   AUDIT_KINDS,
+  NO_COMMIT_KINDS,
   VALID_KINDS,
   normalizeKind,
   parseIssueKind,
   isAuditKind,
+  isNoCommitKind,
   hasDeliverableMarker,
   isAcWaived,
   setIssueKindMarker,
@@ -32,26 +34,46 @@ describe('normalizeKind', () => {
   });
 });
 
-describe('parseIssueKind / isAuditKind', () => {
+describe('parseIssueKind / isNoCommitKind', () => {
   it('returns the default kind when no marker present', () => {
     assert.equal(parseIssueKind('## Body\n\nno marker'), DEFAULT_KIND);
-    assert.equal(isAuditKind('## Body\n\nno marker'), false);
+    assert.equal(isNoCommitKind('## Body\n\nno marker'), false);
   });
   it('reads a quoted-attribute marker', () => {
     const body = 'top\n<!-- aitm-issue-kind kind="research" -->\nbottom';
     assert.equal(parseIssueKind(body), 'research');
-    assert.equal(isAuditKind(body), true);
+    assert.equal(isNoCommitKind(body), true);
   });
-  it('classifies every audit kind as audit-lane and code as not', () => {
-    for (const k of AUDIT_KINDS) {
-      assert.equal(isAuditKind(`<!-- aitm-issue-kind kind="${k}" -->`), true);
+  it('classifies every no-commit kind as no-commit-lane and code as not', () => {
+    for (const k of NO_COMMIT_KINDS) {
+      assert.equal(isNoCommitKind(`<!-- aitm-issue-kind kind="${k}" -->`), true);
     }
-    assert.equal(isAuditKind('<!-- aitm-issue-kind kind="code" -->'), false);
+    assert.equal(isNoCommitKind('<!-- aitm-issue-kind kind="code" -->'), false);
   });
   it('treats an unknown marker value as the default kind', () => {
     const body = '<!-- aitm-issue-kind kind="bogus" -->';
     assert.equal(parseIssueKind(body), DEFAULT_KIND);
-    assert.equal(isAuditKind(body), false);
+    assert.equal(isNoCommitKind(body), false);
+  });
+});
+
+describe('#500 — epic joins the no-commit lane', () => {
+  it('epic is a valid kind', () => {
+    assert.equal(normalizeKind('EPIC'), 'epic');
+    assert.ok(VALID_KINDS.has('epic'));
+    assert.ok(NO_COMMIT_KINDS.has('epic'));
+  });
+  it('an epic-marked body routes to the no-commit lane', () => {
+    const body = '<!-- aitm-issue-kind kind="epic" -->';
+    assert.equal(parseIssueKind(body), 'epic');
+    assert.equal(isNoCommitKind(body), true);
+  });
+  it('the deprecated isAuditKind alias still reports epic as true', () => {
+    assert.equal(isAuditKind('<!-- aitm-issue-kind kind="epic" -->'), true);
+  });
+  it('AUDIT_KINDS is the same frozen set as NO_COMMIT_KINDS (back-compat alias)', () => {
+    assert.equal(AUDIT_KINDS, NO_COMMIT_KINDS);
+    assert.ok(AUDIT_KINDS.has('epic'));
   });
 });
 

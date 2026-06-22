@@ -143,6 +143,44 @@ test('contrast: a code-kind no-commit body IS refused at develop→test', async 
   );
 });
 
+// #500 — an epic body (no commits, delivered by children) travels the same
+// no-commit lane and reaches Done with no lane refusal.
+const EPIC_BODY = `# EPIC: coordination issue
+
+<!-- aitm-issue-kind kind="epic" -->
+<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
+<!-- aitm-dod-verified sha="abc1234" ts="2026-06-22T00:00:00Z" -->
+
+## Acceptance Criteria
+
+- [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
+- [x] Channel reachable end-to-end <!-- aitm-ac-waived by="epic-rollup" -->
+`;
+
+test('#500 epic body clears develop→test with no no-commit-lane refusal', async () => {
+  const r = await runGuards('develop', 'test', {
+    fromState: 'develop',
+    toState: 'test',
+    cfg,
+    issueNumber: 500,
+    body: EPIC_BODY,
+    deps: DEPS,
+  });
+  assert.equal(r.ok, true, `unexpected refusals: ${JSON.stringify(r.refusals)}`);
+});
+
+test('#500 epic body clears test→review with no no-commit-lane refusal', async () => {
+  const r = await runGuards('test', 'review', {
+    fromState: 'test',
+    toState: 'review',
+    cfg,
+    issueNumber: 500,
+    body: EPIC_BODY,
+    deps: DEPS,
+  });
+  assert.equal(r.ok, true, `unexpected refusals: ${JSON.stringify(r.refusals)}`);
+});
+
 // Guard against a future edit that drops a lane guard from the registry.
 test('registry has the lane exit guards wired', () => {
   const devIds = GUARDS.develop.exit.map((g) => g.id);

@@ -1,10 +1,12 @@
-// #494 — `/task kind [<N>] <kind>` sets (or clears) the audit-lane issue-kind
-// marker on an existing issue. With one positional argument the kind is applied
-// to the active (bound) issue; with two, the first is the target issue number.
+// #494, #500 — `/task kind [<N>] <kind>` sets (or clears) the no-commit-lane
+// issue-kind marker on an existing issue. With one positional argument the kind
+// is applied to the active (bound) issue; with two, the first is the target
+// issue number.
 //
 // Valid kinds: `code` (default — REMOVES the marker, since code needs none),
-// `audit`, `research`, `spike`. Audit-lane kinds re-route the develop→test gate
-// onto the deliverable-evidence path (see lib/issue-kind.mjs + code-complete-gate).
+// `audit`, `research`, `spike`, `epic`. No-commit-lane kinds re-route the
+// develop→test gate onto the deliverable-evidence path (see lib/issue-kind.mjs +
+// code-complete-gate).
 //
 // Body write flows through `mutateIssueBody` so the live body is fetched in the
 // same transaction; the marker upsert is idempotent.

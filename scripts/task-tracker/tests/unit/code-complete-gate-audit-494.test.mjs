@@ -130,6 +130,38 @@ test('AC4 REGRESSION: code-kind body with NO commit trail is still refused', asy
   );
 });
 
+test('#500 epic-kind: deliverable + waived ACs ⇒ ok, no trail fetch', async () => {
+  // An epic is delivered by its children; it has no commits of its own. The
+  // no-commit lane must accept it on posted-deliverable evidence alone.
+  const body = `<!-- aitm-issue-kind kind="epic" -->
+<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
+
+## Acceptance Criteria
+
+- [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
+- [x] Channel reachable end-to-end <!-- aitm-ac-waived by="epic-rollup" -->
+`;
+  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  assert.equal(r.ok, true, `blockers: ${r.blockers.join(' | ')}`);
+  assert.deepEqual(r.blockers, []);
+  assert.deepEqual(r.shas, []);
+});
+
+test('#500 epic-kind: MISSING deliverable ⇒ blocked on deliverable-missing', async () => {
+  const body = `<!-- aitm-issue-kind kind="epic" -->
+
+## Acceptance Criteria
+
+- [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
+`;
+  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.some((b) => b.startsWith('code-complete-deliverable-missing')),
+    `expected deliverable-missing, got: ${r.blockers.join(' | ')}`
+  );
+});
+
 test('code-kind regression: properly verified AC + valid trail still passes', async () => {
   const body = `## Acceptance Criteria
 

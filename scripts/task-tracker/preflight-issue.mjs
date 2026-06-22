@@ -323,9 +323,9 @@ function emitShape(args, dodPath, root) {
         ? finalBody + vcSection
         : finalBody.slice(0, idx) + vcSection + finalBody.slice(idx);
   }
-  // #494 — `--kind <audit|research|spike>` stamps the issue-kind marker at
-  // creation, routing the new issue onto the deliverable-evidence lane. `code`
-  // (the default) leaves the body unmarked.
+  // #494, #500 — `--kind <audit|research|spike|epic>` stamps the issue-kind
+  // marker at creation, routing the new issue onto the deliverable-evidence
+  // lane. `code` (the default) leaves the body unmarked.
   if (typeof args.kind === 'string') {
     let kind;
     try {

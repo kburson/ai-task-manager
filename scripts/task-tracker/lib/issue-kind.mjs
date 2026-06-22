@@ -1,25 +1,34 @@
-// Issue-kind classification + audit/research lane primitives (#494).
+// Issue-kind classification + no-commit deliverable-lane primitives (#494, #500).
 //
 // Most issues are `code`: their deliverable is committed source, and the
 // develop→test gate (`gateCodeComplete`) hard-requires a `### 🔗 Commits`
-// trail plus per-AC `aitm-verified-by` evidence. Analysis / research / audit /
-// spike issues produce a comment, document, or decision instead of source.
-// They are marked audit-kind via `<!-- aitm-issue-kind kind="audit" -->` and
-// travel a parallel lane: the commit-trail requirement is replaced by an
-// `aitm-deliverable-posted` evidence marker, and an analytical AC may be
-// audited-waived via an `aitm-ac-waived` marker in place of `aitm-verified-by`.
+// trail plus per-AC `aitm-verified-by` evidence. Some issues produce an
+// artifact tracked in the issue itself rather than in source: analysis /
+// research / audit / spike work yields a comment, document, or decision, and a
+// coordination `epic` is delivered by its children's commits (its own
+// acceptance is rollup-by-inspection, with no commits of its own). These are
+// the NO-COMMIT kinds. They are marked via `<!-- aitm-issue-kind kind="…" -->`
+// and travel a parallel lane: the commit-trail requirement is replaced by an
+// `aitm-deliverable-posted` evidence marker, and an AC may be waived via an
+// `aitm-ac-waived` marker in place of `aitm-verified-by`.
 //
 // This module is PURE (no I/O, no body surgery beyond string transforms) so the
 // gate and guard layers can branch on kind without taking a dependency on gh.
 //
-// Non-goal: code-kind issues are NOT loosened — the audit branch only activates
-// on an explicit `aitm-issue-kind` marker; absence means `code`.
+// Non-goal: code-kind issues are NOT loosened — the no-commit branch only
+// activates on an explicit `aitm-issue-kind` marker; absence means `code`.
 
 import { serializeMarker } from './marker-grammar.mjs';
 
 export const DEFAULT_KIND = 'code';
-export const AUDIT_KINDS = Object.freeze(new Set(['audit', 'research', 'spike']));
-export const VALID_KINDS = Object.freeze(new Set([DEFAULT_KIND, ...AUDIT_KINDS]));
+// #500 — the no-commit deliverable lane. `epic` joins the original #494 trio so
+// a coordination epic clears develop→test on posted-deliverable evidence rather
+// than a source commit trail it will never have.
+export const NO_COMMIT_KINDS = Object.freeze(new Set(['audit', 'research', 'spike', 'epic']));
+// Deprecated #494 alias retained for back-compat (tests, any external import).
+// New code should read `NO_COMMIT_KINDS` / `isNoCommitKind`.
+export const AUDIT_KINDS = NO_COMMIT_KINDS;
+export const VALID_KINDS = Object.freeze(new Set([DEFAULT_KIND, ...NO_COMMIT_KINDS]));
 
 // Quoted-attribute grammar, mirroring `aitm-commits` (#381). Case-insensitive
 // on the comment delimiters; the kind value itself is normalized to lowercase.
@@ -52,9 +61,18 @@ export function parseIssueKind(body) {
   return VALID_KINDS.has(kind) ? kind : DEFAULT_KIND;
 }
 
-/** True when the body is marked one of the audit-lane kinds. */
+/** True when the body is marked one of the no-commit deliverable-lane kinds. */
+export function isNoCommitKind(body) {
+  return NO_COMMIT_KINDS.has(parseIssueKind(body));
+}
+
+/**
+ * Deprecated #494 alias for {@link isNoCommitKind}. Retained for back-compat;
+ * the predicate is identical now that `epic` shares the lane. New code should
+ * call `isNoCommitKind`.
+ */
 export function isAuditKind(body) {
-  return AUDIT_KINDS.has(parseIssueKind(body));
+  return isNoCommitKind(body);
 }
 
 /** True when the body carries an `aitm-deliverable-posted` evidence marker. */
