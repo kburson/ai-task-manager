@@ -4,8 +4,8 @@
 //
 // Verifies that the verb-level "starting review" row is NOT posted before
 // runMoveState — i.e., flushActiveToGH is called with { computeOnly: true }
-// so the row is deferred until after the board move emits test:done +
-// review:waiting.
+// so the row is deferred until after the board move emits test:passed +
+// review:started.
 //
 // Full ordering verification (runMoveState before safePostTiming) requires
 // the E2E suite because runReviewPreflight and runGuards use dynamic import()

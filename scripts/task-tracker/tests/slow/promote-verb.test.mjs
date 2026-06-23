@@ -691,7 +691,8 @@ test('promote: alias=test exit non-zero, board at target, NO aitm-dod-verified �
 
 test('promote: delegate non-zero AND board drifted to non-target → transition-failed (#175)', async () => {
   // Drifted to an intermediate / unrelated state (not target). Existing
-  // transition-failed behavior preserved — drift-reconcile audit row only.
+  // transition-failed behavior preserved — #516 demotes the reconcile to a
+  // body audit marker (`aitm-reconciled`) instead of a ⏱ Timing Log row.
   const { deps, calls } = makeDeps({
     body: bodyWithState('develop'),
     live: 'develop',
@@ -701,9 +702,10 @@ test('promote: delegate non-zero AND board drifted to non-target → transition-
   const r = await runPromote({ issueNumber: 1753, cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.reconciledTo, 'review');
-  assert.equal(calls.writes.length, 0);
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /drift-reconcile/);
+  assert.equal(calls.writes.length, 1);
+  assert.match(calls.writes[0], /aitm-reconciled/);
+  assert.match(calls.writes[0], /develop → review/);
+  assert.equal(calls.timings.length, 0);
 });
 
 test('promote: drift-reconcile is a no-op when live state matches recorded after failure', async () => {

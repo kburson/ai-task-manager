@@ -10,7 +10,9 @@ export async function verbPause(ctx) {
     return;
   }
   const reason = rest.join(' ').trim() || undefined;
-  const { deltaMin, deltaWallMin, deltaWords, ts } = await flushActiveToGH(s, 'pause', reason);
+  // #516 — uniform vocabulary: the pause timing row is `paused` (past tense).
+  // `timing-rollup.computeReviewMin` accepts both `paused` and legacy `pause`.
+  const { deltaMin, deltaWallMin, deltaWords, ts } = await flushActiveToGH(s, 'paused', reason);
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   saveState(
     {

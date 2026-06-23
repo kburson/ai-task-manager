@@ -24,20 +24,13 @@ import { promisify } from 'node:util';
 import { FORWARD, STATES, normalizeStateSlug } from '../state-machine.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { getProjectDir } from '../paths.mjs';
-import { durableWordMarker } from '../state.mjs';
-import {
-  readLastKnownState,
-  writeLastKnownState,
-  buildRow,
-  postTimingEvent,
-  readTimingCommentBody,
-} from '../gh-timing-comment.mjs';
+import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
-import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
+import { appendAuditMarker } from '../lib/markers.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
@@ -205,10 +198,6 @@ function defaultRunMoveState({ issueNumber, target }) {
   });
 }
 
-async function defaultPostTimingRow({ issueNumber, repo, row }) {
-  await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
-}
-
 // `defaultFetchParentIssue` is imported from `../lib/fetch-parent-issue.mjs`
 // (top of file). Extracted so guard adapters share the same default deps.
 
@@ -232,7 +221,6 @@ export async function runPromote({
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
-  const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
 
   const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);
@@ -442,26 +430,25 @@ export async function runPromote({
       // Mid-move drift: board moved past `recorded` but not to `target`.
       // move-state.mjs centrally stamps markers on each successful Status
       // mutation (#170), so the marker is already in sync with `liveAfter`.
-      // Log the drift-reconcile audit row for visibility.
+      // #516 — record the reconcile as a body audit marker (`aitm-reconciled`)
+      // for visibility, not a ⏱ Timing Log row (the move already elapsed inside
+      // the underlying state).
       try {
         const nowTs = now();
-        const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
-        const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
-        const row = buildRow({
-          ts: nowTs,
-          event: 'drift-reconcile',
-          activeSec,
-          idleSec,
-          deltaWords: 0,
-          // #475 AC1 — carried-forward durable marker (drift-reconcile event, no active session)
-          wordMarker: durableWordMarker(getProjectDir()),
-          description: `${recorded} → ${liveAfter} (${
-            transitionResult.kind === 'alias'
-              ? `alias /task ${transitionResult.verb}`
-              : 'move-state'
-          } exited ${transitionResult.exitCode})`,
+        await mutateBody({
+          issueNumber,
+          repo: cfg.repo,
+          mutate: (base) =>
+            appendAuditMarker(base, {
+              kind: 'reconciled',
+              ts: nowTs,
+              detail: `${recorded} → ${liveAfter} (${
+                transitionResult.kind === 'alias'
+                  ? `alias /task ${transitionResult.verb}`
+                  : 'move-state'
+              } exited ${transitionResult.exitCode})`,
+            }),
         });
-        await postTimingRow({ issueNumber, repo: cfg.repo, row });
       } catch {
         // best-effort
       }

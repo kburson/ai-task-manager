@@ -696,14 +696,15 @@ const __mutationBlock = async () => {
       // Second row: entry into the new state. Share the same `ts` so the
       // pair is co-located in the table.
       //
-      // #475 AC4 — the move to `done` is special. The board reaches Done only
-      // AFTER post-approval cleanup (timing flushed, body updated, `gh issue
-      // close`), so this is the terminal "ready for next story" moment. Emit
-      // the `done.complete` (`closed`) event here carrying the approved→closed
-      // cleanup interval (the `activeSec/idleSec` delta derived above), instead
-      // of a second `approved` row — the approval moment itself was already
-      // logged by the close verb (`done.enter`). This is what eliminates the
-      // old duplicate "story approved" pair.
+      // #475 AC4 / #516 — the move to `done` is special. The board reaches Done
+      // only AFTER post-approval cleanup (timing flushed, body updated, `gh
+      // issue close`), so this is the terminal "ready for next story" moment.
+      // Emit the `done.complete` (`issue:closed`) event here carrying the
+      // wrap→close cleanup interval (the `activeSec/idleSec` delta derived
+      // above). The wrap-up moment itself (`done.enter` = `issue:wrap`) was
+      // already logged by the close verb, and the approval moment is now carried
+      // by the review state's own completion (`review:approved`) rather than
+      // being borrowed here — the asymmetry #516 dissolved.
       if (stateArg === 'done' && !demoteFlag && PHASE_EVENTS.done?.complete) {
         const row = buildRow({
           ts,

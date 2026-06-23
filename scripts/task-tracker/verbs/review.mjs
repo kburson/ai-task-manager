@@ -15,8 +15,8 @@ import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
-// bound at CALL time (the post site, after runMoveState emits test:done +
-// review:waiting), NOT when the spec was created. #463 deferred only the
+// bound at CALL time (the post site, after runMoveState emits test:passed +
+// review:started), NOT when the spec was created. #463 deferred only the
 // *posting*; the timestamp was still captured eagerly via nowIso() at spec-build
 // time, so the deferred row landed below the move-state pair while carrying a
 // pre-move wall-clock — a non-monotonic backwards jump (#506 saw 11s). Keeping
@@ -127,8 +127,8 @@ export async function verbReview(ctx) {
   const hasAgentTiming = agentDurationMin !== null || agentWords !== null;
 
   // #463 — compute the verb-level "starting review" timing row here but defer
-  // posting it until after runMoveState (line ~583) emits the test:done +
-  // review:waiting phase-pair rows. Posting before the board move produced
+  // posting it until after runMoveState (line ~583) emits the test:passed +
+  // review:started phase-pair rows. Posting before the board move produced
   // out-of-order timing logs (#458 symptom).
   // #515 — `pendingReviewRow` is a timestamp-free spec; the ts is stamped at the
   // post site (below) via buildDeferredReviewRow so it reflects post-move time.
@@ -624,13 +624,18 @@ export async function verbReview(ctx) {
       process.exit(reviewMove.status || 4);
     }
     // #463 — post deferred verb-level "starting review" row AFTER move-state
-    // emits test:done + review:waiting, so timing log order matches lifecycle order.
+    // emits test:passed + review:started, so timing log order matches lifecycle order.
     if (pendingReviewRow) {
       // #515 — sample the ts NOW (after the move-state pair) so the row's
-      // Timestamp is monotonically non-decreasing relative to test:done /
-      // review:waiting, then build and post.
+      // Timestamp is monotonically non-decreasing relative to test:passed /
+      // review:started, then build and post.
       await safePostTiming(target, buildDeferredReviewRow(pendingReviewRow, nowIso()));
     }
+    // #516 DEFERRED — the ad-hoc `review` (verb session-start, above) and
+    // `review-ready` (this state-move row) timing rows are intentionally left in
+    // place. They are NOT part of the canonical PHASE_EVENTS pair and are tracked
+    // for the separate "extra timing-log rows" cleanup; do not fold into the
+    // uniform vocabulary here.
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
     const _dR2 = deriveStateMoveDelta(rawBody, reviewTs);

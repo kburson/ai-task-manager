@@ -64,18 +64,26 @@ export function parseTimingRows(body) {
   return rows;
 }
 
+// #516 — the pause timing row was renamed `pause` → `paused` to match the
+// uniform past-tense vocabulary. Accept BOTH spellings so pause-span detection
+// stays correct for historical logs (`pause`) and new logs (`paused`). Events
+// are lower-cased at parse time, so a literal compare is sufficient.
+function isPauseEvent(event) {
+  return event === 'pause' || event === 'paused';
+}
+
 // Sum (delta_min) for each pause row whose next non-pause row arrives within
 // `thresholdMin` (inclusive). Pauses with no following row, or whose follower
 // arrives after the threshold, contribute zero.
 export function computeReviewMin(rows, thresholdMin) {
   let total = 0;
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i].event !== 'pause') continue;
+    if (!isPauseEvent(rows[i].event)) continue;
     const pauseMs = rows[i].tsMs;
     if (pauseMs == null) continue;
     let next = null;
     for (let j = i + 1; j < rows.length; j++) {
-      if (rows[j].event === 'pause') continue;
+      if (isPauseEvent(rows[j].event)) continue;
       next = rows[j];
       break;
     }

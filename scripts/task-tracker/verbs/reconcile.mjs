@@ -20,13 +20,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
-import {
-  readLastKnownState,
-  writeLastKnownState,
-  buildRow,
-  postTimingEvent,
-  readTimingCommentBody,
-} from '../gh-timing-comment.mjs';
+import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
+import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { appendAuditMarker } from '../lib/markers.mjs';
 import {
   findRecordingFailureFromComments,
   writeIssueBodyWithRetry,
@@ -37,12 +33,10 @@ import { currentSessionId } from '../word-counter.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
-import { durableWordMarker } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 // keep: recovery snapshot semantics intentional — reconcile force-rewrites the
 // body verbatim (no closure), so pushIssueBody is the correct primitive here.
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
-import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 
 const pexec = promisify(execFile);
@@ -120,10 +114,6 @@ function defaultRunMoveState({ issueNumber, target }) {
   });
 }
 
-async function defaultPostTimingRow({ issueNumber, repo, row }) {
-  await postTimingEvent({ issueNumber: String(issueNumber), repo, row, timeoutMs: 5000 });
-}
-
 // #218: the local cache no longer carries a `state` field — the issue body
 // marker (rewritten above by `writeIssueBodyWithRetry`) is the source of
 // truth. The helper now also refreshes the per-session `kanbanState` derived
@@ -176,9 +166,12 @@ export async function runReconcile({
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
-  const postTimingRow = deps.postTimingRow || defaultPostTimingRow;
   const persistTrackerState = deps.persistTrackerState || defaultPersistTrackerState;
   const listComments = deps.listComments || null;
+  // #516 — drift events are demoted to body audit markers via mutateIssueBody.
+  // Seam it so tests can intercept the marker write (the real helper performs a
+  // live gh round-trip).
+  const mutateBody = deps.mutateIssueBody || mutateIssueBody;
 
   const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: recorded } = readLastKnownState(body);
@@ -248,8 +241,6 @@ export async function runReconcile({
     persistTrackerState({ issueNumber, state: live });
     try {
       const strippedNote = stripped.length > 0 ? `; stripped: ${stripped.join(', ')}` : '';
-      const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
-      const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
       let reason = 'external-mutation';
       if (listComments) {
         try {
@@ -262,17 +253,20 @@ export async function runReconcile({
           // best-effort
         }
       }
-      const row = buildRow({
-        ts: nowTs,
-        event: 'drift-reconcile',
-        activeSec,
-        idleSec,
-        deltaWords: 0,
-        // #475 AC1 — carried-forward durable marker (drift-reconcile event, no active session)
-        wordMarker: durableWordMarker(getProjectDir()),
-        description: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}" (${reason})${strippedNote}`,
+      // #516 — drift reconcile is recorded as a body audit marker
+      // (`aitm-reconciled`), not a ⏱ Timing Log row. The reconcile happens
+      // inside the live state and consumes no distinct wall-clock, so a
+      // dedicated timing row was noise.
+      await mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: (base) =>
+          appendAuditMarker(base, {
+            kind: 'reconciled',
+            ts: nowTs,
+            detail: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}" (${reason})${strippedNote}`,
+          }),
       });
-      await postTimingRow({ issueNumber, repo: cfg.repo, row });
     } catch {}
     return { status: 'reconciled', mode, from: recorded, to: live, stripped };
   }
@@ -294,19 +288,18 @@ export async function runReconcile({
   }
   try {
     const nowTs = now();
-    const timingBody = await readTimingCommentBody({ issueNumber, repo: cfg.repo });
-    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, nowTs);
-    const row = buildRow({
-      ts: nowTs,
-      event: 'drift-revert',
-      activeSec,
-      idleSec,
-      deltaWords: 0,
-      // #475 AC1 — carried-forward durable marker (drift-revert event, no active session)
-      wordMarker: durableWordMarker(getProjectDir()),
-      description: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
+    // #516 — drift revert is recorded as a body audit marker (`aitm-reverted`),
+    // not a ⏱ Timing Log row (same rationale as accept-live above).
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) =>
+        appendAuditMarker(base, {
+          kind: 'reverted',
+          ts: nowTs,
+          detail: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
+        }),
     });
-    await postTimingRow({ issueNumber, repo: cfg.repo, row });
   } catch {}
   return { status: 'reconciled', mode, from: live, to: recorded };
 }

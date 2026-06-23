@@ -93,10 +93,11 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
 // Legacy per-event description fallbacks. Used only when a caller does not
 // supply a description AND does not supply a phase descriptor that resolves
 // against PHASE_EVENTS. Retained for back-compat with callers that emit
-// ad-hoc event slugs ('pause', 'switch-end', etc.) outside the lifecycle
-// table. PHASE_EVENTS is the canonical source for the 11 lifecycle slugs.
+// ad-hoc event slugs ('paused', 'switch-end', etc.) outside the lifecycle
+// table. PHASE_EVENTS is the canonical source for the lifecycle slugs (#516).
 const LEGACY_DESCRIPTION_FALLBACKS = {
   pause: 'task paused',
+  paused: 'task paused',
   close: 'task closed',
   end: 'task closed',
   'switch-end': 'switched to next task',

@@ -1,62 +1,85 @@
 // PHASE_EVENTS — canonical lifecycle event table.
 //
-// Defines the 12 lifecycle events emitted by the task-tracker as issues move
+// Defines the lifecycle events emitted by the task-tracker as issues move
 // through the kanban states. Each entry exposes a stable `event` slug (the
 // string that lands in the `Event` column of the ⏱ Timing Log) and a
 // human-readable `description`.
 //
 // Keyed by `{state}.{kind}` where:
-//   state ∈ { backlog, refine, plan, develop, test, review, done }
+//   state ∈ { backlog, on-deck, refine, plan, develop, test, review, done }
 //   kind  ∈ { enter, complete }
 //
-// Terminal states (backlog, review) only have an `enter` event. `done` is the
-// exception (#475 AC4): it carries BOTH an `enter` event (`approved` — the
-// approval moment, auto-Full-Auto or human) and a `complete` event (`closed` —
-// the terminal "ready for next story" moment emitted AFTER post-approval
-// cleanup: timing flushed, body updated, board moved to Done, `gh issue close`).
-// The `approved → closed` interval is the cleanup elapsed time stamped on the
-// `closed` row, which is why the two are distinct rows, not duplicate
-// "story approved" rows.
+// UNIFORM VOCABULARY (#516)
+// -------------------------
+// Every lifecycle slug follows `<state>:<past-tense-event>`:
+//   backlog:created · on-deck:started ·
+//   refine:started/refine:completed · plan:started/plan:completed ·
+//   develop:started/develop:completed · test:started/test:passed ·
+//   review:started/review:approved · issue:wrap/issue:closed
 //
-// Downstream verbs (promote, demote, review, close, new, switch — landing in
-// later sub-issues of epic #126) will use this table via `flushActiveToGH`'s
-// optional phase descriptor. This issue (#127) is wiring only — no new rows
-// are emitted yet.
+// Review is a TRUE entry/exit pair. Its completion (`review:approved`) lives in
+// `review.complete`, NOT borrowed by `done.enter`. This dissolves the #475 AC4
+// asymmetry that filed #516 (review was historically enter-only and its
+// approval moment was carried by `done.enter = approved`).
+//
+// Done names its own two moments:
+//   enter    `issue:wrap`   — wrap-up phase begins (DoD finalized, timing
+//                             flushed, body/board updated). This is the SINGLE
+//                             intentional bare-verb exception to the past-tense
+//                             convention: it names the phase being entered, and
+//                             `wrapped` would collide with `closed`. It is also
+//                             deliberately distinct from heal/reconcile
+//                             "cleanup" vocabulary (those are body markers now,
+//                             see reconcile.mjs / promote.mjs / close.mjs).
+//   complete `issue:closed` — `gh issue close` done; terminal.
+// Cleanup elapsed = `issue:wrap → issue:closed` (the interval #475 AC4 measured
+// as `approved → closed`, now correctly labelled).
+//
+// DEFERRED (#516, not forgotten): the ad-hoc `review` (review.mjs session-start)
+// and `review-ready` (review.mjs state-move) rows are intentionally left in
+// place pending the separate "extra timing-log rows" discussion. Do NOT fold
+// them into this table without that decision.
 
 export const PHASE_EVENTS = Object.freeze({
   backlog: Object.freeze({
-    enter: Object.freeze({ event: 'created', description: 'task created in Backlog' }),
+    enter: Object.freeze({ event: 'backlog:created', description: 'task created in Backlog' }),
+  }),
+  'on-deck': Object.freeze({
+    enter: Object.freeze({ event: 'on-deck:started', description: 'queued on deck' }),
   }),
   refine: Object.freeze({
-    enter: Object.freeze({ event: 'refine:start', description: 'start refinement' }),
-    complete: Object.freeze({ event: 'refine:done', description: 'refinement completed' }),
+    enter: Object.freeze({ event: 'refine:started', description: 'start refinement' }),
+    complete: Object.freeze({ event: 'refine:completed', description: 'refinement completed' }),
   }),
   plan: Object.freeze({
-    enter: Object.freeze({ event: 'plan:start', description: 'plan started' }),
+    enter: Object.freeze({ event: 'plan:started', description: 'plan started' }),
     complete: Object.freeze({
-      event: 'plan:done',
+      event: 'plan:completed',
       description: 'plan completed — waiting approval',
     }),
   }),
   develop: Object.freeze({
-    enter: Object.freeze({ event: 'develop:start', description: 'start development' }),
-    complete: Object.freeze({ event: 'develop:done', description: 'development complete' }),
+    enter: Object.freeze({ event: 'develop:started', description: 'start development' }),
+    complete: Object.freeze({ event: 'develop:completed', description: 'development complete' }),
   }),
   test: Object.freeze({
-    enter: Object.freeze({ event: 'test:start', description: 'start testing' }),
-    complete: Object.freeze({ event: 'test:done', description: 'testing complete' }),
+    enter: Object.freeze({ event: 'test:started', description: 'start testing' }),
+    complete: Object.freeze({ event: 'test:passed', description: 'testing complete' }),
   }),
   review: Object.freeze({
-    enter: Object.freeze({ event: 'review:waiting', description: 'waiting in review' }),
+    enter: Object.freeze({ event: 'review:started', description: 'waiting in review' }),
+    // #516 — review now carries its own completion (was borrowed by done.enter).
+    complete: Object.freeze({ event: 'review:approved', description: 'story approved' }),
   }),
   done: Object.freeze({
-    enter: Object.freeze({ event: 'approved', description: 'story approved' }),
-    // #475 AC4 — terminal "ready for next story" event. Emitted by move-state's
-    // phase-pair on the board move to Done (which runs after `gh issue close`),
-    // carrying the approved→closed cleanup elapsed in its Active cell.
+    // #516 — done names its own two moments. `issue:wrap` opens the wrap-up
+    // phase on the board move into Done; `issue:closed` closes it after
+    // `gh issue close`. The `issue:wrap → issue:closed` interval is the cleanup
+    // elapsed stamped on the `issue:closed` row (#475 AC4 measurement preserved).
+    enter: Object.freeze({ event: 'issue:wrap', description: 'wrap-up — finalizing for close' }),
     complete: Object.freeze({
-      event: 'closed',
-      description: 'story closed — ready for next story',
+      event: 'issue:closed',
+      description: 'issue closed — ready for next story',
     }),
   }),
 });

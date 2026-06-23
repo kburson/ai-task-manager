@@ -73,7 +73,9 @@ export function auditPauseResume(body, sid) {
       if (!line.includes(needle)) continue;
       const cells = line.split('|').map((s) => s.trim());
       const event = (cells[2] || '').toLowerCase();
-      if (event === 'pause') pauseCount += 1;
+      // #516 — pause row renamed `pause` → `paused`; count both spellings so the
+      // pause/resume balance stays correct across historical and new logs.
+      if (event === 'pause' || event === 'paused') pauseCount += 1;
       else if (event === 'resume') resumeCount += 1;
     }
   }

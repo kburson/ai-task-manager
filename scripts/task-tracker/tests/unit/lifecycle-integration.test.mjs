@@ -4,42 +4,49 @@
 //
 // Asserts that walking the canonical state graph
 // (Backlog → Refine → Plan → Develop → Test → Review → Done)
-// produces exactly the 11 expected timing rows in order, using the same
+// produces exactly the 12 expected timing rows in order, using the same
 // paired (`<prev>:complete` + `<next>:enter`) emission rule that
 // `scripts/gh/move-state.mjs` implements via the canonical
 // PHASE_EVENTS table.
 //
+// #516 — uniform `<state>:<past-tense>` vocabulary. Review is now a true
+// entry/exit pair, so walking Review → Done emits `review:approved`
+// (the approval moment, formerly borrowed by done.enter) before `issue:wrap` —
+// one more row than the pre-#516 11-row sequence.
+//
 // This is a structural test: rather than running the live CLI against
 // the real network (TT_SKIP_NETWORK suppresses emission anyway), we
 // drive the same `buildRow` + PHASE_EVENTS pieces the chokepoint uses
-// and assert the assembled row list matches the 11-event sequence in
-// order, including the `created` Backlog row emitted by the `new` verb.
+// and assert the assembled row list matches the 12-event sequence in
+// order, including the `backlog:created` Backlog row emitted by the `new` verb.
 import { strict as assert } from 'node:assert';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
 import { buildRow } from '../../gh-timing-comment.mjs';
 
 const STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 
-// Expected emission order — must match the 11 rows asserted by phase-events.test.mjs.
+// Expected emission order (#516) — must match the slugs asserted by
+// phase-events.test.mjs.
 const expectedSlugs = [
-  'created',
-  'refine:start',
-  'refine:done',
-  'plan:start',
-  'plan:done',
-  'develop:start',
-  'develop:done',
-  'test:start',
-  'test:done',
-  'review:waiting',
-  'approved',
+  'backlog:created',
+  'refine:started',
+  'refine:completed',
+  'plan:started',
+  'plan:completed',
+  'develop:started',
+  'develop:completed',
+  'test:started',
+  'test:passed',
+  'review:started',
+  'review:approved',
+  'issue:wrap',
 ];
 
 // Walk the state graph and accumulate paired rows just like move-state.mjs does.
 const rows = [];
 const ts = new Date().toISOString();
 
-// First: backlog entry (the `new` verb posts this as `created`).
+// First: backlog entry (the `new` verb posts this as `backlog:created`).
 rows.push(
   buildRow({
     ts,
@@ -81,7 +88,7 @@ for (let i = 1; i < STAGES.length; i += 1) {
   }
 }
 
-assert.equal(rows.length, 11, `expected 11 lifecycle rows, got ${rows.length}`);
+assert.equal(rows.length, 12, `expected 12 lifecycle rows, got ${rows.length}`);
 
 // Each row must contain its expected slug, in order.
 for (let i = 0; i < expectedSlugs.length; i += 1) {

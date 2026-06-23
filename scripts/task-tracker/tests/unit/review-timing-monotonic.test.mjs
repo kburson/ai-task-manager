@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // @story #515
 // Regression: the verb-level "starting review" timing row must carry a
-// timestamp sampled at POST time (after runMoveState emits the test:done +
-// review:waiting phase-pair), not at the earlier moment the row spec is built.
+// timestamp sampled at POST time (after runMoveState emits the test:passed +
+// review:started phase-pair), not at the earlier moment the row spec is built.
 //
 // #463 deferred only the *posting* of the row; the timestamp was still captured
 // eagerly via nowIso() at spec-build time. Because runMoveState performs
-// multi-second gh round-trips, the deferred row landed below test:done /
-// review:waiting while carrying a pre-move wall-clock — a non-monotonic
+// multi-second gh round-trips, the deferred row landed below test:passed /
+// review:started while carrying a pre-move wall-clock — a non-monotonic
 // (backwards) jump in the timing log (#506 observed an 11s regression).
 //
 // The fix turns `pendingReviewRow` into a timestamp-free spec and binds the ts
@@ -76,7 +76,7 @@ test('spec carries no timestamp: same spec yields post-time ts, never an earlier
 });
 
 test('review row ts is monotonically non-decreasing vs the preceding move-state pair', () => {
-  // Model the lifecycle: runMoveState stamps test:done / review:waiting at
+  // Model the lifecycle: runMoveState stamps test:passed / review:started at
   // `pairTime`, then the deferred review row is posted at `postTime >= pairTime`.
   const pairTime = buildTime; // emitted during the move
   const reviewRow = buildDeferredReviewRow(specRow, postTime);
@@ -84,7 +84,7 @@ test('review row ts is monotonically non-decreasing vs the preceding move-state 
   const pairTsMs = Date.parse(pairTime);
   assert.ok(
     reviewTsMs >= pairTsMs,
-    'review row ts must be >= the preceding test:done/review:waiting ts'
+    'review row ts must be >= the preceding test:passed/review:started ts'
   );
   assert.ok(reviewRow.includes(`| ${fmtTs(postTime)} |`));
 });

@@ -11,7 +11,7 @@ import { normalizeStateSlug } from '../../state-machine.mjs';
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
-  const calls = { writes: [], timings: [], moves: [], persists: [] };
+  const calls = { writes: [], markers: [], moves: [], persists: [] };
   return {
     calls,
     deps: {
@@ -24,8 +24,10 @@ function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
         calls.moves.push({ issueNumber, target });
         return moveCode;
       },
-      postTimingRow: async ({ row }) => {
-        calls.timings.push(row);
+      // #516 — drift events are now body audit markers, not timing rows. Capture
+      // the appended marker text produced by the `mutate` callback.
+      mutateIssueBody: async ({ mutate }) => {
+        calls.markers.push(mutate(''));
       },
       persistTrackerState: ({ issueNumber, state }) => {
         calls.persists.push({ issueNumber, state });
@@ -38,7 +40,7 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-11T00:00:00Z -->\n\nbody.\n`;
 }
 
-test('reconcile accept-live: drifted issue writes new state + drift-reconcile row', async () => {
+test('reconcile accept-live: drifted issue writes new state + reconciled audit marker', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });
   const r = await runReconcile({ issueNumber: 300, mode: 'accept-live', cfg, deps });
   assert.equal(r.status, 'reconciled');
@@ -48,9 +50,10 @@ test('reconcile accept-live: drifted issue writes new state + drift-reconcile ro
   assert.equal(calls.writes.length, 1);
   assert.match(calls.writes[0], /aitm-last-known-state state="develop"/);
   assert.match(calls.writes[0], /aitm-entered-develop(?::|\s+ts=")/);
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /drift-reconcile/);
-  assert.match(calls.timings[0], /plan.*develop/);
+  // #516 — drift reconcile is a body audit marker, not a timing row.
+  assert.equal(calls.markers.length, 1);
+  assert.match(calls.markers[0], /aitm-reconciled/);
+  assert.match(calls.markers[0], /plan.*develop/);
   assert.equal(calls.moves.length, 0);
   assert.deepEqual(calls.persists, [{ issueNumber: 300, state: 'develop' }]);
 });
@@ -100,8 +103,8 @@ test('reconcile accept-live is idempotent for entry marker (#174)', async () => 
   const matches = written.match(/aitm-entered-develop:\s*([^>\s]+)/g) || [];
   assert.equal(matches.length, 1, 'exactly one entered-develop marker');
   assert.ok(written.includes(`aitm-entered-develop: ${existingTs}`));
-  // Single drift-reconcile timing row (no phantom re-fire).
-  assert.equal(calls.timings.length, 1);
+  // Single reconciled audit marker (no phantom re-fire).
+  assert.equal(calls.markers.length, 1);
 });
 
 // #436 — regression for the live-board-status → slug → stampEntryMarker path
@@ -128,7 +131,7 @@ test('reconcile accept-live: On Deck live status stamps aitm-entered-on-deck wit
   assert.match(calls.writes[0], /aitm-entered-on-deck(?::|\s+ts=")/);
 });
 
-test('reconcile revert-to-recorded: drifted issue pushes board back + drift-revert row', async () => {
+test('reconcile revert-to-recorded: drifted issue pushes board back + reverted audit marker', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });
   const r = await runReconcile({ issueNumber: 301, mode: 'revert-to-recorded', cfg, deps });
   assert.equal(r.status, 'reconciled');
@@ -136,8 +139,9 @@ test('reconcile revert-to-recorded: drifted issue pushes board back + drift-reve
   assert.equal(r.from, 'develop');
   assert.equal(r.to, 'plan');
   assert.deepEqual(calls.moves, [{ issueNumber: 301, target: 'plan' }]);
-  assert.equal(calls.timings.length, 1);
-  assert.match(calls.timings[0], /drift-revert/);
+  // #516 — drift revert is a body audit marker, not a timing row.
+  assert.equal(calls.markers.length, 1);
+  assert.match(calls.markers[0], /aitm-reverted/);
   assert.equal(calls.writes.length, 0);
 });
 
@@ -148,7 +152,7 @@ test('reconcile: no drift refused', async () => {
   assert.match(r.message, /no drift detected/);
   assert.equal(calls.writes.length, 0);
   assert.equal(calls.moves.length, 0);
-  assert.equal(calls.timings.length, 0);
+  assert.equal(calls.markers.length, 0);
 });
 
 test('reconcile: missing mode returns error', async () => {
@@ -204,8 +208,8 @@ test('reconcile accept-live: preserves forward markers as history + adds visit m
   assert.match(calls.writes[0], /aitm-entered-review(?::|\s+ts=")/);
   assert.match(calls.writes[0], /aitm-entered-done(?::|\s+ts=")/);
   assert.match(calls.writes[0], /aitm-entered-review-2(?::|\s+ts=")/);
-  assert.equal(calls.timings.length, 1);
-  assert.doesNotMatch(calls.timings[0], /stripped:/);
+  assert.equal(calls.markers.length, 1);
+  assert.doesNotMatch(calls.markers[0], /stripped:/);
 });
 
 test('reconcile revert-to-recorded: does NOT strip future entry markers', async () => {
@@ -234,5 +238,5 @@ test('reconcile revert: transition-failed when move-state exits non-zero', async
   const r = await runReconcile({ issueNumber: 307, mode: 'revert-to-recorded', cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.exitCode, 7);
-  assert.equal(calls.timings.length, 0);
+  assert.equal(calls.markers.length, 0);
 });

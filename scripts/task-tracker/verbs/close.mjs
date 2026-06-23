@@ -234,24 +234,23 @@ export async function verbClose(ctx) {
         projectConfig: rawProjectConfig(),
       });
       if (!_resolvedReviewGate) {
-        const { buildRow: gbr } = await import('../gh-timing-comment.mjs');
-        const { deriveStateMoveDelta: _dsm2 } = await import('../lib/timing-rows.mjs');
+        // #516 — the review-gate bypass is recorded as a body audit marker
+        // (`aitm-gate-bypassed`), not a ⏱ Timing Log row. The bypass consumes no
+        // distinct wall-clock; its time is already counted inside Review. The
+        // marker is written during the close transaction so the audit trail
+        // survives in the issue body.
+        const { appendAuditMarker } = await import('../lib/markers.mjs');
         const _ts2 = nowIso();
-        const _d2 = _dsm2(closeBody, _ts2);
-        await safePostTiming(
-          closeTarget,
-          gbr({
-            ts: _ts2,
-            event: 'gate-bypassed',
-            activeSec: _d2.activeSec,
-            idleSec: _d2.idleSec,
-            deltaWords: 0,
-            // #475 AC1 — carried-forward durable marker (gate-bypass audit, no active session)
-            wordMarker: s.lastWordMarker ?? 0,
-            description:
-              'gateReviewToDone=false (session/project override) — bypassing human review',
-          })
-        );
+        await mutateIssueBody({
+          issueNumber: closeIssueNum,
+          repo: cfg.repo,
+          mutate: (base) =>
+            appendAuditMarker(base, {
+              kind: 'gate-bypassed',
+              ts: _ts2,
+              detail: 'gateReviewToDone=false (session/project override) — bypassing human review',
+            }),
+        });
       }
 
       // #303 / #315 — Derived Functional DoD keys (`acs`, `checkboxes`) are

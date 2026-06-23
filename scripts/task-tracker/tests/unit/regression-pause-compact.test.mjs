@@ -10,23 +10,23 @@
 //
 //   - All four lifecycle-adjacent rows are still emitted with their
 //     canonical slugs.
-//   - Their interleaved order with the surrounding `develop:start` /
-//     `develop:done` phase rows is preserved.
+//   - Their interleaved order with the surrounding `develop:started` /
+//     `develop:completed` phase rows is preserved.
 //   - None of these slugs are reserved by PHASE_EVENTS — they remain
-//     orthogonal to the canonical 11-event table.
+//     orthogonal to the canonical lifecycle table.
 import { strict as assert } from 'node:assert';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
 import { buildRow } from '../../gh-timing-comment.mjs';
 
-// Slug orthogonality: pause/resumed/compact slugs must NOT collide with
-// any of the 11 canonical phase-event slugs.
+// Slug orthogonality: paused/resumed/compact slugs must NOT collide with
+// any of the canonical phase-event slugs (#516 — pause row is now `paused`).
 const phaseSlugs = new Set();
 for (const state of Object.keys(PHASE_EVENTS)) {
   for (const kind of Object.keys(PHASE_EVENTS[state])) {
     phaseSlugs.add(PHASE_EVENTS[state][kind].event);
   }
 }
-for (const slug of ['pause', 'resumed', 'pre-compact-flush', 'post-compact-resume']) {
+for (const slug of ['paused', 'resumed', 'pre-compact-flush', 'post-compact-resume']) {
   assert.ok(!phaseSlugs.has(slug), `${slug} must not collide with a canonical PHASE_EVENTS slug`);
 }
 
@@ -40,7 +40,7 @@ const tsAt = (offsetSec) => new Date(t0 + offsetSec * 1000).toISOString();
 
 const stream = [];
 
-// develop:start — paired entry row from the chokepoint.
+// develop:started — paired entry row from the chokepoint.
 stream.push(
   buildRow({
     ts: tsAt(0),
@@ -56,7 +56,7 @@ stream.push(
 stream.push(
   buildRow({
     ts: tsAt(10),
-    event: 'pause',
+    event: 'paused',
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,
@@ -104,7 +104,7 @@ stream.push(
   })
 );
 
-// develop:done — paired completion row from the chokepoint.
+// develop:completed — paired completion row from the chokepoint.
 stream.push(
   buildRow({
     ts: tsAt(50),
@@ -118,12 +118,12 @@ stream.push(
 
 // Assert the slug sequence in order.
 const expectedSequence = [
-  'develop:start',
-  'pause',
+  'develop:started',
+  'paused',
   'resumed',
   'pre-compact-flush',
   'post-compact-resume',
-  'develop:done',
+  'develop:completed',
 ];
 assert.equal(stream.length, expectedSequence.length);
 for (let i = 0; i < expectedSequence.length; i += 1) {

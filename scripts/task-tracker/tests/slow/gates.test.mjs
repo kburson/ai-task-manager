@@ -62,7 +62,10 @@ import fs from 'node:fs';
 import { appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 let stdinBody = '';
-if (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && argv.includes('-')) {
+const readsStdin =
+  (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && argv.includes('-')) ||
+  (argv[0] === 'issue' && argv[1] === 'edit' && argv.includes('--body-file') && argv.includes('-'));
+if (readsStdin) {
   const chunks = [];
   for await (const c of process.stdin) chunks.push(c);
   stdinBody = Buffer.concat(chunks).toString('utf8');
@@ -195,19 +198,17 @@ function writeState(sandbox, issueNum) {
     assert.notEqual(r.code, 7, `should bypass review-approval gate; stderr:\n${r.stderr}`);
     assert.notEqual(r.code, 8, `should bypass review-approval gate; stderr:\n${r.stderr}`);
     assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
-    // Bypass should attempt to post a gate-bypass audit row. The find-or-create
-    // timing-log path may fail under the shim and fall through to the offline
-    // queue; either result is acceptable proof that the bypass branch ran.
-    const queuePath = path.join(sandbox, '.ai-task-manager', 'task-tracker-queue.json');
+    // #516 — the bypass is now recorded as a body audit marker
+    // (`aitm-gate-bypassed`) written via `gh issue edit --body-file -`, not a
+    // ⏱ Timing Log row. Proof the bypass branch ran: an issue-edit call whose
+    // body payload carries the marker (and its `gateReviewToDone=false` detail).
     const calls = existsSync(callsLog) ? readFileSync(callsLog, 'utf8') : '';
-    const queueText = existsSync(queuePath) ? readFileSync(queuePath, 'utf8') : '';
-    const bypassEvidence =
-      /gateReviewToDone=false/.test(calls) || /gateReviewToDone=false/.test(queueText);
+    const bypassEvidence = /aitm-gate-bypassed/.test(calls) && /gateReviewToDone=false/.test(calls);
     assert.ok(
       bypassEvidence,
-      `expected gate-bypassed audit row to be posted or queued; calls:\n${calls}\nqueue:\n${queueText}`
+      `expected aitm-gate-bypassed audit marker in an issue-edit body payload; calls:\n${calls}`
     );
-    console.log('test 3 passed: gateReviewToDone=false bypasses gate + posts audit row');
+    console.log('test 3 passed: gateReviewToDone=false bypasses gate + writes audit marker');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

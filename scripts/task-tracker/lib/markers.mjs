@@ -607,3 +607,31 @@ function insertMarkerBeforeFieldDb(body, markerRe, marker) {
   }
   return `${placeProgressMarker(src, marker)}\n`;
 }
+
+// #516 — Append-only audit markers for low-value lifecycle events demoted out
+// of the ⏱ Timing Log: drift reconcile (`reconciled`), drift revert
+// (`reverted`), and review-gate bypass (`gate-bypassed`). Their elapsed time is
+// already counted inside the surrounding state, so a dedicated timing row was
+// noise. Unlike the idempotent verb-completion markers above, these are
+// APPEND-only — each occurrence records a distinct timestamped event under the
+// progress-markers heading (a single issue may reconcile or bypass more than
+// once). `kind` is the bare marker name; `detail` is free-text context.
+export function appendAuditMarker(body, { kind, ts, detail } = {}) {
+  if (typeof kind !== 'string' || kind.length === 0) {
+    throw new Error(
+      `appendAuditMarker: 'kind' must be a non-empty string — got ${JSON.stringify(kind)}`
+    );
+  }
+  const props = {};
+  if (ts) props.ts = ts;
+  if (detail) props.detail = detail;
+  const marker = serializeMarker(kind, props);
+  const src = String(body || '');
+  const parsed = parseIssueFieldDb(src);
+  if (parsed.ok) {
+    const stripped = stripIssueFieldDb(src);
+    const placed = placeProgressMarker(stripped, marker);
+    return `${placed}\n\n${formatIssueFieldDb(parsed.values)}\n`;
+  }
+  return `${placeProgressMarker(src, marker)}\n`;
+}

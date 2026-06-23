@@ -98,7 +98,8 @@ export function lastRowIsRecentPause(body, nowMs, windowMs = ASK_PAUSE_DEDUP_WIN
   // cells: ['', ts, event, active, idle, words, marker, description, ...]
   const ts = cells[1];
   const event = (cells[2] || '').toLowerCase();
-  if (event !== 'pause') return false;
+  // #516 — accept both the new `paused` slug and the legacy `pause`.
+  if (event !== 'pause' && event !== 'paused') return false;
   const m = ts && ts.match(TS_PATTERN);
   if (!m) return false;
   const tsMs = Date.parse(m[0]);
@@ -178,7 +179,8 @@ export async function recordAskPause({
 
   const row = buildRow({
     ts: nowIso,
-    event: 'pause',
+    // #516 — uniform vocabulary: auto ask-pause writes the `paused` slug.
+    event: 'paused',
     activeSec: 0,
     idleSec: 0,
     deltaWords: 0,

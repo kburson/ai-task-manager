@@ -28,6 +28,15 @@ let body = buildLog([
 let rows = parseTimingRows(body);
 assert.equal(computeReviewMin(rows, 5), 4, '4-min pause is review');
 
+// #516 — the renamed `paused` slug is counted identically to legacy `pause`.
+body = buildLog([
+  { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5, wm: 100 },
+  { ts: '2026-05-09 10:05 -07:00', event: 'paused', active: '—', desc: 'pause for question' },
+  { ts: '2026-05-09 10:09 -07:00', event: 'start', active: 0, desc: 'question answered' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computeReviewMin(rows, 5), 4, 'new `paused` slug counts as review');
+
 // 5-min pause counted (inclusive)
 body = buildLog([
   { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5 },
@@ -152,7 +161,7 @@ body = buildLog([
   },
   {
     ts: '2026-05-09 11:00 -07:00',
-    event: 'develop:done',
+    event: 'develop:completed',
     active: 5,
     wm: 300,
     desc: 'development complete <!-- row-sec: a=300 i=45 -->',
@@ -168,8 +177,8 @@ assert.equal(totalsIdle.lastWordMarker, 300, 'lastWordMarker is the monotonic ma
 // smaller marker (defensive: monotonic max, not last-write-wins).
 body = buildLog([
   { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5, wm: 900 },
-  { ts: '2026-05-09 10:10 -07:00', event: 'approved', active: 0, wm: 0 },
-  { ts: '2026-05-09 10:11 -07:00', event: 'closed', active: 1, wm: 0 },
+  { ts: '2026-05-09 10:10 -07:00', event: 'review:approved', active: 0, wm: 0 },
+  { ts: '2026-05-09 10:11 -07:00', event: 'issue:closed', active: 1, wm: 0 },
 ]);
 rows = parseTimingRows(body);
 const totalsMono = rollupTotals(rows, 5);
