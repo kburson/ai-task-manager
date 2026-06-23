@@ -20,6 +20,9 @@ tmp/
 .ai-task-manager/session-boot.md
 .ai-task-manager/session-state-template.md
 .ai-task-manager/worker-report.md
+.ai-task-manager/epic-body.md
+.ai-task-manager/solo-issue-body.md
+.ai-task-manager/sub-issue-body.md
 .ai-task-manager/references/
 # Runtime project-field caches (ephemeral)
 .ai-task-manager/project-fields.json
