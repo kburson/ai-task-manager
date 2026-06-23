@@ -21,6 +21,7 @@ import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { formatDefectHint } from './defect-hint.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { setSessionKanbanState } from '../session-state.mjs';
+import { parseEntryMarkers, STAGES } from './stage-entry-markers.mjs';
 
 const RETRY_BACKOFF_MS = 500;
 
@@ -68,15 +69,38 @@ async function fetchBodyWithRetry({ owner, repoName, issueNumber }) {
   }
 }
 
-export async function seedSessionKanbanFromBody({ sid, issue, projDir, repo }) {
+async function defaultFetchBody({ owner, repoName, issueNumber }) {
+  const data = await fetchBodyWithRetry({ owner, repoName, issueNumber });
+  return data?.repository?.issue?.body ?? '';
+}
+
+export async function seedSessionKanbanFromBody({ sid, issue, projDir, repo, deps = {} }) {
   if (!sid || !issue) return null;
   const m = String(issue).match(/^#?(\d+)$/);
   if (!m) return null;
   const issueNumber = Number(m[1]);
   const { owner, repoName } = splitRepo(repo);
-  const data = await fetchBodyWithRetry({ owner, repoName, issueNumber });
-  const body = data?.repository?.issue?.body ?? '';
-  const state = readLastKnownState(body).state;
-  if (!state) throw new SeederMarkerMissingError(issueNumber);
+  // #519 — `deps.fetchBody` is an optional injection point for tests; the
+  // default is the production one-retry GraphQL fetch. It returns the raw
+  // issue body string.
+  const fetchBody = deps.fetchBody || defaultFetchBody;
+  const body = await fetchBody({ owner, repoName, issueNumber });
+  let state = readLastKnownState(body).state;
+  if (!state) {
+    // #519 — Backlog is the first state in the machine, so a freshly-created
+    // issue that has not advanced past it legitimately has no
+    // `aitm-last-known-state` marker yet (that marker is only stamped on the
+    // first promote/reconcile). Default to `backlog` in that case rather than
+    // throwing. Only when the body shows the issue advanced past Backlog (a
+    // later `aitm-entered-<stage>` marker exists) but the marker is absent is
+    // this genuine marker corruption — preserve the throw.
+    const backlogIdx = STAGES.indexOf('backlog');
+    const highestEnteredIdx = parseEntryMarkers(body).reduce(
+      (max, { stage }) => Math.max(max, STAGES.indexOf(stage)),
+      -1
+    );
+    if (highestEnteredIdx > backlogIdx) throw new SeederMarkerMissingError(issueNumber);
+    state = 'backlog';
+  }
   return setSessionKanbanState(sid, state, projDir);
 }
