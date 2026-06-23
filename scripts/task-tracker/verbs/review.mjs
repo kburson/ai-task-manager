@@ -12,6 +12,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
+import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 
 export async function verbReview(ctx) {
   const {
@@ -513,30 +514,17 @@ export async function verbReview(ctx) {
     // stamped yet (close.mjs would stamp them). Best-effort: any failure
     // (network, version conflict) falls through to the scan with the stale
     // body — the worst case is the pre-#315 behavior.
-    let scanBody = rawBody;
-    try {
-      const { stdout: _shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {
-        timeout: 5000,
-      });
-      const derivedHeadSha = (_shaOut || '').trim() || 'unknown';
-      const derivedResult = await deriveAndStampFunctionalDod({
-        issueNumber: issueNum,
-        repo: cfg.repo,
-        sha: derivedHeadSha,
-        ts: nowIso(),
-        deps: { pexec },
-      });
-      if (derivedResult && derivedResult.status === 'ok') {
-        const { stdout: refreshedStdout } = await pexec(
-          'gh',
-          ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-          { timeout: GH_API_TIMEOUT_MS }
-        );
-        scanBody = String(refreshedStdout || scanBody);
-      }
-    } catch {
-      // best-effort — fall through to scan with the pre-derive body
-    }
+    // #502 — delegate the derive + rescan to `deriveAndRescan`, which ALWAYS
+    // re-fetches the live body before the gate (regardless of derive
+    // ok/noop/throw) and LOGS any failure instead of swallowing it. Fixes the
+    // false `test-to-review-incomplete` refusal caused by scanning the stale
+    // pre-derive `rawBody`.
+    const { scanBody } = await deriveAndRescan({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      scanBody: rawBody,
+      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
+    });
     // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
     // call) now lives in `STATES.test.exitGuards` as the
     // `test-exit-pre-close-completeness` guard. Evaluate the full test→review
