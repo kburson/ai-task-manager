@@ -43,6 +43,9 @@ import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
+import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
+import { nowIso } from '../lib/evidence-runner.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -302,6 +305,26 @@ export async function runPromote({
   // This preserves the historical "verb didn't check X" boundary for guards
   // like `blocked-by-not-done` (test fixtures don't stub a real blocker lookup)
   // and `plan-exit-plan-approved` (fixtures don't stub the marker).
+  // #502 — the test→review exit guard (`testExitPreCloseCompletenessGuard`)
+  // scans `guardCtx.body` for unticked pre-close checkboxes but does NOT itself
+  // derive the two auto-derived Functional DoD keys (`acs`/`checkboxes`). Those
+  // are stamped+ticked by `deriveAndStampFunctionalDod` at close time, so a
+  // story whose every AC + non-self checkbox is genuinely complete would still
+  // be refused here on `acs`/`checkboxes` alone. `verbs/review.mjs` already runs
+  // the derive before its copy of this guard; the `promote` path must do the
+  // same. `deriveAndRescan` runs the derive (logging, never swallowing, any
+  // failure) and ALWAYS re-fetches the live body so the guard reads ground
+  // truth regardless of derive ok/noop/throw.
+  if (recorded === 'test' && target === 'review') {
+    const { scanBody } = await deriveAndRescan({
+      issueNumber,
+      repo: cfg.repo,
+      scanBody: body,
+      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
+    });
+    body = scanBody;
+  }
+
   const guardCtx = {
     issueNumber,
     repo: cfg.repo,

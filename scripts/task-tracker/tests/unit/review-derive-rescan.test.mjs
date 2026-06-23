@@ -1,7 +1,13 @@
 // @story #502
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { deriveAndRescan } from '../../lib/review-derive-rescan.mjs';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
+const VERB_DIR = path.resolve(__dir, '../../verbs');
 
 // The live (post-derive) body the gate SHOULD scan: acs + checkboxes ticked.
 const LIVE_TICKED_BODY = [
@@ -132,6 +138,33 @@ test('deriveAndRescan: live refresh throws → diagnostic logged AND falls back 
     true
   );
   assert.ok(lines.some((l) => l.includes('live-body refresh failed')));
+});
+
+// #502 — the bug reproduces through BOTH callers of the test→review pre-close
+// completeness guard: `verbs/review.mjs` AND `verbs/promote.mjs`. The original
+// fix wired the derive into review.mjs only; promote.mjs (the `/task promote`
+// path) still scanned the un-derived body and falsely refused on acs/checkboxes.
+// These structural assertions ensure both call-sites run the derive+rescan
+// before the guard, gated to the test→review transition.
+for (const verb of ['review.mjs', 'promote.mjs']) {
+  test(`${verb} wires deriveAndRescan before the test→review completeness guard`, () => {
+    const src = readFileSync(path.join(VERB_DIR, verb), 'utf8');
+    assert.ok(
+      /import\s*\{\s*deriveAndRescan\s*\}\s*from\s*'\.\.\/lib\/review-derive-rescan\.mjs'/.test(
+        src
+      ),
+      `${verb} should import deriveAndRescan`
+    );
+    assert.ok(src.includes('deriveAndRescan('), `${verb} should call deriveAndRescan`);
+  });
+}
+
+test('promote.mjs gates the derive to the test→review transition only', () => {
+  const src = readFileSync(path.join(VERB_DIR, 'promote.mjs'), 'utf8');
+  assert.ok(
+    /recorded === 'test' && target === 'review'/.test(src),
+    'promote.mjs should only run the derive on the test→review transition'
+  );
 });
 
 test('deriveAndRescan: missing required deps throws', async () => {
