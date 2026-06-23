@@ -7,12 +7,30 @@ import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import { parseProofMarker, hasExecutionProof } from '../lib/proof-marker.mjs';
-import { postTimingEvent } from '../gh-timing-comment.mjs';
+import { postTimingEvent, buildRow, buildFlushRow } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+
+// #515 — build the deferred verb-level "starting review" timing row. The ts is
+// bound at CALL time (the post site, after runMoveState emits test:done +
+// review:waiting), NOT when the spec was created. #463 deferred only the
+// *posting*; the timestamp was still captured eagerly via nowIso() at spec-build
+// time, so the deferred row landed below the move-state pair while carrying a
+// pre-move wall-clock — a non-monotonic backwards jump (#506 saw 11s). Keeping
+// the spec timestamp-free and stamping `ts` here makes the row's Timestamp
+// monotonically non-decreasing relative to the preceding phase-pair.
+//
+// `kind: 'flush'` rebuilds via buildFlushRow (minute scalars → whole seconds)
+// to stay byte-identical to the computeOnly flush row; all other specs use
+// buildRow with the seconds it already carries.
+export function buildDeferredReviewRow(spec, ts) {
+  if (!spec) return null;
+  const { kind, ...params } = spec;
+  return kind === 'flush' ? buildFlushRow({ ...params, ts }) : buildRow({ ...params, ts });
+}
 
 export async function verbReview(ctx) {
   const {
@@ -112,14 +130,14 @@ export async function verbReview(ctx) {
   // posting it until after runMoveState (line ~583) emits the test:done +
   // review:waiting phase-pair rows. Posting before the board move produced
   // out-of-order timing logs (#458 symptom).
+  // #515 — `pendingReviewRow` is a timestamp-free spec; the ts is stamped at the
+  // post site (below) via buildDeferredReviewRow so it reflects post-move time.
   let pendingReviewRow = null;
   if (hasAgentTiming) {
-    const ts = nowIso();
     const activeMin = agentDurationMin ?? 0;
     const deltaWords = agentWords ?? 0;
-    const { buildRow } = await import('../gh-timing-comment.mjs');
-    pendingReviewRow = buildRow({
-      ts,
+    pendingReviewRow = {
+      kind: 'row',
       event: 'review',
       activeSec: activeMin * 60,
       idleSec: 0,
@@ -127,7 +145,7 @@ export async function verbReview(ctx) {
       // #475 AC1 — monotonic carry-forward over the durable marker
       wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + deltaWords),
       description: 'agent session — starting review',
-    });
+    };
     // #407 — preserve the binding across review (a non-terminal verb). Only
     // the timing session closes; the issue stays bound so a follow-up verb
     // needs no intervening re-`start`. `pause` is the sole verb that nulls
@@ -146,7 +164,17 @@ export async function verbReview(ctx) {
     const flush = await flushActiveToGH(s, 'review', 'starting review', undefined, {
       computeOnly: true,
     });
-    pendingReviewRow = flush.row;
+    // #515 — capture the flush's computed params (not its pre-stamped row) so the
+    // ts can be re-bound at post time; buildFlushRow reproduces the same row.
+    pendingReviewRow = {
+      kind: 'flush',
+      event: 'review',
+      activeMin: flush.deltaMin,
+      idleMin: flush.idleMin,
+      deltaWords: flush.deltaWords,
+      wordMarker: flush.wordMarker,
+      description: 'starting review',
+    };
     // #407 — preserve binding (see note above).
     saveState(pauseTimingKeepBinding(s, target), statePath);
     try {
@@ -154,11 +182,9 @@ export async function verbReview(ctx) {
     } catch {}
     // #408 — redundant test→test self-move removed (see note above).
   } else {
-    const ts = nowIso();
-    const { buildRow } = await import('../gh-timing-comment.mjs');
     // Body not loaded in this branch; honest 0/0.
-    pendingReviewRow = buildRow({
-      ts,
+    pendingReviewRow = {
+      kind: 'row',
       event: 'review',
       activeSec: 0,
       idleSec: 0,
@@ -166,7 +192,7 @@ export async function verbReview(ctx) {
       // #475 AC1 — carried-forward durable marker (no active session for this target on review entry)
       wordMarker: s.lastWordMarker ?? 0,
       description: 'starting review',
-    });
+    };
     // #408 — redundant test→test self-move removed (see note above).
     // #407 — preserve binding (see note above).
     saveState(pauseTimingKeepBinding(s, target), statePath);
@@ -600,7 +626,10 @@ export async function verbReview(ctx) {
     // #463 — post deferred verb-level "starting review" row AFTER move-state
     // emits test:done + review:waiting, so timing log order matches lifecycle order.
     if (pendingReviewRow) {
-      await safePostTiming(target, pendingReviewRow);
+      // #515 — sample the ts NOW (after the move-state pair) so the row's
+      // Timestamp is monotonically non-decreasing relative to test:done /
+      // review:waiting, then build and post.
+      await safePostTiming(target, buildDeferredReviewRow(pendingReviewRow, nowIso()));
     }
     const reviewTs = nowIso();
     const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
