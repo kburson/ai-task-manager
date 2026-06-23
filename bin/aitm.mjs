@@ -20,6 +20,7 @@
 // is the daily driver.
 
 import { spawnSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, TASK_TRACKER_PATH, SCRIPTS, kind, groupedListing } from './aitm-registry.mjs';
@@ -97,13 +98,21 @@ export function run(argv = process.argv.slice(2)) {
   return 2;
 }
 
-const isMain = (() => {
+// #506 — `npm`/`npx` installs `aitm` as a symlink (`node_modules/.bin/aitm ->
+// ../ai-task-manager/bin/aitm.mjs`). `path.resolve` normalizes but does NOT
+// dereference symlinks, so comparing the resolved `argv[1]` against the real
+// module path made `isMain` false through the shim and the CLI ran nothing.
+// Realpath both sides before comparing. Fail-closed (`false`) on any throw.
+export function resolvesAsMain(moduleUrl, argvPath, { realpath = realpathSync } = {}) {
   try {
-    return process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+    if (!argvPath) return false;
+    return realpath(fileURLToPath(moduleUrl)) === realpath(path.resolve(argvPath));
   } catch {
     return false;
   }
-})();
+}
+
+const isMain = resolvesAsMain(import.meta.url, process.argv[1]);
 
 if (isMain) {
   process.exit(run());
