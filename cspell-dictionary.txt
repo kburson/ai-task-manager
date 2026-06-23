@@ -92,6 +92,8 @@ Reeval
 REEVAL
 Reincludes
 reparsed
+rescan
+rescanning
 rollups
 sandboxed
 Sandboxed
