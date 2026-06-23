@@ -1,3 +1,4 @@
+// @story #506
 // #506 — `aitm` CLI emitted no output when launched through the `npx`/`.bin`
 // symlink shim. The `isMain` guard compared `fileURLToPath(import.meta.url)`
 // against `path.resolve(process.argv[1])`; `path.resolve` does not dereference
