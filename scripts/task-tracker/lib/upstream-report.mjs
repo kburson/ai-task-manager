@@ -36,13 +36,13 @@ const KIND_RECORDS = {
   defect: {
     kind: 'defect',
     label: 'defect report',
-    titlePrefix: '[BETA-DEFECT]',
+    titlePrefix: '🐞',
     marker: 'aitm-beta-defect',
   },
   feature: {
     kind: 'feature',
     label: 'feature request',
-    titlePrefix: '[BETA-FEATURE]',
+    titlePrefix: '✨',
     marker: 'aitm-beta-feature',
   },
 };

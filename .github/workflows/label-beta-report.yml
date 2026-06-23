@@ -1,11 +1,22 @@
-# Labels beta defect/feature reports filed against this repo.
+# Labels beta defect/feature reports and reconciles the title emoji prefix.
 #
 # Why this exists: CLI-filed reports (`/task report`) bypass the web issue-form
 # picker, and a non-collaborator submitter cannot self-apply labels. So the
-# label must be derived server-side from signals already present in the issue:
-#   - title prefix `[BETA-DEFECT]` / `[BETA-FEATURE]` (set by `buildTitle`), or
-#   - body marker `aitm-beta-defect` / `aitm-beta-feature` (set by `buildBody`).
-# The body marker is the durable source — title prefixes can be hand-edited.
+# beta label must be derived server-side from the durable body marker
+# (`aitm-beta-defect` / `aitm-beta-feature`, set by `buildBody`). Title prefixes
+# are now bare emoji (🐞 / ✨) and are intentionally NOT a beta signal: 🐞 marks
+# every bug, internal or external, so it cannot distinguish a `beta-defect` from
+# an ordinary `bug`. Only the marker can.
+#
+# Emoji reconciliation: the 🐞 / ✨ title prefix is the visual signal derived
+# from labels. This Action keeps the title in sync when a maintainer adds or
+# removes a label in the web UI:
+#   - `bug` OR `beta-defect` label (or `aitm-beta-defect` marker) ⇒ 🐞 prefix
+#   - `beta-feature` label (or `aitm-beta-feature` marker)        ⇒ ✨ prefix
+#   - none of the above                                            ⇒ no prefix
+# On `unlabeled` (e.g. `bug` removed) the 🐞 is stripped ONLY when no other bug
+# signal remains. The Action never writes the `aitm-beta-defect` marker — a
+# manual `bug` add stays an internal bug and never masquerades as external.
 #
 # SETUP (one-time, manual): the `beta-defect` and `beta-feature` labels must
 # exist in this repo before this workflow can apply them. `addLabels` does NOT
@@ -13,13 +24,14 @@
 #   gh label create beta-defect  --color d73a4a --description "Beta defect report"
 #   gh label create beta-feature --color a2eeef --description "Beta feature request"
 #
-# Idempotent: re-fires on `edited` without erroring or duplicating, and no-ops
-# when neither signal matches. Needs only the default GITHUB_TOKEN.
+# Idempotent: re-fires on `edited`/`labeled`/`unlabeled` without erroring or
+# duplicating, and no-ops when nothing needs changing. Needs only the default
+# GITHUB_TOKEN.
 name: Label beta report
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, labeled, unlabeled]
 
 permissions:
   issues: write
@@ -28,7 +40,7 @@ jobs:
   label:
     runs-on: ubuntu-latest
     steps:
-      - name: Apply beta label from title prefix or body marker
+      - name: Apply beta label from body marker and reconcile the emoji prefix
         uses: actions/github-script@v7
         with:
           script: |
@@ -36,35 +48,69 @@ jobs:
             const title = issue.title || '';
             const body = issue.body || '';
 
-            // Map each target label to the signals that imply it. Marker is the
-            // durable source; title prefix is the human-editable convenience.
+            const LADYBUG = '🐞';
+            const SPARKLE = '✨';
+
+            // --- Step 1: derive the beta label from the durable body marker. ---
+            // Marker-only: the emoji title prefix is ambiguous (🐞 marks every
+            // bug), so it cannot imply the external-origin `beta-defect` label.
             const RULES = [
-              { label: 'beta-defect',  prefix: '[BETA-DEFECT]',  marker: 'aitm-beta-defect' },
-              { label: 'beta-feature', prefix: '[BETA-FEATURE]', marker: 'aitm-beta-feature' },
+              { label: 'beta-defect',  marker: 'aitm-beta-defect' },
+              { label: 'beta-feature', marker: 'aitm-beta-feature' },
             ];
-
-            const want = RULES.find(
-              (r) => title.startsWith(r.prefix) || body.includes(r.marker)
-            );
-            if (!want) {
-              core.info('No beta-report signal in title or body; nothing to label.');
-              return;
+            const want = RULES.find((r) => body.includes(r.marker));
+            const labelNames = () =>
+              (context.payload.issue.labels || []).map((l) =>
+                typeof l === 'string' ? l : l.name
+              );
+            if (want) {
+              const has = labelNames().includes(want.label);
+              if (has) {
+                core.info(`Label "${want.label}" already present; skipping add.`);
+              } else {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: [want.label],
+                });
+                core.info(`Applied label "${want.label}" to #${issue.number}.`);
+              }
+            } else {
+              core.info('No beta-report marker in body; nothing to label.');
             }
 
-            // Idempotency: skip when the label is already attached so the
-            // `edited` re-fire stays a clean no-op.
-            const has = (issue.labels || []).some(
-              (l) => (typeof l === 'string' ? l : l.name) === want.label
-            );
-            if (has) {
-              core.info(`Label "${want.label}" already present; skipping.`);
+            // --- Step 2: reconcile the title emoji prefix against the labels. ---
+            // Re-read labels: the addLabels call above may have just changed them.
+            const labels = labelNames().concat(want ? [want.label] : []);
+            const hasBug = labels.includes('bug');
+            const hasBetaDefect = labels.includes('beta-defect');
+            const hasBetaFeature = labels.includes('beta-feature');
+            const defectMarker = body.includes('aitm-beta-defect');
+            const featureMarker = body.includes('aitm-beta-feature');
+
+            // 🐞 covers every bug signal (internal `bug`, external beta-defect).
+            const wantLadybug = hasBug || hasBetaDefect || defectMarker;
+            const wantSparkle = hasBetaFeature || featureMarker;
+            // Defect wins a degenerate bug+feature tie.
+            const wantEmoji = wantLadybug ? LADYBUG : wantSparkle ? SPARKLE : '';
+
+            const leading = title.startsWith(LADYBUG)
+              ? LADYBUG
+              : title.startsWith(SPARKLE)
+                ? SPARKLE
+                : '';
+            const rest = leading ? title.slice(leading.length).replace(/^\s+/, '') : title;
+            const desired = wantEmoji ? `${wantEmoji} ${rest}` : rest;
+
+            if (desired === title) {
+              core.info('Title emoji already in sync; nothing to reconcile.');
               return;
             }
-
-            await github.rest.issues.addLabels({
+            await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              labels: [want.label],
+              title: desired,
             });
-            core.info(`Applied label "${want.label}" to #${issue.number}.`);
+            core.info(`Reconciled title of #${issue.number} to "${desired}".`);

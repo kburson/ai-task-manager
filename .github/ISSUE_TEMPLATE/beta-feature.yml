@@ -1,6 +1,6 @@
 name: Beta feature request
 description: Request a capability while using the ai-task-manager beta. Mirrors the `/task report --kind feature` CLI form.
-title: '[BETA-FEATURE] '
+title: '✨ '
 labels: ['beta-feature']
 body:
   - type: markdown

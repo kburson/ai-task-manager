@@ -1523,7 +1523,7 @@ TMPL
 cat > "$TEMPLATE_DIR/bug.yml" <<'TMPL'
 name: Bug
 description: Manual bug entry compatible with AI Task Manager
-title: "[Bug] "
+title: "🐞 "
 labels: ["bug"]
 body:
   - type: markdown

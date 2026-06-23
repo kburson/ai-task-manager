@@ -45,12 +45,12 @@ describe('resolveKind', () => {
   it('selects feature and sets prefix + marker', () => {
     const f = resolveKind('FEATURE');
     assert.equal(f.kind, 'feature');
-    assert.equal(f.titlePrefix, '[BETA-FEATURE]');
+    assert.equal(f.titlePrefix, '✨');
     assert.equal(f.marker, 'aitm-beta-feature');
   });
   it('defect prefix + marker', () => {
     const d = resolveKind('defect');
-    assert.equal(d.titlePrefix, '[BETA-DEFECT]');
+    assert.equal(d.titlePrefix, '🐞');
     assert.equal(d.marker, 'aitm-beta-defect');
   });
   it('throws on an unknown kind', () => {
@@ -96,11 +96,11 @@ describe('scanForPrivacy', () => {
 
 describe('buildTitle', () => {
   it('prefixes the summary', () => {
-    assert.equal(buildTitle(resolveKind('defect'), 'thing broke'), '[BETA-DEFECT] thing broke');
+    assert.equal(buildTitle(resolveKind('defect'), 'thing broke'), '🐞 thing broke');
   });
   it('is idempotent on an already-prefixed summary', () => {
     const r = resolveKind('defect');
-    assert.equal(buildTitle(r, '[BETA-DEFECT] x'), '[BETA-DEFECT] x');
+    assert.equal(buildTitle(r, '🐞 x'), '🐞 x');
   });
   it('falls back to a placeholder for an empty summary', () => {
     assert.match(buildTitle(resolveKind('feature'), ''), /untitled report/);
@@ -153,7 +153,7 @@ describe('buildGhArgs', () => {
     assert.deepEqual(
       buildGhArgs({
         repo: 'kburson/ai-task-manager',
-        title: '[BETA-DEFECT] x',
+        title: '🐞 x',
         bodyFile: '/d/r.md',
       }),
       [
@@ -162,7 +162,7 @@ describe('buildGhArgs', () => {
         '--repo',
         'kburson/ai-task-manager',
         '--title',
-        '[BETA-DEFECT] x',
+        '🐞 x',
         '--body-file',
         '/d/r.md',
       ]

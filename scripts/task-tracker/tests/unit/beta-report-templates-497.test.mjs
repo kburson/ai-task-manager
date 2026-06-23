@@ -33,7 +33,7 @@ describe('#497 beta-report issue-form templates', () => {
   it('defect template defaults the beta-defect label and mirrors the CLI sections', () => {
     const t = readYaml('ISSUE_TEMPLATE/beta-defect.yml');
     assert.deepEqual(t.labels, ['beta-defect']);
-    assert.match(t.title, /^\[BETA-DEFECT\]/);
+    assert.match(t.title, /^🐞/);
     const labels = t.body
       .filter((b) => b.attributes && b.attributes.label)
       .map((b) => b.attributes.label);
@@ -43,10 +43,16 @@ describe('#497 beta-report issue-form templates', () => {
     assert.ok(labels.includes('Environment'));
   });
 
+  it('manual bug template defaults the bug label and the 🐞 prefix (#507)', () => {
+    const t = readYaml('ISSUE_TEMPLATE/bug.yml');
+    assert.deepEqual(t.labels, ['bug']);
+    assert.match(t.title, /^🐞/);
+  });
+
   it('feature template defaults the beta-feature label and mirrors the CLI sections', () => {
     const t = readYaml('ISSUE_TEMPLATE/beta-feature.yml');
     assert.deepEqual(t.labels, ['beta-feature']);
-    assert.match(t.title, /^\[BETA-FEATURE\]/);
+    assert.match(t.title, /^✨/);
     const labels = t.body
       .filter((b) => b.attributes && b.attributes.label)
       .map((b) => b.attributes.label);
@@ -66,27 +72,41 @@ describe('#497 auto-label Action', () => {
     (s) => s.uses && s.uses.startsWith('actions/github-script')
   ).with.script;
 
-  it('triggers on issue open and edit', () => {
-    assert.deepEqual(on.issues.types, ['opened', 'edited']);
+  it('triggers on open, edit, and label add/remove', () => {
+    assert.deepEqual(on.issues.types, ['opened', 'edited', 'labeled', 'unlabeled']);
   });
 
   it('needs only issues: write (the repo GITHUB_TOKEN) — AC4', () => {
     assert.deepEqual(wf.permissions, { issues: 'write' });
   });
 
-  it('derives the label from both the title prefix and the body marker — AC3', () => {
-    assert.match(script, /\[BETA-DEFECT\]/);
-    assert.match(script, /\[BETA-FEATURE\]/);
+  it('derives the beta label from the durable body marker only — AC3', () => {
+    // The emoji title prefix (🐞) is ambiguous across internal/external bugs,
+    // so the beta label is keyed off the marker alone, never the title.
     assert.match(script, /aitm-beta-defect/);
     assert.match(script, /aitm-beta-feature/);
-    assert.match(script, /title\.startsWith/);
-    assert.match(script, /body\.includes/);
+    assert.match(script, /body\.includes\(r\.marker\)/);
   });
 
-  it('no-ops when neither signal matches — AC3', () => {
-    // The `!want` early return is the no-op path.
-    assert.match(script, /if \(!want\)/);
+  it('reconciles the 🐞 / ✨ title prefix from the labels present', () => {
+    assert.match(script, /🐞/);
+    assert.match(script, /✨/);
+    // bug, beta-defect → ladybug; beta-feature → sparkle.
+    assert.match(script, /wantLadybug/);
+    assert.match(script, /wantSparkle/);
+    assert.match(script, /issues\.update/);
+  });
+
+  it('strips the 🐞 only when no bug signal remains on unlabeled — AC3', () => {
+    // wantEmoji collapses to '' when no bug/feature signal is present, which
+    // drops the leading emoji from the reconciled title.
+    assert.match(script, /wantLadybug \? LADYBUG : wantSparkle \? SPARKLE : ''/);
+    assert.match(script, /title\.slice\(leading\.length\)/);
+  });
+
+  it('no-ops when there is nothing to label or reconcile — AC3', () => {
     assert.match(script, /nothing to label/i);
+    assert.match(script, /nothing to reconcile/i);
   });
 
   it('is idempotent: skips when the label is already present — AC4', () => {

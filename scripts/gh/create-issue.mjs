@@ -15,6 +15,7 @@ import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 import { readParentStatus } from './lib/parent-status.mjs';
 import { childCreationAllowedAtEpicState } from '../task-tracker/lib/epic-children-gate.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { ensureBugEmoji } from './lib/bug-emoji-prefix.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -168,7 +169,7 @@ function ghCreate(args, assignee) {
     'issue',
     'create',
     '--title',
-    args.title,
+    ensureBugEmoji(args.title, args.label),
     '--body-file',
     args['body-file'],
     '--assignee',

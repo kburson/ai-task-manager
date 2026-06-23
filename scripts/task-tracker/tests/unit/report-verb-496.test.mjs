@@ -96,7 +96,7 @@ describe('verbReport two-phase gate', () => {
       '--repo',
       'kburson/ai-task-manager',
     ]);
-    assert.ok(ghArgs.args.includes('[BETA-DEFECT] it broke'));
+    assert.ok(ghArgs.args.includes('🐞 it broke'));
     assert.match(log, /issues\/999/);
   });
 });
