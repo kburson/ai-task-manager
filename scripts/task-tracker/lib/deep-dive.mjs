@@ -189,6 +189,42 @@ export function appendProseToDeepDiveSection(body, prose) {
   return [...before, '', trimmed, '', ...after].join('\n');
 }
 
+// #504 — replace the ENTIRE prose body of an existing `## Deep-Dive
+// Analysis` section in place, rather than appending. The section body runs
+// from the line AFTER the heading up to (but not including) the first
+// `aitm-*` marker line that follows it — e.g. `aitm-entered-*`,
+// `aitm-deep-dive-complete`, `aitm-fields`, `aitm-body-version` — or end of
+// body when no marker follows. Bounding on marker lines (not on `## `
+// headings) is deliberate: the canonical appendix ends with its own
+// `## Dependency Map` sub-heading, so a heading-based boundary would stop
+// inside the section. The heading line itself, the `aitm-deep-dive-posted`
+// marker above it, and every marker below are all preserved; only the prose
+// between them is swapped. This is what re-recording revised findings needs:
+// the old
+// branch appended, and because the canonical appendix ends with its own
+// `## Dependency Map` sub-heading the "next heading" scan stopped inside
+// the appendix, stacking duplicate prose + a second Dependency Map. Replace
+// is idempotent: re-running with identical prose reproduces the same bytes,
+// so `mutateIssueBody` short-circuits to a no-op.
+const DEEP_DIVE_SECTION_END_RE = /^<!--\s*aitm-/m;
+
+export function replaceDeepDiveSection(body, prose) {
+  const src = String(body || '');
+  const trimmed = String(prose || '').replace(/^\s+|\s+$/g, '');
+  if (!trimmed) return src;
+  const headingMatch = DEEP_DIVE_HEADING_DETECT_RE.exec(src);
+  if (!headingMatch) return src;
+  const headingLineEnd = src.indexOf('\n', headingMatch.index);
+  const bodyStart = headingLineEnd === -1 ? src.length : headingLineEnd + 1;
+  const rest = src.slice(bodyStart);
+  DEEP_DIVE_SECTION_END_RE.lastIndex = 0;
+  const endMatch = DEEP_DIVE_SECTION_END_RE.exec(rest);
+  const sectionEnd = endMatch ? bodyStart + endMatch.index : src.length;
+  const before = src.slice(0, bodyStart);
+  const after = src.slice(sectionEnd);
+  return after ? `${before}\n${trimmed}\n\n${after}` : `${before}\n${trimmed}\n`;
+}
+
 // #325 — single source of truth for "what deep-dive signals does this body
 // carry?" Replaces the inline regex usage in `planDeepDiveGate` and the
 // `minNonEmptyLines` line-counting in `body-gates.mjs`.
@@ -297,20 +333,15 @@ export async function ensureDeepDive({
         const block = buildDeepDiveBlock({ ts: stamp, appendix: prose });
         next = insertDeepDiveBlock(next, block);
       } else if (prose !== undefined && signals.hasHeading) {
-        // 1b. Prose + existing heading: when the section is below the
-        //     size-bucketed floor, append the prose to the end of the
-        //     section (line before the next `##`/`###` heading or end of
-        //     body) WITHOUT duplicating the heading. When the section is
-        //     already at/above the floor, prose is ignored.
-        const floor = pickDeepDiveFloor(next);
-        // Skip append when the prose body is already substring-present —
-        // preserves idempotence under re-run with the same `prose` argument.
-        const proseAlreadyPresent = next.includes(String(prose).trim());
-        if (signals.sectionChars < floor && !proseAlreadyPresent) {
-          next = appendProseToDeepDiveSection(next, prose);
-        }
-        // After append (or no-op), still honor the posted-marker request
-        // path below if marker is missing.
+        // 1b. Prose + existing heading: REPLACE the section body in place
+        //     (#504). The heading line (position), the posted marker above
+        //     it, and any trailer markers below are preserved; only the
+        //     prose between them is swapped. Idempotent — re-posting
+        //     identical prose reproduces the same bytes → no-op.
+        assertDeepDiveAppendixClean(prose);
+        next = replaceDeepDiveSection(next, prose);
+        // After replace, still honor the posted-marker request path below
+        // if the marker is missing.
         if (wantPosted && !POSTED_RE.test(next)) {
           const match = DEEP_DIVE_HEADING_RE.exec(next);
           if (match) {

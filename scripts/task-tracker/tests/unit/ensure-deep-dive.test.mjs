@@ -294,7 +294,11 @@ const BODY_WITH_SECTION_NO_MARKERS = [
   assert.equal(readDeepDiveSignals(log.next).hasComplete, true);
 }
 
-// idempotence: re-running a (0,0,0) → (1,1,1) call against the resulting body is byte-identical
+// idempotence (#504): the first-post path authors via `buildDeepDiveBlock`;
+// re-posting the same prose now takes the replace path, which canonicalizes
+// the section spacing and then reaches a fixed point — a third post against
+// the replaced body is a byte-identical no-op. Both posted + complete markers
+// survive throughout.
 {
   const { fn, log } = fakeMutateFactory(BODY_WITH_DIRECTIVE);
   await ensureDeepDive({
@@ -306,8 +310,9 @@ const BODY_WITH_SECTION_NO_MARKERS = [
     deps: { mutateIssueBody: fn },
   });
   const firstNext = log.next;
+  // Second post: replace path canonicalizes; markers preserved, no duplication.
   const { fn: fn2, log: log2 } = fakeMutateFactory(firstNext);
-  const res2 = await ensureDeepDive({
+  await ensureDeepDive({
     issueNumber: 9,
     repo: 'fake/repo',
     prose: PROSE,
@@ -315,8 +320,25 @@ const BODY_WITH_SECTION_NO_MARKERS = [
     ts: TS,
     deps: { mutateIssueBody: fn2 },
   });
-  assert.equal(res2.status, 'no-op');
-  assert.equal(log2.next, log2.base, 'second call byte-identical');
+  const secondNext = log2.next;
+  const sig2 = readDeepDiveSignals(secondNext);
+  assert.equal(sig2.hasHeading, true);
+  assert.equal(sig2.hasComplete, true);
+  assert.equal((secondNext.match(/^##\s+Deep-Dive Analysis/gm) || []).length, 1);
+  assert.ok(/aitm-entered-plan/.test(secondNext), 'entered-plan marker preserved');
+  assert.ok(/aitm-fields/.test(secondNext), 'fields trailer preserved');
+  // Third post: fixed point reached → byte-identical no-op.
+  const { fn: fn3, log: log3 } = fakeMutateFactory(secondNext);
+  const res3 = await ensureDeepDive({
+    issueNumber: 9,
+    repo: 'fake/repo',
+    prose: PROSE,
+    complete: true,
+    ts: TS,
+    deps: { mutateIssueBody: fn3 },
+  });
+  assert.equal(res3.status, 'no-op');
+  assert.equal(log3.next, log3.base, 'third call byte-identical (fixed point)');
 }
 
 // argument validation
@@ -329,10 +351,13 @@ const BODY_WITH_SECTION_NO_MARKERS = [
   );
 }
 
-// append-path: (1,1,0) with prose and sectionChars < floor → prose spliced into
-// the existing section, heading not duplicated, sectionChars grows.
+// replace-path (#504): (1,1,0) with prose + existing heading → the section
+// body is REPLACED in place, not appended. The old prose disappears, the new
+// prose is present, and the heading / posted marker / trailer are preserved.
+// The canonical appendix ends with `## Dependency Map`, so a re-post must NOT
+// duplicate the heading, the prose, or the Dependency Map sub-heading.
 {
-  const SHORT_PROSE = 'short stub paragraph under the floor.';
+  const OLD_PROSE = 'stale first-draft finding that must be superseded.';
   const seeded = [
     '## Scope',
     'do thing',
@@ -341,35 +366,118 @@ const BODY_WITH_SECTION_NO_MARKERS = [
     '',
     '## Deep-Dive Analysis',
     '',
-    SHORT_PROSE,
+    OLD_PROSE,
     '',
+    '## Dependency Map',
+    '',
+    '- old/dep.mjs',
+    '',
+    '<!-- aitm-deep-dive-complete: 2026-06-05T00:00:00Z -->',
     '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
     '',
   ].join('\n');
-  const before = readDeepDiveSignals(seeded);
-  assert.ok(
-    before.sectionChars < 1200,
-    `seeded section already at/above XS floor: ${before.sectionChars}`
-  );
+  const REVISED = [
+    'Revised finding text that supersedes the stale draft entirely.',
+    '',
+    '## Dependency Map',
+    '',
+    '- new/dep.mjs',
+  ].join('\n');
   const { fn, log } = fakeMutateFactory(seeded);
   const res = await ensureDeepDive({
     issueNumber: 10,
     repo: 'fake/repo',
-    prose: PROSE,
-    complete: true,
+    prose: REVISED,
     ts: TS,
     deps: { mutateIssueBody: fn },
   });
   assert.equal(res.status, 'ok');
   const after = readDeepDiveSignals(log.next);
   assert.equal(after.hasHeading, true);
-  assert.equal(after.hasComplete, true);
-  assert.ok(after.sectionChars > before.sectionChars, 'section grew');
+  // Old prose gone, new prose present.
+  assert.ok(!log.next.includes(OLD_PROSE), 'stale prose replaced');
+  assert.ok(log.next.includes('Revised finding text'), 'new prose present');
+  assert.ok(!log.next.includes('old/dep.mjs'), 'stale dependency replaced');
+  assert.ok(log.next.includes('new/dep.mjs'), 'new dependency present');
+  // Exactly one of each structural element — no duplication.
   const headings = log.next.match(/^##\s+Deep-Dive Analysis/gm) || [];
-  assert.equal(headings.length, 1, 'no duplicate heading');
-  // Original short prose preserved alongside the appended PROSE block.
-  assert.ok(log.next.includes(SHORT_PROSE), 'original prose preserved');
-  assert.ok(log.next.includes('Substantive deep-dive prose'), 'appended prose present');
+  assert.equal(headings.length, 1, 'no duplicate Deep-Dive heading');
+  const depMaps = log.next.match(/^##\s+Dependency Map/gm) || [];
+  assert.equal(depMaps.length, 1, 'no duplicate Dependency Map');
+  // Posted + complete markers survive the replace.
+  assert.ok(/aitm-deep-dive-posted/.test(log.next), 'posted marker preserved');
+  assert.ok(after.hasComplete, 'complete marker preserved');
+}
+
+// re-post idempotency (#504 AC6): replacing with prose identical to what is
+// already in the section is a byte-for-byte no-op.
+{
+  const PROSE_ID = [
+    'Identical revised finding for the idempotency check.',
+    '',
+    '## Dependency Map',
+    '',
+    '- stable/dep.mjs',
+  ].join('\n');
+  const seeded = [
+    '## Scope',
+    'do thing',
+    '',
+    '<!-- aitm-deep-dive-posted: 2026-06-05T00:00:00Z -->',
+    '',
+    '## Deep-Dive Analysis',
+    '',
+    'placeholder to be overwritten on first replace.',
+    '',
+    '<!-- aitm-deep-dive-complete: 2026-06-05T00:00:00Z -->',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
+    '',
+  ].join('\n');
+  const { fn, log } = fakeMutateFactory(seeded);
+  await ensureDeepDive({
+    issueNumber: 11,
+    repo: 'fake/repo',
+    prose: PROSE_ID,
+    ts: TS,
+    deps: { mutateIssueBody: fn },
+  });
+  const firstNext = log.next;
+  const { fn: fn2, log: log2 } = fakeMutateFactory(firstNext);
+  const res2 = await ensureDeepDive({
+    issueNumber: 11,
+    repo: 'fake/repo',
+    prose: PROSE_ID,
+    ts: TS,
+    deps: { mutateIssueBody: fn2 },
+  });
+  assert.equal(res2.status, 'no-op', 're-post with identical prose is a no-op');
+  assert.equal(log2.next, log2.base, 'second replace byte-identical');
+}
+
+// replace-path refuses a banned gate-bearing heading in the new prose.
+{
+  const seeded = [
+    '<!-- aitm-deep-dive-posted: 2026-06-05T00:00:00Z -->',
+    '',
+    '## Deep-Dive Analysis',
+    '',
+    'old prose',
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
+    '',
+  ].join('\n');
+  const { fn } = fakeMutateFactory(seeded);
+  await assert.rejects(
+    () =>
+      ensureDeepDive({
+        issueNumber: 12,
+        repo: 'fake/repo',
+        prose: 'new prose\n\n## Acceptance Criteria\n\n- [ ] x',
+        ts: TS,
+        deps: { mutateIssueBody: fn },
+      }),
+    /Acceptance Criteria/
+  );
 }
 
 console.log('ensure-deep-dive.test.mjs — all assertions passed');
