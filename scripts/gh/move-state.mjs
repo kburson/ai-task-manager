@@ -97,9 +97,10 @@ const STATE_TO_CONFIG_KEY = {
 
 function usage() {
   process.stderr.write(
-    'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede]\n' +
+    'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede] [--force]\n' +
       'States: backlog | on-deck | refine | plan | develop | test | review | done\n' +
-      '--supersede: bypass the matrix + close gates (reserved for the `supersede` verb)\n'
+      '--supersede: bypass the matrix + guard pipeline (reserved for the `supersede` verb — "abandoned")\n' +
+      '--force: bypass the matrix + guard pipeline for a delivered operator override (reserved for `close --force`)\n'
   );
   process.exit(1);
 }
@@ -118,6 +119,16 @@ let demoteFlag = false;
 // owns the marker write, superseder-existence check, audit comment, and the
 // not-planned close. The flag only relaxes the forward-progress gates.
 let supersedeFlag = false;
+// #505 — forced terminal move. When set, the move skips the state-machine
+// matrix gate AND the runGuards entry/exit pipeline, exactly like
+// `--supersede`, but is semantically "delivered, operator override" rather
+// than "abandoned". Reserved for `close --force`'s terminal board move: a
+// forced close has already deliberately bypassed the close gate, so the board
+// must be allowed to reach Done from any non-`review` source column (e.g.
+// `plan → done`) instead of stranding the card. Every done-path side-effect
+// (entry marker, audit, unparkDependents, phase rows, event fields, tracker
+// sync) still fires.
+let forceFlag = false;
 
 for (let i = 2; i < cliArgs.length; i++) {
   if (cliArgs[i] === '--item-id' && cliArgs[i + 1]) {
@@ -130,6 +141,8 @@ for (let i = 2; i < cliArgs.length; i++) {
     demoteFlag = true;
   } else if (cliArgs[i] === '--supersede') {
     supersedeFlag = true;
+  } else if (cliArgs[i] === '--force') {
+    forceFlag = true;
   }
 }
 
@@ -221,7 +234,7 @@ if (fromOverride) {
   resolvedFromState = await resolveLiveStateName(issueArg);
 }
 
-if (resolvedFromState && !supersedeFlag) {
+if (resolvedFromState && !supersedeFlag && !forceFlag) {
   const v = validateTransition(resolvedFromState, stateArg);
   if (!v.ok) {
     process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
@@ -282,7 +295,7 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
 // abandoned, not delivered, so the close gates (deep-dive, review-approved,
 // blocked-by-not-done, lifecycle) must not apply. The done-path side-effects
 // below still run, so unparkDependents/audit/markers are preserved.
-if (!SKIP_NETWORK && !supersedeFlag) {
+if (!SKIP_NETWORK && !supersedeFlag && !forceFlag) {
   let guardBody = '';
   try {
     guardBody = (

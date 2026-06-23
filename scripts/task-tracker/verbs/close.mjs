@@ -545,6 +545,44 @@ export async function verbClose(ctx) {
       `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
     );
   }
+  // #505 — atomic forced close. A `--force` close deliberately bypasses the
+  // close gate (above), but the *terminal board move* used to run only AFTER
+  // `gh issue close` (see ~line 580) and delegated to move-state.mjs, whose
+  // one-step matrix refuses any non-`review` → `done` transition. From a
+  // non-review column that left the issue CLOSED on GitHub but the board
+  // stranded at the source column — a split-brain needing a manual UI drag +
+  // `reconcile accept-live`. Fix: on the force path, pre-walk the board to
+  // Done *before* closing the issue, using the move-state `--force` flag so the
+  // matrix + guards are bypassed for this terminal move only. If the forced
+  // move cannot land the board at Done, refuse here and leave the issue OPEN —
+  // so the outcome is always board=Done-then-closed, or untouched, never
+  // closed-but-not-Done. (The post-close move below then degrades to a benign
+  // `done → done` no-op on this path; the non-force path is unchanged.)
+  if (force && !SKIP_NETWORK && closeIssueNum) {
+    const forcedMove = await runMoveStateDone(s.active, {
+      silent: true,
+      extraArgs: ['--force'],
+    });
+    // Same swallow-vs-surface rule as the post-close move (#435): re-read the
+    // board and only refuse when the move genuinely failed AND the board is not
+    // Done. A benign `done → done` (board already converged out-of-band) passes.
+    const forcedBoardState =
+      forcedMove && !forcedMove.ok && !forcedMove.benign
+        ? await getIssueBoardState(s.active)
+        : 'done';
+    if (decideBoardMoveFailure({ moveResult: forcedMove, boardState: forcedBoardState }).surface) {
+      const detail =
+        (forcedMove.stderr || '').trim() ||
+        `move-state.mjs exited ${forcedMove.status ?? 'non-zero'}`;
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: forced board move to "done" failed (${detail}). ` +
+          `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move and re-run \`/task close ${closeTarget} --force\`.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   // #425 — explicitly close the primary issue rather than relying on the
   // GitHub Projects auto-close workflow firing off the board move below. The
   // workflow is best-effort; when it misses, board=Done + issue-OPEN drift
