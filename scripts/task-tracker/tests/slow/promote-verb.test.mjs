@@ -113,7 +113,9 @@ const USER_STORY_SECTION =
   '## User Story\n\nAs a developer\nI want to test the promote verb\nSo that the gate suite stays green\n';
 
 function bodyWithState(state) {
-  const base = `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n\n${USER_STORY_SECTION}`;
+  // #503 — `## User Story` must be the FIRST `## ` heading in the body; lead with
+  // it so these fixtures satisfy the position check inherited by the gates.
+  const base = `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n${USER_STORY_SECTION}\n## Issue\n\nbody.\n`;
   return state === 'plan' ? base + DEEP_DIVE_SIGNALS : base;
 }
 

@@ -73,7 +73,9 @@ test('promote does not write aitm-last-known-state on successful refine→plan',
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
   const userStory =
     '## User Story\nAs a developer\nI want to rename a field\nSo that the terminology is consistent\n';
-  const body = `${bodyWithState('refine')}\n${refineComplete}\n${rationale}\n\n${userStory}\n${ac}`;
+  // #503 — `## User Story` must be the first `## ` heading; lead with it.
+  const head = `<!-- aitm-last-known-state: refine -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n`;
+  const body = `${head}${userStory}\n## Issue\n\nbody.\n\n${refineComplete}\n${rationale}\n\n${ac}`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],

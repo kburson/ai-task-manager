@@ -97,6 +97,90 @@ test('validateUserStory: returns ok:false for non-string input', () => {
   assert.equal(validateUserStory(42).ok, false);
 });
 
+// --- #503: position check — User Story must be the FIRST `## ` heading -------
+
+test('validateUserStory: returns ok:false when a complete story is not the first ## heading', () => {
+  const body = [
+    '## Scope',
+    '',
+    'some scope text',
+    '',
+    '## User Story',
+    '',
+    'As a repo author',
+    'I want issue bodies to start with a user story',
+    'So that the value being delivered is always explicit',
+  ].join('\n');
+  const result = validateUserStory(body);
+  assert.equal(result.ok, false);
+  assert.ok(result.reason, 'should have a reason');
+});
+
+test('validateUserStory: ok:true when User Story is first despite a leading marker comment', () => {
+  const body = [
+    '<!-- aitm-last-known-state state="refine" ts="2026-06-23T00:00:00.000Z" -->',
+    '',
+    '## User Story',
+    '',
+    'As a repo author',
+    'I want issue bodies to start with a user story',
+    'So that the value being delivered is always explicit',
+    '',
+    '## Scope',
+    '',
+    'text',
+  ].join('\n');
+  assert.deepEqual(validateUserStory(body), { ok: true });
+});
+
+test('userStoryBlockGuard: returns ok:false when User Story is not the first section', () => {
+  const body = [
+    '## Scope',
+    '',
+    'text',
+    '',
+    '## User Story',
+    '',
+    'As a repo author',
+    'I want issue bodies to start with a user story',
+    'So that the value being delivered is always explicit',
+  ].join('\n');
+  const result = userStoryBlockGuard.run({ toState: 'plan', body });
+  assert.equal(result.ok, false);
+  assert.ok(result.reason);
+});
+
+test('userStoryWarnGuard: warns when User Story is not the first section', () => {
+  const chunks = [];
+  const orig = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (chunk) => {
+    chunks.push(chunk);
+    return true;
+  };
+  try {
+    userStoryWarnGuard.run({
+      toState: 'refine',
+      body: [
+        '## Scope',
+        '',
+        'text',
+        '',
+        '## User Story',
+        '',
+        'As a repo author',
+        'I want issue bodies to start with a user story',
+        'So that the value being delivered is always explicit',
+      ].join('\n'),
+    });
+  } finally {
+    process.stderr.write = orig;
+  }
+  assert.ok(
+    chunks.some((c) => c.includes('user-story')),
+    'stderr should warn about user-story position'
+  );
+});
+
 // ---------------------------------------------------------------------------
 // userStoryWarnGuard
 // ---------------------------------------------------------------------------
