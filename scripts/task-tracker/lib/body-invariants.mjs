@@ -323,7 +323,7 @@ export class MalformedDeclarationCmdError extends Error {
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const AC_SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const AC_BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
-const NON_DEMONSTRABLE_TAG_RE = /invalid\s+[—-]+\s+non-demonstrable/i;
+export const NON_DEMONSTRABLE_TAG_RE = /invalid\s+[—-]+\s+non-demonstrable/i;
 const TEST_ALL_CMD_RE = /^npm\s+run\s+test:all$/;
 
 function acDeclaredCommands(text) {

@@ -18,6 +18,7 @@ import { promisify } from 'node:util';
 import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
 import { isNoCommitKind, hasDeliverableMarker, isAcWaived } from './issue-kind.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 
 const pexec = promisify(execFile);
 
@@ -235,6 +236,15 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
       if (!ac.checked) {
         blockers.push(`code-complete-ac-unticked: ${shortLabel}`);
       } else if (!ac.verifiedBy || ac.verifiedBy === 'TBD') {
+        // Non-demonstrable opt-out (#532): an AC honestly tagged `invalid —
+        // non-demonstrable` (#523) can never carry a machine verifier by
+        // design. The Refine→Plan gate already `continue`s past such lines
+        // (`findAcsWithoutVerifierOrInvalidTag`); mirror that here so the two
+        // gates share one definition of the opt-out. Done-ness is preserved —
+        // the `!ac.checked` branch above still blocks an UNticked one.
+        if (NON_DEMONSTRABLE_TAG_RE.test(ac.label)) {
+          continue;
+        }
         // Audit lane: an analytical AC may be audited-waived via a sanctioned
         // `aitm-ac-waived` marker in place of `aitm-verified-by`. Code-kind
         // issues never reach this branch — they still require evidence.
