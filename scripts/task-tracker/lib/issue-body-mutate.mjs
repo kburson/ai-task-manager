@@ -44,11 +44,17 @@ import {
   CheckboxProofMissingError,
   findNewMalformedVerifiedCmds,
   MalformedDeclarationCmdError,
+  findNewlyIntroducedExecutionProof,
+  FabricatedProofError,
 } from './body-invariants.mjs';
 import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
 import { formatDefectHint } from './defect-hint.mjs';
 
-export { CheckboxProofMissingError, MalformedDeclarationCmdError } from './body-invariants.mjs';
+export {
+  CheckboxProofMissingError,
+  MalformedDeclarationCmdError,
+  FabricatedProofError,
+} from './body-invariants.mjs';
 
 export class MarkerLossError extends Error {
   constructor(issueNumber, lostMarkers) {
@@ -76,6 +82,7 @@ export async function mutateIssueBody({
   maxRetries,
   allowMarkerLoss = false,
   allowUnverifiedTicks = false,
+  evidenceStamp = false,
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
@@ -108,6 +115,17 @@ export async function mutateIssueBody({
       // (non-mutateIssueBody) corpus migration are unaffected.
       const malformed = findNewMalformedVerifiedCmds(baseBody, next);
       if (malformed.length > 0) throw new MalformedDeclarationCmdError({ offenders: malformed });
+      // #522 — proof-INTRODUCTION invariant. A write may not INTRODUCE an
+      // execution-proof marker unless an audited stamper that derived it from a
+      // real run passes `evidenceStamp: true`. Closes the #516 fabrication gap:
+      // the checkbox-proof guard above accepts a tick that CARRIES proof, but
+      // only this guard distinguishes proof minted by a real run from proof a
+      // script or AI synthesized. Diff-based, so pre-existing proof carried
+      // through untouched never blocks an unrelated edit.
+      if (!evidenceStamp) {
+        const introduced = findNewlyIntroducedExecutionProof(baseBody, next);
+        if (introduced.length > 0) throw new FabricatedProofError({ lines: introduced });
+      }
       // #488 — Plan Metadata bold-label enforcement. Non-fatal: the pre-#416
       // corpus is unbold until the back-fill runs, so a hard refusal would
       // block every edit to a stale issue (including back-fill itself). A

@@ -89,6 +89,10 @@ export async function verbAcStamp(ctx) {
     issueNumber: issueNum,
     repo: cfg.repo,
     deps: { pexec },
+    // #522 — sanctioned stamper: the evidence is derived from the real
+    // verifier run executed just above, so the proof-introduction guard is
+    // bypassed for this minting site.
+    evidenceStamp: true,
     mutate: (base) =>
       stampAcEvidenceAndReconcile(base, label, { cmd: canonicalCmd, sha, ts, exit: 0 }),
   });

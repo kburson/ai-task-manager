@@ -67,6 +67,10 @@ export async function deriveAndStampFunctionalDod({
     issueNumber,
     repo,
     deps,
+    // #522 — sanctioned close-pipeline auto-stamp: the derived `acs`/`checkboxes`
+    // evidence is computed from the body's own ticked state at close time, so the
+    // proof-introduction guard is bypassed for this minting site.
+    evidenceStamp: true,
     mutate: (base) => {
       const items = parseFunctionalDodKeys(base);
       const acsItem = items.find((it) => it.key === 'acs');

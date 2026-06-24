@@ -59,6 +59,10 @@ test('tick with same-line aitm-verified-at marker is accepted', async () => {
         '- [x] verify behavior <!-- aitm-verified-at: 2026-06-09T00:00:00Z evidence:"npm test" sha=abc proof=#1 -->'
       ),
     deps,
+    // #522 — simulates the sanctioned stamp path that mints proof; the
+    // proof-introduction guard is bypassed here so this test stays focused on
+    // the #362 checkbox-proof invariant.
+    evidenceStamp: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /- \[x\] verify behavior/);
@@ -76,6 +80,8 @@ test('tick with same-line aitm-dod-evidence marker is accepted (close-pipeline s
         '- [x] verify behavior <!-- aitm-dod-evidence: sandbox exit 0 -->'
       ),
     deps,
+    // #522 — sanctioned-stamp simulation; bypass the proof-introduction guard.
+    evidenceStamp: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /- \[x\] verify behavior/);
@@ -133,6 +139,8 @@ test('tick with same-line canonical aitm-ac-evidence marker is accepted (#383)',
         '- [x] verify behavior <!-- aitm-ac-evidence:da1b55f9 cmd="npm test" exit=0 sha=abc1234 ts=2026-06-10T00:00:00.000Z -->'
       ),
     deps,
+    // #522 — sanctioned-stamp simulation; bypass the proof-introduction guard.
+    evidenceStamp: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /- \[x\] verify behavior/);
@@ -210,6 +218,8 @@ test('consolidated aitm-verified with ts/sha is accepted as proof (#391)', async
         '- [x] verify behavior <!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-06-12T00:00:00.000Z" -->'
       ),
     deps,
+    // #522 — sanctioned-stamp simulation; bypass the proof-introduction guard.
+    evidenceStamp: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /- \[x\] verify behavior/);
@@ -229,6 +239,8 @@ test('tick with same-line NEW fully-quoted aitm-dod-evidence marker is accepted 
         '- [x] verify behavior <!-- aitm-dod-evidence key="tests" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->'
       ),
     deps,
+    // #522 — sanctioned-stamp simulation; bypass the proof-introduction guard.
+    evidenceStamp: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /- \[x\] verify behavior/);
@@ -248,6 +260,8 @@ test('tick with same-line NEW fully-quoted aitm-ac-evidence marker is accepted (
         '- [x] verify behavior <!-- aitm-ac-evidence key="da1b55f9" cmd="npm test" exit="0" sha="abc1234" ts="2026-06-10T00:00:00.000Z" -->'
       ),
     deps,
+    // #522 — sanctioned-stamp simulation; bypass the proof-introduction guard.
+    evidenceStamp: true,
   });
   assert.equal(r.status, 'ok');
   assert.match(deps.getBody(), /- \[x\] verify behavior/);

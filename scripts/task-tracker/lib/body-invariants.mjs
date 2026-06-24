@@ -214,6 +214,79 @@ export function findNewMalformedVerifiedCmds(before, after) {
   return offenders;
 }
 
+// #522 — proof-INTRODUCTION invariant. `guardedMutate` guards proof LOSS
+// (`findLostMarkers`) but had no symmetric invariant against proof INTRODUCTION
+// — the exact gap the #516 fabrication exploited (a script synthesized an
+// `aitm-verified` proof marker to pass the checkbox gate). This walker returns
+// each `after` line that newly carries an EXECUTION-PROOF marker absent from
+// `before` — `aitm-verified` with ts/sha/evidence (per `hasExecutionProof`),
+// the canonical `aitm-ac-evidence` form, or `aitm-dod-evidence`. A
+// declaration-only `aitm-verified cmd="..."` marker asserts intent, not
+// provenance, so it is NOT flagged.
+//
+// The diff is at proof-MARKER granularity, not whole-line. A whole-line diff
+// false-positives on the sanctioned `/task check` write path, which toggles
+// `- [ ]` → `- [x]` on a line whose stamp is ALREADY present: the line text
+// changes (the checkbox) but no new proof marker is minted. Comparing the
+// multiset of proof-marker comment substrings instead means a tick on an
+// already-stamped line introduces nothing, while a freshly-synthesized marker
+// (the #516 fabrication) appears as a new substring and is flagged.
+//
+// Multiset semantics: a proof marker present at multiplicity N in `before` is
+// permitted at multiplicity N in `after`; the N+1-th identical copy is a new
+// introduction, attributed to the `after` line carrying that extra copy.
+// Returns `{ lineIndex, text }` for each offender; empty is clean.
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
+
+function collectProofMarkers(body) {
+  const lines = String(body || '').split('\n');
+  const markers = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const matches = line.match(HTML_COMMENT_RE);
+    if (!matches) continue;
+    for (const marker of matches) {
+      if (lineHasProof(marker)) markers.push({ marker, lineIndex: i, text: line });
+    }
+  }
+  return markers;
+}
+
+export function findNewlyIntroducedExecutionProof(before, after) {
+  const beforeCounts = new Map();
+  for (const { marker } of collectProofMarkers(before)) {
+    beforeCounts.set(marker, (beforeCounts.get(marker) || 0) + 1);
+  }
+  const offenders = [];
+  for (const { marker, lineIndex, text } of collectProofMarkers(after)) {
+    const avail = beforeCounts.get(marker) || 0;
+    if (avail > 0) {
+      beforeCounts.set(marker, avail - 1);
+      continue;
+    }
+    offenders.push({ lineIndex, text });
+  }
+  return offenders;
+}
+
+export class FabricatedProofError extends Error {
+  constructor({ lines } = {}) {
+    const list = Array.isArray(lines) ? lines : [];
+    const sample = list
+      .slice(0, 5)
+      .map((l) => `    line ${l.lineIndex}: ${l.text}`)
+      .join('\n');
+    const msg =
+      `mutateIssueBody refused: ${list.length} newly-introduced execution-proof marker(s).\n` +
+      `  A body write may not INTRODUCE an execution-proof marker (\`aitm-verified\` with ts/sha/evidence, \`aitm-ac-evidence\`, or \`aitm-dod-evidence\`) unless a sanctioned stamper minted it from a real run.\n` +
+      `  Offending lines:\n${sample}\n` +
+      `  Only \`ac-stamp\`, \`dod-stamp\`, the close pipeline, and the sandbox auto-stamp may pass \`evidenceStamp: true\` to bypass this guard. Never fabricate a proof marker to satisfy a gate.`;
+    super(msg);
+    this.name = 'FabricatedProofError';
+    this.lines = list.slice();
+  }
+}
+
 export class MalformedDeclarationCmdError extends Error {
   constructor({ offenders } = {}) {
     const list = Array.isArray(offenders) ? offenders : [];

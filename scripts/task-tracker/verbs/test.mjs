@@ -147,12 +147,16 @@ async function defaultFetchBody({ cfg, issueNum }) {
 }
 
 // #295 — body writes go through `mutateIssueBody({ mutate })`.
-async function defaultMutateBody({ cfg, issueNum, mutate }) {
+// #522 — `evidenceStamp` is forwarded so the sandbox auto-stamp call site (the
+// only Test-stage write that INTRODUCES execution proof) can bypass the
+// proof-introduction guard; all other Test writes leave it false.
+async function defaultMutateBody({ cfg, issueNum, mutate, evidenceStamp = false }) {
   return mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
     mutate,
     deps: { pexec },
+    evidenceStamp,
   });
 }
 
@@ -482,6 +486,9 @@ export async function runVerbTest({
       await mutateBody({
         cfg,
         issueNum,
+        // #522 — sanctioned sandbox auto-stamp: `insertDodVerifiedMarker` +
+        // `autoTickVerified` mint proof from the green sandbox run just executed.
+        evidenceStamp: true,
         mutate: (base) => {
           let next = insertDodVerifiedMarker(base, sha, ts);
           const ms = parseEntryMarkers(next);

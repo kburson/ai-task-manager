@@ -118,6 +118,9 @@ export async function verbDodStamp(ctx) {
     issueNumber: issueNum,
     repo: cfg.repo,
     deps: { pexec },
+    // #522 — sanctioned stamper: evidence derived from the real verifier run
+    // executed above; bypass the proof-introduction guard for this minting site.
+    evidenceStamp: true,
     mutate: (base) =>
       stampEvidenceMarker(base, key, {
         cmd: canonicalCmd,
