@@ -17,8 +17,8 @@ const DOC = path.resolve(__dir, '..', '..', '..', '..', 'docs', 'guides', 'workf
 test('workflow.md documents the Defect-First rule', () => {
   const md = readFileSync(DOC, 'utf8');
   assert.match(md, /Defect-First/);
-  // Every defect starts with a failing reproducing test, then green.
-  assert.match(md, /failing (test|reproducing test)[^\n]*reproduc|reproduc[^\n]*failing/i);
+  // Every defect starts with a failing test that reproduces it, then green.
+  assert.match(md, /failing test that reproduces it/i);
 });
 
 test('workflow.md documents the Suite-Must-Grow rule', () => {
