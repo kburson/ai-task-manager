@@ -15,6 +15,7 @@
 import { projectValuesForIssue, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { lintChecklistCommands } from './checklist-command-lint.mjs';
+import { findAcsWithoutVerifierOrInvalidTag } from './body-invariants.mjs';
 
 async function defaultFetchBody({ cfg, issueNumber }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -98,6 +99,19 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
       if (v.severity !== 'error') continue;
       blockers.push(
         `refine-exit-forbidden-command: ${v.section}:${v.lineIndex + 1}: \`${v.command}\` — forbidden ${v.rule}. Split into separate backtick-quoted commands.`
+      );
+    }
+    // #523 — Demonstrable-AC exit gate. Every AC must bind to a targeted
+    // verifier (`aitm-verified cmd="…"`) or carry the honest
+    // `invalid — non-demonstrable` opt-out. `npm run test:all` is the
+    // regression floor, not an AC verifier.
+    for (const ac of findAcsWithoutVerifierOrInvalidTag(body)) {
+      const why =
+        ac.reason === 'test-all-verifier'
+          ? '`npm run test:all` is the regression floor, not an AC verifier — declare a targeted verifier or tag the AC `invalid — non-demonstrable`'
+          : 'no `aitm-verified cmd="…"` verifier and not tagged `invalid — non-demonstrable` — bind a targeted verifier test or tag it invalid';
+      blockers.push(
+        `refine-exit-demonstrable: AC line ${ac.lineIndex + 1}: "${ac.label}" — ${why}.`
       );
     }
   } catch (err) {

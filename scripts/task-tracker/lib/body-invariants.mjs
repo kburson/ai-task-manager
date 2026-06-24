@@ -24,6 +24,7 @@ import {
   hasExecutionProof,
   validateDeclarationCmd,
   collectDeclarationCmds,
+  parseProofMarker,
 } from './proof-marker.mjs';
 import { parseAcEvidence } from './ac-evidence.mjs';
 
@@ -303,6 +304,68 @@ export class MalformedDeclarationCmdError extends Error {
     this.name = 'MalformedDeclarationCmdError';
     this.offenders = list.slice();
   }
+}
+
+// #523 — Demonstrable-AC invariant. The Refine→Plan exit gate must refuse any
+// Acceptance-Criteria checkbox line that is not bound to a concrete, targeted
+// verifier. An AC is demonstrable when EITHER:
+//   - it carries an `aitm-verified cmd="…"` declaration naming at least one
+//     real targeted command (a `node --test <file>`-style probe), OR
+//   - it is explicitly tagged `invalid — non-demonstrable` (an honest opt-out
+//     for a genuinely unverifiable assertion).
+// `npm run test:all` is the regression FLOOR, not an AC verifier: an AC whose
+// only declared command is `test:all` proves nothing specific to that AC, so it
+// is flagged with reason `test-all-verifier`. An AC lacking both a verifier and
+// the invalid tag is flagged `no-verifier`.
+//
+// Returns `{ lineIndex, label, reason }` for each offending AC line, in body
+// order. Empty array means every AC is demonstrable (or honestly tagged).
+const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
+const AC_SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
+const AC_BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
+const NON_DEMONSTRABLE_TAG_RE = /invalid\s+[—-]+\s+non-demonstrable/i;
+const TEST_ALL_CMD_RE = /^npm\s+run\s+test:all$/;
+
+function acDeclaredCommands(text) {
+  const props = parseProofMarker(String(text || ''));
+  if (!props || typeof props.cmd !== 'string') return [];
+  return [...props.cmd.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+}
+
+export function findAcsWithoutVerifierOrInvalidTag(body) {
+  const src = String(body || '');
+  const heading = src.match(AC_HEADING_RE);
+  if (!heading) return [];
+  const start = heading.index + heading[0].length;
+  const rest = src.slice(start);
+  const endMatch = rest.match(AC_SECTION_END_RE);
+  const endIdx = endMatch ? start + endMatch.index : src.length;
+
+  const lines = src.split('\n');
+  const startLine = src.slice(0, start).split('\n').length - 1;
+  const endLine = src.slice(0, endIdx).split('\n').length;
+
+  const offenders = [];
+  for (let i = startLine; i < endLine && i < lines.length; i += 1) {
+    const box = lines[i].match(AC_BOX_RE);
+    if (!box) continue;
+    const labelRaw = box[4];
+    if (NON_DEMONSTRABLE_TAG_RE.test(labelRaw)) continue; // honest opt-out
+    const cmds = acDeclaredCommands(labelRaw);
+    const label = String(labelRaw)
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (cmds.length === 0) {
+      offenders.push({ lineIndex: i, label, reason: 'no-verifier' });
+      continue;
+    }
+    const hasTargeted = cmds.some((c) => !TEST_ALL_CMD_RE.test(c));
+    if (!hasTargeted) {
+      offenders.push({ lineIndex: i, label, reason: 'test-all-verifier' });
+    }
+  }
+  return offenders;
 }
 
 export class CheckboxProofMissingError extends Error {
