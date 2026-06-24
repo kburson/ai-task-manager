@@ -225,6 +225,21 @@ Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a m
 
 `npm run test:all` is the **regression floor**, not an AC verifier. An AC whose only declared command is `test:all` is rejected (`reason: test-all-verifier`) — it proves nothing specific to that criterion. Bind a targeted test instead, or tag the AC invalid. This standard exists because a vague AC cannot be honestly ticked: the #516 fabrication incident showed that ACs without a concrete verifier invite forged evidence. Demonstrability at the Refine gate is the upstream defense.
 
+### Defect-First / Suite-Must-Grow (engineering doctrine)
+
+The [Demonstrable-AC Standard](#demonstrable-ac-standard-refineplan-exit-gate) above governs the _artifact_ — every AC must bind to a concrete verifier. This section states the matching _engineering behavior_ that produces demonstrable work. Two rules, applied to every change:
+
+- **Defect-First.** Every defect begins with a _failing test that reproduces it_ (RED), and only then is the fix written to turn that test GREEN. The reproducing test is committed alongside the fix as durable, re-runnable evidence that the bug existed and is closed. This is the bug-fix branch of the TDD Iron Law ("no production code without a failing test first") restated for defects specifically, so it is not left to inference from the general TDD skill. No defect is "fixed" without a reproducing test committed alongside it.
+- **Suite-Must-Grow.** Regression tests prove only that _previously-tested_ behavior still holds — they are a **floor**, never proof of _new_ behavior. `npm run test:all` passing on a change that adds behavior with no new test is a false signal: it confirms nothing was broken, not that the new behavior works. So the suite grows monotonically — every new behavior ships with new targeted tests. This is the same principle as the Demonstrable-AC rule that `test:all` is the regression floor, not an AC verifier; here it is stated for the code, there for the criteria.
+
+**The `aitm-defect-repro-test` marker convention.** A defect's reproducing test is recorded in the issue body with a marker naming its path:
+
+```
+<!-- aitm-defect-repro-test: scripts/task-tracker/tests/unit/<the-repro>.test.mjs -->
+```
+
+Documenting this token gives a future Develop→Test enforcement gate a stable contract to read — a gate that refuses a defect-kind issue lacking the marker is a noted follow-up candidate, intentionally out of scope of this doctrine (the doctrine is documentation; the gate, when built, is enforcement). Recording the path now also makes "write a reproducing test" concrete rather than aspirational: the marker points at the exact artifact that demonstrates the fix.
+
 ### Creation shapes: stub vs solo (and epic / sub-issue)
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
