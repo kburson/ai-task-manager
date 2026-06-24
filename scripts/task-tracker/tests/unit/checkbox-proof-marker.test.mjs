@@ -56,7 +56,7 @@ test('tick with same-line aitm-verified-at marker is accepted', async () => {
     mutate: (b) =>
       b.replace(
         '- [ ] verify behavior',
-        '- [x] verify behavior <!-- aitm-verified-at: 2026-06-09T00:00:00Z evidence:"npm test" sha=abc proof=#1 -->'
+        '- [x] verify behavior <!-- aitm-verified-at: 2026-06-09T00:00:00Z evidence:"npm test" sha=abc1234 proof=#1 -->'
       ),
     deps,
     // #522 — simulates the sanctioned stamp path that mints proof; the
