@@ -25,6 +25,20 @@ export function isTransientGhError(err) {
 
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// #531 — test-mode retry cap. The Test-stage sandbox runs slow tests that spawn
+// the production verb chain; if one escapes its `gh` shim and reaches a live
+// `gh` call against an unresolvable repo, the retry/backoff path lets the child
+// sit long enough to be timeout-killed — an intermittent, sandbox-only hang.
+// When this env flag is set (the test runner exports it for every spawned
+// child) the effective retry budget collapses to 0, so a transient failure
+// fails fast instead of looping. Unset → production behaviour is unchanged.
+export const TEST_NO_RETRY_ENV = 'AITM_TEST_NO_GH_RETRY';
+
+function testModeRetryCap() {
+  const v = process.env[TEST_NO_RETRY_ENV];
+  return v != null && v !== '' && v !== '0' ? 0 : null;
+}
+
 // Run `fn` with bounded retry-and-backoff.
 //
 //   withRetry(() => gh([...]), { retries: 3 })
@@ -53,6 +67,8 @@ export async function withRetry(
   if (typeof fn !== 'function') {
     throw new TypeError('withRetry: fn must be a function');
   }
+  const cap = testModeRetryCap();
+  if (cap != null) retries = Math.min(retries, cap);
   let attempt = 0;
   for (;;) {
     try {

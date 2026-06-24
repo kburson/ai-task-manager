@@ -19,6 +19,8 @@ import {
   fleetRegistryPath,
   readFleet,
 } from './task-tracker/fleet-registry.mjs';
+import { describeSpawnResult, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
+import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');
@@ -110,17 +112,34 @@ for (const entry of files) {
     continue;
   }
   process.stdout.write(`▶ ${label} ... `);
+  const t0 = process.hrtime.bigint();
   const res = spawnSync('node', [full], {
     stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
     timeout: TEST_RUNNER_TIMEOUT_MS,
+    // #531 AC2 — raise the per-file ceiling so a chatty-but-passing file is
+    // never buffer-killed (and mis-reported as a hang) by the 1 MB default.
+    maxBuffer: RUN_TESTS_MAX_BUFFER,
+    // #531 AC1 — cap `gh` retries to 0 in every spawned test child, so a test
+    // that escapes its shim and reaches a live `gh` call against an
+    // unresolvable repo fails fast instead of hanging until timeout-kill.
+    env: { ...process.env, [TEST_NO_RETRY_ENV]: '1' },
   });
+  const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
   if (res.status === 0) {
     console.log('ok');
   } else {
     failed++;
     failures.push({ file: label, stdout: res.stdout, stderr: res.stderr, status: res.status });
-    console.log(`FAIL (exit ${res.status})`);
+    // #531 AC2 — never print a bare `(exit null)`; name the real kill cause.
+    console.log(
+      describeSpawnResult({
+        status: res.status,
+        signal: res.signal,
+        error: res.error,
+        elapsedMs: Math.round(elapsedMs),
+      })
+    );
   }
 }
 

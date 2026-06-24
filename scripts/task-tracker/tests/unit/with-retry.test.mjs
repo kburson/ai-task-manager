@@ -2,7 +2,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { withRetry, isTransientGhError } from '../../../gh/lib/with-retry.mjs';
+import { withRetry, isTransientGhError, TEST_NO_RETRY_ENV } from '../../../gh/lib/with-retry.mjs';
+
+// This file asserts the real retry/backoff budget. The test runner (#531 AC1)
+// exports AITM_TEST_NO_GH_RETRY=1 to every spawned child to collapse the cap to
+// 0; neutralize it here so these assertions see production retry behaviour.
+delete process.env[TEST_NO_RETRY_ENV];
 
 // No real delays — capture requested sleeps instead.
 function makeSleepSpy() {
