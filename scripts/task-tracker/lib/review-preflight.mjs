@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { findTrailComment } from '../commit-trail-handler.mjs';
 import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -97,6 +98,13 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
   if (body.trim()) {
     const audit = auditEvidenceMarkers(body);
     for (const item of audit.missingEvidence) {
+      // #537 — honor the same honest `invalid — non-demonstrable` opt-out the
+      // Refine→Plan gate honors (`findAcsWithoutVerifierOrInvalidTag` in
+      // body-invariants.mjs). Single source of truth: both gates key off
+      // `NON_DEMONSTRABLE_TAG_RE`, so an AC accepted as honestly non-demonstrable
+      // at refine cannot be rejected at review-exit — removing the only remaining
+      // pressure to fabricate a verifier just to cross the gate.
+      if (NON_DEMONSTRABLE_TAG_RE.test(item.label)) continue;
       reasons.push(
         `acceptance criterion "${item.label}" is missing \`aitm-verified cmd="..."\` evidence declaration`
       );
