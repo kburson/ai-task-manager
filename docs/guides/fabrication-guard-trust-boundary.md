@@ -97,7 +97,7 @@ assert, and #536 carries it as its own separately-reviewed implementation issue.
 
 This record resolves to outcome **(a)**: a follow-up implementation issue
 (**#536**) is filed and linked under epic #521 with concrete acceptance criteria.
-#527 itself remains a spike — it ships this decision record and the doc-presence
+Issue #527 itself remains a spike — it ships this decision record and the doc-presence
 test, no guard logic. Epic #521 stays open until #536 ships, which is correct:
 the trust-boundary question is now _documented and decided_, and the one hardening
 it implies is _scheduled_, not silently dropped.
