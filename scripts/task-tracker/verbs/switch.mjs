@@ -12,6 +12,7 @@ import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
+import { resolveBindEvent, timingCommentHasRows } from '../lib/bind-event.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
@@ -113,10 +114,26 @@ export async function verbSwitch(ctx, target) {
       );
     }
   }
-  const { buildRow } = await import('../gh-timing-comment.mjs');
+  // #535 — the incoming row must record `start` ONLY for a genuine first-ever
+  // bind. Switching back into an issue that already carries timing history is a
+  // resume, so it must emit `resumed`, not a second `start` (duplicate-start
+  // defect observed on #526). Mirror the #482 discrimination from verbResume:
+  // read the incoming issue's timing comment and resolve the event slug.
+  const gh = await import('../gh-timing-comment.mjs');
+  const { buildRow } = gh;
+  const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
+  let hasTimingHistory = false;
+  if (cfg?.repo) {
+    const tcBody = await readTimingCommentBody({
+      issueNumber: Number(target.replace(/^#/, '')),
+      repo: cfg.repo,
+    });
+    hasTimingHistory = timingCommentHasRows(tcBody);
+  }
+  const bindEvent = resolveBindEvent({ hasTimingHistory });
   const row = buildRow({
     ts,
-    event: 'start',
+    event: bindEvent,
     activeSec: 0,
     idleSec: 0,
     deltaWords: 0,
