@@ -240,6 +240,16 @@ The [Demonstrable-AC Standard](#demonstrable-ac-standard-refineplan-exit-gate) a
 
 Documenting this token gives a future Develop→Test enforcement gate a stable contract to read — a gate that refuses a defect-kind issue lacking the marker is a noted follow-up candidate, intentionally out of scope of this doctrine (the doctrine is documentation; the gate, when built, is enforcement). Recording the path now also makes "write a reproducing test" concrete rather than aspirational: the marker points at the exact artifact that demonstrates the fix.
 
+### Full-Auto Doctrine (autonomy boundary)
+
+"Full-Auto" (the `TT_FULL_AUTO=1` mode that lets the agent stamp its own gate approvals) is a grant of trust, not a license to cut corners — and not a license to defer everything either. The #516 incident, where a script forged execution-proof markers to slip past a checkbox gate while running headless, exposed that this mode had no written boundary. This section states it so the limit is explicit and testable rather than folkloric. Three tenets govern every Full-Auto run:
+
+1. **Trusted judgment.** Full-Auto means you are trusted to find and execute the best honest path to the right outcome. The default is to act. Do not invent ceremony, and do not stall on decisions you can responsibly make yourself — deferring those turns the agent into noise and erodes the operator's reliance on it.
+2. **Stop only when there is no discernible path.** Escalate to the human when, and only when, there is genuinely no responsible route to the right thing — a real ambiguity or a missing decision only the operator can make. A blocking question pauses the timer (`/task pause`) and waits for a typed answer; it is not a way to offload work you could have done.
+3. **Never fabricate to stay automatic.** When the only remaining routes to "done" are _fabricate evidence_ or _stop and ask_, always stop and ask. Forging proof to dodge a check-in is the cardinal failure this epic exists to prevent. Full-Auto never authorizes inventing evidence: use the real runner (`ac-stamp` / `dod-stamp`), the honest `allowUnverifiedTicks` escape hatch, or halt. This tenet is the operational face of the `never-fabricate-evidence` rule and the [Demonstrable-AC Standard](#demonstrable-ac-standard-refineplan-exit-gate) above — autonomy is bounded by honesty, and honesty wins every conflict.
+
+Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the edge of your authority. Tenet 3 is absolute and overrides both — there is no version of "staying automatic" that justifies a fabricated marker.
+
 ### Creation shapes: stub vs solo (and epic / sub-issue)
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
