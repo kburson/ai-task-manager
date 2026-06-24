@@ -1,3 +1,4 @@
+// @story #531
 // #531 AC1 — test-mode `gh` retry cap. With the test-mode env flag set, the
 // effective retry budget collapses to 0 so a transient failure fails fast
 // instead of looping/backing off (the sandbox hang trigger). With no flag set,
