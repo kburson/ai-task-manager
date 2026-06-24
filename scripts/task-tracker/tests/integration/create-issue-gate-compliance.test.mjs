@@ -182,7 +182,20 @@ test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
         fetchBody: async () => body,
       },
     });
-    assert.equal(r.ok, true, `refine→plan board refusals: ${JSON.stringify(r.blockers)}`);
+    // #523 — the Demonstrable-AC exit gate refuses ACs that carry no
+    // `aitm-verified cmd="…"` verifier. Verifier binding is workflow-deferred:
+    // a verifier references a targeted test file that does not exist at
+    // creation, so it is bound during refine/plan, not by create-issue.mjs.
+    // Mirror gate 2's rationale deferral — allow ONLY refine-exit-demonstrable
+    // refusals, never a board-shape refusal.
+    assert.equal(r.ok, false, 'expected demonstrable-AC deferral');
+    const allowed = ['refine-exit-demonstrable'];
+    const offending = (r.blockers || []).filter((b) => !allowed.some((a) => b.startsWith(a)));
+    assert.deepEqual(
+      offending,
+      [],
+      `unexpected non-demonstrable blockers: ${JSON.stringify(offending)}`
+    );
   });
 
   await t.test('gate 4 — Plan → Develop entry (planDeepDiveGate)', () => {
