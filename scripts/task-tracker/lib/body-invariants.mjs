@@ -288,6 +288,85 @@ export class FabricatedProofError extends Error {
   }
 }
 
+// #536 — proof STRUCTURAL-COMPLETENESS invariant, the flag-bearing sibling of
+// #522's provenance guard. When `evidenceStamp: true` (a sanctioned stamper),
+// #522 skips provenance entirely — so a buggy/half-written stamper could mint a
+// structurally-junk proof marker (missing `sha`, missing `ts`, or a `sha` that
+// is neither a git commit sha nor the `sandbox` sentinel) and have it persist as
+// trusted "proof". This check validates the SHAPE of a flag-bearing marker, not
+// its truth — exactly the boundary the #527 trust-boundary decision drew (no run
+// re-derivation). It runs ONLY on newly-introduced markers (multiset diff, same
+// as #522), so a tick on an already-stamped line or an unrelated edit introduces
+// nothing to check.
+//
+// Scope: the families that carry `sha`/`ts` attributes — the consolidated
+// `aitm-verified` execution-proof form and the `aitm-ac-evidence` form. The
+// `aitm-dod-evidence: sandbox exit 0` free-text form carries no such attributes
+// (its `parseProofMarker`/`parseAcEvidence` both return null), so it is out of
+// scope and never flagged.
+const PROOF_SHA_RE = /^[0-9a-f]{7,40}$/i;
+
+function validateShaTs({ sha, ts }) {
+  if (ts == null || !String(ts).trim()) return 'missing `ts`';
+  if (sha == null || !String(sha).trim()) return 'missing `sha`';
+  const s = String(sha).trim();
+  if (s !== 'sandbox' && !PROOF_SHA_RE.test(s)) {
+    return `\`sha\` "${s}" is neither a git commit sha (7–40 hex chars) nor the \`sandbox\` sentinel`;
+  }
+  return null;
+}
+
+// Returns a defect reason string for a single proof-marker substring, or null
+// when the marker is structurally complete (or out of scope).
+function proofMarkerStructuralDefect(marker) {
+  const props = parseProofMarker(marker);
+  if (props && ('ts' in props || 'sha' in props || 'evidence' in props)) {
+    return validateShaTs(props);
+  }
+  const ac = parseAcEvidence(marker);
+  if (ac) return validateShaTs(ac);
+  return null;
+}
+
+// Flag-bearing structural check: among the proof markers newly introduced by
+// `after` (multiset diff vs `before`), return `{ lineIndex, text, reason }` for
+// each structurally-incomplete one. Empty array is clean.
+export function findStructurallyIncompleteIntroducedProof(before, after) {
+  const beforeCounts = new Map();
+  for (const { marker } of collectProofMarkers(before)) {
+    beforeCounts.set(marker, (beforeCounts.get(marker) || 0) + 1);
+  }
+  const offenders = [];
+  for (const { marker, lineIndex, text } of collectProofMarkers(after)) {
+    const avail = beforeCounts.get(marker) || 0;
+    if (avail > 0) {
+      beforeCounts.set(marker, avail - 1);
+      continue;
+    }
+    const reason = proofMarkerStructuralDefect(marker);
+    if (reason) offenders.push({ lineIndex, text, reason });
+  }
+  return offenders;
+}
+
+export class IncompleteProofError extends Error {
+  constructor({ lines } = {}) {
+    const list = Array.isArray(lines) ? lines : [];
+    const sample = list
+      .slice(0, 5)
+      .map((l) => `    line ${l.lineIndex}: ${l.reason}\n      ${l.text}`)
+      .join('\n');
+    const msg =
+      `mutateIssueBody refused: ${list.length} structurally-incomplete execution-proof marker(s).\n` +
+      `  A flag-bearing stamp (\`evidenceStamp: true\`) may bypass the provenance guard, but every proof marker it introduces must still carry a present \`ts\` and a \`sha\` that is a git commit sha (7–40 hex chars) or the \`sandbox\` sentinel.\n` +
+      `  Offending markers:\n${sample}\n` +
+      `  A sanctioned stamper is emitting an incomplete record — fix the stamper, never persist junk proof.`;
+    super(msg);
+    this.name = 'IncompleteProofError';
+    this.lines = list.slice();
+  }
+}
+
 export class MalformedDeclarationCmdError extends Error {
   constructor({ offenders } = {}) {
     const list = Array.isArray(offenders) ? offenders : [];

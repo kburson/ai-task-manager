@@ -46,6 +46,8 @@ import {
   MalformedDeclarationCmdError,
   findNewlyIntroducedExecutionProof,
   FabricatedProofError,
+  findStructurallyIncompleteIntroducedProof,
+  IncompleteProofError,
 } from './body-invariants.mjs';
 import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
 import { formatDefectHint } from './defect-hint.mjs';
@@ -54,6 +56,7 @@ export {
   CheckboxProofMissingError,
   MalformedDeclarationCmdError,
   FabricatedProofError,
+  IncompleteProofError,
 } from './body-invariants.mjs';
 
 export class MarkerLossError extends Error {
@@ -125,6 +128,14 @@ export async function mutateIssueBody({
       if (!evidenceStamp) {
         const introduced = findNewlyIntroducedExecutionProof(baseBody, next);
         if (introduced.length > 0) throw new FabricatedProofError({ lines: introduced });
+      } else {
+        // #536 — proof STRUCTURAL-COMPLETENESS invariant. A flag-bearing stamp
+        // bypasses the provenance guard above, but every proof marker it
+        // introduces must still be structurally complete: a present `ts` and a
+        // `sha` that is a git commit sha (7–40 hex) or the `sandbox` sentinel.
+        // Catches a buggy sanctioned stamper minting junk-but-trusted proof.
+        const incomplete = findStructurallyIncompleteIntroducedProof(baseBody, next);
+        if (incomplete.length > 0) throw new IncompleteProofError({ lines: incomplete });
       }
       // #488 — Plan Metadata bold-label enforcement. Non-fatal: the pre-#416
       // corpus is unbold until the back-fill runs, so a hard refusal would
