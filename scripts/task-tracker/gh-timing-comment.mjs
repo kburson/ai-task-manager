@@ -179,6 +179,40 @@ export function buildFlushRow({
   });
 }
 
+// #540 — build the review→done close lifecycle pair in canonical order.
+//
+// The close verb emits these two rows (sharing one `ts`) immediately before
+// the terminal board move. Order and delta placement are the contract this
+// fixes: `review:approved` leads and carries the real review→close active/idle
+// delta; `issue:wrap` follows as the zero-delta paired half. Returned as a
+// `[approvedRow, wrapRow]` tuple so the caller emits them in array order.
+//
+// Why close.mjs owns `review:approved` (not move-state.mjs): the wrap-up row
+// (`issue:wrap`) is posted before `gh issue close` + the board move, and
+// move-state.mjs emits `issue:closed` last. If move-state also emitted
+// `review:approved` on the done transition it would land AFTER `issue:wrap`
+// (the #535 inversion) and duplicate the row. move-state.mjs suppresses its
+// `<prev>:complete` emission when `stateArg === 'done'` for exactly this reason.
+export function buildReviewToDoneClosePair({ ts, activeSec, idleSec, wordMarker }) {
+  const approvedRow = buildRow({
+    ts,
+    phase: { state: 'review', phase: 'complete' },
+    activeSec,
+    idleSec,
+    deltaWords: 0,
+    wordMarker,
+  });
+  const wrapRow = buildRow({
+    ts,
+    phase: { state: 'done', phase: 'enter' },
+    activeSec: 0,
+    idleSec: 0,
+    deltaWords: 0,
+    wordMarker,
+  });
+  return [approvedRow, wrapRow];
+}
+
 // ---- lastKnownState metadata helpers ---------------------------------------
 //
 // Stored as HTML-comment metadata at the top of the issue body (cross-worktree

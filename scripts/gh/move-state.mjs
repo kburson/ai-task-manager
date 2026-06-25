@@ -681,7 +681,14 @@ const __mutationBlock = async () => {
           description: prev ? `demoted from ${prev}` : 'demoted',
         });
         await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-      } else if (prev && PHASE_EVENTS[prev]?.complete) {
+      } else if (prev && PHASE_EVENTS[prev]?.complete && stateArg !== 'done') {
+        // #540 — the move to `done` is the ONE transition where the
+        // `<prev>:complete` row is NOT emitted here. `prev` is always `review`
+        // for a done move, and the close verb (close.mjs) now owns the
+        // `review:approved` row so it can emit it BEFORE `issue:wrap` (the
+        // wrap-up row close.mjs posts ahead of this terminal board move).
+        // Emitting `review:approved` here as well would (a) duplicate the row
+        // and (b) land it AFTER `issue:wrap`, reproducing the #535 misordering.
         const row = buildRow({
           ts,
           phase: { state: prev, phase: 'complete' },

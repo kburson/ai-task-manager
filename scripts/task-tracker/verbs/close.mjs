@@ -512,24 +512,28 @@ export async function verbClose(ctx) {
   if (dirtyAuditRow) {
     await safePostTiming(closeTarget, dirtyAuditRow);
   }
-  const { buildRow: closeBr } = await import('../gh-timing-comment.mjs');
-  const { PHASE_EVENTS: _PE3 } = await import('../phase-events.mjs');
   const { deriveStateMoveDelta: _dsm3 } = await import('../lib/timing-rows.mjs');
   const _ts3 = nowIso();
   const _d3 = _dsm3(closeBody, _ts3);
-  await safePostTiming(
-    closeTarget,
-    closeBr({
-      ts: _ts3,
-      event: _PE3.done.enter.event,
-      activeSec: _d3.activeSec,
-      idleSec: _d3.idleSec,
-      deltaWords: 0,
-      // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
-      wordMarker: s.lastWordMarker ?? 0,
-      description: _PE3.done.enter.description,
-    })
-  );
+  // #540 — emit the review→done lifecycle pair in canonical order
+  // (`review:approved → issue:wrap`), both sharing `_ts3`. The approval row
+  // carries the real review→close active/idle delta (`_d3`); the wrap row is
+  // the zero-delta paired half. move-state.mjs (the subsequent terminal board
+  // move) no longer emits `review:approved` (it suppresses `<prev>:complete`
+  // on the `done` transition), so this is the sole `review:approved` row and
+  // it lands ahead of `issue:wrap`. Previously only `issue:wrap` was emitted
+  // here (carrying `_d3`) and `review:approved` was appended afterwards by the
+  // board move, reproducing the #535 `issue:wrap → review:approved` inversion.
+  const { buildReviewToDoneClosePair } = await import('../gh-timing-comment.mjs');
+  const [_reviewApprovedRow, _issueWrapRow] = buildReviewToDoneClosePair({
+    ts: _ts3,
+    activeSec: _d3.activeSec,
+    idleSec: _d3.idleSec,
+    // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
+    wordMarker: s.lastWordMarker ?? 0,
+  });
+  await safePostTiming(closeTarget, _reviewApprovedRow);
+  await safePostTiming(closeTarget, _issueWrapRow);
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
   // Post-close board/body agreement check (#180 defect 1 guard). After
   // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
