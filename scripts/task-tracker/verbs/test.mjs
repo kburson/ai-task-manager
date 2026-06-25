@@ -44,6 +44,26 @@ const TAIL_LINES = 50;
 // still rolls back on first occurrence.
 const SETUP_MAX_ATTEMPTS = 3;
 
+// @story #541 — the sandbox boundary must strip session-scoped lock state from
+// the env handed to `npm ci` and every Verification Command. `promote` wraps the
+// develop→test delegate spawn in `withIssueLock`, which sets
+// `AITM_ISSUE_LOCK_HELD=1` in `process.env` for the duration of the spawn; that
+// flag then leaks `promote → test delegate → npm run test:all → each test file →
+// the move-state subprocess the lock-contention tests spawn`. move-state honors
+// the flag as "lock already held upstream, skip re-acquisition", so the
+// contention path those tests assert on never fires — green at repo root, red in
+// the sandbox. Scrubbing the flag here restores a clean ambient env for every
+// sandboxed command, matching a bare repo-root invocation.
+export const SANDBOX_STRIPPED_ENV_VARS = ['AITM_ISSUE_LOCK_HELD'];
+
+export function buildSandboxEnv(baseEnv = process.env, overrides = {}) {
+  const next = { ...baseEnv };
+  for (const key of SANDBOX_STRIPPED_ENV_VARS) {
+    delete next[key];
+  }
+  return { ...next, ...overrides };
+}
+
 function tail(text, n = TAIL_LINES) {
   const lines = String(text || '').split('\n');
   return lines.slice(Math.max(0, lines.length - n)).join('\n');
@@ -116,6 +136,7 @@ async function defaultNpmCi({ path: wtPath }) {
     cwd: wtPath,
     timeout: NPM_CI_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
+    env: buildSandboxEnv(), // @story #541 — strip leaked lock state
   });
 }
 
@@ -125,7 +146,8 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       cwd: wtPath,
       timeout: SANDBOX_TIMEOUT_MS,
       maxBuffer: 64 * 1024 * 1024,
-      env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: projectDir },
+      // @story #541 — strip leaked lock state, then set the project dir.
+      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
     });
     return { exit: 0, stdout: String(stdout || ''), stderr: String(stderr || '') };
   } catch (err) {

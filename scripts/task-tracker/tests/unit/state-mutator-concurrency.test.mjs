@@ -39,10 +39,17 @@ function setupProjectDir() {
 }
 
 function runMoveState(projDir, issue, state) {
+  // @story #541 — scrub the session-scoped lock flag from the inherited base
+  // env. Inside the `/task test` sandbox (spawned under promote's held
+  // `withIssueLock`), `AITM_ISSUE_LOCK_HELD` leaks in via `process.env` and makes
+  // move-state skip lock acquisition, so neither racer observes contention and
+  // both exit 0 — the assertion `expected non-zero exit; got code 0` fires.
+  const baseEnv = { ...process.env };
+  delete baseEnv.AITM_ISSUE_LOCK_HELD;
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [MOVE_STATE, String(issue), state], {
       env: {
-        ...process.env,
+        ...baseEnv,
         AI_TASK_MANAGER_PROJECT_DIR: projDir,
         AITM_VERB_CONTEXT: 'move-state',
         TT_SKIP_NETWORK: '1',

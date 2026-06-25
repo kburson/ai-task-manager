@@ -25,8 +25,17 @@ const MOVE_STATE = path.resolve(__dir, '..', '../../gh/move-state.mjs');
 const REPO_ROOT = path.resolve(__dir, '..', '../../..');
 
 function runMoveState(args, envOverrides = {}) {
+  // @story #541 — scrub the session-scoped lock flag from the inherited base
+  // env before spreading. When this suite runs inside the `/task test` sandbox
+  // (itself spawned under promote's held `withIssueLock`), `AITM_ISSUE_LOCK_HELD`
+  // leaks in from `process.env` and makes move-state skip lock acquisition, so
+  // the contention assertions (test 3) silently pass through to a live `gh`
+  // call. envOverrides is applied AFTER the scrub, so test 4 can still set the
+  // flag explicitly to exercise the short-circuit path on purpose.
+  const baseEnv = { ...process.env };
+  delete baseEnv.AITM_ISSUE_LOCK_HELD;
   const env = {
-    ...process.env,
+    ...baseEnv,
     TT_SKIP_NETWORK: '1',
     AITM_VERB_CONTEXT: 'move-state',
     AI_TASK_MANAGER_PROJECT_DIR:
