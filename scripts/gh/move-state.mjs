@@ -43,6 +43,7 @@ import {
 // runGuards so the two are read together.
 import { runGuards } from '../task-tracker/lib/guard-registry.mjs';
 import '../task-tracker/lib/guard-bootstrap.mjs';
+import { decideBodyFetchFailure } from '../task-tracker/lib/body-fetch-gate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -297,12 +298,34 @@ if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
 // below still run, so unparkDependents/audit/markers are preserved.
 if (!SKIP_NETWORK && !supersedeFlag && !forceFlag) {
   let guardBody = '';
+  let bodyFetchFailed = false;
   try {
     guardBody = (
       await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
     ).trim();
   } catch {
-    /* ignore — empty body means no marker means guard passes */
+    // #511 — a FAILED fetch must not be conflated with a genuinely-empty body.
+    // For non-gated targets an absent body is tolerated (no marker means the
+    // guard passes); for the body-gated targets (test/review/done) it would
+    // silently skip the structural gates, so we fail CLOSED below.
+    bodyFetchFailed = true;
+  }
+
+  // #511 — fail CLOSED on a body-gated move whose body could not be fetched.
+  // Refuse before runGuards and well before the `project item-edit` mutation,
+  // leaving the board unchanged so a re-run recovers. `--force`/`--supersede`
+  // already short-circuit this whole block above; the helper also honors force.
+  {
+    const decision = decideBodyFetchFailure({
+      toState: stateArg,
+      fetchFailed: bodyFetchFailed,
+      force: forceFlag || supersedeFlag,
+    });
+    if (decision.failClosed) {
+      process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+      process.stderr.write(`   • ${decision.message}\n\n`);
+      process.exit(decision.exitCode);
+    }
   }
 
   async function fetchBlockerState(blockerNumber) {
