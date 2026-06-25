@@ -19,7 +19,11 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
-import { decideCloseConvergence, decideBoardMoveFailure } from '../lib/close-convergence.mjs';
+import {
+  decideCloseConvergence,
+  decideBoardMoveFailure,
+  decideGateEvalFailure,
+} from '../lib/close-convergence.mjs';
 
 export async function verbClose(ctx) {
   const {
@@ -426,7 +430,21 @@ export async function verbClose(ctx) {
         }
       }
     } catch (err) {
-      console.warn(`[task-tracker] Could not check issue body: ${err.message}`);
+      // #510 — fail CLOSED. The entire review→done close-gate evaluation ran
+      // inside this try; a transient body-fetch blip, JSON.parse error, or a
+      // guard exception must NOT silently skip the gates and fall through to the
+      // terminal `gh issue close` below. Refuse the close (exit non-zero) before
+      // any mutation, leaving local state intact so a re-run recovers. `--force`
+      // remains the deliberate, audited bypass.
+      const decision = decideGateEvalFailure({ error: err, force });
+      if (decision.failClosed) {
+        console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
+        console.error(`   • ${decision.message}`);
+        process.exit(decision.exitCode);
+      }
+      console.warn(
+        `[task-tracker] ⚠ --force — close-gate evaluation failed but bypassing: ${err.message}`
+      );
     }
   }
 

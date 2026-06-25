@@ -72,3 +72,43 @@ export function decideBoardMoveFailure({ moveResult, boardState } = {}) {
   if (boardState === 'done') return { surface: false, reason: 'board-already-done' };
   return { surface: true, reason: 'board-not-done' };
 }
+
+// Gate-evaluation failure decision (#510).
+//
+// `verbClose` evaluates every review→done close gate (body fetch, derived-DoD
+// stamping, unchecked-checkbox scan, lifecycle assertion, and the
+// `runGuards('review','done', …)` registry call) inside one broad try/catch.
+// The catch used to only `console.warn('Could not check issue body: …')` and
+// fall through to the unconditional terminal `gh issue close` + `clearActive`,
+// silently SKIPPING every gate on any transient failure (a `gh` body-fetch
+// blip, a `JSON.parse` error, an exception from a guard). That is fail-OPEN: a
+// close that should have been refused completes with only a warning.
+//
+// This pure helper maps the caught error + the `--force` flag to a fail-closed
+// decision so close.mjs refuses the close instead of swallowing the error:
+//
+//   error — the value caught from the gate-eval block.
+//   force — whether `--force` was passed (deliberate, audited bypass).
+//
+//   → { failClosed: true,  exitCode: 3, message }  no --force: refuse the close,
+//                                                   exit non-zero BEFORE any
+//                                                   mutation, leave local state
+//                                                   intact for a re-run.
+//   → { failClosed: false }                         --force: the caller already
+//                                                   opted into a deliberate
+//                                                   gate bypass; continue.
+//
+// Pure + total over its inputs (a missing `error` yields a generic message) so
+// the swallow-vs-fail-closed decision can be exercised without spawning a
+// process or hitting the network.
+export function decideGateEvalFailure({ error, force } = {}) {
+  if (force) return { failClosed: false };
+  const detail = (error && error.message) || String(error || 'unknown error');
+  return {
+    failClosed: true,
+    exitCode: 3,
+    message:
+      `close-gate evaluation failed (${detail}) — refusing to close fail-closed. ` +
+      `Local state left intact; re-run \`/task close\` once resolved, or pass \`--force\` to bypass.`,
+  };
+}
