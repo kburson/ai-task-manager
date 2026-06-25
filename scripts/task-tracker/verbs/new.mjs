@@ -14,6 +14,23 @@ import { fileURLToPath } from 'node:url';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
+// #547 — single-token help-probe guard. `/task new <token>` where <token> is
+// the SOLE positional title and one of these (case-insensitive) is a request
+// for the verb's usage, not a title. The global `hasHelpFlag` (#394) already
+// intercepts `?`, `--help`, `-h` in any argv position, but the bare word
+// `help` and `--?` fall through to `verbNew`'s legacy title path and create a
+// junk issue (clobbering the active bind). This guard closes that gap.
+const HELP_TOKENS = new Set(['help', '?', '--help', '--?', '-h']);
+
+// True only when `rest` is exactly one token and that token is a help token.
+// The single-token constraint is deliberate: a multi-word title that merely
+// contains "help" (e.g. `"help text is broken"`, or unquoted multi-arg input)
+// is a legitimate title and must still create an issue.
+export function isHelpProbe(rest) {
+  if (!Array.isArray(rest) || rest.length !== 1) return false;
+  return HELP_TOKENS.has(String(rest[0]).trim().toLowerCase());
+}
+
 // #509 — route `/task new` through the sanctioned `scripts/gh/create-issue.mjs`
 // wrapper instead of shelling `gh issue create` directly. The wrapper is the
 // single place that stamps the canonical body, `aitm-fields`, Definition of
@@ -94,6 +111,14 @@ function resolveTitleAndPlan(rest, s, projectDir) {
 }
 
 export async function verbNew(ctx) {
+  // #547 — short-circuit a single-token help probe before any side effect
+  // (queue drain, state load, issue creation, or bind switch). Printing help
+  // and returning leaves the active bind and the board untouched.
+  if (isHelpProbe(ctx.rest)) {
+    const { verbHelp } = await import('./help.mjs');
+    verbHelp();
+    return;
+  }
   const {
     cfg,
     statePath,
