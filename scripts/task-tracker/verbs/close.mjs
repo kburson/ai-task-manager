@@ -494,11 +494,22 @@ export async function verbClose(ctx) {
               env: { AITM_CASCADE: '1' },
               silent: true,
             });
-            if (childMove && !childMove.ok && !childMove.benign) {
-              const detail =
-                (childMove.stderr || '').trim() ||
-                `move-state.mjs exited ${childMove.status ?? 'non-zero'}`;
-              console.warn(`  ⚠ #${child.num} board move to "done" failed: ${detail}`);
+            // #512 — fail CLOSED: a genuine non-benign board-move failure must NOT
+            // be followed by `gh issue close`, or the child is left CLOSED while
+            // its board card is not Done (split-brain). The benign done→done no-op
+            // still closes. One stuck child must not abort the cascade, so skip it
+            // and continue with actionable recovery guidance.
+            const { decideCascadeChildClose } = await import('../lib/cascade-child-close.mjs');
+            const childCloseDecision = decideCascadeChildClose({ childMove });
+            if (!childCloseDecision.shouldClose) {
+              console.warn(
+                `  ⚠ #${child.num} NOT closed — board move to "done" failed: ${childCloseDecision.detail}`
+              );
+              console.warn(
+                `     Recovery: re-run \`/task close ${child.num}\` once the board is reachable, ` +
+                  `or move the card to Done manually, then re-run the epic close.`
+              );
+              continue;
             }
             await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
               timeout: GH_API_TIMEOUT_MS,
