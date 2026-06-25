@@ -56,6 +56,20 @@ The deep-dive section must include:
 
   Do not add words like `PASS`; the checked box is the proof.
 
+  **Ordering convention.** When the VC block lists the standard heavy
+  commands, order `npm run lint` and `npm run format:check` **before**
+  `npm run test:all`. Lint/format autofixes must land before the full
+  suite runs, so the suite reflects the committed shape rather than a tree
+  that a later autofix would still change:
+
+  ```markdown
+  ### Verification Commands
+
+  - [ ] `npm run lint`
+  - [ ] `npm run format:check`
+  - [ ] `npm run test:all`
+  ```
+
   Bind each Acceptance Criterion to its proof command with an inline
   marker:
 

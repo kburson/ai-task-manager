@@ -1,4 +1,4 @@
-// @story #447 #448
+// @story #447 #448 #529
 /**
  * Unit tests for verify-develop.mjs logic.
  *
@@ -9,6 +9,13 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { buildLintFormatSteps } from '../../verify-develop.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(HERE, '../../../..');
 
 // ---------------------------------------------------------------------------
 // Pure helpers extracted for testing (mirrors the script's logic)
@@ -134,5 +141,66 @@ describe('diff-filter semantics (documentation assertions)', () => {
     // The script exits 0 here; no node --test commands should be generated
     const cmds = buildTestCommands(files);
     assert.equal(cmds.length, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC2 (#529): the lint/format step plan runs the FULL `npm run lint`
+// ---------------------------------------------------------------------------
+
+describe('buildLintFormatSteps (#529 — full lint in Develop)', () => {
+  const steps = buildLintFormatSteps();
+  const labels = steps.map((s) => s.label);
+
+  it('runs autofix steps before the full lint suite', () => {
+    // Order matters: lint:js --fix and format must land first so the tree is
+    // in its committed shape before the full suite verifies it.
+    assert.deepEqual(labels, ['npm run lint:js -- --fix', 'npm run format', 'npm run lint']);
+  });
+
+  it('includes a full `npm run lint` step (not just lint:js)', () => {
+    const full = steps.find((s) => s.args.join(' ') === 'run lint');
+    assert.ok(full, 'expected a step invoking `npm run lint`');
+    assert.equal(full.cmd, 'npm');
+  });
+
+  it('places the full lint AFTER both autofix steps', () => {
+    const fixIdx = labels.indexOf('npm run lint:js -- --fix');
+    const fmtIdx = labels.indexOf('npm run format');
+    const lintIdx = labels.indexOf('npm run lint');
+    assert.ok(fixIdx < lintIdx && fmtIdx < lintIdx);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC3 (#529): regression — a spelling error in a changed source file is now
+// caught in Develop. The "multiset" escape (lint:js-only gate skipping
+// lint:spell) no longer reaches Test. We prove this structurally: the full
+// `npm run lint` chain that verify-develop now runs includes `lint:spell`,
+// which is the cspell pass that would flag a misspelling in a changed file.
+// ---------------------------------------------------------------------------
+
+describe('full lint covers spell/markdown gates (#529 multiset regression)', () => {
+  const pkg = JSON.parse(readFileSync(resolve(REPO_ROOT, 'package.json'), 'utf8'));
+  const lintScript = pkg.scripts.lint;
+
+  it('package.json `lint` chains `lint:spell`', () => {
+    assert.match(lintScript, /\blint:spell\b/);
+  });
+
+  it('package.json `lint` chains `lint:md`', () => {
+    assert.match(lintScript, /\blint:md\b/);
+  });
+
+  it('`lint:spell` invokes cspell over source + markdown', () => {
+    assert.match(pkg.scripts['lint:spell'], /cspell/);
+  });
+
+  it('verify-develop runs the same full `npm run lint` that includes lint:spell', () => {
+    // Closes the multiset escape: a misspelling in a changed .mjs source file
+    // is caught by cspell (lint:spell) during Develop, not deferred to Test.
+    const runsFullLint = buildLintFormatSteps().some((s) => s.args.join(' ') === 'run lint');
+    assert.ok(runsFullLint);
+    assert.match(lintScript, /\blint:spell\b/);
   });
 });

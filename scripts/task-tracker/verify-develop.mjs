@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 /**
- * Develop-phase verification: lint-first auto-fix, then targeted test execution.
+ * Develop-phase verification: lint-first auto-fix, full lint, then targeted
+ * test execution.
  *
  * Replaces ad-hoc `npm run test:all` during Develop. Full regression (test:all)
  * runs exclusively at the Test stage.
  *
  * Steps:
  *  1. `npm run lint:js -- --fix` — auto-fix eslint violations; abort if unfixable
- *  2. `npm run format`           — prettier auto-format
- *  3. Collect *.test.mjs files changed vs HEAD via git diff
- *  4. `node --test <file>` for each; abort on first failure
+ *  2. `npm run format`           — prettier auto-format (tree now in committed shape)
+ *  3. `npm run lint`             — full lint suite (lint:js, lint:md, lint:spell, …)
+ *                                  so spell/markdown violations fail in Develop,
+ *                                  not deferred to Test (#529; closes the
+ *                                  "multiset" spell-escape gap)
+ *  4. Collect *.test.mjs files changed vs HEAD via git diff
+ *  5. `node --test <file>` for each; abort on first failure
  *
  * Exit codes: 0 = pass, 1 = lint/format/test failure
  */
@@ -17,6 +22,22 @@
 import { execSync, spawnSync } from 'node:child_process';
 import { findUnitTests } from './find-unit-tests.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+/**
+ * The ordered lint/format command plan run before tests. Autofix steps
+ * (`lint:js --fix`, `format`) land first so the tree is in its committed
+ * shape; the final full `npm run lint` then verifies that shape against the
+ * complete suite — including `lint:spell` and `lint:md`, which the old
+ * `lint:js`-only gate skipped (#529). Exported pure so the command set is
+ * unit-testable without spawning npm.
+ */
+export function buildLintFormatSteps() {
+  return [
+    { cmd: 'npm', args: ['run', 'lint:js', '--', '--fix'], label: 'npm run lint:js -- --fix' },
+    { cmd: 'npm', args: ['run', 'format'], label: 'npm run format' },
+    { cmd: 'npm', args: ['run', 'lint'], label: 'npm run lint' },
+  ];
+}
 
 if (wantsHelp(process.argv.slice(2))) {
   emitSelfDoc('verify-develop');
@@ -33,13 +54,12 @@ function run(cmd, args = [], { label = cmd, allowFailure = false } = {}) {
   return result.status;
 }
 
-// Step 1: Lint auto-fix
-console.log('verify-develop: step 1 — lint:js --fix');
-run('npm', ['run', 'lint:js', '--', '--fix'], { label: 'npm run lint:js -- --fix' });
-
-// Step 2: Format
-console.log('verify-develop: step 2 — format');
-run('npm', ['run', 'format'], { label: 'npm run format' });
+// Steps 1–3: lint:js --fix, format, then full lint suite
+const lintFormatSteps = buildLintFormatSteps();
+lintFormatSteps.forEach((step, i) => {
+  console.log(`verify-develop: step ${i + 1} — ${step.label}`);
+  run(step.cmd, step.args, { label: step.label });
+});
 
 // Step 3: Collect changed files (working tree vs HEAD)
 console.log('verify-develop: step 3 — collecting changed files');
