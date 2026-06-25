@@ -10,25 +10,33 @@ import {
 import { loadPlanFile } from '../lib/plan-file.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-async function createNewIssue(title, ctx) {
+const __dir = path.dirname(fileURLToPath(import.meta.url));
+
+// #509 — route `/task new` through the sanctioned `scripts/gh/create-issue.mjs`
+// wrapper instead of shelling `gh issue create` directly. The wrapper is the
+// single place that stamps the canonical body, `aitm-fields`, Definition of
+// Done, the Pickup Directive tail, the Backlog entry marker, project tether,
+// and placeholder substitution; a raw `gh issue create` skips all of it and
+// leaves the new issue structurally malformed. `--shape stub` is the
+// lightweight idea-capture shape that needs only `--title`.
+export async function createNewIssue(title, ctx) {
   const { cfg, SKIP_NETWORK, pexec } = ctx;
   if (process.env.TT_FAKE_NEW_ISSUE) return process.env.TT_FAKE_NEW_ISSUE;
   if (SKIP_NETWORK) return '#0';
+  const createIssueScript = path.resolve(__dir, '../../gh/create-issue.mjs');
   const labelArgs = cfg.defaultLabels.flatMap((l) => ['--label', l]);
   const { stdout } = await pexec(
-    'gh',
+    process.execPath,
     [
-      'issue',
-      'create',
-      '-R',
-      cfg.repo,
-      '--assignee',
-      cfg.assignee || '@me',
+      createIssueScript,
+      '--shape',
+      'stub',
       '--title',
       title,
-      '--body',
-      `Created via /task new. See timing log comment below.`,
+      '--assignee',
+      cfg.assignee || '@me',
       ...labelArgs,
     ],
     { timeout: cfg.hookNetworkTimeoutMs * 3 }
