@@ -1,7 +1,7 @@
 name: User Request
 description: Capture a raw idea; AITM opens a brainstorming session at pickup
-title: '[Request] '
-labels: []
+title: '🤓 [Idea] '
+labels: ['idea']
 body:
   - type: markdown
     attributes:

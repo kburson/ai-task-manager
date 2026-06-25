@@ -142,8 +142,8 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
     `expected 2 gh calls, got ${ghCalls.length}: ${ghCalls.join(' | ')}`
   );
   assert.match(ghCalls[0], /issue create/);
-  // The `bug` label triggers the 🐞 title prefix at creation (#507).
-  assert.match(ghCalls[0], /--title 🐞 test/);
+  // The `bug` label triggers the bracketed kind prefix at creation (#507, #545).
+  assert.match(ghCalls[0], /--title 🐞 \[BUG\] test/);
   assert.match(ghCalls[0], /--label bug/);
   assert.match(ghCalls[0], /--label p1/);
   assert.match(ghCalls[0], /--assignee @me/);

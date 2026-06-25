@@ -1,11 +1,11 @@
-// @story #507
+// @story #507 (updated #545 — bare 🐞 became the bracketed `🐞 [BUG] ` prefix)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ensureBugEmoji, BUG_EMOJI } from '../../../gh/lib/bug-emoji-prefix.mjs';
 
-test('prefixes a bug-labelled title with 🐞', () => {
-  assert.equal(ensureBugEmoji('login crashes', ['bug']), '🐞 login crashes');
+test('prefixes a bug-labelled title with 🐞 [BUG]', () => {
+  assert.equal(ensureBugEmoji('login crashes', ['bug']), '🐞 [BUG] login crashes');
 });
 
 test('leaves a non-bug title untouched', () => {
@@ -15,15 +15,15 @@ test('leaves a non-bug title untouched', () => {
 
 test('is idempotent — double application does not double-prefix', () => {
   const once = ensureBugEmoji('login crashes', ['bug']);
-  assert.equal(ensureBugEmoji(once, ['bug']), '🐞 login crashes');
+  assert.equal(ensureBugEmoji(once, ['bug']), '🐞 [BUG] login crashes');
 });
 
-test('treats an already-🐞 title as already-prefixed', () => {
-  assert.equal(ensureBugEmoji('🐞 already', ['bug']), '🐞 already');
+test('migrates an already-🐞 (legacy bare) title to the bracketed prefix', () => {
+  assert.equal(ensureBugEmoji('🐞 already', ['bug']), '🐞 [BUG] already');
 });
 
 test('matches the bug label case-insensitively', () => {
-  assert.equal(ensureBugEmoji('x', ['Bug']), '🐞 x');
+  assert.equal(ensureBugEmoji('x', ['Bug']), '🐞 [BUG] x');
 });
 
 test('exports the canonical emoji constant', () => {

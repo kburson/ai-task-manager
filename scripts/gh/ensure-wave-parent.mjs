@@ -32,6 +32,7 @@ import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { classify, rejectionMessage } from './lib/wave-detect.mjs';
 import { gql, splitRepo } from './lib/github-projects.mjs';
+import { ensureParentEpicTitle } from './lib/epic-retitle.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 import { durableWordMarker } from '../task-tracker/state.mjs';
@@ -312,6 +313,11 @@ async function main() {
     } catch (err) {
       if (!/already/i.test(err.message || '')) throw err;
     }
+  }
+
+  // #545 — the parent now has children: stamp the epic title prefix (idempotent).
+  if (result.solos.length > 0) {
+    await ensureParentEpicTitle({ parentId, runGql: gql });
   }
 
   if (process.env.TT_SKIP_NETWORK !== '1') {

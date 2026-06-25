@@ -1,6 +1,6 @@
 name: Beta defect report
 description: Report a defect hit while using the ai-task-manager beta. Mirrors the `/task report --kind defect` CLI form.
-title: '🐞 '
+title: '🐞 [Defect] '
 labels: ['beta-defect']
 body:
   - type: markdown

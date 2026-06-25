@@ -138,7 +138,7 @@ mutations.
 ## Step 5 — Epic sequencing & fan-out
 
 Skip this step for plain sub-issues. Only run it when picking up an issue
-whose title begins with `EPIC:` or that has linked sub-issues.
+whose title begins with `🧑‍🧒‍🧒 [Epic]` or that has linked sub-issues.
 
 a. Fetch all open sub-issues and read their Scope sections.
 

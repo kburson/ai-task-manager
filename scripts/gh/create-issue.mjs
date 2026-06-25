@@ -15,7 +15,7 @@ import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
 import { readParentStatus } from './lib/parent-status.mjs';
 import { childCreationAllowedAtEpicState } from '../task-tracker/lib/epic-children-gate.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
-import { ensureBugEmoji } from './lib/bug-emoji-prefix.mjs';
+import { ensureKindPrefix } from './lib/kind-prefix.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -164,12 +164,19 @@ function readBody(file) {
   }
 }
 
+// #545 — Resolve the `gh issue create` title for `args`: apply the label-derived
+// kind prefix (`🐞 [BUG] `, `🐞 [Defect] `, `🙏 [Feature Request] `, `🤓 [Idea] `).
+// Exported as the seam unit tests exercise without spawning `gh`.
+export function buildIssueTitle(args) {
+  return ensureKindPrefix(args.title, args.label);
+}
+
 function ghCreate(args, assignee) {
   const ghArgs = [
     'issue',
     'create',
     '--title',
-    ensureBugEmoji(args.title, args.label),
+    buildIssueTitle(args),
     '--body-file',
     args['body-file'],
     '--assignee',
@@ -418,7 +425,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(`create-issue: ${err.message}`);
-  process.exit(1);
-});
+// Only run the CLI when executed directly — importing this module (e.g. from a
+// unit test exercising `buildIssueTitle`) must not spawn `gh`. (#545)
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  main().catch((err) => {
+    console.error(`create-issue: ${err.message}`);
+    process.exit(1);
+  });
+}

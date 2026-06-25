@@ -18,7 +18,7 @@ Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a proc
 3. **All pre-close checkboxes ticked before close.** `/task close` (and move-to-Done) refuses any unchecked pre-close `- [ ]`. No env override.
 4. **Move to Done is gated.** `move-state.mjs <issue> done` refuses on unchecked boxes; the normal path is `/task close`.
 5. **Agents MUST NOT run `/task review` or `/task close`. The terminal agent action is reporting `CODE_COMPLETE`.** `/task review` is an orchestrator action; `/task close` is human.
-6. **Epic boxes wait for sub-issue Review.** For `EPIC:` issues, tick no AC/DoD box until every sub-issue reaches Review.
+6. **Epic boxes wait for sub-issue Review.** For epic issues (titled `🧑‍🧒‍🧒 [Epic]`, i.e. having linked sub-issues), tick no AC/DoD box until every sub-issue reaches Review.
 7. **Pause the timer before blocking questions** — `/task pause "pause for question"` before, `/task start "question answered"` after.
 8. **Checkpoint Pause — re-read the conversation queue before any state transition.** Before any `/task` state move, active-issue switch, close, or parallel-agent fan-out, re-read the most recent user messages; if the latest is unaddressed, halt and respond first.
 9. **On mistakes — STOP, surface what/why with 2–3 options, wait for instruction.** Do not self-correct.

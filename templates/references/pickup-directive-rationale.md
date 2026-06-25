@@ -75,7 +75,7 @@ violation.
 
 ## Rule 6 — Epic boxes wait for sub-issue Review
 
-For issues whose title begins with `EPIC:`, no AC or DoD checkbox may be
+For epic issues (title prefixed `🧑‍🧒‍🧒 [Epic]`, i.e. carrying linked sub-issues), no AC or DoD checkbox may be
 ticked until every linked sub-issue has passed through In Review and
 reached Review status. The sub-issue lifecycle IS the verification.
 

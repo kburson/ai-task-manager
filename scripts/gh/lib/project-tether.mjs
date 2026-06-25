@@ -1,4 +1,5 @@
 import { gql, splitRepo } from './github-projects.mjs';
+import { ensureParentEpicTitle } from './epic-retitle.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
@@ -152,6 +153,8 @@ async function linkSubIssue({ parentId, childId, runGql }) {
     }`,
     { parent: parentId, child: childId }
   );
+  // #545 — the parent now has a child: stamp the epic title prefix (idempotent).
+  await ensureParentEpicTitle({ parentId, runGql });
 }
 
 async function writeField({ cfg, itemId, fieldId, value, runGql }) {

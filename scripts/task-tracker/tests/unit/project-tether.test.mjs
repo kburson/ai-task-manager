@@ -31,6 +31,7 @@ function makeRunner({
   projectItemOnAttempt = 1,
   issueSideItems = [],
   parentIssueId = 'PARENT_1',
+  parentTitle = 'Some parent issue',
   throwProjectItems = false,
 } = {}) {
   const calls = [];
@@ -98,6 +99,11 @@ function makeRunner({
         },
       };
     }
+    // #545 — epic re-title on first child link: read parent title, then
+    // updateIssue with the prefixed title.
+    if (query.includes('... on Issue') && query.includes('title'))
+      return { node: { title: parentTitle } };
+    if (query.includes('updateIssue')) return { updateIssue: { issue: { id: variables.id } } };
     throw new Error(`unexpected query: ${query}`);
   };
   return { runGql, calls };

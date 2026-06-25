@@ -68,7 +68,9 @@ Create + tether atomically:
 ```bash
 npx aitm create-issue \
   --shape epic \
-  --title "EPIC: <title>" \
+  --title "<title>" \
+  # The epic title prefix `🧑‍🧒‍🧒 [Epic] ` is stamped automatically when the
+  # epic gains its first child (sub-issue link); do not hand-type a prefix.
   --scope-file ./.tmp/plan/scope.md \
   --ac-file ./.tmp/plan/acs.md \
   --plan-metadata-file ./.tmp/plan/plan-meta.md \
