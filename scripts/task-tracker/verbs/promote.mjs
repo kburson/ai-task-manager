@@ -172,18 +172,35 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   return normalizeStateSlug(node?.fieldValueByName?.name);
 }
 
+// #533 — the alias delegate spawned for a forward transition is `test`
+// (develop→test) or `close` (review→done). The `test` delegate stages a fresh
+// worktree, runs `npm ci`, then every `## Verification Commands` entry under a
+// per-command `SANDBOX_TIMEOUT_MS` (15 min, `verbs/test.mjs`). A single
+// `GH_API_TIMEOUT_MS`-class budget (a one-API-call timeout) reused as the outer
+// cap SIGTERMs the sandbox at 60s, before `npm ci` even finishes — no results
+// comment, leftover worktree, swallowed exit 1. So `test` gets NO outer
+// timeout: the inner per-command `SANDBOX_TIMEOUT_MS` governs the only
+// long-running work. Quick delegates (`close`) keep the prior short budget.
+export function spawnVerbTimeout(verb) {
+  if (verb === 'test') return undefined;
+  return GH_API_TIMEOUT_MS * 4;
+}
+
 function defaultSpawnVerb({ verb, issueNumber }) {
   const script = path.resolve(__dir, '../task-tracker.mjs');
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, verb, String(issueNumber)], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env },
-      timeout: GH_API_TIMEOUT_MS * 4,
+      timeout: spawnVerbTimeout(verb),
     });
     child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
 }
+
+// #533 — quick board mutation; short budget is correct and unchanged.
+export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 
 function defaultRunMoveState({ issueNumber, target }) {
   const script = path.resolve(__dir, '../../gh/move-state.mjs');
@@ -191,7 +208,7 @@ function defaultRunMoveState({ issueNumber, target }) {
     const child = spawn(process.execPath, [script, String(issueNumber), target], {
       stdio: ['ignore', 'inherit', 'inherit'],
       env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
-      timeout: GH_API_TIMEOUT_MS * 2,
+      timeout: MOVE_STATE_DELEGATE_TIMEOUT_MS,
     });
     child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
