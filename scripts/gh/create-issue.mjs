@@ -298,6 +298,7 @@ async function main() {
     process.env.AITM_SKIP_PARENT_STATE_GATE !== '1'
   ) {
     let parentState = null;
+    let parentReadFailed = false;
     try {
       parentState = await readParentStatus({
         parentEpicNumber: Number(args.parent),
@@ -305,8 +306,26 @@ async function main() {
         projectId: cfg.projectId,
       });
     } catch {
-      parentState = null; // fail open — a transient read error must not block creation
+      // #513 — a FAILED read must not be conflated with "state unknown / allow".
+      // Treating it as null skipped the Done-parent gate (fail-OPEN), letting a
+      // Done epic grow new children whenever GitHub hiccupped. Fail CLOSED below.
+      parentReadFailed = true;
     }
+
+    // #513 — refuse creation fail-closed when the parent state could not be read.
+    const { decideParentStateReadFailure } =
+      await import('../task-tracker/lib/parent-state-gate.mjs');
+    const readDecision = decideParentStateReadFailure({
+      readFailed: parentReadFailed,
+      override: process.env.AITM_SKIP_PARENT_STATE_GATE === '1',
+    });
+    if (readDecision.failClosed) {
+      die(
+        `refusing to create sub-issue under epic #${args.parent}: ${readDecision.message}`,
+        readDecision.exitCode
+      );
+    }
+
     if (parentState != null && !childCreationAllowedAtEpicState(parentState)) {
       die(
         `refusing to create sub-issue under epic #${args.parent}: epic is at "${parentState}". ` +
