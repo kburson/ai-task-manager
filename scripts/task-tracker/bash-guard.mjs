@@ -72,18 +72,6 @@ for (const { pattern, label } of ALWAYS_BLOCK) {
   }
 }
 
-// Direct invocation of move-state.{mjs,sh} is reserved for internal callers
-// (promote/demote/reconcile). Agent-context Bash always runs through this hook,
-// so the block applies to every spawn from a Claude session. Internal callers
-// set AITM_INTERNAL=1 in env (not the command string), so this regex won't see
-// it — they bypass the hook by being spawned with execFile/spawn, not Bash.
-if (/\bmove-state\.(mjs|sh)\b/.test(command)) {
-  block(
-    'Direct invocation of move-state is reserved for internal use.\n' +
-      '  Use `/task promote` (forward), `/task demote` (back to development), or `/task reconcile` (drift recovery).'
-  );
-}
-
 // Write-allowed prefixes — project root only. `./.tmp/` lives inside the
 // project root and is the canonical scratch directory. System `/tmp` and
 // `/private/tmp` are deliberately excluded.
@@ -133,6 +121,23 @@ function stripQuotedRegions(s) {
   return out;
 }
 const scanned = stripQuotedRegions(command);
+
+// Direct invocation of move-state.{mjs,sh} is reserved for internal callers
+// (promote/demote/reconcile). Checked against the quote-stripped `scanned`
+// (mirroring the gh-issue guards below) so that a mere *mention* of the
+// filename inside a quoted argument — an `ac-stamp` AC label, a `git commit`
+// message — is not refused; only an actual unquoted invocation
+// (`node …/move-state.mjs`, `bash …/move-state.sh`, `./…/move-state.mjs`)
+// trips it. As with those guards, an invocation hidden inside a single-quoted
+// `sh -c '…'` is intentionally not caught (consistent quote-stripping blind
+// spot; see #542). Internal callers spawn via execFile/spawn, not Bash, so
+// they bypass this hook entirely.
+if (/\bmove-state\.(mjs|sh)\b/.test(scanned)) {
+  block(
+    'Direct invocation of move-state is reserved for internal use.\n' +
+      '  Use `/task promote` (forward), `/task demote` (back to development), or `/task reconcile` (drift recovery).'
+  );
+}
 
 // gh issue mutation guards — checked against quote-stripped command so that
 // grep patterns containing "gh issue create" etc. don't trigger false positives.
