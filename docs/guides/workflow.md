@@ -57,15 +57,20 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 
 ## Issue Creation
 
-**Always assign new issues to yourself** — every `gh issue create` must include `--assignee <your-github-login>`.
+**Never call `gh issue create` directly** — it skips the project tether, `aitm-fields` injection, placeholder substitution, the assignee/priority gates, and the canonical body structure, producing an issue that cannot be driven or closed through the normal workflow (see issue #103). Use the sanctioned wrapper, which renders the body, runs `gh issue create`, and tethers to the board atomically:
 
 ```bash
-gh issue create \
+npx aitm create-issue \
+  --shape solo \
   --title "Feature: ..." \
-  --body "## Description\n...\n\n## Acceptance Criteria\n- [ ] ..." \
+  --scope-file ./.tmp/gh/scope.md \
+  --ac-file ./.tmp/gh/acs.md \
+  --plan-metadata-file ./.tmp/gh/plan-meta.md \
   --label needs-triage \
   --assignee <your-login>
 ```
+
+In Claude Code, `/task new <title>` is the interactive equivalent. **Always assign new issues** — pass `--assignee <your-github-login>` (or rely on the `assignee` key in `.ai-task-manager/task-tracker.json`).
 
 Immediately after creating, set **both** `Estimate` (hours) and `Size` on the GitHub Projects board — see `docs/guides/ai-value-framework.md` for the GraphQL mutations. Never leave an issue without these two fields.
 
@@ -552,9 +557,12 @@ The `/task end` command (or `scripts/gh/move-state.mjs <N> done`) handles this a
 Log planning and design sessions against a dedicated planning issue, not the implementation issue. This keeps the `Estimate / Engaged Hours` ratio clean for implementation work and makes planning cost visible on its own.
 
 ```bash
-gh issue create \
+npx aitm create-issue \
+  --shape solo \
   --title "Planning: <epic title>" \
-  --body "Planning and design sessions for #<epic>. Log actual planning hours here." \
+  --scope-file ./.tmp/gh/planning-scope.md \
+  --ac-file ./.tmp/gh/planning-acs.md \
+  --plan-metadata-file ./.tmp/gh/planning-meta.md \
   --label planning \
   --assignee <your-login>
 ```

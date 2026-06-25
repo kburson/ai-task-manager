@@ -49,7 +49,7 @@ A project-local AI agent skill that binds the active work session to a specific 
 
 - If `/task plan` bucket is active → this is the **promotion path**:
   - Determine title: (a) `[title]` arg if given, (b) first H1 of most recent spec doc if exists, (c) prompt inline with a suggestion pulled from recent conversation.
-  - Create issue via `gh issue create --assignee kburson --label needs-triage`.
+  - Create issue via the sanctioned wrapper `scripts/gh/create-issue.mjs --shape solo --assignee kburson --label needs-triage` (never raw `gh issue create`).
   - Post plan bucket's accumulated timing (labeled "Planning") as the first block of the new issue's timing comment.
   - Clear plan bucket, switch active to new `#N`.
 - If no plan bucket active → straight create + start.

@@ -202,9 +202,12 @@ Claude's active session time is the reliable proxy for AI compute time. Claude s
 Log planning and design sessions against a dedicated **planning issue**, not the implementation issue. This keeps the `Estimate / Engaged Hours` ratio clean for implementation work.
 
 ```bash
-gh issue create \
+npx aitm create-issue \
+  --shape solo \
   --title "Planning: <epic title>" \
-  --body "Planning and design sessions for #<epic>." \
+  --scope-file ./.tmp/gh/planning-scope.md \
+  --ac-file ./.tmp/gh/planning-acs.md \
+  --plan-metadata-file ./.tmp/gh/planning-meta.md \
   --label planning \
   --assignee <your-login>
 ```
