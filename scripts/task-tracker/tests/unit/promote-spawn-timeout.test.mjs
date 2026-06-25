@@ -1,3 +1,4 @@
+// @story #533
 // #533 — the develop→test alias delegate must not inherit a 60s
 // (`GH_API_TIMEOUT_MS * 4`) outer cap, which SIGTERMs the Test sandbox before
 // `npm ci` + the Verification Commands can run. These are pure assertions
