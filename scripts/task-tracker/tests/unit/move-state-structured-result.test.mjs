@@ -206,10 +206,19 @@ assert.match(
   /const childMove = await runMoveState\(child\.num, 'done'/,
   'cascade child move must capture the structured result'
 );
+// #512 — the genuine-failure check moved into the `decideCascadeChildClose`
+// helper, which gates the child `gh issue close` (fail-closed: a non-benign
+// move failure must NOT close the child, avoiding split-brain). The cascade
+// still surfaces the failure and continues to the next child.
 assert.match(
   closeSrc,
-  /!childMove\.ok && !childMove\.benign/,
-  'cascade must surface a genuine child move failure'
+  /decideCascadeChildClose\(\{ childMove \}\)/,
+  'cascade must route the child move result through decideCascadeChildClose'
+);
+assert.match(
+  closeSrc,
+  /!childCloseDecision\.shouldClose/,
+  'cascade must surface and skip a child whose move genuinely failed'
 );
 
 console.log('move-state-structured-result.test.mjs: all passed');
