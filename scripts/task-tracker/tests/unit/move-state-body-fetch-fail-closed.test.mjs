@@ -29,6 +29,15 @@ const moveSrc = readFileSync(
   path.resolve(__dirname, '..', '..', '..', 'gh', 'move-state.mjs'),
   'utf8'
 );
+// #559 relocated the body-fetch + guard pipeline (where decideBodyFetchFailure
+// is invoked) out of the move-state host into the focused guard-execution
+// module. The fail-closed wiring is now asserted against that module; the host
+// is checked only for the call-ordering invariant (guard execution + its
+// process.exit precede the board mutation).
+const guardSrc = readFileSync(
+  path.resolve(__dirname, '..', '..', 'lib', 'move-state', 'guard-execution.mjs'),
+  'utf8'
+);
 
 // ── AC1: decision helper fails closed on a gated-move body-fetch failure ───────
 
@@ -67,13 +76,13 @@ test('BODY_GATED_STATES is exactly the body-reading entry-guard states', () => {
   assert.deepEqual([...BODY_GATED_STATES].sort(), ['done', 'review', 'test']);
 });
 
-// ── AC2 + AC3: move-state.mjs wiring leaves no fail-open fall-through ───────────
+// ── AC2 + AC3: guard-execution wiring leaves no fail-open fall-through ──────────
 
 test('source: body-fetch catch no longer swallows failure as a passing empty body', () => {
   // The old fail-open shape: catch whose body is ONLY the "guard passes" comment.
   assert.ok(
     !/catch \{\s*\/\* ignore — empty body means no marker means guard passes \*\/\s*\}/.test(
-      moveSrc
+      guardSrc
     ),
     'body-fetch catch must not silently swallow the failure (fail-open)'
   );
@@ -81,24 +90,33 @@ test('source: body-fetch catch no longer swallows failure as a passing empty bod
 
 test('source: body-fetch failure routes through decideBodyFetchFailure', () => {
   assert.ok(
-    /decideBodyFetchFailure\(/.test(moveSrc),
-    'move-state.mjs must call decideBodyFetchFailure'
+    /decideBodyFetchFailure\(/.test(guardSrc),
+    'guard-execution.mjs must call decideBodyFetchFailure'
   );
   assert.ok(
-    /import \{[^}]*decideBodyFetchFailure[^}]*\} from '[^']*body-fetch-gate\.mjs'/s.test(moveSrc),
+    /import \{[^}]*decideBodyFetchFailure[^}]*\} from '[^']*body-fetch-gate\.mjs'/s.test(guardSrc),
     'decideBodyFetchFailure must be imported from lib/body-fetch-gate.mjs'
   );
 });
 
 test('source: fail-closed body-fetch failure exits before the board mutation', () => {
-  const idx = moveSrc.indexOf('decideBodyFetchFailure(');
+  // In the module: the failClosed branch returns the exit descriptor (the host
+  // turns it into process.exit) — it must NOT fall through to runGuards.
+  const idx = guardSrc.indexOf('decideBodyFetchFailure(');
   assert.ok(idx >= 0);
-  const after = moveSrc.slice(idx, idx + 600);
+  const after = guardSrc.slice(idx, idx + 600);
   assert.ok(
-    /failClosed/.test(after) && /process\.exit\(/.test(after),
-    'failClosed branch must process.exit before the project item-edit mutation'
+    /failClosed/.test(after) && /return \{ exit: decision\.exitCode \}/.test(after),
+    'failClosed branch must return the exit descriptor (no fall-through to the mutation)'
   );
-  // The decision + exit must precede the board-mutation call site.
-  const mutIdx = moveSrc.indexOf("'item-edit'");
-  assert.ok(mutIdx > idx, 'decideBodyFetchFailure must be evaluated before item-edit');
+  // In the host: guard execution + its process.exit must precede the board
+  // write (runStatusWrite owns the project item-edit mutation).
+  const guardIdx = moveSrc.indexOf('await runGuardExecution(');
+  const exitIdx = moveSrc.indexOf('process.exit(guardOutcome.exit)');
+  const writeIdx = moveSrc.indexOf('await runStatusWrite(');
+  assert.ok(guardIdx >= 0 && exitIdx > guardIdx, 'host must exit on a guard refusal');
+  assert.ok(
+    writeIdx > exitIdx,
+    'runGuardExecution + process.exit must precede runStatusWrite (the item-edit mutation)'
+  );
 });
