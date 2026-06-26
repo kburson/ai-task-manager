@@ -116,19 +116,21 @@ const switchEnv = {
 await pexec('node', [CLI, '#200'], { env: switchEnv });
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 
-// `/task start #201` must bind #201, not lastActive #200. Under epic #126
-// (sub-issue #129), start/resume with a target writes the canonical
-// `resumed` row on the target rather than delegating to switch.
+// `/task start #201` must bind #201, not lastActive #200. It binds the target
+// directly rather than delegating to switch. Under the #534 pairing invariant
+// the first-ever bind of #201 (no timing history of its own; the pause was on
+// #200) emits the canonical `start` row, not `resumed` — a re-engagement on an
+// issue with no open interruption and no prior start is downgraded to `start`.
 let rs = await pexec('node', [CLI, 'start', '#201'], { env: switchEnv });
-assert.match(rs.stdout, /Resumed #201/, '/task start #N should bind #N');
+assert.match(rs.stdout, /Started #201/, '/task start #N should bind #N as a fresh start');
 assert.doesNotMatch(rs.stdout, /Resumed #200/, '/task start #N must not resume lastActive');
 
-// Regression guard: `/task resume #N` writes a canonical `resumed` row.
-// Under epic #126 (sub-issue #129), resume no longer delegates to switch
-// when there is no active task — it binds directly and emits `resumed`.
+// Regression guard: `/task resume #N` binds the target directly (no switch
+// delegation) when there is no active task. #202 is likewise a fresh first
+// bind, so under the #534 pairing invariant it emits `start`, not `resumed`.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 rs = await pexec('node', [CLI, 'resume', '#202'], { env: switchEnv });
-assert.match(rs.stdout, /Resumed #202/, '/task resume #N should resume #N');
+assert.match(rs.stdout, /Started #202/, '/task resume #N should bind #N as a fresh start');
 
 // `/task resume` with no arg and after pause resumes lastActive.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
