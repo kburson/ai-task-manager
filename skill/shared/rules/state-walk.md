@@ -1,4 +1,5 @@
 <!-- aitm-skill-version: 1.1.0 -->
+<!-- aitm-rule-id: state-movement -->
 
 # rules/state-walk.md
 

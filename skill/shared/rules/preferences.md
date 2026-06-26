@@ -1,4 +1,5 @@
 <!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-rule-id: project-preferences -->
 
 # rules/preferences.md
 

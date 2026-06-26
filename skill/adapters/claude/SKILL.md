@@ -37,15 +37,15 @@ Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issu
 
 ## Review & approve details
 
-Field units (board `Estimate` is hours, timing fields are minutes — never
-compare them raw), the Full-Auto approve footnote (`TT_FULL_AUTO=1` stamps a
+Field units (board `Estimate` in hours, timing fields in minutes — normalize
+before any comparison), the Full-Auto approve footnote (`TT_FULL_AUTO=1` stamps a
 visible "no human reviewed" blockquote plus the hidden `aitm-full-auto-approved`
 marker), and the Review-Notes → Drivers comment flow all live in
-`rules/review.md` (loads JIT on `/task review`).
+`rules/review.md` (rule-id `review`, loads JIT on `/task review`).
 
 ## Rank rules
 
-**Child sub-issues may not lead the parent epic in state.** `promote <child> <target>` refuses when the parent epic is in a state lower than the child target (the `child-cannot-lead-epic` invariant). Children are **not** required to all reach `refine` before the epic may move to `plan` — that exit-gate requirement was retired. Instead a WIP rule applies: at most one child advances out of Refine per epic at a time (`planRefineWipGate`), where a child parked on a dependency (`aitm-blocked-by` marker) does not count and a blocker may run ahead of the parked sibling it unblocks. No env override exists. See `templates/pickup-directive.md` ("Rank rules") for the full rule.
+The full Rank rules (the child-must-not-lead-epic invariant, the Refine WIP gate, and dependency representation) live in `templates/pickup-directive.md` ("Rank rules").
 
 ## Discover workflow — completing a session and promoting to an issue
 
@@ -65,8 +65,8 @@ To load a previously saved plan file outside of a discover session: `/task new d
 
 ## Checkpoint Pause
 
-Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains an unaddressed question/instruction, halt and respond first — do not advance state. See the full rule in `templates/pickup-directive.md` ("Checkpoint Pause").
+The Checkpoint Pause rule — re-read the conversation queue before any state transition, active-issue switch, close, or parallel-agent fan-out — lives in `templates/pickup-directive.md` ("Checkpoint Pause").
 
 ## Project preferences
 
-At session start, read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` from `scripts/task-tracker/config.mjs`. Honor each key by name — see `skill/shared/rules/preferences.md` for the table. Key examples: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`.
+Read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` (`scripts/task-tracker/config.mjs`) at session start and apply every key. The key table and per-key contracts live in `skill/shared/rules/preferences.md` (rule-id `project-preferences`).
