@@ -27,7 +27,14 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(path.resolve(__dirname, '..', '..', 'verbs/close.mjs'), 'utf8');
 
-assert.ok(/runLogIssueTime,\s*\n/.test(src), 'verbClose must destructure runLogIssueTime from ctx');
+// #561 — verbClose now obtains runLogIssueTime from the grouped `stateRunner`
+// capability object rather than the flat ctx destructure. The deeper guards
+// below (single call + ordering) are the real tripwire; this only confirms the
+// collaborator is still acquired.
+assert.ok(
+  /runLogIssueTime[,\s}]/.test(src),
+  'verbClose must obtain runLogIssueTime (from the stateRunner capability)'
+);
 
 // #540 — the review→done lifecycle pair (`review:approved → issue:wrap`) is
 // built by exactly one `buildReviewToDoneClosePair` call in the close path.
