@@ -7,9 +7,15 @@
 // GitHub issue but the board move (`plan → done`) was refused by the one-step
 // matrix, stranding the card.
 //
-// The flag logic is inline in the CLI body (the script executes at import and
-// reads argv / the live board), so these are source-level invariants plus a
-// behavioral check on the matrix the flag bypasses.
+// #559 relocated the flag logic out of the inline CLI body into two focused
+// modules: argv parsing now lives in `lib/move-state/policy.mjs`
+// (`parseMoveStateArgs`) and the matrix/guard bypass decision lives in
+// `lib/move-state/transition-plan.mjs` (`computeTransitionPlan`). The #505
+// invariant is unchanged — `--force` bypasses both the one-step matrix gate
+// and the runGuards entry/exit pipeline — so these assert that behavior
+// directly against its new homes rather than grepping the dismantled inline
+// structure. The usage-string check still reads the host source (usage() text
+// stayed in the CLI), plus a behavioral check on the matrix the flag bypasses.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -17,9 +23,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateTransition } from '../../state-machine.mjs';
+import { parseMoveStateArgs } from '../../lib/move-state/policy.mjs';
+import { computeTransitionPlan } from '../../lib/move-state/transition-plan.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = readFileSync(path.resolve(__dirname, '../../../gh/move-state.mjs'), 'utf8');
+const argv = (...rest) => ['node', 'move-state.mjs', ...rest];
 
 test('the matrix the --force flag bypasses genuinely refuses plan → done', () => {
   // If this ever becomes a legal one-step move, the bypass would be moot and
@@ -29,25 +38,41 @@ test('the matrix the --force flag bypasses genuinely refuses plan → done', () 
 });
 
 test('--force is parsed as a flag', () => {
-  assert.ok(
-    /cliArgs\[i\]\s*===\s*'--force'/.test(SRC),
-    'move-state.mjs must recognize a --force CLI flag'
-  );
-  assert.ok(/forceFlag\s*=\s*true/.test(SRC), 'the --force flag must set forceFlag');
+  const r = parseMoveStateArgs(argv('9', 'done', '--force'));
+  assert.equal(r.error, null);
+  assert.equal(r.forceFlag, true, 'the --force flag must set forceFlag');
+  // Absent the flag it must default false (no accidental always-on bypass).
+  assert.equal(parseMoveStateArgs(argv('9', 'done')).forceFlag, false);
 });
 
 test('--force bypasses the state-machine matrix gate', () => {
-  assert.ok(
-    /if \(resolvedFromState && !supersedeFlag && !forceFlag\)/.test(SRC),
-    'the matrix gate condition must exclude forceFlag (so --force skips validateTransition)'
+  const forced = computeTransitionPlan({
+    fromState: 'plan',
+    toState: 'done',
+    flags: { force: true },
+  });
+  assert.equal(forced.bypass, true, '--force must mark the plan as a bypass');
+  assert.equal(
+    forced.matrix.applies,
+    false,
+    'the matrix gate must not apply under --force (so validateTransition is skipped)'
   );
+  // Sanity: the same move WITHOUT --force is gated and rejected by the matrix.
+  const gated = computeTransitionPlan({ fromState: 'plan', toState: 'done' });
+  assert.equal(gated.matrix.applies, true);
+  assert.equal(gated.matrix.ok, false);
 });
 
 test('--force bypasses the runGuards entry/exit pipeline', () => {
-  assert.ok(
-    /if \(!SKIP_NETWORK && !supersedeFlag && !forceFlag\)/.test(SRC),
-    'the guard pipeline condition must exclude forceFlag'
-  );
+  const forced = computeTransitionPlan({
+    fromState: 'plan',
+    toState: 'done',
+    flags: { force: true },
+  });
+  assert.equal(forced.runGuardPipeline, false, 'the guard pipeline must be skipped under --force');
+  // Without the flag the pipeline runs.
+  const gated = computeTransitionPlan({ fromState: 'plan', toState: 'done' });
+  assert.equal(gated.runGuardPipeline, true);
 });
 
 test('--force is documented in usage and distinct from --supersede', () => {
