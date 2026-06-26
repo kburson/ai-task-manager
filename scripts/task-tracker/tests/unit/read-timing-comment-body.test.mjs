@@ -1,40 +1,62 @@
-// @story #168
-// #168 — readTimingCommentBody contract: body on hit, '' on miss, '' on error.
+// @story #168 #568
+// #168 — readTimingCommentBody contract.
+// #568 — fail-closed: the result is a discriminated { status, body, error } so a
+// genuine read failure (throw/timeout) is distinguishable from "no timing
+// comment exists". A thrown read MUST NOT collapse to ''-as-empty-history.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readTimingCommentBody } from '../../gh-timing-comment.mjs';
+import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
 
-test('readTimingCommentBody returns body when timing comment exists', async () => {
-  const body = await readTimingCommentBody({
+test('readTimingCommentBody: hit → status "found" with body', async () => {
+  const res = await readTimingCommentBody({
     issueNumber: 1,
     repo: 'o/r',
     deps: {
       findTimingComment: async () => ({ id: 1, body: '⏱ Timing Log\n| ts | … |' }),
     },
   });
-  assert.match(body, /Timing Log/);
+  assert.equal(res.status, 'found');
+  assert.match(res.body, /Timing Log/);
+  assert.equal(res.error, null);
+  assert.match(bodyOf(res), /Timing Log/);
 });
 
-test('readTimingCommentBody returns "" when comment is missing', async () => {
-  const body = await readTimingCommentBody({
+test('readTimingCommentBody: missing comment → status "absent", body ""', async () => {
+  const res = await readTimingCommentBody({
     issueNumber: 1,
     repo: 'o/r',
     deps: { findTimingComment: async () => null },
   });
-  assert.equal(body, '');
+  assert.equal(res.status, 'absent');
+  assert.equal(res.body, '');
+  assert.equal(bodyOf(res), '');
 });
 
-test('readTimingCommentBody returns "" when underlying call throws', async () => {
-  const body = await readTimingCommentBody({
+test('readTimingCommentBody: underlying throw → status "error", NOT absent', async () => {
+  const boom = new Error('network');
+  const res = await readTimingCommentBody({
     issueNumber: 1,
     repo: 'o/r',
     deps: {
       findTimingComment: async () => {
-        throw new Error('network');
+        throw boom;
       },
     },
   });
-  assert.equal(body, '');
+  // #568 AC1 — a thrown read is an ERROR, never silently "empty history".
+  assert.equal(res.status, 'error');
+  assert.notEqual(res.status, 'absent');
+  assert.equal(res.error, boom);
+  // The string body is still '' (so legacy word-delta callers don't crash) but
+  // the status carries the distinguishing signal the bind path needs.
+  assert.equal(bodyOf(res), '');
+});
+
+test('bodyOf tolerates a legacy bare-string result', () => {
+  assert.equal(bodyOf('⏱ Timing Log'), '⏱ Timing Log');
+  assert.equal(bodyOf(''), '');
+  assert.equal(bodyOf(null), '');
+  assert.equal(bodyOf(undefined), '');
 });

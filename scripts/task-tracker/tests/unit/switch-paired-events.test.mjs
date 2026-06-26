@@ -1,4 +1,5 @@
 // @story #534
+// @story #568
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveBindEvent, lastOpenInterruption } from '../../lib/bind-event.mjs';
@@ -21,9 +22,11 @@ test('outgoing switch records a switch-out:#N opener that reads back as open', (
   assert.deepEqual(lastOpenInterruption(b), { kind: 'switch-out', peer: '#600' });
 });
 
-test('returning into an issue with an open switch-out:#N resolves to switch-in:#N', () => {
+test('returning into an issue with an open switch-out:#N resolves to resumed', () => {
+  // #568 — `resumed` is the sole return verb; it closes the open switch-out
+  // regardless of which peer the departure named.
   const b = body(row('start', '2026-06-25 09:00:00 +00:00'), row('switch-out:#600'));
-  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'switch-in:#600');
+  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resumed');
 });
 
 test('a genuine first-ever bind (empty log) still resolves to start', () => {
@@ -34,9 +37,9 @@ test('switch into an issue with history but no open interruption → benign resu
   const b = body(
     row('start', '2026-06-25 09:00:00 +00:00'),
     row('switch-out:#600'),
-    row('switch-in:#600', '2026-06-25 10:30:00 +00:00')
+    row('resumed', '2026-06-25 10:30:00 +00:00')
   );
-  // switch-out already closed by the switch-in → no open interruption.
+  // switch-out already closed by the resumed → no open interruption.
   assert.equal(lastOpenInterruption(b), null);
   assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resumed');
 });
@@ -45,9 +48,10 @@ test('a later switch-out re-opens after a prior closed round-trip', () => {
   const b = body(
     row('start', '2026-06-25 09:00:00 +00:00'),
     row('switch-out:#600'),
-    row('switch-in:#600', '2026-06-25 10:30:00 +00:00'),
+    row('resumed', '2026-06-25 10:30:00 +00:00'),
     row('switch-out:#700', '2026-06-25 11:00:00 +00:00')
   );
   assert.deepEqual(lastOpenInterruption(b), { kind: 'switch-out', peer: '#700' });
-  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'switch-in:#700');
+  // #568 — returning again resolves to `resumed`, not `switch-in:#700`.
+  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resumed');
 });

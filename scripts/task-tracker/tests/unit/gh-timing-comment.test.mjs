@@ -331,4 +331,8 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
   assert.ok(row.endsWith('<!-- row-sec: a=47 i=0 -->'), 'marker reflects floored/clamped values');
 }
 
+// #568 — the appendRow structural duplicate-`start` guard (tests 19-22) lives in
+// gh-timing-comment-duplicate-start.test.mjs (split out to stay under the
+// 400-line per-file cap).
+
 console.log('gh-timing-comment.test.mjs: all passed');

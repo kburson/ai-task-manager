@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 // @story #130
 // @story #534
+// @story #568
 // Switch scenario — originally #130 (outgoing-only `switch-out`), reversed by
-// #534 to *paired* switch semantics. Every task hop now records both halves:
+// #534 to *paired* switch semantics, then refined by #568 to a single return
+// verb. Every task hop records:
 //
 //   - Switching from A to B emits a `switch-out:#B` row on A's log
-//     (description "Switching out to task #B").
+//     (description "Switching out to task #B") — the departure still names the
+//     peer it hands off to.
 //   - The incoming bind on B resolves against B's own log: a never-seen B
-//     emits `start`; a B that earlier switched out to A (open `switch-out:#A`)
-//     emits a paired `switch-in:#A`.
+//     emits `start`; a B with any timing history emits `resumed`.
 //   - Returning to A — whose log carries the still-open `switch-out:#B` — emits
-//     a paired `switch-in:#B` (not a bare `resumed`, and not a duplicate
-//     `start`).
+//     `resumed` (#568: `resumed` is the SOLE return verb; never `switch-in:#B`,
+//     never a bare second `start`). `resumed` closes the open `switch-out`.
 //
 // This is a structural test over the same `resolveBindEvent` taxonomy and
 // `buildRow` renderer the runtime uses.
@@ -44,7 +46,7 @@ assert.match(
   'outgoing row must carry the "Switching out to task #N" description'
 );
 
-// ---- 2. A's log with the open switch-out resolves the return to switch-in --
+// ---- 2. A's log with the open switch-out resolves the return to resumed -----
 const aLog = body(
   logRow('start', '2026-06-25 09:00:00 +00:00'),
   logRow('switch-out:#777', '2026-06-25 09:30:00 +00:00')
@@ -52,8 +54,8 @@ const aLog = body(
 assert.deepEqual(lastOpenInterruption(aLog), { kind: 'switch-out', peer: '#777' });
 assert.equal(
   resolveBindEvent({ hasTimingHistory: true, timingBody: aLog }),
-  'switch-in:#777',
-  'returning into A must pair the open switch-out:#777 with switch-in:#777'
+  'resumed',
+  'returning into A must close the open switch-out:#777 with resumed (#568 sole return verb)'
 );
 
 // ---- 3. B's log: a never-seen B binds as start ----------------------------
@@ -64,12 +66,14 @@ assert.equal(
 );
 
 // ---- 4. A round-tripped switch (closed) resolves to a benign resumed ------
+// #568 — the return row is now `resumed` (the sole return verb), which closes
+// the open switch-out exactly as the legacy `switch-in:#N` did.
 const closed = body(
   logRow('start', '2026-06-25 09:00:00 +00:00'),
   logRow('switch-out:#777', '2026-06-25 09:30:00 +00:00'),
-  logRow('switch-in:#777', '2026-06-25 10:00:00 +00:00')
+  logRow('resumed', '2026-06-25 10:00:00 +00:00')
 );
-assert.equal(lastOpenInterruption(closed), null, 'switch-in closes the open switch-out');
+assert.equal(lastOpenInterruption(closed), null, 'resumed closes the open switch-out');
 assert.equal(
   resolveBindEvent({ hasTimingHistory: true, timingBody: closed }),
   'resumed',

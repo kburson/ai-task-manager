@@ -1,4 +1,5 @@
 // @story #534
+// @story #568
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -38,17 +39,18 @@ test('unmatched free text falls back to other', () => {
   assert.ok(isOtherReason(canonicalPauseReason('something idiosyncratic')));
 });
 
-test('an open pause:<slug> resolves to a symmetric resume:<slug>', () => {
+test('an open pause:<slug> resolves to resumed (sole return verb)', () => {
+  // #568 — the departure `pause:question` records the reason; the return is the
+  // single canonical `resumed`, which closes any open pause regardless of slug.
   const b = body(row('start', '2026-06-25 09:00:00 +00:00'), row('pause:question'));
   assert.deepEqual(lastOpenInterruption(b), { kind: 'pause', reason: 'question' });
-  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resume:question');
+  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resumed');
 });
 
-test('pause:other resolves to a (paired) generic resumed', () => {
+test('pause:other also resolves to resumed', () => {
   const b = body(row('start', '2026-06-25 09:00:00 +00:00'), row('pause:other'));
   assert.deepEqual(lastOpenInterruption(b), { kind: 'pause', reason: 'other' });
-  // reason is present → resume:other keeps the pair explicit.
-  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resume:other');
+  assert.equal(resolveBindEvent({ hasTimingHistory: true, timingBody: b }), 'resumed');
 });
 
 test('a resume:<slug> closes the open pause (no longer open)', () => {

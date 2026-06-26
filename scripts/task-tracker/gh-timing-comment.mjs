@@ -9,7 +9,20 @@ import { withLock } from './locks.mjs';
 import { getProjectDir } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 import { formatDurationSeconds } from './lib/timing-rows.mjs';
+import { lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
 const pexec = promisify(execFile);
+
+// #568 — raised by `appendRow` when a second `start` row is attempted over a
+// timing log that already holds data rows and has NO open interruption to pair
+// against. Duplicate-`start` is forbidden by construction; the refusal is loud
+// (thrown), never a silent drop.
+export class DuplicateStartError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'DuplicateStartError';
+    this.code = 'DUPLICATE_START';
+  }
+}
 
 const TIMING_HEADING = '⏱ Timing Log';
 
@@ -279,7 +292,47 @@ function buildInitialComment() {
   return [TIMING_HEADING, '', COLUMN_LEGEND, '', TABLE_HEADER].join('\n');
 }
 
+// #568 — extract the lower-cased Event-cell slug from a freshly-built row
+// string. cells[0] is the empty pre-pipe cell, cells[1] the Timestamp, cells[2]
+// the Event. A trailing `<!-- row-sec -->` marker lives after the last pipe and
+// never reaches cells[2], so it does not perturb the read.
+function rowEventSlug(row) {
+  const cells = String(row)
+    .split('|')
+    .map((s) => s.trim());
+  return cells.length >= 3 ? cells[2].toLowerCase() : '';
+}
+
+// #568 — rewrite ONLY the Event cell (the 2nd pipe-delimited field) of a row,
+// preserving every other cell and the trailing marker byte-for-byte.
+function rewriteEventCell(row, nextEvent) {
+  let seen = 0;
+  return String(row).replace(/\|([^|]*)/g, (match) => {
+    seen += 1;
+    return seen === 2 ? `| ${nextEvent} ` : match;
+  });
+}
+
+// #568 keystone — the structural duplicate-`start` guard. A `start` row may only
+// land on a log that has no data rows yet (the genuine first-ever bind). Over a
+// non-empty log:
+//   • an OPEN interruption (switch-out / pause / idle) → corrective rewrite to
+//     the canonical closer `resumed` (AC4) — never a silent drop;
+//   • no open interruption → loud refusal via DuplicateStartError (AC3).
+// This makes a duplicate `start` impossible by construction, independent of any
+// upstream read/resolve state.
 function appendRow(body, row) {
+  let effectiveRow = row;
+  if (rowEventSlug(row) === 'start' && timingCommentHasRows(body)) {
+    if (lastOpenInterruption(body)) {
+      effectiveRow = rewriteEventCell(row, 'resumed');
+    } else {
+      throw new DuplicateStartError(
+        'refusing to append a second `start` row: the timing log already has data ' +
+          'rows with no open interruption to pair against (duplicate-start is forbidden)'
+      );
+    }
+  }
   const lines = body.split('\n');
   let lastTableIdx = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -299,7 +352,7 @@ function appendRow(body, row) {
       }
     }
   }
-  lines.splice(lastTableIdx + 1, 0, row);
+  lines.splice(lastTableIdx + 1, 0, effectiveRow);
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
 
@@ -378,6 +431,15 @@ export async function postTimingEvent({
 // Fetch the timing-comment body (where rows actually live). State-move
 // rollups MUST derive their delta from this — not from the issue body,
 // which never contains timing rows.
+//
+// #568 — fail-closed contract. The result is a DISCRIMINATED record so a
+// genuine read failure is never mistaken for "no timing comment exists":
+//   { status: 'found',  body: <string>, error: null }
+//   { status: 'absent', body: '',       error: null }   ← positively no comment
+//   { status: 'error',  body: '',       error: <Error> } ← read threw; UNKNOWN
+// The bind path keys off `status` to refuse manufacturing a `start` on an
+// unreadable log. String-only callers (word-delta rollups) read `.body` via the
+// `bodyOf` shim, which also tolerates the legacy bare-string return.
 export async function readTimingCommentBody({
   issueNumber,
   repo,
@@ -387,10 +449,20 @@ export async function readTimingCommentBody({
   const find = deps.findTimingComment || findTimingComment;
   try {
     const existing = await find(issueNumber, repo, { timeoutMs });
-    return existing?.body ?? '';
-  } catch {
-    return '';
+    if (existing == null) return { status: 'absent', body: '', error: null };
+    return { status: 'found', body: existing.body ?? '', error: null };
+  } catch (error) {
+    return { status: 'error', body: '', error };
   }
+}
+
+// #568 — extract the string body from a readTimingCommentBody result. Tolerates
+// the new discriminated record AND a legacy bare-string return (defensive, so a
+// mixed call site never crashes). Absent/error both surface as ''.
+export function bodyOf(result) {
+  if (result == null) return '';
+  if (typeof result === 'string') return result;
+  return result.body ?? '';
 }
 
 // Internal symbols — exported under a dedicated namespace strictly so the

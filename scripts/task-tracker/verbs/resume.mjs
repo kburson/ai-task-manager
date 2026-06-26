@@ -216,29 +216,36 @@ export async function verbResume(ctx) {
   const { buildRow } = gh;
   const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
   let hasTimingHistory = false;
-  let tcBody = null;
+  let tcBody = '';
+  let readStatus = null;
   if (cfg?.repo) {
-    tcBody = await readTimingCommentBody({
+    const tcResult = await readTimingCommentBody({
       issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
       repo: cfg.repo,
     });
+    tcBody = gh.bodyOf(tcResult);
+    readStatus = tcResult?.status ?? null;
     hasTimingHistory = timingCommentHasRows(tcBody);
   }
   // #534 — the #N path is the dominant cold-re-pickup orphan site. Resolve the
-  // re-engagement against the issue's own open interruption so a bare `resumed`
-  // is never emitted without a pair: open `pause:<r>` → `resume:<r>`, open
-  // `switch-out:#X` → `switch-in:#X`, open session-end `idle` → paired
-  // `resumed`. Fresh issue → `start`; history-no-opener → benign `resumed`.
+  // re-engagement against the issue's own open interruption so a return is never
+  // emitted without a pair. #568 — `resumed` is the sole closer: an open
+  // `pause:<r>`, `switch-out:#X`, or session-end `idle` all close to `resumed`.
+  // Fresh issue → `start`; history-no-opener → benign `resumed`.
   let bindEvent = resolveBindEvent({
     hasTimingHistory,
     paused: !!s.pausedAtTs,
-    timingBody: tcBody,
+    timingBody: cfg?.repo ? tcBody : null,
+    readStatus,
   });
   // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
-  // open interruption AND no prior `start` to pair against; downgrade to
-  // `start` rather than emit an orphan (and never block the bind).
+  // open interruption AND no prior `start` to pair against.
+  // #568 — downgrade to `start` ONLY on positive confirmation the log is empty
+  // (a successful read of zero rows). On a read error, or whenever data rows
+  // already exist, never manufacture a `start` — that is exactly the
+  // duplicate-start the append guard now refuses (and would crash the bind).
   const guard = assertPairedReengagement(tcBody, bindEvent);
-  if (!guard.ok) {
+  if (!guard.ok && readStatus !== 'error' && !timingCommentHasRows(tcBody)) {
     process.stderr.write(`[resume] ${normalizedTarget}: ${guard.reason}; downgrading to start\n`);
     bindEvent = 'start';
   }

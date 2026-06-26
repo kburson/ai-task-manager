@@ -36,18 +36,20 @@ export async function emitPhasePairRows(ctx) {
   const { issueArg, stateArg, resolvedFromState, demoteFlag, cfg, SKIP_NETWORK } = ctx;
   if (SKIP_NETWORK) return;
   try {
-    const { buildRow, postTimingEvent, readTimingCommentBody } =
+    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } =
       await import('../../gh-timing-comment.mjs');
     const { deriveStateMoveDelta } = await import('../timing-rows.mjs');
     const { PHASE_EVENTS } = await import('../../phase-events.mjs');
 
     const ts = new Date().toISOString();
     const prev = resolvedFromState || '';
-    const timingBody = await readTimingCommentBody({
-      issueNumber: issueArg,
-      repo: cfg.repo,
-      timeoutMs: GH_API_TIMEOUT_MS,
-    });
+    const timingBody = bodyOf(
+      await readTimingCommentBody({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        timeoutMs: GH_API_TIMEOUT_MS,
+      })
+    );
     const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
 
     // #475 AC1 — every phase-pair row carries the carried-forward durable
@@ -194,17 +196,19 @@ export async function emitOutOfBandAudit(ctx) {
     /* best-effort */
   }
   try {
-    const { buildRow, postTimingEvent, readTimingCommentBody } =
+    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } =
       await import('../../gh-timing-comment.mjs');
     const { deriveStateMoveDelta } = await import('../timing-rows.mjs');
     // Best-effort fetch of the timing-log comment body (where prior rows live).
     // The issue body never contains timing rows. If the fetch fails the delta
     // is honest 0/0.
-    const _timingBodyM2 = await readTimingCommentBody({
-      issueNumber: issueArg,
-      repo: cfg.repo,
-      timeoutMs: GH_API_TIMEOUT_MS,
-    });
+    const _timingBodyM2 = bodyOf(
+      await readTimingCommentBody({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        timeoutMs: GH_API_TIMEOUT_MS,
+      })
+    );
     const _dM2 = deriveStateMoveDelta(_timingBodyM2, ts);
     const row = buildRow({
       ts,

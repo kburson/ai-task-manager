@@ -27,7 +27,7 @@
 import { getProjectDir } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
 import { loadConfig } from '../config.mjs';
-import { readTimingCommentBody } from '../gh-timing-comment.mjs';
+import { readTimingCommentBody, bodyOf } from '../gh-timing-comment.mjs';
 import { readFileSync } from 'node:fs';
 
 function parseHookPayload(stdin = '') {
@@ -119,11 +119,13 @@ export async function runStopAudit({ env = process.env, deps = {}, hookInput = {
   const readBody = deps.readTimingCommentBody || readTimingCommentBody;
   let body = '';
   try {
-    body = await readBody({
-      issueNumber: active.issue,
-      repo: cfg.repo,
-      timeoutMs: cfg.hookNetworkTimeoutMs,
-    });
+    body = bodyOf(
+      await readBody({
+        issueNumber: active.issue,
+        repo: cfg.repo,
+        timeoutMs: cfg.hookNetworkTimeoutMs,
+      })
+    );
   } catch {
     return { status: 'read-failed', issue: active.issue };
   }

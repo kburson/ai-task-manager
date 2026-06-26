@@ -59,8 +59,9 @@ export async function verbSwitch(ctx, target) {
     // #460 — self-bind (rebinding to the already-active issue) is a resume,
     // not a switch-out. Guard prevents self-referential timing log entries.
     // #534 — a real switch records `switch-out:#<target>` on the OUTGOING issue,
-    // naming the peer it is handing off to, so the eventual return is a
-    // pair-able `switch-in:#<target>`. The Description spells it out for humans.
+    // naming the peer it is handing off to. #568 — the eventual return is the
+    // sole closer `resumed` (not `switch-in:#<target>`); the departure row alone
+    // carries the peer. The Description spells it out for humans.
     const eventSlug = isSelfBind ? 'resumed' : `switch-out:${target}`;
     const eventDesc = isSelfBind ? `resumed ${target}` : `Switching out to task ${target}`;
     const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc);
@@ -134,23 +135,31 @@ export async function verbSwitch(ctx, target) {
   const { buildRow } = gh;
   const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
   let hasTimingHistory = false;
-  let tcBody = null;
+  let tcBody = '';
+  let readStatus = null;
   if (cfg?.repo) {
-    tcBody = await readTimingCommentBody({
+    const tcResult = await readTimingCommentBody({
       issueNumber: Number(target.replace(/^#/, '')),
       repo: cfg.repo,
     });
+    tcBody = gh.bodyOf(tcResult);
+    readStatus = tcResult?.status ?? null;
     hasTimingHistory = timingCommentHasRows(tcBody);
   }
-  // #534 — resolve the incoming row against the target's own open interruption.
-  // Switching BACK into an issue that earlier recorded `switch-out:#prev` yields
-  // a paired `switch-in:#prev`; a never-seen issue yields `start`; an issue with
-  // history but no open interruption yields the benign `resumed`.
-  let bindEvent = resolveBindEvent({ hasTimingHistory, timingBody: tcBody });
-  // #534 AC5/AC7 — orphan-pairing guard: never emit `switch-in*`/`resume*`
-  // without an opener or prior `start`; downgrade to `start` (never block).
+  // #568 — `resumed` is the sole return verb: switching BACK into an issue with
+  // any timing history yields `resumed` (never `switch-in:#prev`); a never-seen
+  // issue yields `start`. The departure `switch-out:#prev` already records the
+  // peer. Fails closed on an unreadable comment (readStatus drives it).
+  let bindEvent = resolveBindEvent({
+    hasTimingHistory,
+    timingBody: cfg?.repo ? tcBody : null,
+    readStatus,
+  });
+  // #534 AC5/AC7 — orphan-pairing guard. #568 — downgrade to `start` ONLY on a
+  // positively-empty log; never on a read error or over existing rows (the
+  // append guard would otherwise refuse the manufactured duplicate `start`).
   const switchGuard = assertPairedReengagement(tcBody, bindEvent);
-  if (!switchGuard.ok) {
+  if (!switchGuard.ok && readStatus !== 'error' && !timingCommentHasRows(tcBody)) {
     process.stderr.write(`[switch] ${target}: ${switchGuard.reason}; downgrading to start\n`);
     bindEvent = 'start';
   }

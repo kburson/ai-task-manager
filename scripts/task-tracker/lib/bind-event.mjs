@@ -132,27 +132,33 @@ export function assertPairedReengagement(body, proposedEvent) {
 
 // Resolve the Event-cell slug for a bind.
 //
-// #534 — when `timingBody` is supplied, the open-interruption reader drives a
-// paired taxonomy: an open `pause:<r>` resolves to `resume:<r>`, an open
-// `switch-out:#X` to `switch-in:#X`, an open session-end `idle` to a (now
-// paired) `resumed`. A fresh issue (no rows) still resolves to `start`; an issue
-// with history but no open interruption resolves to the benign-tail `resumed`.
+// #568 — `resumed` is the SOLE return verb for every re-engagement-with-history.
+// The departure row (`switch-out:#N` / `pause:<r>`) already records why and
+// where work stopped; the return never re-encodes that as `switch-in:#N` or
+// `resume:<r>`. `classifyEvent('resumed')` closes an open `switch-out`, `pause`,
+// OR `idle` interruption alike, so one canonical closer suffices. (Supersedes
+// the #534 paired-taxonomy that emitted `switch-in`/`resume:<r>`.)
 //
-// Back-compat: with no `timingBody`, the original two-flag behavior holds —
-// `'start'` only for a fresh first-ever bind (no history, not mid-pause),
-// otherwise `'resumed'`.
+// #568 — fail CLOSED. `readStatus: 'error'` means the timing comment was
+// unreadable, so the empty `timingBody` it produced is UNKNOWN, not confirmed
+// empty: never emit `start` (which would risk a duplicate). `start` is emitted
+// ONLY on positive confirmation the log is empty (a successful read of zero
+// rows, or the no-`timingBody` legacy path with `hasTimingHistory: false`).
+//
+// Back-compat: with no `timingBody` and no `readStatus`, the original two-flag
+// behavior holds — `'start'` only for a fresh first-ever bind (no history, not
+// mid-pause), otherwise `'resumed'`.
 export function resolveBindEvent({
   hasTimingHistory = false,
   paused = false,
   timingBody = null,
+  readStatus = null,
 } = {}) {
+  // Unreadable comment → fail closed to the paired closer; never a 2nd `start`.
+  if (readStatus === 'error') return 'resumed';
+
   if (timingBody != null) {
-    const open = lastOpenInterruption(timingBody);
-    if (open) {
-      if (open.kind === 'switch-out') return open.peer ? `switch-in:${open.peer}` : 'switch-in';
-      if (open.kind === 'pause') return open.reason ? `resume:${open.reason}` : 'resumed';
-      if (open.kind === 'idle') return 'resumed';
-    }
+    if (lastOpenInterruption(timingBody)) return 'resumed';
     if (paused) return 'resumed';
     return timingCommentHasRows(timingBody) || hasTimingHistory ? 'resumed' : 'start';
   }

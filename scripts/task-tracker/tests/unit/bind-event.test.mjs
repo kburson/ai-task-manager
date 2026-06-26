@@ -1,7 +1,20 @@
-// @story #482
+// @story #482 #568
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveBindEvent, timingCommentHasRows } from '../../lib/bind-event.mjs';
+import {
+  resolveBindEvent,
+  timingCommentHasRows,
+  lastOpenInterruption,
+} from '../../lib/bind-event.mjs';
+
+const NOW = new Date().toISOString().replace('T', ' ').replace(/\..*/, ' +00:00');
+const dataRow = (event) => `| ${NOW} | ${event} | 0s | 0s | 0 | 1,234 | row |`;
+const log = (...events) =>
+  [
+    '| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...events.map(dataRow),
+  ].join('\n');
 
 test('resolveBindEvent: fresh bind (no history, not paused) → start', () => {
   assert.equal(resolveBindEvent({ hasTimingHistory: false, paused: false }), 'start');
@@ -51,4 +64,63 @@ test('timingCommentHasRows: a real data row → true', () => {
 test('timingCommentHasRows: tolerates a T-delimited ISO timestamp cell', () => {
   const body = '| 2026-06-21T13:23:36Z | resumed | 0s | 0s | 0 | 1,234 | task resumed |';
   assert.equal(timingCommentHasRows(body), true);
+});
+
+// ---- #568 AC5: `resumed` is the sole return verb ---------------------------
+
+test('resolveBindEvent: re-engagement over an open switch-out:#7 → resumed (never switch-in)', () => {
+  const body = log('start', 'switch-out:#7');
+  assert.equal(resolveBindEvent({ timingBody: body }), 'resumed');
+});
+
+test('resolveBindEvent: re-engagement over an open pause:meeting → resumed (never resume:reason)', () => {
+  const body = log('start', 'pause:meeting');
+  assert.equal(resolveBindEvent({ timingBody: body }), 'resumed');
+});
+
+test('resolveBindEvent: history with no open interruption → resumed', () => {
+  const body = log('start', 'pause', 'resumed');
+  assert.equal(resolveBindEvent({ timingBody: body }), 'resumed');
+});
+
+test('resolveBindEvent: empty log (positive confirmation) still → start', () => {
+  const body = log(); // header + separator only, no data rows
+  assert.equal(resolveBindEvent({ timingBody: body }), 'start');
+});
+
+// #568 AC5 — `resumed` closes BOTH departure kinds (switch-out AND pause).
+test('a resumed closer clears an open switch-out interruption', () => {
+  assert.equal(lastOpenInterruption(log('start', 'switch-out:#7')).kind, 'switch-out');
+  assert.equal(lastOpenInterruption(log('start', 'switch-out:#7', 'resumed')), null);
+});
+
+test('a resumed closer clears an open pause interruption', () => {
+  assert.equal(lastOpenInterruption(log('start', 'pause:meeting')).kind, 'pause');
+  assert.equal(lastOpenInterruption(log('start', 'pause:meeting', 'resumed')), null);
+});
+
+// ---- #568 AC2: bind fails CLOSED on an unreadable timing comment ------------
+
+test('resolveBindEvent: read error mid-lifetime → resumed, NEVER a second start', () => {
+  // tcBody collapsed to '' by a failed read, but readStatus carries the truth.
+  const ev = resolveBindEvent({
+    hasTimingHistory: false,
+    paused: false,
+    timingBody: '',
+    readStatus: 'error',
+  });
+  assert.equal(ev, 'resumed');
+  assert.notEqual(ev, 'start');
+});
+
+test('resolveBindEvent: read error dominates even the empty-history defaults', () => {
+  assert.equal(resolveBindEvent({ readStatus: 'error' }), 'resumed');
+  assert.equal(resolveBindEvent({ hasTimingHistory: false, readStatus: 'error' }), 'resumed');
+});
+
+test('resolveBindEvent: positive-empty read (absent) → start', () => {
+  assert.equal(
+    resolveBindEvent({ hasTimingHistory: false, timingBody: '', readStatus: 'absent' }),
+    'start'
+  );
 });
