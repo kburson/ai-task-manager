@@ -93,7 +93,9 @@ export async function verbResume(ctx) {
     );
     try {
       setTaskStatus(projectDir, s.lastActive, 'active');
-    } catch {}
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
     if (sid && cfg?.repo) {
       const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
       try {
@@ -180,10 +182,14 @@ export async function verbResume(ctx) {
   );
   try {
     setTaskStatus(projectDir, normalizedTarget, 'active');
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   try {
     registerTask(projectDir, normalizedTarget, projectDir, currentBranch(projectDir));
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   if (sid && cfg?.repo) {
     const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
     try {

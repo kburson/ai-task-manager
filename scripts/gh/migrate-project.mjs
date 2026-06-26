@@ -68,7 +68,9 @@ async function writeIssueBody(repo, issueNumber, body) {
   } finally {
     try {
       unlinkSync(tmp);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 

@@ -102,7 +102,9 @@ export async function verbClose(ctx) {
       clearActive(statePath);
       try {
         deregisterTask(projectDir, closeTarget);
-      } catch {}
+      } catch {
+        /* best-effort: cleanup; failure is non-fatal */
+      }
       console.log(
         `${closeTarget} board was Done but the GitHub issue was still OPEN — closed it now; local state and fleet cleaned up.`
       );
@@ -132,7 +134,9 @@ export async function verbClose(ctx) {
       clearActive(statePath);
       try {
         deregisterTask(projectDir, closeTarget);
-      } catch {}
+      } catch {
+        /* best-effort: cleanup; failure is non-fatal */
+      }
       console.log(
         decision.boardDrift
           ? `${closeTarget} was already closed on GitHub — converged the board to Done; local state and fleet cleaned up.`
@@ -418,7 +422,9 @@ export async function verbClose(ctx) {
             await pexec('gh', ['issue', 'comment', closeIssueNum, '-R', cfg.repo, '--body', note], {
               timeout: GH_API_TIMEOUT_MS,
             });
-          } catch {}
+          } catch {
+            /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+          }
         } else {
           console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
           reasons.forEach((r) => console.error(`   • ${r}`));
@@ -516,7 +522,9 @@ export async function verbClose(ctx) {
             });
             try {
               deregisterTask(projectDir, `#${child.num}`);
-            } catch {}
+            } catch {
+              /* best-effort: cleanup; failure is non-fatal */
+            }
             const childFlush = await flushAndForgetQueueFor(`#${child.num}`);
             const childSuffix =
               childFlush.delivered || childFlush.discarded
@@ -640,7 +648,9 @@ export async function verbClose(ctx) {
   clearActive(statePath);
   try {
     deregisterTask(projectDir, s.active);
-  } catch {}
+  } catch {
+    /* best-effort: cleanup; failure is non-fatal */
+  }
   // #385 — branch on the structured result. A genuine board-move failure must
   // NOT be reported as a clean "Closed": the issue was just closed on GitHub
   // (the explicit `gh issue close` above), but if the board never reached

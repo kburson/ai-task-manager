@@ -27,7 +27,9 @@ export function loadProjectFieldDefs(dir = getProjectDir()) {
     try {
       if (typeof file === 'string' && !existsSync(file)) continue;
       return JSON.parse(readFileSync(file, 'utf8'));
-    } catch {}
+    } catch {
+      /* best-effort: optional read; fall back to default on parse/IO error */
+    }
   }
   return [];
 }

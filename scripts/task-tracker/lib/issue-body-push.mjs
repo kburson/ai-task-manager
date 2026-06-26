@@ -114,7 +114,9 @@ export async function pushIssueBody({
   // failed delete (e.g. already gone) is non-fatal.
   try {
     unlinkSync(scratchPath);
-  } catch {}
+  } catch {
+    /* best-effort: cleanup; failure is non-fatal */
+  }
 
   return { status: 'ok', scratchPath };
 }

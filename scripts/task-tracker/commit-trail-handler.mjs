@@ -122,7 +122,9 @@ export async function gitInfo(cwd) {
     const commonDir = await run(['rev-parse', '--git-common-dir']);
     isWorktree = path.resolve(cwd, gitDir) !== path.resolve(cwd, commonDir);
     worktree = await run(['rev-parse', '--show-toplevel']).catch(() => cwd);
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   return { sha: logSha || sha, subject, author, ts, branch, worktree, isWorktree };
 }
 

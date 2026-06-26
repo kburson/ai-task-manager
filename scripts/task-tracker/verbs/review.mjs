@@ -88,7 +88,9 @@ export async function verbReview(ctx) {
         { timeout: GH_API_TIMEOUT_MS }
       );
       body = (stdout || '').trim();
-    } catch {}
+    } catch {
+      /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+    }
     if (body) {
       const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
       const result = validateBody(body, { gates: activeGates });
@@ -108,7 +110,9 @@ export async function verbReview(ctx) {
             description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
           });
           await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
-        } catch {}
+        } catch {
+          /* best-effort: failure must not abort the primary operation */
+        }
         process.stderr.write('\n');
         process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
         for (const r of result.refusedRules)
@@ -153,7 +157,9 @@ export async function verbReview(ctx) {
     saveState(pauseTimingKeepBinding(s, target), statePath);
     try {
       setTaskStatus(projectDir, target, 'paused');
-    } catch {}
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
     // #408 — no test→test self-move here. By the time `review` runs, the issue
     // is already in `test` (the test-exit-dod-verified guard below refuses
     // otherwise), so a move-state to `test` is a self-loop the transition
@@ -179,7 +185,9 @@ export async function verbReview(ctx) {
     saveState(pauseTimingKeepBinding(s, target), statePath);
     try {
       setTaskStatus(projectDir, target, 'paused');
-    } catch {}
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
     // #408 — redundant test→test self-move removed (see note above).
   } else {
     // Body not loaded in this branch; honest 0/0.

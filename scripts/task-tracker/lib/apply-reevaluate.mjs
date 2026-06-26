@@ -82,7 +82,9 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
         repo: cfg.repo,
         body: `${AUDIT_HEADER}\n\n_Bypassed via \`TASK_TRACKER_SKIP_REEVAL=1\` at ${ts}._`,
       });
-    } catch {}
+    } catch {
+      /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+    }
     return { status: 'skipped' };
   }
 
@@ -94,7 +96,9 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
         repo: cfg.repo,
         body: `${AUDIT_HEADER}\n\n_Skipped: epic with ${subInfo.count} sub-issue(s); Size/Estimate is the sum of children, set at Refine time._`,
       });
-    } catch {}
+    } catch {
+      /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+    }
     return { status: 'skipped-epic', subIssueCount: subInfo.count };
   }
 
@@ -110,7 +114,9 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
       if (currentSize == null && projVals.size != null) currentSize = projVals.size;
       if (currentEstimate == null && typeof projVals.estimate === 'number')
         currentEstimate = projVals.estimate;
-    } catch {}
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
   }
 
   const result = reevaluateEstimate(body, { size: currentSize, estimate: currentEstimate });
@@ -121,7 +127,9 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
   if (result.requiresHuman) {
     try {
       await postComment({ issueNumber, repo: cfg.repo, body: commentBody });
-    } catch {}
+    } catch {
+      /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+    }
     return { status: 'human-attention', result };
   }
 
@@ -192,7 +200,9 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
 
   try {
     await postComment({ issueNumber, repo: cfg.repo, body: commentBody });
-  } catch {}
+  } catch {
+    /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+  }
 
   return { status: 'applied', result };
 }

@@ -267,7 +267,9 @@ export async function runReconcile({
             detail: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}" (${reason})${strippedNote}`,
           }),
       });
-    } catch {}
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
     return { status: 'reconciled', mode, from: recorded, to: live, stripped };
   }
 
@@ -300,7 +302,9 @@ export async function runReconcile({
           detail: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
         }),
     });
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   return { status: 'reconciled', mode, from: live, to: recorded };
 }
 

@@ -154,7 +154,9 @@ async function defaultListComments({ issueNumber, repo }) {
   for (const page of pages) {
     try {
       comments.push(...JSON.parse(page));
-    } catch {}
+    } catch {
+      /* best-effort: optional read; fall back to default on parse/IO error */
+    }
   }
   return comments;
 }
@@ -171,7 +173,9 @@ async function defaultPatchComment({ repo, commentId, body }) {
   } finally {
     try {
       unlinkSync(tmp);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 

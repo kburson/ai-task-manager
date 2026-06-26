@@ -51,7 +51,9 @@ function loadEventBindings() {
     try {
       if (typeof file === 'string' && !existsSync(file)) continue;
       return JSON.parse(readFileSync(file, 'utf8'));
-    } catch {}
+    } catch {
+      /* best-effort: optional read; fall back to default on parse/IO error */
+    }
   }
   return {};
 }
@@ -107,7 +109,9 @@ async function writeIssueBody(body) {
   } finally {
     try {
       unlinkSync(tmp);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 

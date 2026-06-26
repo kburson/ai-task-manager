@@ -35,7 +35,9 @@ function checkRepoMismatch(ctx) {
           `               git remote (${remoteRepo}). Run /task config init to fix.`
       );
     }
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
 }
 
 const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet']);

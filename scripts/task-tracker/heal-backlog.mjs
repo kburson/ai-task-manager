@@ -464,7 +464,9 @@ async function writeIssueBody(issueNumber, repo, body, projectDir) {
   } finally {
     try {
       unlinkSync(tmp);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 
@@ -478,7 +480,9 @@ async function postHealComment(issueNumber, repo, comment, projectDir) {
   } finally {
     try {
       unlinkSync(tmp);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 

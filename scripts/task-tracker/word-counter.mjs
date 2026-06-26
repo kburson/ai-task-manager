@@ -126,7 +126,9 @@ export function saveMarker(markerPath, line, words, task = null) {
   let existing = {};
   try {
     if (existsSync(markerPath)) existing = JSON.parse(readFileSync(markerPath, 'utf8'));
-  } catch {}
+  } catch {
+    /* best-effort: optional read; fall back to default on parse/IO error */
+  }
   writeFileSync(
     markerPath,
     JSON.stringify(

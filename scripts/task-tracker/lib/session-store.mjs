@@ -119,7 +119,9 @@ export function sweepOrphans({ now = Date.now(), maxAgeMs, fs = realFs, dir = DE
         fs.unlinkSync(p);
         count++;
       }
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
   return count;
 }

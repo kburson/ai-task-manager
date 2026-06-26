@@ -153,7 +153,9 @@ function emitWorktreeBanner() {
     } else {
       console.log(`[task-tracker] WORKTREE: ✓ ${currentBranch(projectDir)} @ ${projectDir}`);
     }
-  } catch {}
+  } catch {
+    /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+  }
 }
 
 async function bestEffortDrainQueue() {
@@ -169,7 +171,9 @@ async function bestEffortDrainQueue() {
         });
       }
     }, queuePath);
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
 }
 
 async function onSessionStart(sid) {
@@ -182,7 +186,9 @@ async function onSessionStart(sid) {
     const { loadConfig } = await import('./config.mjs');
     const c = loadConfig();
     sweepOrphans({ maxAgeMs: c.deadSessionMaxAgeMs });
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   // (#215) Sweep stale `.ai-task-manager/sessions/<sid>/` dirs older than
   // `sessionRetentionDays`. Any orphan pause marker in the dir is finalized
   // BEFORE removal (row goes to the issue named in the marker). Best-effort
@@ -191,7 +197,9 @@ async function onSessionStart(sid) {
   try {
     const { sweepStaleSessionDirs } = await import('./orphan-finalize.mjs');
     await sweepStaleSessionDirs({ projDir: projectDir });
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   if (sid) ensureSessionTracking(sid);
   const s = loadState(statePath);
 
@@ -313,7 +321,9 @@ if (isMain)
     let payload = {};
     try {
       payload = JSON.parse(readStdin() || '{}');
-    } catch {}
+    } catch {
+      /* best-effort: optional read; fall back to default on parse/IO error */
+    }
     const sid = payload.session_id || currentSessionId();
     const event = payload.hook_event_name || process.argv[2];
     try {

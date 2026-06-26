@@ -25,7 +25,9 @@ export async function verbStop(ctx) {
   );
   try {
     setTaskStatus(projectDir, s.active, 'stopped');
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   console.log(
     `Stopped ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task resume <N>" to return to it later.`
   );

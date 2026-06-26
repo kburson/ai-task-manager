@@ -32,10 +32,14 @@ export function withLock(registryPath, fn) {
         if (age > LOCK_STALE_MS) {
           try {
             rmdirSync(lockDir);
-          } catch {}
+          } catch {
+            /* best-effort: cleanup; failure is non-fatal */
+          }
           continue;
         }
-      } catch {}
+      } catch {
+        /* best-effort: cleanup; failure is non-fatal */
+      }
       if (Date.now() > deadline) throw new Error(`fleet-registry: lock timeout on ${lockDir}`);
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, LOCK_RETRY_MS);
     }
@@ -45,7 +49,9 @@ export function withLock(registryPath, fn) {
   } finally {
     try {
       rmdirSync(lockDir);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 
@@ -60,7 +66,9 @@ export function findMainWorktreePath(projectDir) {
     const firstBlock = out.split(/\n\n/)[0];
     const match = firstBlock.match(/^worktree (.+)$/m);
     if (match) return match[1].trim();
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   return projectDir;
 }
 

@@ -306,7 +306,9 @@ function coerce(key, raw) {
     try {
       const parsed = JSON.parse(String(raw));
       if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) return parsed;
-    } catch {}
+    } catch {
+      /* best-effort: optional read; fall back to default on parse/IO error */
+    }
     throw new Error(`value for ${key} must be a JSON object, got: ${raw}`);
   }
   return String(raw);

@@ -63,7 +63,9 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
         repo: cfg.repo,
         body: `${DELTA_HEADER}\n\n_Bypassed via \`TASK_TRACKER_SKIP_DELTA=1\` at ${ts}._`,
       });
-    } catch {}
+    } catch {
+      /* best-effort: GitHub/telemetry side effect; core flow proceeds */
+    }
     return { status: 'skipped' };
   }
 
@@ -91,7 +93,9 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
       if (typeof projVals.estimate === 'number') estimateHr = projVals.estimate;
       engagedSec = boardSeconds(projVals.engagedTime);
       planSec = boardSeconds(projVals.planTime);
-    } catch {}
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
   }
 
   if (estimateHr == null && body) {
@@ -111,7 +115,9 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
     const comments = await fetchComments({ issueNumber, repo: cfg.repo });
     const notes = findReviewNotesComment(comments);
     if (notes) drivers = parseDrivers(notes.body);
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
 
   const commentBody = buildDeltaCommentBody(result, { drivers });
 

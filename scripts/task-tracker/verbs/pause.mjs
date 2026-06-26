@@ -48,7 +48,9 @@ export async function verbPause(ctx) {
   );
   try {
     setTaskStatus(projectDir, s.active, 'paused');
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   console.log(
     `Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task resume" to resume.`
   );

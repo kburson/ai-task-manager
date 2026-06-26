@@ -220,7 +220,9 @@ export async function verbNew(ctx) {
   );
   try {
     registerTask(projectDir, issue, projectDir, currentBranch(projectDir));
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   await safePostTiming(
     issue,
     buildRow({

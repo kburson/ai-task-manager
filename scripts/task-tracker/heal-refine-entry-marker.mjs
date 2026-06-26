@@ -78,7 +78,9 @@ async function writeBody(repo, num, body) {
   } finally {
     try {
       unlinkSync(tmp);
-    } catch {}
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
+    }
   }
 }
 

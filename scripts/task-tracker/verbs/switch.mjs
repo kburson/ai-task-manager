@@ -71,7 +71,9 @@ export async function verbSwitch(ctx, target) {
     if (!isSelfBind) {
       try {
         deregisterTask(projectDir, previous);
-      } catch {}
+      } catch {
+        /* best-effort: cleanup; failure is non-fatal */
+      }
     }
   } else if (s.active === 'discover') {
     console.log('Discarding discovery bucket (switch to concrete issue).');
@@ -100,7 +102,9 @@ export async function verbSwitch(ctx, target) {
   // marker is the source of truth; preflight reads it on demand.
   try {
     registerTask(projectDir, target, projectDir, currentBranch(projectDir));
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
   // #218 follow-up — seed the per-session `kanbanState` derived cache so the
   // activity-guard hook can read state synchronously without a network call.
   // #273: tagged seeder errors are reported, not swallowed.
@@ -203,5 +207,7 @@ export async function verbSwitch(ctx, target) {
         }
       }
     }
-  } catch {}
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
 }

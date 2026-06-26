@@ -4,7 +4,7 @@
 // the `#315` `deriveAndStampFunctionalDod` pass (which ticks the derived
 // `acs`/`checkboxes` Functional-DoD keys into the LIVE issue body) but only
 // refreshed the scan body inside a narrow `status === 'ok'` branch, all wrapped
-// in a bare `catch {}`. Three independently-sufficient paths — derive returns
+// in a bare `catch { /* best-effort: failure must not abort the primary operation */ }`. Three independently-sufficient paths — derive returns
 // `noop`, derive throws, or the post-derive refresh throws — left the scan body
 // stale, so the completeness parity gate read un-ticked `acs`/`checkboxes` and
 // falsely refused promotion with `test-to-review-incomplete`.
