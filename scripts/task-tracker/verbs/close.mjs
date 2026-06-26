@@ -26,25 +26,21 @@ import {
 } from '../lib/close-convergence.mjs';
 
 export async function verbClose(ctx) {
-  const {
-    cfg,
-    statePath,
-    projectDir,
-    rest,
-    SKIP_NETWORK,
-    pexec,
-    drainQueueIfAny,
-    flushAndForgetQueueFor,
-    safePostTiming,
-    runMoveState,
-    runMoveStateDone,
-    runLogIssueTime,
-    fetchSubIssues,
-    getIssueBoardState,
-    getIssueClosedState,
-    uncheckedPreCloseCheckboxes,
-    nowIso,
-  } = ctx;
+  // #561 — verbClose reads its collaborators from the grouped capability
+  // objects assembled by buildContext (the narrow dependency interface) rather
+  // than from a flat 18-member destructure. Each `?? ctx` fallback keeps the
+  // verb runnable against a flat ctx (back-compat) and lets a fixture supply
+  // only the capabilities a given code path actually touches.
+  const projectConfig = ctx.projectConfig ?? ctx;
+  const timingRecorder = ctx.timingRecorder ?? ctx;
+  const stateRunner = ctx.stateRunner ?? ctx;
+  const githubClient = ctx.githubClient ?? ctx;
+  const { cfg, statePath, projectDir, SKIP_NETWORK, pexec, uncheckedPreCloseCheckboxes, nowIso } =
+    projectConfig;
+  const { rest } = ctx;
+  const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
+  const { runMoveState, runMoveStateDone, runLogIssueTime } = stateRunner;
+  const { fetchSubIssues, getIssueBoardState, getIssueClosedState } = githubClient;
   await drainQueueIfAny();
   const initialState = loadState(statePath);
   const target = rest.find((a) => /^#\d+$/.test(a));

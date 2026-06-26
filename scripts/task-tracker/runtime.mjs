@@ -35,6 +35,7 @@ import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 
 const pexec = promisify(execFile);
 
@@ -572,6 +573,13 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       return null;
     }
   };
+
+  // #561 — group the flat members into named capability objects. The flat
+  // members above remain for back-compat (existing verbs + characterization
+  // tests destructure them directly); migrated verbs read the narrow grouped
+  // surface (`ctx.projectConfig`, `ctx.timingRecorder`, `ctx.stateRunner`,
+  // `ctx.githubClient`, `ctx.issueBodyMutator`) and can be fixture-tested.
+  Object.assign(ctx, assembleCapabilities(ctx));
 
   return ctx;
 }
