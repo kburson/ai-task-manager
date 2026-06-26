@@ -3,9 +3,12 @@
 // `aitm` is a thin front-router. This module is its routing table. It has two
 // halves:
 //
-//   1. VERBS — the /task state-machine verbs, parsed at runtime from
-//      task-tracker.mjs's own dispatch `switch` so the registry can never drift
-//      from the verb hub. `aitm <verb>` delegates to task-tracker.mjs.
+//   1. VERBS — the /task state-machine verbs, declared in the command manifest
+//      (scripts/task-tracker/command-manifest.mjs). `aitm <verb>` delegates to
+//      task-tracker.mjs. The manifest carries descriptions, aliases, and
+//      category metadata the old regex scrape could not; a parity test asserts
+//      the manifest's verb set equals the dispatch switch's `case` labels so
+//      the two cannot drift (see tests/unit/command-manifest.test.mjs).
 //   2. SCRIPTS — the curated set of operator-facing standalone support scripts
 //      (from scripts/lib/self-doc.mjs). `aitm <name>` spawns the script.
 //
@@ -19,6 +22,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SELF_DOC } from '../scripts/lib/self-doc.mjs';
+import { manifestVerbNames } from '../scripts/task-tracker/command-manifest.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
@@ -33,8 +37,11 @@ export const TASK_TRACKER_REL = 'scripts/task-tracker/task-tracker.mjs';
 // `help`/`?` are handled by the dispatcher itself.
 const NON_COMMAND_CASES = new Set(['move', 'help', '?']);
 
-// Parse the verb set from task-tracker.mjs's dispatch switch. Single source of
-// truth — adding a `case 'foo':` to the verb hub auto-exposes `aitm foo`.
+// Cross-check helper (retained from #413): recover the verb set by scanning
+// task-tracker.mjs's dispatch switch for `case` labels. This is NO LONGER the
+// registry's source of truth — the manifest is. It survives only as the
+// reference the parity test diffs the manifest against, so a `case` added to
+// the verb hub without a matching manifest entry (or vice-versa) fails CI.
 export function parseVerbs(source = readFileSync(TASK_TRACKER_PATH, 'utf8')) {
   const verbs = new Set();
   const re = /case\s+'([a-z][a-z0-9-]*)'\s*:/gi;
@@ -46,7 +53,14 @@ export function parseVerbs(source = readFileSync(TASK_TRACKER_PATH, 'utf8')) {
   return verbs;
 }
 
-export const VERBS = parseVerbs();
+// The verb set — now declared by the command manifest (canonical names plus
+// aliases), not regex-scraped. Help output (groupedListing) and dispatch
+// routing (kind → bin/aitm.mjs) both read this, so they share one source.
+export const VERBS = manifestVerbNames();
+
+// Re-export the manifest so help and other callers can reach descriptions and
+// categories, not just names.
+export { COMMAND_MANIFEST } from '../scripts/task-tracker/command-manifest.mjs';
 
 // Operator-facing scripts, keyed by command name → { group, path, ...doc }.
 export const SCRIPTS = SELF_DOC;
