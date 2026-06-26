@@ -2,7 +2,7 @@
 
 Migration residue — deprecated markers, compatibility shims, and legacy
 command/verb aliases — has a habit of becoming permanent architecture because
-nothing records *when it may go*. This ledger gives each legacy path an explicit
+nothing records _when it may go_. This ledger gives each legacy path an explicit
 rationale, an owner, a **Removal** condition, and a review date, so retirement is
 a tracked decision rather than indefinite drift.
 
@@ -15,7 +15,7 @@ misled readers about whether the guard layer was wired.
 - Add a row whenever you introduce a deprecation shim, a back-compat alias, or a
   legacy-form marker transform that exists only to ease a migration.
 - The **Removal** column states the precondition that, once true, makes the entry
-  safe to delete. When that precondition holds, delete the legacy path *and* its
+  safe to delete. When that precondition holds, delete the legacy path _and_ its
   ledger row in the same change.
 - The **Review** date is the next time someone should re-check whether the
   removal precondition has become satisfiable.
