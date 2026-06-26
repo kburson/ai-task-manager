@@ -1,95 +1,79 @@
 #!/usr/bin/env node
 // @story #130
-// Switch scenario — issue #130.
+// @story #534
+// Switch scenario — originally #130 (outgoing-only `switch-out`), reversed by
+// #534 to *paired* switch semantics. Every task hop now records both halves:
 //
-// Asserts the outgoing-only `switch-out → task #N` semantics of the
-// `/task switch` verb chain:
+//   - Switching from A to B emits a `switch-out:#B` row on A's log
+//     (description "Switching out to task #B").
+//   - The incoming bind on B resolves against B's own log: a never-seen B
+//     emits `start`; a B that earlier switched out to A (open `switch-out:#A`)
+//     emits a paired `switch-in:#A`.
+//   - Returning to A — whose log carries the still-open `switch-out:#B` — emits
+//     a paired `switch-in:#B` (not a bare `resumed`, and not a duplicate
+//     `start`).
 //
-//   - Switching from A to B emits a `switch-out → task #B` row on A's log.
-//   - The incoming bind on B emits only `start`/`resumed` rows — there is
-//     no `switch-in` event slug in the codebase.
-//   - Returning to A after closing the trip to B emits a `resumed` row
-//     on A's log (not a duplicate `start`, and not a `switch-in`).
-//
-// Like lifecycle-integration, this is a structural test that exercises
-// the same `buildRow` + verb-event slugs that the runtime uses. It
-// asserts:
-//
-//   1. The repo contains no `switch-in` emission anywhere outside tests.
-//   2. `buildRow` renders a `switch-out → task #B` row exactly as the
-//      switch verb constructs it.
-//   3. `buildRow` renders a `resumed` row exactly as resume.mjs/start.mjs
-//      construct it.
+// This is a structural test over the same `resolveBindEvent` taxonomy and
+// `buildRow` renderer the runtime uses.
 import { strict as assert } from 'node:assert';
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { buildRow } from '../../gh-timing-comment.mjs';
+import { resolveBindEvent, lastOpenInterruption } from '../../lib/bind-event.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, '..', '../../..');
+const HEADER = [
+  '| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |',
+  '| --- | --- | --- | --- | --- | --- | --- |',
+];
+const body = (...rows) => [...HEADER, ...rows].join('\n');
+const logRow = (event, ts) => `| ${ts} | ${event} | | | 0 | 1,234 | ${event} |`;
 
-// ---- 1. No `switch-in` slug emitted anywhere in runtime code -------------
-// Grep all source under scripts/ excluding tests/. The slug must not appear
-// as an emitted event. Documentation references (`resume.mjs` comment
-// "no `switch-in`") are allowed.
-let grep = '';
-try {
-  grep = execFileSync('grep', ['-rEn', `event: ['\\\"]switch-in['\\\"]`, 'scripts/'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
-} catch (err) {
-  // grep exits 1 when no matches — that's the success case here.
-  if (err.status !== 1) throw err;
-  grep = '';
-}
-assert.equal(grep, '', `runtime must not emit "switch-in" rows; found:\n${grep}`);
-
-// ---- 2. `switch-out → task #B` row is well-formed -------------------------
+// ---- 1. Outgoing `switch-out:#B` row is well-formed ----------------------
 const tsA = new Date(Date.now() - 5000).toISOString();
 const outgoing = buildRow({
   ts: tsA,
-  event: 'switch-out',
+  event: 'switch-out:#777',
   activeMin: 3,
   idleMin: 0,
   deltaWords: 250,
   wordMarker: 1000,
-  description: 'switch-out → task #777',
+  description: 'Switching out to task #777',
 });
-assert.match(outgoing, /\| switch-out \|/, 'outgoing row must use switch-out slug');
+assert.match(outgoing, /\| switch-out:#777 \|/, 'outgoing row must use switch-out:#N slug');
 assert.match(
   outgoing,
-  /switch-out → task #777/,
-  'outgoing row must carry "switch-out → task #N" description'
+  /Switching out to task #777/,
+  'outgoing row must carry the "Switching out to task #N" description'
 );
 
-// ---- 3. Re-bind to A emits `resumed`, not `switch-in` ---------------------
-const tsBack = new Date(Date.now() - 1000).toISOString();
-const resumed = buildRow({
-  ts: tsBack,
-  event: 'resumed',
-  activeMin: 0,
-  idleMin: 0,
-  deltaWords: 0,
-  wordMarker: 1000,
-  description: 'agent',
-});
-assert.match(resumed, /\| resumed \|/, 'return-to-task row must use resumed slug');
-assert.ok(!resumed.includes('switch-in'), 'return-to-task row must not contain "switch-in"');
+// ---- 2. A's log with the open switch-out resolves the return to switch-in --
+const aLog = body(
+  logRow('start', '2026-06-25 09:00:00 +00:00'),
+  logRow('switch-out:#777', '2026-06-25 09:30:00 +00:00')
+);
+assert.deepEqual(lastOpenInterruption(aLog), { kind: 'switch-out', peer: '#777' });
+assert.equal(
+  resolveBindEvent({ hasTimingHistory: true, timingBody: aLog }),
+  'switch-in:#777',
+  'returning into A must pair the open switch-out:#777 with switch-in:#777'
+);
 
-// ---- 4. B's log: a fresh `start` row carries the role but no switch token --
-const tsB = new Date(Date.now() - 4000).toISOString();
-const startB = buildRow({
-  ts: tsB,
-  event: 'start',
-  activeMin: 0,
-  idleMin: 0,
-  deltaWords: 0,
-  wordMarker: 0,
-  description: 'agent',
-});
-assert.match(startB, /\| start \|/, 'B-side bind must emit start');
-assert.ok(!startB.includes('switch'), 'B-side bind must not include any switch token');
+// ---- 3. B's log: a never-seen B binds as start ----------------------------
+assert.equal(
+  resolveBindEvent({ hasTimingHistory: false, timingBody: body() }),
+  'start',
+  'a never-seen incoming issue must bind as start, not switch-in'
+);
+
+// ---- 4. A round-tripped switch (closed) resolves to a benign resumed ------
+const closed = body(
+  logRow('start', '2026-06-25 09:00:00 +00:00'),
+  logRow('switch-out:#777', '2026-06-25 09:30:00 +00:00'),
+  logRow('switch-in:#777', '2026-06-25 10:00:00 +00:00')
+);
+assert.equal(lastOpenInterruption(closed), null, 'switch-in closes the open switch-out');
+assert.equal(
+  resolveBindEvent({ hasTimingHistory: true, timingBody: closed }),
+  'resumed',
+  'history with no open interruption is the benign-tail resumed'
+);
 
 console.log('switch-scenario.test.mjs: ok');

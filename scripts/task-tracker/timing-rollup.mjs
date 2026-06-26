@@ -68,8 +68,12 @@ export function parseTimingRows(body) {
 // uniform past-tense vocabulary. Accept BOTH spellings so pause-span detection
 // stays correct for historical logs (`pause`) and new logs (`paused`). Events
 // are lower-cased at parse time, so a literal compare is sufficient.
+//
+// #534 — non-switch pauses now carry a canonical reason slug (`pause:question`,
+// `pause:break`, …). Treat any `pause:*` slug as a pause too so review-time
+// pairing keeps working across the renamed vocabulary.
 function isPauseEvent(event) {
-  return event === 'pause' || event === 'paused';
+  return event === 'pause' || event === 'paused' || event.startsWith('pause:');
 }
 
 // Sum (delta_min) for each pause row whose next non-pause row arrives within

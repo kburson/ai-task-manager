@@ -30,9 +30,132 @@ export function timingCommentHasRows(body) {
   return false;
 }
 
-// Resolve the Event-cell slug for a bind. Returns `'start'` only for a fresh
-// first-ever bind (no timing history and not mid-pause); otherwise `'resumed'`.
-export function resolveBindEvent({ hasTimingHistory = false, paused = false } = {}) {
+// #534 — extract the (lower-cased) Event-cell slug from a timing-log data row.
+// Returns null for the header, the `|---|` separator, and any non-data line.
+function rowEventSlug(line) {
+  if (!line.startsWith('|')) return null;
+  const cells = line.split('|').map((s) => s.trim());
+  // cells[0] is the empty pre-pipe cell; cells[1] is Timestamp, cells[2] Event.
+  if (cells.length < 4) return null;
+  if (!ROW_TS_RE.test(cells[1])) return null;
+  return cells[2].toLowerCase();
+}
+
+// #534 — classify a row event slug as an interruption *opener*, a re-engagement
+// *closer*, or neither. Openers mark work stopping (`pause`/`paused`/`pause:*`,
+// `switch-out`/`switch-out:*`, `idle`). Closers mark work resuming
+// (`resume`/`resumed`/`resume:*`, `switch-in`/`switch-in:*`, `start`).
+function classifyEvent(slug) {
+  if (!slug) return null;
+  if (slug === 'pause' || slug === 'paused' || slug.startsWith('pause:')) {
+    return {
+      role: 'open',
+      kind: 'pause',
+      reason: slug.startsWith('pause:') ? slug.slice(6) : null,
+    };
+  }
+  if (slug === 'switch-out' || slug.startsWith('switch-out:')) {
+    return {
+      role: 'open',
+      kind: 'switch-out',
+      peer: slug.startsWith('switch-out:') ? slug.slice('switch-out:'.length) : null,
+    };
+  }
+  if (slug === 'idle') return { role: 'open', kind: 'idle' };
+  if (slug === 'resume' || slug === 'resumed' || slug.startsWith('resume:')) {
+    return { role: 'close' };
+  }
+  if (slug === 'switch-in' || slug.startsWith('switch-in:')) return { role: 'close' };
+  if (slug === 'start') return { role: 'close' };
+  return null; // neutral (move:*, end, etc.) — neither opens nor closes
+}
+
+// #534 — scan the timing body top-to-bottom and return the last interruption
+// that remains *open* (an opener with no later closer). A closer clears the
+// currently-open interruption. Returns one of:
+//   { kind: 'pause', reason }   reason = canonical slug after `pause:` or null
+//   { kind: 'switch-out', peer } peer  = `#N` (or bare value) after `switch-out:` or null
+//   { kind: 'idle' }
+// or null when no interruption is currently open.
+export function lastOpenInterruption(body) {
+  if (!body) return null;
+  let open = null;
+  for (const line of String(body).split('\n')) {
+    const slug = rowEventSlug(line);
+    if (slug == null) continue;
+    const c = classifyEvent(slug);
+    if (!c) continue;
+    if (c.role === 'open') {
+      open =
+        c.kind === 'pause'
+          ? { kind: 'pause', reason: c.reason }
+          : c.kind === 'switch-out'
+            ? { kind: 'switch-out', peer: c.peer }
+            : { kind: 'idle' };
+    } else if (c.role === 'close') {
+      open = null;
+    }
+  }
+  return open;
+}
+
+// #534 — true when the body contains at least one `start` row (a root opener
+// that an otherwise-unpaired re-engagement legitimately pairs against).
+function hasStartRow(body) {
+  if (!body) return false;
+  for (const line of String(body).split('\n')) {
+    if (rowEventSlug(line) === 'start') return true;
+  }
+  return false;
+}
+
+// #534 — orphan-pairing guard. A re-engagement event (`resume*` / `switch-in*`)
+// is a violation only when the body carries NO open interruption to pair
+// against AND no prior `start` row (the benign root opener). Returns
+// `{ ok: true }` or `{ ok: false, reason }`. Non-re-engagement events always ok.
+export function assertPairedReengagement(body, proposedEvent) {
+  const slug = String(proposedEvent ?? '').toLowerCase();
+  const isReengage =
+    slug === 'resume' ||
+    slug === 'resumed' ||
+    slug.startsWith('resume:') ||
+    slug === 'switch-in' ||
+    slug.startsWith('switch-in:');
+  if (!isReengage) return { ok: true };
+  if (lastOpenInterruption(body)) return { ok: true };
+  if (hasStartRow(body)) return { ok: true };
+  return {
+    ok: false,
+    reason: `re-engagement "${proposedEvent}" has no open interruption and no prior start row to pair against`,
+  };
+}
+
+// Resolve the Event-cell slug for a bind.
+//
+// #534 — when `timingBody` is supplied, the open-interruption reader drives a
+// paired taxonomy: an open `pause:<r>` resolves to `resume:<r>`, an open
+// `switch-out:#X` to `switch-in:#X`, an open session-end `idle` to a (now
+// paired) `resumed`. A fresh issue (no rows) still resolves to `start`; an issue
+// with history but no open interruption resolves to the benign-tail `resumed`.
+//
+// Back-compat: with no `timingBody`, the original two-flag behavior holds —
+// `'start'` only for a fresh first-ever bind (no history, not mid-pause),
+// otherwise `'resumed'`.
+export function resolveBindEvent({
+  hasTimingHistory = false,
+  paused = false,
+  timingBody = null,
+} = {}) {
+  if (timingBody != null) {
+    const open = lastOpenInterruption(timingBody);
+    if (open) {
+      if (open.kind === 'switch-out') return open.peer ? `switch-in:${open.peer}` : 'switch-in';
+      if (open.kind === 'pause') return open.reason ? `resume:${open.reason}` : 'resumed';
+      if (open.kind === 'idle') return 'resumed';
+    }
+    if (paused) return 'resumed';
+    return timingCommentHasRows(timingBody) || hasTimingHistory ? 'resumed' : 'start';
+  }
   if (paused) return 'resumed';
   return hasTimingHistory ? 'resumed' : 'start';
 }

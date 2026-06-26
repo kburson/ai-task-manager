@@ -10,7 +10,11 @@ import {
 import { verbSwitch } from './switch.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
-import { resolveBindEvent, timingCommentHasRows } from '../lib/bind-event.mjs';
+import {
+  resolveBindEvent,
+  timingCommentHasRows,
+  assertPairedReengagement,
+} from '../lib/bind-event.mjs';
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
@@ -66,6 +70,12 @@ export async function verbResume(ctx) {
     const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
     // #475 AC1 — carry the durable marker forward across the pause.
     const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
+    // #534 — pair the resume to the pause's canonical reason. The no-arg path
+    // is gated on `s.paused`, so a matching open `pause:<slug>` always exists;
+    // emit `resume:<slug>` and echo the operator's free text in Description.
+    const reasonSlug = s.pauseReasonSlug || 'other';
+    const resumeEvent = `resume:${reasonSlug}`;
+    const resumeDesc = s.pauseReasonText || role || 'task resumed';
     saveState(
       {
         ...s,
@@ -74,6 +84,9 @@ export async function verbResume(ctx) {
         wordsAtEntryStart: wordsAtStart,
         paused: undefined,
         pausedAtTs: null,
+        // #534 — interruption closed; clear the persisted pause reason.
+        pauseReasonSlug: null,
+        pauseReasonText: null,
         lastWordMarker: carriedMarker,
       },
       statePath
@@ -102,12 +115,12 @@ export async function verbResume(ctx) {
     const { buildRow } = await import('../gh-timing-comment.mjs');
     const row = buildRow({
       ts,
-      event: 'resumed',
+      event: resumeEvent,
       activeSec: 0,
       idleSec,
       deltaWords: 0,
       wordMarker: carriedMarker,
-      description: role ?? 'task resumed',
+      description: resumeDesc,
     });
     await safePostTiming(s.lastActive, row);
     console.log(`Resumed ${s.lastActive}.`);
@@ -197,14 +210,32 @@ export async function verbResume(ctx) {
   const { buildRow } = gh;
   const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
   let hasTimingHistory = false;
+  let tcBody = null;
   if (cfg?.repo) {
-    const tcBody = await readTimingCommentBody({
+    tcBody = await readTimingCommentBody({
       issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
       repo: cfg.repo,
     });
     hasTimingHistory = timingCommentHasRows(tcBody);
   }
-  const bindEvent = resolveBindEvent({ hasTimingHistory, paused: !!s.pausedAtTs });
+  // #534 — the #N path is the dominant cold-re-pickup orphan site. Resolve the
+  // re-engagement against the issue's own open interruption so a bare `resumed`
+  // is never emitted without a pair: open `pause:<r>` → `resume:<r>`, open
+  // `switch-out:#X` → `switch-in:#X`, open session-end `idle` → paired
+  // `resumed`. Fresh issue → `start`; history-no-opener → benign `resumed`.
+  let bindEvent = resolveBindEvent({
+    hasTimingHistory,
+    paused: !!s.pausedAtTs,
+    timingBody: tcBody,
+  });
+  // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
+  // open interruption AND no prior `start` to pair against; downgrade to
+  // `start` rather than emit an orphan (and never block the bind).
+  const guard = assertPairedReengagement(tcBody, bindEvent);
+  if (!guard.ok) {
+    process.stderr.write(`[resume] ${normalizedTarget}: ${guard.reason}; downgrading to start\n`);
+    bindEvent = 'start';
+  }
   const isStart = bindEvent === 'start';
   const row = buildRow({
     ts,

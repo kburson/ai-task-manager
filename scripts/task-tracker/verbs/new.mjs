@@ -138,16 +138,16 @@ export async function verbNew(ctx) {
   let previousNote = '';
   const previousActive = s.active;
   if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
-    // Outgoing-side row uses the canonical `switch-out` slug. The target
-    // ref is finalized below after `createNewIssue`, so the flush is
-    // deferred until we know the new issue number.
+    // #534 — the outgoing-side row uses the paired `switch-out:#<issue>` slug
+    // naming the new issue it hands off to. The target ref is finalized below
+    // after `createNewIssue`, so the flush is deferred until we know the number.
   }
   const issue = await createNewIssue(title, ctx);
   if (previousActive && previousActive !== 'discover' && cfg.autoEndOnSwitch) {
     const { deltaMin, deltaWords } = await flushActiveToGH(
       s,
-      'switch-out',
-      `switch-out → task ${issue}`
+      `switch-out:${issue}`,
+      `Switching out to task ${issue}`
     );
     previousNote = ` Previous: ${previousActive} ended (+${deltaMin} min, +${deltaWords} words).`;
   }

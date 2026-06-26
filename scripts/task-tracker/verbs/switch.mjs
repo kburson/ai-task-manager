@@ -12,7 +12,11 @@ import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
-import { resolveBindEvent, timingCommentHasRows } from '../lib/bind-event.mjs';
+import {
+  resolveBindEvent,
+  timingCommentHasRows,
+  assertPairedReengagement,
+} from '../lib/bind-event.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
@@ -54,8 +58,11 @@ export async function verbSwitch(ctx, target) {
     }
     // #460 — self-bind (rebinding to the already-active issue) is a resume,
     // not a switch-out. Guard prevents self-referential timing log entries.
-    const eventSlug = isSelfBind ? 'resumed' : 'switch-out';
-    const eventDesc = isSelfBind ? `resumed ${target}` : `switch-out → task ${target}`;
+    // #534 — a real switch records `switch-out:#<target>` on the OUTGOING issue,
+    // naming the peer it is handing off to, so the eventual return is a
+    // pair-able `switch-in:#<target>`. The Description spells it out for humans.
+    const eventSlug = isSelfBind ? 'resumed' : `switch-out:${target}`;
+    const eventDesc = isSelfBind ? `resumed ${target}` : `Switching out to task ${target}`;
     const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc);
     previousNote = isSelfBind
       ? ` Resumed: ${previous} (+${deltaMin} min, +${deltaWords} words).`
@@ -123,14 +130,26 @@ export async function verbSwitch(ctx, target) {
   const { buildRow } = gh;
   const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
   let hasTimingHistory = false;
+  let tcBody = null;
   if (cfg?.repo) {
-    const tcBody = await readTimingCommentBody({
+    tcBody = await readTimingCommentBody({
       issueNumber: Number(target.replace(/^#/, '')),
       repo: cfg.repo,
     });
     hasTimingHistory = timingCommentHasRows(tcBody);
   }
-  const bindEvent = resolveBindEvent({ hasTimingHistory });
+  // #534 — resolve the incoming row against the target's own open interruption.
+  // Switching BACK into an issue that earlier recorded `switch-out:#prev` yields
+  // a paired `switch-in:#prev`; a never-seen issue yields `start`; an issue with
+  // history but no open interruption yields the benign `resumed`.
+  let bindEvent = resolveBindEvent({ hasTimingHistory, timingBody: tcBody });
+  // #534 AC5/AC7 — orphan-pairing guard: never emit `switch-in*`/`resume*`
+  // without an opener or prior `start`; downgrade to `start` (never block).
+  const switchGuard = assertPairedReengagement(tcBody, bindEvent);
+  if (!switchGuard.ok) {
+    process.stderr.write(`[switch] ${target}: ${switchGuard.reason}; downgrading to start\n`);
+    bindEvent = 'start';
+  }
   const row = buildRow({
     ts,
     event: bindEvent,
