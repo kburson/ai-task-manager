@@ -41,13 +41,15 @@
     "skill/",
     "hooks/",
     "scripts/",
+    "!scripts/**/tests/**",
+    "!scripts/maintenance/**",
+    "!**/*.test.mjs",
     "statusline/",
     "docs/README.md",
     "docs/QUICKSTART.md",
     "docs/DESIGN.md",
     "docs/introduction/",
     "docs/guides/",
-    "docs/archive/",
     "templates/"
   ],
   "keywords": [
