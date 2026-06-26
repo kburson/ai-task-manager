@@ -45,7 +45,7 @@ marker), and the Review-Notes → Drivers comment flow all live in
 
 ## Rank rules
 
-The full Rank rules (the child-must-not-lead-epic invariant, the Refine WIP gate, and dependency representation) live in `templates/pickup-directive.md` ("Rank rules").
+The full Rank rules (the `child-cannot-lead-epic` invariant, the Refine WIP gate, and dependency representation) live in `templates/pickup-directive.md` ("Rank rules").
 
 ## Discover workflow — completing a session and promoting to an issue
 
@@ -69,4 +69,4 @@ The Checkpoint Pause rule — re-read the conversation queue before any state tr
 
 ## Project preferences
 
-Read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` (`scripts/task-tracker/config.mjs`) at session start and apply every key. The key table and per-key contracts live in `skill/shared/rules/preferences.md` (rule-id `project-preferences`).
+Read `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()` (`scripts/task-tracker/config.mjs`) at session start and apply every key. The key table and per-key contracts live in `rules/preferences.md` (rule-id `project-preferences`).

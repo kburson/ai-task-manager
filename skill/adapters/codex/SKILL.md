@@ -51,18 +51,18 @@ Every contract below is tool-agnostic and lives **once** in a shared rule file
 restate their prose here. Each rule file carries an `<!-- aitm-rule-id: … -->`
 anchor so a reviewer can name the single authoritative source:
 
-- **Creating issues** (`issue-create`) → `skill/shared/rules/create-issue.md`.
+- **Creating issues** (`issue-create`) → `rules/create-issue.md`.
   The shape menu (`stub|epic|sub-issue|solo`), the required `./.tmp/plan/`
   fragments, the deterministic refusal contracts, binding each Acceptance
   Criterion to an `aitm-verified` marker under `### Verification Commands`, and
   the never-promote-untracked-work rule all live there. Loads JIT on `/task new`.
-- **Review & approve** (`review`) → `skill/shared/rules/review.md`. Field units
+- **Review & approve** (`review`) → `rules/review.md`. Field units
   (board `Estimate` in hours, timing fields in minutes — normalize before any
   comparison), the Full-Auto approve footnote, and the Review-Notes → Drivers
   flow live there. Loads JIT on `/task review`.
-- **State movement** (`state-movement`) → `skill/shared/rules/state-walk.md`.
+- **State movement** (`state-movement`) → `rules/state-walk.md`.
 - **Project preferences** (`project-preferences`) →
-  `skill/shared/rules/preferences.md`. Read
+  `rules/preferences.md`. Read
   `.ai-task-manager/task-tracker.json#preferences` via `getPreferences()`
   (`scripts/task-tracker/config.mjs`) at session start and apply every key.
 - **Rank rules** and **Checkpoint Pause** → `templates/pickup-directive.md`

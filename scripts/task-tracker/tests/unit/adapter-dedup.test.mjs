@@ -61,10 +61,13 @@ const SHARED_RULES = [
     duped: 'aitm-review-notes-source: auto',
   },
   {
+    // The full Rank prose lives in the JIT rationale; the adapters only NAME the
+    // `child-cannot-lead-epic` invariant (a reference #162 requires), so `duped`
+    // is the canonical prose sentence, NOT the invariant name.
     name: 'rank',
-    home: 'templates/pickup-directive.md',
-    homeAnchor: 'child-cannot-lead-epic',
-    duped: 'child-cannot-lead-epic',
+    home: 'templates/references/pickup-directive-rationale.md',
+    homeAnchor: 'Refine is a single-item-in-flight column',
+    duped: 'Refine is a single-item-in-flight column',
   },
   {
     name: 'checkpoint',
