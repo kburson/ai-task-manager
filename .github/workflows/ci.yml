@@ -1,0 +1,64 @@
+# Continuous-integration quality gates.
+#
+# Why this exists (code-review epic #549, story #550): the repo has a strong
+# local test/quality toolchain (`npm run quality`, a 400+ file node-test fleet)
+# but no automated gate — "all tests pass" relied entirely on developer
+# discipline. This workflow makes the fast lane mandatory on every PR and every
+# push to trunk, and establishes the green baseline the Wave 3 refactors
+# (#559/#560/#561) depend on.
+#
+# Lane split rationale: the fast lane (format:check + lint + `npm test`) runs on
+# every event because it is cheap and catches the common regressions. The slow
+# lane (`npm run test:slow`) is expensive (sandboxed worktree / CI-emulation
+# fixtures), so it runs on a nightly schedule and on demand — either via
+# `workflow_dispatch` or by applying the `ci-slow` label to a PR. Do NOT collapse
+# the two lanes back into one: paying the slow-lane cost on every push is the
+# regression this split prevents.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [trunk]
+  schedule:
+    # Nightly slow-lane run at 07:00 UTC (off-hours for the maintainer).
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast:
+    name: Fast lane (format, lint, unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm test
+
+  slow:
+    name: Slow lane (full test fleet)
+    # Runs nightly (schedule), on manual dispatch, or when a PR carries the
+    # `ci-slow` label — never on an ordinary push, to keep PR latency low.
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'ci-slow'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:slow

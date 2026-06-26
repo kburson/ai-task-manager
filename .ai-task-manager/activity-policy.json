@@ -6,6 +6,7 @@
     "scripts/**",
     "config/**",
     ".ai-task-manager/**",
+    ".github/**",
     "scripts/task-tracker/tests/**",
     "cspell-dictionary.txt"
   ],
