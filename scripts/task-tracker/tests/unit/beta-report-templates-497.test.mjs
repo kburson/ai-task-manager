@@ -52,7 +52,8 @@ describe('#497 beta-report issue-form templates', () => {
   it('feature template defaults the beta-feature label and mirrors the CLI sections', () => {
     const t = readYaml('ISSUE_TEMPLATE/beta-feature.yml');
     assert.deepEqual(t.labels, ['beta-feature']);
-    assert.match(t.title, /^✨/);
+    // #545 re-themed the beta-feature template title prefix ✨ → 🙏 [Feature Request].
+    assert.match(t.title, /^🙏 \[Feature Request\] /);
     const labels = t.body
       .filter((b) => b.attributes && b.attributes.label)
       .map((b) => b.attributes.label);
