@@ -79,6 +79,10 @@ CONFIG_FILE="$CONFIG_DIR/task-tracker.json"
 mkdir -p "$CONFIG_DIR"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Deterministic config-authoring / template-writing / parsing logic lives in a
+# tested node CLI (scripts/task-tracker/config-init.mjs, @story #560); this bash
+# is the interactive gh/GraphQL orchestration shim that delegates to it.
+CONFIG_INIT_CLI="$PKG_ROOT/scripts/task-tracker/config-init.mjs"
 FIELD_DEFS_FILE="$CONFIG_DIR/project-fields.json"
 FIELD_EVENTS_FILE="$CONFIG_DIR/project-field-events.json"
 if [[ ! -f "$FIELD_DEFS_FILE" && -f "$PKG_ROOT/config/project-fields.default.json" ]]; then
@@ -220,37 +224,10 @@ query($login: String!) {
   }
 }' --jq '[.data.user.projectsV2.nodes[]?, .data.organization.projectsV2.nodes[]?] | map({id,title,number,linked:false})' 2>/dev/null || echo '[]')
 
-normalize_project_list() {
-  local linked="$1"
-  jq -c --argjson linked "$linked" '
-    def clean_nodes:
-      if type == "array" then .
-      elif type == "object" then
-        if (.data.repository.projectsV2.nodes? | type) == "array" then
-          .data.repository.projectsV2.nodes
-        else
-          [(.data.user.projectsV2.nodes[]? // empty), (.data.organization.projectsV2.nodes[]? // empty)]
-        end
-      else [] end;
-    clean_nodes
-    | map(select(.id and .title and .number) | {id, title, number, linked: $linked})
-  ' 2>/dev/null || echo '[]'
-}
-
-LINKED_PROJECTS_JSON=$(printf '%s\n' "$LINKED_PROJECTS_RAW" | normalize_project_list true)
-OWNER_PROJECTS_JSON=$(printf '%s\n' "$OWNER_PROJECTS_RAW" | normalize_project_list false)
-
-PROJECTS_JSON=$(printf '%s\n%s\n' "$LINKED_PROJECTS_JSON" "$OWNER_PROJECTS_JSON" | jq -s '
-  add
-  | group_by(.id)
-  | map({
-      id: .[0].id,
-      title: .[0].title,
-      number: .[0].number,
-      linked: (map(.linked) | any)
-    })
-  | sort_by((if .linked then 0 else 1 end), .number)
-')
+# Normalize + dedup + sort the linked/owner project lists via the tested node
+# CLI (parsers.mjs normalizeProjectList + mergeProjectLists, @story #560).
+PROJECTS_JSON=$(LINKED_PROJECTS_RAW="$LINKED_PROJECTS_RAW" OWNER_PROJECTS_RAW="$OWNER_PROJECTS_RAW" \
+  node "$CONFIG_INIT_CLI" normalize-projects)
 PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq 'length' 2>/dev/null || echo '0')
 LINKED_PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq '[.[] | select(.linked)] | length' 2>/dev/null || echo '0')
 
@@ -272,17 +249,10 @@ mutation($proj: ID!, $repo: ID!) {
   fi
 }
 
+# project_number_from_input <raw> → "<login>:<number>" or '' (no match).
+# Delegates to the tested parsers.mjs projectNumberFromInput (@story #560).
 project_number_from_input() {
-  local raw="$1"
-  if [[ "$raw" =~ github\.com/(users|orgs)/([^/]+)/projects/([0-9]+) ]]; then
-    echo "${BASH_REMATCH[2]}:${BASH_REMATCH[3]}"
-  elif [[ "$raw" =~ ^([A-Za-z0-9._-]+)[/:]([0-9]+)$ ]]; then
-    echo "${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
-  elif [[ "$raw" =~ ^[0-9]+$ ]]; then
-    echo "$OWNER:$raw"
-  else
-    echo ""
-  fi
+  OWNER="$OWNER" node "$CONFIG_INIT_CLI" parse-project-input "$1" --owner "$OWNER"
 }
 
 resolve_existing_project() {
@@ -401,8 +371,9 @@ CANONICAL_STATUS_PALETTE='[
 ]'
 
 # canon_color <state-name> → canonical color for that state (empty if unknown).
+# Delegates to the tested parsers.mjs canonColor (@story #560).
 canon_color() {
-  echo "$CANONICAL_STATUS_PALETTE" | jq -r --arg n "$1" '.[] | select(.name == $n) | .color'
+  node "$CONFIG_INIT_CLI" canon-color "$1"
 }
 
 apply_project_template() {
@@ -1377,235 +1348,13 @@ FIELD_BLOCKED_BY="$FIELD_BLOCKED_BY" \
 FIELD_REVIEW_TIME="$FIELD_REVIEW_TIME" \
 FIELD_PLAN_TIME="$FIELD_PLAN_TIME" \
 FIELD_IDS_JSON="$FIELD_IDS_JSON" \
-node -e "
-const fs = require('fs');
-const file = process.env.CONFIG_FILE;
-const legacyFile = file.replace('/.ai-task-manager/', '/.claude/');
-let existing = {};
-try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); }
-catch {
-  try { existing = JSON.parse(fs.readFileSync(legacyFile, 'utf8')); } catch {}
-}
-const updates = {
-  repo:                   process.env.REPO,
-  projectId:              process.env.PROJECT_NODE_ID,
-  kanbanFieldId:          process.env.KANBAN_FIELD_ID,
-  kanbanOptionBacklog:     process.env.OPTION_BACKLOG,
-  kanbanOptionOnDeck:      process.env.OPTION_ON_DECK,
-  kanbanOptionRefine:      process.env.OPTION_REFINE,
-  kanbanOptionPlan:        process.env.OPTION_PLAN,
-  kanbanOptionDevelop:     process.env.OPTION_DEVELOP,
-  kanbanOptionTest:        process.env.OPTION_TEST,
-  kanbanOptionReview:      process.env.OPTION_REVIEW,
-  kanbanOptionDone:        process.env.OPTION_DONE,
-  priorityFieldId:        process.env.PRIORITY_FIELD_ID,
-  priorityOptionP0:       process.env.OPTION_P0,
-  priorityOptionP1:       process.env.OPTION_P1,
-  priorityOptionP2:       process.env.OPTION_P2,
-  priorityOptionP3:       process.env.OPTION_P3,
-};
-// Only write IDs when we got them — don't clobber manually configured values with empty strings
-const optional = {
-  sizeFieldId:            process.env.SIZE_FIELD_ID,
-  fieldEstimate:          process.env.FIELD_ESTIMATE,
-  fieldEngagedTime:       process.env.FIELD_ENGAGED_TIME,
-  fieldSessionTime:       process.env.FIELD_SESSION_TIME,
-  fieldRank:              process.env.FIELD_RANK,
-  rankFieldId:            process.env.FIELD_RANK,
-  fieldStartTime:         process.env.FIELD_START_TIME,
-  fieldBlockedBy:         process.env.FIELD_BLOCKED_BY,
-  fieldReviewTime:        process.env.FIELD_REVIEW_TIME,
-  fieldPlanTime:          process.env.FIELD_PLAN_TIME,
-};
-for (const [k, v] of Object.entries(optional)) { if (v) updates[k] = v; }
-try {
-  const fieldIds = JSON.parse(process.env.FIELD_IDS_JSON || '{}');
-  if (Object.keys(fieldIds).length) updates.fieldIds = fieldIds;
-} catch {}
-Object.assign(existing, updates);
-fs.writeFileSync(file, JSON.stringify(existing, null, 2) + '\n');
-"
+node "$CONFIG_INIT_CLI" write-config --file "$CONFIG_FILE"
 ok "Config written: $CONFIG_FILE"
 echo ""
 
-# Write GitHub issue templates
+# Write GitHub issue templates (task.yml + bug.yml, content owned by the node CLI)
 TEMPLATE_DIR="$TARGET_DIR/.github/ISSUE_TEMPLATE"
-mkdir -p "$TEMPLATE_DIR"
-
-# Task template
-cat > "$TEMPLATE_DIR/task.yml" <<'TMPL'
-name: Task
-description: Manual task entry compatible with AI Task Manager
-title: "[Task] "
-labels: []
-body:
-  - type: markdown
-    attributes:
-      value: |
-        Fill in the planning fields below. AI Task Manager will create the hidden
-        field database and timing-log comment the first time an agent picks up
-        this issue with `/task #<issue-number>`.
-
-  - type: textarea
-    id: description
-    attributes:
-      label: Description
-      description: What needs to be done and why?
-    validations:
-      required: true
-
-  - type: textarea
-    id: acceptance-criteria
-    attributes:
-      label: Acceptance Criteria
-      description: How will we know this is done?
-      value: |
-        - [ ]
-        - [ ]
-    validations:
-      required: true
-
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority
-      options:
-        - P0 - Critical / blocking
-        - P1 - High / this sprint
-        - P2 - Normal / backlog
-        - P3 - Chore
-    validations:
-      required: true
-
-  - type: dropdown
-    id: size
-    attributes:
-      label: Size
-      description: Estimated effort
-      options:
-        - "XS - 1-2 hours"
-        - "S - 3-4 hours"
-        - "M - 6-10 hours"
-        - "L - 12-20 hours"
-        - "XL - 24+ hours"
-    validations:
-      required: true
-
-  - type: input
-    id: estimate
-    attributes:
-      label: Estimate
-      description: Mid-point estimate in hours, for example 4 or 4h.
-      placeholder: "4"
-    validations:
-      required: true
-
-  - type: input
-    id: rank
-    attributes:
-      label: Rank
-      description: Optional fan-out/order number used by AITM orchestration.
-      placeholder: "1"
-    validations:
-      required: false
-
-  - type: textarea
-    id: dependencies
-    attributes:
-      label: Dependencies
-      description: Optional issue numbers or work items that should complete first.
-      placeholder: "#12, auth setup, database migration"
-    validations:
-      required: false
-TMPL
-
-# Bug template
-cat > "$TEMPLATE_DIR/bug.yml" <<'TMPL'
-name: Bug
-description: Manual bug entry compatible with AI Task Manager
-title: "🐞 "
-labels: ["bug"]
-body:
-  - type: markdown
-    attributes:
-      value: |
-        Fill in the planning fields below. AI Task Manager will create the hidden
-        field database and timing-log comment the first time an agent picks up
-        this issue with `/task #<issue-number>`.
-
-  - type: textarea
-    id: description
-    attributes:
-      label: What happened?
-      description: Describe the bug and what you expected instead.
-    validations:
-      required: true
-
-  - type: textarea
-    id: repro
-    attributes:
-      label: Steps to reproduce
-      value: |
-        1.
-        2.
-        3.
-
-  - type: textarea
-    id: acceptance-criteria
-    attributes:
-      label: Acceptance Criteria
-      description: How will we know this fix is done?
-      value: |
-        - [ ]
-        - [ ]
-    validations:
-      required: true
-
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority
-      options:
-        - P0 - Critical / blocking
-        - P1 - High / this sprint
-        - P2 - Normal / backlog
-        - P3 - Chore
-    validations:
-      required: true
-
-  - type: dropdown
-    id: size
-    attributes:
-      label: Size
-      description: Estimated fix effort
-      options:
-        - "XS - 1-2 hours"
-        - "S - 3-4 hours"
-        - "M - 6-10 hours"
-        - "L - 12-20 hours"
-        - "XL - 24+ hours"
-    validations:
-      required: true
-
-  - type: input
-    id: estimate
-    attributes:
-      label: Estimate
-      description: Mid-point fix estimate in hours, for example 2 or 2h.
-      placeholder: "2"
-    validations:
-      required: true
-
-  - type: input
-    id: rank
-    attributes:
-      label: Rank
-      description: Optional fan-out/order number used by AITM orchestration.
-      placeholder: "1"
-    validations:
-      required: false
-TMPL
-
+node "$CONFIG_INIT_CLI" write-templates --target "$TARGET_DIR"
 ok "Issue templates written: $TEMPLATE_DIR/"
 echo ""
 
