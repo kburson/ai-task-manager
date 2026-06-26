@@ -1,9 +1,20 @@
 // State-keyed exit/entry guard registry (#262, parent epic #259).
 //
-// Skeleton-only. No callers yet. Later children in the #259 epic will:
-//   - register existing guards (assignee, activity, deep-dive-marker, ...)
-//     into the appropriate slots via `registerGuard`, and
-//   - call `runGuards(from, to, ctx)` from the state-mutator and `promote.mjs`.
+// FULLY WIRED — fires on every state transition. Do NOT read this registry as
+// inert or bypass it. The #259 epic completed the inline-gate → registry
+// migration (closed at #360); the flow is:
+//
+//   state-bootstrap.mjs  — registers every guard into its state slot via
+//                          `registerGuard`, walking the per-state container
+//                          modules in `scripts/task-tracker/states/` (#292).
+//                          `guard-bootstrap.mjs` is a deprecation shim that
+//                          re-exports `bootstrapGuards` from here.
+//   runGuards(from,to,ctx) — executed at EVERY transition by the callers below,
+//                          iterating `GUARDS[from].exit` then `GUARDS[to].entry`.
+//
+// Call sites that invoke `runGuards` (the enforcement surface): `move-state.mjs`
+// (the single state-mutator, line ~345), `promote.mjs`, `close.mjs`, and
+// `review.mjs`. There is no transition path that skips the registry.
 //
 // Contract:
 //   guard = { id: string, run(ctx) -> { ok: true } | { ok: false, reason }
