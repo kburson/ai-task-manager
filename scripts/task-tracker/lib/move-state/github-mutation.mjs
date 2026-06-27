@@ -140,6 +140,63 @@ export async function stampEntryMarkers(ctx) {
       });
     }
   } catch (err) {
+    // #544 — a stamp failure here is non-atomic with the already-committed
+    // board move (runStatusWrite ran first): the board now shows `stateArg`
+    // with no `aitm-entered-<stage>` marker, a silent contiguity hole that can
+    // later block a forward promotion with no recovery trail. Surface it as a
+    // DURABLE audit comment (not just stderr) naming the one-command recovery,
+    // so every such hole is observable in the timeline and recoverable.
     process.stderr.write(`[move-state] #${issueArg}: marker stamp failed: ${err.message}\n`);
+    await postStampFailureAudit({
+      issueNumber: issueArg,
+      repo: cfg.repo,
+      stage: stateArg,
+      error: err.message,
+      postComment:
+        ctx.postComment ||
+        (async ({ issueNumber, repo, body }) => {
+          await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
+        }),
+    });
+  }
+}
+
+// #544 — body for the durable stamp-failure audit comment. Pure + exported so
+// the failure path is unit-testable without a live gh round-trip.
+export function buildStampFailureCommentBody({ issueNumber, stage, error }) {
+  return [
+    `### ⚠ Entry-marker stamp FAILED — \`${stage}\``,
+    '',
+    `The board move for #${issueNumber} into \`${stage}\` succeeded, but writing the ` +
+      `\`aitm-entered-${stage}\` body marker FAILED:`,
+    '',
+    '```',
+    String(error || 'unknown error'),
+    '```',
+    '',
+    'The board now shows this stage with no recorded entry marker. That is a ' +
+      'contiguity hole — a later forward promotion can refuse with a missing ' +
+      'prior-stage marker. Recover with:',
+    '',
+    '```',
+    `npx aitm reconcile backfill #${issueNumber}`,
+    '```',
+    '',
+    `<!-- aitm-stamp-failure stage="${stage}" -->`,
+  ].join('\n');
+}
+
+// #544 — post the stamp-failure audit comment. Never throws: a failed audit
+// post degrades to stderr, mirroring the rest of the best-effort stamp path.
+export async function postStampFailureAudit({ issueNumber, repo, stage, error, postComment } = {}) {
+  const body = buildStampFailureCommentBody({ issueNumber, stage, error });
+  try {
+    await postComment({ issueNumber, repo, body });
+    return { mode: 'posted' };
+  } catch (postErr) {
+    process.stderr.write(
+      `[move-state] #${issueNumber}: stamp-failure audit comment post FAILED: ${postErr.message}\n`
+    );
+    return { mode: 'error', error: postErr.message };
   }
 }

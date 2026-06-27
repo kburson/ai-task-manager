@@ -9,6 +9,10 @@
 //   revert-to-recorded   — push board state back to the recorded value via
 //                          `scripts/gh/move-state.mjs` (AITM_INTERNAL=1).
 //                          Logs `drift-revert` audit row.
+//   backfill             — repair historical contiguity holes: stamp any missing
+//                          prior-stage `aitm-entered-*` marker on the chain up to
+//                          the current stage (#544). No board move; recovers the
+//                          silent-stamp-failure case board↔body agreement hides.
 //
 // No state-machine validation: this is a recovery path. The matrix may forbid
 // the resulting transition (e.g. manual board fix to a non-adjacent state) and
@@ -30,7 +34,12 @@ import {
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { getActiveTask, setSessionKanbanState } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
-import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
+import {
+  stampEntryMarker,
+  verifyChainIntegrity,
+  backfillEntryMarker,
+  OPTIONAL_CONTIGUITY_STAGES,
+} from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
@@ -42,7 +51,7 @@ import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
-const MODES = new Set(['accept-live', 'revert-to-recorded']);
+const MODES = new Set(['accept-live', 'revert-to-recorded', 'backfill']);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -158,7 +167,7 @@ export async function runReconcile({
   if (!MODES.has(mode)) {
     return {
       status: 'error',
-      message: `reconcile: unknown mode "${mode}" — use accept-live or revert-to-recorded`,
+      message: `reconcile: unknown mode "${mode}" — use accept-live, revert-to-recorded, or backfill`,
     };
   }
 
@@ -180,6 +189,50 @@ export async function runReconcile({
   if (!live && !recorded) {
     return { status: 'error', message: `reconcile: no live or recorded state for #${issueNumber}` };
   }
+
+  // #544 — backfill mode repairs HISTORICAL contiguity holes: prior-stage
+  // `aitm-entered-*` markers that were never recorded (e.g. a forward move whose
+  // stamp failed non-atomically after the board move committed). Unlike
+  // accept-live/revert, the board and recorded state usually AGREE here — the
+  // damage is the missing middle of the marker chain, not board↔body drift —
+  // so this runs BEFORE the no-drift-refused early return below.
+  if (mode === 'backfill') {
+    const currentStage = live || recorded;
+    if (!currentStage) {
+      return { status: 'error', message: `reconcile backfill: no state for #${issueNumber}` };
+    }
+    // Mirror the forward-move contiguity check (evaluateContiguity): the
+    // gateless `on-deck` waiting room is optional and never blocks a promotion,
+    // so backfill must not manufacture a marker the normal flow legitimately
+    // omits. Fill only the holes that would actually wedge a forward move.
+    const holes = verifyChainIntegrity(body, currentStage).holes.filter(
+      (s) => !OPTIONAL_CONTIGUITY_STAGES.has(s)
+    );
+    if (holes.length === 0) {
+      return {
+        status: 'no-holes',
+        live,
+        recorded,
+        message: `no contiguity holes for #${issueNumber} at "${currentStage}"`,
+      };
+    }
+    const nowTs = now();
+    let nextBody = body;
+    for (const stage of holes) {
+      nextBody = backfillEntryMarker(nextBody, stage, nowTs, `reconcile-backfill at ${nowTs}`);
+    }
+    await writeIssueBodyWithRetry({
+      issueNumber,
+      repo: cfg.repo,
+      body: nextBody,
+      bodyBefore: body,
+      target: currentStage,
+      writeIssueBody: ({ body: b }) => writeIssueBody({ issueNumber, repo: cfg.repo, body: b }),
+    });
+    persistTrackerState({ issueNumber, state: currentStage });
+    return { status: 'backfilled', stage: currentStage, filled: holes };
+  }
+
   if (recorded && live && recorded === live) {
     // #273 — even when board and body agree, the per-session derived cache
     // (`kanbanState` in active-task.json) can be absent: bind ran while the
@@ -332,7 +385,7 @@ function parseArgs(rest) {
 export async function verbReconcile(rest, cfg) {
   const { issueNumber, mode } = parseArgs(rest);
   if (!issueNumber || !mode) {
-    process.stderr.write('Usage: /task reconcile <accept-live|revert-to-recorded> #N\n');
+    process.stderr.write('Usage: /task reconcile <accept-live|revert-to-recorded|backfill> #N\n');
     process.exit(1);
   }
 
@@ -356,6 +409,16 @@ export async function verbReconcile(rest, cfg) {
       process.stdout.write(
         `✓ #${issueNumber} reconciled (${result.mode}): ${result.from ?? '∅'} → ${result.to}\n`
       );
+      return;
+    }
+    case 'backfilled': {
+      process.stdout.write(
+        `✓ #${issueNumber} backfilled (${result.stage}): filled ${result.filled.join(', ')}\n`
+      );
+      return;
+    }
+    case 'no-holes': {
+      process.stdout.write(`✓ #${issueNumber}: ${result.message}\n`);
       return;
     }
     case 'no-drift-refused': {

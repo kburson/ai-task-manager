@@ -20,7 +20,7 @@ const KNOWN_STAGES = new Set(STAGES);
 // recorded an `aitm-entered-on-deck` marker, so the contiguity check below
 // treats it as optional in the required-prior set — it must never manufacture
 // a hard forward-move prerequisite for the in-flight corpus.
-const OPTIONAL_CONTIGUITY_STAGES = new Set(['on-deck']);
+export const OPTIONAL_CONTIGUITY_STAGES = new Set(['on-deck']);
 
 // Legal transitions in the 8-state machine. Forward arcs follow the linear
 // chain (backlog → on-deck → refine → …); rollback arcs cover legitimate
