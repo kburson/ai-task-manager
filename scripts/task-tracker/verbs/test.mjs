@@ -4,7 +4,8 @@
 // On invocation:
 //   1. Resolves the target issue (from rest args or active binding).
 //   2. Parses `## Verification Commands` from the issue body.
-//   3. Stages a fresh git worktree at `tmp/.task-test-<N>-<sha8>/` from HEAD.
+//   3. Stages a fresh git worktree at `tmp/.task-test-<N>-<sha8>-<token>/` from
+//      HEAD (the per-run `<token>` keeps concurrent runs from colliding — #563).
 //   4. Runs `npm ci --no-audit --no-fund` inside the worktree.
 //   5. Executes each VC via execFile (allowlist-validated), capturing exit
 //      code and last-50-line tail of stdout+stderr.
@@ -20,6 +21,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
@@ -71,6 +73,20 @@ function tail(text, n = TAIL_LINES) {
 
 function shortSha(sha) {
   return String(sha || '').slice(0, 8) || 'no-head';
+}
+
+// #563 — sandbox worktree path. The legacy form
+// `.task-test-<issue>-<shortSha>` was fully deterministic: two concurrent runs
+// for the same issue at the same HEAD computed the identical path, and the
+// `existsSync→removeWorktree` reclaim let the second run delete the first's
+// live worktree (false-red). A per-run uniqueness `token` (defaulting to
+// `<pid>-<random>`) disambiguates concurrent runs so they never alias — the
+// token IS the ownership boundary, making the reclaim structurally unable to
+// touch a peer's worktree. The deterministic prefix is retained so the path
+// stays easy to grep. Pass an explicit `token` for deterministic cleanup/test paths.
+export function sandboxWorktreePath({ projectDir, issueNum, sha, token } = {}) {
+  const tok = token || `${process.pid}-${randomBytes(4).toString('hex')}`;
+  return path.join(projectTmpDir(projectDir), `.task-test-${issueNum}-${shortSha(sha)}-${tok}`);
 }
 
 export function buildPassedMessage(issueNumber, target) {
@@ -361,7 +377,9 @@ export async function runVerbTest({
   }
 
   const sha = await getHeadSha({ projectDir });
-  const wtPath = path.join(projectTmpDir(projectDir), `.task-test-${issueNum}-${shortSha(sha)}`);
+  // #563 — per-run-unique path. With a unique token the reclaim below can only
+  // ever match THIS run's own leftover, never a concurrent peer's live worktree.
+  const wtPath = sandboxWorktreePath({ projectDir, issueNum, sha });
   if (existsSync(wtPath)) {
     await removeWorktree({ projectDir, path: wtPath });
   }
