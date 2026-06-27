@@ -100,6 +100,24 @@ If the diff is empty (no test files changed), the script exits 0 with "nothing t
 
 `npm run test:all` belongs in the VC section of Test-stage issues, not Develop.
 
+## Code Coverage
+
+Coverage is instrumented with [`c8`](https://github.com/bcoe/c8) (#570). The test
+runner spawns a separate `node` child per test file, so `c8` — which sets
+`NODE_V8_COVERAGE` and merges every child's V8 dump into one aggregated report — is
+used instead of Node's per-process `--experimental-test-coverage`.
+
+```
+npm run test:coverage        # full (all lanes) — text table + coverage/index.html
+npm run test:coverage:fast   # fast lane only — quick local check
+```
+
+Config lives in `.c8rc.json` (`all:true` so untested files count as 0%, `src` scoped
+to `scripts/`, test/maintenance globs excluded, `text` + `html` reporters). Output goes
+to `coverage/` (gitignored). There is no minimum-coverage threshold or CI gate yet, and
+coverage is **not** wired into the Test-stage sandbox or `verify-develop.mjs` — run it
+manually when you want a coverage snapshot.
+
 ---
 
 ## Tool Usage Rules

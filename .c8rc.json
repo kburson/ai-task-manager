@@ -1,0 +1,7 @@
+{
+  "all": true,
+  "src": ["scripts"],
+  "exclude": ["**/*.test.mjs", "**/tests/**", "scripts/maintenance/**"],
+  "reporter": ["text", "html"],
+  "report-dir": "coverage"
+}

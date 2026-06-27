@@ -8,6 +8,9 @@ reports/
 .tmp/
 tmp/
 
+# c8 code-coverage output (#570) — regenerable from `npm run test:coverage`
+coverage/
+
 # ai-task-manager — user configuration files (do not commit)
 .ai-task-manager/task-tracker-state.json
 .ai-task-manager/task-tracker-queue.json
