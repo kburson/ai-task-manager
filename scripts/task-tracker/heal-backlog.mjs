@@ -8,10 +8,21 @@
 //                                              [--scope 87,88,...]
 //                                              [--no-schema-check]
 //                                              [--ignore-schema-drift]
+//                                              [--rename-timing-slugs]
 //
 // Default: --state all, dry-run (no writes). `--apply` is the only switch that
 // performs writes. Exit code is non-zero if schema drift is found (so the
 // script can be wired into CI later) unless `--ignore-schema-drift` is set.
+//
+// `--rename-timing-slugs` (#520) switches to a dedicated one-shot mode that
+// rewrites historical ⏱ Timing Log Event-column slugs to the #516 uniform
+// `<state>:<past-tense>` vocabulary in place. It reuses the same enumeration,
+// `--scope`, `--state`, and dry-run/`--apply` scaffolding. Dry-run (default)
+// prints the planned rewrites without mutating any comment; `--apply` writes
+// the rewritten comment through the sanctioned `updateTimingComment` helper —
+// never `gh issue edit`. The rename is idempotent: re-running on an
+// already-migrated log is a no-op. This mode runs INSTEAD of the field-reconcile
+// pass (it does not touch issue bodies, fields, or the schema check).
 
 import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -34,6 +45,8 @@ import { convergeDiscuss, isDiscussPending } from './lib/discuss-marker.mjs';
 import { getDiscussLabel, syncDiscussLabel } from './lib/discuss-label.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs';
+import { renameTimingLogBody } from './lib/timing-slug-rename.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
 // only when the corresponding marker is present; otherwise left alone to
@@ -334,12 +347,14 @@ function parseArgs(argv) {
     scope: null,
     schemaCheck: true,
     ignoreSchemaDrift: false,
+    renameTimingSlugs: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
     else if (a === '--no-schema-check') args.schemaCheck = false;
     else if (a === '--ignore-schema-drift') args.ignoreSchemaDrift = true;
+    else if (a === '--rename-timing-slugs') args.renameTimingSlugs = true;
     else if (a === '--state') args.state = argv[++i];
     else if (a === '--scope')
       args.scope = argv[++i]
@@ -367,7 +382,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   process.stdout.write(
-    'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift]\n'
+    'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs]\n'
   );
 }
 
@@ -494,6 +509,82 @@ function summaryRow(n, r) {
   return `#${n}\t${enc}\t${fld}\t${skip}\t${err}`.trimEnd();
 }
 
+// #520 — dedicated one-shot timing-slug rename mode. Runs INSTEAD of the
+// field-reconcile pass. Enumerates the same issue set (honoring --scope /
+// --state), reads each issue's timing comment, and rewrites the Event-column
+// slugs to the #516 vocabulary via the pure `renameTimingLogBody`. Dry-run
+// (default) prints planned rewrites; --apply writes through the sanctioned
+// `updateTimingComment` helper. Idempotent: an already-migrated log is a no-op.
+async function runTimingSlugRename({ cfg, args, projectDir }) {
+  const numbers =
+    args.scope ??
+    (await fetchAllIssueNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
+
+  const reportLines = [];
+  reportLines.push(`# Timing-slug rename report — ${new Date().toISOString()}`);
+  reportLines.push('');
+  reportLines.push(`- mode: ${args.apply ? 'APPLY' : 'dry-run'}`);
+  reportLines.push(`- state filter: ${args.state}`);
+  reportLines.push(`- repo: ${cfg.repo}`);
+  reportLines.push(`- issues: ${numbers.length}`);
+  reportLines.push('');
+
+  let scanned = 0;
+  let changedCount = 0;
+  let rewriteCount = 0;
+  let noLogCount = 0;
+  let errorCount = 0;
+
+  for (const n of numbers) {
+    scanned++;
+    try {
+      const comment = await findTimingComment(`#${n}`, cfg.repo);
+      if (!comment) {
+        noLogCount++;
+        continue;
+      }
+      const out = renameTimingLogBody(comment.body);
+      if (!out.changed) continue;
+      changedCount++;
+      rewriteCount += out.rewrites.length;
+      reportLines.push(`## #${n} — ${out.rewrites.length} rewrite(s)`);
+      for (const r of out.rewrites) {
+        const line = `- \`${r.from}\` → \`${r.to}\``;
+        reportLines.push(line);
+        process.stdout.write(`#${n}: ${r.from} -> ${r.to}\n`);
+      }
+      reportLines.push('');
+      if (args.apply) {
+        await updateTimingComment(comment.id, cfg.repo, out.body);
+      }
+    } catch (err) {
+      errorCount++;
+      reportLines.push(`## #${n} — ERROR: ${err.message}`);
+      reportLines.push('');
+    }
+  }
+
+  reportLines.push('## Summary');
+  reportLines.push('');
+  reportLines.push(`- issues scanned: ${scanned}`);
+  reportLines.push(`- logs rewritten: ${changedCount}`);
+  reportLines.push(`- total rewrites: ${rewriteCount}`);
+  reportLines.push(`- no timing log: ${noLogCount}`);
+  reportLines.push(`- errors: ${errorCount}`);
+
+  const reportDir = projectTmpDir(projectDir);
+  mkdirSync(reportDir, { recursive: true });
+  const reportPath = path.join(
+    reportDir,
+    `timing-slug-rename-${new Date().toISOString().replace(/[:.]/g, '-')}.md`
+  );
+  writeFileSync(reportPath, reportLines.join('\n'), 'utf8');
+  process.stdout.write(`Report written: ${reportPath}\n`);
+  process.stdout.write(
+    `${args.apply ? 'APPLIED' : 'DRY-RUN'}: scanned=${scanned} rewritten=${changedCount} rewrites=${rewriteCount} no-log=${noLogCount} errors=${errorCount}\n`
+  );
+}
+
 async function main() {
   if (wantsHelp(process.argv.slice(2))) {
     emitSelfDoc('heal-backlog');
@@ -511,6 +602,14 @@ async function main() {
     process.exit(1);
   }
   const projectDir = getProjectDir();
+
+  // #520 — slug-rename is a self-contained mode; it does not run the
+  // field-reconcile/schema pass below.
+  if (args.renameTimingSlugs) {
+    await runTimingSlugRename({ cfg, args, projectDir });
+    return;
+  }
+
   const fieldDefs = loadProjectFieldDefs(projectDir);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
 

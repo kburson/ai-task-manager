@@ -545,6 +545,24 @@ node scripts/task-tracker/heal-backlog.mjs --no-schema-check
 node scripts/task-tracker/heal-backlog.mjs --apply --ignore-schema-drift
 ```
 
+### Timing-slug rename (`--rename-timing-slugs`, #520)
+
+`--rename-timing-slugs` switches to a dedicated one-shot mode that rewrites the **Event column** of historical `⏱ Timing Log` rows from the pre-#516 vocabulary to the uniform `<state>:<past-tense>` slugs, in place. It runs _instead of_ the three field-reconcile jobs above — it never touches issue bodies, fields, or the schema. It honors the same `--scope` / `--state` enumeration and is dry-run by default; `--apply` writes the rewritten comment through the sanctioned `updateTimingComment` helper (never `gh issue edit`).
+
+The static rename map: `created→backlog:created`, `refine:start→refine:started`, `refine:done→refine:completed`, `plan:start→plan:started`, `plan:done→plan:completed`, `develop:start→develop:started`, `develop:done→develop:completed`, `test:start→test:started`, `test:done→test:passed`, `review:waiting→review:started`, `closed→issue:closed`, `pause→paused`.
+
+The one context-sensitive slug is `approved`. Pre-#516 the move-to-done emitted `approved` (the old `done.enter` borrow — review was enter-only and borrowed its approval moment) followed by `closed`. So an `approved` whose forward scan reaches a terminal close (`closed`/`issue:closed`) before the next `approved` is that borrow and maps to **`issue:wrap`**; any other `approved` is a genuine review approval and maps to **`review:approved`**. A missing `review:approved` row is never synthesized — only existing rows are relabeled.
+
+```bash
+# Dry run: print planned rewrites, mutate nothing
+node scripts/task-tracker/heal-backlog.mjs --rename-timing-slugs
+
+# Apply to a specific issue
+node scripts/task-tracker/heal-backlog.mjs --rename-timing-slugs --scope 520 --apply
+```
+
+The rename is idempotent: the new slugs are absent from the map's keys and `approved` rows are gone after the first pass, so re-running on an already-migrated log is a no-op.
+
 ### Idempotence
 
 Re-running on a healed body is a no-op: encoding is already canonical, timing fields already match the rollup, plan-approved marker is already in place. The heal comment is only posted when there are deltas to surface.

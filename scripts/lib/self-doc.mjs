@@ -96,9 +96,10 @@ export const SELF_DOC = {
     group: 'Maintenance',
     path: 'scripts/task-tracker/heal-backlog.mjs',
     synopsis:
-      'Normalize body encodings, reconcile aitm-fields vs the timing log, validate field schema.',
+      'Normalize body encodings, reconcile aitm-fields vs the timing log, validate field schema. `--rename-timing-slugs` rewrites historical timing-log Event slugs to the #516 vocabulary.',
     audience: 'Operator healing drifted issue bodies. Dry-run by default; --apply to write.',
-    usage: 'aitm heal-backlog [--state open|closed|all] [--apply] [--scope 1,2,3]',
+    usage:
+      'aitm heal-backlog [--state open|closed|all] [--apply] [--scope 1,2,3] [--rename-timing-slugs]',
   },
   'rename-estimation-headers': {
     group: 'Maintenance',
