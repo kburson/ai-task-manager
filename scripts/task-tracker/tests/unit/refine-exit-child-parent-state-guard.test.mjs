@@ -134,7 +134,9 @@ test('passes when parent state is null (not on board / transient read failure)',
   assert.deepEqual(result, { ok: true });
 });
 
-test('fail-open when fetchParentIssue throws', async () => {
+// #565: a THROWN parent fetch/state-read is unverifiable → fail closed (transition
+// preconditions are fail-closed per docs/guides/fail-open-policy.md).
+test('fail-closed when fetchParentIssue throws (#565)', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 5,
@@ -142,10 +144,14 @@ test('fail-open when fetchParentIssue throws', async () => {
     toState: 'plan',
     deps: makeDeps({ fetchThrows: 'graphql 500' }),
   });
-  assert.deepEqual(result, { ok: true });
+  assert.deepEqual(result, {
+    ok: false,
+    reason: 'parent state unverifiable',
+    blockers: ['parent state unverifiable'],
+  });
 });
 
-test('fail-open when readParentStatus throws', async () => {
+test('fail-closed when readParentStatus throws (#565)', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 6,
@@ -153,7 +159,11 @@ test('fail-open when readParentStatus throws', async () => {
     toState: 'plan',
     deps: makeDeps({ parent: 100, readThrows: 'graphql 502' }),
   });
-  assert.deepEqual(result, { ok: true });
+  assert.deepEqual(result, {
+    ok: false,
+    reason: 'parent state unverifiable',
+    blockers: ['parent state unverifiable'],
+  });
 });
 
 test('mixed-case parent state still matches (normalized)', async () => {

@@ -33,9 +33,15 @@
 //     Guard convention — refusal here would mask the real blocker)
 //
 // Fail-open data cases (return `{ok: true}`):
-//   - issue has no parent (leaf / top-level epic)
-//   - readParentStatus returns null (parent not on the configured board, or a
-//     transient GraphQL failure inside the reader)
+//   - issue has no parent (leaf / top-level epic) — fetchParentIssue *returns* null
+//   - readParentStatus *returns* null (parent not on the configured board)
+//
+// Fail-closed cases (#565 — return `{ok: false, reason: 'parent state unverifiable'}`):
+//   - fetchParentIssue *throws* (transient gh/GraphQL failure)
+//   - readParentStatus *throws*
+// A thrown error is NOT a legitimate "no parent": it leaves the parent's true
+// state unknown, so per docs/guides/fail-open-policy.md (transition preconditions
+// are fail-closed) the guard must refuse rather than wave the move through.
 //
 // Refuses when the parent state is one of {backlog, test, review, done}.
 
@@ -56,11 +62,14 @@ export const backlogExitChildParentStateGuard = {
     const fetchParent = ctx.deps?.fetchParentIssue || defaultFetchParentIssue;
     const readStatus = ctx.deps?.readParentStatus || defaultReadParentStatus;
 
+    const UNVERIFIABLE = 'parent state unverifiable';
+
     let parentNumber;
     try {
       parentNumber = await fetchParent({ issueNumber: ctx.issueNumber, repo: ctx.cfg.repo });
     } catch {
-      return { ok: true };
+      // fail-closed: parent state unverifiable (docs/guides/fail-open-policy.md)
+      return { ok: false, reason: UNVERIFIABLE, blockers: [UNVERIFIABLE] };
     }
     if (parentNumber == null) return { ok: true };
 
@@ -72,7 +81,8 @@ export const backlogExitChildParentStateGuard = {
         projectId: ctx.cfg.projectId,
       });
     } catch {
-      return { ok: true };
+      // fail-closed: parent state unverifiable (docs/guides/fail-open-policy.md)
+      return { ok: false, reason: UNVERIFIABLE, blockers: [UNVERIFIABLE] };
     }
     if (parentState == null) return { ok: true };
 

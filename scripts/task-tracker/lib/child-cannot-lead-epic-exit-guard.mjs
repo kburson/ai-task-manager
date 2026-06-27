@@ -6,11 +6,14 @@
 // `review`) so `runGuards(fromState, toState, ctx)` fires it on every forward
 // transition.
 //
-// Wraps `fetchParentIssue` + `checkParentAdmission`. Solo issues (no parent)
-// bypass — fetch failure or null parent resolves to `{ ok: true }`. When the
-// child would lead its parent epic, the guard refuses with the same blocker
-// messages the inline block returned, surfaced via the verb-level
-// `parent-admission-refused` status in `REFUSAL_ID_TO_STATUS`.
+// Wraps `fetchParentIssue` + `checkParentAdmission`. Solo issues (no parent —
+// `fetchParentIssue` *returns* null) bypass with `{ ok: true }`. A *thrown*
+// `fetchParentIssue` (transient gh/GraphQL failure) is NOT treated as no-parent:
+// per docs/guides/fail-open-policy.md (transition preconditions are fail-closed)
+// it refuses with reason `parent state unverifiable` (#565). When the child would
+// lead its parent epic, the guard refuses with the same blocker messages the
+// inline block returned, surfaced via the verb-level `parent-admission-refused`
+// status in `REFUSAL_ID_TO_STATUS`.
 //
 // `checkParentAdmission` throw is rethrown so the verb layer's existing
 // `parent-admission-error` short-circuit (caught at the verb boundary) keeps
@@ -43,7 +46,11 @@ export const childCannotLeadEpicExitGuard = {
         repo: ctx.cfg.repo,
       });
     } catch {
-      parentEpicNumber = null;
+      // fail-closed: parent state unverifiable (docs/guides/fail-open-policy.md).
+      // A thrown fetch leaves the parent unknown — refuse rather than masquerade
+      // as a solo (no-parent) issue and wave the lead-the-epic move through.
+      const UNVERIFIABLE = 'parent state unverifiable';
+      return { ok: false, reason: UNVERIFIABLE, blockers: [UNVERIFIABLE] };
     }
     if (parentEpicNumber == null) return { ok: true };
     const blockers = await checkParentAdmission({

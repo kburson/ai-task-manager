@@ -22,8 +22,13 @@
 //   - ctx, ctx.cfg, or ctx.issueNumber missing
 //
 // Fail-open data cases (return `{ok: true}`):
-//   - issue has no parent (leaf / top-level epic)
-//   - readParentStatus returns null (parent not on board / transient failure)
+//   - issue has no parent (leaf / top-level epic) — fetchParentIssue *returns* null
+//   - readParentStatus *returns* null (parent not on board)
+//
+// Fail-closed cases (#565 — return `{ok: false, reason: 'parent state unverifiable'}`):
+//   - fetchParentIssue *throws* / readParentStatus *throws* (transient gh/GraphQL
+//     failure). A throw leaves the parent's true state unknown; per
+//     docs/guides/fail-open-policy.md transition preconditions are fail-closed.
 
 import { fetchParentIssue as defaultFetchParentIssue } from './fetch-parent-issue.mjs';
 import { readParentStatus as defaultReadParentStatus } from '../../gh/lib/parent-status.mjs';
@@ -42,11 +47,14 @@ export const refineExitChildParentStateGuard = {
     const fetchParent = ctx.deps?.fetchParentIssue || defaultFetchParentIssue;
     const readStatus = ctx.deps?.readParentStatus || defaultReadParentStatus;
 
+    const UNVERIFIABLE = 'parent state unverifiable';
+
     let parentNumber;
     try {
       parentNumber = await fetchParent({ issueNumber: ctx.issueNumber, repo: ctx.cfg.repo });
     } catch {
-      return { ok: true };
+      // fail-closed: parent state unverifiable (docs/guides/fail-open-policy.md)
+      return { ok: false, reason: UNVERIFIABLE, blockers: [UNVERIFIABLE] };
     }
     if (parentNumber == null) return { ok: true };
 
@@ -58,7 +66,8 @@ export const refineExitChildParentStateGuard = {
         projectId: ctx.cfg.projectId,
       });
     } catch {
-      return { ok: true };
+      // fail-closed: parent state unverifiable (docs/guides/fail-open-policy.md)
+      return { ok: false, reason: UNVERIFIABLE, blockers: [UNVERIFIABLE] };
     }
     if (parentState == null) return { ok: true };
 
