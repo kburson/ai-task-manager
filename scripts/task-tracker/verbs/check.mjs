@@ -5,6 +5,7 @@ import { readBoundState } from '../lib/bound-state.mjs';
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
 import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-dod-evidence.mjs';
 import { findEvidenceAc, stripMarkers } from '../lib/ac-evidence.mjs';
+import { escapeValue } from '../lib/marker-grammar.mjs';
 
 // Toggle a single checklist line whose VISIBLE label matches `label`.
 //
@@ -68,11 +69,16 @@ export function toggleChecklistLines(body, labels) {
 
 // Parse `verbCheck` args. Batch mode is triggered by any `--label <v>` (repeatable)
 // or `--labels-file <path>`. Remaining positional tokens form the legacy single
-// label (joined with spaces). Returns { labels, labelsFile, positional }.
-function parseCheckArgs(rest) {
+// label (joined with spaces). `--allow-unverified-ticks` (#567) is a boolean flag
+// threading `allowUnverifiedTicks: true` into the body write so a genuinely
+// non-demonstrable AC (no machine verifier by design) can be honestly ticked
+// through the first-class CLI instead of a hand-rolled one-off `mutateIssueBody`
+// script. Returns { labels, labelsFile, positional, allowUnverifiedTicks }.
+export function parseCheckArgs(rest) {
   const labels = [];
   const positional = [];
   let labelsFile = null;
+  let allowUnverifiedTicks = false;
   for (let i = 0; i < rest.length; i++) {
     const tok = rest[i];
     if (tok === '--label') {
@@ -80,19 +86,66 @@ function parseCheckArgs(rest) {
       if (v != null) labels.push(v);
     } else if (tok === '--labels-file') {
       labelsFile = rest[++i] ?? null;
+    } else if (tok === '--allow-unverified-ticks') {
+      allowUnverifiedTicks = true;
     } else {
       positional.push(tok);
     }
   }
-  return { labels, labelsFile, positional };
+  return { labels, labelsFile, positional, allowUnverifiedTicks };
+}
+
+// #567 — eligibility classifier for an `--allow-unverified-ticks` tick. The
+// hatch exists ONLY for proofless / honestly non-demonstrable ACs; it must never
+// be a way to skip a real verifier. Pure (no I/O) so both verb paths and the
+// tests share one definition.
+//
+// Returns one of:
+//   { kind: 'eligible' }
+//   { kind: 'refuse-dod', dodGate }            — Functional DoD item: use dod-stamp
+//   { kind: 'refuse-verifier-ac', label, commands } — AC declares a verifier: use ac-stamp
+export function classifyUnverifiedTick(body, label) {
+  const dodGate = gateFunctionalDodTick(body, label);
+  if (dodGate.kind !== 'pass') return { kind: 'refuse-dod', dodGate };
+  const ac = findEvidenceAc(body, label);
+  if (ac) return { kind: 'refuse-verifier-ac', label: ac.label, commands: ac.evidenceCommands };
+  return { kind: 'eligible' };
+}
+
+// #567 — refusal message when `--allow-unverified-ticks` is aimed at an AC that
+// carries a real verifier declaration. That AC must run its verifier via
+// `/task ac-stamp`, not be waved through the unverified hatch.
+export function formatUnverifiedHatchRefusal({ label, issueRef, commands }) {
+  const cmd = commands?.[0] || '<verifier>';
+  return [
+    `UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "${label}" in ${issueRef}.`,
+    `  This acceptance criterion declares a verifier (aitm-verified cmd="…"), so it is`,
+    `  demonstrable — the unverified hatch is only for ACs tagged \`invalid — non-demonstrable\``,
+    `  or otherwise carrying no machine verifier. Run \`/task ac-stamp "${label}"\` to execute`,
+    `  \`${cmd}\` and stamp real evidence instead.`,
+  ].join('\n');
+}
+
+// #567 — record an audit-trail marker for an unverified tick so honesty is
+// preserved by construction. The marker names the AC label and the timestamp;
+// it is NOT an execution-proof marker (different name → not detected by the
+// `aitm-verified*` proof family), so it never poses as evidence. Idempotent for
+// an identical label+ts. Returns the (possibly-unchanged) body.
+export function appendUnverifiedTickAudit(body, { label, ts }) {
+  const visible = stripMarkers(label);
+  const marker = `<!-- aitm-unverified-tick label="${escapeValue(visible)}" ts="${escapeValue(String(ts))}" -->`;
+  const src = String(body);
+  if (src.includes(marker)) return src;
+  return `${src.replace(/\s+$/, '')}\n\n${marker}\n`;
 }
 
 export async function verbCheck(ctx) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
   // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
-  // FRESH base each push attempt.
-  const mutateBody = ({ issueNumber, repo, mutate }) =>
-    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+  // FRESH base each push attempt. #567 — threads the optional
+  // `allowUnverifiedTicks` bypass for the non-demonstrable-AC hatch.
+  const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks = false }) =>
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks });
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
     console.error('no active task');
@@ -117,7 +170,13 @@ export async function verbCheck(ctx) {
       console.error('Usage: /task check --label "<label>" [--label ...] | --labels-file <path>');
       process.exit(1);
     }
-    return verbCheckBatch({ ctx, issueNum, active: s.active, labels });
+    return verbCheckBatch({
+      ctx,
+      issueNum,
+      active: s.active,
+      labels,
+      allowUnverifiedTicks: parsed.allowUnverifiedTicks,
+    });
   }
 
   const label = parsed.positional.join(' ').trim();
@@ -217,37 +276,70 @@ export async function verbCheck(ctx) {
     );
     process.exit(1);
   }
-  // #303/#345 — evidence gate. Refuse stampable Functional DoD ticks without an
-  // `aitm-dod-evidence:KEY` marker; refuse derived keys outright; refuse AC ticks
-  // carrying `aitm-verified-by` without an `aitm-ac-evidence:<key>` stamp.
-  const gate = gateEvidenceTick(body, label);
-  const refusal = formatGateRefusal(gate, s.active);
-  if (refusal) {
-    console.error(refusal);
-    process.exit(1);
+  // #567 — `--allow-unverified-ticks` honest hatch for non-demonstrable ACs.
+  // Eligibility is the inverse of the evidence gate: a Functional DoD item or a
+  // verifier-bearing AC is REFUSED (those have their own stamp paths); only a
+  // proofless / `invalid — non-demonstrable` AC is waved through, with an audit
+  // marker recorded in the same write.
+  const auv = parsed.allowUnverifiedTicks;
+  const ts = new Date().toISOString();
+  if (auv) {
+    const cls = classifyUnverifiedTick(body, label);
+    if (cls.kind === 'refuse-dod') {
+      console.error(formatGateRefusal(cls.dodGate, s.active));
+      process.exit(1);
+    }
+    if (cls.kind === 'refuse-verifier-ac') {
+      console.error(
+        formatUnverifiedHatchRefusal({
+          label: cls.label,
+          issueRef: s.active,
+          commands: cls.commands,
+        })
+      );
+      process.exit(1);
+    }
+  } else {
+    // #303/#345 — evidence gate. Refuse stampable Functional DoD ticks without an
+    // `aitm-dod-evidence:KEY` marker; refuse derived keys outright; refuse AC ticks
+    // carrying `aitm-verified-by` without an `aitm-ac-evidence:<key>` stamp.
+    const gate = gateEvidenceTick(body, label);
+    const refusal = formatGateRefusal(gate, s.active);
+    if (refusal) {
+      console.error(refusal);
+      process.exit(1);
+    }
   }
   let landed = null;
   await mutateBody({
     issueNumber: issueNum,
     repo: cfg.repo,
+    allowUnverifiedTicks: auv,
     mutate: (base) => {
       const r = toggleChecklistLine(base, label);
       if (r.status !== 'toggled') return base;
       landed = r;
+      // Only stamp the audit marker when the hatch actually ticks a box on
+      // (not when it unticks one).
+      if (auv && !r.alreadyChecked) {
+        return appendUnverifiedTickAudit(r.body, { label, ts });
+      }
       return r.body;
     },
   });
-  const action = (landed?.alreadyChecked ?? diag.alreadyChecked) ? 'Unchecked' : 'Checked';
-  console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}`);
+  const ticked = !(landed?.alreadyChecked ?? diag.alreadyChecked);
+  const action = ticked ? 'Checked' : 'Unchecked';
+  const suffix = auv && ticked ? ' (unverified — audit marker recorded)' : '';
+  console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}${suffix}`);
 }
 
 // Batch path: one `gh issue view` fetch, toggle every checklist label in memory,
 // one body write. Any `deep dive complete` label is routed to the
 // HTML-marker helper (its own round-trip) and excluded from the checkbox fold.
-async function verbCheckBatch({ ctx, issueNum, active, labels }) {
+async function verbCheckBatch({ ctx, issueNum, active, labels, allowUnverifiedTicks = false }) {
   const { cfg, projectDir, pexec } = ctx;
-  const mutateBody = ({ issueNumber, repo, mutate }) =>
-    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+  const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks: auv = false }) =>
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks: auv });
   const isDeepDive = (l) => /^deep[- ]?dive complete$/i.test(l.trim());
   const ddLabels = labels.filter(isDeepDive);
   const checklistLabels = labels.filter((l) => !isDeepDive(l));
@@ -260,32 +352,61 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
-    // #303 — Functional DoD evidence gate. Batch is atomic: if ANY label fails
-    // the gate, refuse the entire batch. This preserves the user's intent of
-    // batch-atomicity for the network round-trip while keeping evidence
-    // discipline per-key.
+    // #303 / #567 — per-label eligibility gate. Batch is atomic: if ANY label
+    // fails, refuse the entire batch. Without the hatch this is the evidence
+    // gate (`gateEvidenceTick`); with `--allow-unverified-ticks` it is the
+    // inverse (`classifyUnverifiedTick`) — a Functional DoD item or a
+    // verifier-bearing AC is refused, only proofless ACs pass.
     const gateFailures = [];
     for (const lbl of checklistLabels) {
-      const g = gateEvidenceTick(stdout, lbl);
-      const msg = formatGateRefusal(g, active);
-      if (msg) gateFailures.push(msg);
+      if (allowUnverifiedTicks) {
+        const cls = classifyUnverifiedTick(stdout, lbl);
+        if (cls.kind === 'refuse-dod') gateFailures.push(formatGateRefusal(cls.dodGate, active));
+        else if (cls.kind === 'refuse-verifier-ac') {
+          gateFailures.push(
+            formatUnverifiedHatchRefusal({
+              label: cls.label,
+              issueRef: active,
+              commands: cls.commands,
+            })
+          );
+        }
+      } else {
+        const g = gateEvidenceTick(stdout, lbl);
+        const msg = formatGateRefusal(g, active);
+        if (msg) gateFailures.push(msg);
+      }
     }
     if (gateFailures.length) {
       for (const msg of gateFailures) console.error(msg);
       console.error(
-        `[task-tracker] batch tick on ${active} refused: ${gateFailures.length} evidence-gated label(s) lack evidence. Run \`/task dod-stamp <key>\` or \`/task ac-stamp "<label>"\` for each, then retry.`
+        allowUnverifiedTicks
+          ? `[task-tracker] batch tick on ${active} refused: ${gateFailures.length} label(s) are NOT eligible for --allow-unverified-ticks (Functional DoD items use \`/task dod-stamp\`; verifier-bearing ACs use \`/task ac-stamp\`).`
+          : `[task-tracker] batch tick on ${active} refused: ${gateFailures.length} evidence-gated label(s) lack evidence. Run \`/task dod-stamp <key>\` or \`/task ac-stamp "<label>"\` for each, then retry.`
       );
       process.exit(1);
     }
     const { results } = toggleChecklistLines(stdout, checklistLabels);
     const anyToggled = results.some((r) => r.status === 'toggled');
+    // #567 — labels that actually toggled ON under the hatch get an audit marker.
+    const tickedOn = new Set(
+      results.filter((r) => r.status === 'toggled' && !r.alreadyChecked).map((r) => r.label)
+    );
     if (anyToggled) {
+      const ts = new Date().toISOString();
       // #295 — re-run the toggle fold on FRESH base; reported per-label
       // results above reflect the diagnostic pass (pre-fetch).
       await mutateBody({
         issueNumber: issueNum,
         repo: cfg.repo,
-        mutate: (base) => toggleChecklistLines(base, checklistLabels).body,
+        allowUnverifiedTicks,
+        mutate: (base) => {
+          let next = toggleChecklistLines(base, checklistLabels).body;
+          if (allowUnverifiedTicks) {
+            for (const lbl of tickedOn) next = appendUnverifiedTickAudit(next, { label: lbl, ts });
+          }
+          return next;
+        },
       });
     }
     for (const r of results) {
@@ -300,7 +421,8 @@ async function verbCheckBatch({ ctx, issueNum, active, labels }) {
         exitCode = 1;
       } else {
         const action = r.alreadyChecked ? 'Unchecked' : 'Checked';
-        console.log(`[task-tracker] ✓ ${action} "${r.label}" on ${active}`);
+        const suffix = allowUnverifiedTicks && tickedOn.has(r.label) ? ' (unverified)' : '';
+        console.log(`[task-tracker] ✓ ${action} "${r.label}" on ${active}${suffix}`);
       }
     }
   }

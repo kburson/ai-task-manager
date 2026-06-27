@@ -230,6 +230,16 @@ Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a m
 
 `npm run test:all` is the **regression floor**, not an AC verifier. An AC whose only declared command is `test:all` is rejected (`reason: test-all-verifier`) — it proves nothing specific to that criterion. Bind a targeted test instead, or tag the AC invalid. This standard exists because a vague AC cannot be honestly ticked: the #516 fabrication incident showed that ACs without a concrete verifier invite forged evidence. Demonstrability at the Refine gate is the upstream defense.
 
+#### Ticking a non-demonstrable AC at Develop (the `--allow-unverified-ticks` path)
+
+An AC honestly tagged `invalid — non-demonstrable` carries no machine verifier, so `ac-stamp` has nothing to run — yet the Develop→Test gate still requires every AC checkbox ticked. The first-class, audited way to tick such a box is the `check` verb's `--allow-unverified-ticks` flag (#567):
+
+```
+/task check <N> --allow-unverified-ticks --label "<the non-demonstrable AC label>"
+```
+
+This threads the sanctioned `allowUnverifiedTicks` bypass of `mutateIssueBody` (the `CheckboxProofMissingError` guard) and records an `aitm-unverified-tick` audit marker naming the label + timestamp — honesty preserved by construction, never an `aitm-verified*` proof marker. The flag **refuses** to tick any AC that declares a real verifier (use `ac-stamp` to run it) or any Functional DoD item (use `dod-stamp`); it is exclusively for proofless / `invalid — non-demonstrable` ACs. Do **not** hand-roll a one-off `mutateIssueBody({ allowUnverifiedTicks: true })` script for this — the flag is the discoverable, auditable path. Review-exit (`runReviewPreflight`) exempts the same non-demonstrable ACs, so a box ticked this way crosses the review gate without re-flagging.
+
 ### Defect-First / Suite-Must-Grow (engineering doctrine)
 
 The [Demonstrable-AC Standard](#demonstrable-ac-standard-refineplan-exit-gate) above governs the _artifact_ — every AC must bind to a concrete verifier. This section states the matching _engineering behavior_ that produces demonstrable work. Two rules, applied to every change:
