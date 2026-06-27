@@ -1,12 +1,17 @@
 #!/usr/bin/env node
-// Test-only fake `gh` for timing-concurrency.test.mjs. Backs the timing
-// comment by a JSON file at $FAKE_GH_STORE. Supports the three subcommands
-// postTimingEvent calls: `issue view --json comments`, `issue comment`,
-// and `api graphql ... updateIssueComment`.
+// Test-only fake `gh`. Backs issue comments by a JSON file at $FAKE_GH_STORE.
+// Supports the three subcommands postTimingEvent calls: `issue view --json
+// comments`, `issue comment`, and `api graphql ... updateIssueComment`.
+//
+// Comments are namespaced by issue number: `issue view <n>` returns only the
+// comments created for issue <n>, so a multi-issue test (e.g. cli.test's
+// start/resume block binding #200/#201/#202) sees each issue's timing log in
+// isolation — a fresh issue reads as genuinely absent. `api graphql`
+// updateIssueComment locates the target comment by id across all issues.
 //
 // Optional $FAKE_GH_DELAY_MS introduces a delay between the read and the
 // write inside the fake's update path — used to widen the lost-update
-// window so the test fails *without* the lock.
+// window so the concurrency test fails *without* the lock.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -26,20 +31,23 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// `gh issue view <n> -R <repo> --json comments`
+// `gh issue view <n> -R <repo> --json comments` → comments for issue <n> only.
 if (args[0] === 'issue' && args[1] === 'view') {
+  const issue = String(args[2] ?? '').replace(/^#/, '');
   const s = load();
-  process.stdout.write(JSON.stringify({ comments: s.comments }));
+  const comments = s.comments.filter((c) => String(c.issue ?? '') === issue);
+  process.stdout.write(JSON.stringify({ comments }));
   process.exit(0);
 }
 
 // `gh issue comment <n> -R <repo> --body <body>`
 if (args[0] === 'issue' && args[1] === 'comment') {
+  const issue = String(args[2] ?? '').replace(/^#/, '');
   const i = args.indexOf('--body');
   const body = i >= 0 ? args[i + 1] : '';
   const s = load();
   const id = `C_${s.nextId++}`;
-  s.comments.push({ id, url: `https://example/${id}`, body });
+  s.comments.push({ id, url: `https://example/${id}`, body, issue });
   save(s);
   process.stdout.write(`https://example/${id}\n`);
   process.exit(0);

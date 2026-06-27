@@ -3,7 +3,7 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -106,10 +106,28 @@ writeFileSync(
   path.join(startSwitchSandbox, '.ai-task-manager', 'task-tracker.json'),
   JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
 );
+// #568 — the bind path's first-row resolution (`start` vs `resumed`) keys off a
+// READ of the issue's timing comment, discriminating a positively-absent log
+// (fresh issue → downgrade to `start`) from an unreadable one (read error →
+// fail closed to `resumed`, never a duplicate `start`). Under TT_SKIP_NETWORK
+// alone the read shells to real `gh` against a fake repo and *errors*,
+// conflating "skipped" with "absent". Give this block a real (issue-namespaced)
+// fake-gh timing backend so #201/#202 read as genuinely absent — the same
+// signal production sees for a never-bound issue — and the downgrade fires.
+const switchBin = path.join(startSwitchSandbox, 'bin');
+mkdirSync(switchBin, { recursive: true });
+const fakeGhMjs = path.resolve(__dir, '..', 'fixtures', 'fake-gh.mjs');
+const switchGhShim = path.join(switchBin, 'gh');
+writeFileSync(switchGhShim, `#!/bin/sh\nexec "${process.execPath}" "${fakeGhMjs}" "$@"\n`);
+chmodSync(switchGhShim, 0o755);
+const switchStore = path.join(startSwitchSandbox, 'gh-store.json');
+writeFileSync(switchStore, JSON.stringify({ comments: [], nextId: 1 }));
 const switchEnv = {
   ...process.env,
   AI_TASK_MANAGER_PROJECT_DIR: startSwitchSandbox,
   TT_SKIP_NETWORK: '1',
+  PATH: `${switchBin}:${process.env.PATH}`,
+  FAKE_GH_STORE: switchStore,
 };
 
 // Bind #200, pause it so lastActive=#200 and active=null.
@@ -117,9 +135,9 @@ await pexec('node', [CLI, '#200'], { env: switchEnv });
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 
 // `/task start #201` must bind #201, not lastActive #200. It binds the target
-// directly rather than delegating to switch. Under the #534 pairing invariant
-// the first-ever bind of #201 (no timing history of its own; the pause was on
-// #200) emits the canonical `start` row, not `resumed` — a re-engagement on an
+// directly rather than delegating to switch. The first-ever bind of #201 (no
+// timing history of its own — the pause was on #200) reads an absent timing
+// log and emits the canonical `start` row, not `resumed`: a re-engagement on an
 // issue with no open interruption and no prior start is downgraded to `start`.
 let rs = await pexec('node', [CLI, 'start', '#201'], { env: switchEnv });
 assert.match(rs.stdout, /Started #201/, '/task start #N should bind #N as a fresh start');

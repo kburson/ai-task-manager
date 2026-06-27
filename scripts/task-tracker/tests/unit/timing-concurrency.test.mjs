@@ -36,16 +36,21 @@ chmodSync(ghShim, 0o755);
 // Seed empty store.
 writeFileSync(store, JSON.stringify({ comments: [], nextId: 1 }));
 
-// Worker script — calls postTimingEvent once with the row text from argv.
+// Worker script — calls postTimingEvent once with the description + event from
+// argv. The event defaults to a neutral `move:*` slug: the concurrent rows in
+// this test exercise lock serialization, not bind semantics, and #568's
+// append-guard forbids a *second* `start` row. The comment is established by one
+// sequential `start` seed below; the racing workers then append neutral rows.
 const workerPath = path.join(tmp, 'worker.mjs');
 writeFileSync(
   workerPath,
   `
 import { postTimingEvent, buildRow } from '${path.join(repoRoot, 'scripts/task-tracker/gh-timing-comment.mjs').replace(/\\/g, '/')}';
 const description = process.argv[2];
+const event = process.argv[3] || 'move:dev';
 const row = buildRow({
   ts: new Date().toISOString(),
-  event: 'start',
+  event,
   activeSec: 0,
   idleSec: 0,
   deltaWords: 0,
@@ -62,9 +67,9 @@ await postTimingEvent({
 `
 );
 
-function runWorker(label) {
+function runWorker(label, event) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [workerPath, label], {
+    const child = spawn(process.execPath, [workerPath, label, event ?? ''], {
       env: {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,
@@ -83,11 +88,19 @@ function runWorker(label) {
   });
 }
 
-await Promise.all([runWorker('alpha-row'), runWorker('beta-row')]);
+// Establish the timing comment with one sequential `start` (the genuine
+// first-ever bind). The append-guard permits exactly this one `start`.
+await runWorker('seed-row', 'start');
+
+// Now race two concurrent neutral-event appenders. The 50ms delay inside the
+// fake's graphql update path widens the lost-update window; the per-issue lock
+// must serialize them so BOTH rows survive.
+await Promise.all([runWorker('alpha-row', 'move:dev'), runWorker('beta-row', 'move:dev')]);
 
 const final = JSON.parse(readFileSync(store, 'utf8'));
 assert.equal(final.comments.length, 1, 'one timing comment created');
 const body = final.comments[0].body;
+assert.match(body, /seed-row/, 'seed row landed');
 assert.match(body, /alpha-row/, 'alpha row landed');
 assert.match(body, /beta-row/, 'beta row landed');
 

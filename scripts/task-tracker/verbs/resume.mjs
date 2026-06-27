@@ -219,8 +219,13 @@ export async function verbResume(ctx) {
   let tcBody = '';
   let readStatus = null;
   if (cfg?.repo) {
+    // #568 — findTimingComment does `issueNumber.replace('#','')`, so it needs a
+    // STRING. Passing a Number made `.replace` throw, so every #N-path read
+    // returned `status:'error'` → fail-closed to `resumed` → the fresh-bind
+    // downgrade never fired (the orphan-`resumed` half of the #480 bug this fix
+    // exists to kill). Pass the bare issue string.
     const tcResult = await readTimingCommentBody({
-      issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
+      issueNumber: String(normalizedTarget).replace(/^#/, ''),
       repo: cfg.repo,
     });
     tcBody = gh.bodyOf(tcResult);
