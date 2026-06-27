@@ -14,9 +14,10 @@ tmp/
 .ai-task-manager/task-fleet.json
 .ai-task-manager/pickup-directive.md.bak
 .ai-task-manager/definition-of-done.md.bak
+# pickup-directive.md + definition-of-done.md are skill-installed but
+# team-editable shared templates (like task-tracker.json) — tracked in git so
+# fresh worktrees and the Test gate receive them with no seeding step (#569).
 # Install-output copies of templates/ (regenerable; templates/ is the source)
-.ai-task-manager/pickup-directive.md
-.ai-task-manager/definition-of-done.md
 .ai-task-manager/session-boot.md
 .ai-task-manager/session-state-template.md
 .ai-task-manager/worker-report.md
