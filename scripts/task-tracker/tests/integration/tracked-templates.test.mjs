@@ -21,11 +21,12 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
-import os from 'node:os';
+import { rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+
+import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 
 const repoRoot = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
 
@@ -57,8 +58,12 @@ test('both templates are tracked in git', () => {
 });
 
 test('a fresh worktree from HEAD carries both templates with no seeding step', () => {
-  const wtParent = mkdtempSync(path.join(os.tmpdir(), 'aitm-tracked-templates-'));
-  const wtPath = path.join(wtParent, 'wt');
+  // The worktree must live OUTSIDE the repo — git refuses `worktree add` to a
+  // path inside the same working tree. `mkdtempOutsideRepo` is the lint-
+  // allowlisted helper for that; it creates the dir, so drop it first because
+  // `git worktree add` requires the target not to exist.
+  const wtPath = mkdtempOutsideRepo('aitm-tracked-templates-');
+  rmSync(wtPath, { recursive: true, force: true });
   try {
     const add = git(['worktree', 'add', '--detach', wtPath, 'HEAD']);
     assert.equal(add.status, 0, `git worktree add failed:\n${add.stderr}`);
@@ -71,6 +76,6 @@ test('a fresh worktree from HEAD carries both templates with no seeding step', (
     }
   } finally {
     git(['worktree', 'remove', '--force', wtPath]);
-    rmSync(wtParent, { recursive: true, force: true });
+    rmSync(wtPath, { recursive: true, force: true });
   }
 });
