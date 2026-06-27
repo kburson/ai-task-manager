@@ -161,7 +161,8 @@ try {
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sidTmp;
   process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
   process.env.CLAUDE_PROJECT_DIR = '/ignored/claude/project';
-  const sessionDir = path.join(sidTmp, '.ai-task-manager', 'codex', 'session-transcripts');
+  // #573: the codex provider stateDir moved to `.tmp/aitm/app/codex`.
+  const sessionDir = path.join(sidTmp, '.tmp', 'aitm', 'app', 'codex', 'session-transcripts');
   mkdirSync(sessionDir, { recursive: true });
 
   // Path 1: env var set → returns env value verbatim, mtime not consulted.
@@ -222,7 +223,8 @@ try {
   rmSync(sidTmp, { recursive: true, force: true });
 }
 
-// Test 8: session paths live under project-local .ai-task-manager, not ~/.claude.
+// Test 8: session paths live under the project-local provider stateDir
+// (`.tmp/aitm/app/codex` since #573), not ~/.claude.
 const origAitmProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
 const origClaudeProjectDir3 = process.env.CLAUDE_PROJECT_DIR;
 const origAppName3 = process.env.AI_TASK_MANAGER_APP_NAME;
@@ -239,20 +241,35 @@ try {
   delete process.env.AI_TASK_MANAGER_SESSION_ID;
   assert.equal(
     markerPathFor('session-123'),
-    path.join(markerProject, '.ai-task-manager', 'codex', 'session-tracking', 'session-123.json'),
-    'session tracking file must live under app-scoped project-local .ai-task-manager'
+    path.join(
+      markerProject,
+      '.tmp',
+      'aitm',
+      'app',
+      'codex',
+      'session-tracking',
+      'session-123.json'
+    ),
+    'session tracking file must live under the app-scoped project-local stateDir'
   );
   // When the AITM-managed local transcript file actually exists, jsonlPath
   // returns it for every provider (codex included) — this is the project-local
   // contract. Create it, then assert it is resolved.
-  const managedDir = path.join(markerProject, '.ai-task-manager', 'codex', 'session-transcripts');
+  const managedDir = path.join(
+    markerProject,
+    '.tmp',
+    'aitm',
+    'app',
+    'codex',
+    'session-transcripts'
+  );
   mkdirSync(managedDir, { recursive: true });
   const managedFile = path.join(managedDir, 'session-123.jsonl');
   writeFileSync(managedFile, '{}\n');
   assert.equal(
     jsonlPath('session-123'),
     managedFile,
-    'transcript path must live under app-scoped project-local .ai-task-manager'
+    'transcript path must live under the app-scoped project-local stateDir'
   );
   // Remove it again so it does not pollute the resolveSessionId transcript scan
   // exercised by the currentSessionId assertion below.
