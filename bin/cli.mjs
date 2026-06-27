@@ -386,16 +386,14 @@ export function patchCodexHooksJson(hooksPath) {
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
   const entries = [
-    '.ai-task-manager/task-tracker-state.json',
-    '.ai-task-manager/task-tracker-queue.json',
-    '.ai-task-manager/task-fleet.json',
+    // Machine-local/transient runtime state (state, queue, fleet, sessions,
+    // locks, caches, per-provider app state) all live under `.tmp/aitm/` as of
+    // #573 — covered wholesale by the `.tmp/` entry below. Only the tracked-dir
+    // backups and the install-output `references/` copy still need explicit
+    // ignores here.
     '.ai-task-manager/pickup-directive.md.bak',
     '.ai-task-manager/definition-of-done.md.bak',
     '.ai-task-manager/references/',
-    '.claude/task-tracker.json',
-    '.claude/task-tracker-state.json',
-    '.claude/task-tracker-queue.json',
-    '.claude/task-fleet.json',
     '.tmp/',
   ];
   const COMMENT = '# ai-task-manager — user configuration files (do not commit)';
@@ -411,41 +409,6 @@ function patchGitignore(targetDir) {
     }
   }
   if (changed) writeFileSync(gitignorePath, content, 'utf8');
-}
-
-// EPIC #207 / #212 — per-session state directory must be gitignored. Lives in
-// its own managed block so future EPIC #207 sub-issues can add neighbors
-// (idle markers, pause markers) without conflicting with `patchGitignore()`
-// above or with user hand-edits. Re-running the installer is idempotent: only
-// missing entries are inserted into the block; the block markers themselves
-// are detected by regex and never duplicated.
-export const MANAGED_BLOCK_OPEN = '# >>> ai-task-manager managed >>>';
-export const MANAGED_BLOCK_CLOSE = '# <<< ai-task-manager managed <<<';
-
-export function ensureGitignoreEntry(targetDir, entry) {
-  const gitignorePath = join(targetDir, '.gitignore');
-  const current = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
-  const blockRe = new RegExp(
-    `${MANAGED_BLOCK_OPEN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([\\s\\S]*?)${MANAGED_BLOCK_CLOSE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
-    'm'
-  );
-  const match = current.match(blockRe);
-  if (match) {
-    const inner = match[1];
-    const lines = inner.split('\n').map((l) => l.trim());
-    if (lines.includes(entry)) return false; // already present, idempotent
-    const innerNext = inner.replace(/\n$/, '') + '\n' + entry + '\n';
-    const next = current.replace(
-      blockRe,
-      `${MANAGED_BLOCK_OPEN}${innerNext}${MANAGED_BLOCK_CLOSE}`
-    );
-    writeFileSync(gitignorePath, next, 'utf8');
-    return true;
-  }
-  const lead = current === '' || current.endsWith('\n') ? '' : '\n';
-  const block = `${lead}\n${MANAGED_BLOCK_OPEN}\n${entry}\n${MANAGED_BLOCK_CLOSE}\n`;
-  writeFileSync(gitignorePath, current + block, 'utf8');
-  return true;
 }
 
 function writeIfChanged(file, content) {
@@ -722,9 +685,7 @@ function installTemplates(targetDir) {
   }
   installReferences(templateDest);
   patchGitignore(targetDir);
-  ok(`Gitignore ${dim('.ai-task-manager state and legacy .claude state')}`);
-  ensureGitignoreEntry(targetDir, '.ai-task-manager/sessions/');
-  ok(`Gitignore ${dim('.ai-task-manager/sessions/ (managed block)')}`);
+  ok(`Gitignore ${dim('.ai-task-manager backups, references, and .tmp/ runtime tree')}`);
   mergeDefaultPreferences(templateDest);
 }
 

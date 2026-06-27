@@ -19,9 +19,9 @@ import {
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-session-state-'));
 
-// AC: paths.mjs exports sessionDir(sid) returning .ai-task-manager/sessions/<sid>
+// AC: paths.mjs exports sessionDir(sid) returning .tmp/aitm/sessions/<sid> (#573)
 const dir = sessionDir('sess-1', tmp);
-assert.equal(dir, path.join(tmp, '.ai-task-manager', 'sessions', 'sess-1'));
+assert.equal(dir, path.join(tmp, '.tmp', 'aitm', 'sessions', 'sess-1'));
 
 // AC: paths.mjs exports activeTaskPath(sid) under sessionDir
 assert.equal(activeTaskPath('sess-1', tmp), path.join(dir, 'active-task.json'));
@@ -29,7 +29,7 @@ assert.equal(activeTaskPath('sess-1', tmp), path.join(dir, 'active-task.json'));
 // Sanitization: weird sids do not escape the sessions/ dir
 const evilDir = sessionDir('../../etc/passwd', tmp);
 assert.ok(
-  evilDir.startsWith(path.join(tmp, '.ai-task-manager', 'sessions') + path.sep),
+  evilDir.startsWith(path.join(tmp, '.tmp', 'aitm', 'sessions') + path.sep),
   'sessionDir sanitizes path separators in sid'
 );
 

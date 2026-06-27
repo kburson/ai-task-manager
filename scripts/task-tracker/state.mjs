@@ -1,6 +1,11 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { legacyPathFor, statePath as resolveStatePath, SHARED_DIR_SEGMENT } from './paths.mjs';
+import {
+  legacyPathFor,
+  statePath as resolveStatePath,
+  SHARED_DIR_SEGMENT,
+  TMP_AITM_SEGMENT,
+} from './paths.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
 import { currentSessionId } from './word-counter.mjs';
 
@@ -89,6 +94,12 @@ function migrateLegacyFields(parsed) {
 export function projectDirForState(statePath) {
   const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
   const norm = abs.split(path.sep).join('/');
+  // #573: the state file now lives under `<projDir>/.tmp/aitm/state/`. Anchor on
+  // the rightmost `/.tmp/aitm/` segment first (worktree-local wins over main, per
+  // #332). Checked before the legacy `.ai-task-manager/`/`.claude/` containers so
+  // a relocated state path resolves to its true project root.
+  const tmpIdx = norm.lastIndexOf(TMP_AITM_SEGMENT);
+  if (tmpIdx !== -1) return abs.slice(0, tmpIdx);
   // `.ai-task-manager/` is always a real state container — anchor on the
   // rightmost one (worktree-local wins over main, per #332).
   const aimIdx = norm.lastIndexOf(SHARED_DIR_SEGMENT);

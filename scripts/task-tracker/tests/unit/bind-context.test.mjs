@@ -14,7 +14,8 @@ import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 
 function makeProjectDir(active) {
   const root = mkdtempOutsideRepo('aitm-test-');
-  const dir = path.join(root, '.ai-task-manager');
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  const dir = path.join(root, '.tmp', 'aitm', 'state');
   mkdirSync(dir, { recursive: true });
   const state = active === undefined ? {} : { active };
   writeFileSync(path.join(dir, 'task-tracker-state.json'), JSON.stringify(state));
@@ -32,7 +33,7 @@ test('throws BindMissingError when no active bind in state file', () => {
 test('throws BindMissingError when state file is empty object', () => {
   const projectDir = makeProjectDir(null);
   // null active means the file exists but active is not a string
-  const dir = path.join(projectDir, '.ai-task-manager');
+  const dir = path.join(projectDir, '.tmp', 'aitm', 'state');
   writeFileSync(path.join(dir, 'task-tracker-state.json'), JSON.stringify({ active: null }));
   assert.throws(
     () => assertBoundToIssue(449, { projectDir }),

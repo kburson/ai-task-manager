@@ -28,6 +28,7 @@ import {
 } from './lib/commit-trail.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { statePath as resolveStatePath } from './paths.mjs';
 
 // #327 — chore-mode commit-subject gate.
 //
@@ -82,7 +83,7 @@ function findProjectDir(startDir) {
 }
 
 function loadActiveIssue(projectDir) {
-  const statePath = path.join(projectDir, '.ai-task-manager', 'task-tracker-state.json');
+  const statePath = resolveStatePath(projectDir); // #573: `.tmp/aitm/state/`
   if (!existsSync(statePath)) return null;
   try {
     const s = JSON.parse(readFileSync(statePath, 'utf8'));

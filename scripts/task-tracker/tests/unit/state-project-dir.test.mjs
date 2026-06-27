@@ -42,6 +42,36 @@ test('projectDirForState: nested subdir inside worktree resolves to worktree roo
   assert.equal(projectDirForState(sp), '/Users/alice/projects/repo/.claude/worktrees/agent-abc');
 });
 
+// #573 — state file relocated under `.tmp/aitm/state/`. projectDirForState now
+// anchors on the rightmost `/.tmp/aitm/` segment, checked BEFORE the legacy
+// `.ai-task-manager`/`.claude` containers.
+test('projectDirForState: main checkout, modern .tmp/aitm/state path (#573)', () => {
+  const sp = '/Users/alice/projects/repo/.tmp/aitm/state/task-tracker-state.json';
+  assert.equal(projectDirForState(sp), '/Users/alice/projects/repo');
+});
+
+// #573 — worktree under .claude/worktrees/, relocated `.tmp/aitm/` path. The
+// rightmost `/.tmp/aitm/` wins (worktree-local over main), mirroring the #332 rule.
+test('projectDirForState: worktree, modern .tmp/aitm/state path (#573)', () => {
+  const sp =
+    '/Users/alice/projects/repo/.claude/worktrees/agent-abc/.tmp/aitm/state/task-tracker-state.json';
+  assert.equal(projectDirForState(sp), '/Users/alice/projects/repo/.claude/worktrees/agent-abc');
+});
+
+// #573 — a session file under `.tmp/aitm/sessions/` resolves to its project root.
+test('projectDirForState: nested .tmp/aitm/sessions path resolves to project root (#573)', () => {
+  const sp = '/Users/alice/projects/repo/.tmp/aitm/sessions/sid-xyz/active-task.json';
+  assert.equal(projectDirForState(sp), '/Users/alice/projects/repo');
+});
+
+// #573 — `.tmp/aitm/` segment is checked before `.ai-task-manager`: when a
+// relocated state path also contains an `.ai-task-manager` ancestor segment, the
+// `.tmp/aitm/` anchor (closest to the file) wins.
+test('projectDirForState: prefers .tmp/aitm over .ai-task-manager when both appear (#573)', () => {
+  const sp = '/Users/alice/.ai-task-manager/repo/.tmp/aitm/state/task-tracker-state.json';
+  assert.equal(projectDirForState(sp), '/Users/alice/.ai-task-manager/repo');
+});
+
 // AC1: legacy .claude path under main checkout still resolves to main.
 test('projectDirForState: main checkout, legacy .claude path', () => {
   const sp = '/Users/alice/projects/repo/.claude/task-tracker-state.json';

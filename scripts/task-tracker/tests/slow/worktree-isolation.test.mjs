@@ -35,11 +35,11 @@ function makeSandbox(prefix) {
 
 function readState(dir) {
   // Per-session migration (#212): bound-issue triple lives in
-  // .ai-task-manager/sessions/<sid>/active-task.json. Fall back to the legacy
-  // global file if a session record isn't present.
+  // <root>/.tmp/aitm/sessions/<sid>/active-task.json (#573). Fall back to the
+  // relocated global ledger if a session record isn't present.
   const sid = process.env.CLAUDE_SESSION_ID || 'default-session';
-  const sessionPath = path.join(dir, '.ai-task-manager', 'sessions', sid, 'active-task.json');
-  const globalPath = path.join(dir, '.ai-task-manager', 'task-tracker-state.json');
+  const sessionPath = path.join(dir, '.tmp', 'aitm', 'sessions', sid, 'active-task.json');
+  const globalPath = path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   const globalRaw = (() => {
     try {
       return JSON.parse(readFileSync(globalPath, 'utf8'));
@@ -93,9 +93,9 @@ assert.notEqual(sB.active, sParent.active, 'child B must not inherit parent acti
 
 // Each state directory's file is physically distinct (sanity check —
 // different sandbox dirs cannot share an inode through ts/json contents).
-const parentPath = path.join(parent, '.ai-task-manager', 'task-tracker-state.json');
-const aPath = path.join(childA, '.ai-task-manager', 'task-tracker-state.json');
-const bPath = path.join(childB, '.ai-task-manager', 'task-tracker-state.json');
+const parentPath = path.join(parent, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+const aPath = path.join(childA, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+const bPath = path.join(childB, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
 assert.notEqual(parentPath, aPath);
 assert.notEqual(aPath, bPath);
 

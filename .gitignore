@@ -12,9 +12,6 @@ tmp/
 coverage/
 
 # ai-task-manager — user configuration files (do not commit)
-.ai-task-manager/task-tracker-state.json
-.ai-task-manager/task-tracker-queue.json
-.ai-task-manager/task-fleet.json
 .ai-task-manager/pickup-directive.md.bak
 .ai-task-manager/definition-of-done.md.bak
 # pickup-directive.md + definition-of-done.md are skill-installed but
@@ -31,27 +28,12 @@ coverage/
 # Runtime project-field caches (ephemeral)
 .ai-task-manager/project-fields.json
 .ai-task-manager/project-field-events.json
-# Content-addressed verifier-result cache (#446) — ephemeral; MUST stay ignored
-# so writing it never dirties the tree (a dirty tree disables every cache hit).
-.ai-task-manager/cache/
-.ai-task-manager/orchestrator.lock
-# Per-issue advisory lock dirs (mkdir-based; ephemeral) — #214
-.ai-task-manager/locks/
-# Per-app ephemeral session state (markers, transcripts) — never committed
-.ai-task-manager/claude/
-.ai-task-manager/codex/
+# All machine-local/transient runtime state now lives under .tmp/aitm/ (#573),
+# already ignored wholesale via the `.tmp/` rule above: state, queue, fleet,
+# cache, orchestrator.lock, locks/, sessions/, gates/, and per-app (app/claude,
+# app/codex) trees. No per-file rules needed here.
 # Per-host install artifacts (Claude Code / Codex / Agents — regenerable from skill/)
 .claude/
 .agents/
 
 .worktrees/
-.claude/task-tracker.json
-.claude/task-tracker-state.json
-.claude/task-tracker-queue.json
-.claude/task-fleet.json
-# Session-scoped auto-mode overrides (#89) — per-chat, never committed
-.claude/task-tracker.session.*.json
-
-# >>> ai-task-manager managed >>>
-.ai-task-manager/sessions/
-# <<< ai-task-manager managed <<<

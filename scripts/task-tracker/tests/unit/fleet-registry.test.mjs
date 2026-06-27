@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
@@ -17,18 +17,14 @@ const tmp = mkdtempProjectIsolated('tt-fleet-');
 
 try {
   const preferred = fleetRegistryPath(tmp);
-  const legacy = path.join(tmp, '.claude', 'task-fleet.json');
 
-  assert.equal(preferred, path.join(tmp, '.ai-task-manager', 'task-fleet.json'));
-
-  mkdirSync(path.dirname(legacy), { recursive: true });
-  writeFileSync(legacy, JSON.stringify({ '#1': { status: 'active' } }), { flag: 'w' });
-  let fleet = readFleet(preferred);
-  assert.equal(fleet['#1'].status, 'active', 'preferred path should read legacy fleet fallback');
+  // #573: the fleet registry is main-anchored under `.tmp/aitm/fleet/`. Hard
+  // cut — no legacy `.claude`/SHARED_DIR read-fallback.
+  assert.equal(preferred, path.join(tmp, '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
 
   writeFleet(preferred, { '#2': { status: 'active' } });
   assert.ok(existsSync(preferred), 'fleet should write to preferred path');
-  fleet = readFleet(preferred);
+  let fleet = readFleet(preferred);
   assert.equal(fleet['#2'].status, 'active');
 
   registerTask(tmp, '#3', '/tmp/worktree', '3-test');

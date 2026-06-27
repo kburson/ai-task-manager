@@ -20,6 +20,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { statePath as resolveStatePath } from '../paths.mjs';
+
 export const EMPTY_CHORE_MODE = Object.freeze({
   active: false,
   since: null,
@@ -28,7 +30,8 @@ export const EMPTY_CHORE_MODE = Object.freeze({
 });
 
 function defaultStatePath(projectDir) {
-  return path.join(projectDir, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global state file moved under `.tmp/aitm/state/` — resolve it.
+  return resolveStatePath(projectDir);
 }
 
 // Read the chore-mode record from the global state file at the given project

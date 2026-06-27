@@ -9,6 +9,20 @@ export const SESSIONS_SUBDIR = 'sessions';
 export const LOCKS_SUBDIR = 'locks';
 export const SCRATCH_SUBDIR = 'scratch';
 
+// Machine-local / transient runtime tree (#573, EPIC #571). Every artifact that
+// is NOT a behavior-defining shared file is relocated under this base, which
+// nests inside the already-gitignored `.tmp/` root, so the tracked config
+// folders (`.ai-task-manager/`, `.claude/`) shrink to the worktree-required set.
+// Sub-directory vocabulary mirrors the legacy SHARED_DIR layout.
+export const TMP_AITM_REL = '.tmp/aitm';
+export const STATE_SUBDIR = 'state';
+export const FLEET_SUBDIR = 'fleet';
+
+// The `/.tmp/aitm/` path segment — state.mjs anchors the project root on it now
+// that the runtime state file lives under this tree (rightmost match wins, per
+// the #332 worktree rule).
+export const TMP_AITM_SEGMENT = '/.tmp/aitm/';
+
 // Single source of truth for the on-disk runtime layout. Every resolver below
 // derives from FILE + SHARED_DIR, so EPIC #571's later stories can relocate a
 // directory by editing SHARED_DIR (or one FILE entry) instead of hunting
@@ -29,6 +43,16 @@ const FILE = {
 export const RUNTIME_REL = Object.freeze(
   Object.fromEntries(Object.entries(FILE).map(([k, v]) => [k, `${SHARED_DIR}/${v}`]))
 );
+
+// Project-root-relative paths for the machine-local runtime artifacts that #573
+// relocated under `.tmp/aitm/`. These are the stored config defaults that the
+// runtime/hook consumers `path.join(projectDir, …)` against; they resolve to the
+// exact same on-disk location as the absolute `statePath()`/`queuePath()` helpers
+// below, but as a relative string so the existing override mechanism keeps working.
+export const TMP_RUNTIME_REL = Object.freeze({
+  state: `${TMP_AITM_REL}/${STATE_SUBDIR}/${FILE.state}`,
+  queue: `${TMP_AITM_REL}/${STATE_SUBDIR}/${FILE.queue}`,
+});
 
 // The `/.ai-task-manager/` path segment, used by state.mjs to anchor the
 // project root inside an absolute state-file path.
@@ -85,12 +109,25 @@ export function projectTmpDir(projDir) {
   return dir;
 }
 
+// Base of the machine-local / transient runtime tree (`<projDir>/.tmp/aitm/`).
+// All state/queue/cache/locks/sessions/gates/app artifacts nest under here so the
+// tracked config roots hold only behavior-defining shared files (#573, EPIC #571).
+export function tmpAitmDir(projDir = getProjectDir()) {
+  return path.join(projDir, '.tmp', 'aitm');
+}
+
+// Base dir handed to verifier-cache.mjs::storePath (which appends `cache/`).
+// Lands the cache at `<projDir>/.tmp/aitm/cache/verifier-results.json`.
+export function verifierCacheBaseDir(projDir = getProjectDir()) {
+  return tmpAitmDir(projDir);
+}
+
 // Per-session directory under .ai-task-manager/sessions/<sid>/. Used by
 // session-state.mjs and (later in EPIC #207) per-session pause/idle markers.
 // Honors getProjectDir() precedence (AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd).
 export function sessionDir(sid, projDir = getProjectDir()) {
   const safe = String(sid || 'default-session').replace(/[^A-Za-z0-9._-]/g, '_');
-  return path.join(projDir, SHARED_DIR, SESSIONS_SUBDIR, safe);
+  return path.join(tmpAitmDir(projDir), SESSIONS_SUBDIR, safe);
 }
 
 // Absolute path to the active-task.json file for a given session id.
@@ -110,14 +147,16 @@ export function configPath(projDir = getProjectDir()) {
   return existingRuntimePath(projDir, RUNTIME_REL.config);
 }
 
-// task-tracker-state.json. Read-fallback to the legacy `.claude` twin.
+// task-tracker-state.json. Relocated under `.tmp/aitm/state/` (#573). Hard cut:
+// no legacy `.claude`/SHARED_DIR read-fallback (single-user unpublished package).
 export function statePath(projDir = getProjectDir()) {
-  return existingRuntimePath(projDir, RUNTIME_REL.state);
+  return path.join(tmpAitmDir(projDir), STATE_SUBDIR, FILE.state);
 }
 
-// task-tracker-queue.json. Read-fallback to the legacy `.claude` twin.
+// task-tracker-queue.json. Relocated under `.tmp/aitm/state/` (#573). Hard cut:
+// no legacy read-fallback (see statePath).
 export function queuePath(projDir = getProjectDir()) {
-  return existingRuntimePath(projDir, RUNTIME_REL.queue);
+  return path.join(tmpAitmDir(projDir), STATE_SUBDIR, FILE.queue);
 }
 
 // pickup-directive.md (runtime install). Read-fallback to the legacy twin.
@@ -130,14 +169,14 @@ export function dodPath(projDir = getProjectDir()) {
   return existingRuntimePath(projDir, RUNTIME_REL.dod);
 }
 
-// Directory holding per-session state (sessions/<sid>/…).
+// Directory holding per-session state (.tmp/aitm/sessions/<sid>/…).
 export function sessionsDir(projDir = getProjectDir()) {
-  return path.join(projDir, SHARED_DIR, SESSIONS_SUBDIR);
+  return path.join(tmpAitmDir(projDir), SESSIONS_SUBDIR);
 }
 
-// Directory holding advisory lock files (locks/*.lock).
+// Directory holding advisory lock files (.tmp/aitm/locks/*.lock).
 export function locksDir(projDir = getProjectDir()) {
-  return path.join(projDir, SHARED_DIR, LOCKS_SUBDIR);
+  return path.join(tmpAitmDir(projDir), LOCKS_SUBDIR);
 }
 
 // Per-issue body-mutation lock file.
@@ -161,12 +200,15 @@ export function scratchDir(projDir = getProjectDir()) {
 // fleet-registry's findMainWorktreePath); these helpers own only the layout.
 // ---------------------------------------------------------------------------
 
-// task-fleet.json — the fleet registry, anchored to the main worktree.
+// task-fleet.json — the fleet registry, anchored to the main worktree. Relocated
+// under `.tmp/aitm/fleet/` (#573); only the layout segment changes, the main-worktree
+// anchor is preserved so sibling worktrees still share one registry.
 export function fleetPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, SHARED_DIR, FILE.fleet);
+  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.fleet);
 }
 
 // orchestrator.lock — the single-orchestrator lock, anchored to the main worktree.
+// Relocated under `.tmp/aitm/fleet/` (#573); anchor preserved (see fleetPath).
 export function orchestratorLockPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, SHARED_DIR, FILE.orchestratorLock);
+  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.orchestratorLock);
 }

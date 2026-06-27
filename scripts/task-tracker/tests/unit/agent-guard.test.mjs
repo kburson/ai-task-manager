@@ -41,7 +41,8 @@ function makeRepo() {
 }
 
 function writeLock(main, body) {
-  const dir = join(main, '.ai-task-manager');
+  // #573: the orchestrator lock is main-anchored under `.tmp/aitm/fleet/`.
+  const dir = join(main, '.tmp', 'aitm', 'fleet');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'orchestrator.lock'), JSON.stringify(body));
 }

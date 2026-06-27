@@ -9,8 +9,8 @@
 // runner in `lib/evidence-runner.mjs`. The AC key is the label hash (ACs carry
 // no human-assigned key), derived by `acKeyForLabel`.
 
-import path from 'node:path';
 import { loadState } from '../state.mjs';
+import { verifierCacheBaseDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
@@ -61,9 +61,10 @@ export async function verbAcStamp(ctx) {
     pexec,
     cwd: projectDir,
     // #446 — content-addressed suite-run cache. The store lives in the REAL
-    // project `.ai-task-manager`, decoupled from `cwd`, so repeat stamps of the
-    // same heavyweight command at one clean HEAD collapse to a single real run.
-    cache: { dir: path.join(projectDir, '.ai-task-manager') },
+    // project's machine-local tree (`.tmp/aitm/cache/`, #573), decoupled from
+    // `cwd`, so repeat stamps of the same heavyweight command at one clean HEAD
+    // collapse to a single real run.
+    cache: { dir: verifierCacheBaseDir(projectDir) },
   });
   for (const r of ran) {
     const tag = r.exit === 0 ? '✓' : '✗';

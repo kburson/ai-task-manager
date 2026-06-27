@@ -107,7 +107,10 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
       2
     )
   );
-  const sp = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global ledger lives under `.tmp/aitm/state/`. Seed there so the
+  // CLI reads what we wrote and we read back what it wrote.
+  const sp = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  mkdirSync(path.dirname(sp), { recursive: true });
   // Seed with legacy `state` field to verify it gets stripped on next write.
   writeFileSync(
     sp,

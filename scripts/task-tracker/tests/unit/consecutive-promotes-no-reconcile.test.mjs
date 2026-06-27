@@ -49,7 +49,9 @@ function setupSandbox() {
 }
 
 function writeState(sandbox, state) {
-  const sp = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  const sp = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  mkdirSync(path.dirname(sp), { recursive: true });
   writeFileSync(sp, JSON.stringify(state, null, 2));
   return sp;
 }

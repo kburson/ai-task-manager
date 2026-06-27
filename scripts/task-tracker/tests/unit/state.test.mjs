@@ -149,9 +149,12 @@ assert.equal(s.active, '#201');
       false,
       'projectDirForState must resolve relative paths to CWD; no nested .ai-task-manager/.ai-task-manager/ tree'
     );
+    // #573 — per-session active-task.json now lives under the machine-local
+    // `.tmp/aitm/sessions/` tree, not the tracked `.ai-task-manager/` root.
     const sessionFile = path.join(
       relTmp,
-      '.ai-task-manager',
+      '.tmp',
+      'aitm',
       'sessions',
       'default-session',
       'active-task.json'
@@ -203,7 +206,9 @@ assert.equal(advanceWordMarker(undefined, undefined), 0, 'both missing => 0');
     // No state file yet => 0.
     assert.equal(durableWordMarker(dwTmp), 0, 'durableWordMarker returns 0 when no state on disk');
     // Persist a marker into the canonical global ledger and read it back.
-    const ledger = path.join(dwTmp, '.ai-task-manager', 'task-tracker-state.json');
+    // #573 — the ledger now lives under `.tmp/aitm/state/`; durableWordMarker
+    // resolves the same path via statePath(), so write where it reads.
+    const ledger = path.join(dwTmp, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
     saveState({ active: '#475', lastActive: '#475', lastWordMarker: 4242 }, ledger);
     assert.equal(
       durableWordMarker(dwTmp),

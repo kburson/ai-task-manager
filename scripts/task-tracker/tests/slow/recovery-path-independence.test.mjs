@@ -31,7 +31,7 @@ import { runDemote } from '../../verbs/demote.mjs';
 import { runUnblock } from '../../verbs/unblock.mjs';
 import { blockedByGuard } from '../../lib/blocked-by-guard.mjs';
 import { addBlockedBy, parseBlockedBy } from '../../lib/blocked-marker.mjs';
-import { fleetPath, orchestratorLockPath, getProjectDir, SHARED_DIR } from '../../paths.mjs';
+import { fleetPath, orchestratorLockPath, getProjectDir } from '../../paths.mjs';
 import { findMainWorktreePath, fleetRegistryPath } from '../../fleet-registry.mjs';
 import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 
@@ -166,10 +166,12 @@ function git(cwd, ...args) {
 }
 
 test('AC (#572): main-anchored resolvers build under the passed main path regardless of cwd', () => {
+  // #573 — fleet/lock relocated under `.tmp/aitm/fleet/`; the MAIN-worktree
+  // anchor is preserved so sibling worktrees still share one registry/lock.
   const main = fleetPath('/abs/main/worktree');
-  assert.equal(main, path.join('/abs/main/worktree', SHARED_DIR, 'task-fleet.json'));
+  assert.equal(main, path.join('/abs/main/worktree', '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
   const lock = orchestratorLockPath('/abs/main/worktree');
-  assert.equal(lock, path.join('/abs/main/worktree', SHARED_DIR, 'orchestrator.lock'));
+  assert.equal(lock, path.join('/abs/main/worktree', '.tmp', 'aitm', 'fleet', 'orchestrator.lock'));
   // Distinct main path → distinct resolution; the helper owns layout, not anchor.
   assert.notEqual(fleetPath('/abs/other'), main);
 });
@@ -199,7 +201,7 @@ test('AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling 
 
     // fleet-registry's path resolves under MAIN, not the sibling worktree.
     const reg = fleetRegistryPath(resolvedMain);
-    assert.equal(reg, path.join(path.resolve(mainWt), SHARED_DIR, 'task-fleet.json'));
+    assert.equal(reg, path.join(path.resolve(mainWt), '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
     assert.ok(!reg.startsWith(path.resolve(siblingWt)), 'must not anchor to the sibling worktree');
   } finally {
     rmSync(root, { recursive: true, force: true });

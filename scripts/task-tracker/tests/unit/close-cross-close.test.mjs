@@ -152,8 +152,11 @@ function makeDispatcherSandbox({ active }) {
     path.join(dir, '.ai-task-manager', 'task-tracker.json'),
     JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
   );
+  // #573: the global ledger the dispatcher preflight reads lives under `.tmp/aitm/state/`.
+  const stateDir = path.join(dir, '.tmp', 'aitm', 'state');
+  mkdirSync(stateDir, { recursive: true });
   writeFileSync(
-    path.join(dir, '.ai-task-manager', 'task-tracker-state.json'),
+    path.join(stateDir, 'task-tracker-state.json'),
     JSON.stringify({
       active,
       lastActive: active,

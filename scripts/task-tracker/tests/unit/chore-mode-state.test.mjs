@@ -23,7 +23,8 @@ import {
 import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 
 function statePath(projectDir) {
-  return path.join(projectDir, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  return path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
 }
 
 test('readChoreMode returns defaults when state file is missing', () => {

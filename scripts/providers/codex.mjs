@@ -8,7 +8,7 @@
 export const codexAdapter = {
   name: 'codex',
   installTarget: '.agents/skills/task',
-  stateDir: '.ai-task-manager/codex',
+  stateDir: '.tmp/aitm/app/codex',
   transcriptLocator: '.codex/sessions',
   transcriptLayout: 'date-bucketed',
   sessionIdEnvKeys: ['CODEX_SESSION_ID'],

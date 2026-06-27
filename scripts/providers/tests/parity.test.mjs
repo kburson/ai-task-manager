@@ -37,7 +37,7 @@ import { codexAdapter } from '../codex.mjs';
 const EXPECTED_CLAUDE = Object.freeze({
   name: 'claude',
   installTarget: '.claude/skills/task',
-  stateDir: '.ai-task-manager/claude',
+  stateDir: '.tmp/aitm/app/claude',
   transcriptLocator: '.claude/projects',
   transcriptLayout: 'flat',
   sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
@@ -49,7 +49,7 @@ const EXPECTED_CLAUDE = Object.freeze({
 const EXPECTED_CODEX = Object.freeze({
   name: 'codex',
   installTarget: '.agents/skills/task',
-  stateDir: '.ai-task-manager/codex',
+  stateDir: '.tmp/aitm/app/codex',
   transcriptLocator: '.codex/sessions',
   transcriptLayout: 'date-bucketed',
   sessionIdEnvKeys: ['CODEX_SESSION_ID'],

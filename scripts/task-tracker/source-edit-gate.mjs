@@ -26,7 +26,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
-import { SCRATCH_REL_PREFIX } from './paths.mjs';
+import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 
 const pexec = promisify(execFile);
 
@@ -147,7 +147,7 @@ export function decideSourceEdit({
 // ── State + cache helpers ──────────────────────────────────────────────────
 
 export function loadBoundIssue(projectDir) {
-  const statePath = path.join(projectDir, '.ai-task-manager', 'task-tracker-state.json');
+  const statePath = resolveStatePath(projectDir); // #573: `.tmp/aitm/state/`
   if (!existsSync(statePath)) return null;
   try {
     const s = JSON.parse(readFileSync(statePath, 'utf8'));

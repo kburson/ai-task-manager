@@ -112,34 +112,43 @@ assert.equal(SCRATCH_REL_PREFIX, `${SHARED_DIR}/scratch/`);
 
 // cwd-anchored resolvers join the project root byte-identically when no legacy
 // twin exists on disk (the /tmp/proj-xyz tree has no `.claude` mirror).
+// #573 — machine-local/transient runtime relocated under `.tmp/aitm/`. Config
+// (task-tracker.json), pickup-directive.md, definition-of-done.md and the shared
+// scratch subtree remain tracked under SHARED_DIR; everything else moves.
+const TMP_AITM = ['.tmp', 'aitm'];
 const PX = '/tmp/proj-xyz-572';
 assert.equal(configPath(PX), path.join(PX, SHARED_DIR, 'task-tracker.json'));
-assert.equal(statePath(PX), path.join(PX, SHARED_DIR, 'task-tracker-state.json'));
-assert.equal(queuePath(PX), path.join(PX, SHARED_DIR, 'task-tracker-queue.json'));
+assert.equal(statePath(PX), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-state.json'));
+assert.equal(queuePath(PX), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-queue.json'));
 assert.equal(pickupDirectivePath(PX), path.join(PX, SHARED_DIR, 'pickup-directive.md'));
 assert.equal(dodPath(PX), path.join(PX, SHARED_DIR, 'definition-of-done.md'));
 
-// Directory resolvers return the canonical SHARED_DIR subtree.
-assert.equal(sessionsDir(PX), path.join(PX, SHARED_DIR, 'sessions'));
-assert.equal(locksDir(PX), path.join(PX, SHARED_DIR, 'locks'));
+// Directory resolvers: sessions/locks moved to `.tmp/aitm/`; scratch stays tracked.
+assert.equal(sessionsDir(PX), path.join(PX, ...TMP_AITM, 'sessions'));
+assert.equal(locksDir(PX), path.join(PX, ...TMP_AITM, 'locks'));
 assert.equal(scratchDir(PX), path.join(PX, SHARED_DIR, 'scratch'));
 
 // Lock-file resolvers compose locksDir with the per-key filename.
-assert.equal(issueLockPath(572, PX), path.join(PX, SHARED_DIR, 'locks', 'issue-572.lock'));
-assert.equal(timingLockPath('572', PX), path.join(PX, SHARED_DIR, 'locks', 'timing-572.lock'));
+assert.equal(issueLockPath(572, PX), path.join(PX, ...TMP_AITM, 'locks', 'issue-572.lock'));
+assert.equal(timingLockPath('572', PX), path.join(PX, ...TMP_AITM, 'locks', 'timing-572.lock'));
 
-// main-anchored resolvers join the supplied main worktree path.
+// main-anchored resolvers join the supplied main worktree path. Relocated under
+// `.tmp/aitm/fleet/`; the MAIN-worktree anchor is preserved (sibling worktrees
+// share one registry/lock).
 const MAIN = '/tmp/main-wt-572';
-assert.equal(fleetPath(MAIN), path.join(MAIN, SHARED_DIR, 'task-fleet.json'));
-assert.equal(orchestratorLockPath(MAIN), path.join(MAIN, SHARED_DIR, 'orchestrator.lock'));
+assert.equal(fleetPath(MAIN), path.join(MAIN, ...TMP_AITM, 'fleet', 'task-fleet.json'));
+assert.equal(
+  orchestratorLockPath(MAIN),
+  path.join(MAIN, ...TMP_AITM, 'fleet', 'orchestrator.lock')
+);
 
 // cwd-anchored resolvers honor getProjectDir() default via env precedence.
 {
   const prev = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = PX;
   try {
-    assert.equal(statePath(), path.join(PX, SHARED_DIR, 'task-tracker-state.json'));
-    assert.equal(locksDir(), path.join(PX, SHARED_DIR, 'locks'));
+    assert.equal(statePath(), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-state.json'));
+    assert.equal(locksDir(), path.join(PX, ...TMP_AITM, 'locks'));
   } finally {
     if (prev === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;

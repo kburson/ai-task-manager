@@ -28,7 +28,7 @@ assert.match(r.stdout, /Review #321/);
 assert.match(r.stdout, /paused/i);
 
 let state = JSON.parse(
-  readFileSync(path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+  readFileSync(path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
 );
 // #407 — a non-terminal verb (`review`) closes the timing session but KEEPS the
 // issue bound, so the next verb needs no intervening `start <N>` re-bind. The
@@ -59,7 +59,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
 
   await pexec('node', [CLI, '#385'], { env: env2 });
   let st = JSON.parse(
-    readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+    readFileSync(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
   );
   assert.equal(st.active, '#385');
 
@@ -74,7 +74,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   assert.match(refusalErr.stdout, /PROMPT_REQUIRED: bind-mismatch #385:#386/);
 
   st = JSON.parse(
-    readFileSync(path.join(sandbox2, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+    readFileSync(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
   );
   assert.equal(st.active, '#385', 'active session must remain #385 after refusal');
 
@@ -95,7 +95,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   assert.match(closeResult.stdout, /Closed #400/);
 
   const st = JSON.parse(
-    readFileSync(path.join(sandbox3, '.ai-task-manager', 'task-tracker-state.json'), 'utf8')
+    readFileSync(path.join(sandbox3, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
   );
   assert.equal(st.active, null, 'active should be cleared when closing the only/active issue');
 

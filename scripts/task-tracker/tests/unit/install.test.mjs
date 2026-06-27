@@ -256,16 +256,16 @@ try {
 
   // .gitignore entries written
   const gitignore = readFileSync(path.join(target, '.gitignore'), 'utf8');
+  // #573: machine-local runtime state moved under `.tmp/aitm/` (covered by the
+  // `.tmp/` entry); only tracked-dir backups + the references copy stay seeded.
   assert.ok(
-    gitignore.includes('.ai-task-manager/task-tracker-state.json'),
-    'shared state gitignore entry missing'
+    gitignore.includes('.ai-task-manager/pickup-directive.md.bak'),
+    'pickup backup entry missing'
   );
   assert.ok(
-    gitignore.includes('.ai-task-manager/task-tracker-queue.json'),
-    'shared queue gitignore entry missing'
+    gitignore.includes('.ai-task-manager/references/'),
+    'references gitignore entry missing'
   );
-  assert.ok(gitignore.includes('.claude/task-tracker-state.json'), 'state gitignore entry missing');
-  assert.ok(gitignore.includes('.claude/task-tracker-queue.json'), 'queue gitignore entry missing');
 
   // #412: the installer must ignore the hidden `.tmp/` scratch dir the tools
   // actually write to — never a bare `tmp/`, which nothing writes to.

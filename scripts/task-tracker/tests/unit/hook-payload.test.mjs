@@ -26,8 +26,8 @@ import { processPendingPause } from '../../hooks/on-user-prompt.mjs';
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-hook-payload-'));
 
 function setActive(sid, issue) {
-  // Mirror the format session-state.mjs writes.
-  const dir = path.join(tmp, '.ai-task-manager', 'sessions', sid);
+  // Mirror the format session-state.mjs writes. #573: sessions live under `.tmp/aitm/`.
+  const dir = path.join(tmp, '.tmp', 'aitm', 'sessions', sid);
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     path.join(dir, 'active-task.json'),

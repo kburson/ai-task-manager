@@ -18,7 +18,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -55,7 +55,9 @@ function makeRepo() {
 // `active` is intentionally omitted so there is no bound task — faithfully
 // reproducing chore-mode's detached state (and the no-active-task baseline).
 function writeState(root, { choreActive }) {
-  const statePath = join(root, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  const statePath = join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  mkdirSync(dirname(statePath), { recursive: true });
   const body = choreActive
     ? {
         choreMode: {

@@ -129,8 +129,10 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
     JSON.stringify({ repo })
   );
   if (active) {
+    // #573: the global ledger lives under `.tmp/aitm/state/`.
+    mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
     writeFileSync(
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
       JSON.stringify({
         active,
         lastActive: active,

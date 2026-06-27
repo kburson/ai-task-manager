@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { getProjectDir, RUNTIME_REL, SHARED_DIR, LEGACY_CLAUDE_DIR } from './paths.mjs';
+import { getProjectDir, TMP_RUNTIME_REL, SHARED_DIR, LEGACY_CLAUDE_DIR } from './paths.mjs';
 
 export const DEFAULTS = {
   wpm: 180,
@@ -54,8 +54,9 @@ export const DEFAULTS = {
   defaultLabels: [],
   autoEndOnSwitch: true,
   hookNetworkTimeoutMs: 2000,
-  queuePath: RUNTIME_REL.queue,
-  statePath: RUNTIME_REL.state,
+  // #573: machine-local state/queue live under `.tmp/aitm/state/`, not SHARED_DIR.
+  queuePath: TMP_RUNTIME_REL.queue,
+  statePath: TMP_RUNTIME_REL.state,
   idleThresholdMinutes: 5,
   reviewPauseThresholdMin: 5,
   recordWallClock: true,

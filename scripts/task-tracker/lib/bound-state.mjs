@@ -10,10 +10,12 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { STATE_MATRIX } from '../activity-policy.mjs';
-import { sessionsDir as resolveSessionsDir } from '../paths.mjs';
+import { sessionsDir as resolveSessionsDir, statePath as resolveStatePath } from '../paths.mjs';
 
 export function readBoundState(root) {
-  const statePath = path.join(root, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: state lives under `.tmp/aitm/state/` now — read it through the resolver
+  // rather than a hardcoded `.ai-task-manager/` path.
+  const statePath = resolveStatePath(root);
   let parsed = null;
   try {
     parsed = JSON.parse(readFileSync(statePath, 'utf8'));

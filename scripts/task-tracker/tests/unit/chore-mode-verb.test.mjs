@@ -27,7 +27,8 @@ import {
 import { readChoreMode } from '../../lib/chore-mode.mjs';
 
 function statePath(root) {
-  return path.join(root, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  return path.join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
 }
 
 function writeState(root, payload) {

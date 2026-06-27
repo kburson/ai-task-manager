@@ -1,7 +1,9 @@
 // Session-scoped auto-mode store (#89).
 //
 // Per-chat overrides for the two human gates (analysisToDevelopment,
-// reviewToDone). Lives at `.claude/task-tracker.session.<session-id>.json`.
+// reviewToDone). Lives at `.tmp/aitm/gates/task-tracker.session.<session-id>.json`
+// (#573 — relocated out of the tracked `.claude/` root into the gitignored
+// machine-local tree).
 //
 // Schema:
 //   {
@@ -20,7 +22,9 @@
 import * as realFs from 'node:fs';
 import path from 'node:path';
 
-const DEFAULT_DIR = '.claude';
+// Relative (cwd-anchored) so the gate store stays project-local; mirrors the
+// `.tmp/aitm/gates/` layout owned by paths.mjs (#573).
+const DEFAULT_DIR = path.join('.tmp', 'aitm', 'gates');
 const FILE_PREFIX = 'task-tracker.session.';
 const FILE_SUFFIX = '.json';
 

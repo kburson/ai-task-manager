@@ -87,7 +87,9 @@ async function runNode(script, args, { sandbox, binDir, env = {}, expectExit = 0
 }
 
 async function setActive(sandbox, issue) {
-  const statePath = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  mkdirSync(path.dirname(statePath), { recursive: true });
   writeFileSync(
     statePath,
     JSON.stringify({
@@ -231,9 +233,11 @@ process.exit(0);
 `
     );
     chmodSync(shim, 0o755);
-    // Write fleet registry pointing #206 to altWorktree
+    // Write fleet registry pointing #206 to altWorktree. #573: the fleet
+    // registry is main-anchored under `.tmp/aitm/fleet/`.
+    mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'fleet'), { recursive: true });
     writeFileSync(
-      path.join(sandbox, '.ai-task-manager', 'task-fleet.json'),
+      path.join(sandbox, '.tmp', 'aitm', 'fleet', 'task-fleet.json'),
       JSON.stringify({
         '#206': {
           worktreePath: altWorktree,

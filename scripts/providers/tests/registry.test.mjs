@@ -31,8 +31,8 @@ const EXPECTED_CODEX_SKILL_PATH = 'skill/adapters/codex/SKILL.md';
 // Values previously hard-coded at provider-fork call sites (migrated in #203).
 const EXPECTED_CLAUDE_INSTALL_TARGET = '.claude/skills/task';
 const EXPECTED_CODEX_INSTALL_TARGET = '.agents/skills/task';
-const EXPECTED_CLAUDE_STATE_DIR = '.ai-task-manager/claude';
-const EXPECTED_CODEX_STATE_DIR = '.ai-task-manager/codex';
+const EXPECTED_CLAUDE_STATE_DIR = '.tmp/aitm/app/claude';
+const EXPECTED_CODEX_STATE_DIR = '.tmp/aitm/app/codex';
 const EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR = '.claude/projects';
 const EXPECTED_CODEX_TRANSCRIPT_LOCATOR = '.codex/sessions'; // #477 — date-bucketed rollout dir
 const EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];

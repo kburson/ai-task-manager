@@ -22,8 +22,10 @@ function makeSandbox(active) {
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
     JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
   );
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
   writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify(
       {
         active,

@@ -8,7 +8,7 @@
 export const claudeAdapter = {
   name: 'claude',
   installTarget: '.claude/skills/task',
-  stateDir: '.ai-task-manager/claude',
+  stateDir: '.tmp/aitm/app/claude',
   transcriptLocator: '.claude/projects',
   transcriptLayout: 'flat',
   sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],

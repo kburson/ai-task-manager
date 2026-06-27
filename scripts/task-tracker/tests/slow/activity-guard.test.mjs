@@ -31,10 +31,12 @@ function makeRepo({ state } = {}) {
   // Init bare git repo so `git rev-parse --show-toplevel` works.
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
+  // #573: the global ledger lives under `.tmp/aitm/state/`.
+  mkdirSync(path.join(dir, '.tmp', 'aitm', 'state'), { recursive: true });
   const stateObj = { active: '#65', lastActive: '#65' };
   if (state !== undefined) stateObj.state = state;
   writeFileSync(
-    path.join(dir, '.ai-task-manager', 'task-tracker-state.json'),
+    path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify(stateObj)
   );
   return dir;
@@ -450,7 +452,8 @@ test('Edit with absolute path inside project root → normalized + blocked in re
 // ---------------------------------------------------------------------------
 
 function writeSessionCache(dir, sid, record) {
-  const sessDir = path.join(dir, '.ai-task-manager', 'sessions', sid);
+  // #573: per-session caches live under `.tmp/aitm/sessions/`.
+  const sessDir = path.join(dir, '.tmp', 'aitm', 'sessions', sid);
   mkdirSync(sessDir, { recursive: true });
   writeFileSync(path.join(sessDir, 'active-task.json'), JSON.stringify(record));
 }

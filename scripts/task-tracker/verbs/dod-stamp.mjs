@@ -8,8 +8,8 @@
 // Stampable keys (`tests`, `lint`, `commits`) only. Derived keys (`acs`,
 // `checkboxes`) are computed by `verbs/close.mjs` at close time.
 
-import path from 'node:path';
 import { loadState } from '../state.mjs';
+import { verifierCacheBaseDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
@@ -91,7 +91,7 @@ export async function verbDodStamp(ctx) {
     cwd: projectDir,
     env: cleanEnv,
     // #446 — content-addressed suite-run cache (see ac-stamp for rationale).
-    cache: { dir: path.join(projectDir, '.ai-task-manager') },
+    cache: { dir: verifierCacheBaseDir(projectDir) },
   });
   for (const r of ran) {
     const tag = r.exit === 0 ? '✓' : '✗';
