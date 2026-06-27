@@ -15,15 +15,71 @@ import {
 } from './verifier-cache.mjs';
 
 // Split an `aitm-verified-by` command (a backtick-delimited shell string) into
-// argv. Conservative: split on whitespace. Commands declared in the templates
-// use simple positional arguments (`npm test`, `npm run lint`,
-// `git log --grep #303`); anything more complex should be wrapped in `bash -c`
-// in the marker itself.
+// argv with POSIX-style quote handling. Single quotes pass their contents
+// through literally (so `bash -c '<script>'` delivers the whole script as one
+// argv entry); double quotes allow backslash escaping of `" \ $` and backtick;
+// a bare backslash escapes the next character; runs of whitespace separate
+// tokens. Unterminated quotes throw — that surfaces an authoring mistake rather
+// than silently mis-splitting. Simple positional commands (`npm test`,
+// `git log --grep #303`) tokenize exactly as before; quoted multi-word
+// arguments (`grep -n -A3 'Verification Commands' file`) now survive intact
+// instead of shattering (#546). The result is run WITHOUT a shell, so the argv
+// must already be final — no further expansion happens.
 export function splitCmd(cmd) {
-  return String(cmd || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const s = String(cmd || '');
+  const argv = [];
+  let cur = '';
+  let started = false; // a quoted empty token ("" / '') still counts as a token
+  let i = 0;
+  const n = s.length;
+  while (i < n) {
+    const c = s[i];
+    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') {
+      if (started) {
+        argv.push(cur);
+        cur = '';
+        started = false;
+      }
+      i++;
+    } else if (c === "'") {
+      started = true;
+      i++;
+      while (i < n && s[i] !== "'") {
+        cur += s[i];
+        i++;
+      }
+      if (i >= n) throw new Error(`splitCmd: unterminated single quote in: ${s}`);
+      i++; // consume closing '
+    } else if (c === '"') {
+      started = true;
+      i++;
+      while (i < n && s[i] !== '"') {
+        if (s[i] === '\\' && i + 1 < n && '"\\$`'.includes(s[i + 1])) {
+          cur += s[i + 1];
+          i += 2;
+        } else {
+          cur += s[i];
+          i++;
+        }
+      }
+      if (i >= n) throw new Error(`splitCmd: unterminated double quote in: ${s}`);
+      i++; // consume closing "
+    } else if (c === '\\') {
+      if (i + 1 < n) {
+        cur += s[i + 1];
+        started = true;
+        i += 2;
+      } else {
+        i++;
+      }
+    } else {
+      cur += c;
+      started = true;
+      i++;
+    }
+  }
+  if (started) argv.push(cur);
+  return argv;
 }
 
 export async function headSha(pexec) {
