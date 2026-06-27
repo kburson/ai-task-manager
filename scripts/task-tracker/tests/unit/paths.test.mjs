@@ -4,7 +4,27 @@ import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
-import { existingRuntimePath, getProjectDir, legacyPathFor } from '../../paths.mjs';
+import {
+  existingRuntimePath,
+  getProjectDir,
+  legacyPathFor,
+  SHARED_DIR,
+  RUNTIME_REL,
+  SHARED_DIR_SEGMENT,
+  SCRATCH_REL_PREFIX,
+  configPath,
+  statePath,
+  queuePath,
+  pickupDirectivePath,
+  dodPath,
+  sessionsDir,
+  locksDir,
+  issueLockPath,
+  timingLockPath,
+  scratchDir,
+  fleetPath,
+  orchestratorLockPath,
+} from '../../paths.mjs';
 
 const mappings = [
   ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json'],
@@ -74,5 +94,56 @@ assert.equal(
   '/c',
   'empty-string env values are treated as unset'
 );
+
+// --- #572: runtime-layout resolvers ------------------------------------------
+
+// RUNTIME_REL strings are project-root-relative under SHARED_DIR.
+assert.equal(RUNTIME_REL.config, `${SHARED_DIR}/task-tracker.json`);
+assert.equal(RUNTIME_REL.state, `${SHARED_DIR}/task-tracker-state.json`);
+assert.equal(RUNTIME_REL.queue, `${SHARED_DIR}/task-tracker-queue.json`);
+assert.equal(RUNTIME_REL.fleet, `${SHARED_DIR}/task-fleet.json`);
+assert.equal(RUNTIME_REL.orchestratorLock, `${SHARED_DIR}/orchestrator.lock`);
+assert.equal(RUNTIME_REL.pickupDirective, `${SHARED_DIR}/pickup-directive.md`);
+assert.equal(RUNTIME_REL.dod, `${SHARED_DIR}/definition-of-done.md`);
+
+// Segment + scratch-prefix constants derive from SHARED_DIR.
+assert.equal(SHARED_DIR_SEGMENT, `/${SHARED_DIR}/`);
+assert.equal(SCRATCH_REL_PREFIX, `${SHARED_DIR}/scratch/`);
+
+// cwd-anchored resolvers join the project root byte-identically when no legacy
+// twin exists on disk (the /tmp/proj-xyz tree has no `.claude` mirror).
+const PX = '/tmp/proj-xyz-572';
+assert.equal(configPath(PX), path.join(PX, SHARED_DIR, 'task-tracker.json'));
+assert.equal(statePath(PX), path.join(PX, SHARED_DIR, 'task-tracker-state.json'));
+assert.equal(queuePath(PX), path.join(PX, SHARED_DIR, 'task-tracker-queue.json'));
+assert.equal(pickupDirectivePath(PX), path.join(PX, SHARED_DIR, 'pickup-directive.md'));
+assert.equal(dodPath(PX), path.join(PX, SHARED_DIR, 'definition-of-done.md'));
+
+// Directory resolvers return the canonical SHARED_DIR subtree.
+assert.equal(sessionsDir(PX), path.join(PX, SHARED_DIR, 'sessions'));
+assert.equal(locksDir(PX), path.join(PX, SHARED_DIR, 'locks'));
+assert.equal(scratchDir(PX), path.join(PX, SHARED_DIR, 'scratch'));
+
+// Lock-file resolvers compose locksDir with the per-key filename.
+assert.equal(issueLockPath(572, PX), path.join(PX, SHARED_DIR, 'locks', 'issue-572.lock'));
+assert.equal(timingLockPath('572', PX), path.join(PX, SHARED_DIR, 'locks', 'timing-572.lock'));
+
+// main-anchored resolvers join the supplied main worktree path.
+const MAIN = '/tmp/main-wt-572';
+assert.equal(fleetPath(MAIN), path.join(MAIN, SHARED_DIR, 'task-fleet.json'));
+assert.equal(orchestratorLockPath(MAIN), path.join(MAIN, SHARED_DIR, 'orchestrator.lock'));
+
+// cwd-anchored resolvers honor getProjectDir() default via env precedence.
+{
+  const prev = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = PX;
+  try {
+    assert.equal(statePath(), path.join(PX, SHARED_DIR, 'task-tracker-state.json'));
+    assert.equal(locksDir(), path.join(PX, SHARED_DIR, 'locks'));
+  } finally {
+    if (prev === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;
+  }
+}
 
 console.log('paths.test.mjs: all passed');

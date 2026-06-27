@@ -26,12 +26,13 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { SCRATCH_REL_PREFIX } from './paths.mjs';
 
 const pexec = promisify(execFile);
 
 export const CACHE_TTL_MS = 30_000;
 
-export const ALLOWLIST_PREFIXES = ['.tmp/', '.ai-task-manager/scratch/'];
+export const ALLOWLIST_PREFIXES = ['.tmp/', SCRATCH_REL_PREFIX];
 
 // States that LACK source-edit permission (below `develop`).
 const PRE_DEVELOP_STATES = new Set(['backlog', 'on-deck', 'refine', 'plan', 'unknown']);

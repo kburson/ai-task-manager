@@ -15,7 +15,7 @@
 // Exits 0 always; if the key is missing the default (or empty string) is printed.
 
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { configPath } from './paths.mjs';
 
 const [, , key, defaultValue = ''] = process.argv;
 
@@ -26,19 +26,8 @@ if (!key) {
 
 let config = {};
 try {
-  // Prefer .ai-task-manager/; fall back to legacy .claude/ location.
-  const candidates = [
-    join(process.cwd(), '.ai-task-manager', 'task-tracker.json'),
-    join(process.cwd(), '.claude', 'task-tracker.json'),
-  ];
-  for (const p of candidates) {
-    try {
-      config = JSON.parse(readFileSync(p, 'utf8'));
-      break;
-    } catch {
-      /* try next */
-    }
-  }
+  // configPath() prefers .ai-task-manager/ and falls back to the legacy .claude/ twin.
+  config = JSON.parse(readFileSync(configPath(process.cwd()), 'utf8'));
 } catch {
   /* config not found — use defaults */
 }

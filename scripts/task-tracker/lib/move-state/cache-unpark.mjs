@@ -19,7 +19,7 @@
 // stateless helpers + node builtins are imported directly here.
 
 import { loadState, saveState } from '../../state.mjs';
-import { getProjectDir, existingRuntimePath, SHARED_DIR } from '../../paths.mjs';
+import { getProjectDir, statePath as resolveStatePath } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { STAGES } from '../stage-entry-markers.mjs';
 import { existsSync } from 'node:fs';
@@ -119,7 +119,7 @@ export function syncTrackerState(ctx) {
   const { stateArg } = ctx;
   try {
     const projectDir = getProjectDir();
-    const sp = existingRuntimePath(projectDir, `${SHARED_DIR}/task-tracker-state.json`);
+    const sp = resolveStatePath(projectDir);
     const s = loadState(sp);
     s.state = stateArg;
     saveState(s, sp);

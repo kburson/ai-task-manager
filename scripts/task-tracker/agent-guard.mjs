@@ -29,6 +29,7 @@
 import { readFileSync, realpathSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { findMainWorktreePath } from './fleet-registry.mjs';
+import { orchestratorLockPath } from './paths.mjs';
 
 const DEFAULT_TTL_MS = 4 * 60 * 60 * 1000;
 
@@ -41,7 +42,7 @@ function canon(p) {
 }
 
 function readLock(mainPath) {
-  const lockPath = path.join(mainPath, '.ai-task-manager', 'orchestrator.lock');
+  const lockPath = orchestratorLockPath(mainPath);
   if (!existsSync(lockPath)) return null;
   try {
     return JSON.parse(readFileSync(lockPath, 'utf8'));

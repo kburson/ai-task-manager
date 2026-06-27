@@ -10,6 +10,7 @@
 //   - serialize with two-space indent and a trailing newline.
 
 import fs from 'node:fs';
+import { SHARED_DIR_SEGMENT, LEGACY_CLAUDE_DIR } from '../../paths.mjs';
 
 // Map of config key → environment variable that supplies it. The required set
 // is always written; the optional set is written only when the env value is
@@ -74,7 +75,7 @@ export function mergeConfig(existing = {}, env = {}) {
 // .claude/ path, or {} when neither parses. Mirrors the bash double try/catch.
 export function loadExisting(file, deps = {}) {
   const reader = deps.readFileSync || fs.readFileSync;
-  const legacyFile = file.replace('/.ai-task-manager/', '/.claude/');
+  const legacyFile = file.replace(SHARED_DIR_SEGMENT, `/${LEGACY_CLAUDE_DIR}/`);
   try {
     return JSON.parse(reader(file, 'utf8'));
   } catch {

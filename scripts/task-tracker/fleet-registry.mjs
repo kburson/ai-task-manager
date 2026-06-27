@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { legacyPathFor } from './paths.mjs';
+import { legacyPathFor, fleetPath } from './paths.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const LOCK_STALE_MS = 30_000;
@@ -73,7 +73,7 @@ export function findMainWorktreePath(projectDir) {
 }
 
 export function fleetRegistryPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.ai-task-manager', 'task-fleet.json');
+  return fleetPath(mainWorktreePath);
 }
 
 export function currentBranch(projectDir) {

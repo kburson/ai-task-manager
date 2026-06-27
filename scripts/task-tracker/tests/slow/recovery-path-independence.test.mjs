@@ -23,11 +23,17 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { runDemote } from '../../verbs/demote.mjs';
 import { runUnblock } from '../../verbs/unblock.mjs';
 import { blockedByGuard } from '../../lib/blocked-by-guard.mjs';
 import { addBlockedBy, parseBlockedBy } from '../../lib/blocked-marker.mjs';
+import { fleetPath, orchestratorLockPath, getProjectDir, SHARED_DIR } from '../../paths.mjs';
+import { findMainWorktreePath, fleetRegistryPath } from '../../fleet-registry.mjs';
+import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
@@ -140,4 +146,71 @@ test('AC4: backward demote exit guard fires while a blocker is open (confirmed c
     fetchBlockerState: async () => 'done',
   });
   assert.equal(allowed.ok, true, 'done blocker must permit the exit');
+});
+
+// ---------------------------------------------------------------------------
+// @story #572 — path-resolver indirection layer.
+//
+// AC: the project-dir precedence is honored by the resolver, and the
+// main-anchored helpers (`fleetPath`, `orchestratorLockPath`) resolve against
+// the MAIN worktree even when called from a sibling-worktree cwd. This is the
+// invariant EPIC #571 leans on — `orchestrator.lock` + `task-fleet.json` stay
+// main-anchored so every sibling worktree shares one fleet registry / lock.
+//
+// Real git worktrees are created here (slow lane) so `findMainWorktreePath`
+// exercises its actual `git worktree list --porcelain` path instead of a stub.
+// ---------------------------------------------------------------------------
+
+function git(cwd, ...args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+}
+
+test('AC (#572): main-anchored resolvers build under the passed main path regardless of cwd', () => {
+  const main = fleetPath('/abs/main/worktree');
+  assert.equal(main, path.join('/abs/main/worktree', SHARED_DIR, 'task-fleet.json'));
+  const lock = orchestratorLockPath('/abs/main/worktree');
+  assert.equal(lock, path.join('/abs/main/worktree', SHARED_DIR, 'orchestrator.lock'));
+  // Distinct main path → distinct resolution; the helper owns layout, not anchor.
+  assert.notEqual(fleetPath('/abs/other'), main);
+});
+
+test('AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling worktree cwd', () => {
+  const root = realpathSync(mkdtempOutsideRepo('aitm-572-'));
+  try {
+    const mainWt = path.join(root, 'main');
+    mkdirSync(mainWt, { recursive: true });
+    git(mainWt, 'init', '-q', '-b', 'trunk');
+    git(mainWt, 'config', 'user.email', 't@t');
+    git(mainWt, 'config', 'user.name', 't');
+    writeFileSync(path.join(mainWt, 'f'), 'x');
+    git(mainWt, 'add', '.');
+    git(mainWt, 'commit', '-q', '-m', 'init');
+
+    const siblingWt = path.join(root, 'sibling');
+    git(mainWt, 'worktree', 'add', '-q', '-b', 'side', siblingWt);
+
+    // Called with the SIBLING dir as the project dir — must still report MAIN.
+    const resolvedMain = findMainWorktreePath(siblingWt);
+    assert.equal(
+      path.resolve(resolvedMain),
+      path.resolve(mainWt),
+      'first worktree block (main) must win regardless of caller cwd'
+    );
+
+    // fleet-registry's path resolves under MAIN, not the sibling worktree.
+    const reg = fleetRegistryPath(resolvedMain);
+    assert.equal(reg, path.join(path.resolve(mainWt), SHARED_DIR, 'task-fleet.json'));
+    assert.ok(!reg.startsWith(path.resolve(siblingWt)), 'must not anchor to the sibling worktree');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd', () => {
+  assert.equal(
+    getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '/a', CLAUDE_PROJECT_DIR: '/b' }, '/c'),
+    '/a'
+  );
+  assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: '/b' }, '/c'), '/b');
+  assert.equal(getProjectDir({}, '/c'), '/c');
 });

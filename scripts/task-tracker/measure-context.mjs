@@ -26,6 +26,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { RUNTIME_REL } from './paths.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dir, '..', '..');
@@ -58,7 +59,7 @@ const ROUTER = 'skill/shared/router.md';
 const RULES_DIR = 'skill/shared/rules';
 
 // Pickup-directive candidates, in preference order: runtime install, then source template.
-const PICKUP_CANDIDATES = ['.ai-task-manager/pickup-directive.md', 'templates/pickup-directive.md'];
+const PICKUP_CANDIDATES = [RUNTIME_REL.pickupDirective, 'templates/pickup-directive.md'];
 
 // Scenario definitions: rule files (under skill/shared/rules) loaded alongside the
 // pickup directive. Add new scenarios here.

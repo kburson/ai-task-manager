@@ -33,6 +33,7 @@
 
 import { mkdirSync, rmdirSync, writeFileSync, readFileSync, unlinkSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { issueLockPath } from './paths.mjs';
 
 export const ISSUE_LOCK_STALE_MS = 30_000;
 export const ISSUE_LOCK_DEFAULT_RETRY_MS = 500;
@@ -49,9 +50,7 @@ export class IssueLockError extends Error {
   }
 }
 
-export function issueLockPath(issue, projDir) {
-  return path.join(projDir, '.ai-task-manager', 'locks', `issue-${issue}.lock`);
-}
+export { issueLockPath };
 
 function holderPath(lockPath) {
   return path.join(lockPath, 'holder.json');

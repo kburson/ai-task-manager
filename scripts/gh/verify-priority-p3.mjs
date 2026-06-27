@@ -10,8 +10,9 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { RUNTIME_REL } from '../task-tracker/paths.mjs';
 
-const CONFIG = '.ai-task-manager/task-tracker.json';
+const CONFIG = RUNTIME_REL.config;
 
 function fail(msg) {
   console.error(`verify-priority-p3: ${msg}`);

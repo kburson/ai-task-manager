@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { getProjectDir } from './paths.mjs';
+import { getProjectDir, RUNTIME_REL, SHARED_DIR, LEGACY_CLAUDE_DIR } from './paths.mjs';
 
 export const DEFAULTS = {
   wpm: 180,
@@ -54,8 +54,8 @@ export const DEFAULTS = {
   defaultLabels: [],
   autoEndOnSwitch: true,
   hookNetworkTimeoutMs: 2000,
-  queuePath: '.ai-task-manager/task-tracker-queue.json',
-  statePath: '.ai-task-manager/task-tracker-state.json',
+  queuePath: RUNTIME_REL.queue,
+  statePath: RUNTIME_REL.state,
   idleThresholdMinutes: 5,
   reviewPauseThresholdMin: 5,
   recordWallClock: true,
@@ -148,10 +148,10 @@ export const TYPES = {
 function defaultPaths() {
   const projectDir = getProjectDir();
   return {
-    projectPath: path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
-    legacyProjectPath: path.join(projectDir, '.claude', 'task-tracker.json'),
-    userPath: path.join(os.homedir(), '.ai-task-manager', 'task-tracker-config.json'),
-    legacyUserPath: path.join(os.homedir(), '.claude', 'task-tracker-config.json'),
+    projectPath: path.join(projectDir, SHARED_DIR, 'task-tracker.json'),
+    legacyProjectPath: path.join(projectDir, LEGACY_CLAUDE_DIR, 'task-tracker.json'),
+    userPath: path.join(os.homedir(), SHARED_DIR, 'task-tracker-config.json'),
+    legacyUserPath: path.join(os.homedir(), LEGACY_CLAUDE_DIR, 'task-tracker-config.json'),
   };
 }
 

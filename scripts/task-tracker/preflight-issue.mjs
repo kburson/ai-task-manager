@@ -29,7 +29,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { existingRuntimePath } from './paths.mjs';
+import { existingRuntimePath, RUNTIME_REL, SHARED_DIR } from './paths.mjs';
 import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
 import { hasFullAutoApproved } from './lib/markers.mjs';
@@ -105,7 +105,7 @@ function templateFilename(shape) {
 
 function loadTemplate(root, shape) {
   const filename = templateFilename(shape);
-  const override = existingRuntimePath(root, `.ai-task-manager/${filename}`);
+  const override = existingRuntimePath(root, `${SHARED_DIR}/${filename}`);
   if (override && existsSync(override)) return readFileSync(override, 'utf8');
   const packaged = path.join(PACKAGE_TEMPLATES_DIR, filename);
   if (!existsSync(packaged)) {
@@ -409,8 +409,8 @@ async function main() {
     return;
   }
   const root = repoRoot();
-  const pickupPath = existingRuntimePath(root, '.ai-task-manager/pickup-directive.md');
-  const dodPath = existingRuntimePath(root, '.ai-task-manager/definition-of-done.md');
+  const pickupPath = existingRuntimePath(root, RUNTIME_REL.pickupDirective);
+  const dodPath = existingRuntimePath(root, RUNTIME_REL.dod);
 
   const missing = [];
   if (!existsSync(pickupPath)) missing.push('.ai-task-manager/pickup-directive.md');

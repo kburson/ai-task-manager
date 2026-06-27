@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { legacyPathFor, existingRuntimePath, SHARED_DIR } from './paths.mjs';
+import { legacyPathFor, statePath as resolveStatePath, SHARED_DIR_SEGMENT } from './paths.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
 import { currentSessionId } from './word-counter.mjs';
 
@@ -37,7 +37,7 @@ export function advanceWordMarker(prev, candidate) {
 // `state.lastWordMarker ?? 0` directly instead of reloading.
 export function durableWordMarker(projDir) {
   try {
-    const sp = existingRuntimePath(projDir, `${SHARED_DIR}/task-tracker-state.json`);
+    const sp = resolveStatePath(projDir);
     return loadState(sp).lastWordMarker ?? 0;
   } catch {
     return 0;
@@ -91,7 +91,7 @@ export function projectDirForState(statePath) {
   const norm = abs.split(path.sep).join('/');
   // `.ai-task-manager/` is always a real state container — anchor on the
   // rightmost one (worktree-local wins over main, per #332).
-  const aimIdx = norm.lastIndexOf('/.ai-task-manager/');
+  const aimIdx = norm.lastIndexOf(SHARED_DIR_SEGMENT);
   if (aimIdx !== -1) return abs.slice(0, aimIdx);
   // `.claude/` is trickier: `<main>/.claude/worktrees/<wt>/…` uses `.claude`
   // as a worktree HOST, not a state container. A state file living deeper

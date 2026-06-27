@@ -10,6 +10,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { STATE_MATRIX } from '../activity-policy.mjs';
+import { sessionsDir as resolveSessionsDir } from '../paths.mjs';
 
 export function readBoundState(root) {
   const statePath = path.join(root, '.ai-task-manager', 'task-tracker-state.json');
@@ -38,7 +39,7 @@ export function readBoundState(root) {
 
 function readSessionKanbanState(root, activeIssue) {
   if (!activeIssue) return null;
-  const sessionsDir = path.join(root, '.ai-task-manager', 'sessions');
+  const sessionsDir = resolveSessionsDir(root);
   let entries;
   try {
     entries = readdirSync(sessionsDir, { withFileTypes: true });

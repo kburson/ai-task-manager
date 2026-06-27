@@ -168,3 +168,6 @@ unvalidated
 unmatch
 proofless
 unticks
+basenames
+regenerable
+subdirs

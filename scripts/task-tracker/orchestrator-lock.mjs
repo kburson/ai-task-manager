@@ -19,6 +19,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { findMainWorktreePath } from './fleet-registry.mjs';
+import { orchestratorLockPath } from './paths.mjs';
 
 const DEFAULT_TTL_MS = 4 * 60 * 60 * 1000;
 
@@ -32,7 +33,7 @@ function canon(p) {
 
 function lockPath() {
   const main = canon(findMainWorktreePath(process.cwd()));
-  return path.join(main, '.ai-task-manager', 'orchestrator.lock');
+  return orchestratorLockPath(main);
 }
 
 function readLockFile(p) {

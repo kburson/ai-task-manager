@@ -14,12 +14,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gql } from '../gh/lib/github-projects.mjs';
 import { mapOption } from './lib/state-map.mjs';
+import { RUNTIME_REL } from '../task-tracker/paths.mjs';
 
 const argv = process.argv.slice(2);
 const APPLY = argv.includes('--apply');
 const DRY_RUN = !APPLY;
 const cfgIdx = argv.indexOf('--config');
-const CFG_PATH = cfgIdx >= 0 ? argv[cfgIdx + 1] : '.ai-task-manager/task-tracker.json';
+const CFG_PATH = cfgIdx >= 0 ? argv[cfgIdx + 1] : RUNTIME_REL.config;
 const THROTTLE_MS = 250;
 
 function loadCfg() {

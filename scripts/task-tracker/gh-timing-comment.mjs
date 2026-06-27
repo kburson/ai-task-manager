@@ -2,11 +2,10 @@
 // GH I/O uses `gh` CLI via execFile with timeout.
 
 import { execFile } from 'node:child_process';
-import path from 'node:path';
 import { promisify } from 'node:util';
 import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
-import { getProjectDir } from './paths.mjs';
+import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 import { formatDurationSeconds } from './lib/timing-rows.mjs';
 import { lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
@@ -392,7 +391,7 @@ export async function updateTimingComment(commentId, repo, body, { timeoutMs } =
 
 function timingLockPath(issueNumber, projDir = getProjectDir()) {
   const safe = String(issueNumber).replace(/[^A-Za-z0-9_-]/g, '_');
-  return path.join(projDir, '.ai-task-manager', 'locks', `timing-${safe}.lock`);
+  return resolveTimingLockPath(safe, projDir);
 }
 
 // Locked + retrying timing append. Concurrent appenders to the same issue

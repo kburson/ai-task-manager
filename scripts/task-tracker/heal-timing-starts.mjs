@@ -13,14 +13,12 @@
 // `updateTimingComment` (GraphQL) serialized on the per-issue timing lock.
 // Idempotent: re-running an already-canonical log is a no-op.
 
-import path from 'node:path';
-
 import {
   findTimingComment as realFindTimingComment,
   updateTimingComment as realUpdateTimingComment,
 } from './gh-timing-comment.mjs';
 import { withLock } from './locks.mjs';
-import { getProjectDir } from './paths.mjs';
+import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { loadConfig } from './config.mjs';
 import { healTimingStarts, countStartRows } from './lib/heal-timing-starts.mjs';
 
@@ -75,7 +73,7 @@ function printUsage() {
 
 function timingLockPath(issueNumber, projDir) {
   const safe = String(issueNumber).replace(/[^A-Za-z0-9_-]/g, '_');
-  return path.join(projDir, '.ai-task-manager', 'locks', `timing-${safe}.lock`);
+  return resolveTimingLockPath(safe, projDir);
 }
 
 async function main(argv) {

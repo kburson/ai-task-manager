@@ -28,7 +28,7 @@
 import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
-import { getProjectDir, SHARED_DIR } from './paths.mjs';
+import { getProjectDir, sessionsDir } from './paths.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
 import { enqueue } from './queue.mjs';
 import { pendingPausePath } from './hooks/on-stop.mjs';
@@ -210,7 +210,7 @@ export async function sweepStaleSessionDirs({
     Number.isFinite(maxAgeMs) && maxAgeMs > 0
       ? maxAgeMs
       : Number(cfg.sessionRetentionDays || 2) * 86_400_000;
-  const baseDir = path.join(projDir, SHARED_DIR, 'sessions');
+  const baseDir = sessionsDir(projDir);
   let entries;
   try {
     entries = readdirSync(baseDir, { withFileTypes: true });
