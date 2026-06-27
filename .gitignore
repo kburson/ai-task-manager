@@ -25,9 +25,11 @@ coverage/
 .ai-task-manager/solo-issue-body.md
 .ai-task-manager/sub-issue-body.md
 .ai-task-manager/references/
-# Runtime project-field caches (ephemeral)
-.ai-task-manager/project-fields.json
-.ai-task-manager/project-field-events.json
+# project-fields.json + project-field-events.json are stable declarative board
+# config (schema, aliases, per-transition field-write rules), NOT ephemeral
+# caches — tracked in git so fresh worktrees and the Test gate receive them with
+# no seeding step (#574). The runtime emit routes through writeIfChanged so a
+# refresh of identical content never dirties the tree.
 # All machine-local/transient runtime state now lives under .tmp/aitm/ (#573),
 # already ignored wholesale via the `.tmp/` rule above: state, queue, fleet,
 # cache, orchestrator.lock, locks/, sessions/, gates/, and per-app (app/claude,

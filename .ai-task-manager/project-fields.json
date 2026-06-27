@@ -1,0 +1,75 @@
+[
+  {
+    "key": "priority",
+    "name": "Priority",
+    "type": "single_select",
+    "aliases": [],
+    "options": [
+      { "name": "P0", "color": "RED", "description": "Critical - blocking" },
+      { "name": "P1", "color": "ORANGE", "description": "High - this sprint" },
+      { "name": "P2", "color": "BLUE", "description": "Normal - backlog" }
+    ]
+  },
+  {
+    "key": "size",
+    "name": "Size",
+    "type": "single_select",
+    "aliases": [],
+    "options": [
+      { "name": "XS", "color": "BLUE", "description": "1-2 hours" },
+      { "name": "S", "color": "GREEN", "description": "3-4 hours" },
+      { "name": "M", "color": "YELLOW", "description": "6-10 hours" },
+      { "name": "L", "color": "ORANGE", "description": "12-20 hours" },
+      { "name": "XL", "color": "RED", "description": "24+ hours" }
+    ]
+  },
+  {
+    "key": "estimate",
+    "name": "Estimate",
+    "type": "number",
+    "unit": "hours",
+    "aliases": []
+  },
+  {
+    "key": "engagedTime",
+    "name": "Engaged",
+    "type": "text",
+    "aliases": ["Engaged Time", "Actual Hours"]
+  },
+  {
+    "key": "sessionTime",
+    "name": "Session",
+    "type": "text",
+    "aliases": ["Session Time", "Actual Session Time"]
+  },
+  {
+    "key": "reviewTime",
+    "name": "Review",
+    "type": "text",
+    "aliases": ["Review Time"]
+  },
+  {
+    "key": "planTime",
+    "name": "Plan",
+    "type": "text",
+    "aliases": ["Plan Time"]
+  },
+  {
+    "key": "rank",
+    "name": "Rank",
+    "type": "number",
+    "aliases": []
+  },
+  {
+    "key": "startTime",
+    "name": "Started",
+    "type": "text",
+    "aliases": ["Start time", "Start Time", "Start date", "Start Date"]
+  },
+  {
+    "key": "blockedBy",
+    "name": "Blocked By",
+    "type": "text",
+    "aliases": ["BlockedBy", "Blocked-By"]
+  }
+]

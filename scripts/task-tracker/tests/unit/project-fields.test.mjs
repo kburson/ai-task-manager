@@ -1,11 +1,15 @@
 // @story #309
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFieldSyncPlan, valueForProjectField } from '../../project-fields.mjs';
+import { writeIfChanged } from '../../lib/write-if-changed.mjs';
+import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(here, '../../../..');
 const defaultDefs = JSON.parse(
   readFileSync(path.join(here, '../../../../config/project-fields.default.json'), 'utf8')
 );
@@ -127,5 +131,51 @@ assert.deepEqual(minutesFallback, [
   { key: 'reviewTime', type: 'text', fieldId: 'F_REV', value: { text: '00d 00h 05m 00s' } },
   { key: 'planTime', type: 'text', fieldId: 'F_PLN', value: { text: '00d 00h 30m 00s' } },
 ]);
+
+// ── #574 / EPIC #571 — field config is tracked, not an ephemeral cache ──────
+// project-fields.json + project-field-events.json hold this project's stable
+// declarative board config (field schema, aliases, per-transition write rules)
+// and must be tracked so a fresh `git worktree add` / the Test gate receive them
+// with zero seeding.
+const TRACKED_FIELD_CONFIG = [
+  '.ai-task-manager/project-fields.json',
+  '.ai-task-manager/project-field-events.json',
+];
+for (const rel of TRACKED_FIELD_CONFIG) {
+  const listed = execFileSync('git', ['ls-files', '--', rel], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
+  assert.equal(listed, rel, `${rel} is tracked in git (git ls-files lists it)`);
+  // AC2 — the tracked config is not worktree-modified: the runtime must never
+  // rewrite identical bytes and dirty it, since a dirtied tree disables the
+  // content-addressed verifier cache. `ls-files -m` lists tracked-but-modified
+  // paths; empty here whether the add is still staged (this story) or committed.
+  const modified = execFileSync('git', ['ls-files', '-m', '--', rel], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
+  assert.equal(modified, '', `${rel} is not worktree-modified (tree stays clean)`);
+}
+
+// ── #574 — writeIfChanged is compare-before-write ───────────────────────────
+// Identical content performs no write (no mtime touch); a real delta writes.
+{
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-wic-'));
+  const file = path.join(dir, 'nested', 'sample.json');
+
+  const first = writeIfChanged(file, '{"a":1}\n');
+  assert.deepEqual(first, { written: true }, 'first write creates the file');
+  const mtime1 = statSync(file).mtimeMs;
+
+  const same = writeIfChanged(file, '{"a":1}\n');
+  assert.deepEqual(same, { written: false }, 'identical content performs no write');
+  const mtime2 = statSync(file).mtimeMs;
+  assert.equal(mtime2, mtime1, 'no-op write does not touch mtime');
+
+  const delta = writeIfChanged(file, '{"a":2}\n');
+  assert.deepEqual(delta, { written: true }, 'a real delta is written');
+  assert.equal(readFileSync(file, 'utf8'), '{"a":2}\n', 'delta content landed on disk');
+}
 
 console.log('project-fields.test.mjs: all passed');

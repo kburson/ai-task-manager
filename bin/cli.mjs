@@ -30,6 +30,7 @@ import {
 } from '../scripts/task-tracker/codex-superpowers.mjs';
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
 import { TEMPLATE_FILES } from './lib/template-manifest.mjs';
+import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 import { getProvider } from '../scripts/providers/index.mjs';
@@ -411,16 +412,9 @@ function patchGitignore(targetDir) {
   if (changed) writeFileSync(gitignorePath, content, 'utf8');
 }
 
-function writeIfChanged(file, content) {
-  mkdirSync(dirname(file), { recursive: true });
-  if (existsSync(file) && readFileSync(file, 'utf8') === content) return false;
-  writeFileSync(file, content, 'utf8');
-  return true;
-}
-
 function installStub(file, content, label) {
-  const changed = writeIfChanged(file, content);
-  ok(`${label} ${dim(relative(process.cwd(), file))}${changed ? '' : ` ${dim('(unchanged)')}`}`);
+  const { written } = writeIfChanged(file, content);
+  ok(`${label} ${dim(relative(process.cwd(), file))}${written ? '' : ` ${dim('(unchanged)')}`}`);
 }
 
 function replaceWithSymlink(dest, src, label) {
@@ -655,7 +649,9 @@ function installTemplates(targetDir) {
     const out = join(templateDest, name);
     const bundled = readFileSync(src, 'utf8');
     if (!existsSync(out)) {
-      copyFileSync(src, out);
+      // Tracked field config (#574) — route the initial emit through the shared
+      // compare-before-write writer so re-running install never dirties the tree.
+      writeIfChanged(out, bundled);
       ok(`Config ${dim('.ai-task-manager/' + name)}`);
       continue;
     }
