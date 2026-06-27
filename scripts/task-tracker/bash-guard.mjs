@@ -29,8 +29,7 @@ import { join } from 'node:path';
 
 import { evaluateGhEdit, evaluateGhCreate } from './lib/gh-edit-guard.mjs';
 import { evaluateAitmPath } from './lib/aitm-path-guard.mjs';
-import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
-import { readBoundState } from './lib/bound-state.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 let input = {};
 try {
@@ -214,29 +213,12 @@ for (const p of allPaths) {
 }
 
 // --- gh issue edit body protection ---
-// Refuses writes that would reintroduce deprecated visible-checkbox lines or
-// drop hidden verb-completion markers. Diff-based: safe wholesale rewrites of
-// bodies that never had the legacy lines or markers pass through.
-// Resolve the bound issue's kanban state once for any per-state gates
-// inside evaluateGhEdit (e.g. #281 Refine deep-dive gate). The callback only
-// reports state when the target issue IS the currently-bound issue — guarding
-// an unbound issue's body against a state we don't know would be guessing.
-const bound = readBoundState(projectRoot);
-const boundIssueNum = bound.activeIssue
-  ? Number(String(bound.activeIssue).replace(/^#/, ''))
-  : null;
-
-const ghEditResult = evaluateGhEdit({
-  command,
-  readBodyFile: (p) => readFileSync(p, 'utf8'),
-  fetchCurrentBody: (n) =>
-    execSync(`gh issue view ${Number(n)} --json body --jq .body`, {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: GH_API_TIMEOUT_MS,
-    }),
-  resolveCurrentState: (n) => (Number(n) === boundIssueNum ? bound.state : undefined),
-});
+// #361 hard refusal: any `gh issue edit --body` / `--body-file` from Bash is
+// forbidden (route body writes through `mutateIssueBody`). Label/title/
+// assignee edits, carrying no body, pass through. (#566 removed the former
+// diff-based path — it was unreachable behind the hard refusal — so the guard
+// no longer needs the live body or the bound issue's state.)
+const ghEditResult = evaluateGhEdit({ command });
 if (ghEditResult.block) block(ghEditResult.reason);
 
 // --- gh issue create body protection ---

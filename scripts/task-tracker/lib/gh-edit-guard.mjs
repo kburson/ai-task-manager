@@ -328,11 +328,17 @@ export function checkBodyChange({ newBody, currentBody, issueNumber, currentStat
   return { block: false };
 }
 
-// Convenience wrapper: parses the command, resolves the body via injected
-// readers, and runs the diff check. Returns { block: false } when the command
-// is not a relevant `gh issue edit`, when the body can't be resolved, or when
-// the diff is safe.
-export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody, resolveCurrentState }) {
+// Edit guard. `gh issue edit` resolves via exactly two live exits: a
+// `source === 'none'` pass-through (label/title/assignee edits carry no body)
+// and the #361 hard refusal of `--body` / `--body-file`. Every legitimate
+// body write goes through `mutateIssueBody`, which fetches the live body in
+// the same transaction and runs the marker-loss invariant — so a direct
+// `gh issue edit --body*` from Bash is always refused here, regardless of
+// content. (#566 removed the former post-refusal diff block: it was
+// unreachable behind the hard refusal and harboured a `currentBody = ''`
+// fail-open. The diff logic survives, exercised via `mutateIssueBody`, in the
+// exported `checkBodyChange`.)
+export function evaluateGhEdit({ command }) {
   const parsed = parseGhIssueEdit(command);
   if (!parsed || parsed.source === 'none') return { block: false };
 
@@ -363,44 +369,10 @@ export function evaluateGhEdit({ command, readBodyFile, fetchCurrentBody, resolv
     };
   }
 
-  // Unreachable in practice — the source==='none' early return above and the
-  // hard refusal above leave no other parsed.source value. Kept for symmetry
-  // with the original diff-guard contract; if a future parser adds a new
-  // body source the refusal-by-default catches it.
-  let newBody;
-  if (parsed.source === 'file') {
-    try {
-      newBody = readBodyFile(parsed.path);
-    } catch {
-      return { block: false };
-    }
-  } else {
-    newBody = parsed.body;
-  }
-  if (newBody == null) return { block: false };
-
-  let currentBody = '';
-  try {
-    currentBody = fetchCurrentBody(parsed.issueNumber) ?? '';
-  } catch {
-    currentBody = '';
-  }
-
-  let currentState;
-  if (typeof resolveCurrentState === 'function') {
-    try {
-      currentState = resolveCurrentState(parsed.issueNumber) ?? undefined;
-    } catch {
-      currentState = undefined;
-    }
-  }
-
-  return checkBodyChange({
-    newBody,
-    currentBody,
-    issueNumber: parsed.issueNumber,
-    currentState,
-  });
+  // `parseGhIssueEdit` only yields source ∈ {none, file, inline}; the two
+  // returns above are exhaustive. Defensive default for a hypothetical future
+  // body source — a non-body edit should pass.
+  return { block: false };
 }
 
 // Wrapper for `gh issue create`. No current body — only legacy-introduction
