@@ -133,8 +133,11 @@ test('AC4: skill docs (router.md + rules/*.md) carry no residual direct paths', 
 
 const SCRIPTS_DIR = path.join(ROOT, 'scripts');
 
+// #574 relocated pickup-directive.md / definition-of-done.md under
+// `.ai-task-manager/templates/`, so the `templates/` segment is optional here —
+// the guard must catch a raw literal at either the legacy or the new location.
 const RUNTIME_LITERAL_RE =
-  /\.ai-task-manager\/(task-tracker(-state|-queue)?\.json|task-fleet\.json|orchestrator\.lock|pickup-directive\.md|definition-of-done\.md|sessions\/|locks\/|scratch\/)|\.claude\/task-tracker/;
+  /\.ai-task-manager\/(task-tracker(-state|-queue)?\.json|task-fleet\.json|orchestrator\.lock|(?:templates\/)?pickup-directive\.md|(?:templates\/)?definition-of-done\.md|sessions\/|locks\/|scratch\/)|\.claude\/task-tracker/;
 
 // Files whose surviving literal is a message / content constant / frozen
 // fixture, not a path-construction site. Narrow and explicit so a reintroduced
