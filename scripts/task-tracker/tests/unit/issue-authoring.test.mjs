@@ -16,18 +16,18 @@ const PACKAGE_TEMPLATES = join(repoRoot, 'templates');
 
 function fixtureDir() {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-authoring-'));
-  mkdirSync(join(dir, '.ai-task-manager'), { recursive: true });
+  mkdirSync(join(dir, '.ai-task-manager/templates'), { recursive: true });
   writeFileSync(
     join(dir, '.ai-task-manager/task-tracker.json'),
     JSON.stringify({ repo: 'kburson/ai-task-manager', assignee: '@me', projectId: 'PVT_X' })
   );
   copyFileSync(
     join(PACKAGE_TEMPLATES, 'pickup-directive.md'),
-    join(dir, '.ai-task-manager/pickup-directive.md')
+    join(dir, '.ai-task-manager/templates/pickup-directive.md')
   );
   copyFileSync(
     join(PACKAGE_TEMPLATES, 'definition-of-done.md'),
-    join(dir, '.ai-task-manager/definition-of-done.md')
+    join(dir, '.ai-task-manager/templates/definition-of-done.md')
   );
   writeFileSync(join(dir, 'scope.md'), 'A short scope paragraph.\n');
   writeFileSync(join(dir, 'acs.md'), '- [ ] First criterion\n- [ ] Second criterion\n');

@@ -257,14 +257,12 @@ try {
   // .gitignore entries written
   const gitignore = readFileSync(path.join(target, '.gitignore'), 'utf8');
   // #573: machine-local runtime state moved under `.tmp/aitm/` (covered by the
-  // `.tmp/` entry); only tracked-dir backups + the references copy stay seeded.
+  // `.tmp/` entry). #574: the markdown templates + references/ moved under
+  // `.ai-task-manager/templates/` and are tracked; only local `.bak` edit
+  // backups are ignored there.
   assert.ok(
-    gitignore.includes('.ai-task-manager/pickup-directive.md.bak'),
-    'pickup backup entry missing'
-  );
-  assert.ok(
-    gitignore.includes('.ai-task-manager/references/'),
-    'references gitignore entry missing'
+    gitignore.includes('.ai-task-manager/templates/*.bak'),
+    'template backup glob entry missing'
   );
 
   // #412: the installer must ignore the hidden `.tmp/` scratch dir the tools
@@ -277,13 +275,13 @@ try {
     'installer must not ignore a bare tmp/ (regression #412)'
   );
 
-  // Templates written to shared runtime folder
+  // Templates written to shared runtime folder under templates/ (#574)
   assert.ok(
-    existsSync(path.join(target, '.ai-task-manager', 'pickup-directive.md')),
+    existsSync(path.join(target, '.ai-task-manager', 'templates', 'pickup-directive.md')),
     'pickup directive missing'
   );
   assert.ok(
-    existsSync(path.join(target, '.ai-task-manager', 'definition-of-done.md')),
+    existsSync(path.join(target, '.ai-task-manager', 'templates', 'definition-of-done.md')),
     'definition of done missing'
   );
 

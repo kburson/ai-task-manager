@@ -36,7 +36,7 @@ const CHECKS = {
   // R4R cleanup
   'pickup-r4r': {
     mode: 'absent',
-    file: '.ai-task-manager/pickup-directive.md',
+    file: '.ai-task-manager/templates/pickup-directive.md',
     pattern: 'r4r',
   },
   'templates-pickup-r4r': {
@@ -107,7 +107,7 @@ const CHECKS = {
   },
   'pickup-directive-bak-removed': {
     mode: 'not-exists',
-    file: '.ai-task-manager/pickup-directive.md.bak',
+    file: '.ai-task-manager/templates/pickup-directive.md.bak',
   },
 };
 

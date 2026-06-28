@@ -78,7 +78,7 @@ const BODY_NO_DEEP_DIVE = [
   'do the thing',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.ai-task-manager/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
   '---',
   '',

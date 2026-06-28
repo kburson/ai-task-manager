@@ -24,14 +24,20 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { runDemote } from '../../verbs/demote.mjs';
 import { runUnblock } from '../../verbs/unblock.mjs';
 import { blockedByGuard } from '../../lib/blocked-by-guard.mjs';
 import { addBlockedBy, parseBlockedBy } from '../../lib/blocked-marker.mjs';
-import { fleetPath, orchestratorLockPath, getProjectDir } from '../../paths.mjs';
+import {
+  fleetPath,
+  orchestratorLockPath,
+  getProjectDir,
+  pickupDirectivePath,
+  dodPath,
+} from '../../paths.mjs';
 import { findMainWorktreePath, fleetRegistryPath } from '../../fleet-registry.mjs';
 import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 
@@ -203,6 +209,60 @@ test('AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling 
     const reg = fleetRegistryPath(resolvedMain);
     assert.equal(reg, path.join(path.resolve(mainWt), '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
     assert.ok(!reg.startsWith(path.resolve(siblingWt)), 'must not anchor to the sibling worktree');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// @story #574 — tracked templates survive a fresh `git worktree add` with zero
+// backfill. This is the load-bearing invariant for #571: "tracked set ≡
+// worktree-required set". The consolidated templates live under
+// `.ai-task-manager/templates/` and are committed, so a sibling worktree gets
+// them for free at checkout — no seed-worktree step. Real git worktrees are
+// created here (slow lane) so the checkout actually materializes the tracked
+// tree instead of a stub.
+test('AC (#574): relocated .ai-task-manager/templates survive a fresh worktree checkout', () => {
+  const root = realpathSync(mkdtempOutsideRepo('aitm-574-'));
+  try {
+    const mainWt = path.join(root, 'main');
+    const tplDir = path.join(mainWt, '.ai-task-manager', 'templates');
+    mkdirSync(tplDir, { recursive: true });
+    git(mainWt, 'init', '-q', '-b', 'trunk');
+    git(mainWt, 'config', 'user.email', 't@t');
+    git(mainWt, 'config', 'user.name', 't');
+    writeFileSync(path.join(tplDir, 'pickup-directive.md'), 'PICKUP\n');
+    writeFileSync(path.join(tplDir, 'definition-of-done.md'), 'DOD\n');
+    git(mainWt, 'add', '.');
+    git(mainWt, 'commit', '-q', '-m', 'init');
+
+    // The resolvers point at the nested templates/ tail under SHARED_DIR.
+    assert.equal(
+      pickupDirectivePath(mainWt),
+      path.join(mainWt, '.ai-task-manager', 'templates', 'pickup-directive.md')
+    );
+    assert.equal(
+      dodPath(mainWt),
+      path.join(mainWt, '.ai-task-manager', 'templates', 'definition-of-done.md')
+    );
+
+    // A fresh worktree checkout — no seed step — carries the tracked templates.
+    const siblingWt = path.join(root, 'sibling');
+    git(mainWt, 'worktree', 'add', '-q', '-b', 'side', siblingWt);
+
+    const sibPickup = path.join(siblingWt, '.ai-task-manager', 'templates', 'pickup-directive.md');
+    const sibDod = path.join(siblingWt, '.ai-task-manager', 'templates', 'definition-of-done.md');
+    assert.ok(
+      existsSync(sibPickup),
+      'pickup-directive.md must exist in the fresh worktree (no backfill)'
+    );
+    assert.ok(
+      existsSync(sibDod),
+      'definition-of-done.md must exist in the fresh worktree (no backfill)'
+    );
+    assert.equal(readFileSync(sibPickup, 'utf8'), 'PICKUP\n');
+    assert.equal(readFileSync(sibDod, 'utf8'), 'DOD\n');
+    assert.equal(pickupDirectivePath(siblingWt), sibPickup);
+    assert.equal(dodPath(siblingWt), sibDod);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

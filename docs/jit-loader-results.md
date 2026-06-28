@@ -87,7 +87,7 @@ That's the invoked floor: **~2,961 tokens**. Pre-JIT it was ~12,000.
 ### Phase 4 — Verb-specific (just-in-time)
 
 8. **Tier 2 rule file for the verb that's about to run.** `/task #N` pulls `rules/bind.md`. `/task review` pulls `rules/review.md`. Each emits one sentinel and stays loaded for the rest of the session.
-9. **Pickup directive** (`.ai-task-manager/pickup-directive.md`). Loaded on sub-issue pickup. After #121, already-applied Deep-Dive Analysis appendices on the issue body collapse into a `<details>` block — GitHub renders them folded, and the pickup directive instructs Claude to skip collapsed blocks unless told to expand.
+9. **Pickup directive** (`.ai-task-manager/templates/pickup-directive.md`). Loaded on sub-issue pickup. After #121, already-applied Deep-Dive Analysis appendices on the issue body collapse into a `<details>` block — GitHub renders them folded, and the pickup directive instructs Claude to skip collapsed blocks unless told to expand.
 
 A full session that binds an issue, walks the state machine, reviews, and closes — touching four Tier-2 files — peaks at **~9,459 tokens**. The same session pre-JIT would have started at 12K and grown from there.
 

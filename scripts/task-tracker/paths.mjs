@@ -9,6 +9,13 @@ export const SESSIONS_SUBDIR = 'sessions';
 export const LOCKS_SUBDIR = 'locks';
 export const SCRATCH_SUBDIR = 'scratch';
 
+// Tracked markdown/reference templates consolidated under one folder (#574,
+// EPIC #571). The skill-installed behavior-defining templates (pickup-directive,
+// definition-of-done, the body/report scaffolds, references/) all live under
+// `.ai-task-manager/templates/`, separating tracked template content from the
+// JSON config that sits at the SHARED_DIR root.
+export const TEMPLATES_SUBDIR = 'templates';
+
 // Machine-local / transient runtime tree (#573, EPIC #571). Every artifact that
 // is NOT a behavior-defining shared file is relocated under this base, which
 // nests inside the already-gitignored `.tmp/` root, so the tracked config
@@ -37,11 +44,21 @@ const FILE = {
   dod: 'definition-of-done.md',
 };
 
+// Keys of FILE whose target lives under the tracked templates subdir (#574)
+// rather than directly at the SHARED_DIR root.
+const TEMPLATE_KEYS = new Set(['pickupDirective', 'dod']);
+
 // Project-root-relative runtime paths (e.g. `.ai-task-manager/task-tracker.json`).
 // Used where a relative path is the stored/compared value (config defaults,
 // candidate lists). Absolute resolvers below build the same layout via path.join.
+// Template-family entries nest under `${SHARED_DIR}/${TEMPLATES_SUBDIR}/` (#574).
 export const RUNTIME_REL = Object.freeze(
-  Object.fromEntries(Object.entries(FILE).map(([k, v]) => [k, `${SHARED_DIR}/${v}`]))
+  Object.fromEntries(
+    Object.entries(FILE).map(([k, v]) => [
+      k,
+      TEMPLATE_KEYS.has(k) ? `${SHARED_DIR}/${TEMPLATES_SUBDIR}/${v}` : `${SHARED_DIR}/${v}`,
+    ])
+  )
 );
 
 // Project-root-relative paths for the machine-local runtime artifacts that #573
@@ -67,8 +84,11 @@ const LEGACY_RUNTIME_PATHS = new Map([
   ['.ai-task-manager/task-tracker-state.json', '.claude/task-tracker-state.json'],
   ['.ai-task-manager/task-tracker-queue.json', '.claude/task-tracker-queue.json'],
   ['.ai-task-manager/task-fleet.json', '.claude/task-fleet.json'],
-  ['.ai-task-manager/pickup-directive.md', '.claude/task-tracker/pickup-directive.md'],
-  ['.ai-task-manager/definition-of-done.md', '.claude/task-tracker/definition-of-done.md'],
+  ['.ai-task-manager/templates/pickup-directive.md', '.claude/task-tracker/pickup-directive.md'],
+  [
+    '.ai-task-manager/templates/definition-of-done.md',
+    '.claude/task-tracker/definition-of-done.md',
+  ],
 ]);
 
 function normalizeRelative(p) {
@@ -192,6 +212,12 @@ export function timingLockPath(key, projDir = getProjectDir()) {
 // Shared scratch directory (gitignored working files).
 export function scratchDir(projDir = getProjectDir()) {
   return path.join(projDir, SHARED_DIR, SCRATCH_SUBDIR);
+}
+
+// Tracked templates directory (.ai-task-manager/templates/) — the consolidated
+// home for skill-installed markdown templates and references/ (#574).
+export function templatesDir(projDir = getProjectDir()) {
+  return path.join(projDir, SHARED_DIR, TEMPLATES_SUBDIR);
 }
 
 // ---------------------------------------------------------------------------

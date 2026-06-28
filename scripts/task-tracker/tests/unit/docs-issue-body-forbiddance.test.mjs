@@ -32,7 +32,7 @@ test('CLAUDE.md documents the route-through-scripts rule', () => {
 // Only assert on copies that exist in this checkout.
 const PICKUP_FILES = [
   'templates/pickup-directive.md',
-  '.ai-task-manager/pickup-directive.md',
+  '.ai-task-manager/templates/pickup-directive.md',
 ].filter((f) => existsSync(f));
 
 for (const file of PICKUP_FILES) {

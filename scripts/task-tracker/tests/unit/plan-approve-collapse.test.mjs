@@ -48,7 +48,7 @@ Body content.
 - [x] done
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
-> Follow: \`.ai-task-manager/pickup-directive.md\`
+> Follow: \`.ai-task-manager/templates/pickup-directive.md\`
 
 ---
 

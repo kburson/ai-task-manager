@@ -29,7 +29,7 @@ Owned by each worker. Minimal — only the non-negotiable repo rules needed for 
 
 The boot pack does **not** inline rule text. It names files to reload from source:
 
-- A single pointer line: `Reload [.ai-task-manager/session-boot.md](../../.ai-task-manager/session-boot.md) and follow its Tier-1 list.` (See cross-reference to #190 in §6.)
+- A single pointer line: `Reload [.ai-task-manager/templates/session-boot.md](../../.ai-task-manager/templates/session-boot.md) and follow its Tier-1 list.` (See cross-reference to #190 in §6.)
 - The worker's binding instruction: `Your first action is \`/task #<N>\` to bind this session.`
 
 Nothing else. No copied skill bodies, no paraphrased rules, no orchestrator history.
@@ -116,7 +116,7 @@ This is the contract that keeps fan-out cheap: N workers do not each carry N cop
 
 ## 6. Cross-reference to the session boot index (#190)
 
-The worker boot pack does not inline foundational rules. It points at [`.ai-task-manager/session-boot.md`](../../.ai-task-manager/session-boot.md), which is the source-of-truth boot index from #190.
+The worker boot pack does not inline foundational rules. It points at [`.ai-task-manager/templates/session-boot.md`](../../.ai-task-manager/templates/session-boot.md), which is the source-of-truth boot index from #190.
 
 Concretely: when a worker session starts cold (the default — fresh worktree, no prior context), its first action is to read `session-boot.md` and reload every Tier-1 file the index names. The orchestrator does **not** paraphrase rules into the worker prompt. Paraphrases drift; source files do not.
 
@@ -142,7 +142,7 @@ A complete worker prompt fits in well under a page. The example below briefs a w
 
 > **You are a parallel worker bound to issue `#312`.**
 >
-> **Boot:** Reload [`.ai-task-manager/session-boot.md`](../../.ai-task-manager/session-boot.md) and follow its Tier-1 list. Your first action is `/task #312` to bind this session.
+> **Boot:** Reload [`.ai-task-manager/templates/session-boot.md`](../../.ai-task-manager/templates/session-boot.md) and follow its Tier-1 list. Your first action is `/task #312` to bind this session.
 >
 > **Task:** Extract the policy-loading code from `scripts/task-tracker/activity-guard.mjs` into a new `scripts/task-tracker/lib/activity-policy-loader.mjs`. Preserve all public behaviour; the existing tests must continue to pass.
 >

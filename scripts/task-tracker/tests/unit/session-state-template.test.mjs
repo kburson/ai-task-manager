@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @story #190
-// Asserts that .ai-task-manager/session-state-template.md (and its template
+// Asserts that .ai-task-manager/templates/session-state-template.md (and its template
 // source) exists and contains the 9 required field headings in order.
 
 import { strict as assert } from 'node:assert';

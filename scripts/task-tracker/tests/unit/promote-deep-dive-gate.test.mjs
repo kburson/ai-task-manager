@@ -15,7 +15,7 @@ const PLAN_BODY_NO_DEEP_DIVE = [
   '- [ ] thing done',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.ai-task-manager/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
   '<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":2}} -->',
 ].join('\n');
@@ -29,7 +29,7 @@ const PLAN_BODY_WITH_DEEP_DIVE = [
   '- [ ] thing done',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.ai-task-manager/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
   '<!-- aitm-deep-dive-posted: 2026-06-04 -->',
   '## Deep-Dive Analysis (2026-06-04)',

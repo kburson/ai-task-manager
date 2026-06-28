@@ -25,7 +25,7 @@ If the sentinel is already present in context, do not re-read.
 
 ## Pickup directive
 
-After bind succeeds, follow `.ai-task-manager/pickup-directive.md`. That file is Tier-2 and is JIT-loaded on bind by the same sentinel mechanism (`aitm-skill-loaded:pickup:<version>`).
+After bind succeeds, follow `.ai-task-manager/templates/pickup-directive.md`. That file is Tier-2 and is JIT-loaded on bind by the same sentinel mechanism (`aitm-skill-loaded:pickup:<version>`).
 
 The pickup directive enforces:
 

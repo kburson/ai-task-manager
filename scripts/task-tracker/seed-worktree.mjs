@@ -14,9 +14,15 @@ import path from 'node:path';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
-const SRC_FILES = ['task-tracker.json', 'pickup-directive.md', 'definition-of-done.md'];
+// Paths are relative to `.ai-task-manager`. The markdown templates consolidated
+// under `templates/` (#574); task-tracker.json stays at the SHARED_DIR root.
+const SRC_FILES = [
+  'task-tracker.json',
+  'templates/pickup-directive.md',
+  'templates/definition-of-done.md',
+];
 const EMPTY_FILES = ['task-tracker-state.json'];
-const TEMPLATE_FILES = ['pickup-directive.md', 'definition-of-done.md'];
+const TEMPLATE_FILES = ['templates/pickup-directive.md', 'templates/definition-of-done.md'];
 
 export function seedWorktree({ source, target }) {
   if (!source || typeof source !== 'string') {
@@ -46,7 +52,9 @@ export function seedWorktree({ source, target }) {
 
   for (const f of SRC_FILES) {
     const data = readFileSync(path.join(srcDir, f));
-    writeFileSync(path.join(tgtDir, f), data);
+    const tgt = path.join(tgtDir, f);
+    mkdirSync(path.dirname(tgt), { recursive: true });
+    writeFileSync(tgt, data);
   }
   for (const f of EMPTY_FILES) {
     const p = path.join(tgtDir, f);
@@ -73,6 +81,7 @@ export function seedMissingTemplates({ source, target }) {
     if (existsSync(tgt)) continue;
     const src = path.join(srcDir, f);
     if (!existsSync(src)) continue;
+    mkdirSync(path.dirname(tgt), { recursive: true });
     writeFileSync(tgt, readFileSync(src));
     copied.push(f);
   }
@@ -137,6 +146,7 @@ export function seedWorktreeBackfill({ source, target }) {
     if (existsSync(tgt)) continue;
     const src = path.join(srcDir, f);
     if (!existsSync(src)) continue;
+    mkdirSync(path.dirname(tgt), { recursive: true });
     writeFileSync(tgt, readFileSync(src));
     copied.push(f);
   }

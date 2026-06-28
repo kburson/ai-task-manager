@@ -65,8 +65,8 @@ test('worker-context-contract.md cross-references the #190 session boot index', 
   const body = readFileSync(CONTRACT, 'utf8');
   assert.match(
     body,
-    /\.ai-task-manager\/session-boot\.md/,
-    'contract must reference .ai-task-manager/session-boot.md (the #190 boot index)'
+    /\.ai-task-manager\/templates\/session-boot\.md/,
+    'contract must reference .ai-task-manager/templates/session-boot.md (the #190 boot index)'
   );
   assert.match(body, /#190/, 'contract must mention #190 explicitly so the link is auditable');
 });

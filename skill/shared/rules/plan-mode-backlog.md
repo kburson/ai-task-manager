@@ -35,7 +35,7 @@ npx aitm preflight-issue --check-only
 
 Non-zero exit: STOP. Surface stderr verbatim. The user must reinstall the skill. Do not create any issues. Resume only after the user confirms install completed.
 
-The preflight verifies `.ai-task-manager/pickup-directive.md` and `.ai-task-manager/definition-of-done.md` exist — these encode the contract the close gate enforces.
+The preflight verifies `.ai-task-manager/templates/pickup-directive.md` and `.ai-task-manager/templates/definition-of-done.md` exist — these encode the contract the close gate enforces.
 
 When assembling a real body, run the script without `--check-only` and capture stdout — it emits the canonical DoD + Pickup Directive tail block with `<this-issue-#>` and `<parent-epic-#>` placeholders.
 

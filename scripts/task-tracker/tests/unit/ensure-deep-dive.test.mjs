@@ -53,7 +53,7 @@ const BODY_WITH_DIRECTIVE = [
   'do thing',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.ai-task-manager/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
   '---',
   '',

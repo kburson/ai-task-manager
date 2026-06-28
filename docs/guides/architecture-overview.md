@@ -22,7 +22,7 @@ after `npm update` the marker version changes and reload is forced.
 - **Tier-1 — router (`skill/shared/router.md`).** Carries only the hard
   cross-cutting rules and a verb → rule-file routing table. Emits
   `aitm-skill-loaded:router:<version>`. After a compact/clear it re-runs the
-  `.ai-task-manager/session-boot.md` boot index before any verb.
+  `.ai-task-manager/templates/session-boot.md` boot index before any verb.
 - **Tier-2 — rule files (`skill/shared/rules/*.md`).** Detailed per-verb
   contracts (`bind`, `close`, `state-walk`, `functional-dod`, `parallel`, …),
   each loaded just-in-time when its verb runs and emitting its own sentinel.

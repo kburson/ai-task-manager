@@ -117,7 +117,9 @@ export async function verbReview(ctx) {
         process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
         for (const r of result.refusedRules)
           process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
-        process.stderr.write('\nSee .ai-task-manager/pickup-directive.md Hard Rules.\n\n');
+        process.stderr.write(
+          '\nSee .ai-task-manager/templates/pickup-directive.md Hard Rules.\n\n'
+        );
         process.exit(4);
       }
     }

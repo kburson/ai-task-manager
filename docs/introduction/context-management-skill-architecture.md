@@ -120,7 +120,7 @@ Tier-1 files from disk.
 ## Post-compact and fresh-session recovery
 
 `templates/session-boot.md` is the source template for the installed
-`.ai-task-manager/session-boot.md`. It is the recovery contract for compact,
+`.ai-task-manager/templates/session-boot.md`. It is the recovery contract for compact,
 clear, and fresh sessions.
 
 The boot index divides context into layers:
@@ -128,7 +128,7 @@ The boot index divides context into layers:
 - **Tier 0, always live:** host and project instructions such as global and
   project `CLAUDE.md`.
 - **Tier 1, required on bind:** `skill/shared/router.md`,
-  `.ai-task-manager/pickup-directive.md`,
+  `.ai-task-manager/templates/pickup-directive.md`,
   `.ai-task-manager/task-tracker.json`, and the active GitHub issue body.
 - **Tier 2, JIT on verb:** the rule file selected by the router.
 
@@ -150,7 +150,7 @@ authoritative workflow rules.
 Compaction is good at preserving narrative and bad at preserving operational
 structure. AI Task Manager handles that separately with
 `templates/session-state-template.md`, installed as
-`.ai-task-manager/session-state-template.md`.
+`.ai-task-manager/templates/session-state-template.md`.
 
 The template defines nine fields:
 
@@ -202,7 +202,7 @@ principles to parallel execution.
 Workers receive three packs:
 
 - an orchestrator pack that remains private to the orchestrator,
-- a worker boot pack that points at `.ai-task-manager/session-boot.md`,
+- a worker boot pack that points at `.ai-task-manager/templates/session-boot.md`,
 - a worker task pack with the bound issue, owned files, forbidden paths,
   verification target, stop conditions, and verb chain.
 

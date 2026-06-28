@@ -42,7 +42,7 @@ Every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool
    Do NOT rebase/merge/reset — risks corrupting state across worktrees.
 5. npm install --no-audit --no-fund
 6. npx aitm "#<N>" --role agent
-7. Read .ai-task-manager/pickup-directive.md IN FULL.
+7. Read .ai-task-manager/templates/pickup-directive.md IN FULL.
 ```
 
 **State-isolation guard.** Before dispatching, snapshot `.ai-task-manager/task-tracker.json` and `task-tracker-state.json` from the main repo. Agents occasionally resolve git-root wrong from inside a worktree and write to main-repo state. After all agents return, diff the snapshots; restore if changed unexpectedly.

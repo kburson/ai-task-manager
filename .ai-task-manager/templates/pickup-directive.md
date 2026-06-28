@@ -27,7 +27,7 @@ Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a proc
 
 ## Required steps before writing any code
 
-0. **Post-Compact/Clear Recovery.** If this session was just compacted, cleared, or freshly started (continuation banner, fresh-session preamble, or no `aitm-boot-recovered:*` sentinel in context), follow [`.ai-task-manager/session-boot.md`](./session-boot.md) before any step below, then emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel.
+0. **Post-Compact/Clear Recovery.** If this session was just compacted, cleared, or freshly started (continuation banner, fresh-session preamble, or no `aitm-boot-recovered:*` sentinel in context), follow [`.ai-task-manager/templates/session-boot.md`](./session-boot.md) before any step below, then emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel.
 
 1. **Move the issue to `in-progress` and capture your entry word count:**
 

@@ -470,15 +470,15 @@ context management as a first-class lifecycle concern.
 - **Fresh worker** — a new session (parallel worker, return after a long
   break). Same boot procedure applies.
 
-**Boot index:** `.ai-task-manager/session-boot.md` lists the Tier-1 files
+**Boot index:** `.ai-task-manager/templates/session-boot.md` lists the Tier-1 files
 every session must reload (router, pickup-directive, task-tracker.json,
 active issue body). After Compact or Clear, re-read all of them — a
 compacted paraphrase of a rule is **not** the rule. See the
 "Post-Compact/Clear Recovery" section in
-`.ai-task-manager/pickup-directive.md` and Hard Rule 11 in
+`.ai-task-manager/templates/pickup-directive.md` and Hard Rule 11 in
 `skill/shared/router.md`.
 
-**Per-task state:** copy `.ai-task-manager/session-state-template.md` to
+**Per-task state:** copy `.ai-task-manager/templates/session-state-template.md` to
 `.ai-task-manager/claude/session-tracking/<issue>-state.md` (gitignored)
 and keep its 9 fields current. The template preserves the structure
 (Goal, Non-Negotiable Rules, Active Files, Decisions, Plan, Completed,

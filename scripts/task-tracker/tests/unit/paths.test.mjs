@@ -9,6 +9,7 @@ import {
   getProjectDir,
   legacyPathFor,
   SHARED_DIR,
+  TEMPLATES_SUBDIR,
   RUNTIME_REL,
   SHARED_DIR_SEGMENT,
   SCRATCH_REL_PREFIX,
@@ -22,6 +23,7 @@ import {
   issueLockPath,
   timingLockPath,
   scratchDir,
+  templatesDir,
   fleetPath,
   orchestratorLockPath,
 } from '../../paths.mjs';
@@ -31,8 +33,11 @@ const mappings = [
   ['.ai-task-manager/task-tracker-state.json', '.claude/task-tracker-state.json'],
   ['.ai-task-manager/task-tracker-queue.json', '.claude/task-tracker-queue.json'],
   ['.ai-task-manager/task-fleet.json', '.claude/task-fleet.json'],
-  ['.ai-task-manager/pickup-directive.md', '.claude/task-tracker/pickup-directive.md'],
-  ['.ai-task-manager/definition-of-done.md', '.claude/task-tracker/definition-of-done.md'],
+  ['.ai-task-manager/templates/pickup-directive.md', '.claude/task-tracker/pickup-directive.md'],
+  [
+    '.ai-task-manager/templates/definition-of-done.md',
+    '.claude/task-tracker/definition-of-done.md',
+  ],
 ];
 
 for (const [preferred, legacy] of mappings) {
@@ -103,8 +108,8 @@ assert.equal(RUNTIME_REL.state, `${SHARED_DIR}/task-tracker-state.json`);
 assert.equal(RUNTIME_REL.queue, `${SHARED_DIR}/task-tracker-queue.json`);
 assert.equal(RUNTIME_REL.fleet, `${SHARED_DIR}/task-fleet.json`);
 assert.equal(RUNTIME_REL.orchestratorLock, `${SHARED_DIR}/orchestrator.lock`);
-assert.equal(RUNTIME_REL.pickupDirective, `${SHARED_DIR}/pickup-directive.md`);
-assert.equal(RUNTIME_REL.dod, `${SHARED_DIR}/definition-of-done.md`);
+assert.equal(RUNTIME_REL.pickupDirective, `${SHARED_DIR}/${TEMPLATES_SUBDIR}/pickup-directive.md`);
+assert.equal(RUNTIME_REL.dod, `${SHARED_DIR}/${TEMPLATES_SUBDIR}/definition-of-done.md`);
 
 // Segment + scratch-prefix constants derive from SHARED_DIR.
 assert.equal(SHARED_DIR_SEGMENT, `/${SHARED_DIR}/`);
@@ -113,20 +118,25 @@ assert.equal(SCRATCH_REL_PREFIX, `${SHARED_DIR}/scratch/`);
 // cwd-anchored resolvers join the project root byte-identically when no legacy
 // twin exists on disk (the /tmp/proj-xyz tree has no `.claude` mirror).
 // #573 — machine-local/transient runtime relocated under `.tmp/aitm/`. Config
-// (task-tracker.json), pickup-directive.md, definition-of-done.md and the shared
-// scratch subtree remain tracked under SHARED_DIR; everything else moves.
+// (task-tracker.json) and the shared scratch subtree remain tracked under
+// SHARED_DIR; the markdown templates (pickup-directive.md, definition-of-done.md)
+// remain tracked but moved under SHARED_DIR/templates/ (#574); everything else moves.
 const TMP_AITM = ['.tmp', 'aitm'];
 const PX = '/tmp/proj-xyz-572';
 assert.equal(configPath(PX), path.join(PX, SHARED_DIR, 'task-tracker.json'));
 assert.equal(statePath(PX), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-state.json'));
 assert.equal(queuePath(PX), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-queue.json'));
-assert.equal(pickupDirectivePath(PX), path.join(PX, SHARED_DIR, 'pickup-directive.md'));
-assert.equal(dodPath(PX), path.join(PX, SHARED_DIR, 'definition-of-done.md'));
+assert.equal(
+  pickupDirectivePath(PX),
+  path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR, 'pickup-directive.md')
+);
+assert.equal(dodPath(PX), path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR, 'definition-of-done.md'));
 
-// Directory resolvers: sessions/locks moved to `.tmp/aitm/`; scratch stays tracked.
+// Directory resolvers: sessions/locks moved to `.tmp/aitm/`; scratch + templates stay tracked.
 assert.equal(sessionsDir(PX), path.join(PX, ...TMP_AITM, 'sessions'));
 assert.equal(locksDir(PX), path.join(PX, ...TMP_AITM, 'locks'));
 assert.equal(scratchDir(PX), path.join(PX, SHARED_DIR, 'scratch'));
+assert.equal(templatesDir(PX), path.join(PX, SHARED_DIR, TEMPLATES_SUBDIR));
 
 // Lock-file resolvers compose locksDir with the per-key filename.
 assert.equal(issueLockPath(572, PX), path.join(PX, ...TMP_AITM, 'locks', 'issue-572.lock'));

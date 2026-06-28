@@ -72,8 +72,8 @@ These norms keep speed from turning into ambiguity.
 
 The most useful project-specific customizations are:
 
-- `.ai-task-manager/pickup-directive.md`
-- `.ai-task-manager/definition-of-done.md`
+- `.ai-task-manager/templates/pickup-directive.md`
+- `.ai-task-manager/templates/definition-of-done.md`
 - Project board fields and views
 - Default labels
 - Idle threshold

@@ -18,7 +18,7 @@
 //
 // Token estimate: chars / 4 (industry-standard rough approximation for English).
 //
-// Pickup-directive source: prefers runtime `.ai-task-manager/pickup-directive.md`
+// Pickup-directive source: prefers runtime `.ai-task-manager/templates/pickup-directive.md`
 // (installed by `ai-task-manager init`) and falls back to `templates/pickup-directive.md`
 // (source-of-truth), so CI and pre-install checks both work.
 

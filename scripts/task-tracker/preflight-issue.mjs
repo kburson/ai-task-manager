@@ -239,7 +239,7 @@ function tailBlock(dodPath) {
     '---',
     '',
     '## Pickup Directive — MANDATORY, DO NOT SKIP',
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '',
   ].join('\n');
 }
@@ -413,8 +413,8 @@ async function main() {
   const dodPath = existingRuntimePath(root, RUNTIME_REL.dod);
 
   const missing = [];
-  if (!existsSync(pickupPath)) missing.push('.ai-task-manager/pickup-directive.md');
-  if (!existsSync(dodPath)) missing.push('.ai-task-manager/definition-of-done.md');
+  if (!existsSync(pickupPath)) missing.push('.ai-task-manager/templates/pickup-directive.md');
+  if (!existsSync(dodPath)) missing.push('.ai-task-manager/templates/definition-of-done.md');
 
   if (missing.length > 0) {
     process.stderr.write(

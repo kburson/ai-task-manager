@@ -94,7 +94,7 @@ const APPROVED_BODY = [
   '<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.ai-task-manager/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
   '<!-- aitm-deep-dive-posted: 2026-06-07T06:00:00Z -->',
   '<!-- aitm-deep-dive-complete: 2026-06-07T06:00:00Z -->',

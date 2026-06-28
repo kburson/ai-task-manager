@@ -10,7 +10,7 @@ const root = path.resolve(__dir, '..', '../../..');
 
 const docs = [
   'templates/pickup-directive.md',
-  '.ai-task-manager/pickup-directive.md',
+  '.ai-task-manager/templates/pickup-directive.md',
   'skill/adapters/codex/SKILL.md',
   'skill/adapters/claude/SKILL.md',
 ];

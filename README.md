@@ -308,14 +308,14 @@ Every issue created from a master plan gets this block appended:
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
 
-> Follow: `.ai-task-manager/pickup-directive.md`
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
 
 - [ ] Deep dive complete
 
 ---
 ```
 
-The issue body stays lean. The detailed agent instructions live in `.ai-task-manager/pickup-directive.md` — the agent reads that file at pickup time. The injected block is built by `scripts/task-tracker/preflight-issue.mjs`, which also gates issue creation: if either template file is missing, the script aborts and the skill stops creating issues until the install is fixed.
+The issue body stays lean. The detailed agent instructions live in `.ai-task-manager/templates/pickup-directive.md` — the agent reads that file at pickup time. The injected block is built by `scripts/task-tracker/preflight-issue.mjs`, which also gates issue creation: if either template file is missing, the script aborts and the skill stops creating issues until the install is fixed.
 
 ### Hard Rules — Enforced by the Gates
 

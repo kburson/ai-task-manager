@@ -60,7 +60,7 @@ const metadata = [
     '- [ ] Plain AC',
     '',
     '## Pickup Directive',
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '',
     metadata,
   ].join('\n');
@@ -189,7 +189,7 @@ const metadata = [
     '- [ ] Plain AC',
     '',
     '## Pickup Directive',
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '',
     metadata,
   ].join('\n');

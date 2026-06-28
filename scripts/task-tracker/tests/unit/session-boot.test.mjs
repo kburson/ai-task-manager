@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @story #190
-// Asserts that .ai-task-manager/session-boot.md (and its template source) exists,
+// Asserts that .ai-task-manager/templates/session-boot.md (and its template source) exists,
 // lists each required Tier-1 file by exact path, and contains a recovery-protocol
 // section. Source-of-truth file is templates/session-boot.md (installed copy is
 // gitignored).
@@ -18,7 +18,7 @@ const TEMPLATE = path.join(repoRoot, 'templates', 'session-boot.md');
 
 const REQUIRED_TIER1_PATHS = [
   'skill/shared/router.md',
-  '.ai-task-manager/pickup-directive.md',
+  '.ai-task-manager/templates/pickup-directive.md',
   '.ai-task-manager/task-tracker.json',
 ];
 

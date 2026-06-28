@@ -396,12 +396,12 @@ Every issue created from a master plan (and optionally single issues when `picku
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
 
-> Follow: `.ai-task-manager/pickup-directive.md`
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
 
 - [ ] Deep dive complete
 ```
 
-The block is built by `scripts/task-tracker/preflight-issue.mjs`, which also acts as a gate: it verifies that `.ai-task-manager/pickup-directive.md` and `.ai-task-manager/definition-of-done.md` exist before any issue is created. If either is missing, the skill aborts with a "(re)install the skill" message — no issues are created until the templates are in place.
+The block is built by `scripts/task-tracker/preflight-issue.mjs`, which also acts as a gate: it verifies that `.ai-task-manager/templates/pickup-directive.md` and `.ai-task-manager/templates/definition-of-done.md` exist before any issue is created. If either is missing, the skill aborts with a "(re)install the skill" message — no issues are created until the templates are in place.
 
 On first pickup, the agent runs a just-in-time deep dive against the current repo state and appends it to the issue body, including a required dependency map:
 
@@ -411,7 +411,7 @@ Depends on: #N (reason)   ← or "none"
 Blocks: #P (reason)       ← or "none"
 ```
 
-Full agent instructions live in `.ai-task-manager/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
+Full agent instructions live in `.ai-task-manager/templates/pickup-directive.md` — installed per project and editable. The `pickup-directive.md` "Hard Rules" section is the authoritative process contract: Deep Dive must be complete before any code, every DoD/AC item must be individually verified before its checkbox is ticked, and every box must be checked before close.
 
 **Enforcement.** Both `/task close` (in `task-tracker.mjs`) and `move-state.mjs <issue> done` fail-closed when any `- [ ]` remains in the body, or when the body contains a Pickup Directive but the Deep Dive line is unchecked. No env override exists. The GitHub UI (drag a card, delete an issue) is not gated; legitimate abandonment moves through the UI.
 

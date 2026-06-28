@@ -15,7 +15,7 @@
 //   ## Pickup Directive — MANDATORY, DO NOT SKIP
 //
 // The Pickup Directive section must also contain the literal line
-//   > Follow: `.ai-task-manager/pickup-directive.md`
+//   > Follow: `.ai-task-manager/templates/pickup-directive.md`
 // otherwise the directive is malformed (truncated/placeholder).
 //
 // #171: a `## Definition of Done` heading alone is not enough — the
@@ -43,7 +43,7 @@ const SECTION_CHECKS = [
 ];
 
 const PICKUP_HEADING_REGEX = SECTION_CHECKS[3].regex;
-const PICKUP_FOLLOW_LINE = '> Follow: `.ai-task-manager/pickup-directive.md`';
+const PICKUP_FOLLOW_LINE = '> Follow: `.ai-task-manager/templates/pickup-directive.md`';
 
 export function verifyIssueBody(body) {
   const missing = [];
@@ -75,7 +75,7 @@ export function verifyIssueBody(body) {
   // counts as a malformed Pickup Directive.
   if (PICKUP_HEADING_REGEX.test(body) && !body.includes(PICKUP_FOLLOW_LINE)) {
     missing.push(
-      'Pickup Directive: missing canonical `> Follow: `.ai-task-manager/pickup-directive.md`` line'
+      'Pickup Directive: missing canonical `> Follow: `.ai-task-manager/templates/pickup-directive.md`` line'
     );
   }
 

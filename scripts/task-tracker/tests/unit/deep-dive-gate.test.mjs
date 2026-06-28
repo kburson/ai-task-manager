@@ -34,7 +34,7 @@ function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, 
     'do the thing',
     '',
     PICKUP_DIRECTIVE,
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '',
     posted,
     section,
@@ -144,7 +144,7 @@ function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, 
 {
   // (a) No Pickup Directive heading anywhere → gate fails
   const bodyA = fullBody().replace(
-    PICKUP_DIRECTIVE + '\n> Follow: `.ai-task-manager/pickup-directive.md`\n',
+    PICKUP_DIRECTIVE + '\n> Follow: `.ai-task-manager/templates/pickup-directive.md`\n',
     ''
   );
   const rA = planDeepDiveGate({ body: bodyA });
@@ -166,7 +166,7 @@ function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, 
     '<details>',
     '<summary>See more</summary>',
     PICKUP_DIRECTIVE,
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '</details>',
     XS_FIELDS,
   ].join('\n');
@@ -183,7 +183,7 @@ function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, 
     'do the thing',
     '',
     PICKUP_DIRECTIVE,
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '',
     POSTED,
     SECTION_H2,

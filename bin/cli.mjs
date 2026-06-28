@@ -389,15 +389,14 @@ function patchGitignore(targetDir) {
   const entries = [
     // Machine-local/transient runtime state (state, queue, fleet, sessions,
     // locks, caches, per-provider app state) all live under `.tmp/aitm/` as of
-    // #573 — covered wholesale by the `.tmp/` entry below. Only the tracked-dir
-    // backups and the install-output `references/` copy still need explicit
-    // ignores here.
-    '.ai-task-manager/pickup-directive.md.bak',
-    '.ai-task-manager/definition-of-done.md.bak',
-    '.ai-task-manager/references/',
+    // #573 — covered wholesale by the `.tmp/` entry below. The skill-installed
+    // templates + references/ now live tracked under `.ai-task-manager/templates/`
+    // (#574); only their `.bak` edit backups still need explicit ignores here.
+    '.ai-task-manager/templates/*.bak',
+    '.ai-task-manager/templates/references/*.bak',
     '.tmp/',
   ];
-  const COMMENT = '# ai-task-manager — user configuration files (do not commit)';
+  const COMMENT = '# ai-task-manager — local edit backups (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
   for (const entry of entries) {
@@ -458,7 +457,7 @@ function claudeStub() {
     '',
     `- \`adapter\` — \`node_modules/ai-task-manager/${getProvider('claude').skillAdapterPath}\``,
     '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
-    '- `pickup` — `.ai-task-manager/pickup-directive.md` (loaded on sub-issue pickup)',
+    '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on sub-issue pickup)',
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
     'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
@@ -498,7 +497,7 @@ function codexStub() {
     '',
     `- \`codex-adapter\` — \`node_modules/ai-task-manager/${getProvider('codex').skillAdapterPath}\``,
     '- `shared` — `node_modules/ai-task-manager/skill/shared/SKILL.md`',
-    '- `pickup` — `.ai-task-manager/pickup-directive.md` (loaded on issue pickup)',
+    '- `pickup` — `.ai-task-manager/templates/pickup-directive.md` (loaded on issue pickup)',
     '',
     'After `/clear` or `/compact`, sentinels disappear from context and these files reload automatically.',
     'After `npm update ai-task-manager`, the marker version changes and reload is forced.',
@@ -625,10 +624,14 @@ function setupCodexSuperpowers(targetDir, { globalAgents = false } = {}) {
 function installTemplates(targetDir) {
   step('Shared templates and gitignore');
   const templateDest = join(targetDir, '.ai-task-manager');
+  // Skill-installed markdown templates + references/ consolidate under
+  // `.ai-task-manager/templates/` (#574); JSON config stays at the root.
+  const mdTemplatesDest = join(templateDest, 'templates');
   mkdirSync(templateDest, { recursive: true });
+  mkdirSync(mdTemplatesDest, { recursive: true });
   for (const name of TEMPLATE_FILES) {
     const src = join(PKG_ROOT, 'templates', name);
-    const out = join(templateDest, name);
+    const out = join(mdTemplatesDest, name);
     let suffix = '';
     if (existsSync(out)) {
       const existing = readFileSync(out, 'utf8');
@@ -641,7 +644,7 @@ function installTemplates(targetDir) {
       }
     }
     copyFileSync(src, out);
-    ok(`Template ${dim('.ai-task-manager/' + name)}${suffix}`);
+    ok(`Template ${dim('.ai-task-manager/templates/' + name)}${suffix}`);
   }
   for (const name of ['project-fields.json', 'project-field-events.json']) {
     const defaultName = name.replace('.json', '.default.json');
@@ -679,22 +682,22 @@ function installTemplates(targetDir) {
       ok(`Config ${dim('.ai-task-manager/activity-policy.json')} ${dim('(unchanged)')}`);
     }
   }
-  installReferences(templateDest);
+  installReferences(mdTemplatesDest);
   patchGitignore(targetDir);
-  ok(`Gitignore ${dim('.ai-task-manager backups, references, and .tmp/ runtime tree')}`);
+  ok(`Gitignore ${dim('.ai-task-manager/templates backups and .tmp/ runtime tree')}`);
   mergeDefaultPreferences(templateDest);
 }
 
-// Recursively copy templates/references/ -> .ai-task-manager/references/
+// Recursively copy templates/references/ -> .ai-task-manager/templates/references/
 // using the same overwrite-with-.bak behavior as installTemplates(). Reference
 // files are checked-in under templates/references/ so downstream consumers
-// receive them at install time; the runtime location is gitignored.
-function installReferences(templateDest) {
+// receive them at install time; the runtime copies are tracked (#574).
+function installReferences(mdTemplatesDest) {
   const srcRoot = join(PKG_ROOT, 'templates', 'references');
   if (!existsSync(srcRoot)) return;
-  const destRoot = join(templateDest, 'references');
+  const destRoot = join(mdTemplatesDest, 'references');
   mkdirSync(destRoot, { recursive: true });
-  copyReferenceTree(srcRoot, destRoot, 'references');
+  copyReferenceTree(srcRoot, destRoot, 'templates/references');
 }
 
 function copyReferenceTree(srcDir, destDir, displayPrefix) {

@@ -183,6 +183,6 @@ The short version:
 - Three named packs (orchestrator / worker boot / worker task); only the boot pack and task pack reach the worker prompt.
 - Workers stay silent unless blocked or producing their final report.
 - Final reports are a flat structured schema; no narrative dumps.
-- No inherited orchestrator transcript; the boot pack points at [`.ai-task-manager/session-boot.md`](../../.ai-task-manager/session-boot.md) so workers reload Tier-1 rules from source (#190).
+- No inherited orchestrator transcript; the boot pack points at [`.ai-task-manager/templates/session-boot.md`](../../.ai-task-manager/templates/session-boot.md) so workers reload Tier-1 rules from source (#190).
 
 Use [`templates/worker-report.md`](../../templates/worker-report.md) as the report template.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// #501 — refresh the gitignored `.ai-task-manager/` runtime mirror from
+// #501 — refresh the tracked `.ai-task-manager/templates/` runtime mirror from
 // `templates/`. Lightweight, idempotent counterpart to `installTemplates()`
 // (bin/cli.mjs): copies ONLY the markdown template set (TEMPLATE_FILES) and
 // touches no hooks/settings/config.
@@ -51,14 +51,14 @@ export function syncTemplates({ srcDir, destDir, files = TEMPLATE_FILES } = {}) 
 
 /**
  * Recursively mirror the `templates/references/` subtree into the runtime
- * `.ai-task-manager/references/` mirror. Directory-driven (mirrors
+ * `.ai-task-manager/templates/references/` mirror. Directory-driven (mirrors
  * `installReferences()` in bin/cli.mjs) so a new reference file is picked up
  * with no manifest edit. Returns one result per file, with `name` relative to
  * `srcDir`. No-op when `srcDir` is absent.
  *
  * @param {object} opts
  * @param {string} opts.srcDir   `templates/references` (or a subdir, in recursion)
- * @param {string} opts.destDir  `.ai-task-manager/references` (or a subdir)
+ * @param {string} opts.destDir  `.ai-task-manager/templates/references` (or a subdir)
  * @param {string} [opts.prefix] relative path accumulator (internal)
  * @returns {{name:string, status:'synced'|'unchanged'}[]}
  */
@@ -90,16 +90,18 @@ function main() {
   const results = [
     ...syncTemplates({
       srcDir: join(REPO_ROOT, 'templates'),
-      destDir: join(REPO_ROOT, '.ai-task-manager'),
+      destDir: join(REPO_ROOT, '.ai-task-manager', 'templates'),
     }),
     ...syncReferenceTree({
       srcDir: join(REPO_ROOT, 'templates', 'references'),
-      destDir: join(REPO_ROOT, '.ai-task-manager', 'references'),
+      destDir: join(REPO_ROOT, '.ai-task-manager', 'templates', 'references'),
     }),
   ];
   const synced = results.filter((r) => r.status === 'synced');
   for (const r of results) {
-    console.log(`  ${r.status === 'synced' ? '↻' : '·'} .ai-task-manager/${r.name} (${r.status})`);
+    console.log(
+      `  ${r.status === 'synced' ? '↻' : '·'} .ai-task-manager/templates/${r.name} (${r.status})`
+    );
   }
   console.log(
     `✓ sync:templates — ${synced.length} refreshed, ${results.length - synced.length} already in sync`

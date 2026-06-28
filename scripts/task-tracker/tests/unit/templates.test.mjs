@@ -10,7 +10,12 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dir, '..', '../../..');
 const body = readFileSync(path.join(root, 'templates', 'definition-of-done.md'), 'utf8');
 const pickupDirective = readFileSync(path.join(root, 'templates', 'pickup-directive.md'), 'utf8');
-const runtimePickupDirectivePath = path.join(root, '.ai-task-manager', 'pickup-directive.md');
+const runtimePickupDirectivePath = path.join(
+  root,
+  '.ai-task-manager',
+  'templates',
+  'pickup-directive.md'
+);
 const runtimePickupDirective = existsSync(runtimePickupDirectivePath)
   ? readFileSync(runtimePickupDirectivePath, 'utf8')
   : null;
@@ -236,14 +241,17 @@ const auditedAgentFiles = [
   ['skill/adapters/claude/SKILL.md', claudeAdapter],
 ];
 if (runtimePickupDirective !== null) {
-  auditedAgentFiles.push(['.ai-task-manager/pickup-directive.md', runtimePickupDirective]);
+  auditedAgentFiles.push([
+    '.ai-task-manager/templates/pickup-directive.md',
+    runtimePickupDirective,
+  ]);
 }
 
 if (runtimePickupDirective !== null) {
   assert.equal(
     runtimePickupDirective,
     pickupDirective,
-    '.ai-task-manager/pickup-directive.md drifted from templates/pickup-directive.md — run `npm run sync:templates` to refresh the runtime mirror'
+    '.ai-task-manager/templates/pickup-directive.md drifted from templates/pickup-directive.md — run `npm run sync:templates` to refresh the runtime mirror'
   );
 }
 
@@ -256,7 +264,10 @@ for (const [file, text] of auditedAgentFiles) {
 
 const pickupDirectiveFiles = [['templates/pickup-directive.md', pickupDirective]];
 if (runtimePickupDirective !== null) {
-  pickupDirectiveFiles.push(['.ai-task-manager/pickup-directive.md', runtimePickupDirective]);
+  pickupDirectiveFiles.push([
+    '.ai-task-manager/templates/pickup-directive.md',
+    runtimePickupDirective,
+  ]);
 }
 
 for (const [file, text] of pickupDirectiveFiles) {
@@ -308,13 +319,13 @@ assert.ok(
 
 // ── references/ byte-identity (#204) ───────────────────────────────────────
 // Every checked-in templates/references/*.md must (a) exist and (b) — if the
-// runtime mirror under .ai-task-manager/references/ is present — be
+// runtime mirror under .ai-task-manager/templates/references/ is present — be
 // byte-identical to it. installTemplates() copies references at install time;
 // drift means a downstream consumer would see stale rationale text relative
 // to the directive that links to it.
 {
   const refsSrcRoot = path.join(root, 'templates', 'references');
-  const refsRuntimeRoot = path.join(root, '.ai-task-manager', 'references');
+  const refsRuntimeRoot = path.join(root, '.ai-task-manager', 'templates', 'references');
   if (existsSync(refsSrcRoot)) {
     const walk = (dir, rel) => {
       const out = [];
@@ -339,7 +350,7 @@ assert.ok(
         assert.equal(
           runtime,
           src,
-          `.ai-task-manager/references/${rel} must stay byte-identical with templates/references/${rel}`
+          `.ai-task-manager/templates/references/${rel} must stay byte-identical with templates/references/${rel}`
         );
       }
     }

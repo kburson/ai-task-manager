@@ -25,9 +25,9 @@ These rules apply to every verb. Skipping any is a process failure.
 6. **Pause on blocking question.** Before any blocking user prompt: `/task pause "pause for question"`. After answer: `/task start "question answered"`. The clock reflects focused work only.
 7. **Dirty-workspace gate exists.** Review verb warns; close verb blocks. See `rules/review.md` and `rules/close.md` for details.
 8. **`--role` flag at bind.** Solo issue picked up directly: omit (defaults to `solo`). Starting an epic to fan out to agents: `--role orchestrator`. Agent picking up a sub-issue via Pickup Directive: `--role agent` (set in pickup-directive.md).
-9. **Pickup-directive contracts.** Deep-dive-before-code, per-AC verification (no bulk-checking), and `/task review` as the agent terminal step are defined in `.ai-task-manager/pickup-directive.md` Hard Rules. Honor them on every pickup.
+9. **Pickup-directive contracts.** Deep-dive-before-code, per-AC verification (no bulk-checking), and `/task review` as the agent terminal step are defined in `.ai-task-manager/templates/pickup-directive.md` Hard Rules. Honor them on every pickup.
 10. **Honor project preferences.** Read `.ai-task-manager/task-tracker.json#preferences` at session start (`getPreferences()` from `scripts/task-tracker/config.mjs`). Keys: `noPushToOrigin`, `mainThreadOnly`, `driveSubIssuesToReview`, `pauseTimerOnBlockingQuestion`, `noConfirmAfterDeepDive`, `askGatesBeforeParallel`, `formatting.noEmojis`, `formatting.currencyInBackticks`, `scratchDir`. See `rules/preferences.md`.
-11. **Post-Compact/Clear: follow the boot index before any verb.** If the session was just compacted, cleared, or freshly started — or no `aitm-boot-recovered:*` sentinel is in live context — read [`.ai-task-manager/session-boot.md`](../../.ai-task-manager/session-boot.md) and reload every Tier-1 file it names (this router, `pickup-directive.md`, `task-tracker.json`, the active issue body) BEFORE running any verb. Discard prior `aitm-skill-loaded:*` sentinels; treat compacted summaries as hints, not source-of-truth. Emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel after reload.
+11. **Post-Compact/Clear: follow the boot index before any verb.** If the session was just compacted, cleared, or freshly started — or no `aitm-boot-recovered:*` sentinel is in live context — read [`.ai-task-manager/templates/session-boot.md`](../../.ai-task-manager/templates/session-boot.md) and reload every Tier-1 file it names (this router, `pickup-directive.md`, `task-tracker.json`, the active issue body) BEFORE running any verb. Discard prior `aitm-skill-loaded:*` sentinels; treat compacted summaries as hints, not source-of-truth. Emit a one-shot `aitm-boot-recovered:<session-id>:<timestamp>` sentinel after reload.
 12. **Track before you start — no untracked work.** Every unit of work must be tracked by a GitHub issue before it begins. When you discover follow-up, out-of-scope, or newly-surfaced work worth doing, do not silently begin it and do not stage it as an untracked local or background "suggested task." Instead, offer to create a tracking issue (`/task new` → `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`) and bind to it first. The issue is what gives the work tracking, estimation, and a board state; an untracked task chip only starts work in the dark. No issue, no work.
 
 ## CLI invocation
@@ -44,23 +44,23 @@ The post-bind metadata fetch (`gh issue view`), reopen-if-closed, and Pickup-Dir
 
 Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-skill-loaded:rules/<name>:<version>` is already in context, skip the read.
 
-| Verb / situation                                                         | Rule file                                                       |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| `/task #N`, `/task resume #N`                                            | `rules/bind.md` (+ load `.ai-task-manager/pickup-directive.md`) |
-| `/task review #N`                                                        | `rules/review.md`                                               |
-| `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                |
-| `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                           |
-| `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                         |
-| `/task new` while `active=="plan"`                                       | `rules/plan-mode-backlog.md`                                    |
-| `/task config init`                                                      | `rules/config-init.md`                                          |
-| Parallel fan-out (≥2 candidate children, any worktree dispatch)          | `rules/parallel.md`                                             |
-| Session start (preferences detail beyond key names)                      | `rules/preferences.md`                                          |
-| First commit in session, commit-trail troubleshooting                    | `rules/commit-trail.md`                                         |
-| Hook-output diagnosis (rare)                                             | `rules/hooks.md`                                                |
-| `/task plan-approve`, `/task approve`, `/task reject`                    | `rules/state-walk.md` (gate verbs; covered there)               |
-| Writing transient/scratch file (sandbox, issue body, plan/heal/inspect)  | `rules/scratch-dirs.md`                                         |
-| `/task block`, `/task unblock`, spawning a defect mid-task               | `rules/block.md`                                                |
-| Skill script blocks you (hook `block`, or `aitm-defect-hint:` on stderr) | `rules/report-on-block.md`                                      |
+| Verb / situation                                                         | Rule file                                                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `/task #N`, `/task resume #N`                                            | `rules/bind.md` (+ load `.ai-task-manager/templates/pickup-directive.md`) |
+| `/task review #N`                                                        | `rules/review.md`                                                         |
+| `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
+| `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
+| `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                                   |
+| `/task new` while `active=="plan"`                                       | `rules/plan-mode-backlog.md`                                              |
+| `/task config init`                                                      | `rules/config-init.md`                                                    |
+| Parallel fan-out (≥2 candidate children, any worktree dispatch)          | `rules/parallel.md`                                                       |
+| Session start (preferences detail beyond key names)                      | `rules/preferences.md`                                                    |
+| First commit in session, commit-trail troubleshooting                    | `rules/commit-trail.md`                                                   |
+| Hook-output diagnosis (rare)                                             | `rules/hooks.md`                                                          |
+| `/task plan-approve`, `/task approve`, `/task reject`                    | `rules/state-walk.md` (gate verbs; covered there)                         |
+| Writing transient/scratch file (sandbox, issue body, plan/heal/inspect)  | `rules/scratch-dirs.md`                                                   |
+| `/task block`, `/task unblock`, spawning a defect mid-task               | `rules/block.md`                                                          |
+| Skill script blocks you (hook `block`, or `aitm-defect-hint:` on stderr) | `rules/report-on-block.md`                                                |
 
 Verbs not listed (`/task`, `/task discover`, `/task plan`, `/task resume`, `/task pause`, `/task update`, `/task log`, `/task migrate`, `/task check`, `/task fleet`, `/task config`) need no Tier-2 file — invoke the CLI and print output.
 

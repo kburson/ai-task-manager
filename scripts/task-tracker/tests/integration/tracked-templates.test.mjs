@@ -1,7 +1,7 @@
 // @story #569
 // Integration test for #569: the two skill-installed-but-team-editable shared
-// templates — `.ai-task-manager/pickup-directive.md` and
-// `.ai-task-manager/definition-of-done.md` — MUST be tracked in git, NOT
+// templates — `.ai-task-manager/templates/pickup-directive.md` and
+// `.ai-task-manager/templates/definition-of-done.md` — MUST be tracked in git, NOT
 // gitignored.
 //
 // Why this matters: `git worktree add` (and Claude Code's
@@ -31,8 +31,8 @@ import { mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
 const repoRoot = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
 
 const TEMPLATES = [
-  '.ai-task-manager/pickup-directive.md',
-  '.ai-task-manager/definition-of-done.md',
+  '.ai-task-manager/templates/pickup-directive.md',
+  '.ai-task-manager/templates/definition-of-done.md',
 ];
 
 function git(args, opts = {}) {

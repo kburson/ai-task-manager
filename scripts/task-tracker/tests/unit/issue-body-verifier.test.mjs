@@ -45,7 +45,7 @@ const CANONICAL_BODY = [
   '- [ ] Story closed and moved to Done',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
-  '> Follow: `.ai-task-manager/pickup-directive.md`',
+  '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
 ].join('\n');
 
@@ -110,7 +110,7 @@ test('verifyIssueBody: missing Pickup Directive heading', () => {
 
 test('verifyIssueBody: malformed Pickup Directive (heading present, Follow line missing)', () => {
   const body = CANONICAL_BODY.replace(
-    '> Follow: `.ai-task-manager/pickup-directive.md`',
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
     '> See the pickup directive file.'
   );
   const res = verifyIssueBody(body);

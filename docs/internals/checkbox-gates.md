@@ -10,7 +10,7 @@ template.
 ## Why this exists
 
 The DoD template at `templates/definition-of-done.md` (or its runtime override
-at `.ai-task-manager/definition-of-done.md`) is user-editable. Several verbs and
+at `.ai-task-manager/templates/definition-of-done.md`) is user-editable. Several verbs and
 gates locate items in the body via hard-coded label-string matches. When a user
 renames or removes a label, those matches silently no-op — the verb appears to
 succeed but the side effect never lands.
