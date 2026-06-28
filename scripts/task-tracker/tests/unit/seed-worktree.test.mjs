@@ -16,10 +16,12 @@ const CLI = path.resolve(__dir, '..', '..', 'seed-worktree.mjs');
 function makeRepo() {
   const root = mkdtempSync(path.join(projectScratchDir('test'), 'seed-src-'));
   const cfgDir = path.join(root, '.ai-task-manager');
-  mkdirSync(cfgDir, { recursive: true });
+  // #574 — the markdown templates live under `.ai-task-manager/templates/`.
+  const tplDir = path.join(cfgDir, 'templates');
+  mkdirSync(tplDir, { recursive: true });
   writeFileSync(path.join(cfgDir, 'task-tracker.json'), '{"repo":"o/r"}\n');
-  writeFileSync(path.join(cfgDir, 'pickup-directive.md'), '# directive\n');
-  writeFileSync(path.join(cfgDir, 'definition-of-done.md'), '# dod\n');
+  writeFileSync(path.join(tplDir, 'pickup-directive.md'), '# directive\n');
+  writeFileSync(path.join(tplDir, 'definition-of-done.md'), '# dod\n');
   return root;
 }
 
@@ -34,8 +36,8 @@ function makeTarget() {
   const r = seedWorktree({ source: src, target: tgt });
   assert.equal(r.ok, true);
   assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json')));
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md')));
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'definition-of-done.md')));
+  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md')));
+  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'templates', 'definition-of-done.md')));
   assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'task-tracker-state.json')));
   const cfg = readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8');
   assert.match(cfg, /"repo":"o\/r"/);
@@ -60,7 +62,7 @@ function makeTarget() {
 // 3. Failure on missing source files
 {
   const src = makeRepo();
-  rmSync(path.join(src, '.ai-task-manager', 'pickup-directive.md'));
+  rmSync(path.join(src, '.ai-task-manager', 'templates', 'pickup-directive.md'));
   const tgt = makeTarget();
   assert.throws(() => seedWorktree({ source: src, target: tgt }), /missing source file/);
   rmSync(src, { recursive: true, force: true });
@@ -112,7 +114,10 @@ function makeTarget() {
   writeFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), '{"repo":"keep/me"}\n');
   const r = seedMissingTemplates({ source: src, target: tgt });
   assert.equal(r.ok, true);
-  assert.deepEqual(r.copied.sort(), ['definition-of-done.md', 'pickup-directive.md']);
+  assert.deepEqual(r.copied.sort(), [
+    'templates/definition-of-done.md',
+    'templates/pickup-directive.md',
+  ]);
   // existing task-tracker.json untouched
   assert.match(
     readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8'),
@@ -120,7 +125,7 @@ function makeTarget() {
   );
   // markdown files seeded
   assert.match(
-    readFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), 'utf8'),
+    readFileSync(path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md'), 'utf8'),
     /# directive/
   );
   rmSync(src, { recursive: true, force: true });
@@ -131,14 +136,20 @@ function makeTarget() {
 {
   const src = makeRepo();
   const tgt = makeTarget();
-  mkdirSync(path.join(tgt, '.ai-task-manager'), { recursive: true });
-  writeFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), '# user version\n');
-  writeFileSync(path.join(tgt, '.ai-task-manager', 'definition-of-done.md'), '# user dod\n');
+  mkdirSync(path.join(tgt, '.ai-task-manager', 'templates'), { recursive: true });
+  writeFileSync(
+    path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md'),
+    '# user version\n'
+  );
+  writeFileSync(
+    path.join(tgt, '.ai-task-manager', 'templates', 'definition-of-done.md'),
+    '# user dod\n'
+  );
   const r = seedMissingTemplates({ source: src, target: tgt });
   assert.equal(r.ok, true);
   assert.deepEqual(r.copied, []);
   assert.match(
-    readFileSync(path.join(tgt, '.ai-task-manager', 'pickup-directive.md'), 'utf8'),
+    readFileSync(path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md'), 'utf8'),
     /# user version/
   );
   rmSync(src, { recursive: true, force: true });
