@@ -173,6 +173,13 @@ export const COMMAND_MANIFEST = [
     dispatch: 'verbs/save-plan.mjs',
   },
   {
+    verb: 'save-draft',
+    aliases: [],
+    description: 'Autosave the in-progress discovery brainstorm to a tracked draft.',
+    category: 'planning',
+    dispatch: 'verbs/save-draft.mjs',
+  },
+  {
     verb: 'plan-approve',
     aliases: [],
     description: 'Approve the drafted plan and enter Develop.',
