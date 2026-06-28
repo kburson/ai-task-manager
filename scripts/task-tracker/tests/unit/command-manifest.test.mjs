@@ -65,6 +65,18 @@ test('manifest: aliases resolve to their canonical verb', () => {
   assert.equal(MANIFEST_INDEX.get('next'), MANIFEST_INDEX.get('promote'));
 });
 
+// #577 — `brainstorm` is an alias of `discover` (easier-to-remember name for
+// the pre-issue ideation bucket). Both the manifest alias and the matching
+// dispatch `case 'brainstorm':` fall-through must exist, and the verb must be
+// globally unique. The parity test below diffs the two sites; these assertions
+// pin the resolution semantics directly.
+test('manifest: brainstorm resolves to discover', () => {
+  assert.equal(resolveVerb('brainstorm'), 'discover', 'brainstorm is an alias of discover');
+  assert.equal(MANIFEST_INDEX.get('brainstorm'), MANIFEST_INDEX.get('discover'));
+  assert.ok(manifestVerbNames().has('brainstorm'), 'brainstorm is in the manifest verb set');
+  assert.ok(parseVerbs().has('brainstorm'), 'brainstorm has a dispatch switch case label');
+});
+
 // --- 3. Help and dispatch share the manifest. ----------------------------
 test('registry VERBS is exactly the manifest name set', () => {
   assert.deepEqual(

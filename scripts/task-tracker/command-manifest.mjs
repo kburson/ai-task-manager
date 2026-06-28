@@ -327,7 +327,7 @@ export const COMMAND_MANIFEST = [
   },
   {
     verb: 'discover',
-    aliases: [],
+    aliases: ['brainstorm'],
     description: 'Discover and scan issues into the tracker.',
     category: 'maintenance',
     dispatch: 'verbs/discover.mjs',

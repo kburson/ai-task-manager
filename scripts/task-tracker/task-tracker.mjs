@@ -245,6 +245,7 @@ if (_isMain)
         case 'migrate':
           await ctx.runMigrate(ctx.rest);
           break;
+        case 'brainstorm':
         case 'discover': {
           const { verbDiscover } = await import('./verbs/discover.mjs');
           await verbDiscover(ctx);
