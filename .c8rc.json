@@ -1,7 +1,17 @@
 {
   "all": true,
   "src": ["scripts"],
-  "exclude": ["**/*.test.mjs", "**/tests/**", "scripts/maintenance/**"],
+  "exclude": [
+    "**/*.test.mjs",
+    "**/tests/**",
+    "scripts/maintenance/**",
+    "scripts/migrate/**",
+    "scripts/run-tests.mjs",
+    "scripts/run-tests-report.mjs",
+    "scripts/sync-templates.mjs",
+    ".tmp/**",
+    "eslint.config.mjs"
+  ],
   "reporter": ["text", "html"],
   "report-dir": "coverage"
 }
