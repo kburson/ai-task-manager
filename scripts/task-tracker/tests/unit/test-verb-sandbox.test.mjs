@@ -63,7 +63,6 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
     removeWorktree: async () => {
       calls.worktreesRemoved++;
     },
-    seedWorktree: async () => {},
     npmCi: async () => {
       calls.npmCiCalls++;
     },

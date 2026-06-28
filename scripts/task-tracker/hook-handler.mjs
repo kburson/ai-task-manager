@@ -23,7 +23,6 @@ import {
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue, drain } from './queue.mjs';
-import { seedMissingTemplates, findMainWorktree } from './seed-worktree.mjs';
 import {
   findMainWorktreePath,
   currentBranch,
@@ -124,25 +123,6 @@ async function onPostCompact(sid) {
   await safePost(s.active, row);
 }
 
-// Self-heal a fresh worktree: Claude Code's `isolation: "worktree"` Agent mode
-// runs `git worktree add`, which doesn't carry gitignored files. The pickup
-// directive + definition-of-done templates live in .ai-task-manager/ (gitignored)
-// and their absence breaks preflight-issue.mjs + templates.test.mjs.
-function selfHealTemplates() {
-  try {
-    const main = findMainWorktree(projectDir);
-    if (!main || path.resolve(main) === path.resolve(projectDir)) return;
-    const r = seedMissingTemplates({ source: main, target: projectDir });
-    if (r.copied && r.copied.length > 0) {
-      console.log(
-        `[task-tracker] Seeded missing templates from main worktree: ${r.copied.join(', ')}`
-      );
-    }
-  } catch (err) {
-    console.error(`[task-tracker] template self-heal failed: ${err.message}`);
-  }
-}
-
 function emitWorktreeBanner() {
   try {
     const main = findMainWorktreePath(projectDir);
@@ -178,7 +158,9 @@ async function bestEffortDrainQueue() {
 
 async function onSessionStart(sid) {
   emitWorktreeBanner();
-  selfHealTemplates();
+  // #575 — no template self-heal: `.ai-task-manager/templates/` is git-tracked
+  // (#574), so a fresh `git worktree add` checkout already carries every
+  // behavioral contract. Seeding is structurally unnecessary.
   await bestEffortDrainQueue();
   // (#89) Sweep orphaned session-override files older than the configured TTL.
   try {

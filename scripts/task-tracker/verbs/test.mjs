@@ -33,7 +33,6 @@ import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { seedWorktreeBackfill } from '../seed-worktree.mjs';
 
 const pexec = promisify(execFile);
 
@@ -141,12 +140,6 @@ async function defaultRemoveWorktree({ projectDir, path: wtPath }) {
   }
 }
 
-async function defaultSeedWorktree({ projectDir, path: wtPath }) {
-  // `.ai-task-manager/` is gitignored, so a fresh worktree lacks the runtime
-  // config + templates that several tests touch. Copy them from the parent.
-  seedWorktreeBackfill({ source: projectDir, target: wtPath });
-}
-
 async function defaultNpmCi({ path: wtPath }) {
   await pexec('npm', ['ci', '--no-audit', '--no-fund'], {
     cwd: wtPath,
@@ -243,17 +236,18 @@ async function runSetupStep(step, fn) {
   }
 }
 
-// #254 — run the setup chain (createWorktree → seedWt → npmCi) with bounded
+// #254 — run the setup chain (createWorktree → npmCi) with bounded
 // retry. On a transient throw, remove any partial worktree (so the next
 // `git worktree add` doesn't collide) and retry up to `attempts` times. The
 // last failure's tagged diagnostics are reported via `captureDiag`. Throws the
 // final tagged error once attempts are exhausted.
+// #575 — no seed step: the worktree checkout already carries git-tracked
+// `.ai-task-manager/` config + templates, so there is nothing to backfill.
 async function runSetupWithRetry({
   attempts,
   projectDir,
   wtPath,
   createWorktree,
-  seedWt,
   npmCi,
   removeWorktree,
   onCreated,
@@ -264,7 +258,6 @@ async function runSetupWithRetry({
     try {
       await runSetupStep('git worktree add', () => createWorktree({ projectDir, path: wtPath }));
       onCreated();
-      await runSetupStep('config seed', () => seedWt({ projectDir, path: wtPath }));
       await runSetupStep('npm ci', () => npmCi({ path: wtPath }));
       return { attempts: attempt };
     } catch (err) {
@@ -327,7 +320,6 @@ export async function runVerbTest({
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
   const createWorktree = deps.createWorktree || defaultCreateWorktree;
   const removeWorktree = deps.removeWorktree || defaultRemoveWorktree;
-  const seedWt = deps.seedWorktree || defaultSeedWorktree;
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const moveState = deps.moveState;
@@ -422,7 +414,6 @@ export async function runVerbTest({
       projectDir,
       wtPath,
       createWorktree,
-      seedWt,
       npmCi,
       removeWorktree,
       onCreated: () => {

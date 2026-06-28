@@ -95,9 +95,11 @@ function checkInit(ctx) {
   if (!existsSync(cfgPath)) {
     process.stderr.write(
       `task-tracker: config-not-found at ${cfgPath}\n` +
-        '  This worktree was not seeded with .ai-task-manager/. The orchestrator must run:\n' +
-        '    node scripts/task-tracker/seed-worktree.mjs <worktree-path>\n' +
-        '  before booting an agent. Agents MUST report STATUS: BLOCKED and stop.\n'
+        '  `.ai-task-manager/` is git-tracked (#574), so a checkout — including a\n' +
+        '  fresh `git worktree add` — carries it automatically; a missing config\n' +
+        '  means this directory is not an initialized aitm project. Run `npx aitm init`\n' +
+        '  (or check out the project) before booting an agent. Agents MUST report\n' +
+        '  STATUS: BLOCKED and stop.\n'
     );
     process.exit(2);
   }

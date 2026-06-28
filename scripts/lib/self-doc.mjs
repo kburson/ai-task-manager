@@ -108,15 +108,6 @@ export const SELF_DOC = {
     audience: 'Operator running a corpus migration. Dry-run by default; --apply to write.',
     usage: 'aitm rename-estimation-headers [--apply]',
   },
-  'seed-worktree': {
-    group: 'Parallel',
-    path: 'scripts/task-tracker/seed-worktree.mjs',
-    synopsis:
-      'Copy .ai-task-manager/ runtime config into a fresh git worktree after `git worktree add`.',
-    audience:
-      'Orchestrator seeding an agent worktree. Run immediately after `git worktree add`, before agent boot.',
-    usage: 'aitm seed-worktree <worktree-path> [--source <parent-repo>] [--backfill]',
-  },
   'ensure-wave-parent': {
     group: 'Parallel',
     path: 'scripts/gh/ensure-wave-parent.mjs',

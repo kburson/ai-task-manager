@@ -62,7 +62,6 @@ function makeDeps({
     worktreesCreated: 0,
     worktreesRemoved: 0,
     npmCiCalls: 0,
-    seedCalls: 0,
   };
   let npmCiFailsRemaining = npmCiFailTimes;
   return {
@@ -86,9 +85,6 @@ function makeDeps({
       },
       removeWorktree: async () => {
         calls.worktreesRemoved++;
-      },
-      seedWorktree: async () => {
-        calls.seedCalls++;
       },
       npmCi: async () => {
         calls.npmCiCalls++;

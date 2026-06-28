@@ -89,7 +89,6 @@ const result = await runVerbTest({
     getHeadSha: async () => SHA,
     createWorktree: async () => {},
     removeWorktree: async () => {},
-    seedWorktree: async () => {},
     npmCi: async () => {},
     execInSandbox: async () => {
       sandboxRan = true;

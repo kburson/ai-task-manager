@@ -63,7 +63,6 @@ function makeDeps({ execResults = {}, shouldThrowOnExec = false } = {}) {
     removeWorktree: async () => {
       calls.worktreesRemoved++;
     },
-    seedWorktree: async () => {},
     npmCi: async () => {
       calls.npmCiCalls++;
     },
@@ -171,7 +170,6 @@ test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no po
       getHeadSha: async () => 'sha12345',
       createWorktree: async () => {},
       removeWorktree: async () => {},
-      seedWorktree: async () => {},
       npmCi: async () => {},
       execInSandbox: async () => ({ exit: 0, stdout: '', stderr: '' }),
       moveState: async ({ target }) => {

@@ -228,7 +228,8 @@ try {
     /\.ai-task-manager[\\/]task-tracker\.json/,
     'error must name the missing config file'
   );
-  assert.match(err.stderr, /seed-worktree\.mjs/, 'error must point to the seeding helper');
+  // #575 — seeding retired; the remedy is now `npx aitm init`, not a seed helper.
+  assert.match(err.stderr, /npx aitm init/, 'error must point to the init remedy');
 }
 rmSync(bareWorktree, { recursive: true });
 console.log('cli.test.mjs: status/config/end passed');

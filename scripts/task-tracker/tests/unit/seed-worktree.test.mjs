@@ -1,178 +1,114 @@
 #!/usr/bin/env node
-// @story #27
+// @story #575 — Retire seed-worktree.
+//
+// History: #27 added `seed-worktree.mjs` to copy the gitignored
+// `.ai-task-manager/` runtime config + templates into a fresh `git worktree add`
+// checkout. #573 moved transient runtime state under `.tmp/aitm/` (auto-created
+// on first write) and #574 made `.ai-task-manager/` config + templates
+// first-class git-TRACKED files. Once the tracked set ≡ the worktree-required
+// set, a plain checkout already carries every behavioral contract, so seeding
+// is structurally unnecessary and the helper was deleted.
+//
+// This test is the verifier for all four #575 ACs. It no longer exercises a
+// seeding helper (there is none) — instead it ASSERTS the seeding path is gone:
+//   1. The `seed-worktree.mjs` module no longer exists.
+//   2. No live (non-test) script imports or invokes it.
+//   3. The required templates are git-tracked, so a checkout carries them with
+//      zero seeding — structurally closing the #539 "missing templates" gap.
+//   4. Docs no longer present seeding as a live mechanism.
+
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
-import { projectScratchDir, mkdtempOutsideRepo } from '../../lib/scratch-dir.mjs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { seedWorktree, seedMissingTemplates, findMainWorktree } from '../../seed-worktree.mjs';
 
-const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const CLI = path.resolve(__dir, '..', '..', 'seed-worktree.mjs');
+const ROOT = path.resolve(__dir, '..', '..', '..', '..');
 
-function makeRepo() {
-  const root = mkdtempSync(path.join(projectScratchDir('test'), 'seed-src-'));
-  const cfgDir = path.join(root, '.ai-task-manager');
-  // #574 — the markdown templates live under `.ai-task-manager/templates/`.
-  const tplDir = path.join(cfgDir, 'templates');
-  mkdirSync(tplDir, { recursive: true });
-  writeFileSync(path.join(cfgDir, 'task-tracker.json'), '{"repo":"o/r"}\n');
-  writeFileSync(path.join(tplDir, 'pickup-directive.md'), '# directive\n');
-  writeFileSync(path.join(tplDir, 'definition-of-done.md'), '# dod\n');
-  return root;
+function walk(dir, acc = []) {
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, ent.name);
+    if (ent.isDirectory()) {
+      if (ent.name === 'node_modules') continue;
+      walk(p, acc);
+    } else if (/\.mjs$/.test(ent.name)) {
+      acc.push(p);
+    }
+  }
+  return acc;
 }
 
-function makeTarget() {
-  return mkdtempSync(path.join(projectScratchDir('test'), 'seed-tgt-'));
-}
-
-// 1. Success path
+// AC2 — the module is deleted.
 {
-  const src = makeRepo();
-  const tgt = makeTarget();
-  const r = seedWorktree({ source: src, target: tgt });
-  assert.equal(r.ok, true);
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json')));
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md')));
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'templates', 'definition-of-done.md')));
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'task-tracker-state.json')));
-  const cfg = readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8');
-  assert.match(cfg, /"repo":"o\/r"/);
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
+  const modulePath = path.join(ROOT, 'scripts', 'task-tracker', 'seed-worktree.mjs');
+  assert.equal(existsSync(modulePath), false, 'seed-worktree.mjs must be deleted (#575)');
 }
 
-// 2. Refuses to overwrite a populated target
+// AC2 — no live (non-test) script imports seed-worktree.mjs or calls the
+// retired helpers. The test tree may still NAME them while asserting absence
+// (this file does), so the live-code scan excludes `tests/`.
 {
-  const src = makeRepo();
-  const tgt = makeTarget();
-  mkdirSync(path.join(tgt, '.ai-task-manager'), { recursive: true });
-  writeFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), '{"repo":"x/y"}\n');
-  assert.throws(() => seedWorktree({ source: src, target: tgt }), /refusing to overwrite/);
-  // existing content untouched
-  const cfg = readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8');
-  assert.match(cfg, /"repo":"x\/y"/);
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
-}
-
-// 3. Failure on missing source files
-{
-  const src = makeRepo();
-  rmSync(path.join(src, '.ai-task-manager', 'templates', 'pickup-directive.md'));
-  const tgt = makeTarget();
-  assert.throws(() => seedWorktree({ source: src, target: tgt }), /missing source file/);
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
-}
-
-// 3b. Failure when source dir missing entirely
-{
-  const src = mkdtempSync(path.join(projectScratchDir('test'), 'seed-empty-'));
-  const tgt = makeTarget();
-  assert.throws(
-    () => seedWorktree({ source: src, target: tgt }),
-    /source \.ai-task-manager not found/
+  const SCRIPTS = path.join(ROOT, 'scripts');
+  const offenders = [];
+  const FORBIDDEN = [
+    /from\s+['"][^'"]*seed-worktree(\.mjs)?['"]/,
+    /\bseedMissingTemplates\b/,
+    /\bseedWorktreeBackfill\b/,
+    /\bseedWorktree\b/,
+  ];
+  for (const file of walk(SCRIPTS)) {
+    const rel = path.relative(SCRIPTS, file);
+    if (rel.split(path.sep).includes('tests')) continue;
+    const text = readFileSync(file, 'utf8');
+    if (FORBIDDEN.some((re) => re.test(text))) offenders.push(rel.split(path.sep).join('/'));
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `no live script may reference the retired seeding helper:\n${offenders.join('\n')}`
   );
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
 }
 
-// 4. Idempotence: rerun against empty .ai-task-manager dir succeeds
+// AC1 / AC4 — the templates a worktree needs are git-tracked, so a checkout
+// carries them with zero seeding. `git ls-files` is the source of truth for
+// "present at checkout."
 {
-  const src = makeRepo();
-  const tgt = makeTarget();
-  mkdirSync(path.join(tgt, '.ai-task-manager'), { recursive: true });
-  const r = seedWorktree({ source: src, target: tgt });
-  assert.equal(r.ok, true);
-  assert.ok(existsSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json')));
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
+  const tracked = execFileSync('git', ['-C', ROOT, 'ls-files', '.ai-task-manager/'], {
+    encoding: 'utf8',
+  }).split('\n');
+  const required = [
+    '.ai-task-manager/task-tracker.json',
+    '.ai-task-manager/templates/pickup-directive.md',
+    '.ai-task-manager/templates/definition-of-done.md',
+  ];
+  for (const f of required) {
+    assert.ok(
+      tracked.includes(f),
+      `${f} must be git-tracked so a fresh worktree carries it without seeding (#539 closed)`
+    );
+  }
 }
 
-// 5. CLI: success exit 0, populated dir exit 1
+// AC4 — skill + guide docs no longer present seeding as a LIVE mechanism. A
+// retirement note ("retired", "deleted", "no seeding", "NOT needed") is allowed;
+// an imperative "run the seed helper" instruction is not.
 {
-  const src = makeRepo();
-  const tgt = makeTarget();
-  const r = await pexec('node', [CLI, tgt, '--source', src]);
-  assert.match(r.stdout, /seeded/);
-  // second run fails
-  await assert.rejects(pexec('node', [CLI, tgt, '--source', src]), /Command failed/);
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
+  const docs = [
+    path.join(ROOT, 'skill', 'shared', 'rules', 'parallel.md'),
+    path.join(ROOT, 'docs', 'guides', 'parallel-agents.md'),
+  ];
+  const liveSeedInstruction =
+    /npx aitm seed-worktree|run the seed helper|MANDATORY[\s\S]{0,40}seed/i;
+  for (const d of docs) {
+    if (!existsSync(d)) continue;
+    const text = readFileSync(d, 'utf8');
+    assert.equal(
+      liveSeedInstruction.test(text),
+      false,
+      `${path.relative(ROOT, d)} must not instruct a live seeding step (#575)`
+    );
+  }
 }
 
-// 6. seedMissingTemplates: copies only missing .md files, preserves existing
-{
-  const src = makeRepo();
-  const tgt = makeTarget();
-  mkdirSync(path.join(tgt, '.ai-task-manager'), { recursive: true });
-  // task-tracker.json already present (mimics git-tracked carry-over in fresh worktree)
-  writeFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), '{"repo":"keep/me"}\n');
-  const r = seedMissingTemplates({ source: src, target: tgt });
-  assert.equal(r.ok, true);
-  assert.deepEqual(r.copied.sort(), [
-    'templates/definition-of-done.md',
-    'templates/pickup-directive.md',
-  ]);
-  // existing task-tracker.json untouched
-  assert.match(
-    readFileSync(path.join(tgt, '.ai-task-manager', 'task-tracker.json'), 'utf8'),
-    /"repo":"keep\/me"/
-  );
-  // markdown files seeded
-  assert.match(
-    readFileSync(path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md'), 'utf8'),
-    /# directive/
-  );
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
-}
-
-// 7. seedMissingTemplates: idempotent — no copies when target already populated
-{
-  const src = makeRepo();
-  const tgt = makeTarget();
-  mkdirSync(path.join(tgt, '.ai-task-manager', 'templates'), { recursive: true });
-  writeFileSync(
-    path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md'),
-    '# user version\n'
-  );
-  writeFileSync(
-    path.join(tgt, '.ai-task-manager', 'templates', 'definition-of-done.md'),
-    '# user dod\n'
-  );
-  const r = seedMissingTemplates({ source: src, target: tgt });
-  assert.equal(r.ok, true);
-  assert.deepEqual(r.copied, []);
-  assert.match(
-    readFileSync(path.join(tgt, '.ai-task-manager', 'templates', 'pickup-directive.md'), 'utf8'),
-    /# user version/
-  );
-  rmSync(src, { recursive: true, force: true });
-  rmSync(tgt, { recursive: true, force: true });
-}
-
-// 8. seedMissingTemplates: no-op when source missing (does not throw)
-{
-  const tgt = makeTarget();
-  const r = seedMissingTemplates({ source: '/nonexistent/path/xyz', target: tgt });
-  assert.equal(r.ok, false);
-  rmSync(tgt, { recursive: true, force: true });
-}
-
-// 9. findMainWorktree: returns a string for a real git repo, null on non-repo
-{
-  const r = findMainWorktree(__dir);
-  assert.equal(typeof r, 'string', 'returns main worktree path inside a repo');
-  // Must be outside any git repo for this assertion. `.tmp/test/` lives
-  // inside *this* repo, so use the OS temp dir as the escape hatch.
-  const nonRepo = mkdtempOutsideRepo('no-git-');
-  assert.equal(findMainWorktree(nonRepo), null, 'returns null outside a git repo');
-  rmSync(nonRepo, { recursive: true, force: true });
-}
-
-console.log('seed-worktree.test.mjs: all tests passed');
+console.log('seed-worktree.test.mjs: seeding path retired — all assertions passed');

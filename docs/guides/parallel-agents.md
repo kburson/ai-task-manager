@@ -20,7 +20,7 @@ Parallel sub-agents are an **explicit, approved** operation — never the defaul
 **Every `Agent` spawn runs in its own git worktree.** The orchestrator stays in the main worktree; agents work in `.claude/worktrees/<agent-id>/`.
 
 - The `agent-guard` hook blocks `Agent` tool invocations issued from the main worktree. If you see that block, you skipped a worktree — create one and retry.
-- Worktrees are seeded by `scripts/task-tracker/seed-worktree.mjs` (copies `.ai-task-manager/` runtime files). An unseeded worktree fails closed at agent bootstrap; work performed there is discarded.
+- Worktrees need no seeding: `.ai-task-manager/` config + templates are git-tracked (#574), so a `git worktree add` checkout carries every behavioral contract, and transient runtime state auto-creates under `.tmp/aitm/` on first write (#573). The `seed-worktree` helper was retired in #575.
 - Every worktree starts from fresh `trunk` HEAD. Delete any pre-existing local branch that would collide with the planned worktree branch name before dispatch. Verify post-dispatch that `git -C <worktree> rev-parse HEAD == git rev-parse trunk`.
 
 ### 2a. Worktree-isolation dispatch recipe (`Agent({ isolation: "worktree" })`)

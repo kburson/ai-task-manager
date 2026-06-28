@@ -47,17 +47,9 @@ Every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool
 
 **State-isolation guard.** Before dispatching, snapshot `.ai-task-manager/task-tracker.json` and `task-tracker-state.json` from the main repo. Agents occasionally resolve git-root wrong from inside a worktree and write to main-repo state. After all agents return, diff the snapshots; restore if changed unexpectedly.
 
-## Worktree Config Seeding — MANDATORY
+## Worktree Config Seeding — NOT NEEDED (retired #575)
 
-`.ai-task-manager/` is gitignored. `git worktree add` creates a worktree **without** `task-tracker.json`, `pickup-directive.md`, or `definition-of-done.md`. An agent booting into an unseeded worktree hits `config-not-found` and MUST `STATUS: BLOCKED`. Work performed in an unseeded worktree is discarded.
-
-Run the seed helper **immediately after `git worktree add` and before the agent boots**:
-
-```bash
-npx aitm seed-worktree <worktree-path>
-```
-
-Copies `task-tracker.json`, `pickup-directive.md`, `definition-of-done.md` from the parent repo, creates an empty `task-tracker-state.json`. Refuses to overwrite a populated target.
+No seeding step. `.ai-task-manager/` config + templates (`task-tracker.json`, `templates/pickup-directive.md`, `templates/definition-of-done.md`, …) are git-tracked (#574), so a `git worktree add` checkout already carries every behavioral contract. Transient runtime state auto-creates under `.tmp/aitm/` on first write (#573). An agent boots into a worktree with its full config present — no `config-not-found`, nothing to copy. The `seed-worktree` helper was deleted in #575.
 
 ## Wave parent — required for solo fan-out of ≥2
 
