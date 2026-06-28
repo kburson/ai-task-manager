@@ -265,6 +265,11 @@ if (_isMain)
           await verbSavePlan(ctx);
           break;
         }
+        case 'save-draft': {
+          const { verbSaveDraft } = await import('./verbs/save-draft.mjs');
+          await verbSaveDraft(ctx);
+          break;
+        }
         case 'cancel': {
           const { verbCancel } = await import('./verbs/cancel.mjs');
           await verbCancel(ctx);

@@ -1,5 +1,6 @@
 import { loadState, saveState } from '../state.mjs';
 import { savePlanFile, validatePlanContent, extractTitle } from '../lib/plan-file.mjs';
+import { clearDraftFile, resolveDraftSlug } from '../lib/draft-file.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -58,6 +59,19 @@ export async function verbSavePlan(ctx) {
     `discover-${s.discoverBucket.startedAt.slice(0, 10).replace(/-/g, '')}`;
   const savedPath = savePlanFile({ title, content, projectDir });
 
+  // AC4 (#576) — finalizing clears the matching interim draft. The draft is
+  // insurance for the not-yet-finalized bucket; once a finalized plan exists it
+  // is redundant and would only linger as version-control noise. Best-effort:
+  // a missing draft is a no-op, so the finalize path above is unchanged. Prefer
+  // the slug `save-draft` stamped into the bucket; fall back to the finalized
+  // title's slug so a draft autosaved under the same title is still cleared.
+  const draftSlug = resolveDraftSlug({
+    slug: s.discoverBucket.draftSlug,
+    title,
+    startedAt: s.discoverBucket.startedAt,
+  });
+  clearDraftFile({ projectDir, slug: draftSlug });
+
   // Stamp savedPlanFile into the bucket so /task new can find it
   saveState(
     {
@@ -65,6 +79,8 @@ export async function verbSavePlan(ctx) {
       discoverBucket: {
         ...s.discoverBucket,
         savedPlanFile: savedPath,
+        draftSlug: null,
+        draftFile: null,
       },
     },
     statePath

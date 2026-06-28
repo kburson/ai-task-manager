@@ -12,6 +12,11 @@ Task Tracker — available commands
                             Save a discovery plan markdown file to docs/plans/ and stamp its path
                             into the active discover bucket. Requires active discover state.
                             Optional: --title <override>
+  /task save-draft --from-file <path>
+                            Autosave the in-progress discovery brainstorm to a tracked draft at
+                            docs/plans/.drafts/<slug>.md. Safe to call repeatedly; overwrites the
+                            same file. Requires active discover state. Optional: --slug / --title.
+                            save-plan clears the matching draft on finalize.
   /task cancel              Discard the active discovery bucket (no timing recorded)
   /task start <N>           Bind to issue #N (same as /task #N)
   /task pause               Flush timing and pause the active task; sets paused flag
