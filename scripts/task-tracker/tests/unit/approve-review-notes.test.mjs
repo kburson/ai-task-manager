@@ -24,7 +24,9 @@ function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = 
         body = next;
         written.push(next);
       }
-      return { status: 'ok' };
+      // #655 — surface the verified live body so approve's read-back assertion
+      // sees the stamped aitm-review-approved marker.
+      return { status: next !== before ? 'ok' : 'no-op', body };
     },
     getBoardState: async () => 'review',
     nowIso: () => '2026-05-17T00:00:00Z',

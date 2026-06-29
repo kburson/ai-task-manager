@@ -89,6 +89,10 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     projectDir: dir,
     rest: ['#999'],
     SKIP_NETWORK: true,
+    // #655 — an honestly-approved live body; the review:approved row is now
+    // gated on the persisted approval marker, so the order assertion requires a
+    // body that actually carries it.
+    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {},
     flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),

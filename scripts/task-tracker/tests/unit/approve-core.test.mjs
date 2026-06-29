@@ -48,7 +48,8 @@ function makeDeps(overrides = {}) {
           body = next;
           calls.writes.push(next);
         }
-        return { status: 'ok' };
+        // #655 — surface the verified live body for approve's read-back assertion.
+        return { status: next !== before ? 'ok' : 'no-op', body };
       },
       getBoardState: async () => {
         calls.stateLookups++;

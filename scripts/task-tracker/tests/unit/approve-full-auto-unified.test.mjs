@@ -48,7 +48,9 @@ function makeDeps(overrides = {}) {
           body = next;
           calls.writes.push(next);
         }
-        return { status: 'ok' };
+        // #655 — the real mutateIssueBody returns the verified live `body`; the
+        // fake must too so approve's read-back assertion sees the stamped marker.
+        return { status: next !== before ? 'ok' : 'no-op', body };
       },
       getBoardState: async () => {
         calls.stateLookups++;
@@ -250,7 +252,9 @@ function makeDeps(overrides = {}) {
         capturedOpts = opts;
         const next = opts.mutate(liveBody);
         liveBody = next;
-        return { status: 'ok' };
+        // #655 — return the verified live body so approve's read-back assertion
+        // sees the stamped aitm-review-approved marker.
+        return { status: 'ok', body: next };
       },
       getBoardState: async () => 'review',
       nowIso: () => FIXED_TS,
@@ -296,7 +300,8 @@ function makeDeps(overrides = {}) {
         capturedOpts = opts;
         const next = opts.mutate(liveBody);
         liveBody = next;
-        return { status: 'ok' };
+        // #655 — return the verified live body (carries aitm-review-approved).
+        return { status: 'ok', body: next };
       },
       getBoardState: async () => 'review',
       nowIso: () => FIXED_TS,

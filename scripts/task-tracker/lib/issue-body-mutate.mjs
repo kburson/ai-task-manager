@@ -32,7 +32,11 @@
 // counted at error-construction time.
 //
 // Returns the same shape as `versionedWriteBody`:
-//   { status: 'ok' | 'no-op', attempts, version }
+//   { status: 'ok' | 'no-op', attempts, version, body }
+// `body` (#655) is the verified live body fetched on the write path — the
+// post-write verify-fetch on the `ok` path, the top-of-loop fetch on the
+// `no-op` path — so callers can read-back a marker they expected to persist
+// without paying a second GitHub round-trip.
 //
 // Throws `BodyWriteRefusalError` on stale-input, overlapping-diff, or
 // max-retries-exceeded; `MarkerLossError` on dropped invariant markers.

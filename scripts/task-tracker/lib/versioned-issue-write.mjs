@@ -305,8 +305,11 @@ export async function versionedWriteBody({
       }
       if (!ourEdit) {
         // Nothing to write — caller's previous mutate was a no-op against the
-        // last base. Treat as success.
-        return { status: 'no-op', attempts, version: remoteVersion };
+        // last base. Treat as success. Surface the top-of-loop `remote` fetch
+        // (#655) as the verified live body so callers can read-back the marker
+        // they expected to persist — no extra GitHub round-trip: `remote` was
+        // already fetched at the top of this iteration (line ~279).
+        return { status: 'no-op', attempts, version: remoteVersion, body: remote };
       }
       ourBase = remoteBase;
       ourLocal = rebaseOnto({ ourEdit, theirEdit, remote: remoteBase });
@@ -324,7 +327,11 @@ export async function versionedWriteBody({
     const verifyRemote = await fetchBody(repo, issueNumber);
     const norm = (s) => String(s ?? '').replace(/\s+$/, '');
     if (norm(verifyRemote) === norm(stamped)) {
-      return { status: 'ok', attempts, version: targetVersion };
+      // Surface the post-write verify-fetch (#655) as the verified live body.
+      // `verifyRemote` is the byte-confirmed result of our write and is already
+      // in hand — returning it adds no GitHub round-trip beyond the verify the
+      // `ok` path already performs (line ~324).
+      return { status: 'ok', attempts, version: targetVersion, body: verifyRemote };
     }
 
     // AC1 instrumentation (#437): when the byte-equality verify rejects a write

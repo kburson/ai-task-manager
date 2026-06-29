@@ -33,6 +33,7 @@ import { deriveDrivers } from '../lib/derive-drivers.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { assertMarkerPersisted } from '../lib/stamp-verify.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 const pexec = promisify(execFile);
@@ -306,11 +307,23 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
       // AC / Functional DoD boxes, not verb-driven lifecycle ticks. Stamping
       // an inline proof marker here would also break lifecycle-dod.mjs's
       // exact-label match. Bypass the gate scoped to this single call site.
-      await mutateBody({
+      const writeResult = await mutateBody({
         issueNumber,
         repo: cfg.repo,
         mutate: stamp,
         allowUnverifiedTicks: true,
+      });
+      // #655 — read-back verification. The write call not throwing is NOT proof
+      // the `aitm-review-approved` marker persisted (the #652 silent-success
+      // failure). Inspect the verified live body the write path already fetched
+      // and refuse to report `approved` unless the marker is actually present.
+      // No extra GitHub round-trip: `writeResult.body` is the post-write verify
+      // fetch (ok path) or the top-of-loop fetch (no-op / idempotent path).
+      assertMarkerPersisted({
+        result: writeResult,
+        predicate: hasReviewApprovedMarker,
+        marker: 'aitm-review-approved',
+        issueNumber,
       });
       return {
         status: 'approved',

@@ -73,6 +73,26 @@ export function decideBoardMoveFailure({ moveResult, boardState } = {}) {
   return { surface: true, reason: 'board-not-done' };
 }
 
+// review:approved timing-row emission decision (#655).
+//
+// The `review:approved` row is an audit record that a human (or full-auto)
+// approval happened. close.mjs must NOT emit it on faith — the #652 incident
+// was a close that wrote `review:approved` while the `aitm-review-approved`
+// marker never persisted on the live body, fabricating evidence of an approval
+// that did not occur. Emit the row only when the live body actually carries the
+// approval marker, OR the review→done gate was explicitly bypassed (which
+// carries its own `aitm-gate-bypassed` audit row, so the bypass is already on
+// record). When the gate is active and the marker is absent, suppress the row.
+//
+//   hasApprovalMarker  — `hasReviewApprovedMarker(closeBody)` on the live body.
+//   reviewGateBypassed — the review→done gate was disabled (session/project).
+//
+// Pure + exported so the suppress-vs-emit decision is testable without the
+// network-heavy close transaction.
+export function shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed } = {}) {
+  return Boolean(hasApprovalMarker) || Boolean(reviewGateBypassed);
+}
+
 // Gate-evaluation failure decision (#510).
 //
 // `verbClose` evaluates every review→done close gate (body fetch, derived-DoD

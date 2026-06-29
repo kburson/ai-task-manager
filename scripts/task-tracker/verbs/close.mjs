@@ -13,6 +13,7 @@ import {
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { hasReviewApprovedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
@@ -23,6 +24,7 @@ import {
   decideCloseConvergence,
   decideBoardMoveFailure,
   decideGateEvalFailure,
+  shouldEmitReviewApprovedRow,
 } from '../lib/close-convergence.mjs';
 
 export async function verbClose(ctx) {
@@ -150,7 +152,16 @@ export async function verbClose(ctx) {
   }
 
   let dirtyAuditRow = null;
-  let closeBody = '';
+  // #655 — `?? ctx.closeBody` lets a SKIP_NETWORK fixture seed the live body the
+  // `!SKIP_NETWORK` block would otherwise fetch, so the review:approved emission
+  // gate (which predicates on the approval marker) is exercisable in-process.
+  let closeBody = ctx.closeBody ?? '';
+  // #655 — hoisted out of the `!SKIP_NETWORK` gate-evaluation block (where
+  // `_resolvedReviewGate` is scoped) so the later `review:approved` timing-row
+  // emission can predicate on it. True iff the review→done gate was explicitly
+  // disabled (session/project override), which carries its own
+  // `aitm-gate-bypassed` audit row.
+  let reviewGateBypassed = false;
   if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
@@ -237,6 +248,7 @@ export async function verbClose(ctx) {
         session: loadSession(currentSessionId()),
         projectConfig: rawProjectConfig(),
       });
+      reviewGateBypassed = !_resolvedReviewGate; // #655 — hoist for the row gate
       if (!_resolvedReviewGate) {
         // #516 — the review-gate bypass is recorded as a body audit marker
         // (`aitm-gate-bypassed`), not a ⏱ Timing Log row. The bypass consumes no
@@ -565,7 +577,21 @@ export async function verbClose(ctx) {
     // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
     wordMarker: s.lastWordMarker ?? 0,
   });
-  await safePostTiming(closeTarget, _reviewApprovedRow);
+  // #655 — do NOT emit `review:approved` on faith. Emit it only when the live
+  // body actually carries the `aitm-review-approved` marker, OR the review gate
+  // was explicitly bypassed (which already logged its own `aitm-gate-bypassed`
+  // audit row). When the gate is active and the marker never persisted (the
+  // #652 half-state), suppressing the row prevents fabricating a record of an
+  // approval that did not happen. `issue:wrap` stays unconditional — it records
+  // the terminal close, not an approval claim.
+  if (
+    shouldEmitReviewApprovedRow({
+      hasApprovalMarker: hasReviewApprovedMarker(closeBody),
+      reviewGateBypassed,
+    })
+  ) {
+    await safePostTiming(closeTarget, _reviewApprovedRow);
+  }
   await safePostTiming(closeTarget, _issueWrapRow);
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
   // Post-close board/body agreement check (#180 defect 1 guard). After
