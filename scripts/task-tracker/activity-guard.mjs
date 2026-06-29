@@ -41,6 +41,7 @@ import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -94,6 +95,22 @@ if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') 
   const filePath = toolInput?.file_path ?? toolInput?.notebook_path ?? '';
   if (typeof filePath !== 'string' || !filePath) process.exit(0);
   target = normalizePath(filePath, projectRoot);
+  // #659 AC2 — installed-guard self-modification interlock. A write whose
+  // resolved path lands inside an installed guard tree (a `node_modules/`
+  // segment leading to the ai-task-manager `scripts/` dir) is refused
+  // UNCONDITIONALLY, ahead of the `.tmp/**` carve-out, the chore-mode bypass,
+  // and every kanban-state allow-check below. Ordering is the contract:
+  // neither `develop` state nor active chore-mode can re-open guard
+  // self-editing because this interlock has already returned. The package's
+  // own dev checkout (no `node_modules/` ancestor) is unaffected and stays
+  // editable via its repo-root path.
+  if (isInstalledGuardPath(target)) {
+    block(
+      `Refusing to edit an installed guard file: ${target}\n` +
+        `  Files under an installed \`node_modules/.../scripts\` guard tree are off-limits to the Edit/Write/NotebookEdit tools they gate (self-modification interlock, #659).\n` +
+        `  This refusal is unconditional — neither develop state nor chore-mode grants a bypass. Edit the package in its own source checkout and reinstall; never hand-edit the installed copy.`
+    );
+  }
   // Carve-out: .tmp/** is the canonical scratch directory (gitignored,
   // documented in CLAUDE.md "Tool Usage Rules"). Convention subfolders:
   // .tmp/gh/ (issue body scratch), .tmp/plan/ (create-issue fragments),

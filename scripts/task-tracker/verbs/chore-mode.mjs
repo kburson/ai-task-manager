@@ -13,7 +13,7 @@
 // with `chore: `. See lib/chore-mode.mjs for the state primitive.
 
 import { loadState, saveState } from '../state.mjs';
-import { readChoreMode, writeChoreMode } from '../lib/chore-mode.mjs';
+import { readChoreMode, writeChoreMode, appendChoreModeAudit } from '../lib/chore-mode.mjs';
 import {
   readFleet,
   fleetRegistryPath,
@@ -85,6 +85,7 @@ export async function choreModeOn(ctx, deps = {}) {
   const findMainImpl = deps.findMainWorktreePath || findMainWorktreePath;
   const readCM = deps.readChoreMode || readChoreMode;
   const writeCM = deps.writeChoreMode || writeChoreMode;
+  const appendAudit = deps.appendChoreModeAudit || appendChoreModeAudit;
   const nowIso = deps.nowIso || (() => new Date().toISOString());
   const flushActiveToGH = deps.flushActiveToGH || ctx.flushActiveToGH;
   const out = deps.out || process.stdout;
@@ -144,12 +145,18 @@ export async function choreModeOn(ctx, deps = {}) {
     );
   }
 
+  const since = nowIso();
   writeCM(projectDir, {
     active: true,
-    since: nowIso(),
+    since,
     previousIssue,
     reason,
   });
+
+  // #659 AC3 — record a durable audit marker for this activation. The live
+  // `choreMode` record is wiped on `off`, so the append-only log is the
+  // attributable trail of who bypassed the source-edit gate and why.
+  appendAudit(projectDir, { reason, ts: since, previousIssue });
 
   out.write(
     `chore-mode: on${previousIssue ? ` (detached ${previousIssue})` : ''}${reason ? ` — ${reason}` : ''}\n`

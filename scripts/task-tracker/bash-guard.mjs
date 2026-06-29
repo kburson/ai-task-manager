@@ -27,7 +27,7 @@ import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { evaluateGhEdit, evaluateGhCreate } from './lib/gh-edit-guard.mjs';
+import { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } from './lib/gh-edit-guard.mjs';
 import { evaluateAitmPath } from './lib/aitm-path-guard.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
@@ -148,6 +148,17 @@ if (/\bgh\s+issue\s+create\b/.test(scanned)) {
       '  Use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>` — it enforces project tether, assignee/priority gates, and template structure.'
   );
 }
+
+// #659 AC1 — `gh api` issue creation bypasses the `gh issue create` guard.
+// Refuse a REST POST to `repos/<owner>/<repo>/issues` and a GraphQL
+// `createIssue` mutation, routing to create-issue.mjs (same message as the
+// subcommand guard above). Checked against the RAW command — the GraphQL
+// mutation body and field flags live inside quotes, which `scanned` strips.
+// GETs (`gh api repos/.../issues` with no fields), `.../issues/<n>` edits, and
+// unrelated `gh api` calls pass. (gh's own internal create-issue.mjs spawns via
+// execFile, not Bash, so it never reaches this hook.)
+const ghApiCreateResult = evaluateGhApiCreate({ command });
+if (ghApiCreateResult.block) block(ghApiCreateResult.reason);
 
 // Direct `gh issue close` bypasses the timing flush and DoD gate enforced by
 // `/task close`. Direct `gh issue reopen` similarly skips state reconciliation.

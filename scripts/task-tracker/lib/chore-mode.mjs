@@ -88,3 +88,52 @@ export function writeChoreMode(projectDir, record) {
 export function isChoreModeActive(projectDir) {
   return readChoreMode(projectDir).active === true;
 }
+
+// #659 AC3 — append-only audit log of chore-mode activations. The live
+// `choreMode` record is reset to nulls on `off`, so it cannot serve as a
+// durable audit trail. This log accumulates one `{ reason, ts, previousIssue }`
+// entry per activation under the `choreModeLog` key and is NEVER cleared by
+// `off`, so every entry into the blanket source-edit bypass stays attributable
+// after the fact. Tolerates a missing/malformed file or key (returns []).
+export function readChoreModeLog(projectDir) {
+  const p = defaultStatePath(projectDir);
+  if (!existsSync(p)) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(p, 'utf8'));
+  } catch {
+    return [];
+  }
+  const log = parsed && typeof parsed === 'object' ? parsed.choreModeLog : null;
+  return Array.isArray(log) ? log : [];
+}
+
+// Append one activation entry to the audit log and persist it, merging into the
+// existing global state so nothing else is disturbed. `ts` is the ISO activation
+// timestamp; `reason` is the operator-supplied reason (may be null).
+export function appendChoreModeAudit(
+  projectDir,
+  { reason = null, ts = null, previousIssue = null }
+) {
+  const p = defaultStatePath(projectDir);
+  mkdirSync(path.dirname(p), { recursive: true });
+  let existing = {};
+  if (existsSync(p)) {
+    try {
+      existing = JSON.parse(readFileSync(p, 'utf8'));
+      if (!existing || typeof existing !== 'object') existing = {};
+    } catch {
+      existing = {};
+    }
+  }
+  const prevLog = Array.isArray(existing.choreModeLog) ? existing.choreModeLog : [];
+  const entry = {
+    event: 'on',
+    reason: typeof reason === 'string' ? reason : null,
+    ts: typeof ts === 'string' ? ts : null,
+    previousIssue: typeof previousIssue === 'string' ? previousIssue : null,
+  };
+  const next = { ...existing, choreModeLog: [...prevLog, entry] };
+  writeFileSync(p, JSON.stringify(next, null, 2) + '\n', 'utf8');
+  return entry;
+}

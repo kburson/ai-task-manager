@@ -16,6 +16,27 @@ const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
 
+// #659 AC1 — `gh api` issue-creation interception. `gh issue create` is already
+// refused above, but the equivalent low-level `gh api` calls slip past:
+//   * REST:    gh api repos/<owner>/<repo>/issues -f title=... -F body=@file
+//   * GraphQL: gh api graphql -f query='mutation { createIssue(... ) { ... } }'
+// Both create an issue with zero tether/template enforcement. These regexes run
+// against the RAW command (not the quote-stripped form) so the GraphQL mutation
+// body and field flags inside quotes are visible.
+const GH_API_RE = /\bgh\s+api\b/;
+const GH_API_GRAPHQL_RE = /\bgraphql\b/;
+const GH_API_CREATE_MUTATION_RE = /createIssue\s*\(/i;
+// The REST create endpoint is `repos/<owner>/<repo>/issues` EXACTLY. The
+// negative lookahead `(?![\w/])` excludes `.../issues/<n>` (single-issue
+// GET/PATCH) and any longer word such as `.../issues-archive`, while allowing a
+// trailing `?query`, quote, or whitespace.
+const GH_API_ISSUES_ENDPOINT_RE = /\brepos\/[^\s/'"]+\/[^\s/'"]+\/issues(?![\w/])/;
+// Explicit method flag: `-X POST`, `-XPOST`, `--method POST`, `--method=POST`.
+const GH_API_METHOD_RE = /(?:--method[=\s]+|-X\s*)([A-Za-z]+)/;
+// Any field flag implies a POST when no explicit method is given (mirrors gh's
+// own rule). `--input` reads a JSON body file; all imply a write.
+const GH_API_FIELD_FLAG_RE = /(?:^|\s)(?:-f|--field|-F|--raw-field|--input)\b/;
+
 const LEGACY_PATTERNS = [
   {
     name: 'Plan approved by human checkbox',
@@ -161,6 +182,50 @@ export function parseGhIssueCreate(command) {
   const inlineMatch = cmd.match(BODY_INLINE_RE);
   if (inlineMatch) return { source: 'inline', body: inlineMatch[2] };
   return { source: 'none' };
+}
+
+// #659 AC1 — classify a `gh api` command as an issue-creation attempt.
+// Returns 'rest' for a POST to `repos/<owner>/<repo>/issues`, 'graphql' for a
+// `gh api graphql` command whose query contains a `createIssue(` selection, or
+// null for everything else (GETs, `.../issues/<n>` edits, unrelated POSTs,
+// non-issue endpoints, non-`gh api` commands). Pure and side-effect-free.
+export function classifyGhApiIssueCreate(command) {
+  const cmd = String(command || '');
+  if (!GH_API_RE.test(cmd)) return null;
+  // GraphQL createIssue mutation.
+  if (GH_API_GRAPHQL_RE.test(cmd) && GH_API_CREATE_MUTATION_RE.test(cmd)) return 'graphql';
+  // REST POST to the issues collection endpoint.
+  if (GH_API_ISSUES_ENDPOINT_RE.test(cmd)) {
+    const methodMatch = cmd.match(GH_API_METHOD_RE);
+    const method = methodMatch ? methodMatch[1].toUpperCase() : null;
+    const isPost = method ? method === 'POST' : GH_API_FIELD_FLAG_RE.test(cmd);
+    if (isPost) return 'rest';
+  }
+  return null;
+}
+
+// #659 AC1 — block verdict for `gh api` issue creation. Returns the SAME
+// routing refusal as the `gh issue create` guard (pointing at
+// scripts/gh/create-issue.mjs) so both paths are closed identically.
+export function evaluateGhApiCreate({ command }) {
+  const kind = classifyGhApiIssueCreate(command);
+  if (!kind) return { block: false };
+  const via =
+    kind === 'graphql'
+      ? 'a GraphQL `createIssue` mutation'
+      : 'a REST POST to `repos/<owner>/<repo>/issues`';
+  const reason =
+    `Direct issue creation via \`gh api\` (${via}) is forbidden.\n` +
+    `  This bypasses the create-issue.mjs wrapper (project tether, assignee/priority gates, template enforcement) exactly as a raw \`gh issue create\` would.\n` +
+    `  Use \`scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>\` instead.`;
+  return {
+    block: true,
+    reason: appendDefectHint(
+      reason,
+      'gh api issue create',
+      'direct gh api issue creation refused; route through create-issue.mjs'
+    ),
+  };
 }
 
 export function checkNewBody({ newBody }) {
