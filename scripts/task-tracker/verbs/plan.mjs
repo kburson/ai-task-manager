@@ -84,7 +84,7 @@ export async function runPlan({ issueNumber, cfg, deps = {} } = {}) {
 }
 
 export async function verbPlan(ctx) {
-  const { cfg, rest } = ctx;
+  const { cfg, rest, deps } = ctx;
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
     process.stderr.write('Usage: /task plan <issue#>\n');
@@ -95,7 +95,7 @@ export async function verbPlan(ctx) {
   }
   let result;
   try {
-    result = await runPlan({ issueNumber, cfg });
+    result = await runPlan({ issueNumber, cfg, deps });
   } catch (err) {
     process.stderr.write(`plan: ${err.message}\n`);
     process.exit(1);
