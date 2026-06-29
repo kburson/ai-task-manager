@@ -205,7 +205,7 @@ function parseArgs(rest) {
   return { issueNumber: null };
 }
 
-export async function verbDemote(rest, cfg) {
+export async function verbDemote(rest, cfg, deps = {}) {
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
     process.stderr.write('Usage: demote #N\n');
@@ -214,7 +214,7 @@ export async function verbDemote(rest, cfg) {
 
   let result;
   try {
-    result = await runDemote({ issueNumber, cfg });
+    result = await runDemote({ issueNumber, cfg, deps });
   } catch (err) {
     process.stderr.write(`demote: ${err.message}\n`);
     process.exit(1);
