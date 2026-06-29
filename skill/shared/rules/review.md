@@ -22,7 +22,7 @@ Stop. Do not run `/task close`. Do not infer human approval from passing tests o
 
 ## Pre-review verification (mandatory, in order)
 
-1. **Per-AC verification.** For every `- [ ]` in the issue body's Acceptance Criteria, verify by inspection AND by running the relevant test/build/command. Tick each with `/task check "<exact label>"`. No bulk-checking.
+1. **Per-AC verification.** For every `- [ ]` in the issue body's Acceptance Criteria, verify by inspection AND by running the relevant test/build/command. Tick each with `/task ensureChecked "<exact label>"`. No bulk-checking.
 2. **Per-DoD verification.** Same rule for the Definition of Done items. The Functional DoD subsection is gated by the evidence-marker contract — see `rules/functional-dod.md`. Stamp every stampable key with `/task dod-stamp <key>` before batch-ticking; `acs` and `checkboxes` are derived by `/task close` and refuse manual ticks.
 3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under the issue-specific `### Verification Commands` section. Standard DoD commands (`npm test`, `npm run test:all`, `npm run lint`, `npm run format:check`) may be referenced by markers but must NOT be duplicated in `### Verification Commands`.
 4. **Run `/task review #N`.**
@@ -57,7 +57,7 @@ Gate 2 (blocking at close) lives in `rules/close.md`.
 If `/task review` exits 3, unchecked items exist in the body. The CLI has already listed them on stderr. Show them to the user, then:
 
 1. Ask: "Would you like me to verify and resolve these items first, or proceed anyway?"
-2. **Default behavior is resolution.** Walk each item: verify, then `/task check "<label>"`. Re-run `/task review #N`.
+2. **Default behavior is resolution.** Walk each item: verify, then `/task ensureChecked "<label>"`. Re-run `/task review #N`.
 
 No env override exists. The pre-review checkbox gate cannot be skipped from the script path.
 

@@ -439,7 +439,9 @@ export async function verbClose(ctx) {
           unchecked.forEach((u) => console.error(`   ${u}`));
           console.error('');
           console.error('See .ai-task-manager/templates/pickup-directive.md Hard Rules.');
-          console.error('Verify each item, check its box (`/task check "<label>"`), then retry.');
+          console.error(
+            'Verify each item, check its box (`/task ensureChecked "<label>"`), then retry.'
+          );
           process.exit(3);
         }
       }

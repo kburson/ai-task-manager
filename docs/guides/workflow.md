@@ -155,7 +155,7 @@ The Plan → Develop gate is enforced by a hidden marker `<!-- aitm-plan-approve
 
 The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
 
-The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task check "Deep dive complete"` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
+The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task ensureChecked "Deep dive complete"` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
 
 **`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
 
@@ -232,10 +232,10 @@ Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a m
 
 #### Ticking a non-demonstrable AC at Develop (the `--allow-unverified-ticks` path)
 
-An AC honestly tagged `invalid — non-demonstrable` carries no machine verifier, so `ac-stamp` has nothing to run — yet the Develop→Test gate still requires every AC checkbox ticked. The first-class, audited way to tick such a box is the `check` verb's `--allow-unverified-ticks` flag (#567):
+An AC honestly tagged `invalid — non-demonstrable` carries no machine verifier, so `ac-stamp` has nothing to run — yet the Develop→Test gate still requires every AC checkbox ticked. The first-class, audited way to tick such a box is the `ensureChecked` verb's `--allow-unverified-ticks` flag (#567):
 
 ```
-/task check <N> --allow-unverified-ticks --label "<the non-demonstrable AC label>"
+/task ensureChecked <N> --allow-unverified-ticks --label "<the non-demonstrable AC label>"
 ```
 
 This threads the sanctioned `allowUnverifiedTicks` bypass of `mutateIssueBody` (the `CheckboxProofMissingError` guard) and records an `aitm-unverified-tick` audit marker naming the label + timestamp — honesty preserved by construction, never an `aitm-verified*` proof marker. The flag **refuses** to tick any AC that declares a real verifier (use `ac-stamp` to run it) or any Functional DoD item (use `dod-stamp`); it is exclusively for proofless / `invalid — non-demonstrable` ACs. Do **not** hand-roll a one-off `mutateIssueBody({ allowUnverifiedTicks: true })` script for this — the flag is the discoverable, auditable path. Review-exit (`runReviewPreflight`) exempts the same non-demonstrable ACs, so a box ticked this way crosses the review gate without re-flagging.

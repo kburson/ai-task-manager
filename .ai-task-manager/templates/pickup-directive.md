@@ -13,7 +13,7 @@ overrides live in the JIT reference
 Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a process violation.
 
 0. **Bootstrap is fail-closed.** If the required steps below do not all succeed, STOP and report `STATUS: BLOCKED bootstrap-step-<N>: <reason>` before editing source.
-1. **Deep Dive before any code.** Append it and run `/task check "Deep dive complete"` before editing any source file; the `source-edit-gate` hook enforces this (`.tmp/**` exempt). Unrelated edits need `chore-mode on "<reason>"`.
+1. **Deep Dive before any code.** Append it and run `/task ensureChecked "Deep dive complete"` before editing any source file; the `source-edit-gate` hook enforces this (`.tmp/**` exempt). Unrelated edits need `chore-mode on "<reason>"`.
 2. **Verify every DoD/AC item individually.** Run its `aitm-verified cmd="…"` command (also listed under `### Verification Commands`), then check the box. Never bulk-check.
 3. **All pre-close checkboxes ticked before close.** `/task close` (and move-to-Done) refuses any unchecked pre-close `- [ ]`. No env override.
 4. **Move to Done is gated.** `move-state.mjs <issue> done` refuses on unchecked boxes; the normal path is `/task close`.
@@ -40,7 +40,7 @@ Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a proc
 
 2. **Run a deep-dive analysis.** Read the relevant code paths, validate Scope, identify files to edit, define the test approach, surface risks.
 
-3. **Append the deep dive, then stamp completion.** Full procedure is in [`references/deep-dive-procedure.md`](./references/deep-dive-procedure.md). Canonical writer: `ensureDeepDive` (`scripts/task-tracker/lib/deep-dive.mjs`); the appendix is narrative-only. After it returns, run `/task check "Deep dive complete"`.
+3. **Append the deep dive, then stamp completion.** Full procedure is in [`references/deep-dive-procedure.md`](./references/deep-dive-procedure.md). Canonical writer: `ensureDeepDive` (`scripts/task-tracker/lib/deep-dive.mjs`); the appendix is narrative-only. After it returns, run `/task ensureChecked "Deep dive complete"`.
 
 4. **Re-evaluate Estimate and Size.** Update fields + comment if either changes; pause for human direction if Size jumps ≥ 2 tiers.
 

@@ -30,7 +30,7 @@ After bind succeeds, follow `.ai-task-manager/templates/pickup-directive.md`. Th
 The pickup directive enforces:
 
 - Deep-dive checkpoint with `<!-- aitm-deep-dive-complete: <ts> -->` marker before any code edits (Plan state).
-- Per-AC verification with `/task check "<label>"`, never bulk-checking.
+- Per-AC verification with `/task ensureChecked "<label>"`, never bulk-checking.
 - `aitm-verified-by` HTML comment markers on each AC.
 
 ## `{discuss}` brainstorming trigger (#405, #486)

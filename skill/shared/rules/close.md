@@ -35,7 +35,7 @@ If no task session is active and you need to mark an issue done: run `/task #N` 
 If `/task close` exits 3, unchecked items exist. The CLI prints them to stderr. Show the list, then:
 
 1. Ask: "Would you like me to verify and resolve these items first, or close anyway?"
-2. **Default behavior is resolution.** Walk each: verify by inspection + run the test/build/command, then `/task check "<label>"`. Then `/task review` → human approval → `/task close`.
+2. **Default behavior is resolution.** Walk each: verify by inspection + run the test/build/command, then `/task ensureChecked "<label>"`. Then `/task review` → human approval → `/task close`.
 3. If the user explicitly says close anyway (legitimate abandonment): drag the card to Done in the GitHub Projects UI, or delete the issue. No env override exists for the script-driven path.
 
 ## Review-approval gate (exit 7 / 8)

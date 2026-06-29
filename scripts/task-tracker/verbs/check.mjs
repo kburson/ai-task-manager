@@ -67,6 +67,77 @@ export function toggleChecklistLines(body, labels) {
   return { body: current, results };
 }
 
+// #660 — outcome-oriented checkbox writer. Unlike `toggleChecklistLine` (which
+// flips relative to the line's CURRENT glyph), `setChecklistLine` converges the
+// matched line to an ABSOLUTE desired end-state and reports whether that
+// required a change. This is the idempotency primitive behind the
+// `ensureChecked` / `ensureUnchecked` verbs: a second invocation on a line
+// already in the desired state is a byte-identical no-op (`changed: false`),
+// and the verb name — not the line's current state — fully determines the
+// result. Matching reuses the marker-stripped visible-text comparison so a bare
+// label still matches a marker-bearing line, and only the `[ ]`↔`[x]` glyph is
+// rewritten so trailing evidence markers survive intact.
+//
+// `desired` is 'checked' | 'unchecked'.
+//
+// Returns one of:
+//   { status: 'not-found' }
+//   { status: 'ambiguous', count: <n> }
+//   { status: 'set', body: <maybe-unchanged>, changed: <bool>, alreadyChecked: <bool> }
+export function setChecklistLine(body, label, desired) {
+  const targetChecked = desired === 'checked';
+  const wanted = stripMarkers(label);
+  const src = String(body);
+  const lines = src.split('\n');
+  const matches = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^- \[([ x])\] (.+)$/);
+    if (!m) continue;
+    if (stripMarkers(m[2]) === wanted) {
+      matches.push({ index: i, checked: m[1] === 'x' });
+    }
+  }
+  if (matches.length === 0) return { status: 'not-found' };
+  if (matches.length > 1) return { status: 'ambiguous', count: matches.length };
+  const { index, checked: alreadyChecked } = matches[0];
+  const changed = alreadyChecked !== targetChecked;
+  if (!changed) {
+    // Byte-identical no-op: return the original string untouched.
+    return { status: 'set', body: src, changed: false, alreadyChecked };
+  }
+  lines[index] = lines[index].replace(/^- \[[ x]\]/, targetChecked ? '- [x]' : '- [ ]');
+  return { status: 'set', body: lines.join('\n'), changed: true, alreadyChecked };
+}
+
+// Fold `setChecklistLine` over many labels against one accumulating body. A
+// `not-found`/`ambiguous` label is recorded and skipped — it never aborts the
+// batch. Returns { body, results } where results is
+//   [{ label, status: 'set'|'not-found'|'ambiguous', changed, alreadyChecked, count? }]
+export function setChecklistLines(body, labels, desired) {
+  let current = body;
+  const results = [];
+  for (const label of labels) {
+    const r = setChecklistLine(current, label, desired);
+    if (r.status === 'not-found') {
+      results.push({ label, status: 'not-found', changed: false, alreadyChecked: false });
+      continue;
+    }
+    if (r.status === 'ambiguous') {
+      results.push({
+        label,
+        status: 'ambiguous',
+        changed: false,
+        alreadyChecked: false,
+        count: r.count,
+      });
+      continue;
+    }
+    current = r.body;
+    results.push({ label, status: 'set', changed: r.changed, alreadyChecked: r.alreadyChecked });
+  }
+  return { body: current, results };
+}
+
 // Parse `verbCheck` args. Batch mode is triggered by any `--label <v>` (repeatable)
 // or `--labels-file <path>`. Remaining positional tokens form the legacy single
 // label (joined with spaces). `--allow-unverified-ticks` (#567) is a boolean flag
@@ -139,8 +210,21 @@ export function appendUnverifiedTickAudit(body, { label, ts }) {
   return `${src.replace(/\s+$/, '')}\n\n${marker}\n`;
 }
 
-export async function verbCheck(ctx) {
+// #660 — shared implementation behind `ensureChecked` (desired='checked') and
+// `ensureUnchecked` (desired='unchecked'). The verb name fully determines the
+// end-state; the matched line's current glyph never inverts the operation.
+// Idempotent: when the line is already in the desired state the call is a no-op
+// (exit 0, body untouched, no evidence gate) and prints an "Already …" line.
+//
+// `ensureChecked` semantics that `ensureUnchecked` does NOT share:
+//   - the special-label routes (`deep dive complete` → ensureDeepDive,
+//     `discussion complete` → markDiscussed),
+//   - the evidence-tick gate on a real `- [ ]`→`- [x]` transition (and the
+//     `--allow-unverified-ticks` honest hatch).
+// Un-ticking is never a claim of proof, so `ensureUnchecked` runs no gate.
+async function runEnsure(ctx, desired) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
+  const checking = desired === 'checked';
   // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
   // FRESH base each push attempt. #567 — threads the optional
   // `allowUnverifiedTicks` bypass for the non-demonstrable-AC hatch.
@@ -152,6 +236,7 @@ export async function verbCheck(ctx) {
     process.exit(1);
   }
 
+  const verbName = checking ? 'ensureChecked' : 'ensureUnchecked';
   const parsed = parseCheckArgs(rest);
   const issueNum = s.active.replace(/^#/, '');
 
@@ -167,11 +252,14 @@ export async function verbCheck(ctx) {
       }
     }
     if (!labels.length) {
-      console.error('Usage: /task check --label "<label>" [--label ...] | --labels-file <path>');
+      console.error(
+        `Usage: /task ${verbName} --label "<label>" [--label ...] | --labels-file <path>`
+      );
       process.exit(1);
     }
-    return verbCheckBatch({
+    return runEnsureBatch({
       ctx,
+      desired,
       issueNum,
       active: s.active,
       labels,
@@ -181,7 +269,7 @@ export async function verbCheck(ctx) {
 
   const label = parsed.positional.join(' ').trim();
   if (!label) {
-    console.error('Usage: /task check "<label>"');
+    console.error(`Usage: /task ${verbName} "<label>"`);
     process.exit(1);
   }
   const { stdout } = await pexec(
@@ -191,7 +279,9 @@ export async function verbCheck(ctx) {
   );
   const body = stdout;
 
-  if (/^deep[- ]?dive complete$/i.test(label)) {
+  // Special-label routes are checked-only outcomes (they stamp markers, not
+  // checkboxes); ensureUnchecked treats these labels as ordinary checkbox text.
+  if (checking && /^deep[- ]?dive complete$/i.test(label)) {
     // #281 — stage-bound: deep-dive-complete is a Plan-stage artifact. Refuse in
     // Refine unless the live body carries the `aitm-stage-bound-grandfather`
     // marker (legacy bypass; AC6).
@@ -217,7 +307,7 @@ export async function verbCheck(ctx) {
     return;
   }
 
-  if (/^discussion complete$/i.test(label)) {
+  if (checking && /^discussion complete$/i.test(label)) {
     // #473 — resolve a `{discuss}` directive (#405). Strip the token AND the
     // durable `aitm-discuss-requested` marker (#486) and stamp the non-invariant
     // `aitm-discussed` marker so `discussBlockGuard` passes and forward promotion
@@ -257,10 +347,10 @@ export async function verbCheck(ctx) {
     return;
   }
 
-  // Diagnostic check (pre-fetched body — best-effort for the not-found
-  // error message). The authoritative write below re-runs the toggle on
-  // FRESH base.
-  const diag = toggleChecklistLine(body, label);
+  // Diagnostic pass (pre-fetched body — best-effort for the not-found error
+  // message and the idempotency check). The authoritative write below re-runs
+  // `setChecklistLine` on FRESH base.
+  const diag = setChecklistLine(body, label, desired);
   if (diag.status === 'not-found') {
     const found = [...body.matchAll(/^- \[[ x]\] (.+)$/gm)].map((m) => `  "${m[1]}"`);
     const list = found.length
@@ -276,71 +366,113 @@ export async function verbCheck(ctx) {
     );
     process.exit(1);
   }
-  // #567 — `--allow-unverified-ticks` honest hatch for non-demonstrable ACs.
-  // Eligibility is the inverse of the evidence gate: a Functional DoD item or a
-  // verifier-bearing AC is REFUSED (those have their own stamp paths); only a
-  // proofless / `invalid — non-demonstrable` AC is waved through, with an audit
-  // marker recorded in the same write.
-  const auv = parsed.allowUnverifiedTicks;
+  // #660 — idempotent no-op: the line is already in the desired state. No write,
+  // no evidence gate (no `- [ ]`→`- [x]` transition is occurring). Exit 0.
+  if (!diag.changed) {
+    const word = checking ? 'checked' : 'unchecked';
+    console.log(`[task-tracker] ✓ "${label}" already ${word} on ${s.active} (no-op)`);
+    return;
+  }
+  // From here a real state change WILL occur. For ensureUnchecked that is a
+  // `- [x]`→`- [ ]` transition — un-ticking is never a proof claim, so no gate.
+  const auv = checking && parsed.allowUnverifiedTicks;
   const ts = new Date().toISOString();
-  if (auv) {
-    const cls = classifyUnverifiedTick(body, label);
-    if (cls.kind === 'refuse-dod') {
-      console.error(formatGateRefusal(cls.dodGate, s.active));
-      process.exit(1);
-    }
-    if (cls.kind === 'refuse-verifier-ac') {
-      console.error(
-        formatUnverifiedHatchRefusal({
-          label: cls.label,
-          issueRef: s.active,
-          commands: cls.commands,
-        })
-      );
-      process.exit(1);
-    }
-  } else {
-    // #303/#345 — evidence gate. Refuse stampable Functional DoD ticks without an
-    // `aitm-dod-evidence:KEY` marker; refuse derived keys outright; refuse AC ticks
-    // carrying `aitm-verified-by` without an `aitm-ac-evidence:<key>` stamp.
-    const gate = gateEvidenceTick(body, label);
-    const refusal = formatGateRefusal(gate, s.active);
-    if (refusal) {
-      console.error(refusal);
-      process.exit(1);
+  if (checking) {
+    // #567 — `--allow-unverified-ticks` honest hatch for non-demonstrable ACs.
+    // Eligibility is the inverse of the evidence gate: a Functional DoD item or
+    // a verifier-bearing AC is REFUSED (those have their own stamp paths); only
+    // a proofless / `invalid — non-demonstrable` AC is waved through, with an
+    // audit marker recorded in the same write.
+    if (auv) {
+      const cls = classifyUnverifiedTick(body, label);
+      if (cls.kind === 'refuse-dod') {
+        console.error(formatGateRefusal(cls.dodGate, s.active));
+        process.exit(1);
+      }
+      if (cls.kind === 'refuse-verifier-ac') {
+        console.error(
+          formatUnverifiedHatchRefusal({
+            label: cls.label,
+            issueRef: s.active,
+            commands: cls.commands,
+          })
+        );
+        process.exit(1);
+      }
+    } else {
+      // #303/#345 — evidence gate. Refuse stampable Functional DoD ticks without
+      // an `aitm-dod-evidence:KEY` marker; refuse derived keys outright; refuse
+      // AC ticks carrying `aitm-verified-by` without an `aitm-ac-evidence:<key>`
+      // stamp.
+      const gate = gateEvidenceTick(body, label);
+      const refusal = formatGateRefusal(gate, s.active);
+      if (refusal) {
+        console.error(refusal);
+        process.exit(1);
+      }
     }
   }
-  let landed = null;
   await mutateBody({
     issueNumber: issueNum,
     repo: cfg.repo,
     allowUnverifiedTicks: auv,
     mutate: (base) => {
-      const r = toggleChecklistLine(base, label);
-      if (r.status !== 'toggled') return base;
-      landed = r;
-      // Only stamp the audit marker when the hatch actually ticks a box on
-      // (not when it unticks one).
-      if (auv && !r.alreadyChecked) {
+      const r = setChecklistLine(base, label, desired);
+      if (r.status !== 'set' || !r.changed) return base;
+      // Audit marker only on a genuine tick-ON under the hatch.
+      if (auv) {
         return appendUnverifiedTickAudit(r.body, { label, ts });
       }
       return r.body;
     },
   });
-  const ticked = !(landed?.alreadyChecked ?? diag.alreadyChecked);
-  const action = ticked ? 'Checked' : 'Unchecked';
-  const suffix = auv && ticked ? ' (unverified — audit marker recorded)' : '';
+  const action = checking ? 'Checked' : 'Unchecked';
+  const suffix = auv ? ' (unverified — audit marker recorded)' : '';
   console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active}${suffix}`);
 }
 
-// Batch path: one `gh issue view` fetch, toggle every checklist label in memory,
-// one body write. Any `deep dive complete` label is routed to the
-// HTML-marker helper (its own round-trip) and excluded from the checkbox fold.
-async function verbCheckBatch({ ctx, issueNum, active, labels, allowUnverifiedTicks = false }) {
+// #660 — public verb entrypoints. `ensureChecked` converges the matched line to
+// `- [x]`; `ensureUnchecked` to `- [ ]`. Both idempotent.
+export async function verbEnsureChecked(ctx) {
+  return runEnsure(ctx, 'checked');
+}
+
+export async function verbEnsureUnchecked(ctx) {
+  return runEnsure(ctx, 'unchecked');
+}
+
+// #660 — `check` is a DEPRECATED alias for `ensureChecked`. It no longer
+// toggles: invoking it on an already-checked line is now a no-op, NOT an
+// uncheck (the #659-class regression this issue fixes). Emits a one-line stderr
+// deprecation notice, then delegates unchanged.
+export async function verbCheck(ctx) {
+  process.stderr.write(
+    '[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). ' +
+      'Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.\n'
+  );
+  return runEnsure(ctx, 'checked');
+}
+
+// Batch path: one `gh issue view` fetch, set every checklist label in memory to
+// the desired state, one body write. Any `deep dive complete` label is routed
+// to the HTML-marker helper (its own round-trip) and excluded from the checkbox
+// fold — checked-only, since it stamps a marker rather than a checkbox.
+async function runEnsureBatch({
+  ctx,
+  desired,
+  issueNum,
+  active,
+  labels,
+  allowUnverifiedTicks = false,
+}) {
   const { cfg, projectDir, pexec } = ctx;
+  const checking = desired === 'checked';
+  const auvAllowed = checking && allowUnverifiedTicks;
   const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks: auv = false }) =>
     mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks: auv });
-  const isDeepDive = (l) => /^deep[- ]?dive complete$/i.test(l.trim());
+  // The deep-dive-complete special label is a checked-only marker route; under
+  // ensureUnchecked it is treated as an ordinary (likely not-found) checkbox.
+  const isDeepDive = (l) => checking && /^deep[- ]?dive complete$/i.test(l.trim());
   const ddLabels = labels.filter(isDeepDive);
   const checklistLabels = labels.filter((l) => !isDeepDive(l));
 
@@ -352,29 +484,38 @@ async function verbCheckBatch({ ctx, issueNum, active, labels, allowUnverifiedTi
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
-    // #303 / #567 — per-label eligibility gate. Batch is atomic: if ANY label
-    // fails, refuse the entire batch. Without the hatch this is the evidence
-    // gate (`gateEvidenceTick`); with `--allow-unverified-ticks` it is the
-    // inverse (`classifyUnverifiedTick`) — a Functional DoD item or a
-    // verifier-bearing AC is refused, only proofless ACs pass.
+    // #303 / #567 — per-label eligibility gate (checked-only; un-ticking is not
+    // a proof claim so ensureUnchecked runs no gate). Batch is atomic: if ANY
+    // label fails, refuse the entire batch. The gate only applies to labels
+    // that will actually transition `- [ ]`→`- [x]`; an already-checked label
+    // is a no-op and is exempt. Without the hatch this is the evidence gate
+    // (`gateEvidenceTick`); with `--allow-unverified-ticks` it is the inverse
+    // (`classifyUnverifiedTick`).
+    const willTransition = (lbl) => {
+      const probe = setChecklistLine(stdout, lbl, desired);
+      return probe.status === 'set' && probe.changed;
+    };
     const gateFailures = [];
-    for (const lbl of checklistLabels) {
-      if (allowUnverifiedTicks) {
-        const cls = classifyUnverifiedTick(stdout, lbl);
-        if (cls.kind === 'refuse-dod') gateFailures.push(formatGateRefusal(cls.dodGate, active));
-        else if (cls.kind === 'refuse-verifier-ac') {
-          gateFailures.push(
-            formatUnverifiedHatchRefusal({
-              label: cls.label,
-              issueRef: active,
-              commands: cls.commands,
-            })
-          );
+    if (checking) {
+      for (const lbl of checklistLabels) {
+        if (!willTransition(lbl)) continue; // no-op tick → exempt
+        if (allowUnverifiedTicks) {
+          const cls = classifyUnverifiedTick(stdout, lbl);
+          if (cls.kind === 'refuse-dod') gateFailures.push(formatGateRefusal(cls.dodGate, active));
+          else if (cls.kind === 'refuse-verifier-ac') {
+            gateFailures.push(
+              formatUnverifiedHatchRefusal({
+                label: cls.label,
+                issueRef: active,
+                commands: cls.commands,
+              })
+            );
+          }
+        } else {
+          const g = gateEvidenceTick(stdout, lbl);
+          const msg = formatGateRefusal(g, active);
+          if (msg) gateFailures.push(msg);
         }
-      } else {
-        const g = gateEvidenceTick(stdout, lbl);
-        const msg = formatGateRefusal(g, active);
-        if (msg) gateFailures.push(msg);
       }
     }
     if (gateFailures.length) {
@@ -386,29 +527,31 @@ async function verbCheckBatch({ ctx, issueNum, active, labels, allowUnverifiedTi
       );
       process.exit(1);
     }
-    const { results } = toggleChecklistLines(stdout, checklistLabels);
-    const anyToggled = results.some((r) => r.status === 'toggled');
-    // #567 — labels that actually toggled ON under the hatch get an audit marker.
+    const { results } = setChecklistLines(stdout, checklistLabels, desired);
+    const anyChanged = results.some((r) => r.status === 'set' && r.changed);
+    // #567 — labels that actually transition ON under the hatch get an audit marker.
     const tickedOn = new Set(
-      results.filter((r) => r.status === 'toggled' && !r.alreadyChecked).map((r) => r.label)
+      auvAllowed ? results.filter((r) => r.status === 'set' && r.changed).map((r) => r.label) : []
     );
-    if (anyToggled) {
+    if (anyChanged) {
       const ts = new Date().toISOString();
-      // #295 — re-run the toggle fold on FRESH base; reported per-label
-      // results above reflect the diagnostic pass (pre-fetch).
+      // #295 — re-run the fold on FRESH base; reported per-label results above
+      // reflect the diagnostic pass (pre-fetch).
       await mutateBody({
         issueNumber: issueNum,
         repo: cfg.repo,
-        allowUnverifiedTicks,
+        allowUnverifiedTicks: auvAllowed,
         mutate: (base) => {
-          let next = toggleChecklistLines(base, checklistLabels).body;
-          if (allowUnverifiedTicks) {
+          let next = setChecklistLines(base, checklistLabels, desired).body;
+          if (auvAllowed) {
             for (const lbl of tickedOn) next = appendUnverifiedTickAudit(next, { label: lbl, ts });
           }
           return next;
         },
       });
     }
+    const doneWord = checking ? 'checked' : 'unchecked';
+    const actionWord = checking ? 'Checked' : 'Unchecked';
     for (const r of results) {
       if (r.status === 'not-found') {
         console.error(`[task-tracker] ✗ checkbox "${r.label}" not found in ${active}`);
@@ -419,10 +562,11 @@ async function verbCheckBatch({ ctx, issueNum, active, labels, allowUnverifiedTi
           `[task-tracker] ✗ checkbox "${r.label}" is ambiguous in ${active}: ${r.count} lines share this visible label.`
         );
         exitCode = 1;
+      } else if (!r.changed) {
+        console.log(`[task-tracker] ✓ "${r.label}" already ${doneWord} on ${active} (no-op)`);
       } else {
-        const action = r.alreadyChecked ? 'Unchecked' : 'Checked';
-        const suffix = allowUnverifiedTicks && tickedOn.has(r.label) ? ' (unverified)' : '';
-        console.log(`[task-tracker] ✓ ${action} "${r.label}" on ${active}${suffix}`);
+        const suffix = tickedOn.has(r.label) ? ' (unverified)' : '';
+        console.log(`[task-tracker] ✓ ${actionWord} "${r.label}" on ${active}${suffix}`);
       }
     }
   }
@@ -556,7 +700,7 @@ function formatGateRefusal(gate, issueRef) {
   return null;
 }
 
-// #281 — stage-bound gate for `check "Deep dive complete"`. Reads bound state
+// #281 — stage-bound gate for `ensureChecked "Deep dive complete"`. Reads bound state
 // from the per-session active-task.json mirror (same source as the activity
 // hooks). Returns a refusal message string when blocked, null otherwise.
 // Grandfather: an `aitm-stage-bound-grandfather` marker on the live body
@@ -572,7 +716,7 @@ function stageBoundDeepDiveRefusal({ projectDir, body, issueNumber }) {
   if (hasStageBoundGrandfather(body)) return null;
   return formatStageBoundRefusal({
     state: 'refine',
-    action: 'marking deep-dive complete via `/task check "Deep dive complete"`',
+    action: 'marking deep-dive complete via `/task ensureChecked "Deep dive complete"`',
     nextVerb: '/task promote',
     nextState: 'plan',
     issueNumber,

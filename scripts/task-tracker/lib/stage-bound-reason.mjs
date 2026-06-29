@@ -1,6 +1,6 @@
 // #281 — shared formatter for stage-bound refusals (Plan-artifact in Refine,
 // Develop-artifact in Plan). Used by gh-edit-guard (Refine deep-dive gate) and
-// verbs/check.mjs (Refine /task check "Deep dive complete" gate). Kept pure
+// verbs/check.mjs (Refine /task ensureChecked "Deep dive complete" gate). Kept pure
 // so tests can pin the message shape without booting a hook.
 //
 // Grandfather: an issue body carrying `<!-- aitm-stage-bound-grandfather -->`

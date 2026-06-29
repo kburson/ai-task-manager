@@ -227,6 +227,6 @@ The canonical writer is `ensureDeepDive`
 (`scripts/task-tracker/lib/deep-dive.mjs`); call it with the narrative
 prose and let it place the appendix AFTER the Pickup Directive block (it is
 narrative-only — the structural markers are managed for you). After it
-returns, run `/task check "Deep dive complete"` to flip the gate checkbox.
+returns, run `/task ensureChecked "Deep dive complete"` to flip the gate checkbox.
 Do not write the appendix by hand and do not place it before the Acceptance
 Criteria.

@@ -277,8 +277,19 @@ if (_isMain)
           break;
         }
         case 'check': {
+          // #660 — deprecated alias → ensureChecked (no longer toggles).
           const { verbCheck } = await import('./verbs/check.mjs');
           await verbCheck(ctx);
+          break;
+        }
+        case 'ensureChecked': {
+          const { verbEnsureChecked } = await import('./verbs/check.mjs');
+          await verbEnsureChecked(ctx);
+          break;
+        }
+        case 'ensureUnchecked': {
+          const { verbEnsureUnchecked } = await import('./verbs/check.mjs');
+          await verbEnsureUnchecked(ctx);
           break;
         }
         case 'dod-stamp': {

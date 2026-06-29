@@ -34,7 +34,7 @@ marker. Then post the updated body:
 gh issue edit <this-issue-#> --body-file ./.tmp/gh/<this-issue-#>-body.md
 ```
 
-Then flip the checkpoint: `/task check "Deep dive complete"`.
+Then flip the checkpoint: `/task ensureChecked "Deep dive complete"`.
 
 The deep-dive section must include:
 

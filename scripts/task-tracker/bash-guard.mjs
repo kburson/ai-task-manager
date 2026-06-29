@@ -93,7 +93,7 @@ const READ_ALLOWED = [
 // Replace single- and double-quoted regions with same-length spaces so the
 // extraction regexes below don't pick up shell metachars or path-like
 // substrings appearing inside argument strings (e.g. `/task` mentioned
-// inside a /task check label). ALWAYS_BLOCK patterns above still see the
+// inside a /task ensureChecked label). ALWAYS_BLOCK patterns above still see the
 // raw command — quote stripping only affects path scanning.
 function stripQuotedRegions(s) {
   let out = '';

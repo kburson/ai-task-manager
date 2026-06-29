@@ -4,7 +4,7 @@
 //   1. `<!-- aitm-deep-dive-posted: ... -->` marker (deep-dive section was authored).
 //   2. A `## Deep-Dive Analysis` or `### Deep-Dive Analysis` heading.
 //   3. `<!-- aitm-deep-dive-complete: ... -->` marker (deep-dive section was
-//      acknowledged via `/task check "Deep dive complete"`).
+//      acknowledged via `/task ensureChecked "Deep dive complete"`).
 //
 // Each is checked independently so a partial / drifted body surfaces every
 // missing signal in one pass (no fail-fast).
@@ -65,7 +65,7 @@ export function planDeepDiveGate({ body = '' } = {}) {
   }
   if (!signals.hasComplete) {
     blockers.push(
-      'plan-develop-deep-dive-complete-marker-missing: body must contain `<!-- aitm-deep-dive-complete: ... -->` — run `/task check "Deep dive complete"` to stamp the marker'
+      'plan-develop-deep-dive-complete-marker-missing: body must contain `<!-- aitm-deep-dive-complete: ... -->` — run `/task ensureChecked "Deep dive complete"` to stamp the marker'
     );
   }
   // #469 — Pickup Directive must be present at the top level (not inside

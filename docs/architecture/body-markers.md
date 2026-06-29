@@ -52,14 +52,14 @@ promotion, so a draft deep dive cannot accidentally pass the gate.
 
 - **Regex (reader):** `/<!--\s*aitm-deep-dive-complete:\s*[^>]*?-->/i`
   (`COMPLETE_RE`).
-- **Writer:** `/task check "Deep dive complete"`
+- **Writer:** `/task ensureChecked "Deep dive complete"`
   (`scripts/task-tracker/verbs/check.mjs`). This is the only writer in the
   codebase. #300 migrated this signal from the legacy `- [x] Deep dive
 complete` checkbox to the hidden marker; `gh-edit-guard` refuses bodies
   that reintroduce the checkbox.
 - **Reader:** `planDeepDiveGate({ body })`.
 - **Gate failure code:** `plan-develop-deep-dive-complete-marker-missing`.
-  The blocker string instructs the operator to run `/task check "Deep dive
+  The blocker string instructs the operator to run `/task ensureChecked "Deep dive
 complete"` to stamp the marker.
 
 ## Why two markers instead of one
@@ -73,7 +73,7 @@ Splitting the signal:
 
 - **`posted`** is mechanical — stamped by the tool that appends the prose
   (`ensureDeepDive`). Cannot be forgotten while the appendix lands.
-- **`complete`** is intentional — stamped by an explicit `/task check`
+- **`complete`** is intentional — stamped by an explicit `/task ensureChecked`
   invocation. Forces a beat where the author rereads what they just wrote.
 
 The visible H2/H3 heading is the third signal so a stripped-down body
@@ -95,7 +95,7 @@ node -e "
 # → { status: 'ok', attempts: 1, version: <N+1> }
 
 # 2. Acknowledge completion (writes aitm-deep-dive-complete).
-node scripts/task-tracker/task-tracker.mjs check 294 "Deep dive complete"
+node scripts/task-tracker/task-tracker.mjs ensureChecked 294 "Deep dive complete"
 
 # 3. Promote — now all three signals are present.
 node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
@@ -105,10 +105,10 @@ node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
 
 | Body state                                      | Refusal code                                                         | Fix                                                                                     |
 | ----------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Neither marker, no heading                      | All three blockers fire simultaneously.                              | Call `ensureDeepDive({ prose, complete: true })`, then `/task check`.                   |
+| Neither marker, no heading                      | All three blockers fire simultaneously.                              | Call `ensureDeepDive({ prose, complete: true })`, then `/task ensureChecked`.           |
 | Posted marker only (no heading)                 | `section-missing`                                                    | Heading must be `## Deep-Dive Analysis` or `### …`; `ensureDeepDive` writes it for you. |
 | Heading only (no posted marker)                 | `posted-marker-missing`                                              | Use `ensureDeepDive({ posted: true })` — do not hand-write the marker.                  |
-| Posted + heading, no `/task check` run          | `complete-marker-missing`                                            | `/task check "Deep dive complete"`.                                                     |
+| Posted + heading, no `/task ensureChecked` run  | `complete-marker-missing`                                            | `/task ensureChecked "Deep dive complete"`.                                             |
 | Legacy `- [x] Deep dive complete` checkbox only | `complete-marker-missing` + `gh-edit-guard` refusal on future writes | Remove the checkbox; rely on the marker.                                                |
 
 ## Session-Reference Chain (`aitm-session-ref`) — #476

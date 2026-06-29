@@ -62,7 +62,7 @@ Commands` has been run successfully, its output read, and its checkbox
   `### Verification Commands`.
 - Verify that all issue body checkboxes are ticked — this item is
   self-referential and must be the last box checked.
-- Mark each verified item with `/task check "<label>"`.
+- Mark each verified item with `/task ensureChecked "<label>"`.
 
 Then verify every Acceptance Criterion the same way. Do not check the
 related Acceptance Criterion or DoD item until the relevant command

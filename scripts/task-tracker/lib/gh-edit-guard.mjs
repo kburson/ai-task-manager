@@ -48,7 +48,7 @@ const LEGACY_PATTERNS = [
     name: 'Deep dive complete checkbox',
     re: /^[ \t]*- \[[ x]\] Deep dive complete\s*$/im,
     advice:
-      'Replaced by hidden <!-- aitm-deep-dive-complete: ... --> marker. Let the /task check verb manage it.',
+      'Replaced by hidden <!-- aitm-deep-dive-complete: ... --> marker. Let the /task ensureChecked verb manage it.',
   },
 ];
 
@@ -386,7 +386,7 @@ export function checkBodyChange({ newBody, currentBody, issueNumber, currentStat
       block: true,
       reason:
         `gh issue edit on #${issueNumber} adds a "## Deep-Dive Analysis" section without the <!-- aitm-deep-dive-complete: ts --> marker.\n` +
-        `  Run \`/task check "Deep dive complete"\` to write the marker, or include it directly in the body. Heading-without-marker leaves the issue vulnerable to deep-dive regeneration on re-open.`,
+        `  Run \`/task ensureChecked "Deep dive complete"\` to write the marker, or include it directly in the body. Heading-without-marker leaves the issue vulnerable to deep-dive regeneration on re-open.`,
     };
   }
 

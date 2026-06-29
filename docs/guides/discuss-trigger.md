@@ -46,7 +46,7 @@ transaction it:
 - strips the `{discuss}` token **and** the `aitm-discuss-requested` marker, and
 - stamps a hidden `aitm-discussed` audit marker so the dialog never re-fires.
 
-Equivalently, `/task check "discussion complete"` resolves it and additionally
+Equivalently, `/task ensureChecked "discussion complete"` resolves it and additionally
 removes the visible **Discuss** label.
 
 ## Re-trigger is a no-op

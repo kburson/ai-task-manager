@@ -131,25 +131,26 @@ The fundamental unit is a _task session_: Claude is working on one GitHub issue 
 
 ### Commands
 
-| Command                      | Action                                                                                  |
-| ---------------------------- | --------------------------------------------------------------------------------------- |
-| `/task`                      | Show active task, elapsed minutes, context words since last marker                      |
-| `/task #N`                   | Switch to issue #N — bind the active session and display the brief                      |
-| `/task new [title]`          | Create a new issue and start tracking it                                                |
-| `/task plan`                 | Open an untracked planning bucket before an issue exists                                |
-| `/task resume`               | Resume the last paused task (no body reload)                                            |
-| `/task resume #N`            | Switch back to a paused task and display its body                                       |
-| `/task pause`                | Flush timing, keep last-active. Run before `/clear` or closing an agent session         |
-| `/task update [msg]`         | Checkpoint — flush and reset counters, keep task active                                 |
-| `/task close`                | Hard-stop — flush, update board fields, move to Done                                    |
-| `/task log #N`               | Re-compute and write Engaged Time and Session Time for any issue                        |
-| `/task migrate`              | Select/configure a project, import repo issues, heal field DBs, and sync project fields |
-| `/task check "<label>"`      | Toggle a checkbox in the active issue body (exact label match)                          |
-| `/task fleet`                | Show all active tasks across parallel agent worktrees                                   |
-| `/task config`               | List all config values with sources                                                     |
-| `/task config <key> <value>` | Set a config value project-locally                                                      |
-| `/task config init`          | Interactive interview — review and set all config values                                |
-| `/task help`                 | Print command reference                                                                 |
+| Command                           | Action                                                                                               |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `/task`                           | Show active task, elapsed minutes, context words since last marker                                   |
+| `/task #N`                        | Switch to issue #N — bind the active session and display the brief                                   |
+| `/task new [title]`               | Create a new issue and start tracking it                                                             |
+| `/task plan`                      | Open an untracked planning bucket before an issue exists                                             |
+| `/task resume`                    | Resume the last paused task (no body reload)                                                         |
+| `/task resume #N`                 | Switch back to a paused task and display its body                                                    |
+| `/task pause`                     | Flush timing, keep last-active. Run before `/clear` or closing an agent session                      |
+| `/task update [msg]`              | Checkpoint — flush and reset counters, keep task active                                              |
+| `/task close`                     | Hard-stop — flush, update board fields, move to Done                                                 |
+| `/task log #N`                    | Re-compute and write Engaged Time and Session Time for any issue                                     |
+| `/task migrate`                   | Select/configure a project, import repo issues, heal field DBs, and sync project fields              |
+| `/task ensureChecked "<label>"`   | Ensure a checkbox is ticked in the active issue body — idempotent, never unticks (exact label match) |
+| `/task ensureUnchecked "<label>"` | Ensure a checkbox is unticked — idempotent, never ticks (exact label match)                          |
+| `/task fleet`                     | Show all active tasks across parallel agent worktrees                                                |
+| `/task config`                    | List all config values with sources                                                                  |
+| `/task config <key> <value>`      | Set a config value project-locally                                                                   |
+| `/task config init`               | Interactive interview — review and set all config values                                             |
+| `/task help`                      | Print command reference                                                                              |
 
 ### How Timing Works
 

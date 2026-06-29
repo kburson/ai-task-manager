@@ -203,9 +203,17 @@ export const COMMAND_MANIFEST = [
 
   // --- Gates & evidence ----------------------------------------------------
   {
-    verb: 'check',
+    verb: 'ensureChecked',
+    aliases: ['check'],
+    description:
+      'Ensure a checkbox is ticked (idempotent; never unticks). #659-safe replacement for the old toggle.',
+    category: 'gate',
+    dispatch: 'verbs/check.mjs',
+  },
+  {
+    verb: 'ensureUnchecked',
     aliases: [],
-    description: 'Tick an acceptance-criterion checkbox after verifying it.',
+    description: 'Ensure a checkbox is unticked (idempotent; never ticks).',
     category: 'gate',
     dispatch: 'verbs/check.mjs',
   },

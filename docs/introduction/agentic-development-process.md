@@ -136,10 +136,10 @@ A worker should end implementation by reporting readiness, not by closing the is
 Typical worker terminal path:
 
 ```text
-/task check "Acceptance criteria met"
-/task check "`npm test`"
-/task check "`npm run lint`"
-/task check "`npm run format:check`"
+/task ensureChecked "Acceptance criteria met"
+/task ensureChecked "`npm test`"
+/task ensureChecked "`npm run lint`"
+/task ensureChecked "`npm run format:check`"
 /task review #42
 ```
 

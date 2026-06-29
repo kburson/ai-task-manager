@@ -25,7 +25,8 @@ A project-local AI agent skill that binds the active work session to a specific 
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
 /task close             Hard-stop — flush, update board fields, move to Done
 /task log #N            Re-compute and write Engaged Time and Session Time to GitHub Projects
-/task check "<label>"   Toggle a checkbox in the active issue body (exact label match)
+/task ensureChecked "<label>"    Ensure a checkbox is ticked (idempotent, never unticks; exact label match)
+/task ensureUnchecked "<label>"  Ensure a checkbox is unticked (idempotent, never ticks; exact label match)
 /task fleet             Show all active tasks across parallel agent worktrees
 /task config            List all config values with sources
 /task config <key> <value>   Set a config value (project-local)

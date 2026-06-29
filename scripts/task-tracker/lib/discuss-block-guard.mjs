@@ -19,7 +19,7 @@
 // never the guard registry. An exit guard therefore cannot be bypassed by
 // full-auto.
 //
-// Resolution: `/task check "discussion complete"` calls `markDiscussed`, which
+// Resolution: `/task ensureChecked "discussion complete"` calls `markDiscussed`, which
 // strips the token AND the durable `aitm-discuss-requested` marker and stamps
 // the non-invariant `aitm-discussed` marker. Once the discussion is complete
 // `isDiscussPending` is false and this guard passes.
@@ -73,7 +73,7 @@ export const discussBlockGuard = {
     const reason =
       'unresolved {discuss} directive — the author asked for a human discussion before this ' +
       'story is driven forward. Full-auto cannot bypass this. Discuss it, then run ' +
-      '`/task check "discussion complete"` to strip the token and resume promotion.\n' +
+      '`/task ensureChecked "discussion complete"` to strip the token and resume promotion.\n' +
       contextLines;
     return {
       ok: false,

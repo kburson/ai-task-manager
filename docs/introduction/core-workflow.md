@@ -17,7 +17,7 @@ The task skill starts the timer, loads the issue, and makes sure the board state
 Do the deep dive:
 
 ```text
-/task check "Deep dive complete"
+/task ensureChecked "Deep dive complete"
 ```
 
 The agent should inspect the current codebase, identify files to edit, write a short plan, list verification commands, record dependencies, and only then mark the deep dive complete.
@@ -163,7 +163,7 @@ This keeps the ledger honest. Human-away time should not inflate active engineer
 | `/task resume [#N]`              | Resume the last paused task or a specific issue       |
 | `/task pause [reason]`           | Flush timing and pause active work                    |
 | `/task update [message]`         | Flush timing and continue                             |
-| `/task check "label"`            | Tick an exact checkbox label in the active issue body |
+| `/task ensureChecked "label"`    | Ensure an exact checkbox label is ticked (idempotent) |
 | `/task review #N`                | Move ready work through verification into Review      |
 | `/task approve #N`               | Record explicit human approval                        |
 | `/task reject #N --reason "..."` | Reject review work back to Develop                    |

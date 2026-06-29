@@ -29,7 +29,8 @@ Task Tracker — available commands
   /task words-count         Print word count for the current session (agent use)
   /task close [#N]          Close the active or specified task (runs pre-close gate)
   /task close --force       Close even if unchecked items remain
-  /task check "<label>"     Toggle a checkbox in the active issue body
+  /task ensureChecked "<label>"     Ensure a checkbox is ticked (idempotent; never unticks)
+  /task ensureUnchecked "<label>"   Ensure a checkbox is unticked (idempotent; never ticks)
   /task commit-trace [#N]   Create/update the canonical commit trace from HEAD
   /task evidence-markers audit #N
                             Audit AC evidence markers and Verification Commands
@@ -56,7 +57,7 @@ State transitions (7-state kanban):
   /task demote [#N]         Return to Develop (from Test or Review)
   /task reconcile #N <mode> Drift recovery: accept-live | revert-to-recorded
 
-Aliases: end = close, next = promote
+Aliases: end = close, next = promote, check = ensureChecked (deprecated; no longer toggles)
 `.trim()
   );
 }
