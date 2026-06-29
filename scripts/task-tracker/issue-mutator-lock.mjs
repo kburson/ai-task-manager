@@ -1,4 +1,4 @@
-// cspell:ignore EISSUELOCKED
+// cspell:ignore EISSUELOCKED TOCTOU
 // Per-issue advisory lock for state-mutating verbs.
 //
 // EPIC #207 / #214 — Seq 3. Built on the same mkdir-based primitive as
@@ -33,12 +33,45 @@
 
 import { mkdirSync, rmdirSync, writeFileSync, readFileSync, unlinkSync, statSync } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { issueLockPath } from './paths.mjs';
 
-export const ISSUE_LOCK_STALE_MS = 30_000;
+// #656 — the mtime TTL is no longer the primary staleness signal. It is an
+// outer backstop, raised well above the longest expected guarded action (a
+// `promote` develop→test sandbox run = `npm ci` + `test:all`, minutes long) so
+// it only ever clears a reused-PID false-alive or a cross-host orphan — never a
+// healthy local holder. Primary staleness is now PID liveness (see
+// `tryReclaimStale`).
+export const ISSUE_LOCK_STALE_MS = 30 * 60_000;
 export const ISSUE_LOCK_DEFAULT_RETRY_MS = 500;
 export const ISSUE_LOCK_DEFAULT_RETRIES = 1;
 export const ISSUE_LOCK_HELD_ENV = 'AITM_ISSUE_LOCK_HELD';
+
+// This process's host + a per-incarnation nonce. `host` lets a reclaiming peer
+// know whether `process.kill` means anything for the holder's PID; `startToken`
+// is persisted so a recycled PID belonging to an unrelated process does not
+// masquerade as the original holder (the liveness probe can reject a token
+// mismatch — see `isProcessAlive` / `tryReclaimStale`).
+export const THIS_HOST = os.hostname();
+export const PROCESS_START_TOKEN = randomBytes(8).toString('hex');
+
+// Default liveness probe: `process.kill(pid, 0)` performs the existence /
+// permission check without delivering a signal. No throw ⇒ alive. `EPERM` ⇒
+// the process exists but is owned by another uid ⇒ alive. `ESRCH` (or anything
+// else) ⇒ dead. The `token` argument is accepted so the seam can model
+// PID-reuse in tests (a recycled PID whose token no longer matches reads as
+// dead); the real OS probe cannot interrogate another process's token, so it
+// ignores the argument by design.
+export function isProcessAlive(pid /* , token */) {
+  if (pid == null) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err && err.code === 'EPERM';
+  }
+}
 
 export class IssueLockError extends Error {
   constructor(message, { issue, holder } = {}) {
@@ -68,21 +101,65 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function tryReclaimStale(lockPath) {
+// #656 — decide whether an existing lock may be reclaimed. The predicate is
+// inverted from the old "old ⇒ assume dead" to "holder process dead ⇒ reclaim":
+//
+//   - Same-host holder with a live PID  → NOT reclaimable within the TTL
+//     backstop, regardless of mtime age (fixes the core defect: a multi-minute
+//     live `test:all` holder is no longer steamrolled). Past the raised TTL the
+//     "alive" reading is distrusted as a recycled PID and reclaim is allowed.
+//   - Same-host holder with a dead PID  → reclaimed IMMEDIATELY, no TTL wait.
+//   - No holder / no PID / cross-host    → PID probing is meaningless; fall back
+//     to the mtime TTL backstop.
+//
+// A TOCTOU recheck re-reads the holder just before removal and bails if the
+// PID/token changed, so a fresh holder that won the dir microseconds earlier is
+// never unlinked. `deps` (now / isProcessAlive / thisHost / staleMs) is an
+// injection seam for deterministic tests.
+export function tryReclaimStale(lockPath, deps = {}) {
+  const now = deps.now || Date.now;
+  const aliveProbe = deps.isProcessAlive || isProcessAlive;
+  const thisHost = deps.thisHost || THIS_HOST;
+  const staleMs = deps.staleMs == null ? ISSUE_LOCK_STALE_MS : deps.staleMs;
   try {
-    const age = Date.now() - statSync(lockPath).mtimeMs;
-    if (age > ISSUE_LOCK_STALE_MS) {
-      try {
-        unlinkSync(holderPath(lockPath));
-      } catch {
-        /* holder may not exist */
+    const age = now() - statSync(lockPath).mtimeMs;
+    const holder = readIssueLockHolder(lockPath);
+    const canProbe =
+      holder && holder.pid != null && holder.host != null && holder.host === thisHost;
+
+    let reclaimable;
+    if (!canProbe) {
+      // Cross-host or PID-less holder: the OS probe says nothing useful, so the
+      // mtime TTL backstop is the only signal.
+      reclaimable = age > staleMs;
+    } else if (aliveProbe(holder.pid, holder.startToken)) {
+      // Holder process is alive on this host. Trust "alive" only within the
+      // raised TTL; beyond it, treat as a recycled PID and let the backstop fire.
+      reclaimable = age > staleMs;
+    } else {
+      // Holder process is dead → reclaim now, no TTL wait.
+      reclaimable = true;
+    }
+    if (!reclaimable) return false;
+
+    // TOCTOU: re-read the holder; bail if a fresh acquirer replaced it.
+    if (holder) {
+      const current = readIssueLockHolder(lockPath);
+      if (current && (current.pid !== holder.pid || current.startToken !== holder.startToken)) {
+        return false;
       }
-      try {
-        rmdirSync(lockPath);
-        return true;
-      } catch {
-        /* lost the race */
-      }
+    }
+
+    try {
+      unlinkSync(holderPath(lockPath));
+    } catch {
+      /* holder may not exist */
+    }
+    try {
+      rmdirSync(lockPath);
+      return true;
+    } catch {
+      /* lost the race */
     }
   } catch {
     /* lock vanished mid-stat */
@@ -134,6 +211,8 @@ export async function withIssueLock(opts, fn) {
   const payload = {
     sessionId,
     pid: process.pid,
+    host: THIS_HOST,
+    startToken: PROCESS_START_TOKEN,
     acquiredAt: new Date().toISOString(),
     verb,
   };
