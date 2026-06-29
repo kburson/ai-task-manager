@@ -103,10 +103,7 @@ test('runCommitTrace: throws without issueNumber', async () => {
 
 test('runCommitTrace: throws without cfg.repo', async () => {
   await assert.rejects(() => runCommitTrace({ issueNumber: 1 }), /cfg\.repo is required/);
-  await assert.rejects(
-    () => runCommitTrace({ issueNumber: 1, cfg: {} }),
-    /cfg\.repo is required/
-  );
+  await assert.rejects(() => runCommitTrace({ issueNumber: 1, cfg: {} }), /cfg\.repo is required/);
 });
 
 test('runCommitTrace: falls back to getProjectDir() when projectDir omitted', async () => {
