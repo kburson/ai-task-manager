@@ -544,7 +544,7 @@ function parseArgs(rest) {
   return { issueNumber: null };
 }
 
-export async function verbPromote(rest, cfg) {
+export async function verbPromote(rest, cfg, deps = {}) {
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
     process.stderr.write('Usage: promote #N\n');
@@ -555,7 +555,9 @@ export async function verbPromote(rest, cfg) {
   try {
     result = await withIssueLock(
       { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
-      () => runPromote({ issueNumber, cfg })
+      // `deps` defaults to `{}` on the real CLI path, so live behaviour is
+      // unchanged; verb tests inject the seam to drive every result branch.
+      () => runPromote({ issueNumber, cfg, deps })
     );
   } catch (err) {
     if (err instanceof IssueLockError) {
