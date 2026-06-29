@@ -346,7 +346,7 @@ function parseArgs(rest) {
   return out;
 }
 
-export async function verbApprove(rest, cfg) {
+export async function verbApprove(rest, cfg, deps = {}) {
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
     process.stderr.write('Usage: /task approve #N\n');
@@ -359,7 +359,7 @@ export async function verbApprove(rest, cfg) {
   const projectDir = getProjectDir();
   let result;
   try {
-    result = await runApprove({ issueNumber, cfg, projectDir });
+    result = await runApprove({ issueNumber, cfg, projectDir, deps });
   } catch (err) {
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);
