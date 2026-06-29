@@ -172,3 +172,6 @@ basenames
 regenerable
 subdirs
 Stmts
+metacharacter
+prefs
+covthr

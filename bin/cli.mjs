@@ -917,10 +917,11 @@ function cmdRepair(args) {
   }
 }
 
-async function cmdConfigurePreferences(args) {
-  let targetDir = process.cwd();
-  const targetArg = parseOption(args, '--target');
-  if (targetArg) targetDir = resolve(targetArg);
+// Behaviour-preserving seam (#651): the interactive prompt loop is extracted
+// into a pure-ish function with an injected `ask` (question → Promise<string>)
+// and `log`. The CLI wrapper supplies a readline-backed `ask`; unit tests inject
+// a deterministic stub. Returns the persisted `preferences` object.
+export async function configurePreferences({ targetDir, ask, log = console.log }) {
   const templateDest = join(targetDir, '.ai-task-manager');
   const cfgPath = join(templateDest, 'task-tracker.json');
 
@@ -936,13 +937,10 @@ async function cmdConfigurePreferences(args) {
     cfg.preferences && typeof cfg.preferences === 'object' ? { ...cfg.preferences } : {};
 
   banner('Configure project preferences', `target: ${targetDir}`);
-  console.log(`  ${dim('Answers are written to .ai-task-manager/task-tracker.json#preferences.')}`);
-  console.log(
+  log(`  ${dim('Answers are written to .ai-task-manager/task-tracker.json#preferences.')}`);
+  log(
     `  ${dim('Press Enter to keep the current value. These are team-shared and git-tracked.')}\n`
   );
-
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const ask = (question) => new Promise((resolve) => rl.question(question, resolve));
 
   function boolDefault(key) {
     const val = key in current ? current[key] : PREFERENCE_DEFAULTS[key];
@@ -1029,14 +1027,24 @@ async function cmdConfigurePreferences(args) {
   );
   updated.scratchDir = scratchInput.trim() || strDefault('scratchDir');
 
-  rl.close();
-
   cfg.preferences = updated;
   mkdirSync(templateDest, { recursive: true });
   writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
-  console.log(
-    `\n  ${green('✓')} Preferences saved to ${dim('.ai-task-manager/task-tracker.json')}`
-  );
+  log(`\n  ${green('✓')} Preferences saved to ${dim('.ai-task-manager/task-tracker.json')}`);
+  return updated;
+}
+
+async function cmdConfigurePreferences(args) {
+  let targetDir = process.cwd();
+  const targetArg = parseOption(args, '--target');
+  if (targetArg) targetDir = resolve(targetArg);
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (question) => new Promise((resolve) => rl.question(question, resolve));
+  try {
+    await configurePreferences({ targetDir, ask });
+  } finally {
+    rl.close();
+  }
 }
 
 // Only dispatch when invoked as a script — not when imported by tests (#212).
