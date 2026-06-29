@@ -96,12 +96,23 @@ function makeDeps(overrides = {}) {
   };
 }
 
+// node:test runs top-level tests concurrently under some runtimes (e.g. the
+// Test-stage sandbox). Several tests reach the *real* `withIssueLock`, so they
+// must never share an issue number — colliding lock dirs would make one test
+// wait out the retry window and throw IssueLockError. A synchronous monotonic
+// counter hands each call its own number; the deps ignore the value, so it is
+// transparent to every assertion.
+let _issueSeq = 6180;
+const nextIssue = () => ++_issueSeq;
+
 function run(overrides = {}) {
   const { deps, calls, getBody } = makeDeps(overrides);
-  return runApprove({ issueNumber: 618, cfg, projectDir: PROJ, deps }).then((r) => ({
+  const issueNumber = overrides.issueNumber ?? nextIssue();
+  return runApprove({ issueNumber, cfg, projectDir: PROJ, deps }).then((r) => ({
     r,
     calls,
     getBody,
+    issueNumber,
   }));
 }
 
@@ -207,7 +218,7 @@ test('runApprove: lifecycle-noop warns but still approves', async () => {
 // --- runApprove: default helpers via fake gh (full-auto path) ---
 test('runApprove: default fetch/comment/project helpers run offline', async () => {
   const r = await runApprove({
-    issueNumber: 618,
+    issueNumber: nextIssue(),
     cfg,
     projectDir: PROJ,
     deps: {
@@ -228,7 +239,7 @@ test('runApprove: default fetch/comment/project helpers run offline', async () =
 // --- runApprove: default promptDrivers (non-TTY) via human path ---
 test('runApprove: default promptDrivers resolves [] off a TTY', async () => {
   const r = await runApprove({
-    issueNumber: 618,
+    issueNumber: nextIssue(),
     cfg,
     projectDir: PROJ,
     deps: {
@@ -367,15 +378,17 @@ test('verbApprove: wrong-state → exit 3', async () => {
 
 test('verbApprove: approved → stdout, no exit', async () => {
   delete process.env.TT_SKIP_NETWORK;
-  const r = await runVerb(['618'], okVerbDeps);
+  const n = nextIssue();
+  const r = await runVerb([String(n)], okVerbDeps);
   assert.equal(r.exitCode, null);
-  assert.match(r.stdout, /Review approved for #618/);
+  assert.match(r.stdout, new RegExp(`Review approved for #${n}`));
 });
 
 test('verbApprove: already-approved → stdout, no exit', async () => {
   delete process.env.TT_SKIP_NETWORK;
+  const n = nextIssue();
   const marked = `${REVIEW_BODY}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
-  const r = await runVerb(['618'], { ...okVerbDeps, fetchIssueBody: async () => marked });
+  const r = await runVerb([String(n)], { ...okVerbDeps, fetchIssueBody: async () => marked });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /already has a review-approval marker/);
 });
