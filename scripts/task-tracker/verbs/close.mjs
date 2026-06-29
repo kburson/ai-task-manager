@@ -619,6 +619,41 @@ export async function verbClose(ctx) {
     }
   }
 
+  // #654 — fail-closed close ordering on the NON-force path. The force path
+  // (#505, above) already pre-walks the board to Done BEFORE `gh issue close`
+  // so a refused terminal move can never strand the issue CLOSED-but-not-Done.
+  // The non-force path used to mutate in the opposite order: `gh issue close`
+  // first (below), THEN the guarded `runMoveStateDone` (#385, further down).
+  // When that terminal move-state review→done was refused — board drifted off
+  // `review`, or move-state's own `review-approval-missing` guard fired because
+  // the `aitm-review-approved` marker never persisted (the #652 incident) — the
+  // issue was already CLOSED on GitHub while the board stayed stranded at the
+  // source column. The pre-close `runGuards('review','done', …)` block above
+  // narrows but does not eliminate this: it filters the review-approved refusal
+  // when the session review gate is off, and move-state re-evaluates its own
+  // guards independently, so the two passes can legitimately disagree after the
+  // close has already fired. Fix: mirror the #505 pre-walk here — land the board
+  // at Done first; if it genuinely fails (and the board is not already Done),
+  // refuse, leave the issue OPEN, and do NOT clear local state so a re-run
+  // recovers. The post-close move (#385) then degrades to a benign `done → done`
+  // no-op, exactly as on the force path.
+  if (!force && !SKIP_NETWORK && closeIssueNum) {
+    const preMove = await runMoveStateDone(s.active, { silent: true });
+    const preBoardState =
+      preMove && !preMove.ok && !preMove.benign ? await getIssueBoardState(s.active) : 'done';
+    if (decideBoardMoveFailure({ moveResult: preMove, boardState: preBoardState }).surface) {
+      const detail =
+        (preMove.stderr || '').trim() || `move-state.mjs exited ${preMove.status ?? 'non-zero'}`;
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: board move to "done" failed (${detail}). ` +
+          `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move ` +
+          `(e.g. record review approval with \`/task approve ${closeTarget}\`) and re-run \`/task close ${closeTarget}\`.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   // #425 — explicitly close the primary issue rather than relying on the
   // GitHub Projects auto-close workflow firing off the board move below. The
   // workflow is best-effort; when it misses, board=Done + issue-OPEN drift
