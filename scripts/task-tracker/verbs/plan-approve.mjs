@@ -142,7 +142,7 @@ function parseArgs(rest) {
   return out;
 }
 
-export async function verbPlanApprove(rest, cfg) {
+export async function verbPlanApprove(rest, cfg, deps = {}) {
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
     process.stderr.write('Usage: /task plan-approve #N\n');
@@ -155,7 +155,7 @@ export async function verbPlanApprove(rest, cfg) {
   const projectDir = getProjectDir();
   let result;
   try {
-    result = await runPlanApprove({ issueNumber, cfg, projectDir });
+    result = await runPlanApprove({ issueNumber, cfg, projectDir, deps });
   } catch (err) {
     process.stderr.write(`plan-approve: ${err.message}\n`);
     process.exit(1);
