@@ -26,10 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import { versionedWriteBody } from '../../lib/versioned-issue-write.mjs';
 import { mutateIssueBody } from '../../lib/issue-body-mutate.mjs';
-import {
-  assertMarkerPersisted,
-  StampMarkerNotPersistedError,
-} from '../../lib/stamp-verify.mjs';
+import { assertMarkerPersisted, StampMarkerNotPersistedError } from '../../lib/stamp-verify.mjs';
 import { shouldEmitReviewApprovedRow } from '../../lib/close-convergence.mjs';
 import { hasReviewApprovedMarker } from '../../lib/markers.mjs';
 
@@ -235,9 +232,18 @@ test('AC4 source: close gates ONLY the review:approved row on the decision; issu
     'the gate must honor the explicit review-gate bypass'
   );
   // The approved row is inside the guard; the wrap row is posted after, outside.
-  const approvedPost = closeSrc.indexOf('safePostTiming(closeTarget, _reviewApprovedRow)', guardIdx);
+  const approvedPost = closeSrc.indexOf(
+    'safePostTiming(closeTarget, _reviewApprovedRow)',
+    guardIdx
+  );
   const wrapPost = closeSrc.indexOf('safePostTiming(closeTarget, _issueWrapRow)', guardIdx);
-  assert.ok(approvedPost >= 0 && wrapPost > approvedPost, 'wrap row follows the gated approved row');
+  assert.ok(
+    approvedPost >= 0 && wrapPost > approvedPost,
+    'wrap row follows the gated approved row'
+  );
   const between = closeSrc.slice(guardIdx, approvedPost);
-  assert.ok(/\{\s*$/m.test(between) || between.includes('{'), 'approved row sits inside the if-guard');
+  assert.ok(
+    /\{\s*$/m.test(between) || between.includes('{'),
+    'approved row sits inside the if-guard'
+  );
 });
