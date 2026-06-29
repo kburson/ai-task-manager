@@ -199,7 +199,7 @@ export async function runSupersede({ deadIssue, byIssue, cfg, deps = {} } = {}) 
   return { status: 'superseded', deadIssue, byIssue, ts };
 }
 
-export async function verbSupersede(ctx) {
+export async function verbSupersede(ctx, deps = {}) {
   const { cfg, statePath, rest } = ctx;
   const s = loadState(statePath);
   const active = s.active || null;
@@ -213,7 +213,9 @@ export async function verbSupersede(ctx) {
     process.exit(2);
   }
   try {
-    const result = await runSupersede({ deadIssue, byIssue, cfg });
+    // `deps` defaults to `{}` on the real CLI path, so live behaviour is
+    // unchanged; tests forward mocked I/O seams to drive every CLI arm offline.
+    const result = await runSupersede({ deadIssue, byIssue, cfg, deps });
     if (result.status !== 'superseded') {
       console.error(result.message || `supersede: ${result.status}`);
       process.exit(1);
