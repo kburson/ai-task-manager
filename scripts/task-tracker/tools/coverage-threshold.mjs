@@ -52,7 +52,7 @@ const res = spawnSync(
     '--report-dir',
     reportDir,
     '--temp-directory',
-    path.join(reportDir, 'tmp'),
+    path.join(reportDir, 'v8-cov'),
     process.execPath,
     '--test',
     testFile,
