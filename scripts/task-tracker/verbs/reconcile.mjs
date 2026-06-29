@@ -382,7 +382,7 @@ function parseArgs(rest) {
   return { issueNumber, mode };
 }
 
-export async function verbReconcile(rest, cfg) {
+export async function verbReconcile(rest, cfg, deps = {}) {
   const { issueNumber, mode } = parseArgs(rest);
   if (!issueNumber || !mode) {
     process.stderr.write('Usage: /task reconcile <accept-live|revert-to-recorded|backfill> #N\n');
@@ -393,7 +393,10 @@ export async function verbReconcile(rest, cfg) {
   try {
     result = await withIssueLock(
       { issue: issueNumber, verb: 'reconcile', projDir: getProjectDir() },
-      () => runReconcile({ issueNumber, mode, cfg })
+      // `deps` defaults to `{}` on the real CLI path, so live behaviour is
+      // unchanged; tests forward mocked I/O seams to drive every CLI arm
+      // offline without a `gh` subprocess inside the process.exit trap window.
+      () => runReconcile({ issueNumber, mode, cfg, deps })
     );
   } catch (err) {
     if (err instanceof IssueLockError) {
