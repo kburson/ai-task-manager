@@ -26,6 +26,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 
 const pexec = promisify(execFile);
@@ -239,9 +240,16 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
       break;
     }
   }
-  const hasPostedMarker = body.includes(`<!-- ${DEEP_DIVE_POSTED_MARKER}:`);
-  const hasCompleteMarker = body.includes(`<!-- ${DEEP_DIVE_COMPLETE_MARKER}:`);
-  return { state, hasPostedMarker, hasCompleteMarker };
+  // #658 — derive marker presence from the canonical reader rather than a
+  // hand-rolled substring check. The old `body.includes('<!-- aitm-deep-dive-posted:')`
+  // form only matched the legacy colon grammar and silently missed the
+  // key=value property grammar (`<!-- aitm-deep-dive-posted ts="..." -->`)
+  // that `ensureDeepDive` has written since #375 — so a legitimately-deep-dived
+  // issue in `develop` had every source edit refused. `readDeepDiveSignals`
+  // is the same reader the Plan→Develop promote gate uses, so the gate and
+  // this reader can no longer drift apart.
+  const { hasPosted, hasComplete } = readDeepDiveSignals(body);
+  return { state, hasPostedMarker: hasPosted, hasCompleteMarker: hasComplete };
 }
 
 // Resolves (state, markers) using the cache when warm; falls back to gh.

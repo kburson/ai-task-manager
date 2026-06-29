@@ -13,15 +13,31 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
+import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import {
   decideSourceEdit,
   isAllowlistedPath,
   normalizePath,
   runHook,
+  fetchIssueSignals,
   ALLOWLIST_PREFIXES,
 } from '../../source-edit-gate.mjs';
 
 const PROJECT_DIR = '/fake/project';
+
+// Builds a throwaway project dir with a minimal task-tracker.json so
+// `fetchIssueSignals` can read its config off disk. Returns { dir, cleanup }.
+function makeProjectDir() {
+  const dir = mkdtempProjectIsolated('aitm-seg-658-');
+  mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(dir, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({ repo: 'owner/repo' })
+  );
+  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+}
 
 // ── Pure decideSourceEdit ──────────────────────────────────────────────────
 
@@ -315,4 +331,67 @@ test('runHook allowlists .tmp without needing a bound issue or signals', async (
   assert.equal(r.reason, 'allowlisted-path');
   // loadBoundIssue is still called (cheap); resolveIssueSignals is NOT.
   assert.equal(touched, true);
+});
+
+// ── #658 regression: deep-dive marker grammar detection ────────────────────
+//
+// The gate used to detect markers with `body.includes('<!-- aitm-deep-dive-posted:')`,
+// which only matched the legacy COLON grammar. `ensureDeepDive` has written
+// the key=value PROPERTY grammar (`<!-- aitm-deep-dive-posted ts="..." -->`)
+// since #375, so a legitimately deep-dived `develop` issue read both flags as
+// false and had every source edit refused. The fix routes detection through
+// `readDeepDiveSignals`. These tests pin both grammars + the absent case.
+
+const PROPERTY_GRAMMAR_BODY = [
+  '## User Story',
+  'body text',
+  '<!-- aitm-deep-dive-posted ts="2026-06-29T17:37:54.430Z" -->',
+  '## Deep-Dive Analysis (2026-06-29)',
+  'analysis',
+  '<!-- aitm-deep-dive-complete ts="2026-06-29T17:37:54.430Z" -->',
+].join('\n');
+
+const LEGACY_COLON_BODY = [
+  '## User Story',
+  '<!-- aitm-deep-dive-posted: 2026-06-29T17:37:54.430Z -->',
+  '<!-- aitm-deep-dive-complete: 2026-06-29T17:37:54.430Z -->',
+].join('\n');
+
+const NO_MARKER_BODY = '## User Story\nno markers here';
+
+function ghStubReturning(body) {
+  return async () => JSON.stringify({ body, projectItems: [] });
+}
+
+test('#658: fetchIssueSignals detects the ts="..." property grammar', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    const r = await fetchIssueSignals('#658', dir, { gh: ghStubReturning(PROPERTY_GRAMMAR_BODY) });
+    assert.equal(r.hasPostedMarker, true, 'posted marker (property grammar) must be detected');
+    assert.equal(r.hasCompleteMarker, true, 'complete marker (property grammar) must be detected');
+  } finally {
+    cleanup();
+  }
+});
+
+test('#658: fetchIssueSignals still detects the legacy colon grammar', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    const r = await fetchIssueSignals('#658', dir, { gh: ghStubReturning(LEGACY_COLON_BODY) });
+    assert.equal(r.hasPostedMarker, true);
+    assert.equal(r.hasCompleteMarker, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test('#658: fetchIssueSignals reads false when neither grammar is present', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    const r = await fetchIssueSignals('#658', dir, { gh: ghStubReturning(NO_MARKER_BODY) });
+    assert.equal(r.hasPostedMarker, false);
+    assert.equal(r.hasCompleteMarker, false);
+  } finally {
+    cleanup();
+  }
 });
