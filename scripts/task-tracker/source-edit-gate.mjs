@@ -17,11 +17,13 @@
 // When chore-mode is active, every path is allowed (full bypass).
 //
 // Cache: the `(state, hasPostedMarker, hasCompleteMarker, fetchedAt)`
-// tuple is persisted under `activeIssueCache` in `.ai-task-manager/task-tracker.json`
-// with a 30s TTL. Cache miss / stale → cold path runs `gh issue view` once;
-// warm path is a single JSON read.
+// tuple is persisted in a gitignored sidecar at `.ai-task-manager/.cache/active-issue.json`
+// with a 30s TTL (#664 — formerly under `activeIssueCache` in the tracked
+// task-tracker.json, which dirtied a git-tracked file on every edit and deadlocked
+// the Test→Review clean-tree gate). Cache miss / stale → cold path runs
+// `gh issue view` once; warm path is a single JSON read.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
@@ -165,12 +167,21 @@ function configPath(projectDir) {
   return path.join(projectDir, '.ai-task-manager', 'task-tracker.json');
 }
 
+// #664 — the active-issue cache (`issue` + `fetchedAt`) is volatile, per-session
+// bookkeeping. It MUST NOT live in the tracked `task-tracker.json`: writing it
+// there dirties a git-tracked file as a side effect of every permitted Edit/Write,
+// which later deadlocks the Test→Review clean-tree gate (the activity-guard forbids
+// committing `.ai-task-manager/**` in any state). The cache instead lives in a
+// gitignored sidecar so the tracked config only changes on deliberate verb actions.
+export function cacheFilePath(projectDir) {
+  return path.join(projectDir, '.ai-task-manager', '.cache', 'active-issue.json');
+}
+
 export function readCache(projectDir, boundIssue) {
-  const p = configPath(projectDir);
+  const p = cacheFilePath(projectDir);
   if (!existsSync(p)) return null;
   try {
-    const cfg = JSON.parse(readFileSync(p, 'utf8'));
-    const c = cfg.activeIssueCache;
+    const c = JSON.parse(readFileSync(p, 'utf8'));
     if (!c || c.issue !== boundIssue) return null;
     if (typeof c.fetchedAt !== 'number') return null;
     if (Date.now() - c.fetchedAt > CACHE_TTL_MS) return null;
@@ -181,12 +192,10 @@ export function readCache(projectDir, boundIssue) {
 }
 
 export function writeCache(projectDir, entry) {
-  const p = configPath(projectDir);
-  if (!existsSync(p)) return;
+  const p = cacheFilePath(projectDir);
   try {
-    const cfg = JSON.parse(readFileSync(p, 'utf8'));
-    cfg.activeIssueCache = { ...entry, fetchedAt: Date.now() };
-    writeFileSync(p, JSON.stringify(cfg, null, 2));
+    mkdirSync(path.dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify({ ...entry, fetchedAt: Date.now() }, null, 2));
   } catch {
     /* tolerate */
   }
