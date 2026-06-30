@@ -75,7 +75,7 @@ The timing hook commands are direct Node invocations so installed hook execution
 
 `install` writes a positive `permissions.allow` allowlist into `.claude/settings.json` instead of granting a broad `Bash` allow. The PreToolUse hooks (`bash-guard.mjs`, `activity-guard.mjs`) remain in place as defense-in-depth, but the primary security boundary is the enumerated allowlist.
 
-The canonical source-of-truth lives in [`bin/lib/claude-bash-allowlist.mjs`](../../bin/lib/claude-bash-allowlist.mjs). Entries cover the canonical commands the task-tracker drives (`npm test`, `npm run lint`, `npm run format:check`, `node scripts/**`, `node node_modules/ai-task-manager/scripts/**`, `npx aitm <verb>`, read-only `gh`, non-destructive `git`, basic filesystem inspection). Interpreter-payload forms (`bash -c '<payload>'`, `node -e '...'`, `python -c '...'`) are intentionally **not** included — they bypass argv parsing and would let arbitrary code slip past the lexical hook classifier.
+The canonical source-of-truth lives in [`bin/lib/claude-bash-allowlist.mjs`](../../bin/lib/claude-bash-allowlist.mjs). Entries cover the canonical commands the task-tracker drives (`npm test`, `npm run lint`, `npm run format:check`, `node scripts/**`, the symlinked `node_modules/ai-task-manager/scripts/**` dog-food form, `npx aitm <verb>`, read-only `gh`, non-destructive `git`, basic filesystem inspection). Interpreter-payload forms (`bash -c '<payload>'`, `node -e '...'`, `python -c '...'`) are intentionally **not** included — they bypass argv parsing and would let arbitrary code slip past the lexical hook classifier.
 
 Older installs that shipped a single broad `Bash` entry are migrated automatically: re-running `install` drops the broad entry and adds the enumerated ones. Commands outside the allowlist prompt the user for permission rather than auto-running.
 
@@ -84,7 +84,7 @@ Older installs that shipped a single broad `Bash` entry are migrated automatical
 A command **outside** the allowlist is referred to Claude Code's permission **auto-mode classifier** (model `claude-opus-4-8`) on _every_ invocation. That classifier is occasionally **"temporarily unavailable"** — a transient outage. When it stalls on a _hot_ command (one issued many times per session, e.g. the `aitm`/`gh`/`node` calls that drive a full-auto `/task` chain), the command is blocked and the whole drive halts mid-flight. The fix is to put the hot forms on the allowlist so they short-circuit the classifier entirely:
 
 - `npx aitm <verb>` — the canonical consumer CLI (`Bash(npx aitm:*)`).
-- `node node_modules/ai-task-manager/scripts/**` — the symlinked dog-food form used by the Pickup Directive (the `node scripts/**` glob does not match the `node_modules/...` prefix).
+- the symlinked `node_modules/ai-task-manager/scripts/**` dog-food form used by the Pickup Directive (the `node scripts/**` glob does not match the `node_modules/…` prefix, so it needs its own entry).
 - read-only `gh issue view/list/edit/comment` — already covered.
 
 **Retry fallback.** For network/API calls that the allowlist cannot make deterministic (GitHub API blips, not classifier stalls), the task-tracker wraps GraphQL/REST through [`scripts/gh/lib/with-retry.mjs`](../../scripts/gh/lib/with-retry.mjs) — bounded exponential-backoff retries around transient failures. If a hot command still stalls on the classifier despite being allowlisted, re-issuing it is safe (the verbs are idempotent) and the bounded retry absorbs transient API errors underneath.
