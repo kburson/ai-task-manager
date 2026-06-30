@@ -11,8 +11,19 @@ import path from 'node:path';
 
 import { STATE_MATRIX } from '../activity-policy.mjs';
 import { sessionsDir as resolveSessionsDir, statePath as resolveStatePath } from '../paths.mjs';
+import { getActiveTask } from '../session-state.mjs';
+import { currentSessionId } from '../word-counter.mjs';
 
 export function readBoundState(root) {
+  // #666: the current session is authoritative for its own binding. Prefer this
+  // session's own `active-task.json` over the global `active` pointer, which is a
+  // single-slot-per-tree cache that can hold a prior session's ghost. Only when
+  // this session has no record of its own do we fall back to the global pointer +
+  // cross-session scan (legacy behavior — never-bound sessions, hooks firing
+  // before a bind).
+  const own = readOwnSessionBinding(root);
+  if (own) return own;
+
   // #573: state lives under `.tmp/aitm/state/` now — read it through the resolver
   // rather than a hardcoded `.ai-task-manager/` path.
   const statePath = resolveStatePath(root);
@@ -37,6 +48,26 @@ export function readBoundState(root) {
     }
   }
   return { activeIssue, state: null };
+}
+
+// #666: resolve the current session's own bound issue + kanban state from its
+// `active-task.json`. Returns `{ activeIssue, state }` when this session holds a
+// binding, else null so the caller falls back to the global pointer. `state` is
+// only populated when the record carries a valid `kanbanState`; an issue with no
+// (or invalid) cached state still wins on `activeIssue` and reports state null,
+// since this session — not another session's record — owns the answer.
+function readOwnSessionBinding(root) {
+  let sid;
+  try {
+    sid = currentSessionId();
+  } catch {
+    return null;
+  }
+  const record = getActiveTask(sid, root);
+  if (!record || typeof record !== 'object' || typeof record.issue !== 'string') return null;
+  const k = typeof record.kanbanState === 'string' ? record.kanbanState : null;
+  const state = k && Object.prototype.hasOwnProperty.call(STATE_MATRIX, k) ? k : null;
+  return { activeIssue: record.issue, state };
 }
 
 function readSessionKanbanState(root, activeIssue) {

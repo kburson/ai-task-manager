@@ -8,6 +8,7 @@ import {
   countWords,
 } from '../word-counter.mjs';
 import { verbSwitch } from './switch.mjs';
+import { getActiveTask } from '../session-state.mjs';
 import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 import {
@@ -26,6 +27,22 @@ export function computePauseIdleSec(pausedAtTs, resumeTs) {
   const b = new Date(resumeTs).getTime();
   if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
   return Math.max(0, Math.round((b - a) / 1000));
+}
+
+// #666 — the current session's own bound issue (normalized to `#N`), or null when
+// this session holds no per-session record. Source of truth for the switch-vs-
+// fresh-bind decision; the global pointer is only a cross-session cache.
+function ownBoundIssue(projectDir) {
+  let sid;
+  try {
+    sid = currentSessionId();
+  } catch {
+    return null;
+  }
+  if (!sid) return null;
+  const issue = getActiveTask(sid, projectDir)?.issue;
+  if (typeof issue !== 'string' || !issue) return null;
+  return /^#/.test(issue) ? issue : `#${issue}`;
 }
 
 // `/task resume` — two paths:
@@ -133,11 +150,20 @@ export async function verbResume(ctx) {
   const normalizedTarget = /^#/.test(String(target)) ? String(target) : `#${target}`;
   const s = loadState(statePath);
 
-  if (s.active && s.active !== normalizedTarget) {
-    await verbSwitch(ctx, normalizedTarget);
+  // #666 — decide switch-vs-fresh-bind on THIS session's own per-session record,
+  // not the global-overlaid `s.active`. The global pointer is a single-slot cache
+  // that can hold a prior session's ghost; routing on it makes a fresh session
+  // fabricate a `switch-out` row on the ghost issue. Only a genuine in-session
+  // switch (this session itself already holds a different binding) goes through
+  // verbSwitch; a fresh session whose only "active" is the inherited ghost falls
+  // through to the fresh-bind path below.
+  const switchVerb = ctx.verbSwitch ?? verbSwitch;
+  const ownIssue = ownBoundIssue(projectDir);
+  if (ownIssue && ownIssue !== normalizedTarget) {
+    await switchVerb(ctx, normalizedTarget);
     return;
   }
-  if (s.active === normalizedTarget) {
+  if (ownIssue === normalizedTarget) {
     console.log(`already active: ${normalizedTarget}`);
     return;
   }

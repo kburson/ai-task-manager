@@ -4,7 +4,7 @@ import { strict as assert } from 'node:assert';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
-import { getActiveTask, setSessionKanbanState } from '../../session-state.mjs';
+import { getActiveTask, setActiveTask, setSessionKanbanState } from '../../session-state.mjs';
 import { loadState } from '../../state.mjs';
 
 // #251 — verbResume's fresh-bind path must seed the per-session `kanbanState`
@@ -114,9 +114,14 @@ function makeCtx({ rest, cfg, statePath, seedKanban }) {
 }
 
 // Test 3: already-active branch returns early and never seeds (unchanged behavior).
+// #666 — the already-active check now keys on THIS session's own per-session
+// record, not the global pointer, so the session must hold its own #999 binding
+// for the early-return to fire (a global-only pointer is treated as a ghost and
+// would fresh-bind instead).
 {
   const SID = 'resume-seed-already';
   process.env.AI_TASK_MANAGER_SESSION_ID = SID;
+  setActiveTask(SID, { issue: '#999' }, tmp);
   const statePath = writeState({ active: '#999', lastActive: '#999' });
 
   const seedCalls = [];
