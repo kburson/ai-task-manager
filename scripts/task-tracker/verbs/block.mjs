@@ -215,7 +215,9 @@ export async function verbBlock(ctx) {
     process.exit(2);
   }
   try {
-    await runBlock({ target, refs, cfg });
+    // ctx.deps is undefined on the real CLI path (runBlock defaults to {});
+    // tests inject a stubbed side-effect surface to drive the wrapper offline.
+    await runBlock({ target, refs, cfg, deps: ctx.deps });
   } catch (err) {
     console.error(err.message);
     process.exit(1);
