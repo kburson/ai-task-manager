@@ -10,9 +10,16 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import { readCache, writeCache, cacheFilePath, CACHE_TTL_MS } from '../../source-edit-gate.mjs';
+
+// Repo root (…/scripts/task-tracker/tests/unit/ → four levels up). Used so the
+// gitignore assertion runs against the real worktree the suite executes in
+// (works at repo root and inside the Test-stage sandbox worktree alike).
+const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
 
 const CONFIG_REL = path.join('.ai-task-manager', 'task-tracker.json');
 
@@ -97,4 +104,17 @@ test('#664: readCache returns null when the entry is older than the TTL', () => 
   } finally {
     cleanup();
   }
+});
+
+test('#664: the .cache sidecar directory is gitignored', () => {
+  // `git check-ignore` exits 0 when the path matches an ignore rule, 1 when it
+  // does not. Run it in-process (the Test-stage sandbox VC allowlist forbids the
+  // `check-ignore` subcommand directly, but a spawned child inside `node --test`
+  // is not gated). A non-zero exit throws, failing the assertion.
+  const out = execFileSync(
+    'git',
+    ['check-ignore', '.ai-task-manager/.cache/active-issue.json'],
+    { cwd: REPO_ROOT, encoding: 'utf8' }
+  ).trim();
+  assert.equal(out, '.ai-task-manager/.cache/active-issue.json');
 });
