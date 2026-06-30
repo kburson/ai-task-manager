@@ -70,6 +70,10 @@ export const DEFAULT_POLICY = Object.freeze({
     '.markdownlint-cli2.*',
     '.claude/settings.json',
     '.claude/settings.*.json',
+    // The activity-policy file itself is part of the project's config surface.
+    // Without this, editing it classifies as WRITE_OTHER (permitted in no
+    // state), so the very first policy edit needs a chore-mode escape hatch.
+    '.ai-task-manager/activity-policy.json',
   ],
   testRunners: ['npm test', 'npm run test', 'node --test', 'pytest', 'cargo test', 'go test'],
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
@@ -318,19 +322,28 @@ export function loadPolicy(cwd) {
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return DEFAULT_POLICY;
-    // Shallow merge: keys present override defaults; absent keys keep defaults.
+    // Per-key base merge: a list-valued key present in the file fully REPLACES
+    // the corresponding default; absent keys keep the default. The additive
+    // `*Extra` siblings (`codeGlobsExtra` / `docGlobsExtra` / `configGlobsExtra`)
+    // are then APPENDED onto whichever base list is in effect, so a project can
+    // widen a glob set without restating the (version-drifting) defaults.
+    // Non-array `*Extra` values are ignored. Base first, extras after — the
+    // `classifyEdit` precedence is unchanged; extras only broaden membership.
+    const withExtra = (baseKey, extraKey) => {
+      const base = Array.isArray(parsed[baseKey]) ? parsed[baseKey] : DEFAULT_POLICY[baseKey];
+      const extra = Array.isArray(parsed[extraKey]) ? parsed[extraKey] : [];
+      return extra.length ? [...base, ...extra] : base;
+    };
     return {
-      codeGlobs: Array.isArray(parsed.codeGlobs) ? parsed.codeGlobs : DEFAULT_POLICY.codeGlobs,
+      codeGlobs: withExtra('codeGlobs', 'codeGlobsExtra'),
       codeGlobExcludes: Array.isArray(parsed.codeGlobExcludes)
         ? parsed.codeGlobExcludes
         : DEFAULT_POLICY.codeGlobExcludes,
       codeGlobReincludes: Array.isArray(parsed.codeGlobReincludes)
         ? parsed.codeGlobReincludes
         : DEFAULT_POLICY.codeGlobReincludes,
-      docGlobs: Array.isArray(parsed.docGlobs) ? parsed.docGlobs : DEFAULT_POLICY.docGlobs,
-      configGlobs: Array.isArray(parsed.configGlobs)
-        ? parsed.configGlobs
-        : DEFAULT_POLICY.configGlobs,
+      docGlobs: withExtra('docGlobs', 'docGlobsExtra'),
+      configGlobs: withExtra('configGlobs', 'configGlobsExtra'),
       testRunners: Array.isArray(parsed.testRunners)
         ? parsed.testRunners
         : DEFAULT_POLICY.testRunners,
