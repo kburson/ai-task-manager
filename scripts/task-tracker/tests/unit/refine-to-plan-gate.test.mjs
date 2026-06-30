@@ -9,7 +9,14 @@ import { gateRefineToPlan } from '../../lib/refine-to-plan-gate.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
-function makeDeps({ values = {}, labels = ['bug'], children = [], body = '' } = {}) {
+const PICKUP_DIRECTIVE_HEADING = '## Pickup Directive — MANDATORY, DO NOT SKIP\n';
+
+function makeDeps({
+  values = {},
+  labels = ['bug'],
+  children = [],
+  body = PICKUP_DIRECTIVE_HEADING,
+} = {}) {
   return {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => values,
@@ -103,6 +110,43 @@ test('compound CLI command in AC marker → refine-exit-forbidden-command blocke
   const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
   assert.equal(r.ok, false);
   assert.ok(r.blockers.some((b) => /refine-exit-forbidden-command/.test(b)));
+});
+
+// #676
+test('missing Pickup Directive heading → refine-exit-pickup-directive-missing blocker', async () => {
+  const deps = makeDeps({
+    values: { rank: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    body: '## Acceptance Criteria\n\n- [ ] something\n',
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
+  assert.equal(r.ok, false);
+  assert.ok(r.blockers.some((b) => /refine-exit-pickup-directive-missing/.test(b)));
+});
+
+// #676
+test('Pickup Directive heading present → no pickup-directive blocker', async () => {
+  const deps = makeDeps({
+    values: { rank: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    body: PICKUP_DIRECTIVE_HEADING,
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
+  assert.equal(r.ok, true);
+  assert.ok(!r.blockers.some((b) => /pickup-directive-missing/.test(b)));
+});
+
+// #676 — heading only inside a <details> block must not count (mirrors
+// the Plan→Develop deep-dive-gate's same exclusion).
+test('Pickup Directive heading only inside <details> → still blocked', async () => {
+  const deps = makeDeps({
+    values: { rank: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    body: `<details>\n${PICKUP_DIRECTIVE_HEADING}</details>\n`,
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
+  assert.equal(r.ok, false);
+  assert.ok(r.blockers.some((b) => /refine-exit-pickup-directive-missing/.test(b)));
 });
 
 test('multiple missing fields produces multiple blockers', async () => {

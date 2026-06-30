@@ -92,8 +92,19 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
   }
 
   // #236 — reject compound CLI commands in AC evidence markers / VC section.
+  // #676 — also gate on a top-level Pickup Directive heading, mirroring
+  // `deep-dive-gate.mjs`'s plan-develop-pickup-directive-missing check one
+  // stage earlier so a Plan-column issue is guaranteed to already carry it.
   try {
     const body = await fetchBody({ cfg, issueNumber });
+
+    const strippedForPickup = body.replace(/<details[\s\S]*?<\/details>/gi, '');
+    if (!/^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m.test(strippedForPickup)) {
+      blockers.push(
+        'refine-exit-pickup-directive-missing: body must contain a top-level `## Pickup Directive — MANDATORY, DO NOT SKIP` heading (not inside a `<details>` block) before promoting to Plan'
+      );
+    }
+
     const lint = lintChecklistCommands(body);
     for (const v of lint.violations) {
       if (v.severity !== 'error') continue;
