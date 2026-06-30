@@ -207,6 +207,13 @@ export const COMMAND_MANIFEST = [
     category: 'planning',
     dispatch: 'verbs/inflate-estimate.mjs',
   },
+  {
+    verb: 'plan-estimate',
+    aliases: [],
+    description: 'Write the `### Planned Estimate` appendix on the refine-estimate comment.',
+    category: 'planning',
+    dispatch: 'verbs/plan-estimate.mjs',
+  },
 
   // --- Gates & evidence ----------------------------------------------------
   {

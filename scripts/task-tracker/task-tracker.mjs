@@ -384,6 +384,11 @@ if (_isMain)
           await verbInflateEstimate(ctx.rest, ctx.cfg);
           break;
         }
+        case 'plan-estimate': {
+          const { verbPlanEstimate } = await import('./verbs/plan-estimate.mjs');
+          await verbPlanEstimate(ctx);
+          break;
+        }
         case 'block': {
           const { verbBlock } = await import('./verbs/block.mjs');
           await verbBlock(ctx);
