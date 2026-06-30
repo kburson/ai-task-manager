@@ -49,6 +49,19 @@ export async function verbReview(ctx) {
     getIssueBoardState,
     nowIso,
   } = ctx;
+  // #622 — seam-widen for offline verb testing. These three externals do real
+  // network I/O (preflight: git+gh; mutateIssueBody / deriveAndStampFunctionalDod:
+  // gh issue edit). The real CLI passes none of them, so each falls back to its
+  // module import below and live behaviour is unchanged; the coverage test injects
+  // stubs to drive every branch without a gh/git subprocess.
+  const mutateBodyFn = ctx.mutateIssueBody || mutateIssueBody;
+  const deriveDodFn = ctx.deriveAndStampFunctionalDod || deriveAndStampFunctionalDod;
+  // #622 — `ctx.runGuards` overrides the test→review guard evaluation for
+  // offline tests. The real CLI leaves it undefined and uses the imported
+  // registry runner, whose `child-cannot-lead-epic` guard does a live gh
+  // GraphQL parent lookup; injecting a stub keeps the coverage test free of
+  // any subprocess while driving both guard-refusal branches deterministically.
+  const runGuardsFn = ctx.runGuards || runGuards;
   await drainQueueIfAny();
   const s = loadState(statePath);
   const target =
@@ -60,7 +73,10 @@ export async function verbReview(ctx) {
 
   if (!SKIP_NETWORK) {
     const issueNum = String(target).replace(/^#/, '');
-    const { runReviewPreflight } = await import('../lib/review-preflight.mjs');
+    // #622 — `ctx.runReviewPreflight` overrides the dynamic import for offline
+    // tests; the real CLI path leaves it undefined and lazy-imports as before.
+    const runReviewPreflight =
+      ctx.runReviewPreflight || (await import('../lib/review-preflight.mjs')).runReviewPreflight;
     const preflight = await runReviewPreflight({
       issueNumber: issueNum,
       repo: cfg.repo,
@@ -223,7 +239,7 @@ export async function verbReview(ctx) {
     // exit-guard set (including pre-close completeness) runs again at the
     // runMoveState boundary below — single source of truth in the registry.
     {
-      const dodResult = await runGuards('test', 'review', {
+      const dodResult = await runGuardsFn('test', 'review', {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         body: rawBody,
@@ -485,7 +501,7 @@ export async function verbReview(ctx) {
     // `allowUnverifiedTicks: true` is correct semantically — the evidence
     // lives in commandResults, not yet stamped inline. Migrating review to
     // stamp same-line `aitm-verified-at` markers per tick is a follow-up.
-    await mutateIssueBody({
+    await mutateBodyFn({
       issueNumber: issueNum,
       repo: cfg.repo,
       mutate: () => finalBody,
@@ -559,7 +575,7 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
-      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
+      deps: { pexec, deriveAndStampFunctionalDod: deriveDodFn, nowIso },
     });
     // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
     // call) now lives in `STATES.test.exitGuards` as the
@@ -569,7 +585,7 @@ export async function verbReview(ctx) {
     // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
     // one indented line per offending checkbox, retry hint, exit 4.
     {
-      const guardResult = await runGuards('test', 'review', {
+      const guardResult = await runGuardsFn('test', 'review', {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         body: scanBody,
