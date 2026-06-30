@@ -194,6 +194,13 @@ export const COMMAND_MANIFEST = [
     dispatch: 'verbs/mirror-deep-dive.mjs',
   },
   {
+    verb: 'user-story',
+    aliases: ['story'],
+    description: 'Author or repair the `## User Story` section as the first heading.',
+    category: 'planning',
+    dispatch: 'verbs/user-story.mjs',
+  },
+  {
     verb: 'inflate-estimate',
     aliases: [],
     description: 'Append an estimate-inflation record to the issue.',

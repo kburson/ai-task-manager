@@ -342,6 +342,12 @@ if (_isMain)
           await verbPlanApprove(ctx.rest, ctx.cfg);
           break;
         }
+        case 'user-story':
+        case 'story': {
+          const { verbUserStory } = await import('./verbs/user-story.mjs');
+          await verbUserStory(ctx);
+          break;
+        }
         case 'promote':
         case 'next': {
           const { verbPromote } = await import('./verbs/promote.mjs');

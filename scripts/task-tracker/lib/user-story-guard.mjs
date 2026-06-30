@@ -19,7 +19,9 @@
 export const GUARD_ID_WARN = 'user-story-warn';
 export const GUARD_ID_BLOCK = 'user-story-block';
 
-const PLACEHOLDERS = new Set([
+// #662 — exported so `lib/user-story-author.mjs` rejects the same placeholder
+// strings the block guard rejects (single source of truth for the contract).
+export const PLACEHOLDERS = new Set([
   'As a [who wants to accomplish something]',
   'I want to [what they want to accomplish]',
   'So that [why they want to accomplish that thing]',
@@ -41,7 +43,9 @@ const POSITION_REASON =
 // Returns the text of the first `## ` heading in the body, or null if there is
 // none. HTML-comment lines and the leading `aitm-last-known-state` marker are
 // not `## ` headings, so a plain line-anchored scan is sufficient.
-function firstH2Heading(body) {
+// #662 — exported so the author lib can position `## User Story` as the first
+// `## ` heading using the same detection the guard validates against.
+export function firstH2Heading(body) {
   const m = body.match(/^## (.+?)\s*$/m);
   return m ? m[1].trim() : null;
 }
