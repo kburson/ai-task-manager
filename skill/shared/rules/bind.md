@@ -25,7 +25,16 @@ If the sentinel is already present in context, do not re-read.
 
 ## Pickup directive
 
-After bind succeeds, follow `.ai-task-manager/templates/pickup-directive.md`. That file is Tier-2 and is JIT-loaded on bind by the same sentinel mechanism (`aitm-skill-loaded:pickup:<version>`).
+After bind succeeds, follow `.ai-task-manager/templates/pickup-directive.md` — but only when the bound issue's kanban state is `plan` or later (`plan`, `develop`, `test`, `review`, `done`). That file is Tier-2 and is JIT-loaded on bind by the same sentinel mechanism (`aitm-skill-loaded:pickup:<version>`).
+
+**Board-state gate (#673).** Pickup Directive's deep-dive/implementation
+instructions only make sense once an issue has been through Refine/Plan. If
+the CLI prints a `🚧 PICKUP DIRECTIVE DEFERRED — #N (state: <state>)` banner on
+bind, the issue is still at `backlog`/`on-deck`/`refine` — do NOT load or
+follow the pickup directive. Instead continue the state walk with the verb the
+banner names (`/task refine #N` or `/task promote #N`). The gate is computed
+by `isPickupDirectiveEligible` (`scripts/task-tracker/lib/pickup-directive-gate.mjs`)
+from the session's already-seeded `kanbanState` — no extra state-fetch needed.
 
 The pickup directive enforces:
 

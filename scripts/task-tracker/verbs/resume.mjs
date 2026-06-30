@@ -16,6 +16,10 @@ import {
   timingCommentHasRows,
   assertPairedReengagement,
 } from '../lib/bind-event.mjs';
+import {
+  isPickupDirectiveEligible,
+  formatPickupDirectiveDeferredBanner,
+} from '../lib/pickup-directive-gate.mjs';
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
@@ -116,12 +120,17 @@ export async function verbResume(ctx) {
     if (sid && cfg?.repo) {
       const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
       try {
-        await seed({
+        const seeded = await seed({
           sid,
           issue: s.lastActive,
           projDir: projectDir,
           repo: cfg.repo,
         });
+        // #673 — Pickup Directive only applies once an issue has reached
+        // Plan; route earlier-state issues back to the state walk instead.
+        if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
+          console.log(formatPickupDirectiveDeferredBanner(s.lastActive, seeded.kanbanState));
+        }
       } catch (err) {
         process.stderr.write(
           `[resume] ${s.lastActive}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
@@ -219,12 +228,17 @@ export async function verbResume(ctx) {
   if (sid && cfg?.repo) {
     const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
     try {
-      await seed({
+      const seeded = await seed({
         sid,
         issue: normalizedTarget,
         projDir: projectDir,
         repo: cfg.repo,
       });
+      // #673 — Pickup Directive only applies once an issue has reached
+      // Plan; route earlier-state issues back to the state walk instead.
+      if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
+        console.log(formatPickupDirectiveDeferredBanner(normalizedTarget, seeded.kanbanState));
+      }
     } catch (err) {
       process.stderr.write(
         `[resume] ${normalizedTarget}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
