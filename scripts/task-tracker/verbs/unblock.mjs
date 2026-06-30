@@ -151,7 +151,9 @@ export async function verbUnblock(ctx) {
     process.exit(2);
   }
   try {
-    await runUnblock({ target, refs: byProvided ? refs : null, cfg });
+    // ctx.deps is undefined on the real CLI path (runUnblock defaults to {});
+    // tests inject a stubbed side-effect surface to drive the wrapper offline.
+    await runUnblock({ target, refs: byProvided ? refs : null, cfg, deps: ctx.deps });
   } catch (err) {
     console.error(err.message);
     process.exit(1);
