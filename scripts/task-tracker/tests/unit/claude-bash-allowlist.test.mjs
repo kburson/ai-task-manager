@@ -50,6 +50,16 @@ try {
     CLAUDE_BASH_ALLOWLIST.some((e) => e.startsWith('Bash(node scripts/')),
     'allowlist must include `node scripts/**`'
   );
+  // #665 — hot task-tracker invocation forms must bypass the permission
+  // auto-mode classifier so a transient classifier outage cannot stall a drive.
+  assert.ok(
+    CLAUDE_BASH_ALLOWLIST.includes('Bash(npx aitm:*)'),
+    'allowlist must include the consumer CLI `npx aitm <verb>` (#665)'
+  );
+  assert.ok(
+    CLAUDE_BASH_ALLOWLIST.includes('Bash(node node_modules/ai-task-manager/scripts/**)'),
+    'allowlist must include the dog-food symlink form `node node_modules/ai-task-manager/scripts/**` (#665)'
+  );
   assert.ok(
     CLAUDE_BASH_ALLOWLIST.some((e) => e.startsWith('Bash(git commit')),
     'allowlist must include `git commit`'

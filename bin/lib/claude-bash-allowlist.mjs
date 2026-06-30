@@ -29,6 +29,16 @@ export const CLAUDE_BASH_ALLOWLIST = Object.freeze([
   // Node — project scripts only; no `-e`/`-p`/`--eval` (interpreter payloads).
   'Bash(node scripts/**)',
   'Bash(node bin/**)',
+  // Dog-food / consumer-local symlink form: the Pickup Directive drives the
+  // task-tracker via `node node_modules/ai-task-manager/scripts/**`, which the
+  // `node scripts/**` glob above does not match (#665).
+  'Bash(node node_modules/ai-task-manager/scripts/**)',
+
+  // aitm CLI — the canonical consumer entry point (`npx aitm <verb>`). Hot
+  // path for every `/task` verb; allowlisting it keeps a flaky permission
+  // auto-mode classifier from stalling full-auto drives (#665). No interpreter
+  // payload — `aitm` dispatches to vetted project scripts.
+  'Bash(npx aitm:*)',
 
   // Shell scripts — file path only; no `-c`.
   'Bash(bash scripts/**)',
