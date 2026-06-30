@@ -111,10 +111,9 @@ test('#664: the .cache sidecar directory is gitignored', () => {
   // does not. Run it in-process (the Test-stage sandbox VC allowlist forbids the
   // `check-ignore` subcommand directly, but a spawned child inside `node --test`
   // is not gated). A non-zero exit throws, failing the assertion.
-  const out = execFileSync(
-    'git',
-    ['check-ignore', '.ai-task-manager/.cache/active-issue.json'],
-    { cwd: REPO_ROOT, encoding: 'utf8' }
-  ).trim();
+  const out = execFileSync('git', ['check-ignore', '.ai-task-manager/.cache/active-issue.json'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  }).trim();
   assert.equal(out, '.ai-task-manager/.cache/active-issue.json');
 });
