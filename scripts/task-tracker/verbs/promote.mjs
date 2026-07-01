@@ -28,6 +28,7 @@ import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mj
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
+import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { appendAuditMarker } from '../lib/markers.mjs';
@@ -517,6 +518,23 @@ export async function runPromote({
     }
   }
 
+  // #674 — Develop→Test post-success hook: post the "## New Automated Tests"
+  // comment derived from the commit-trail SHAs. Best-effort — a posting
+  // failure does not roll back the board move.
+  let newTestsPost = null;
+  if (target === 'test') {
+    try {
+      newTestsPost = await postNewAutomatedTestsComment({
+        cfg,
+        issueNumber,
+        cwd: guardCtx.projectDir,
+        deps: deps.newAutomatedTestsComment,
+      });
+    } catch (err) {
+      newTestsPost = { status: 'post-failed', error: err.message };
+    }
+  }
+
   // #128 — paired `<prev>:complete` + `<next>:enter` rows are emitted at
   // the move-state.mjs chokepoint on every successful Status write. The
   // previous `move:<target>` audit row was redundant with that pair and
@@ -529,6 +547,7 @@ export async function runPromote({
     via: transitionResult.kind === 'alias' ? `alias:${transitionResult.verb}` : 'direct',
     bootstrapped,
     refinementPost,
+    newTestsPost,
   };
 }
 
@@ -582,6 +601,13 @@ export async function verbPromote(rest, cfg, deps = {}) {
       } else if (result.refinementPost?.status === 'post-failed') {
         process.stderr.write(
           `  ⚠ refine-estimate comment post failed: ${result.refinementPost.error}\n`
+        );
+      }
+      if (result.newTestsPost?.status === 'posted') {
+        process.stdout.write(`  ↳ posted "## New Automated Tests" comment\n`);
+      } else if (result.newTestsPost?.status === 'post-failed') {
+        process.stderr.write(
+          `  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}\n`
         );
       }
       return;
