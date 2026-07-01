@@ -39,6 +39,12 @@ export const CLAUDE_BASH_ALLOWLIST = Object.freeze([
   // auto-mode classifier from stalling full-auto drives (#665). No interpreter
   // payload — `aitm` dispatches to vetted project scripts.
   'Bash(npx aitm:*)',
+  // `npx aitm <verb>` stays canonical. These two are defensive aliases for the
+  // resolved bin-shim spellings some shells/agents produce instead of `npx`
+  // (#668) — not a second canonical form, and not a broader
+  // `node_modules/.bin/**` glob.
+  'Bash(node_modules/.bin/aitm:*)',
+  'Bash(./node_modules/.bin/aitm:*)',
 
   // Shell scripts — file path only; no `-c`.
   'Bash(bash scripts/**)',

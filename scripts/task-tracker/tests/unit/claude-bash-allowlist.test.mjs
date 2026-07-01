@@ -60,6 +60,16 @@ try {
     CLAUDE_BASH_ALLOWLIST.includes('Bash(node node_modules/ai-task-manager/scripts/**)'),
     'allowlist must include the dog-food symlink form `node node_modules/ai-task-manager/scripts/**` (#665)'
   );
+  // #668 — bare-bin-path spellings of `aitm` must be allowlisted alongside
+  // `npx aitm` so diverging from the canonical invocation does not stall.
+  assert.ok(
+    CLAUDE_BASH_ALLOWLIST.includes('Bash(node_modules/.bin/aitm:*)'),
+    'allowlist must include the bare bin-path spelling `node_modules/.bin/aitm` (#668)'
+  );
+  assert.ok(
+    CLAUDE_BASH_ALLOWLIST.includes('Bash(./node_modules/.bin/aitm:*)'),
+    'allowlist must include the relative bin-path spelling `./node_modules/.bin/aitm` (#668)'
+  );
   assert.ok(
     CLAUDE_BASH_ALLOWLIST.some((e) => e.startsWith('Bash(git commit')),
     'allowlist must include `git commit`'
