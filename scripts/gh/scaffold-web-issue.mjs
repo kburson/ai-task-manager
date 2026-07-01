@@ -43,10 +43,9 @@ async function main() {
   const { readFileSync } = await import('node:fs');
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');
+  const { configPath, getProjectDir } = await import('../task-tracker/paths.mjs');
   const pexec = promisify(execFile);
-  const { repo } = JSON.parse(
-    readFileSync(new URL('../../.ai-task-manager/task-tracker.json', import.meta.url), 'utf8')
-  );
+  const { repo } = JSON.parse(readFileSync(configPath(getProjectDir()), 'utf8'));
   const { stdout } = await pexec('gh', [
     'issue',
     'view',
