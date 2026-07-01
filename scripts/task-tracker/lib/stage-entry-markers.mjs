@@ -435,3 +435,57 @@ export function backfillEntryMarker(body, stage, ts, reason) {
   if (!hasAudit) out = insertBeforeFieldDb(out, backfillAuditMarker(stage, reason, ts));
   return out;
 }
+
+// #675 AC4 — shared by heal-entry-markers.mjs (multi-issue sweep) and
+// reconcile.mjs backfill mode (single-issue, single-current-stage) so both
+// tools compute backfill timestamps with the same interval-safe algorithm
+// instead of independently-evolving logic (heal-entry-markers used to be the
+// only caller with this; reconcile backfill used to blanket-stamp every hole
+// at `now()`, which could tie multiple stages to the same timestamp).
+export function normalizeTs(iso) {
+  return String(iso || '').replace(/\.\d+Z$/, 'Z');
+}
+
+// Compute a safe ts for backfilling <stage>: strictly between the latest
+// earlier-stage marker (or createdAt) and the earliest later-stage marker.
+// Adds a per-stage ms offset so multiple backfilled stages preserve their
+// relative order (refine < plan < develop < ...). Throws if no feasible
+// interval exists (caller must surface as an un-healable anomaly).
+export function safeBackfillTs({ stage, markers, createdAt }) {
+  const stageIdx = STAGE_INDEX[stage];
+  const createdMs = Date.parse(createdAt);
+  let upperMs = null;
+  let lowerMs = null;
+  for (const [s, ts] of Object.entries(markers)) {
+    if (s === stage) continue;
+    const ms = Date.parse(ts);
+    if (!Number.isFinite(ms)) continue;
+    if (STAGE_INDEX[s] > stageIdx) {
+      if (upperMs === null || ms < upperMs) upperMs = ms;
+    } else if (STAGE_INDEX[s] < stageIdx) {
+      if (lowerMs === null || ms > lowerMs) lowerMs = ms;
+    }
+  }
+  // Floor: latest earlier-stage marker, else createdAt, else (upper - STAGES.length).
+  let floorMs;
+  if (lowerMs !== null) {
+    floorMs = lowerMs + 1;
+  } else if (Number.isFinite(createdMs)) {
+    floorMs = createdMs;
+  } else if (upperMs !== null) {
+    floorMs = upperMs - STAGES.length;
+  } else {
+    throw new Error(`safeBackfillTs: no usable bound for stage ${stage}`);
+  }
+  let candidateMs = floorMs + stageIdx;
+  if (upperMs !== null && candidateMs >= upperMs) {
+    // Clamp into (floor, upper) — if no room, fail loudly.
+    candidateMs = upperMs - 1;
+    if (candidateMs <= floorMs) {
+      throw new Error(
+        `safeBackfillTs: no feasible ts for stage ${stage} (floor=${floorMs}, upper=${upperMs})`
+      );
+    }
+  }
+  return normalizeTs(new Date(candidateMs).toISOString());
+}

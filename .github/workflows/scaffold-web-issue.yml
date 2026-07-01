@@ -1,0 +1,57 @@
+# Scaffolds the initial `aitm-entered-backlog` entry marker on issues created
+# outside `scripts/gh/create-issue.mjs` (web UI, external report, etc).
+#
+# Why this exists (#675): `preflight-issue.mjs` is the only place that stamps
+# `aitm-entered-backlog`, and only `create-issue.mjs` calls it. An issue
+# authored through the GitHub web UI never runs it, so its body silently has
+# no entry-marker chain at all. The first `/task refine` or `/task promote`
+# attempt then refuses with a contiguity-hole error whose own recovery
+# suggestion doesn't fit a missing-marker (vs. drifted) issue. This Action
+# closes that gap at issue-creation time instead of leaving it for a human to
+# hit and diagnose later.
+#
+# Modeled on label-beta-report.yml: `issues: [opened]`, github-script with the
+# default GITHUB_TOKEN, idempotent (no-ops if the marker is already present,
+# e.g. a very fast create-issue.mjs-authored issue somehow re-triggering).
+#
+# Unlike label-beta-report.yml this needs the repo checked out, because the
+# scaffolding logic lives in scripts/gh/scaffold-web-issue.mjs (shared with
+# the manual-invocation CLI path and covered by unit tests) rather than being
+# reimplemented inline in the workflow.
+name: Scaffold web-authored issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stamp aitm-entered-backlog if missing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { needsBacklogScaffold, scaffoldBody } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/gh/scaffold-web-issue.mjs`
+            );
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+
+            if (!needsBacklogScaffold(body)) {
+              core.info(`#${issue.number} already has aitm-entered-backlog; nothing to do.`);
+              return;
+            }
+
+            const next = scaffoldBody({ body, createdAt: issue.created_at });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: next,
+            });
+            core.info(`Scaffolded aitm-entered-backlog on #${issue.number}.`);

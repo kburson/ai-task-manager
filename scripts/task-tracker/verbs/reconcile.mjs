@@ -39,6 +39,8 @@ import {
   verifyChainIntegrity,
   backfillEntryMarker,
   OPTIONAL_CONTIGUITY_STAGES,
+  parseEntryMarkersFirstVisit,
+  safeBackfillTs,
 } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
@@ -63,14 +65,14 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
     `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
-        issue(number: $issue) { body }
+        issue(number: $issue) { body createdAt }
       }
     }`,
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const issue = data?.repository?.issue;
   if (!issue) throw new Error(`reconcile: issue #${issueNumber} not found in ${repo}`);
-  return { body: issue.body || '' };
+  return { body: issue.body || '', createdAt: issue.createdAt };
 }
 
 async function defaultWriteIssueBody({ issueNumber, repo, body }) {
@@ -182,7 +184,7 @@ export async function runReconcile({
   // live gh round-trip).
   const mutateBody = deps.mutateIssueBody || mutateIssueBody;
 
-  const { body } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const { body, createdAt } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: recorded } = readLastKnownState(body);
   const live = (await getLiveState({ issueNumber, cfg })) || null;
 
@@ -216,10 +218,17 @@ export async function runReconcile({
         message: `no contiguity holes for #${issueNumber} at "${currentStage}"`,
       };
     }
-    const nowTs = now();
+    // #675 AC4 — share heal-entry-markers.mjs's interval-safe timestamp
+    // algorithm instead of blanket-stamping every hole at the same `now()`
+    // value, which could tie multiple backfilled stages to one timestamp.
+    // Re-derive markers from the progressively-updated body each iteration so
+    // each subsequent hole's floor/ceiling accounts for markers already
+    // stamped this run (mirrors heal-entry-markers.mjs's healOne loop).
     let nextBody = body;
     for (const stage of holes) {
-      nextBody = backfillEntryMarker(nextBody, stage, nowTs, `reconcile-backfill at ${nowTs}`);
+      const markers = parseEntryMarkersFirstVisit(nextBody);
+      const ts = safeBackfillTs({ stage, markers, createdAt });
+      nextBody = backfillEntryMarker(nextBody, stage, ts, `reconcile-backfill at ${ts}`);
     }
     await writeIssueBodyWithRetry({
       issueNumber,

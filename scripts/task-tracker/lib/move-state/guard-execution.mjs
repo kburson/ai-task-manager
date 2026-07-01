@@ -149,10 +149,10 @@ export async function runGuardExecution(ctx) {
         );
         process.stderr.write('Recovery:\n');
         process.stderr.write(
-          '   • Backfill the marker(s) if the stage(s) genuinely ran, then retry, or\n'
+          `   • Run \`/task reconcile backfill ${issueArg}\` to fill the missing entry marker(s) if the stage(s) genuinely ran, then retry.\n`
         );
         process.stderr.write(
-          `   • Run \`/task reconcile accept-live ${issueArg}\` if the board and body have drifted.\n\n`
+          `   • Only if the board and recorded body state have actually drifted (not merely a missing historical marker), run \`/task reconcile accept-live ${issueArg}\` instead.\n\n`
         );
         return { exit: 6 };
       }

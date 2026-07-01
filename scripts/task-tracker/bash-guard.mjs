@@ -126,12 +126,23 @@ const scanned = stripQuotedRegions(command);
 // (mirroring the gh-issue guards below) so that a mere *mention* of the
 // filename inside a quoted argument — an `ac-stamp` AC label, a `git commit`
 // message — is not refused; only an actual unquoted invocation
-// (`node …/move-state.mjs`, `bash …/move-state.sh`, `./…/move-state.mjs`)
-// trips it. As with those guards, an invocation hidden inside a single-quoted
-// `sh -c '…'` is intentionally not caught (consistent quote-stripping blind
-// spot; see #542). Internal callers spawn via execFile/spawn, not Bash, so
-// they bypass this hook entirely.
-if (/\bmove-state\.(mjs|sh)\b/.test(scanned)) {
+// (`node …/move-state.mjs`, `bash …/move-state.sh`, `./…/move-state.mjs`, or a
+// bare `…/move-state.mjs` as the command itself) trips it. As with those
+// guards, an invocation hidden inside a single-quoted `sh -c '…'` is
+// intentionally not caught (consistent quote-stripping blind spot; see #542).
+// Internal callers spawn via execFile/spawn, not Bash, so they bypass this
+// hook entirely.
+//
+// #675 AC5 — a bare `\bmove-state\.(mjs|sh)\b` substring match fires on any
+// unquoted MENTION of the filename anywhere in the command (e.g. an unquoted
+// `grep -rn move-state.mjs scripts/` search, or prose in an `echo`), not just
+// on genuine invocations. Tightened to require command position: the match
+// must be the first token of a command segment (segments split on `&&`,
+// `||`, `;`, `&`, `|`, newline, and `$(`), optionally preceded by `node ` or
+// `bash `, and optionally prefixed with `./`.
+const MOVE_STATE_INVOCATION_RE = /^(?:node\s+|bash\s+)?(?:\.\/)?\S*move-state\.(mjs|sh)\b/;
+const moveStateSegments = scanned.split(/&&|\|\||[;&|\n]|\$\(/);
+if (moveStateSegments.some((seg) => MOVE_STATE_INVOCATION_RE.test(seg.trim()))) {
   block(
     'Direct invocation of move-state is reserved for internal use.\n' +
       '  Use `/task promote` (forward), `/task demote` (back to development), or `/task reconcile` (drift recovery).'

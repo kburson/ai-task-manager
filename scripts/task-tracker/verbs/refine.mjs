@@ -339,10 +339,25 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   if (isPreRefineEntry) {
     const startState = recordedState == null ? 'backlog' : recordedState;
     const hops = startState === 'backlog' ? 2 : 1;
-    for (let i = 0; i < hops; i += 1) {
-      await promote([String(issueNumber)], cfg);
+    try {
+      for (let i = 0; i < hops; i += 1) {
+        await promote([String(issueNumber)], cfg);
+      }
+      promoted = true;
+    } catch (err) {
+      // #675 AC3 — a refused promote must not leave the body stamped
+      // refine-complete without the state having actually advanced. Roll back
+      // ONLY the stage-completion marker; the rationale marker and the
+      // aitm-fields cache refresh from step 2c/2d legitimately belong
+      // regardless of promote's outcome (they describe field values already
+      // committed to the board in step 2), so they are left untouched.
+      await mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: (base) => base.replace(REFINE_COMPLETE_MARKER_RE, ''),
+      });
+      throw err;
     }
-    promoted = true;
   }
 
   return {
