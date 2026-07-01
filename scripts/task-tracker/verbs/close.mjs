@@ -717,7 +717,7 @@ export async function verbClose(ctx) {
   // benign `done → done` no-op (auto-close already moved the board) is treated
   // as success and produces no warning.
   const moveResult = await runMoveStateDone(s.active, { silent: true });
-  await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
+  const lifecycleTickResult = await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
   if (moveResult && !moveResult.ok && !moveResult.benign) {
     // #435 — the move reported a non-benign failure, but a race can leave the
     // board already at Done (the auto-close workflow or a prior converge moved
@@ -736,7 +736,18 @@ export async function verbClose(ctx) {
       return;
     }
   }
-  console.log(`Closed ${s.active}.`);
+  // #672 — a lifecycle-tick failure that exhausts its retries previously
+  // only surfaced on stderr, easy to miss among the surrounding console.log
+  // lines. Fold it
+  // into the terminal success line so it's visible in the same output the
+  // operator is already reading, without turning close itself into a failure.
+  if (lifecycleTickResult && !lifecycleTickResult.ok) {
+    console.log(
+      `Closed ${s.active}. ⚠ Lifecycle checkboxes could not be auto-ticked — see stderr.`
+    );
+  } else {
+    console.log(`Closed ${s.active}.`);
+  }
 }
 
 // Caller-side assertion that runLogIssueTime actually persisted fields to
@@ -786,30 +797,65 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
   }
 }
 
+// #672 — content-integrity guard errors (marker loss, checkbox-proof, etc.)
+// are deliberate refusals: re-running the same mutate against the same body
+// will fail the same way, so retrying wastes attempts and delays the real
+// stderr signal. Only network-class failures (timeouts, dropped connections,
+// transient GraphQL 5xx) are worth retrying — those come from `fetchBody`/
+// `pushBody` inside `versionedWriteBody`, which has no retry of its own for
+// this failure class (see #672 deep-dive), and are not instances of the
+// named guard-error classes `issue-body-mutate.mjs` exports.
+const LIFECYCLE_TICK_GUARD_ERRORS = new Set([
+  'MarkerLossError',
+  'CheckboxProofMissingError',
+  'MalformedDeclarationCmdError',
+  'FabricatedProofError',
+  'IncompleteProofError',
+  'BodyWriteRefusalError',
+]);
+
+const LIFECYCLE_TICK_MAX_ATTEMPTS = 3;
+const LIFECYCLE_TICK_RETRY_DELAY_MS = 500;
+
 // Tick the Lifecycle DoD items the close verb is responsible for. Best-effort:
-// missing section or already-ticked items are no-ops; failures do not block
-// the close path since the issue has already moved to Done.
+// missing section or already-ticked items are no-ops; a bounded number of
+// network-class failures are retried (#672 — the underlying GraphQL calls
+// have no retry of their own and this environment has observed transient TLS
+// timeouts), but the close path is never blocked — on final failure the
+// caller is told via the returned `{ ok: false, message }` so it can surface
+// a warning in the close summary instead of only writing to stderr.
 export async function tickLifecycleOnClose({ cfg, issueNum, pexec, deps = {} }) {
   const mutateBody = deps.mutateIssueBody || mutateIssueBody;
-  try {
-    await mutateBody({
-      issueNumber: issueNum,
-      repo: cfg.repo,
-      mutate: (base) => {
-        let next = tickLifecycleItem(base, 'story-closed');
-        next = tickLifecycleItem(next, 'timing-flushed');
-        return next;
-      },
-      // These two lifecycle checkboxes (`story-closed`, `timing-flushed`) are
-      // ticked by the close verb itself — the close action is the verifier, not
-      // an agent pre-tick. The #362 checkbox-proof gate would otherwise refuse
-      // them for lacking an adjacent proof marker. Mirror the #363 precedent in
-      // approve.mjs and bypass the gate scoped to this single call site only;
-      // every other mutateIssueBody call in this file keeps the gate enforced.
-      allowUnverifiedTicks: true,
-      deps: { pexec },
-    });
-  } catch (err) {
-    process.stderr.write(`⚠ lifecycle-tick best-effort failed: ${err.message}\n`);
+  const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let lastErr = null;
+  for (let attempt = 1; attempt <= LIFECYCLE_TICK_MAX_ATTEMPTS; attempt++) {
+    try {
+      await mutateBody({
+        issueNumber: issueNum,
+        repo: cfg.repo,
+        mutate: (base) => {
+          let next = tickLifecycleItem(base, 'story-closed');
+          next = tickLifecycleItem(next, 'timing-flushed');
+          return next;
+        },
+        // These two lifecycle checkboxes (`story-closed`, `timing-flushed`) are
+        // ticked by the close verb itself — the close action is the verifier, not
+        // an agent pre-tick. The #362 checkbox-proof gate would otherwise refuse
+        // them for lacking an adjacent proof marker. Mirror the #363 precedent in
+        // approve.mjs and bypass the gate scoped to this single call site only;
+        // every other mutateIssueBody call in this file keeps the gate enforced.
+        allowUnverifiedTicks: true,
+        deps: { pexec },
+      });
+      return { ok: true };
+    } catch (err) {
+      lastErr = err;
+      const isGuardError = LIFECYCLE_TICK_GUARD_ERRORS.has(err.name);
+      if (isGuardError || attempt === LIFECYCLE_TICK_MAX_ATTEMPTS) break;
+      await sleep(LIFECYCLE_TICK_RETRY_DELAY_MS * attempt);
+    }
   }
+  const message = `lifecycle-tick best-effort failed: ${lastErr.message}`;
+  process.stderr.write(`⚠ ${message}\n`);
+  return { ok: false, message };
 }
