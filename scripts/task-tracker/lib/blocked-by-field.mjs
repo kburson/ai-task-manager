@@ -49,11 +49,11 @@ export function formatBlockedByValue(refs) {
 // TEXT value via `updateProjectV2ItemFieldValue`. Returns `false` when the
 // issue is not in any project (e.g. pre-board issue) — same fail-soft shape
 // as the rest of the project-field helpers.
-async function defaultWriteFieldValue({ cfg, issueNumber, value }) {
+async function defaultWriteFieldValue({ cfg, issueNumber, value, exec = pexec }) {
   const { projectId, repo, fieldBlockedBy } = cfg;
   if (!projectId || !repo || !fieldBlockedBy) return false;
 
-  const { stdout: viewOut } = await pexec(
+  const { stdout: viewOut } = await exec(
     'gh',
     [
       'api',
@@ -80,7 +80,7 @@ async function defaultWriteFieldValue({ cfg, issueNumber, value }) {
   }
   if (!itemId) return false;
 
-  await pexec(
+  await exec(
     'gh',
     [
       'api',
@@ -122,7 +122,11 @@ export async function writeBlockedByField({ issueNumber, refs, cfg, deps = {} } 
     throw new Error('writeBlockedByField: issueNumber must be a positive integer');
   }
   const value = formatBlockedByValue(refs);
-  const writer = deps.writeFieldValue || defaultWriteFieldValue;
+  // #632 — thread an injectable exec into the default gh writer so its two
+  // subprocess round-trips are unit-drivable. Production passes no `deps.exec`,
+  // so `defaultWriteFieldValue` binds the real `pexec` — byte-identical.
+  const execFn = deps.exec || pexec;
+  const writer = deps.writeFieldValue || ((a) => defaultWriteFieldValue({ ...a, exec: execFn }));
   const ok = await writer({ cfg, issueNumber, value });
   if (!ok) return { skipped: 'no-item' };
   return { ok: true, value };
