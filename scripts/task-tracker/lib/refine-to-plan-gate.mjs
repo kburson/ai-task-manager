@@ -17,9 +17,9 @@ import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { lintChecklistCommands } from './checklist-command-lint.mjs';
 import { findAcsWithoutVerifierOrInvalidTag } from './body-invariants.mjs';
 
-async function defaultFetchBody({ cfg, issueNumber }) {
+async function defaultFetchBody({ cfg, issueNumber, gqlFn = gql }) {
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
+  const data = await gqlFn(
     `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
@@ -31,9 +31,9 @@ async function defaultFetchBody({ cfg, issueNumber }) {
   return data?.repository?.issue?.body ?? '';
 }
 
-async function defaultFetchLabels({ cfg, issueNumber }) {
+async function defaultFetchLabels({ cfg, issueNumber, gqlFn = gql }) {
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
+  const data = await gqlFn(
     `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
@@ -54,8 +54,12 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
 
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
-  const fetchLabels = deps.fetchLabels || defaultFetchLabels;
-  const fetchBody = deps.fetchBody || defaultFetchBody;
+  // #630 — thread an injectable `gql` into the default fetchers so their
+  // GraphQL round-trips are unit-drivable. Production passes no `deps.gql`, so
+  // the defaults bind the real `gql` — byte-identical to the prior behavior.
+  const gqlFn = deps.gql || gql;
+  const fetchLabels = deps.fetchLabels || ((a) => defaultFetchLabels({ ...a, gqlFn }));
+  const fetchBody = deps.fetchBody || ((a) => defaultFetchBody({ ...a, gqlFn }));
 
   const fieldDefs = fieldDefsLoader();
 
