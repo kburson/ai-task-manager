@@ -211,6 +211,26 @@ export function verifyChainIntegrity(body, currentStage) {
   };
 }
 
+// #677 — verifyChainIntegrity's zero-tuple early-return is correct in
+// isolation (a body with no entry markers has no gap to find), but
+// reconcile.mjs's backfill branch was trusting that same "ok: true" result
+// to also mean "nothing to backfill." An issue that has visibly progressed
+// past backlog (via board Status) but carries zero entry markers IS the hole
+// backfill exists to fill. computeBackfillHoles wraps verifyChainIntegrity
+// without modifying its zero-tuple contract: a fresh backlog issue with no
+// markers still reports no holes; any other currentStage with zero markers
+// reports every stage from backlog through currentStage as a hole.
+export function computeBackfillHoles(body, currentStage) {
+  const result = verifyChainIntegrity(body, currentStage);
+  const tuples = parseEntryMarkers(body);
+  if (tuples.length > 0 || currentStage === STAGES[0]) {
+    return result;
+  }
+  const currentIdx = STAGE_INDEX[currentStage];
+  const holes = STAGES.slice(0, currentIdx + 1);
+  return { ok: false, presentStages: [], holes, illegalArcs: [] };
+}
+
 export function stripEntryMarkersAfter(body, stage) {
   if (!KNOWN_STAGES.has(stage)) {
     throw new Error(`stripEntryMarkersAfter: unknown stage "${stage}"`);

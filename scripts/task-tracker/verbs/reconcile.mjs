@@ -36,7 +36,7 @@ import { getActiveTask, setSessionKanbanState } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import {
   stampEntryMarker,
-  verifyChainIntegrity,
+  computeBackfillHoles,
   backfillEntryMarker,
   OPTIONAL_CONTIGUITY_STAGES,
   parseEntryMarkersFirstVisit,
@@ -207,7 +207,7 @@ export async function runReconcile({
     // gateless `on-deck` waiting room is optional and never blocks a promotion,
     // so backfill must not manufacture a marker the normal flow legitimately
     // omits. Fill only the holes that would actually wedge a forward move.
-    const holes = verifyChainIntegrity(body, currentStage).holes.filter(
+    const holes = computeBackfillHoles(body, currentStage).holes.filter(
       (s) => !OPTIONAL_CONTIGUITY_STAGES.has(s)
     );
     if (holes.length === 0) {
