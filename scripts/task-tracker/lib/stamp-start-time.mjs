@@ -10,9 +10,15 @@ import { splitRepo, gql, writeProjectFieldValue } from '../../gh/lib/github-proj
 import { fieldIdFor } from '../project-fields.mjs';
 import { warnMissingFieldId } from './field-config-warn.mjs';
 
-async function defaultResolveItem({ cfg, issueNumber }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
+// Exported for unit coverage: the GraphQL I/O seams (`gql` / `splitRepo`) are
+// injectable via `deps` so the query-build + project-item filtering can be
+// tested without a live call. The real CLI path passes `deps = {}`, so the
+// injected fns default to the imported ones — behaviour is identical.
+export async function defaultResolveItem({ cfg, issueNumber, deps = {} }) {
+  const gqlFn = deps.gql || gql;
+  const splitRepoFn = deps.splitRepo || splitRepo;
+  const { owner, repoName } = splitRepoFn(cfg.repo);
+  const data = await gqlFn(
     `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
@@ -67,7 +73,7 @@ export async function stampStartTime({ cfg, issueNumber, now = () => new Date(),
 
   let item;
   try {
-    item = await resolveItem({ cfg, issueNumber });
+    item = await resolveItem({ cfg, issueNumber, deps });
   } catch (err) {
     return { status: 'error', message: `stamp-start-time: resolve failed: ${err.message}` };
   }
