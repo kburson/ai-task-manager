@@ -27,6 +27,13 @@
 # Idempotent: re-fires on `edited`/`labeled`/`unlabeled` without erroring or
 # duplicating, and no-ops when nothing needs changing. Needs only the default
 # GITHUB_TOKEN.
+#
+# #670 — the title's emoji prefix reconciliation (Step 2) also strips legacy
+# bracket-text prefixes (`[BETA-DEFECT] `, `[BETA-FEATURE] `) so a report
+# filed by a downstream aitm install on an older workflow version converges
+# to the current format instead of accumulating a stacked prefix. That
+# stripping logic lives in scripts/task-tracker/lib/beta-report-title-reconcile.mjs
+# (shared, unit-tested), so this workflow needs the repo checked out.
 name: Label beta report
 
 on:
@@ -40,16 +47,17 @@ jobs:
   label:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Apply beta label from body marker and reconcile the emoji prefix
         uses: actions/github-script@v7
         with:
           script: |
+            const { reconcileBetaReportTitle, LADYBUG, SPARKLE } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/task-tracker/lib/beta-report-title-reconcile.mjs`
+            );
             const issue = context.payload.issue;
             const title = issue.title || '';
             const body = issue.body || '';
-
-            const LADYBUG = '🐞';
-            const SPARKLE = '✨';
 
             // --- Step 1: derive the beta label from the durable body marker. ---
             // Marker-only: the emoji title prefix is ambiguous (🐞 marks every
@@ -95,13 +103,7 @@ jobs:
             // Defect wins a degenerate bug+feature tie.
             const wantEmoji = wantLadybug ? LADYBUG : wantSparkle ? SPARKLE : '';
 
-            const leading = title.startsWith(LADYBUG)
-              ? LADYBUG
-              : title.startsWith(SPARKLE)
-                ? SPARKLE
-                : '';
-            const rest = leading ? title.slice(leading.length).replace(/^\s+/, '') : title;
-            const desired = wantEmoji ? `${wantEmoji} ${rest}` : rest;
+            const desired = reconcileBetaReportTitle(title, wantEmoji);
 
             if (desired === title) {
               core.info('Title emoji already in sync; nothing to reconcile.');
