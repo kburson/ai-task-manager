@@ -18,6 +18,17 @@
 //
 // `ai-task-manager` (bin/cli.mjs) remains the installer/lifecycle CLI; `aitm`
 // is the daily driver.
+//
+// #667 — help routing. This wrapper is the real `/task help` entrypoint, so it
+// owns three help shapes and routes them to task-tracker's `verbHelp` renderer
+// (the single source of the per-verb reference, topic grouping, state-transition
+// map, and gate/evidence model):
+//   - `aitm help` / `aitm`           → orchestrator command index (this file's
+//                                       names-only listing, incl. scripts) THEN
+//                                       the /task verb reference (verbHelp top).
+//   - `aitm help <verb>`             → that verb's full page (verbHelp <verb>).
+//   - `aitm <verb> help` / `<verb> ?`/`--help`/`-h` → that verb's full page.
+// This is documentation-surface only — no verb's runtime behavior changes.
 
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
@@ -26,6 +37,12 @@ import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, TASK_TRACKER_PATH, SCRIPTS, kind, groupedListing } from './aitm-registry.mjs';
 
 const HELP_NAMES = new Set(['help', '?', '--help', '-h', undefined, '']);
+// Flag-shaped help tokens task-tracker already recognizes in any argv position.
+const HELP_FLAGS = new Set(['--help', '-h', '?']);
+// The bare word `help` — the canonical `aitm <name> help` self-doc token. It is
+// NOT a flag, so task-tracker would otherwise swallow it as verb positional
+// data; the verb router below normalizes it to `--help`.
+const isHelpWord = (a) => a === 'help';
 
 function printListing(write = (s) => process.stdout.write(s)) {
   const { verbs, scriptGroups } = groupedListing();
@@ -79,14 +96,32 @@ function delegate(targetPath, args) {
 export function run(argv = process.argv.slice(2)) {
   const [name, ...rest] = argv;
 
+  // Top-level help entry: bare invocation, or `help`/`?`/`--help`/`-h` as the
+  // command. A trailing non-flag token selects a specific command to document.
   if (HELP_NAMES.has(name)) {
+    const target = rest.find((a) => a && !HELP_FLAGS.has(a) && !isHelpWord(a));
+    if (target) {
+      // `aitm help <command>` → that command self-documents.
+      if (kind(target) === 'script') {
+        return delegate(path.join(REPO_ROOT, SCRIPTS[target].path), ['help']);
+      }
+      // A verb (or an unknown token → verbHelp falls back to the top-level
+      // listing) routes through task-tracker's help renderer.
+      return delegate(TASK_TRACKER_PATH, [target, '--help']);
+    }
+    // Bare top-level: the orchestrator command index (names-only, incl. scripts)
+    // followed by the /task verb reference (topics + state map + gate model).
     printListing();
-    return 0;
+    return delegate(TASK_TRACKER_PATH, ['--help']);
   }
 
   const k = kind(name);
   if (k === 'verb') {
-    return delegate(TASK_TRACKER_PATH, [name, ...rest]);
+    // Canonical self-doc form is `aitm <verb> help`; normalize the bare `help`
+    // word to the help flag task-tracker recognizes (it already honors ?/-h/
+    // --help). Every other arg passes through untouched.
+    const forwarded = rest.map((a) => (isHelpWord(a) ? '--help' : a));
+    return delegate(TASK_TRACKER_PATH, [name, ...forwarded]);
   }
   if (k === 'script') {
     const target = path.join(REPO_ROOT, SCRIPTS[name].path);

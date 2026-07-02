@@ -162,7 +162,12 @@ if (_isMain)
     // mutates no state (no issue create, board write, or bind switch).
     if (hasHelpFlag(process.argv.slice(2))) {
       const { verbHelp } = await import('./verbs/help.mjs');
-      verbHelp();
+      // Forward the first non-flag token so `/task refine --help` prints
+      // refine's page (not the generic listing). Skips help flags themselves.
+      const helpTarget = process.argv
+        .slice(2)
+        .find((a) => a !== '--help' && a !== '-h' && a !== '?' && !a.startsWith('-'));
+      verbHelp(helpTarget);
       process.exit(0);
     }
     const ctx = buildContext();
@@ -415,7 +420,7 @@ if (_isMain)
         case 'help':
         case '?': {
           const { verbHelp } = await import('./verbs/help.mjs');
-          verbHelp();
+          verbHelp(ctx.rest[0]);
           break;
         }
         default:
