@@ -38,7 +38,8 @@ import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
-import { setIssueKindMarker, normalizeKind } from './lib/issue-kind.mjs';
+import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
+import { filterDodForKind } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -225,8 +226,27 @@ function buildFieldsTrailer(args) {
   return any ? formatIssueFieldDb(out) + '\n' : null;
 }
 
-function tailBlock(dodPath) {
-  const dod = readFileSync(dodPath, 'utf8').replace(/\s+$/, '');
+// #681 — Resolve the render kind for DoD filtering. `--kind` is validated via
+// normalizeKind (dies on an unknown kind, matching the marker-stamp path);
+// absence means the `code` default, for which the DoD filter is a no-op.
+function resolveRenderKind(args) {
+  if (typeof args.kind !== 'string') return DEFAULT_KIND;
+  try {
+    return normalizeKind(args.kind);
+  } catch (err) {
+    die(err.message);
+    return DEFAULT_KIND;
+  }
+}
+
+// #681 — `kind` scopes which DoD items render. For `code` (and any kind no
+// annotation names) `filterDodForKind` returns the file verbatim, so the tail
+// block is byte-identical to pre-change output; a no-code kind (spike/research)
+// drops the annotated `tests` item, and because `## Verification Commands` is
+// derived from the assembled body downstream, its `npm run test:all` seed drops
+// with it automatically.
+function tailBlock(dodPath, kind = DEFAULT_KIND) {
+  const dod = filterDodForKind(readFileSync(dodPath, 'utf8').replace(/\s+$/, ''), kind);
   // #480 — `## Definition of Done` (2-hash) is a top-level sibling of
   // `## Acceptance Criteria` / `## Verification Commands`, so the CODE_COMPLETE
   // AC slice (`NEXT_HEADING_RE = /^##\s+/`) terminates at it and stops slurping
@@ -286,10 +306,15 @@ function emitShape(args, dodPath, root) {
         : '';
   }
 
+  // #681 — resolve kind BEFORE the DoD tail is injected so the Functional items
+  // are filtered for the issue's kind and the derived Verification Commands seed
+  // is computed over the surviving items.
+  const kind = resolveRenderKind(args);
+
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
-  const assembled = body + tailBlock(dodPath);
+  const assembled = body + tailBlock(dodPath, kind);
   warnMissingLifecycleLabels(assembled);
   const lint = lintChecklistCommands(assembled);
   if (!lint.ok) {
@@ -325,14 +350,9 @@ function emitShape(args, dodPath, root) {
   }
   // #494, #500 — `--kind <audit|research|spike|epic>` stamps the issue-kind
   // marker at creation, routing the new issue onto the deliverable-evidence
-  // lane. `code` (the default) leaves the body unmarked.
+  // lane. `code` (the default) leaves the body unmarked. The kind was already
+  // resolved above (#681) for DoD filtering; reuse it.
   if (typeof args.kind === 'string') {
-    let kind;
-    try {
-      kind = normalizeKind(args.kind);
-    } catch (err) {
-      die(err.message);
-    }
     finalBody = setIssueKindMarker(finalBody, kind);
   }
   process.stdout.write(finalBody);
@@ -448,8 +468,8 @@ async function main() {
     return;
   }
 
-  // Legacy tail-only mode.
-  process.stdout.write(tailBlock(dodPath));
+  // Legacy tail-only mode. Honors `--kind` for DoD filtering too (#681).
+  process.stdout.write(tailBlock(dodPath, resolveRenderKind(args)));
   // #376: emit the new `version="..."` property grammar.
   process.stdout.write(`${serializeMarker('body-version', { version: '1' })}\n`);
 }

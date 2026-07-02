@@ -1,11 +1,11 @@
-<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-skill-version: 1.1.0 -->
 
 # rules/functional-dod.md
 
 Tier-2. Loaded JIT on the first `/task check`, `/task dod-stamp`, or `/task close` of a session. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/functional-dod:1.0.0
+aitm-skill-loaded:rules/functional-dod:1.1.0
 ```
 
 ## The contract
@@ -94,6 +94,43 @@ The verifier command for each stampable key comes from the
 project's `templates/definition-of-done.md` and keeping the
 `dod:functional:<key>` marker intact. `dod-stamp <key>` reads the live body;
 whatever commands appear on the keyed line are what it runs.
+
+## Kind-aware items (#681)
+
+Not every Functional item applies to every issue kind. A no-code kind — a
+`spike` or `research` issue whose deliverable is findings, not committed source —
+has no test suite to run, so the `tests` item ("All automated tests pass",
+verifier `npm run test:all`) can never be honestly ticked and the derived
+`npm run test:all` verification command names a suite the issue never touches.
+
+An item is scoped to a set of kinds with a declarative annotation appended to
+its line in `definition-of-done.md`, beside the `dod:functional:KEY` tag:
+
+```
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->
+```
+
+Grammar and precedence:
+
+- `<!-- dod:kinds exclude="a,b" -->` — renders for every kind EXCEPT `a`, `b`.
+- `<!-- dod:kinds include="a,b" -->` — renders ONLY for kinds `a`, `b`.
+- No annotation → the item applies to every kind. This is the default, so
+  `lint`, `commits`, `acs`, and `checkboxes` render for all kinds untouched.
+- `exclude` and `include` are mutually exclusive on one line; the first
+  annotation wins. Kind names match case-insensitively.
+
+Filtering happens at **render time** in `preflight-issue.mjs`: the DoD tail is
+filtered against the issue's resolved kind (`--kind`, default `code`) before the
+body is assembled, and `## Verification Commands` is derived from the surviving
+items — so a dropped `tests` item takes its `npm run test:all` seed with it. For
+the `code` kind, and any kind no annotation names, the filter is a no-op and the
+rendered DoD is byte-identical to the pre-#681 output.
+
+Because enumeration is body-derived (see Backward compatibility below), a
+filtered-out item is simply **absent** from the body. `parseFunctionalDodKeys`
+never yields its key, so `/task check` demands no evidence marker for it and
+`/task close` derives no stamp for it — there is no phantom-required key. The
+gate needs no kind-specific enumeration; the render-time filter is sufficient.
 
 ## Backward compatibility
 
