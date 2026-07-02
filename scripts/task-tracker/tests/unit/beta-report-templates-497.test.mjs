@@ -90,8 +90,11 @@ describe('#497 auto-label Action', () => {
   });
 
   it('reconciles the 🐞 / ✨ title prefix from the labels present', () => {
-    assert.match(script, /🐞/);
-    assert.match(script, /✨/);
+    // #670 moved the LADYBUG/SPARKLE glyph constants into
+    // beta-report-title-reconcile.mjs (covered by its own unit tests); this
+    // script imports and wires them rather than declaring them inline.
+    assert.match(script, /LADYBUG, SPARKLE/);
+    assert.match(script, /beta-report-title-reconcile\.mjs/);
     // bug, beta-defect → ladybug; beta-feature → sparkle.
     assert.match(script, /wantLadybug/);
     assert.match(script, /wantSparkle/);
@@ -100,9 +103,11 @@ describe('#497 auto-label Action', () => {
 
   it('strips the 🐞 only when no bug signal remains on unlabeled — AC3', () => {
     // wantEmoji collapses to '' when no bug/feature signal is present, which
-    // drops the leading emoji from the reconciled title.
+    // drops the leading emoji from the reconciled title. #670 moved the
+    // slice/strip logic into the pure, separately-unit-tested
+    // beta-report-title-reconcile.mjs module; this script now just calls it.
     assert.match(script, /wantLadybug \? LADYBUG : wantSparkle \? SPARKLE : ''/);
-    assert.match(script, /title\.slice\(leading\.length\)/);
+    assert.match(script, /reconcileBetaReportTitle\(title, wantEmoji\)/);
   });
 
   it('no-ops when there is nothing to label or reconcile — AC3', () => {
