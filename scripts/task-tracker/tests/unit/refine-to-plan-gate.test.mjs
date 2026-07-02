@@ -149,6 +149,31 @@ test('Pickup Directive heading only inside <details> → still blocked', async (
   assert.ok(r.blockers.some((b) => /refine-exit-pickup-directive-missing/.test(b)));
 });
 
+// #678 — a declared-but-malformed verifier (e.g. an unresolved `{tbd}`
+// sentinel) gets its own accurate blocker message, distinct from the
+// generic "no verifier declared" message.
+test('AC with a {tbd}-sentinel verifier → refine-exit-demonstrable names the malformed verifier, not "no verifier"', async () => {
+  const deps = makeDeps({
+    values: { rank: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    body: `${PICKUP_DIRECTIVE_HEADING}
+## Acceptance Criteria
+
+- [ ] AC. <!-- aitm-verified cmd="\`{tbd}\`" -->
+`,
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
+  assert.equal(r.ok, false);
+  const blocker = r.blockers.find((b) => /refine-exit-demonstrable/.test(b));
+  assert.ok(blocker, 'a refine-exit-demonstrable blocker is raised');
+  assert.ok(/declared verifier/.test(blocker), 'message says a verifier IS declared');
+  assert.ok(/placeholder sentinel/.test(blocker), 'message surfaces the sentinel defect');
+  assert.ok(
+    !/no `aitm-verified/.test(blocker),
+    'message does not use the generic no-verifier text'
+  );
+});
+
 test('multiple missing fields produces multiple blockers', async () => {
   const deps = makeDeps({ values: {}, labels: [] });
   const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });

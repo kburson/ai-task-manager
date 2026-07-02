@@ -9,6 +9,7 @@ import {
   INVARIANT_MARKER_PATTERNS,
   findLostMarkers,
   findNewMalformedVerifiedCmds,
+  findAcsWithoutVerifierOrInvalidTag,
 } from '../../lib/body-invariants.mjs';
 
 test('INVARIANT_MARKER_PATTERNS includes the canonical invariant marker set', () => {
@@ -118,5 +119,74 @@ test('findNewMalformedVerifiedCmds does not flag a pre-existing malformed declar
     findNewMalformedVerifiedCmds(before, after),
     [],
     'pre-existing corruption carried unchanged never blocks an unrelated edit'
+  );
+});
+
+// #678 — findAcsWithoutVerifierOrInvalidTag's malformed-verifier branch
+test('findAcsWithoutVerifierOrInvalidTag flags a {tbd}-sentinel verifier as malformed-verifier', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] alpha <!-- aitm-verified cmd="`{tbd}`" -->',
+    '## Definition of Done',
+  ].join('\n');
+  const offenders = findAcsWithoutVerifierOrInvalidTag(body);
+  assert.equal(offenders.length, 1, 'the sentinel-verifier AC is flagged');
+  assert.equal(offenders[0].label, 'alpha');
+  assert.match(
+    offenders[0].reason,
+    /^malformed-verifier:/,
+    'reason uses the malformed-verifier prefix'
+  );
+});
+
+test('findAcsWithoutVerifierOrInvalidTag distinguishes malformed-verifier from no-verifier and test-all-verifier', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] alpha <!-- aitm-verified cmd="`{tbd}`" -->',
+    '- [ ] beta',
+    '- [ ] gamma <!-- aitm-verified cmd="`npm run test:all`" -->',
+    '- [ ] delta <!-- aitm-verified cmd="`node --test scripts/task-tracker/tests/unit/body-invariants.test.mjs`" -->',
+    '## Definition of Done',
+  ].join('\n');
+  const offenders = findAcsWithoutVerifierOrInvalidTag(body);
+  const byLabel = Object.fromEntries(offenders.map((o) => [o.label, o.reason]));
+  assert.match(
+    byLabel.alpha,
+    /^malformed-verifier:/,
+    'alpha has a declared but malformed verifier'
+  );
+  assert.equal(byLabel.beta, 'no-verifier', 'beta has no verifier at all');
+  assert.equal(byLabel.gamma, 'test-all-verifier', 'gamma only binds the regression floor');
+  assert.ok(!('delta' in byLabel), 'delta has a real targeted verifier and is not flagged');
+});
+
+// #670-shaped regression: a verifier-less narrative AC line (no cmd markers
+// at all) must still be classified `no-verifier`, not accidentally swept
+// into the new malformed-verifier branch.
+test('findAcsWithoutVerifierOrInvalidTag classifies a #670-shaped verifier-less AC as no-verifier', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] The beta-report label prefix is replaced, not duplicated, when the workflow reruns',
+    '## Definition of Done',
+  ].join('\n');
+  const offenders = findAcsWithoutVerifierOrInvalidTag(body);
+  assert.equal(offenders.length, 1);
+  assert.equal(
+    offenders[0].reason,
+    'no-verifier',
+    'no cmd declared at all is no-verifier, not malformed-verifier'
+  );
+});
+
+test('findAcsWithoutVerifierOrInvalidTag honors the invalid — non-demonstrable opt-out over a sentinel verifier', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] alpha — tagged `invalid — non-demonstrable` <!-- aitm-verified cmd="`{tbd}`" -->',
+    '## Definition of Done',
+  ].join('\n');
+  assert.deepEqual(
+    findAcsWithoutVerifierOrInvalidTag(body),
+    [],
+    'the honest opt-out tag short-circuits before the malformed cmd is even inspected'
   );
 });

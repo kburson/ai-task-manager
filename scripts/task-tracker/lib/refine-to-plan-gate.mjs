@@ -117,8 +117,9 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
     // `invalid — non-demonstrable` opt-out. `npm run test:all` is the
     // regression floor, not an AC verifier.
     for (const ac of findAcsWithoutVerifierOrInvalidTag(body)) {
-      const why =
-        ac.reason === 'test-all-verifier'
+      const why = ac.reason.startsWith('malformed-verifier')
+        ? `declared verifier ${ac.reason.slice('malformed-verifier: '.length)} — bind a real targeted command or tag the AC \`invalid — non-demonstrable\``
+        : ac.reason === 'test-all-verifier'
           ? '`npm run test:all` is the regression floor, not an AC verifier — declare a targeted verifier or tag the AC `invalid — non-demonstrable`'
           : 'no `aitm-verified cmd="…"` verifier and not tagged `invalid — non-demonstrable` — bind a targeted verifier test or tag it invalid';
       blockers.push(

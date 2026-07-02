@@ -439,6 +439,19 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
       offenders.push({ lineIndex: i, label, reason: 'no-verifier' });
       continue;
     }
+    // #678 — a declared cmd that fails validateDeclarationCmd (e.g. an
+    // unresolved `{tbd}` sentinel) is not a real verifier even though
+    // cmds.length > 0; catch it before the test-all check so a malformed
+    // placeholder doesn't slip through as "OK".
+    const malformed = cmds.find((c) => validateDeclarationCmd(c));
+    if (malformed !== undefined) {
+      offenders.push({
+        lineIndex: i,
+        label,
+        reason: `malformed-verifier: ${validateDeclarationCmd(malformed)}`,
+      });
+      continue;
+    }
     const hasTargeted = cmds.some((c) => !TEST_ALL_CMD_RE.test(c));
     if (!hasTargeted) {
       offenders.push({ lineIndex: i, label, reason: 'test-all-verifier' });

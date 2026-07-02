@@ -180,8 +180,9 @@ export function hasVerifiedDeclaration(label) {
 // Returns a human-readable reason string when the value is malformed, or null
 // when it is acceptable.
 //
-// Two malformation signatures (the pair observed corrupting epic #328's
-// hand-authored markers, e.g. `cmd="`gh issue view <child> ...` returned CLOSED"`):
+// Three malformation signatures. The first two are the pair observed
+// corrupting epic #328's hand-authored markers, e.g.
+// `cmd="`gh issue view <child> ...` returned CLOSED"`:
 //   (a) an unsubstituted angle-bracket placeholder like `<child>` or `<issue#>`.
 //       The pattern requires a word-char immediately after `<`, so a real shell
 //       redirection (`sort < a > b`) does NOT match — its `<` is followed by
@@ -193,11 +194,23 @@ export function hasVerifiedDeclaration(label) {
 //       comma-joined bare list `auto-tick` emits (`npm run lint, npm run
 //       format:check`) — has no backtick group, so this rule is inert and the
 //       value passes unchanged.
+//   (c) a bare/braced placeholder sentinel word (`tbd`, `{tbd}`, `todo`, `wip`,
+//       `xxx`, `fixme`, `tba`, `n/a`) with nothing else — discovered by #678:
+//       neither (a) nor (b) catches a value like `{tbd}` because it has no
+//       angle brackets and no backticks, so it previously passed as an
+//       "acceptable" declaration despite never naming a real command. The
+//       match is anchored to the WHOLE trimmed value (braces optional) so a
+//       real command that merely contains one of these words as a substring
+//       (e.g. a path segment) is not caught.
 const DECLARATION_PLACEHOLDER_RE = /<[A-Za-z][^<>]*>/;
+const DECLARATION_SENTINEL_RE = /^\{?\s*(?:tbd|todo|wip|xxx|fixme|tba|n\/a)\s*\}?$/i;
 export function validateDeclarationCmd(cmd) {
   const s = String(cmd ?? '');
   if (DECLARATION_PLACEHOLDER_RE.test(s)) {
     return 'contains an unsubstituted <…> placeholder';
+  }
+  if (DECLARATION_SENTINEL_RE.test(s.trim())) {
+    return 'is an unresolved placeholder sentinel, not a real command';
   }
   if (s.includes('`')) {
     const residue = s.replace(/`[^`]*`/g, '').trim();
