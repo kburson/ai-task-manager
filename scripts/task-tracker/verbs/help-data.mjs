@@ -141,8 +141,9 @@ export const VERB_REFERENCE = {
   },
   plan: {
     topic: 'board',
-    summary: 'Refine→Plan (Sprint-Planning entry). Refuses on any other current state.',
-    usage: '/task plan <N>',
+    summary:
+      'Refine→Plan (Sprint-Planning entry); distinct from discover backlog item generation. Refuses on any other current state.',
+    usage: '/task plan #N',
     exitCodes: [GATE_REFUSAL],
     examples: ['/task plan 667'],
   },
@@ -324,7 +325,7 @@ export const VERB_REFERENCE = {
     topic: 'evidence',
     summary:
       'Deprecated alias of `ensureChecked` (no longer toggles) — tick a checkbox if its proof gate passes.',
-    usage: '/task check "<label>"',
+    usage: '/task check <label>   (deprecated alias of ensureChecked)',
     aliases: ['ensureChecked'],
     flags: [
       {
@@ -332,7 +333,7 @@ export const VERB_REFERENCE = {
         desc: 'honest override when an item genuinely cannot be stamped',
       },
     ],
-    examples: ['/task check "All automated tests pass"'],
+    examples: ['/task check <label>   (deprecated — use /task ensureChecked "<label>")'],
   },
   ensureChecked: {
     topic: 'evidence',
@@ -401,7 +402,7 @@ export const VERB_REFERENCE = {
   discover: {
     topic: 'discovery',
     summary:
-      'Open an untracked discovery bucket for backlog ideation (distinct from `/task plan`).',
+      'Open an untracked discovery bucket for pre-issue ideation / backlog item generation (distinct from `/task plan` Sprint-Planning).',
     usage: '/task discover',
     aliases: ['brainstorm'],
     examples: ['/task discover'],

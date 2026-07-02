@@ -78,9 +78,9 @@ function renderTopLevel() {
     if (!entries.length) continue;
     lines.push('');
     lines.push(`${topic.title}:`);
-    for (const [key, e] of entries) {
-      const name = `/task ${key}`.padEnd(24);
-      lines.push(`  ${name}${e.summary}`);
+    for (const [, e] of entries) {
+      const usage = e.usage.padEnd(30);
+      lines.push(`  ${usage}  ${e.summary}`);
     }
   }
 

@@ -12,11 +12,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { verbHelp } from '../../verbs/help.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dispatch = readFileSync(join(here, '..', '..', 'task-tracker.mjs'), 'utf8');
 const runtime = readFileSync(join(here, '..', '..', 'runtime.mjs'), 'utf8');
-const helpSrc = readFileSync(join(here, '..', '..', 'verbs', 'help.mjs'), 'utf8');
 
 test('case fall-through: promote and next share verbPromote handler', () => {
   // Regex: case 'promote': <ws> case 'next': <ws> { <ws> ... verbPromote
@@ -35,8 +35,18 @@ test('ISSUE_ARG_VERBS includes next', () => {
 });
 
 test('help text documents next as alias of promote', () => {
-  assert.ok(
-    /\/task next.*Alias of \/task promote/.test(helpSrc),
-    'help text (verbs/help.mjs) should call out /task next as an alias of /task promote'
-  );
+  // #667 relocated help content from inline strings into help-data.mjs, rendered
+  // by verbHelp(). Contract preserved: the rendered reference for `next` resolves
+  // to the promote page and documents the alias.
+  const lines = [];
+  const orig = console.log;
+  console.log = (msg) => lines.push(String(msg ?? ''));
+  try {
+    verbHelp('next');
+  } finally {
+    console.log = orig;
+  }
+  const out = lines.join('\n');
+  assert.match(out, /\/task promote/, 'help for `next` should render the promote reference');
+  assert.match(out, /Alias:\s*next/, 'promote reference should list next as an alias of promote');
 });
