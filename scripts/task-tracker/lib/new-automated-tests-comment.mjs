@@ -19,6 +19,18 @@ const pexec = promisify(execFile);
 
 export const NEW_TESTS_HEADING = '## New Automated Tests';
 
+// #684 — legend footer. Without it, a reader cannot tell whether the text after
+// `→` in a test title (e.g. `writeField rejects → error`) is the outcome the test
+// *asserts* (expected) or an *actual* runtime result. Appended to every generated
+// comment so the ambiguity is answered inline.
+export const NEW_TESTS_FOOTER =
+  '_Each bullet is the verbatim title of a test case added during this issue’s ' +
+  'Develop stage, grouped by test file. Read a title as `subject: scenario → ' +
+  'expected outcome` — the value after `→` is what the test **asserts** (e.g. ' +
+  '`→ error` means the input is expected to throw/reject), not an actual result. ' +
+  'All listed tests pass: this comment is posted only after the Develop→Test gate ' +
+  'goes green._';
+
 const FILE_HEADER_RE = /^\+\+\+ b\/(.+)$/;
 const TEST_DECL_RE = /^\+\s*test(?:\.skip|\.only|\.todo)?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1/;
 
@@ -109,6 +121,7 @@ export function buildNewAutomatedTestsComment(entries) {
       lines.push(`  - ${name}`);
     }
   }
+  lines.push('', NEW_TESTS_FOOTER);
   return lines.join('\n');
 }
 

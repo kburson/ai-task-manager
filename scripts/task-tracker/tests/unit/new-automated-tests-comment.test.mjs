@@ -8,6 +8,7 @@ import {
   buildNewAutomatedTestsComment,
   postNewAutomatedTestsComment,
   NEW_TESTS_HEADING,
+  NEW_TESTS_FOOTER,
 } from '../../lib/new-automated-tests-comment.mjs';
 
 test('parseTestEntriesFromDiff: new test addition', () => {
@@ -89,6 +90,24 @@ test('buildNewAutomatedTestsComment: groups entries by file under the heading', 
   assert.match(body, /case two/);
   assert.match(body, /`b\.test\.mjs`/);
   assert.match(body, /case three/);
+});
+
+// #684 — legend footer
+test('buildNewAutomatedTestsComment: appends the explanatory footer when entries exist', () => {
+  const body = buildNewAutomatedTestsComment([{ file: 'a.test.mjs', name: 'case one' }]);
+  assert.ok(body.includes(NEW_TESTS_FOOTER), 'footer substring present in a built comment');
+});
+
+test('buildNewAutomatedTestsComment: empty input returns null with no footer', () => {
+  assert.equal(buildNewAutomatedTestsComment([]), null);
+  assert.equal(buildNewAutomatedTestsComment(null), null);
+});
+
+test('buildNewAutomatedTestsComment: body with footer still satisfies the dedupe startsWith predicate', () => {
+  const body = buildNewAutomatedTestsComment([{ file: 'a.test.mjs', name: 'case one' }]);
+  // postNewAutomatedTestsComment dedupes on c.body.startsWith(NEW_TESTS_HEADING);
+  // the footer is appended at the END, so this must remain true.
+  assert.ok(body.startsWith(NEW_TESTS_HEADING));
 });
 
 test('postNewAutomatedTestsComment: posts a dedicated comment when entries are found', async () => {
