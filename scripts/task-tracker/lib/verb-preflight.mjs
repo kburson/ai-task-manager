@@ -54,10 +54,10 @@ function normalizeIssueNumber(target) {
   return m ? m[1] : null;
 }
 
-async function defaultFetchLastKnownState({ issueNumber, repo }) {
+async function defaultFetchLastKnownState({ issueNumber, repo, gqlFn = gql }) {
   const { owner, repoName } = splitRepo(repo);
   try {
-    const data = await gql(
+    const data = await gqlFn(
       `query($owner: String!, $repo: String!, $issue: Int!) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issue) { body }
@@ -76,10 +76,10 @@ async function defaultFetchLastKnownState({ issueNumber, repo }) {
 // emit `MovedColumnsInProjectEvent` (only classic projects do), so this
 // returns null in most modern repos. Used purely as a tie-breaker when the
 // marker heuristic is ambiguous — the classifier never depends on it.
-async function defaultFetchLastStatusActor({ issueNumber, repo }) {
+async function defaultFetchLastStatusActor({ issueNumber, repo, exec = pexec }) {
   try {
     const { owner, repoName } = splitRepo(repo);
-    const { stdout } = await pexec(
+    const { stdout } = await exec(
       'gh',
       ['api', `/repos/${owner}/${repoName}/issues/${issueNumber}/timeline`, '--paginate'],
       { timeout: GH_API_TIMEOUT_MS }
@@ -153,9 +153,16 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
     }
   }
 
+  // #633 — thread injectable gql/exec into the two default fetchers so their
+  // network round-trips are unit-drivable. Production passes neither, so the
+  // real `gql`/`pexec` bind — byte-identical to prior behavior.
+  const gqlFn = deps.gql || gql;
+  const execFn = deps.exec || pexec;
   const fetchLive = deps.fetchLive || fetchLiveKanbanState;
-  const fetchMarker = deps.fetchLastKnownState || defaultFetchLastKnownState;
-  const fetchActor = deps.fetchLastStatusActor || defaultFetchLastStatusActor;
+  const fetchMarker =
+    deps.fetchLastKnownState || ((a) => defaultFetchLastKnownState({ ...a, gqlFn }));
+  const fetchActor =
+    deps.fetchLastStatusActor || ((a) => defaultFetchLastStatusActor({ ...a, exec: execFn }));
 
   let live = '';
   try {
