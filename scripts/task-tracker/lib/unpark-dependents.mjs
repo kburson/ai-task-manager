@@ -23,9 +23,9 @@ const pexec = promisify(execFile);
 
 // --- default gh-backed deps -------------------------------------------------
 
-function defaultListCandidates({ repo }) {
+function defaultListCandidates({ repo, exec = pexec }) {
   return async () => {
-    const { stdout } = await pexec('gh', [
+    const { stdout } = await exec('gh', [
       'issue',
       'list',
       '-R',
@@ -46,9 +46,9 @@ function defaultListCandidates({ repo }) {
   };
 }
 
-function defaultFetchBody({ repo }) {
+function defaultFetchBody({ repo, exec = pexec }) {
   return async (issueNumber) => {
-    const { stdout } = await pexec('gh', [
+    const { stdout } = await exec('gh', [
       'issue',
       'view',
       String(issueNumber),
@@ -63,15 +63,15 @@ function defaultFetchBody({ repo }) {
   };
 }
 
-function defaultMutateBody({ repo }) {
+function defaultMutateBody({ repo, exec = pexec }) {
   return async (issueNumber, mutate) => {
-    await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+    await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec: exec } });
   };
 }
 
-function defaultRunLabel({ repo }) {
+function defaultRunLabel({ repo, exec = pexec }) {
   return async (args) => {
-    await pexec('gh', [...args, '-R', repo]);
+    await exec('gh', [...args, '-R', repo]);
   };
 }
 
@@ -86,6 +86,9 @@ function defaultRunLabel({ repo }) {
  *   - fetchBody(n): Promise<string>            issue body text (used for blocker discovery)
  *   - mutateBody(n, mutate): Promise<void>     atomically mutate issue body via closure
  *   - runLabel(args): Promise<void>            run a gh label-arg array
+ *   - exec(cmd, args): Promise<{stdout}>       low-level exec seam for the
+ *       default gh-backed factories (defaults to promisified execFile); a
+ *       provided listCandidates/fetchBody/mutateBody/runLabel still overrides.
  * @returns {Promise<Array<{issue:number, cleared?:'full'|'partial', error?:string}>>}
  *   one entry per candidate that referenced the Done issue (plus any that
  *   errored). Never throws.
@@ -95,10 +98,14 @@ export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } 
   if (!Number.isInteger(done) || done <= 0) return [];
 
   const repo = cfg.repo;
-  const listCandidates = deps.listCandidates || defaultListCandidates({ repo });
-  const fetchBody = deps.fetchBody || defaultFetchBody({ repo });
-  const mutateBody = deps.mutateBody || defaultMutateBody({ repo });
-  const runLabel = deps.runLabel || defaultRunLabel({ repo });
+  // `deps.exec` is a `pexec`-shaped seam threaded into the default gh-backed
+  // factories; it defaults to the module `pexec` so production behavior is
+  // unchanged. Injected callers (listCandidates/fetchBody/…) still win outright.
+  const exec = deps.exec || pexec;
+  const listCandidates = deps.listCandidates || defaultListCandidates({ repo, exec });
+  const fetchBody = deps.fetchBody || defaultFetchBody({ repo, exec });
+  const mutateBody = deps.mutateBody || defaultMutateBody({ repo, exec });
+  const runLabel = deps.runLabel || defaultRunLabel({ repo, exec });
 
   let candidates;
   try {
