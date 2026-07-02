@@ -26,15 +26,15 @@ import { findReviewNotesComment, parseDrivers } from './review-notes.mjs';
 
 const pexec = promisify(execFile);
 
-async function defaultPostComment({ issueNumber, repo, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+async function defaultPostComment({ issueNumber, repo, body, exec = pexec }) {
+  await exec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
   });
 }
 
-async function defaultFetchComments({ issueNumber, repo }) {
+async function defaultFetchComments({ issueNumber, repo, exec = pexec }) {
   try {
-    const { stdout } = await pexec(
+    const { stdout } = await exec(
       'gh',
       ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
       { timeout: GH_API_TIMEOUT_MS }
@@ -50,10 +50,14 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
   if (!cfg) throw new Error('applyReviewDelta: cfg is required');
   if (!issueNumber) throw new Error('applyReviewDelta: issueNumber is required');
 
-  const postComment = deps.postComment || defaultPostComment;
+  // #631 — thread an injectable exec into the two default gh helpers so their
+  // subprocess round-trips are unit-drivable. Production passes no `deps.exec`,
+  // so the defaults bind the real `pexec` — byte-identical to prior behavior.
+  const execFn = deps.exec || pexec;
+  const postComment = deps.postComment || ((a) => defaultPostComment({ ...a, exec: execFn }));
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
-  const fetchComments = deps.fetchComments || defaultFetchComments;
+  const fetchComments = deps.fetchComments || ((a) => defaultFetchComments({ ...a, exec: execFn }));
 
   const ts = new Date().toISOString();
   if (process.env.TASK_TRACKER_SKIP_DELTA === '1') {
