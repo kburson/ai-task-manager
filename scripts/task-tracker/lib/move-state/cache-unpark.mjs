@@ -25,6 +25,16 @@ import { STAGES } from '../stage-entry-markers.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
+// Testable seam (#629): the helpers below resolve their gh-backed / session
+// collaborator modules through `ctx.deps`. Production assembles `ctx` without a
+// `deps` key (see move-state.mjs), so every call falls through to the real
+// dynamic import — byte-identical to the prior inline `await import(...)`.
+// Unit tests pass `ctx.deps` to inject fakes and avoid spawning `gh` or
+// touching real session state. Mirrors the #627/#628 injection seam.
+async function importOr(dep, spec) {
+  return dep || (await import(spec));
+}
+
 // #292 — fire each `STATES[to].onEnter` action after a successful Status
 // write + marker stamp. Actions are short, idempotent setup hooks (see
 // `states/index.mjs` Action contract). Empty today; populated by future
@@ -32,8 +42,9 @@ import path from 'node:path';
 export async function dispatchOnEnterActions(ctx) {
   const { issueArg, stateArg, resolvedFromState, cfg, SKIP_NETWORK } = ctx;
   if (SKIP_NETWORK) return;
+  const deps = ctx.deps || {};
   try {
-    const { STATES: STATE_OBJS } = await import('../../states/index.mjs');
+    const { STATES: STATE_OBJS } = await importOr(deps.states, '../../states/index.mjs');
     const target = STATE_OBJS[stateArg];
     if (target) {
       for (const action of target.onEnter) {
@@ -65,10 +76,11 @@ export async function dispatchOnEnterActions(ctx) {
 export async function refreshKanbanStateCache(ctx) {
   const { issueArg, stateArg } = ctx;
   if (!STAGES.includes(stateArg)) return;
+  const deps = ctx.deps || {};
   try {
     const [{ setSessionKanbanState, getActiveTask }, { currentSessionId }] = await Promise.all([
-      import('../../session-state.mjs'),
-      import('../../word-counter.mjs'),
+      importOr(deps.sessionState, '../../session-state.mjs'),
+      importOr(deps.wordCounter, '../../word-counter.mjs'),
     ]);
     const sid = currentSessionId();
     if (sid) {
@@ -91,8 +103,9 @@ export async function refreshKanbanStateCache(ctx) {
 export async function unparkDoneDependents(ctx) {
   const { issueArg, stateArg, cfg, SKIP_NETWORK } = ctx;
   if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;
+  const deps = ctx.deps || {};
   try {
-    const { unparkDependents } = await import('../unpark-dependents.mjs');
+    const { unparkDependents } = await importOr(deps.unparkMod, '../unpark-dependents.mjs');
     const released = await unparkDependents({ doneIssueNumber: Number(issueArg), cfg });
     const cleared = released.filter((r) => r.cleared);
     const errored = released.filter((r) => r.error);
