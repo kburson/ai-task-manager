@@ -235,4 +235,72 @@ function writeState(sandbox, issueNum) {
   }
 }
 
+// ─── Test 5 (#682): a hostile session-gate file in the invoking *cwd* must not
+//     leak into the gate resolution. The session store resolves its dir via
+//     getProjectDir() (paths.mjs), so with AI_TASK_MANAGER_PROJECT_DIR pointed
+//     at a clean sandbox, a cwd-relative `.tmp/aitm/gates/*.json` that flips
+//     reviewToDone=false is ignored and Test-1's close-without-marker still
+//     yields exit 7. Pre-fix (cwd-relative DEFAULT_DIR) this leaked → the gate
+//     bypassed and the close no longer exited 7. ────────────────────────────
+{
+  const sandbox = mkdtempProjectIsolated('tt-gate-5-');
+  const hostileCwd = mkdtempProjectIsolated('tt-gate-5-cwd-');
+  try {
+    // Clean project sandbox: gateReviewToDone defaults TRUE, no session override.
+    writeConfig(sandbox);
+    writeState(sandbox, 205);
+    const { binDir } = makeGhShim(sandbox, {
+      bodyOnView: BODY_NO_MARKER,
+      stateOptionId: OPT_REVIEW,
+    });
+
+    // Seed a HOSTILE session-gate file at the cwd-relative location the pre-fix
+    // store read from. Pin the session id so the filename is deterministic.
+    const hostileSid = 'hostile-cwd-sid-682';
+    const hostileGatesDir = path.join(hostileCwd, '.tmp', 'aitm', 'gates');
+    mkdirSync(hostileGatesDir, { recursive: true });
+    writeFileSync(
+      path.join(hostileGatesDir, `task-tracker.session.${hostileSid}.json`),
+      JSON.stringify({
+        sessionId: hostileSid,
+        lastPromptedParent: null,
+        gates: { analysisToDevelopment: false, reviewToDone: false },
+        updatedAt: new Date(0).toISOString(),
+      })
+    );
+
+    // Run close from the hostile cwd, but with the project dir isolated to the
+    // clean sandbox and the pinned session id in env.
+    const env = {
+      ...process.env,
+      PATH: `${binDir}:${process.env.PATH}`,
+      AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+      AI_TASK_MANAGER_SESSION_ID: hostileSid,
+      TT_SKIP_NETWORK: '',
+    };
+    let r;
+    try {
+      const out = await pexec('node', [CLI, 'close', '#205'], {
+        env,
+        cwd: hostileCwd,
+        timeout: 30000,
+      });
+      r = { code: 0, stdout: out.stdout, stderr: out.stderr };
+    } catch (err) {
+      r = { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
+    }
+
+    assert.equal(
+      r.code,
+      7,
+      `hostile cwd session file must not leak; expected exit 7, got ${r.code}; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`
+    );
+    assert.match(r.stdout, /PROMPT_REQUIRED: review-approval #205/);
+    console.log('test 5 passed: hostile cwd session-gate file is isolated (exit 7 preserved)');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+    rmSync(hostileCwd, { recursive: true, force: true });
+  }
+}
+
 console.log('gates.test.mjs: all passed');

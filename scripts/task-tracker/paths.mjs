@@ -24,6 +24,7 @@ export const TEMPLATES_SUBDIR = 'templates';
 export const TMP_AITM_REL = '.tmp/aitm';
 export const STATE_SUBDIR = 'state';
 export const FLEET_SUBDIR = 'fleet';
+export const GATES_SUBDIR = 'gates';
 
 // The `/.tmp/aitm/` path segment — state.mjs anchors the project root on it now
 // that the runtime state file lives under this tree (rightmost match wins, per
@@ -197,6 +198,16 @@ export function sessionsDir(projDir = getProjectDir()) {
 // Directory holding advisory lock files (.tmp/aitm/locks/*.lock).
 export function locksDir(projDir = getProjectDir()) {
   return path.join(tmpAitmDir(projDir), LOCKS_SUBDIR);
+}
+
+// Directory holding session-scoped gate override files
+// (.tmp/aitm/gates/task-tracker.session.<sid>.json). Env-honoring like every
+// other #573 runtime artifact, so `AI_TASK_MANAGER_PROJECT_DIR` isolates it
+// consistently with project config (#682). In real runs no isolation env is
+// set → getProjectDir() falls back to cwd → the resolved path is byte-identical
+// to the legacy cwd-relative `.tmp/aitm/gates`.
+export function gatesDir(projDir = getProjectDir()) {
+  return path.join(tmpAitmDir(projDir), GATES_SUBDIR);
 }
 
 // Per-issue body-mutation lock file.

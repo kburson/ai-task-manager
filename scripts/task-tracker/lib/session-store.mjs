@@ -22,13 +22,20 @@
 import * as realFs from 'node:fs';
 import path from 'node:path';
 
-// Relative (cwd-anchored) so the gate store stays project-local; mirrors the
-// `.tmp/aitm/gates/` layout owned by paths.mjs (#573).
-const DEFAULT_DIR = path.join('.tmp', 'aitm', 'gates');
+import { gatesDir } from '../paths.mjs';
+
+// #682 — the default gate-store directory is resolved LAZILY via `gatesDir()`
+// (paths.mjs), so `AI_TASK_MANAGER_PROJECT_DIR` isolates the session store the
+// same way it isolates project config and every other #573 runtime artifact.
+// It MUST stay a per-call default-parameter expression (`dir = gatesDir()`) —
+// never a frozen module-level constant — so the project dir is read at call
+// time. In real runs no isolation env is set → getProjectDir() falls back to
+// cwd → `gatesDir()` yields `<cwd>/.tmp/aitm/gates`, byte-identical to the
+// legacy cwd-relative location (no behavior change for production).
 const FILE_PREFIX = 'task-tracker.session.';
 const FILE_SUFFIX = '.json';
 
-export function sessionFilePath(sessionId, dir = DEFAULT_DIR) {
+export function sessionFilePath(sessionId, dir = gatesDir()) {
   return path.join(dir, `${FILE_PREFIX}${sessionId}${FILE_SUFFIX}`);
 }
 
@@ -41,7 +48,7 @@ function freshState(sessionId) {
   };
 }
 
-export function loadSession(sessionId, { fs = realFs, dir = DEFAULT_DIR } = {}) {
+export function loadSession(sessionId, { fs = realFs, dir = gatesDir() } = {}) {
   if (!sessionId) return freshState('');
   const p = sessionFilePath(sessionId, dir);
   try {
@@ -58,10 +65,7 @@ export function loadSession(sessionId, { fs = realFs, dir = DEFAULT_DIR } = {}) 
   }
 }
 
-export function saveSession(
-  state,
-  { fs = realFs, dir = DEFAULT_DIR, now = () => new Date() } = {}
-) {
+export function saveSession(state, { fs = realFs, dir = gatesDir(), now = () => new Date() } = {}) {
   if (!state?.sessionId) return;
   const p = sessionFilePath(state.sessionId, dir);
   const next = { ...state, updatedAt: now().toISOString() };
@@ -105,7 +109,7 @@ export function applyChoice(state, choice, { parent = null } = {}) {
 }
 
 // Orphan GC — delete session files older than maxAgeMs. Returns count deleted.
-export function sweepOrphans({ now = Date.now(), maxAgeMs, fs = realFs, dir = DEFAULT_DIR } = {}) {
+export function sweepOrphans({ now = Date.now(), maxAgeMs, fs = realFs, dir = gatesDir() } = {}) {
   if (!Number.isFinite(maxAgeMs) || maxAgeMs <= 0) return 0;
   let names;
   try {
