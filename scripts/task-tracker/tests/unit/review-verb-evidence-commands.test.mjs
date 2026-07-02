@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { STANDARD_DOD_COMMANDS } from '../../lib/evidence-markers.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from '../../lib/body-invariants.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const reviewVerbPath = path.resolve(__dirname, '..', '..', 'verbs', 'review.mjs');
@@ -252,6 +253,81 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   assert.equal(realMove.ok, true, 'test→review (the authoritative review move) is allowed');
   console.log(
     'PASS: removing the test→test self-move eliminates the illegal-transition stderr noise (#408)'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// #679: the evidenceCheckboxes regression loop must honor the honest
+// `invalid — non-demonstrable` opt-out tag, the same way
+// refine-to-plan-gate.mjs and review-preflight.mjs:107 already do. Before
+// #679, a zero-evidence checked box tagged non-demonstrable was flagged as a
+// regression and un-ticked on every `/task review` run, permanently
+// bouncing the issue back to develop with no honest way to reach Review.
+// ---------------------------------------------------------------------------
+{
+  // Source-level pin: the short-circuit is present, positioned inside the
+  // evidenceCheckboxes loop, before the zero-evidence regression check.
+  assert.match(
+    reviewSource,
+    /import\s+\{\s*NON_DEMONSTRABLE_TAG_RE\s*\}\s+from\s+['"]\.\.\/lib\/body-invariants\.mjs['"]/,
+    'review.mjs imports NON_DEMONSTRABLE_TAG_RE from lib/body-invariants.mjs'
+  );
+  const loopIdx = reviewSource.indexOf('for (const cb of evidenceCheckboxes)');
+  const shortCircuitIdx = reviewSource.indexOf('NON_DEMONSTRABLE_TAG_RE.test(cb.label)', loopIdx);
+  const zeroEvidenceIdx = reviewSource.indexOf('cb.evidenceCommands.length === 0', loopIdx);
+  assert.ok(loopIdx > 0, 'evidenceCheckboxes loop exists');
+  assert.ok(shortCircuitIdx > loopIdx, 'short-circuit lives inside the evidenceCheckboxes loop');
+  assert.ok(
+    shortCircuitIdx < zeroEvidenceIdx,
+    'short-circuit runs before the zero-evidence regression check'
+  );
+  console.log(
+    'PASS: review.mjs short-circuits on NON_DEMONSTRABLE_TAG_RE before the loop body (#679)'
+  );
+
+  // Behavioral: replicate the exact consumer-loop predicate the verb uses —
+  // a checked, zero-evidence, non-demonstrable-tagged box must NOT be
+  // collected as a regression; an otherwise-identical box without the tag
+  // still is.
+  function evaluateEvidenceCheckbox(cb) {
+    const regressions = [];
+    const failures = [];
+    if (NON_DEMONSTRABLE_TAG_RE.test(cb.label)) return { regressions, failures };
+    if (cb.evidenceCommands.length === 0) {
+      if (cb.checked) regressions.push(cb.label);
+      failures.push(`${cb.label} (missing automated evidence)`);
+    }
+    return { regressions, failures };
+  }
+
+  const taggedChecked = {
+    label: 'An AC that cannot be automated <!-- aitm-verified tag="invalid — non-demonstrable" -->',
+    checked: true,
+    evidenceCommands: [],
+  };
+  const untaggedChecked = {
+    label: 'An AC with no evidence declared',
+    checked: true,
+    evidenceCommands: [],
+  };
+
+  const taggedResult = evaluateEvidenceCheckbox(taggedChecked);
+  assert.deepEqual(taggedResult.regressions, [], 'tagged non-demonstrable box is not a regression');
+  assert.deepEqual(taggedResult.failures, [], 'tagged non-demonstrable box is not a failure');
+
+  const untaggedResult = evaluateEvidenceCheckbox(untaggedChecked);
+  assert.deepEqual(
+    untaggedResult.regressions,
+    [untaggedChecked.label],
+    'untagged zero-evidence checked box is still flagged as a regression'
+  );
+  assert.equal(
+    untaggedResult.failures.length,
+    1,
+    'untagged zero-evidence checked box is still a failure'
+  );
+  console.log(
+    'PASS: only the tagged non-demonstrable checkbox is exempted from the regression check (#679)'
   );
 }
 

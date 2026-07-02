@@ -13,6 +13,7 @@ import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
 // bound at CALL time (the post site, after runMoveState emits test:passed +
@@ -425,6 +426,12 @@ export async function verbReview(ctx) {
     );
 
     for (const cb of evidenceCheckboxes) {
+      // #679 — honor the same honest `invalid — non-demonstrable` opt-out
+      // that refine-to-plan-gate.mjs and review-preflight.mjs already honor.
+      // Without this, a legitimately-tagged, zero-evidence checked box gets
+      // flagged as a regression and un-ticked on every `/task review` run,
+      // permanently bouncing the issue back to develop.
+      if (NON_DEMONSTRABLE_TAG_RE.test(cb.label)) continue;
       if (cb.evidenceCommands.length === 0) {
         if (cb.checked) {
           regressions.push(cb.label);
