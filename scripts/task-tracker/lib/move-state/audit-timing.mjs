@@ -24,6 +24,19 @@ import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
+// Testable seam (#628): the timeline emitters below resolve their gh-backed
+// helper modules through `ctx.deps`. Production assembles `ctx` without a
+// `deps` key (see move-state.mjs), so every branch falls through to the real
+// dynamic import — byte-identical to the prior inline `await import(...)`
+// calls. Unit tests set `ctx.deps` to inject fakes and avoid spawning `gh`.
+async function resolveTimingDeps(ctx) {
+  const deps = (ctx && ctx.deps) || {};
+  const timing = deps.ghTimingComment || (await import('../../gh-timing-comment.mjs'));
+  const rows = deps.timingRows || (await import('../timing-rows.mjs'));
+  const events = deps.phaseEvents || (await import('../../phase-events.mjs'));
+  return { timing, rows, events };
+}
+
 // #128 — Paired lifecycle row emission. The chokepoint for all kanban
 // transitions emits `<prev>:complete` + `<next>:enter` rows (both share
 // the same wall-clock `ts`) from the canonical PHASE_EVENTS table. Demote
@@ -36,10 +49,10 @@ export async function emitPhasePairRows(ctx) {
   const { issueArg, stateArg, resolvedFromState, demoteFlag, cfg, SKIP_NETWORK } = ctx;
   if (SKIP_NETWORK) return;
   try {
-    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } =
-      await import('../../gh-timing-comment.mjs');
-    const { deriveStateMoveDelta } = await import('../timing-rows.mjs');
-    const { PHASE_EVENTS } = await import('../../phase-events.mjs');
+    const { timing, rows, events } = await resolveTimingDeps(ctx);
+    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } = timing;
+    const { deriveStateMoveDelta } = rows;
+    const { PHASE_EVENTS } = events;
 
     const ts = new Date().toISOString();
     const prev = resolvedFromState || '';
@@ -134,6 +147,10 @@ export async function emitPhasePairRows(ctx) {
 export async function emitFullAutoReviewAudit(ctx) {
   const { issueArg, stateArg, cfg, SKIP_NETWORK, pexec } = ctx;
   if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;
+  // #628 — the comment/list side-effects flow through `ctx.deps` when a test
+  // injects them; production leaves them undefined so `enforceFullAutoAudit`
+  // uses its own gh-backed defaults (unchanged behavior).
+  const deps = ctx.deps || {};
   try {
     const { enforceFullAutoAudit } = await import('../human-reviewer-audit.mjs');
     const { stdout } = await pexec(
@@ -151,6 +168,8 @@ export async function emitFullAutoReviewAudit(ctx) {
       repo: cfg.repo,
       body: currentBody,
       env: process.env,
+      postComment: deps.postComment,
+      listComments: deps.listComments,
       writeIssueBody: async ({ body }) => {
         writeFileSync(tmpForMarker, body, 'utf8');
         try {
@@ -196,9 +215,9 @@ export async function emitOutOfBandAudit(ctx) {
     /* best-effort */
   }
   try {
-    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } =
-      await import('../../gh-timing-comment.mjs');
-    const { deriveStateMoveDelta } = await import('../timing-rows.mjs');
+    const { timing, rows } = await resolveTimingDeps(ctx);
+    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } = timing;
+    const { deriveStateMoveDelta } = rows;
     // Best-effort fetch of the timing-log comment body (where prior rows live).
     // The issue body never contains timing rows. If the fetch fails the delta
     // is honest 0/0.
