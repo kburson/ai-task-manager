@@ -45,8 +45,9 @@ export function transformBody(body) {
   };
 }
 
-async function fetchBody({ repo, issueNumber }) {
-  const { stdout } = await pexec(
+export async function fetchBody({ repo, issueNumber }, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
     { timeout: GH_API_TIMEOUT_MS }
@@ -54,23 +55,30 @@ async function fetchBody({ repo, issueNumber }) {
   return stdout;
 }
 
-async function writeBody({ repo, issueNumber, body }) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-migrate-'));
+export async function writeBody({ repo, issueNumber, body }, deps = {}) {
+  const run = deps.pexec || pexec;
+  const mkdtemp = deps.mkdtemp || mkdtempSync;
+  const write = deps.writeFile || writeFileSync;
+  const rm = deps.rm || rmSync;
+  const scratch = deps.scratchDir || projectScratchDir;
+  const dir = mkdtemp(path.join(scratch('test'), 'aitm-migrate-'));
   const file = path.join(dir, 'body.md');
   try {
-    writeFileSync(file, body);
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', file], {
+    write(file, body);
+    await run('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', file], {
       timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rm(dir, { recursive: true, force: true });
   }
 }
 
-async function scanOpenIssues({ repo }) {
+export async function scanOpenIssues({ repo }, deps = {}) {
+  const run = deps.pexec || pexec;
+  const err = deps.err || ((s) => process.stderr.write(s));
   // gh search issues; falls back to scanning open issues if search is restricted.
   try {
-    const { stdout } = await pexec(
+    const { stdout } = await run(
       'gh',
       [
         'search',
@@ -88,35 +96,37 @@ async function scanOpenIssues({ repo }) {
       { timeout: GH_API_TIMEOUT_MS }
     );
     return JSON.parse(stdout).map((x) => x.number);
-  } catch (err) {
-    process.stderr.write(`scan failed: ${err.message}\n`);
+  } catch (e) {
+    err(`scan failed: ${e.message}\n`);
     return [];
   }
 }
 
-async function migrateOne({ repo, issueNumber, dry }) {
-  const body = await fetchBody({ repo, issueNumber });
+export async function migrateOne({ repo, issueNumber, dry }, deps = {}) {
+  const fetch = deps.fetchBody || fetchBody;
+  const write = deps.writeBody || writeBody;
+  const out = deps.out || ((s) => process.stdout.write(s));
+  const body = await fetch({ repo, issueNumber }, deps);
   const result = transformBody(body);
   const label = `#${issueNumber}`;
   if (!result.changed) {
-    process.stdout.write(
-      `${label}: no change (legacy=${result.legacyCount}, new=${result.newCount})\n`
-    );
+    out(`${label}: no change (legacy=${result.legacyCount}, new=${result.newCount})\n`);
     return;
   }
   if (dry) {
-    process.stdout.write(
-      `${label}: would migrate (legacy=${result.legacyCount}, new=${result.newCount})\n`
-    );
+    out(`${label}: would migrate (legacy=${result.legacyCount}, new=${result.newCount})\n`);
     return;
   }
-  await writeBody({ repo, issueNumber, body: result.body });
-  process.stdout.write(
-    `${label}: migrated (legacy=${result.legacyCount}, new=${result.newCount})\n`
-  );
+  await write({ repo, issueNumber, body: result.body }, deps);
+  out(`${label}: migrated (legacy=${result.legacyCount}, new=${result.newCount})\n`);
 }
 
-async function main(argv) {
+export async function main(argv, deps = {}) {
+  const load = deps.loadConfig || loadConfig;
+  const scanFn = deps.scanOpenIssues || scanOpenIssues;
+  const migrateFn = deps.migrateOne || migrateOne;
+  const err = deps.err || ((s) => process.stderr.write(s));
+  const exit = deps.exit || ((c) => process.exit(c));
   const args = argv.slice(2);
   const dry = args.includes('--dry-run');
   const scan = args.includes('--scan');
@@ -124,33 +134,32 @@ async function main(argv) {
     .filter((a) => /^\d+$/.test(a) || /^#\d+$/.test(a))
     .map((a) => Number(a.replace(/^#/, '')));
 
-  const cfg = loadConfig();
+  const cfg = load();
   const repo = cfg.repo;
   if (!repo) {
-    process.stderr.write('missing `repo` in .ai-task-manager/task-tracker.json\n');
-    process.exit(2);
+    err('missing `repo` in .ai-task-manager/task-tracker.json\n');
+    return exit(2);
   }
 
   let targets = numbers;
   if (scan) {
-    const scanned = await scanOpenIssues({ repo });
+    const scanned = await scanFn({ repo }, deps);
     targets = [...new Set([...targets, ...scanned])];
   }
 
   if (targets.length === 0) {
-    process.stderr.write(
-      'usage: migrate-fields-encoding.mjs <issue#> [...] [--dry-run] [--scan]\n'
-    );
-    process.exit(2);
+    err('usage: migrate-fields-encoding.mjs <issue#> [...] [--dry-run] [--scan]\n');
+    return exit(2);
   }
 
   for (const n of targets) {
     try {
-      await migrateOne({ repo, issueNumber: n, dry });
-    } catch (err) {
-      process.stderr.write(`#${n}: error — ${err.message}\n`);
+      await migrateFn({ repo, issueNumber: n, dry }, deps);
+    } catch (e) {
+      err(`#${n}: error — ${e.message}\n`);
     }
   }
+  return undefined;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
