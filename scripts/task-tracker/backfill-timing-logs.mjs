@@ -136,14 +136,14 @@ export function backfillTimingBody(body, { sanityCapSec = DEFAULT_SANITY_CAP_SEC
 
 // ---- CLI ----
 
-function printUsage() {
-  process.stdout.write(
+export function printUsage(out = (s) => process.stdout.write(s)) {
+  out(
     'Usage: backfill-timing-logs.mjs (--issue N | --all-open) [--apply] [--cap-hours H]\n' +
       '  Dry-run by default; --apply mutates the timing comment (backup written to .tmp/heal/).\n'
   );
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = { issue: null, allOpen: false, apply: false, capSec: DEFAULT_SANITY_CAP_SEC };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -160,8 +160,9 @@ function parseArgs(argv) {
   return args;
 }
 
-async function fetchOpenIssueNumbers(repo) {
-  const { stdout } = await pexec(
+export async function fetchOpenIssueNumbers(repo, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'list', '-R', repo, '--state', 'open', '--limit', '500', '--json', 'number'],
     { timeout: 30_000, maxBuffer: 10 * 1024 * 1024 }
@@ -173,73 +174,83 @@ async function fetchOpenIssueNumbers(repo) {
   }
 }
 
-function printDiff(before, after) {
+export function printDiff(before, after, out = (s) => process.stdout.write(s)) {
   const b = before.split('\n');
   const a = after.split('\n');
   for (let i = 0; i < Math.max(b.length, a.length); i++) {
     if (b[i] !== a[i]) {
-      if (b[i] != null) process.stdout.write(`  - ${b[i]}\n`);
-      if (a[i] != null) process.stdout.write(`  + ${a[i]}\n`);
+      if (b[i] != null) out(`  - ${b[i]}\n`);
+      if (a[i] != null) out(`  + ${a[i]}\n`);
     }
   }
 }
 
-async function processIssue(num, { repo, apply, capSec, stamp }) {
-  const comment = await findTimingComment(String(num), repo, { timeoutMs: 15_000 });
+export async function processIssue(num, { repo, apply, capSec, stamp, deps = {} }) {
+  const find = deps.findTimingComment || findTimingComment;
+  const update = deps.updateTimingComment || updateTimingComment;
+  const out = deps.out || ((s) => process.stdout.write(s));
+  const mkdir = deps.mkdir || mkdirSync;
+  const write = deps.writeFile || writeFileSync;
+  const projectDir = deps.getProjectDir || getProjectDir;
+  const comment = await find(String(num), repo, { timeoutMs: 15_000 });
   if (!comment) {
-    process.stdout.write(`#${num}: no ⏱ Timing Log comment — skipped\n`);
+    out(`#${num}: no ⏱ Timing Log comment — skipped\n`);
     return;
   }
   const { newBody, stats } = backfillTimingBody(comment.body, { sanityCapSec: capSec });
   if (newBody === comment.body) {
-    process.stdout.write(
-      `#${num}: no change (${stats.candidates} candidate(s), ${stats.skipped} skipped)\n`
-    );
+    out(`#${num}: no change (${stats.candidates} candidate(s), ${stats.skipped} skipped)\n`);
     return;
   }
-  process.stdout.write(
+  out(
     `#${num}: ${stats.backfilled} backfilled, ${stats.unrecoverable} unrecoverable ` +
       `(of ${stats.candidates} candidate(s))\n`
   );
   if (!apply) {
-    printDiff(comment.body, newBody);
+    printDiff(comment.body, newBody, out);
     return;
   }
-  const healDir = path.join(getProjectDir(), '.tmp', 'heal');
-  mkdirSync(healDir, { recursive: true });
+  const healDir = path.join(projectDir(), '.tmp', 'heal');
+  mkdir(healDir, { recursive: true });
   const backupPath = path.join(healDir, `timing-${num}-${stamp}.bak`);
-  writeFileSync(backupPath, comment.body);
-  await updateTimingComment(comment.id, repo, newBody, { timeoutMs: 15_000 });
-  process.stdout.write(`#${num}: applied — backup ${backupPath}\n`);
+  write(backupPath, comment.body);
+  await update(comment.id, repo, newBody, { timeoutMs: 15_000 });
+  out(`#${num}: applied — backup ${backupPath}\n`);
 }
 
-async function main(argv) {
+export async function main(argv, deps = {}) {
+  const load = deps.loadConfig || loadConfig;
+  const fetchOpen = deps.fetchOpenIssueNumbers || fetchOpenIssueNumbers;
+  const process1 = deps.processIssue || processIssue;
+  const out = deps.out || ((s) => process.stdout.write(s));
+  const err = deps.err || ((s) => process.stderr.write(s));
+  const exit = deps.exit || ((c) => process.exit(c));
+  const stampNow = deps.stamp || new Date().toISOString().replace(/[:.]/g, '-');
   const args = parseArgs(argv);
   if (args.help) {
-    printUsage();
-    process.exit(0);
+    printUsage(out);
+    return exit(0);
   }
   if (!args.allOpen && !Number.isFinite(args.issue)) {
-    printUsage();
-    process.exit(2);
+    printUsage(out);
+    return exit(2);
   }
-  const cfg = loadConfig();
+  const cfg = load();
   const repo = cfg.repo;
   if (!repo) {
-    process.stderr.write('backfill-timing-logs: no repo configured\n');
-    process.exit(2);
+    err('backfill-timing-logs: no repo configured\n');
+    return exit(2);
   }
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const issues = args.allOpen ? await fetchOpenIssueNumbers(repo) : [args.issue];
+  const issues = args.allOpen ? await fetchOpen(repo, deps) : [args.issue];
   for (const n of issues) {
     try {
-      await processIssue(n, { repo, apply: args.apply, capSec: args.capSec, stamp });
-    } catch (err) {
-      process.stderr.write(`#${n}: ERROR ${err.message}\n`);
+      await process1(n, { repo, apply: args.apply, capSec: args.capSec, stamp: stampNow, deps });
+    } catch (e) {
+      err(`#${n}: ERROR ${e.message}\n`);
     }
   }
   if (!args.apply) {
-    process.stdout.write('\n(dry-run — re-run with --apply to write)\n');
+    out('\n(dry-run — re-run with --apply to write)\n');
   }
 }
 
