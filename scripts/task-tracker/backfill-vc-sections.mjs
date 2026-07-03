@@ -62,8 +62,9 @@ export function buildVcBackfill(body = '') {
   return { status: 'healed', mode, commands, body: healed };
 }
 
-async function listOpenIssues() {
-  const { stdout } = await pexec(
+export async function listOpenIssues(deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'list', '--state', 'open', '--limit', '500', '--json', 'number,title,body'],
     { maxBuffer: 50 * 1024 * 1024 }
@@ -71,10 +72,14 @@ async function listOpenIssues() {
   return JSON.parse(stdout);
 }
 
-async function main() {
-  const dryRun = process.argv.includes('--dry-run');
+export async function main(argv = process.argv.slice(2), deps = {}) {
+  const list = deps.listOpenIssues || listOpenIssues;
+  const mutate = deps.mutateIssueBody || mutateIssueBody;
+  const log = deps.log || ((s) => console.log(s));
+  const err = deps.err || ((s) => console.error(s));
+  const dryRun = argv.includes('--dry-run');
   const repo = 'kburson/ai-task-manager';
-  const issues = await listOpenIssues();
+  const issues = await list(deps);
 
   const summary = { skipped: 0, derived: 0, default: 0, failed: 0 };
   for (const it of issues.sort((a, b) => a.number - b.number)) {
@@ -86,24 +91,24 @@ async function main() {
     const tag = plan.mode === 'derived' ? 'healed-derived' : 'healed-default';
     if (dryRun) {
       summary[plan.mode] += 1;
-      console.log(`#${it.number}  ${tag}  [${plan.commands.join(', ')}]  (dry-run)`);
+      log(`#${it.number}  ${tag}  [${plan.commands.join(', ')}]  (dry-run)`);
       continue;
     }
     try {
-      const r = await mutateIssueBody({
+      const r = await mutate({
         issueNumber: it.number,
         repo,
         mutate: (base) => buildVcBackfill(base).body ?? base,
       });
       summary[plan.mode] += 1;
-      console.log(`#${it.number}  ${tag}  ${r.status}  [${plan.commands.join(', ')}]`);
-    } catch (err) {
+      log(`#${it.number}  ${tag}  ${r.status}  [${plan.commands.join(', ')}]`);
+    } catch (e) {
       summary.failed += 1;
-      console.error(`#${it.number}  FAILED  ${err.message}`);
+      err(`#${it.number}  FAILED  ${e.message}`);
     }
   }
 
-  console.log(
+  log(
     `\nopen=${issues.length}  skipped=${summary.skipped}  ` +
       `healed-derived=${summary.derived}  healed-default=${summary.default}  failed=${summary.failed}` +
       `${dryRun ? '  (dry-run — no writes)' : ''}`
@@ -112,7 +117,7 @@ async function main() {
 
 const invokedDirectly = import.meta.url === `file://${process.argv[1]}`;
 if (invokedDirectly) {
-  main().catch((err) => {
+  main(process.argv.slice(2)).catch((err) => {
     console.error(err);
     process.exit(1);
   });
