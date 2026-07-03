@@ -174,6 +174,31 @@ test('AC with a {tbd}-sentinel verifier → refine-exit-demonstrable names the m
   );
 });
 
+// #688 AC3 — the demonstrable check stays active for real code ACs. An issue
+// that mixes a waived AC (honestly exempt) with a bare code AC (no verifier, no
+// opt-out) must still flag the bare one — the waiver is per-AC, not a bypass.
+test('waived AC alongside a bare code AC → only the bare code AC is flagged demonstrable', async () => {
+  const deps = makeDeps({
+    values: { rank: 1, startTime: '2026-05-16 10:00 -07' },
+    labels: ['x'],
+    body: `${PICKUP_DIRECTIVE_HEADING}
+## Acceptance Criteria
+
+- [ ] Findings documented in the issue thread. <!-- aitm-ac-waived -->
+- [ ] The parser rejects a malformed token and returns an error.
+`,
+  });
+  const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });
+  assert.equal(r.ok, false);
+  const blocker = r.blockers.find((b) => /refine-exit-demonstrable/.test(b));
+  assert.ok(blocker, 'the bare code AC still raises a refine-exit-demonstrable blocker');
+  assert.ok(/parser rejects a malformed token/.test(blocker), 'the bare code AC is named');
+  assert.ok(
+    !/Findings documented/.test(blocker),
+    'the waived AC is not named — its waiver exempts it'
+  );
+});
+
 test('multiple missing fields produces multiple blockers', async () => {
   const deps = makeDeps({ values: {}, labels: [] });
   const r = await gateRefineToPlan({ cfg, issueNumber: 147, deps });

@@ -27,6 +27,7 @@ import {
   parseProofMarker,
 } from './proof-marker.mjs';
 import { parseAcEvidence } from './ac-evidence.mjs';
+import { isAcWaived } from './issue-kind.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
@@ -430,6 +431,7 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     if (!box) continue;
     const labelRaw = box[4];
     if (NON_DEMONSTRABLE_TAG_RE.test(labelRaw)) continue; // honest opt-out
+    if (isAcWaived(labelRaw)) continue; // #688 — no-commit lane waiver is a valid opt-out
     const cmds = acDeclaredCommands(labelRaw);
     const label = String(labelRaw)
       .replace(/<!--[\s\S]*?-->/g, '')

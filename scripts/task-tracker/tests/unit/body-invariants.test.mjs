@@ -190,3 +190,36 @@ test('findAcsWithoutVerifierOrInvalidTag honors the invalid — non-demonstrable
     'the honest opt-out tag short-circuits before the malformed cmd is even inspected'
   );
 });
+
+// #688 AC1 — a per-AC `aitm-ac-waived` marker (the no-commit lane waiver from
+// #494/#500) is a third honest opt-out: an AC carrying only that marker, with
+// no verifier and no invalid-tag, must NOT be reported.
+test('findAcsWithoutVerifierOrInvalidTag treats aitm-ac-waived as a valid opt-out', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] alpha ships findings, not testable code <!-- aitm-ac-waived -->',
+    '## Definition of Done',
+  ].join('\n');
+  assert.deepEqual(
+    findAcsWithoutVerifierOrInvalidTag(body),
+    [],
+    'a waived AC is exempt from the demonstrable-verifier requirement'
+  );
+});
+
+// #688 AC2 — the two pre-existing exemptions still behave exactly as before:
+// an `aitm-verified cmd="…"` AC and an `invalid — non-demonstrable` AC both
+// pass unchanged after the waiver skip is added.
+test('findAcsWithoutVerifierOrInvalidTag still passes verified-cmd and invalid-tag ACs (no regression)', () => {
+  const body = [
+    '## Acceptance Criteria',
+    '- [ ] alpha <!-- aitm-verified cmd="`node --test scripts/task-tracker/tests/unit/body-invariants.test.mjs`" -->',
+    '- [ ] beta — tagged `invalid — non-demonstrable`',
+    '## Definition of Done',
+  ].join('\n');
+  assert.deepEqual(
+    findAcsWithoutVerifierOrInvalidTag(body),
+    [],
+    'the verified-cmd and invalid-tag exemptions are untouched by the new waiver skip'
+  );
+});
