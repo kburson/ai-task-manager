@@ -47,8 +47,9 @@ function parseArgs(argv) {
   return { issues, apply };
 }
 
-async function fetchOpenIssues(repo) {
-  const { stdout } = await pexec(
+export async function fetchOpenIssues(repo, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'list', '-R', repo, '--state', 'open', '--limit', '200', '--json', 'number'],
     { timeout: GH_API_TIMEOUT_MS }
@@ -56,8 +57,9 @@ async function fetchOpenIssues(repo) {
   return JSON.parse(stdout).map((i) => String(i.number));
 }
 
-async function fetchIssue(repo, num) {
-  const { stdout } = await pexec(
+export async function fetchIssue(repo, num, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'view', num, '-R', repo, '--json', 'number,body,createdAt'],
     { timeout: GH_API_TIMEOUT_MS }
@@ -65,27 +67,29 @@ async function fetchIssue(repo, num) {
   return JSON.parse(stdout);
 }
 
-async function writeBody(repo, num, body) {
-  const tmp = path.join(
-    projectScratchDir('test'),
-    `aitm-heal-refine-${process.pid}-${Date.now()}.md`
-  );
-  writeFileSync(tmp, body, 'utf8');
+export async function writeBody(repo, num, body, deps = {}) {
+  const run = deps.pexec || pexec;
+  const write = deps.writeFile || writeFileSync;
+  const rm = deps.unlink || unlinkSync;
+  const scratch = deps.scratchDir || projectScratchDir;
+  const tmp = path.join(scratch('test'), `aitm-heal-refine-${process.pid}-${Date.now()}.md`);
+  write(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', num, '-R', repo, '--body-file', tmp], {
+    await run('gh', ['issue', 'edit', num, '-R', repo, '--body-file', tmp], {
       timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {
-      unlinkSync(tmp);
+      rm(tmp);
     } catch {
       /* best-effort: cleanup; failure is non-fatal */
     }
   }
 }
 
-async function postComment(repo, num, body) {
-  await pexec('gh', ['issue', 'comment', num, '-R', repo, '--body', body], {
+export async function postComment(repo, num, body, deps = {}) {
+  const run = deps.pexec || pexec;
+  await run('gh', ['issue', 'comment', num, '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
   });
 }
@@ -114,8 +118,11 @@ function extractRefineEntryTs(body) {
   return m ? normalizeTs(m[1]) : null;
 }
 
-async function healOne({ repo, num, apply }) {
-  const issue = await fetchIssue(repo, num);
+export async function healOne({ repo, num, apply, deps = {} }) {
+  const fetch = deps.fetchIssue || fetchIssue;
+  const write = deps.writeBody || writeBody;
+  const post = deps.postComment || postComment;
+  const issue = await fetch(repo, num, deps);
   const body = issue.body || '';
   if (!needsBackfill(body)) {
     return { num, action: 'skip', reason: 'already-has-refine-entry-and-audit-or-never-traversed' };
@@ -128,41 +135,46 @@ async function healOne({ repo, num, apply }) {
     return { num, action: 'plan', ts, reason, mode };
   }
   const nextBody = backfillEntryMarker(body, 'refine', ts, reason);
-  await writeBody(repo, num, nextBody);
+  await write(repo, num, nextBody, deps);
   const commentBody =
     mode === 'audit-only'
       ? `🛠 Heal: added missing audit marker for existing \`aitm-entered-refine: ${ts}\` (reason: ${reason}). The entry marker was present but lacked an audit trail; this comment + the \`aitm-backfill:refine:${reason}:${ts}\` marker provide retroactive provenance.`
       : `🛠 Heal: backfilled \`aitm-entered-refine: ${ts}\` (reason: ${reason}). This issue traversed Refine before stage-entry marker stamping became mandatory; the marker was added retroactively using \`createdAt\` as a conservative lower bound. Audit trail: \`aitm-backfill:refine:${reason}:${ts}\`.`;
-  await postComment(repo, num, commentBody);
+  await post(repo, num, commentBody, deps);
   return { num, action: 'applied', ts, mode };
 }
 
-async function main() {
-  const { issues, apply } = parseArgs(process.argv.slice(2));
-  const cfg = loadConfig();
+export async function main(argv = process.argv.slice(2), deps = {}) {
+  const load = deps.loadConfig || loadConfig;
+  const fetchOpen = deps.fetchOpenIssues || fetchOpenIssues;
+  const heal = deps.healOne || healOne;
+  const out = deps.out || ((s) => process.stdout.write(s));
+  const err = deps.err || ((s) => process.stderr.write(s));
+  const { issues, apply } = parseArgs(argv);
+  const cfg = load();
   const repo = cfg.repo;
-  const targets = issues.length > 0 ? issues : await fetchOpenIssues(repo);
+  const targets = issues.length > 0 ? issues : await fetchOpen(repo, deps);
   const results = [];
   for (const num of targets) {
     try {
-      results.push(await healOne({ repo, num, apply }));
-    } catch (err) {
-      results.push({ num, action: 'error', reason: err.message });
+      results.push(await heal({ repo, num, apply, deps }));
+    } catch (e) {
+      results.push({ num, action: 'error', reason: e.message });
     }
   }
   for (const r of results) {
     if (r.action === 'plan') {
-      process.stdout.write(`#${r.num}: would backfill ts=${r.ts} reason=${r.reason}\n`);
+      out(`#${r.num}: would backfill ts=${r.ts} reason=${r.reason}\n`);
     } else if (r.action === 'applied') {
-      process.stdout.write(`#${r.num}: backfilled ts=${r.ts}\n`);
+      out(`#${r.num}: backfilled ts=${r.ts}\n`);
     } else if (r.action === 'skip') {
-      process.stdout.write(`#${r.num}: skip (${r.reason})\n`);
+      out(`#${r.num}: skip (${r.reason})\n`);
     } else if (r.action === 'error') {
-      process.stderr.write(`#${r.num}: ERROR ${r.reason}\n`);
+      err(`#${r.num}: ERROR ${r.reason}\n`);
     }
   }
   if (!apply) {
-    process.stdout.write('\n(dry-run — pass --apply to write)\n');
+    out('\n(dry-run — pass --apply to write)\n');
   }
 }
 
@@ -175,7 +187,7 @@ const _isMain = (() => {
   }
 })();
 if (_isMain) {
-  main().catch((err) => {
+  main(process.argv.slice(2)).catch((err) => {
     process.stderr.write(`heal-refine-entry-marker: ${err.message}\n`);
     process.exit(1);
   });
