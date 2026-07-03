@@ -340,7 +340,10 @@ export function isHealComment(commentBody) {
 
 // ----- Orchestrator (CLI entry) -----
 
-function parseArgs(argv) {
+export function parseArgs(argv, io = {}) {
+  const out = io.out || process.stdout;
+  const err = io.err || process.stderr;
+  const exit = io.exit || ((code) => process.exit(code));
   const args = {
     state: 'all',
     apply: false,
@@ -369,25 +372,27 @@ function parseArgs(argv) {
         .map((s) => Number(s.replace(/^#/, '')))
         .filter(Number.isFinite);
     else if (a === '--help' || a === '-h') {
-      printUsage();
-      process.exit(0);
+      printUsage(out);
+      exit(0);
+      return args;
     }
   }
   if (!['open', 'closed', 'all'].includes(args.state)) {
-    process.stderr.write(`heal-backlog: invalid --state ${args.state}\n`);
-    process.exit(2);
+    err.write(`heal-backlog: invalid --state ${args.state}\n`);
+    exit(2);
+    return args;
   }
   return args;
 }
 
-function printUsage() {
-  process.stdout.write(
+export function printUsage(out = process.stdout) {
+  out.write(
     'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs]\n'
   );
 }
 
-async function fetchProjectFields(projectId) {
-  const data = await gql(
+export async function fetchProjectFields(projectId, gqlFn = gql) {
+  const data = await gqlFn(
     `
     query($projectId: ID!) {
       node(id: $projectId) {
@@ -408,13 +413,13 @@ async function fetchProjectFields(projectId) {
   return data.node?.fields?.nodes ?? [];
 }
 
-async function fetchAllIssueNumbers({ repo, state, projectId }) {
+export async function fetchAllIssueNumbers({ repo, state, projectId }, gqlFn = gql) {
   // Pull every issue tethered to the project, paginated.
   const { owner, repoName } = splitRepo(repo);
   const numbers = [];
   let cursor = null;
   for (let page = 0; page < 50; page++) {
-    const data = await gql(
+    const data = await gqlFn(
       `
       query($owner: String!, $repo: String!, $cursor: String) {
         repository(owner: $owner, name: $repo) {
@@ -445,8 +450,8 @@ async function fetchAllIssueNumbers({ repo, state, projectId }) {
   return numbers;
 }
 
-async function fetchIssueBundle(issueNumber, repo) {
-  const out = await gh([
+export async function fetchIssueBundle(issueNumber, repo, ghFn = gh) {
+  const out = await ghFn([
     'issue',
     'view',
     String(issueNumber),
@@ -469,13 +474,13 @@ async function fetchIssueBundle(issueNumber, repo) {
   };
 }
 
-async function writeIssueBody(issueNumber, repo, body, projectDir) {
+export async function writeIssueBody(issueNumber, repo, body, projectDir, ghFn = gh) {
   const dir = projectTmpDir(projectDir);
   mkdirSync(dir, { recursive: true });
   const tmp = path.join(dir, `aitm-heal-${issueNumber}-${Date.now()}.md`);
   writeFileSync(tmp, body, 'utf8');
   try {
-    await gh(['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
+    await ghFn(['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
   } finally {
     try {
       unlinkSync(tmp);
@@ -485,13 +490,13 @@ async function writeIssueBody(issueNumber, repo, body, projectDir) {
   }
 }
 
-async function postHealComment(issueNumber, repo, comment, projectDir) {
+export async function postHealComment(issueNumber, repo, comment, projectDir, ghFn = gh) {
   const dir = projectTmpDir(projectDir);
   mkdirSync(dir, { recursive: true });
   const tmp = path.join(dir, `aitm-heal-comment-${issueNumber}-${Date.now()}.md`);
   writeFileSync(tmp, comment, 'utf8');
   try {
-    await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body-file', tmp]);
+    await ghFn(['issue', 'comment', String(issueNumber), '-R', repo, '--body-file', tmp]);
   } finally {
     try {
       unlinkSync(tmp);
@@ -515,10 +520,13 @@ function summaryRow(n, r) {
 // slugs to the #516 vocabulary via the pure `renameTimingLogBody`. Dry-run
 // (default) prints planned rewrites; --apply writes through the sanctioned
 // `updateTimingComment` helper. Idempotent: an already-migrated log is a no-op.
-async function runTimingSlugRename({ cfg, args, projectDir }) {
+export async function runTimingSlugRename({ cfg, args, projectDir }, deps = {}) {
+  const fetchNumbers = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
+  const findComment = deps.findTimingComment || findTimingComment;
+  const updateComment = deps.updateTimingComment || updateTimingComment;
   const numbers =
     args.scope ??
-    (await fetchAllIssueNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
+    (await fetchNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
 
   const reportLines = [];
   reportLines.push(`# Timing-slug rename report — ${new Date().toISOString()}`);
@@ -538,7 +546,7 @@ async function runTimingSlugRename({ cfg, args, projectDir }) {
   for (const n of numbers) {
     scanned++;
     try {
-      const comment = await findTimingComment(`#${n}`, cfg.repo);
+      const comment = await findComment(`#${n}`, cfg.repo);
       if (!comment) {
         noLogCount++;
         continue;
@@ -555,7 +563,7 @@ async function runTimingSlugRename({ cfg, args, projectDir }) {
       }
       reportLines.push('');
       if (args.apply) {
-        await updateTimingComment(comment.id, cfg.repo, out.body);
+        await updateComment(comment.id, cfg.repo, out.body);
       }
     } catch (err) {
       errorCount++;
@@ -585,32 +593,49 @@ async function runTimingSlugRename({ cfg, args, projectDir }) {
   );
 }
 
-async function main() {
-  if (wantsHelp(process.argv.slice(2))) {
+// I/O + orchestration seams are injectable (`deps`) so `main` is exercisable
+// offline; every dep defaults to the real implementation, keeping the CLI
+// runtime path byte-identical.
+export async function main(argv, deps = {}) {
+  const loadConfigFn = deps.loadConfig || loadConfig;
+  const getProjectDirFn = deps.getProjectDir || getProjectDir;
+  const loadFieldDefsFn = deps.loadProjectFieldDefs || loadProjectFieldDefs;
+  const fetchFields = deps.fetchProjectFields || fetchProjectFields;
+  const fetchNumbers = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
+  const fetchBundle = deps.fetchIssueBundle || fetchIssueBundle;
+  const writeBody = deps.writeIssueBody || writeIssueBody;
+  const postComment = deps.postHealComment || postHealComment;
+  const syncLabel = deps.syncDiscussLabel || syncDiscussLabel;
+  const runRename = deps.runTimingSlugRename || runTimingSlugRename;
+  const out = deps.out || process.stdout;
+  const err = deps.err || process.stderr;
+  const exit = deps.exit || ((code) => process.exit(code));
+
+  if (wantsHelp(argv)) {
     emitSelfDoc('heal-backlog');
-    printUsage();
-    process.exit(0);
+    printUsage(out);
+    return exit(0);
   }
-  const args = parseArgs(process.argv.slice(2));
-  const cfg = loadConfig();
+  const args = parseArgs(argv, { out, err, exit });
+  const cfg = loadConfigFn();
   if (!cfg.repo) {
-    process.stderr.write('heal-backlog: repo not configured\n');
-    process.exit(1);
+    err.write('heal-backlog: repo not configured\n');
+    return exit(1);
   }
   if (!cfg.projectId) {
-    process.stderr.write('heal-backlog: projectId not configured\n');
-    process.exit(1);
+    err.write('heal-backlog: projectId not configured\n');
+    return exit(1);
   }
-  const projectDir = getProjectDir();
+  const projectDir = getProjectDirFn();
 
   // #520 — slug-rename is a self-contained mode; it does not run the
   // field-reconcile/schema pass below.
   if (args.renameTimingSlugs) {
-    await runTimingSlugRename({ cfg, args, projectDir });
+    await runRename({ cfg, args, projectDir });
     return;
   }
 
-  const fieldDefs = loadProjectFieldDefs(projectDir);
+  const fieldDefs = loadFieldDefsFn(projectDir);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
 
   const reportLines = [];
@@ -628,7 +653,7 @@ async function main() {
     reportLines.push('## Project schema validation');
     reportLines.push('');
     try {
-      const projectFields = await fetchProjectFields(cfg.projectId);
+      const projectFields = await fetchFields(cfg.projectId);
       const drift = diffSchema(projectFields, fieldDefs);
       schemaDriftFound = drift.hasDrift;
       if (!drift.hasDrift) {
@@ -662,7 +687,7 @@ async function main() {
   // 2. Enumerate issues
   const numbers =
     args.scope ??
-    (await fetchAllIssueNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
+    (await fetchNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
   reportLines.push(`## Per-issue heal (${numbers.length} issues)`);
   reportLines.push('');
   reportLines.push('```');
@@ -676,7 +701,7 @@ async function main() {
   for (const n of numbers) {
     let row = { encodingChanged: false, deltas: [], skipped: false, skipReason: null, error: null };
     try {
-      const { body, timing, priorHeal, closedAt, createdAt } = await fetchIssueBundle(n, cfg.repo);
+      const { body, timing, priorHeal, closedAt, createdAt } = await fetchBundle(n, cfg.repo);
       const backfillTs = normalizeMarkerTs(closedAt || createdAt);
       const heal = healIssue({
         body,
@@ -692,13 +717,13 @@ async function main() {
 
       if (args.apply) {
         if (heal.changedBody) {
-          await writeIssueBody(n, cfg.repo, heal.body, projectDir);
+          await writeBody(n, cfg.repo, heal.body, projectDir);
           row.encodingChanged = true;
         }
         // #486 — sync the visible "Discuss" label to the converged pending
         // state. Best-effort: a label failure must not abort the sweep.
         try {
-          await syncDiscussLabel({
+          await syncLabel({
             issueNumber: n,
             repo: cfg.repo,
             label: getDiscussLabel(cfg),
@@ -708,12 +733,7 @@ async function main() {
           /* label sync is advisory; the marker state is authoritative */
         }
         if (heal.deltas.length && !priorHeal) {
-          await postHealComment(
-            n,
-            cfg.repo,
-            renderHealComment({ deltas: heal.deltas }),
-            projectDir
-          );
+          await postComment(n, cfg.repo, renderHealComment({ deltas: heal.deltas }), projectDir);
         }
       }
       if (heal.deltas.length) issuesWithDeltaCount++;
@@ -743,13 +763,13 @@ async function main() {
     `heal-backlog-${new Date().toISOString().replace(/[:.]/g, '-')}.md`
   );
   writeFileSync(reportPath, reportLines.join('\n'), 'utf8');
-  process.stdout.write(`Report written: ${reportPath}\n`);
-  process.stdout.write(
+  out.write(`Report written: ${reportPath}\n`);
+  out.write(
     `Scanned ${numbers.length} issues. body-changed=${healedCount} delta=${issuesWithDeltaCount} skipped=${skippedCount} errors=${errorCount} schemaDrift=${schemaDriftFound}\n`
   );
 
   if (schemaDriftFound && !args.ignoreSchemaDrift) {
-    process.exit(3);
+    return exit(3);
   }
 }
 
@@ -763,7 +783,7 @@ const _isMain = (() => {
 })();
 
 if (_isMain) {
-  main().catch((err) => {
+  main(process.argv.slice(2)).catch((err) => {
     process.stderr.write(`heal-backlog: ${err.stack || err.message}\n`);
     process.exit(1);
   });
