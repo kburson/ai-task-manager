@@ -561,7 +561,31 @@ export async function verbClose(ctx) {
   }
   const { deriveStateMoveDelta: _dsm3 } = await import('../lib/timing-rows.mjs');
   const _ts3 = nowIso();
-  const _d3 = _dsm3(closeBody, _ts3);
+  // #692 — the prior timing ROWS live in the ⏱ comment, NOT the issue body.
+  // close.mjs historically passed `closeBody` (the issue body) here, so
+  // `deriveStateMoveDelta` → `lastRowTsFromBody` found no rows and collapsed to
+  // {0,0}: the `review:approved` row's Active column came out blank (AC3). The
+  // same comment body drives the retry-idempotency guard below (AC2). Fetch it
+  // once. The real reader is gated on `!SKIP_NETWORK`; tests inject
+  // `ctx.readTimingCommentBody` to exercise both paths offline.
+  let _timingBody = '';
+  const { readTimingCommentBody: _readTimingComment, bodyOf: _bodyOf } =
+    await import('../gh-timing-comment.mjs');
+  const _readTiming = ctx.readTimingCommentBody || (SKIP_NETWORK ? null : _readTimingComment);
+  if (_readTiming && closeIssueNum) {
+    try {
+      _timingBody = _bodyOf(
+        await _readTiming({
+          issueNumber: closeIssueNum,
+          repo: cfg.repo,
+          timeoutMs: GH_API_TIMEOUT_MS,
+        })
+      );
+    } catch (err) {
+      process.stderr.write(`⚠ timing-comment read for close pair failed: ${err.message}\n`);
+    }
+  }
+  const _d3 = _dsm3(_timingBody, _ts3);
   // #540 — emit the review→done lifecycle pair in canonical order
   // (`review:approved → issue:wrap`), both sharing `_ts3`. The approval row
   // carries the real review→close active/idle delta (`_d3`); the wrap row is
@@ -586,7 +610,17 @@ export async function verbClose(ctx) {
   // #652 half-state), suppressing the row prevents fabricating a record of an
   // approval that did not happen. `issue:wrap` stays unconditional — it records
   // the terminal close, not an approval claim.
+  // #692 (AC2) — make the pair emission idempotent across retries. A `close`
+  // re-invoked after a first attempt emitted the pair but aborted before the
+  // terminal board move (e.g. `assertFieldsPersisted` threw) previously
+  // re-emitted a fresh `review:approved → issue:wrap` pair, producing the
+  // duplicate pairs seen on #687. `pendingClosePairState` inspects the timing
+  // comment since the last `issue:closed` and reports which halves already
+  // exist; skip re-emitting whichever half is already present.
+  const { pendingClosePairState } = await import('../timing-rollup.mjs');
+  const _pending = pendingClosePairState(_timingBody);
   if (
+    !_pending.reviewApproved &&
     shouldEmitReviewApprovedRow({
       hasApprovalMarker: hasReviewApprovedMarker(closeBody),
       reviewGateBypassed,
@@ -594,7 +628,9 @@ export async function verbClose(ctx) {
   ) {
     await safePostTiming(closeTarget, _reviewApprovedRow);
   }
-  await safePostTiming(closeTarget, _issueWrapRow);
+  if (!_pending.issueWrap) {
+    await safePostTiming(closeTarget, _issueWrapRow);
+  }
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
   // Post-close board/body agreement check (#180 defect 1 guard). After
   // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have

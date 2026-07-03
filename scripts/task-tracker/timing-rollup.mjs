@@ -6,6 +6,7 @@
 
 import { pauseSpansBetween } from './lib/timing-rows.mjs';
 import { parseEntryMarkers, STAGES } from './lib/stage-entry-markers.mjs';
+import { PHASE_EVENTS } from './phase-events.mjs';
 
 // Support both legacy minute-precision (HH:MM) and current second-precision
 // (HH:MM:SS) timestamps.
@@ -129,26 +130,36 @@ export function applyPauseSpansToRows(rows, body) {
 }
 
 // Sum minutes spent in the Plan kanban column. A "plan window" opens on a
-// `move:plan` row and closes on the next state-transition row (any other
-// `move:<state>` event — typically `move:develop` for forward progress or
-// `move:refine` on rollback). Plan windows with no closing transition (issue
-// still in Plan, or final row of the log) contribute zero.
+// `plan:started` row and closes on the next phase-boundary row (any lifecycle
+// enter/complete event or a `demoted` marker — typically `plan:completed` for
+// forward progress to Develop, or `demoted` on rollback to Refine). Plan
+// windows with no closing boundary (issue still in Plan, or final row of the
+// log) contribute zero.
+//
+// #692 — the previous implementation keyed on the retired `move:plan`
+// vocabulary that #516 renamed away, so `planMin` was 0 for every post-#516
+// log and the board "Plan Time" field never populated. It now reads the
+// uniform `<state>:<event>` vocabulary from PHASE_EVENTS. Pause/resume and
+// ad-hoc rows are NOT boundaries, so a mid-plan pause never truncates a window.
 //
 // Aggregates across multiple plan visits when re-entries occur, so the field
 // is forward-compatible with #181's visit-aware schema once that lands.
-const MOVE_EVENT_RE = /^move:(.+)$/;
+const PLAN_OPEN_EVENT = PHASE_EVENTS.plan.enter.event; // 'plan:started'
+const PHASE_BOUNDARY_EVENTS = new Set(
+  Object.values(PHASE_EVENTS)
+    .flatMap((stage) => Object.values(stage).map((kind) => kind.event))
+    .concat('demoted')
+);
 
 export function computePlanMin(rows) {
   let total = 0;
   for (let i = 0; i < rows.length; i++) {
-    const m = MOVE_EVENT_RE.exec(rows[i].event || '');
-    if (!m || m[1] !== 'plan') continue;
+    if ((rows[i].event || '') !== PLAN_OPEN_EVENT) continue;
     const planMs = rows[i].tsMs;
     if (planMs == null) continue;
     let next = null;
     for (let j = i + 1; j < rows.length; j++) {
-      const nm = MOVE_EVENT_RE.exec(rows[j].event || '');
-      if (!nm) continue;
+      if (!PHASE_BOUNDARY_EVENTS.has(rows[j].event || '')) continue;
       next = rows[j];
       break;
     }
@@ -157,6 +168,30 @@ export function computePlanMin(rows) {
     if (deltaMin > 0) total += deltaMin;
   }
   return total;
+}
+
+// #692 — idempotency state for the review→done close pair. A retried `close`
+// (whose first attempt emitted `review:approved` + `issue:wrap` but aborted
+// before the terminal `issue:closed` board move — e.g. `assertFieldsPersisted`
+// threw) must not re-emit either half. Scan the current, not-yet-terminated
+// close window (the rows AFTER the last `issue:closed`, i.e. the in-flight
+// attempt) and report which halves are already present so the caller can skip
+// them. A cleanly-closed-then-reopened issue starts a fresh window past its
+// `issue:closed`, so a legitimate future close is unaffected.
+export function pendingClosePairState(body) {
+  const rows = parseTimingRows(String(body || ''));
+  const closedEvent = PHASE_EVENTS.done.complete.event; // issue:closed
+  const approvedEvent = PHASE_EVENTS.review.complete.event; // review:approved
+  const wrapEvent = PHASE_EVENTS.done.enter.event; // issue:wrap
+  let lastClosedIdx = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].event === closedEvent) lastClosedIdx = i;
+  }
+  const windowRows = rows.slice(lastClosedIdx + 1);
+  return {
+    reviewApproved: windowRows.some((r) => r.event === approvedEvent),
+    issueWrap: windowRows.some((r) => r.event === wrapEvent),
+  };
 }
 
 // Compute per-stage durations from visit-numbered entry markers in the issue

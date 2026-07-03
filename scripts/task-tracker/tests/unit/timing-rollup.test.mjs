@@ -87,54 +87,90 @@ assert.equal(totals.reviewMin, 3);
 assert.equal(totals.engagedMin, 18);
 assert.equal(totals.lastWordMarker, 800);
 
-// computePlanMin: single Plan window — 25 min between move:plan and move:develop.
+// #692 — computePlanMin reads the current `<state>:<event>` vocabulary (#516),
+// NOT the retired `move:plan`. A plan window opens on `plan:started` and closes
+// on the next phase-boundary row (`plan:completed` forward, `demoted` rollback).
+
+// computePlanMin: single Plan window — 25 min between plan:started/plan:completed.
 body = buildLog([
-  { ts: '2026-05-09 09:00 -07:00', event: 'move:refine' },
-  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
-  { ts: '2026-05-09 09:55 -07:00', event: 'move:develop' },
+  { ts: '2026-05-09 09:00 -07:00', event: 'refine:completed' },
+  { ts: '2026-05-09 09:30 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 09:55 -07:00', event: 'plan:completed' },
 ]);
 rows = parseTimingRows(body);
 assert.equal(computePlanMin(rows), 25, 'single plan window = 25 min');
 
+// computePlanMin: the retired `move:plan` vocabulary no longer registers.
+body = buildLog([
+  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
+  { ts: '2026-05-09 09:55 -07:00', event: 'move:develop' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 0, 'retired move:plan vocabulary ignored');
+
 // computePlanMin: no plan window — 0.
 body = buildLog([
-  { ts: '2026-05-09 09:00 -07:00', event: 'move:refine' },
-  { ts: '2026-05-09 09:30 -07:00', event: 'move:develop' },
+  { ts: '2026-05-09 09:00 -07:00', event: 'refine:started' },
+  { ts: '2026-05-09 09:30 -07:00', event: 'refine:completed' },
 ]);
 rows = parseTimingRows(body);
 assert.equal(computePlanMin(rows), 0, 'no plan window = 0');
 
-// computePlanMin: open plan window (still in plan, no closing transition) = 0.
+// computePlanMin: a mid-plan pause does NOT close the window.
 body = buildLog([
-  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
-  { ts: '2026-05-09 09:45 -07:00', event: 'start' },
+  { ts: '2026-05-09 09:30 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 09:40 -07:00', event: 'paused' },
+  { ts: '2026-05-09 09:45 -07:00', event: 'resumed' },
+  { ts: '2026-05-09 09:55 -07:00', event: 'plan:completed' },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 25, 'pause/resume does not truncate plan window');
+
+// computePlanMin: open plan window (still in plan, no closing boundary) = 0.
+body = buildLog([
+  { ts: '2026-05-09 09:30 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 09:45 -07:00', event: 'resumed' },
 ]);
 rows = parseTimingRows(body);
 assert.equal(computePlanMin(rows), 0, 'unclosed plan window contributes 0');
 
-// computePlanMin: rollback path — plan → refine still aggregated.
+// computePlanMin: rollback path — plan → refine (demoted) still aggregated.
 body = buildLog([
-  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
-  { ts: '2026-05-09 09:40 -07:00', event: 'move:refine' },
+  { ts: '2026-05-09 09:30 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 09:40 -07:00', event: 'demoted' },
 ]);
 rows = parseTimingRows(body);
 assert.equal(computePlanMin(rows), 10, 'plan → refine rollback still counted');
 
 // computePlanMin: multi-visit aggregation (forward-compat with #181).
 body = buildLog([
-  { ts: '2026-05-09 09:00 -07:00', event: 'move:plan' },
-  { ts: '2026-05-09 09:10 -07:00', event: 'move:develop' },
-  { ts: '2026-05-09 10:00 -07:00', event: 'move:plan' },
-  { ts: '2026-05-09 10:15 -07:00', event: 'move:develop' },
+  { ts: '2026-05-09 09:00 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 09:10 -07:00', event: 'plan:completed' },
+  { ts: '2026-05-09 10:00 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 10:15 -07:00', event: 'plan:completed' },
 ]);
 rows = parseTimingRows(body);
 assert.equal(computePlanMin(rows), 25, 'multi-visit plan windows aggregated');
 
+// #692 regression — a realistic #687-shaped end-to-end log (paired
+// prev:complete + next:enter emissions) yields a NON-ZERO planMin, proving the
+// board "Plan Time" field populates. Under the old `move:plan` reader this was 0.
+body = buildLog([
+  { ts: '2026-07-02 12:45:00 -07:00', event: 'refine:started', active: 3 },
+  { ts: '2026-07-02 12:58:07 -07:00', event: 'refine:completed', active: 13 },
+  { ts: '2026-07-02 12:58:07 -07:00', event: 'plan:started', active: 0 },
+  { ts: '2026-07-02 13:11:12 -07:00', event: 'plan:completed', active: 13 },
+  { ts: '2026-07-02 13:11:12 -07:00', event: 'develop:started', active: 0 },
+  { ts: '2026-07-02 13:40:00 -07:00', event: 'develop:completed', active: 29 },
+]);
+rows = parseTimingRows(body);
+assert.equal(computePlanMin(rows), 13, '#687-shaped log yields 13-min plan window');
+
 // rollupTotals exposes planMin.
 body = buildLog([
-  { ts: '2026-05-09 09:30 -07:00', event: 'move:plan' },
-  { ts: '2026-05-09 09:55 -07:00', event: 'move:develop' },
-  { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 10 },
+  { ts: '2026-05-09 09:30 -07:00', event: 'plan:started' },
+  { ts: '2026-05-09 09:55 -07:00', event: 'plan:completed' },
+  { ts: '2026-05-09 10:00 -07:00', event: 'develop:completed', active: 10 },
 ]);
 rows = parseTimingRows(body);
 const totalsP = rollupTotals(rows, 5);

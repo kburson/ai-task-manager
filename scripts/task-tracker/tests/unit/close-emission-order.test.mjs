@@ -176,4 +176,172 @@ test('combined close + done-move stream is review:approved → issue:wrap → is
   );
 });
 
+// ── Part D: #692 AC2 — pair emission is idempotent across close retries ──────
+//
+// When `close` is re-invoked after a first attempt already emitted the
+// `review:approved → issue:wrap` pair but aborted before the terminal move,
+// the re-run must NOT emit a second pair. close.mjs reads the timing COMMENT
+// (injected here via `ctx.readTimingCommentBody`) and skips whichever half is
+// already present since the last `issue:closed`.
+
+function timingLog(rows) {
+  const header = '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |';
+  const sep = '|---|---|---|---|---|---|---|';
+  return ['⏱ Timing Log', '', header, sep, ...rows, ''].join('\n');
+}
+
+// Format epoch ms into the timing-row table timestamp form
+// `YYYY-MM-DD HH:MM:SS +00:00` (UTC) that TS_LINE_RE matches and tsToMs parses.
+function tableTs(ms) {
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, '0');
+  return (
+    `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ` +
+    `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} +00:00`
+  );
+}
+
+test('#692 AC2 — retried close does not re-emit an existing review:approved/issue:wrap pair', async () => {
+  const prevSkipDirty = process.env.TT_SKIP_DIRTY_CHECK;
+  process.env.TT_SKIP_DIRTY_CHECK = '1';
+  const { statePath, dir } = makeStatePath({
+    active: '#999',
+    lastActive: '#999',
+    entryStartTs: new Date(Date.now() - 60_000).toISOString(),
+    wordsAtEntryStart: 0,
+    lastWordMarker: 0,
+  });
+
+  // A timing comment that ALREADY carries the pair (a prior close attempt),
+  // with no terminal `issue:closed` after it — the exact half-state a retry
+  // lands in. Rows are hand-written (not via buildRow) so the fixed historical
+  // timestamps bypass buildRow's retroactive-ts guard; pendingClosePairState
+  // only inspects the Event column.
+  const priorTs = '2026-07-02 08:33:48 +00:00';
+  const priorTimingBody = timingLog([
+    `| ${priorTs} | review:approved |  |  | 0 | 0 |  | <!-- row-sec: a=120 i=0 -->`,
+    `| ${priorTs} | issue:wrap |  |  | 0 | 0 |  | <!-- row-sec: a=0 i=0 -->`,
+  ]);
+
+  const sequence = [];
+  const ctx = {
+    cfg: { repo: 'o/r' },
+    statePath,
+    projectDir: dir,
+    rest: ['#999'],
+    SKIP_NETWORK: true,
+    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
+    readTimingCommentBody: async () => ({ status: 'ok', body: priorTimingBody }),
+    pexec: async () => ({ stdout: '{}', stderr: '' }),
+    drainQueueIfAny: async () => {},
+    flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
+    safePostTiming: async (_target, row) => {
+      sequence.push({ kind: 'row', event: eventOf(row), row });
+    },
+    runMoveState: async () => ({ ok: true, benign: false }),
+    runMoveStateDone: async () => {
+      sequence.push({ kind: 'move-done' });
+      return { ok: true, benign: false };
+    },
+    runLogIssueTime: async () => {},
+    fetchSubIssues: async () => [],
+    getIssueBoardState: async () => 'review',
+    getIssueClosedState: async () => false,
+    uncheckedPreCloseCheckboxes: () => [],
+    nowIso: () => new Date().toISOString(),
+  };
+
+  try {
+    await verbClose(ctx);
+  } finally {
+    if (prevSkipDirty === undefined) delete process.env.TT_SKIP_DIRTY_CHECK;
+    else process.env.TT_SKIP_DIRTY_CHECK = prevSkipDirty;
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const rowEvents = sequence.filter((e) => e.kind === 'row').map((e) => e.event);
+  assert.equal(
+    rowEvents.filter((e) => e === PHASE_EVENTS.review.complete.event).length,
+    0,
+    `retry must not re-emit review:approved; got ${rowEvents.join(', ')}`
+  );
+  assert.equal(
+    rowEvents.filter((e) => e === PHASE_EVENTS.done.enter.event).length,
+    0,
+    `retry must not re-emit issue:wrap; got ${rowEvents.join(', ')}`
+  );
+});
+
+// ── Part E: #692 AC3 — review:approved row carries the real review→close delta ─
+//
+// The delta is derived from the last row in the timing COMMENT, not the issue
+// body. Inject a comment whose most-recent row is `review:started` 5 minutes
+// before close and assert the emitted `review:approved` row's active seconds
+// reflect that span (previously it collapsed to 0 because close.mjs passed the
+// issue body, which has no timing rows).
+
+test('#692 AC3 — review:approved active duration derives from the timing comment', async () => {
+  const prevSkipDirty = process.env.TT_SKIP_DIRTY_CHECK;
+  process.env.TT_SKIP_DIRTY_CHECK = '1';
+  const { statePath, dir } = makeStatePath({
+    active: '#999',
+    lastActive: '#999',
+    entryStartTs: new Date(Date.now() - 60_000).toISOString(),
+    wordsAtEntryStart: 0,
+    lastWordMarker: 0,
+  });
+
+  // Anchor to real now (buildRow rejects timestamps far from Date.now()). The
+  // review:started row sits exactly 5 min before the fixed close instant, so
+  // the derived active delta is deterministically 300 s.
+  const closeMs = Date.now();
+  const priorTimingBody = timingLog([
+    `| ${tableTs(closeMs - 300_000)} | review:started | 0 |  | — | — |  |`,
+  ]);
+
+  const sequence = [];
+  const ctx = {
+    cfg: { repo: 'o/r' },
+    statePath,
+    projectDir: dir,
+    rest: ['#999'],
+    SKIP_NETWORK: true,
+    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
+    readTimingCommentBody: async () => ({ status: 'ok', body: priorTimingBody }),
+    pexec: async () => ({ stdout: '{}', stderr: '' }),
+    drainQueueIfAny: async () => {},
+    flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
+    safePostTiming: async (_target, row) => {
+      sequence.push({ kind: 'row', event: eventOf(row), row });
+    },
+    runMoveState: async () => ({ ok: true, benign: false }),
+    runMoveStateDone: async () => ({ ok: true, benign: false }),
+    runLogIssueTime: async () => {},
+    fetchSubIssues: async () => [],
+    getIssueBoardState: async () => 'review',
+    getIssueClosedState: async () => false,
+    uncheckedPreCloseCheckboxes: () => [],
+    // Close exactly 5 minutes after the review:started row.
+    nowIso: () => new Date(closeMs).toISOString(),
+  };
+
+  try {
+    await verbClose(ctx);
+  } finally {
+    if (prevSkipDirty === undefined) delete process.env.TT_SKIP_DIRTY_CHECK;
+    else process.env.TT_SKIP_DIRTY_CHECK = prevSkipDirty;
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const approvedRow = sequence.find(
+    (e) => e.kind === 'row' && e.event === PHASE_EVENTS.review.complete.event
+  );
+  assert.ok(approvedRow, 'expected a review:approved row');
+  assert.deepEqual(
+    secOf(approvedRow.row),
+    { a: 300, i: 0 },
+    'review:approved must carry the 5-min review→close active delta from the comment'
+  );
+});
+
 console.log('close-emission-order.test.mjs: ok');
