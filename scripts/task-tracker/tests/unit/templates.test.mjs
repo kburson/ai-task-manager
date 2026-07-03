@@ -66,6 +66,36 @@ assert.ok(
   'standard DoD uses concrete lint/format commands instead of prose'
 );
 
+// #691 — the leading header comment must be well-formed. HTML comments do not
+// nest: a literal `-->` embedded in the #681 authoring note (e.g. reproducing a
+// `<!-- dod:kinds ... -->` example) prematurely closes the wrapper, so the rest
+// of the note leaks into the rendered issue body (observed on #687). Assert the
+// wrapper opens once, embeds no nested comment token, and fully encloses the
+// #681 note through its final sentence.
+assert.ok(body.startsWith('<!--'), 'DoD template opens with a header comment');
+const dodHeaderClose = body.indexOf('-->');
+assert.ok(dodHeaderClose !== -1, 'DoD header comment has a closing token');
+const dodHeaderInterior = body.slice('<!--'.length, dodHeaderClose);
+assert.ok(
+  !dodHeaderInterior.includes('<!--'),
+  'DoD header comment must not embed a nested `<!--` — a literal comment token here prematurely closes the wrapper and leaks header prose into rendered view (#691)'
+);
+assert.ok(
+  dodHeaderInterior.includes('no phantom evidence marker is ever required for it.'),
+  'DoD header comment must fully enclose the #681 kind-aware note — the wrapper must close after it, not before (#691)'
+);
+
+// #691 AC3 — the installed runtime mirror must stay byte-identical to the
+// canonical source; a drifted mirror ships the buggy header to consumers.
+const runtimeDodPath = path.join(root, '.ai-task-manager', 'templates', 'definition-of-done.md');
+if (existsSync(runtimeDodPath)) {
+  assert.equal(
+    readFileSync(runtimeDodPath, 'utf8'),
+    body,
+    '.ai-task-manager/templates/definition-of-done.md drifted from templates/definition-of-done.md — run `npm run sync:templates` to refresh the runtime mirror'
+  );
+}
+
 // ── pickup directive: status contract ──────────────────────────────────────
 for (const status of ['CODE_COMPLETE', 'ISSUE_READY_FOR_REVIEW', 'BLOCKED']) {
   assert.ok(pickupDirective.includes(status), `pickup directive defines status: ${status}`);

@@ -7,8 +7,7 @@ its marker; run `/task dod-stamp <key>` to produce one. The two derived keys
 (`acs`, `checkboxes`) are auto-stamped by `/task close` from the body itself.
 See `skill/shared/rules/functional-dod.md` for the full contract.
 
-Kind-aware items (#681): append a `<!-- dod:kinds ... -->` annotation to scope
-
+Kind-aware items (#681): append a `dod:kinds` HTML-comment annotation to scope
 an item to a set of issue kinds. `exclude="spike,research"` renders the item for
 every kind EXCEPT those listed; `include="code"` renders it only for the listed
 kinds; an item with no annotation applies to every kind (the default). The
