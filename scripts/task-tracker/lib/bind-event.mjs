@@ -45,7 +45,9 @@ function rowEventSlug(line) {
 // *closer*, or neither. Openers mark work stopping (`pause`/`paused`/`pause:*`,
 // `switch-out`/`switch-out:*`, `idle`). Closers mark work resuming
 // (`resume`/`resumed`/`resume:*`, `switch-in`/`switch-in:*`, `start`).
-function classifyEvent(slug) {
+// Exported (#683) so `lib/timing-event-map.mjs` reuses the one canonical
+// opener/closer taxonomy instead of re-deriving it.
+export function classifyEvent(slug) {
   if (!slug) return null;
   if (slug === 'pause' || slug === 'paused' || slug.startsWith('pause:')) {
     return {
