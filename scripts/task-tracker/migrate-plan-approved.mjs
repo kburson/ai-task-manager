@@ -60,8 +60,9 @@ export function migratePlanApprovedBody(body, { now = () => new Date().toISOStri
   return { body: withMarker, changed: true, action: 'stripped-and-marker-added' };
 }
 
-async function fetchBody(issueNumber, repo) {
-  const { stdout } = await pexec(
+export async function fetchBody(issueNumber, repo, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
     { timeout: GH_API_TIMEOUT_MS }
@@ -69,19 +70,20 @@ async function fetchBody(issueNumber, repo) {
   return stdout.replace(/\r\n/g, '\n');
 }
 
-async function writeBody(issueNumber, repo, body) {
-  const tmp = path.join(
-    projectScratchDir('test'),
-    `aitm-migrate-plan-${process.pid}-${Date.now()}.md`
-  );
-  writeFileSync(tmp, body, 'utf8');
+export async function writeBody(issueNumber, repo, body, deps = {}) {
+  const run = deps.pexec || pexec;
+  const write = deps.writeFile || writeFileSync;
+  const unlink = deps.unlink || unlinkSync;
+  const scratch = deps.scratchDir || projectScratchDir;
+  const tmp = path.join(scratch('test'), `aitm-migrate-plan-${process.pid}-${Date.now()}.md`);
+  write(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
+    await run('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp], {
       timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {
-      unlinkSync(tmp);
+      unlink(tmp);
     } catch {
       /* best-effort: cleanup; failure is non-fatal */
     }
