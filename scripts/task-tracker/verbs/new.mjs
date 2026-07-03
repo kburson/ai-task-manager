@@ -31,6 +31,25 @@ export function isHelpProbe(rest) {
   return HELP_TOKENS.has(String(rest[0]).trim().toLowerCase());
 }
 
+// #687 — pull an optional `--kind <k>` pair out of the raw `rest` tokens so the
+// remaining tokens still form the title (buildContext hands `new` its argv
+// unparsed). Returns `{ kind, rest }` where `kind` is the value string (or null
+// when absent) and `rest` is `rest` minus the single flag/value pair. Only the
+// first `--kind` occurrence is consumed; everything else — including legitimate
+// title words — is preserved by index. A trailing `--kind` with no following
+// value is dropped as a malformed flag rather than swallowing the (absent) next
+// token. When no `--kind` is present, `rest` is returned unchanged so the
+// no-kind path stays byte-identical to prior behavior (AC3).
+export function extractKind(rest) {
+  if (!Array.isArray(rest)) return { kind: null, rest: [] };
+  const i = rest.indexOf('--kind');
+  if (i === -1) return { kind: null, rest };
+  const value = i + 1 < rest.length ? String(rest[i + 1]) : null;
+  const remaining =
+    value === null ? [...rest.slice(0, i)] : [...rest.slice(0, i), ...rest.slice(i + 2)];
+  return { kind: value, rest: remaining };
+}
+
 // #509 — route `/task new` through the sanctioned `scripts/gh/create-issue.mjs`
 // wrapper instead of shelling `gh issue create` directly. The wrapper is the
 // single place that stamps the canonical body, `aitm-fields`, Definition of
@@ -38,12 +57,17 @@ export function isHelpProbe(rest) {
 // and placeholder substitution; a raw `gh issue create` skips all of it and
 // leaves the new issue structurally malformed. `--shape stub` is the
 // lightweight idea-capture shape that needs only `--title`.
-export async function createNewIssue(title, ctx) {
+// #687 — `kind` (optional) forwards `--kind <k>` to the wrapper so investigation
+// stubs (spike/research/audit) are stamped with the correct issue kind. When
+// null/empty the argv omits `--kind` entirely, keeping the wrapper on its
+// default `code` path with the body left unmarked (AC3).
+export async function createNewIssue(title, ctx, kind = null) {
   const { cfg, SKIP_NETWORK, pexec } = ctx;
   if (process.env.TT_FAKE_NEW_ISSUE) return process.env.TT_FAKE_NEW_ISSUE;
   if (SKIP_NETWORK) return '#0';
   const createIssueScript = path.resolve(__dir, '../../gh/create-issue.mjs');
   const labelArgs = cfg.defaultLabels.flatMap((l) => ['--label', l]);
+  const kindArgs = typeof kind === 'string' && kind ? ['--kind', kind] : [];
   const { stdout } = await pexec(
     process.execPath,
     [
@@ -55,6 +79,7 @@ export async function createNewIssue(title, ctx) {
       '--assignee',
       cfg.assignee || '@me',
       ...labelArgs,
+      ...kindArgs,
     ],
     { timeout: cfg.hookNetworkTimeoutMs * 3 }
   );
@@ -133,7 +158,11 @@ export async function verbNew(ctx) {
   } = ctx;
   await drainQueueIfAny();
   const s = loadState(statePath);
-  const { title } = resolveTitleAndPlan(rest, s, projectDir);
+  // #687 — strip `--kind <k>` out of the raw argv before the remaining tokens
+  // are joined into a title (legacy branch does `rest.join(' ')`); a bare
+  // `--kind spike` token would otherwise leak into the issue title.
+  const { kind, rest: titleRest } = extractKind(rest);
+  const { title } = resolveTitleAndPlan(titleRest, s, projectDir);
   const wasDiscover = s.active === 'discover' && s.discoverBucket;
   let previousNote = '';
   const previousActive = s.active;
@@ -142,7 +171,7 @@ export async function verbNew(ctx) {
     // naming the new issue it hands off to. The target ref is finalized below
     // after `createNewIssue`, so the flush is deferred until we know the number.
   }
-  const issue = await createNewIssue(title, ctx);
+  const issue = await createNewIssue(title, ctx, kind);
   if (previousActive && previousActive !== 'discover' && cfg.autoEndOnSwitch) {
     const { deltaMin, deltaWords } = await flushActiveToGH(
       s,

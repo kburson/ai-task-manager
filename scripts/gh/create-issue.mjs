@@ -123,7 +123,11 @@ function validateArgs(args) {
   }
 }
 
-function renderShapeBody(args) {
+// #687 — Build the argv forwarded to `preflight-issue.mjs` for a shaped render.
+// Extracted from `renderShapeBody` as a pure seam so the flag set (including the
+// #687 `--kind` pass-through) is unit-testable without spawning preflight/gh.
+// Mirrors the `buildIssueTitle` export pattern below.
+export function buildShapeFlags(args) {
   const flags = ['--shape', args.shape];
   // #426 — stub forwards only an optional --idea-file (no section files);
   // every other shape forwards the three required section files.
@@ -148,6 +152,15 @@ function renderShapeBody(args) {
   for (const k of ['priority', 'size', 'estimate', 'rank', 'start-time']) {
     if (typeof args[k] === 'string' && args[k]) flags.push(`--${k}`, args[k]);
   }
+  // #687 — forward `--kind` so investigation work (spike/research/audit) is
+  // filed as the correct kind. Only when explicitly set: absence keeps preflight
+  // on its default `code` path with the body left unmarked (AC3).
+  if (typeof args.kind === 'string' && args.kind) flags.push('--kind', args.kind);
+  return flags;
+}
+
+function renderShapeBody(args) {
+  const flags = buildShapeFlags(args);
   const result = run('node', [PREFLIGHT_SCRIPT, ...flags], { timeout: GH_API_TIMEOUT_MS });
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.status !== 0)
