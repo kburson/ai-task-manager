@@ -54,7 +54,7 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
   return { status: 'healed', startsBefore, startsAfter, commentId: comment.id };
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const out = { issue: null, apply: false, help: false };
   for (const a of argv) {
     if (a === '--apply') out.apply = true;
@@ -65,36 +65,47 @@ function parseArgs(argv) {
   return out;
 }
 
-function printUsage() {
-  process.stdout.write(
+export function printUsage(out = process.stdout) {
+  out.write(
     'Usage: node scripts/task-tracker/heal-timing-starts.mjs <issue#> [--apply | --check-only]\n'
   );
 }
 
-function timingLockPath(issueNumber, projDir) {
+export function timingLockPath(issueNumber, projDir) {
   const safe = String(issueNumber).replace(/[^A-Za-z0-9_-]/g, '_');
   return resolveTimingLockPath(safe, projDir);
 }
 
-async function main(argv) {
+// I/O + orchestration seams are injectable (`deps`) so `main` is exercisable
+// offline; every dep defaults to the real implementation, keeping the CLI
+// runtime path byte-identical.
+export async function main(argv, deps = {}) {
+  const loadConfigFn = deps.loadConfig || loadConfig;
+  const withLockFn = deps.withLock || withLock;
+  const runHealFn = deps.runHeal || runHeal;
+  const getProjectDirFn = deps.getProjectDir || getProjectDir;
+  const out = deps.out || process.stdout;
+  const err = deps.err || process.stderr;
+  const exit = deps.exit || ((code) => process.exit(code));
+
   const args = parseArgs(argv);
   if (args.help || !args.issue) {
-    printUsage();
-    process.exit(args.help ? 0 : 2);
+    printUsage(out);
+    return exit(args.help ? 0 : 2);
   }
-  const cfg = await loadConfig();
+  const cfg = await loadConfigFn();
   const repo = cfg.repo;
   if (!repo) {
-    process.stderr.write('heal-timing-starts: no repo configured\n');
-    process.exit(2);
+    err.write('heal-timing-starts: no repo configured\n');
+    return exit(2);
   }
 
   // Serialize the read-transform-write against concurrent timing appenders on
   // the same per-issue lock `postTimingEvent` uses.
-  const lockPath = timingLockPath(args.issue, getProjectDir());
-  const res = await withLock(
+  const lockPath = timingLockPath(args.issue, getProjectDirFn());
+  const res = await withLockFn(
     lockPath,
-    () => runHeal({ issueNumber: args.issue, repo, apply: args.apply }),
+    () => runHealFn({ issueNumber: args.issue, repo, apply: args.apply }),
     {
       timeoutMs: 10_000,
       retries: 2,
@@ -102,13 +113,13 @@ async function main(argv) {
   );
 
   const verb = args.apply ? 'apply' : 'check-only';
-  process.stdout.write(
+  out.write(
     `#${args.issue} [${verb}] ${res.status}: ${res.startsBefore} start row(s)` +
       (res.status === 'no-comment' ? '' : ` → ${res.startsAfter} after heal`) +
       '\n'
   );
   if (res.status === 'dry-run') {
-    process.stdout.write('(dry-run — re-run with --apply to write)\n');
+    out.write('(dry-run — re-run with --apply to write)\n');
   }
 }
 
