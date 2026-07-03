@@ -84,8 +84,12 @@ export function checkOnlyExitCode(results) {
   return 0;
 }
 
-async function fetchOpenIssues(repo) {
-  const { stdout } = await pexec(
+// #637 — I/O primitives accept an optional `deps` bag so tests can drive them
+// offline. Every dep defaults to the real implementation, so production callers
+// pass nothing and behaviour is unchanged.
+export async function fetchOpenIssues(repo, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'list', '-R', repo, '--state', 'open', '--limit', '200', '--json', 'number'],
     { timeout: GH_API_TIMEOUT_MS }
@@ -93,8 +97,9 @@ async function fetchOpenIssues(repo) {
   return JSON.parse(stdout).map((i) => String(i.number));
 }
 
-async function fetchIssue(repo, num) {
-  const { stdout } = await pexec(
+export async function fetchIssue(repo, num, deps = {}) {
+  const run = deps.pexec || pexec;
+  const { stdout } = await run(
     'gh',
     ['issue', 'view', num, '-R', repo, '--json', 'number,body,createdAt'],
     { timeout: GH_API_TIMEOUT_MS }
@@ -102,27 +107,29 @@ async function fetchIssue(repo, num) {
   return JSON.parse(stdout);
 }
 
-async function writeBody(repo, num, body) {
-  const tmp = path.join(
-    projectScratchDir('test'),
-    `aitm-heal-entry-${process.pid}-${Date.now()}.md`
-  );
-  writeFileSync(tmp, body, 'utf8');
+export async function writeBody(repo, num, body, deps = {}) {
+  const run = deps.pexec || pexec;
+  const write = deps.writeFile || writeFileSync;
+  const unlink = deps.unlink || unlinkSync;
+  const scratch = deps.scratchDir || projectScratchDir;
+  const tmp = path.join(scratch('test'), `aitm-heal-entry-${process.pid}-${Date.now()}.md`);
+  write(tmp, body, 'utf8');
   try {
-    await pexec('gh', ['issue', 'edit', num, '-R', repo, '--body-file', tmp], {
+    await run('gh', ['issue', 'edit', num, '-R', repo, '--body-file', tmp], {
       timeout: GH_API_TIMEOUT_MS,
     });
   } finally {
     try {
-      unlinkSync(tmp);
+      unlink(tmp);
     } catch {
       /* best-effort */
     }
   }
 }
 
-async function postComment(repo, num, body) {
-  await pexec('gh', ['issue', 'comment', num, '-R', repo, '--body', body], {
+export async function postComment(repo, num, body, deps = {}) {
+  const run = deps.pexec || pexec;
+  await run('gh', ['issue', 'comment', num, '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
   });
 }
@@ -315,8 +322,11 @@ function applyStageHeal({ body, stage, plan }) {
   return next;
 }
 
-async function healOne({ repo, num, apply }) {
-  const issue = await fetchIssue(repo, num);
+export async function healOne({ repo, num, apply, deps = {} }) {
+  const fetch = deps.fetchIssue || fetchIssue;
+  const write = deps.writeBody || writeBody;
+  const post = deps.postComment || postComment;
+  const issue = await fetch(repo, num, deps);
   let body = issue.body || '';
   const createdAt = normalizeTs(issue.createdAt);
   const stagesActed = [];
@@ -336,57 +346,63 @@ async function healOne({ repo, num, apply }) {
   if (!apply) {
     return { num, action: 'plan', stagesActed, illegalArcs };
   }
-  await writeBody(repo, num, body);
+  await write(repo, num, body, deps);
   const summary = stagesActed
     .map((s) => `\`aitm-entered-${s.stage}: ${s.ts}\` (${s.action}, reason: ${s.reason})`)
     .join('; ');
   const commentBody = `🛠 Heal entry markers: ${summary}. The chain-integrity close gate (#138) requires monotonic, audited stage-entry markers; this comment + the per-stage \`aitm-backfill\` markers provide retroactive provenance.`;
-  await postComment(repo, num, commentBody);
+  await post(repo, num, commentBody, deps);
   return { num, action: 'applied', stagesActed };
 }
 
-async function main() {
-  const { issues, apply, checkOnly } = parseArgs(process.argv.slice(2));
+export async function main(argv = process.argv.slice(2), deps = {}) {
+  const load = deps.loadConfig || loadConfig;
+  const fetchOpen = deps.fetchOpenIssues || fetchOpenIssues;
+  const heal = deps.healOne || healOne;
+  const out = deps.out || ((s) => process.stdout.write(s));
+  const err = deps.err || ((s) => process.stderr.write(s));
+  const exit = deps.exit || ((c) => process.exit(c));
+  const { issues, apply, checkOnly } = parseArgs(argv);
   if (apply && checkOnly) {
-    process.stderr.write('heal-entry-markers: --apply and --check-only are mutually exclusive\n');
-    process.exit(2);
+    err('heal-entry-markers: --apply and --check-only are mutually exclusive\n');
+    return exit(2);
   }
-  const cfg = loadConfig();
+  const cfg = load();
   const repo = cfg.repo;
-  const targets = issues.length > 0 ? issues : await fetchOpenIssues(repo);
+  const targets = issues.length > 0 ? issues : await fetchOpen(repo, deps);
   const results = [];
   for (const num of targets) {
     try {
-      results.push(await healOne({ repo, num, apply }));
-    } catch (err) {
-      results.push({ num, action: 'error', reason: err.message });
+      results.push(await heal({ repo, num, apply, deps }));
+    } catch (e) {
+      results.push({ num, action: 'error', reason: e.message });
     }
   }
   for (const r of results) {
     if (r.action === 'plan') {
       const parts = r.stagesActed.map((s) => `${s.stage}=${s.action}:${s.ts}(${s.reason})`);
-      process.stdout.write(`#${r.num}: would heal ${parts.join(', ')}\n`);
+      out(`#${r.num}: would heal ${parts.join(', ')}\n`);
       if (r.illegalArcs && r.illegalArcs.length) {
         const arcs = r.illegalArcs.map((a) => `${a.from}->${a.to}@${a.atTs}`).join(', ');
-        process.stdout.write(`#${r.num}: illegal arcs detected (diagnostic only): ${arcs}\n`);
+        out(`#${r.num}: illegal arcs detected (diagnostic only): ${arcs}\n`);
       }
     } else if (r.action === 'illegal-arcs') {
       const arcs = r.illegalArcs.map((a) => `${a.from}->${a.to}@${a.atTs}`).join(', ');
-      process.stdout.write(`#${r.num}: illegal arcs detected (diagnostic only): ${arcs}\n`);
+      out(`#${r.num}: illegal arcs detected (diagnostic only): ${arcs}\n`);
     } else if (r.action === 'applied') {
       const parts = r.stagesActed.map((s) => `${s.stage}=${s.action}:${s.ts}`);
-      process.stdout.write(`#${r.num}: healed ${parts.join(', ')}\n`);
+      out(`#${r.num}: healed ${parts.join(', ')}\n`);
     } else if (r.action === 'skip') {
-      process.stdout.write(`#${r.num}: skip (${r.reason})\n`);
+      out(`#${r.num}: skip (${r.reason})\n`);
     } else if (r.action === 'error') {
-      process.stderr.write(`#${r.num}: ERROR ${r.reason}\n`);
+      err(`#${r.num}: ERROR ${r.reason}\n`);
     }
   }
   if (!apply) {
-    process.stdout.write('\n(dry-run — pass --apply to write)\n');
+    out('\n(dry-run — pass --apply to write)\n');
   }
   if (checkOnly) {
-    process.exit(checkOnlyExitCode(results));
+    return exit(checkOnlyExitCode(results));
   }
 }
 
