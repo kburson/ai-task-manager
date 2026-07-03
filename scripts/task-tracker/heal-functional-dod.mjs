@@ -140,7 +140,14 @@ export function healFunctionalSection(body) {
 
 // ----- Orchestrator (CLI entry) -----
 
-function parseArgs(argv) {
+// Parse CLI flags. I/O + termination are injectable (`io.out`/`io.err`/
+// `io.exit`) so the flag-routing branches (`--help`, invalid `--state`) are
+// exercisable offline; every hook defaults to the real process stream/exit,
+// keeping the CLI runtime path byte-identical.
+export function parseArgs(argv, io = {}) {
+  const out = io.out || process.stdout;
+  const err = io.err || process.stderr;
+  const exit = io.exit || ((code) => process.exit(code));
   const args = { state: 'open', apply: false, scope: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -159,29 +166,31 @@ function parseArgs(argv) {
         .map((s) => Number(s.replace(/^#/, '')))
         .filter(Number.isFinite);
     else if (a === '--help' || a === '-h') {
-      printUsage();
-      process.exit(0);
+      printUsage(out);
+      exit(0);
+      return args;
     }
   }
   if (!['open', 'closed', 'all'].includes(args.state)) {
-    process.stderr.write(`heal-functional-dod: invalid --state ${args.state}\n`);
-    process.exit(2);
+    err.write(`heal-functional-dod: invalid --state ${args.state}\n`);
+    exit(2);
+    return args;
   }
   return args;
 }
 
-function printUsage() {
-  process.stdout.write(
+export function printUsage(out = process.stdout) {
+  out.write(
     'Usage: heal-functional-dod.mjs [--state open|closed|all] [--apply] [--scope N,N,...]\n'
   );
 }
 
-async function fetchAllIssueNumbers({ repo, state, projectId }) {
+export async function fetchAllIssueNumbers({ repo, state, projectId }, gqlFn = gql) {
   const { owner, repoName } = splitRepo(repo);
   const numbers = [];
   let cursor = null;
   for (let page = 0; page < 50; page++) {
-    const data = await gql(
+    const data = await gqlFn(
       `
       query($owner: String!, $repo: String!, $cursor: String) {
         repository(owner: $owner, name: $repo) {
@@ -212,9 +221,9 @@ async function fetchAllIssueNumbers({ repo, state, projectId }) {
   return numbers;
 }
 
-async function fetchIssueBody(issueNumber, repo) {
+export async function fetchIssueBody(issueNumber, repo, gqlFn = gql) {
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(
+  const data = await gqlFn(
     `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
@@ -226,23 +235,34 @@ async function fetchIssueBody(issueNumber, repo) {
   return data?.repository?.issue?.body ?? '';
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const cfg = loadConfig();
+// I/O + orchestration seams are injectable (`deps`) so `main` is exercisable
+// offline; every dep defaults to the real implementation, keeping the CLI
+// runtime path byte-identical.
+export async function main(argv, deps = {}) {
+  const loadConfigFn = deps.loadConfig || loadConfig;
+  const fetchNumbers = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
+  const fetchBody = deps.fetchIssueBody || fetchIssueBody;
+  const mutate = deps.mutateIssueBody || mutateIssueBody;
+  const out = deps.out || process.stdout;
+  const err = deps.err || process.stderr;
+  const exit = deps.exit || ((code) => process.exit(code));
+
+  const args = parseArgs(argv, { out, err, exit });
+  const cfg = loadConfigFn();
   if (!cfg.repo) {
-    process.stderr.write('heal-functional-dod: repo not configured\n');
-    process.exit(1);
+    err.write('heal-functional-dod: repo not configured\n');
+    return exit(1);
   }
   if (!cfg.projectId) {
-    process.stderr.write('heal-functional-dod: projectId not configured\n');
-    process.exit(1);
+    err.write('heal-functional-dod: projectId not configured\n');
+    return exit(1);
   }
 
   const numbers =
     args.scope ??
-    (await fetchAllIssueNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
+    (await fetchNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
 
-  process.stdout.write(
+  out.write(
     `heal-functional-dod: mode=${args.apply ? 'APPLY' : 'dry-run'} state=${args.state} issues=${numbers.length}\n`
   );
 
@@ -252,13 +272,13 @@ async function main() {
 
   for (const n of numbers) {
     try {
-      const body = await fetchIssueBody(n, cfg.repo);
+      const body = await fetchBody(n, cfg.repo);
       const det = detectMissingKeys(body);
       if (!det.affected) continue;
       affectedCount++;
-      process.stdout.write(`#${n}\tmissing: ${det.missingKeys.join(',')}\n`);
+      out.write(`#${n}\tmissing: ${det.missingKeys.join(',')}\n`);
       if (args.apply) {
-        const res = await mutateIssueBody({
+        const res = await mutate({
           issueNumber: n,
           repo: cfg.repo,
           mutate: (base) => healFunctionalSection(base).body,
@@ -266,15 +286,13 @@ async function main() {
         });
         if (res?.status !== 'no-op') healedCount++;
       }
-    } catch (err) {
+    } catch (e) {
       errorCount++;
-      process.stdout.write(`#${n}\tERROR: ${err.message}\n`);
+      out.write(`#${n}\tERROR: ${e.message}\n`);
     }
   }
 
-  process.stdout.write(
-    `Summary: affected=${affectedCount} healed=${healedCount} errors=${errorCount}\n`
-  );
+  out.write(`Summary: affected=${affectedCount} healed=${healedCount} errors=${errorCount}\n`);
 }
 
 const _isMain = (() => {
@@ -286,7 +304,7 @@ const _isMain = (() => {
 })();
 
 if (_isMain) {
-  main().catch((err) => {
+  main(process.argv.slice(2)).catch((err) => {
     process.stderr.write(`heal-functional-dod: ${err.stack || err.message}\n`);
     process.exit(1);
   });
