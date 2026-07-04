@@ -33,8 +33,8 @@ body:
       label: Acceptance Criteria
       description: How will we know this fix is done?
       value: |
-        - [ ]
-        - [ ]
+        - [ ] _TBD — define acceptance criteria at Refine._
+
     validations:
       required: true
 
@@ -61,7 +61,7 @@ body:
         - 'L - 12-20 hours'
         - 'XL - 24+ hours'
     validations:
-      required: true
+      required: false
 
   - type: input
     id: estimate
@@ -70,7 +70,7 @@ body:
       description: Mid-point fix estimate in hours, for example 2 or 2h.
       placeholder: '2'
     validations:
-      required: true
+      required: false
 
   - type: input
     id: rank

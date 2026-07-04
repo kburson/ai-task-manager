@@ -24,10 +24,10 @@ body:
       label: Acceptance Criteria
       description: How will we know this is done?
       value: |
-        - [ ]
-        - [ ]
+        - [ ] _TBD — define acceptance criteria at Refine._
+
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: priority
