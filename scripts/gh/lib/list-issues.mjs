@@ -4,9 +4,14 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const pexec = promisify(execFile);
+// Injectable child_process seam (#646): production wiring defaults to the real
+// node:child_process execFile; tests override `deps.execFile` to drive the
+// pagination loop offline without gh or the network. Behaviour-preserving —
+// the default path is byte-identical to a direct execFile call.
+export const deps = { execFile };
 
 export async function listAllIssues(repo, { perPage = 100, timeoutMs = 30000 } = {}) {
+  const pexec = promisify(deps.execFile);
   const issues = [];
   let page = 1;
   while (true) {
