@@ -24,7 +24,7 @@ body:
       label: Acceptance Criteria
       description: How will we know this is done?
       value: |
-        - [ ] _TBD — define acceptance criteria at Refine._
+        - [ ] _TBD — define acceptance criteria at Plan stage._
 
     validations:
       required: false
