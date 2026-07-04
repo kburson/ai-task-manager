@@ -172,9 +172,9 @@ assert.equal(normalizeMarkerTs(null), null);
 // ---- diffSchema: no drift ---------------------------------------------------
 const STATUS_OK = {
   name: 'Status',
-  options: ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'].map((n) => ({
-    name: n,
-  })),
+  options: ['Backlog', 'On Deck', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'].map(
+    (n) => ({ name: n })
+  ),
 };
 {
   const projectFields = [

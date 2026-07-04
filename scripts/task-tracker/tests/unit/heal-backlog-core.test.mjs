@@ -204,6 +204,7 @@ const TIMING_LOG_3_ROWS = [
       dataType: 'SINGLE_SELECT',
       options: [
         { name: 'Backlog' },
+        { name: 'On Deck' },
         { name: 'Refine' },
         { name: 'Plan' },
         { name: 'Develop' },
@@ -254,6 +255,7 @@ const TIMING_LOG_3_ROWS = [
       dataType: 'SINGLE_SELECT',
       options: [
         { name: 'Backlog' },
+        { name: 'On Deck' },
         { name: 'Refine' },
         { name: 'Plan' },
         { name: 'Develop' },

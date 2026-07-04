@@ -44,6 +44,7 @@ import { insertDeepDivePostedMarker, readDeepDiveSignals } from './lib/deep-dive
 import { convergeDiscuss, isDiscussPending } from './lib/discuss-marker.mjs';
 import { getDiscussLabel, syncDiscussLabel } from './lib/discuss-label.mjs';
 import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { STATE_TO_CONFIG_KEY } from './lib/move-state/policy.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs';
 import { renameTimingLogBody } from './lib/timing-slug-rename.mjs';
@@ -70,7 +71,15 @@ const HEAL_COMMENT_MARKER_PREFIX = '<!-- aitm-heal:';
 const HEAL_COMMENT_MARKER_RE = /<!--\s*aitm-heal:\s*[^>]+-->/i;
 const RECONCILE_KEYS = ['engagedTime', 'sessionTime', 'reviewTime', 'startTime'];
 const STATIC_KEYS = ['priority', 'size', 'estimate', 'rank'];
-const CANONICAL_STATUS_OPTIONS = ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'];
+// Derived from the move-state policy constant so the two column lists cannot
+// drift apart (#699): 'on-deck' → 'On Deck', etc. diffSchema compares
+// case-insensitively; display casing only affects report text.
+export const CANONICAL_STATUS_OPTIONS = Object.keys(STATE_TO_CONFIG_KEY).map((state) =>
+  state
+    .split('-')
+    .map((seg) => seg.charAt(0).toUpperCase() + seg.slice(1))
+    .join(' ')
+);
 
 // ----- Pure helpers (unit-tested) -----
 
@@ -298,6 +307,9 @@ export function diffSchema(projectFields, fieldDefs, statusOptions = CANONICAL_S
     'Tracked by',
     'Sub-issues progress',
     'Parent issue',
+    'Created',
+    'Updated',
+    'Closed',
   ]);
   for (const f of projectFields) {
     if (canonicalNames.has(f.name)) continue;
