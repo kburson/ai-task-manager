@@ -201,17 +201,22 @@ export function pendingClosePairState(body) {
 //
 // Returns:
 //   {
-//     visits: [{ stage, visit, startMs, endMs, durationMin }, ...],
-//     perStageMin: { backlog: N, refine: N, plan: N, ... },
-//     totalMin: N,
+//     visits: [{ stage, visit, startMs, endMs, durationSec, durationMin }, ...],
+//     perStageSec: { backlog: N, refine: N, plan: N, ... },
+//     perStageMin: { backlog: N, refine: N, plan: N, ... },  // derived compat (#695 removes)
+//     totalSec: N,
+//     totalMin: N,                                            // derived compat (#695 removes)
 //   }
+//
+// Seconds are the primary currency (#693); minute fields are derived compat
+// values retained until #695 pays off the dual-field debt.
 //
 // Legacy single-visit issues (no `-N` suffix on markers) parse as visit=1 and
 // produce the same shape as multi-visit issues.
 export function computeStageDurations(body) {
   const tuples = parseEntryMarkers(body);
   const visits = [];
-  const perStageMin = Object.fromEntries(STAGES.map((s) => [s, 0]));
+  const perStageSec = Object.fromEntries(STAGES.map((s) => [s, 0]));
   for (let i = 0; i < tuples.length; i++) {
     const { stage, visit, ts } = tuples[i];
     const startMs = Date.parse(ts);
@@ -219,30 +224,51 @@ export function computeStageDurations(body) {
     const next = tuples[i + 1];
     const endMs = next ? Date.parse(next.ts) : null;
     if (endMs == null || !Number.isFinite(endMs) || endMs < startMs) {
-      visits.push({ stage, visit, startMs, endMs: null, durationMin: 0 });
+      visits.push({ stage, visit, startMs, endMs: null, durationSec: 0, durationMin: 0 });
       continue;
     }
-    const durationMin = Math.round((endMs - startMs) / 60000);
-    visits.push({ stage, visit, startMs, endMs, durationMin });
-    if (stage in perStageMin) perStageMin[stage] += durationMin;
+    const durationSec = Math.round((endMs - startMs) / 1000);
+    const durationMin = Math.round(durationSec / 60);
+    visits.push({ stage, visit, startMs, endMs, durationSec, durationMin });
+    if (stage in perStageSec) perStageSec[stage] += durationSec;
   }
-  const totalMin = Object.values(perStageMin).reduce((a, b) => a + b, 0);
-  return { visits, perStageMin, totalMin };
+  const perStageMin = Object.fromEntries(
+    Object.entries(perStageSec).map(([s, sec]) => [s, Math.round(sec / 60)])
+  );
+  const totalSec = Object.values(perStageSec).reduce((a, b) => a + b, 0);
+  const totalMin = Math.round(totalSec / 60);
+  return { visits, perStageSec, perStageMin, totalSec, totalMin };
 }
 
 const STAGE_ROLLUP_MARKER_RE = /<!--\s*aitm-stage-rollup:\s*(\{[\s\S]*?\})\s*-->/;
 
+// Humanize a second count for display: `45s`, `3m 07s`, `1h 03m 45s`.
+// Leading zero units are omitted; inner units pad to two digits.
+export function humanizeSec(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(r).padStart(2, '0')}s`;
+  if (m > 0) return `${m}m ${String(r).padStart(2, '0')}s`;
+  return `${r}s`;
+}
+
 // Build the audit marker line that persists per-visit detail in the issue body.
-// `schema: 1` lets future readers detect format upgrades without parsing every
-// historical issue.
+// `schema: 2` (#693) records seconds as the primary currency; minute fields
+// (`perStage`, `totalMin`, `visits[].durationMin`) are derived compat values
+// retained for one story and removed in #695.
 export function buildStageRollupMarker(rollup) {
   const payload = {
-    schema: 1,
+    schema: 2,
+    perStageSec: rollup.perStageSec,
+    totalSec: rollup.totalSec,
     perStage: rollup.perStageMin,
     totalMin: rollup.totalMin,
-    visits: rollup.visits.map(({ stage, visit, durationMin }) => ({
+    visits: rollup.visits.map(({ stage, visit, durationSec, durationMin }) => ({
       stage,
       visit,
+      durationSec,
       durationMin,
     })),
   };

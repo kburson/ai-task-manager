@@ -18,6 +18,7 @@ import {
 import {
   applyPauseSpansToRows,
   computeStageDurations,
+  humanizeSec,
   parseTimingRows,
   rollupTotals,
   upsertStageRollupMarker,
@@ -172,12 +173,12 @@ async function fetchProjectMeta() {
   if (stageRollup.visits.length) {
     console.log('  Stage Time (per visit):');
     for (const v of stageRollup.visits) {
-      const closed = v.endMs != null ? `${v.durationMin} min` : 'open';
+      const closed = v.endMs != null ? humanizeSec(v.durationSec) : 'open';
       console.log(`    ${v.stage}#${v.visit}: ${closed}`);
     }
     console.log('  Stage Time (totals):');
-    for (const [stage, min] of Object.entries(stageRollup.perStageMin)) {
-      if (min > 0) console.log(`    ${stage}: ${min} min`);
+    for (const [stage, sec] of Object.entries(stageRollup.perStageSec)) {
+      if (sec > 0) console.log(`    ${stage}: ${humanizeSec(sec)}`);
     }
   }
 

@@ -68,9 +68,11 @@ import {
   );
   const line = buildStageRollupMarker(r);
   const payload = JSON.parse(line.match(/<!--\s*aitm-stage-rollup:\s*(\{[\s\S]*?\})\s*-->/)[1]);
-  assert.equal(payload.schema, 1);
-  assert.equal(payload.perStage.refine, 5);
+  assert.equal(payload.schema, 2);
+  assert.equal(payload.perStageSec.refine, 300);
+  assert.equal(payload.perStage.refine, 5, 'derived compat minutes retained until #695');
   assert.equal(payload.visits[0].stage, 'refine');
+  assert.equal(payload.visits[0].durationSec, 300);
 }
 
 // Upsert is idempotent: replaces existing marker rather than appending.
