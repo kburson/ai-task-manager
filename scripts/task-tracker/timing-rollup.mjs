@@ -201,15 +201,13 @@ export function pendingClosePairState(body) {
 //
 // Returns:
 //   {
-//     visits: [{ stage, visit, startMs, endMs, durationSec, durationMin }, ...],
+//     visits: [{ stage, visit, startMs, endMs, durationSec }, ...],
 //     perStageSec: { backlog: N, refine: N, plan: N, ... },
-//     perStageMin: { backlog: N, refine: N, plan: N, ... },  // derived compat (#695 removes)
 //     totalSec: N,
-//     totalMin: N,                                            // derived compat (#695 removes)
 //   }
 //
-// Seconds are the primary currency (#693); minute fields are derived compat
-// values retained until #695 pays off the dual-field debt.
+// Seconds are the only duration currency (#693 primary, #695 removed the
+// derived minute compat fields); callers round at the presentation edge.
 //
 // Legacy single-visit issues (no `-N` suffix on markers) parse as visit=1 and
 // produce the same shape as multi-visit issues.
@@ -224,20 +222,15 @@ export function computeStageDurations(body) {
     const next = tuples[i + 1];
     const endMs = next ? Date.parse(next.ts) : null;
     if (endMs == null || !Number.isFinite(endMs) || endMs < startMs) {
-      visits.push({ stage, visit, startMs, endMs: null, durationSec: 0, durationMin: 0 });
+      visits.push({ stage, visit, startMs, endMs: null, durationSec: 0 });
       continue;
     }
     const durationSec = Math.round((endMs - startMs) / 1000);
-    const durationMin = Math.round(durationSec / 60);
-    visits.push({ stage, visit, startMs, endMs, durationSec, durationMin });
+    visits.push({ stage, visit, startMs, endMs, durationSec });
     if (stage in perStageSec) perStageSec[stage] += durationSec;
   }
-  const perStageMin = Object.fromEntries(
-    Object.entries(perStageSec).map(([s, sec]) => [s, Math.round(sec / 60)])
-  );
   const totalSec = Object.values(perStageSec).reduce((a, b) => a + b, 0);
-  const totalMin = Math.round(totalSec / 60);
-  return { visits, perStageSec, perStageMin, totalSec, totalMin };
+  return { visits, perStageSec, totalSec };
 }
 
 const STAGE_ROLLUP_MARKER_RE = /<!--\s*aitm-stage-rollup:\s*(\{[\s\S]*?\})\s*-->/;
@@ -255,21 +248,18 @@ export function humanizeSec(sec) {
 }
 
 // Build the audit marker line that persists per-visit detail in the issue body.
-// `schema: 2` (#693) records seconds as the primary currency; minute fields
-// (`perStage`, `totalMin`, `visits[].durationMin`) are derived compat values
-// retained for one story and removed in #695.
+// `schema: 2` (#693) records seconds as the sole duration currency; the derived
+// minute compat fields (`perStage`, `totalMin`, `visits[].durationMin`) were
+// removed in #695 after the corpus heal (#694) migrated every live marker.
 export function buildStageRollupMarker(rollup) {
   const payload = {
     schema: 2,
     perStageSec: rollup.perStageSec,
     totalSec: rollup.totalSec,
-    perStage: rollup.perStageMin,
-    totalMin: rollup.totalMin,
-    visits: rollup.visits.map(({ stage, visit, durationSec, durationMin }) => ({
+    visits: rollup.visits.map(({ stage, visit, durationSec }) => ({
       stage,
       visit,
       durationSec,
-      durationMin,
     })),
   };
   return `<!-- aitm-stage-rollup: ${JSON.stringify(payload)} -->`;

@@ -17,13 +17,13 @@ import {
   assert.equal(r.visits.length, 3, 'three windows');
   assert.equal(r.visits[0].stage, 'refine');
   assert.equal(r.visits[0].visit, 1);
-  assert.equal(r.visits[0].durationMin, 10);
-  assert.equal(r.visits[1].durationMin, 20);
-  assert.equal(r.visits[2].durationMin, 0, 'trailing open window contributes 0');
-  assert.equal(r.perStageMin.refine, 10);
-  assert.equal(r.perStageMin.plan, 20);
-  assert.equal(r.perStageMin.develop, 0);
-  assert.equal(r.totalMin, 30);
+  assert.equal(r.visits[0].durationSec, 600);
+  assert.equal(r.visits[1].durationSec, 1200);
+  assert.equal(r.visits[2].durationSec, 0, 'trailing open window contributes 0');
+  assert.equal(r.perStageSec.refine, 600);
+  assert.equal(r.perStageSec.plan, 1200);
+  assert.equal(r.perStageSec.develop, 0);
+  assert.equal(r.totalSec, 1800);
 }
 
 // Re-entry case: develop visited twice, test visited twice.
@@ -38,12 +38,12 @@ import {
     '<!-- aitm-entered-review: 2026-05-19T01:25:00.000Z -->',
   ].join('\n');
   const r = computeStageDurations(body);
-  // refine 10 + plan 10 + develop#1 30 + test#1 10 + develop#2 20 + test#2 5 + review(open)=0
-  assert.equal(r.perStageMin.refine, 10);
-  assert.equal(r.perStageMin.plan, 10);
-  assert.equal(r.perStageMin.develop, 50, 'develop aggregates 30+20 across visits');
-  assert.equal(r.perStageMin.test, 15, 'test aggregates 10+5 across visits');
-  assert.equal(r.perStageMin.review, 0);
+  // refine 10m + plan 10m + develop#1 30m + test#1 10m + develop#2 20m + test#2 5m + review(open)=0
+  assert.equal(r.perStageSec.refine, 600);
+  assert.equal(r.perStageSec.plan, 600);
+  assert.equal(r.perStageSec.develop, 3000, 'develop aggregates 30m+20m across visits');
+  assert.equal(r.perStageSec.test, 900, 'test aggregates 10m+5m across visits');
+  assert.equal(r.perStageSec.review, 0);
   const developVisits = r.visits.filter((v) => v.stage === 'develop');
   assert.equal(developVisits.length, 2);
   assert.equal(developVisits[0].visit, 1);
@@ -54,8 +54,8 @@ import {
 {
   const r = computeStageDurations('');
   assert.equal(r.visits.length, 0);
-  assert.equal(r.totalMin, 0);
-  for (const min of Object.values(r.perStageMin)) assert.equal(min, 0);
+  assert.equal(r.totalSec, 0);
+  for (const sec of Object.values(r.perStageSec)) assert.equal(sec, 0);
 }
 
 // Marker builder is JSON-parseable and round-trips schema.
@@ -70,7 +70,7 @@ import {
   const payload = JSON.parse(line.match(/<!--\s*aitm-stage-rollup:\s*(\{[\s\S]*?\})\s*-->/)[1]);
   assert.equal(payload.schema, 2);
   assert.equal(payload.perStageSec.refine, 300);
-  assert.equal(payload.perStage.refine, 5, 'derived compat minutes retained until #695');
+  assert.equal('perStage' in payload, false, 'compat minutes removed in #695');
   assert.equal(payload.visits[0].stage, 'refine');
   assert.equal(payload.visits[0].durationSec, 300);
 }

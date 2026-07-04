@@ -41,8 +41,10 @@ function ladderComment(rows) {
   assert.equal(payload.schema, 2);
   assert.equal(payload.perStageSec.refine, 187, 'seconds recomputed from timestamps');
   assert.equal(payload.totalSec, 187);
-  assert.equal(payload.perStage.refine, 3, 'stale 99-minute figure discarded');
+  assert.equal('perStage' in payload, false, 'minute compat keys removed in #695');
+  assert.equal('totalMin' in payload, false);
   assert.equal(payload.visits[0].durationSec, 187);
+  assert.equal('durationMin' in payload.visits[0], false);
   assert.equal(payload.visits[0].precision, undefined, 'entry markers are second-precision');
   assert.equal((next.match(/aitm-stage-rollup/g) || []).length, 1, 'replaced in place');
   assert.match(next, /aitm-fields/, 'invariant markers preserved');
@@ -95,9 +97,9 @@ function ladderComment(rows) {
   assert.equal(rows[2].tsHasSeconds, true);
   const r = rebuildFromTimingLadder(rows);
   const plan = r.visits.find((v) => v.stage === 'plan');
-  assert.equal(plan.durationMin, 7);
-  assert.equal(plan.durationSec, 7 * 60, 'minute windows derive seconds as min*60');
+  assert.equal(plan.durationSec, 7 * 60, 'minute windows derive seconds as whole-min*60');
   assert.equal(plan.precision, 'minute');
+  assert.equal('durationMin' in plan, false, 'minute compat field removed in #695');
   const dev = r.visits.find((v) => v.stage === 'develop');
   assert.equal(dev.durationSec, 90, 'true second window keeps real seconds');
   assert.equal(dev.precision, undefined);

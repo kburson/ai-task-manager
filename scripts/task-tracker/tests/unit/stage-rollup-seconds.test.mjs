@@ -1,7 +1,8 @@
-// @story #693
-// Schema:2 seconds-precision stage rollups.
-// computeStageDurations records durationSec as the primary currency with
-// derived minute compat fields; buildStageRollupMarker emits schema:2;
+// @story #695
+// Schema:2 seconds-only stage rollups.
+// computeStageDurations records durationSec as the sole duration currency —
+// the derived minute compat fields (#693) were removed in #695 and their
+// presence is a regression; buildStageRollupMarker emits schema:2;
 // humanizeSec renders `1h 03m 45s`-style display strings.
 import assert from 'node:assert/strict';
 import {
@@ -20,11 +21,12 @@ import {
     ].join('\n')
   );
   assert.equal(r.visits[0].durationSec, 42);
-  assert.equal(r.visits[0].durationMin, 1, 'derived minutes round 42s to 1');
   assert.equal(r.perStageSec.develop, 42);
-  assert.equal(r.perStageMin.develop, 1);
   assert.equal(r.totalSec, 42);
-  assert.equal(r.totalMin, 1);
+  // #695: minute compat fields removed — presence is a regression.
+  assert.equal('durationMin' in r.visits[0], false);
+  assert.equal('perStageMin' in r, false);
+  assert.equal('totalMin' in r, false);
 }
 
 // Multi-visit accumulation sums perStageSec across visits.
@@ -62,7 +64,7 @@ import {
   assert.equal(r.visits[0].endMs, null);
 }
 
-// Marker payload is schema:2 with second-primary and minute-compat keys.
+// Marker payload is schema:2 with seconds-only keys (#695: no minute compat).
 {
   const r = computeStageDurations(
     [
@@ -75,14 +77,15 @@ import {
   assert.equal(payload.schema, 2);
   assert.equal(payload.perStageSec.refine, 187);
   assert.equal(payload.totalSec, 187);
-  assert.equal(payload.perStage.refine, 3, 'compat minutes derived from seconds');
-  assert.equal(payload.totalMin, 3);
   assert.deepEqual(payload.visits[0], {
     stage: 'refine',
     visit: 1,
     durationSec: 187,
-    durationMin: 3,
   });
+  // #695: minute compat keys absent from the payload — presence is a regression.
+  assert.equal('perStage' in payload, false);
+  assert.equal('totalMin' in payload, false);
+  assert.equal('durationMin' in payload.visits[0], false);
 }
 
 // Upsert replaces an existing schema:1 marker with the schema:2 line in place.

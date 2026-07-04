@@ -9,7 +9,7 @@
 //      (`<stage>:started` / `<stage>:completed` … plus `demoted` and
 //      `issue:closed`). Rows predating second-precision timestamps (HH:MM,
 //      no seconds) yield visits flagged `precision:"minute"` with
-//      `durationSec = durationMin * 60`.
+//      `durationSec` derived as whole minutes × 60.
 
 import { computeStageDurations } from '../../task-tracker/timing-rollup.mjs';
 import { STAGES } from '../../task-tracker/lib/stage-entry-markers.mjs';
@@ -85,7 +85,8 @@ export function rebuildFromEntryMarkers(body) {
 // `{tsMs, event, tsHasSeconds}`). Walks rows in order; a PHASE_EVENTS enter
 // slug opens a (stage, visit) window, the next boundary slug closes it.
 // A window whose either endpoint lacks second resolution is minute-precision:
-// durationSec is derived minutes*60 and the visit carries precision:"minute".
+// durationSec is derived whole-minutes*60 and the visit carries
+// precision:"minute".
 export function rebuildFromTimingLadder(rows) {
   const visits = [];
   const perStageSec = Object.fromEntries(STAGES.map((s) => [s, 0]));
@@ -97,20 +98,16 @@ export function rebuildFromTimingLadder(rows) {
     const { stage, visit, startMs, startHasSec } = open;
     open = null;
     if (endMs == null || !Number.isFinite(endMs) || endMs < startMs) {
-      visits.push({ stage, visit, startMs, endMs: null, durationSec: 0, durationMin: 0 });
+      visits.push({ stage, visit, startMs, endMs: null, durationSec: 0 });
       return;
     }
+    // Minute-precision windows still round to whole minutes internally so the
+    // derived seconds honestly reflect the source resolution (min * 60).
     const minutePrecision = !startHasSec || !endHasSec;
-    let durationSec;
-    let durationMin;
-    if (minutePrecision) {
-      durationMin = Math.round((endMs - startMs) / 60000);
-      durationSec = durationMin * 60;
-    } else {
-      durationSec = Math.round((endMs - startMs) / 1000);
-      durationMin = Math.round(durationSec / 60);
-    }
-    const v = { stage, visit, startMs, endMs, durationSec, durationMin };
+    const durationSec = minutePrecision
+      ? Math.round((endMs - startMs) / 60000) * 60
+      : Math.round((endMs - startMs) / 1000);
+    const v = { stage, visit, startMs, endMs, durationSec };
     if (minutePrecision) v.precision = 'minute';
     visits.push(v);
     if (stage in perStageSec) perStageSec[stage] += durationSec;
@@ -131,25 +128,20 @@ export function rebuildFromTimingLadder(rows) {
   if (open) closeWindow(null, false);
 
   if (!visits.length) return null;
-  const perStageMin = Object.fromEntries(
-    Object.entries(perStageSec).map(([s, sec]) => [s, Math.round(sec / 60)])
-  );
   const totalSec = Object.values(perStageSec).reduce((a, b) => a + b, 0);
-  const totalMin = Math.round(totalSec / 60);
-  return { visits, perStageSec, perStageMin, totalSec, totalMin };
+  return { visits, perStageSec, totalSec };
 }
 
 // Schema:2 marker line with optional per-visit `precision` passthrough —
-// same payload shape as buildStageRollupMarker (#693) plus the honesty flag.
+// same seconds-only payload shape as buildStageRollupMarker (#695) plus the
+// honesty flag.
 export function buildHealedMarker(rollup) {
   const payload = {
     schema: 2,
     perStageSec: rollup.perStageSec,
     totalSec: rollup.totalSec,
-    perStage: rollup.perStageMin,
-    totalMin: rollup.totalMin,
-    visits: rollup.visits.map(({ stage, visit, durationSec, durationMin, precision }) => {
-      const v = { stage, visit, durationSec, durationMin };
+    visits: rollup.visits.map(({ stage, visit, durationSec, precision }) => {
+      const v = { stage, visit, durationSec };
       if (precision) v.precision = precision;
       return v;
     }),
