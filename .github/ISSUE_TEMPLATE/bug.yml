@@ -36,7 +36,7 @@ body:
         - [ ] _TBD — define acceptance criteria at Refine._
 
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: priority
