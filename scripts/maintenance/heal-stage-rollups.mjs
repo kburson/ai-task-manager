@@ -7,19 +7,21 @@
 // heal-stage-rollups-core.mjs, then writes exclusively through
 // `mutateIssueBody` so the marker-invariant guard stays active.
 //
-// Usage:
-//   node scripts/maintenance/heal-stage-rollups.mjs                # full corpus (open + closed), writes
-//   node scripts/maintenance/heal-stage-rollups.mjs --dry-run      # report per-issue diff summary, no writes
-//   node scripts/maintenance/heal-stage-rollups.mjs --issue 123    # single issue
+// Usage (#698: dry-run by default; only `--apply` writes):
+//   node scripts/maintenance/heal-stage-rollups.mjs                # dry-run over full corpus (open + closed)
+//   node scripts/maintenance/heal-stage-rollups.mjs --apply        # full corpus, writes
+//   node scripts/maintenance/heal-stage-rollups.mjs --issue 123    # single issue (add --apply to write)
 //   node scripts/maintenance/heal-stage-rollups.mjs --verify       # scan only; exit 1 if any schema:1 remains
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 import {
   healBody,
+  parseHealArgs,
   parseLadderRows,
   parseRollupMarker,
   rebuildFromEntryMarkers,
@@ -27,14 +29,22 @@ import {
 
 const execFileP = promisify(execFile);
 
-// ---- CLI ----
+// ---- CLI (guards run before loadConfig so `--help` never touches gh) ----
 
-const args = process.argv.slice(2);
-const dryRun = args.includes('--dry-run');
-const verify = args.includes('--verify');
-const issueArgIdx = args.indexOf('--issue');
-const singleIssue =
-  issueArgIdx >= 0 && args[issueArgIdx + 1] ? String(args[issueArgIdx + 1]).replace('#', '') : null;
+const argv = process.argv.slice(2);
+if (wantsHelp(argv)) {
+  emitSelfDoc('heal-stage-rollups');
+  process.exit(0);
+}
+const parsed = parseHealArgs(argv);
+if (parsed.error) {
+  console.error(`heal-stage-rollups: ${parsed.error}`);
+  console.error('Usage: heal-stage-rollups.mjs [--apply] [--dry-run] [--verify] [--issue <n>]');
+  process.exit(2);
+}
+const dryRun = parsed.mode !== 'write';
+const verify = parsed.mode === 'verify';
+const singleIssue = parsed.issue;
 
 const cfg = loadConfig();
 if (!cfg.repo) {

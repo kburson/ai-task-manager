@@ -101,6 +101,14 @@ export const SELF_DOC = {
     usage:
       'aitm heal-backlog [--state open|closed|all] [--apply] [--scope 1,2,3] [--rename-timing-slugs]',
   },
+  'heal-stage-rollups': {
+    group: 'Maintenance',
+    path: 'scripts/maintenance/heal-stage-rollups.mjs',
+    synopsis:
+      'Heal legacy aitm-stage-rollup markers to schema:2 seconds, rebuilt from raw timing evidence.',
+    audience: 'Operator running a corpus migration. Dry-run by default; --apply to write.',
+    usage: 'aitm heal-stage-rollups [--apply] [--dry-run] [--verify] [--issue <n>]',
+  },
   'rename-estimation-headers': {
     group: 'Maintenance',
     path: 'scripts/maintenance/rename-estimation-headers.mjs',

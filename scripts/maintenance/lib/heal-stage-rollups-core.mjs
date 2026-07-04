@@ -182,3 +182,33 @@ export function healBody(body, ladderRows = []) {
     summary: `schema:${fromSchema} -> schema:2 (${rollup.visits.length} visits, totalSec=${rollup.totalSec})`,
   };
 }
+
+// Parse the heal-stage-rollups CLI argv (#698). Pure so the contract is unit
+// testable without executing the script's top-level side effects. Returns one
+// of:
+//   { help: true }                       — a help token is present
+//   { error: 'unknown flag: <a>' }       — first unrecognized token
+//   { mode, issue }                      — mode: 'verify'|'dry-run'|'write'
+// Write mode requires an explicit `--apply` (alias `--write`); the zero-arg
+// default is dry-run. `--verify` (scan only) wins over `--apply`.
+export function parseHealArgs(argv = []) {
+  if (argv.some((a) => ['help', '?', '--help', '-h'].includes(String(a)))) {
+    return { help: true };
+  }
+  let apply = false;
+  let verify = false;
+  let issue = null;
+  for (let i = 0; i < argv.length; i++) {
+    const a = String(argv[i]);
+    if (a === '--apply' || a === '--write') apply = true;
+    else if (a === '--dry-run') apply = false;
+    else if (a === '--verify') verify = true;
+    else if (a === '--issue') {
+      const v = argv[i + 1];
+      if (v == null || String(v).startsWith('--')) return { error: '--issue requires a number' };
+      issue = String(v).replace('#', '');
+      i++;
+    } else return { error: `unknown flag: ${a}` };
+  }
+  return { mode: verify ? 'verify' : apply ? 'write' : 'dry-run', issue };
+}
