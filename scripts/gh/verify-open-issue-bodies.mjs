@@ -18,7 +18,16 @@ import { promisify } from 'node:util';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
 
-const pexec = promisify(execFile);
+// Injectable seam (#650): production wiring defaults to the real bindings; tests
+// override these to drive the fetch-paging, no-repo guard, JSON/text output, and
+// exit-code branches offline without gh or the network. Behaviour-preserving.
+export const deps = {
+  execFile,
+  loadConfig,
+  log: (s) => process.stdout.write(s),
+  err: (s) => process.stderr.write(s),
+  exit: (c) => process.exit(c),
+};
 
 // #480 AC9 — strict `{discuss}` detection: a line that is the bare token alone
 // (after trim). This deliberately does NOT reuse `hasDiscussMarker` from
@@ -79,7 +88,11 @@ export function formatSweepReport({ reports, failCount }) {
 }
 
 // ── live fetch ─────────────────────────────────────────────────────────────
-async function listOpenIssues(repo, { perPage = 100, timeoutMs = 30000 } = {}) {
+export async function listOpenIssues(
+  repo,
+  { perPage = 100, timeoutMs = 30000, execFile: exec = execFile } = {}
+) {
+  const pexec = promisify(exec);
   const issues = [];
   let page = 1;
   while (true) {
@@ -102,21 +115,22 @@ async function listOpenIssues(repo, { perPage = 100, timeoutMs = 30000 } = {}) {
   return issues;
 }
 
-async function main() {
-  const asJson = process.argv.slice(2).includes('--json');
-  const cfg = loadConfig();
+export async function main(argv = process.argv, overrides = {}) {
+  const d = { ...deps, ...overrides };
+  const asJson = argv.slice(2).includes('--json');
+  const cfg = d.loadConfig();
   if (!cfg.repo) {
-    process.stderr.write('No repo configured in task-tracker.json\n');
-    process.exit(1);
+    d.err('No repo configured in task-tracker.json\n');
+    return d.exit(1);
   }
-  const issues = await listOpenIssues(cfg.repo);
+  const issues = await listOpenIssues(cfg.repo, { execFile: d.execFile });
   const result = buildSweepReport(issues);
   if (asJson) {
-    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    d.log(JSON.stringify(result, null, 2) + '\n');
   } else {
-    process.stdout.write(formatSweepReport(result) + '\n');
+    d.log(formatSweepReport(result) + '\n');
   }
-  process.exit(result.failCount === 0 ? 0 : 5);
+  return d.exit(result.failCount === 0 ? 0 : 5);
 }
 
 // Only run when invoked directly (so tests can import the pure core).
