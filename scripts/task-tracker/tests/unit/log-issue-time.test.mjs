@@ -142,9 +142,9 @@ function makeEnv({ initialBody, fieldNodes }) {
   const calls = readFileSync(callLog, 'utf8');
   assert.ok(calls.includes('api graphql'), `should call gh api graphql for field writes\n${calls}`);
   // AC1 routing proof: the body write used mutateIssueBody's stdin form, not a
-  // raw `--body-file <tmpfile>`.
+  // raw `--body-file <tmpfile>`. #696 threads `-R <repo>` into the argv.
   assert.ok(
-    /issue edit 999 --body-file -(\s|$)/m.test(calls),
+    /issue edit 999 (?:-R \S+ )?--body-file -(\s|$)/m.test(calls),
     `body write must route through mutateIssueBody (--body-file -)\n${calls}`
   );
   assert.ok(
@@ -174,7 +174,7 @@ function makeEnv({ initialBody, fieldNodes }) {
   );
   const calls = readFileSync(callLog, 'utf8');
   assert.ok(
-    /issue edit 999 --body-file -(\s|$)/m.test(calls),
+    /issue edit 999 (?:-R \S+ )?--body-file -(\s|$)/m.test(calls),
     `body write still routes through mutateIssueBody\n${calls}`
   );
   console.log('PASS: no repair when startTime already present in issue body DB');
