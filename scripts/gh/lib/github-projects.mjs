@@ -3,16 +3,24 @@ import { promisify } from 'node:util';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
 
-const pexec = promisify(execFile);
+// Injectable child_process seam (#645): production wiring defaults to the real
+// node:child_process bindings; tests override `deps.execFile`/`deps.spawn` to
+// exercise gh()/gql() and every caller offline without touching the network or
+// the live GitHub project board. Behaviour-preserving — the default path is
+// byte-identical to a direct execFile/spawn call.
+export const deps = { execFile, spawn };
 
 export async function gh(args, options = {}) {
   const { input, ...rest } = options;
   if (input === undefined) {
-    const { stdout } = await pexec('gh', args, { timeout: GH_API_TIMEOUT_MS, ...rest });
+    const { stdout } = await promisify(deps.execFile)('gh', args, {
+      timeout: GH_API_TIMEOUT_MS,
+      ...rest,
+    });
     return stdout;
   }
   return new Promise((resolve, reject) => {
-    const child = spawn('gh', args, { timeout: GH_API_TIMEOUT_MS, ...rest });
+    const child = deps.spawn('gh', args, { timeout: GH_API_TIMEOUT_MS, ...rest });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => {
