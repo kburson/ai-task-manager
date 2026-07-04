@@ -83,28 +83,31 @@ test('AC1 ok-path: versionedWriteBody returns the post-write verify-fetch as `bo
 });
 
 test('AC1 no-op-path: versionedWriteBody returns the top-of-loop `remote` as `body`', async () => {
-  // A fixed remote + a lost write (pushBody no-op) + an identity mutate drives
-  // the retry into the no-op branch: attempt 1's verify fails (the stamped v2
-  // never lands), attempt 2 finds our edit is empty vs the last base → no-op.
+  // An identity mutate now short-circuits on the FIRST attempt (#697), before
+  // any push — the pushBody spy proves nothing was written.
   const fixed = `Stable body\n\n${VERSIONED(1)}\n`;
   let fetches = 0;
+  let pushes = 0;
   const res = await versionedWriteBody({
     issueNumber: 2,
     repo: 'o/r',
-    mutate: (base) => base, // identity → empty edit on retry
+    mutate: (base) => base,
     deps: {
       fetchBody: async () => {
         fetches++;
         return fixed;
       },
-      pushBody: async () => {}, // lost write — nothing persists
+      pushBody: async () => {
+        pushes++;
+      },
     },
   });
   assert.equal(res.status, 'no-op');
   assert.equal(res.body, fixed, 'no-op path must surface the top-of-loop remote as `body`');
+  assert.equal(pushes, 0, 'no-op path must not push');
   // The no-op `body` is the `remote` already fetched at the top of the loop —
   // not a fresh fetch tacked on to surface it.
-  assert.ok(fetches >= 2, 'no-op path reuses the loop fetches; none added to surface `body`');
+  assert.equal(fetches, 1, 'no-op path reuses the single loop fetch; none added to surface `body`');
 });
 
 // ── AC2: mutateIssueBody threads the verified body through its return ─────────

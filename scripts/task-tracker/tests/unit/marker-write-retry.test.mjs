@@ -44,10 +44,11 @@ function makeRemote({ initialBody = '', script = [] } = {}) {
 
 const repo = 'o/r';
 
-test('identity mutate still pushes a version bump (post-#295 contract)', async () => {
+test('identity mutate is a noop — no push, no version bump (post-#697 contract)', async () => {
   // Pre-#295 the helper compared `body === bodyBefore` and returned `noop`.
-  // Post-#295 the closure decides — and an identity mutate still produces a
-  // version-bumped body, which is a legitimate write.
+  // Post-#295 the closure decided and an identity mutate pushed a pure
+  // version-bump edit; #697 restored the short-circuit at the
+  // versionedWriteBody layer, so unchanged content never writes.
   const remote = makeRemote({ initialBody: stampBodyVersion('same body', 1) });
   const r = await writeIssueBodyWithRetry({
     issueNumber: 1,
@@ -56,9 +57,8 @@ test('identity mutate still pushes a version bump (post-#295 contract)', async (
     mutate: (base) => base,
     deps: { fetchBody: remote.fetchBody, pushBody: remote.pushBody },
   });
-  assert.equal(r.status, 'ok');
-  assert.equal(r.attempts, 1);
-  assert.equal(remote.calls.pushes, 1);
+  assert.equal(r.status, 'noop');
+  assert.equal(remote.calls.pushes, 0);
 });
 
 test('succeeds on first attempt — 1 push, no warn, no audit', async () => {
