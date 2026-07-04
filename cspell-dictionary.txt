@@ -177,3 +177,4 @@ metacharacter
 prefs
 covthr
 unstampable
+unrebuildable
