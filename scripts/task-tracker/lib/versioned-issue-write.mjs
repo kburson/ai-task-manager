@@ -310,6 +310,15 @@ export async function versionedWriteBody({
       ourLocal = await mutate(ourBase);
       assertMutateReturnedString({ ourLocal, issueNumber });
       checkStaleInput({ ourLocal, remoteVersion, issueNumber });
+      // #697 — no-op short-circuit, first attempt. The retry path already
+      // returns 'no-op' when the previous mutate changed nothing; without this
+      // mirror check an unchanged first-attempt result still pushed a pure
+      // version-bump edit (observed live: 13 issues polluted by heal sweeps).
+      // Marker-insensitive: stripping ourLocal means a mutate that re-emits a
+      // version marker over otherwise-identical content is also a no-op.
+      if (stripVersion(ourLocal) === ourBase) {
+        return { status: 'no-op', attempts, version: remoteVersion, body: remote };
+      }
     } else {
       // Retry — rebase our last edit onto the new remote.
       const ourEdit = editRange(lastBase, lastLocal);
