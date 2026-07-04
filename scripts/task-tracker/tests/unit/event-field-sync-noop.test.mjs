@@ -14,9 +14,12 @@
 // deliberately omitted: states carrying an event binding must still
 // usage-error (the sync path stays guarded), bindingless states must exit 0
 // silently. A new board state added to policy.mjs is therefore forced to pick
-// a side here. The issue number — not --item-id — is the omitted arg because
-// a bare `--item-id`-less invocation swallows the next positional as the item
-// id (pre-existing indexOf quirk) and would reach the live gh API.
+// a side here.
+//
+// @story #702: the parse once aliased args[0] as the item id when --item-id
+// was absent (indexOf(-1)+1), letting a flagless invocation slip past the
+// usage guard and die on the live gh API. The missing-flag cases below pin
+// the fixed behavior: fail fast at the guard, never reach the network.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -58,6 +61,20 @@ test('working state with missing issue number still usage-errors (sync path stay
   const r = run(['refine', '--item-id', 'PVTI_fake']);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /Usage: update-event-fields\.mjs/);
+});
+
+test('event-bound state with issue number but no --item-id fails fast at the usage guard (#702)', () => {
+  const r = run(['999999', 'refine']);
+  assert.equal(r.status, 1, `expected exit 1, got ${r.status}; stderr: ${r.stderr}`);
+  assert.match(r.stderr, /Usage: update-event-fields\.mjs/);
+  assert.doesNotMatch(r.stderr, /GraphQL|Could not resolve/, 'must not reach the live gh API');
+});
+
+test('--item-id parse unchanged when the flag is supplied (bindingless state stays a silent no-op)', () => {
+  const r = run(['999999', 'backlog', '--item-id', 'PVTI_fake']);
+  assert.equal(r.status, 0, `expected exit 0, got ${r.status}; stderr: ${r.stderr}`);
+  assert.equal(r.stdout.trim(), '');
+  assert.equal(r.stderr.trim(), '');
 });
 
 test('unrecognized state still usage-errors', () => {

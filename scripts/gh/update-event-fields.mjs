@@ -31,7 +31,10 @@ if (wantsHelp(args)) {
 }
 const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
 const state = args.find((a) => VALID_STATES.includes(a));
-const itemId = args[args.indexOf('--item-id') + 1] || '';
+// indexOf(-1)+1 would alias args[0] as the item id when the flag is absent —
+// guard the index so a missing flag falls through to the usage guard (#702).
+const idIdx = args.indexOf('--item-id');
+const itemId = idIdx === -1 ? '' : args[idIdx + 1] || '';
 
 // No event bindings exist for this state (backlog, on-deck) — the sync is a
 // no-op by definition, so exit before the arg guard: a missing --item-id is
