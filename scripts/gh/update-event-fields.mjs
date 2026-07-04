@@ -8,9 +8,21 @@ import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
+import { STATE_TO_CONFIG_KEY } from '../task-tracker/lib/move-state/policy.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
-const VALID_STATES = ['refine', 'plan', 'develop', 'test', 'review', 'done'];
+// Every board state is accepted (#701); states without an event binding are a
+// silent no-op below, so the caller never has to know which states carry events.
+const VALID_STATES = Object.keys(STATE_TO_CONFIG_KEY);
+
+const STATE_TO_EVENT = {
+  refine: 'moveToRefine',
+  plan: 'moveToPlan',
+  develop: 'moveToDevelopment',
+  test: 'moveToTest',
+  review: 'moveToReview',
+  done: 'moveToDone',
+};
 
 const args = process.argv.slice(2);
 if (wantsHelp(args)) {
@@ -21,21 +33,17 @@ const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
 const state = args.find((a) => VALID_STATES.includes(a));
 const itemId = args[args.indexOf('--item-id') + 1] || '';
 
+// No event bindings exist for this state (backlog, on-deck) — the sync is a
+// no-op by definition, so exit before the arg guard: a missing --item-id is
+// irrelevant when there is nothing to write (#701).
+if (state && !STATE_TO_EVENT[state]) process.exit(0);
+
 if (!issue || !state || !itemId) {
   console.error(
-    'Usage: update-event-fields.mjs <issue#> <refine|plan|develop|test|review|done> --item-id <project-item-id>'
+    `Usage: update-event-fields.mjs <issue#> <${VALID_STATES.join('|')}> --item-id <project-item-id>`
   );
   process.exit(1);
 }
-
-const STATE_TO_EVENT = {
-  refine: 'moveToRefine',
-  plan: 'moveToPlan',
-  develop: 'moveToDevelopment',
-  test: 'moveToTest',
-  review: 'moveToReview',
-  done: 'moveToDone',
-};
 
 const cfg = loadConfig();
 if (!cfg.projectId) process.exit(0);
