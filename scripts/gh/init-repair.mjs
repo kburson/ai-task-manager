@@ -13,7 +13,21 @@ import path from 'node:path';
 import { gql } from './lib/github-projects.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
 
-const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
+// Injectable seam (#648): production wiring defaults to the real node:fs calls,
+// the shared gql binding, and getProjectDir. Tests override these to drive the
+// backfill/match/write branches offline without touching the filesystem or the
+// live board. Behaviour-preserving — every default is the original binding.
+export const deps = {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  gql,
+  getProjectDir,
+  log: (s) => console.log(s),
+  err: (s) => process.stderr.write(s),
+  exit: (c) => process.exit(c),
+};
 
 const OPTION_KEYS = {
   kanbanOptionBacklog: 'backlog',
@@ -26,12 +40,12 @@ const OPTION_KEYS = {
   kanbanOptionDone: 'done',
 };
 
-function configPath() {
-  return path.join(getProjectDir(), '.ai-task-manager', 'task-tracker.json');
+function configPath(d = deps) {
+  return path.join(d.getProjectDir(), '.ai-task-manager', 'task-tracker.json');
 }
 
-async function fetchStatusOptions(projectId, kanbanFieldId) {
-  const data = await gql(
+export async function fetchStatusOptions(projectId, kanbanFieldId, gqlFn = deps.gql) {
+  const data = await gqlFn(
     `
     query($proj: ID!) {
       node(id: $proj) {
@@ -59,31 +73,37 @@ function loadOptionsFromEnv() {
   return JSON.parse(raw);
 }
 
-export async function runRepair() {
-  const cfgPath = configPath();
-  if (!existsSync(cfgPath)) {
-    process.stderr.write(`No config found at ${cfgPath}. Run: npx ai-task-manager init\n`);
-    process.exit(1);
+export async function runRepair(overrides = {}) {
+  const d = { ...deps, ...overrides };
+  const skipNetwork =
+    overrides.skipNetwork !== undefined
+      ? overrides.skipNetwork
+      : process.env.TT_SKIP_NETWORK === '1';
+  const fakeOptions =
+    overrides.fakeOptions !== undefined ? overrides.fakeOptions : loadOptionsFromEnv();
+
+  const cfgPath = configPath(d);
+  if (!d.existsSync(cfgPath)) {
+    d.err(`No config found at ${cfgPath}. Run: npx ai-task-manager init\n`);
+    return d.exit(1);
   }
-  const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  const cfg = JSON.parse(d.readFileSync(cfgPath, 'utf8'));
   if (!cfg.projectId || !cfg.kanbanFieldId) {
-    process.stderr.write(
-      'Config is missing projectId or kanbanFieldId. Run: npx ai-task-manager init\n'
-    );
-    process.exit(1);
+    d.err('Config is missing projectId or kanbanFieldId. Run: npx ai-task-manager init\n');
+    return d.exit(1);
   }
 
   const empties = Object.keys(OPTION_KEYS).filter((k) => !cfg[k]);
   if (empties.length === 0) {
-    console.log('All kanbanOption* fields already populated. Nothing to repair.');
+    d.log('All kanbanOption* fields already populated. Nothing to repair.');
     return { filled: [], alreadySet: Object.keys(OPTION_KEYS), unmatched: [] };
   }
 
   let options;
-  if (SKIP_NETWORK) {
-    options = loadOptionsFromEnv() || [];
+  if (skipNetwork) {
+    options = fakeOptions || [];
   } else {
-    options = await fetchStatusOptions(cfg.projectId, cfg.kanbanFieldId);
+    options = await fetchStatusOptions(cfg.projectId, cfg.kanbanFieldId, d.gql);
   }
 
   const byName = new Map(options.map((o) => [String(o.name || '').toLowerCase(), o.id]));
@@ -98,20 +118,18 @@ export async function runRepair() {
   }
 
   if (filled.length > 0) {
-    mkdirSync(path.dirname(cfgPath), { recursive: true });
-    writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
+    d.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    d.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
   }
 
-  console.log(`Filled: ${filled.length === 0 ? '(none)' : filled.join(', ')}`);
+  d.log(`Filled: ${filled.length === 0 ? '(none)' : filled.join(', ')}`);
   const alreadySet = Object.keys(OPTION_KEYS).filter((k) => !empties.includes(k));
-  if (alreadySet.length) console.log(`Already set: ${alreadySet.join(', ')}`);
+  if (alreadySet.length) d.log(`Already set: ${alreadySet.join(', ')}`);
   if (unmatched.length) {
-    console.log(
+    d.log(
       `Unmatched (no option named ${unmatched.map((k) => `"${OPTION_KEYS[k]}"`).join(', ')} on Status field): ${unmatched.join(', ')}`
     );
-    console.log(
-      '  → Add the missing column(s) to the GitHub Project Status field, then re-run repair.'
-    );
+    d.log('  → Add the missing column(s) to the GitHub Project Status field, then re-run repair.');
   }
   return { filled, alreadySet, unmatched };
 }
