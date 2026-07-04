@@ -211,15 +211,37 @@ export function collectStreamUtf8(stream) {
   });
 }
 
-function ghFetchBody(_repo, issueNumber) {
+// #696 — pure argv builders so the `-R <repo>` threading is directly unit-testable.
+// A falsy repo omits `-R`, preserving gh's CWD-remote resolution.
+export function ghFetchArgs(repo, issueNumber) {
+  return [
+    'issue',
+    'view',
+    String(issueNumber),
+    ...(repo ? ['-R', String(repo)] : []),
+    '--json',
+    'body',
+    '-q',
+    '.body',
+  ];
+}
+
+export function ghPushArgs(repo, issueNumber) {
+  return [
+    'issue',
+    'edit',
+    String(issueNumber),
+    ...(repo ? ['-R', String(repo)] : []),
+    '--body-file',
+    '-',
+  ];
+}
+
+function ghFetchBody(repo, issueNumber) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(
-      'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'body', '-q', '.body'],
-      {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }
-    );
+    const proc = spawn('gh', ghFetchArgs(repo, issueNumber), {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     const outP = collectStreamUtf8(proc.stdout);
     const errP = collectStreamUtf8(proc.stderr);
     proc.on('error', reject);
@@ -235,9 +257,9 @@ function ghFetchBody(_repo, issueNumber) {
   });
 }
 
-function ghPushBody(_repo, issueNumber, body) {
+function ghPushBody(repo, issueNumber, body) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('gh', ['issue', 'edit', String(issueNumber), '--body-file', '-'], {
+    const proc = spawn('gh', ghPushArgs(repo, issueNumber), {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const errP = collectStreamUtf8(proc.stderr);
