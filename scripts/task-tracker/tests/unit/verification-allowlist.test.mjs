@@ -167,7 +167,7 @@ const npmMutatorCases = [
   ['npm publish', /'npm' rejects subcommand 'publish'/],
   ['npm install foo', /'npm' rejects subcommand 'install'/],
   ['npm i', /'npm' rejects subcommand 'i'/],
-  ['npm audit fix', /'npm' rejects subcommand 'audit'/],
+  ['npm audit fix', /'npm audit' rejects 'fix'/],
   ['pnpm publish', /'pnpm' rejects subcommand 'publish'/],
 ];
 for (const [input, frag] of npmMutatorCases) {
@@ -184,6 +184,8 @@ const canonicalCases = [
   'npm run format:check',
   'npm run typecheck',
   'npm ci',
+  'npm audit',
+  'npm audit --audit-level=moderate',
   'node scripts/task-tracker/measure-context.mjs --all --adapter claude',
   'node scripts/task-tracker/measure-context.mjs --all --adapter codex',
   'gh issue view 198',

@@ -45,6 +45,9 @@ const BIN_RULES = {
   // `pack`, `install`, `audit fix`, etc. are explicitly excluded.
   npm: {
     allowedSubcommands: ['test', 'run', 'run-script', 'exec', 'ci', 'rebuild', 'audit'],
+    // `npm audit` alone (or with flags like --audit-level) is read-only; a
+    // non-flag second token is `npm audit fix`, which mutates the lockfile.
+    allowedSecondTokens: { audit: [] },
     forbiddenFlags: ['--prefix', '--cwd', '--registry', '--userconfig', '--globalconfig'],
   },
   pnpm: {
