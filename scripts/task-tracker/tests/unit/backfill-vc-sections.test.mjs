@@ -74,4 +74,38 @@ const PICKUP = '## Pickup Directive — MANDATORY, DO NOT SKIP';
   assert.equal(twice.status, 'skip', 'second pass must skip');
 }
 
+// #703 — prose that quotes the Pickup Directive heading verbatim (e.g. an AC
+// describing relocation of that heading) must not be mistaken for the real
+// heading. Anchor must be a line-start heading match, not a raw substring.
+{
+  const acLine = `- [ ] Bodies place \`${PICKUP}\` directly after \`## Plan Metadata\``;
+  const body = [
+    '## Acceptance Criteria',
+    '',
+    acLine,
+    '',
+    '## Definition of Done',
+    '- [ ] All automated tests pass',
+    '',
+    '---',
+    '',
+    PICKUP,
+    '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
+    '',
+  ].join('\n');
+
+  const r = buildVcBackfill(body);
+  assert.equal(r.status, 'healed');
+  assert.ok(r.body.includes(acLine), 'AC line must be left untouched');
+
+  const vcIdx = r.body.indexOf('## Verification Commands');
+  const realHeadingIdx = r.body.indexOf(PICKUP, r.body.indexOf(acLine) + acLine.length);
+  assert.ok(vcIdx >= 0, 'VC section must be inserted');
+  assert.ok(
+    vcIdx < realHeadingIdx,
+    'VC section must land before the real heading, not inside the AC prose'
+  );
+  console.log('PASS: prose-quoted heading text does not fool the anchor');
+}
+
 console.log('backfill-vc-sections.test.mjs: ok');

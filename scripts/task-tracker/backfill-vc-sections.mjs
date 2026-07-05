@@ -22,7 +22,11 @@ import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
 
-const PICKUP_ANCHOR = '## Pickup Directive — MANDATORY, DO NOT SKIP';
+// Line-start heading match — mirrors `PICKUP_HEADING_RE` in lib/deep-dive.mjs.
+// A raw substring search (e.g. `indexOf('## Pickup Directive...')`) would also
+// match the same text quoted inside AC/Scope/User-Story prose, splicing the VC
+// section into the middle of that prose instead of before the real heading.
+const PICKUP_HEADING_RE = /^##\s+Pickup Directive\b.*$/im;
 
 // The four standard Functional-DoD commands a freshly-created post-#410 body
 // seeds when no AC/DoD command is declared. Matches preflight-issue.mjs' result
@@ -51,13 +55,13 @@ export function buildVcBackfill(body = '') {
   const vcSection =
     '## Verification Commands\n\n' + commands.map((c) => `- [ ] \`${c}\``).join('\n') + '\n\n';
 
-  // Canonical placement (#410): immediately before the Pickup Directive anchor;
-  // append at end-of-body when the anchor is absent (sparse/epic bodies).
-  const idx = src.indexOf(PICKUP_ANCHOR);
+  // Canonical placement (#410): immediately before the Pickup Directive heading;
+  // append at end-of-body when the heading is absent (sparse/epic bodies).
+  const match = PICKUP_HEADING_RE.exec(src);
   const healed =
-    idx === -1
+    match === null
       ? src.replace(/\s*$/, '\n\n') + vcSection
-      : src.slice(0, idx) + vcSection + src.slice(idx);
+      : src.slice(0, match.index) + vcSection + src.slice(match.index);
 
   return { status: 'healed', mode, commands, body: healed };
 }
