@@ -117,26 +117,30 @@ export function buildDeepDiveBlock({ ts, appendix, date } = {}) {
   return `\n\n${marker}\n\n${heading}\n\n${trimmed}\n`;
 }
 
-// Locate insertion point. Prefer the line AFTER the `---` separator that
-// follows the Pickup Directive heading. Fallback to before the
-// `aitm-fields` JSON trailer. Last resort: end of body.
+// Locate insertion point. Prefer the end of the contiguous Pickup Directive
+// block — the heading line plus its following `>` blockquote lines and any
+// blank lines — stopping before the next `##` heading or other content
+// (#700: the directive now sits right after `## Plan Metadata`, so the
+// deep-dive block lands directly beneath it instead of at the body's tail).
+// Fallback to before the `aitm-fields` JSON trailer. Last resort: end of body.
 export function findInsertOffset(body) {
   const src = String(body || '');
   const pickup = PICKUP_HEADING_RE.exec(src);
   if (pickup) {
-    // Find the first `---` line after the heading.
-    const after = src.indexOf('\n', pickup.index + pickup[0].length);
-    if (after !== -1) {
-      const sepRe = /^---\s*$/m;
-      sepRe.lastIndex = 0;
-      const rest = src.slice(after);
-      const sep = sepRe.exec(rest);
-      if (sep) {
-        return after + sep.index + sep[0].length;
+    const start = pickup.index + pickup[0].length;
+    const rest = src.slice(start);
+    const lineRe = /\n([^\n]*)/g;
+    let end = start;
+    let match;
+    while ((match = lineRe.exec(rest))) {
+      const line = match[1];
+      if (/^\s*>/.test(line) || line.trim() === '') {
+        end = start + lineRe.lastIndex;
+        continue;
       }
+      break;
     }
-    // No separator → insert at end of pickup line.
-    return pickup.index + pickup[0].length;
+    return end;
   }
   const fields = FIELDS_TRAILER_RE.exec(src);
   if (fields) {

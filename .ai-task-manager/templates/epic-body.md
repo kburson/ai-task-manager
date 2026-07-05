@@ -5,10 +5,10 @@ Canonical heading order (the parity test enforces this):
   ## User Story
   ## Scope
   ## Plan Metadata
+  ## Pickup Directive             (static; sits under Plan Metadata, #700)
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Sub-Issues                   (list inserted after sub-issue loop)
   ## Definition of Done           (2-hash; appended by preflight tail, #480)
-  ## Pickup Directive             (appended by preflight tail)
   <!-- aitm-fields: ... -->       (appended by project-tether)
 
 Placeholders (substituted by preflight-issue.mjs --shape epic):
@@ -36,6 +36,10 @@ So that [why they want to accomplish that thing]
 ## Plan Metadata
 
 {{plan_metadata}}
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
+
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
 
 ## Acceptance Criteria
 

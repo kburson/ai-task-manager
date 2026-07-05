@@ -48,14 +48,15 @@ function fakeMutateFactory(initial) {
   };
 }
 
+// #700 — Pickup Directive now sits right after Plan Metadata (no trailing
+// `---` separator); the deep-dive block lands directly under its contiguous
+// blockquote/blank-line block, ahead of the entered-plan/fields markers.
 const BODY_WITH_DIRECTIVE = [
   '## Scope',
   'do thing',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
-  '',
-  '---',
   '',
   '<!-- aitm-entered-plan: 2026-06-06T05:00:00Z -->',
   '',

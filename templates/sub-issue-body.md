@@ -5,9 +5,9 @@ Canonical heading order (the parity test enforces this):
   ## User Story
   ## Scope
   ## Plan Metadata                (must include `**Parent epic:** #<EPIC_N>`)
+  ## Pickup Directive             (static; sits under Plan Metadata, #700)
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Definition of Done           (2-hash; appended by preflight tail, #480)
-  ## Pickup Directive             (appended by preflight tail)
   <!-- aitm-fields: ... -->       (appended by project-tether)
 
 Placeholders (substituted by preflight-issue.mjs --shape sub-issue):
@@ -37,6 +37,10 @@ So that [why they want to accomplish that thing]
 {{plan_metadata}}
 
 **Parent epic:** {{parent_epic}}
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
+
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
 
 ## Acceptance Criteria
 

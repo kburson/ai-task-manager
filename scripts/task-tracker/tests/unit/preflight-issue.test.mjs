@@ -157,12 +157,15 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
         );
       }
 
-      // (c) section lands before the Pickup Directive.
+      // (c) section lands before Definition of Done. #700 moved Pickup
+      // Directive up to right after Plan Metadata, so VC (seeded just
+      // before DoD) now follows Pickup instead of preceding it.
       const vcIdx = r.stdout.indexOf('## Verification Commands');
       const pickupIdx = r.stdout.indexOf('## Pickup Directive');
+      const dodIdx = r.stdout.indexOf('## Definition of Done');
       assert.ok(
-        vcIdx !== -1 && pickupIdx !== -1 && vcIdx < pickupIdx,
-        'VC must precede Pickup Directive'
+        pickupIdx !== -1 && vcIdx !== -1 && dodIdx !== -1 && pickupIdx < vcIdx && vcIdx < dodIdx,
+        'Pickup Directive must precede Verification Commands, which must precede Definition of Done'
       );
 
       // (d) fixed point — audit reports nothing missing from the rendered body.

@@ -245,16 +245,25 @@ function resolveRenderKind(args) {
 // drops the annotated `tests` item, and because `## Verification Commands` is
 // derived from the assembled body downstream, its `npm run test:all` seed drops
 // with it automatically.
-function tailBlock(dodPath, kind = DEFAULT_KIND) {
+//
+// #700 — the Pickup Directive moved out of this tail and into the shape
+// templates directly (right after `## Plan Metadata`), so the issue body reads
+// linearly: directive first, then AC/VC/DoD. This tail now emits DoD only.
+// #480 — `## Definition of Done` (2-hash) is a top-level sibling of
+// `## Acceptance Criteria` / `## Verification Commands`, so the CODE_COMPLETE
+// AC slice (`NEXT_HEADING_RE = /^##\s+/`) terminates at it and stops slurping
+// the DoD Functional/Lifecycle items.
+function dodBlock(dodPath, kind = DEFAULT_KIND) {
   const dod = filterDodForKind(readFileSync(dodPath, 'utf8').replace(/\s+$/, ''), kind);
-  // #480 — `## Definition of Done` (2-hash) is a top-level sibling of
-  // `## Acceptance Criteria` / `## Verification Commands`, so the CODE_COMPLETE
-  // AC slice (`NEXT_HEADING_RE = /^##\s+/`) terminates at it and stops slurping
-  // the DoD Functional/Lifecycle items. Canonical order is
-  // DoD → `---` → Pickup Directive.
+  return ['## Definition of Done', dod, ''].join('\n');
+}
+
+// Legacy tail-only mode (no `--shape`): pre-#700 callers spliced DoD + Pickup
+// Directive together at the bottom of a hand-assembled body. No current caller
+// invokes this path (grepped repo-wide); kept byte-identical for compatibility.
+function tailBlock(dodPath, kind = DEFAULT_KIND) {
   return [
-    '## Definition of Done',
-    dod,
+    dodBlock(dodPath, kind).replace(/\n$/, ''),
     '',
     '---',
     '',
@@ -314,7 +323,7 @@ function emitShape(args, dodPath, root) {
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
-  const assembled = body + tailBlock(dodPath, kind);
+  const assembled = body + dodBlock(dodPath, kind);
   warnMissingLifecycleLabels(assembled);
   const lint = lintChecklistCommands(assembled);
   if (!lint.ok) {
