@@ -20,12 +20,27 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
+import { closeLabelRemoveArgs } from '../lib/close-labels.mjs';
 import {
   decideCloseConvergence,
   decideBoardMoveFailure,
   decideGateEvalFailure,
   shouldEmitReviewApprovedRow,
 } from '../lib/close-convergence.mjs';
+
+// #705 — best-effort: a label-strip failure must never block or fail the
+// close itself, mirroring the deregisterTask cleanup calls below.
+async function stripCloseLabels({ pexec, cfg, issueNum }) {
+  try {
+    await pexec('gh', [...closeLabelRemoveArgs(issueNum), '-R', cfg.repo], {
+      timeout: GH_API_TIMEOUT_MS,
+    });
+  } catch (err) {
+    console.error(
+      `[task-tracker] warn: failed to strip ToDo/BLOCKED labels on #${issueNum}: ${err.message}`
+    );
+  }
+}
 
 export async function verbClose(ctx) {
   // #561 — verbClose reads its collaborators from the grouped capability
@@ -97,6 +112,7 @@ export async function verbClose(ctx) {
         process.exitCode = 1;
         return;
       }
+      await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
       clearActive(statePath);
       try {
         deregisterTask(projectDir, closeTarget);
@@ -739,6 +755,7 @@ export async function verbClose(ctx) {
       process.exitCode = 1;
       return;
     }
+    await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
   }
   clearActive(statePath);
   try {
