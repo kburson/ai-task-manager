@@ -62,13 +62,15 @@ function runDryRun(shape, extraArgs = [], cwd) {
 // Canonical heading order. Indices in stdout MUST be strictly increasing.
 // #480 — `## Plan Metadata` now precedes `## Acceptance Criteria`, and
 // Definition of Done is a 2-hash top-level section (was 3-hash).
+// #700 — `## Pickup Directive` moved from the bottom tail to directly under
+// `## Plan Metadata`, ahead of `## Acceptance Criteria`.
 const CANONICAL_MARKERS = [
   /^## Scope\b/m,
   /^## Plan Metadata\b/m,
+  /^## Pickup Directive\b/m,
   /^## Acceptance Criteria\b/m,
   /- \[ \]/m, // at least one unchecked checkbox in ACs
   /^## Definition of Done\b/m,
-  /^## Pickup Directive\b/m,
 ];
 
 function assertCanonicalOrder(body, label) {
