@@ -46,8 +46,6 @@ git commit -m "chore: add ai-task-manager"
 ```
 /task              → show active task, elapsed time, word count
 /task [start] #42  → start or switch to issue #42, bind the active session, display the brief
-/task pause        → pause the existing task timer and unbind the active task 
-/task resume [#42] → resume the last paused task, or a specific task [by id], bind as the active task and start the timer 
 /task promote      → promote the active task to the next kanban state 
 ```
 
@@ -72,7 +70,7 @@ The gap between "I've been using AI coding agents for a few weeks" and "here's w
 The tool has three distinct capability layers:
 
 1. **Session tracking** — bind Claude Code or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
-2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, sequencing, and pickup directives
+2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, stack ranking, and pickup directives
 3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
 
 ---
