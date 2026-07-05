@@ -6,11 +6,13 @@
 // Invoked by .claude/hooks/task-tracker.sh with hook JSON on stdin.
 // Routes PreCompact / PostCompact / SessionStart to appropriate handlers.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, openSync, closeSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
-import { loadState, saveState, advanceWordMarker } from './state.mjs';
+import { loadState, saveState, advanceWordMarker, clearActive } from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
 import {
   jsonlPath,
@@ -29,7 +31,9 @@ import {
   fleetRegistryPath,
   readFleet,
 } from './fleet-registry.mjs';
-import { getProjectDir } from './paths.mjs';
+import { getProjectDir, sessionDir } from './paths.mjs';
+
+const pexec = promisify(execFile);
 
 const projectDir = getProjectDir();
 const cfg = loadConfig();
@@ -43,6 +47,52 @@ export function isPausedTask(fleet, lastActive) {
   if (!lastActive) return false;
   const entry = fleet && fleet[lastActive];
   return entry?.status === 'paused';
+}
+
+// #709 — pure predicate: is this GitHub issue state terminal (Done/closed)?
+// True only for CLOSED (case-insensitive, whitespace-tolerant). Every other
+// value — OPEN, MERGED, unknown, empty, null, undefined — returns false so the
+// caller fails OPEN to today's rebind/recovery behavior. Exported for testing.
+export function isTerminalIssueState(state) {
+  return (
+    String(state ?? '')
+      .trim()
+      .toUpperCase() === 'CLOSED'
+  );
+}
+
+// #709 — read an issue's GitHub state ("OPEN"/"CLOSED") via `gh issue view`.
+// Returns the trimmed state string, or `null` on ANY error/timeout, empty
+// output, or a non-numeric `active` ref (e.g. `discover`). A null return means
+// "unknown" and callers must fall open — we never drop a live timer over a
+// network blip. `run` is injectable so unit tests avoid shelling out. Exported
+// for testing.
+export async function fetchIssueState(active, { repo, timeoutMs, run = pexec } = {}) {
+  if (!/^\d+$/.test(String(active ?? ''))) return null;
+  try {
+    const args = ['issue', 'view', String(active), '--json', 'state', '--jq', '.state'];
+    if (repo) args.push('--repo', repo);
+    const { stdout } = await run('gh', args, { timeout: timeoutMs });
+    const s = String(stdout ?? '').trim();
+    return s || null;
+  } catch {
+    return null;
+  }
+}
+
+// #709 — atomic once-per-session claim for the session-end-recovery post. Two
+// SessionStart hook invocations racing on the same session id must not both
+// stamp the recovery row. `openSync(lockPath, 'wx')` is O_EXCL: exactly one
+// caller creates the file and returns true; a concurrent caller hits EEXIST and
+// returns false. Any other error propagates. Exported for testing.
+export function claimRecoveryOnce(lockPath) {
+  try {
+    closeSync(openSync(lockPath, 'wx'));
+    return true;
+  } catch (err) {
+    if (err && err.code === 'EEXIST') return false;
+    throw err;
+  }
 }
 
 function readStdin() {
@@ -240,6 +290,30 @@ async function onSessionStart(sid) {
     return;
   }
 
+  // #709 — terminal-state guard. An issue can reach Done out-of-band (e.g. a
+  // GitHub PR auto-close) while still named by `s.active`; nothing else clears
+  // the binding. Without this check the branch below would re-arm the timer and
+  // accrue idle `session-end-recovery` + `session-start` rows against a Done
+  // issue on every subsequent session start. Read the board state first; if it
+  // is terminal, drop the stale binding and return WITHOUT posting. A null
+  // fetch (offline / gh error) is "unknown" → fall open to the existing
+  // recovery/rebind behavior; never sacrifice real wall-time recovery to a blip.
+  const activeState = await fetchIssueState(s.active, {
+    repo: cfg.repo,
+    timeoutMs: cfg.hookNetworkTimeoutMs,
+  });
+  if (isTerminalIssueState(activeState)) {
+    clearActive(statePath);
+    if (sid) {
+      const { totalLines } = countWords(jsonlPath(sid), 0);
+      saveMarker(markerPathFor(sid), totalLines, 0, null);
+    }
+    console.log(
+      `[task-tracker] ${s.active} reached Done out-of-band — timer unbound, no recovery logged.`
+    );
+    return;
+  }
+
   // Active task — session closed without /task pause; recover unlogged wall time
   const nowTs = new Date().toISOString();
   const wallMin = s.entryStartTs
@@ -247,17 +321,35 @@ async function onSessionStart(sid) {
     : 0;
 
   if (wallMin > 0) {
-    const recoveryRow = buildRow({
-      ts: nowTs,
-      event: 'session-end-recovery',
-      activeMin: wallMin,
-      idleMin: 0,
-      deltaWords: 0,
-      // #475 AC1 — carried-forward durable marker (recovery row, no live session)
-      wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
-      description: 'recovered — session closed without /task pause (wall time only)',
-    });
-    await safePost(s.active, recoveryRow);
+    // #709 — idempotent per session id. Two racing SessionStart invocations both
+    // read the same pre-write `entryStartTs` and compute the same `wallMin`;
+    // without a claim they double-stamp the recovery row ~1s apart. Claim an
+    // atomic O_EXCL lock under the session dir — only the winner posts. No sid
+    // (no session context) retains today's behavior. Claim-machinery failure
+    // fails open to posting rather than dropping real recovered time.
+    let mayPostRecovery = true;
+    if (sid) {
+      try {
+        const dir = sessionDir(sid);
+        mkdirSync(dir, { recursive: true });
+        mayPostRecovery = claimRecoveryOnce(path.join(dir, 'recovery.lock'));
+      } catch {
+        mayPostRecovery = true;
+      }
+    }
+    if (mayPostRecovery) {
+      const recoveryRow = buildRow({
+        ts: nowTs,
+        event: 'session-end-recovery',
+        activeMin: wallMin,
+        idleMin: 0,
+        deltaWords: 0,
+        // #475 AC1 — carried-forward durable marker (recovery row, no live session)
+        wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
+        description: 'recovered — session closed without /task pause (wall time only)',
+      });
+      await safePost(s.active, recoveryRow);
+    }
   }
 
   let newWordBaseline = s.wordsAtEntryStart;
