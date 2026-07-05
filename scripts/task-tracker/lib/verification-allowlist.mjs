@@ -44,7 +44,7 @@ const BIN_RULES = {
   // Package managers: only read/test/build script invocations. `publish`,
   // `pack`, `install`, `audit fix`, etc. are explicitly excluded.
   npm: {
-    allowedSubcommands: ['test', 'run', 'run-script', 'exec', 'ci', 'rebuild'],
+    allowedSubcommands: ['test', 'run', 'run-script', 'exec', 'ci', 'rebuild', 'audit'],
     forbiddenFlags: ['--prefix', '--cwd', '--registry', '--userconfig', '--globalconfig'],
   },
   pnpm: {
