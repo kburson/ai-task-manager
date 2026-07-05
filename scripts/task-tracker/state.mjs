@@ -111,7 +111,7 @@ export function projectDirForState(statePath) {
   // skip any whose next segment is `worktrees/` (the host marker); the first
   // real container wins. Legacy inner state (`…/<wt>/.claude/state.json`) is
   // followed by the state file, so it still anchors correctly. (#486 follow-up)
-  for (let from = norm.length; ; ) {
+  for (let from = norm.length; ;) {
     const idx = norm.lastIndexOf('/.claude/', from);
     if (idx === -1) break;
     const after = norm.slice(idx + '/.claude/'.length);

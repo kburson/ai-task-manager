@@ -334,7 +334,7 @@ Size and Estimate move through three distinct stages. Only the first two ever mu
 
 | Stage  | Verb that fires it                              | Mutates fields?               | Comment surface           |
 | ------ | ----------------------------------------------- | ----------------------------- | ------------------------- |
-| Refine | `/task promote <N>` (backlog → refine boundary) | Yes — initial set (manual)    | `### 🛠 Refine estimate`  |
+| Refine | `/task promote <N>` (backlog → refine boundary) | Yes — initial set (manual)    | `### 🛠 Refine estimate`   |
 | Plan   | `/task promote <N>` (plan → develop boundary)   | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate` |
 | Review | `/task close <N>` (review → done)               | **No** — read-only delta      | `### 📊 Review delta`     |
 

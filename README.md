@@ -46,7 +46,7 @@ git commit -m "chore: add ai-task-manager"
 ```
 /task              → show active task, elapsed time, word count
 /task [start] #42  → start or switch to issue #42, bind the active session, display the brief
-/task promote      → promote the active task to the next kanban state 
+/task promote      → promote the active task to the next kanban state
 ```
 
 That's it. Everything else is optional depth.

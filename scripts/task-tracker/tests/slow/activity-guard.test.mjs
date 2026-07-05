@@ -320,9 +320,7 @@ test('Bash git commit in refine → block (COMMIT_CODE)', () => {
 // ---------------------------------------------------------------------------
 
 test('Edit src/foo.ts with active issue but no state field → block; suggest reconcile', () => {
-  const dir = makeRepo({
-    /* no state */
-  });
+  const dir = makeRepo({/* no state */});
   try {
     const r = runGuard({
       cwd: dir,
@@ -354,9 +352,7 @@ test('Edit src/foo.ts with no state file at all → block (no-active-task)', () 
 });
 
 test('Edit docs/notes.md with active issue but no state → block; suggest reconcile', () => {
-  const dir = makeRepo({
-    /* no state */
-  });
+  const dir = makeRepo({/* no state */});
   try {
     const r = runGuard({
       cwd: dir,
@@ -459,9 +455,7 @@ function writeSessionCache(dir, sid, record) {
 }
 
 test('session kanbanState cache supplies state when global state field is absent', () => {
-  const dir = makeRepo({
-    /* no legacy state */
-  });
+  const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'develop' });
   try {
     const r = runGuard({
@@ -494,9 +488,7 @@ test('session kanbanState overrides legacy global state when both present', () =
 });
 
 test('session cache for a different issue is ignored', () => {
-  const dir = makeRepo({
-    /* no legacy state */
-  });
+  const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#999', kanbanState: 'develop' });
   try {
     const r = runGuard({
@@ -512,9 +504,7 @@ test('session cache for a different issue is ignored', () => {
 });
 
 test('session cache with invalid kanbanState is ignored; falls back', () => {
-  const dir = makeRepo({
-    /* no legacy state */
-  });
+  const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'bogus' });
   try {
     const r = runGuard({
@@ -530,9 +520,7 @@ test('session cache with invalid kanbanState is ignored; falls back', () => {
 });
 
 test('most-recently-modified session cache wins when multiple match', () => {
-  const dir = makeRepo({
-    /* no legacy state */
-  });
+  const dir = makeRepo({/* no legacy state */});
   // Older cache says refine
   writeSessionCache(dir, 'sess-old', { issue: '#65', kanbanState: 'refine' });
   // Force a measurable mtime gap, then write newer cache saying develop.
