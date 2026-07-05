@@ -27,6 +27,7 @@
     "sync:templates": "node scripts/sync-templates.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "audit": "npm audit --audit-level=moderate",
     "lint:js": "eslint .",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:spell": "cspell --no-progress \"**/*.{md,mjs,js,json}\"",
