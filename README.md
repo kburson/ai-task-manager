@@ -44,10 +44,11 @@ git commit -m "chore: add ai-task-manager"
 #### in Claude Code use the `/task` command word:
 
 ```
-/task #42          → switch to issue #42, bind the active session, display the brief
-/task new          → create a new issue and start tracking
 /task              → show active task, elapsed time, word count
-/task close        → flush time, move board to Done, write actuals to project fields
+/task [start] #42  → start or switch to issue #42, bind the active session, display the brief
+/task pause        → pause the existing task timer and unbind the active task 
+/task resume [#42] → resume the last paused task, or a specific task [by id], bind as the active task and start the timer 
+/task promote      → promote the active task to the next kanban state 
 ```
 
 That's it. Everything else is optional depth.
