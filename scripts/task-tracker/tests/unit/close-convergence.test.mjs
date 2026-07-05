@@ -56,6 +56,44 @@ test('no args / empty object → proceed (safe default)', () => {
   assert.deepEqual(decideCloseConvergence({}), { action: 'proceed' });
 });
 
+// ── #708: --repair forces the full pipeline from Done ─────────────────────────
+
+test('#708 AC1: repair=true → proceed for EVERY board/issue combination', () => {
+  // The whole point of --repair: a PR closing-reference auto-closed the issue
+  // (board=Done, issue=CLOSED), which would otherwise hit `noop` and skip the
+  // timing flush / lifecycle boxes / audit rows. repair forces `proceed`.
+  const combos = [
+    { boardState: 'done', issueClosed: true }, // the bypass case
+    { boardState: 'done', issueClosed: false },
+    { boardState: 'review', issueClosed: true },
+    { boardState: 'review', issueClosed: false },
+    { boardState: null, issueClosed: null },
+  ];
+  for (const c of combos) {
+    assert.deepEqual(
+      decideCloseConvergence({ ...c, repair: true }),
+      { action: 'proceed', repair: true },
+      `repair should force proceed for ${JSON.stringify(c)}`
+    );
+  }
+});
+
+test('#708 AC3: repair falsy → noop/close-issue branches are unchanged', () => {
+  // Every falsy repair value leaves the pre-#708 behavior byte-for-byte intact.
+  for (const repair of [undefined, false, null, 0, '']) {
+    assert.deepEqual(decideCloseConvergence({ boardState: 'done', issueClosed: true, repair }), {
+      action: 'noop',
+      boardDrift: false,
+    });
+    assert.deepEqual(decideCloseConvergence({ boardState: 'done', issueClosed: false, repair }), {
+      action: 'close-issue',
+    });
+    assert.deepEqual(decideCloseConvergence({ boardState: 'review', issueClosed: false, repair }), {
+      action: 'proceed',
+    });
+  }
+});
+
 // ── decideBoardMoveFailure: swallow-vs-surface after runMoveStateDone (#435) ──
 //
 // Defect B: `close` could surface a spurious `board move to "done" failed` +

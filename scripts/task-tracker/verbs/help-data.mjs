@@ -235,14 +235,18 @@ export const VERB_REFERENCE = {
   close: {
     topic: 'board',
     summary: 'Close the active or specified task (runs the pre-close gate).',
-    usage: '/task close [#N] [--force] [--answer yes|no|cancel]',
+    usage: '/task close [#N] [--force] [--repair] [--answer yes|no|cancel]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
+      {
+        flag: '--repair',
+        desc: 'replay the full atomic close from Done (timing flush, board fields, lifecycle boxes, audit rows) when a PR closing-reference auto-closed the issue and bypassed the gated chain',
+      },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
     ],
     exitCodes: [{ code: 1, meaning: 'pre-close gate refused (unchecked boxes / dirty tree)' }],
-    examples: ['/task close', '/task close 667 --answer yes'],
+    examples: ['/task close', '/task close 667 --answer yes', '/task close 708 --repair'],
   },
   'inflate-estimate': {
     topic: 'board',

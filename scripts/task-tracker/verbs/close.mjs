@@ -65,6 +65,11 @@ export async function verbClose(ctx) {
 
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
+  // #708 — `--repair` forces the full atomic close pipeline even when the board
+  // is already Done / the issue already CLOSED (e.g. a PR closing-reference
+  // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
+  // audit rows that the noop/close-issue short-circuits skip get replayed.
+  const repair = rest.includes('--repair');
 
   // #208 — bind-mismatch check moved to shared preflight (dispatcher).
   if (!s.active && target) {
@@ -94,7 +99,7 @@ export async function verbClose(ctx) {
       getIssueBoardState(closeIssueNum),
       getIssueClosedState ? getIssueClosedState(closeIssueNum) : Promise.resolve(null),
     ]);
-    const decision = decideCloseConvergence({ boardState, issueClosed });
+    const decision = decideCloseConvergence({ boardState, issueClosed, repair });
 
     if (decision.action === 'close-issue') {
       // Board reads Done but the issue is still OPEN — the Projects auto-close

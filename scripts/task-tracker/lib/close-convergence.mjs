@@ -24,7 +24,18 @@
 //   → { action: 'proceed' }                  issue OPEN and board not Done, OR
 //                                            issueClosed unknown — run the full
 //                                            close pipeline.
-export function decideCloseConvergence({ boardState, issueClosed } = {}) {
+//
+// #708 — PR closing references ("Closes #N") auto-close an issue out-of-band, so
+// the board reads Done / issue CLOSED and every subsequent `/task close` hits the
+// `noop` branch — which skips the timing flush, lifecycle-box ticking, and audit
+// rows. There was no sanctioned way to replay the full atomic close from Done.
+// `repair` (set by `/task close --repair <N>`) forces `proceed` BEFORE the
+// noop/close-issue branches so the full pipeline runs regardless of board/issue
+// state. The pipeline is safe to replay: `gh issue close` no-ops on an
+// already-closed issue and `runMoveStateDone` Done→Done is swallowed as benign
+// (#385). When `repair` is falsy the noop/close-issue branches are unchanged.
+export function decideCloseConvergence({ boardState, issueClosed, repair } = {}) {
+  if (repair) return { action: 'proceed', repair: true };
   const boardDone = boardState === 'done';
   if (issueClosed === true) return { action: 'noop', boardDrift: !boardDone };
   if (issueClosed === false && boardDone) return { action: 'close-issue' };
