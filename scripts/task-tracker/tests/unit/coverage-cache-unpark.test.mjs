@@ -24,6 +24,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import { statePath } from '../../paths.mjs';
@@ -35,6 +36,13 @@ import {
   syncEventFields,
   endTaskTracking,
 } from '../../lib/move-state/cache-unpark.mjs';
+
+// `syncEventFields`/`endTaskTracking` resolve their subprocess scripts
+// relative to `__dir`, which production wires to `scripts/gh` (the directory
+// of `move-state.mjs`, see `scripts/gh/move-state.mjs:60`) — not the process
+// cwd. Mirror that here so the injected-pexec dispatch tests actually find
+// the real scripts instead of silently no-op'ing.
+const GH_DIR = path.resolve(process.cwd(), 'scripts/gh');
 
 // A `pexec`-shaped fake: records every call; optionally throws.
 function makePexec({ throws } = {}) {
@@ -295,7 +303,7 @@ test('syncEventFields: SKIP_NETWORK short-circuits', async () => {
     itemId: 'IT',
     SKIP_NETWORK: true,
     pexec,
-    __dir: process.cwd(),
+    __dir: GH_DIR,
   });
   assert.equal(calls.length, 0);
 });
@@ -308,7 +316,7 @@ test('syncEventFields: dispatches the update-event-fields subprocess via ctx.pex
     itemId: 'IT-1',
     SKIP_NETWORK: false,
     pexec,
-    __dir: process.cwd(),
+    __dir: GH_DIR,
   });
   assert.equal(calls.length, 1);
   assert.ok(calls[0].args.includes('--item-id'));
@@ -322,7 +330,7 @@ test('syncEventFields: a throwing pexec surfaces a warning, no rethrow', async (
     stateArg: 'develop',
     SKIP_NETWORK: false,
     pexec,
-    __dir: process.cwd(),
+    __dir: GH_DIR,
   });
   assert.ok(true); // warning written, best-effort
 });
@@ -331,7 +339,7 @@ test('syncEventFields: a throwing pexec surfaces a warning, no rethrow', async (
 
 test('endTaskTracking: non-done move short-circuits', () => {
   const { pexec, calls } = makePexec();
-  endTaskTracking({ stateArg: 'develop', SKIP_NETWORK: false, pexec, __dir: process.cwd() });
+  endTaskTracking({ stateArg: 'develop', SKIP_NETWORK: false, pexec, __dir: GH_DIR });
   assert.equal(calls.length, 0);
 });
 
@@ -340,7 +348,7 @@ test('endTaskTracking: fires the local task-tracker end on the move to done', ()
   delete process.env.AITM_CASCADE;
   try {
     const { pexec, calls } = makePexec();
-    endTaskTracking({ stateArg: 'done', SKIP_NETWORK: false, pexec, __dir: process.cwd() });
+    endTaskTracking({ stateArg: 'done', SKIP_NETWORK: false, pexec, __dir: GH_DIR });
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].args.slice(-1), ['end']);
   } finally {
