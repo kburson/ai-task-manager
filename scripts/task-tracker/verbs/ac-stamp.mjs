@@ -15,6 +15,7 @@ import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
+import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
 
 export async function verbAcStamp(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
@@ -46,6 +47,17 @@ export async function verbAcStamp(ctx) {
     console.error(
       `[task-tracker] ac-stamp: AC "${target.label}" carries no verifier command. Add one (e.g. \`<!-- aitm-verified cmd="\\\`npm test\\\`" -->\`) before stamping.`
     );
+    process.exit(1);
+  }
+
+  const gate = await assertVerifierStateAllowed({
+    issueNumber: issueNum,
+    cfg,
+    commands: target.evidenceCommands,
+    deps: ctx.deps,
+  });
+  if (!gate.allowed) {
+    console.error(`[task-tracker] ac-stamp: ${gate.message}`);
     process.exit(1);
   }
 

@@ -20,6 +20,7 @@ import {
   parseFunctionalDodKeys,
   stampEvidenceMarker,
 } from '../lib/functional-dod-evidence.mjs';
+import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
 
 export async function verbDodStamp(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
@@ -64,6 +65,17 @@ export async function verbDodStamp(ctx) {
     console.error(
       `[task-tracker] dod-stamp: \`dod:functional:${key}\` line carries no verifier command. Add one (e.g. \`<!-- aitm-verified cmd="\\\`npm test\\\`" -->\`) before stamping.`
     );
+    process.exit(1);
+  }
+
+  const gate = await assertVerifierStateAllowed({
+    issueNumber: issueNum,
+    cfg,
+    commands: target.evidenceCommands,
+    deps: ctx.deps,
+  });
+  if (!gate.allowed) {
+    console.error(`[task-tracker] dod-stamp ${key}: ${gate.message}`);
     process.exit(1);
   }
 
