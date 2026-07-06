@@ -144,6 +144,36 @@ test('AC2: read-back recovers after an initial dropped write (retry succeeds)', 
   assert.equal(editCalls.length, 2, 'exactly one retry was needed');
 });
 
+test('AC1: an empty/unreadable read-back proceeds with a soft warning, not a hard fail', async () => {
+  let readBackCalls = 0;
+  // read-back always returns '' — the read path is unavailable (offline, a
+  // shimmed gh, or a statusless item). We cannot prove the write dropped.
+  const readBack = async () => {
+    readBackCalls++;
+    return '';
+  };
+  const { ctx, editCalls } = makeCtx({ readBack });
+
+  const { result, out, err } = await capture(() => runStatusWrite(ctx));
+
+  assert.equal(result.exit, null, 'unreadable read-back does not hard-fail a legitimate move');
+  assert.equal(editCalls.length, 1, 'empty read-back stops retrying (retry cannot disambiguate)');
+  assert.equal(readBackCalls, 1, 'read-back runs once, then the soft branch decides');
+  assert.ok(
+    out.some((l) => l.includes('moved to: develop')),
+    'the move still reports success'
+  );
+  assert.ok(
+    err.some((l) => l.includes('could not be confirmed')),
+    'a soft warning names the unconfirmed write'
+  );
+  assert.equal(
+    err.filter((l) => l.includes('did NOT confirm')).length,
+    0,
+    'the loud hard-fail refusal is NOT emitted for an empty read-back'
+  );
+});
+
 test('SKIP_NETWORK short-circuits the read-back entirely', async () => {
   let readBackCalls = 0;
   const ctx = {

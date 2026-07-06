@@ -102,9 +102,21 @@ export async function runStatusWrite(ctx) {
   // #711 — write the kanban board field, then READ IT BACK and confirm it
   // reached the target option. A dropped/failed GraphQL field write that does
   // not surface as a non-zero `gh` exit would otherwise leave the board behind
-  // while the marker advances. On mismatch, re-issue the write with bounded
-  // backoff; if it still hasn't confirmed after the final attempt, fail loudly
-  // (non-null exit) so the host terminates before the marker is stamped.
+  // while the marker advances.
+  //
+  // Two distinct read-back outcomes, deliberately handled differently:
+  //   • NON-EMPTY mismatch — the board holds a concrete DIFFERENT option than we
+  //     wrote. That is positive evidence of a dropped/stale write (the exact
+  //     #711 signature: board lagged at a prior stage while the marker moved on).
+  //     Retry with bounded backoff to absorb eventual-consistency lag; if it
+  //     still mismatches after the final attempt, FAIL LOUDLY (non-null exit) so
+  //     the host halts before the marker is stamped.
+  //   • EMPTY / unreadable — the read path itself is unavailable (offline, a
+  //     shimmed `gh` in tests, or an item with no Status set yet). We cannot
+  //     PROVE the write failed, and hard-failing here would false-block every
+  //     legitimate move whenever the read round-trip is degraded. Warn and
+  //     proceed; the marker-vs-board reconcile preflight is the backstop for a
+  //     genuinely dropped first-write.
   if (!SKIP_NETWORK) {
     let confirmed = false;
     let lastSeen = '';
@@ -126,17 +138,28 @@ export async function runStatusWrite(ctx) {
         confirmed = true;
         break;
       }
+      // Empty read-back means the read is unavailable, not that the write was
+      // dropped — retrying the same unreadable path won't disambiguate, so stop
+      // and let the soft-proceed branch below decide.
+      if (!lastSeen) break;
       if (attempt < STATUS_WRITE_MAX_ATTEMPTS) await sleep(STATUS_WRITE_BACKOFF_MS * attempt);
     }
-    if (!confirmed) {
+    if (!confirmed && lastSeen) {
       process.stderr.write(
         `⛔ Board field write for #${issueArg} → ${stateArg} did NOT confirm after ` +
           `${STATUS_WRITE_MAX_ATTEMPTS} attempts: read-back Status optionId is ` +
-          `"${lastSeen || 'unset'}", expected "${optionId}". Refusing to stamp the ` +
+          `"${lastSeen}", expected "${optionId}". Refusing to stamp the ` +
           `entry marker so the board and the marker cannot diverge. The move did NOT ` +
           `complete — retry, or reconcile the board before retrying.\n`
       );
       return { itemId, exit: STATUS_WRITE_READBACK_EXIT };
+    }
+    if (!confirmed) {
+      process.stderr.write(
+        `⚠ Board field write for #${issueArg} → ${stateArg} could not be confirmed: ` +
+          `read-back returned no Status value (read path unavailable). Proceeding; the ` +
+          `marker-vs-board reconcile is the backstop if the write was actually dropped.\n`
+      );
     }
   }
 
