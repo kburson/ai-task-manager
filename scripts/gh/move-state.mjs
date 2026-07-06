@@ -194,6 +194,42 @@ async function resolveLiveStateName(issueNumber) {
   }
 }
 
+// #711 — read the item's live Status single-select `optionId` back for the
+// configured project. Injected into `ctx` so `runStatusWrite` can confirm a
+// board-field write actually landed (option id, exact match — not the display
+// name). Returns '' when absent/unreadable; never throws. Mirrors the query
+// shape of `resolveLiveStateName` above.
+async function readBackStatusOptionId({ issueNumber } = {}) {
+  if (SKIP_NETWORK) return '';
+  try {
+    const { gql, splitRepo } = await import('./lib/github-projects.mjs');
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(
+      `
+      query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            projectItems(first: 10) {
+              nodes {
+                project { id }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+                }
+              }
+            }
+          }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNumber) }
+    );
+    const nodes = data?.repository?.issue?.projectItems?.nodes || [];
+    const node = nodes.find((n) => n?.project?.id === cfg.projectId);
+    return String(node?.fieldValueByName?.optionId || '');
+  } catch {
+    return '';
+  }
+}
+
 let resolvedFromState = '';
 if (fromOverride) {
   resolvedFromState = String(fromOverride).toLowerCase();
@@ -248,6 +284,7 @@ const ctx = {
   pexec,
   projectItemForIssue,
   resolveLiveStateName,
+  readBackStatusOptionId,
   checkDirty,
   formatSummary,
   resolveWorkspaceForIssue,

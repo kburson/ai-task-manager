@@ -274,7 +274,7 @@ export async function preflightVerb({
         `PROMPT_REQUIRED: human-move ${issue} ${verdict.local}:${verdict.live}\n`
       );
       process.stderr.write(
-        `⛔ Refusing /task ${verb}: board for ${issue} is "${verdict.live}", local cache says "${verdict.local}", ${markerNote}${actorNote}. The marker is updated atomically by move-state.mjs, so this drift looks like a hand-edit through the GitHub UI. Run \`/task reconcile accept-live ${issue}\` if the board is correct, or fix the board then retry.\n`
+        `⛔ Refusing /task ${verb}: board for ${issue} is "${verdict.live}", local cache says "${verdict.local}", ${markerNote}${actorNote}. The board diverges from the marker — likely causes: a hand-edit through the GitHub UI, or a dropped/failed board-field write during an earlier move that left the board behind the marker. Run \`/task reconcile accept-live ${issue}\` if the board is correct, or fix the board then retry.\n`
       );
       process.exit(EXIT_HUMAN_MOVE);
       return;

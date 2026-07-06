@@ -27,11 +27,60 @@ import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
+// #711 — how many times the write+read-back cycle is attempted before
+// runStatusWrite gives up and fails loudly, and the base backoff between them.
+export const STATUS_WRITE_MAX_ATTEMPTS = 3;
+export const STATUS_WRITE_BACKOFF_MS = 400;
+// Exit code returned to the host when the board field never confirms. Distinct
+// from the "issue absent from project" exit 1 so the failure mode is greppable.
+export const STATUS_WRITE_READBACK_EXIT = 7;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// #711 — default read-back: query the item's live Status single-select
+// `optionId` for the configured project. Mirrors `resolveLiveStateName` in the
+// host (`scripts/gh/move-state.mjs`) but returns the raw option id so the
+// comparison in `runStatusWrite` is exact (option id, not display name).
+// Returns '' when the value is absent/unreadable; never throws.
+async function defaultReadBackStatusOptionId({ cfg, issueNumber }) {
+  try {
+    const { gql, splitRepo } = await import('../../../gh/lib/github-projects.mjs');
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(
+      `
+      query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            projectItems(first: 10) {
+              nodes {
+                project { id }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+                }
+              }
+            }
+          }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNumber) }
+    );
+    const nodes = data?.repository?.issue?.projectItems?.nodes || [];
+    const node = nodes.find((n) => n?.project?.id === cfg.projectId);
+    return String(node?.fieldValueByName?.optionId || '');
+  } catch {
+    return '';
+  }
+}
+
 // Resolve the project item id, write the kanban Status field, and print the
 // success line. Returns `{ itemId, exit }`; `exit` is a number only when the
-// host must terminate (issue absent from the project).
+// host must terminate — the issue is absent from the project (exit 1), or the
+// board field never confirmed the write after read-back + retries (exit 7,
+// #711). A non-null `exit` gates the host BEFORE `stampEntryMarkers`, so the
+// entry marker never advances on a silently-dropped board-field write.
 export async function runStatusWrite(ctx) {
   const { issueArg, stateArg, optionId, cfg, SKIP_NETWORK, gh, projectItemForIssue } = ctx;
+  const readBackStatusOptionId = ctx.readBackStatusOptionId || defaultReadBackStatusOptionId;
 
   // Resolve project item ID
   let itemId = ctx.itemIdOverride;
@@ -50,20 +99,45 @@ export async function runStatusWrite(ctx) {
     }
   }
 
-  // Update the kanban board field
+  // #711 — write the kanban board field, then READ IT BACK and confirm it
+  // reached the target option. A dropped/failed GraphQL field write that does
+  // not surface as a non-zero `gh` exit would otherwise leave the board behind
+  // while the marker advances. On mismatch, re-issue the write with bounded
+  // backoff; if it still hasn't confirmed after the final attempt, fail loudly
+  // (non-null exit) so the host terminates before the marker is stamped.
   if (!SKIP_NETWORK) {
-    await gh([
-      'project',
-      'item-edit',
-      '--project-id',
-      cfg.projectId,
-      '--id',
-      itemId,
-      '--field-id',
-      cfg.kanbanFieldId,
-      '--single-select-option-id',
-      optionId,
-    ]);
+    let confirmed = false;
+    let lastSeen = '';
+    for (let attempt = 1; attempt <= STATUS_WRITE_MAX_ATTEMPTS; attempt++) {
+      await gh([
+        'project',
+        'item-edit',
+        '--project-id',
+        cfg.projectId,
+        '--id',
+        itemId,
+        '--field-id',
+        cfg.kanbanFieldId,
+        '--single-select-option-id',
+        optionId,
+      ]);
+      lastSeen = await readBackStatusOptionId({ cfg, issueNumber: issueArg });
+      if (lastSeen === optionId) {
+        confirmed = true;
+        break;
+      }
+      if (attempt < STATUS_WRITE_MAX_ATTEMPTS) await sleep(STATUS_WRITE_BACKOFF_MS * attempt);
+    }
+    if (!confirmed) {
+      process.stderr.write(
+        `⛔ Board field write for #${issueArg} → ${stateArg} did NOT confirm after ` +
+          `${STATUS_WRITE_MAX_ATTEMPTS} attempts: read-back Status optionId is ` +
+          `"${lastSeen || 'unset'}", expected "${optionId}". Refusing to stamp the ` +
+          `entry marker so the board and the marker cannot diverge. The move did NOT ` +
+          `complete — retry, or reconcile the board before retrying.\n`
+      );
+      return { itemId, exit: STATUS_WRITE_READBACK_EXIT };
+    }
   }
 
   console.log(`✓ Issue #${issueArg} moved to: ${stateArg}`);
