@@ -487,6 +487,32 @@ export async function runPromote({
     };
   }
 
+  // #710 — Defense-in-depth: an exit-0 from a delegate verb (alias path) is
+  // less authoritative than move-state.mjs's own return, because the delegate
+  // could exit 0 while refusing to change state (the original close.mjs
+  // dirty-close bug). Re-read the live board and only declare `promoted` when
+  // the target state was actually reached. Scoped to the alias path: a direct
+  // move-state transition writes the board itself, so its 0 is authoritative
+  // and a second fetch would only add latency.
+  if (transitionResult.kind === 'alias') {
+    let liveAfter = null;
+    try {
+      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
+    } catch {
+      liveAfter = null;
+    }
+    if (liveAfter && liveAfter !== target) {
+      return {
+        status: 'transition-failed',
+        transitionResult,
+        reconciledTo: null,
+        message:
+          `promote: delegate /task ${transitionResult.verb} exited 0 but board is "${liveAfter}", ` +
+          `not "${target}" — refusing to report a false success. Recorded state left at "${recorded}".`,
+      };
+    }
+  }
+
   // Transition succeeded. Entry-marker AND lastKnownState stamping are both
   // centralized in move-state.mjs's success path (#170 — single mutator).
   // #147 — On Deck → Refine success hook: stamp the "Start time" field on the

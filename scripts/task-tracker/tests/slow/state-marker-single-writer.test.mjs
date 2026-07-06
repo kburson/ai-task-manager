@@ -29,8 +29,12 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
 }
 
-function makeDeps({ body, live, moveCode = 0 } = {}) {
+function makeDeps({ body, live, liveAfter, moveCode = 0 } = {}) {
   const calls = { writes: [], moves: [], timings: [] };
+  // #710 — the alias success path re-reads the board after the delegate. Return
+  // `live` on the first read (drift check) and `liveAfter` (when provided) on
+  // subsequent reads so a successful alias move reflects its post-move state.
+  let liveCalls = 0;
   return {
     calls,
     deps: {
@@ -46,7 +50,11 @@ function makeDeps({ body, live, moveCode = 0 } = {}) {
         calls.writes.push(next);
         return { status: 'ok' };
       },
-      getLiveState: async () => live,
+      getLiveState: async () => {
+        liveCalls++;
+        if (liveCalls === 1) return live;
+        return liveAfter !== undefined ? liveAfter : live;
+      },
       spawnVerb: async () => 0,
       runMoveState: async ({ issueNumber, target }) => {
         calls.moves.push({ issueNumber, target });
@@ -103,7 +111,7 @@ test('promote does not write aitm-last-known-state on successful refine→plan',
 
 test('promote does not write aitm-last-known-state on successful develop→test (alias verb)', async () => {
   const body = bodyWithState('develop');
-  const { deps, calls } = makeDeps({ body, live: 'develop' });
+  const { deps, calls } = makeDeps({ body, live: 'develop', liveAfter: 'test' });
   // develop→test runs the `test` alias verb path
   deps.spawnVerb = async () => 0;
   deps.codeCompleteGate = async () => ({ ok: true, blockers: [], shas: ['abc123'] });

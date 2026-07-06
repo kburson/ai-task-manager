@@ -205,7 +205,14 @@ export async function verbClose(ctx) {
           console.error(`⚠ Workspace is dirty (${dirty.total} path(s)) for ${closeTarget}:`);
           console.error(formatSummary(dirty));
           console.log(`PROMPT_REQUIRED: dirty-close-confirm ${closeTarget}`);
-          return;
+          // #710 — exit non-zero so callers (e.g. `promote`) can distinguish a
+          // blocked prompt from a completed close. Every sibling PROMPT_REQUIRED
+          // emitter (CI dirty branch above → exit 5, review-approval → exit 7,
+          // preflightVerb prompts) exits non-zero; the bare `return` here (exit 0)
+          // was the lone anomaly that let `promote` report a false `✓ promoted`.
+          // The PROMPT_REQUIRED stdout line is emitted first, so the interactive
+          // skill loop still surfaces the prompt and re-invokes with --answer.
+          process.exit(5);
         }
       } else if (answerArg === 'yes') {
         console.error(

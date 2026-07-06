@@ -181,13 +181,21 @@ try {
     assert.match(r.stderr, /--answer yes\|no\|cancel/);
   }
 
-  // 7. Non-CI dirty close (no --answer) → emits PROMPT_REQUIRED marker, exits 0
+  // 7. Non-CI dirty close (no --answer) → emits PROMPT_REQUIRED marker, exits 5.
+  // #710 — the exit was 0 before; it now exits non-zero so `promote` can tell a
+  // blocked prompt apart from a completed close. The PROMPT_REQUIRED stdout line
+  // is still emitted (before exit) so the interactive skill loop re-prompts.
   {
     const sandbox = setupSandbox();
     cleanup(sandbox);
     const binDir = makeGitShim(sandbox, ' M src/x.ts\n');
     await setActive(sandbox, 204);
-    const r = await runNode(TT, ['close', '#204'], { sandbox, binDir, env: { CI: '' } });
+    const r = await runNode(TT, ['close', '#204'], {
+      sandbox,
+      binDir,
+      env: { CI: '' },
+      expectExit: 5,
+    });
     assert.match(r.stdout, /PROMPT_REQUIRED: dirty-close-confirm #204/);
     assert.match(r.stderr, /Workspace is dirty \(1 path/);
   }

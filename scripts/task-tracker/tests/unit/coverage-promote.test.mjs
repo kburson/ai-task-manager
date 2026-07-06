@@ -12,7 +12,6 @@ import { runPromote, verbPromote } from '../../verbs/promote.mjs';
 // Isolate the verb's withIssueLock dir from the live project tree.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(join(projectScratchDir('test'), 'promote-'));
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
-
 function makeDeps({
   body = '',
   live = null,
@@ -60,6 +59,7 @@ function makeDeps({
   };
 }
 const dev = (over = {}) => makeDeps({ body: bodyWithState('develop'), live: 'develop', ...over });
+const rev = (over = {}) => makeDeps({ body: bodyWithState('review'), live: 'review', ...over }); // #710
 const DD_PROSE = Array.from(
   { length: 20 },
   (_, i) =>
@@ -191,7 +191,7 @@ test('runPromote: plan→develop refused when refine-estimate comment missing', 
   assert.equal(calls.moves.length, 0);
 });
 test('runPromote: develop→test delegates to /task test', async () => {
-  const { deps, calls } = dev();
+  const { deps, calls } = dev({ liveAfter: 'test' });
   const r = await runPromote({ issueNumber: 102, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'alias:test');
@@ -223,7 +223,7 @@ test('runPromote: test→review refused when dod-verified marker missing', async
   assert.equal(calls.moves.length, 0);
 });
 test('runPromote: review→done delegates to /task close', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('review'), live: 'review' });
+  const { deps, calls } = rev({ liveAfter: 'done' });
   const r = await runPromote({ issueNumber: 104, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'alias:close');

@@ -375,7 +375,12 @@ test('promote: plan→develop refused when planned-estimate appendix is missing 
 });
 
 test('promote: develop→test delegates to /task test (#137)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('develop'), live: 'develop' });
+  // #710 — alias transition; success path re-reads the board (post-move = test).
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'test',
+  });
   const r = await runPromote({ issueNumber: 102, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'test');
@@ -399,7 +404,14 @@ test('promote: develop→test refused when CODE_COMPLETE gate returns blockers (
 
 test('promote: develop→test allowed when CODE_COMPLETE gate passes (#136)', async () => {
   let gateCalled = 0;
-  const { deps, calls } = makeDeps({ body: bodyWithState('develop'), live: 'develop' });
+  // #710 — develop→test is an alias transition (the `test` verb); the success
+  // path now re-reads the live board, so the fixture must reflect the post-move
+  // state (a successful `/task test` moves the board to `test`).
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('develop'),
+    live: 'develop',
+    liveAfter: 'test',
+  });
   deps.codeCompleteGate = async ({ issueNumber }) => {
     gateCalled += 1;
     assert.equal(issueNumber, 1362);
@@ -471,12 +483,37 @@ test('promote: test→review ALLOWED when dod-verified present and every checkbo
 });
 
 test('promote: review→done delegates to /task close', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('review'), live: 'review' });
+  // #710 — the happy path now re-reads the live board after the alias close and
+  // only reports `promoted` when it actually reached `done`. A successful close
+  // moves the board to done, so the fixture must reflect that post-move state.
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('review'),
+    live: 'review',
+    liveAfter: 'done',
+  });
   const r = await runPromote({ issueNumber: 104, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'done');
   assert.equal(r.via, 'alias:close');
   assert.deepEqual(calls.spawns, [{ verb: 'close', issueNumber: 104 }]);
+});
+
+test('promote: review→done reports transition-failed when close exits 0 but board stays review (#710)', async () => {
+  // The original defect: close.mjs exited 0 on a blocked dirty-close, so promote
+  // reported a false `✓ promoted`. With the alias re-verify, an exit-0 that did
+  // NOT move the board to `done` is caught and downgraded to transition-failed.
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('review'),
+    live: 'review',
+    spawnCode: 0,
+    liveAfter: 'review',
+  });
+  const r = await runPromote({ issueNumber: 710, cfg, deps });
+  assert.equal(r.status, 'transition-failed');
+  assert.match(r.message, /exited 0 but board is "review"/);
+  assert.match(r.message, /refusing to report a false success/);
+  // The close was still delegated — the guard fires only on its result.
+  assert.deepEqual(calls.spawns, [{ verb: 'close', issueNumber: 710 }]);
 });
 
 test('promote: on-deck→refine is a direct move-state call gated only on Priority (#133, #433)', async () => {
