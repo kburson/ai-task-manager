@@ -38,23 +38,14 @@ import { computeTransitionPlan } from '../task-tracker/lib/move-state/transition
 // modules. The host assembles a single `ctx` and calls them in the exact
 // pre-#559 interleaved order; each is a faithful relocation of an inline block.
 import { runGuardExecution } from '../task-tracker/lib/move-state/guard-execution.mjs';
-import {
-  runStatusWrite,
-  stampEntryMarkers,
-} from '../task-tracker/lib/move-state/github-mutation.mjs';
-import {
-  emitPhasePairRows,
-  emitFullAutoReviewAudit,
-  emitOutOfBandAudit,
-} from '../task-tracker/lib/move-state/audit-timing.mjs';
-import {
-  dispatchOnEnterActions,
-  refreshKanbanStateCache,
-  unparkDoneDependents,
-  syncTrackerState,
-  syncEventFields,
-  endTaskTracking,
-} from '../task-tracker/lib/move-state/cache-unpark.mjs';
+import { runStatusWrite } from '../task-tracker/lib/move-state/github-mutation.mjs';
+// #714 — the post-commit tail steps (everything AFTER runStatusWrite) are now
+// run through an isolating sequencer so a throw in any best-effort step can no
+// longer unwind to the top level and flip the process exit code non-zero after
+// the board Status write has already committed. runStatusWrite + its exit-honor
+// stay OUTSIDE the tail (authoritative). The individual step fns are still
+// imported by the sequencer module; the host only needs runPostCommitTail.
+import { runPostCommitTail } from '../task-tracker/lib/move-state/post-commit-tail.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -326,16 +317,16 @@ const __mutationBlock = async () => {
   if (writeResult.exit !== null) process.exit(writeResult.exit);
   ctx.itemId = writeResult.itemId;
 
-  await stampEntryMarkers(ctx);
-  await dispatchOnEnterActions(ctx);
-  await refreshKanbanStateCache(ctx);
-  await emitPhasePairRows(ctx);
-  await emitFullAutoReviewAudit(ctx);
-  await unparkDoneDependents(ctx);
-  await emitOutOfBandAudit(ctx);
-  syncTrackerState(ctx);
-  await syncEventFields(ctx);
-  endTaskTracking(ctx);
+  // #714 — the authoritative board Status write has now committed. Every step
+  // below is best-effort and must NEVER change the process exit code: a throw in
+  // any of them would (pre-#714) unwind through `withIssueLock` to the top level
+  // and exit non-zero, making a committed terminal move report FAILURE (and
+  // triggering close.mjs's false "Issue left OPEN" split-brain guard).
+  // `runPostCommitTail` wraps each step in its own try/catch, logs a throw to
+  // stderr naming the step, and continues — preserving the byte-identical
+  // #535/#516 call order (DEFAULT_TAIL_STEPS). Failures are returned for
+  // inspection but never propagate.
+  await runPostCommitTail(ctx);
 }; // end __mutationBlock
 
 if (process.env[ISSUE_LOCK_HELD_ENV] === '1') {
