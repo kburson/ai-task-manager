@@ -7,7 +7,7 @@
   "author": "Kendrick Burson <spam.kpb@gmail.com>",
   "homepage": "https://github.com/kburson/ai-task-manager",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "bin": {
     "ai-task-manager": "bin/cli.mjs",
