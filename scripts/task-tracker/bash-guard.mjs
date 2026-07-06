@@ -28,6 +28,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } from './lib/gh-edit-guard.mjs';
+import { evaluateGhProject } from './lib/gh-project-guard.mjs';
 import { evaluateAitmPath } from './lib/aitm-path-guard.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
@@ -171,6 +172,21 @@ if (/\bgh\s+issue\s+create\b/.test(scanned)) {
 const ghApiCreateResult = evaluateGhApiCreate({ command });
 if (ghApiCreateResult.block) block(ghApiCreateResult.reason);
 
+// #715 — cross-project board guard. Refuse agent-issued `gh project` subcommands
+// outright, and `gh api graphql` ProjectV2 operations that target a project id
+// other than the bound one (or pin no id at all). aitm owns board access via the
+// bound `projectId`; reads go through `aitm board`, writes through state verbs.
+// `boundProjectId` is best-effort from `task-tracker.json`; on read failure the
+// guard fails closed (only the exact-bound-id allow is suppressed). Checked
+// against the RAW command — ProjectV2 ids live inside quoted GraphQL bodies that
+// `scanned` strips. aitm's own ProjectV2 queries run via `node`/`gql()`, not
+// Bash, so they never reach this hook.
+const ghProjectResult = evaluateGhProject({
+  command,
+  boundProjectId: readBoundProjectId(projectRoot),
+});
+if (ghProjectResult.block) block(ghProjectResult.reason);
+
 // Direct `gh issue close` bypasses the timing flush and DoD gate enforced by
 // `/task close`. Direct `gh issue reopen` similarly skips state reconciliation.
 if (/\bgh\s+issue\s+close\b/.test(scanned)) {
@@ -258,4 +274,20 @@ process.exit(0);
 function block(reason) {
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
   process.exit(0);
+}
+
+// #715 — best-effort read of the bound `projectId` for evaluateGhProject.
+// Prefers the git-tracked `.ai-task-manager/task-tracker.json`, falling back to
+// the legacy `.claude/task-tracker.json`. Returns null on any failure so the
+// guard fails closed (non-bound-id and no-id branches still fire).
+function readBoundProjectId(root) {
+  for (const rel of ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json']) {
+    try {
+      const cfg = JSON.parse(readFileSync(join(root, rel), 'utf8'));
+      if (cfg?.projectId) return cfg.projectId;
+    } catch {
+      // try next path
+    }
+  }
+  return null;
 }

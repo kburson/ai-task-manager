@@ -186,6 +186,11 @@ if (_isMain)
           verbConfig(ctx);
           break;
         }
+        case 'board': {
+          const { verbBoard } = await import('./verbs/board.mjs');
+          await verbBoard(ctx);
+          break;
+        }
         case 'close':
         case 'end': {
           const { verbClose } = await import('./verbs/close.mjs');

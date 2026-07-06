@@ -115,6 +115,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     'log',
     'resume',
     'start',
+    'board',
     'check',
     'ensureChecked',
     'ensureUnchecked',
