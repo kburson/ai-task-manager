@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #2
+// cspell:ignore metachar
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
@@ -205,6 +206,33 @@ const canonicalCases = [
 for (const input of canonicalCases) {
   const r = validateVerificationCommand(input, opts);
   assert.equal(r.ok, true, `expected accept for canonical: ${input} (got ${r.reason})`);
+}
+
+// ----- ACCEPT (#713): POSIX file-test predicates as passthrough bins -----
+// `test -f <path>` / `test -x <path>` and the bracket form `[ -f <path> ]` are
+// side-effect-free evidence checks; register `test` and `[` as passthrough.
+const fileTestAccepts = [
+  ['test -f scripts/check.sh', ['test', '-f', 'scripts/check.sh']],
+  ['test -x scripts/check.sh', ['test', '-x', 'scripts/check.sh']],
+  ['[ -f scripts/check.sh ]', ['[', '-f', 'scripts/check.sh', ']']],
+];
+for (const [input, expected] of fileTestAccepts) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, true, `expected accept for file-test: ${input} (got ${r.reason})`);
+  assert.deepEqual(r.argv, expected, `argv mismatch for file-test: ${input}`);
+}
+
+// ----- REJECT (#713): injection through the file-test bins still refused -----
+// The top-of-function forbidden-metachar scan runs before bin dispatch, so
+// passthrough does not weaken injection defenses.
+const fileTestRejects = [
+  ['test -f x && rm -rf y', /logical-and/],
+  ['[ -f x ] | sh', /pipe/],
+];
+for (const [input, frag] of fileTestRejects) {
+  const r = validateVerificationCommand(input, opts);
+  assert.equal(r.ok, false, `expected reject for file-test injection: ${input}`);
+  assert.match(r.reason, frag, `reason mismatch for: ${input} -> ${r.reason}`);
 }
 
 rmSync(tmp, { recursive: true, force: true });

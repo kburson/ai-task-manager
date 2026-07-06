@@ -20,7 +20,7 @@
 //
 // See issues #2 and #198 for context.
 //
-// cspell:ignore userconfig globalconfig rcfile metachar
+// cspell:ignore userconfig globalconfig rcfile metachar subforms
 
 import path from 'node:path';
 import { existsSync, statSync } from 'node:fs';
@@ -137,6 +137,12 @@ const BIN_RULES = {
   // `grep`: read-only text search. Common AC evidence command ("file contains
   // line X"). No destructive flags exist; pass-through.
   grep: { allowPassthrough: true },
+
+  // `test` / `[`: POSIX file-test predicates. Side-effect-free evidence checks
+  // ("file exists / is executable"). No destructive subforms; the top-level
+  // forbidden-metachar scan still rejects injection. Pass-through (#713).
+  test: { allowPassthrough: true },
+  '[': { allowPassthrough: true },
 };
 
 // Tokenize on whitespace, respecting balanced single/double quotes.
