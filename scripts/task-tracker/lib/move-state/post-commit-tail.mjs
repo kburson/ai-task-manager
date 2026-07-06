@@ -69,9 +69,58 @@ export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
       await step.fn(ctx);
     } catch (err) {
       failures.push({ name: step.name, error: err });
-      const msg = (err && err.message) || String(err);
-      process.stderr.write(`[move-state] ${step.name} failed post-commit: ${msg}\n`);
+      // #716 — a STRUCTURED diagnostic (step name + child exit code, benign
+      // audit lines filtered out, explicit no-detail fallback) rather than an
+      // arbitrary trailing stderr line. The `[move-state:warn]` level tag marks
+      // this as a non-failure-of-the-move warning: the board move already
+      // committed (#714), so a consumer must never treat this line as THE
+      // failure reason for the move itself.
+      process.stderr.write(
+        `[move-state:warn] ${formatTailStepFailure({ name: step.name, error: err })}\n`
+      );
     }
   }
   return { failures };
+}
+
+// #716 — informational / benign stderr lines that a tail step may emit and that
+// must NEVER be selected as a failure reason. The full-auto human-reviewer-audit
+// note (audit-timing.mjs) and any `[move-state:warn]` level-tagged line are
+// non-failure output by construction.
+const BENIGN_STDERR_LINE = /^\s*(\[move-state:warn\]|\[human-reviewer-audit(?::info)?\])/;
+
+// #716 — format a tail-step failure into a structured diagnostic. Reads the
+// child exit code from `error.code` (numeric, promisify(execFile) convention) or
+// `error.status` (spawn convention), filters benign informational lines out of
+// the stderr detail, and falls back to an explicit `child exited <N> with no
+// error detail` when a non-zero child carries no usable detail. A plain (non-
+// child) Error throw with no exit code is reported as `<step> failed: <message>`.
+//
+// Pure + exported so the "which step + exit code, never a benign line" contract
+// is testable without spawning a real process.
+export function formatTailStepFailure({ name, error } = {}) {
+  const err = error || {};
+  const exitCode =
+    typeof err.code === 'number' ? err.code : typeof err.status === 'number' ? err.status : null;
+
+  // Collect usable stderr detail, dropping benign informational lines so they
+  // can never become the surfaced reason.
+  const detail = String(err.stderr || '')
+    .split('\n')
+    .map((l) => l.replace(/\s+$/, ''))
+    .filter((l) => l.trim().length > 0 && !BENIGN_STDERR_LINE.test(l))
+    .join('; ')
+    .trim();
+
+  if (exitCode !== null) {
+    if (detail) return `${name} exited ${exitCode}: ${detail}`;
+    // AC3 — explicit fallback instead of an empty / misleading message.
+    return `${name}: child exited ${exitCode} with no error detail`;
+  }
+
+  // Not a child-process failure (plain throw): name the step + the message,
+  // never fabricating an exit code.
+  const msg = (err && err.message) || String(err);
+  if (msg && msg.trim().length > 0) return `${name} failed: ${msg}`;
+  return `${name} failed with no error detail`;
 }

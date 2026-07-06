@@ -71,7 +71,8 @@ test('AC1: the throwing step is logged to stderr, naming the step', async () => 
   const err = await withCapturedStderr(async () => {
     await runPostCommitTail({}, steps);
   });
-  assert.match(err, /\[move-state\]/);
+  // #716 layered a structured `[move-state:warn]` diagnostic over the raw log.
+  assert.match(err, /\[move-state:warn\]/);
   assert.match(err, /syncEventFields/);
   assert.match(err, /boom/);
 });

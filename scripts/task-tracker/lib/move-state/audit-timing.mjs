@@ -183,13 +183,19 @@ export async function emitFullAutoReviewAudit(ctx) {
         }
       },
     });
+    // #716 — these two lines are INFORMATIONAL (the audit succeeded), not
+    // failures. Level-tag them `[human-reviewer-audit:info]` so a downstream
+    // diagnostic (post-commit-tail.mjs `formatTailStepFailure`) can recognize
+    // them as benign and never select them as a move-failure reason. The
+    // `enforcement failed` line below keeps the bare `[human-reviewer-audit]`
+    // tag because it IS an error.
     if (result.mode === 'full-auto' && result.auditPosted) {
       process.stderr.write(
-        `[human-reviewer-audit] #${issueArg}: posted full-auto audit comment (no human reviewer)\n`
+        `[human-reviewer-audit:info] #${issueArg}: posted full-auto audit comment (no human reviewer)\n`
       );
     } else if (result.mode === 'human-reviewer' && result.stamped) {
       process.stderr.write(
-        `[human-reviewer-audit] #${issueArg}: stamped human-reviewer marker (${result.handle})\n`
+        `[human-reviewer-audit:info] #${issueArg}: stamped human-reviewer marker (${result.handle})\n`
       );
     }
   } catch (err) {
