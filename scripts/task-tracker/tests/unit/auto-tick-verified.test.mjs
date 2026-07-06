@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 
 import { autoTickVerified } from '../../lib/auto-tick-verified.mjs';
+import { parseVerificationCommands } from '../../lib/verification-commands.mjs';
 
 // ---------------------------------------------------------------------------
 // Fixture: an issue body with a Verification Commands section and a DoD whose
@@ -212,6 +213,48 @@ const ALL_GREEN = [
     /aitm-verified[^>]*key=/,
     'no functional key folded into the marker'
   );
+}
+
+// --- #719: a VC line carrying a trailing HTML comment must still auto-tick ---
+// Regression: `parseVerificationCommands` (BACKTICK_CMD_RE, #368) extracts and
+// runs a VC line that carries a trailing `<!-- ... -->` declaration, but the
+// stricter `VC_LABEL_RE` in autoTickVerified failed to match it back, leaving a
+// green command's box unticked. The two sites must agree on the same line shape.
+{
+  const cmd = 'node --test scripts/task-tracker/tests/unit/auto-tick-verified.test.mjs';
+  const body = [
+    '## Verification Commands',
+    '',
+    `- [ ] \`${cmd}\` <!-- aitm-verified cmd="\`${cmd}\`" exit="0" sha="sandbox" ts="2026-07-06T00:00:00Z" -->`,
+    '',
+  ].join('\n');
+
+  // Precondition: the runner-side parser extracts the command from this line.
+  const parsed = parseVerificationCommands(body);
+  assert.equal(parsed.length, 1, 'parseVerificationCommands extracts the trailing-comment VC line');
+  assert.equal(parsed[0].command, cmd, 'parser command matches');
+
+  // AC1/AC2: autoTickVerified must extract the SAME command and flip the box.
+  const { body: out, tickedVc } = autoTickVerified(
+    body,
+    [{ command: cmd, passed: true, exit: 0 }],
+    '2026-07-06T00:00:00Z'
+  );
+  assert.deepEqual(tickedVc, [cmd], 'trailing-comment VC command ticked back');
+  const line = out.split('\n').find((l) => l.includes(cmd));
+  assert.ok(line.startsWith('- [x] '), 'trailing-comment VC box flipped to [x]');
+}
+
+// --- #719 AC3: the bare canonical VC form still auto-ticks (no regression) ---
+{
+  const body = ['## Verification Commands', '', '- [ ] `npm test`', ''].join('\n');
+  const { body: out, tickedVc } = autoTickVerified(
+    body,
+    [{ command: 'npm test', passed: true, exit: 0 }],
+    '2026-07-06T00:00:00Z'
+  );
+  assert.deepEqual(tickedVc, ['npm test'], 'bare VC command still ticked');
+  assert.ok(out.includes('- [x] `npm test`'), 'bare VC box still flips to [x]');
 }
 
 console.log('auto-tick-verified.test.mjs: all assertions passed');

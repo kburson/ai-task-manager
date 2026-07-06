@@ -22,6 +22,12 @@
 
 import { upsertProofMarker, extractVerifiedCommands, stripProofMarkers } from './proof-marker.mjs';
 import { stampEvidenceMarker, KEY_CLASSIFICATION } from './functional-dod-evidence.mjs';
+// #719 — share the exact VC command-line regex the runner-side parser uses, so
+// a VC line carrying a trailing `<!-- ... -->` declaration ticks back identically
+// to how `parseVerificationCommands` extracts and runs it. A local strict copy
+// (the old `VC_LABEL_RE`) drifted from #368's tolerant `BACKTICK_CMD_RE` and
+// silently left green-but-commented VC boxes unticked.
+import { BACKTICK_CMD_RE } from './verification-commands.mjs';
 
 // A Functional DoD line's canonical `dod:functional:<key>` tag. When present we
 // record the run by upserting run-props into that line's single `aitm-verified`
@@ -35,7 +41,6 @@ const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
 // Capture the unchecked-box prefix so we can flip the marker in place while
 // preserving leading whitespace and the label that follows.
 const UNCHECKED_RE = /^(\s*- \[) (\]\s+)(.*)$/;
-const VC_LABEL_RE = /^`([^`]+)`\s*$/;
 
 // Extract the backtick-wrapped commands declared on a Functional item's label.
 // #418 — routed through the shared dual-form extractor so a consolidated
@@ -101,7 +106,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     const [, open, close, rest] = box;
 
     if (section === 'vc') {
-      const cmd = rest.match(VC_LABEL_RE)?.[1] ?? null;
+      const cmd = rest.match(BACKTICK_CMD_RE)?.[1] ?? null;
       if (cmd && passed.has(cmd)) {
         const flipped = upsertProofMarker(rest, runProps(now, `sandbox exit 0 (${cmd})`, { cmd }));
         lines[i] = `${open}x${close}${flipped}`;

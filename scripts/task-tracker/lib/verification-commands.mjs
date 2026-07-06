@@ -11,7 +11,11 @@ const CHECKBOX_RE = /^- \[([ x])\] (.+)$/;
 // #368 — tolerate trailing HTML comment(s) after the backtick command so an
 // auto-ticked VC line (which carries an inline `aitm-verified` proof marker)
 // still parses to its command instead of dropping to zero entries.
-const BACKTICK_CMD_RE = /^`([^`]+)`(?:\s*<!--[\s\S]*?-->)*\s*$/;
+// #719 — exported as the single source of truth for a VC command-line's shape.
+// `autoTickVerified` (auto-tick-verified.mjs) imports this instead of keeping a
+// stricter local copy, so the "what to run" parser and the "what to tick"
+// matcher can never disagree about which lines are VC command lines.
+export const BACKTICK_CMD_RE = /^`([^`]+)`(?:\s*<!--[\s\S]*?-->)*\s*$/;
 
 export function parseVerificationCommands(body) {
   const src = String(body || '');
