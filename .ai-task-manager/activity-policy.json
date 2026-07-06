@@ -15,6 +15,16 @@
   "codeGlobExcludes": [],
   "codeGlobReincludes": [],
   "docGlobs": ["docs/**", ".claude/plans/**", "docs/plans/**", "**/*.md", "CLAUDE.md"],
+  "deployGlobs": [
+    "Dockerfile",
+    "Dockerfile.*",
+    "*.dockerfile",
+    ".dockerignore",
+    "Containerfile",
+    "compose.y*ml",
+    "docker-compose.y*ml",
+    "nginx.conf"
+  ],
   "testRunners": ["npm test", "npm run test", "node --test", "pytest", "cargo test", "go test"],
   "buildCommands": ["npm run build", "tsc", "cargo build", "go build"]
 }

@@ -54,7 +54,12 @@ export function suggestTransition(activityClass, currentState, activeIssue, STAT
       return `\`${verb}\` → ${s}`;
     }
   }
-  return `(no kanban state permits ${activityClass}; review activity-policy.json)`;
+  return (
+    `(no kanban state permits ${activityClass}; if this is a code, config, or ` +
+    `deployment file, add its glob to codeGlobsExtra / configGlobsExtra / ` +
+    `deployGlobsExtra in .ai-task-manager/activity-policy.json so it classifies ` +
+    `as WRITE_CODE)`
+  );
 }
 
 function truncate(s, n) {

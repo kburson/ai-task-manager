@@ -71,6 +71,23 @@ test('configGlobsExtra adds vite/playwright configs without restating defaults',
   }
 });
 
+test('deployGlobsExtra keeps every default deployGlob plus the additions', () => {
+  const dir = seedPolicy({ deployGlobsExtra: ['fly.toml', 'Procfile'] });
+  try {
+    const policy = loadPolicy(dir);
+    for (const g of DEFAULT_POLICY.deployGlobs) assert.ok(policy.deployGlobs.includes(g));
+    assert.ok(policy.deployGlobs.includes('fly.toml'));
+    assert.ok(policy.deployGlobs.includes('Procfile'));
+    // The additions are live: a file under the extra glob classifies as code.
+    assert.equal(classifyEdit('fly.toml', policy), 'WRITE_CODE');
+    assert.equal(classifyEdit('Procfile', policy), 'WRITE_CODE');
+    // And a default deploy glob still resolves.
+    assert.equal(classifyEdit('Dockerfile', policy), 'WRITE_CODE');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('docGlobsExtra appends onto the default docGlobs', () => {
   const dir = seedPolicy({ docGlobsExtra: ['handbook/**'] });
   try {

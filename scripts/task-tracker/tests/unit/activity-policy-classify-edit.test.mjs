@@ -121,6 +121,31 @@ test('classifyEdit: configGlobs — repo-root tooling config classifies as WRITE
   assert.equal(classifyEdit('.claude/settings.local.json'), 'WRITE_CODE');
 });
 
+test('classifyEdit: deployGlobs — repo-root container/deploy files classify as WRITE_CODE', () => {
+  assert.equal(classifyEdit('Dockerfile'), 'WRITE_CODE');
+  assert.equal(classifyEdit('Dockerfile.prod'), 'WRITE_CODE');
+  assert.equal(classifyEdit('Dockerfile.dev'), 'WRITE_CODE');
+  assert.equal(classifyEdit('web.dockerfile'), 'WRITE_CODE');
+  assert.equal(classifyEdit('.dockerignore'), 'WRITE_CODE');
+  assert.equal(classifyEdit('Containerfile'), 'WRITE_CODE');
+  assert.equal(classifyEdit('compose.yml'), 'WRITE_CODE');
+  assert.equal(classifyEdit('compose.yaml'), 'WRITE_CODE');
+  assert.equal(classifyEdit('docker-compose.yml'), 'WRITE_CODE');
+  assert.equal(classifyEdit('docker-compose.yaml'), 'WRITE_CODE');
+  assert.equal(classifyEdit('nginx.conf'), 'WRITE_CODE');
+});
+
+test('classifyEdit: deployGlobs in DEFAULT_POLICY', () => {
+  assert.ok(DEFAULT_POLICY.deployGlobs.includes('Dockerfile'));
+  assert.ok(DEFAULT_POLICY.deployGlobs.includes('.dockerignore'));
+});
+
+test('classifyEdit: doc precedence still wins over deployGlobs', () => {
+  // A markdown note about a Dockerfile is docs, not code — docGlobs is
+  // checked before deployGlobs.
+  assert.equal(classifyEdit('Dockerfile.md'), 'WRITE_DOCS');
+});
+
 test('loadPolicy: configGlobs override propagates from project-local file', () => {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-policy-cfg-'));
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });

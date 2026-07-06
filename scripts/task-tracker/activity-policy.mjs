@@ -75,6 +75,24 @@ export const DEFAULT_POLICY = Object.freeze({
     // state), so the very first policy edit needs a chore-mode escape hatch.
     '.ai-task-manager/activity-policy.json',
   ],
+  // Repo-root container / deployment files that ARE a first-class code
+  // deliverable when shipping an image (Dockerfiles, compose stacks, the
+  // container web-server config). They live at repo root, so they match no
+  // `src/**`/`scripts/**` code glob and none of the tooling `configGlobs` —
+  // without this list every such edit falls through to WRITE_OTHER (permitted
+  // in no kanban state), blocking a legitimate `develop`-stage build file.
+  // Classified as WRITE_CODE. See DEFAULT_POLICY.configGlobs for the sibling
+  // pattern this mirrors (#712).
+  deployGlobs: [
+    'Dockerfile',
+    'Dockerfile.*',
+    '*.dockerfile',
+    '.dockerignore',
+    'Containerfile',
+    'compose.y*ml',
+    'docker-compose.y*ml',
+    'nginx.conf',
+  ],
   testRunners: ['npm test', 'npm run test', 'node --test', 'pytest', 'cargo test', 'go test'],
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
 });
@@ -169,6 +187,13 @@ export function classifyEdit(filePath, policy = DEFAULT_POLICY) {
   // still go to docs, and BEFORE code so bare-root configs don't fall
   // through to WRITE_OTHER. See DEFAULT_POLICY.configGlobs for the list.
   if (anyGlobMatch(p, policy.configGlobs)) return 'WRITE_CODE';
+
+  // Repo-root container / deployment files (e.g. `Dockerfile`, `.dockerignore`,
+  // `compose.yaml`, `nginx.conf`) classify as WRITE_CODE so a container image
+  // is a first-class deliverable in `develop`. Checked AFTER docs (so a
+  // `Dockerfile.md` note still goes to docs) and alongside config, BEFORE the
+  // code globs. See DEFAULT_POLICY.deployGlobs for the list.
+  if (anyGlobMatch(p, policy.deployGlobs)) return 'WRITE_CODE';
 
   if (anyGlobMatch(p, policy.codeGlobs)) {
     if (anyGlobMatch(p, policy.codeGlobExcludes)) {
@@ -344,6 +369,7 @@ export function loadPolicy(cwd) {
         : DEFAULT_POLICY.codeGlobReincludes,
       docGlobs: withExtra('docGlobs', 'docGlobsExtra'),
       configGlobs: withExtra('configGlobs', 'configGlobsExtra'),
+      deployGlobs: withExtra('deployGlobs', 'deployGlobsExtra'),
       testRunners: Array.isArray(parsed.testRunners)
         ? parsed.testRunners
         : DEFAULT_POLICY.testRunners,
