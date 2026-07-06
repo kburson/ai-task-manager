@@ -31,6 +31,7 @@ import { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } from './lib/gh-
 import { evaluateGhProject } from './lib/gh-project-guard.mjs';
 import { evaluateAitmPath } from './lib/aitm-path-guard.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { configPath } from './paths.mjs';
 
 let input = {};
 try {
@@ -281,13 +282,13 @@ function block(reason) {
 // the legacy `.claude/task-tracker.json`. Returns null on any failure so the
 // guard fails closed (non-bound-id and no-id branches still fire).
 function readBoundProjectId(root) {
-  for (const rel of ['.ai-task-manager/task-tracker.json', '.claude/task-tracker.json']) {
-    try {
-      const cfg = JSON.parse(readFileSync(join(root, rel), 'utf8'));
-      if (cfg?.projectId) return cfg.projectId;
-    } catch {
-      // try next path
-    }
+  // configPath() resolves task-tracker.json under SHARED_DIR with a transparent
+  // read-fallback to the legacy `.claude` twin — no raw path literals here.
+  try {
+    const cfg = JSON.parse(readFileSync(configPath(root), 'utf8'));
+    if (cfg?.projectId) return cfg.projectId;
+  } catch {
+    // unreadable config → fail closed (null); the guard blocks accordingly.
   }
   return null;
 }

@@ -306,6 +306,13 @@ export const COMMAND_MANIFEST = [
     dispatch: 'verbs/config.mjs',
   },
   {
+    verb: 'board',
+    aliases: [],
+    description: "Print an issue's board Status via the bound projectId (read-only).",
+    category: 'meta',
+    dispatch: 'verbs/board.mjs',
+  },
+  {
     verb: 'kind',
     aliases: [],
     description: 'Report whether a name is a verb or a script.',
