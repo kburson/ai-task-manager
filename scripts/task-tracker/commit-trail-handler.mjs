@@ -28,6 +28,7 @@ import {
 } from './lib/commit-trail.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { lintCommitSubject } from './lib/commit-attribution-format.mjs';
 import { statePath as resolveStatePath } from './paths.mjs';
 
 // #327 — chore-mode commit-subject gate.
@@ -257,6 +258,15 @@ async function main() {
       process.stderr.write(`[commit-trail] ${refusal.code}: ${refusal.message}\n`);
     }
     return;
+  }
+
+  // #730 — subject-line attribution lint. Non-fatal by design: warn when the
+  // commit that just landed lacks the bound issue's `[#N]` prefix. The blocking
+  // enforcement (gate migration) is #733's job; here we only nudge, so this can
+  // never break the developer's shell or an in-flight drive.
+  const lint = lintCommitSubject(info.subject, issueNumber);
+  if (lint) {
+    process.stderr.write(`[commit-trail] ${lint.code}: ${lint.message}\n`);
   }
 
   const repo = loadRepo(projectDir);
