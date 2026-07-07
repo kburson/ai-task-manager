@@ -13,6 +13,7 @@
 // Audit/dry-run is the DEFAULT (AC4) — nothing is written without `--apply`:
 //   node scripts/task-tracker/backfill-plan-metadata.mjs            # audit only
 //   node scripts/task-tracker/backfill-plan-metadata.mjs --apply    # write
+//   node scripts/task-tracker/backfill-plan-metadata.mjs --help     # usage, no writes (#722)
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -52,10 +53,22 @@ export async function listOpenIssues(deps = {}) {
   return JSON.parse(stdout);
 }
 
+const USAGE =
+  'Usage: backfill-plan-metadata.mjs [--apply] [--help]\n' +
+  '  (default)   audit only, no writes\n' +
+  '  --apply     bold the unbold Plan Metadata labels on each open issue that needs it\n' +
+  '  --help, -h  print this usage and exit; never writes\n';
+
 export async function main(argv = process.argv.slice(2), deps = {}) {
+  const log = deps.log || ((s) => console.log(s));
+
+  if (argv.includes('--help') || argv.includes('-h')) {
+    log(USAGE);
+    return;
+  }
+
   const list = deps.listOpenIssues || listOpenIssues;
   const mutate = deps.mutateIssueBody || mutateIssueBody;
-  const log = deps.log || ((s) => console.log(s));
   const err = deps.err || ((s) => console.error(s));
   const apply = argv.includes('--apply');
   const repo = 'kburson/ai-task-manager';

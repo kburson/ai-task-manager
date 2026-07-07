@@ -10,8 +10,10 @@
 // The pure core `buildVcBackfill(body)` is exported for offline unit tests; the
 // CLI wraps it with `gh issue list` enumeration and `mutateIssueBody` writes.
 //
-//   node scripts/task-tracker/backfill-vc-sections.mjs            # heal live
-//   node scripts/task-tracker/backfill-vc-sections.mjs --dry-run  # plan only
+// Audit/dry-run is the DEFAULT (#722) — nothing is written without `--apply`:
+//   node scripts/task-tracker/backfill-vc-sections.mjs            # audit only
+//   node scripts/task-tracker/backfill-vc-sections.mjs --apply    # write
+//   node scripts/task-tracker/backfill-vc-sections.mjs --help     # usage, no writes
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -76,12 +78,25 @@ export async function listOpenIssues(deps = {}) {
   return JSON.parse(stdout);
 }
 
+const USAGE =
+  'Usage: backfill-vc-sections.mjs [--apply] [--dry-run] [--help]\n' +
+  '  (default)   audit only, no writes\n' +
+  '  --apply     write the healed VC section to each open issue that needs one\n' +
+  '  --dry-run   explicit alias for the audit-only default\n' +
+  '  --help, -h  print this usage and exit; never writes\n';
+
 export async function main(argv = process.argv.slice(2), deps = {}) {
+  const log = deps.log || ((s) => console.log(s));
+
+  if (argv.includes('--help') || argv.includes('-h')) {
+    log(USAGE);
+    return;
+  }
+
   const list = deps.listOpenIssues || listOpenIssues;
   const mutate = deps.mutateIssueBody || mutateIssueBody;
-  const log = deps.log || ((s) => console.log(s));
   const err = deps.err || ((s) => console.error(s));
-  const dryRun = argv.includes('--dry-run');
+  const apply = argv.includes('--apply');
   const repo = 'kburson/ai-task-manager';
   const issues = await list(deps);
 
@@ -93,9 +108,11 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
       continue;
     }
     const tag = plan.mode === 'derived' ? 'healed-derived' : 'healed-default';
-    if (dryRun) {
+    if (!apply) {
       summary[plan.mode] += 1;
-      log(`#${it.number}  ${tag}  [${plan.commands.join(', ')}]  (dry-run)`);
+      log(
+        `#${it.number}  ${tag}  [${plan.commands.join(', ')}]  (audit — no writes; pass --apply to write)`
+      );
       continue;
     }
     try {
@@ -115,7 +132,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   log(
     `\nopen=${issues.length}  skipped=${summary.skipped}  ` +
       `healed-derived=${summary.derived}  healed-default=${summary.default}  failed=${summary.failed}` +
-      `${dryRun ? '  (dry-run — no writes)' : ''}`
+      `${!apply ? '  (audit — no writes; pass --apply to write)' : ''}`
   );
 }
 

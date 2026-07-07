@@ -4,6 +4,8 @@
 // through an injected pexec, and every main() orchestration branch (dry-run
 // audit, live --apply write, per-issue failure, skip tally) through injected
 // deps — no network, no gh, no real body writes.
+// (#722 — default flipped to audit-only unless `--apply`; `--help` is now a
+// pure usage print that never lists or writes. Fixtures updated to match.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -98,14 +100,51 @@ test('main: --dry-run logs healed lines + skips clean, no writes', async () => {
   assert.match(joined, /#3 {2}healed-derived/);
   assert.match(joined, /#5 {2}healed-default/);
   assert.match(joined, /skipped=1 {2}healed-derived=1 {2}healed-default=1/);
-  assert.match(joined, /dry-run — no writes/);
+  assert.match(joined, /audit — no writes; pass --apply to write/);
   assert.equal(mutated, 0); // dry-run never writes
+});
+
+test('main: default (no flags) audits only, no writes', async () => {
+  const logs = [];
+  let mutated = 0;
+  await main([], {
+    listOpenIssues: async () => [{ number: 5, body: NO_VC }],
+    mutateIssueBody: async () => {
+      mutated += 1;
+      return { status: 'ok' };
+    },
+    log: (s) => logs.push(s),
+    err: () => {},
+  });
+  assert.match(logs.join('\n'), /audit — no writes; pass --apply to write/);
+  assert.equal(mutated, 0);
+});
+
+test('main: --help prints usage and never lists or writes', async () => {
+  const logs = [];
+  let listed = false;
+  let mutated = 0;
+  await main(['--help'], {
+    listOpenIssues: async () => {
+      listed = true;
+      return [];
+    },
+    mutateIssueBody: async () => {
+      mutated += 1;
+      return { status: 'ok' };
+    },
+    log: (s) => logs.push(s),
+    err: () => {},
+  });
+  assert.match(logs.join('\n'), /Usage: backfill-vc-sections\.mjs/);
+  assert.equal(listed, false);
+  assert.equal(mutated, 0);
 });
 
 test('main: live run writes healed issues through mutateIssueBody', async () => {
   const logs = [];
   const mutations = [];
-  await main([], {
+  await main(['--apply'], {
     listOpenIssues: async () => [{ number: 8, body: NO_VC }],
     mutateIssueBody: async ({ issueNumber, mutate }) => {
       // exercise the mutate callback path (base → healed body)
@@ -126,7 +165,7 @@ test('main: live run writes healed issues through mutateIssueBody', async () => 
 test('main: mutate throw is tallied as failed on err channel', async () => {
   const errs = [];
   const logs = [];
-  await main([], {
+  await main(['--apply'], {
     listOpenIssues: async () => [{ number: 7, body: NO_VC }],
     mutateIssueBody: async () => {
       throw new Error('conflict');
