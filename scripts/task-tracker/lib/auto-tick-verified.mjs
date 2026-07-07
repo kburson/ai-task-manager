@@ -16,18 +16,31 @@
 //     pickup-directive "do not check ahead of evidence" contract for items without
 //     machine evidence. The Lifecycle section (owned by approve/close) and all
 //     other sections are never touched.
+//   - `## Acceptance Criteria` (#721): an item whose `aitm-verified` marker
+//     declares `cmd="vc:<n>"` (one or more citations into the issue's own VC
+//     list) or a legacy embedded command ticks only once every resolved
+//     command passed (AND-fan-in) — a partial citation match leaves it unticked.
 //
 // Pure and idempotent. The caller invokes it only on the green path, so a red
 // result ticks nothing by construction.
 
-import { upsertProofMarker, extractVerifiedCommands, stripProofMarkers } from './proof-marker.mjs';
+import {
+  upsertProofMarker,
+  extractVerifiedCommands,
+  stripProofMarkers,
+  parseProofMarker,
+} from './proof-marker.mjs';
 import { stampEvidenceMarker, KEY_CLASSIFICATION } from './functional-dod-evidence.mjs';
 // #719 — share the exact VC command-line regex the runner-side parser uses, so
 // a VC line carrying a trailing `<!-- ... -->` declaration ticks back identically
 // to how `parseVerificationCommands` extracts and runs it. A local strict copy
 // (the old `VC_LABEL_RE`) drifted from #368's tolerant `BACKTICK_CMD_RE` and
 // silently left green-but-commented VC boxes unticked.
-import { BACKTICK_CMD_RE } from './verification-commands.mjs';
+import { BACKTICK_CMD_RE, parseVerificationCommands } from './verification-commands.mjs';
+// #721 — resolve an AC's `cmd="vc:<n>"` citation against the issue's own VC
+// list before checking every cited command's pass state (AND-fan-in). A
+// legacy embedded-command AC (`cmd="\`...\`"`) resolves unchanged.
+import { resolveCitedOrLiteralCommands } from './vc-ref.mjs';
 
 // A Functional DoD line's canonical `dod:functional:<key>` tag. When present we
 // record the run by upserting run-props into that line's single `aitm-verified`
@@ -38,6 +51,7 @@ const FUNCTIONAL_KEY_RE = /<!--\s*dod:functional:([a-z0-9-]+)\s*-->/i;
 const HEADING_RE = /^#{1,6}\s+/;
 const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\b/i;
 const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
+const AC_HEADING_RE = /^#{1,6}\s+Acceptance Criteria\b/i;
 // Capture the unchecked-box prefix so we can flip the marker in place while
 // preserving leading whitespace and the label that follows.
 const UNCHECKED_RE = /^(\s*- \[) (\]\s+)(.*)$/;
@@ -77,13 +91,15 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
   );
   const tickedVc = [];
   const tickedFunctional = [];
+  const tickedAc = [];
 
   if (passed.size === 0) {
-    return { body: source, tickedVc, tickedFunctional };
+    return { body: source, tickedVc, tickedFunctional, tickedAc };
   }
 
+  const vcItems = parseVerificationCommands(source);
   const lines = source.split('\n');
-  let section = null; // 'vc' | 'functional' | null
+  let section = null; // 'vc' | 'functional' | 'ac' | null
   // Keyed Functional lines ticked this run; their evidence markers are upserted
   // after the line scan so `stampEvidenceMarker` re-locates against the final
   // (box-flipped) body. `{ key, cmd }`.
@@ -95,6 +111,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     if (HEADING_RE.test(line)) {
       if (VC_HEADING_RE.test(line)) section = 'vc';
       else if (FUNCTIONAL_HEADING_RE.test(line)) section = 'functional';
+      else if (AC_HEADING_RE.test(line)) section = 'ac';
       else section = null;
       continue;
     }
@@ -111,6 +128,31 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
         const flipped = upsertProofMarker(rest, runProps(now, `sandbox exit 0 (${cmd})`, { cmd }));
         lines[i] = `${open}x${close}${flipped}`;
         tickedVc.push(cmd);
+      }
+      continue;
+    }
+
+    if (section === 'ac') {
+      // #721 — resolve the AC's declared `cmd` (either a `vc:<n>` citation or
+      // a legacy embedded command) and tick only when every resolved command
+      // passed (AND-fan-in). A citation naming a nonexistent VC entry is a
+      // malformed body, not sandbox evidence to act on — leave the box alone.
+      const props = parseProofMarker(rest);
+      let cmds = [];
+      if (props && typeof props.cmd === 'string') {
+        try {
+          cmds = resolveCitedOrLiteralCommands(props.cmd, vcItems);
+        } catch {
+          cmds = [];
+        }
+      }
+      if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
+        const flipped = upsertProofMarker(
+          rest,
+          runProps(now, `sandbox exit 0 (${cmds.join(', ')})`)
+        );
+        lines[i] = `${open}x${close}${flipped}`;
+        tickedAc.push(stripProofMarkers(rest));
       }
       continue;
     }
@@ -151,5 +193,5 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     });
   }
 
-  return { body: outBody, tickedVc, tickedFunctional };
+  return { body: outBody, tickedVc, tickedFunctional, tickedAc };
 }

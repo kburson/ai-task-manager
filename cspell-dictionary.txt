@@ -29,6 +29,7 @@ Dogfooding
 drai
 duplicative
 ensp
+fanin
 fanout
 Flesch
 frontmatter

@@ -16,6 +16,8 @@ import { createHash } from 'node:crypto';
 import { unescapeValue } from './marker-grammar.mjs';
 import { parseProofMarker, hasExecutionProof, upsertProofMarker } from './proof-marker.mjs';
 import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
+import { resolveCitedOrLiteralCommands } from './vc-ref.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
@@ -55,8 +57,12 @@ export function acKeyForLabel(label) {
   return createHash('sha256').update(norm, 'utf8').digest('hex').slice(0, 8);
 }
 
-function extractCommands(text) {
-  const out = [];
+// #721 — `vcItems` is the issue's own `## Verification Commands` list (from
+// `parseVerificationCommands`), needed to resolve a `cmd="vc:<n>"` citation to
+// the literal command it cites. Legacy embedded-command ACs (`cmd="\`...\`"`)
+// resolve unchanged — `resolveCitedOrLiteralCommands` only takes the citation
+// branch when `cmd`'s value is a pure run of `vc:<n>` tokens.
+function extractCommands(text, vcItems = []) {
   const haystack = String(text || '');
   // #481 — `cmd` is the persistent declaration component, read regardless of any
   // run-props upserted onto the same `aitm-verified` marker. The pre-#481 guard
@@ -64,9 +70,9 @@ function extractCommands(text) {
   // declaration shared one comment.
   const props = parseProofMarker(haystack);
   if (props && typeof props.cmd === 'string') {
-    for (const c of props.cmd.matchAll(/`([^`]+)`/g)) out.push(c[1]);
+    return resolveCitedOrLiteralCommands(props.cmd, vcItems);
   }
-  return out;
+  return [];
 }
 
 export function parseAcEvidence(text) {
@@ -143,6 +149,7 @@ export function parseEvidenceAcs(body) {
   const src = String(body || '');
   const loc = locateAcSection(src);
   if (!loc) return [];
+  const vcItems = parseVerificationCommands(src);
   const lines = src.split('\n');
   const startLine = src.slice(0, loc.start).split('\n').length - 1;
   const endLine = src.slice(0, loc.end).split('\n').length;
@@ -151,7 +158,7 @@ export function parseEvidenceAcs(body) {
     const box = lines[i].match(BOX_RE);
     if (!box) continue;
     const rest = box[4];
-    const commands = extractCommands(rest);
+    const commands = extractCommands(rest, vcItems);
     if (!commands.length) continue; // no aitm-verified-by → not gated
     out.push({
       label: stripMarkers(rest),
