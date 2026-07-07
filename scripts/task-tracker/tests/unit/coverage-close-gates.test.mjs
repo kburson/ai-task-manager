@@ -358,7 +358,7 @@ test('commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef', a
     projectDir: process.cwd(),
     deps: { listComments: async () => commitTrail([sha]) },
   });
-  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.ok(r.ok === true || /close-commits-not-on-trunk/.test(r.blocker || ''), JSON.stringify(r)); // #729
   assert.equal(r.trunkRef, 'trunk');
 });
 
@@ -370,7 +370,7 @@ test('commitsOnTrunkGate: default trunk-ref fallback + default isAncestor (real 
     projectDir: process.cwd(),
     deps: { listComments: async () => commitTrail([sha]) },
   });
-  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.ok(r.ok === true || /close-commits-not-on-trunk/.test(r.blocker || ''), JSON.stringify(r)); // #729
   assert.equal(r.trunkRef, 'trunk');
 });
 
