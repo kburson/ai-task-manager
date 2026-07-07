@@ -1,7 +1,7 @@
 ---
 name: feedback_no_chips_only_issues
-description: 'Never use background-task chips; all work flows through established GitHub issues, and the chat queue must be checked at every checkpoint'
-metadata:
+description: "Never use background-task chips; all work flows through established GitHub issues, and the chat queue must be checked at every checkpoint"
+metadata: 
   node_type: memory
   type: feedback
   originSessionId: 210617c1-1292-410a-8f23-eed58036fb4b

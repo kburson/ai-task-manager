@@ -4,7 +4,6 @@ description: Definitive field requirements for Backlog→Refine entry and Refine
 type: feedback
 originSessionId: e96a51b2-052b-40ba-8357-84786b2b5e77
 ---
-
 Backlog → Refine entry requires **Priority only**. Size/Estimate/Sequence/Labels/StartTime are NOT required at entry — they get filled in during Refine. PBIs are refined in priority order.
 
 Refine → Plan exit requires **all six fields**: Priority, Sequence, Size, Estimate, Labels (≥1), Start Time (= timestamp of the Refine→Plan transition itself — stamped automatically at promote-time once the field check passes; pinned on the board).

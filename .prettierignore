@@ -7,3 +7,4 @@ coverage/
 *.tgz
 package-lock.json
 docs/postmortems/
+docs/ai-memory/

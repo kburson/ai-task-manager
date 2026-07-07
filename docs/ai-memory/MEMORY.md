@@ -1,12 +1,17 @@
 <!-- Archived memories live in ./archive/ — recall on demand via grep over the memory directory. -->
 
+- [Deep-dive files must not start with `##`](reference_deep_dive_heading_trap.md) — post-deep-dive.mjs adds the `## Deep-Dive Analysis (date)` wrapper; a duplicate `##` in the file makes the plan→develop gate read the section as 0 chars. Start deep-dive scratch files with `###` subsections.
+- [`###` inside `## Acceptance Criteria` hides ACs](reference_ac_section_subheading_trap.md) — any nested `###` between the AC heading and its checkboxes empties the located section; ac-stamp/ensureChecked go blind. Opposite trap: code-complete gate reads THROUGH `###`, so a `### Sub-issues` checklist inside AC becomes phantom unverified ACs. Keep only real AC boxes under `## Acceptance Criteria`.
+- [Epic no-commit close lane](reference_epic_no_commit_close_lane.md) — epics: `kind <N> epic` + deliverable comment + `aitm-deliverable-posted` marker instead of commit-trace; DoD boxes need ensureChecked after dod-stamp.
 - [STOP banner 🛑 + timer-pause ⏱️ emoji](feedback_stop_banner_emoji.md) — lead STOP-mistake reports with a 🛑 banner heading; add ⏱️ to any timer-pause line; rare exceptions to no-emoji rule.
-- [Never fabricate evidence markers](feedback_never_fabricate_evidence.md) — never forge proof/evidence to pass a gate; use the real runner, the honest `allowUnverifiedTicks` hatch, or STOP and ask. Full-auto never authorizes inventing evidence.
-- [Never run `/task test` concurrently](feedback_no_concurrent_test_verb.md) — sandbox verb uses a fixed per-issue worktree path; concurrent/duplicate runs delete each other's worktrees and post false red tables. Let `promote` drive one run.
+- [No-source issues → spike no-commit lane](feedback_no_source_issue_spike_lane.md) — zero-commit issues (repo-config chores, spike-finding actions) make commit-trace stamp a FALSE HEAD trail; `/task kind <N> spike` + void-comment + `aitm-deliverable-posted` body marker instead.
 - [Web-authored issues lack DoD tail](feedback_web_authored_missing_dod_tail.md) — close blocks on passed-final-review; backfill only the `### Lifecycle` subsection, then approve+close; optout only if review truly skipped.
-- [Worktree "missing templates" = seed gap, use seed-worktree](feedback_worktree_seed_templates.md) — Test red on missing `.ai-task-manager` templates is a seedWorktreeBackfill gap, not a code regression; use `seed-worktree.mjs`, never hand-copy or full-install.
+- [Never fabricate evidence markers](feedback_never_fabricate_evidence.md) — never forge proof/evidence to pass a gate; use the real runner, the honest `allowUnverifiedTicks` hatch, or STOP and ask. Full-auto never authorizes inventing evidence.
+- [Aggregate test-execution pattern](feedback_aggregate_test_execution_pattern.md) — for coverage epics, run `test:all` ONCE per sub-epic (its `tests` DoD key); grandchildren declare targeted `node --test` so their sandbox never runs the full suite. 36 runs → ~8.
 - [Timing return is always `resume`](project_timing_return_always_resume.md) — re-engagement event is always resume/resumed; departure (switch-out:#N / pause) records why/where; never switch-back or switch-in-on-return (#568).
-- [TODO: fix worktree seed & sync](project_worktree_seed_sync_todo.md) — fresh worktrees miss `.ai-task-manager` runtime templates; investigate why `seedWorktreeBackfill` left them absent; track as its own issue.
+- [Never run `/task test` concurrently](feedback_no_concurrent_test_verb.md) — mutator lock falsely reclaims live long holders (defect #656); concurrent promote runs collide → duplicate board moves/timing rows (NOT worktree deletion; #563 per-run token fixed that). Let `promote` drive one run.
+- [Worktree "missing templates" = seed gap, use seed-worktree](feedback_worktree_seed_templates.md) — Test red on missing `.ai-task-manager` templates is a seedWorktreeBackfill gap, not a code regression; use `seed-worktree.mjs`, never hand-copy or full-install.
+- [TODO: fix worktree seed & sync](project_worktree_seed_sync_todo.md) — deferred 2026-06-24; fresh worktrees miss `.ai-task-manager` runtime templates; investigate why `seedWorktreeBackfill` left them absent. #539 code merged to trunk (77b4015) but not yet through Test gate.
 - [Plan Metadata everywhere (feature TODO)](project_plan_metadata_everywhere.md) — every issue must carry `## Plan Metadata`; freeform label:value + fixed core set; brainstorm & file after #369/#367, don't start mid-epic.
 - [Chips are not how we work](feedback_no_chips_only_issues.md) — never spawn work-chips; out-of-scope items get filed as GitHub issues; we only commit against established issues. Check the chat queue at every checkpoint.
 - [Board columns mirror verb states](project_board_columns_2026_05.md) — Backlog/On Deck/Refine/Plan/Develop/Test/Review/Done (On Deck added #433 ~2026-06-16); Groom/Analyze/Todo retired, old Review→Test ~2026-05-13.
@@ -31,3 +36,14 @@
 - [Route issue bodies through scripts](feedback_route_issue_bodies_through_scripts.md) — never hand-roll issue bodies; always use preflight-issue.mjs (DoD+Pickup-Directive tail). Gates/requirements must have script-level enforcement, not behavioral discipline.
 - [Pickup directive doesn't block Develop→Test](feedback_pickup_directive_test_promotion.md) — CODE_COMPLETE means promote to Test; the directive only forbids skipping to Review/Done.
 - [End-of-task worktree cleanup options](feedback_end_of_task_worktree_cleanup.md) — after commit-to-trunk + Done, ask user: delete worktree, OR drop branches + rebase to main-thread trunk (not origin). #125 PR work will change merge target.
+- [Full-Auto gate extends beyond Review](feedback_full_auto_gate_beyond_review.md) — `plan-approve`/`approve` need their own audit comment too, not just the Review checkbox; `close` can false-negative on success, always verify independently.
+- [dod-stamp vs ac-stamp](feedback_dod_stamp_vs_ac_stamp.md) — `dod-stamp <key>` stamps DoD Functional (tests/lint/commits); `ac-stamp` is ACs only; `acs`/`checkboxes` are DERIVED, auto-tick on promote.
+- [Test-stage WRITE_CODE gate](feedback_test_stage_write_code_gate.md) — Edit/Write refused in `test` state; demote→fix→verify-develop.mjs→commit→re-promote is the sanctioned remediation loop.
+- [Epic Lifecycle Choreography](feedback_epic_lifecycle_choreography.md) — Epic state choreography — parent reaches Plan, then children reach Refine, then parent moves to Develop, then children walk down per epic plan.
+- [Feedback Never Verb Help New](feedback_never_verb_help_new.md) — RETIRED 2026-06-25 — defect fixed in #547; `/task new help` now prints the help menu, no junk issue.
+- [No Child Leads Parent](feedback_no_child_leads_parent.md) — Never use TASK_TRACKER_FORCE_PROMOTE to push a sub-issue past its epic parent's state. Advance the parent first.
+- [Feedback No Chips](feedback_no_chips.md) — durable memory (see file)
+- [Project 238 Duration Format](project_238_duration_format.md) — EPIC
+- [Project 259 Child Recreate Plan](project_259_child_recreate_plan.md) — durable memory (see file)
+- [Project Ocp Services Migration](project_ocp_services_migration.md) — durable memory (see file)
+- [Project Repack Blocked On Epic7](project_repack_blocked_on_epic7.md) — durable memory (see file)

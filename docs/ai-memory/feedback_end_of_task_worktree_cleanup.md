@@ -4,7 +4,6 @@ description: After commit-to-trunk + Done, choose one of two cleanup paths for t
 type: feedback
 originSessionId: fc42fb9c-4eb3-4be4-b7cb-fa6a4143d843
 ---
-
 When a task is committed to trunk and moved to Done, pick one of:
 
 1. **Delete the worktree entirely** (branch and directory).

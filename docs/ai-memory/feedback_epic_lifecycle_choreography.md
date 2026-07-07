@@ -1,7 +1,7 @@
 ---
 name: epic-lifecycle-choreography
-description: 'Epic state choreography — parent reaches Plan, then children reach Refine, then parent moves to Develop, then children walk down per epic plan.'
-metadata:
+description: "Epic state choreography — parent reaches Plan, then children reach Refine, then parent moves to Develop, then children walk down per epic plan."
+metadata: 
   node_type: memory
   type: feedback
   originSessionId: 6c03579a-29a6-4861-9ec3-09e7be4f8f66

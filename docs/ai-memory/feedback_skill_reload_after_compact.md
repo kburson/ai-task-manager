@@ -4,7 +4,6 @@ description: User confirmed that detecting a missing skill sentinel and reloadin
 type: feedback
 originSessionId: 5041f645-9673-49cf-b10d-49116be85ad8
 ---
-
 After `/compact`, skill load sentinels (`aitm-skill-loaded:<id>:<version>`) disappear from context. The correct behavior is to detect their absence and reload only then — not to reload the full skill files on every invocation.
 
 **Why:** The task skill's Load-Once Procedure exists specifically to avoid re-reading large skill files when they're already in context. Re-reading unconditionally wastes context budget; skipping the check after compact misses real staleness.

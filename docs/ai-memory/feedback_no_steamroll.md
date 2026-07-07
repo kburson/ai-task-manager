@@ -4,7 +4,6 @@ description: Before any state transition, re-read the most recent user messages 
 type: feedback
 originSessionId: d53c9948-1218-4c50-bee2-4392971a4ea5
 ---
-
 Before any `/task` state transition (refine/plan/develop/test/review/done), before switching the active issue, before closing an issue, and before parallel-agent fan-out, **pause and re-read the most recent user messages**. If the latest user message is unacknowledged or contains a question or instruction not yet addressed, halt and respond first — do not advance state.
 
 **Why:** Incident on 2026-05-17 during close of #107/#142 — multiple user messages queued in chat were ignored because the agent kept advancing state. There is no programmatic signal for "unread chat queue"; this is behavioral self-discipline at the high-cost moments where steam-rolling causes the most damage.
@@ -17,3 +16,5 @@ Before any `/task` state transition (refine/plan/develop/test/review/done), befo
 - Before parallel-agent fan-out.
 
 At each trigger, scan the conversation tail for new user input. If the latest user message has not been addressed, respond first, then continue.
+
+**Recurrence 2026-06-21 (#413):** Ran the entire develop→test→review→done→close chain uninterrupted after a "resume directly" directive, never checking the queue. A user message ("fix #413 Plan Metadata before it's done") was queued and missed; #413 closed before the fix. A "resume / continue" directive is NOT a license to skip checkpoints. The user has no way to timestamp queued messages (feature request pending) — do not lean on timing; pause and re-scan the tail before every state move regardless.

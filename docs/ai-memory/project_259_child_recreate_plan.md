@@ -27,12 +27,12 @@ After all four replacements exist and originals are deleted: **PAUSE and let the
 
 ## Scope mapping (original → replacement)
 
-| Old  | Sequence | Body file                | Status before delete |
-| ---- | -------- | ------------------------ | -------------------- |
-| #264 | 300      | `.tmp/reset/264.body.md` | various post-Refine  |
-| #265 | 301      | `.tmp/reset/265.body.md` | various post-Refine  |
-| #266 | 302      | `.tmp/reset/266.body.md` | various post-Refine  |
-| #268 | 304      | `.tmp/reset/268.body.md` | various post-Refine  |
+| Old | Sequence | Body file                  | Status before delete |
+|-----|----------|----------------------------|----------------------|
+| #264 | 300     | `.tmp/reset/264.body.md`   | various post-Refine  |
+| #265 | 301     | `.tmp/reset/265.body.md`   | various post-Refine  |
+| #266 | 302     | `.tmp/reset/266.body.md`   | various post-Refine  |
+| #268 | 304     | `.tmp/reset/268.body.md`   | various post-Refine  |
 
 #262 and #263 are **kept as-is** — do not touch.
 
@@ -48,16 +48,16 @@ After all four replacements exist and originals are deleted: **PAUSE and let the
 - **AC markers must be in backticks**, or preflight warns `missing-backticks`.
 - **Pause timer on blocking questions** (`feedback_pause_on_blocking_question.md`) — `/task pause "..."` before asking, `/task start "..."` on resume.
 - **`./.tmp/` is canonical scratch dir** (`feedback_scratch_dir_canonical.md`).
-- **TASK*TRACKER_FORCE*\* env overrides are forbidden** (the rip-out being completed in #275).
+- **TASK_TRACKER_FORCE_* env overrides are forbidden** (the rip-out being completed in #275).
 - **On Mistakes** — STOP, announce, give 2-3 options, wait. No self-correct.
 
 ## Known blocker carried into this work
 
-Per-session `active-task.json` `kanbanState` field is **not seeded by `task-tracker start`** (defect TBD — see `scripts/task-tracker/verbs/start.mjs:71`, `resume.mjs:81`). Activity-guard then refuses WRITE\_\* with "no recorded kanban state." Manual patches violate single-state-mutator and are denied by the auto-mode classifier. **This must be fixed before the recreate-and-delete plan can run** — otherwise every state-bind on a new issue will dead-lock. Fix candidate: file as its own defect after #275 closes; or roll into a `/task reconcile` enhancement that seeds the session file.
+Per-session `active-task.json` `kanbanState` field is **not seeded by `task-tracker start`** (defect TBD — see `scripts/task-tracker/verbs/start.mjs:71`, `resume.mjs:81`). Activity-guard then refuses WRITE_* with "no recorded kanban state." Manual patches violate single-state-mutator and are denied by the auto-mode classifier. **This must be fixed before the recreate-and-delete plan can run** — otherwise every state-bind on a new issue will dead-lock. Fix candidate: file as its own defect after #275 closes; or roll into a `/task reconcile` enhancement that seeds the session file.
 
 ## Status when this memory was written
 
-- #275 (FORCE\_\* rip-out defect) currently in **Develop** column on board; session file mismatched at `kanbanState: "plan"`; the user is choosing between rollback / fix-upstream / authorize-patch options.
+- #275 (FORCE_* rip-out defect) currently in **Develop** column on board; session file mismatched at `kanbanState: "plan"`; the user is choosing between rollback / fix-upstream / authorize-patch options.
 - #264, #265, #266, #268 still exist on the board, untouched.
 - `.tmp/reset/{264,265,266,268}.body.md` already prepared.
 - Worktrees: not yet enumerated; do `git worktree list` first.

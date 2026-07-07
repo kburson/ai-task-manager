@@ -21,6 +21,7 @@
     "package-lock.json",
     "*.tgz",
     "docs/postmortems/**",
+    "docs/ai-memory/**",
     "scripts/reports/regional-rates.json",
     "cspell-dictionary.txt"
   ]

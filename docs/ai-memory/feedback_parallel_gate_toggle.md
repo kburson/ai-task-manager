@@ -4,7 +4,6 @@ description: Before launching parallel sub-agents on multiple sub-issues, ask th
 type: feedback
 originSessionId: 4f9af50f-35a1-481b-9eb2-b94cc9f79671
 ---
-
 Before dispatching a parallel sub-agent batch (one agent per sub-issue), pause and ask the user which human gates to toggle off for the duration of the batch:
 
 - `analyze → development` approve

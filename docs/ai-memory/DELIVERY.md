@@ -1,0 +1,89 @@
+# Delivering "lessons learned" to downstream ai-task-manager users
+
+Status: recommendation + spec (build deferred to a tracked follow-up per #518 AC-5).
+
+## Problem
+
+Building this package produced ~47 durable operational lessons (`docs/ai-memory/`,
+plus `archive/` for retired ones). A downstream user who installs the package should be
+able to inherit that hard-won knowledge instead of rediscovering it through their own
+mistakes. What is the best mechanism to get these lessons into their workspace and in
+front of their Claude sessions?
+
+## Options considered
+
+### (a) Single consolidated markdown, auto-loaded every session + post-compact
+
+One big file, emitted into context on every SessionStart and PreCompact/PostCompact.
+
+- **Pro:** zero user action; knowledge is always present.
+- **Con:** burns context budget on every fact every session, even the 90% irrelevant to
+  the current task. Grows unbounded as lessons accumulate. No opt-out per lesson. The
+  monolith is also harder to keep curated — one file, many concerns.
+
+### (b) Install-time menu of individual files
+
+At `ai-task-manager install`, present the corpus as a menu; the user opts into the files
+they want, copied into their workspace.
+
+- **Pro:** per-file granularity, deliberate acceptance, small on-disk footprint.
+- **Con:** nothing _surfaces_ the knowledge afterward. Files sit on disk unread; Claude
+  never sees them unless the user manually points at them. Solves distribution, not recall.
+
+## Recommendation: hybrid (seed files + always-loaded index)
+
+Adopt the exact pattern this repo's own auto-memory uses — the very system that produced
+these lessons: **a lightweight `MEMORY.md` index always in context, plus per-fact files
+recalled on demand.** Port it downstream:
+
+1. **Seed the individual files at install (option-b granularity).**
+   Ship `docs/ai-memory/` in `package.json#files` (it is currently excluded, so the seed
+   does not even reach npm today — fixing that is step one). Add a memory group to the
+   install copy so the curated durable set lands in the user's workspace under
+   `.ai-task-manager/memory/`. Present it as an **opt-in menu** so acceptance is deliberate.
+
+2. **Always-load only the index (option-a persistence, minus the cost).**
+   A SessionStart / PostCompact hook emits `MEMORY.md` — one line per lesson — via
+   `hookSpecificOutput.additionalContext`. The index is cheap and bounded; the individual
+   fact files are read on demand when a one-line hook matches the task at hand.
+
+Option (a) alone pays full context cost forever; option (b) alone never surfaces anything.
+The hybrid keeps the always-on cost to a bounded index while preserving both deliberate
+acceptance and on-demand recall. It is also a _proven_ pattern — it is how this project's
+maintainer memory already works.
+
+## Concrete spec
+
+### Ship the seed
+
+- Add `"docs/ai-memory"` to `package.json#files`.
+- New manifest group in `bin/lib/template-manifest.mjs` (e.g. `MEMORY_SEED_FILES`), sourced
+  from `docs/ai-memory/*.md` (excluding `archive/`, and honoring the `EXCLUDE_PATTERNS` in
+  `scripts/inspect/ai-memory-parity.mjs`).
+
+### Install-time opt-in menu
+
+- During `ai-task-manager install`, prompt: "Install the bundled operational-lessons memory
+  seed? [all / choose / none]". `choose` lists each `MEMORY.md` bullet as a togglable item.
+- Selected files copy into the downstream (gitignored) `.ai-task-manager/memory/`, alongside a
+  copy of `MEMORY.md` filtered to the accepted set.
+
+### Always-loaded index hook
+
+- Reuse the proven `additionalContext` channel (see `codex-prompt-timestamp.mjs` for the shape).
+- A `SessionStart` + `PostCompact` hook reads `.ai-task-manager/memory/MEMORY.md` and emits it as
+  `hookSpecificOutput.additionalContext`, prefixed with a one-line "recall on demand via grep over
+  `.ai-task-manager/memory/`" instruction. Only the index is emitted — never the full corpus.
+
+### Parity / freshness
+
+- `scripts/inspect/ai-memory-parity.mjs` (this issue) keeps the shipped seed honest against the
+  maintainer's live memory: `--mode files` / `--mode index` / `--mode diff` / `--mode rebase`.
+  Run `--mode diff` before publishing to confirm the seed is current.
+
+## Build deferral
+
+Per #518 AC-5, the mechanism _build_ (package.json#files change, manifest group, install-menu
+prompt, index hook) is filed as a tracked follow-up issue rather than built inside this
+investigation. This issue delivers: the rebased+reconciled seed, the parity tooling, and this
+spec.

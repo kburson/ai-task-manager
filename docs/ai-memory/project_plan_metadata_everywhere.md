@@ -1,7 +1,7 @@
 ---
 name: project_plan_metadata_everywhere
 description: User-requested feature — guarantee every issue carries a Plan Metadata section with freeform label:value pairs plus a fixed core set
-metadata:
+metadata: 
   node_type: memory
   type: project
   originSessionId: 210617c1-1292-410a-8f23-eed58036fb4b

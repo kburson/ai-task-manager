@@ -1,7 +1,7 @@
 ---
 name: project_238_duration_format
 description: EPIC
-metadata:
+metadata: 
   node_type: memory
   type: project
   originSessionId: 210617c1-1292-410a-8f23-eed58036fb4b

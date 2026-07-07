@@ -1,7 +1,7 @@
 ---
 name: feedback_stop_banner_emoji
 description: STOP mistake reports get a 🛑 emoji banner; timer-pause notices get ⏱️ — make them scannable in long prose.
-metadata:
+metadata: 
   node_type: memory
   type: feedback
   originSessionId: 210617c1-1292-410a-8f23-eed58036fb4b

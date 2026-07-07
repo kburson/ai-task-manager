@@ -4,10 +4,8 @@ description: Architectural rule — only scripts/gh/move-state.mjs may mutate th
 type: feedback
 originSessionId: cb76eafb-1b98-42ba-93c7-cc315e949261
 ---
-
 Only `scripts/gh/move-state.mjs` may write the Status field on the GitHub Projects board.
 All other verbs (`promote`, `test`, `approve`, `plan-approve`, `refine`, `demote`, `reconcile`, `reject`, `auto`, etc.) must:
-
 1. Verify required preconditions (gates, markers, rationale, evidence).
 2. Determine the target state.
 3. Delegate the actual mutation to `move-state.mjs`.
