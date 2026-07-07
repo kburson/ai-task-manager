@@ -32,6 +32,8 @@ State slugs are canonical. There is no slug shim — the renamed states are the 
 
 `/task dod-stamp <key>` is a Test/Review-stage helper, not a state-walking verb. It runs the verifier declared on a Functional DoD item and stamps an evidence marker that unlocks the corresponding `/task check` tick. See `rules/functional-dod.md` for the full contract.
 
+`/task ac-stamp <label>` and `/task test` are Develop/Test-stage helpers, not state-walking verbs. `ac-stamp` runs the verifier command(s) declared on an Acceptance Criteria item and stamps genuine execution-proof evidence (exit/sha/ts/key) onto that AC. `test` runs the full Verification Commands suite in a fresh sandbox worktree and, on an all-green result, auto-ticks passing checkboxes/DoD items and moves the issue to Test. Neither advances the kanban board on its own the way `promote`/`demote`/`close` do.
+
 ## Forbidden
 
 - ❌ `move-state.mjs <N> <state>` directly to jump arbitrarily. Always use `/task promote` (or `next`) to advance one step and `/task demote` to step back. One step at a time prevents stage-skipping (e.g., Backlog → Develop).
