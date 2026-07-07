@@ -1,6 +1,12 @@
 <!-- Archived memories live in ./archive/ — recall on demand via grep over the memory directory. -->
 
 - [STOP banner 🛑 + timer-pause ⏱️ emoji](feedback_stop_banner_emoji.md) — lead STOP-mistake reports with a 🛑 banner heading; add ⏱️ to any timer-pause line; rare exceptions to no-emoji rule.
+- [Never fabricate evidence markers](feedback_never_fabricate_evidence.md) — never forge proof/evidence to pass a gate; use the real runner, the honest `allowUnverifiedTicks` hatch, or STOP and ask. Full-auto never authorizes inventing evidence.
+- [Never run `/task test` concurrently](feedback_no_concurrent_test_verb.md) — sandbox verb uses a fixed per-issue worktree path; concurrent/duplicate runs delete each other's worktrees and post false red tables. Let `promote` drive one run.
+- [Web-authored issues lack DoD tail](feedback_web_authored_missing_dod_tail.md) — close blocks on passed-final-review; backfill only the `### Lifecycle` subsection, then approve+close; optout only if review truly skipped.
+- [Worktree "missing templates" = seed gap, use seed-worktree](feedback_worktree_seed_templates.md) — Test red on missing `.ai-task-manager` templates is a seedWorktreeBackfill gap, not a code regression; use `seed-worktree.mjs`, never hand-copy or full-install.
+- [Timing return is always `resume`](project_timing_return_always_resume.md) — re-engagement event is always resume/resumed; departure (switch-out:#N / pause) records why/where; never switch-back or switch-in-on-return (#568).
+- [TODO: fix worktree seed & sync](project_worktree_seed_sync_todo.md) — fresh worktrees miss `.ai-task-manager` runtime templates; investigate why `seedWorktreeBackfill` left them absent; track as its own issue.
 - [Plan Metadata everywhere (feature TODO)](project_plan_metadata_everywhere.md) — every issue must carry `## Plan Metadata`; freeform label:value + fixed core set; brainstorm & file after #369/#367, don't start mid-epic.
 - [Chips are not how we work](feedback_no_chips_only_issues.md) — never spawn work-chips; out-of-scope items get filed as GitHub issues; we only commit against established issues. Check the chat queue at every checkpoint.
 - [Board columns mirror verb states](project_board_columns_2026_05.md) — Backlog/On Deck/Refine/Plan/Develop/Test/Review/Done (On Deck added #433 ~2026-06-16); Groom/Analyze/Todo retired, old Review→Test ~2026-05-13.
