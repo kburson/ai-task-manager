@@ -67,7 +67,8 @@ function makeCtx({ body }) {
         filesForSha: async () => ['scripts/example.mjs'],
         dirtyFiles: async () => new Set(),
         resolveTrunkRef: async () => 'refs/heads/main',
-        isAncestor: async () => 'on-trunk',
+        // #733 — trunk-scoped message attribution: a [#279] commit is on trunk.
+        attributingCommits: async () => [{ sha: HEAD_SHA, subject: '[#279] feat', ts: 't' }],
       },
     },
     fetchBlockerState: async () => null,

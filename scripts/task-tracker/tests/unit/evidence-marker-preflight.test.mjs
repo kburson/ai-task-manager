@@ -18,7 +18,9 @@ const baseDeps = {
   gitStatus: async () => '',
   gitHeadSha: async () => SHA,
   findTrailComment: async () => ({ body: TRAIL }),
-  gitIsAncestor: async () => true,
+  // #733 — attribution is message-based; the retired `gitIsAncestor` dep is
+  // ignored, so inject the current `hasAttributingCommit` seam instead.
+  hasAttributingCommit: async () => true,
 };
 
 {

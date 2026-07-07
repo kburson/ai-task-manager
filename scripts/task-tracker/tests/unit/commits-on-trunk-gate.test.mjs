@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 // @story #165
 // Unit tests for commitsOnTrunkGate (#B / #165).
+//
+// #733 migrated this gate from per-SHA `merge-base --is-ancestor` reachability
+// to a TRUNK-SCOPED message-attribution check: it asserts that a `[#N]`-tagged
+// commit exists in the trunk ref's history (`attributingCommits(N, {refs:[trunkRef]})`),
+// not that the trail's recorded SHAs are ancestors of trunk. The injected
+// `attributingCommits` dep returns the attributed commit rows for the requested
+// scope.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -24,50 +31,60 @@ function trail(shas) {
   return [{ body: `### 🔗 Commits\n\n<!-- aitm-commits: ${shas.join(',')} -->\n` }];
 }
 
-test('commitsOnTrunkGate: all SHAs on trunk → ok', async () => {
+// A helper returning attribution rows only when the requested scope includes
+// trunkRef — mirrors the trunk-scoped git log the real engine runs.
+function attributedOnTrunk(rows) {
+  return async (_issue, { refs } = {}) => (refs && refs.includes('trunk') ? rows : []);
+}
+
+test('commitsOnTrunkGate: attributed commit exists on trunk → ok', async () => {
   const r = await commitsOnTrunkGate({
     cfg,
     issueNumber: 1,
     deps: {
       listComments: async () => trail(['abc1234', 'def5678']),
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async () => 'on-trunk',
+      attributingCommits: attributedOnTrunk([{ sha: 'abc1234', subject: '[#1] feat', ts: 't' }]),
     },
   });
   assert.equal(r.ok, true);
   assert.equal(r.trunkRef, 'trunk');
 });
 
-test('commitsOnTrunkGate: one stranded SHA → refuse listing it', async () => {
+test('commitsOnTrunkGate: no attributed commit on trunk → refuse with message-based code', async () => {
   const r = await commitsOnTrunkGate({
     cfg,
     issueNumber: 1,
     deps: {
-      listComments: async () => trail(['abc1234', 'def5678', 'aaa1111']),
+      listComments: async () => trail(['abc1234', 'def5678']),
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async (sha) => (sha === 'def5678' ? 'stranded' : 'on-trunk'),
+      // Nothing attributed to [#1] on trunk (e.g. never merged).
+      attributingCommits: async () => [],
     },
   });
   assert.equal(r.ok, false);
-  assert.match(r.blocker, /close-commits-not-on-trunk/);
-  assert.match(r.blocker, /1 SHA\(s\)/);
-  assert.match(r.blocker, /def5678/);
+  assert.match(r.blocker, /close-no-attributed-commit-on-trunk/);
+  assert.match(r.blocker, /\[#1\]/);
   assert.match(r.blocker, /trunk/);
-  assert.deepEqual(r.stranded, ['def5678']);
 });
 
-test('commitsOnTrunkGate: unknown SHA treated as not-on-trunk', async () => {
+test('commitsOnTrunkGate: recorded SHA unreachable but token on trunk → ok (no deadlock)', async () => {
+  // The trail's recorded SHA was rewritten by a squash-merge; that SHA is NOT
+  // on trunk, but the [#1] token rode along into the merge commit. The old
+  // reachability gate would deadlock here; message attribution passes.
   const r = await commitsOnTrunkGate({
     cfg,
     issueNumber: 1,
     deps: {
-      listComments: async () => trail(['f00d123']),
+      listComments: async () => trail(['deadbeef']), // stranded pre-squash SHA
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async () => 'unknown-sha',
+      attributingCommits: attributedOnTrunk([
+        { sha: 'f00d999', subject: '[#1] feat: squashed onto trunk', ts: 't' },
+      ]),
     },
   });
-  assert.equal(r.ok, false);
-  assert.match(r.blocker, /f00d123/);
+  assert.equal(r.ok, true);
+  assert.equal(r.trunkRef, 'trunk');
 });
 
 test('commitsOnTrunkGate: no trail comment → graceful skip', async () => {
@@ -77,7 +94,7 @@ test('commitsOnTrunkGate: no trail comment → graceful skip', async () => {
     deps: {
       listComments: async () => [],
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async () => 'on-trunk',
+      attributingCommits: async () => [],
     },
   });
   assert.equal(r.ok, true);
@@ -91,7 +108,7 @@ test('commitsOnTrunkGate: empty marker → graceful skip', async () => {
     deps: {
       listComments: async () => [{ body: '### 🔗 Commits\n\n<!-- aitm-commits:  -->\n' }],
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async () => 'on-trunk',
+      attributingCommits: async () => [],
     },
   });
   assert.equal(r.ok, true);
@@ -105,7 +122,7 @@ test('commitsOnTrunkGate: trunk ref unresolved → refuse with helpful message',
     deps: {
       listComments: async () => trail(['abc1234']),
       resolveTrunkRef: async () => null,
-      isAncestor: async () => 'on-trunk',
+      attributingCommits: async () => [],
     },
   });
   assert.equal(r.ok, false);
@@ -113,8 +130,26 @@ test('commitsOnTrunkGate: trunk ref unresolved → refuse with helpful message',
   assert.match(r.blocker, /trunkRef/);
 });
 
-test('commitsOnTrunkGate: cfg.trunkRef takes precedence over fallback probing', async () => {
+test('commitsOnTrunkGate: attribution lookup failure → surfaced blocker', async () => {
+  const r = await commitsOnTrunkGate({
+    cfg,
+    issueNumber: 1,
+    deps: {
+      listComments: async () => trail(['abc1234']),
+      resolveTrunkRef: async () => 'trunk',
+      attributingCommits: async () => {
+        throw new Error('git exploded');
+      },
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.blocker, /close-trunk-attribution-failed/);
+  assert.match(r.blocker, /git exploded/);
+});
+
+test('commitsOnTrunkGate: cfg.trunkRef takes precedence, attribution scoped to it', async () => {
   let resolved = null;
+  let scopedRefs = null;
   const r = await commitsOnTrunkGate({
     cfg: { ...cfg, trunkRef: 'develop' },
     issueNumber: 1,
@@ -124,14 +159,20 @@ test('commitsOnTrunkGate: cfg.trunkRef takes precedence over fallback probing', 
         resolved = c.trunkRef;
         return c.trunkRef;
       },
-      isAncestor: async (_sha, ref) => (ref === 'develop' ? 'on-trunk' : 'stranded'),
+      attributingCommits: async (_issue, { refs } = {}) => {
+        scopedRefs = refs;
+        return refs && refs.includes('develop')
+          ? [{ sha: 'abc1234', subject: '[#1] feat', ts: 't' }]
+          : [];
+      },
     },
   });
   assert.equal(r.ok, true);
   assert.equal(resolved, 'develop');
+  assert.deepEqual(scopedRefs, ['develop']);
 });
 
-test('runCloseGates: stranded SHA composes into blockers alongside existing gates', async () => {
+test('runCloseGates: no attributed commit on trunk composes into blockers', async () => {
   const r = await runCloseGates({
     cfg,
     issueNumber: 1,
@@ -141,17 +182,17 @@ test('runCloseGates: stranded SHA composes into blockers alongside existing gate
       getHeadSha: async () => 'abc1234f00d123f',
       listComments: async () => trail(['abc1234', 'aaa1111']),
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async (sha) => (sha === 'aaa1111' ? 'stranded' : 'on-trunk'),
+      attributingCommits: async () => [], // nothing on trunk
       filesForSha: async () => [],
       dirtyFiles: async () => new Set(),
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-commits-not-on-trunk/.test(b)));
+  assert.ok(r.blockers.some((b) => /close-no-attributed-commit-on-trunk/.test(b)));
   assert.equal(r.trunkRef, 'trunk');
 });
 
-test('runCloseGates: all SHAs on trunk → trunk gate passes, full gate passes', async () => {
+test('runCloseGates: attributed commit on trunk → trunk gate passes, full gate passes', async () => {
   const r = await runCloseGates({
     cfg,
     issueNumber: 1,
@@ -161,7 +202,7 @@ test('runCloseGates: all SHAs on trunk → trunk gate passes, full gate passes',
       getHeadSha: async () => 'abc1234f00d123f',
       listComments: async () => trail(['abc1234']),
       resolveTrunkRef: async () => 'trunk',
-      isAncestor: async () => 'on-trunk',
+      attributingCommits: attributedOnTrunk([{ sha: 'abc1234', subject: '[#1] feat', ts: 't' }]),
       filesForSha: async () => [],
       dirtyFiles: async () => new Set(),
     },

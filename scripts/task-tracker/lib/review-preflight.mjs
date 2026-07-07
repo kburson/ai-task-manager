@@ -5,6 +5,7 @@ import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
+import { hasAttributingCommit as defaultHasAttributingCommit } from './commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 
@@ -24,20 +25,6 @@ async function defaultGitHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-async function defaultGitIsAncestor({ projectDir, sha, head }) {
-  try {
-    await pexec('git', ['merge-base', '--is-ancestor', sha, head], {
-      cwd: projectDir,
-      timeout: GIT_TIMEOUT_MS,
-    });
-    return true;
-  } catch (err) {
-    // exit 1 = not an ancestor; any other exit means git itself failed → re-throw.
-    if (err && err.code === 1) return false;
-    throw err;
-  }
-}
-
 async function defaultGetIssueBody({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
@@ -55,8 +42,11 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
   const gitStatus = deps.gitStatus || (() => defaultGitStatus({ projectDir }));
   const gitHeadSha = deps.gitHeadSha || (() => defaultGitHeadSha({ projectDir }));
   const find = deps.findTrailComment || findTrailComment;
-  const gitIsAncestor =
-    deps.gitIsAncestor || ((sha, head) => defaultGitIsAncestor({ projectDir, sha, head }));
+  // #733 — attribution is MESSAGE-based (`[#N]` token search), not SHA
+  // reachability. `deps.gitIsAncestor` is retired from the gating path; a
+  // deliverable on an unmerged branch or a rebased/squashed SHA is now accepted
+  // as long as a `[#N]`-attributed commit exists somewhere across `--all`.
+  const hasAttribution = deps.hasAttributingCommit || defaultHasAttributingCommit;
   const getIssueBody = deps.getIssueBody || (() => defaultGetIssueBody({ issueNumber, repo }));
 
   const reasons = [];
@@ -81,14 +71,22 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
     if (trailShas.length === 0) {
       reasons.push(`canonical \`### 🔗 Commits\` comment records no commits`);
     } else {
-      const unreachable = [];
-      for (const sha of trailShas) {
-        const reachable = await gitIsAncestor(sha, headSha);
-        if (!reachable) unreachable.push(sha);
-      }
-      if (unreachable.length > 0) {
+      // #733 — the trail records ≥1 commit, so assert MESSAGE-based attribution
+      // exists rather than SHA reachability. A `[#N]`-attributed commit found
+      // anywhere across `--all` (unmerged branch, rebased/squashed history) is
+      // accepted; only the absence of ANY such commit is a failure.
+      let attributed;
+      try {
+        attributed = await hasAttribution(issueNumber, { cwd: projectDir });
+      } catch (err) {
         reasons.push(
-          `commit(s) ${unreachable.join(', ')} recorded in \`### 🔗 Commits\` are not reachable from current HEAD ${headSha} (orphaned — a reset or rebase dropped them)`
+          `commit-attribution lookup failed while verifying \`[#${String(issueNumber).replace(/^#/, '')}]\` message attribution: ${err.message}`
+        );
+        attributed = true; // do not double-report as a missing-attribution reason
+      }
+      if (attributed === false) {
+        reasons.push(
+          `canonical \`### 🔗 Commits\` comment records commits, but no commit message references \`[#${String(issueNumber).replace(/^#/, '')}]\` — attribution is message-based (#727); prefix a commit subject with \`[#${String(issueNumber).replace(/^#/, '')}] \``
         );
       }
     }

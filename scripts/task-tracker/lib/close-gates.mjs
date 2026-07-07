@@ -25,6 +25,7 @@ import { promisify } from 'node:util';
 import { DOD_VERIFIED_RE, parseDodVerifiedMarker } from './markers.mjs';
 import { verifyChainIntegrity, STAGES } from './stage-entry-markers.mjs';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
+import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 
@@ -191,21 +192,27 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-// Trunk-integration gate (#B).
+// Trunk-integration gate (#B, message-based since #733).
 //
-// Refuses Review→Done when any SHA in the issue's `aitm-commits` trail is not
-// an ancestor of the configured trunk ref. The #157 epic exposed this gap:
-// all five sub-issues were closed and stamped Done but their commits sat on
-// a worktree branch that was never merged to trunk. Audit said "shipped";
-// trunk disagreed. This gate catches the same condition on the way out.
+// Refuses Review→Done unless a `[#N]`-attributed commit exists in the trunk
+// ref's history. The #157 epic exposed the underlying gap: all five sub-issues
+// were closed and stamped Done but their commits sat on a worktree branch that
+// was never merged to trunk. Audit said "shipped"; trunk disagreed.
+//
+// #733 replaces the per-SHA `merge-base --is-ancestor` reachability loop with a
+// TRUNK-SCOPED message-attribution check: `attributingCommits(N, {refs:[trunkRef]})`.
+// A squash-merge rewrites the deliverable SHA (the trail's recorded SHA never
+// lands on trunk) but carries the `[#N]` message token along, so SHA
+// reachability deadlocked where message attribution correctly passes. The real
+// invariant — "the work actually landed on trunk" — is preserved because the
+// search is scoped to `trunkRef`, NOT `--all`: a never-merged feature branch's
+// own commit does not satisfy it.
 //
 // Trunk ref resolution (in order): cfg.trunkRef → first existing local
 // branch among `trunk`, `main`, `master` → refusal. `origin/HEAD` is
 // intentionally not probed: this project is solo / local-only.
 //
 // Skip semantics match issueDirtyGate: no trail → skip, empty marker → skip.
-// Unknown SHAs (git rev-parse exit 128) are treated as not-on-trunk because
-// the trail's truth claim is that the SHA exists.
 
 const TRUNK_FALLBACKS = ['trunk', 'main', 'master'];
 
@@ -227,24 +234,17 @@ async function defaultResolveTrunkRef({ cfg, projectDir }) {
   return null;
 }
 
-async function defaultIsAncestor(sha, ref, { cwd } = {}) {
-  try {
-    await pexec('git', ['merge-base', '--is-ancestor', sha, ref], { cwd, timeout: 10000 });
-    return 'on-trunk';
-  } catch (err) {
-    if (err && err.code === 1) return 'stranded';
-    return 'unknown-sha';
-  }
-}
-
 export async function commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps = {} } = {}) {
   if (!cfg) throw new Error('commitsOnTrunkGate: cfg is required');
   if (!issueNumber) throw new Error('commitsOnTrunkGate: issueNumber is required');
   const listComments = deps.listComments || defaultListComments;
   const resolveTrunkRef = deps.resolveTrunkRef || defaultResolveTrunkRef;
-  const isAncestor =
-    deps.isAncestor || ((sha, ref) => defaultIsAncestor(sha, ref, { cwd: projectDir }));
+  // #733 — trunk-scoped MESSAGE attribution replaces per-SHA reachability.
+  const attributing = deps.attributingCommits || defaultAttributingCommits;
 
+  // The trail presence/empty skip semantics still key off the recorded trail:
+  // no trail → nothing was ever committed for this issue → skip; empty marker →
+  // skip. Only when the trail claims ≥1 commit do we assert the work is on trunk.
   let shas = [];
   try {
     const comments = await listComments({ cfg, issueNumber });
@@ -265,26 +265,23 @@ export async function commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps = 
     };
   }
 
-  const stranded = [];
-  for (const sha of shas) {
-    let status;
-    try {
-      status = await isAncestor(sha, trunkRef);
-    } catch {
-      status = 'unknown-sha';
-    }
-    if (status !== 'on-trunk') stranded.push(sha);
+  const id = String(issueNumber).replace(/^#/, '');
+  let commits;
+  try {
+    commits = await attributing(issueNumber, { cwd: projectDir, refs: [trunkRef] });
+  } catch (err) {
+    return {
+      ok: false,
+      blocker: `close-trunk-attribution-failed: message-attribution lookup against ${trunkRef} failed: ${err.message}`,
+      trunkRef,
+    };
   }
-  if (stranded.length === 0) return { ok: true, trunkRef };
+  if (Array.isArray(commits) && commits.length > 0) return { ok: true, trunkRef };
 
-  const shorts = stranded.map((s) => s.slice(0, 7));
-  const display =
-    shorts.slice(0, 5).join(', ') + (shorts.length > 5 ? `, …(+${shorts.length - 5})` : '');
   return {
     ok: false,
-    blocker: `close-commits-not-on-trunk: ${stranded.length} SHA(s) not reachable from ${trunkRef}: ${display} — merge into ${trunkRef}`,
+    blocker: `close-no-attributed-commit-on-trunk: no commit referencing [#${id}] found in ${trunkRef} — merge into ${trunkRef}`,
     trunkRef,
-    stranded,
   };
 }
 

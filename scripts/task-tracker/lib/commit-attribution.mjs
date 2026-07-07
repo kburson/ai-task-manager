@@ -43,8 +43,8 @@ function idsInSubject(subject) {
   return [...String(subject ?? '').matchAll(ISSUE_ID_GLOBAL_RE)].map((m) => Number(m[1]));
 }
 
-// Return every commit (across ALL refs) whose message carries the `[#N]` token,
-// as `{ sha, subject, ts }` rows in `git log` order (newest first).
+// Return every commit whose message carries the `[#N]` token, as
+// `{ sha, subject, ts }` rows in `git log` order (newest first).
 //
 // The grep is a `--fixed-strings` search for the literal `[#N]` token, so the
 // bracket/hash are matched verbatim and a numeric-prefix collision like
@@ -56,6 +56,13 @@ function idsInSubject(subject) {
 // `opts`:
 //   - `cwd`               — repository directory for the git invocation.
 //   - `pexec`             — injectable `execFile` promise (defaults to real git).
+//   - `refs`              — ref-scope for the `git log` walk (#733). Defaults to
+//                           `['--all']` (every ref), which is what the
+//                           `commit-trace`/`review-preflight` gates want. The
+//                           `close` gate passes `[trunkRef]` so attribution is
+//                           TRUNK-SCOPED: a never-merged feature branch must not
+//                           satisfy the "landed on trunk" invariant. Any git
+//                           revision-range/ref token(s) are accepted verbatim.
 //   - `isReachable(sha)`  — optional advisory predicate; only consulted when
 //                           `annotateReachable` is set.
 //   - `annotateReachable` — when true, each row gains a `reachable` boolean from
@@ -63,13 +70,14 @@ function idsInSubject(subject) {
 //                           message-based existence, never a precondition of it.
 export async function attributingCommits(
   issueNumber,
-  { cwd, pexec = defaultPexec, isReachable, annotateReachable = false } = {}
+  { cwd, pexec = defaultPexec, refs = ['--all'], isReachable, annotateReachable = false } = {}
 ) {
   const id = normalizeId(issueNumber);
   const token = `[#${id}]`;
+  const scope = Array.isArray(refs) ? refs : [refs];
   const { stdout } = await pexec(
     'git',
-    ['log', '--all', '--fixed-strings', `--grep=${token}`, '--format=%H%x09%s%x09%aI'],
+    ['log', ...scope, '--fixed-strings', `--grep=${token}`, '--format=%H%x09%s%x09%aI'],
     { cwd, timeout: GIT_TIMEOUT_MS }
   );
 

@@ -110,7 +110,9 @@ function reviewDeps(body) {
     findTrailComment: async () => ({
       body: `### 🔗 Commits\n<!-- aitm-commits shas="${sha}" -->`,
     }),
-    gitIsAncestor: async () => true,
+    // #733 — attribution is message-based; the retired `gitIsAncestor` dep is
+    // ignored, so inject the current `hasAttributingCommit` seam instead.
+    hasAttributingCommit: async () => true,
     getIssueBody: async () => body,
   };
 }

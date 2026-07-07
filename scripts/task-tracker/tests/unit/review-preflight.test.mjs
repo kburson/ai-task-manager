@@ -4,13 +4,14 @@ import { strict as assert } from 'node:assert';
 import { runReviewPreflight } from '../../lib/review-preflight.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../../lib/body-invariants.mjs';
 
-// Shared clean-gate deps: empty worktree, valid commit trail, reachable HEAD.
-// Lets the AC-evidence tests below isolate the only varying input (the body).
+// Shared clean-gate deps: empty worktree, valid commit trail, [#N]-attributed
+// commit present. Lets the AC-evidence tests below isolate the only varying
+// input (the body). #733: attribution is message-based, not SHA reachability.
 const cleanGateDeps = (getIssueBody) => ({
   gitStatus: async () => '',
   gitHeadSha: async () => SHA,
   findTrailComment: async () => ({ body: TRAIL }),
-  gitIsAncestor: async () => true,
+  hasAttributingCommit: async () => true,
   getIssueBody,
 });
 
@@ -25,7 +26,7 @@ const TRAIL = [
   '| [`abcdef1`](https://github.com/o/r/commit/abcdef1234567890) | s | a | t |',
 ].join('\n');
 
-// HEAD itself is in the trail and reachable → pass.
+// HEAD itself is in the trail and a [#N]-attributed commit exists → pass.
 {
   const r = await runReviewPreflight({
     issueNumber: '109',
@@ -35,16 +36,17 @@ const TRAIL = [
       gitStatus: async () => '',
       gitHeadSha: async () => SHA,
       findTrailComment: async () => ({ body: TRAIL }),
-      gitIsAncestor: async () => true,
+      hasAttributingCommit: async () => true,
       getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, true);
 }
 
-// Parked-then-resumed (the #384 bug): trail holds the issue's own commit A,
-// HEAD has advanced to a blocker's commit B, A is an ancestor of B → pass even
-// though HEAD itself is not listed in the trail.
+// #733 — Parked-then-resumed / rewritten-SHA: the trailed SHA is NOT reachable
+// from HEAD (a rebase/reset/squash moved it), but a [#N]-attributed commit
+// exists somewhere across --all. Message-based attribution accepts it — no
+// deadlock, where the old SHA-reachability loop would have failed.
 {
   const r = await runReviewPreflight({
     issueNumber: '374',
@@ -56,16 +58,16 @@ const TRAIL = [
       findTrailComment: async () => ({
         body: ['### 🔗 Commits', '', '<!-- aitm-commits: eabe08f1111111111 -->'].join('\n'),
       }),
-      gitIsAncestor: async (sha, head) =>
-        sha === 'eabe08f1111111111' && head === 'e7a7400b0b0b0b0b',
+      // The recorded SHA is irrelevant now; attribution keys on the message.
+      hasAttributingCommit: async () => true,
       getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, true, r.reasons.join('\n'));
 }
 
-// Orphaned commit: a trailed SHA is not reachable from HEAD (e.g. soft-reset +
-// recommit, or a rebase dropped it) → fail with a reachability reason.
+// #733 — negative: the trail records ≥1 commit but NO commit message references
+// [#N] anywhere → fail with a message-based reason (not "unreachable").
 {
   const r = await runReviewPreflight({
     issueNumber: '109',
@@ -77,12 +79,14 @@ const TRAIL = [
       findTrailComment: async () => ({
         body: ['### 🔗 Commits', '', '<!-- aitm-commits: def4561234567890 -->'].join('\n'),
       }),
-      gitIsAncestor: async () => false,
+      hasAttributingCommit: async () => false,
       getIssueBody: async () => '',
     },
   });
   assert.equal(r.ok, false);
-  assert.match(r.reasons.join('\n'), /not reachable from current HEAD/);
+  assert.match(r.reasons.join('\n'), /no commit message references `\[#109\]`/);
+  // And it is NOT the retired reachability wording.
+  assert.doesNotMatch(r.reasons.join('\n'), /not reachable from current HEAD/);
 }
 
 // Empty trail: heading present but the marker records no commits → fail.
@@ -97,7 +101,7 @@ const TRAIL = [
       findTrailComment: async () => ({
         body: ['### 🔗 Commits', '', '<!-- aitm-commits:  -->'].join('\n'),
       }),
-      gitIsAncestor: async () => true,
+      hasAttributingCommit: async () => true,
       getIssueBody: async () => '',
     },
   });
@@ -115,7 +119,7 @@ const TRAIL = [
       gitStatus: async () => ' M scripts/x.mjs\n',
       gitHeadSha: async () => SHA,
       findTrailComment: async () => ({ body: TRAIL }),
-      gitIsAncestor: async () => true,
+      hasAttributingCommit: async () => true,
       getIssueBody: async () => '',
     },
   });
@@ -133,7 +137,7 @@ const TRAIL = [
       gitStatus: async () => '',
       gitHeadSha: async () => SHA,
       findTrailComment: async () => null,
-      gitIsAncestor: async () => true,
+      hasAttributingCommit: async () => true,
       getIssueBody: async () => '',
     },
   });
@@ -153,7 +157,7 @@ const TRAIL = [
       findTrailComment: async () => ({
         body: ['### 🔗 Related commit', '', '<!-- aitm-commits: abcdef1234567890 -->'].join('\n'),
       }),
-      gitIsAncestor: async () => true,
+      hasAttributingCommit: async () => true,
       getIssueBody: async () => '',
     },
   });

@@ -55,7 +55,9 @@ function makeApprovedBody({ withApproved = true, withDod = true } = {}) {
 // deps.closeGates that returns deterministic results — no real git / gh.
 // `commits` comment carries one SHA so commitsOnTrunkGate + issueDirtyGate
 // can exercise both ok / dirty paths via the dirtyFiles override.
-function makeCloseGatesDeps({ dirty = [], trunkAncestor = 'on-trunk' } = {}) {
+// #733 — commitsOnTrunkGate is trunk-scoped MESSAGE attribution now; inject
+// `attributingCommits` (default: an attributed [#N] commit exists on trunk).
+function makeCloseGatesDeps({ dirty = [], attributedOnTrunk = true } = {}) {
   return {
     closeGates: {
       getHeadSha: async () => HEAD_SHA,
@@ -69,7 +71,8 @@ function makeCloseGatesDeps({ dirty = [], trunkAncestor = 'on-trunk' } = {}) {
       filesForSha: async () => ['scripts/example.mjs'],
       dirtyFiles: async () => new Set(dirty),
       resolveTrunkRef: async () => 'refs/heads/main',
-      isAncestor: async () => trunkAncestor,
+      attributingCommits: async () =>
+        attributedOnTrunk ? [{ sha: HEAD_SHA, subject: '[#279] feat', ts: 't' }] : [],
     },
   };
 }
