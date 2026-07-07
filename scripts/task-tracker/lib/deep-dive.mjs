@@ -193,26 +193,27 @@ export function appendProseToDeepDiveSection(body, prose) {
   return [...before, '', trimmed, '', ...after].join('\n');
 }
 
-// #504 — replace the ENTIRE prose body of an existing `## Deep-Dive
+// #504/#724 — replace the ENTIRE prose body of an existing `## Deep-Dive
 // Analysis` section in place, rather than appending. The section body runs
 // from the line AFTER the heading up to (but not including) whichever comes
 // first: an `aitm-*` marker line (e.g. `aitm-entered-*`,
-// `aitm-deep-dive-complete`, `aitm-fields`, `aitm-body-version`) or the next
-// `## ` (level-2) heading — or end of body when neither follows. Bounding on
-// marker lines alone (#724) let the scan walk past any number of unrelated
-// `##` sections (Acceptance Criteria, What I want, etc.) to reach a distant
-// marker far downstream, silently deleting everything in between. Adding
-// the `## ` heading as an equally-valid stop condition fixes that while
-// preserving the original rationale for marker-bounding: the canonical
-// appendix ends with its own `## Dependency Map` sub-heading — wait, that
-// heading has always been an actual `## ` heading, so it now also stops the
-// scan, which is correct: the appendix's Dependency Map is a sibling
-// section, not part of the deep-dive prose. The heading line itself, the
-// `aitm-deep-dive-posted` marker above it, and every marker/section below
-// are all preserved; only the prose between them is swapped. Replace is
+// `aitm-deep-dive-complete`, `aitm-fields`, `aitm-body-version`), or a `## `
+// (level-2) heading OTHER than `## Dependency Map` — or end of body when
+// neither follows. `## Dependency Map` is the canonical appendix's own
+// sibling sub-section and stays inside the replaceable scope so re-posting
+// revised findings with a fresh dependency list replaces the stale one
+// instead of leaving it stranded below a heading-based boundary. Bounding on
+// marker lines alone (#724) let the scan walk past any number of OTHER
+// unrelated `##` sections (Acceptance Criteria, What I want, etc.) to reach a
+// distant marker far downstream, silently deleting everything in between —
+// confirmed live on #718. Stopping at any `## ` heading except `##
+// Dependency Map` fixes that without truncating the canonical appendix. The
+// heading line itself, the `aitm-deep-dive-posted` marker above it, and
+// every marker/section below are all preserved; only the prose (and old
+// Dependency Map, if present) between them is swapped. Replace is
 // idempotent: re-running with identical prose reproduces the same bytes, so
 // `mutateIssueBody` short-circuits to a no-op.
-const DEEP_DIVE_SECTION_END_RE = /^(?:<!--\s*aitm-|##\s)/m;
+const DEEP_DIVE_SECTION_END_RE = /^(?:<!--\s*aitm-|##\s+(?!Dependency Map\b))/m;
 
 export function replaceDeepDiveSection(body, prose) {
   const src = String(body || '');
