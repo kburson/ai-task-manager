@@ -462,6 +462,104 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
   return offenders;
 }
 
+// #725 — generic unbounded-deletion guardrail. The marker-loss check above
+// only guards the fixed `aitm-*` marker allowlist; it is blind to arbitrary
+// heading/prose loss. This is what let the #718/#724 boundary-regex bug in
+// `replaceDeepDiveSection` silently delete five unrelated `## ` sections
+// (Acceptance Criteria, What I want, …) whose bytes carried no tracked marker.
+//
+// `findUnexpectedSectionLoss(base, next, opts)` fires on either signal:
+//   1. any pre-existing level-2 (`## `) heading present in `base` but absent
+//      from `next` AND not declared in `opts.expectedRemovedHeadings`; or
+//   2. `next` shorter than `base` by more than `opts.shrinkThreshold` (default
+//      0.4 → 40% byte drop) without `opts.allowLargeShrink`.
+// Returns `{ removedHeadings, shrinkRatio }` when it fires, else `null`.
+//
+// `expectedRemovedHeadings` entries are matched on heading TITLE (leading
+// `#`/whitespace stripped), so callers may pass either `## Foo` or `Foo`.
+const LEVEL2_HEADING_RE = /^##[ \t]+(\S.*?)\s*$/gm;
+const DEFAULT_SHRINK_THRESHOLD = 0.4;
+
+function normalizeHeadingTitle(h) {
+  return String(h || '')
+    .replace(/^#+/, '')
+    .trim();
+}
+
+export function collectLevel2Headings(body = '') {
+  const src = String(body || '');
+  const titles = [];
+  LEVEL2_HEADING_RE.lastIndex = 0;
+  let m;
+  while ((m = LEVEL2_HEADING_RE.exec(src))) {
+    titles.push(m[1].trim());
+  }
+  return titles;
+}
+
+export function findUnexpectedSectionLoss(base, next, opts = {}) {
+  const baseSrc = String(base || '');
+  const nextSrc = String(next || '');
+  const {
+    expectedRemovedHeadings = [],
+    allowLargeShrink = false,
+    shrinkThreshold = DEFAULT_SHRINK_THRESHOLD,
+  } = opts;
+
+  const allowed = new Set(
+    (Array.isArray(expectedRemovedHeadings) ? expectedRemovedHeadings : []).map(
+      normalizeHeadingTitle
+    )
+  );
+  const nextHeadings = new Set(collectLevel2Headings(nextSrc).map((t) => t.trim()));
+  const removedHeadings = [];
+  for (const title of collectLevel2Headings(baseSrc)) {
+    const t = title.trim();
+    if (nextHeadings.has(t)) continue;
+    if (allowed.has(normalizeHeadingTitle(t))) continue;
+    removedHeadings.push(t);
+  }
+
+  let shrinkRatio = 0;
+  if (baseSrc.length > 0) {
+    shrinkRatio = (baseSrc.length - nextSrc.length) / baseSrc.length;
+  }
+  const shrinkExceeded = !allowLargeShrink && shrinkRatio > shrinkThreshold;
+
+  if (removedHeadings.length === 0 && !shrinkExceeded) return null;
+  return {
+    removedHeadings,
+    shrinkRatio,
+    shrinkExceeded,
+  };
+}
+
+export class UnexpectedSectionLossError extends Error {
+  constructor(issueNumber, loss = {}) {
+    const removed = Array.isArray(loss.removedHeadings) ? loss.removedHeadings : [];
+    const pct = Math.round((loss.shrinkRatio || 0) * 100);
+    const parts = [];
+    if (removed.length > 0) {
+      parts.push(
+        `removed ${removed.length} pre-existing section heading(s): ${removed.join(', ')}`
+      );
+    }
+    if (loss.shrinkExceeded) {
+      parts.push(`body shrank ${pct}% (exceeds the allowed threshold)`);
+    }
+    const msg =
+      `mutateIssueBody on #${issueNumber}: refusing unbounded silent deletion — ${parts.join('; ')}.\n` +
+      `  If this removal is intentional, declare each removed heading via \`expectedRemovedHeadings: [...]\`` +
+      ` and/or pass \`allowLargeShrink: true\`. Otherwise a boundary-scan bug is silently erasing content (cf. #718/#724).`;
+    super(msg);
+    this.name = 'UnexpectedSectionLossError';
+    this.issueNumber = issueNumber;
+    this.removedHeadings = removed.slice();
+    this.shrinkRatio = loss.shrinkRatio || 0;
+    this.shrinkExceeded = Boolean(loss.shrinkExceeded);
+  }
+}
+
 export class CheckboxProofMissingError extends Error {
   constructor({ lines } = {}) {
     const list = Array.isArray(lines) ? lines : [];

@@ -329,6 +329,15 @@ export async function ensureDeepDive({
     issueNumber,
     repo,
     deps,
+    // #725 — declare this write's legitimate section-replace intent to the
+    // unbounded-deletion guardrail in `mutateIssueBody`. `replaceDeepDiveSection`
+    // swaps the deep-dive prose in place and may legitimately drop the nested
+    // `## Dependency Map` sub-section and shrink the body when re-posting
+    // revised (shorter) findings. Every OTHER `## ` heading stays outside this
+    // allowlist, so the guard still fires if a boundary-scan regression
+    // re-introduces the #718/#724 walk-past bug and eats an unrelated section.
+    expectedRemovedHeadings: ['Dependency Map'],
+    allowLargeShrink: true,
     mutate: (base) => {
       const signals = readDeepDiveSignals(base);
       let next = base;

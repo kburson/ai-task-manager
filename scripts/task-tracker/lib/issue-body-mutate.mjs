@@ -52,6 +52,8 @@ import {
   FabricatedProofError,
   findStructurallyIncompleteIntroducedProof,
   IncompleteProofError,
+  findUnexpectedSectionLoss,
+  UnexpectedSectionLossError,
 } from './body-invariants.mjs';
 import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
 import { formatDefectHint } from './defect-hint.mjs';
@@ -61,6 +63,7 @@ export {
   MalformedDeclarationCmdError,
   FabricatedProofError,
   IncompleteProofError,
+  UnexpectedSectionLossError,
 } from './body-invariants.mjs';
 
 export class MarkerLossError extends Error {
@@ -90,6 +93,8 @@ export async function mutateIssueBody({
   allowMarkerLoss = false,
   allowUnverifiedTicks = false,
   evidenceStamp = false,
+  expectedRemovedHeadings = [],
+  allowLargeShrink = false,
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
@@ -109,6 +114,24 @@ export async function mutateIssueBody({
       if (!allowMarkerLoss) {
         const lost = findLostMarkers(baseBody, next);
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
+      }
+      // #725 — generic unbounded-deletion guardrail. Independent of the fixed
+      // marker allowlist above: refuses when a mutation silently drops a
+      // pre-existing `## ` heading or shrinks the body past the threshold
+      // without an explicit opt-in. Catches boundary-scan bugs (cf. #718/#724)
+      // that erase whole sections carrying no tracked marker. `allowMarkerLoss`
+      // is the pre-existing blanket "intentional reset" override — a reset that
+      // deliberately drops invariant markers necessarily drops sections and
+      // shrinks, so it subsumes this guard too; the finer-grained
+      // `expectedRemovedHeadings`/`allowLargeShrink` hatches remain for callers
+      // that legitimately drop sections WITHOUT dropping markers (e.g.
+      // `ensureDeepDive` replacing the deep-dive block in place).
+      if (!allowMarkerLoss) {
+        const sectionLoss = findUnexpectedSectionLoss(baseBody, next, {
+          expectedRemovedHeadings,
+          allowLargeShrink,
+        });
+        if (sectionLoss) throw new UnexpectedSectionLossError(issueNumber, sectionLoss);
       }
       // #362 — checkbox proof-marker invariant. Runs after marker-loss so
       // catastrophic invariant drops surface first.
