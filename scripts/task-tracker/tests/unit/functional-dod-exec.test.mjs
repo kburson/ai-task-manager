@@ -7,6 +7,10 @@
 // path with one entry per `## Verification Commands` line; this test exercises
 // the same contract with synthetic results.
 // (#468 retired the legacy `aitm-verified-by:` form; fixtures updated.)
+// (#721 extended autoTickVerified to also AND-fan-in-tick `## Acceptance
+// Criteria` items whose `aitm-verified cmd="..."` resolves — via `vc:<n>`
+// citation or legacy embedded command — to only passing commands; fixtures
+// and assertions below updated to match.)
 import { strict as assert } from 'node:assert';
 import { autoTickVerified } from '../../lib/auto-tick-verified.mjs';
 
@@ -58,9 +62,10 @@ const BODY = [
   assert.match(out.body, /- \[ \] Acceptance criteria met \(judgment item — no marker\)/);
   // Lifecycle item left alone.
   assert.match(out.body, /- \[ \] Passed final human review/);
-  // AC checkbox is NOT ticked by autoTickVerified — that's outside its scope.
-  assert.match(out.body, /- \[ \] Hole 1 closed <!-- aitm-verified cmd=/);
-  console.log('PASS: all-green ticks VC + Functional command-backed items only');
+  // #721 — AC checkbox ticks too: its lone declared command passed.
+  assert.deepEqual(out.tickedAc, ['Hole 1 closed']);
+  assert.match(out.body, /- \[x\] Hole 1 closed <!-- aitm-verified cmd=/);
+  console.log('PASS: all-green ticks VC + Functional + AC command-backed items');
 }
 
 // `npm test` FAILED → Functional `All automated tests pass` stays unticked even
@@ -84,6 +89,9 @@ const BODY = [
   assert.match(out.body, /- \[ \] All automated tests pass <!-- aitm-verified cmd=/);
   // Lint Functional item still ticked.
   assert.ok(out.tickedFunctional.includes('Lint clean'));
+  // #721 — AC ticks independently: its own cited command passed, regardless
+  // of `npm test`'s unrelated failure.
+  assert.deepEqual(out.tickedAc, ['Hole 1 closed']);
   console.log('PASS: failed exit leaves command-backed Functional item unticked');
 }
 
@@ -114,6 +122,7 @@ const BODY = [
   assert.equal(second.body, first.body);
   assert.equal(second.tickedVc.length, 0, 'no new VC ticks the second pass');
   assert.equal(second.tickedFunctional.length, 0, 'no new Functional ticks the second pass');
+  assert.equal(second.tickedAc.length, 0, 'no new AC ticks the second pass');
   console.log('PASS: idempotent over green body');
 }
 
