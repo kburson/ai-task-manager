@@ -11,7 +11,8 @@ import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
-import { postTimingEvent } from './gh-timing-comment.mjs';
+import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
+import { lastRowTsFromBody } from './lib/timing-rows.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 
 // Re-exported so downstream verbs (promote/demote/review/new/close/switch —
@@ -27,7 +28,11 @@ import {
   saveMarker,
   countWords,
 } from './word-counter.mjs';
-import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
+import {
+  collectEventTimestamps,
+  computeActiveAndIdleSeconds,
+  resolveFlushStartMs,
+} from './active-time.mjs';
 import { recordSessionRefOnChange } from './lib/session-ref.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
@@ -195,6 +200,28 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
   };
 
+  // #720 — read the timestamp (ms) of the most recent existing timing-log row,
+  // used to anchor the flush Active-duration window. Mirrors the swallow-on-
+  // failure contract of `safePostTiming`/`safeRecordSessionRef`: SKIP_NETWORK
+  // and any read/parse failure return `null`, which `resolveFlushStartMs` treats
+  // as "no prior row" and falls back to `entryStartTs`. Never throws.
+  ctx.safeReadLastRowTs = async (issue) => {
+    if (SKIP_NETWORK) return null;
+    try {
+      const result = await readTimingCommentBody({
+        issueNumber: String(issue).replace(/^#/, ''),
+        repo: cfg.repo,
+        timeoutMs: cfg.hookNetworkTimeoutMs,
+      });
+      const tsStr = lastRowTsFromBody(bodyOf(result));
+      if (!tsStr) return null;
+      const ms = Date.parse(tsStr);
+      return Number.isFinite(ms) ? ms : null;
+    } catch {
+      return null;
+    }
+  };
+
   ctx.drainQueueIfAny = async () => {
     if (SKIP_NETWORK) return;
     await drain(async (evt) => {
@@ -307,20 +334,35 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         lastWordMarker: wordMarker,
       };
     }
-    const startMs = new Date(state.entryStartTs).getTime();
+    // #720 — anchor the Active-duration window on `max(entryStartTs, lastRowTs)`
+    // rather than `entryStartTs` alone. Forward move-state promotions do NOT
+    // advance `entryStartTs`, so a flush (e.g. `pause`) after intervening
+    // move-state rows previously re-counted wall time those rows already logged.
+    // `resolveFlushStartMs` picks the later mark; when there is no readable prior
+    // row (computeOnly/SKIP_NETWORK/unreadable body → null), it falls back to
+    // `entryStartTs`, preserving the pre-fix window exactly.
+    const entryStartMs = new Date(state.entryStartTs).getTime();
+    const lastRowMs = opts.computeOnly ? null : await ctx.safeReadLastRowTs(state.active);
+    const startMs = resolveFlushStartMs(entryStartMs, lastRowMs);
     const endMs = new Date(ts).getTime();
-    const deltaWallMin = Math.round((endMs - startMs) / 60000);
-    let activeMin = deltaWallMin;
-    let idleMin = 0;
+    const wallMs = Math.max(0, endMs - startMs);
+    const deltaWallMin = Math.round(wallMs / 60000);
+    // Default (no session id): the whole resolved window counts as active. The
+    // row now renders at second precision so sub-minute flushes are no longer
+    // quantized to a whole minute (the #720 widen-to-second-precision decision).
+    let activeSec = Math.max(0, Math.round(wallMs / 1000));
+    let idleSec = 0;
     if (sid) {
       const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-      ({ activeMin, idleMin } = computeActiveAndIdleMinutes({
+      ({ activeSec, idleSec } = computeActiveAndIdleSeconds({
         startMs,
         endMs,
         events,
         idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
       }));
     }
+    const activeMin = Math.max(0, Math.round(activeSec / 60));
+    const idleMin = Math.max(0, Math.round(idleSec / 60));
     // #475 AC1 — advance the durable monotonic marker and stamp it (not the
     // raw per-session sum) so the cumulative total never regresses.
     // #483 — candidate base is the durable cumulative (`lastWordMarker`) plus
@@ -333,12 +375,14 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     if (!opts.computeOnly && sid && markerLineToPersist != null) {
       saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
     }
-    const { buildFlushRow } = await import('./gh-timing-comment.mjs');
-    const row = buildFlushRow({
+    // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
+    // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
+    // render `Xh Ym Zs` + the canonical `row-sec` marker, matching System A rows.
+    const row = buildRow({
       ts,
       event: effectiveEvent,
-      activeMin,
-      idleMin,
+      activeSec,
+      idleSec,
       deltaWords,
       wordMarker,
       description: effectiveDescription,
