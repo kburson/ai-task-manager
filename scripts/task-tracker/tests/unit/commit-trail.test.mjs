@@ -13,6 +13,7 @@ import {
   updateMarker,
   hasWorktreeCols,
   hasCanonicalCommitTrace,
+  reconcileLedger,
   pruneUnreachable,
 } from '../../lib/commit-trail.mjs';
 import { defaultIsReachable } from '../../commit-trail-handler.mjs';
@@ -256,14 +257,14 @@ import { defaultIsReachable } from '../../commit-trail-handler.mjs';
   assert.equal(hasCanonicalCommitTrace(missingSha, 'abcdef1234567890'), false);
 }
 
-// --- pruneUnreachable ---
+// --- reconcileLedger / pruneUnreachable (#732: inverted — tolerate, never drop) ---
 
 const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const SHA_C = 'cccccccccccccccccccccccccccccccccccccccc';
 
-function makeTrail(shas, repo = 'o/r') {
-  let body = buildInitialTrail();
+function makeTrail(shas, { repo = 'o/r', issueNumber } = {}) {
+  let body = buildInitialTrail({ issueNumber });
   for (const sha of shas) {
     const row = buildRow(
       {
@@ -281,53 +282,45 @@ function makeTrail(shas, repo = 'o/r') {
   return body;
 }
 
-// Drop unreachable middle SHA; preserve order of remaining rows + marker.
+// #732 — an unreachable SHA is TOLERATED, not dropped. Every SHA survives even
+// when reachability is reported false for all of them.
 {
-  const body = makeTrail([SHA_A, SHA_B, SHA_C]);
-  const reachable = new Set([SHA_A, SHA_C]);
-  const out = await pruneUnreachable(body, { existsSha: (s) => reachable.has(s) });
+  const body = makeTrail([SHA_A, SHA_B, SHA_C], { issueNumber: 732 });
+  const out = await reconcileLedger(body, { issueNumber: 732 });
   const parsed = parseMarker(out);
-  assert.deepEqual(Array.from(parsed.shas), [SHA_A, SHA_C]);
-  assert.ok(!out.includes(SHA_B), 'full SHA_B should be gone from URL');
-  assert.ok(!out.includes('`' + SHA_B.slice(0, 6) + '`'), 'short SHA_B should be gone from table');
+  assert.deepEqual(Array.from(parsed.shas), [SHA_A, SHA_B, SHA_C]);
+  assert.ok(out.includes(SHA_B), 'unreachable middle SHA is retained');
   // Order preserved
   const idxA = out.indexOf(SHA_A);
   const idxC = out.indexOf(SHA_C);
   assert.ok(idxA > 0 && idxC > idxA, 'rows preserve original order');
 }
 
-// All reachable → idempotent no-op.
+// Reconcile back-fills the caveat onto a caveat-less trail (idempotent second pass).
 {
-  const body = makeTrail([SHA_A, SHA_B]);
-  const out = await pruneUnreachable(body, { existsSha: () => true });
-  assert.equal(out, body);
+  const body = makeTrail([SHA_A, SHA_B]); // built without issueNumber → no caveat
+  const first = await reconcileLedger(body, { issueNumber: 732 });
+  assert.match(first, /aitm-ledger-caveat/);
+  const second = await reconcileLedger(first, { issueNumber: 732 });
+  assert.equal(second, first, 'caveat injection is idempotent');
 }
 
-// No marker → no-op.
-{
-  const body = 'no marker here';
-  const out = await pruneUnreachable(body, { existsSha: () => false });
-  assert.equal(out, body);
-}
-
-// existsSha not provided → no-op.
+// No issueNumber → no-op (nothing to back-fill, nothing to drop).
 {
   const body = makeTrail([SHA_A]);
-  const out = await pruneUnreachable(body, {});
+  const out = await reconcileLedger(body, {});
   assert.equal(out, body);
 }
 
-// Async existsSha is awaited.
+// Deprecated alias ignores existsSha and drops nothing.
 {
-  const body = makeTrail([SHA_A, SHA_B]);
-  const out = await pruneUnreachable(body, {
-    existsSha: async (s) => s === SHA_A,
-  });
+  const body = makeTrail([SHA_A, SHA_B], { issueNumber: 732 });
+  const out = await pruneUnreachable(body, { issueNumber: 732, existsSha: () => false });
   const parsed = parseMarker(out);
-  assert.deepEqual(Array.from(parsed.shas), [SHA_A]);
+  assert.deepEqual(Array.from(parsed.shas), [SHA_A, SHA_B]);
 }
 
-// --- defaultIsReachable (#424) ---
+// --- defaultIsReachable (#424, demoted to advisory in #732) ---
 // The production prune predicate must agree with the review gate: keep a SHA
 // only when it is REACHABLE from HEAD (`git merge-base --is-ancestor`), not
 // merely when the object still exists. execFile rejects on any non-zero exit,
@@ -369,29 +362,20 @@ function makeTrail(shas, repo = 'o/r') {
   assert.equal(ok, false);
 }
 
-// --- pruneUnreachable doc comment (#424 AC3) ---
-// The doc comment above `pruneUnreachable` must describe the merge-base
-// reachability semantics and must NOT mislabel `git cat-file -e` as a
-// reachability check (the original wording that induced the bug).
+// --- reconcileLedger doc comment (#732: inverts #424 AC3) ---
+// The reconcile doc must now frame the trail as an informational ledger that
+// TOLERATES unreachable SHAs, and must NOT claim to drop them.
 {
   const libPath = new URL('../../lib/commit-trail.mjs', import.meta.url);
   const src = readFileSync(libPath, 'utf8');
-  const idx = src.indexOf('export async function pruneUnreachable');
-  assert.notEqual(idx, -1, 'pruneUnreachable not found in commit-trail.mjs');
+  const idx = src.indexOf('export async function reconcileLedger');
+  assert.notEqual(idx, -1, 'reconcileLedger not found in commit-trail.mjs');
   const before = src.slice(0, idx);
-  const commentStart = before.lastIndexOf('\n// Drop SHAs');
-  assert.notEqual(commentStart, -1, 'pruneUnreachable doc comment (// Drop SHAs) not found');
+  const commentStart = before.lastIndexOf('\n// Ledger reconciliation');
+  assert.notEqual(commentStart, -1, 'reconcileLedger doc comment not found');
   const comment = before.slice(commentStart);
-  assert.match(
-    comment,
-    /merge-base --is-ancestor/,
-    'doc comment must describe merge-base reachability'
-  );
-  assert.doesNotMatch(
-    comment,
-    /cat-file[^\n]*reachability/i,
-    'doc comment must not label cat-file -e a reachability check'
-  );
+  assert.match(comment, /informational/i, 'doc must frame the trail as informational');
+  assert.match(comment, /tolerate/i, 'doc must state unreachable SHAs are tolerated');
 }
 
 console.log('commit-trail: ok');

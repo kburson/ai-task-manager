@@ -71,10 +71,26 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   assert.match(body, /<!-- aitm-commits shas="abc12340000000,def56780000000" -->/);
 }
 
-// 3. Re-fire with same SHA → noop
+// 3a. Re-fire with same SHA on a LEGACY (caveat-less) trail → reconciled:
+// #732 back-fills the informational-ledger caveat, so the body changes and a
+// single update lands even though no new SHA row is added.
 {
   const initial =
     '### 🔗 Commits\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc123` | s1 | a | t1 |\n';
+  const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
+  const info = { sha: 'abc12340000000', subject: 's1', author: 'a', ts: 't1', isWorktree: false };
+  const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
+  assert.equal(r.action, 'reconciled');
+  assert.equal(fake.calls.update.length, 1);
+  assert.match(fake.calls.update[0].body, /aitm-ledger-caveat/);
+  assert.match(fake.calls.update[0].body, /git log --all --grep='\[#1\]'/);
+}
+
+// 3b. Re-fire with same SHA on a trail that ALREADY carries the caveat →
+// true noop-duplicate: nothing to reconcile, no update.
+{
+  const initial =
+    '### 🔗 Commits\n\n<!-- aitm-ledger-caveat -->\n> caveat\n\n<!-- aitm-commits: abc12340000000 -->\n\n| SHA | Subject | Author | When |\n|---|---|---|---|\n| `abc123` | s1 | a | t1 |\n';
   const fake = makeFakeGh({ findResponse: { id: 'C_1', body: initial } });
   const info = { sha: 'abc12340000000', subject: 's1', author: 'a', ts: 't1', isWorktree: false };
   const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });

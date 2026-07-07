@@ -22,7 +22,7 @@ import {
   buildRow,
   appendCommitRow,
   updateMarker,
-  pruneUnreachable,
+  reconcileLedger,
   hasWorktreeCols,
   TRAIL_HEADING,
 } from './lib/commit-trail.mjs';
@@ -159,14 +159,16 @@ export async function updateTrailComment(commentId, body, { timeoutMs } = {}) {
   );
 }
 
-// Trail-prune predicate: keep a recorded SHA only if it is REACHABLE from HEAD,
-// not merely if the object still exists. This mirrors `review-preflight.mjs`
-// (`defaultGitIsAncestor`) so prune and the review gate agree — a SHA orphaned
-// by `git reset --soft`/amend/rebase is dropped here instead of lingering until
-// GC and deadlocking review. `git merge-base --is-ancestor <sha> HEAD` exits 0
-// when ancestor, 1 when not, and 128 when the object is unknown/GC'd; `execFile`
-// rejects on any non-zero exit, so the catch maps both 1 and 128 → false.
-// `pexec` is injectable purely so the exit-code mapping is unit-testable.
+// Reachability probe — ADVISORY ONLY as of #732. `git merge-base --is-ancestor
+// <sha> HEAD` exits 0 when ancestor, 1 when not, and 128 when the object is
+// unknown/GC'd; `execFile` rejects on any non-zero exit, so the catch maps both
+// 1 and 128 → false. This USED to drive trail pruning (drop unreachable SHAs),
+// which deadlocked gates after history rewrites. The trail is now an
+// informational ledger that tolerates unreachable SHAs (#732), and gate
+// assertion keys on message attribution (#731 `hasAttributingCommit`), so this
+// predicate is no longer a precondition for a SHA to stay in the trail — it is
+// kept as optional annotation (#731 `annotateReachable`) and remains injectable
+// so the exit-code mapping is unit-testable.
 export async function defaultIsReachable(sha, { cwd, pexec: pexecDep = pexec } = {}) {
   try {
     await pexecDep('git', ['merge-base', '--is-ancestor', sha, 'HEAD'], {
@@ -179,18 +181,10 @@ export async function defaultIsReachable(sha, { cwd, pexec: pexecDep = pexec } =
   }
 }
 
-export async function postCommitTrail({
-  issueNumber,
-  repo,
-  info,
-  cwd,
-  timeoutMs = 5000,
-  deps = {},
-}) {
+export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 5000, deps = {} }) {
   const find = deps.find || findTrailComment;
   const create = deps.create || createTrailComment;
   const update = deps.update || updateTrailComment;
-  const existsSha = deps.existsSha || (cwd ? (sha) => defaultIsReachable(sha, { cwd }) : null);
 
   const existing = await find(issueNumber, repo, { timeoutMs });
   const worktreeCols = existing ? hasWorktreeCols(existing.body) : info.isWorktree;
@@ -198,21 +192,23 @@ export async function postCommitTrail({
   const row = buildRow({ ...info, commitUrl }, { worktreeCols });
 
   if (existing) {
-    const pruned = await pruneUnreachable(existing.body, { existsSha });
-    const parsed = parseMarker(pruned);
+    // #732 — reconcile (never prune): tolerate unreachable/rewritten SHAs and
+    // back-fill the informational-ledger caveat onto legacy trails.
+    const reconciled = await reconcileLedger(existing.body, { issueNumber });
+    const parsed = parseMarker(reconciled);
     if (parsed.shas.has(info.sha)) {
-      if (pruned !== existing.body) {
-        await update(existing.id, pruned, { timeoutMs });
-        return { action: 'pruned' };
+      if (reconciled !== existing.body) {
+        await update(existing.id, reconciled, { timeoutMs });
+        return { action: 'reconciled' };
       }
       return { action: 'noop-duplicate' };
     }
-    let next = appendCommitRow(pruned, row);
+    let next = appendCommitRow(reconciled, row);
     next = updateMarker(next, info.sha);
     await update(existing.id, next, { timeoutMs });
     return { action: 'updated' };
   } else {
-    let body = buildInitialTrail({ worktreeCols });
+    let body = buildInitialTrail({ worktreeCols, issueNumber });
     body = appendCommitRow(body, row);
     body = updateMarker(body, info.sha);
     await create(issueNumber, repo, body, { timeoutMs });

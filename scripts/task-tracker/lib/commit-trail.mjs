@@ -14,6 +14,43 @@ import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 
 export const TRAIL_HEADING = '### 🔗 Commits';
 
+// Hidden idempotency sentinel for the informational-ledger caveat (#732). Its
+// presence anywhere in a trail body means the caveat has already been injected.
+export const LEDGER_CAVEAT_MARKER = '<!-- aitm-ledger-caveat -->';
+
+// #732 — the trail is an INFORMATIONAL point-in-time ledger, not a reachability
+// contract. Every trail carries this caveat: the recorded SHA is what was
+// observed at commit time and MAY change during history maintenance
+// (rebase / squash / amend), and the durable way to locate the issue's commits
+// is message attribution — `git log --all --grep='[#N]'` (the token minted by
+// #730). `issueNumber` accepts `732`, `'732'` or `'#732'`.
+export function buildLedgerCaveat(issueNumber) {
+  const id = String(issueNumber ?? '')
+    .trim()
+    .replace(/^#/, '');
+  return [
+    LEDGER_CAVEAT_MARKER,
+    '> **Informational ledger — not a reachability contract.**',
+    '> Each SHA below is the value observed at commit time and may change during history maintenance (rebase / squash / amend).',
+    '> A rewritten or orphaned SHA is tolerated here, never pruned.',
+    `> To locate this issue's commits regardless of SHA churn, use message attribution: \`git log --all --grep='[#${id}]'\`.`,
+  ].join('\n');
+}
+
+// Idempotently inject the ledger caveat just after the trail heading. Returns
+// the body unchanged when no issue number is supplied or the caveat is already
+// present (detected via LEDGER_CAVEAT_MARKER). Never touches recorded SHAs.
+export function ensureLedgerCaveat(body, issueNumber) {
+  if (issueNumber == null) return body;
+  const src = String(body ?? '');
+  if (src.includes(LEDGER_CAVEAT_MARKER)) return src;
+  const lines = src.split('\n');
+  const hIdx = lines.findIndex((l) => l.startsWith(TRAIL_HEADING));
+  if (hIdx === -1) return src;
+  lines.splice(hIdx + 1, 0, '', buildLedgerCaveat(issueNumber));
+  return lines.join('\n');
+}
+
 // Legacy bare-CSV colon form. `[^-]*?` is lazy and SHAs are hex (no hyphen),
 // so it captures the whole comma list up to the closing `-->`.
 const MARKER_LEGACY_RE = /<!--\s*aitm-commits:\s*([^-]*?)\s*-->/;
@@ -58,9 +95,13 @@ export function hasWorktreeCols(body) {
   return body.includes('| SHA | Subject | Author | When | Branch | Worktree |');
 }
 
-export function buildInitialTrail({ worktreeCols = false } = {}) {
+export function buildInitialTrail({ worktreeCols = false, issueNumber } = {}) {
   const header = worktreeCols ? TABLE_HEADER_6 : TABLE_HEADER_4;
-  return [TRAIL_HEADING, '', renderCommitsMarker([]), '', header].join('\n');
+  const parts = [TRAIL_HEADING, ''];
+  // #732 — embed the informational-ledger caveat when the issue is known.
+  if (issueNumber != null) parts.push(buildLedgerCaveat(issueNumber), '');
+  parts.push(renderCommitsMarker([]), '', header);
+  return parts.join('\n');
 }
 
 // Short SHA used in the visible table column. The marker keeps the full SHA
@@ -128,43 +169,30 @@ export function appendCommitRow(body, row) {
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
 
-// Drop SHAs from the marker (and their table rows) that fail `existsSha`.
-// `existsSha(sha)` may return a boolean or a Promise<boolean>. Caller supplies
-// a REACHABILITY predicate — production uses `git merge-base --is-ancestor
-// <sha> HEAD` (see `commit-trail-handler.mjs` `defaultIsReachable`), which
-// mirrors the review gate's `defaultGitIsAncestor`. Mere object existence is
-// NOT sufficient: a SHA orphaned by `git reset --soft HEAD~N`/amend/rebase still
-// exists until GC, so an existence check would keep dangling commits and deadlock
-// review. Using reachability lets the trail self-heal after history-rewrite flows.
-export async function pruneUnreachable(body, { existsSha } = {}) {
-  if (typeof existsSha !== 'function') return body;
-  const parsed = parseMarker(body);
-  if (parsed.index === -1 || parsed.shas.size === 0) return body;
-  const keep = [];
-  const drop = new Set();
-  for (const sha of parsed.shas) {
-    const ok = await existsSha(sha);
-    if (ok) keep.push(sha);
-    else drop.add(sha);
-  }
-  if (drop.size === 0) return body;
-  const nextMarker = renderCommitsMarker(keep);
-  const next =
-    body.slice(0, parsed.index) + nextMarker + body.slice(parsed.index + parsed.raw.length);
-  const droppedShorts = new Set([...drop].map((s) => String(s).slice(0, 6)));
-  const lines = next.split('\n');
-  const filtered = lines.filter((line) => {
-    if (!line.startsWith('|')) return true;
-    if (line.startsWith('| SHA') || line.startsWith('|---')) return true;
-    for (const full of drop) {
-      if (line.includes(`/commit/${full}`)) return false;
-    }
-    for (const short of droppedShorts) {
-      if (line.includes('`' + short + '`')) return false;
-    }
-    return true;
-  });
-  return filtered.join('\n');
+// Ledger reconciliation (#732). The commit trail is an INFORMATIONAL
+// point-in-time ledger, not a reachability contract. This function's historical
+// job was the inverse: it DROPPED any recorded SHA that was no longer reachable
+// from HEAD (`git merge-base --is-ancestor`). That deadlocked gates whenever a
+// rebase/squash/amend rewrote or orphaned a SHA — the very commit the work lived
+// in would vanish from the trail. The inversion: a recorded SHA is now TOLERATED
+// regardless of reachability. Gate assertion has moved to message-based
+// attribution (#731 `hasAttributingCommit`, wired into gates by #733), so the
+// trail no longer needs to be the thing gates assert against.
+//
+// Reconciliation therefore never removes rows. Its only mutation is to ensure
+// the informational caveat is present (back-filling legacy trails), so callers
+// keep a single reconcile seam. Reachability, if a caller cares, is now advisory
+// annotation only (see `defaultIsReachable` / #731 `annotateReachable`) — never a
+// precondition for a SHA to remain in the ledger.
+export async function reconcileLedger(body, { issueNumber } = {}) {
+  return ensureLedgerCaveat(body, issueNumber);
+}
+
+// Deprecated alias (#732). Retained so existing call sites and any external
+// callers keep compiling through the ledger inversion. The `existsSha` predicate
+// is intentionally IGNORED: no SHA is ever dropped. Prefer `reconcileLedger`.
+export async function pruneUnreachable(body, { issueNumber } = {}) {
+  return reconcileLedger(body, { issueNumber });
 }
 
 export function updateMarker(body, sha) {
