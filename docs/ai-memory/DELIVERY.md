@@ -84,6 +84,6 @@ maintainer memory already works.
 ## Build deferral
 
 Per #518 AC-5, the mechanism _build_ (package.json#files change, manifest group, install-menu
-prompt, index hook) is filed as a tracked follow-up issue rather than built inside this
+prompt, index hook) is filed as the tracked follow-up **#728** rather than built inside this
 investigation. This issue delivers: the rebased+reconciled seed, the parity tooling, and this
 spec.
