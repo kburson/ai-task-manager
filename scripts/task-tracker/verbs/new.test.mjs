@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractKind, createNewIssue } from './new.mjs';
+import { extractKind, createNewIssue, findUnknownFlags } from './new.mjs';
 
 // #687 — `extractKind` pulls an optional `--kind <k>` pair out of the raw argv
 // while preserving the remaining title tokens; `createNewIssue` threads that kind
@@ -81,4 +81,40 @@ test('createNewIssue no-kind argv is byte-identical to the default-arg call (AC3
   const b = makeCtx();
   await createNewIssue('Same title', b.ctx, null);
   assert.deepEqual(a.calls[0].argv, b.calls[0].argv);
+});
+
+// #748 Defect A — `/task new` mints lightweight idea-capture stubs that must
+// carry NO content-unrelated labels. `createNewIssue` must never forward
+// `cfg.defaultLabels` into the spawned argv, regardless of how the config is set.
+test('createNewIssue never forwards cfg.defaultLabels into the argv (#748 Defect A)', async () => {
+  const { calls, ctx } = makeCtx();
+  ctx.cfg.defaultLabels = ['epic', 'bug', 'cleanup', 'refactor'];
+  await createNewIssue('Some capture', ctx, null);
+  assert.equal(calls[0].argv.includes('--label'), false, 'no --label may be forwarded');
+});
+
+// #748 Defect B — unknown flags in the title remainder must be rejected, not
+// swallowed into the title. `findUnknownFlags` reports every unrecognized
+// flag-shaped token so `verbNew` can error before creating an issue.
+test('findUnknownFlags reports every unrecognized flag token (#748 Defect B)', () => {
+  const unknown = findUnknownFlags(['Real', 'title', '--shape', 'solo', '--from-file', 'x.md']);
+  assert.deepEqual(unknown, ['--shape', '--from-file']);
+});
+
+test('findUnknownFlags returns [] for a plain title (#748 Defect B)', () => {
+  assert.deepEqual(findUnknownFlags(['Fix', 'the', 'thing']), []);
+});
+
+test('findUnknownFlags returns [] for kind-stripped title tokens (#748 Defect B)', () => {
+  // extractKind has already removed `--kind <v>`; what remains is a clean title.
+  const { rest } = extractKind(['Investigate', 'flag', 'handling', '--kind', 'spike']);
+  assert.deepEqual(findUnknownFlags(rest), []);
+});
+
+test('findUnknownFlags flags a short -x option token (#748 Defect B)', () => {
+  assert.deepEqual(findUnknownFlags(['title', '-x']), ['-x']);
+});
+
+test('findUnknownFlags tolerates a non-array', () => {
+  assert.deepEqual(findUnknownFlags(undefined), []);
 });
