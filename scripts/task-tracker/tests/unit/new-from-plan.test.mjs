@@ -11,8 +11,8 @@
 //   Branch legacy — not discover, plain title arg → returns title
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { projectScratchDir, mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
+import { writeFileSync } from 'node:fs';
+import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   extractTitle,
@@ -119,11 +119,9 @@ async function captureExit(fn) {
   return { exitCode, stderr };
 }
 
-const scratch = projectScratchDir('test');
-
 // Branch 1b — discover state, no savedPlanFile → exits 1
 {
-  const dir = mkdtempSync(path.join(scratch, 'nfp-branch1b-'));
+  const dir = mkdtempProjectIsolated('nfp-branch1b-');
   const statePath = path.join(dir, 'state.json');
   writeFileSync(
     statePath,
@@ -162,7 +160,7 @@ const scratch = projectScratchDir('test');
 
 // Branch 2b — .md arg given but file does not exist → exits 1
 {
-  const dir = mkdtempSync(path.join(scratch, 'nfp-branch2b-'));
+  const dir = mkdtempProjectIsolated('nfp-branch2b-');
   const statePath = path.join(dir, 'state.json');
   writeFileSync(
     statePath,
@@ -197,7 +195,7 @@ const scratch = projectScratchDir('test');
 
 // Branch 3 — not discover, no arg → exits 1 with guidance
 {
-  const dir = mkdtempSync(path.join(scratch, 'nfp-branch3-'));
+  const dir = mkdtempProjectIsolated('nfp-branch3-');
   const statePath = path.join(dir, 'state.json');
   writeFileSync(
     statePath,
@@ -233,7 +231,7 @@ const scratch = projectScratchDir('test');
 // Branch 2 — .md arg given and file exists → creates issue with plan title
 {
   process.env.TT_FAKE_NEW_ISSUE = '#99';
-  const dir = mkdtempSync(path.join(scratch, 'nfp-branch2-'));
+  const dir = mkdtempProjectIsolated('nfp-branch2-');
   const statePath = path.join(dir, 'state.json');
   writeFileSync(
     statePath,
