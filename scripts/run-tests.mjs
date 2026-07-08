@@ -19,7 +19,7 @@ import {
   fleetRegistryPath,
   readFleet,
 } from './task-tracker/fleet-registry.mjs';
-import { describeSpawnResult, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
+import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -156,14 +156,17 @@ if (failed > 0) {
 const registryKeysAfter = liveRegistryKeySet();
 const leaked = [...registryKeysAfter].filter((k) => !registryKeysBefore.has(k));
 if (leaked.length) {
-  console.error(
-    `\nAC2 (#442) FAIL — the test suite leaked ${leaked.length} ` +
-      `${leaked.length === 1 ? 'entry' : 'entries'} into the live fleet ` +
-      `registry: ${leaked.join(', ')}\n` +
-      `A test created a non-git sandbox and reached registerTask. Use ` +
-      `mkdtempProjectIsolated(...) from scripts/task-tracker/lib/scratch-dir.mjs so ` +
-      `the sandbox is git-isolated. Run "npm run lint:fleet-sandbox" to locate it.\n`
-  );
+  // #746 — dump each leaked entry's full record (worktreePath / sessionId /
+  // kind / branch), not just the key, so the CI log names the exact escaping
+  // sandbox. Re-read the live fleet OBJECT (the key-set snapshot above discards
+  // the values) to source those fields.
+  let liveFleet = {};
+  try {
+    liveFleet = readFleet(fleetRegistryPath(findMainWorktreePath(repoRoot))) || {};
+  } catch {
+    liveFleet = {};
+  }
+  console.error(formatFleetLeak(leaked, liveFleet));
   process.exit(1);
 }
 

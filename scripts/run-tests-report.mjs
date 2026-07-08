@@ -13,6 +13,44 @@
 // headroom over any real test file's output.
 export const RUN_TESTS_MAX_BUFFER = 64 * 1024 * 1024;
 
+// #746 — format the AC2 (#442) fleet-registry leak failure. The bare reporter
+// printed only the leaked KEYS (e.g. `#99`), which names the injected issue but
+// not the sandbox that escaped — useless for finding the culprit test, and the
+// leak reproduces only on the CI runner. Given the leaked keys and the live
+// fleet object, dump each leaked entry's full record (worktreePath / sessionId /
+// kind / branch) so the CI log names the exact escaping sandbox. `fleet` may be
+// missing an entry (a key present in the after-set but already evicted by the
+// time we re-read) — such keys are reported as `<entry absent>` rather than
+// crashing the reporter.
+export function formatFleetLeak(leaked = [], fleet = {}) {
+  const n = leaked.length;
+  const lines = [
+    `\nAC2 (#442) FAIL — the test suite leaked ${n} ` +
+      `${n === 1 ? 'entry' : 'entries'} into the live fleet registry.`,
+    '',
+    'A test created a non-git sandbox and reached registerTask. The leaked',
+    'entries below name the sandbox that escaped (worktreePath) — find the test',
+    'that writes there and move it to a git-isolated sandbox via',
+    'mkdtempProjectIsolated(...) from scripts/task-tracker/lib/scratch-dir.mjs.',
+    'Run "npm run lint:fleet-sandbox" to locate it statically.',
+    '',
+  ];
+  for (const key of leaked) {
+    const entry =
+      fleet && Object.prototype.hasOwnProperty.call(fleet, key) ? fleet[key] : undefined;
+    if (!entry || typeof entry !== 'object') {
+      lines.push(`  ${key}: <entry absent>`);
+      continue;
+    }
+    const fields = ['worktreePath', 'sessionId', 'kind', 'branch']
+      .map((f) => `${f}=${entry[f] === undefined ? '<unset>' : JSON.stringify(entry[f])}`)
+      .join('  ');
+    lines.push(`  ${key}: ${fields}`);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 // Describe a spawnSync result for the runner log. Returns `'ok'` for a clean
 // exit; otherwise a `FAIL (...)` string that always names a concrete cause —
 // never a bare `exit null`.
