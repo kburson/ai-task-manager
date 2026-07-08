@@ -3,7 +3,7 @@
 // acceptance criteria that cannot be expressed through the standard DoD
 // commands. Exits 0 on success; non-zero with a diagnostic on failure.
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const repoRoot = path.resolve(new URL('../..', import.meta.url).pathname);
@@ -41,18 +41,11 @@ function fail(msg) {
   }
 }
 
-// 3. memory/archive directory exists under the Claude project memory root.
-{
-  const home = process.env.HOME || '';
-  const memoryRoot = path.join(
-    home,
-    '.claude/projects/-Users-kpburson-projects-Vibe-Coding-ai-task-manager/memory'
-  );
-  const archive = path.join(memoryRoot, 'archive');
-  if (!existsSync(archive) || !statSync(archive).isDirectory()) {
-    fail(`${archive} is not a directory`);
-  }
-}
+// NOTE: a former check #3 asserted a machine-specific `$HOME/.claude/.../memory/
+// archive` path — the maintainer's personal Claude auto-memory dir. It could
+// never hold on CI or any other checkout and was not a repo invariant. Dropped
+// in #743. The canonical, repo-relative integrity check for `docs/ai-memory/`
+// is `scripts/inspect/ai-memory-parity.mjs --mode index` (CI wiring: #744).
 
 if (failures.length > 0) {
   for (const f of failures) process.stderr.write(`x ${f}\n`);
