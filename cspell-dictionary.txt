@@ -186,3 +186,5 @@ statusless
 Dockerfiles
 Containerfile
 Procfile
+defeatable
+uncallable
