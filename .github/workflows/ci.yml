@@ -35,6 +35,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # The real-git close-gate tests (#733) resolve trunk via a LOCAL
+      # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
+      # merge ref with no such branch, so those tests fail spuriously (#745).
+      # Materialize it. On push/schedule/dispatch a local `trunk` already exists,
+      # so this step is pull_request-only.
+      - name: Materialize local trunk ref for real-git tests (#745)
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -56,6 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # See the Fast lane note: real-git close-gate tests (#733) need a local
+      # `trunk` branch, absent on a pull_request detached checkout (#745).
+      - name: Materialize local trunk ref for real-git tests (#745)
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
           node-version: 22

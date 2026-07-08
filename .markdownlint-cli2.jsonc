@@ -10,6 +10,7 @@
     "MD029": false,
     "MD028": false,
     "MD001": false,
+    "MD060": false,
     "MD024": { "siblings_only": true }
   },
   "globs": ["**/*.md", "!.tmp/**"],
