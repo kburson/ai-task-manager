@@ -102,6 +102,17 @@ if (argv.join(' ') === 'rev-parse HEAD') {
   fs.writeSync(1, ${JSON.stringify(`${HEAD_SHA}\n`)});
   process.exit(0);
 }
+// #733 — message-based attribution: 'git log --all --grep=[#N]' must find a
+// commit whose subject carries the '[#N]' token (the normal post-#730 state
+// once the deliverable is committed). Emit one synthetic attributed commit so
+// review-preflight's attribution check passes; the refusal fixtures still fail
+// on their own reason (missing trail / dirty worktree), independent of this.
+const grepArg = argv.find((a) => a.startsWith('--grep='));
+if (argv[0] === 'log' && grepArg) {
+  const token = grepArg.slice(7);
+  fs.writeSync(1, '0000000000000000000000000000000000000000\\t' + token + ' fixture deliverable\\t2026-05-10T00:00:00Z\\n');
+  process.exit(0);
+}
 process.exit(0);
 `
   );
