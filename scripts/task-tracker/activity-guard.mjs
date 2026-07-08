@@ -49,7 +49,7 @@ import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 
 let input;
 try {
-  input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
+  input = JSON.parse(readFileSync(0, 'utf8'));
 } catch {
   process.exit(0); // malformed payload — pass-through
 }
