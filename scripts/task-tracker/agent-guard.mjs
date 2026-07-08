@@ -65,7 +65,8 @@ function emitBlock(reason) {
 
 let input = {};
 try {
-  input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
+  // #737 — read hook stdin via fd 0, not the `/dev/stdin` path (flaky on Linux CI pipes).
+  input = JSON.parse(readFileSync(0, 'utf8'));
 } catch {
   process.exit(0);
 }
