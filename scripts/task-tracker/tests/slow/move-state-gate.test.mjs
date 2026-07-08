@@ -78,6 +78,14 @@ function makeSandbox(body) {
   const shim = `#!/usr/bin/env node
 import fs from 'node:fs';
 const BODY = ${JSON.stringify(body)};
+// #747 — runStatusWrite now reads the Status field back after the item-edit
+// and fails closed (exit 7) unless it confirms the written optionId. A shim
+// that swallowed everything returned an empty read-back, which the old
+// soft-proceed tolerated but the new fail-closed path rejects. So the shim
+// must emulate a real board: record the optionId each item-edit writes, then
+// echo it back on the read-back graphql query so the write confirms.
+const STATE_FILE = ${JSON.stringify(path.join(sandbox, '.last-option'))};
+const PROJECT_ID = ${JSON.stringify('PVT_x')};
 const args = process.argv.slice(2);
 if (args[0] === 'issue' && args[1] === 'view') {
   // emulate --jq .body extracting body field as raw text.
@@ -87,7 +95,31 @@ if (args[0] === 'issue' && args[1] === 'view') {
   fs.writeSync(1, BODY);
   process.exit(0);
 }
-// project item-edit, issue comment, api graphql, etc — silent success
+if (args[0] === 'project' && args[1] === 'item-edit') {
+  // persist the written optionId so the read-back below reflects the write.
+  const i = args.indexOf('--single-select-option-id');
+  if (i !== -1 && args[i + 1]) fs.writeFileSync(STATE_FILE, args[i + 1]);
+  process.exit(0);
+}
+if (args[0] === 'api' && args[1] === 'graphql') {
+  // Only the read-back query carries a stdin payload (--input -). Reading fd 0
+  // when no --input was passed would block on the parent's stdin.
+  let payload = '';
+  if (args.includes('--input')) {
+    try { payload = fs.readFileSync(0, 'utf8'); } catch {}
+  }
+  if (payload.includes('fieldValueByName')) {
+    let opt = '';
+    try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
+    const res = { data: { repository: { issue: { projectItems: { nodes: [
+      { project: { id: PROJECT_ID }, fieldValueByName: { optionId: opt } },
+    ] } } } } };
+    fs.writeSync(1, JSON.stringify(res));
+    process.exit(0);
+  }
+  process.exit(0);
+}
+// issue comment, other api calls, etc — silent success
 process.exit(0);
 `;
   const shimPath = path.join(binDir, 'gh');

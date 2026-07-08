@@ -106,12 +106,23 @@ function makeSandbox(body, { currentState = 'Analyze' } = {}) {
   const shim = `#!/usr/bin/env node
 import fs from 'node:fs';
 const BODY = ${JSON.stringify(body)};
+// #747 — runStatusWrite reads Status back after the item-edit and fails
+// closed unless it confirms the written optionId. Record each item-edit's
+// optionId and reflect it as \`optionId\` on the projectItems read-back so a
+// successful move confirms. \`name\` stays the current state for the pre-write
+// drift check (which reads name, not optionId).
+const STATE_FILE = ${JSON.stringify(path.join(sandbox, '.last-option'))};
 const args = process.argv.slice(2);
 if (args[0] === 'issue' && args[1] === 'view') {
   // fs.writeSync is required because process.stdout.write is non-blocking
   // when stdout is a pipe; process.exit(0) on the next line would truncate
   // any body that exceeded the pipe high-watermark (~8KB on macOS).
   fs.writeSync(1, BODY);
+  process.exit(0);
+}
+if (args[0] === 'project' && args[1] === 'item-edit') {
+  const i = args.indexOf('--single-select-option-id');
+  if (i !== -1 && args[i + 1]) fs.writeFileSync(STATE_FILE, args[i + 1]);
   process.exit(0);
 }
 if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$').test(args[1] || '')) {
@@ -145,10 +156,12 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   let stdin = '';
   try { stdin = fs.readFileSync(0, 'utf8'); } catch {}
   if (stdin.includes('projectItems')) {
+    let opt = '';
+    try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
     const payload = {
       data: { repository: { issue: { projectItems: { nodes: [
         { project: { id: ${JSON.stringify(PROJECT_ID)} },
-          fieldValueByName: { name: ${JSON.stringify(currentState)} } },
+          fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt } },
       ] } } } },
     };
     fs.writeSync(1, JSON.stringify(payload));
