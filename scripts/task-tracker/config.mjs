@@ -94,6 +94,12 @@ export const DEFAULTS = {
   // Configurable so a project can rename the visible label without touching
   // the durable marker convention.
   discussLabel: 'Discuss',
+  // #734 — opt-in, default-off release/branch-topology detection. Universal
+  // issue↔commit attribution (lib/commit-attribution.mjs) stays topology-agnostic
+  // and always-on; this flag ONLY toggles the additive release-detection layer
+  // (lib/release-detection.mjs). Off by default so TBD / GitFlow / release-branch
+  // repos all attribute identically until a project explicitly opts in.
+  releaseDetection: false,
 };
 
 export const TYPES = {
@@ -144,6 +150,7 @@ export const TYPES = {
   sessionRetentionDays: 'integer',
   pauseThresholdSeconds: 'integer',
   discussLabel: 'string',
+  releaseDetection: 'boolean',
 };
 
 function defaultPaths() {
