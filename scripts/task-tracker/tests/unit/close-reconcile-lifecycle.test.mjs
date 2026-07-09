@@ -15,7 +15,8 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { verbClose } from '../../verbs/close.mjs';
+import { verbClose, tickLifecycleOnClose } from '../../verbs/close.mjs';
+import { decideCloseConvergence } from '../../lib/close-convergence.mjs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 
 const baseState = (active = '#5') => ({
@@ -94,6 +95,133 @@ test('close on closed issue with lagging board (drift) reconciles after convergi
     },
   });
   assert.equal(reconciled, 1, 'board-drift converge path must also reconcile lifecycle boxes');
+});
+
+// --- AC4: the reconcile drives a REAL body to ticked (not just a spy) ---------
+// Build an in-memory body store so the real `tickLifecycleOnClose` +
+// `tickLifecycleItem` operate on actual markdown, and assert the two boxes the
+// close verb owns end `[x]`. `deps.mutateIssueBody` is the seam the ticker reads
+// (close.mjs:909), so injecting a store here exercises the real mutate closure
+// without a single `gh` spawn.
+function bodyStore(initial) {
+  let body = initial;
+  return {
+    get: () => body,
+    mutateIssueBody: async ({ mutate }) => {
+      body = mutate(body);
+      return { body, version: 1 };
+    },
+  };
+}
+
+const LIFECYCLE_BLOCK = (a = ' ', b = ' ', c = ' ') =>
+  [
+    '## Definition of Done',
+    '',
+    '### Lifecycle (auto-ticked at Review/Close)',
+    '',
+    `- [${a}] Passed final human review`,
+    `- [${b}] Story closed and moved to Done`,
+    `- [${c}] Timing data flushed to issue`,
+    '',
+  ].join('\n');
+
+test('reconcile drives an unticked real body to ticked story-closed + timing-flushed (#753 AC4)', async () => {
+  const store = bodyStore(LIFECYCLE_BLOCK(' ', ' ', ' '));
+  const res = await tickLifecycleOnClose({
+    cfg: { repo: 'o/r' },
+    issueNum: '5',
+    pexec: async () => ({ stdout: '', stderr: '' }),
+    deps: { mutateIssueBody: store.mutateIssueBody },
+  });
+  assert.equal(res.ok, true, 'ticker reports success');
+  const body = store.get();
+  assert.match(body, /- \[x\] Story closed and moved to Done/, 'story-closed ends ticked');
+  assert.match(body, /- \[x\] Timing data flushed to issue/, 'timing-flushed ends ticked');
+  // The close verb owns only these two boxes — the review box is NOT its to tick.
+  assert.match(body, /- \[ \] Passed final human review/, 'review box left untouched');
+});
+
+// --- AC3: honest — the reconcile only flips boxes that genuinely exist; it
+// never fabricates a tick or an absent line, and is idempotent on already-ticked
+// boxes. (The complementary fact-gate — that the reconcile is only *invoked*
+// when the issue is verifiably CLOSED — is pinned by the decision-invariance test
+// below and the two converge tests above.)
+test('reconcile does not fabricate an absent lifecycle box (#753 AC3)', async () => {
+  // Body has story-closed but the timing-flushed line is absent entirely.
+  const partial = [
+    '## Definition of Done',
+    '',
+    '### Lifecycle (auto-ticked at Review/Close)',
+    '',
+    '- [ ] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '',
+  ].join('\n');
+  const store = bodyStore(partial);
+  await tickLifecycleOnClose({
+    cfg: { repo: 'o/r' },
+    issueNum: '5',
+    pexec: async () => ({ stdout: '', stderr: '' }),
+    deps: { mutateIssueBody: store.mutateIssueBody },
+  });
+  const body = store.get();
+  assert.match(body, /- \[x\] Story closed and moved to Done/, 'present box ticked');
+  assert.doesNotMatch(
+    body,
+    /Timing data flushed to issue/,
+    'absent timing-flushed line is NOT fabricated'
+  );
+});
+
+test('reconcile is idempotent on already-ticked boxes (#753 AC3)', async () => {
+  const store = bodyStore(LIFECYCLE_BLOCK(' ', 'x', 'x'));
+  const before = store.get();
+  await tickLifecycleOnClose({
+    cfg: { repo: 'o/r' },
+    issueNum: '5',
+    pexec: async () => ({ stdout: '', stderr: '' }),
+    deps: { mutateIssueBody: store.mutateIssueBody },
+  });
+  const after = store.get();
+  assert.match(after, /- \[x\] Story closed and moved to Done/, 'stays ticked');
+  assert.match(after, /- \[x\] Timing data flushed to issue/, 'stays ticked');
+  assert.equal(
+    (after.match(/- \[x\] Story closed and moved to Done/g) || []).length,
+    1,
+    'no duplicate ticked line introduced'
+  );
+  assert.match(before, /- \[ \] Passed final human review/, 'review box still unticked');
+});
+
+// --- AC4: the happy-path `proceed` decision is behaviorally UNCHANGED ----------
+// The #753 seam adds reconcile calls strictly INSIDE the `noop` and `close-issue`
+// converge branches. The `proceed` decision — the full close pipeline's entry —
+// must be untouched: an OPEN issue with a non-Done board still returns `proceed`,
+// so the happy path runs exactly as before (its own end-of-pipeline reconcile,
+// after the issue is genuinely closed, is the honest fact-gated tick).
+test('convergence decision for the happy path is unchanged by the #753 seam (#753 AC4)', () => {
+  assert.deepEqual(
+    decideCloseConvergence({ issueClosed: false, boardState: 'develop' }),
+    { action: 'proceed' },
+    'OPEN issue + non-Done board → proceed (full pipeline), no converge reconcile'
+  );
+  // The reconcile-carrying branches remain exactly the CLOSED / board-drift cases.
+  assert.deepEqual(
+    decideCloseConvergence({ issueClosed: true, boardState: 'done' }),
+    { action: 'noop', boardDrift: false },
+    'CLOSED + board Done → noop (reconcile branch)'
+  );
+  assert.deepEqual(
+    decideCloseConvergence({ issueClosed: true, boardState: 'develop' }),
+    { action: 'noop', boardDrift: true },
+    'CLOSED + board lagging → noop with drift (reconcile branch)'
+  );
+  assert.deepEqual(
+    decideCloseConvergence({ issueClosed: false, boardState: 'done' }),
+    { action: 'close-issue' },
+    'OPEN + board Done → close-issue (reconcile branch)'
+  );
 });
 
 console.log('close-reconcile-lifecycle.test.mjs: defined');
