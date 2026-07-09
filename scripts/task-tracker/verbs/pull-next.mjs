@@ -22,6 +22,7 @@ import {
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { verbPromote } from './promote.mjs';
+import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -53,6 +54,7 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
   if (!cfg) throw new Error('runPullNext: cfg is required');
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const promote = deps.promote || verbPromote;
+  const audit = deps.audit || runMoveInvariantAudit;
 
   const liveState = await getLiveState({ issueNumber: epicNumber, cfg });
   if (liveState !== 'develop') {
@@ -61,6 +63,11 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
       message: `Refusing to pull-next on #${epicNumber}: epic state is "${liveState || 'unknown'}", expected "develop".`,
     };
   }
+
+  // #758 — audit the epic for out-of-band Status drift before selecting a child,
+  // so orchestrator drift is caught on the normal develop loop. Best-effort:
+  // prints a warning + recommended reconcile on drift, never blocks selection.
+  await audit({ issueNumber: epicNumber, cfg, deps: deps.auditDeps });
 
   let children;
   try {

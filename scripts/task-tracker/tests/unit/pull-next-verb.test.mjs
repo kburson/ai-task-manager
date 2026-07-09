@@ -10,10 +10,16 @@ import { runPullNext } from '../../verbs/pull-next.mjs';
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function makeDeps({ liveState = 'develop', children = [], promoteResult = { status: 'ok' } } = {}) {
-  const calls = { promotes: [], stateLookups: 0 };
+  const calls = { promotes: [], stateLookups: 0, audits: [] };
   return {
     calls,
     deps: {
+      // #758 — inject a hermetic no-op auditor so the unit tests never spawn a
+      // real `gh`/gql read; the spy also lets us assert it ran before selection.
+      audit: async ({ issueNumber }) => {
+        calls.audits.push(issueNumber);
+        return { ok: true, drift: 'none' };
+      },
       getLiveState: async ({ issueNumber }) => {
         calls.stateLookups++;
         calls.lastLookup = issueNumber;
@@ -94,6 +100,21 @@ test('runPullNext skips a child whose blocker is not Done (#248)', async () => {
   assert.deepEqual(calls.promotes, [['104']]);
 });
 
+test('runPullNext audits the epic before child selection (#758)', async () => {
+  const { deps, calls } = makeDeps({
+    children: [{ number: 103, state: 'refine', rank: 3 }],
+  });
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'pulled');
+  assert.deepEqual(calls.audits, [100], 'auditor runs once, on the epic');
+});
+
+test('runPullNext does not audit when the epic is not in develop (#758)', async () => {
+  const { deps, calls } = makeDeps({ liveState: 'plan' });
+  await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.deepEqual(calls.audits, [], 'no audit when the gate short-circuits');
+});
+
 test('runPullNext requires epicNumber and cfg', async () => {
   await assert.rejects(() => runPullNext({ cfg }), /epicNumber is required/);
   await assert.rejects(() => runPullNext({ epicNumber: 1 }), /cfg is required/);
@@ -101,6 +122,7 @@ test('runPullNext requires epicNumber and cfg', async () => {
 
 test('runPullNext surfaces fetch failures', async () => {
   const deps = {
+    audit: async () => ({ ok: true, drift: 'none' }),
     getLiveState: async () => 'develop',
     epicChildren: {
       fetchSiblings: async () => {

@@ -20,6 +20,7 @@ import {
   isPickupDirectiveEligible,
   formatPickupDirectiveDeferredBanner,
 } from '../lib/pickup-directive-gate.mjs';
+import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
@@ -151,6 +152,11 @@ export async function verbResume(ctx) {
       description: resumeDesc,
     });
     await safePostTiming(s.lastActive, row);
+    // #758 — same out-of-band Status-drift audit on the no-arg resume path.
+    await runMoveInvariantAudit({
+      issueNumber: String(s.lastActive).replace(/^#/, ''),
+      cfg,
+    });
     console.log(`Resumed ${s.lastActive}.`);
     return;
   }
@@ -305,5 +311,12 @@ export async function verbResume(ctx) {
     description: role ?? (isStart ? 'task started' : 'task resumed'),
   });
   await safePostTiming(normalizedTarget, row);
+  // #758 — audit the just-bound issue for out-of-band Status drift (a raw-API /
+  // wrapper move that never wrote the move-complete sentinel). Best-effort: it
+  // prints a warning + recommended reconcile on drift and never blocks the bind.
+  await runMoveInvariantAudit({
+    issueNumber: String(normalizedTarget).replace(/^#/, ''),
+    cfg,
+  });
   console.log(`${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`);
 }
