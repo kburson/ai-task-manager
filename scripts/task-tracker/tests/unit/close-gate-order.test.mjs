@@ -87,7 +87,10 @@ test('decideBoardMoveFailure: board already Done does not surface (race-safe)', 
 
 test('source: surfaced pre-walk failure refuses and returns before `gh issue close`', () => {
   const guardIdx = closeSrc.indexOf(PRE_WALK_GUARD);
-  const block = closeSrc.slice(guardIdx, guardIdx + 900);
+  // #752 widened the pre-walk block (the board re-read now goes through the
+  // lag-tolerant resolveBoardStateForClose), so the window must reach past the
+  // longer assignment to still contain the trailing `process.exitCode`/`return`.
+  const block = closeSrc.slice(guardIdx, guardIdx + 1100);
   assert.ok(
     /decideBoardMoveFailure\(/.test(block),
     'pre-walk must route its decision through decideBoardMoveFailure'
@@ -109,7 +112,7 @@ test('source: pre-walk delegates the gate decision to move-state (review-approva
   // the move is refused, decideBoardMoveFailure surfaces it, and the issue is
   // never closed. Assert the wiring that produces that outcome.
   const guardIdx = closeSrc.indexOf(PRE_WALK_GUARD);
-  const block = closeSrc.slice(guardIdx, guardIdx + 900);
+  const block = closeSrc.slice(guardIdx, guardIdx + 1100);
   assert.ok(
     /runMoveStateDone\(s\.active, \{ silent: true \}\)/.test(block),
     'pre-walk must invoke the terminal move-state walk (not a `--force` bypass) so the ' +
