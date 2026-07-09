@@ -194,7 +194,9 @@ test('AC1/AC2/AC3: the saga core gates on the exit BEFORE running the post-commi
   );
   const writeIdx = src.indexOf('runStatusWrite(');
   const gateIdx = src.indexOf('writeResult.exit');
-  const tailIdx = src.indexOf('runPostCommitTail(');
+  // #756 added an idempotent-replay short-circuit that runs the tail BEFORE the
+  // status write; scope the tail lookup to the MAIN path, after the exit gate.
+  const tailIdx = src.indexOf('runPostCommitTail(', gateIdx);
   assert.ok(writeIdx !== -1, 'core calls runStatusWrite');
   assert.ok(gateIdx !== -1, 'core inspects writeResult.exit');
   assert.ok(tailIdx !== -1, 'core calls runPostCommitTail');

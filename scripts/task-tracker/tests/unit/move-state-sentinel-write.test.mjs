@@ -25,6 +25,18 @@ test('sentinel is written and re-read-verified as target', async () => {
   assert.match(bodyRef.body, /aitm-move-complete state=test/);
 });
 
+test('SKIP_NETWORK short-circuits: no body write, reported verified', async () => {
+  let called = false;
+  const ctx = { issueArg: '999', stateArg: 'test', cfg: { repo: 'o/r' }, SKIP_NETWORK: true };
+  ctx._mutateBody = async () => {
+    called = true;
+    return { body: '' };
+  };
+  const res = await defaultWriteSentinel(ctx);
+  assert.equal(res.verified, true);
+  assert.equal(called, false, 'offline mode must not touch the issue body');
+});
+
 test('sentinel verify fails closed when the verified body does not show target', async () => {
   const bodyRef = { body: 'existing body' };
   const ctx = ctxWith(bodyRef);
