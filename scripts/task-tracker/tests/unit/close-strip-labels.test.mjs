@@ -54,6 +54,10 @@ function makeCtx(statePath, dir, over = {}) {
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
+    // Keep the lifecycle-box reconcile (#753) offline — the real one reaches
+    // live `gh` (pexec injection does not intercept versionedWriteBody), which
+    // stalls the full-suite run. This test asserts only label-strip behavior.
+    tickLifecycleOnClose: async () => ({ ok: true }),
     ...over,
   };
 }
