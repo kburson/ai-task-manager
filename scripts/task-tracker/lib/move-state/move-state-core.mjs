@@ -134,7 +134,14 @@ export async function moveState(ctx) {
 
   const guard = await runGuardExecution(ctx);
   if (guard.exit !== null && guard.exit !== undefined) {
-    return { exit: guard.exit, itemId: '', tail: { failures: [] } };
+    return {
+      exit: guard.exit,
+      itemId: '',
+      tail: { failures: [] },
+      phase: 'guard',
+      sentinelPresent: false,
+      boardMoved: false,
+    };
   }
 
   // Idempotent replay (#756): if the sentinel + board + evidence already show
@@ -144,7 +151,15 @@ export async function moveState(ctx) {
   const probe = await probeCompletion(ctx);
   if (isMoveComplete({ ...probe, target: ctx.stateArg })) {
     const tail = await runPostCommitTail(ctx);
-    return { exit: null, itemId: '', alreadyComplete: true, tail };
+    return {
+      exit: null,
+      itemId: '',
+      alreadyComplete: true,
+      tail,
+      phase: 'complete',
+      sentinelPresent: true,
+      boardMoved: true,
+    };
   }
 
   // Pre-Status evidence: exit-flush the departing row + entry row, then the
@@ -155,7 +170,14 @@ export async function moveState(ctx) {
   // Status is the LAST authoritative board write (#711 fail-closed verify).
   const writeResult = await runStatusWrite(ctx);
   if (writeResult.exit !== null) {
-    return { exit: writeResult.exit, itemId: writeResult.itemId, tail: { failures: [] } };
+    return {
+      exit: writeResult.exit,
+      itemId: writeResult.itemId,
+      tail: { failures: [] },
+      phase: 'status',
+      sentinelPresent: false,
+      boardMoved: false,
+    };
   }
   ctx.itemId = writeResult.itemId;
 
@@ -163,9 +185,23 @@ export async function moveState(ctx) {
   // here means "board moved, completion not yet stamped — re-run to converge."
   const sentinel = await writeSentinel(ctx);
   if (!sentinel.verified) {
-    return { exit: sentinel.exit ?? 7, itemId: writeResult.itemId, tail: { failures: [] } };
+    return {
+      exit: sentinel.exit ?? 7,
+      itemId: writeResult.itemId,
+      tail: { failures: [] },
+      phase: 'sentinel',
+      sentinelPresent: false,
+      boardMoved: true,
+    };
   }
 
   const tail = await runPostCommitTail(ctx);
-  return { exit: null, itemId: writeResult.itemId, tail };
+  return {
+    exit: null,
+    itemId: writeResult.itemId,
+    tail,
+    phase: 'complete',
+    sentinelPresent: true,
+    boardMoved: true,
+  };
 }

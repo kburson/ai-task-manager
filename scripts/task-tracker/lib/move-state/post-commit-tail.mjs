@@ -59,7 +59,9 @@ export const DEFAULT_TAIL_STEPS = Object.freeze([
 // The returned shape lets the host (or a test) inspect WHICH steps failed
 // without any failure ever changing control flow or the process exit code — the
 // core #714 invariant: once the board write has committed, no tail throw may
-// report the committed move as a failure.
+// report the committed move as a failure. `total` is the count of steps
+// attempted, so the §9 readout can render an honest `N/M best-effort steps ok`
+// even when a custom step list is injected (tests).
 export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
   const failures = [];
   for (const step of steps) {
@@ -81,7 +83,7 @@ export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
       );
     }
   }
-  return { failures };
+  return { failures, total: steps.length };
 }
 
 // #716 — informational / benign stderr lines that a tail step may emit and that

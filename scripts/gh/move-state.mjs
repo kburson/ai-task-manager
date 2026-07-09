@@ -55,6 +55,7 @@ import { runGuardExecution } from '../task-tracker/lib/move-state/guard-executio
 // moveState. #711 fail-closed and #714 tail-isolation live inside those steps and
 // are preserved verbatim by the core.
 import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
+import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -350,6 +351,23 @@ export async function runMoveStateHost({
     // runStatusWrite / runPostCommitTail and are preserved verbatim by the core.
     ctx._runGuardExecution = async () => ({ exit: null });
     const result = await moveState(ctx);
+    // #757 — the per-element move readout (Design §9 success / §12 failure).
+    // Rendered purely from the enriched result the saga already verified-as-
+    // stored; suppressed under SKIP_NETWORK where nothing was written, so we
+    // never print a "(verified)" claim about a board that was never touched.
+    if (!SKIP_NETWORK) {
+      const readoutArgs = {
+        result,
+        issue: issueArg,
+        from: ctx.resolvedFromState,
+        to: stateArg,
+      };
+      if (result.exit === null) {
+        process.stdout.write(`${formatMoveReadout(readoutArgs)}\n`);
+      } else {
+        process.stderr.write(`${formatMoveError(readoutArgs)}\n`);
+      }
+    }
     if (result.exit !== null) return result.exit;
     ctx.itemId = result.itemId;
     return 0;
