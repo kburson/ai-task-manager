@@ -23,8 +23,7 @@
 // be unit-driven with a throwing step double without spawning `gh` or the
 // network. Production passes the frozen `DEFAULT_TAIL_STEPS`.
 
-import { stampEntryMarkers } from './github-mutation.mjs';
-import { emitPhasePairRows, emitFullAutoReviewAudit, emitOutOfBandAudit } from './audit-timing.mjs';
+import { emitFullAutoReviewAudit, emitOutOfBandAudit } from './audit-timing.mjs';
 import {
   dispatchOnEnterActions,
   refreshKanbanStateCache,
@@ -37,11 +36,13 @@ import {
 // The canonical post-commit tail, in the exact order the pre-#714 mutation
 // block invoked it. Each entry is `{ name, fn }` where `fn(ctx)` is the
 // best-effort step. Order is load-bearing (#535/#516) — do NOT reorder.
+//
+// #756: `stampEntryMarkers` and `emitPhasePairRows` moved OUT of this tail into
+// the atomic core (move-state-core.mjs), where they run BEFORE the Status write
+// so all entry evidence is durable before the board flips.
 export const DEFAULT_TAIL_STEPS = Object.freeze([
-  { name: 'stampEntryMarkers', fn: stampEntryMarkers },
   { name: 'dispatchOnEnterActions', fn: dispatchOnEnterActions },
   { name: 'refreshKanbanStateCache', fn: refreshKanbanStateCache },
-  { name: 'emitPhasePairRows', fn: emitPhasePairRows },
   { name: 'emitFullAutoReviewAudit', fn: emitFullAutoReviewAudit },
   { name: 'unparkDoneDependents', fn: unparkDoneDependents },
   { name: 'emitOutOfBandAudit', fn: emitOutOfBandAudit },

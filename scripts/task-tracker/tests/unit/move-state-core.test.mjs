@@ -14,9 +14,26 @@ function baseCtx(overrides = {}) {
       calls.push('guard');
       return { exit: null };
     },
+    _probeCompletion: async () => ({
+      sentinelState: '',
+      statusState: '',
+      entryMarkerPresent: false,
+      exitRowPresent: false,
+      entryRowPresent: false,
+    }),
+    _emitPhasePairRows: async () => {
+      calls.push('rows');
+    },
+    _stampEntryMarkers: async () => {
+      calls.push('markers');
+    },
     _runStatusWrite: async () => {
       calls.push('status');
       return { itemId: 'IT_1', exit: null };
+    },
+    _writeSentinel: async () => {
+      calls.push('sentinel');
+      return { verified: true };
     },
     _runPostCommitTail: async () => {
       calls.push('tail');
@@ -26,12 +43,30 @@ function baseCtx(overrides = {}) {
   };
 }
 
-test('moveState runs guard → status → tail and returns success', async () => {
+test('moveState runs guard → rows → markers → status → sentinel → tail', async () => {
   const ctx = baseCtx();
   const res = await moveState(ctx);
   assert.equal(res.exit, null);
   assert.equal(res.itemId, 'IT_1');
-  assert.deepEqual(ctx.calls, ['guard', 'status', 'tail']);
+  assert.deepEqual(ctx.calls, ['guard', 'rows', 'markers', 'status', 'sentinel', 'tail']);
+});
+
+test('atomic core order: rows + markers land before Status, sentinel before tail', async () => {
+  const ctx = baseCtx();
+  await moveState(ctx);
+  assert.ok(ctx.calls.indexOf('rows') < ctx.calls.indexOf('status'), 'rows before status');
+  assert.ok(ctx.calls.indexOf('markers') < ctx.calls.indexOf('status'), 'markers before status');
+  assert.ok(ctx.calls.indexOf('status') < ctx.calls.indexOf('sentinel'), 'status before sentinel');
+  assert.ok(ctx.calls.indexOf('sentinel') < ctx.calls.indexOf('tail'), 'sentinel before tail');
+});
+
+test('moveState fails closed when the sentinel does not verify', async () => {
+  const ctx = baseCtx({
+    _writeSentinel: async () => ({ verified: false, exit: 7 }),
+  });
+  const res = await moveState(ctx);
+  assert.equal(res.exit, 7);
+  assert.ok(!ctx.calls.includes('tail'), 'unverified sentinel must not run the tail');
 });
 
 test('moveState halts on guard refusal and never writes status', async () => {

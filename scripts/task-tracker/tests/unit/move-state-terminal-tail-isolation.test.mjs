@@ -144,13 +144,11 @@ test('the sequencer reports which steps failed without changing control flow', a
   assert.match(result.failures[0].error.message, /e1/);
 });
 
-test('DEFAULT_TAIL_STEPS enumerates the exact tail order (byte-identical to the pre-#714 sequence)', () => {
+test('DEFAULT_TAIL_STEPS enumerates the exact tail order (post-#756: entry evidence moved to the atomic core)', () => {
   const names = DEFAULT_TAIL_STEPS.map((s) => s.name);
   assert.deepEqual(names, [
-    'stampEntryMarkers',
     'dispatchOnEnterActions',
     'refreshKanbanStateCache',
-    'emitPhasePairRows',
     'emitFullAutoReviewAudit',
     'unparkDoneDependents',
     'emitOutOfBandAudit',
