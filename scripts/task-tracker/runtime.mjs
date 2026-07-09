@@ -39,7 +39,7 @@ import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { getProjectDir } from './paths.mjs';
-import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, MOVE_STATE_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 
 const pexec = promisify(execFile);
@@ -485,7 +485,11 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         AITM_VERB_CONTEXT: 'runtime',
       };
       const { stdout } = await pexec(process.execPath, moveArgs, {
-        timeout: GH_API_TIMEOUT_MS,
+        // #752 — the move-state child runs a verified Status write PLUS a
+        // multi-step best-effort tail; bounding it with the single-`gh`-call
+        // budget SIGTERM-killed it mid-tail after the board committed. Give it a
+        // budget matched to the whole saga (inner calls keep their own timeouts).
+        timeout: MOVE_STATE_TIMEOUT_MS,
         env: mergedEnv,
       });
       if (!silent && stdout.trim()) console.log(stdout.trim());

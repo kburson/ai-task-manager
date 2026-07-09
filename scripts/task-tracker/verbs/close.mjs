@@ -26,6 +26,7 @@ import {
   decideBoardMoveFailure,
   decideGateEvalFailure,
   shouldEmitReviewApprovedRow,
+  resolveBoardStateForClose,
 } from '../lib/close-convergence.mjs';
 
 // #705 — best-effort: a label-strip failure must never block or fail the
@@ -708,7 +709,7 @@ export async function verbClose(ctx) {
     // Done. A benign `done → done` (board already converged out-of-band) passes.
     const forcedBoardState =
       forcedMove && !forcedMove.ok && !forcedMove.benign
-        ? await getIssueBoardState(s.active)
+        ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
         : 'done';
     if (decideBoardMoveFailure({ moveResult: forcedMove, boardState: forcedBoardState }).surface) {
       const detail =
@@ -744,7 +745,9 @@ export async function verbClose(ctx) {
   if (!force && !SKIP_NETWORK && closeIssueNum) {
     const preMove = await runMoveStateDone(s.active, { silent: true });
     const preBoardState =
-      preMove && !preMove.ok && !preMove.benign ? await getIssueBoardState(s.active) : 'done';
+      preMove && !preMove.ok && !preMove.benign
+        ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
+        : 'done';
     if (decideBoardMoveFailure({ moveResult: preMove, boardState: preBoardState }).surface) {
       const detail =
         (preMove.stderr || '').trim() || `move-state.mjs exited ${preMove.status ?? 'non-zero'}`;
