@@ -110,13 +110,15 @@ test('source: fail-closed body-fetch failure exits before the board mutation', (
     'failClosed branch must return the exit descriptor (no fall-through to the mutation)'
   );
   // In the host: guard execution + its process.exit must precede the board
-  // write (runStatusWrite owns the project item-edit mutation).
+  // write. #755 moved the item-edit mutation (runStatusWrite) into the saga
+  // core, reached only through moveState(ctx); the host's guard refusal must
+  // still exit before that delegation call — the sole route to the mutation.
   const guardIdx = moveSrc.indexOf('await runGuardExecution(');
   const exitIdx = moveSrc.indexOf('process.exit(guardOutcome.exit)');
-  const writeIdx = moveSrc.indexOf('await runStatusWrite(');
+  const writeIdx = moveSrc.indexOf('await moveState(');
   assert.ok(guardIdx >= 0 && exitIdx > guardIdx, 'host must exit on a guard refusal');
   assert.ok(
     writeIdx > exitIdx,
-    'runGuardExecution + process.exit must precede runStatusWrite (the item-edit mutation)'
+    'runGuardExecution + process.exit must precede moveState (the sole route to the item-edit mutation)'
   );
 });

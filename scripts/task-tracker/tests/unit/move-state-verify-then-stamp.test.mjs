@@ -4,9 +4,10 @@
 // stamped ONLY after the board `Status` move is verified. `runStatusWrite`
 // (scripts/task-tracker/lib/move-state/github-mutation.mjs) writes the kanban
 // field, reads the live Status optionId back, and returns a non-null `exit`
-// unless the read-back confirms the target. The host
-// (scripts/gh/move-state.mjs) gates on that exit BEFORE running the
-// post-commit tail — and the tail is the only place the `aitm-last-known-state`
+// unless the read-back confirms the target. The saga core
+// (scripts/task-tracker/lib/move-state/move-state-core.mjs) gates on that exit
+// BEFORE running the post-commit tail (#755 consolidated the ordered saga out
+// of the host into this core) — and the tail is the only place the `aitm-last-known-state`
 // marker (`stampEntryMarkers`) and the timing row (`emitPhasePairRows`) are
 // written. So a non-null exit provably skips both.
 //
@@ -180,25 +181,30 @@ test('AC2: a healthy write that confirms immediately proceeds normally', async (
   assert.equal(err.length, 0, 'no refusal on a confirmed write');
 });
 
-test('AC1/AC2/AC3: the host gates on the exit BEFORE running the post-commit tail', () => {
+test('AC1/AC2/AC3: the saga core gates on the exit BEFORE running the post-commit tail', () => {
   // Structural guarantee that a non-null exit skips BOTH the marker stamp and
-  // the timing row: move-state.mjs exits on runStatusWrite's non-null exit, and
-  // only reaches runPostCommitTail (which calls stampEntryMarkers +
-  // emitPhasePairRows) afterward.
-  const src = readFileSync(path.join(repoRoot, 'scripts', 'gh', 'move-state.mjs'), 'utf8');
+  // the timing row: move-state-core.mjs returns on runStatusWrite's non-null
+  // exit, and only reaches runPostCommitTail (which calls stampEntryMarkers +
+  // emitPhasePairRows) afterward. #755 moved this ordered saga out of the host
+  // (scripts/gh/move-state.mjs, which now delegates to moveState(ctx)) into the
+  // core, so the invariant is asserted against the core's source.
+  const src = readFileSync(
+    path.join(repoRoot, 'scripts', 'task-tracker', 'lib', 'move-state', 'move-state-core.mjs'),
+    'utf8'
+  );
   const writeIdx = src.indexOf('runStatusWrite(');
   const gateIdx = src.indexOf('writeResult.exit');
   const tailIdx = src.indexOf('runPostCommitTail(');
-  assert.ok(writeIdx !== -1, 'host calls runStatusWrite');
-  assert.ok(gateIdx !== -1, 'host inspects writeResult.exit');
-  assert.ok(tailIdx !== -1, 'host calls runPostCommitTail');
+  assert.ok(writeIdx !== -1, 'core calls runStatusWrite');
+  assert.ok(gateIdx !== -1, 'core inspects writeResult.exit');
+  assert.ok(tailIdx !== -1, 'core calls runPostCommitTail');
   assert.ok(
     writeIdx < gateIdx && gateIdx < tailIdx,
     'the exit gate sits between the status write and the post-commit tail'
   );
   assert.match(
     src,
-    /writeResult\.exit\s*!==\s*null[\s\S]{0,80}process\.exit\(writeResult\.exit\)/,
-    'a non-null exit terminates the host before the tail stamps marker/timing'
+    /writeResult\.exit\s*!==\s*null[\s\S]{0,80}return\s*\{\s*exit:\s*writeResult\.exit/,
+    'a non-null exit returns from the core before the tail stamps marker/timing'
   );
 });

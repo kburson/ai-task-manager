@@ -38,14 +38,13 @@ import { computeTransitionPlan } from '../task-tracker/lib/move-state/transition
 // modules. The host assembles a single `ctx` and calls them in the exact
 // pre-#559 interleaved order; each is a faithful relocation of an inline block.
 import { runGuardExecution } from '../task-tracker/lib/move-state/guard-execution.mjs';
-import { runStatusWrite } from '../task-tracker/lib/move-state/github-mutation.mjs';
-// #714 — the post-commit tail steps (everything AFTER runStatusWrite) are now
-// run through an isolating sequencer so a throw in any best-effort step can no
-// longer unwind to the top level and flip the process exit code non-zero after
-// the board Status write has already committed. runStatusWrite + its exit-honor
-// stay OUTSIDE the tail (authoritative). The individual step fns are still
-// imported by the sequencer module; the host only needs runPostCommitTail.
-import { runPostCommitTail } from '../task-tracker/lib/move-state/post-commit-tail.mjs';
+// #755 — the status write + post-commit tail are now sequenced by the extracted
+// saga core moveState(ctx) (task-tracker/lib/move-state/move-state-core.mjs). The
+// host no longer imports runStatusWrite / runPostCommitTail directly; it
+// assembles ctx, runs the guard (below), then delegates the mutation block to
+// moveState. #711 fail-closed and #714 tail-isolation live inside those steps and
+// are preserved verbatim by the core.
+import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -313,20 +312,21 @@ const __mutationBlock = async () => {
   // stderr, never roll back the committed board move) EXCEPT runStatusWrite,
   // which returns a non-null `exit` the host must honor (issue absent from the
   // project → exit 1).
-  const writeResult = await runStatusWrite(ctx);
-  if (writeResult.exit !== null) process.exit(writeResult.exit);
-  ctx.itemId = writeResult.itemId;
-
-  // #714 — the authoritative board Status write has now committed. Every step
-  // below is best-effort and must NEVER change the process exit code: a throw in
-  // any of them would (pre-#714) unwind through `withIssueLock` to the top level
-  // and exit non-zero, making a committed terminal move report FAILURE (and
-  // triggering close.mjs's false "Issue left OPEN" split-brain guard).
-  // `runPostCommitTail` wraps each step in its own try/catch, logs a throw to
-  // stderr naming the step, and continues — preserving the byte-identical
-  // #535/#516 call order (DEFAULT_TAIL_STEPS). Failures are returned for
-  // inspection but never propagate.
-  await runPostCommitTail(ctx);
+  // #755 — delegate status → tail to the extracted saga core moveState(ctx).
+  // The exit/entry guard already ran and was honored above (guardOutcome,
+  // OUTSIDE the lock), so the core's guard seam is stubbed to a no-op here; the
+  // core then runs runStatusWrite → runPostCommitTail in the byte-identical
+  // pre-#755 order. moveState never calls process.exit — it returns
+  // { exit, itemId, tail } and the host maps result.exit onto the exit code.
+  //
+  // #711 fail-closed (an unconfirmed Status write returns a non-null exit and
+  // never proceeds) and #714 tail-isolation (a throw in any best-effort tail
+  // step is caught, logged, and never flips the exit code) live inside
+  // runStatusWrite / runPostCommitTail and are preserved verbatim by the core.
+  ctx._runGuardExecution = async () => ({ exit: null });
+  const result = await moveState(ctx);
+  if (result.exit !== null) process.exit(result.exit);
+  ctx.itemId = result.itemId;
 }; // end __mutationBlock
 
 if (process.env[ISSUE_LOCK_HELD_ENV] === '1') {
