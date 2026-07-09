@@ -112,12 +112,40 @@ const BODY = ${JSON.stringify(body)};
 // successful move confirms. \`name\` stays the current state for the pre-write
 // drift check (which reads name, not optionId).
 const STATE_FILE = ${JSON.stringify(path.join(sandbox, '.last-option'))};
+// #756 — the shim must be a real body store, not a constant. move-state stamps
+// entry markers via versionedWriteBody, which pushes a new body over
+// \`gh issue edit --body-file -\` and then read-back-verifies byte-equality.
+// A shim that always echoed the ORIGINAL BODY made every verify diverge from
+// the stamped push -> BodyWriteRefusalError after 3 attempts, and the
+// \`--json body\` fetch in stampEntryMarkers JSON.parse'd raw markdown ->
+// \`Unexpected token '#'\`. Persist each pushed body and serve it back.
+const BODY_FILE = ${JSON.stringify(path.join(sandbox, '.issue-body'))};
+function currentBody() {
+  try { return fs.readFileSync(BODY_FILE, 'utf8'); } catch { return BODY; }
+}
 const args = process.argv.slice(2);
+if (args[0] === 'issue' && args[1] === 'edit' && args.includes('--body-file')) {
+  const i = args.indexOf('--body-file');
+  const src = args[i + 1];
+  let next = '';
+  try { next = fs.readFileSync(src === '-' ? 0 : src, 'utf8'); } catch {}
+  fs.writeFileSync(BODY_FILE, next);
+  process.exit(0);
+}
 if (args[0] === 'issue' && args[1] === 'view') {
+  // Emulate real gh's two body-fetch shapes: a jq filter (\`--jq\`/\`-q\`) makes
+  // gh emit the RAW body string; \`--json body\` with no jq filter emits a JSON
+  // object {"body": ...} that stampEntryMarkers JSON.parse's.
   // fs.writeSync is required because process.stdout.write is non-blocking
   // when stdout is a pipe; process.exit(0) on the next line would truncate
   // any body that exceeded the pipe high-watermark (~8KB on macOS).
-  fs.writeSync(1, BODY);
+  const b = currentBody();
+  const jqFiltered = args.includes('--jq') || args.includes('-q');
+  if (args.includes('--json') && !jqFiltered) {
+    fs.writeSync(1, JSON.stringify({ body: b }));
+  } else {
+    fs.writeSync(1, b);
+  }
   process.exit(0);
 }
 if (args[0] === 'project' && args[1] === 'item-edit') {
