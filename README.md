@@ -6,14 +6,14 @@ AI Task Manager lets Claude Code and Codex share the same GitHub issue/project w
 
 > **Your AI is drowning in context it never reads.** We cut cold-start skill load by 75% with a just-in-time loader — capability stayed flat, the tax disappeared. → [How we killed context bloat with JIT Skill Loading](docs/jit-loader-results.md)
 
-<br> 
+<br>
 
 <img width="690" height="445" alt="image" src="https://github.com/user-attachments/assets/0ad99456-0a94-4ce4-af4b-a1e52323610b" />
 
 <p>
 
 While this ai skill project is a public repo it is currently under construction and has not been published yet.  
-The rules and templates for interacting with github issue backlogs are under constant revision.  
+The rules and templates for interacting with github issue backlogs are under constant revision.
 
 We are "dogfooding" the skill as we build it and patch every defect we find along the way.  
 The design is evolving naturally on every iteration.  
