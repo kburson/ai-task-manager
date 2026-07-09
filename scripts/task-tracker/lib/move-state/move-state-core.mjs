@@ -9,12 +9,33 @@ import {
 } from './github-mutation.mjs';
 import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
 import { runPostCommitTail as defaultRunPostCommitTail } from './post-commit-tail.mjs';
+import { writeMoveCompleteMarker, readMoveCompleteState } from './sentinel.mjs';
 
-// Task 6 (#756) fills this in: write the aitm-move-complete sentinel and
-// re-read-verify it landed at target. Until then it is a no-op that reports
-// verified so the reordered saga is exercised end-to-end.
-export async function defaultWriteSentinel() {
-  return { verified: true };
+// Write the aitm-move-complete sentinel and re-read-verify it landed at target
+// (#756, closes #752). Runs AFTER runStatusWrite returned exit:null, so a
+// failure here means "board moved, completion not yet stamped — re-run to
+// converge"; it never reports success on an unconfirmed sentinel write.
+//
+// Routes through mutateIssueBody: the write fetches a fresh base, upserts the
+// sentinel as a `mutate(base) → next` closure (so no invariant marker is
+// clobbered), and returns the VERIFIED live body — the re-read is the same
+// round-trip, not a second one. Verification reads that returned body.
+export async function defaultWriteSentinel(ctx) {
+  const { issueArg, stateArg, cfg } = ctx;
+  const ts = new Date().toISOString();
+  const mutateBody =
+    ctx._mutateBody ||
+    (async ({ mutate }) => {
+      const { mutateIssueBody } = await import('../issue-body-mutate.mjs');
+      return mutateIssueBody({ issueNumber: issueArg, repo: cfg.repo, mutate });
+    });
+  const res = await mutateBody({ mutate: (base) => writeMoveCompleteMarker(base, stateArg, ts) });
+  if (readMoveCompleteState(res?.body ?? '') === stateArg) return { verified: true };
+  process.stderr.write(
+    `⛔ #${issueArg} → ${stateArg}: board moved but aitm-move-complete sentinel did NOT ` +
+      `confirm on re-read. Move is NOT stamped complete; re-run to converge.\n`
+  );
+  return { verified: false, exit: 7 };
 }
 
 // The atomic move saga. All body/timing evidence is made durable BEFORE the
