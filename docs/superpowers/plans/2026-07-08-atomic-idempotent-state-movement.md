@@ -26,15 +26,15 @@ Full design: [`docs/superpowers/specs/2026-07-08-atomic-idempotent-state-movemen
 
 ## Epic → child mapping (GitHub)
 
-| Child | Scope | Plan tasks |
-| ----- | ----- | ---------- |
-| #755 | Consolidate move-state logic into `moveState(ctx)` single internal entry point; verbs call in-process | Tasks 1–3 |
-| #756 | State-move saga: reorder write-then-verify core, `aitm-move-complete` sentinel written last, idempotent replay | Tasks 4–8 |
-| #757 | `promote`/`demote` output contract (§9 success readout + failure routing) | Tasks 9–10 |
-| #758 | Move auditor `verify-move-invariants` + sentinel tripwire wired into `bind`/`pull-next` | Tasks 11–13 |
-| #759 | Regression + behavioral coverage for the #741/#752/#753 classes | Task 14 |
-| #753 | Folded bug: close noop/converge fast-path strands lifecycle DoD checkboxes | Task 8 |
-| #752 | Folded bug: close false "Issue left OPEN" on killed tail after board committed | Tasks 6, 14 |
+| Child | Scope                                                                                                          | Plan tasks  |
+| ----- | -------------------------------------------------------------------------------------------------------------- | ----------- |
+| #755  | Consolidate move-state logic into `moveState(ctx)` single internal entry point; verbs call in-process          | Tasks 1–3   |
+| #756  | State-move saga: reorder write-then-verify core, `aitm-move-complete` sentinel written last, idempotent replay | Tasks 4–8   |
+| #757  | `promote`/`demote` output contract (§9 success readout + failure routing)                                      | Tasks 9–10  |
+| #758  | Move auditor `verify-move-invariants` + sentinel tripwire wired into `bind`/`pull-next`                        | Tasks 11–13 |
+| #759  | Regression + behavioral coverage for the #741/#752/#753 classes                                                | Task 14     |
+| #753  | Folded bug: close noop/converge fast-path strands lifecycle DoD checkboxes                                     | Task 8      |
+| #752  | Folded bug: close false "Issue left OPEN" on killed tail after board committed                                 | Tasks 6, 14 |
 
 ---
 
@@ -61,6 +61,7 @@ Full design: [`docs/superpowers/specs/2026-07-08-atomic-idempotent-state-movemen
 ## Task 0: Confirm test-location + demote-verb conventions (spike, no code)
 
 **Files:**
+
 - Read: `scripts/task-tracker/tests/unit/` (or wherever `*.test.mjs` for move-state modules live)
 - Read: `scripts/task-tracker/verbs/demote.mjs`
 - Read: `scripts/task-tracker/verbs/pull-next.mjs`
@@ -85,11 +86,13 @@ No commit — findings feed Tasks 1–13.
 ## Task 1: Extract `moveState(ctx)` core (behavior-preserving)
 
 **Files:**
+
 - Create: `scripts/task-tracker/lib/move-state/move-state-core.mjs`
 - Test: `scripts/task-tracker/tests/unit/move-state-core.test.mjs` (adjust per Task 0)
 - Modify: `scripts/gh/move-state.mjs:305-330` (the `__mutationBlock`)
 
 **Interfaces:**
+
 - Consumes: `runGuardExecution(ctx)`, `runStatusWrite(ctx)`, `runPostCommitTail(ctx)` (existing, unchanged signatures).
 - Produces: `async function moveState(ctx) → { exit: number|null, itemId: string, tail: { failures: Array } }`. `exit` is a number the caller must honor (mirrors the current `process.exit` codes); `null` means success. NO `process.exit` inside this function.
 
@@ -108,9 +111,18 @@ function baseCtx(overrides = {}) {
     stateArg: 'test',
     calls,
     // seams injected so the core runs with zero network:
-    _runGuardExecution: async () => { calls.push('guard'); return { exit: null }; },
-    _runStatusWrite: async (c) => { calls.push('status'); return { itemId: 'IT_1', exit: null }; },
-    _runPostCommitTail: async (c) => { calls.push('tail'); return { failures: [] }; },
+    _runGuardExecution: async () => {
+      calls.push('guard');
+      return { exit: null };
+    },
+    _runStatusWrite: async (c) => {
+      calls.push('status');
+      return { itemId: 'IT_1', exit: null };
+    },
+    _runPostCommitTail: async (c) => {
+      calls.push('tail');
+      return { failures: [] };
+    },
     ...overrides,
   };
 }
@@ -161,10 +173,12 @@ export async function moveState(ctx) {
   const runPostCommitTail = ctx._runPostCommitTail || defaultRunPostCommitTail;
 
   const guard = await runGuardExecution(ctx);
-  if (guard.exit !== null && guard.exit !== undefined) return { exit: guard.exit, itemId: '', tail: { failures: [] } };
+  if (guard.exit !== null && guard.exit !== undefined)
+    return { exit: guard.exit, itemId: '', tail: { failures: [] } };
 
   const writeResult = await runStatusWrite(ctx);
-  if (writeResult.exit !== null) return { exit: writeResult.exit, itemId: writeResult.itemId, tail: { failures: [] } };
+  if (writeResult.exit !== null)
+    return { exit: writeResult.exit, itemId: writeResult.itemId, tail: { failures: [] } };
   ctx.itemId = writeResult.itemId;
 
   const tail = await runPostCommitTail(ctx);
@@ -208,10 +222,12 @@ git commit -m "[#755] refactor(move-state): extract moveState(ctx) saga core fro
 ## Task 2: `promote` calls `moveState` in-process (no subprocess spawn)
 
 **Files:**
+
 - Modify: `scripts/task-tracker/verbs/promote.mjs` (`defaultRunMoveState`)
 - Test: `scripts/task-tracker/tests/unit/promote-inprocess.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `moveState(ctx)` from Task 1.
 - Produces: `defaultRunMoveState` returns the same `{ status, exitCode }` shape `runPromote` already maps, now sourced from an in-process `moveState` result instead of a spawned child's exit code.
 
@@ -226,9 +242,15 @@ test('runPromote invokes moveState in-process (no child spawn) and reports promo
   let spawned = false;
   const deps = {
     // existing promote deps stubbed to reach the move call with target=test:
-    assertBound: () => {}, fetchBody: async () => 'body', readLastKnownState: () => 'develop',
-    getLiveState: async () => 'develop', runGuards: async () => [],
-    spawn: () => { spawned = true; return { status: 0 }; },
+    assertBound: () => {},
+    fetchBody: async () => 'body',
+    readLastKnownState: () => 'develop',
+    getLiveState: async () => 'develop',
+    runGuards: async () => [],
+    spawn: () => {
+      spawned = true;
+      return { status: 0 };
+    },
     moveState: async () => ({ exit: null, itemId: 'IT_9', tail: { failures: [] } }),
     readBoardState: async () => 'test',
   };
@@ -283,6 +305,7 @@ git commit -m "[#755] refactor(promote): call moveState in-process, drop move-st
 ## Task 3: `demote` in-process + de-list the standalone script path
 
 **Files:**
+
 - Modify: `scripts/task-tracker/verbs/demote.mjs`
 - Modify: `bin/aitm-registry.mjs` (confirm `move-state` stays in the INTERNAL map, unexposed)
 - Test: `scripts/task-tracker/tests/unit/demote-inprocess.test.mjs`
@@ -309,10 +332,12 @@ git commit -m "[#755] refactor(demote): in-process moveState; move-state stays i
 ## Task 4: Sentinel writer/reader + completion predicate
 
 **Files:**
+
 - Create: `scripts/task-tracker/lib/move-state/sentinel.mjs`
 - Test: `scripts/task-tracker/tests/unit/sentinel.test.mjs`
 
 **Interfaces:**
+
 - Produces:
   - `MOVE_COMPLETE_RE` — regex matching `<!-- aitm-move-complete state=<s> ts=<iso> -->`.
   - `writeMoveCompleteMarker(body, state, ts) → string` — pure: upsert the sentinel into a body (single occurrence, replace prior).
@@ -325,7 +350,9 @@ git commit -m "[#755] refactor(demote): in-process moveState; move-state stays i
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  writeMoveCompleteMarker, readMoveCompleteState, isMoveComplete,
+  writeMoveCompleteMarker,
+  readMoveCompleteState,
+  isMoveComplete,
 } from '../lib/move-state/sentinel.mjs';
 
 test('writeMoveCompleteMarker upserts a single sentinel', () => {
@@ -342,8 +369,14 @@ test('readMoveCompleteState returns empty when absent', () => {
 });
 
 test('isMoveComplete requires sentinel AND status AND markers AND both rows', () => {
-  const all = { sentinelState: 'test', statusState: 'test', entryMarkerPresent: true,
-    exitRowPresent: true, entryRowPresent: true, target: 'test' };
+  const all = {
+    sentinelState: 'test',
+    statusState: 'test',
+    entryMarkerPresent: true,
+    exitRowPresent: true,
+    entryRowPresent: true,
+    target: 'test',
+  };
   assert.equal(isMoveComplete(all), true);
   assert.equal(isMoveComplete({ ...all, sentinelState: '' }), false);
   assert.equal(isMoveComplete({ ...all, statusState: 'develop' }), false);
@@ -381,7 +414,12 @@ export function readMoveCompleteState(body) {
 // Completion = sentinel present AND Status==target AND entry marker present AND
 // BOTH timing rows present (spec §5 + the option-(a) timing-row amendment).
 export function isMoveComplete({
-  sentinelState, statusState, entryMarkerPresent, exitRowPresent, entryRowPresent, target,
+  sentinelState,
+  statusState,
+  entryMarkerPresent,
+  exitRowPresent,
+  entryRowPresent,
+  target,
 }) {
   return (
     sentinelState === target &&
@@ -407,11 +445,13 @@ git commit -m "[#756] feat(move-state): aitm-move-complete sentinel writer/reade
 ## Task 5: Reorder the atomic core — markers + rows BEFORE Status write
 
 **Files:**
+
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/post-commit-tail.mjs:40-51` (`DEFAULT_TAIL_STEPS`)
 - Test: `scripts/task-tracker/tests/unit/move-state-core.test.mjs` (extend)
 
 **Interfaces:**
+
 - Consumes: `emitPhasePairRows(ctx)`, `stampEntryMarkers(ctx)` (existing, moved out of the tail), `runStatusWrite(ctx)`.
 - Produces: `moveState` now executes `emitPhasePairRows → stampEntryMarkers → runStatusWrite` as the ordered pre-sentinel core; `DEFAULT_TAIL_STEPS` no longer contains those two.
 
@@ -421,13 +461,30 @@ git commit -m "[#756] feat(move-state): aitm-move-complete sentinel writer/reade
 test('atomic core order: rows → markers → status, all before tail', async () => {
   const calls = [];
   const ctx = {
-    issueArg: '999', stateArg: 'test',
-    _runGuardExecution: async () => { calls.push('guard'); return { exit: null }; },
-    _emitPhasePairRows: async () => { calls.push('rows'); },
-    _stampEntryMarkers: async () => { calls.push('markers'); },
-    _runStatusWrite: async () => { calls.push('status'); return { itemId: 'IT', exit: null }; },
-    _runPostCommitTail: async () => { calls.push('tail'); return { failures: [] }; },
-    _writeSentinel: async () => { calls.push('sentinel'); return { verified: true }; },
+    issueArg: '999',
+    stateArg: 'test',
+    _runGuardExecution: async () => {
+      calls.push('guard');
+      return { exit: null };
+    },
+    _emitPhasePairRows: async () => {
+      calls.push('rows');
+    },
+    _stampEntryMarkers: async () => {
+      calls.push('markers');
+    },
+    _runStatusWrite: async () => {
+      calls.push('status');
+      return { itemId: 'IT', exit: null };
+    },
+    _runPostCommitTail: async () => {
+      calls.push('tail');
+      return { failures: [] };
+    },
+    _writeSentinel: async () => {
+      calls.push('sentinel');
+      return { verified: true };
+    },
   };
   const res = await moveState(ctx);
   assert.equal(res.exit, null);
@@ -451,15 +508,17 @@ const writeSentinel = ctx._writeSentinel || defaultWriteSentinel; // Task 6
 const guard = await runGuardExecution(ctx);
 if (guard.exit != null) return { exit: guard.exit, itemId: '', tail: { failures: [] } };
 
-await emitPhasePairRows(ctx);     // exit-flush + entry-row (re-read verify: Task 6)
-await stampEntryMarkers(ctx);     // entry markers      (re-read verify: Task 6)
+await emitPhasePairRows(ctx); // exit-flush + entry-row (re-read verify: Task 6)
+await stampEntryMarkers(ctx); // entry markers      (re-read verify: Task 6)
 
 const writeResult = await runStatusWrite(ctx); // Status LAST authoritative write (#711 verify)
-if (writeResult.exit !== null) return { exit: writeResult.exit, itemId: writeResult.itemId, tail: { failures: [] } };
+if (writeResult.exit !== null)
+  return { exit: writeResult.exit, itemId: writeResult.itemId, tail: { failures: [] } };
 ctx.itemId = writeResult.itemId;
 
-const sentinel = await writeSentinel(ctx);     // Task 6 — written after Status verified
-if (!sentinel.verified) return { exit: sentinel.exit ?? 7, itemId: writeResult.itemId, tail: { failures: [] } };
+const sentinel = await writeSentinel(ctx); // Task 6 — written after Status verified
+if (!sentinel.verified)
+  return { exit: sentinel.exit ?? 7, itemId: writeResult.itemId, tail: { failures: [] } };
 
 const tail = await runPostCommitTail(ctx);
 return { exit: null, itemId: writeResult.itemId, tail };
@@ -501,10 +560,12 @@ git commit -m "[#756] refactor(move-state): rows+markers into atomic core, befor
 ## Task 6: Sentinel write-last with re-read verify (closes #752 shape)
 
 **Files:**
+
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs` (`defaultWriteSentinel`)
 - Test: `scripts/task-tracker/tests/unit/move-state-sentinel-write.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `writeMoveCompleteMarker`, `readMoveCompleteState` (Task 4); `writeIssueBodyWithRetry` (existing); a body-fetch seam (`ctx.fetchBody`).
 - Produces: `async function defaultWriteSentinel(ctx) → { verified: boolean, exit?: number }`. Writes the sentinel via a body update, RE-READS the body, confirms `readMoveCompleteState === target`. Runs AFTER `runStatusWrite` returned `exit:null`, so a failure here means "board moved, completion not yet stamped, re-run to converge" (spec §12).
 
@@ -517,9 +578,13 @@ import { defaultWriteSentinel } from '../lib/move-state/move-state-core.mjs';
 
 function ctxWith(bodyRef) {
   return {
-    issueArg: '999', stateArg: 'test', cfg: { repo: 'o/r' },
+    issueArg: '999',
+    stateArg: 'test',
+    cfg: { repo: 'o/r' },
     fetchBody: async () => bodyRef.body,
-    _writeBody: async ({ body }) => { bodyRef.body = body; },
+    _writeBody: async ({ body }) => {
+      bodyRef.body = body;
+    },
   };
 }
 
@@ -533,7 +598,9 @@ test('sentinel is written and re-read-verified as target', async () => {
 test('sentinel verify fails closed when re-read does not show target', async () => {
   const bodyRef = { body: 'existing body' };
   const ctx = ctxWith(bodyRef);
-  ctx._writeBody = async () => { /* dropped write — body unchanged */ };
+  ctx._writeBody = async () => {
+    /* dropped write — body unchanged */
+  };
   const res = await defaultWriteSentinel(ctx);
   assert.equal(res.verified, false);
   assert.equal(res.exit, 7);
@@ -552,18 +619,24 @@ export async function defaultWriteSentinel(ctx) {
   const ts = new Date().toISOString();
   const before = await ctx.fetchBody({ issueNumber: issueArg, repo: cfg.repo });
   const next = writeMoveCompleteMarker(before, stateArg, ts);
-  const writeBody = ctx._writeBody || (async ({ body }) => {
-    const { writeIssueBodyWithRetry } = await import('../state-recording.mjs');
-    await writeIssueBodyWithRetry({
-      issueNumber: issueArg, repo: cfg.repo, body, bodyBefore: before, target: stateArg,
+  const writeBody =
+    ctx._writeBody ||
+    (async ({ body }) => {
+      const { writeIssueBodyWithRetry } = await import('../state-recording.mjs');
+      await writeIssueBodyWithRetry({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        body,
+        bodyBefore: before,
+        target: stateArg,
+      });
     });
-  });
   await writeBody({ body: next });
   const after = await ctx.fetchBody({ issueNumber: issueArg, repo: cfg.repo });
   if (readMoveCompleteState(after) === stateArg) return { verified: true };
   process.stderr.write(
     `⛔ #${issueArg} → ${stateArg}: board moved but aitm-move-complete sentinel did NOT ` +
-    `confirm on re-read. Move is NOT stamped complete; re-run to converge.\n`
+      `confirm on re-read. Move is NOT stamped complete; re-run to converge.\n`
   );
   return { verified: false, exit: 7 };
 }
@@ -583,10 +656,12 @@ git commit -m "[#756] feat(move-state): write aitm-move-complete last with re-re
 ## Task 7: Idempotent replay — complete move is a no-op, partial rolls forward
 
 **Files:**
+
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs` (front-of-`moveState` short-circuit)
 - Test: `scripts/task-tracker/tests/unit/move-state-idempotent.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `isMoveComplete` (Task 4); a completion-probe seam `ctx.probeCompletion(ctx) → { sentinelState, statusState, entryMarkerPresent, exitRowPresent, entryRowPresent }`.
 - Produces: `moveState` reads completion state FIRST. If `isMoveComplete` is true → return `{ exit: null, alreadyComplete: true }` after running only reconcilable tail gaps. If a partial state is detected (sentinel absent but some elements present) → proceed through the saga (each step idempotent) to converge forward.
 
@@ -596,35 +671,67 @@ git commit -m "[#756] feat(move-state): write aitm-move-complete last with re-re
 test('re-run of a complete move is a no-op (no rows/markers/status rewrite)', async () => {
   const calls = [];
   const ctx = {
-    issueArg: '999', stateArg: 'test',
+    issueArg: '999',
+    stateArg: 'test',
     _runGuardExecution: async () => ({ exit: null }),
-    _probeCompletion: async () => ({ sentinelState: 'test', statusState: 'test',
-      entryMarkerPresent: true, exitRowPresent: true, entryRowPresent: true }),
+    _probeCompletion: async () => ({
+      sentinelState: 'test',
+      statusState: 'test',
+      entryMarkerPresent: true,
+      exitRowPresent: true,
+      entryRowPresent: true,
+    }),
     _emitPhasePairRows: async () => calls.push('rows'),
     _stampEntryMarkers: async () => calls.push('markers'),
-    _runStatusWrite: async () => { calls.push('status'); return { itemId: 'IT', exit: null }; },
-    _writeSentinel: async () => { calls.push('sentinel'); return { verified: true }; },
-    _runPostCommitTail: async () => { calls.push('tail'); return { failures: [] }; },
+    _runStatusWrite: async () => {
+      calls.push('status');
+      return { itemId: 'IT', exit: null };
+    },
+    _writeSentinel: async () => {
+      calls.push('sentinel');
+      return { verified: true };
+    },
+    _runPostCommitTail: async () => {
+      calls.push('tail');
+      return { failures: [] };
+    },
   };
   const res = await moveState(ctx);
   assert.equal(res.alreadyComplete, true);
   assert.equal(res.exit, null);
-  assert.ok(!calls.includes('rows') && !calls.includes('status') && !calls.includes('sentinel'),
-    'complete move must not rewrite core elements');
+  assert.ok(
+    !calls.includes('rows') && !calls.includes('status') && !calls.includes('sentinel'),
+    'complete move must not rewrite core elements'
+  );
 });
 
 test('partial move (sentinel absent) rolls forward through the saga', async () => {
   const calls = [];
   const ctx = {
-    issueArg: '999', stateArg: 'test',
+    issueArg: '999',
+    stateArg: 'test',
     _runGuardExecution: async () => ({ exit: null }),
-    _probeCompletion: async () => ({ sentinelState: '', statusState: 'test',
-      entryMarkerPresent: true, exitRowPresent: true, entryRowPresent: true }),
+    _probeCompletion: async () => ({
+      sentinelState: '',
+      statusState: 'test',
+      entryMarkerPresent: true,
+      exitRowPresent: true,
+      entryRowPresent: true,
+    }),
     _emitPhasePairRows: async () => calls.push('rows'),
     _stampEntryMarkers: async () => calls.push('markers'),
-    _runStatusWrite: async () => { calls.push('status'); return { itemId: 'IT', exit: null }; },
-    _writeSentinel: async () => { calls.push('sentinel'); return { verified: true }; },
-    _runPostCommitTail: async () => { calls.push('tail'); return { failures: [] }; },
+    _runStatusWrite: async () => {
+      calls.push('status');
+      return { itemId: 'IT', exit: null };
+    },
+    _writeSentinel: async () => {
+      calls.push('sentinel');
+      return { verified: true };
+    },
+    _runPostCommitTail: async () => {
+      calls.push('tail');
+      return { failures: [] };
+    },
   };
   const res = await moveState(ctx);
   assert.equal(res.alreadyComplete, undefined);
@@ -665,10 +772,12 @@ git commit -m "[#756] feat(move-state): idempotent replay — complete=no-op, pa
 ## Task 8: Close-path converge reconciles lifecycle DoD boxes (closes #753)
 
 **Files:**
+
 - Modify: `scripts/task-tracker/verbs/close.mjs` (the `noop`/converge fast-path)
 - Test: `scripts/task-tracker/tests/unit/close-reconcile-lifecycle.test.mjs`
 
 **Interfaces:**
+
 - Consumes: the idempotent short-circuit from Task 7 (`alreadyComplete`); the existing lifecycle-box ensure helper (`ensureChecked` / DoD lifecycle stamp used by close).
 - Produces: when close takes the idempotent no-op path on an already-`done` issue, it STILL runs the lifecycle-box reconcile (re-tick any unchecked `### Lifecycle` DoD boxes) rather than short-circuiting before it.
 
@@ -680,7 +789,9 @@ test('close on already-done issue re-ticks strayed lifecycle DoD boxes', async (
   const deps = {
     getLiveState: async () => 'done',
     moveState: async () => ({ exit: null, alreadyComplete: true, tail: { failures: [] } }),
-    reconcileLifecycleBoxes: async () => { reconciled = true; },
+    reconcileLifecycleBoxes: async () => {
+      reconciled = true;
+    },
     // ...other close deps stubbed to reach the converge path
   };
   await runClose({ issueNumber: 999, cfg: { repo: 'o/r' }, deps });
@@ -712,10 +823,12 @@ git commit -m "[#753] fix(close): reconcile lifecycle DoD boxes on idempotent co
 ## Task 9: Success readout formatter (spec §9)
 
 **Files:**
+
 - Create: `scripts/task-tracker/lib/move-state/readout.mjs`
 - Test: `scripts/task-tracker/tests/unit/readout.test.mjs`
 
 **Interfaces:**
+
 - Produces:
   - `formatMoveSuccess({ issue, from, to, verified, tail }) → string` — the §9 success block.
   - `formatMoveFailure({ issue, from, to, failedElement, afterStatusWrite, sentinelPresent, recommendation }) → string` — the §9 failure block with routing.
@@ -727,7 +840,9 @@ import { formatMoveSuccess, formatMoveFailure } from '../lib/move-state/readout.
 
 test('success readout asserts each element verified + sentinel-written-last', () => {
   const out = formatMoveSuccess({
-    issue: 42, from: 'develop', to: 'test',
+    issue: 42,
+    from: 'develop',
+    to: 'test',
     verified: { exitFlush: true, entryStamp: true, entryRow: true, status: true },
     tail: { ok: 8, total: 8, deferred: [] },
   });
@@ -738,14 +853,26 @@ test('success readout asserts each element verified + sentinel-written-last', ()
 });
 
 test('failure readout routes by sentinel presence', () => {
-  const absent = formatMoveFailure({ issue: 42, from: 'develop', to: 'test',
-    failedElement: 'status', afterStatusWrite: false, sentinelPresent: false,
-    recommendation: 're-run' });
+  const absent = formatMoveFailure({
+    issue: 42,
+    from: 'develop',
+    to: 'test',
+    failedElement: 'status',
+    afterStatusWrite: false,
+    sentinelPresent: false,
+    recommendation: 're-run',
+  });
   assert.match(absent, /before the Status write/);
   assert.match(absent, /safe to re-run/i);
-  const present = formatMoveFailure({ issue: 42, from: 'develop', to: 'test',
-    failedElement: 'tail', afterStatusWrite: true, sentinelPresent: true,
-    recommendation: 'reconcile' });
+  const present = formatMoveFailure({
+    issue: 42,
+    from: 'develop',
+    to: 'test',
+    failedElement: 'tail',
+    afterStatusWrite: true,
+    sentinelPresent: true,
+    recommendation: 'reconcile',
+  });
   assert.match(present, /move is (actually )?complete/i);
 });
 ```
@@ -768,6 +895,7 @@ git commit -m "[#757] feat(move-state): §9 success + failure readout formatters
 ## Task 10: Wire readout into `promote`/`demote` output
 
 **Files:**
+
 - Modify: `scripts/task-tracker/verbs/promote.mjs`, `scripts/task-tracker/verbs/demote.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs` (return the verified-element map + tail summary for the readout)
 - Test: `scripts/task-tracker/tests/unit/promote-readout.test.mjs`
@@ -792,10 +920,12 @@ git commit -m "[#757] feat(promote/demote): emit §9 move readout"
 ## Task 11: Move auditor `verifyMoveInvariants` (pure decision)
 
 **Files:**
+
 - Create: `scripts/task-tracker/lib/move-state/verify-move-invariants.mjs`
 - Test: `scripts/task-tracker/tests/unit/verify-move-invariants.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `readMoveCompleteState`, `getStageVisitCount`/entry-marker reader, live Status reader.
 - Produces: `verifyMoveInvariants({ body, statusState, lastKnownState }) → { ok: boolean, kind: 'consistent'|'out-of-band'|'incomplete', detail: string }`. `out-of-band` = Status changed but no matching sentinel (and Status != lastKnownState); `incomplete` = sentinel absent but markers/rows partial; `consistent` = sentinel ⟺ Status ⟺ markers.
 
@@ -838,10 +968,12 @@ git commit -m "[#758] feat(auditor): verifyMoveInvariants pure decision (sentine
 ## Task 12: Auditor reconcile action (optional heal)
 
 **Files:**
+
 - Modify: `scripts/task-tracker/lib/move-state/verify-move-invariants.mjs`
 - Test: `scripts/task-tracker/tests/unit/verify-move-invariants-reconcile.test.mjs`
 
 **Interfaces:**
+
 - Produces: `async function reconcileMoveInvariants(finding, { deps }) → { action: 'none'|'reported'|'reconciled', detail }`. For `out-of-band`, posts an audit comment (via `deps.postComment`) recording the bypass; optionally converges by re-running the saga forward or reverting Status (report-only in v1 — reconcile is behind an explicit flag).
 
 - [ ] **Step 1: Write the failing test** — `out-of-band` finding with `reconcile:false` → `{ action: 'reported' }` and `deps.postComment` called once with a body containing the out-of-band Status; `consistent` finding → `{ action: 'none' }`, no comment.
@@ -864,11 +996,13 @@ git commit -m "[#758] feat(auditor): report/reconcile out-of-band Status transit
 ## Task 13: Wire the auditor into `bind` and `pull-next`
 
 **Files:**
+
 - Modify: `scripts/task-tracker/verbs/pull-next.mjs`
 - Modify: the bind handler (the runtime path behind `/task #N`; confirm exact file at Task 0)
 - Test: `scripts/task-tracker/tests/unit/bind-auditor.test.mjs`, `scripts/task-tracker/tests/unit/pull-next-auditor.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `verifyMoveInvariants`, `reconcileMoveInvariants` (Tasks 11–12).
 - Produces: on `bind`/`pull-next`, after resolving the issue's live Status + body, call `verifyMoveInvariants`; if `!ok`, surface the finding (stderr banner) and call `reconcileMoveInvariants` (report-only). Never block bind/pull-next on a finding — it reports, it does not wall.
 
@@ -894,10 +1028,12 @@ git commit -m "[#758] feat(auditor): run verifyMoveInvariants on bind + pull-nex
 ## Task 14: Regression coverage for #741 / #752 / #753 (closes #759)
 
 **Files:**
+
 - Create: `scripts/task-tracker/tests/unit/regression-atomic-move.test.mjs`
 - Test: itself
 
 **Interfaces:**
+
 - Consumes: `moveState` with injected failure points; `verifyMoveInvariants`.
 
 - [ ] **Step 1: Write the regression tests**
@@ -914,14 +1050,26 @@ import { verifyMoveInvariants } from '../lib/move-state/verify-move-invariants.m
 test('#741 marker cannot outrun the board', async () => {
   const calls = [];
   const ctx = {
-    issueArg: '1', stateArg: 'test',
+    issueArg: '1',
+    stateArg: 'test',
     _runGuardExecution: async () => ({ exit: null }),
-    _probeCompletion: async () => ({ sentinelState: '', statusState: 'develop',
-      entryMarkerPresent: false, exitRowPresent: false, entryRowPresent: false }),
+    _probeCompletion: async () => ({
+      sentinelState: '',
+      statusState: 'develop',
+      entryMarkerPresent: false,
+      exitRowPresent: false,
+      entryRowPresent: false,
+    }),
     _emitPhasePairRows: async () => calls.push('rows'),
     _stampEntryMarkers: async () => calls.push('markers'),
-    _runStatusWrite: async () => { calls.push('status'); return { itemId: '', exit: 7 }; }, // fail closed
-    _writeSentinel: async () => { calls.push('sentinel'); return { verified: true }; },
+    _runStatusWrite: async () => {
+      calls.push('status');
+      return { itemId: '', exit: 7 };
+    }, // fail closed
+    _writeSentinel: async () => {
+      calls.push('sentinel');
+      return { verified: true };
+    },
     _runPostCommitTail: async () => calls.push('tail'),
   };
   const res = await moveState(ctx);
@@ -932,14 +1080,23 @@ test('#741 marker cannot outrun the board', async () => {
 // #752 — killed tail after board committed + sentinel written ⇒ still complete.
 test('#752 killed tail does not un-report a complete move', async () => {
   const ctx = {
-    issueArg: '2', stateArg: 'test',
+    issueArg: '2',
+    stateArg: 'test',
     _runGuardExecution: async () => ({ exit: null }),
-    _probeCompletion: async () => ({ sentinelState: '', statusState: 'develop',
-      entryMarkerPresent: false, exitRowPresent: false, entryRowPresent: false }),
-    _emitPhasePairRows: async () => {}, _stampEntryMarkers: async () => {},
+    _probeCompletion: async () => ({
+      sentinelState: '',
+      statusState: 'develop',
+      entryMarkerPresent: false,
+      exitRowPresent: false,
+      entryRowPresent: false,
+    }),
+    _emitPhasePairRows: async () => {},
+    _stampEntryMarkers: async () => {},
     _runStatusWrite: async () => ({ itemId: 'IT', exit: null }),
     _writeSentinel: async () => ({ verified: true }),
-    _runPostCommitTail: async () => { throw new Error('SIGKILL-shaped tail death'); },
+    _runPostCommitTail: async () => {
+      throw new Error('SIGKILL-shaped tail death');
+    },
   };
   // runPostCommitTail's #714 isolation catches the throw; move stays complete.
   const res = await moveState(ctx);
@@ -950,14 +1107,26 @@ test('#752 killed tail does not un-report a complete move', async () => {
 test('#753 complete move re-run is a reconcile no-op', async () => {
   const calls = [];
   const ctx = {
-    issueArg: '3', stateArg: 'done',
+    issueArg: '3',
+    stateArg: 'done',
     _runGuardExecution: async () => ({ exit: null }),
-    _probeCompletion: async () => ({ sentinelState: 'done', statusState: 'done',
-      entryMarkerPresent: true, exitRowPresent: true, entryRowPresent: true }),
+    _probeCompletion: async () => ({
+      sentinelState: 'done',
+      statusState: 'done',
+      entryMarkerPresent: true,
+      exitRowPresent: true,
+      entryRowPresent: true,
+    }),
     _emitPhasePairRows: async () => calls.push('rows'),
     _stampEntryMarkers: async () => calls.push('markers'),
-    _runStatusWrite: async () => { calls.push('status'); return { itemId: 'IT', exit: null }; },
-    _writeSentinel: async () => { calls.push('sentinel'); return { verified: true }; },
+    _runStatusWrite: async () => {
+      calls.push('status');
+      return { itemId: 'IT', exit: null };
+    },
+    _writeSentinel: async () => {
+      calls.push('sentinel');
+      return { verified: true };
+    },
     _runPostCommitTail: async () => calls.push('tail'),
   };
   const res = await moveState(ctx);
@@ -968,16 +1137,22 @@ test('#753 complete move re-run is a reconcile no-op', async () => {
 // Auditor: a legitimate saga move is not flagged; an out-of-band one is.
 test('auditor: saga move consistent, bypass flagged', () => {
   const good = verifyMoveInvariants({
-    body: '<!-- aitm-move-complete state=test ts=t -->', statusState: 'test', lastKnownState: 'test' });
+    body: '<!-- aitm-move-complete state=test ts=t -->',
+    statusState: 'test',
+    lastKnownState: 'test',
+  });
   assert.equal(good.ok, true);
   const bad = verifyMoveInvariants({
-    body: '<!-- aitm-move-complete state=develop ts=t -->', statusState: 'review', lastKnownState: 'develop' });
+    body: '<!-- aitm-move-complete state=develop ts=t -->',
+    statusState: 'review',
+    lastKnownState: 'develop',
+  });
   assert.equal(bad.ok, false);
 });
 ```
 
 - [ ] **Step 2: Run the regression suite.** Run: `node --test scripts/task-tracker/tests/unit/regression-atomic-move.test.mjs`
-Expected: PASS (4/4). If any fails, fix the corresponding production module (Tasks 5–12), not the test.
+      Expected: PASS (4/4). If any fails, fix the corresponding production module (Tasks 5–12), not the test.
 
 - [ ] **Step 3: Run the full move-state + verb test set** to confirm the whole epic is green together:
 
@@ -996,6 +1171,7 @@ git commit -m "[#759] test(move-state): regression coverage for #741/#752/#753 a
 ## Self-Review
 
 **Spec coverage:**
+
 - §4 Roll-Forward Saga → Tasks 5, 7 (reorder + idempotent replay).
 - §5 sentinel + completion predicate (+ option-(a) timing rows) → Task 4.
 - §6 consolidation into single entry point → Tasks 1–3.
