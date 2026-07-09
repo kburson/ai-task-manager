@@ -113,8 +113,9 @@ test('source: fail-closed body-fetch failure exits before the board mutation', (
   // board write. #755 moved the item-edit mutation (runStatusWrite) into the
   // saga core, reached only through moveState(ctx); the same story also made
   // runMoveStateHost RETURN a numeric exit code instead of calling
-  // process.exit (shape (a) — the CLI `isInvokedAsMain` shim maps the return
-  // onto process.exit). So the guard refusal now short-circuits with
+  // process.exit (shape (a) — post-#764 the module is import-only and the
+  // test-only move-state-cli.mjs harness maps the return onto process.exit).
+  // So the guard refusal now short-circuits with
   // `return guardOutcome.exit` rather than `process.exit(...)`; it must still
   // occur before the moveState delegation — the sole route to the mutation.
   const guardIdx = moveSrc.indexOf('await runGuardExecution(');

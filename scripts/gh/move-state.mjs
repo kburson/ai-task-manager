@@ -6,12 +6,17 @@
 //
 // #755 — the entire host body is the exported async `runMoveStateHost`, which
 // RETURNS a numeric exit code and NEVER calls process.exit. Verbs
-// (promote/demote/reconcile) call it in-process and read the returned code (the
-// same number the pre-#755 subprocess exit code gave them, so their downstream
-// branching is unchanged). The `isInvokedAsMain()` shim at the bottom maps the
-// returned code onto process.exit for direct `node scripts/gh/move-state.mjs`
-// invocation and for the spawn/grep tests that still exercise the CLI. The
-// future embed-in-aitm hardening plugs into this same exported seam.
+// (promote/demote/reconcile/supersede) and the orchestrator (runtime→close,
+// dispatch-prep) call it in-process and read the returned code (the same number
+// the pre-#755 subprocess exit code gave them, so their downstream branching is
+// unchanged).
+//
+// #764 — every production caller is now in-process, so this module is
+// IMPORT-ONLY: it has no entrypoint shim and never calls process.exit. The few
+// tests that still need a real move-state OS process (cross-process lock
+// fidelity, no-TTY gate) spawn the test-only harness
+// scripts/task-tracker/tests/helpers/move-state-cli.mjs, which imports this
+// exported seam and maps the returned code onto process.exit.
 //
 // Move a GitHub issue through board states: Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
@@ -21,7 +26,6 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realpathSync } from 'node:fs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
@@ -392,28 +396,4 @@ export async function runMoveStateHost({
     }
     throw err;
   }
-}
-
-// #755 — direct-invocation shim. Fires only when this file is the process entry
-// point (`node scripts/gh/move-state.mjs …` and the spawn/grep tests), never on
-// import, so verbs can import `runMoveStateHost` without triggering a move. The
-// realpath comparison tolerates the node_modules self-symlink (a symlinked argv
-// path still resolves to this real file).
-function isInvokedAsMain() {
-  try {
-    const argv1 = process.argv[1];
-    if (!argv1) return false;
-    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(argv1);
-  } catch {
-    return false;
-  }
-}
-
-if (isInvokedAsMain()) {
-  runMoveStateHost()
-    .then((code) => process.exit(code ?? 0))
-    .catch((err) => {
-      process.stderr.write(`move-state.mjs: ${err?.stack || err}\n`);
-      process.exit(1);
-    });
 }

@@ -23,7 +23,8 @@ import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dir, '../../../gh/move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const SCRIPT = path.resolve(__dir, '../helpers/move-state-cli.mjs');
 
 // Build a body that satisfies both the plan-approved marker AND the deep-dive
 // structural gate. Tests that need to isolate one gate can omit the other.

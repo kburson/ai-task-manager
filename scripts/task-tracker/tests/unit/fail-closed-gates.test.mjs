@@ -17,7 +17,8 @@ import { findLostMarkers, findCheckboxesTickedWithoutProof } from '../../lib/bod
 import { MarkerLossError } from '../../lib/issue-body-mutate.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const STATE_MUTATOR = resolve(__dir, '..', '..', '..', 'gh', 'move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const STATE_MUTATOR = resolve(__dir, '..', 'helpers', 'move-state-cli.mjs');
 
 // --- 1. State mutation: the single Status mutator must refuse out-of-band use.
 test('fail-closed: move-state refuses unsanctioned (non-verb, non-TTY) invocation', async () => {

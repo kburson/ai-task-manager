@@ -189,3 +189,4 @@ Containerfile
 Procfile
 defeatable
 uncallable
+spawnable

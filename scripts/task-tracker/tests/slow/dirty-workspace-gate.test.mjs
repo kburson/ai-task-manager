@@ -14,7 +14,8 @@ import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const TT = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
-const MOVE = path.resolve(__dir, '..', '..', '..', 'gh', 'move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const MOVE = path.resolve(__dir, '..', 'helpers', 'move-state-cli.mjs');
 
 function setupSandbox() {
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-dirty-gate-'));
