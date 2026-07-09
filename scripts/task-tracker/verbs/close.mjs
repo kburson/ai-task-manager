@@ -58,6 +58,11 @@ export async function verbClose(ctx) {
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
   const { runMoveState, runMoveStateDone, runLogIssueTime } = stateRunner;
   const { fetchSubIssues, getIssueBoardState, getIssueClosedState } = githubClient;
+  // #753 — the lifecycle-box reconcile is invoked from BOTH the converge/no-op
+  // fast-path and the full close pipeline, through one seam so a fixture can
+  // observe it and the two call sites can never drift apart. Falls back to the
+  // module helper when the ctx does not inject one (production).
+  const reconcileLifecycleBoxes = ctx.tickLifecycleOnClose || tickLifecycleOnClose;
   await drainQueueIfAny();
   const initialState = loadState(statePath);
   const target = rest.find((a) => /^#\d+$/.test(a));
@@ -150,6 +155,13 @@ export async function verbClose(ctx) {
           }
         }
       }
+      // #753 — reconcile the Lifecycle DoD boxes on the converge/no-op path too.
+      // A prior close that moved the board but died before the tick (crash,
+      // timeout-killed tail, #737 split-brain) left `story-closed` /
+      // `timing-flushed` unchecked; every re-run then took THIS noop path and
+      // skipped the reconcile. The tick is idempotent and best-effort, so it is
+      // safe to run on every converge and never blocks the clean-up below.
+      await reconcileLifecycleBoxes({ cfg, issueNum: closeIssueNum, pexec });
       clearActive(statePath);
       try {
         deregisterTask(projectDir, closeTarget);
@@ -782,7 +794,11 @@ export async function verbClose(ctx) {
   // benign `done → done` no-op (auto-close already moved the board) is treated
   // as success and produces no warning.
   const moveResult = await runMoveStateDone(s.active, { silent: true });
-  const lifecycleTickResult = await tickLifecycleOnClose({ cfg, issueNum: closeIssueNum, pexec });
+  const lifecycleTickResult = await reconcileLifecycleBoxes({
+    cfg,
+    issueNum: closeIssueNum,
+    pexec,
+  });
   if (moveResult && !moveResult.ok && !moveResult.benign) {
     // #435 — the move reported a non-benign failure, but a race can leave the
     // board already at Done (the auto-close workflow or a prior converge moved
