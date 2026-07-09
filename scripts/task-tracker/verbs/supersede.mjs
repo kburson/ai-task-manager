@@ -26,18 +26,16 @@
 // Pure core: `runSupersede({ deadIssue, byIssue, cfg, deps })`. All I/O is
 // injectable for offline tests.
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { addSupersededBy } from '../lib/superseded-marker.mjs';
+import { runMoveStateHost } from '../../gh/move-state.mjs';
 
 const pexec = promisify(execFile);
-const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 function parseIssueArg(tok) {
   const m = String(tok ?? '').match(/^#?(\d+)$/);
@@ -92,18 +90,16 @@ async function defaultCloseNotPlanned({ issueNumber, repo }) {
   );
 }
 
-// Drive the dead story to Done through the supersede bypass. Mirrors demote's
-// direct move-state spawn; `--supersede` skips the matrix + guard pipeline.
-function defaultRunMoveState({ issueNumber }) {
-  const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), 'done', '--supersede'], {
-      stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'supersede' },
-      timeout: GH_API_TIMEOUT_MS * 2,
-    });
-    child.on('exit', (code) => resolve(code ?? 1));
-    child.on('error', () => resolve(1));
+// #764 — drive the dead story to Done through the supersede bypass in-process
+// (was: spawn `node scripts/gh/move-state.mjs … --supersede`). Mirrors demote's
+// migrated helper: runMoveStateHost returns the same numeric exit code the child
+// exit code used to give us, so runSupersede's exitCode branch is unchanged. The
+// synthetic argv preserves the `--supersede` flag so the host's parse/matrix path
+// is identical to the old CLI invocation. host is injectable for tests.
+export function defaultRunMoveState({ issueNumber }, { host = runMoveStateHost } = {}) {
+  return host({
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), 'done', '--supersede'],
+    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'supersede' },
   });
 }
 
