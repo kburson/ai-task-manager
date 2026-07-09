@@ -221,6 +221,36 @@ git commit -m "[#755] refactor(move-state): extract moveState(ctx) saga core fro
 
 ## Task 2: `promote` calls `moveState` in-process (no subprocess spawn)
 
+> **SHAPE (a) OVERRIDE — approved 2026-07-08, supersedes the `assembleMoveCtx` approach below.**
+> Rather than duplicate the ~190-line ctx assembly into every verb, the entire
+> host body of `scripts/gh/move-state.mjs` (config load → verb-gate → matrix gate →
+> ctx build → guard → lock → `moveState` → exit mapping) is lifted into one
+> exported `runMoveStateHost({ argv = process.argv, env = process.env, isTty = process.stdin.isTTY } = {})`
+> that **returns a numeric exit code and NEVER calls `process.exit`**. `move-state.mjs`
+> keeps an `isInvokedAsMain()` shim (`runMoveStateHost().then((c) => process.exit(c))`)
+> so the CLI + all 29 spawn/grep tests behave identically. Verbs then call
+> `runMoveStateHost` in-process and read the returned code — the _same number_ the
+> child exit code gave them, so `runPromote`'s `transitionResult.exitCode` branching
+> is unchanged. The future embed-in-aitm hardening (new #754 child, sequenced after
+> #759) plugs into this exact seam. No `assembleMoveCtx` is introduced.
+>
+> **Commit A** — extract `runMoveStateHost` + `isInvokedAsMain()` shim in
+> `scripts/gh/move-state.mjs`; every `process.exit(N)` → `return N`; read
+> `AITM_VERB_CONTEXT`/`AITM_INTERNAL`/`AITM_ISSUE_LOCK_HELD`/`TT_SKIP_NETWORK` from
+> the passed `env`; `return 0` on success. New test
+> `tests/unit/move-state-host-returns.test.mjs` proves the host RETURNS codes
+> (unknown-state → 1, usage → 1) without exiting the process; the full
+> `*move-state*` suite stays green.
+> Commit: `[#755] refactor(move-state): lift host body into runMoveStateHost (returns exit code)`
+>
+> **Commit B** — `defaultRunMoveState` in `promote.mjs` calls
+> `runMoveStateHost({ argv: [process.execPath, 'move-state.mjs', String(issueNumber), target], env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' } })`.
+> `process.env.AITM_ISSUE_LOCK_HELD` is already `'1'` (set by `verbPromote`'s
+> `withIssueLock`, issue-mutator-lock.mjs:225) and is spread into `env`, so the host
+> skips re-acquisition — no deadlock. `tests/unit/promote-inprocess.test.mjs` asserts
+> no child spawn.
+> Commit: `[#755] refactor(promote): call runMoveStateHost in-process, drop subprocess spawn`
+
 **Files:**
 
 - Modify: `scripts/task-tracker/verbs/promote.mjs` (`defaultRunMoveState`)
@@ -303,6 +333,14 @@ git commit -m "[#755] refactor(promote): call moveState in-process, drop move-st
 ---
 
 ## Task 3: `demote` in-process + de-list the standalone script path
+
+> **SHAPE (a) OVERRIDE — approved 2026-07-08.** Apply the same in-process rewire as
+> Task 2 Commit B, but to `demote.mjs`'s move-state delegate, with env
+> `AITM_VERB_CONTEXT: 'demote'`. Uses the `runMoveStateHost` extracted in Task 2 —
+> no `assembleMoveCtx`. Confirm `bin/aitm-registry.mjs` keeps `move-state` INTERNAL
+> (no `SCRIPTS` entry). Test: `tests/unit/demote-inprocess.test.mjs` asserts no child
+> spawn.
+> Commit: `[#755] refactor(demote): in-process runMoveStateHost; move-state stays internal-only`
 
 **Files:**
 
