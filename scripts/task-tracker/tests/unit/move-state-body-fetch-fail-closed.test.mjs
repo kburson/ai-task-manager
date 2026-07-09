@@ -109,16 +109,23 @@ test('source: fail-closed body-fetch failure exits before the board mutation', (
     /failClosed/.test(after) && /return \{ exit: decision\.exitCode \}/.test(after),
     'failClosed branch must return the exit descriptor (no fall-through to the mutation)'
   );
-  // In the host: guard execution + its process.exit must precede the board
-  // write. #755 moved the item-edit mutation (runStatusWrite) into the saga
-  // core, reached only through moveState(ctx); the host's guard refusal must
-  // still exit before that delegation call — the sole route to the mutation.
+  // In the host: guard execution + its fail-closed return must precede the
+  // board write. #755 moved the item-edit mutation (runStatusWrite) into the
+  // saga core, reached only through moveState(ctx); the same story also made
+  // runMoveStateHost RETURN a numeric exit code instead of calling
+  // process.exit (shape (a) — the CLI `isInvokedAsMain` shim maps the return
+  // onto process.exit). So the guard refusal now short-circuits with
+  // `return guardOutcome.exit` rather than `process.exit(...)`; it must still
+  // occur before the moveState delegation — the sole route to the mutation.
   const guardIdx = moveSrc.indexOf('await runGuardExecution(');
-  const exitIdx = moveSrc.indexOf('process.exit(guardOutcome.exit)');
+  const refusalIdx = moveSrc.indexOf('return guardOutcome.exit');
   const writeIdx = moveSrc.indexOf('await moveState(');
-  assert.ok(guardIdx >= 0 && exitIdx > guardIdx, 'host must exit on a guard refusal');
   assert.ok(
-    writeIdx > exitIdx,
-    'runGuardExecution + process.exit must precede moveState (the sole route to the item-edit mutation)'
+    guardIdx >= 0 && refusalIdx > guardIdx,
+    'host must return the guard exit code on a guard refusal'
+  );
+  assert.ok(
+    writeIdx > refusalIdx,
+    'runGuardExecution + its fail-closed return must precede moveState (the sole route to the item-edit mutation)'
   );
 });
