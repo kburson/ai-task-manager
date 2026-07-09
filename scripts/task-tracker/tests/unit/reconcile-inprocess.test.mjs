@@ -31,7 +31,11 @@ test('reconcile.defaultRunMoveState calls the in-process host with the revert ar
 test('reconcile.defaultRunMoveState relays the host exit code verbatim', async () => {
   const host = async () => 5;
   const code = await defaultRunMoveState({ issueNumber: 9, target: 'done' }, { host });
-  assert.equal(code, 5, 'a non-zero host code must surface so revert-to-recorded reports the failure');
+  assert.equal(
+    code,
+    5,
+    'a non-zero host code must surface so revert-to-recorded reports the failure'
+  );
 });
 
 test('reconcile.mjs no longer spawns a move-state child', () => {
