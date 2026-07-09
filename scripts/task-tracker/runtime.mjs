@@ -6,7 +6,6 @@
 // issue #10 so each lifecycle verb can live in its own file under verbs/.
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
@@ -38,8 +37,9 @@ import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
-import { GH_API_TIMEOUT_MS, MOVE_STATE_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 
 const pexec = promisify(execFile);
@@ -84,6 +84,96 @@ export function buildMoveStateErrorResult({ state, err } = {}) {
   const stdout = String(e.stdout || '');
   const benign = classifyMoveStateBenign({ state, status, stderr });
   return { ok: false, status, benign, stdout, stderr, error: e };
+}
+
+// #764 — the migrated generic mover. Drives a state move through the in-process
+// `runMoveStateHost` seam instead of spawning `node scripts/gh/move-state.mjs`,
+// preserving the exact `{ ok, status, benign, stdout, stderr }` contract that
+// close.mjs (and every other ctx-based caller) consumes.
+//
+// The host returns a numeric exit code and writes its readout/refusal text to
+// the REAL `process.stdout`/`process.stderr` — it does not accept injectable
+// streams. So we tee-capture those streams around the call and feed the captured
+// stderr into the UNCHANGED `buildMoveStateErrorResult`/`classifyMoveStateBenign`,
+// which keeps exact parity with the pre-migration subprocess: the exit-5
+// `done → done` / `test → test` self-loops (whose BLOCKED line the host writes to
+// stderr) are still classified benign, every other non-zero still surfaces.
+//
+// `deps` is a test seam: inject a spy `host` (and optionally the stream/log
+// sinks) to exercise classification without a real board write. `extraArgs`
+// forwards flags (`--supersede`, `--from <state>`, `--force`) into the synthetic
+// argv the same way the old spawn appended them.
+export async function runMoveStateInProcess(
+  issue,
+  state,
+  { env: envOverride, silent = false, extraArgs = [], skipNetwork = false } = {},
+  {
+    host = runMoveStateHost,
+    stdout = process.stdout,
+    stderr = process.stderr,
+    log = console.log,
+    warn = console.warn,
+  } = {}
+) {
+  if (skipNetwork) {
+    return { ok: true, status: 0, benign: false, skipped: true, stdout: '', stderr: '' };
+  }
+  const issueNum = String(issue).replace(/^#/, '');
+  // argv[0..1] are placeholders; parseMoveStateArgs reads from index 2.
+  const argv = [process.execPath, 'move-state.mjs', issueNum, state, ...extraArgs];
+  const mergedEnv = {
+    ...process.env,
+    ...(envOverride || {}),
+    AITM_INTERNAL: '1',
+    AITM_VERB_CONTEXT: 'runtime',
+  };
+
+  let outBuf = '';
+  let errBuf = '';
+  const realOut = stdout.write;
+  const realErr = stderr.write;
+  const capture =
+    (bufRef) =>
+    (chunk, ...rest) => {
+      const cb = typeof rest[rest.length - 1] === 'function' ? rest[rest.length - 1] : undefined;
+      bufRef.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString());
+      if (cb) cb();
+      return true;
+    };
+  const outParts = [];
+  const errParts = [];
+  stdout.write = capture(outParts);
+  stderr.write = capture(errParts);
+  let code;
+  try {
+    code = await host({ argv, env: mergedEnv });
+  } finally {
+    stdout.write = realOut;
+    stderr.write = realErr;
+  }
+  outBuf = outParts.join('');
+  errBuf = errParts.join('');
+
+  if (code === 0) {
+    if (!silent && outBuf.trim()) log(outBuf.trim());
+    return {
+      ok: true,
+      status: 0,
+      benign: false,
+      stdout: String(outBuf || ''),
+      stderr: String(errBuf || ''),
+    };
+  }
+  const result = buildMoveStateErrorResult({
+    state,
+    err: { code, stdout: outBuf, stderr: errBuf },
+  });
+  if (!result.benign) {
+    warn(`[task-tracker] Could not move ${issue} to ${state}: move-state exited ${code}`);
+    if (result.stderr.trim()) warn(result.stderr.trim());
+    warn(`[task-tracker] Run manually: node scripts/gh/move-state.mjs ${issueNum} ${state}`);
+  }
+  return result;
 }
 
 import { CLOSE_OWNED_CHECKBOXES, uncheckedPreCloseCheckboxes } from './close-gate.mjs';
@@ -448,62 +538,17 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   };
 
   // #385 — returns a STRUCTURED result `{ ok, status, stdout, stderr, benign }`
-  // instead of warn-and-return-undefined. Callers (notably close.mjs) can now
-  // distinguish three outcomes:
-  //   - ok:true                      → board reached the target state.
-  //   - ok:false, benign:true        → the only non-failure non-zero: a
-  //                                    `done → done` self-loop, which happens
-  //                                    when GitHub Projects' auto-close workflow
-  //                                    already moved the item to Done before the
-  //                                    manual move ran. move-state.mjs exits 5
-  //                                    with an `illegal transition` reason. This
-  //                                    must NOT be surfaced as a failure, and we
-  //                                    suppress the spurious warning for it.
-  //   - ok:false, benign:false       → a genuine failure. We surface the
-  //                                    captured stderr (the real refusal reason)
-  //                                    so the caller can report it instead of
-  //                                    falsely claiming success.
-  // `extraArgs` forwards additional CLI flags to move-state.mjs (e.g.
-  // `--supersede`, `--from <state>`). The base `[scriptPath, issueNum, state]`
-  // shape is preserved; callers append flags the chokepoint understands.
-  ctx.runMoveState = async (
-    issue,
-    state,
-    { env: envOverride, silent = false, extraArgs = [] } = {}
-  ) => {
-    if (SKIP_NETWORK) {
-      return { ok: true, status: 0, benign: false, skipped: true, stdout: '', stderr: '' };
-    }
-    const scriptPath = fileURLToPath(new URL('../gh/move-state.mjs', import.meta.url));
-    const issueNum = String(issue).replace(/^#/, '');
-    const moveArgs = [scriptPath, issueNum, state, ...extraArgs];
-    try {
-      const mergedEnv = {
-        ...process.env,
-        ...(envOverride || {}),
-        AITM_INTERNAL: '1',
-        AITM_VERB_CONTEXT: 'runtime',
-      };
-      const { stdout } = await pexec(process.execPath, moveArgs, {
-        // #752 — the move-state child runs a verified Status write PLUS a
-        // multi-step best-effort tail; bounding it with the single-`gh`-call
-        // budget SIGTERM-killed it mid-tail after the board committed. Give it a
-        // budget matched to the whole saga (inner calls keep their own timeouts).
-        timeout: MOVE_STATE_TIMEOUT_MS,
-        env: mergedEnv,
-      });
-      if (!silent && stdout.trim()) console.log(stdout.trim());
-      return { ok: true, status: 0, benign: false, stdout: String(stdout || ''), stderr: '' };
-    } catch (err) {
-      const result = buildMoveStateErrorResult({ state, err });
-      if (!result.benign) {
-        console.warn(`[task-tracker] Could not move ${issue} to ${state}: ${err.message}`);
-        if (result.stderr.trim()) console.warn(result.stderr.trim());
-        console.warn(`[task-tracker] Run manually: node ${scriptPath} ${issueNum} ${state}`);
-      }
-      return result;
-    }
-  };
+  // instead of warn-and-return-undefined, so callers (notably close.mjs) can
+  // distinguish board-reached (ok:true), the benign `done → done` / `test → test`
+  // self-loop (ok:false, benign:true), and a genuine refusal (ok:false,
+  // benign:false, surfaced stderr).
+  //
+  // #764 — delegate to the in-process host seam. The behavior (benign
+  // classification, silent suppression, manual-recovery warning, `extraArgs`
+  // flag forwarding) lives in the exported `runMoveStateInProcess`; here we only
+  // bind the SKIP_NETWORK short-circuit for offline/test runs.
+  ctx.runMoveState = (issue, state, opts = {}) =>
+    runMoveStateInProcess(issue, state, { ...opts, skipNetwork: SKIP_NETWORK });
 
   ctx.runMoveStateDone = (issue, opts) => ctx.runMoveState(issue, 'done', opts);
 

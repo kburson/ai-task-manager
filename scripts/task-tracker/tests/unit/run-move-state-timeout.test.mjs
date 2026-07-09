@@ -1,15 +1,18 @@
 #!/usr/bin/env node
-// @story #752
-// AC3: `ctx.runMoveState` must NOT bound the entire move-state child — the
-// verified Status write PLUS the full best-effort post-commit tail — with the
-// single-`gh`-call budget (GH_API_TIMEOUT_MS = 15s). On a terminal review→done
-// move the tail is heaviest (audit comment + body edit + unpark + event syncs +
-// timing flush), so the aggregate can exceed 15s and execFile SIGTERM-kills the
-// child AFTER the board committed. A dedicated, generously-sized
-// MOVE_STATE_TIMEOUT_MS decouples the child's wall-clock budget from one API call.
+// @story #752 (original) / #764 (in-process migration)
+// AC3 (#752): a terminal review→done move runs a verified Status write PLUS a
+// heavy best-effort post-commit tail (audit comment + body edit + unpark + event
+// syncs + timing flush). #752 mitigated the SIGTERM-mid-tail hazard by spawning
+// the move-state child under a dedicated, generously-sized MOVE_STATE_TIMEOUT_MS
+// instead of the single-`gh`-call budget (GH_API_TIMEOUT_MS).
 //
-// The spawn is network-bound and not exercised here; this pins the constant and
-// asserts runtime.mjs sources the move-state spawn timeout from it.
+// #764 removes the process boundary entirely: `ctx.runMoveState` now drives the
+// move through the in-process `runMoveStateHost` seam, so there is no child to
+// SIGTERM-kill and no separate wall-clock budget to blow. The hazard #752
+// mitigated is structurally gone — a strict improvement, and parity is preserved
+// because an in-process call cannot be timeout-killed after the board commits.
+// The MOVE_STATE_TIMEOUT_MS constant remains exported for any residual spawn
+// caller and as the documented budget relationship.
 //
 // vc:2 = node --test scripts/task-tracker/tests/unit/run-move-state-timeout.test.mjs
 
@@ -32,22 +35,20 @@ test('AC3: MOVE_STATE_TIMEOUT_MS is exported and dwarfs the single-API budget', 
   );
 });
 
-test('AC3: runtime.mjs bounds the move-state spawn with MOVE_STATE_TIMEOUT_MS', () => {
+test('#764: runtime.mjs drives the move in-process (no move-state child spawn to SIGTERM-kill)', () => {
   const src = readFileSync(fileURLToPath(new URL('../../runtime.mjs', import.meta.url)), 'utf8');
-  // The move-state child is spawned via `pexec(process.execPath, moveArgs, …)`.
-  const spawnBlock = src.slice(src.indexOf('const moveArgs ='));
-  const pexecIdx = spawnBlock.indexOf('pexec(process.execPath, moveArgs');
-  assert.ok(pexecIdx >= 0, 'the move-state spawn call must exist');
-  const optsSlice = spawnBlock.slice(pexecIdx, pexecIdx + 600);
-  assert.match(
-    optsSlice,
-    /timeout:\s*MOVE_STATE_TIMEOUT_MS/,
-    'the move-state spawn must use MOVE_STATE_TIMEOUT_MS, not the single-API GH_API_TIMEOUT_MS'
+  // The move-state child spawn is gone: no `pexec(process.execPath, moveArgs …)`.
+  assert.ok(
+    !/pexec\(process\.execPath,\s*moveArgs/.test(src),
+    'the move-state child spawn must be removed — the move runs in-process'
+  );
+  // The mover now delegates to the in-process host seam.
+  assert.ok(
+    /import\s*\{[^}]*runMoveStateHost[^}]*\}\s*from\s*'\.\.\/gh\/move-state\.mjs'/.test(src),
+    'runtime.mjs must import runMoveStateHost from ../gh/move-state.mjs'
   );
   assert.ok(
-    /import\s*\{[^}]*MOVE_STATE_TIMEOUT_MS[^}]*\}\s*from\s*'\.\/lib\/process-timeouts\.mjs'/.test(
-      src
-    ),
-    'runtime.mjs must import MOVE_STATE_TIMEOUT_MS from process-timeouts.mjs'
+    /runMoveStateInProcess\(/.test(src),
+    'ctx.runMoveState must delegate to the in-process runMoveStateInProcess helper'
   );
 });
