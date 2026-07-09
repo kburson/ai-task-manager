@@ -19,7 +19,8 @@ import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '../../..');
-const MOVE_STATE = path.join(REPO_ROOT, 'scripts/gh/move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const MOVE_STATE = path.join(REPO_ROOT, 'scripts/task-tracker/tests/helpers/move-state-cli.mjs');
 
 async function runMoveState(args, env) {
   return pexec(process.execPath, [MOVE_STATE, ...args], {

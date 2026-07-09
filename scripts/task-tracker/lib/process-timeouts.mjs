@@ -15,6 +15,10 @@
 //
 // Classes:
 //   GH_API_TIMEOUT_MS      — `gh` CLI calls (issue view/edit, graphql, comments).
+//   MOVE_STATE_TIMEOUT_MS  — the move-state.mjs child, which runs a verified
+//                            Status write PLUS a multi-step best-effort tail
+//                            (many sequential `gh` calls); needs a wall-clock
+//                            budget matched to the whole saga, NOT one API call.
 //   GIT_TIMEOUT_MS         — git read commands (`git rev-parse`, `git status`).
 //   LOCAL_FAST_TIMEOUT_MS  — local-only commands expected to return instantly.
 //   TEST_RUNNER_TIMEOUT_MS — node test runner / suite invocations.
@@ -25,6 +29,15 @@
 //   - Prefer importing the constant rather than inlining magic numbers.
 
 export const GH_API_TIMEOUT_MS = 15000;
+// 120s — #752. `runMoveState` used to bound the ENTIRE move-state child with
+// GH_API_TIMEOUT_MS (sized for ONE `gh` call). On a terminal review→done move
+// the best-effort post-commit tail (audit comment + body edit + unpark + event
+// syncs + timing flush) runs many sequential `gh` calls, so the aggregate
+// exceeded 15s and execFile SIGTERM-killed the child AFTER the board committed —
+// which `close` then mis-read as a failed move. This dedicated budget (8× a
+// single call) matches what the child actually runs; each inner `gh` call keeps
+// its own GH_API_TIMEOUT_MS, so a genuinely hung single call is still caught.
+export const MOVE_STATE_TIMEOUT_MS = 120000;
 export const GIT_TIMEOUT_MS = 10000;
 export const LOCAL_FAST_TIMEOUT_MS = 5000;
 // 10 minutes — the full `npm test` suite (200+ files) runs well past 60s
@@ -35,6 +48,7 @@ export const TEST_RUNNER_TIMEOUT_MS = 600000;
 // Convenience: map a class label to its value (used by the helper below).
 export const TIMEOUT_CLASSES = Object.freeze({
   gh: GH_API_TIMEOUT_MS,
+  move: MOVE_STATE_TIMEOUT_MS,
   git: GIT_TIMEOUT_MS,
   local: LOCAL_FAST_TIMEOUT_MS,
   test: TEST_RUNNER_TIMEOUT_MS,

@@ -112,11 +112,15 @@ export async function runStatusWrite(ctx) {
   //     still mismatches after the final attempt, FAIL LOUDLY (non-null exit) so
   //     the host halts before the marker is stamped.
   //   • EMPTY / unreadable — the read path itself is unavailable (offline, a
-  //     shimmed `gh` in tests, or an item with no Status set yet). We cannot
-  //     PROVE the write failed, and hard-failing here would false-block every
-  //     legitimate move whenever the read round-trip is degraded. Warn and
-  //     proceed; the marker-vs-board reconcile preflight is the backstop for a
-  //     genuinely dropped first-write.
+  //     shimmed `gh` in tests, or an item with no Status set yet). An unreadable
+  //     read is NOT proof the write landed, so we do NOT soft-proceed (#747):
+  //     an optimistic proceed here was the plausible cause of the #737
+  //     split-brain that recurred after #711 shipped. Instead we RETRY across
+  //     the whole budget so a transiently-degraded read path can still recover
+  //     and confirm, and only if it never confirms do we fail closed — never
+  //     stamping the marker or the timing row on an unverified move. The
+  //     absolute invariant ("on verification failure the marker/timing are NOT
+  //     stamped") holds for the empty case exactly as for a concrete mismatch.
   if (!SKIP_NETWORK) {
     let confirmed = false;
     let lastSeen = '';
@@ -138,28 +142,23 @@ export async function runStatusWrite(ctx) {
         confirmed = true;
         break;
       }
-      // Empty read-back means the read is unavailable, not that the write was
-      // dropped — retrying the same unreadable path won't disambiguate, so stop
-      // and let the soft-proceed branch below decide.
-      if (!lastSeen) break;
       if (attempt < STATUS_WRITE_MAX_ATTEMPTS) await sleep(STATUS_WRITE_BACKOFF_MS * attempt);
     }
-    if (!confirmed && lastSeen) {
+    if (!confirmed) {
+      // Distinguish the two unconfirmed shapes in the message only — both fail
+      // closed. A concrete DIFFERENT option is positive evidence of a
+      // dropped/stale write; an empty read means the read path stayed
+      // unavailable across every attempt and we could not verify the write.
+      const readState = lastSeen
+        ? `read-back Status optionId is "${lastSeen}", expected "${optionId}"`
+        : `read-back returned no Status value across every attempt (read path unavailable) — the write could not be verified`;
       process.stderr.write(
         `⛔ Board field write for #${issueArg} → ${stateArg} did NOT confirm after ` +
-          `${STATUS_WRITE_MAX_ATTEMPTS} attempts: read-back Status optionId is ` +
-          `"${lastSeen}", expected "${optionId}". Refusing to stamp the ` +
+          `${STATUS_WRITE_MAX_ATTEMPTS} attempts: ${readState}. Refusing to stamp the ` +
           `entry marker so the board and the marker cannot diverge. The move did NOT ` +
           `complete — retry, or reconcile the board before retrying.\n`
       );
       return { itemId, exit: STATUS_WRITE_READBACK_EXIT };
-    }
-    if (!confirmed) {
-      process.stderr.write(
-        `⚠ Board field write for #${issueArg} → ${stateArg} could not be confirmed: ` +
-          `read-back returned no Status value (read path unavailable). Proceeding; the ` +
-          `marker-vs-board reconcile is the backstop if the write was actually dropped.\n`
-      );
     }
   }
 

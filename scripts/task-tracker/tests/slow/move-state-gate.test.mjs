@@ -19,7 +19,8 @@ import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dir, '../../../gh/move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const SCRIPT = path.resolve(__dir, '../helpers/move-state-cli.mjs');
 
 function deepDiveAdequate() {
   const lines = [
@@ -78,16 +79,78 @@ function makeSandbox(body) {
   const shim = `#!/usr/bin/env node
 import fs from 'node:fs';
 const BODY = ${JSON.stringify(body)};
+// #747 — runStatusWrite now reads the Status field back after the item-edit
+// and fails closed (exit 7) unless it confirms the written optionId. A shim
+// that swallowed everything returned an empty read-back, which the old
+// soft-proceed tolerated but the new fail-closed path rejects. So the shim
+// must emulate a real board: record the optionId each item-edit writes, then
+// echo it back on the read-back graphql query so the write confirms.
+const STATE_FILE = ${JSON.stringify(path.join(sandbox, '.last-option'))};
+const PROJECT_ID = ${JSON.stringify('PVT_x')};
+// #756 — the shim must be a real body store, not a constant. move-state stamps
+// entry markers via versionedWriteBody, which pushes a new body over
+// \`gh issue edit --body-file -\` and then read-back-verifies byte-equality.
+// A shim that always echoed the ORIGINAL BODY made every verify diverge from
+// the stamped push -> BodyWriteRefusalError after 3 attempts. So persist each
+// pushed body to BODY_FILE and serve it back on subsequent reads.
+const BODY_FILE = ${JSON.stringify(path.join(sandbox, '.issue-body'))};
+function currentBody() {
+  try { return fs.readFileSync(BODY_FILE, 'utf8'); } catch { return BODY; }
+}
 const args = process.argv.slice(2);
+if (args[0] === 'issue' && args[1] === 'edit' && args.includes('--body-file')) {
+  // versionedWriteBody push. --body-file - reads the new body from stdin.
+  const i = args.indexOf('--body-file');
+  const src = args[i + 1];
+  let next = '';
+  try { next = fs.readFileSync(src === '-' ? 0 : src, 'utf8'); } catch {}
+  fs.writeFileSync(BODY_FILE, next);
+  process.exit(0);
+}
 if (args[0] === 'issue' && args[1] === 'view') {
-  // emulate --jq .body extracting body field as raw text.
+  // Emulate real gh's two body-fetch shapes:
+  //   - a jq filter (\`--jq .body\` or \`--json body -q .body\`) makes gh extract
+  //     the field itself and emit the RAW body string.
+  //   - \`--json body\` with NO jq filter emits a JSON object {"body": ...},
+  //     which stampEntryMarkers JSON.parse's. Serving raw here throws
+  //     \`Unexpected token '#'\` -> marker-stamp/phase-pair failure.
   // fs.writeSync is required because process.stdout.write is non-blocking
   // when stdout is a pipe; process.exit(0) on the next line would truncate
   // any body that exceeded the pipe high-watermark (~8KB on macOS).
-  fs.writeSync(1, BODY);
+  const b = currentBody();
+  const jqFiltered = args.includes('--jq') || args.includes('-q');
+  if (args.includes('--json') && !jqFiltered) {
+    fs.writeSync(1, JSON.stringify({ body: b }));
+  } else {
+    fs.writeSync(1, b);
+  }
   process.exit(0);
 }
-// project item-edit, issue comment, api graphql, etc — silent success
+if (args[0] === 'project' && args[1] === 'item-edit') {
+  // persist the written optionId so the read-back below reflects the write.
+  const i = args.indexOf('--single-select-option-id');
+  if (i !== -1 && args[i + 1]) fs.writeFileSync(STATE_FILE, args[i + 1]);
+  process.exit(0);
+}
+if (args[0] === 'api' && args[1] === 'graphql') {
+  // Only the read-back query carries a stdin payload (--input -). Reading fd 0
+  // when no --input was passed would block on the parent's stdin.
+  let payload = '';
+  if (args.includes('--input')) {
+    try { payload = fs.readFileSync(0, 'utf8'); } catch {}
+  }
+  if (payload.includes('fieldValueByName')) {
+    let opt = '';
+    try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
+    const res = { data: { repository: { issue: { projectItems: { nodes: [
+      { project: { id: PROJECT_ID }, fieldValueByName: { optionId: opt } },
+    ] } } } } };
+    fs.writeSync(1, JSON.stringify(res));
+    process.exit(0);
+  }
+  process.exit(0);
+}
+// issue comment, other api calls, etc — silent success
 process.exit(0);
 `;
   const shimPath = path.join(binDir, 'gh');

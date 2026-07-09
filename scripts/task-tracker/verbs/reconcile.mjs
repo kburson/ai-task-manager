@@ -18,7 +18,7 @@
 // the resulting transition (e.g. manual board fix to a non-adjacent state) and
 // the user has explicitly opted into the gap.
 
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,14 +44,13 @@ import {
 } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 // keep: recovery snapshot semantics intentional — reconcile force-rewrites the
 // body verbatim (no closure), so pushIssueBody is the correct primitive here.
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
+import { runMoveStateHost } from '../../gh/move-state.mjs';
 
 const pexec = promisify(execFile);
-const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const MODES = new Set(['accept-live', 'revert-to-recorded', 'backfill']);
 
@@ -112,16 +111,15 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   return normalizeStateSlug(node?.fieldValueByName?.name);
 }
 
-function defaultRunMoveState({ issueNumber, target }) {
-  const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), target], {
-      stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'reconcile' },
-      timeout: GH_API_TIMEOUT_MS * 2,
-    });
-    child.on('exit', (code) => resolve(code ?? 1));
-    child.on('error', () => resolve(1));
+// #764 — push the board back to the recorded state in-process (was: spawn
+// `node scripts/gh/move-state.mjs <n> <target>`). Mirrors demote/supersede's
+// migrated helper: runMoveStateHost returns the same numeric exit code the child
+// exit gave us, so revert-to-recorded's exitCode branch is unchanged. No bypass
+// flag — reconcile drives a plain matrix move. host is injectable for tests.
+export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+  return host({
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'reconcile' },
   });
 }
 

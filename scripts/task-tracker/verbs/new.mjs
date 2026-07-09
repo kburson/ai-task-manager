@@ -50,6 +50,21 @@ export function extractKind(rest) {
   return { kind: value, rest: remaining };
 }
 
+// #748 Defect B — after `extractKind` strips `--kind <v>`, any remaining
+// flag-shaped token in the title remainder is an unrecognized flag, NOT a title
+// word. The legacy title path used to `rest.join(' ')` these straight into the
+// issue title (so `/task new Foo --shape solo` created an issue titled
+// "Foo --shape solo") and silently dropped body-seed flags like `--from-file`.
+// `findUnknownFlags` surfaces every such token so `verbNew` can refuse with a
+// usage error before any issue is created. Help tokens (`--help`, `-h`, `--?`)
+// never reach here: the global `hasHelpFlag` guard (#394) and `isHelpProbe`
+// intercept them upstream. A "flag-shaped" token is `--word` or `-x` (a single
+// dash + a letter); a bare `-` or a negative number like `-3` is left as title.
+export function findUnknownFlags(rest) {
+  if (!Array.isArray(rest)) return [];
+  return rest.map((t) => String(t)).filter((t) => /^--[^\s]/.test(t) || /^-[A-Za-z]/.test(t));
+}
+
 // #509 — route `/task new` through the sanctioned `scripts/gh/create-issue.mjs`
 // wrapper instead of shelling `gh issue create` directly. The wrapper is the
 // single place that stamps the canonical body, `aitm-fields`, Definition of
@@ -61,12 +76,16 @@ export function extractKind(rest) {
 // stubs (spike/research/audit) are stamped with the correct issue kind. When
 // null/empty the argv omits `--kind` entirely, keeping the wrapper on its
 // default `code` path with the body left unmarked (AC3).
+// #748 Defect A — `/task new` mints lightweight idea-capture stubs; forwarding
+// `cfg.defaultLabels` blanket-labelled every capture with content-unrelated
+// labels (this is how #747 was born tagged epic/bug/cleanup/refactor). The
+// blanket forward is removed: `/task new` never applies default labels. Labels
+// belong to the content, added deliberately later — not to every stub.
 export async function createNewIssue(title, ctx, kind = null) {
   const { cfg, SKIP_NETWORK, pexec } = ctx;
   if (process.env.TT_FAKE_NEW_ISSUE) return process.env.TT_FAKE_NEW_ISSUE;
   if (SKIP_NETWORK) return '#0';
   const createIssueScript = path.resolve(__dir, '../../gh/create-issue.mjs');
-  const labelArgs = cfg.defaultLabels.flatMap((l) => ['--label', l]);
   const kindArgs = typeof kind === 'string' && kind ? ['--kind', kind] : [];
   const { stdout } = await pexec(
     process.execPath,
@@ -78,7 +97,6 @@ export async function createNewIssue(title, ctx, kind = null) {
       title,
       '--assignee',
       cfg.assignee || '@me',
-      ...labelArgs,
       ...kindArgs,
     ],
     { timeout: cfg.hookNetworkTimeoutMs * 3 }
@@ -162,6 +180,21 @@ export async function verbNew(ctx) {
   // are joined into a title (legacy branch does `rest.join(' ')`); a bare
   // `--kind spike` token would otherwise leak into the issue title.
   const { kind, rest: titleRest } = extractKind(rest);
+  // #748 Defect B — reject unrecognized flags before creating anything. A
+  // flag-shaped remainder token (`--shape`, `--from-file`, `-x`) is not a title
+  // word; the legacy path used to join it into the title and silently drop
+  // body-seed flags. Error with a clear usage message and exit non-zero so no
+  // malformed issue is minted and no intended body is lost without notice.
+  const unknownFlags = findUnknownFlags(titleRest);
+  if (unknownFlags.length > 0) {
+    process.stderr.write(
+      `new: unrecognized ${unknownFlags.length > 1 ? 'flags' : 'flag'}: ${unknownFlags.join(', ')}\n` +
+        '  `/task new` takes a plain title or a plan-file path, plus optional `--kind <k>`.\n' +
+        '  It has no body-seed flag; compose a plan file and pass its path instead:\n' +
+        '    `/task new docs/plans/<file>.md`\n'
+    );
+    process.exit(1);
+  }
   const { title } = resolveTitleAndPlan(titleRest, s, projectDir);
   const wasDiscover = s.active === 'discover' && s.discoverBucket;
   let previousNote = '';

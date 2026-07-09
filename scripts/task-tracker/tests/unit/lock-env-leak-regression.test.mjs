@@ -28,7 +28,8 @@ import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import { issueLockPath } from '../../issue-mutator-lock.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const MOVE_STATE = path.resolve(__dir, '..', '../../gh/move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const MOVE_STATE = path.resolve(__dir, '..', 'helpers/move-state-cli.mjs');
 const REPO_ROOT = path.resolve(__dir, '..', '../../..');
 
 function setupProjectDir() {

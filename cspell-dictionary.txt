@@ -39,6 +39,7 @@ HOABCEY
 idempotently
 igate
 inlines
+inprocess
 jqlang
 kburson
 kburson's
@@ -186,3 +187,6 @@ statusless
 Dockerfiles
 Containerfile
 Procfile
+defeatable
+uncallable
+spawnable

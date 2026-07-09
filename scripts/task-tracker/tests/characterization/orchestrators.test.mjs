@@ -39,7 +39,8 @@ import { verbClose } from '../../verbs/close.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const MOVE_STATE = path.resolve(__dir, '..', '../../gh/move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const MOVE_STATE = path.resolve(__dir, '..', 'helpers/move-state-cli.mjs');
 
 // ===========================================================================
 // 1. move-state.mjs — subprocess boundary (exit codes + stdout/stderr text).

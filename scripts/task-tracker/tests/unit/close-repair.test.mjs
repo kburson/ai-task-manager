@@ -101,6 +101,13 @@ function buildCtx({ statePath, rest, sideEffects }) {
     getIssueBoardState: async () => 'done',
     getIssueClosedState: async () => true,
     uncheckedPreCloseCheckboxes: () => [],
+    // Offline the lifecycle-box reconcile. The real `tickLifecycleOnClose`
+    // (#753) reaches live `gh` — the injected `pexec` never intercepts it
+    // because `versionedWriteBody`'s seam is fetchBody/pushBody, not pexec — so
+    // in the full-suite burst it stalls on rate-limits and SIGTERMs the run.
+    // The converge-path reconcile behavior is owned by
+    // close-reconcile-lifecycle.test.mjs; here it is a pure no-op.
+    tickLifecycleOnClose: async () => ({ ok: true }),
   };
 }
 

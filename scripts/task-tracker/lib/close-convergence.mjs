@@ -84,6 +84,44 @@ export function decideBoardMoveFailure({ moveResult, boardState } = {}) {
   return { surface: true, reason: 'board-not-done' };
 }
 
+// Lag-tolerant pre-close board re-read (#752).
+//
+// The board slug that `decideBoardMoveFailure` above judges is re-read by close
+// AFTER a non-benign move failure. A SINGLE read taken right after a move-state
+// child that was SIGTERM-killed mid-tail (its Status write already committed —
+// see MOVE_STATE_TIMEOUT_MS, #752) can still observe GitHub Projects
+// read-after-write lag and return the stale pre-move column, so the decision
+// surfaces a FALSE `Issue left OPEN`. This bounded exponential-backoff re-read
+// gives the board a window to converge: it returns the instant a read is 'done',
+// and otherwise returns the LAST observed value after `attempts` reads — so a
+// GENUINE failure (board never reaches Done) still reads non-done every attempt
+// and surfaces exactly as before. Purely additive: it only ever runs on the
+// failure path, and the happy path (first read 'done') takes one read, no sleep.
+//
+//   getIssueBoardState — async (active) => board slug ('done' | other | null).
+//   active             — the issue number/handle to re-read.
+//   attempts           — max reads (default 4).
+//   baseDelayMs        — base backoff; delay before read i (0-indexed) is
+//                        baseDelayMs * 2**i (500 → 1000 → 2000ms by default).
+//   sleep              — injectable delay (ms => Promise); defaults to setTimeout
+//                        so tests drive it without real timers.
+export async function resolveBoardStateForClose({
+  getIssueBoardState,
+  active,
+  attempts = 4,
+  baseDelayMs = 500,
+  sleep,
+} = {}) {
+  const doSleep = sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  let last = null;
+  for (let i = 0; i < attempts; i += 1) {
+    last = await getIssueBoardState(active);
+    if (last === 'done') return last;
+    if (i < attempts - 1) await doSleep(baseDelayMs * 2 ** i);
+  }
+  return last;
+}
+
 // review:approved timing-row emission decision (#655).
 //
 // The `review:approved` row is an audit record that a human (or full-auto)

@@ -37,6 +37,7 @@ import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
+import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { nowIso } from '../lib/evidence-runner.mjs';
@@ -203,16 +204,18 @@ function defaultSpawnVerb({ verb, issueNumber }) {
 // #533 — quick board mutation; short budget is correct and unchanged.
 export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 
-function defaultRunMoveState({ issueNumber, target }) {
-  const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), target], {
-      stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
-      timeout: MOVE_STATE_DELEGATE_TIMEOUT_MS,
-    });
-    child.on('exit', (code) => resolve(code ?? 1));
-    child.on('error', () => resolve(1));
+// #755 — call the move-state host in-process instead of spawning
+// `node scripts/gh/move-state.mjs`. `runMoveStateHost` returns the same numeric
+// exit code the child process exit code used to give us, so runPromote's
+// `transitionResult.exitCode !== 0` branching downstream is unchanged. In-process
+// is strictly more worktree-safe: the host resolves project context from this
+// caller's cwd via getProjectDir (never the package install dir), and it inherits
+// the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
+// re-acquisition rather than deadlocking. `host` is injectable for tests.
+export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+  return host({
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
   });
 }
 

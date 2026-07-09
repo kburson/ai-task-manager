@@ -23,8 +23,7 @@
 // be unit-driven with a throwing step double without spawning `gh` or the
 // network. Production passes the frozen `DEFAULT_TAIL_STEPS`.
 
-import { stampEntryMarkers } from './github-mutation.mjs';
-import { emitPhasePairRows, emitFullAutoReviewAudit, emitOutOfBandAudit } from './audit-timing.mjs';
+import { emitFullAutoReviewAudit, emitOutOfBandAudit } from './audit-timing.mjs';
 import {
   dispatchOnEnterActions,
   refreshKanbanStateCache,
@@ -37,11 +36,13 @@ import {
 // The canonical post-commit tail, in the exact order the pre-#714 mutation
 // block invoked it. Each entry is `{ name, fn }` where `fn(ctx)` is the
 // best-effort step. Order is load-bearing (#535/#516) — do NOT reorder.
+//
+// #756: `stampEntryMarkers` and `emitPhasePairRows` moved OUT of this tail into
+// the atomic core (move-state-core.mjs), where they run BEFORE the Status write
+// so all entry evidence is durable before the board flips.
 export const DEFAULT_TAIL_STEPS = Object.freeze([
-  { name: 'stampEntryMarkers', fn: stampEntryMarkers },
   { name: 'dispatchOnEnterActions', fn: dispatchOnEnterActions },
   { name: 'refreshKanbanStateCache', fn: refreshKanbanStateCache },
-  { name: 'emitPhasePairRows', fn: emitPhasePairRows },
   { name: 'emitFullAutoReviewAudit', fn: emitFullAutoReviewAudit },
   { name: 'unparkDoneDependents', fn: unparkDoneDependents },
   { name: 'emitOutOfBandAudit', fn: emitOutOfBandAudit },
@@ -58,7 +59,9 @@ export const DEFAULT_TAIL_STEPS = Object.freeze([
 // The returned shape lets the host (or a test) inspect WHICH steps failed
 // without any failure ever changing control flow or the process exit code — the
 // core #714 invariant: once the board write has committed, no tail throw may
-// report the committed move as a failure.
+// report the committed move as a failure. `total` is the count of steps
+// attempted, so the §9 readout can render an honest `N/M best-effort steps ok`
+// even when a custom step list is injected (tests).
 export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
   const failures = [];
   for (const step of steps) {
@@ -80,7 +83,7 @@ export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
       );
     }
   }
-  return { failures };
+  return { failures, total: steps.length };
 }
 
 // #716 — informational / benign stderr lines that a tail step may emit and that

@@ -63,6 +63,11 @@ function makeCtx(statePath, dir, over = {}) {
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
+    // Offline the #753 lifecycle-box reconcile for every verbClose-driven test.
+    // The real one reaches live `gh` (the injected pexec does not intercept
+    // versionedWriteBody), which stalls the full-suite run. The exported helper
+    // itself is covered directly below via its deps.mutateIssueBody seam.
+    tickLifecycleOnClose: async () => ({ ok: true }),
     ...over,
   };
 }

@@ -28,6 +28,8 @@ import {
 } from './proof-marker.mjs';
 import { parseAcEvidence } from './ac-evidence.mjs';
 import { isAcWaived } from './issue-kind.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
+import { resolveCitedOrLiteralCommands } from './vc-ref.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
@@ -406,10 +408,21 @@ const AC_BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 export const NON_DEMONSTRABLE_TAG_RE = /invalid\s+[—-]+\s+non-demonstrable/i;
 const TEST_ALL_CMD_RE = /^npm\s+run\s+test:all$/;
 
-function acDeclaredCommands(text) {
+// #762 — resolve an AC declaration's `cmd` against the issue's parsed VC list so
+// a `vc:<n>` citation names the same real command(s) an embedded backtick form
+// would. `vcItems` is the body's `## Verification Commands` list; when omitted
+// (or for a legacy embedded marker) resolution falls back to the backtick form.
+// A citation naming a nonexistent VC position resolves to nothing → the AC is
+// treated as unverified (`no-verifier`), which is correct: a dangling citation
+// is not demonstrable.
+function acDeclaredCommands(text, vcItems = []) {
   const props = parseProofMarker(String(text || ''));
   if (!props || typeof props.cmd !== 'string') return [];
-  return [...props.cmd.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+  try {
+    return resolveCitedOrLiteralCommands(props.cmd, vcItems).map((c) => c.trim());
+  } catch {
+    return [];
+  }
 }
 
 export function findAcsWithoutVerifierOrInvalidTag(body) {
@@ -421,6 +434,9 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
   const endMatch = rest.match(AC_SECTION_END_RE);
   const endIdx = endMatch ? start + endMatch.index : src.length;
 
+  // #762 — parse the issue's VC list once so citation-form ACs resolve to their
+  // cited command(s) and are recognized as demonstrable.
+  const vcItems = parseVerificationCommands(src);
   const lines = src.split('\n');
   const startLine = src.slice(0, start).split('\n').length - 1;
   const endLine = src.slice(0, endIdx).split('\n').length;
@@ -432,7 +448,7 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     const labelRaw = box[4];
     if (NON_DEMONSTRABLE_TAG_RE.test(labelRaw)) continue; // honest opt-out
     if (isAcWaived(labelRaw)) continue; // #688 — no-commit lane waiver is a valid opt-out
-    const cmds = acDeclaredCommands(labelRaw);
+    const cmds = acDeclaredCommands(labelRaw, vcItems);
     const label = String(labelRaw)
       .replace(/<!--[\s\S]*?-->/g, '')
       .replace(/\s+/g, ' ')

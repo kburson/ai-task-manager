@@ -155,14 +155,22 @@ assert.equal(spawnResult.benign, false, 'spawn failure is not benign');
 // --- runtime.mjs source: SKIP_NETWORK + success return a structured shape ----
 
 const runtimeSrc = readFileSync(path.resolve(__dirname, '..', '..', 'runtime.mjs'), 'utf8');
+// #764 — the SKIP_NETWORK short-circuit and the success shape now live in the
+// exported in-process helper `runMoveStateInProcess` (ctx.runMoveState binds
+// `skipNetwork: SKIP_NETWORK`). The structured-result invariant is unchanged.
 assert.match(
   runtimeSrc,
-  /if \(SKIP_NETWORK\) \{\s*\n\s*return \{ ok: true, status: 0, benign: false, skipped: true/,
-  'SKIP_NETWORK path must return a structured ok result, not bare undefined'
+  /if \(skipNetwork\) \{\s*\n\s*return \{ ok: true, status: 0, benign: false, skipped: true/,
+  'the skip-network path must return a structured ok result, not bare undefined'
 );
 assert.match(
   runtimeSrc,
-  /return \{ ok: true, status: 0, benign: false, stdout:/,
+  /skipNetwork:\s*SKIP_NETWORK/,
+  'ctx.runMoveState must bind the SKIP_NETWORK short-circuit into the helper'
+);
+assert.match(
+  runtimeSrc,
+  /return \{\s*\n\s*ok: true,\s*\n\s*status: 0,\s*\n\s*benign: false,\s*\n\s*stdout:/,
   'the success path must return a structured ok result'
 );
 

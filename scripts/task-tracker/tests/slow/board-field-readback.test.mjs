@@ -144,10 +144,13 @@ test('AC2: read-back recovers after an initial dropped write (retry succeeds)', 
   assert.equal(editCalls.length, 2, 'exactly one retry was needed');
 });
 
-test('AC1: an empty/unreadable read-back proceeds with a soft warning, not a hard fail', async () => {
+test('AC1: a persistently empty/unreadable read-back fails closed (#747 supersedes #711 soft-proceed)', async () => {
   let readBackCalls = 0;
   // read-back always returns '' — the read path is unavailable (offline, a
-  // shimmed gh, or a statusless item). We cannot prove the write dropped.
+  // shimmed gh, or a statusless item). #711 soft-proceeded here, but an
+  // unreadable read is NOT proof the write landed; #747 makes an unconfirmed
+  // move fail closed after exhausting the retry budget so the marker + timing
+  // row can never be stamped on an unverified write.
   const readBack = async () => {
     readBackCalls++;
     return '';
@@ -156,21 +159,25 @@ test('AC1: an empty/unreadable read-back proceeds with a soft warning, not a har
 
   const { result, out, err } = await capture(() => runStatusWrite(ctx));
 
-  assert.equal(result.exit, null, 'unreadable read-back does not hard-fail a legitimate move');
-  assert.equal(editCalls.length, 1, 'empty read-back stops retrying (retry cannot disambiguate)');
-  assert.equal(readBackCalls, 1, 'read-back runs once, then the soft branch decides');
-  assert.ok(
-    out.some((l) => l.includes('moved to: develop')),
-    'the move still reports success'
-  );
-  assert.ok(
-    err.some((l) => l.includes('could not be confirmed')),
-    'a soft warning names the unconfirmed write'
+  assert.equal(
+    result.exit,
+    STATUS_WRITE_READBACK_EXIT,
+    'an unverifiable move fails closed, not soft-proceed'
   );
   assert.equal(
-    err.filter((l) => l.includes('did NOT confirm')).length,
+    editCalls.length,
+    STATUS_WRITE_MAX_ATTEMPTS,
+    'empty read-back retries the full budget before failing closed'
+  );
+  assert.equal(readBackCalls, STATUS_WRITE_MAX_ATTEMPTS, 'read-back runs after every attempt');
+  assert.equal(
+    out.filter((l) => l.includes('moved to')).length,
     0,
-    'the loud hard-fail refusal is NOT emitted for an empty read-back'
+    'no success line — the write was never confirmed'
+  );
+  assert.ok(
+    err.some((l) => l.includes('did NOT confirm')),
+    'the loud refusal names the unconfirmed write'
   );
 });
 

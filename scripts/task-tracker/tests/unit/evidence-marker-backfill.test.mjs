@@ -70,10 +70,10 @@ const metadata = [
     },
   });
   assert.equal(result.ok, true, JSON.stringify(result));
-  assert.match(
-    result.body,
-    /Plain AC <!-- aitm-verified cmd="`node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs`" -->/
-  );
+  // #762 — backfill now authors a `vc:<n>` citation, not an embedded command.
+  // The command is absent from the (initially empty) VC list, so it is appended
+  // at position 1 and the AC cites `vc:1`.
+  assert.match(result.body, /Plain AC <!-- aitm-verified cmd="vc:1" -->/);
   assert.match(
     result.body,
     /### Verification Commands\n\n- \[ \] `node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs`/
@@ -214,11 +214,10 @@ const metadata = [
     !evLine.includes('aitm-verified'),
     `no redundant declaration on evidence-bearing line; got: ${evLine}`
   );
-  // Case 2: plain line (no evidence) still receives the declaration.
-  assert.match(
-    plainLine,
-    /Plain AC <!-- aitm-verified cmd="`node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs`" -->/
-  );
+  // Case 2: plain line (no evidence) still receives the declaration — now as a
+  // `vc:1` citation (#762). The dod-evidence AC is skipped and never appends its
+  // command, so Plain AC's command is the first VC entry.
+  assert.match(plainLine, /Plain AC <!-- aitm-verified cmd="vc:1" -->/);
 }
 
 console.log('evidence-marker-backfill.test.mjs: all passed');

@@ -10,7 +10,7 @@
 // disagrees with the recorded lastKnownState, refuse and point at
 // `/task reconcile`.
 
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,13 +18,12 @@ import { fileURLToPath } from 'node:url';
 import { BACKWARD, STATES, validateTransition, normalizeStateSlug } from '../state-machine.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
+import { runMoveStateHost } from '../../gh/move-state.mjs';
 
 const pexec = promisify(execFile);
-const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const DEMOTE_TARGET = 'develop';
 const LEGAL_FROM = new Set(['test', 'review']);
@@ -81,16 +80,16 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   return normalizeStateSlug(node?.fieldValueByName?.name);
 }
 
-function defaultRunMoveState({ issueNumber, target }) {
-  const script = path.resolve(__dir, '../../gh/move-state.mjs');
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, String(issueNumber), target, '--demote'], {
-      stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'demote' },
-      timeout: GH_API_TIMEOUT_MS * 2,
-    });
-    child.on('exit', (code) => resolve(code ?? 1));
-    child.on('error', () => resolve(1));
+// #755 — call the move-state host in-process (was: spawn
+// `node scripts/gh/move-state.mjs … --demote`). runMoveStateHost returns the same
+// numeric exit code the child exit code used to give us, so runDemote's exitCode
+// branching is unchanged. The synthetic argv preserves the `--demote` flag so the
+// host's parse/matrix path is identical to the old CLI invocation. host is
+// injectable for tests.
+export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+  return host({
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target, '--demote'],
+    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'demote' },
   });
 }
 

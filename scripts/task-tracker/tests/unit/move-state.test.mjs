@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dir, '..', '../../gh/move-state.mjs');
+// #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
+const SCRIPT = path.resolve(__dir, '..', 'helpers/move-state-cli.mjs');
 
 async function run(args, env = {}) {
   // Tests spawn move-state.mjs via execFile — no TTY. The internal-only gate
