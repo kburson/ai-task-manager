@@ -1,6 +1,8 @@
 // `npm test` (fast lane) stays in the set so legacy bodies keep passing;
 // `npm run test:all` is the new canonical Functional-DoD command (#305).
 import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
+import { citeCommands, resolveCitedOrLiteralCommands } from './vc-ref.mjs';
 
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
@@ -16,8 +18,7 @@ function cleanLabel(label) {
   return label.trim();
 }
 
-function evidenceCommands(label) {
-  const commands = [];
+function evidenceCommands(label, vcItems = []) {
   // #481 — `cmd` is the PERSISTENT declaration component, read regardless of any
   // run-props upserted onto the same `aitm-verified` marker. The pre-#481
   // `hasExecutionProof` guard hid the declared command once proof and declaration
@@ -26,21 +27,35 @@ function evidenceCommands(label) {
   // still needs to be listed in `## Verification Commands` whether or not it has
   // been run, so the command is always surfaced.
   const props = parseProofMarker(label);
-  if (props && typeof props.cmd === 'string') {
-    for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
+  if (!props || typeof props.cmd !== 'string') return [];
+  // #762 — resolve the declaration against the issue's VC list so a `vc:<n>`
+  // citation surfaces the same literal command(s) an embedded backtick form
+  // would. Without this, a citation-form AC looks evidence-less to the audit
+  // (missing-evidence / missing-VC / stale-VC false positives) and to the
+  // Refine→Plan demonstrability gate.
+  try {
+    return resolveCitedOrLiteralCommands(props.cmd, vcItems);
+  } catch {
+    // A citation naming a nonexistent VC position resolves to no usable
+    // command; surface zero evidence so the audit flags it rather than throwing.
+    return [];
   }
-  return commands;
 }
 
 const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
 
 export function parseEvidenceChecklist(body = '') {
-  const lines = String(body).split('\n');
+  const src = String(body);
+  const lines = src.split('\n');
   const acceptanceCriteria = [];
   const functionalDodItems = [];
-  const verificationCommands = [];
+  // #762 — the authoritative `## Verification Commands` list, parsed via the
+  // same primitive the read side uses to resolve `vc:<n>` citations
+  // (`parseVerificationCommands`), so emit/audit and consume agree on the exact
+  // 1-based positions a citation indexes into.
+  const vcItems = parseVerificationCommands(src);
+  const verificationCommands = vcItems.map((it) => it.command);
   let section = '';
-  let inVerificationCommands = false;
   let inFunctional = false;
 
   for (let i = 0; i < lines.length; i += 1) {
@@ -48,7 +63,6 @@ export function parseEvidenceChecklist(body = '') {
     const heading = line.match(HEADING_RE);
     if (heading) {
       section = heading[1].trim().toLowerCase();
-      inVerificationCommands = section === 'verification commands';
       inFunctional = FUNCTIONAL_HEADING_RE.test(line);
       continue;
     }
@@ -61,11 +75,11 @@ export function parseEvidenceChecklist(body = '') {
         lineIndex: i,
         checked: checkbox[1] === 'x',
         label: cleanLabel(rawLabel),
-        evidenceCommands: evidenceCommands(rawLabel),
+        evidenceCommands: evidenceCommands(rawLabel, vcItems),
       });
     }
     if (inFunctional) {
-      const cmds = evidenceCommands(rawLabel);
+      const cmds = evidenceCommands(rawLabel, vcItems);
       if (cmds.length > 0) {
         functionalDodItems.push({
           lineIndex: i,
@@ -74,12 +88,6 @@ export function parseEvidenceChecklist(body = '') {
           evidenceCommands: cmds,
         });
       }
-    }
-    if (inVerificationCommands) {
-      // #368 — ignore a trailing HTML comment (e.g. an auto-ticked line's inline
-      // `aitm-verified` proof marker) after the backtick command.
-      const command = rawLabel.match(/^`([^`]+)`(?:\s*<!--[\s\S]*?-->)*\s*$/)?.[1] ?? null;
-      if (command) verificationCommands.push(command);
     }
   }
 
@@ -124,10 +132,13 @@ export function auditEvidenceMarkers(body = '', _opts = {}) {
   };
 }
 
-function buildMarker(commands) {
-  // #419 (C2): emit the consolidated declaration form. C1 (#418) made every
-  // reader dual-form, so this flip is read-compatible with legacy bodies.
-  return serializeProofMarker({ cmd: commands.map((cmd) => `\`${cmd}\``).join(' ') });
+// #419 (C2): the consolidated declaration form. #762: the `cmd` inner value is
+// pre-built by the caller — either a `vc:<n>` citation run (the authoring
+// default when a VC list is available to cite into) or a legacy space-joined
+// backtick-embedded command list (the compat path when no VC context exists).
+// Every reader is dual-form (#418/#419/#721), so both remain readable.
+function buildMarker(cmd) {
+  return serializeProofMarker({ cmd });
 }
 
 // #422 — a line already carrying a rich `aitm-dod-evidence` marker (the
@@ -195,6 +206,14 @@ export function buildEvidenceBackfill(body = '', { mappings = {} } = {}) {
 
   let lines = [...parsed.lines];
   const skippedDodEvidenceLabels = [];
+  // #762 — emit `vc:<n>` citations by default. Start from the issue's
+  // authoritative VC list and grow it as ACs cite commands not yet present, so
+  // each cited 1-based position is stable and matches the bullets appended
+  // below. A command already in the list reuses its position; the VC-insertion
+  // set is driven by the citation append-set (not a post-marker re-audit), so
+  // the marker's citation and the inserted bullet can never disagree.
+  const running = parseVerificationCommands(body).map((it) => ({ command: it.command }));
+  const addedVerificationCommands = [];
   for (const item of audit.missingEvidence) {
     // #422 — never append a redundant `aitm-verified` declaration to a line
     // that already carries an `aitm-dod-evidence` marker. The evidence marker
@@ -204,17 +223,21 @@ export function buildEvidenceBackfill(body = '', { mappings = {} } = {}) {
       skippedDodEvidenceLabels.push(item.label);
       continue;
     }
-    lines[item.lineIndex] =
-      `${lines[item.lineIndex].trimEnd()} ${buildMarker(mappings[item.label])}`;
+    const commands = mappings[item.label];
+    const { cmd, appended } = citeCommands(commands, running);
+    for (const c of appended) {
+      running.push({ command: c });
+      if (!addedVerificationCommands.includes(c)) addedVerificationCommands.push(c);
+    }
+    lines[item.lineIndex] = `${lines[item.lineIndex].trimEnd()} ${buildMarker(cmd)}`;
   }
 
-  const postMarkerAudit = auditEvidenceMarkers(lines.join('\n'));
-  lines = insertVerificationCommands(lines, postMarkerAudit.missingVerificationCommands);
+  lines = insertVerificationCommands(lines, addedVerificationCommands);
 
   return {
     ok: true,
     body: lines.join('\n'),
     addedEvidenceLabels: audit.missingEvidence.map((item) => item.label),
-    addedVerificationCommands: postMarkerAudit.missingVerificationCommands,
+    addedVerificationCommands,
   };
 }

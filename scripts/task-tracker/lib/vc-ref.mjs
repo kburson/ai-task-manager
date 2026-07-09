@@ -54,3 +54,39 @@ export function resolveCitedOrLiteralCommands(cmd, vcItems) {
   for (const m of String(cmd || '').matchAll(/`([^`]+)`/g)) out.push(m[1]);
   return out;
 }
+
+// #762 — write-side counterpart to `resolveVcRefCommands`. Given a list of
+// literal command strings and the issue's parsed VC list, return
+// `{ cmd, appended }` where:
+//   - `cmd` is the space-joined `vc:<n>` citation run to embed in the AC's
+//     `aitm-verified cmd="…"` declaration, and
+//   - `appended` lists the commands (in append order) that were NOT already in
+//     `vcItems`, so the caller can extend `## Verification Commands` and keep
+//     the cited 1-based positions stable.
+// Position rule: a command matching an existing `vcItems[i].command` exactly
+// reuses position `i + 1`; an absent command is assigned the next position
+// after the current list length, accounting for earlier appends in the same
+// call (a command cited twice appends once and cites one position). Pure
+// function — no I/O, no mutation of `vcItems`.
+export function citeCommands(commands, vcItems) {
+  const existing = (Array.isArray(vcItems) ? vcItems : []).map((it) =>
+    it && typeof it.command === 'string' ? it.command : String(it)
+  );
+  const appended = [];
+  const tokens = [];
+  for (const raw of Array.isArray(commands) ? commands : []) {
+    const command = String(raw);
+    const pos = existing.indexOf(command);
+    if (pos !== -1) {
+      tokens.push(`vc:${pos + 1}`);
+      continue;
+    }
+    let ap = appended.indexOf(command);
+    if (ap === -1) {
+      appended.push(command);
+      ap = appended.length - 1;
+    }
+    tokens.push(`vc:${existing.length + ap + 1}`);
+  }
+  return { cmd: tokens.join(' '), appended };
+}
