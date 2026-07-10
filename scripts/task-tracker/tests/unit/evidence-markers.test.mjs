@@ -128,4 +128,35 @@ for (const cmd of ['npm run lint', 'npm run format:check']) {
   console.log('PASS: Functional DoD judgment items untouched');
 }
 
+// #774 — an AC declared with the canonical by-id `vc-list` citation (the form
+// #773's Refine-exit guardrail mandates) must audit as having evidence: the
+// review-exit preflight reads `vc-list` the same way it reads `cmd`, resolving
+// the cited id against the VC section. Without this it false-flags as
+// missing-evidence and blocks Test→Review.
+{
+  const body = [
+    '## Verification Commands',
+    '',
+    '- [ ] `node --test tests/a.test.mjs` <!-- id=1 -->',
+    '- [ ] `npm run lint` <!-- id=3 -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [ ] Single vc-list citation <!-- aitm-verified vc-list="vc:1" -->',
+    '- [ ] Multi vc-list citation <!-- aitm-verified vc-list="vc:1 vc:3" -->',
+    '',
+  ].join('\n');
+  const a = auditEvidenceMarkers(body);
+  assert.equal(a.missingEvidence.length, 0, 'vc-list ACs are not flagged missing-evidence');
+  assert.equal(a.missingVerificationCommands.length, 0, 'cited commands resolve into the VC set');
+  assert.equal(a.ok, true, 'audit passes a purely vc-list-cited body');
+  const parsed = parseEvidenceChecklist(body);
+  assert.deepEqual(parsed.acceptanceCriteria[0].evidenceCommands, ['node --test tests/a.test.mjs']);
+  assert.deepEqual(parsed.acceptanceCriteria[1].evidenceCommands, [
+    'node --test tests/a.test.mjs',
+    'npm run lint',
+  ]);
+  console.log('PASS: #774 vc-list citations audit as evidence-bearing');
+}
+
 console.log('evidence-markers.test.mjs: all passed');
