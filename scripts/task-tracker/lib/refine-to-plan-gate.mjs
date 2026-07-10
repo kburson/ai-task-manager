@@ -15,7 +15,10 @@
 import { projectValuesForIssue, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { lintChecklistCommands } from './checklist-command-lint.mjs';
-import { findAcsWithoutVerifierOrInvalidTag } from './body-invariants.mjs';
+import {
+  findAcsWithoutVerifierOrInvalidTag,
+  findAcsWithLegacyVerificationForm,
+} from './body-invariants.mjs';
 
 async function defaultFetchBody({ cfg, issueNumber, gqlFn = gql }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -128,6 +131,21 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
           : 'no `aitm-verified cmd="…"` verifier and not tagged `invalid — non-demonstrable` — bind a targeted verifier test or tag it invalid';
       blockers.push(
         `refine-exit-demonstrable: AC line ${ac.lineIndex + 1}: "${ac.label}" — ${why}.`
+      );
+    }
+    // #773 — VC-citation id-scheme guardrail. New work must bind ACs through the
+    // `vc-list="vc:N"` id-citation form; the three legacy verification forms are
+    // forbidden at Refine→Plan exit so the corpus converges (child C, #774,
+    // heals the backlog).
+    for (const ac of findAcsWithLegacyVerificationForm(body)) {
+      const why =
+        ac.reason === 'ordinal-cmd-citation'
+          ? 'cites verification commands through the deprecated `cmd` attribute — move the citation to `vc-list="vc:N"`'
+          : ac.reason === 'dangling-vc-list'
+            ? '`vc-list` cites a `vc:N` with no matching `## Verification Commands` id — fix the citation or add the entry'
+            : 'declares a literal `cmd="`…`"` command — replace it with a `vc-list="vc:N"` citation into `## Verification Commands`';
+      blockers.push(
+        `refine-exit-vc-citation: AC line ${ac.lineIndex + 1}: "${ac.label}" — ${why}.`
       );
     }
   } catch (err) {

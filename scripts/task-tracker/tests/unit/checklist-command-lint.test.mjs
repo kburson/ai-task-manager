@@ -60,6 +60,41 @@ describe('lintChecklistCommands', () => {
     assert.equal(warns[0].rule, 'missing-backticks');
   });
 
+  // #773 — a backtick-free `vc-list="vc:N"` id-citation marker is intentional:
+  // its command lives in `## Verification Commands`, not the marker. The
+  // missing-backticks author-lint must not warn for it.
+  it('does not warn for a backtick-free `vc-list` id-citation marker', () => {
+    const body = `## Acceptance Criteria
+
+- [ ] Cited. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+
+## Verification Commands
+
+- [ ] \`node --test a.test.mjs\` <!-- id=1 -->
+- [ ] \`node --test b.test.mjs\` <!-- id=2 -->
+`;
+    const r = lintChecklistCommands(body);
+    assert.equal(r.ok, true);
+    const warns = r.violations.filter((v) => v.rule === 'missing-backticks');
+    assert.equal(warns.length, 0, JSON.stringify(warns));
+  });
+
+  // The interim ordinal citation (`cmd="vc:N"`) is likewise backtick-free by
+  // design; it must not trip missing-backticks either.
+  it('does not warn for a backtick-free ordinal `cmd="vc:N"` citation', () => {
+    const body = `## Acceptance Criteria
+
+- [ ] Cited. <!-- aitm-verified cmd="vc:1" -->
+
+## Verification Commands
+
+- [ ] \`node --test a.test.mjs\` <!-- id=1 -->
+`;
+    const r = lintChecklistCommands(body);
+    const warns = r.violations.filter((v) => v.rule === 'missing-backticks');
+    assert.equal(warns.length, 0, JSON.stringify(warns));
+  });
+
   it('rejects each FORBIDDEN needle in a VC command', () => {
     for (const { needle, name } of FORBIDDEN_TOKENS) {
       // Skip newline/CR — the parser splits on lines so they can't appear

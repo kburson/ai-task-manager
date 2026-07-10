@@ -29,7 +29,11 @@ import {
 import { parseAcEvidence } from './ac-evidence.mjs';
 import { isAcWaived } from './issue-kind.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { resolveCitedOrLiteralCommands } from './vc-ref.mjs';
+import {
+  resolveCitedOrLiteralCommands,
+  parseVcRefIndexes,
+  resolveVcRefCommands,
+} from './vc-ref.mjs';
 
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
@@ -417,9 +421,20 @@ const TEST_ALL_CMD_RE = /^npm\s+run\s+test:all$/;
 // is not demonstrable.
 function acDeclaredCommands(text, vcItems = []) {
   const props = parseProofMarker(String(text || ''));
-  if (!props || typeof props.cmd !== 'string') return [];
+  if (!props) return [];
+  // #773 — `vc-list` is the id-citation attribute that supersedes `cmd` on ACs.
+  // Prefer it when present; keep reading `cmd` for one release so legacy bodies
+  // (and the deprecated ordinal `cmd="vc:N"` citation) still resolve as
+  // demonstrable while the corpus migrates.
+  const source =
+    typeof props['vc-list'] === 'string'
+      ? props['vc-list']
+      : typeof props.cmd === 'string'
+        ? props.cmd
+        : null;
+  if (source == null) return [];
   try {
-    return resolveCitedOrLiteralCommands(props.cmd, vcItems).map((c) => c.trim());
+    return resolveCitedOrLiteralCommands(source, vcItems).map((c) => c.trim());
   } catch {
     return [];
   }
@@ -473,6 +488,88 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     const hasTargeted = cmds.some((c) => !TEST_ALL_CMD_RE.test(c));
     if (!hasTargeted) {
       offenders.push({ lineIndex: i, label, reason: 'test-all-verifier' });
+    }
+  }
+  return offenders;
+}
+
+// #773 — VC-citation id-scheme exit guardrail. Once child A (#772) landed
+// stable per-entry `<!-- id=N -->` ids and by-id `vc:N` resolution, new work
+// must bind its Acceptance-Criteria markers through the id-citation form
+// (`<!-- aitm-verified vc-list="vc:1 vc:2" -->`) rather than the three legacy
+// forms that predate it. This finder walks the `## Acceptance Criteria` section
+// and flags each AC marker that uses a forbidden legacy verification form, so
+// `gateRefineToPlan` can refuse the Refine→Plan promotion until it is healed
+// (child C, #774, does the bulk heal). Scope is STRICTLY the AC section — the
+// seeded `## Definition of Done` Functional block still carries `cmd=` markers
+// and is intentionally left untouched by this release.
+//
+// Three rejection reasons, each a distinct `reason` string:
+//   - `backtick-embedded-cmd` — the marker declares `cmd="`…`"` with a literal
+//     backtick-wrapped command instead of a `vc:N` citation.
+//   - `ordinal-cmd-citation` — the marker cites via the deprecated `cmd`
+//     attribute (`cmd="vc:N"`); citations must move to the `vc-list` attribute
+//     so a reader never has to disambiguate intent from record-of-run.
+//   - `dangling-vc-list` — the marker cites via `vc-list` but names a `vc:N`
+//     with no matching live VC id (`resolveVcRefCommands` throws RangeError).
+//
+// A marker that cites existing ids via `vc-list` passes; an *uncited* (orphan)
+// VC entry never blocks — only that every citation resolves. Markers with no
+// recognized proof marker (plain box, or the retired `aitm-verified-by:`
+// declaration form `parseProofMarker` does not recognize) are skipped: the
+// #523 demonstrable-AC gate owns "no verifier at all", not this guardrail.
+//
+// Returns `{ lineIndex, label, reason }` per offending AC, in body order.
+export function findAcsWithLegacyVerificationForm(body) {
+  const src = String(body || '');
+  const heading = src.match(AC_HEADING_RE);
+  if (!heading) return [];
+  const start = heading.index + heading[0].length;
+  const rest = src.slice(start);
+  const endMatch = rest.match(AC_SECTION_END_RE);
+  const endIdx = endMatch ? start + endMatch.index : src.length;
+
+  const vcItems = parseVerificationCommands(src);
+  const lines = src.split('\n');
+  const startLine = src.slice(0, start).split('\n').length - 1;
+  const endLine = src.slice(0, endIdx).split('\n').length;
+
+  const offenders = [];
+  for (let i = startLine; i < endLine && i < lines.length; i += 1) {
+    const box = lines[i].match(AC_BOX_RE);
+    if (!box) continue;
+    const labelRaw = box[4];
+    if (NON_DEMONSTRABLE_TAG_RE.test(labelRaw)) continue; // honest opt-out
+    if (isAcWaived(labelRaw)) continue; // no-commit lane waiver
+
+    const props = parseProofMarker(labelRaw);
+    if (!props) continue; // no recognized marker — #523 owns "no verifier"
+
+    const label = String(labelRaw)
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Correct form: citation via the `vc-list` attribute. It passes only when
+    // every cited id resolves against a live VC entry; a dangling citation is
+    // rejected here rather than swallowed.
+    if (typeof props['vc-list'] === 'string') {
+      try {
+        resolveVcRefCommands(props['vc-list'], vcItems);
+      } catch {
+        offenders.push({ lineIndex: i, label, reason: 'dangling-vc-list' });
+      }
+      continue;
+    }
+
+    // Legacy `cmd` attribute on an AC is forbidden for new promotions. A `cmd`
+    // whose value parses as a pure `vc:N` run is the interim ordinal citation;
+    // anything else (a backtick-wrapped literal command, or a bare embedded
+    // command) is the pre-citation embedded form.
+    if (typeof props.cmd === 'string') {
+      const reason =
+        parseVcRefIndexes(props.cmd) !== null ? 'ordinal-cmd-citation' : 'backtick-embedded-cmd';
+      offenders.push({ lineIndex: i, label, reason });
     }
   }
   return offenders;

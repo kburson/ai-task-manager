@@ -10,6 +10,7 @@ import { parseEvidenceChecklist } from './evidence-markers.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
 import { _internals as allowlistInternals } from './verification-allowlist.mjs';
 import { parseProofMarker, hasExecutionProof } from './proof-marker.mjs';
+import { parseVcRefIndexes } from './vc-ref.mjs';
 
 export const FORBIDDEN_TOKENS = allowlistInternals.FORBIDDEN;
 
@@ -74,7 +75,13 @@ function collectBareMarkerWarnings(src) {
     const line = lines[i];
     if (CONSOLIDATED_DECL_RE.test(line) && !hasExecutionProof(line)) {
       const props = parseProofMarker(line);
+      // #773 — a `vc-list="vc:N"` id-citation marker is intentionally
+      // backtick-free; its command lives in `## Verification Commands`, not the
+      // marker. Never warn for the citation form: a `vc-list` attribute, or a
+      // `cmd` whose value is a pure `vc:N` run (the interim ordinal citation).
+      if (props && typeof props['vc-list'] === 'string') continue;
       const cmd = props && typeof props.cmd === 'string' ? props.cmd.trim() : '';
+      if (cmd && parseVcRefIndexes(cmd) !== null) continue;
       if (cmd && !/`[^`]+`/.test(cmd)) {
         warnings.push({
           section: 'ac-evidence-marker',
