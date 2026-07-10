@@ -23,10 +23,15 @@ function repoRoot() {
   return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 }
 
-// The ceiling is set with headroom above the current runtime surface (~334 entries)
-// but well below the pre-tightening surface (797, of which 427 were test files).
-// A regression that re-ships the test suite blows straight past this.
-const ENTRY_CEILING = 400;
+// The ceiling is set with headroom above the current runtime surface but well
+// below the pre-tightening surface (797, of which 427 were test files). A
+// regression that re-ships the test suite blows straight past this.
+//
+// #728 raised this from 400 to 500: shipping the curated durable memory seed
+// (`docs/ai-memory/*.md`, ~47 files) is an intentional, one-time surface growth
+// to ~442 entries. The seed is bounded (ephemeral trackers and `archive/` are
+// excluded), so 500 keeps headroom without re-opening the door to the test suite.
+const ENTRY_CEILING = 500;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
