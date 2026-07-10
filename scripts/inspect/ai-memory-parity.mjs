@@ -24,7 +24,7 @@
 // are not reusable lessons). The exclusion patterns live in EXCLUDE_PATTERNS
 // and are documented in docs/ai-memory/EXCLUDED.md.
 
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
@@ -34,14 +34,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..', '..');
 const BRANCH_DIR = join(REPO_ROOT, 'docs', 'ai-memory');
 
-// Ephemeral, non-reusable trackers excluded from the durable seed (#518).
-export const EXCLUDE_PATTERNS = [/^project_drive_.*_tree\.md$/, /^project_integrity_epic_.*\.md$/];
-
-const isEphemeral = (name) => EXCLUDE_PATTERNS.some((re) => re.test(name));
-
-// Meta-docs live in the seed dir but are not memory facts — never required in
-// the MEMORY.md index and never part of the durable parity set.
-const META_DOCS = new Set(['MEMORY.md', 'EXCLUDED.md', 'DELIVERY.md']);
+// #728 — the durable-seed rule (EXCLUDE_PATTERNS, META_DOCS, isEphemeral,
+// listMd) is shared with the install-time manifest so the shipping path and
+// this drift lint can never diverge. Re-exported to preserve the historical
+// public surface of this module.
+import {
+  EXCLUDE_PATTERNS,
+  META_DOCS,
+  isEphemeral,
+  listMd,
+} from '../../bin/lib/memory-seed-set.mjs';
+export { EXCLUDE_PATTERNS };
 
 // Content-normalize: drop blank lines entirely and strip trailing whitespace so
 // cosmetic-only drift (a blank line after frontmatter, a trailing newline) does
@@ -76,11 +79,6 @@ function resolveLiveDir(argv) {
   if (flagIdx !== -1 && argv[flagIdx + 1]) return resolve(argv[flagIdx + 1]);
   if (process.env.AITM_LIVE_MEMORY) return resolve(process.env.AITM_LIVE_MEMORY);
   return join(homedir(), '.claude', 'projects', repoSlug(), 'memory');
-}
-
-function listMd(dir) {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter((f) => f.endsWith('.md') && statSync(join(dir, f)).isFile());
 }
 
 // The durable live set = every live *.md minus ephemeral trackers and meta-docs.
