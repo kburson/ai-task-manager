@@ -101,10 +101,54 @@ scripts/gh/move-state.mjs 42 develop
 - Move to **Refine** when an issue is being shaped (sized, AC drafted).
 - Move to **Plan** after the deep-dive analysis is posted.
 - Move to **Develop** when `/task #N` activates an issue and code work begins.
-- Before `/task review`, commit the implementation and run `/task commit-trace #N`; Review requires a clean tracked worktree and a canonical `### 🔗 Commits` comment containing the current `HEAD`.
+- Before `/task review`, commit the implementation and run `/task commit-trace #N`; Review requires a clean tracked worktree and a `### 🔗 Commits` ledger comment. Attribution is **message-based**, not SHA-reachability — the gate is satisfied by a commit whose subject carries the `[#N]` prefix (see [Commit Attribution](#commit-attribution) below), regardless of which branch or worktree it lives on.
 - **Test** is entered automatically by `/task review` while the verification gate runs.
 - Move to **Review** automatically when verification passes (ready-for-review).
 - Move to **Done** only by `/task close` after a human approves.
+
+## Commit Attribution
+
+Attribution is **topology-agnostic and message-based**: a commit is attributed to
+an issue by a durable token in its subject line, not by SHA reachability
+(`git merge-base --is-ancestor`). Reachability deadlocks the moment a real,
+correct deliverable lives on a branch, PR head, or worktree that the probed ref
+cannot reach — the exact case the branch → PR → epic-branch → trunk flow creates.
+The message token survives rebase, squash, cherry-pick, and amend; a SHA does not.
+Delivered by epic [#727](https://github.com/kburson/ai-task-manager/issues/727)
+(children [#730](https://github.com/kburson/ai-task-manager/issues/730)–[#735](https://github.com/kburson/ai-task-manager/issues/735)).
+
+**Prefix format.** Every `/task`-workflow commit leads its subject with a
+`[#N]` token — e.g. `[#730] feat(commit-attr): add subject-line lint gate`. The
+token is auto-injected by the task-tracker's commit-composition path
+(idempotently; a `prepare-commit-msg` git hook was deliberately rejected because
+it is not version-controlled and would not propagate to installs) and enforced
+by a subject-line lint gate. A commit touching several issues carries several
+tokens (`[#730] [#731] …`). The conventional-commit `type(scope): subject` follows
+the bracket, so type-based gates (e.g. the `chore:` gate) read the type _after_
+the token. Stable grep regex: `\[#(\d+)\]`. Full grammar:
+`^\[#\d+\](\s+\[#\d+\])*\s+(\w+)(\([^)]*\))?!?:\s+.+`. Source of truth:
+`scripts/task-tracker/lib/commit-attribution-format.mjs` (`ISSUE_PREFIX_RE`,
+`hasIssuePrefix`, `injectIssuePrefix`, `parseIssueIds`, `classifyType`).
+
+**Gate query scope.** `commit-trace` and `review-preflight` attribute against
+`refs: ['--all']` — a commit _anywhere_ in the repo satisfies them. `close`
+deliberately scopes to the trunk ref only: a branch that was never merged to
+trunk must **not** satisfy the close gate. This asymmetry is the correctness
+argument — it means an issue closes only once its deliverable actually reaches
+trunk. In the PR-based flow that dictates the ordering **push → PR → merge to
+trunk → `git pull` → `/task close`**: the `[#N]` commit must be merged and pulled
+into local trunk before close, or the close gate correctly refuses.
+
+### Epic #727 — VCS-process-agnostic commit attribution
+
+| Sub-issue                                                     | Delivers                                                                     |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [#730](https://github.com/kburson/ai-task-manager/issues/730) | `[#N]` prefix format + auto-inject + subject-line lint gate                  |
+| [#731](https://github.com/kburson/ai-task-manager/issues/731) | Attribution engine — message-grep replaces SHA reachability                  |
+| [#732](https://github.com/kburson/ai-task-manager/issues/732) | Invert prune logic; reframe the commit trail as an informational ledger      |
+| [#733](https://github.com/kburson/ai-task-manager/issues/733) | Migrate `commit-trace` / `review-preflight` / `close` gates to message-based |
+| [#734](https://github.com/kburson/ai-task-manager/issues/734) | Optional release-detection config (default off)                              |
+| [#735](https://github.com/kburson/ai-task-manager/issues/735) | Docs + durable-memory reconciliation for topology-agnostic attribution       |
 
 ### Superseding a story (abandonment)
 
