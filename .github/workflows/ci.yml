@@ -50,6 +50,11 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      # Memory-seed index parity (#728, folds #744): fail on any MEMORY.md-index
+      # ⇄ docs/ai-memory/ durable-set drift. Repo-only / CI-safe — `--mode index`
+      # needs no maintainer $HOME memory dir (unlike the maintainer's `--mode diff`).
+      - name: Memory-seed index parity (#728)
+        run: node scripts/inspect/ai-memory-parity.mjs --mode index
       - run: npm test
 
   slow:

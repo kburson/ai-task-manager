@@ -81,9 +81,55 @@ maintainer memory already works.
   maintainer's live memory: `--mode files` / `--mode index` / `--mode diff` / `--mode rebase`.
   Run `--mode diff` before publishing to confirm the seed is current.
 
-## Build deferral
+## Freshness workflow (maintainer)
+
+The shipped seed under `docs/ai-memory/` is a _snapshot_ of the maintainer's live
+`~/.claude/.../memory/` corpus. It does not update itself — keeping it honest is a
+deliberate pre-publish step. Before every `npm publish` (and, per
+`feedback_rebase_origin_parent_before_pr`, before opening a release PR):
+
+1. **Confirm parity.** Run the diff report against the live corpus:
+
+   ```
+   node scripts/inspect/ai-memory-parity.mjs --mode diff
+   ```
+
+   It prints net-new durable facts missing from the seed, content drift (seed ≠ live),
+   stale seed files with no live source, and the ephemeral files intentionally excluded
+   (`EXCLUDE_PATTERNS`). A clean run ends with `=> AT PARITY`; anything else means the
+   seed is behind the maintainer's live memory.
+
+2. **Rebase when it drifts.** If `--mode diff` reports drift, sync the seed from live:
+
+   ```
+   node scripts/inspect/ai-memory-parity.mjs --mode rebase
+   ```
+
+   This copies net-new and content-drifted durable facts into `docs/ai-memory/` and
+   refreshes the seed `MEMORY.md` index, skipping the ephemeral trackers. Re-run
+   `--mode diff` to confirm `=> AT PARITY`, then commit the refreshed seed.
+
+3. **Do not publish a drifted seed.** Shipping a stale seed silently hands downstream
+   users last-quarter's lessons. The `--mode diff` gate is advisory-for-humans; the CI
+   Fast lane's `--mode index` check (below) is the automated backstop — but `index` only
+   proves the shipped index ⇄ shipped durable-set are internally consistent, **not** that
+   the shipped seed matches live. Live-vs-seed freshness is a maintainer responsibility
+   that only `--mode diff` surfaces.
+
+### CI backstop (index parity)
+
+The Fast lane runs `node scripts/inspect/ai-memory-parity.mjs --mode index`, which is
+repo-only / CI-safe (it needs no maintainer `$HOME` memory dir). It fails the build on any
+`MEMORY.md`-index ⇄ `docs/ai-memory/` durable-set drift — a bullet pointing at a missing
+file, or a durable seed file absent from the index. This catches a hand-edited seed that
+forgot to update the index; it deliberately does **not** reach into live memory.
+
+## Build status
 
 Per #518 AC-5, the mechanism _build_ (package.json#files change, manifest group, install-menu
-prompt, index hook) is filed as the tracked follow-up **#728** rather than built inside this
-investigation. This issue delivers: the rebased+reconciled seed, the parity tooling, and this
-spec.
+prompt, index hook) was filed as the tracked follow-up **#728** rather than built inside this
+investigation. #728 delivered that mechanism: the seed ships in `package.json#files`, a
+`MEMORY_SEED_FILES` manifest group sources it, `ai-task-manager install` presents the opt-in
+`all` / `choose` / `none` menu, and the SessionStart + PostCompact index hook surfaces
+`MEMORY.md` on demand. This investigation delivered the rebased+reconciled seed, the parity
+tooling, and this spec.
