@@ -99,15 +99,19 @@ deliberate pre-publish step. Before every `npm publish` (and, per
    (`EXCLUDE_PATTERNS`). A clean run ends with `=> AT PARITY`; anything else means the
    seed is behind the maintainer's live memory.
 
-2. **Rebase when it drifts.** If `--mode diff` reports drift, sync the seed from live:
+2. **Catch the seed up to live when it drifts.** If `--mode diff` reports drift, sync the
+   seed **by hand** — copy each net-new / content-drifted durable file that `--mode diff`
+   names from live (`~/.claude/.../memory/`) into `docs/ai-memory/`, then add or refresh its
+   one-line bullet in the seed `MEMORY.md` index, skipping the ephemeral trackers
+   (`EXCLUDE_PATTERNS`). Re-run `--mode diff` to confirm `=> AT PARITY`, then commit the
+   refreshed seed. Commit `f775fd9` (issue #780) is a worked example of this manual
+   live→seed catch-up.
 
-   ```
-   node scripts/inspect/ai-memory-parity.mjs --mode rebase
-   ```
-
-   This copies net-new and content-drifted durable facts into `docs/ai-memory/` and
-   refreshes the seed `MEMORY.md` index, skipping the ephemeral trackers. Re-run
-   `--mode diff` to confirm `=> AT PARITY`, then commit the refreshed seed.
+   There is **no** command that performs this copy for you. In particular, `--mode rebase`
+   does **not** sync the seed: it is a git branch-linearity check that asserts the
+   `ai-memory` branch is not behind `trunk`
+   (`git rev-list --left-right --count trunk...ai-memory`) and copies zero files. Do not run
+   it expecting a live→seed sync.
 
 3. **Do not publish a drifted seed.** Shipping a stale seed silently hands downstream
    users last-quarter's lessons. The `--mode diff` gate is advisory-for-humans; the CI
