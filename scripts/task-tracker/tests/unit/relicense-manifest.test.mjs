@@ -19,11 +19,14 @@ test('package.json license is AGPL-3.0-or-later', () => {
   );
 });
 
-test('package.json version is bumped to 2.0.0 for the license change', () => {
+test('package.json version is 1.0.0 for the initial scoped publish', () => {
+  // The relicense shipped as a freshly *scoped* package (@kburson/ai-task-manager),
+  // which is a first publish under a new name and therefore correctly 1.0.0 — not a
+  // 2.0.0 in-place breaking bump. See #775.
   assert.equal(
     manifest.version,
-    '2.0.0',
-    'a change to distribution terms is a breaking change; version must be 2.0.0'
+    '1.0.0',
+    'the scoped @kburson/ai-task-manager package is a fresh first publish; version must be 1.0.0'
   );
 });
 
