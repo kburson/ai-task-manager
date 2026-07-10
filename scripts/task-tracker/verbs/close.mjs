@@ -13,6 +13,8 @@ import {
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { runDispose } from '../lib/close-disposition.mjs';
+import { projectItemForIssue, deleteProjectV2Item } from '../../gh/lib/github-projects.mjs';
 import { hasReviewApprovedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
@@ -90,6 +92,52 @@ export async function verbClose(ctx) {
   }
   if (!closeTarget) {
     console.log('no active task');
+    return;
+  }
+
+  // #761 — disposition close-lane. `close --as duplicate --of <M>` /
+  // `close --as not-planned` close the issue WITHOUT the Done DoD/commit-trace
+  // gate: the issue is un-tracked from the board (it does NOT land in Done) and
+  // an `aitm-closed-as` audit marker + comment record the disposition. Branch
+  // and return here, before any shared gate state below is read.
+  const asIdx = rest.indexOf('--as');
+  if (asIdx !== -1) {
+    const disposition = rest[asIdx + 1];
+    const ofIdx = rest.indexOf('--of');
+    const ofRef = ofIdx !== -1 ? rest[ofIdx + 1] : '';
+    const result = await runDispose({
+      issueNumber: closeIssueNum,
+      reason: disposition,
+      of: ofRef,
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      deps: {
+        mutateIssueBody,
+        projectItemForIssue,
+        deleteProjectV2Item,
+        pexec: (bin, argv) => pexec(bin, argv, { timeout: GH_API_TIMEOUT_MS }),
+        postComment: ({ issueNumber, repo, body }) =>
+          pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+            timeout: GH_API_TIMEOUT_MS,
+          }),
+        flushTiming: (n) =>
+          flushAndForgetQueueFor ? flushAndForgetQueueFor(`#${n}`) : Promise.resolve(),
+        now: nowIso,
+        warn: (msg) => console.error(`[task-tracker] warn: ${msg}`),
+      },
+    });
+    // Clear local active-task state so a subsequent bind is clean.
+    try {
+      clearActive(statePath);
+    } catch {
+      /* best-effort; a residual active pointer is harmless */
+    }
+    deregisterTask(projectDir, closeTarget);
+    console.log(
+      `Closed ${closeTarget} as ${result.reason}` +
+        (result.of ? ` (duplicate of ${result.of})` : '') +
+        ` — un-tracked from board, stateReason=${result.stateReason}.`
+    );
     return;
   }
 

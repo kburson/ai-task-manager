@@ -90,6 +90,23 @@ export async function addIssueToProject(projectId, issueId) {
   return data.addProjectV2ItemById.item.id;
 }
 
+// #761 — un-track (remove) an issue's item from a ProjectV2 board. The write-
+// side counterpart to `addIssueToProject`; used by the `close --as` disposition
+// lane so a duplicate/not-planned issue leaves the board entirely instead of
+// landing in Done. Returns the deleted item id (or '' when GitHub reports none).
+export async function deleteProjectV2Item({ projectId, itemId }) {
+  const data = await gql(
+    `
+    mutation($project: ID!, $item: ID!) {
+      deleteProjectV2Item(input: { projectId: $project, itemId: $item }) {
+        deletedItemId
+      }
+    }`,
+    { project: projectId, item: itemId }
+  );
+  return data.deleteProjectV2Item?.deletedItemId || '';
+}
+
 export async function fieldOptionMap(projectId) {
   const data = await gql(
     `
