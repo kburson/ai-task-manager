@@ -4,6 +4,8 @@ description: This is a single-developer repo; workflow is purely local — commi
 type: feedback
 originSessionId: a2956386-6efd-462f-8527-e3f5a578f958
 ---
+**SUPERSEDED (2026-07-07):** The user is migrating to a remote CI / PR-based validate-and-merge flow — see [[project_pr_based_migration]]. Push + PRs are now the intended default path, not forbidden. Keep this memory for historical context, but do NOT enforce "never push / never open a PR" going forward; follow the PR-based migration memory instead.
+
 This is a solo project — no other developers. Workflow is purely local:
 1. Work on trunk directly (when "main thread only" is in effect — see feedback_main_thread_only.md), or merge feature branches into trunk via `--ff-only`.
 2. **Stop at trunk.** Do not `git push`. Do not `gh pr create`. Origin is a manual backup the user controls; the assistant must not touch it.
