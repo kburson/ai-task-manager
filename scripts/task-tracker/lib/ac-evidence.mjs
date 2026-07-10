@@ -17,7 +17,7 @@ import { unescapeValue } from './marker-grammar.mjs';
 import { parseProofMarker, hasExecutionProof, upsertProofMarker } from './proof-marker.mjs';
 import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { resolveCitedOrLiteralCommands } from './vc-ref.mjs';
+import { resolveCitedOrLiteralCommands, resolveVcRefCommands } from './vc-ref.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
@@ -64,11 +64,18 @@ export function acKeyForLabel(label) {
 // branch when `cmd`'s value is a pure run of `vc:<n>` tokens.
 function extractCommands(text, vcItems = []) {
   const haystack = String(text || '');
+  const props = parseProofMarker(haystack);
+  // #774 — the canonical by-id citation lives in the `vc-list` attribute (the
+  // form #773's Refine-exit guardrail mandates). It is always a `vc:<id>`
+  // citation run — resolve it strictly by id against the VC list; a `vc-list`
+  // that resolves to nothing is not a gated command.
+  if (props && typeof props['vc-list'] === 'string') {
+    return resolveVcRefCommands(props['vc-list'], vcItems) || [];
+  }
   // #481 — `cmd` is the persistent declaration component, read regardless of any
   // run-props upserted onto the same `aitm-verified` marker. The pre-#481 guard
   // on `hasExecutionProof` broke `ac-stamp` re-verification once the proof and
   // declaration shared one comment.
-  const props = parseProofMarker(haystack);
   if (props && typeof props.cmd === 'string') {
     return resolveCitedOrLiteralCommands(props.cmd, vcItems);
   }
@@ -82,12 +89,17 @@ export function parseAcEvidence(text) {
   // and exit numeric.
   if (hasExecutionProof(src)) {
     const props = parseProofMarker(src);
-    if (props && props.cmd != null && props.sha != null && props.ts != null && props.key != null) {
+    // #774 — the declaration component is EITHER a legacy `cmd` (embedded or
+    // ordinal citation) OR the canonical by-id `vc-list` citation. A stamped
+    // vc-list AC carries run-props + `vc-list` and no `cmd`, so accept either as
+    // the required declaration attribute; `.cmd` surfaces whichever is present.
+    const decl = props && (props.cmd != null ? props.cmd : props['vc-list']);
+    if (props && decl != null && props.sha != null && props.ts != null && props.key != null) {
       const exit = Number(props.exit);
       if (Number.isFinite(exit)) {
         return {
           key: String(props.key).toLowerCase(),
-          cmd: props.cmd,
+          cmd: decl,
           exit,
           sha: props.sha,
           ts: props.ts,
