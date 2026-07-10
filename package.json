@@ -1,9 +1,9 @@
 {
   "name": "ai-task-manager",
-  "version": "1.2.4",
+  "version": "2.0.0",
   "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
   "type": "module",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "author": "Kendrick Burson <spam.kpb@gmail.com>",
   "homepage": "https://github.com/kburson/ai-task-manager",
   "engines": {
@@ -39,6 +39,9 @@
     "quality": "npm run format:check && npm run lint && npm test"
   },
   "files": [
+    "LICENSE",
+    "LICENSE-COMMERCIAL",
+    "NOTICE",
     "bin/",
     "config/",
     "skill/",

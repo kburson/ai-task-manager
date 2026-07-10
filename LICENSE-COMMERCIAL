@@ -1,0 +1,51 @@
+Commercial License for ai-task-manager
+Copyright (C) 2025-2026 Kendrick Burson. All rights reserved.
+
+Summary
+-------
+ai-task-manager is dual-licensed:
+
+  1. Open-source terms — the GNU Affero General Public License, version 3.0
+     or later (AGPL-3.0-or-later), as set out in the LICENSE file. This is the
+     default license for every recipient. You may use, study, modify, and
+     redistribute the software under those terms at no charge, provided you
+     comply with all AGPL obligations — including the requirement to make the
+     complete corresponding source code available to users who interact with a
+     modified version over a network (AGPL section 13).
+
+  2. Commercial terms — this file. A commercial license removes the AGPL
+     copyleft obligations for parties who cannot or do not wish to comply with
+     them, for example when embedding ai-task-manager in a closed-source
+     product, a proprietary internal tool, or a hosted service whose source you
+     do not intend to disclose.
+
+Who needs a commercial license
+------------------------------
+You do NOT need a commercial license to use, modify, or self-host this software
+under the AGPL, including inside your own organization, as long as you honor the
+AGPL's source-disclosure obligations for any networked or distributed use.
+
+You DO need a commercial license if you want to:
+
+  - distribute or host a product or service that incorporates this software (in
+    whole or in part, modified or unmodified) WITHOUT releasing your own
+    corresponding source under the AGPL; or
+  - otherwise use the software on terms incompatible with AGPL-3.0-or-later.
+
+No warranty
+-----------
+Except as expressly agreed in a signed commercial agreement, the software is
+provided "as is", without warranty of any kind. The AGPL's warranty disclaimer
+applies to all use under the open-source terms.
+
+Contact
+-------
+To obtain a commercial license, or to discuss terms, contact the copyright
+holder:
+
+  Kendrick Burson
+  kpburson@pm.me
+
+This file is an offer to negotiate commercial terms; it is not itself a grant of
+any proprietary license. A commercial license takes effect only under a separate
+written agreement signed by the copyright holder.

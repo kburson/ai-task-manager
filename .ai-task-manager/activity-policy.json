@@ -10,7 +10,10 @@
     "scripts/task-tracker/tests/**",
     "cspell-dictionary.txt",
     ".c8rc.json",
-    ".gitignore"
+    ".gitignore",
+    "LICENSE",
+    "LICENSE-COMMERCIAL",
+    "NOTICE"
   ],
   "codeGlobExcludes": [],
   "codeGlobReincludes": [],

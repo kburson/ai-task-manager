@@ -650,4 +650,18 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 
 ## License
 
-MIT
+ai-task-manager is dual-licensed.
+
+- **Open source:** [GNU AGPL-3.0-or-later](LICENSE). You may use, modify, and
+  redistribute it for free under the AGPL, including self-hosting inside your own
+  organization, as long as you honor the AGPL's source-disclosure obligations —
+  notably section 13, which requires offering the corresponding source to users
+  who interact with a modified version over a network.
+- **Commercial:** if you want to embed ai-task-manager in a closed-source
+  product or a hosted service without releasing your own source under the AGPL,
+  a separate commercial license is available. See
+  [LICENSE-COMMERCIAL](LICENSE-COMMERCIAL) and contact
+  [kpburson@pm.me](mailto:kpburson@pm.me).
+
+Copyright (C) 2025-2026 Kendrick Burson. See [NOTICE](NOTICE) for the copyright
+and dual-license summary.
