@@ -35,6 +35,7 @@ import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs
 import { hasFullAutoApproved } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
+import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
@@ -346,16 +347,17 @@ function emitShape(args, dodPath, root) {
   const seedCmds = auditEvidenceMarkers(assembled).missingVerificationCommands;
   let finalBody = assembled;
   if (seedCmds.length) {
-    const vcSection =
-      '## Verification Commands\n\n' + seedCmds.map((c) => `- [ ] \`${c}\``).join('\n') + '\n\n';
+    // #772 — stamp stable ids (from 1 on a fresh body) and splice with one
+    // blank line above AND below the `## Verification Commands` header.
+    const vcSection = renderVcSection(seedCmds, nextVcId(finalBody));
     // #480 — VC sits BETWEEN `## Acceptance Criteria` and `## Definition of Done`
     // (canonical order), so anchor on the DoD heading rather than Pickup.
     const anchor = '## Definition of Done';
     const idx = finalBody.indexOf(anchor);
     finalBody =
       idx === -1
-        ? finalBody + vcSection
-        : finalBody.slice(0, idx) + vcSection + finalBody.slice(idx);
+        ? spliceVcSection(finalBody, vcSection, '')
+        : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
   }
   // #494, #500 — `--kind <audit|research|spike|epic>` stamps the issue-kind
   // marker at creation, routing the new issue onto the deliverable-evidence

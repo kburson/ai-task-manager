@@ -16,6 +16,11 @@ const CHECKBOX_RE = /^- \[([ x])\] (.+)$/;
 // stricter local copy, so the "what to run" parser and the "what to tick"
 // matcher can never disagree about which lines are VC command lines.
 export const BACKTICK_CMD_RE = /^`([^`]+)`(?:\s*<!--[\s\S]*?-->)*\s*$/;
+// #772 — stable, hidden per-entry id marker. Assigned once at emit time,
+// monotonic, never reused (see `lib/vc-emit.mjs` for the tombstone-aware
+// allocator). A pre-#772 line carries none; the parser reports `id: null`
+// for it and the by-id resolver falls back to ordinal for such legacy bodies.
+export const VC_ID_MARKER_RE = /<!--\s*id=(\d+)\s*-->/i;
 
 export function parseVerificationCommands(body) {
   const src = String(body || '');
@@ -39,11 +44,13 @@ export function parseVerificationCommands(body) {
     const label = cb[2].trim();
     const cmdMatch = label.match(BACKTICK_CMD_RE);
     if (!cmdMatch) continue;
+    const idMatch = label.match(VC_ID_MARKER_RE);
     items.push({
       lineIndex: i,
       checked,
       label,
       command: cmdMatch[1],
+      id: idMatch ? Number(idMatch[1]) : null,
     });
   }
   return items;
