@@ -2,7 +2,7 @@
 // `npm run test:all` is the new canonical Functional-DoD command (#305).
 import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { citeCommands, resolveCitedOrLiteralCommands } from './vc-ref.mjs';
+import { citeCommands, resolveCitedOrLiteralCommands, resolveVcRefCommands } from './vc-ref.mjs';
 
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
@@ -27,7 +27,20 @@ function evidenceCommands(label, vcItems = []) {
   // still needs to be listed in `## Verification Commands` whether or not it has
   // been run, so the command is always surfaced.
   const props = parseProofMarker(label);
-  if (!props || typeof props.cmd !== 'string') return [];
+  if (!props) return [];
+  // #774 — the canonical by-id citation the Refine-exit guardrail (#773) mandates
+  // lives in the `vc-list` attribute, resolved BY ID against the VC section. Read
+  // it the same way `cmd` is read so a vc-list-authored AC is not invisible to
+  // the review-exit audit (missing-evidence / missing-VC / stale-VC false
+  // positives). Mirrors `ac-evidence.mjs::extractCommands`.
+  if (typeof props['vc-list'] === 'string') {
+    try {
+      return resolveVcRefCommands(props['vc-list'], vcItems) || [];
+    } catch {
+      return [];
+    }
+  }
+  if (typeof props.cmd !== 'string') return [];
   // #762 — resolve the declaration against the issue's VC list so a `vc:<n>`
   // citation surfaces the same literal command(s) an embedded backtick form
   // would. Without this, a citation-form AC looks evidence-less to the audit

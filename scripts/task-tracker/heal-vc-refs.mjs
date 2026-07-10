@@ -24,7 +24,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { loadConfig } from './config.mjs';
-import { detectLegacyAcCitations, healVcRefs } from './lib/heal-vc-refs.mjs';
+import { healVcRefs, planVcRefHeal } from './lib/heal-vc-refs.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 
@@ -80,6 +80,25 @@ export async function fetchIssueBody(issueNumber, repo, gqlFn = gql) {
   return data?.repository?.issue?.body ?? '';
 }
 
+// #774 AC-2 — fetch body AND state in one query so the CLI can skip a CLOSED
+// issue without a body mutation, even on the `--scope` path (which bypasses the
+// state-filtered enumeration). Returns `{ body, state }` where `state` is
+// GitHub's `OPEN`/`CLOSED`.
+export async function fetchIssueMeta(issueNumber, repo, gqlFn = gql) {
+  const { owner, repoName } = splitRepo(repo);
+  const data = await gqlFn(
+    `
+    query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) { body state }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) }
+  );
+  const issue = data?.repository?.issue;
+  return { body: issue?.body ?? '', state: issue?.state ?? 'OPEN' };
+}
+
 // Parse CLI flags. I/O + termination are injectable (`io.out`/`io.err`/
 // `io.exit`) so the flag-routing branches (`--help`, invalid `--state`) are
 // exercisable offline; every hook defaults to the real process stream/exit,
@@ -129,7 +148,7 @@ export function printUsage(out = process.stdout) {
 export async function main(argv, deps = {}) {
   const loadConfigFn = deps.loadConfig || loadConfig;
   const fetchNumbers = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
-  const fetchBody = deps.fetchIssueBody || fetchIssueBody;
+  const fetchMeta = deps.fetchIssueMeta || fetchIssueMeta;
   const mutate = deps.mutateIssueBody || mutateIssueBody;
   const out = deps.out || process.stdout;
   const err = deps.err || process.stderr;
@@ -156,15 +175,30 @@ export async function main(argv, deps = {}) {
 
   let affectedCount = 0;
   let healedCount = 0;
+  let skippedCount = 0;
   let errorCount = 0;
 
   for (const n of numbers) {
     try {
-      const body = await fetchBody(n, cfg.repo);
-      const det = detectLegacyAcCitations(body);
-      if (!det.affected) continue;
+      const { body, state } = await fetchMeta(n, cfg.repo);
+      // AC-2: never mutate a closed issue — enumerate it for the record, skip.
+      if (state === 'CLOSED') {
+        skippedCount++;
+        out.write(`#${n}\tskipped (closed)\n`);
+        continue;
+      }
+      const plan = planVcRefHeal(body);
+      if (!plan.affected) continue;
       affectedCount++;
-      out.write(`#${n}\tlegacy ACs: ${det.items.length}\n`);
+      // AC-4: report the planned conversions (and any VC ids that would be
+      // stamped) for every in-scope issue — in dry-run this is the whole output.
+      const stampNote = plan.stampedIds.length
+        ? `, stamping VC ids: ${plan.stampedIds.join(', ')}`
+        : '';
+      out.write(`#${n}\tlegacy ACs: ${plan.conversions.length}${stampNote}\n`);
+      for (const c of plan.conversions) {
+        out.write(`  • ${c.label} → vc-list="${c.vcList}"\n`);
+      }
       if (args.apply) {
         const res = await mutate({
           issueNumber: n,
@@ -180,7 +214,9 @@ export async function main(argv, deps = {}) {
     }
   }
 
-  out.write(`Summary: affected=${affectedCount} healed=${healedCount} errors=${errorCount}\n`);
+  out.write(
+    `Summary: affected=${affectedCount} healed=${healedCount} skipped=${skippedCount} errors=${errorCount}\n`
+  );
 }
 
 const _isMain = (() => {

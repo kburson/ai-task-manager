@@ -144,6 +144,10 @@ export function resolveVerifiedBy(line) {
   const props = parseProofMarker(line);
   if (!props) return null;
   if ('cmd' in props) return props.cmd;
+  // #774 — the canonical by-id citation the Refine-exit guardrail (#773)
+  // mandates lives in `vc-list`, not `cmd`. Recognize it as a declaration so a
+  // ticked vc-list AC satisfies the code-complete gate's `verifiedBy` check.
+  if ('vc-list' in props) return props['vc-list'];
   return null;
 }
 

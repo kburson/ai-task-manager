@@ -7,6 +7,8 @@ import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
 import { parseProofMarker, hasExecutionProof } from '../lib/proof-marker.mjs';
+import { parseVerificationCommands } from '../lib/verification-commands.mjs';
+import { resolveVcRefCommands } from '../lib/vc-ref.mjs';
 import { postTimingEvent, buildRow, buildFlushRow } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
@@ -262,6 +264,10 @@ export async function verbReview(ctx) {
     }
 
     const lines = rawBody.split('\n');
+    // #774 — the authoritative VC list, parsed once, so a by-id `vc-list`
+    // citation on an AC marker resolves to its declared command(s) the same way
+    // the other read-sites do (ac-evidence/evidence-markers/proof-marker).
+    const vcItems = parseVerificationCommands(rawBody);
 
     let inVerifSection = false;
     let currentSection = '';
@@ -304,6 +310,16 @@ export async function verbReview(ctx) {
         const props = parseProofMarker(label);
         if (props && typeof props.cmd === 'string') {
           evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
+        } else if (props && typeof props['vc-list'] === 'string') {
+          // #774 — the canonical by-id citation the Refine-exit guardrail (#773)
+          // mandates lives in `vc-list`; resolve it against the VC section so a
+          // vc-list-authored AC is not falsely un-ticked as "missing automated
+          // evidence" here (this was review.mjs's own un-migrated inline parser).
+          try {
+            evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
+          } catch {
+            evidenceCommands = [];
+          }
         }
         if (props && hasExecutionProof(label)) {
           proofPassed = String(props.exit) === '0';

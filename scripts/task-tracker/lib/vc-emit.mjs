@@ -132,6 +132,30 @@ export function appendVcCommands(body, commands) {
   return lines.join('\n');
 }
 
+// #774 — retrofit a stable hidden `<!-- id=N -->` marker onto every VC entry
+// that lacks one, assigning consecutive ids from the current high-water mark
+// (tombstone-aware, monotonic). No-op when every entry is already stamped.
+// Pure string transform.
+//
+// This is the migration counterpart to `renderVcLine`'s emit-time stamping: it
+// id-stamps a pre-#772 section in one pass so by-id citation resolution
+// (`vc-ref.mjs::resolveVcRefCommands`) — which engages ONLY when EVERY entry
+// carries an id — can take over for the whole section. A partial stamp would
+// silently fall back to ordinal resolution, so the healer must stamp all-or-
+// nothing.
+export function stampMissingVcIds(body) {
+  const src = String(body || '');
+  const missing = parseVerificationCommands(src).filter((it) => !Number.isInteger(it.id));
+  if (!missing.length) return src;
+  const lines = src.split('\n');
+  let id = nextVcId(src);
+  for (const it of missing) {
+    lines[it.lineIndex] = `${lines[it.lineIndex].replace(/\s*$/, '')} <!-- id=${id} -->`;
+    id += 1;
+  }
+  return lines.join('\n');
+}
+
 // Delete the live VC entry whose id is `id`, replacing its checkbox line with a
 // tombstone note so the id can never be reissued. No-op (returns the body
 // unchanged) when no live entry carries that id. This is the write-side origin

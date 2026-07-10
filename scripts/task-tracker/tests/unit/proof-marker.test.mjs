@@ -95,6 +95,16 @@ import {
   assert.equal(resolveVerifiedBy(line), 'npm run lint', 'cmd resolved from consolidated form');
 }
 
+// --- #774: resolveVerifiedBy reads the canonical by-id vc-list citation ------
+{
+  const line = '- [ ] AC <!-- aitm-verified vc-list="vc:1 vc:3" -->';
+  assert.equal(
+    resolveVerifiedBy(line),
+    'vc:1 vc:3',
+    'a vc-list-only marker resolves as a declaration so the code-complete gate sees verifiedBy'
+  );
+}
+
 // --- a line with consolidated declaration AND inline proof merges -----------
 {
   const line =
