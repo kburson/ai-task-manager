@@ -26,16 +26,37 @@ export function parseVcRefIndexes(cmd) {
 
 // Resolve a citation `cmd` value against the issue's parsed VC list. Returns
 // the cited commands' literal strings, or null when `cmd` is not a citation.
-// Throws when a citation names a VC position that doesn't exist.
+// Throws when a citation names a VC entry that doesn't exist.
+//
+// #772 — resolution is BY ID, not by ordinal position. A `vc:5` names the VC
+// entry whose stable `<!-- id=5 -->` marker equals 5, wherever that entry sits
+// in the list — so reordering or deleting OTHER entries never re-points a
+// citation. Legacy bodies whose VC entries carry no id (all `id: null`, the
+// pre-#772 corpus) fall back to the original 1-based ordinal lookup so old
+// citations keep resolving unchanged.
 export function resolveVcRefCommands(cmd, vcItems) {
   const indexes = parseVcRefIndexes(cmd);
   if (!indexes) return null;
   const items = Array.isArray(vcItems) ? vcItems : [];
-  return indexes.map((idx) => {
-    const item = items[idx - 1];
+  // By-id resolution engages only when EVERY live entry is id-stamped. A body
+  // still carrying any id-less entry (the legacy corpus, or a mixed body mid-
+  // migration where the #762 author appended un-stamped lines) stays on the
+  // original ordinal lookup, so those citations keep resolving as before.
+  const allIds = items.length > 0 && items.every((it) => it && Number.isInteger(it.id));
+  return indexes.map((n) => {
+    if (allIds) {
+      const item = items.find((it) => it && it.id === n);
+      if (!item) {
+        throw new RangeError(
+          `vc-ref: cited entry vc:${n} does not exist (no live Verification Commands entry carries id=${n}; it may have been deleted)`
+        );
+      }
+      return item.command;
+    }
+    const item = items[n - 1];
     if (!item) {
       throw new RangeError(
-        `vc-ref: cited entry vc:${idx} does not exist (issue declares ${items.length} Verification Commands entries)`
+        `vc-ref: cited entry vc:${n} does not exist (issue declares ${items.length} Verification Commands entries)`
       );
     }
     return item.command;

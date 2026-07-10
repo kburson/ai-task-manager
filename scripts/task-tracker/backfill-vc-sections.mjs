@@ -20,6 +20,7 @@ import { promisify } from 'node:util';
 
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { parseVerificationCommands } from './lib/verification-commands.mjs';
+import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 
 const pexec = promisify(execFile);
@@ -54,16 +55,17 @@ export function buildVcBackfill(body = '') {
   const mode = derived.length ? 'derived' : 'default';
   const commands = derived.length ? derived : DEFAULT_VC_COMMANDS;
 
-  const vcSection =
-    '## Verification Commands\n\n' + commands.map((c) => `- [ ] \`${c}\``).join('\n') + '\n\n';
+  // #772 — stamp stable ids (tombstone-aware next-id, though a VC-less body has
+  // none yet) and splice with one blank line above AND below the header.
+  const vcSection = renderVcSection(commands, nextVcId(src));
 
   // Canonical placement (#410): immediately before the Pickup Directive heading;
   // append at end-of-body when the heading is absent (sparse/epic bodies).
   const match = PICKUP_HEADING_RE.exec(src);
   const healed =
     match === null
-      ? src.replace(/\s*$/, '\n\n') + vcSection
-      : src.slice(0, match.index) + vcSection + src.slice(match.index);
+      ? spliceVcSection(src, vcSection, '')
+      : spliceVcSection(src.slice(0, match.index), vcSection, src.slice(match.index));
 
   return { status: 'healed', mode, commands, body: healed };
 }

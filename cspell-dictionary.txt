@@ -118,6 +118,7 @@ subheader
 subheaders
 subshell
 toggleable
+tombstoned
 toplevel
 touchpoint
 TOTP

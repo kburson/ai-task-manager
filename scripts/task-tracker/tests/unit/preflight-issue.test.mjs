@@ -143,7 +143,8 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
       // (a) H2 Verification Commands heading present.
       assert.match(r.stdout, /^## Verification Commands\s*$/m);
 
-      // (b) the four DoD Functional commands each seeded as a checkbox line.
+      // (b) the four DoD Functional commands each seeded as a checkbox line,
+      // now carrying a stable hidden `<!-- id=N -->` marker (#772).
       for (const cmd of [
         'npm run test:all',
         'npm run lint',
@@ -152,7 +153,10 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
       ]) {
         assert.match(
           r.stdout,
-          new RegExp(`^- \\[ \\] \`${cmd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\`\\s*$`, 'm'),
+          new RegExp(
+            `^- \\[ \\] \`${cmd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\` <!-- id=\\d+ -->\\s*$`,
+            'm'
+          ),
           `missing seeded command: ${cmd}`
         );
       }
