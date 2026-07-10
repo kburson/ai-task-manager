@@ -35,8 +35,8 @@ As soon as the shape of the skill is stabilized we will publish it as an npm pac
 ### Install & Configure
 
 ```bash
-# 1. install the package into your project repo
-npm i -D ai-task-manager
+# 1. install the package into your project repo (scoped name on the registry)
+npm i -D @kburson/ai-task-manager
 
 # 2. Install package configs into your project workspace
 npx ai-task-manager install

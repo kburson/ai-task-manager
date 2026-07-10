@@ -1,6 +1,9 @@
 {
-  "name": "ai-task-manager",
+  "name": "@kburson/ai-task-manager",
   "version": "2.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
   "type": "module",
   "license": "AGPL-3.0-or-later",
