@@ -43,6 +43,20 @@ Full rules in `docs/guides/workflow.md`. Quick reference:
 - Every issue needs `Estimate` (hours) + `Size` set before work starts. No exceptions.
 - At issue close: set `Actual Session Time` on board. See `docs/guides/ai-value-framework.md`.
 
+## Commit Attribution
+
+Every `/task`-workflow commit leads its subject with a `[#N]` issue-ID token —
+e.g. `[#735] docs(attribution): describe message-based attribution`. The token is
+auto-injected (idempotently) and enforced by a subject-line lint gate. Downstream
+attribution is **message-based, not SHA-reachability**: `commit-trace`,
+`review-preflight`, and `close` locate an issue's deliverable by grepping the
+`[#N]` token (`\[#(\d+)\]`) across commit messages, so the branch → PR → trunk
+flow attributes correctly even when a deliverable lives on an unmerged branch or
+worktree. `close` scopes its query to the trunk ref, so an issue closes only once
+its `[#N]` commit is merged and pulled into local trunk. Full contract:
+`docs/guides/workflow.md` → Commit Attribution. Source of truth:
+`scripts/task-tracker/lib/commit-attribution-format.mjs`.
+
 ## Blocked-Task Annotation (mandatory when spawning a defect mid-task)
 
 When work on issue `#A` discovers a defect that must be fixed before `#A` can proceed and you file a new issue `#B` for that defect, you **must immediately** annotate `#A` as blocked by `#B` before doing anything else:
