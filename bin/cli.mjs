@@ -29,7 +29,13 @@ import {
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
-import { TEMPLATE_FILES } from './lib/template-manifest.mjs';
+import { TEMPLATE_FILES, memorySeedFiles } from './lib/template-manifest.mjs';
+import {
+  parseMemorySeedFlag,
+  parseMemoryBullets,
+  filesForMode,
+  writeMemorySeed,
+} from './lib/memory-seed-install.mjs';
 import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
@@ -138,6 +144,12 @@ const ON_ASK_RESUME_HOOK_CMD =
 // AskUserQuestion hook (#240).
 const STOP_AUDIT_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs';
+// #728 — always-loaded memory-index hook. Emits ONLY `.ai-task-manager/memory/
+// MEMORY.md` as additionalContext on SessionStart + PostCompact. Registered only
+// when at least one seed file was accepted at install (a `none` selection
+// installs no hook).
+const MEMORY_INDEX_HOOK_CMD =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs';
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
@@ -166,7 +178,7 @@ function removeHookCommands(entries, commands) {
     .filter(Boolean);
 }
 
-export function patchSettingsJson(settingsPath) {
+export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}) {
   let settings = {};
   if (existsSync(settingsPath)) {
     try {
@@ -301,6 +313,24 @@ export function patchSettingsJson(settingsPath) {
         matcher: 'AskUserQuestion',
         hooks: [{ type: 'command', command: cmd }],
       });
+    }
+  }
+
+  // #728 — always-loaded memory-index hook on SessionStart + PostCompact.
+  // Installed ONLY when at least one memory-seed file was accepted at install.
+  // Idempotent: matched by command string so re-running install never dupes.
+  if (memoryIndexHook) {
+    for (const event of ['SessionStart', 'PostCompact']) {
+      if (!Array.isArray(settings.hooks[event])) settings.hooks[event] = [];
+      const already = settings.hooks[event].some((h) =>
+        hookEntryHasCommand(h, MEMORY_INDEX_HOOK_CMD)
+      );
+      if (!already) {
+        settings.hooks[event].push({
+          matcher: '',
+          hooks: [{ type: 'command', command: MEMORY_INDEX_HOOK_CMD }],
+        });
+      }
     }
   }
 
@@ -515,7 +545,7 @@ function codexStub() {
   ].join('\n');
 }
 
-function installClaude(targetDir, linkMode) {
+function installClaude(targetDir, linkMode, { memoryIndexHook = false } = {}) {
   step('Claude Code files');
   const skillDest = join(targetDir, getProvider('claude').installTarget);
   if (linkMode === 'symlink') {
@@ -556,7 +586,7 @@ function installClaude(targetDir, linkMode) {
   // Routed through `adapter.hookCapability` to remove the prior hard-coded
   // claude/codex fork at this call site (#203).
   if (getProvider('claude').hookCapability) {
-    patchSettingsJson(join(targetDir, '.claude', 'settings.json'));
+    patchSettingsJson(join(targetDir, '.claude', 'settings.json'), { memoryIndexHook });
     ok(`Settings ${dim('.claude/settings.json')}`);
   }
 }
@@ -767,7 +797,68 @@ function cmdVersion() {
   console.log(`${PKG_NAME} v${pkg.version}`);
 }
 
-function cmdInstall(args) {
+// #728 — install-time opt-in memory-seed menu. Resolves the mode (flag ›
+// interactive prompt › non-TTY `none` default), copies the accepted durable
+// seed files into `.ai-task-manager/memory/`, and returns the accepted count so
+// the caller can conditionally register the always-loaded index hook. The
+// decision + write logic lives in `bin/lib/memory-seed-install.mjs`; this
+// function owns only the console I/O.
+async function installMemorySeed(targetDir, args) {
+  step('Operational-lessons memory seed');
+  const seedDir = join(PKG_ROOT, 'docs', 'ai-memory');
+  const memoryDir = join(targetDir, '.ai-task-manager', 'memory');
+
+  let mode = parseMemorySeedFlag(args);
+  const isTty = Boolean(process.stdin.isTTY);
+  if (!mode && !isTty) mode = 'none';
+
+  const rl = mode ? null : createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (q) => new Promise((res) => rl.question(q, res));
+
+  try {
+    if (!mode) {
+      const answer = (
+        await ask(`  Install the bundled operational-lessons memory seed? [all / choose / none] `)
+      )
+        .trim()
+        .toLowerCase();
+      mode = ['all', 'choose', 'none'].includes(answer) ? answer : 'none';
+    }
+
+    if (mode === 'none') {
+      ok(`Memory seed ${dim('(skipped — none)')}`);
+      return 0;
+    }
+
+    let selectedFiles;
+    if (mode === 'all') {
+      selectedFiles = filesForMode(seedDir, 'all');
+    } else {
+      // choose — one selectable item per MEMORY.md bullet → its linked file.
+      const memoryMd = existsSync(join(seedDir, 'MEMORY.md'))
+        ? readFileSync(join(seedDir, 'MEMORY.md'), 'utf8')
+        : '';
+      const items = parseMemoryBullets(memoryMd, memorySeedFiles(seedDir));
+      selectedFiles = [];
+      for (const item of items) {
+        const yes = (await ask(`    include "${item.title}"? [y/N] `)).trim().toLowerCase();
+        if (yes === 'y' || yes === 'yes') selectedFiles.push(item.file);
+      }
+    }
+
+    const { count } = writeMemorySeed({ seedDir, memoryDir, selectedFiles });
+    ok(
+      count > 0
+        ? `Memory seed ${dim(`${count} fact(s) → .ai-task-manager/memory/`)}`
+        : `Memory seed ${dim('(nothing selected)')}`
+    );
+    return count;
+  } finally {
+    if (rl) rl.close();
+  }
+}
+
+async function cmdInstall(args) {
   let targetDir = process.cwd();
   const targetArg = parseOption(args, '--target');
   if (targetArg) targetDir = resolve(targetArg);
@@ -814,7 +905,13 @@ function cmdInstall(args) {
     }
   }
 
-  if (agent === 'claude' || agent === 'both') installClaude(targetDir, linkMode);
+  // #728 — resolve the memory-seed opt-in BEFORE installing Claude files so the
+  // always-loaded index hook is registered only when ≥1 seed file was accepted.
+  const memorySeedCount = await installMemorySeed(targetDir, args);
+  const memoryIndexHook = memorySeedCount > 0;
+
+  if (agent === 'claude' || agent === 'both')
+    installClaude(targetDir, linkMode, { memoryIndexHook });
   if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode);
   if ((agent === 'codex' || agent === 'both') && enableCodexSuperpowers) {
     setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
@@ -1069,7 +1166,10 @@ if (invokedDirectly)
       cmdVersion();
       break;
     case 'install':
-      cmdInstall(rest);
+      cmdInstall(rest).catch((e) => {
+        err(e.message);
+        process.exit(1);
+      });
       break;
     case 'init':
       cmdInit(rest);
