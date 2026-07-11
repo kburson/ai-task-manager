@@ -34,6 +34,10 @@ export const STATUS_WRITE_BACKOFF_MS = 400;
 // Exit code returned to the host when the board field never confirms. Distinct
 // from the "issue absent from project" exit 1 so the failure mode is greppable.
 export const STATUS_WRITE_READBACK_EXIT = 7;
+// #741 — exit code when the success-path post-condition (authoritative
+// `aitm-last-known-state` marker == the just-confirmed board stage) does NOT
+// hold. Distinct from 7 so a re-opened board/marker gap is greppable.
+export const STATUS_MARKER_CONSISTENCY_EXIT = 8;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -177,18 +181,21 @@ export async function runStatusWrite(ctx) {
 // `writeIssueBodyWithRetry`'s audit-comment path (#168).
 export async function stampEntryMarkers(ctx) {
   const { issueArg, stateArg, cfg, SKIP_NETWORK, gh, pexec } = ctx;
-  if (!(!SKIP_NETWORK && STAGES.includes(stateArg))) return;
+  if (!(!SKIP_NETWORK && STAGES.includes(stateArg))) return { priorState: undefined };
   try {
-    const [{ writeIssueBodyWithRetry }, { writeLastKnownState }] = await Promise.all([
-      import('../state-recording.mjs'),
-      import('../../gh-timing-comment.mjs'),
-    ]);
+    const [{ writeIssueBodyWithRetry }, { writeLastKnownState, readLastKnownState }] =
+      await Promise.all([import('../state-recording.mjs'), import('../../gh-timing-comment.mjs')]);
     const { stdout } = await pexec(
       'gh',
       ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
     const beforeBody = JSON.parse(stdout).body ?? '';
+    // #741 — the stage the authoritative `aitm-last-known-state` marker points at
+    // BEFORE this stamp advances it. Returned to the saga so a subsequent failed
+    // board write can compensate by rolling the marker back to this value,
+    // keeping marker == board instead of leaving marker-ahead-of-board drift.
+    const priorState = readLastKnownState(beforeBody).state;
     const stampTs = new Date().toISOString();
     const priorVisitCount = getStageVisitCount(beforeBody, stateArg);
     let nextBody = stampEntryMarker(beforeBody, stateArg, stampTs);
@@ -235,6 +242,7 @@ export async function stampEntryMarkers(ctx) {
         ts: stampTs,
       });
     }
+    return { priorState };
   } catch (err) {
     // #544 — a stamp failure here is non-atomic with the already-committed
     // board move (runStatusWrite ran first): the board now shows `stateArg`
@@ -295,4 +303,79 @@ export async function postStampFailureAudit({ issueNumber, repo, stage, error, p
     );
     return { mode: 'error', error: postErr.message };
   }
+}
+
+// #741 — compensating rollback of the authoritative `aitm-last-known-state`
+// marker. `stampEntryMarkers` advances the marker to the target stage BEFORE the
+// board Status write; when that board write fails/does-not-confirm (#711 returns
+// a non-null exit), the marker would be left ahead of the board. This restores
+// the marker to `priorState` (the stage the board is still confirmed at) so the
+// failure leaves marker == board — loud (the non-zero exit is preserved by the
+// caller) AND consistent. Idempotent: a no-op when the marker already reads
+// `priorState`. The additive `aitm-entered-<stage>` contiguity marker is left
+// untouched (it is not the authoritative pointer and a re-run reconciles it).
+export async function rollbackRecordedState(ctx, priorState) {
+  const { issueArg, cfg, gh, pexec } = ctx;
+  if (priorState == null) return { rolledBack: false, reason: 'no-prior-state' };
+  const [{ writeIssueBodyWithRetry }, { writeLastKnownState, readLastKnownState }] =
+    await Promise.all([import('../state-recording.mjs'), import('../../gh-timing-comment.mjs')]);
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const beforeBody = JSON.parse(stdout).body ?? '';
+  if (readLastKnownState(beforeBody).state === priorState) {
+    return { rolledBack: false, reason: 'already-consistent', priorState };
+  }
+  const nextBody = writeLastKnownState(beforeBody, priorState);
+  const tmp = path.join(
+    projectTmpDir(getProjectDir()),
+    `aitm-rollback-${issueArg}-${Date.now()}.md`
+  );
+  await writeIssueBodyWithRetry({
+    issueNumber: issueArg,
+    repo: cfg.repo,
+    body: nextBody,
+    bodyBefore: beforeBody,
+    target: priorState,
+    writeIssueBody: async ({ body }) => {
+      try {
+        writeFileSync(tmp, body, 'utf8');
+        await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
+      } finally {
+        try {
+          unlinkSync(tmp);
+        } catch {
+          /* best-effort */
+        }
+      }
+    },
+  });
+  return { rolledBack: true, priorState };
+}
+
+// #741 — success-path post-condition: after the board write is confirmed at
+// `expectedStage` (#711 read-back) and the sentinel verifies, the authoritative
+// `aitm-last-known-state` marker MUST also read `expectedStage`. On the happy
+// path this always holds (stampEntryMarkers set it); a mismatch means a
+// regression re-opened the board/marker gap and is surfaced (non-zero exit),
+// never swallowed. Returns `{ consistent, recorded, expected, exit }`.
+export async function assertBoardMarkerConsistent(ctx, expectedStage) {
+  const { issueArg, cfg, pexec } = ctx;
+  const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const body = JSON.parse(stdout).body ?? '';
+  const recorded = readLastKnownState(body).state;
+  const consistent = recorded === expectedStage;
+  return {
+    consistent,
+    recorded,
+    expected: expectedStage,
+    exit: consistent ? null : STATUS_MARKER_CONSISTENCY_EXIT,
+  };
 }

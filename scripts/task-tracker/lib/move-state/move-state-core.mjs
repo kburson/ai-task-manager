@@ -6,6 +6,8 @@ import { runGuardExecution as defaultRunGuardExecution } from './guard-execution
 import {
   runStatusWrite as defaultRunStatusWrite,
   stampEntryMarkers as defaultStampEntryMarkers,
+  rollbackRecordedState as defaultRollbackRecordedState,
+  assertBoardMarkerConsistent as defaultAssertBoardMarkerConsistent,
 } from './github-mutation.mjs';
 import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
 import { runPostCommitTail as defaultRunPostCommitTail } from './post-commit-tail.mjs';
@@ -131,6 +133,9 @@ export async function moveState(ctx) {
   const runStatusWrite = ctx._runStatusWrite || defaultRunStatusWrite;
   const writeSentinel = ctx._writeSentinel || defaultWriteSentinel;
   const runPostCommitTail = ctx._runPostCommitTail || defaultRunPostCommitTail;
+  const rollbackRecordedState = ctx._rollbackRecordedState || defaultRollbackRecordedState;
+  const assertBoardMarkerConsistent =
+    ctx._assertBoardMarkerConsistent || defaultAssertBoardMarkerConsistent;
 
   const guard = await runGuardExecution(ctx);
   if (guard.exit !== null && guard.exit !== undefined) {
@@ -165,11 +170,33 @@ export async function moveState(ctx) {
   // Pre-Status evidence: exit-flush the departing row + entry row, then the
   // entry markers. Both are individually idempotent and re-read-verified.
   await emitPhasePairRows(ctx);
-  await stampEntryMarkers(ctx);
+  // #741 — stampEntryMarkers advances `aitm-last-known-state` to the target
+  // stage and returns the stage it pointed at BEFORE (the board's confirmed
+  // stage). Captured so a failed board write below can compensate.
+  const stampResult = await stampEntryMarkers(ctx);
+  const priorState = stampResult?.priorState ?? null;
 
   // Status is the LAST authoritative board write (#711 fail-closed verify).
   const writeResult = await runStatusWrite(ctx);
   if (writeResult.exit !== null) {
+    // #741 — the board write failed/did-not-confirm but stampEntryMarkers has
+    // already advanced the authoritative marker to the target. Roll the marker
+    // back to `priorState` so the failure leaves marker == board (both at the
+    // prior stage) instead of marker-ahead-of-board drift. The non-zero exit is
+    // preserved (loud). Gated on `priorState` so the offline/DI paths that stub
+    // stampEntryMarkers (returning undefined) are unaffected (#170/AC4).
+    let rolledBack = false;
+    if (priorState != null) {
+      try {
+        const rb = await rollbackRecordedState(ctx, priorState);
+        rolledBack = rb?.rolledBack ?? false;
+      } catch (err) {
+        process.stderr.write(
+          `[move-state] #${ctx.issueArg}: last-known-state rollback to ${priorState} ` +
+            `FAILED after board-write failure: ${err.message}\n`
+        );
+      }
+    }
     return {
       exit: writeResult.exit,
       itemId: writeResult.itemId,
@@ -177,6 +204,7 @@ export async function moveState(ctx) {
       phase: 'status',
       sentinelPresent: false,
       boardMoved: false,
+      rolledBack,
     };
   }
   ctx.itemId = writeResult.itemId;
@@ -193,6 +221,30 @@ export async function moveState(ctx) {
       sentinelPresent: false,
       boardMoved: true,
     };
+  }
+
+  // #741 — success-path post-condition: the board is confirmed at target and the
+  // sentinel verified, so the authoritative `aitm-last-known-state` marker MUST
+  // also read the target. Assert board == marker; a mismatch means a regression
+  // re-opened the drift gap and is surfaced (non-zero), never swallowed. Gated
+  // on `priorState` so the offline/DI stub paths (undefined) stay unaffected.
+  if (priorState != null) {
+    const consistency = await assertBoardMarkerConsistent(ctx, ctx.stateArg);
+    if (!consistency.consistent) {
+      process.stderr.write(
+        `⛔ #${ctx.issueArg} → ${ctx.stateArg}: board confirmed at target but ` +
+          `aitm-last-known-state marker reads "${consistency.recorded}". ` +
+          `Board/marker consistency post-condition FAILED.\n`
+      );
+      return {
+        exit: consistency.exit ?? 8,
+        itemId: writeResult.itemId,
+        tail: { failures: [] },
+        phase: 'consistency',
+        sentinelPresent: true,
+        boardMoved: true,
+      };
+    }
   }
 
   const tail = await runPostCommitTail(ctx);
