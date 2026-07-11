@@ -69,6 +69,11 @@ When work on issue `#A` discovers a defect that must be fixed before `#A` can pr
 
 This rule applies to every defect-spawn-during-task case — refine-stage, plan-stage, develop-stage, test-stage, review-stage. The mechanism is the same; only the surrounding state differs.
 
+For **how to physically isolate** the blocker fix so `#A` and `#B` merge and close
+independently — worktree-per-rung off trunk, deepest-first ascend — follow the
+[Blocking-defect isolation dance](docs/guides/workflow.md#blocking-defect-isolation-dance)
+in the workflow guide.
+
 ## Cleanup
 
 Full procedure in `docs/guides/workflow.md` → Cleanup Procedure section.
