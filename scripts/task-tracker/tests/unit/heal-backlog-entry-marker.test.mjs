@@ -75,13 +75,20 @@ test('planStageHeal: clean backlog-only issue (no later marker) → skip', () =>
   assert.equal(plan.action, 'skip');
 });
 
-test('planStageHeal: empty body / no markers → skip (nothing to bound against)', () => {
+// #784: a zero-marker backlog issue was previously un-promotable — `planStageHeal`
+// returned `skip` here (no `hasLater` to bound against), yet the #252 contiguity
+// gate demands `aitm-entered-backlog`, and no sanctioned tool minted it. The
+// dedicated zero-marker branch now heals it from the `createdAt` fallback. This
+// test formerly asserted `skip`; that WAS the bug.
+test('planStageHeal: empty body / no markers → backfill from createdAt fallback (#784)', () => {
   const plan = planStageHeal({
     stage: 'backlog',
     body: '## Scope\n\nstill in backlog',
     createdAt: CREATED_AT,
   });
-  assert.equal(plan.action, 'skip');
+  assert.equal(plan.action, 'backfill');
+  assert.equal(plan.reason, 'zero-marker-backlog-fallback');
+  assert.ok(Date.parse(plan.ts) > Date.parse(CREATED_AT), 'ts strictly after createdAt');
 });
 
 // ---------- 5. other stages unaffected by the backlog addition ----------
