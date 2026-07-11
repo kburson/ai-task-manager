@@ -328,7 +328,75 @@ async function evaluate(input) {
   });
   if (ghCreateResult.block) block(ghCreateResult.reason);
 
+  // --- #769 commit-time assignee lock ---
+  // A `git commit` whose message attributes to an issue (`[#N]` token) is
+  // refused when that issue is assigned to another developer — the assignee is
+  // a work-lock. This is a DEFENSIVE layer; the primary lock is at bind/mutator
+  // time. Unlike the fail-closed verb preflight, fetch failures PASS here so an
+  // offline `gh` never wedges every commit. Token-less/chore commits carry no
+  // `[#N]` and pass — the visible escape hatch.
+  await checkCommitAssigneeLock({ command, scanned, projectRoot });
+
   // All checks passed — evaluate() returns and the caller exits 0.
+
+  // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
+  // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
+  // exit 0; every fetch/parse failure is swallowed so commits are never wedged.
+  async function checkCommitAssigneeLock({
+    command: rawCommand,
+    scanned: scannedCommand,
+    projectRoot: root,
+  }) {
+    // Detect a genuine `git commit` action on the quote-stripped command so a
+    // commit *message* that mentions "git commit" does not self-trigger.
+    const GIT_COMMIT_RE = /\bgit\s+(?:-\S+\s+|--[\w-]+(?:=\S+)?\s+)*commit\b/;
+    const commitSegments = scannedCommand.split(/&&|\|\||[;&|\n]|\$\(/);
+    if (!commitSegments.some((seg) => GIT_COMMIT_RE.test(seg))) return;
+
+    // Offline escape — consistent with the verb preflight's TT_SKIP_NETWORK gate.
+    if (process.env.TT_SKIP_NETWORK === '1') return;
+
+    const cfg = readAssigneeCfg(root);
+    if (!cfg) return; // no config / unresolved repo — don't wedge commits
+    if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
+
+    const { parseCommitIssueRefs, checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
+    // `[#N]` tokens live inside the quoted commit message, so parse the RAW
+    // command (scanned blanks quoted regions).
+    const refs = parseCommitIssueRefs(rawCommand);
+    if (refs.length === 0) return; // token-less / chore — escape hatch
+
+    const cache = {};
+    for (const issueNumber of refs) {
+      let verdict;
+      try {
+        verdict = await checkAssigneeMatch({ issueNumber, cfg, deps: { cache } });
+      } catch {
+        continue; // fetch failure PASSES at commit-time (defensive layer)
+      }
+      if (!verdict.ok && verdict.kind === 'assigned-to-other') {
+        block(
+          `Refusing git commit: #${issueNumber} is assigned to ${verdict.assignees.join(', ')}, not @${verdict.currentUser}.\n` +
+            `  The issue's assignee is a work-lock — you cannot commit work attributed to another developer's issue.\n` +
+            `  A human must reassign via the GitHub UI (with the current assignee's agreement) before you commit.\n` +
+            `  Un-attributed chore commits (no \`[#N]\` token) are the intended escape hatch.`
+        );
+      }
+    }
+  }
+
+  // #769 — best-effort read of the bound repo + assignee preference for the
+  // commit-time lock. Returns null on any failure so the check no-ops rather
+  // than wedging commits (the primary lock lives at bind/mutator time).
+  function readAssigneeCfg(root) {
+    try {
+      const cfg = JSON.parse(readFileSync(configPath(root), 'utf8'));
+      if (!cfg?.repo) return null;
+      return cfg;
+    } catch {
+      return null;
+    }
+  }
 
   // #715 — best-effort read of the bound `projectId` for evaluateGhProject.
   // Prefers the git-tracked `.ai-task-manager/task-tracker.json`, falling back to

@@ -305,7 +305,9 @@ function depsOf({
   assert.equal(liveFetched, false, 'live fetch skipped when assignee guard fires');
 }
 
-// 15. #219: assignee fetch failure is non-fatal (treated as ok).
+// 15. #769: assignee fetch failure fails CLOSED (was fail-open under #219).
+//     A lock must not open on a transient gh failure — the verdict is
+//     `unverifiable` and the caller refuses.
 {
   const v = await runPreflight({
     stateBefore: { active: '#219' },
@@ -320,7 +322,9 @@ function depsOf({
       fetchCurrentUser: async () => 'kburson',
     },
   });
-  assert.equal(v.ok, true);
+  assert.equal(v.ok, false);
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(v.assigneeKind, 'unverifiable');
 }
 
 console.log('verb-preflight.test.mjs: ok');
