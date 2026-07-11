@@ -5,4 +5,5 @@ node_modules/
 .claude/worktrees/
 reports/
 coverage/
+output/
 docs/postmortems/

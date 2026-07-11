@@ -21,6 +21,7 @@
     ".claude/worktrees/**",
     "reports/**",
     "coverage/**",
+    "output/**",
     "docs/postmortems/**",
     "docs/ai-memory/**"
   ]

@@ -18,6 +18,7 @@
     ".claude/worktrees/**",
     "reports/**",
     "coverage/**",
+    "output/**",
     "package-lock.json",
     "*.tgz",
     "docs/postmortems/**",
