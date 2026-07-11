@@ -56,6 +56,7 @@ import { parseDuration } from '../task-tracker/lib/duration.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
+import { bucketRowsByDay, renderDailyChart, extractTimingBody } from './lib/daily-activity.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -156,7 +157,7 @@ async function fetchProject() {
                   number title state stateReason url body
                   createdAt closedAt
                   parent { number }
-                  comments(first: 10) {
+                  comments(first: 100) {
                     nodes { body }
                   }
                 }
@@ -258,6 +259,7 @@ function processItems(raw, attribution = null) {
         createdAt:    n.content.createdAt ? new Date(n.content.createdAt) : null,
         closedAt:     n.content.closedAt  ? new Date(n.content.closedAt)  : null,
         ...parseStartInfo(n.content.comments?.nodes),
+        timingBody:   extractTimingBody(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
         sessionMin:   sessionToMinutes(f['Session Time'] ?? f['Actual Session Time']),
         // The board "Context Length" field was retired (#260). Per-item context
@@ -998,7 +1000,17 @@ td a:hover{text-decoration:underline}
         figure captures the product of both effects: the total multiplier from the engineer's perspective.
         Issues in this table are labelled by role (🎯 orchestrator / 🤖 agent / 👤 solo) based on the
         timing log entry written when work began. Issues without a role entry default to solo.
-      </p>`;
+      </p>
+      ${(() => {
+        const buckets = bucketRowsByDay(
+          items.map((i) => ({ number: i.number, body: i.timingBody ?? '' })),
+          {
+            fromMs: cfg.fromDate ? cfg.fromDate.getTime() : null,
+            toMs: cfg.toDate ? cfg.toDate.getTime() : null,
+          },
+        );
+        return renderDailyChart(buckets);
+      })()}`;
     })()}
   </div>
 </div>
