@@ -54,6 +54,8 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { parseDuration } from '../task-tracker/lib/duration.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { reportAttribution } from './lib/attribution-resolver.mjs';
+import { loadTrunkSignals } from './lib/trunk-signals.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -102,6 +104,7 @@ const cfg = {
   toDate:        flag('--to')   ? new Date(flag('--to')   + 'T23:59:59.999') : null,
   state:         (flag('--state') ?? 'all').toLowerCase(),
   status:        flag('--status') ? flag('--status').toLowerCase() : null,
+  trunk:         flag('--trunk') ?? ttCfg.trunkBranch ?? ttCfg.trunk ?? 'trunk',
   htmlOnly:      has('--html'),
 };
 
@@ -150,7 +153,7 @@ async function fetchProject() {
             nodes {
               content {
                 ... on Issue {
-                  number title state url body
+                  number title state stateReason url body
                   createdAt closedAt
                   parent { number }
                   comments(first: 10) {
@@ -236,7 +239,11 @@ function parseStartInfo(comments) {
   return { startedAt: null, role: 'solo' };
 }
 
-function processItems(raw) {
+// `attribution` (optional) = { trunkTokens, trunkShas } from loadTrunkSignals().
+// When supplied, the include-filter consumes the three-signal resolver (#782):
+// an issue that the resolver marks `attributed` is admitted even if it carries
+// no board data field, and an issue the resolver marks `dead` is dropped.
+function processItems(raw, attribution = null) {
   return raw
     .filter(n => n.content?.number)
     .map(n => {
@@ -245,6 +252,7 @@ function processItems(raw) {
         number:       n.content.number,
         title:        n.content.title,
         state:        n.content.state,
+        stateReason:  n.content.stateReason ?? null,
         url:          n.content.url,
         body:         n.content.body ?? '',
         createdAt:    n.content.createdAt ? new Date(n.content.createdAt) : null,
@@ -263,8 +271,12 @@ function processItems(raw) {
     .filter(i => {
       // --issues overrides all other filters
       if (cfg.issues) return cfg.issues.includes(i.number);
-      // must have at least one data field
-      if (i.estimate == null && i.sessionMin == null && i.contextWords == null) return false;
+      // Three-signal attribution (#782): drop dead issues outright; admit
+      // attributed issues even when they lack a board data field.
+      const attr = attribution ? reportAttribution(i, attribution) : null;
+      if (attr?.dead) return false;
+      // must have at least one data field (unless attribution vouches for it)
+      if (i.estimate == null && i.sessionMin == null && i.contextWords == null && !attr?.attributed) return false;
       // --state filter (GitHub issue state: open/closed)
       if (cfg.state === 'closed' && i.state !== 'CLOSED') return false;
       if (cfg.state === 'open'   && i.state !== 'OPEN')   return false;
@@ -1005,7 +1017,26 @@ td a:hover{text-decoration:underline}
 async function main() {
   console.log(`Fetching project ${cfg.projectId}...`);
   const { title, items: raw } = await fetchProject();
-  const items = processItems(raw);
+
+  // Build the trunk attribution signal maps once (#782). A git failure (e.g.
+  // shallow clone, missing trunk ref) degrades gracefully to the legacy
+  // board-data-only filter rather than aborting the report.
+  let attribution = null;
+  try {
+    attribution = loadTrunkSignals({ trunk: cfg.trunk });
+  } catch (err) {
+    console.warn(`Attribution signals unavailable (${err.message}); using board data only.`);
+  }
+
+  const baseline = processItems(raw).length;
+  const items = processItems(raw, attribution);
+  if (attribution) {
+    const delta = items.length - baseline;
+    console.log(
+      `Attribution filter: ${baseline} → ${items.length} issues ` +
+        `(${delta >= 0 ? '+' : ''}${delta} vs board-data-only).`,
+    );
+  }
 
   if (items.length === 0) {
     console.error('No items found with Estimate or Session Time set on the board.');
