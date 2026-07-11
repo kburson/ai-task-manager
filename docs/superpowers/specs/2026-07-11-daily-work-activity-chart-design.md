@@ -58,9 +58,9 @@ calendar day.
   across contributing issues; empty days inside the range render as zero bars
   (Q4 = b1).
 - **Per-day semantics (Q5, confirmed):**
-  - *Duration* = Σ(active+idle) of all in-scope rows bucketing to that local day,
+  - _Duration_ = Σ(active+idle) of all in-scope rows bucketing to that local day,
     midnight-crossing rows prorated.
-  - *Issue count* = number of **distinct** in-scope issues with > 0 allocated
+  - _Issue count_ = number of **distinct** in-scope issues with > 0 allocated
     duration that day (an issue worked across 3 days counts once on each day).
 - **Visual encoding (Q5 = layout 1):** dual-axis combo — duration as bars (left
   axis, hours), issue-count as an overlaid line + dots (right axis, integer).
@@ -113,7 +113,7 @@ bucketRowsByDay(issues, { fromMs = null, toMs = null }) -> DayBucket[]
    at extraction time.
 
 2. **Reconstruct each row's work-window.** A `row-sec` marker's `a=/i=` counts
-   the delta *since the previous row*, so its seconds belong to
+   the delta _since the previous row_, so its seconds belong to
    `[prevRow.tsMs, row.tsMs]`. Pair each row (index ≥ 1) with its predecessor;
    the first `start` row has no predecessor (its own `a=0 i=0`) and seeds no
    window. Per-window payload = `activeSec + idleSec`.
@@ -139,7 +139,7 @@ bucketRowsByDay(issues, { fromMs = null, toMs = null }) -> DayBucket[]
 
 ### Deliberate simplification — pauses
 
-`active + idle` already *excludes* paused time (a pause is removed, not counted
+`active + idle` already _excludes_ paused time (a pause is removed, not counted
 as idle). The payload is prorated by **raw wall-clock** fraction of
 `[start, end]`. If a pause sits entirely on one side of a midnight, that day is
 very slightly over-weighted. Pause-accurate per-sub-interval subtraction (via
@@ -177,7 +177,7 @@ report slate palette, all inline styles/colors — print-safe, no external asset
   `<svg>` absolutely positioned over the plot area (a real connecting polyline
   can't be done cleanly in CSS — the single place SVG earns its keep). Points
   computed at generation time: `x` = column center, `y` = `plotH − count/maxCount
-  × plotH`; a `<polyline>` through all days plus a `<circle>` per day. Right
+× plotH`; a `<polyline>` through all days plus a `<circle>` per day. Right
   Y-axis: integer ticks `0..maxCount`.
 - **X-axis (dates).** `MMM D` label under each column; when dense (> ~15 days)
   show every Nth label (`step = ceil(days / 15)`) so labels never collide; all

@@ -24,10 +24,12 @@
 ### Task 1: `bucketRowsByDay` — day bucketing with midnight proration
 
 **Files:**
+
 - Create: `scripts/reports/lib/daily-activity.mjs`
 - Test: `scripts/reports/tests/daily-activity.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `parseTimingRows` from `../../task-tracker/timing-rollup.mjs` (relative to the new file: `scripts/reports/lib/` → `scripts/task-tracker/timing-rollup.mjs` is `../../task-tracker/timing-rollup.mjs`).
 - Produces:
   - `bucketRowsByDay(issues, { fromMs = null, toMs = null }) -> DayBucket[]`
@@ -272,7 +274,13 @@ test('distinct issue count: same day two issues → 2; one issue over N days →
     { ts: '2026-03-10 14:00:00 -07:00', event: 'start', a: 0, i: 0 },
     { ts: '2026-03-11 14:00:00 -07:00', event: 'progress', a: 86400, i: 0 },
   ]);
-  const buckets = bucketRowsByDay([{ number: 1, body: a }, { number: 2, body: b }], {});
+  const buckets = bucketRowsByDay(
+    [
+      { number: 1, body: a },
+      { number: 2, body: b },
+    ],
+    {}
+  );
   const byDate = Object.fromEntries(buckets.map((x) => [x.date, x]));
   assert.equal(byDate['2026-03-10'].issueCount, 2); // issues 1 and 2
   assert.equal(byDate['2026-03-11'].issueCount, 1); // issue 2 only
@@ -353,10 +361,12 @@ git commit -m "feat(reports): bucketRowsByDay — per-day timing-log aggregation
 ### Task 2: `extractTimingBody` + `renderDailyChart` — capture + render
 
 **Files:**
+
 - Modify: `scripts/reports/lib/daily-activity.mjs` (add two exports)
 - Test: `scripts/reports/tests/generate-value-report-daily.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `bucketRowsByDay` (Task 1), `DayBucket` shape.
 - Produces:
   - `extractTimingBody(comments) -> string | null` — given a GraphQL `comments.nodes` array (`Array<{ body: string }>`), returns the body of the first comment containing `⏱ Timing Log`, else `null`.
@@ -446,7 +456,20 @@ export function extractTimingBody(comments) {
 
 function fmtDayLabel(key) {
   const [y, m, d] = key.split('-').map(Number);
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return `${MONTHS[m - 1]} ${d}`;
 }
 
@@ -533,6 +556,7 @@ git commit -m "feat(reports): extractTimingBody + renderDailyChart for the daily
 ### Task 3: Wire the chart into `generate-value-report.mjs`
 
 **Files:**
+
 - Modify: `scripts/reports/generate-value-report.mjs`
   - Import block (top of file, with the other imports).
   - GraphQL query `comments(first: 10)` → `comments(first: 100)` (currently line ~159).
@@ -541,6 +565,7 @@ git commit -m "feat(reports): extractTimingBody + renderDailyChart for the daily
 - Test: `scripts/reports/tests/generate-value-report-daily.test.mjs` (the two source-scan tests from Task 2).
 
 **Interfaces:**
+
 - Consumes: `bucketRowsByDay`, `renderDailyChart`, `extractTimingBody` from `./lib/daily-activity.mjs`.
 - Produces: no new exports (the report is an executable script). Adds an item field `timingBody: string | null` used only within the file.
 
@@ -584,7 +609,7 @@ In the object returned by `processItems(...).map(...)`, immediately after the `.
 
 - [ ] **Step 4: Inject the chart into the Timeline Analysis section**
 
-In `buildHtml`, locate the Backlog Engagement Timeline IIFE. Its returned template string ends with a run of `<p class="tl-note">…</p>` blocks and a closing backtick (currently near line 1001, the block that ends `…default to solo.\n      </p>\``). Insert the chart immediately before that closing backtick, computing buckets from the in-scope `items`:
+In `buildHtml`, locate the Backlog Engagement Timeline IIFE. Its returned template string ends with a run of `<p class="tl-note">…</p>` blocks and a closing backtick (currently near line 1001, the block that ends ``…default to solo.\n      </p>\` ``). Insert the chart immediately before that closing backtick, computing buckets from the in-scope `items`:
 
 ```js
       </p>
@@ -627,6 +652,7 @@ git commit -m "feat(reports): render Daily Work Activity chart in the value repo
 ### Task 4: Part 1 validation record + freshness caveat (AC1)
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-07-11-daily-work-activity-chart-design.md` (already committed with the deliverable; the validation record already lives in its "Part 1 is already satisfied" section — this task confirms it and adds the caveat to the report's own notes so a report reader sees it).
 - Modify: `scripts/reports/generate-value-report.mjs` — add the freshness caveat to the Timeline Analysis notes so it is visible in the rendered report.
 
@@ -641,7 +667,12 @@ Read `docs/superpowers/specs/2026-07-11-daily-work-activity-chart-design.md` →
 In `buildHtml`, add one `tl-footnote` (or extend the Daily Work Activity footnote from Task 2) near the chart:
 
 ```js
-      <p class="tl-footnote">Per-issue Session Time is sourced from the board field, which equals the timing-log active-second sum as of the last <code>log-issue-time</code> run — current for closed issues, potentially stale for in-flight ones. The Daily Work Activity chart reads timing-log rows directly and is unaffected.</p>
+<p class="tl-footnote">
+  Per-issue Session Time is sourced from the board field, which equals the timing-log active-second
+  sum as of the last <code>log-issue-time</code> run — current for closed issues, potentially stale
+  for in-flight ones. The Daily Work Activity chart reads timing-log rows directly and is
+  unaffected.
+</p>
 ```
 
 Place it immediately after the `renderDailyChart(buckets)` interpolation added in Task 3 Step 4 (inside the same returned template string).
@@ -684,6 +715,7 @@ Once all tasks are green, hand back to the `/task` state machine: `npx aitm prom
 ## Self-Review
 
 **Spec coverage:**
+
 - Part 1 validation + freshness caveat → Task 4 (AC1). ✓
 - `bucketRowsByDay` pure module, `DayBucket[]` → Task 1 (AC2). ✓
 - Proration / midnight split / multi-midnight / degenerate → Task 1 Steps 5-6 (AC3). ✓
