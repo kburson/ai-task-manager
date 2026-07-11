@@ -128,12 +128,20 @@ if (cfg.state === 'open' && (cfg.fromDate || cfg.toDate)) {
   cfg.toDate   = null;
 }
 
-const GH_TOKEN = execSync('gh auth token', { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }).trim();
+// Resolved lazily so importing this module (e.g. from tests that only exercise
+// buildHtml) does not shell out to `gh auth token`, which is unavailable in CI.
+let _ghToken = null;
+function ghToken() {
+  if (_ghToken == null) {
+    _ghToken = execSync('gh auth token', { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }).trim();
+  }
+  return _ghToken;
+}
 
 async function gql(query) {
   const r = await fetch('https://api.github.com/graphql', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${GH_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${ghToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }),
   });
   const j = await r.json();
@@ -352,7 +360,7 @@ const fmtMinLong = (h, dayHours = 8) => {
   return parts.length ? parts.join(' ') : '0 min';
 };
 
-function buildHtml(project, items, s) {
+export function buildHtml(project, items, s) {
   const now        = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
   const filterParts = [];
   if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
@@ -429,6 +437,22 @@ function buildHtml(project, items, s) {
   }).join('\n');
 
   const totalEh = s.totalEngaged > 0 ? fmtMin(s.totalEngaged) : '—';
+
+  // #788 — Daily Work Activity chart is rendered near the top of the report
+  // (just above the Product Backlog appendix) rather than buried at the bottom
+  // of Timeline Analysis. Pre-compute it here so the return template can place
+  // it up front. The leading rule the chart emits is dropped so the pulled-up
+  // section starts cleanly on its own heading.
+  const dailyWorkActivityHtml = (() => {
+    const buckets = bucketRowsByDay(
+      items.map((i) => ({ number: i.number, body: i.timingBody ?? '' })),
+      {
+        fromMs: cfg.fromDate ? cfg.fromDate.getTime() : null,
+        toMs: cfg.toDate ? cfg.toDate.getTime() : null,
+      },
+    );
+    return renderDailyChart(buckets).replace(/^<hr class="tl-rule">/, '');
+  })();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -790,7 +814,50 @@ td a:hover{text-decoration:underline}
 </div>
 
 <div class="sec">
-  <h2>Product Backlog</h2>
+  <div class="sec-body">${dailyWorkActivityHtml}</div>
+</div>
+
+<div class="sec">
+  <h2>Timeline Analysis</h2>
+  <div class="sec-body">
+    <div class="tg">
+      <div class="tc">
+        <h3>Estimated Effort</h3>
+        <div class="ts"><div class="tn">${fmtMinLong(s.totalEst, cfg.focusHours)}</div><div class="tl">total estimated effort (mid-level baseline · 1 day = ${cfg.focusHours} focused hrs)</div></div>
+        <div class="ts"><div class="tn">${estDuration}</div><div class="tl">calendar weeks @ ${cfg.focusHours} focused hrs/day, ${focusPerWeek} hrs/wk</div></div>
+        <div class="ts"><div class="tn">${wd(s.totalEst)} days</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
+      </div>
+      <div class="tc">
+        <h3>Measured / Engaged</h3>
+        <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? fmtMinLong(s.totalSessionMin / 60, cfg.focusHours) : '—'}</div><div class="tl">active session time (measured · 1 day = ${cfg.focusHours} focused hrs)</div></div>
+        <div class="ts"><div class="tn">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() + ' words' : '—'}</div><div class="tl">context length (measured) · ${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'}</div></div>
+        <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>Engineering Cost by US Region</h2>
+  <div class="sec-body">
+    <p class="note">All rates fully-burdened (salary + benefits + equity + tooling + management overhead). Role: <strong>${cfg.role}</strong>. Adjust with <code>--role senior</code>. "Engaged hours" cost uses total session + reading time as the comparable AI time investment.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Region</th>
+          <th class="num">Rate (${cfg.role})</th>
+          <th class="num">Cost @ Est Hours (${n(s.totalEst)}h)</th>
+          <th class="num">Cost @ Engaged Hours (${totalEh})</th>
+          <th class="num">Savings vs Estimate</th>
+        </tr>
+      </thead>
+      <tbody>${costRows}</tbody>
+    </table>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>Appendix A — Product Backlog</h2>
   <p class="tl-footnote" style="padding:.5rem 1.25rem 0">&#9432; See notes below for column definitions and interpretation guidance.</p>
   <table class="issue-table">
     <colgroup>
@@ -847,42 +914,8 @@ td a:hover{text-decoration:underline}
 </div>
 
 <div class="sec">
-  <h2>Engineering Cost by US Region</h2>
+  <h2>Appendix B — Backlog Engagement Timeline</h2>
   <div class="sec-body">
-    <p class="note">All rates fully-burdened (salary + benefits + equity + tooling + management overhead). Role: <strong>${cfg.role}</strong>. Adjust with <code>--role senior</code>. "Engaged hours" cost uses total session + reading time as the comparable AI time investment.</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Region</th>
-          <th class="num">Rate (${cfg.role})</th>
-          <th class="num">Cost @ Est Hours (${n(s.totalEst)}h)</th>
-          <th class="num">Cost @ Engaged Hours (${totalEh})</th>
-          <th class="num">Savings vs Estimate</th>
-        </tr>
-      </thead>
-      <tbody>${costRows}</tbody>
-    </table>
-  </div>
-</div>
-
-<div class="sec">
-  <h2>Timeline Analysis</h2>
-  <div class="sec-body">
-    <div class="tg">
-      <div class="tc">
-        <h3>Estimated Effort</h3>
-        <div class="ts"><div class="tn">${fmtMinLong(s.totalEst, cfg.focusHours)}</div><div class="tl">total estimated effort (mid-level baseline · 1 day = ${cfg.focusHours} focused hrs)</div></div>
-        <div class="ts"><div class="tn">${estDuration}</div><div class="tl">calendar weeks @ ${cfg.focusHours} focused hrs/day, ${focusPerWeek} hrs/wk</div></div>
-        <div class="ts"><div class="tn">${wd(s.totalEst)} days</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
-      </div>
-      <div class="tc">
-        <h3>Measured / Engaged</h3>
-        <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? fmtMinLong(s.totalSessionMin / 60, cfg.focusHours) : '—'}</div><div class="tl">active session time (measured · 1 day = ${cfg.focusHours} focused hrs)</div></div>
-        <div class="ts"><div class="tn">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() + ' words' : '—'}</div><div class="tl">context length (measured) · ${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'}</div></div>
-        <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
-      </div>
-    </div>
-
     ${(() => {
       const fmtDate = d => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
       const diffDays = (a, b) => a && b ? Math.round(Math.abs(b - a) / 86400000) : null;
@@ -918,8 +951,6 @@ td a:hover{text-decoration:underline}
         return [epicRow, kidRows];
       }).join('\n');
       return `
-      <hr class="tl-rule">
-      <h3 class="tl-heading">Backlog Engagement Timeline</h3>
       <p class="tl-meta">${(() => {
         const fmtD = d => d ? d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'any';
         let scopeLabel;
@@ -985,16 +1016,6 @@ td a:hover{text-decoration:underline}
         Issues in this table are labelled by role (🎯 orchestrator / 🤖 agent / 👤 solo) based on the
         timing log entry written when work began. Issues without a role entry default to solo.
       </p>
-      ${(() => {
-        const buckets = bucketRowsByDay(
-          items.map((i) => ({ number: i.number, body: i.timingBody ?? '' })),
-          {
-            fromMs: cfg.fromDate ? cfg.fromDate.getTime() : null,
-            toMs: cfg.toDate ? cfg.toDate.getTime() : null,
-          },
-        );
-        return renderDailyChart(buckets);
-      })()}
       <p class="tl-footnote">Per-issue Session Time is sourced from the board field, which equals the timing-log active-second sum as of the last <code>log-issue-time</code> run — current for closed issues, potentially stale for in-flight ones. The Daily Work Activity chart reads timing-log rows directly and is unaffected.</p>`;
     })()}
   </div>
@@ -1074,4 +1095,10 @@ async function main() {
   console.log(`PDF  → ${pdfOut}`);
 }
 
-main().catch(err => { console.error(err.message); process.exit(1); });
+// Only run the CLI pipeline when invoked directly, not when imported (tests
+// import buildHtml to assert the rendered section order).
+const invokedDirectly =
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (invokedDirectly) {
+  main().catch(err => { console.error(err.message); process.exit(1); });
+}
