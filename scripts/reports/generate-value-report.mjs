@@ -1010,7 +1010,8 @@ td a:hover{text-decoration:underline}
           },
         );
         return renderDailyChart(buckets);
-      })()}`;
+      })()}
+      <p class="tl-footnote">Per-issue Session Time is sourced from the board field, which equals the timing-log active-second sum as of the last <code>log-issue-time</code> run — current for closed issues, potentially stale for in-flight ones. The Daily Work Activity chart reads timing-log rows directly and is unaffected.</p>`;
     })()}
   </div>
 </div>
