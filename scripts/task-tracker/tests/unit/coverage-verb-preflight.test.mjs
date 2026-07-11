@@ -78,7 +78,10 @@ test('runPreflight: assignee mismatch returns EXIT_ASSIGNEE_MISMATCH', async () 
   assert.equal(res.kind, 'assignee-mismatch');
 });
 
-test('runPreflight: a throwing assignee check is swallowed and proceeds to ok', async () => {
+test('runPreflight: a throwing assignee check fails CLOSED (#769)', async () => {
+  // #769 — the assignee lock must not open on a transient `gh` failure. A
+  // throwing identity/assignee fetch is caught and yields an `unverifiable`
+  // refusal, not a silent pass. (Was fail-open pre-#769.)
   const res = await runPreflight({
     stateBefore: { active: '633' },
     cfg,
@@ -89,7 +92,9 @@ test('runPreflight: a throwing assignee check is swallowed and proceeds to ok', 
       fetchLive: async () => '',
     },
   });
-  assert.equal(res.ok, true);
+  assert.equal(res.ok, false);
+  assert.equal(res.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(res.assigneeKind, 'unverifiable');
 });
 
 // ---- drift ----------------------------------------------------------------
