@@ -202,37 +202,58 @@ test('runReconcile: revert with no recorded → error', async () => {
   assert.equal(r.status, 'error');
   assert.match(r.message, /no recorded state/);
 });
+// #740 — revert-to-recorded is forward-only: the walk runs only when `recorded`
+// is AHEAD of the live board. These use recorded=develop / live=plan (a single
+// legal plan→develop forward hop). The old fixtures used live=review /
+// recorded=develop, which is now the `wrong-direction` refusal path (covered
+// by its own test below), never the move path.
 test('runReconcile: revert transition-failed when move-state non-zero', async () => {
   const { r, calls } = await run('revert-to-recorded', {
     body: RECORDED_DEVELOP,
-    live: 'review',
+    live: 'plan',
     moveExit: 2,
   });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.exitCode, 2);
+  assert.equal(r.failedAt, 'develop');
   assert.equal(calls.moves.length, 1);
   assert.equal(calls.mutations.length, 0);
 });
 test('runReconcile: revert reconciled when move-state succeeds', async () => {
   const { r, calls } = await run('revert-to-recorded', {
     body: RECORDED_DEVELOP,
-    live: 'review',
+    live: 'plan',
     moveExit: 0,
   });
   assert.equal(r.status, 'reconciled');
-  assert.equal(r.from, 'review');
+  assert.equal(r.from, 'plan');
   assert.equal(r.to, 'develop');
+  assert.deepEqual(r.walked, ['develop']);
   assert.equal(calls.mutations.length, 1);
   assert.match(calls.mutations[0], /aitm-reverted/);
 });
 test('runReconcile: revert tolerates audit-marker write throwing', async () => {
   const { r } = await run('revert-to-recorded', {
     body: RECORDED_DEVELOP,
-    live: 'review',
+    live: 'plan',
     moveExit: 0,
     mutateThrows: true,
   });
   assert.equal(r.status, 'reconciled');
+});
+test('runReconcile: revert refuses when recorded is BEHIND live (wrong-direction, #740)', async () => {
+  const { r, calls } = await run('revert-to-recorded', {
+    body: RECORDED_DEVELOP,
+    live: 'review',
+    moveExit: 0,
+  });
+  assert.equal(r.status, 'wrong-direction');
+  assert.equal(r.from, 'review');
+  assert.equal(r.to, 'develop');
+  assert.match(r.message, /accept-live/);
+  // Forward-only: no board move, no audit-marker write on a refused revert.
+  assert.equal(calls.moves.length, 0);
+  assert.equal(calls.mutations.length, 0);
 });
 
 // --- default persistTrackerState (un-injected) ------------------------------
@@ -307,6 +328,13 @@ test('verbReconcile: backfill with no holes → stdout, no exit', async () => {
   const r = await runVerb([String(nextIssue()), 'backfill'], deps);
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /no contiguity holes/);
+});
+test('verbReconcile: revert wrong-direction → exit 5, names accept-live (#740)', async () => {
+  // recorded=develop / live=review is behind-live: forward-only revert refuses.
+  const deps = makeDeps({ body: RECORDED_DEVELOP, live: 'review' }).deps;
+  const r = await runVerb([String(nextIssue()), 'revert-to-recorded'], deps);
+  assert.equal(r.exitCode, 5);
+  assert.match(r.stderr, /accept-live/);
 });
 
 // --- default read helpers (fetchIssueBody / getLiveState) via fake gh --------

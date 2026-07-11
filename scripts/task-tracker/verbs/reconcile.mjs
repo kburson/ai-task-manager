@@ -42,7 +42,7 @@ import {
   parseEntryMarkersFirstVisit,
   safeBackfillTs,
 } from '../lib/stage-entry-markers.mjs';
-import { normalizeStateSlug } from '../state-machine.mjs';
+import { normalizeStateSlug, STATES, FORWARD } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
 // keep: recovery snapshot semantics intentional — reconcile force-rewrites the
 // body verbatim (no closure), so pushIssueBody is the correct primitive here.
@@ -334,24 +334,84 @@ export async function runReconcile({
   }
 
   // revert-to-recorded
+  //
+  // #740 — walk the board FORWARD one legal state at a time until it catches
+  // up to the recorded marker. The prior implementation made a single
+  // `runMoveState({ target: recorded })` jump, which only worked when the gap
+  // was exactly one state: `move-state` validates every transition against the
+  // adjacency-only matrix (`FORWARD`/`BACKWARD` in state-machine.mjs), so a
+  // multi-state jump is an illegal transition and the lone call fails without
+  // ever closing the gap. Composing the repair out of matrix-legal adjacent
+  // hops keeps every step audited (each hop is a normal promote) instead of
+  // teaching reconcile to bypass the matrix.
   if (!recorded) {
     return {
       status: 'error',
       message: `reconcile revert-to-recorded: no recorded state for #${issueNumber}`,
     };
   }
-  const exitCode = await runMoveState({ issueNumber, target: recorded, cfg });
-  if (exitCode !== 0) {
+  if (!live) {
     return {
-      status: 'transition-failed',
-      exitCode,
-      message: `reconcile: move-state.mjs ${recorded} exited ${exitCode}`,
+      status: 'error',
+      message: `reconcile revert-to-recorded: cannot resolve live state for #${issueNumber}`,
     };
+  }
+  const liveIdx = STATES.indexOf(live);
+  const recIdx = STATES.indexOf(recorded);
+  if (liveIdx === -1 || recIdx === -1) {
+    return {
+      status: 'error',
+      message: `reconcile revert-to-recorded: unrecognized state (live "${live}", recorded "${recorded}") for #${issueNumber}`,
+    };
+  }
+  // #740 — revert is forward-only. When the recorded marker is BEHIND the live
+  // board there is no legal backward walk to perform (BACKWARD covers only a
+  // few edges, not a general reverse chain), so the honest answer is to refuse
+  // and name `accept-live` — the operator's real intent in that case is to
+  // accept the live board as truth and re-stamp the marker forward.
+  if (recIdx < liveIdx) {
+    return {
+      status: 'wrong-direction',
+      from: live,
+      to: recorded,
+      message:
+        `reconcile revert-to-recorded: recorded state "${recorded}" is BEHIND live board "${live}" for #${issueNumber}. ` +
+        `revert-to-recorded only walks the board FORWARD; it cannot move it backward. ` +
+        `Run \`/task reconcile accept-live #${issueNumber}\` to accept the live board as truth and re-stamp the marker.`,
+    };
+  }
+  // Already in agreement — recorded === live. Nothing to move; stamp the audit
+  // marker and report reconciled (zero hops).
+  const walked = [];
+  let cursor = live;
+  while (cursor !== recorded) {
+    const next = FORWARD[cursor];
+    if (!next) {
+      return {
+        status: 'error',
+        message: `reconcile revert-to-recorded: no forward edge from "${cursor}" toward "${recorded}" for #${issueNumber}`,
+      };
+    }
+    const exitCode = await runMoveState({ issueNumber, target: next, cfg });
+    if (exitCode !== 0) {
+      return {
+        status: 'transition-failed',
+        exitCode,
+        walked,
+        failedAt: next,
+        message: `reconcile: move-state.mjs ${next} exited ${exitCode} (walked ${walked.length ? walked.join('→') : '∅'} before failing)`,
+      };
+    }
+    walked.push(next);
+    cursor = next;
   }
   try {
     const nowTs = now();
     // #516 — drift revert is recorded as a body audit marker (`aitm-reverted`),
     // not a ⏱ Timing Log row (same rationale as accept-live above).
+    const path = walked.length
+      ? `${live} → ${walked.join(' → ')}`
+      : `${live} (already at recorded)`;
     await mutateBody({
       issueNumber,
       repo: cfg.repo,
@@ -359,13 +419,13 @@ export async function runReconcile({
         appendAuditMarker(base, {
           kind: 'reverted',
           ts: nowTs,
-          detail: `revert: live "${live ?? '∅'}" → recorded "${recorded}"`,
+          detail: `revert: walked forward ${path} to recorded "${recorded}"`,
         }),
     });
   } catch {
     /* best-effort: failure must not abort the primary operation */
   }
-  return { status: 'reconciled', mode, from: live, to: recorded };
+  return { status: 'reconciled', mode, from: live, to: recorded, walked };
 }
 
 // ---------------------------------------------------------------------------
@@ -438,6 +498,10 @@ export async function verbReconcile(rest, cfg, deps = {}) {
     case 'transition-failed': {
       process.stderr.write(`reconcile: ${result.message}\n`);
       process.exit(result.exitCode || 1);
+    }
+    case 'wrong-direction': {
+      process.stderr.write(`\n⛔ ${result.message}\n\n`);
+      process.exit(5);
     }
     case 'error': {
       process.stderr.write(`reconcile: ${result.message}\n`);

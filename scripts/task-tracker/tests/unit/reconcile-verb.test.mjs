@@ -131,17 +131,21 @@ test('reconcile accept-live: On Deck live status stamps aitm-entered-on-deck wit
   assert.match(calls.writes[0], /aitm-entered-on-deck(?::|\s+ts=")/);
 });
 
-test('reconcile revert-to-recorded: drifted issue pushes board back + reverted audit marker', async () => {
+// #740 — revert-to-recorded is now FORWARD-ONLY. A recorded state BEHIND the
+// live board (recorded=plan, live=develop) can no longer be "pushed back": the
+// single develop→plan jump this test used to assert was only ever mock-legal
+// (in production develop→plan is an illegal matrix transition, move-state exits
+// 5), so the honest contract is to refuse and name `accept-live`.
+test('reconcile revert-to-recorded: recorded BEHIND live refuses forward-only, names accept-live (#740)', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });
   const r = await runReconcile({ issueNumber: 301, mode: 'revert-to-recorded', cfg, deps });
-  assert.equal(r.status, 'reconciled');
-  assert.equal(r.mode, 'revert-to-recorded');
+  assert.equal(r.status, 'wrong-direction');
   assert.equal(r.from, 'develop');
   assert.equal(r.to, 'plan');
-  assert.deepEqual(calls.moves, [{ issueNumber: 301, target: 'plan' }]);
-  // #516 — drift revert is a body audit marker, not a timing row.
-  assert.equal(calls.markers.length, 1);
-  assert.match(calls.markers[0], /aitm-reverted/);
+  assert.match(r.message, /accept-live/);
+  // Forward-only: no board move, no audit marker, no body write.
+  assert.equal(calls.moves.length, 0);
+  assert.equal(calls.markers.length, 0);
   assert.equal(calls.writes.length, 0);
 });
 
@@ -212,9 +216,13 @@ test('reconcile accept-live: preserves forward markers as history + adds visit m
   assert.doesNotMatch(calls.markers[0], /stripped:/);
 });
 
+// #740 — re-pointed at a forward scenario (recorded=test AHEAD of live=develop)
+// so it still exercises the body-untouched invariant it was written to protect:
+// the revert path moves the board forward via move-state and never strips or
+// rewrites the body (only the best-effort audit marker is appended).
 test('reconcile revert-to-recorded: does NOT strip future entry markers', async () => {
   const body =
-    '<!-- aitm-last-known-state: plan -->\n' +
+    '<!-- aitm-last-known-state: test -->\n' +
     '<!-- aitm-last-known-state-ts: 2026-05-16T16:00:00Z -->\n' +
     '\n' +
     '<!-- aitm-entered-develop: 2026-05-16T16:10:00Z -->\n' +
@@ -224,19 +232,26 @@ test('reconcile revert-to-recorded: does NOT strip future entry markers', async 
   const r = await runReconcile({ issueNumber: 149, mode: 'revert-to-recorded', cfg, deps });
   assert.equal(r.status, 'reconciled');
   assert.equal(r.mode, 'revert-to-recorded');
-  // revert path does not touch body — only board state via move-state.
+  assert.equal(r.from, 'develop');
+  assert.equal(r.to, 'test');
+  assert.deepEqual(r.walked, ['test']);
+  // revert path does not touch body via writeIssueBody — only board state via
+  // move-state (one forward hop) plus the best-effort audit marker.
   assert.equal(calls.writes.length, 0);
-  assert.deepEqual(calls.moves, [{ issueNumber: 149, target: 'plan' }]);
+  assert.deepEqual(calls.moves, [{ issueNumber: 149, target: 'test' }]);
 });
 
+// #740 — forward scenario (recorded=test AHEAD of live=develop) so the FIRST
+// forward hop is a legal target that move-state rejects at runtime (exit 7).
 test('reconcile revert: transition-failed when move-state exits non-zero', async () => {
   const { deps, calls } = makeDeps({
-    body: bodyWithState('plan'),
+    body: bodyWithState('test'),
     live: 'develop',
     moveCode: 7,
   });
   const r = await runReconcile({ issueNumber: 307, mode: 'revert-to-recorded', cfg, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.exitCode, 7);
+  assert.equal(r.failedAt, 'test');
   assert.equal(calls.markers.length, 0);
 });
