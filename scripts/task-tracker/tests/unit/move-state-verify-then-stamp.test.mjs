@@ -204,9 +204,15 @@ test('AC1/AC2/AC3: the saga core gates on the exit BEFORE running the post-commi
     writeIdx < gateIdx && gateIdx < tailIdx,
     'the exit gate sits between the status write and the post-commit tail'
   );
-  assert.match(
-    src,
-    /writeResult\.exit\s*!==\s*null[\s\S]{0,80}return\s*\{\s*exit:\s*writeResult\.exit/,
+  // #741 inserted a compensating-rollback block between the exit gate and the
+  // failure return, so a fixed-width proximity window is the wrong shape. The
+  // invariant is unchanged — a non-null exit still returns `{ exit:
+  // writeResult.exit … }` BEFORE the main-path tail — so assert it by ORDERING:
+  // the failure return sits after the gate and before runPostCommitTail.
+  const failReturnIdx = src.indexOf('exit: writeResult.exit', gateIdx);
+  assert.ok(failReturnIdx !== -1, 'the failure branch returns writeResult.exit');
+  assert.ok(
+    gateIdx < failReturnIdx && failReturnIdx < tailIdx,
     'a non-null exit returns from the core before the tail stamps marker/timing'
   );
 });
