@@ -322,6 +322,72 @@ A stub deliberately fails the Refine→Plan gate (which still demands Sequence, 
 
 ---
 
+## Blocking-defect isolation dance
+
+When work on a story `#A` is interrupted to fix a blocking defect `#B`, the
+defect fix must be isolated so the two issues merge and close independently.
+Committing both onto one worktree branch entangles their histories: because git
+history is linear, `#B`'s commits become ancestors of `#A`'s, and `#A` cannot
+reach trunk without dragging `#B` along. This blocked closing #522 behind
+the #516 commit `228c814`, which required a cherry-pick to separate.
+
+**Worktree-per-rung is the sole default.** Every blocking-defect fix gets its own
+fresh git worktree rooted at the current trunk HEAD — never branched off the
+blocked story's branch. Rooting at trunk (not at the parent branch) is what keeps
+the defect's commits off the story's ancestry.
+
+**Ascend deepest-first.** Blockers form a ladder (`#A` blocked by `#B` blocked by
+`#C`), discovered top-down but completed bottom-up. For each rung, ascending:
+
+1. On its trunk-rooted worktree, fix the rung.
+2. Test it in isolation.
+3. Merge it to trunk.
+4. Close it.
+5. Rebase the next rung up's worktree onto the now-updated trunk.
+6. Repeat until the original story is finished, merged, and closed.
+
+Because each rung reaches trunk before the rung above rebases onto trunk, the
+upper rung always sits cleanly on top — no entanglement, no cherry-picks.
+
+"Merge to trunk" means whatever the project's integration path is: a direct local
+merge, or (under the PR-based flow) push the rung's branch → CI → PR → merge to
+origin trunk → pull into local trunk. The dance only requires each rung reach
+local trunk **before** the rung above rebases.
+
+**No SHA-fixup needed.** Rebasing rewrites commit SHAs, but attribution is
+[message-based](#commit-attribution): `close`, `commit-trace`, and
+`review-preflight` locate a deliverable by grepping the `[#N]` token across commit
+messages, not by SHA-reachability, and the `close` gate scopes to the trunk ref. A
+post-rebase SHA change therefore does not fail any gate — stale SHAs recorded in
+proof markers are cosmetic, not close-blocking. No SHA-remapping step is required.
+
+```mermaid
+flowchart TD
+    subgraph ladder["Blocker ladder (discovered top-down)"]
+        direction TB
+        A["#A story — blocked"]
+        B["#B defect — blocks #A"]
+        C["#C defect — blocks #B (deepest)"]
+        A -. blocked by .-> B
+        B -. blocked by .-> C
+    end
+    subgraph ascend["Deepest-first ascend cycle (completed bottom-up)"]
+        direction TB
+        C1["fresh worktree off trunk HEAD → fix #C"]
+        C2["test → merge #C to local trunk → close #C"]
+        B1["rebase #B worktree onto updated trunk → fix #B"]
+        B2["test → merge #B to local trunk → close #B"]
+        A1["rebase #A worktree onto updated trunk → finish #A"]
+        A2["test → merge #A to local trunk → close #A"]
+        C1 --> C2 --> B1 --> B2 --> A1 --> A2
+    end
+    C ==> C1
+```
+
+Full design: [`docs/superpowers/specs/2026-07-11-blocking-defect-isolation-design.md`](../superpowers/specs/2026-07-11-blocking-defect-isolation-design.md).
+
+---
+
 ## Priority Tiers
 
 Use P0/P1/P2 only. Sub-issues must share the same Priority as their parent epic — mismatched priority causes sub-issues to appear in the wrong swim lane.

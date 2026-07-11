@@ -10,9 +10,9 @@ When work on a story `#A` is interrupted to fix a blocking defect `#B`, the
 pre-existing workflow committed both issues onto the **same** worktree branch.
 Git history is linear, so the blocker's commits become ancestors of the story's
 commits: `#A` cannot merge to trunk and close without also dragging the
-(possibly still-open) `#B` commits along. This surfaced closing #522, where the
-#516 commit `228c814` sat underneath the #522 commits and could not be separated
-without a cherry-pick. Per-issue work was being entangled on one branch.
+(possibly still-open) `#B` commits along. This surfaced closing #522, where
+the #516 commit `228c814` sat underneath the #522 commits and could not be
+separated without a cherry-pick. Per-issue work was being entangled on one branch.
 
 ## Goals
 
