@@ -26,6 +26,8 @@
     "log-time": "node scripts/gh/log-issue-time.mjs",
     "report:value": "node scripts/reports/generate-value-report.mjs",
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
+    "prepare": "node scripts/task-tracker/ensure-self-link.mjs",
+    "link:self": "node scripts/task-tracker/ensure-self-link.mjs",
     "release": "npm publish --access public",
     "sync:templates": "node scripts/sync-templates.mjs",
     "format": "prettier --write .",
