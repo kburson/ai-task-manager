@@ -9,6 +9,11 @@
 // `npm run link:self`. No-op in consumer installs (see `isDevPackage`). Never throws
 // out — a failed `prepare` would abort `npm install`, which is worse than a missing
 // dev convenience.
+//
+// All diagnostics go to **stderr**: `prepare` also fires during `npm pack`/`npm
+// publish`, and `npm pack --json` emits its manifest on stdout. A stray stdout line
+// here corrupts that JSON (breaks package-boundary + memory-seed-packaged tests), so
+// keep stdout clean.
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +29,7 @@ try {
     'not-dev-package': '[self-link] not a dev checkout — skipped',
     'real-entry-present': '[self-link] real node_modules/ai-task-manager present — left as-is',
   };
-  console.log(messages[res.reason] ?? `[self-link] ${res.reason}`);
+  console.error(messages[res.reason] ?? `[self-link] ${res.reason}`);
 } catch (err) {
   console.warn(`[self-link] skipped: ${err.message}`);
 }
