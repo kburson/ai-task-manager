@@ -210,23 +210,24 @@ Append-only format. Each row captures a point-in-time measurement; deltas are re
 ```markdown
 ⏱ Timing Log
 
-| Timestamp         | Event               | Active Min | Idle Min | Δ Words | Word Marker | Description           |
-| ----------------- | ------------------- | ---------- | -------- | ------- | ----------- | --------------------- |
-| 2026-04-24T14:02Z | start               | 0          | 0        | 0       | 8,541       | task opened           |
-| 2026-04-24T14:47Z | pre-compact-flush   | 38         | 7        | 12,400  | 20,941      | context compacted     |
-| 2026-04-24T14:48Z | post-compact-resume | 0          | 0        | 0       | 20,941      | resumed after compact |
-| 2026-04-24T15:30Z | update              | 40         | 2        | 6,800   | 27,741      | checkpoint            |
-| 2026-04-24T15:30Z | pause               | 4          | 0        | 312     | 28,053      | task paused           |
-| 2026-04-24T16:10Z | resume              | 0          | 0        | 0       | 28,053      | task resumed          |
-| 2026-04-24T16:55Z | end                 | 45         | 3        | 9,200   | 37,253      | task ended            |
+| Timestamp         | Event               | Active Min | Idle Min | Δ Words | Word Marker | Description           | Δ Words (full) |
+| ----------------- | ------------------- | ---------- | -------- | ------- | ----------- | --------------------- | -------------- |
+| 2026-04-24T14:02Z | start               | 0          | 0        | 0       | 8,541       | task opened           | 0              |
+| 2026-04-24T14:47Z | pre-compact-flush   | 38         | 7        | 12,400  | 20,941      | context compacted     | 41,900         |
+| 2026-04-24T14:48Z | post-compact-resume | 0          | 0        | 0       | 20,941      | resumed after compact | 0              |
+| 2026-04-24T15:30Z | update              | 40         | 2        | 6,800   | 27,741      | checkpoint            | 18,300         |
+| 2026-04-24T15:30Z | pause               | 4          | 0        | 312     | 28,053      | task paused           | 940            |
+| 2026-04-24T16:10Z | resume              | 0          | 0        | 0       | 28,053      | task resumed          | 0              |
+| 2026-04-24T16:55Z | end                 | 45         | 3        | 9,200   | 37,253      | task ended            | 24,600         |
 ```
 
 Column semantics:
 
 - **Active Min** / **Idle Min** — minutes in this window where Claude was engaged vs. idle (gap > `idleThresholdMinutes`). Deltas since the last baseline reset.
-- **Δ Words** — context words added since the last baseline reset.
-- **Word Marker** — absolute word-count position in the session JSONL at the time of this row; useful as a reference point for manual inspection.
+- **Δ Words** — the **stay-abreast** word tier and primary metric: monologue + user prose + tool-summary chips (one short chip per tool call — a Bash command's description, or `<tool> <file/path/query>`). Words added since the last baseline reset. This is what a reviewer would read to stay abreast of the session.
+- **Word Marker** — absolute stay-abreast word-count position in the session JSONL at the time of this row; useful as a reference point for manual inspection.
 - **Description** — human-readable label; free-text for `/task update`, fixed strings for automated events.
+- **Δ Words (full)** — the **full-expansion** word tier: everything in **Δ Words** plus the full `tool_use` inputs and full `tool_result` outputs (injected/prompt-injection content filtered out), since the last baseline reset. This column is opt-in — rows emitted by callers that don't supply the full count omit it entirely, so legacy tables stay byte-identical. Always ≥ **Δ Words**; the gap is the weight of tool I/O the stay-abreast tier collapses to chips.
 
 On each event, the skill pulls the current comment, appends a row, and replaces via GraphQL mutation.
 
