@@ -257,4 +257,75 @@ const ALL_GREEN = [
   assert.ok(out.includes('- [x] `npm test`'), 'bare VC box still flips to [x]');
 }
 
+// ---------------------------------------------------------------------------
+// @story #803 — the AC auto-tick must honor the canonical `vc-list="vc:N"`
+// citation (#774), not only the legacy `cmd="vc:N"` attribute. Before #803 the
+// AC branch read only `props.cmd`, so a `vc-list`-cited AC was never ticked by a
+// green sandbox and Develop→Test then refused with `code-complete-ac-unticked`.
+// ---------------------------------------------------------------------------
+
+// A shared body with two VCs and three ACs: one cites vc:1 via `vc-list`, one
+// cites vc:2 via `vc-list`, and one cites vc:1 via the legacy `cmd` attribute.
+function vcListFixture() {
+  return [
+    '## Verification Commands',
+    '',
+    '- [ ] `npm test` <!-- id=1 -->',
+    '- [ ] `npm run lint` <!-- id=2 -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [ ] vc-list-cited AC one <!-- aitm-verified vc-list="vc:1" -->',
+    '- [ ] vc-list-cited AC two <!-- aitm-verified vc-list="vc:2" -->',
+    '- [ ] cmd-cited AC three <!-- aitm-verified cmd="vc:1" -->',
+    '',
+  ].join('\n');
+}
+
+// AC1 — a `vc-list`-cited AC is auto-ticked when its referenced VC passed.
+{
+  const { body, tickedAc } = autoTickVerified(
+    vcListFixture(),
+    [
+      { command: 'npm test', passed: true, exit: 0 },
+      { command: 'npm run lint', passed: true, exit: 0 },
+    ],
+    '2026-07-13T00:00:00Z'
+  );
+  assert.ok(body.includes('- [x] vc-list-cited AC one'), 'vc-list AC (vc:1) ticked');
+  assert.ok(body.includes('- [x] vc-list-cited AC two'), 'vc-list AC (vc:2) ticked');
+  assert.ok(
+    tickedAc.some((t) => t.includes('vc-list-cited AC one')),
+    'tickedAc reports the vc-list AC'
+  );
+}
+
+// AC2 — a `vc-list`-cited AC whose VC FAILED is left unticked (parity with the
+// `cmd`-path negative case): vc:2 (lint) fails, so AC two stays `- [ ]`.
+{
+  const { body } = autoTickVerified(
+    vcListFixture(),
+    [
+      { command: 'npm test', passed: true, exit: 0 },
+      { command: 'npm run lint', passed: false, exit: 1 },
+    ],
+    '2026-07-13T00:00:00Z'
+  );
+  assert.ok(body.includes('- [x] vc-list-cited AC one'), 'passing vc-list AC (vc:1) ticked');
+  assert.ok(body.includes('- [ ] vc-list-cited AC two'), 'failing vc-list AC (vc:2) left unticked');
+}
+
+// AC3 — the legacy `cmd="vc:N"` citation path still auto-ticks unchanged.
+{
+  const { body } = autoTickVerified(
+    vcListFixture(),
+    [
+      { command: 'npm test', passed: true, exit: 0 },
+      { command: 'npm run lint', passed: true, exit: 0 },
+    ],
+    '2026-07-13T00:00:00Z'
+  );
+  assert.ok(body.includes('- [x] cmd-cited AC three'), 'legacy cmd="vc:1" AC still ticked');
+}
+
 console.log('auto-tick-verified.test.mjs: all assertions passed');

@@ -40,7 +40,7 @@ import { BACKTICK_CMD_RE, parseVerificationCommands } from './verification-comma
 // #721 — resolve an AC's `cmd="vc:<n>"` citation against the issue's own VC
 // list before checking every cited command's pass state (AND-fan-in). A
 // legacy embedded-command AC (`cmd="\`...\`"`) resolves unchanged.
-import { resolveCitedOrLiteralCommands } from './vc-ref.mjs';
+import { resolveCitedOrLiteralCommands, resolveVcRefCommands } from './vc-ref.mjs';
 
 // A Functional DoD line's canonical `dod:functional:<key>` tag. When present we
 // record the run by upserting run-props into that line's single `aitm-verified`
@@ -139,7 +139,19 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
       // malformed body, not sandbox evidence to act on — leave the box alone.
       const props = parseProofMarker(rest);
       let cmds = [];
-      if (props && typeof props.cmd === 'string') {
+      // #803 — mirror `ac-evidence.mjs::extractCommands`: the canonical by-id
+      // citation (#774) lives in the `vc-list` attribute (the form #773's
+      // Refine-exit guardrail mandates), resolved strictly by id. The legacy
+      // `cmd` attribute is the fallback. Reading only `cmd` (pre-#803) left a
+      // `vc-list`-cited AC un-ticked by a green sandbox, so Develop→Test then
+      // refused with a misleading `code-complete-ac-unticked`.
+      if (props && typeof props['vc-list'] === 'string') {
+        try {
+          cmds = resolveVcRefCommands(props['vc-list'], vcItems) || [];
+        } catch {
+          cmds = [];
+        }
+      } else if (props && typeof props.cmd === 'string') {
         try {
           cmds = resolveCitedOrLiteralCommands(props.cmd, vcItems);
         } catch {
