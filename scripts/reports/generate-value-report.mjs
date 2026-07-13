@@ -31,9 +31,12 @@
  */
 //
 // Measured fields read from GitHub Projects:
-//   "Session Time"        — a Text duration string (`DDd HHh MMm SSs`, integer
-//                           seconds) since #398/#399; parsed via the shared
-//                           `parseDuration` and converted to minutes here.
+//   "Session"             — a Text duration string (`DDd HHh MMm SSs`, integer
+//                           seconds) since #398/#399, renamed from the legacy
+//                           "Session Time" in #786. Resolved (with the
+//                           "Session Time" / "Actual Session Time" fallbacks)
+//                           and converted to minutes by `readSessionMinutes`
+//                           (`./lib/session-field.mjs`).
 //
 // Context words (words of *reader-visible* chat context — text actually
 // rendered in the chat window, EXCLUDING system-reminders, skill bodies,
@@ -52,7 +55,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
-import { parseDuration } from '../task-tracker/lib/duration.mjs';
+import { readSessionMinutes } from './lib/session-field.mjs';
+import { readEngagedMinutes, readDurationMinutes, readStartedAt, accelRatio } from './lib/board-fields.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
@@ -125,12 +129,20 @@ if (cfg.state === 'open' && (cfg.fromDate || cfg.toDate)) {
   cfg.toDate   = null;
 }
 
-const GH_TOKEN = execSync('gh auth token', { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }).trim();
+// Resolved lazily so importing this module (e.g. from tests that only exercise
+// buildHtml) does not shell out to `gh auth token`, which is unavailable in CI.
+let _ghToken = null;
+function ghToken() {
+  if (_ghToken == null) {
+    _ghToken = execSync('gh auth token', { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS }).trim();
+  }
+  return _ghToken;
+}
 
 async function gql(query) {
   const r = await fetch('https://api.github.com/graphql', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${GH_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${ghToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }),
   });
   const j = await r.json();
@@ -205,25 +217,6 @@ function fields(item) {
   return out;
 }
 
-// The board "Session Time" field is a Text duration string (`DDd HHh MMm SSs`,
-// integer seconds) since #398/#399. Convert to MINUTES — the unit the rest of
-// this report's math assumes. A legacy numeric "Actual Session Time" fallback
-// is still treated as already-minutes.
-function sessionToMinutes(v) {
-  if (v == null) return null;
-  if (typeof v === 'number') return v;
-  if (typeof v === 'string') {
-    const t = v.trim();
-    if (t === '') return null;
-    try {
-      return parseDuration(t) / 60;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 function parseStartInfo(comments) {
   for (const c of (comments ?? [])) {
     if (!c.body?.includes('⏱ Timing Log')) continue;
@@ -258,10 +251,20 @@ function processItems(raw, attribution = null) {
         body:         n.content.body ?? '',
         createdAt:    n.content.createdAt ? new Date(n.content.createdAt) : null,
         closedAt:     n.content.closedAt  ? new Date(n.content.closedAt)  : null,
-        ...parseStartInfo(n.content.comments?.nodes),
+        // #789 — start DATE comes from the board `Started` field, not the timing
+        // log. Role still derives from the timing-log description. An absent
+        // `Started` degrades to null (renders `—`); it never throws.
+        startedAt:    readStartedAt(f),
+        role:         parseStartInfo(n.content.comments?.nodes).role,
         timingBody:   extractTimingBody(n.content.comments?.nodes),
         estimate:     f['Estimate']            ?? null,
-        sessionMin:   sessionToMinutes(f['Session Time'] ?? f['Actual Session Time']),
+        sessionMin:   readSessionMinutes(f),
+        // #789 — Engaged/Review/Plan read straight from the board's Text-duration
+        // fields (minutes). Review/Plan are best-effort: null when the field is
+        // absent, 0 when present-but-zero.
+        engagedMin:   readEngagedMinutes(f),
+        reviewMin:    readDurationMinutes(f, 'Review'),
+        planMin:      readDurationMinutes(f, 'Plan'),
         // The board "Context Length" field was retired (#260). Per-item context
         // words are no longer sourced from the board; the report's reading-time /
         // leverage aggregate is fed by the --chat-words flag instead.
@@ -368,7 +371,7 @@ const fmtMinLong = (h, dayHours = 8) => {
   return parts.length ? parts.join(' ') : '0 min';
 };
 
-function buildHtml(project, items, s) {
+export function buildHtml(project, items, s) {
   const now        = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
   const filterParts = [];
   if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
@@ -417,8 +420,11 @@ function buildHtml(project, items, s) {
   const fmtEst  = h => h == null ? '—' : h < 1 ? Math.round(h * 60) + ' min' : Number.isInteger(h) ? h + 'h' : h + 'h';
 
   function renderRow(i, ru, cls) {
-    const eh         = engagedHours(ru.sessionMin, ru.contextWords);
-    const ratio      = ru.estimate != null && eh > 0 ? (ru.estimate / eh).toFixed(1) : null;
+    // #789 — Engaged and Accel come from the board `Engaged` field, not a
+    // session+reading computation. Accel = Estimate ÷ board-Engaged.
+    const engagedMin = ru.engagedMin;
+    const ratioNum   = accelRatio(ru.estimate, engagedMin);
+    const ratio      = ratioNum != null ? ratioNum.toFixed(1) : null;
     const ratioClass = ratio == null ? '' : +ratio >= 1.5 ? 'good' : +ratio < 0.8 ? 'over' : 'warn';
     const prefix     = cls === 'child-row' ? '<span class="child-indent">↳</span> ' : cls === 'epic-row' ? '▶ ' : '';
     return `<tr class="${cls}">
@@ -426,8 +432,9 @@ function buildHtml(project, items, s) {
       <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
       <td class="num">${fmtEst(ru.estimate)}</td>
       <td class="num">${ru.sessionMin != null ? fmtMin(ru.sessionMin / 60) : '—'}</td>
-      <td class="num">${ru.contextWords != null ? ru.contextWords.toLocaleString() : '—'}</td>
-      <td class="num">${eh > 0 ? fmtMin(eh) : '—'}</td>
+      <td class="num">${engagedMin != null && engagedMin > 0 ? fmtMin(engagedMin / 60) : '—'}</td>
+      <td class="num">${ru.planMin != null ? fmtMin(ru.planMin / 60) : '—'}</td>
+      <td class="num">${ru.reviewMin != null ? fmtMin(ru.reviewMin / 60) : '—'}</td>
       <td class="num ${ratioClass}">${ratio != null ? ratio + '×' : '—'}</td>
       <td class="${(i.status ?? '').toLowerCase() === 'done' ? 'closed' : 'open'}">${i.status ?? '—'}</td>
     </tr>`;
@@ -437,7 +444,13 @@ function buildHtml(project, items, s) {
   const issueRows = hierarchy.map(({ item: i, children }) => {
     const isEpic = children.length > 0;
     const ru = isEpic
-      ? { estimate: rollupVal(i.estimate, children, 'estimate'), sessionMin: rollupVal(i.sessionMin, children, 'sessionMin'), contextWords: rollupVal(i.contextWords, children, 'contextWords') }
+      ? {
+          estimate:   rollupVal(i.estimate,   children, 'estimate'),
+          sessionMin: rollupVal(i.sessionMin, children, 'sessionMin'),
+          engagedMin: rollupVal(i.engagedMin, children, 'engagedMin'),
+          planMin:    rollupVal(i.planMin,    children, 'planMin'),
+          reviewMin:  rollupVal(i.reviewMin,  children, 'reviewMin'),
+        }
       : i;
     const epicRow  = renderRow(i, ru, isEpic ? 'epic-row' : '');
     const kidRows  = children.map(c => renderRow(c, c, 'child-row')).join('\n');
@@ -445,6 +458,32 @@ function buildHtml(project, items, s) {
   }).join('\n');
 
   const totalEh = s.totalEngaged > 0 ? fmtMin(s.totalEngaged) : '—';
+
+  // #789 — Appendix A footer totals sum the board `Engaged`/`Plan`/`Review`
+  // fields across all issues (each counted once; epic rollups are display-only),
+  // and Accel = total Estimate ÷ total board-Engaged. Kept independent of the
+  // headline `summary()` math, which still uses session+chat-words reading time.
+  const sumMin = key => items.reduce((acc, i) => acc + (i[key] ?? 0), 0);
+  const tableEngagedMin = sumMin('engagedMin');
+  const tablePlanMin    = sumMin('planMin');
+  const tableReviewMin  = sumMin('reviewMin');
+  const tableAccel      = accelRatio(s.totalEst, tableEngagedMin);
+
+  // #788 — Daily Work Activity chart is rendered near the top of the report
+  // (just above the Product Backlog appendix) rather than buried at the bottom
+  // of Timeline Analysis. Pre-compute it here so the return template can place
+  // it up front. The leading rule the chart emits is dropped so the pulled-up
+  // section starts cleanly on its own heading.
+  const dailyWorkActivityHtml = (() => {
+    const buckets = bucketRowsByDay(
+      items.map((i) => ({ number: i.number, body: i.timingBody ?? '' })),
+      {
+        fromMs: cfg.fromDate ? cfg.fromDate.getTime() : null,
+        toMs: cfg.toDate ? cfg.toDate.getTime() : null,
+      },
+    );
+    return renderDailyChart(buckets).replace(/^<hr class="tl-rule">/, '');
+  })();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -506,8 +545,9 @@ td{padding:.35rem .625rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 .issue-table .col-title{width:30%}
 .issue-table .col-est{width:6%}
 .issue-table .col-session{width:9%}
-.issue-table .col-context{width:10%}
 .issue-table .col-engaged{width:9%}
+.issue-table .col-plan{width:8%}
+.issue-table .col-review{width:8%}
 .issue-table .col-accel{width:7%}
 .issue-table .col-status{width:11%}
 .issue-table td.title-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -806,59 +846,26 @@ td a:hover{text-decoration:underline}
 </div>
 
 <div class="sec">
-  <h2>Product Backlog</h2>
-  <p class="tl-footnote" style="padding:.5rem 1.25rem 0">&#9432; See notes below for column definitions and interpretation guidance.</p>
-  <table class="issue-table">
-    <colgroup>
-      <col class="col-num"><col class="col-title"><col class="col-est">
-      <col class="col-session"><col class="col-context"><col class="col-engaged">
-      <col class="col-accel"><col class="col-status">
-    </colgroup>
-    <thead>
-      <tr>
-        <th>#</th><th>Title</th>
-        <th class="num">Est</th>
-        <th class="num">Session</th>
-        <th class="num">Context words</th>
-        <th class="num">Engaged</th>
-        <th class="num">Accel.</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${issueRows}
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="2">Total (${items.length} issues · ${hierarchy.filter(r => r.children.length > 0).length} epics)</td>
-        <td class="num">${fmtEst(s.totalEst)}</td>
-        <td class="num">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</td>
-        <td class="num">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() : '—'}</td>
-        <td class="num">${totalEh}</td>
-        <td class="num good">${s.accel != null ? s.accel + '×' : '—'}</td>
-        <td></td>
-      </tr>
-    </tfoot>
-  </table>
-  <div class="sec-body" style="padding-top:2rem">
-    <p class="tl-note">
-      <strong>Column definitions.</strong>
-      <em>#</em> — GitHub issue number, linked to the issue.
-      <em>Est</em> — Pre-execution estimate in mid-level engineer-hours, captured before work began; this is the basis for all acceleration calculations.
-      <em>Session</em> — Measured active AI session time logged by the task tracker.
-      <em>Context words</em> — Reader-visible words in the chat window at session end — text the engineer actually reads. Excludes system reminders, skill bodies, tool results, and other injected payload.
-      <em>Engaged</em> — Total human time investment: session time plus a fraction of reading time (context words ÷ ${cfg.readingWpm} wpm × ${cfg.readingOverlap} overlap factor). The overlap factor accounts for reading that runs concurrently with active AI work rather than stacking on top.
-      <em>Accel.</em> — Acceleration ratio: estimate ÷ engaged hours. Values above 1.0× mean the work was delivered faster than the estimate implied.
-      <span style="color:#16a34a;font-weight:600">Green ≥ 1.5×</span> · <span style="color:#d97706;font-weight:600">Amber 0.8–1.5×</span> · <span style="color:#dc2626;font-weight:600">Red &lt; 0.8×</span>.
-    </p>
-    <p class="tl-note">
-      <strong>Epics and sub-issues.</strong>
-      Epic rows (dark background, ▶ prefix) show rolled-up totals across all their sub-issues — estimate, session, context, and engaged time are summed before the acceleration ratio is calculated. The epic-level ratio therefore reflects aggregate efficiency across the entire body of work, not just the orchestration session. Sub-issues are indented below their parent; their individual ratios capture per-task efficiency and will naturally vary. Do not add epic and sub-issue rows together — sub-issue values are already included in the epic total.
-    </p>
-    <p class="tl-note">
-      <strong>Missing values (—).</strong>
-      A dash means the field was not set on the GitHub project board for that issue. Issues without <em>Estimate</em> cannot contribute to acceleration calculations and are omitted from the aggregate ratio. Issues without <em>Session</em> or <em>Context words</em> reflect work completed outside a task-tracked session or before the tool was in use — they are included in the table for completeness but their engaged time is treated as zero in cost totals.
-    </p>
+  <div class="sec-body">${dailyWorkActivityHtml}</div>
+</div>
+
+<div class="sec">
+  <h2>Timeline Analysis</h2>
+  <div class="sec-body">
+    <div class="tg">
+      <div class="tc">
+        <h3>Estimated Effort</h3>
+        <div class="ts"><div class="tn">${fmtMinLong(s.totalEst, cfg.focusHours)}</div><div class="tl">total estimated effort (mid-level baseline · 1 day = ${cfg.focusHours} focused hrs)</div></div>
+        <div class="ts"><div class="tn">${estDuration}</div><div class="tl">calendar weeks @ ${cfg.focusHours} focused hrs/day, ${focusPerWeek} hrs/wk</div></div>
+        <div class="ts"><div class="tn">${wd(s.totalEst)} days</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
+      </div>
+      <div class="tc">
+        <h3>Measured / Engaged</h3>
+        <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? fmtMinLong(s.totalSessionMin / 60, cfg.focusHours) : '—'}</div><div class="tl">active session time (measured · 1 day = ${cfg.focusHours} focused hrs)</div></div>
+        <div class="ts"><div class="tn">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() + ' words' : '—'}</div><div class="tl">context length (measured) · ${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'}</div></div>
+        <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -882,23 +889,67 @@ td a:hover{text-decoration:underline}
 </div>
 
 <div class="sec">
-  <h2>Timeline Analysis</h2>
-  <div class="sec-body">
-    <div class="tg">
-      <div class="tc">
-        <h3>Estimated Effort</h3>
-        <div class="ts"><div class="tn">${fmtMinLong(s.totalEst, cfg.focusHours)}</div><div class="tl">total estimated effort (mid-level baseline · 1 day = ${cfg.focusHours} focused hrs)</div></div>
-        <div class="ts"><div class="tn">${estDuration}</div><div class="tl">calendar weeks @ ${cfg.focusHours} focused hrs/day, ${focusPerWeek} hrs/wk</div></div>
-        <div class="ts"><div class="tn">${wd(s.totalEst)} days</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
-      </div>
-      <div class="tc">
-        <h3>Measured / Engaged</h3>
-        <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? fmtMinLong(s.totalSessionMin / 60, cfg.focusHours) : '—'}</div><div class="tl">active session time (measured · 1 day = ${cfg.focusHours} focused hrs)</div></div>
-        <div class="ts"><div class="tn">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() + ' words' : '—'}</div><div class="tl">context length (measured) · ${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'}</div></div>
-        <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
-      </div>
-    </div>
+  <h2>Appendix A — Product Backlog</h2>
+  <p class="tl-footnote" style="padding:.5rem 1.25rem 0">&#9432; See notes below for column definitions and interpretation guidance.</p>
+  <table class="issue-table">
+    <colgroup>
+      <col class="col-num"><col class="col-title"><col class="col-est">
+      <col class="col-session"><col class="col-engaged"><col class="col-plan">
+      <col class="col-review"><col class="col-accel"><col class="col-status">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>#</th><th>Title</th>
+        <th class="num">Est</th>
+        <th class="num">Session</th>
+        <th class="num">Engaged</th>
+        <th class="num">Plan</th>
+        <th class="num">Review</th>
+        <th class="num">Accel.</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${issueRows}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">Total (${items.length} issues · ${hierarchy.filter(r => r.children.length > 0).length} epics)</td>
+        <td class="num">${fmtEst(s.totalEst)}</td>
+        <td class="num">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</td>
+        <td class="num">${tableEngagedMin > 0 ? fmtMin(tableEngagedMin / 60) : '—'}</td>
+        <td class="num">${tablePlanMin > 0 ? fmtMin(tablePlanMin / 60) : '—'}</td>
+        <td class="num">${tableReviewMin > 0 ? fmtMin(tableReviewMin / 60) : '—'}</td>
+        <td class="num good">${tableAccel != null ? tableAccel.toFixed(1) + '×' : '—'}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="sec-body" style="padding-top:2rem">
+    <p class="tl-note">
+      <strong>Column definitions.</strong>
+      <em>#</em> — GitHub issue number, linked to the issue.
+      <em>Est</em> — Pre-execution estimate in mid-level engineer-hours, captured before work began; this is the basis for all acceleration calculations.
+      <em>Session</em> — Measured active AI session time logged by the task tracker (board <em>Session</em> field).
+      <em>Engaged</em> — Total human time investment, read directly from the board <em>Engaged</em> field (active session plus tracked plan/review overhead).
+      <em>Plan</em> / <em>Review</em> — Time logged in the Plan and Review stages, from the board's <em>Plan</em> and <em>Review</em> fields; a dash means the field is not set.
+      <em>Accel.</em> — Acceleration ratio: estimate ÷ board engaged hours. Values above 1.0× mean the work was delivered faster than the estimate implied.
+      <span style="color:#16a34a;font-weight:600">Green ≥ 1.5×</span> · <span style="color:#d97706;font-weight:600">Amber 0.8–1.5×</span> · <span style="color:#dc2626;font-weight:600">Red &lt; 0.8×</span>.
+    </p>
+    <p class="tl-note">
+      <strong>Epics and sub-issues.</strong>
+      Epic rows (dark background, ▶ prefix) show rolled-up totals across all their sub-issues — estimate, session, engaged, plan, and review time are summed before the acceleration ratio is calculated. The epic-level ratio therefore reflects aggregate efficiency across the entire body of work, not just the orchestration session. Sub-issues are indented below their parent; their individual ratios capture per-task efficiency and will naturally vary. Do not add epic and sub-issue rows together — sub-issue values are already included in the epic total.
+    </p>
+    <p class="tl-note">
+      <strong>Missing values (—).</strong>
+      A dash means the field was not set on the GitHub project board for that issue. Issues without <em>Estimate</em> or a non-zero <em>Engaged</em> value cannot contribute to acceleration calculations and are omitted from the aggregate ratio. Issues without <em>Session</em>, <em>Plan</em>, or <em>Review</em> reflect work completed outside a task-tracked session or before the tool was in use — they are included in the table for completeness but their missing durations are treated as zero in cost totals.
+    </p>
+  </div>
+</div>
 
+<div class="sec">
+  <h2>Appendix B — Backlog Engagement Timeline</h2>
+  <div class="sec-body">
     ${(() => {
       const fmtDate = d => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
       const diffDays = (a, b) => a && b ? Math.round(Math.abs(b - a) / 86400000) : null;
@@ -934,8 +985,6 @@ td a:hover{text-decoration:underline}
         return [epicRow, kidRows];
       }).join('\n');
       return `
-      <hr class="tl-rule">
-      <h3 class="tl-heading">Backlog Engagement Timeline</h3>
       <p class="tl-meta">${(() => {
         const fmtD = d => d ? d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'any';
         let scopeLabel;
@@ -1001,16 +1050,6 @@ td a:hover{text-decoration:underline}
         Issues in this table are labelled by role (🎯 orchestrator / 🤖 agent / 👤 solo) based on the
         timing log entry written when work began. Issues without a role entry default to solo.
       </p>
-      ${(() => {
-        const buckets = bucketRowsByDay(
-          items.map((i) => ({ number: i.number, body: i.timingBody ?? '' })),
-          {
-            fromMs: cfg.fromDate ? cfg.fromDate.getTime() : null,
-            toMs: cfg.toDate ? cfg.toDate.getTime() : null,
-          },
-        );
-        return renderDailyChart(buckets);
-      })()}
       <p class="tl-footnote">Per-issue Session Time is sourced from the board field, which equals the timing-log active-second sum as of the last <code>log-issue-time</code> run — current for closed issues, potentially stale for in-flight ones. The Daily Work Activity chart reads timing-log rows directly and is unaffected.</p>`;
     })()}
   </div>
@@ -1090,4 +1129,10 @@ async function main() {
   console.log(`PDF  → ${pdfOut}`);
 }
 
-main().catch(err => { console.error(err.message); process.exit(1); });
+// Only run the CLI pipeline when invoked directly, not when imported (tests
+// import buildHtml to assert the rendered section order).
+const invokedDirectly =
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (invokedDirectly) {
+  main().catch(err => { console.error(err.message); process.exit(1); });
+}

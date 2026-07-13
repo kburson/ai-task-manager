@@ -296,6 +296,27 @@ export function planStageHeal({ stage, body, createdAt }) {
       throw err;
     }
   }
+  if (stage === 'backlog' && !hasEntry && !hasLater) {
+    // #784 — Zero-marker backlog issue: no `aitm-entered-backlog` and no later
+    // stage marker to anchor against. The #252 contiguity guard still requires
+    // `aitm-entered-backlog` before any forward promotion, but the case-(a)
+    // `hasLater && !hasEntry` backfill never fires (nothing is "later"), so the
+    // issue is un-promotable with no sanctioned repair. Mint the marker from the
+    // `createdAt`-anchored fallback (backlog at createdAt+1s; no refine present,
+    // so `refineBumpTs` is null). Fall through to `no-heal-needed` if `createdAt`
+    // is unparseable rather than throw.
+    if (Number.isFinite(Date.parse(createdAt))) {
+      const fallback = backlogCreatedAtFallback({ markers, createdAt });
+      return {
+        action: 'backfill',
+        ts: fallback.backlogTs,
+        reason: 'zero-marker-backlog-fallback',
+        mode: 'entry+audit',
+        refineBumpTs: fallback.refineBumpTs,
+      };
+    }
+    return { action: 'skip', reason: 'no-heal-needed' };
+  }
   if (hasEntry && hasLater && !hasAudit) {
     const m = new RegExp(`<!--\\s*aitm-entered-${stage}:\\s*([^\\s-][^\\s]*?)\\s*-->`, 'i').exec(
       body

@@ -35,6 +35,7 @@ fanin
 fanout
 Flesch
 frontmatter
+gitdir
 Heredocs
 HOABCEY
 idempotently
@@ -140,6 +141,8 @@ untick
 unticked
 unvetted
 Unvetted
+untrackable
+realdir
 Verif
 winget
 worktree
@@ -201,3 +204,5 @@ gridline
 tzset
 unioned
 backcompat
+repoint
+repoints
