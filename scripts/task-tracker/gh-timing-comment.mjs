@@ -31,11 +31,11 @@ const TIMING_HEADING = '⏱ Timing Log';
 // gate refusals, recovery, close) have no live transcript segment, so their
 // delta is legitimately 0 while the cumulative Word Marker still carries forward.
 const COLUMN_LEGEND =
-  '<sub>Δ Words = words added during this row’s segment (per-row delta; `0` on lifecycle/audit rows is expected). Word Marker = cumulative session word count, carried forward monotonically.</sub>';
+  '<sub>Δ Words = stay-abreast words added during this row’s segment (monologue + prose + tool-summary chips; per-row delta, `0` on lifecycle/audit rows is expected). Word Marker = cumulative stay-abreast word count, carried forward monotonically. Δ Words (full) = full-expansion per-row delta (stay-abreast + full tool inputs + full tool outputs); blank on lifecycle/audit rows.</sub>';
 
 const TABLE_HEADER = [
-  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |',
-  '|---|---|---|---|---|---|---|',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+  '|---|---|---|---|---|---|---|---|',
 ].join('\n');
 
 export function fmtTs(iso) {
@@ -109,6 +109,7 @@ export function buildRow({
   activeSec,
   idleSec,
   deltaWords,
+  deltaWordsFull,
   wordMarker,
   description = '',
   phase,
@@ -155,7 +156,13 @@ export function buildRow({
     activeCell = fmtNumBlankZero(activeMin);
     idleCell = fmtNumBlankZero(idleMin);
   }
-  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${trailingMarker}`;
+  // Full-expansion column is trailing (after Description) and rendered ONLY when
+  // the caller opts in by passing `deltaWordsFull`. Legacy callers that omit it
+  // produce the exact pre-#795 row string byte-for-byte, so pre-existing rows
+  // and every exact-match test stay unchanged; opted-in rows gain the extra cell
+  // before the `<!-- row-sec -->` marker.
+  const fullCell = deltaWordsFull === undefined ? '' : ` ${fmtNumBlankZero(deltaWordsFull)} |`;
+  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
 }
 
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every
@@ -174,6 +181,7 @@ export function buildFlushRow({
   activeMin,
   idleMin,
   deltaWords,
+  deltaWordsFull,
   wordMarker,
   description = '',
   phase,
@@ -185,6 +193,7 @@ export function buildFlushRow({
     activeSec: toSec(activeMin),
     idleSec: toSec(idleMin),
     deltaWords,
+    deltaWordsFull,
     wordMarker,
     description,
     phase,

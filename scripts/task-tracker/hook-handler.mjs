@@ -125,7 +125,11 @@ async function onPreCompact(sid) {
   // dereference a null timestamp.
   if (!s.entryStartTs) return;
   const marker = loadMarker(markerPathFor(sid));
-  const { count: newWords, totalLines } = countWords(jsonlPath(sid), marker.line);
+  const {
+    count: newWords,
+    totalLines,
+    fullExpansion: newWordsFull,
+  } = countWords(jsonlPath(sid), marker.line);
   const ts = new Date().toISOString();
   // #475 AC1 — advance + persist the durable monotonic marker on every flush.
   const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + newWords);
@@ -144,6 +148,7 @@ async function onPreCompact(sid) {
     activeMin,
     idleMin,
     deltaWords: newWords,
+    deltaWordsFull: newWordsFull,
     wordMarker,
     description: 'context compacted',
   });
@@ -166,6 +171,7 @@ async function onPostCompact(sid) {
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,
+    deltaWordsFull: 0,
     // #475 AC1 — carry the durable marker forward across compact
     wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
     description: 'resumed after compact',
@@ -344,6 +350,7 @@ async function onSessionStart(sid) {
         activeMin: wallMin,
         idleMin: 0,
         deltaWords: 0,
+        deltaWordsFull: 0,
         // #475 AC1 — carried-forward durable marker (recovery row, no live session)
         wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
         description: 'recovered — session closed without /task pause (wall time only)',
@@ -354,15 +361,18 @@ async function onSessionStart(sid) {
 
   let newWordBaseline = s.wordsAtEntryStart;
   if (sid) {
-    const { totalLines, count } = countWords(jsonlPath(sid), 0);
+    const { totalLines, count, fullExpansion } = countWords(jsonlPath(sid), 0);
     newWordBaseline = count;
-    saveMarker(markerPathFor(sid), totalLines, count, s.active);
+    // #795 — persist the full-expansion baseline alongside the stay-abreast
+    // count so the runtime flush path reads a meaningful `wordsFull` cursor.
+    saveMarker(markerPathFor(sid), totalLines, count, s.active, fullExpansion);
     const startRow = buildRow({
       ts: nowTs,
       event: 'session-start',
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
+      deltaWordsFull: 0,
       // #475 AC1 — monotonic carry-forward of the durable marker
       wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
       description: 'session resumed',

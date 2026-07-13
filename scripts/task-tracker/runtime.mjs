@@ -362,6 +362,11 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     const ts = nowIso();
     const sid = currentSessionId();
     let deltaWords = 0;
+    // #795 — full-expansion per-row delta (stay-abreast + full tool inputs +
+    // full tool outputs) and the prior cumulative full snapshot, used to render
+    // the trailing `Δ Words (full)` column and persist the full cursor.
+    let deltaWordsFull = 0;
+    let priorWordsFull = 0;
     // #483 — capture the live transcript line count so the cursor can be
     // advanced after this flush. Without persisting the cursor, every flush
     // re-counts from the same (bind-time) offset, so `Δ Words` is never a
@@ -372,6 +377,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       const marker = loadMarker(markerPathFor(sid));
       const counted = countWords(jsonlPath(sid), marker.line);
       deltaWords = counted.count;
+      deltaWordsFull = counted.fullExpansion ?? counted.count;
+      priorWordsFull = marker.wordsFull ?? marker.words ?? 0;
       markerLineToPersist = counted.totalLines;
     }
     // #476 — append-only session-reference chain. On every timing-emitting verb
@@ -397,10 +404,20 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       // segment's words rather than being recomputed off the bind snapshot.
       const wordMarker = advanceWordMarker(state.lastWordMarker, state.lastWordMarker + deltaWords);
       state.lastWordMarker = wordMarker;
+      // #795 — cumulative full-expansion snapshot, advanced monotonically off
+      // the prior persisted `wordsFull` (falls back to stay-abreast for legacy
+      // markers). Rendered per-row as a delta; persisted for cursor continuity.
+      const wordMarkerFull = advanceWordMarker(priorWordsFull, priorWordsFull + deltaWordsFull);
       // #483 — advance and persist the per-sid cursor so the next flush counts
       // only words added after this row's segment (no re-count, no frozen cursor).
       if (!opts.computeOnly && sid && markerLineToPersist != null) {
-        saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
+        saveMarker(
+          markerPathFor(sid),
+          markerLineToPersist,
+          wordMarker,
+          state.active,
+          wordMarkerFull
+        );
       }
       const { buildFlushRow } = await import('./gh-timing-comment.mjs');
       const row = buildFlushRow({
@@ -409,6 +426,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         activeMin: 0,
         idleMin: 0,
         deltaWords,
+        deltaWordsFull,
         wordMarker,
         description: effectiveDescription,
       });
@@ -460,10 +478,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // `Δ Words` a true per-row delta and `Word Marker` a growing cumulative.
     const wordMarker = advanceWordMarker(state.lastWordMarker, state.lastWordMarker + deltaWords);
     state.lastWordMarker = wordMarker;
+    // #795 — cumulative full-expansion snapshot (see zero-duration branch above).
+    const wordMarkerFull = advanceWordMarker(priorWordsFull, priorWordsFull + deltaWordsFull);
     // #483 — advance and persist the per-sid cursor so the next flush counts
     // only words added after this row's segment (no re-count, no frozen cursor).
     if (!opts.computeOnly && sid && markerLineToPersist != null) {
-      saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active);
+      saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active, wordMarkerFull);
     }
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
@@ -474,6 +494,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       activeSec,
       idleSec,
       deltaWords,
+      deltaWordsFull,
       wordMarker,
       description: effectiveDescription,
     });

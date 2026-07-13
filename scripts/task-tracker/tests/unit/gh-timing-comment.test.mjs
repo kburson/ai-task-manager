@@ -335,4 +335,8 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
 // gh-timing-comment-duplicate-start.test.mjs (split out to stay under the
 // 400-line per-file cap).
 
+// #795 — the trailing `Δ Words (full)` column tests (23-26) live in
+// gh-timing-comment-full-column.test.mjs (split out to stay under the
+// 400-line per-file cap).
+
 console.log('gh-timing-comment.test.mjs: all passed');
