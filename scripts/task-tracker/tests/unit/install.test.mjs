@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { guardBootstrapCommand } from '../../lib/guard-entrypoint.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,8 @@ const fakeHome = mkdtempSync(
 const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
 const COMMIT_TRAIL_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs';
-const BASH_GUARD_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
+// #792 — bash-guard registered via node_modules → repo-relative bootstrap form.
+const BASH_GUARD_HOOK_CMD = guardBootstrapCommand('bash-guard');
 const ON_STOP_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
 const ON_USER_PROMPT_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
