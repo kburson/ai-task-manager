@@ -40,6 +40,10 @@ import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 import { getProvider } from '../scripts/providers/index.mjs';
+import {
+  GUARD_NAMES,
+  guardBootstrapCommand,
+} from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -155,6 +159,14 @@ const LEGACY_TIMING_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
 ];
 const LEGACY_COMMIT_TRAIL_HOOK_COMMANDS = ['.claude/hooks/commit-trail.sh'];
+// #792 — the pre-fallback direct-node guard command form. These fail OPEN in a
+// node_modules-less worktree (node can't resolve the file before guard logic
+// runs). `patchSettingsJson` removes them and re-registers the `node -e`
+// existence-pick form (`guardBootstrapCommand`) so re-running the installer
+// migrates old settings idempotently instead of leaving both entries.
+const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.map(
+  (name) => `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`
+);
 
 function hookEntryHasCommand(entry, command) {
   return (
@@ -200,12 +212,23 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
     if (!alreadyRegistered) settings.hooks[event].push(hookEntry);
   }
 
+  // #792 — direct-node guard entrypoints resolve via a node_modules →
+  // repo-relative existence pick so they run (or fail closed + loud) even in a
+  // node_modules-less worktree of this repo. First strip any legacy bare
+  // `node node_modules/…/<guard>.mjs` commands, then register the `node -e`
+  // fallback form. node_modules stays the first candidate, so a downstream
+  // install's dispatch is byte-for-byte unchanged (AC3).
+  if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
+  settings.hooks.PreToolUse = removeHookCommands(
+    settings.hooks.PreToolUse,
+    LEGACY_GUARD_HOOK_COMMANDS
+  );
+
   // bash-guard: PreToolUse hook that blocks bash commands referencing paths outside
   // the project tree. Allows all intra-project and system-binary paths; blocks anything
   // pointing at home-dir dotfiles, other projects, or truly destructive patterns.
-  const guardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs';
+  const guardCmd = guardBootstrapCommand('bash-guard');
   const guardEntry = { matcher: 'Bash', hooks: [{ type: 'command', command: guardCmd }] };
-  if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
   const guardRegistered = settings.hooks.PreToolUse.some((h) =>
     h.hooks?.some((inner) => inner.command === guardCmd)
   );
@@ -214,7 +237,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   // agent-guard: PreToolUse hook on the `Agent` tool — refuses sub-agent
   // spawns when the orchestrator is running in the main git worktree.
   // Closes the spawn-class failure (epic #61): no override, no flag.
-  const agentGuardCmd = 'node node_modules/ai-task-manager/scripts/task-tracker/agent-guard.mjs';
+  const agentGuardCmd = guardBootstrapCommand('agent-guard');
   const agentGuardEntry = {
     matcher: 'Agent',
     hooks: [{ type: 'command', command: agentGuardCmd }],
@@ -228,8 +251,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   // class is not permitted in the current Kanban state (epic #61, W2.2 / #65).
   // Two entries — Edit/Write/NotebookEdit matcher and a separate Bash matcher
   // chained after bash-guard. Either guard blocking is sufficient.
-  const activityGuardCmd =
-    'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs';
+  const activityGuardCmd = guardBootstrapCommand('activity-guard');
   const activityEditEntry = {
     matcher: 'Edit|Write|NotebookEdit',
     hooks: [{ type: 'command', command: activityGuardCmd }],
@@ -253,8 +275,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   // refuses non-allowlisted source edits when the bound issue is below
   // `develop` OR lacks both deep-dive markers. Bypassed when chore-mode is
   // active. Allowlist: `.tmp/**` and `.ai-task-manager/scratch/**`.
-  const sourceEditGateCmd =
-    'node node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs';
+  const sourceEditGateCmd = guardBootstrapCommand('source-edit-gate');
   const sourceEditGateEntry = {
     matcher: 'Edit|Write|NotebookEdit',
     hooks: [{ type: 'command', command: sourceEditGateCmd }],
@@ -383,25 +404,24 @@ export function patchCodexHooksJson(hooksPath) {
     );
   }
 
-  add(
-    'PreToolUse',
-    'Bash',
-    'node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs'
-  );
-  add(
-    'PreToolUse',
-    'Bash',
-    'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs'
-  );
+  // #792 — strip any legacy bare `node node_modules/…/<guard>.mjs` PreToolUse
+  // commands, then register the node_modules → repo-relative existence-pick
+  // form so the guards run (or fail closed + loud) in a node_modules-less
+  // worktree of this repo. node_modules stays first candidate → downstream
+  // installs dispatch unchanged (AC3).
+  if (Array.isArray(config.hooks.PreToolUse)) {
+    config.hooks.PreToolUse = removeHookCommands(
+      config.hooks.PreToolUse,
+      LEGACY_GUARD_HOOK_COMMANDS
+    );
+  }
+  add('PreToolUse', 'Bash', guardBootstrapCommand('bash-guard'));
+  add('PreToolUse', 'Bash', guardBootstrapCommand('activity-guard'));
+  add('PreToolUse', 'apply_patch|Edit|Write|NotebookEdit', guardBootstrapCommand('activity-guard'));
   add(
     'PreToolUse',
     'apply_patch|Edit|Write|NotebookEdit',
-    'node node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs'
-  );
-  add(
-    'PreToolUse',
-    'apply_patch|Edit|Write|NotebookEdit',
-    'node node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs'
+    guardBootstrapCommand('source-edit-gate')
   );
   add('PostToolUse', 'Bash', COMMIT_TRAIL_HOOK_CMD);
 

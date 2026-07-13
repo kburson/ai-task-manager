@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'nod
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { patchSettingsJson } from '../../../../bin/cli.mjs';
+import { guardBootstrapCommand } from '../../lib/guard-entrypoint.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
@@ -63,8 +64,9 @@ assert.equal(hasCommand(s.hooks.UserPromptSubmit, UP_CMD), true);
 
 // #327 — installer must register source-edit-gate.mjs as a PreToolUse hook
 // matching Edit/Write/NotebookEdit, and must be idempotent across re-runs.
-const SOURCE_EDIT_GATE_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs';
+// #792 — the command is now the node_modules → repo-relative existence-pick
+// bootstrap form, not a bare `node node_modules/…` invocation.
+const SOURCE_EDIT_GATE_CMD = guardBootstrapCommand('source-edit-gate');
 
 // Reset to a clean slate.
 rmSync(settingsPath, { force: true });
