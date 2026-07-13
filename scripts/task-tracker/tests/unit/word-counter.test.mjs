@@ -44,6 +44,8 @@ saveMarker(markerPath, 5, 1000);
 const m = loadMarker(markerPath);
 assert.equal(m.line, 5);
 assert.equal(m.words, 1000);
+// #795 — a 3-arg save defaults the full-expansion cumulative to `words`.
+assert.equal(m.wordsFull, 1000, 'wordsFull defaults to words for legacy 3-arg saveMarker');
 
 // Test 4: missing marker returns zeros
 const m2 = loadMarker(path.join(tmp, 'nope.marker'));
@@ -319,6 +321,10 @@ try {
   else process.env.AI_TASK_MANAGER_SESSION_ID = origAitmSid3;
   rmSync(markerProject, { recursive: true, force: true });
 }
+
+// #795 three-tier metric (stay-abreast chips + full-expansion) tests live in
+// the sibling file word-counter-full-expansion.test.mjs to stay under the
+// 400-line per-file cap.
 
 rmSync(tmp, { recursive: true });
 console.log('word-counter.test.mjs: all passed');
