@@ -143,7 +143,8 @@ const RUNTIME_LITERAL_RE =
 // fixture, not a path-construction site. Narrow and explicit so a reintroduced
 // functional literal in any OTHER file fails loudly.
 const LITERAL_ALLOWLIST = new Set([
-  'gh/create-issue.mjs', // assignee-required diagnostic message
+  // #793 removed the `assignee-required` diagnostic (new issues now default to
+  // unassigned), so create-issue.mjs no longer carries a raw runtime-path literal.
   'gh/lib/issue-body-verifier.mjs', // canonical `> Follow:` issue-body content constant + message
   'maintenance/verify-vocab-cleanup.mjs', // frozen #196 retirement fixture (CHECKS.file paths)
   'migrate/start-time-field.mjs', // one-shot migration NOTE message
