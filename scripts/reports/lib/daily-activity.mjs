@@ -141,58 +141,120 @@ function fmtDayLabel(key) {
   return `${MONTHS[m - 1]} ${d}`;
 }
 
-function fmtDuration(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.round((sec % 3600) / 60);
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
+// Round `v` up to a visually "nice" axis maximum (1/2/2.5/5/10 × 10^k).
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / pow;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return nice * pow;
 }
 
+// Color tokens shared by lines / legend / axes so a restyle is one edit.
+const DUR_COLOR = '#475569'; // slate-600 — minutes worked (left axis)
+const CNT_COLOR = '#0ea5e9'; // sky-500   — distinct tasks (right axis)
+
+// SPIKE #790 — dual-line, dual-Y-axis daily activity chart. Iteration 1:
+// duration-in-minutes and distinct-task-count both plotted as lines, each on its
+// own labelled Y-axis, with a dedicated bottom band for X labels so they no
+// longer collide with the plot.
 export function renderDailyChart(buckets) {
   const hasData = Array.isArray(buckets) && buckets.some((b) => b.durationSec > 0);
   if (!hasData) {
     return `<p class="tl-note">No timing-log activity in range.</p>`;
   }
-  const PLOT_H = 160;
-  const maxDur = Math.max(...buckets.map((b) => b.durationSec), 1);
-  const maxCount = Math.max(...buckets.map((b) => b.issueCount), 1);
+
   const n = buckets.length;
-  const labelStep = Math.max(1, Math.ceil(n / 15));
-  const bars = buckets
+  const mins = buckets.map((b) => b.durationSec / 60);
+  const durMax = niceMax(Math.max(...mins, 1));
+  // Task count is integer — pick an integer step so every gridline is a whole task.
+  const rawCount = Math.max(...buckets.map((b) => b.issueCount), 1);
+  const cntStep = Math.max(1, Math.ceil(rawCount / 4));
+  const cntMax = cntStep * 4;
+
+  // SVG coordinate box (scaled responsively via width:100%; height:auto — text
+  // stays crisp, geometry is never stretched).
+  const W = 900;
+  const H = 260;
+  const M = { top: 22, right: 54, bottom: 40, left: 56 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+
+  const x = (idx) => (n === 1 ? M.left + plotW / 2 : M.left + (idx / (n - 1)) * plotW);
+  const yDur = (min) => M.top + plotH - (min / durMax) * plotH;
+  const yCnt = (c) => M.top + plotH - (c / cntMax) * plotH;
+
+  const TICKS = 4;
+  // Left axis (minutes) grid lines + labels.
+  const durTicks = Array.from({ length: TICKS + 1 }, (_, i) => {
+    const val = (durMax / TICKS) * i;
+    const yy = yDur(val).toFixed(1);
+    const grid =
+      i === 0
+        ? ''
+        : `<line x1="${M.left}" y1="${yy}" x2="${M.left + plotW}" y2="${yy}" stroke="#e2e8f0" stroke-width="1" />`;
+    const lbl = `<text x="${M.left - 8}" y="${yy}" text-anchor="end" dominant-baseline="middle" font-size="11" fill="${DUR_COLOR}">${Math.round(val)}</text>`;
+    return grid + lbl;
+  }).join('');
+  // Right axis (task count) labels — integer steps.
+  const cntTicks = Array.from({ length: TICKS + 1 }, (_, i) => {
+    const val = cntStep * i;
+    const yy = yCnt(val).toFixed(1);
+    return `<text x="${M.left + plotW + 8}" y="${yy}" text-anchor="start" dominant-baseline="middle" font-size="11" fill="${CNT_COLOR}">${val}</text>`;
+  }).join('');
+
+  // X-axis labels in their own bottom band (labelStep keeps them from crowding).
+  const labelStep = Math.max(1, Math.ceil(n / 12));
+  const xLabels = buckets
     .map((b, idx) => {
-      const h = Math.round((b.durationSec / maxDur) * PLOT_H);
-      const label = idx % labelStep === 0 ? fmtDayLabel(b.date) : '';
-      const title = `${b.date} · ${fmtDuration(b.durationSec)} · ${b.issueCount} issue${b.issueCount === 1 ? '' : 's'}`;
-      return (
-        `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0" title="${title}">` +
-        `<div style="width:60%;height:${h}px;background:#64748b;border-radius:2px 2px 0 0"></div>` +
-        `<div style="font-size:.55rem;color:#64748b;margin-top:.2rem;white-space:nowrap;overflow:hidden">${label}</div>` +
-        `</div>`
-      );
+      if (idx % labelStep !== 0 && idx !== n - 1) return '';
+      return `<text x="${x(idx).toFixed(1)}" y="${H - M.bottom + 18}" text-anchor="middle" font-size="11" fill="#64748b">${fmtDayLabel(b.date)}</text>`;
     })
     .join('');
-  const pts = buckets.map((b, idx) => {
-    const x = ((idx + 0.5) / n) * 100;
-    const y = PLOT_H - (b.issueCount / maxCount) * PLOT_H;
-    return { x, y };
-  });
-  const polyPoints = pts.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
-  const dots = pts
-    .map((p) => `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.5" fill="#0ea5e9" />`)
-    .join('');
+
+  const line = (pts, color) =>
+    `<polyline points="${pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+  const dots = (pts, color) =>
+    pts.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="${color}" />`).join('');
+
+  const durPts = buckets.map((b, idx) => ({ x: x(idx), y: yDur(b.durationSec / 60) }));
+  const cntPts = buckets.map((b, idx) => ({ x: x(idx), y: yCnt(b.issueCount) }));
+
+  const axisFrame =
+    `<line x1="${M.left}" y1="${M.top}" x2="${M.left}" y2="${M.top + plotH}" stroke="#94a3b8" stroke-width="1" />` +
+    `<line x1="${M.left + plotW}" y1="${M.top}" x2="${M.left + plotW}" y2="${M.top + plotH}" stroke="#94a3b8" stroke-width="1" />` +
+    `<line x1="${M.left}" y1="${M.top + plotH}" x2="${M.left + plotW}" y2="${M.top + plotH}" stroke="#94a3b8" stroke-width="1" />`;
+
+  const axisTitles =
+    `<text x="14" y="${M.top + plotH / 2}" text-anchor="middle" font-size="11" fill="${DUR_COLOR}" transform="rotate(-90 14 ${(M.top + plotH / 2).toFixed(1)})">minutes worked</text>` +
+    `<text x="${W - 12}" y="${M.top + plotH / 2}" text-anchor="middle" font-size="11" fill="${CNT_COLOR}" transform="rotate(90 ${W - 12} ${(M.top + plotH / 2).toFixed(1)})">distinct tasks</text>`;
+
   const svg =
-    `<svg viewBox="0 0 100 ${PLOT_H}" preserveAspectRatio="none" ` +
-    `style="position:absolute;inset:0;width:100%;height:${PLOT_H}px;overflow:visible">` +
-    `<polyline points="${polyPoints}" fill="none" stroke="#0ea5e9" stroke-width="1" vector-effect="non-scaling-stroke" />` +
-    `${dots}</svg>`;
+    `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" ` +
+    `style="width:100%;height:auto;display:block;font-family:inherit">` +
+    durTicks +
+    cntTicks +
+    axisFrame +
+    axisTitles +
+    line(durPts, DUR_COLOR) +
+    dots(durPts, DUR_COLOR) +
+    line(cntPts, CNT_COLOR) +
+    dots(cntPts, CNT_COLOR) +
+    xLabels +
+    `</svg>`;
+
+  const legend =
+    `<div style="display:flex;gap:1.25rem;justify-content:center;margin:.35rem 0 .1rem;font-size:.72rem;color:#475569">` +
+    `<span><span style="display:inline-block;width:14px;height:2px;background:${DUR_COLOR};vertical-align:middle;margin-right:.35rem"></span>Minutes worked</span>` +
+    `<span><span style="display:inline-block;width:14px;height:2px;background:${CNT_COLOR};vertical-align:middle;margin-right:.35rem"></span>Distinct tasks</span>` +
+    `</div>`;
+
   return (
     `<hr class="tl-rule">` +
     `<h3 class="tl-heading">Daily Work Activity</h3>` +
-    `<p class="tl-meta">Total time worked (bars, left) and distinct issues worked (line, right) per calendar day.</p>` +
-    `<div style="position:relative;height:${PLOT_H + 18}px;margin:.5rem .25rem 0">` +
-    `<div style="position:relative;display:flex;align-items:flex-end;gap:2px;height:${PLOT_H + 18}px">${bars}</div>` +
-    `<div style="position:absolute;top:0;left:0;right:0;height:${PLOT_H}px;pointer-events:none">${svg}</div>` +
-    `</div>` +
-    `<p class="tl-footnote">Duration bars: total active + idle wall-clock, midnight-crossing work prorated. Line: count of distinct issues with recorded work that day.</p>`
+    `<p class="tl-meta">Minutes worked (left axis) and distinct tasks worked (right axis) per calendar day.</p>` +
+    legend +
+    `<div style="margin:.25rem .25rem 0">${svg}</div>` +
+    `<p class="tl-footnote">Both series are per calendar day: minutes = total active + idle wall-clock (midnight-crossing work prorated); distinct tasks = count of issues with recorded work that day.</p>`
   );
 }
