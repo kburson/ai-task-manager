@@ -57,7 +57,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 
 ## Issue Creation
 
-**Never call `gh issue create` directly** — it skips the project tether, `aitm-fields` injection, placeholder substitution, the assignee/priority gates, and the canonical body structure, producing an issue that cannot be driven or closed through the normal workflow (see issue #103). Use the sanctioned wrapper, which renders the body, runs `gh issue create`, and tethers to the board atomically:
+**Never call `gh issue create` directly** — it skips the project tether, `aitm-fields` injection, placeholder substitution, the priority gate, and the canonical body structure, producing an issue that cannot be driven or closed through the normal workflow (see issue #103). Use the sanctioned wrapper, which renders the body, runs `gh issue create`, and tethers to the board atomically:
 
 ```bash
 npx aitm create-issue \
@@ -66,11 +66,10 @@ npx aitm create-issue \
   --scope-file ./.tmp/gh/scope.md \
   --ac-file ./.tmp/gh/acs.md \
   --plan-metadata-file ./.tmp/gh/plan-meta.md \
-  --label needs-triage \
-  --assignee <your-login>
+  --label needs-triage
 ```
 
-In Claude Code, `/task new <title>` is the interactive equivalent. **Always assign new issues** — pass `--assignee <your-github-login>` (or rely on the `assignee` key in `.ai-task-manager/task-tracker.json`).
+In Claude Code, `/task new <title>` is the interactive equivalent. **New issues default to unassigned in Backlog** (#793) — assignment is opt-in. Pass an explicit `--assignee <your-github-login>` only when you deliberately want to assign; omit it to leave the issue unassigned. **Defect spawned mid-task:** when you discover a defect while working an issue and file a tracking issue for it, ask the human `[Y|n]` (default **Yes**) whether to self-assign it; on Yes create it with `--assignee @me` (the `assignee` key in `.ai-task-manager/task-tracker.json` is the self-assign target login), on No leave it unassigned.
 
 Immediately after creating, set **both** `Estimate` (hours) and `Size` on the GitHub Projects board — see `docs/guides/ai-value-framework.md` for the GraphQL mutations. Never leave an issue without these two fields.
 
@@ -701,8 +700,7 @@ npx aitm create-issue \
   --scope-file ./.tmp/gh/planning-scope.md \
   --ac-file ./.tmp/gh/planning-acs.md \
   --plan-metadata-file ./.tmp/gh/planning-meta.md \
-  --label planning \
-  --assignee <your-login>
+  --label planning
 ```
 
 Use `/task discover` in Claude Code to open an untracked discovery bucket (backlog item generation / pre-issue ideation); use `/task new <title>` to promote it to a real issue when the scope is clear. Do not confuse this with `/task plan #N`, which is the Sprint-Planning entry verb (Refine → Plan).

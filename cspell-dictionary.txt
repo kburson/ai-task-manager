@@ -64,6 +64,7 @@ normalise
 normalises
 normalisation
 ntfy
+octocat
 oneline
 otplib
 overinterpreted

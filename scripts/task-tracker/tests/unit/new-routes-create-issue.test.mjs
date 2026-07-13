@@ -52,10 +52,13 @@ test('routes through create-issue.mjs --shape stub, not raw gh issue create', as
   assert.ok(shapeIdx !== -1, '--shape must be passed');
   assert.equal(capture.args[shapeIdx + 1], 'stub', 'must use the stub shape');
 
-  // Title + assignee forwarded.
+  // Title forwarded.
   const titleIdx = capture.args.indexOf('--title');
   assert.equal(capture.args[titleIdx + 1], 'My new idea');
-  assert.ok(capture.args.includes('--assignee'), 'assignee forwarded');
+
+  // #793 — `/task new` lands issues UNASSIGNED in Backlog: it must NOT inject
+  // `--assignee`. Assignment is opt-in, not forced from cfg.assignee.
+  assert.ok(!capture.args.includes('--assignee'), 'must not force --assignee (default unassigned)');
 
   // Never the direct creation verb.
   assert.ok(

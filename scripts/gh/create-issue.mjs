@@ -192,9 +192,11 @@ function ghCreate(args, assignee) {
     buildIssueTitle(args),
     '--body-file',
     args['body-file'],
-    '--assignee',
-    assignee,
   ];
+  // #793 — Assign only when a login was explicitly requested. A null/empty
+  // assignee means "leave unassigned"; omit the flag so `gh` creates the issue
+  // with no assignee rather than defaulting one on.
+  if (typeof assignee === 'string' && assignee) ghArgs.push('--assignee', assignee);
   for (const lbl of args.label) ghArgs.push('--label', lbl);
   const created = run('gh', ghArgs, { timeout: GH_API_TIMEOUT_MS });
   if (created.status !== 0) {
@@ -267,16 +269,14 @@ function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
   console.error(`✓ placeholders substituted in #${issueNumber}`);
 }
 
-function resolveAssignee(args, cfg) {
-  const explicit = typeof args.assignee === 'string' && args.assignee ? args.assignee : null;
-  if (explicit) return explicit;
-  if (cfg.assignee) return cfg.assignee;
-  die(
-    'assignee-required: no --assignee and no `assignee` in .ai-task-manager/task-tracker.json. ' +
-      'Pass --assignee <login|@me> or run /task init.',
-    2
-  );
-  return null;
+// #793 — New issues default to UNASSIGNED in Backlog. Assignment is opt-in:
+// return the explicitly-requested `--assignee <login>` if present, else null
+// (no assignee). The config `assignee` is intentionally NOT a fallback here —
+// it ships as `@me`, so honoring it would silently defeat the default-unassigned
+// behavior. `cfg.assignee` is instead the self-assign target the defect-spawn
+// `[Y|n]` prompt passes explicitly as `--assignee` when the human opts in.
+export function resolveAssignee(args) {
+  return typeof args.assignee === 'string' && args.assignee ? args.assignee : null;
 }
 
 function enforcePriorityGate(_args) {
@@ -356,9 +356,8 @@ async function main() {
     }
   }
 
-  const assignee = dryRun
-    ? (typeof args.assignee === 'string' && args.assignee) || cfg.assignee || '@me'
-    : resolveAssignee(args, cfg);
+  // #793 — Default unassigned. Only an explicit `--assignee <login>` assigns.
+  const assignee = resolveAssignee(args);
   const priority = (typeof args.priority === 'string' && args.priority) || undefined;
   enforcePriorityGate(args);
 

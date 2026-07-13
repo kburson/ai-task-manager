@@ -87,18 +87,12 @@ export async function createNewIssue(title, ctx, kind = null) {
   if (SKIP_NETWORK) return '#0';
   const createIssueScript = path.resolve(__dir, '../../gh/create-issue.mjs');
   const kindArgs = typeof kind === 'string' && kind ? ['--kind', kind] : [];
+  // #793 — `/task new` lands issues UNASSIGNED in Backlog. Do not force
+  // `--assignee`; assignment is opt-in (explicit `--assignee`, or the
+  // defect-spawn `[Y|n]` self-assign prompt).
   const { stdout } = await pexec(
     process.execPath,
-    [
-      createIssueScript,
-      '--shape',
-      'stub',
-      '--title',
-      title,
-      '--assignee',
-      cfg.assignee || '@me',
-      ...kindArgs,
-    ],
+    [createIssueScript, '--shape', 'stub', '--title', title, ...kindArgs],
     { timeout: cfg.hookNetworkTimeoutMs * 3 }
   );
   const m = stdout.trim().match(/\/issues\/(\d+)/);

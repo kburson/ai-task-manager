@@ -155,7 +155,10 @@ function createParentIssue({ purpose, children, waveIdValue, priority, rank, cfg
   ];
   if (priority) args.push('--priority', priority);
   if (rank) args.push('--rank', String(rank));
-  if (cfg.assignee) args.push('--assignee', cfg.assignee);
+  // #793 — Auto-created wave-parent epics are new issues too; leave them
+  // UNASSIGNED by default rather than pushing `cfg.assignee`, so the
+  // orchestration path doesn't reopen the "board silently filled with
+  // assigned tickets" hole this bug closes.
 
   // create-issue.mjs makes multiple gh calls; allow gh-class budget plus headroom.
   let stdout;

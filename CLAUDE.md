@@ -35,7 +35,7 @@ Parallel sub-agent fan-out is an explicit, approved operation. Before any `Agent
 
 Full rules in `docs/guides/workflow.md`. Quick reference:
 
-- **Always assign new issues to the configured assignee** — every `gh issue create` must include `--assignee <value>`, where `<value>` is the `assignee` key from `.claude/task-tracker.json` (defaults to `@me`, which resolves to the authenticated `gh` user).
+- **New issues default to UNASSIGNED in Backlog** (#793). `gh issue create` / `/task new` / `create-issue.mjs` no longer inject `--assignee`; assignment is opt-in. Pass an explicit `--assignee <login>` only when you deliberately want to assign. **Exception — defect spawned mid-task:** when you discover a defect while working an issue and file a tracking issue for it, ask the human `[Y|n]` (default **Yes**) whether to self-assign it; on Yes create it with `--assignee @me` (the `assignee` key in `.ai-task-manager/task-tracker.json` is the self-assign target login), on No leave it unassigned.
 - Move issues through states: `scripts/gh/move-state.mjs <issue#> <state>`
 - Set priority: `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]`
 - Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close.

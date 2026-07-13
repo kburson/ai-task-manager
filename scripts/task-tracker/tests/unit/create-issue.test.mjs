@@ -146,7 +146,10 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
   assert.match(ghCalls[0], /--title 🐞 \[BUG\] test/);
   assert.match(ghCalls[0], /--label bug/);
   assert.match(ghCalls[0], /--label p1/);
-  assert.match(ghCalls[0], /--assignee @me/);
+  // #793 — new issues default to UNASSIGNED; no --assignee is passed even though
+  // task-tracker.json carries `assignee: '@me'` (that key is now the self-assign
+  // target, not an auto-assign trigger).
+  assert.doesNotMatch(ghCalls[0], /--assignee/);
   assert.match(
     ghCalls[1],
     /api -X PATCH \/repos\/kburson\/ai-task-manager\/issues\/9999 --input -/
@@ -157,6 +160,34 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
   assert.match(tetherCalls[0], /--issue 9999/);
   assert.match(tetherCalls[0], /--status backlog/);
   assert.match(tetherCalls[0], /--priority p1/);
+});
+
+// #793 — an explicit --assignee <login> is still honored and forwarded to
+// `gh issue create`. Assignment is opt-in, not defaulted-off.
+test('explicit --assignee is forwarded to gh issue create', () => {
+  const ctx = setup();
+  const bodyFile = join(ctx.temp, 'body.md');
+  writeFileSync(bodyFile, '## Scope\nx\n' + CANONICAL_TAIL);
+
+  const result = spawnSync(
+    'node',
+    [script, '--title', 'test', '--body-file', bodyFile, '--assignee', 'octocat'],
+    {
+      encoding: 'utf8',
+      cwd: ctx.temp,
+      env: {
+        ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        PATH: `${ctx.binDir}:${process.env.PATH}`,
+        CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
+      },
+    }
+  );
+
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  const ghCalls = readLines(ctx.ghCallsLog);
+  assert.match(ghCalls[0], /issue create/);
+  assert.match(ghCalls[0], /--assignee octocat/);
 });
 
 test('missing projectId: exits non-zero before calling gh', () => {
