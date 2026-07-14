@@ -617,7 +617,7 @@ The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped.
 | `scripts/gh/project-tether.mjs --issue <N> ...`               | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
 | `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/refine/plan/develop/test/review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                                 |
 | `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too.                                                                                                                                                 |
-| `scripts/gh/set-rank.mjs <issue#> <n>`                       | Set the project Rank number field (wave ordering) on one issue. Warns and exits 0 when no rank field is configured.                                                                                              |
+| `scripts/gh/set-rank.mjs <issue#> <n>`                        | Set the project Rank number field (wave ordering) on one issue. Warns and exits 0 when no rank field is configured.                                                                                               |
 
 Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual ID management.
 

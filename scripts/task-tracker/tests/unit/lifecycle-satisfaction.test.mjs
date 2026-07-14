@@ -28,9 +28,12 @@ function bodyWith(lines = []) {
 
 const ALL_LIFECYCLE_LINES = Object.values(LIFECYCLE_LABELS).map((l) => `- [ ] ${l}`);
 
-test('lifecycleSatisfaction: all missing when labels absent', () => {
+test('lifecycleSatisfaction: all absent when labels absent', () => {
+  // #809 — a lifecycle label line that is not present at all is `absent`,
+  // distinct from `missing` (present but unticked). Back-compat bodies authored
+  // before the two-checkbox split lack the "Agent Review Passed" line entirely.
   const results = lifecycleSatisfaction(bodyWith([]));
-  for (const r of results) assert.equal(r.status, 'missing');
+  for (const r of results) assert.equal(r.status, 'absent');
 });
 
 test('lifecycleSatisfaction: ticked when checkbox is [x]', () => {
@@ -114,19 +117,28 @@ test('assertLifecycleSatisfied: required=false never blocks', () => {
   });
   assert.equal(gate.block, false);
   // `missing` reflects only the keys the gate would actually block on —
-  // close-owned keys are filtered. Full status still available in `results`.
-  assert.equal(gate.missing.length, 1);
-  assert.equal(gate.missing[0].key, 'passed-final-review');
+  // close-owned keys are filtered. #809 — with all four label lines present but
+  // unticked, both the objective (`agent-review-passed`) and subjective
+  // (`passed-final-review`) sign-offs block; the two close-owned keys do not.
+  const blockingKeys = gate.missing.map((m) => m.key).sort();
+  assert.deepEqual(blockingKeys, ['agent-review-passed', 'passed-final-review']);
   const allMissing = gate.results.filter((r) => r.status === 'missing').map((r) => r.key);
-  assert.equal(allMissing.length, 3);
+  assert.equal(allMissing.length, 4);
 });
 
 test('assertLifecycleSatisfied: audit marker satisfies passed-final-review only', () => {
+  // #809 — full-auto audits only the SUBJECTIVE `passed-final-review`. The
+  // objective `agent-review-passed` gate is ticked for real by `/task review`
+  // when the structural gate passes, so a real full-auto body has it ticked;
+  // tick it here so the audit-only path is exercised in isolation.
+  const lines = ALL_LIFECYCLE_LINES.map((l) =>
+    l.includes(LIFECYCLE_LABELS['agent-review-passed']) ? l.replace('[ ]', '[x]') : l
+  );
   const body =
-    bodyWith(ALL_LIFECYCLE_LINES) +
-    '\n<!-- aitm-full-auto-approved: 2026-05-19T00:00:00Z signals=test -->';
+    bodyWith(lines) + '\n<!-- aitm-full-auto-approved: 2026-05-19T00:00:00Z signals=test -->';
   const gate = assertLifecycleSatisfied({ body });
-  // passed-final-review is audited; close-owned keys are filtered → no block.
+  // passed-final-review is audited; agent-review-passed is ticked; close-owned
+  // keys are filtered → no block.
   assert.equal(gate.block, false);
   // Full results still expose the unticked close-owned keys.
   const resultMissingKeys = gate.results.filter((r) => r.status === 'missing').map((r) => r.key);
@@ -138,6 +150,7 @@ test('assertLifecycleSatisfied: audit marker satisfies passed-final-review only'
 test('assertLifecycleSatisfied: opt-outs unblock per key', () => {
   const body =
     bodyWith(ALL_LIFECYCLE_LINES) +
+    '\n<!-- aitm-lifecycle-optout: agent-review-passed -->' +
     '\n<!-- aitm-lifecycle-optout: passed-final-review -->' +
     '\n<!-- aitm-lifecycle-optout: story-closed -->' +
     '\n<!-- aitm-lifecycle-optout: timing-flushed -->';

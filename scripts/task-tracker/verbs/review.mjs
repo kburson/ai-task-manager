@@ -16,6 +16,17 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
+// #809 — Agent Review Gate. `bootstrap` registers every built-in validator on
+// the shared singleton registry as an import side effect; `runAgentReviewGate`
+// runs them inline in `verbReview` and the marker helpers stamp/clear the
+// `aitm-review-failed` record on a failing gate.
+import '../lib/agent-review/bootstrap.mjs';
+import {
+  runAgentReviewGate,
+  stampReviewFailed,
+  clearReviewFailed,
+} from '../lib/agent-review/review-gate.mjs';
+import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
 // bound at CALL time (the post site, after runMoveState emits test:passed +
@@ -653,6 +664,99 @@ export async function verbReview(ctx) {
           '\nTick every item above (the close gate enforces the same set), then retry `/task review`.\n\n'
         );
         process.exit(4);
+      }
+    }
+    // #809 — Agent Review Gate. Run the structural validator registry inline,
+    // after the completeness gate and before the move to Review. This is the
+    // objective, machine-checkable half of review sign-off: a pass ticks the
+    // "Agent Review Passed" DoD item and review continues; a failure writes a
+    // `review:failed` timing row + an `aitm-review-failed` body marker listing
+    // every objection and demotes the issue straight to Develop (the Test-state
+    // WRITE_CODE gate forbids fixing in place). With zero validators registered
+    // the gate is a vacuous pass, so this is inert until V1 lands.
+    {
+      let comments = [];
+      try {
+        const { stdout } = await pexec(
+          `gh issue view ${issueNum} --repo ${cfg.repo} --json comments`,
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        const parsed = JSON.parse(stdout || '{}');
+        comments = Array.isArray(parsed.comments) ? parsed.comments : [];
+      } catch {
+        // Best-effort: a comment-fetch failure leaves `comments` empty. Any
+        // validator that requires a comment reports its own failure, so the
+        // gate never silently passes on missing evidence.
+        comments = [];
+      }
+      const gate = runAgentReviewGate({
+        body: scanBody,
+        issueNumber: Number(issueNum),
+        repo: cfg.repo,
+        comments,
+      });
+      if (!gate.pass) {
+        // FAIL — stamp the review-failed marker (on the normalizer's rewrite if
+        // one was produced), post a `review:failed` row, demote to Develop, and
+        // exit non-zero. Nothing moves to Review.
+        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
+        const _tsRF = nowIso();
+        const failedBody = stampReviewFailed(baseBody, gate.failures, { ts: _tsRF });
+        try {
+          await mutateBodyFn({
+            issueNumber: issueNum,
+            repo: cfg.repo,
+            mutate: () => failedBody,
+            timeout: GH_API_TIMEOUT_MS,
+            deps: { pexec },
+            allowUnverifiedTicks: true,
+          });
+        } catch (e) {
+          console.error(`[task-tracker] failed to stamp aitm-review-failed: ${e.message}`);
+        }
+        const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
+        await safePostTiming(
+          target,
+          buildRow({
+            ts: _tsRF,
+            event: 'review:failed',
+            activeSec: _dRF.activeSec,
+            idleSec: _dRF.idleSec,
+            deltaWords: 0,
+            // #475 AC1 — carried-forward durable marker (gate failure, no live session)
+            wordMarker: s.lastWordMarker ?? 0,
+            description: `agent review failed — ${gate.failures.length} objection(s), reverted to Develop`,
+          })
+        );
+        await runMoveState(target, 'develop');
+        process.stderr.write('\n');
+        process.stderr.write(
+          `⛔ Agent Review Gate failed for ${target} — ${gate.failures.length} objection(s):\n`
+        );
+        for (const f of gate.failures) process.stderr.write(`   ${f}\n`);
+        process.stderr.write(
+          '\nFix the objections above in Develop, then re-run the verb chain to Review.\n\n'
+        );
+        process.exit(3);
+      }
+      // PASS — adopt any normalizer rewrite, clear a stale review-failed marker,
+      // and tick "Agent Review Passed". A body with no such line (old template)
+      // ticks to a noop and skips the write, which the close gate tolerates.
+      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
+      const tickedBody = tickLifecycleItem(clearReviewFailed(passBase), 'agent-review-passed');
+      if (tickedBody !== scanBody) {
+        try {
+          await mutateBodyFn({
+            issueNumber: issueNum,
+            repo: cfg.repo,
+            mutate: () => tickedBody,
+            timeout: GH_API_TIMEOUT_MS,
+            deps: { pexec },
+            allowUnverifiedTicks: true,
+          });
+        } catch (e) {
+          console.error(`[task-tracker] failed to tick Agent Review Passed: ${e.message}`);
+        }
       }
     }
     // #406 — the move is authoritative. `runMoveState` returns a structured

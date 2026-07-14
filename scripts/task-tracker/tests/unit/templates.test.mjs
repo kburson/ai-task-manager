@@ -50,7 +50,8 @@ for (const fragment of [
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
   '### Lifecycle (auto-ticked at Review/Close)',
-  '- [ ] Passed final human review',
+  '- [ ] Agent Review Passed',
+  '- [ ] Final Review Passed',
   '- [ ] Story closed and moved to Done',
   '- [ ] Timing data flushed to issue',
 ]) {

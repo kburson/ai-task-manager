@@ -28,6 +28,7 @@ no phantom evidence marker is ever required for it.
 
 ### Lifecycle (auto-ticked at Review/Close)
 
-- [ ] Passed final human review
+- [ ] Agent Review Passed
+- [ ] Final Review Passed
 - [ ] Story closed and moved to Done
 - [ ] Timing data flushed to issue

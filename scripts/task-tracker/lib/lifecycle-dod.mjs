@@ -15,12 +15,34 @@ import { hasVerifiedDeclaration, hasExecutionProof } from './proof-marker.mjs';
 //      can exclude them from its blockers list.
 
 export const LIFECYCLE_LABELS = {
-  'passed-final-review': 'Passed final human review',
+  'agent-review-passed': 'Agent Review Passed',
+  'passed-final-review': 'Final Review Passed',
   'story-closed': 'Story closed and moved to Done',
   'timing-flushed': 'Timing data flushed to issue',
 };
 
-export const LIFECYCLE_LABEL_SET = new Set(Object.values(LIFECYCLE_LABELS));
+// Back-compat label aliases (#809). Bodies authored before the two-checkbox
+// split carried a single `Passed final human review` line for the
+// `passed-final-review` key. The parser and ticker accept the old label so
+// in-flight issues still map to the key and tick on the old text.
+export const LIFECYCLE_LABEL_ALIASES = {
+  'passed-final-review': ['Passed final human review'],
+};
+
+export const LIFECYCLE_LABEL_SET = new Set([
+  ...Object.values(LIFECYCLE_LABELS),
+  ...Object.values(LIFECYCLE_LABEL_ALIASES).flat(),
+]);
+
+// Resolve a human-readable label (canonical or alias) to its lifecycle key.
+function labelToKey(label) {
+  const direct = Object.entries(LIFECYCLE_LABELS).find(([, l]) => l === label)?.[0];
+  if (direct) return direct;
+  for (const [key, aliases] of Object.entries(LIFECYCLE_LABEL_ALIASES)) {
+    if (aliases.includes(label)) return key;
+  }
+  return null;
+}
 
 // Per-key opt-out marker. A user who has intentionally removed a Lifecycle
 // checkbox from their customized DoD template can stamp this marker in the
@@ -47,7 +69,10 @@ export function parseLifecycleOptouts(body) {
 //   'ticked'  — visible checkbox is `- [x]`
 //   'audited' — `passed-final-review` only, when audit marker is present
 //   'optout'  — `<!-- aitm-lifecycle-optout: <key> -->` marker present
-//   'missing' — none of the above; close-gate must block when required
+//   'absent'  — the label line is not present in the section at all (an
+//               old-template body predating the key); close-gate treats an
+//               absent `agent-review-passed` as non-blocking for back-compat
+//   'missing' — line present but unticked; close-gate must block when required
 //
 // Returns one entry per LIFECYCLE_LABELS key (stable order).
 export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
@@ -62,6 +87,7 @@ export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
     if (it && it.checked) status = 'ticked';
     else if (key === 'passed-final-review' && fullAutoApproved) status = 'audited';
     else if (optouts.has(key)) status = 'optout';
+    else if (!it) status = 'absent';
     else status = 'missing';
     out.push({ key, label, status });
   }
@@ -120,7 +146,7 @@ export function parseLifecycleItems(body) {
   while ((m = re.exec(loc.section)) !== null) {
     const checked = m[1] === 'x';
     const label = m[2].trim();
-    const key = Object.entries(LIFECYCLE_LABELS).find(([, l]) => l === label)?.[0] || null;
+    const key = labelToKey(label);
     items.push({ key, label, checked });
   }
   return items;
@@ -165,16 +191,20 @@ function _toggleLifecycleItem(body, key, tick) {
   if (!(key in LIFECYCLE_LABELS)) {
     throw new Error(`${tick ? 'tick' : 'untick'}LifecycleItem: unknown lifecycle key "${key}"`);
   }
-  const label = LIFECYCLE_LABELS[key];
   const loc = locateLifecycleSection(body);
   if (!loc) return String(body || '');
-  const labelRe = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const fromChar = tick ? ' ' : 'x';
   const toChar = tick ? 'x' : ' ';
-  const re = new RegExp(`(^- )\\[${fromChar}\\](\\s+${labelRe}\\s*$)`, 'm');
-  const next = loc.section.replace(re, `$1[${toChar}]$2`);
-  if (next === loc.section) return String(body || '');
-  return loc.before + next + loc.after;
+  // Try the canonical label first, then any back-compat aliases — whichever
+  // one the body actually carries is the line we toggle.
+  const labels = [LIFECYCLE_LABELS[key], ...(LIFECYCLE_LABEL_ALIASES[key] || [])];
+  for (const label of labels) {
+    const labelRe = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^- )\\[${fromChar}\\](\\s+${labelRe}\\s*$)`, 'm');
+    const next = loc.section.replace(re, `$1[${toChar}]$2`);
+    if (next !== loc.section) return loc.before + next + loc.after;
+  }
+  return String(body || '');
 }
 
 // Detect any lifecycle items that are ticked AND un-tick them. Used by /task

@@ -117,11 +117,15 @@ test('detectLifecyclePretick: no Lifecycle section (back-compat flat DoD) → no
   assert.equal(r.body, flat);
 });
 
-test('LIFECYCLE_LABEL_SET: contains all three labels', () => {
-  assert.equal(LIFECYCLE_LABEL_SET.size, 3);
+test('LIFECYCLE_LABEL_SET: contains every canonical label and back-compat alias', () => {
+  // #809 — four canonical labels (agent-review-passed, passed-final-review,
+  // story-closed, timing-flushed) plus the one back-compat alias ("Passed final
+  // human review") for the relabeled passed-final-review key.
+  assert.equal(LIFECYCLE_LABEL_SET.size, 5);
   for (const label of Object.values(LIFECYCLE_LABELS)) {
     assert.ok(LIFECYCLE_LABEL_SET.has(label));
   }
+  assert.ok(LIFECYCLE_LABEL_SET.has('Passed final human review'));
 });
 
 // #302 — lifecycleItemState: structural inspection without mutation. Lets
