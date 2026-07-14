@@ -46,6 +46,13 @@ export const SELF_DOC = {
     audience: 'AI/operator setting priority. Priorities: p0|p1|p2|p3.',
     usage: 'aitm set-priority <issue#> <p0|p1|p2|p3> [--cascade]',
   },
+  'set-rank': {
+    group: 'GitHub',
+    path: 'scripts/gh/set-rank.mjs',
+    synopsis: "Set the Rank (wave-order) number field on an existing issue's project item.",
+    audience: 'AI/operator re-ranking an open issue. Rank is the wave-ordering value.',
+    usage: 'aitm set-rank <issue#> <n>',
+  },
   'update-event-fields': {
     group: 'GitHub',
     path: 'scripts/gh/update-event-fields.mjs',
