@@ -246,7 +246,20 @@ async function run(sandbox, binDir, args) {
         wordsAtEntryStart: 0,
       })
     );
+    // Well-formed per the V1 agent-review gate (#810): all nine canonical `##`
+    // sections in order, each non-empty. The AC/DoD sections carry no evaluable
+    // checkboxes, so the evidence + completeness preflight checks stay vacuous
+    // and the success path is preserved.
     const fixtureBody = [
+      '## User Story',
+      'As a maintainer, I want the review gate to accept a well-formed body.',
+      '',
+      '## Scope',
+      'Exercise the review-approval success path.',
+      '',
+      '## Plan Metadata',
+      '- **Size:** S',
+      '',
       '## Pickup Directive',
       '- [x] Deep dive complete',
       '',
@@ -254,9 +267,19 @@ async function run(sandbox, binDir, args) {
       '',
       ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
       '',
-      '### Verification Commands',
+      '## Acceptance Criteria',
+      '',
+      '<!-- no acceptance criteria under test -->',
+      '',
+      '## Verification Commands',
       '',
       '- [ ] `node --version`',
+      '',
+      '## Definition of Done',
+      '',
+      '<!-- no definition-of-done items under test -->',
+      '',
+      '## AITM Progress Markers',
       '',
       DOD_VERIFIED_MARKER,
       '',
@@ -525,16 +548,18 @@ async function run(sandbox, binDir, args) {
         },
       })
     );
+    // Well-formed per the V1 agent-review gate (#810): the nine canonical `##`
+    // sections in order. The AC evidence markers, VC list, and DoD boxes are the
+    // evaluable content the evidence-based auto-tick ticks on the success path.
     const fixtureBody = [
-      '## Acceptance Criteria',
+      '## User Story',
+      'As a maintainer, I want AC/DoD auto-ticked from passing evidence.',
       '',
-      '- [ ] Fresh install registers direct Node hook commands. <!-- aitm-verified cmd="`npm test`" -->',
-      '- [ ] Existing installs migrate legacy shell hook commands. <!-- aitm-verified cmd="`npm run lint`" -->',
+      '## Scope',
+      'Exercise the evidence-based auto-tick path.',
       '',
-      '### Verification Commands',
-      '',
-      '- [ ] `npm test`',
-      '- [ ] `npm run lint`',
+      '## Plan Metadata',
+      '- **Size:** S',
       '',
       '## Pickup Directive',
       '- [x] Deep dive complete',
@@ -543,6 +568,16 @@ async function run(sandbox, binDir, args) {
       '',
       ...Array.from({ length: 25 }, (_, i) => `line ${i + 1}`),
       '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] Fresh install registers direct Node hook commands. <!-- aitm-verified cmd="`npm test`" -->',
+      '- [ ] Existing installs migrate legacy shell hook commands. <!-- aitm-verified cmd="`npm run lint`" -->',
+      '',
+      '## Verification Commands',
+      '',
+      '- [ ] `npm test`',
+      '- [ ] `npm run lint`',
+      '',
       '## Definition of Done',
       '',
       '- [ ] `npm test`',
@@ -550,6 +585,8 @@ async function run(sandbox, binDir, args) {
       '- [ ] `npm run format:check`',
       '- [ ] Acceptance criteria met',
       '- [ ] Issue body checkboxes ticked',
+      '',
+      '## AITM Progress Markers',
       '',
       '<!-- aitm-plan-approved: 2026-05-10T00:00:00.000Z -->',
       '',
