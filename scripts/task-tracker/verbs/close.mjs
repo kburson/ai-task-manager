@@ -45,6 +45,77 @@ async function stripCloseLabels({ pexec, cfg, issueNum }) {
   }
 }
 
+// #801 — emit the terminal `review:approved → issue:wrap` close pair, shared by
+// BOTH the full close pipeline and the converge/no-op fast-path so the two can
+// never drift apart. Historically only the full pipeline emitted the pair; an
+// issue closed out-of-band (GitHub UI / Projects auto-close) then converged via
+// `/task close` took the noop branch and returned before this block, leaving the
+// per-issue Timing Log without its closing audit rows.
+//
+// Emission is idempotent (`pendingClosePairState` skips a half already present,
+// so a re-run or a converge-after-normal-close is a no-op) and anti-fabrication
+// safe: `review:approved` is emitted only when the caller reports a real approval
+// marker OR an explicitly-bypassed review gate (`shouldEmitReviewApprovedRow`);
+// `issue:wrap` is unconditional — it records the terminal close, not an approval.
+async function emitReviewToDoneClosePair({
+  closeTarget,
+  closeIssueNum,
+  cfg,
+  hasApprovalMarker,
+  reviewGateBypassed,
+  lastWordMarker,
+  ctx,
+  SKIP_NETWORK,
+  nowIso,
+  safePostTiming,
+}) {
+  const { deriveStateMoveDelta } = await import('../lib/timing-rows.mjs');
+  const ts = nowIso();
+  // #692 — the prior timing ROWS live in the ⏱ comment, NOT the issue body, so
+  // the delta must be derived from the comment. Fetch it once; it also drives the
+  // retry-idempotency guard below. Gated on `!SKIP_NETWORK`; tests inject
+  // `ctx.readTimingCommentBody` to exercise both paths offline.
+  let timingBody = '';
+  const { readTimingCommentBody, bodyOf } = await import('../gh-timing-comment.mjs');
+  const readTiming = ctx.readTimingCommentBody || (SKIP_NETWORK ? null : readTimingCommentBody);
+  if (readTiming && closeIssueNum) {
+    try {
+      timingBody = bodyOf(
+        await readTiming({
+          issueNumber: closeIssueNum,
+          repo: cfg.repo,
+          timeoutMs: GH_API_TIMEOUT_MS,
+        })
+      );
+    } catch (err) {
+      process.stderr.write(`⚠ timing-comment read for close pair failed: ${err.message}\n`);
+    }
+  }
+  const delta = deriveStateMoveDelta(timingBody, ts);
+  // #540 — emit in canonical order (`review:approved → issue:wrap`), both sharing
+  // `ts`. The approval row carries the real review→close active/idle delta; the
+  // wrap row is the zero-delta paired half.
+  const { buildReviewToDoneClosePair } = await import('../gh-timing-comment.mjs');
+  const [reviewApprovedRow, issueWrapRow] = buildReviewToDoneClosePair({
+    ts,
+    activeSec: delta.activeSec,
+    idleSec: delta.idleSec,
+    // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
+    wordMarker: lastWordMarker ?? 0,
+  });
+  const { pendingClosePairState } = await import('../timing-rollup.mjs');
+  const pending = pendingClosePairState(timingBody);
+  if (
+    !pending.reviewApproved &&
+    shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed })
+  ) {
+    await safePostTiming(closeTarget, reviewApprovedRow);
+  }
+  if (!pending.issueWrap) {
+    await safePostTiming(closeTarget, issueWrapRow);
+  }
+}
+
 export async function verbClose(ctx) {
   // #561 — verbClose reads its collaborators from the grouped capability
   // objects assembled by buildContext (the narrow dependency interface) rather
@@ -204,6 +275,42 @@ export async function verbClose(ctx) {
           }
         }
       }
+      // #801 — emit the terminal `review:approved → issue:wrap` close pair on the
+      // converge/no-op path too. When an issue is closed out-of-band (GitHub UI /
+      // Projects auto-close) and `/task close` converges the board, the full
+      // pipeline (which emits the pair) never runs, so the per-issue Timing Log
+      // lost its closing audit rows. Read the live body for the approval marker
+      // (best-effort: a read failure degrades to an empty body → `review:approved`
+      // withheld, `issue:wrap` still emitted). There is no review-gate evaluation
+      // on this path, so `reviewGateBypassed` is false — `review:approved` is
+      // emitted ONLY when the issue actually carries `aitm-review-approved`, never
+      // fabricated. `pendingClosePairState` makes this a no-op when the pair
+      // already exists (issue closed through the normal pipeline earlier).
+      let convergeBody = ctx.closeBody ?? '';
+      if (!SKIP_NETWORK && closeIssueNum) {
+        try {
+          const { stdout } = await pexec(
+            'gh',
+            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          convergeBody = JSON.parse(stdout).body ?? '';
+        } catch (err) {
+          process.stderr.write(`⚠ body read for converge close pair failed: ${err.message}\n`);
+        }
+      }
+      await emitReviewToDoneClosePair({
+        closeTarget,
+        closeIssueNum,
+        cfg,
+        hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+        reviewGateBypassed: false,
+        lastWordMarker: s.lastWordMarker,
+        ctx,
+        SKIP_NETWORK,
+        nowIso,
+        safePostTiming,
+      });
       // #753 — reconcile the Lifecycle DoD boxes on the converge/no-op path too.
       // A prior close that moved the board but died before the tick (crash,
       // timeout-killed tail, #737 split-brain) left `story-closed` /
@@ -648,78 +755,22 @@ export async function verbClose(ctx) {
   if (dirtyAuditRow) {
     await safePostTiming(closeTarget, dirtyAuditRow);
   }
-  const { deriveStateMoveDelta: _dsm3 } = await import('../lib/timing-rows.mjs');
-  const _ts3 = nowIso();
-  // #692 — the prior timing ROWS live in the ⏱ comment, NOT the issue body.
-  // close.mjs historically passed `closeBody` (the issue body) here, so
-  // `deriveStateMoveDelta` → `lastRowTsFromBody` found no rows and collapsed to
-  // {0,0}: the `review:approved` row's Active column came out blank (AC3). The
-  // same comment body drives the retry-idempotency guard below (AC2). Fetch it
-  // once. The real reader is gated on `!SKIP_NETWORK`; tests inject
-  // `ctx.readTimingCommentBody` to exercise both paths offline.
-  let _timingBody = '';
-  const { readTimingCommentBody: _readTimingComment, bodyOf: _bodyOf } =
-    await import('../gh-timing-comment.mjs');
-  const _readTiming = ctx.readTimingCommentBody || (SKIP_NETWORK ? null : _readTimingComment);
-  if (_readTiming && closeIssueNum) {
-    try {
-      _timingBody = _bodyOf(
-        await _readTiming({
-          issueNumber: closeIssueNum,
-          repo: cfg.repo,
-          timeoutMs: GH_API_TIMEOUT_MS,
-        })
-      );
-    } catch (err) {
-      process.stderr.write(`⚠ timing-comment read for close pair failed: ${err.message}\n`);
-    }
-  }
-  const _d3 = _dsm3(_timingBody, _ts3);
-  // #540 — emit the review→done lifecycle pair in canonical order
-  // (`review:approved → issue:wrap`), both sharing `_ts3`. The approval row
-  // carries the real review→close active/idle delta (`_d3`); the wrap row is
-  // the zero-delta paired half. move-state.mjs (the subsequent terminal board
-  // move) no longer emits `review:approved` (it suppresses `<prev>:complete`
-  // on the `done` transition), so this is the sole `review:approved` row and
-  // it lands ahead of `issue:wrap`. Previously only `issue:wrap` was emitted
-  // here (carrying `_d3`) and `review:approved` was appended afterwards by the
-  // board move, reproducing the #535 `issue:wrap → review:approved` inversion.
-  const { buildReviewToDoneClosePair } = await import('../gh-timing-comment.mjs');
-  const [_reviewApprovedRow, _issueWrapRow] = buildReviewToDoneClosePair({
-    ts: _ts3,
-    activeSec: _d3.activeSec,
-    idleSec: _d3.idleSec,
-    // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
-    wordMarker: s.lastWordMarker ?? 0,
+  // #801 — emit the review→done close pair through the shared helper (also
+  // invoked by the converge/no-op fast-path). `review:approved` is gated on the
+  // live approval marker in the fetched body, OR an explicitly-bypassed review
+  // gate (`aitm-gate-bypassed` already logged); `issue:wrap` is unconditional.
+  await emitReviewToDoneClosePair({
+    closeTarget,
+    closeIssueNum,
+    cfg,
+    hasApprovalMarker: hasReviewApprovedMarker(closeBody),
+    reviewGateBypassed,
+    lastWordMarker: s.lastWordMarker,
+    ctx,
+    SKIP_NETWORK,
+    nowIso,
+    safePostTiming,
   });
-  // #655 — do NOT emit `review:approved` on faith. Emit it only when the live
-  // body actually carries the `aitm-review-approved` marker, OR the review gate
-  // was explicitly bypassed (which already logged its own `aitm-gate-bypassed`
-  // audit row). When the gate is active and the marker never persisted (the
-  // #652 half-state), suppressing the row prevents fabricating a record of an
-  // approval that did not happen. `issue:wrap` stays unconditional — it records
-  // the terminal close, not an approval claim.
-  // #692 (AC2) — make the pair emission idempotent across retries. A `close`
-  // re-invoked after a first attempt emitted the pair but aborted before the
-  // terminal board move (e.g. `assertFieldsPersisted` threw) previously
-  // re-emitted a fresh `review:approved → issue:wrap` pair, producing the
-  // duplicate pairs seen on #687. `pendingClosePairState` inspects the timing
-  // comment since the last `issue:closed` and reports which halves already
-  // exist; skip re-emitting whichever half is already present.
-  const { pendingClosePairState } = await import('../timing-rollup.mjs');
-  const _pending = pendingClosePairState(_timingBody);
-  if (
-    !_pending.reviewApproved &&
-    shouldEmitReviewApprovedRow({
-      hasApprovalMarker: hasReviewApprovedMarker(closeBody),
-      reviewGateBypassed,
-    })
-  ) {
-    await safePostTiming(closeTarget, _reviewApprovedRow);
-  }
-  if (!_pending.issueWrap) {
-    await safePostTiming(closeTarget, _issueWrapRow);
-  }
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
   // Post-close board/body agreement check (#180 defect 1 guard). After
   // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
