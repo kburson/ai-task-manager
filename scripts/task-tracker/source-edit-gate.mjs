@@ -30,6 +30,7 @@ import path from 'node:path';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
+import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
 
 const pexec = promisify(execFile);
 
@@ -39,6 +40,13 @@ export const ALLOWLIST_PREFIXES = ['.tmp/', SCRATCH_REL_PREFIX];
 
 // States that LACK source-edit permission (below `develop`).
 const PRE_DEVELOP_STATES = new Set(['backlog', 'on-deck', 'refine', 'plan', 'unknown']);
+
+// States AT or PAST `develop` where the state machine has already closed the
+// coding window (#805). WRITE_CODE edits here are refused fail-closed; edits
+// whose activity class the STATE_MATRIX still permits (e.g. WRITE_DOCS in
+// `review`) pass through. `develop` itself is NOT here — it keeps the
+// deep-dive-marker gate below.
+const POST_DEVELOP_STATES = new Set(['test', 'review', 'done']);
 
 const DEEP_DIVE_POSTED_MARKER = 'aitm-deep-dive-posted';
 const DEEP_DIVE_COMPLETE_MARKER = 'aitm-deep-dive-complete';
@@ -73,6 +81,7 @@ export function decideSourceEdit({
   issueState,
   hasPostedMarker,
   hasCompleteMarker,
+  policy = DEFAULT_POLICY,
 }) {
   if (!GATED_TOOLS.has(toolName)) {
     return { decision: 'allow', reason: 'tool-not-gated' };
@@ -122,7 +131,39 @@ export function decideSourceEdit({
     };
   }
 
-  // State is develop or later. Require both deep-dive markers.
+  // Post-develop lock (#805): once the state machine has moved past `develop`
+  // (into `test`, `review`, or `done`), the coding window is closed. Classify
+  // the edit with the shared activity matrix and refuse any class the state no
+  // longer permits — this is what closes the demonstrated jailbreak of editing a
+  // regression `*.test.mjs` out-of-band while an issue sits in `test`. Classes
+  // the matrix still allows (e.g. WRITE_DOCS in `review`) pass through, so the
+  // lock is class-aware rather than a blanket freeze. Fail-closed: `unknown`
+  // already sits in PRE_DEVELOP_STATES above, so an unresolvable state refuses.
+  if (POST_DEVELOP_STATES.has(state)) {
+    const activityClass = classifyEdit(relPath, policy);
+    if (!isAllowed(state, activityClass)) {
+      return {
+        decision: 'block',
+        code: 'source-edit-post-develop-lock',
+        reason:
+          `[task-tracker] Source-edit refused: ${boundIssue} is in '${state}' — the coding window closed at 'develop'.\n` +
+          `  Path: ${relPath || filePath}\n` +
+          `  Tool: ${toolName} (activity class: ${activityClass})\n` +
+          `  A '${state}'-state ${activityClass} edit is exactly the out-of-band patch the gate forbids.\n` +
+          `  Sanctioned remediation loop:\n` +
+          `    demote → fix → verify-develop → re-promote\n` +
+          `    /task demote                 — return the issue to 'develop'\n` +
+          `    <make the edit + fix>        — now permitted in 'develop'\n` +
+          `    node scripts/task-tracker/verify-develop.mjs\n` +
+          `    /task promote                — advance back through the states\n` +
+          `  Escape hatch:\n` +
+          `    chore-mode on "<reason>"     — bypass gate; commits must be \`chore: \``,
+      };
+    }
+    return { decision: 'allow', reason: 'post-develop-allowed-class' };
+  }
+
+  // State is develop. Require both deep-dive markers.
   if (!hasPostedMarker || !hasCompleteMarker) {
     const missing = [
       !hasPostedMarker ? DEEP_DIVE_POSTED_MARKER : null,
@@ -339,6 +380,7 @@ export async function runHook(payload, deps = {}) {
     issueState: signals.state,
     hasPostedMarker: signals.hasPostedMarker,
     hasCompleteMarker: signals.hasCompleteMarker,
+    policy: (deps.loadPolicy || loadPolicy)(projectDir),
   });
 }
 

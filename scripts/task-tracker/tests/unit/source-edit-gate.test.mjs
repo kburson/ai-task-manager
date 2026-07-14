@@ -124,7 +124,8 @@ test('case (c): Edit permitted in Develop with both markers stamped', () => {
   assert.equal(r.reason, 'state-and-markers-ok');
 });
 
-test('case (c) variants: test/review/done also permitted with markers', () => {
+// #805: coding window closes at `develop`; full matrix in source-edit-post-develop-lock.test.mjs.
+test('case (c) variants #805: test/review/done REFUSE WRITE_CODE despite markers', () => {
   for (const state of ['test', 'review', 'done']) {
     const r = decideSourceEdit({
       toolName: 'Edit',
@@ -136,7 +137,8 @@ test('case (c) variants: test/review/done also permitted with markers', () => {
       hasPostedMarker: true,
       hasCompleteMarker: true,
     });
-    assert.equal(r.decision, 'allow', `state ${state} should allow`);
+    assert.equal(r.decision, 'block', `state ${state} should block WRITE_CODE`);
+    assert.equal(r.code, 'source-edit-post-develop-lock', `state ${state} block code`);
   }
 });
 
