@@ -89,10 +89,19 @@ When a test file is split (see §4), both the original and the sibling carry the
 
 ### 4. Per-file line cap and split policy
 
-- **Soft target:** 200 lines (including imports, comments, and blank lines).
-- **Hard limit:** 400 lines.
+Both limits are measured in **lines of code**, excluding comments and blank lines.
+A line counts only if it carries code: blank / whitespace-only lines, `//` line
+comments, and `/* … */` block comments (including every line a multi-line block
+spans) do not count. A line with code plus a trailing comment counts as one code
+line. The scan is line-oriented and does not tokenize string literals — a `//` or
+`/*` inside a string literal on an otherwise-code line does not exempt that line.
+The gate is enforced by `scripts/task-tracker/tests/audit-line-cap.mjs` via
+`countCodeLines` (`scripts/task-tracker/lib/count-code-lines.mjs`).
 
-When a file exceeds 400 lines:
+- **Soft target:** 200 code lines.
+- **Hard limit:** 400 code lines.
+
+When a file exceeds 400 code lines:
 
 1. Identify a cohesive sub-suite — a group of tests that share a single concern.
 2. Extract it into a sibling file. Name the sibling with a descriptive suffix:
