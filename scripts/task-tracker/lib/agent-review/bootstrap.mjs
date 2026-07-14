@@ -17,7 +17,7 @@ import './registry.mjs';
 // registry run order.
 import './validators/body-sections.mjs';
 import './validators/required-comments.mjs';
-// import './validators/v3-timing-log-sequence.mjs';
+import './validators/timing-log-sequence.mjs';
 // import './validators/v4-new-tests-content.mjs';
 // import './validators/v5-ac-dod-vc-attributes.mjs';
 // import './validators/v6-marker-organization.mjs';
