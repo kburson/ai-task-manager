@@ -223,30 +223,37 @@ test('AC6 regression: review:approved row is SUPPRESSED when no marker and the g
 });
 
 test('AC4 source: close gates ONLY the review:approved row on the decision; issue:wrap stays unconditional', () => {
+  // #801 refactor: the emit is centralized in the `emitReviewToDoneClosePair`
+  // helper, invoked from BOTH the converge/noop fast-path and the full close
+  // pipeline. The guard reads a pre-computed `hasApprovalMarker` param; each
+  // call site derives it from its own live body (closeBody / convergeBody) so
+  // review:approved is never fabricated.
   const guardIdx = closeSrc.indexOf('shouldEmitReviewApprovedRow({');
   assert.ok(guardIdx >= 0, 'close must gate the row through shouldEmitReviewApprovedRow');
-  const block = closeSrc.slice(guardIdx, guardIdx + 320);
+  const guardBlock = closeSrc.slice(guardIdx, guardIdx + 200);
   assert.ok(
-    /hasApprovalMarker: hasReviewApprovedMarker\(closeBody\)/.test(block),
-    'the gate must read the live closeBody for the approval marker'
-  );
-  assert.ok(
-    /reviewGateBypassed/.test(block),
+    /reviewGateBypassed/.test(guardBlock),
     'the gate must honor the explicit review-gate bypass'
   );
-  // The approved row is inside the guard; the wrap row is posted after, outside.
-  const approvedPost = closeSrc.indexOf(
-    'safePostTiming(closeTarget, _reviewApprovedRow)',
-    guardIdx
-  );
-  const wrapPost = closeSrc.indexOf('safePostTiming(closeTarget, _issueWrapRow)', guardIdx);
+
+  // Both call sites derive the approval marker from a live body, never a
+  // constant — the converge path off convergeBody, the full path off closeBody.
   assert.ok(
-    approvedPost >= 0 && wrapPost > approvedPost,
-    'wrap row follows the gated approved row'
+    /hasApprovalMarker: hasReviewApprovedMarker\(convergeBody\)/.test(closeSrc),
+    'the converge-path call site must read the live convergeBody for the approval marker'
   );
-  const between = closeSrc.slice(guardIdx, approvedPost);
   assert.ok(
-    /\{\s*$/m.test(between) || between.includes('{'),
-    'approved row sits inside the if-guard'
+    /hasApprovalMarker: hasReviewApprovedMarker\(closeBody\)/.test(closeSrc),
+    'the full-path call site must read the live closeBody for the approval marker'
+  );
+
+  // Inside the helper: the approved row is inside the shouldEmit guard; the wrap
+  // row is posted after, gated only on pendingClosePairState (idempotency), NOT
+  // on approval — it records the terminal close, not an approval claim.
+  const approvedPost = closeSrc.indexOf('safePostTiming(closeTarget, reviewApprovedRow)', guardIdx);
+  const wrapPost = closeSrc.indexOf('safePostTiming(closeTarget, issueWrapRow)', guardIdx);
+  assert.ok(
+    approvedPost > guardIdx && wrapPost > approvedPost,
+    'the gated approved row sits inside the shouldEmit guard; the wrap row follows it, outside'
   );
 });

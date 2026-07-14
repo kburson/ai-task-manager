@@ -148,21 +148,28 @@ async function runClose(ctx) {
 
 // ── AC2 ──────────────────────────────────────────────────────────────────────
 
-test('#708 AC2 (baseline bug): board=Done + issue=CLOSED without --repair → noop short-circuit', async () => {
+test('#708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop short-circuit (no timing flush)', async () => {
   const statePath = withRealStateFile({ active: '#708' });
   const sideEffects = [];
   const ctx = buildCtx({ statePath, rest: ['#708'], sideEffects });
   const r = await runClose(ctx);
 
-  // The short-circuit fires: no timing flush, no audit rows, no terminal move.
+  // The short-circuit fires: no full timing flush, no terminal move.
   assert.match(r.stdout, /already fully closed/, 'must hit the noop convergence branch');
   assert.ok(
     !sideEffects.includes('runLogIssueTime'),
-    'the noop branch must NOT replay the timing flush (this is the #708 bug)'
+    'the noop branch must NOT replay the full timing flush — that stays --repair-only (#708)'
   );
+  // #801 SUPERSESSION: the noop branch now backfills the terminal
+  // `review:approved → issue:wrap` audit pair (idempotent via
+  // pendingClosePairState), because an out-of-band close otherwise loses its
+  // closing rows and AI-value accounting under-reports. This replaces the
+  // pre-#801 assertion that the noop branch replayed NO audit rows. The
+  // distinction #708's --repair genuinely owns — the full timing FLUSH
+  // (runLogIssueTime) — is still asserted above, so both contracts hold.
   assert.ok(
-    !sideEffects.includes('safePostTiming'),
-    'the noop branch must NOT replay the close audit rows'
+    sideEffects.includes('safePostTiming'),
+    'the noop branch backfills the close audit pair (#801) — issue:wrap is unconditional'
   );
   assert.doesNotMatch(r.stdout, /^Closed #708\.?$/m, 'the full close terminal line must not print');
 });
