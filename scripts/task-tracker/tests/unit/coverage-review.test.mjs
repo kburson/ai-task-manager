@@ -137,13 +137,29 @@ async function runExit(ctx) {
   return code;
 }
 
+// A V1-well-formed body: all nine canonical sections, in order, each non-empty,
+// so the inline Agent Review Gate passes and the success path is reached.
 const CLEAN_BODY = [
+  '## User Story',
+  'As a maintainer, I want a clean, well-formed body.',
+  '## Scope',
+  'Exercise the review success path.',
+  '## Plan Metadata',
+  '- **Size:** S',
+  '## Pickup Directive',
+  '- [x] Deep dive complete',
+  '## Deep-Dive Analysis (2026-01-01)',
+  'Design prose.',
+  '## Acceptance Criteria',
+  '- [ ] Acceptance criteria met',
+  '## Verification Commands',
+  '- [ ] `npm test`',
   '## Definition of Done',
   '- [ ] `npm test` passes',
   '- [ ] Lint clean <!-- aitm-verified cmd="`npm run lint`" exit="0" sha="d" ts="t" -->',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
-  '',
+  '## AITM Progress Markers',
   '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
 ].join('\n');
 
