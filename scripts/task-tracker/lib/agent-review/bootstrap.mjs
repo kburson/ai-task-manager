@@ -16,8 +16,7 @@ import './registry.mjs';
 // self-registers on the shared singleton, the order of these lines is the
 // registry run order.
 import './validators/body-sections.mjs';
-// import './validators/v2-required-comments.mjs';
-// import './validators/v2-required-comments.mjs';
+import './validators/required-comments.mjs';
 // import './validators/v3-timing-log-sequence.mjs';
 // import './validators/v4-new-tests-content.mjs';
 // import './validators/v5-ac-dod-vc-attributes.mjs';
