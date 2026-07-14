@@ -18,6 +18,6 @@ import './registry.mjs';
 import './validators/body-sections.mjs';
 import './validators/required-comments.mjs';
 import './validators/timing-log-sequence.mjs';
-// import './validators/v4-new-tests-content.mjs';
+import './validators/new-tests-content.mjs';
 // import './validators/v5-ac-dod-vc-attributes.mjs';
 // import './validators/v6-marker-organization.mjs';
