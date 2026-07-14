@@ -29,10 +29,13 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { getProjectDir, sessionsDir } from './paths.mjs';
-import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
+import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
 import { enqueue } from './queue.mjs';
 import { pendingPausePath } from './hooks/on-stop.mjs';
 import { durableWordMarker } from './state.mjs';
+import { lastRowTsFromBody } from './lib/timing-rows.mjs';
+import { collectEventTimestamps, computeActiveAndIdleSeconds } from './active-time.mjs';
+import { jsonlPath } from './word-counter.mjs';
 
 const VALID_REASONS = new Set(['natural', 'orphan-finalize', 'switch', 'stale-session']);
 
@@ -61,19 +64,12 @@ export function computeGapSeconds(stoppedAt, nowMs = Date.now()) {
   return Math.max(0, Math.floor((nowMs - t) / 1000));
 }
 
-async function postOrEnqueue({ cfg, projDir, marker, sid, reason, idleSeconds, nowIso, deps }) {
+// Post one row to the marker's issue, falling back to the durable queue on any
+// network error. Shared by the active-segment and idle emitters so both honor
+// the same never-break-a-hook contract.
+async function postRowOrEnqueue({ cfg, projDir, marker, row, deps }) {
   const postFn = deps.postTimingEvent || postTimingEvent;
   const enqueueFn = deps.enqueue || enqueue;
-  const row = buildRow({
-    ts: nowIso,
-    event: 'idle',
-    idleSec: idleSeconds,
-    activeSec: 0,
-    deltaWords: 0,
-    // #475 AC1 — carried-forward durable marker, never null (idle finalize, no live session)
-    wordMarker: durableWordMarker(projDir),
-    description: `<!-- sess: ${sid} reason: ${reason} -->`,
-  });
   try {
     await postFn({
       issueNumber: marker.issue,
@@ -88,6 +84,95 @@ async function postOrEnqueue({ cfg, projDir, marker, sid, reason, idleSeconds, n
       /* drop on the floor; never break a hook */
     }
   }
+}
+
+// #802 — credit active work performed inside a non-transitioning state.
+//
+// Active-duration rows are otherwise emitted ONLY on state transitions (the
+// `flushActiveToGH` path). Work done inside a state without transitioning —
+// most visibly during `review` (PR push, CI wait, merge via raw git/gh) —
+// produced no active row, so the eventual pause-finalize logged the entire
+// stop→prompt gap as pure idle and the real effort evaporated.
+//
+// The fix splits the work turn out of the idle gap: before the idle row for
+// `[stoppedAt → now]`, emit an active row crediting `[lastRowTs → stoppedAt]`,
+// the interval whose active-vs-idle share we compute from the transcript's
+// user/assistant turn timestamps (same machinery `flushActiveToGH` uses).
+//
+// Returns the credited active seconds (0 when nothing is credited). Skips —
+// never fabricates — when there is no readable prior row to anchor the window
+// (absent/error/unreadable body), when the window is empty/inverted, or when
+// the transcript shows no active seconds in it. Each emitted active row lands
+// at ~now and advances the issue's last-row timestamp, so a subsequent
+// transition flush (anchored on `max(entryStartTs, lastRowTs)`) cannot
+// double-count this same interval.
+async function emitActiveWorkSegment({ cfg, projDir, marker, sid, reason, nowIso, deps }) {
+  // Mirror runtime's `safeReadLastRowTs` contract: the SKIP_NETWORK escape
+  // hatch suppresses the anchor read (and thus the active row) entirely. An
+  // injected `readTimingCommentBody` dep overrides this so tests stay hermetic
+  // without touching the wire.
+  if (process.env.TT_SKIP_NETWORK === '1' && !deps.readTimingCommentBody) return 0;
+
+  const stoppedMs = Date.parse(marker.stoppedAt);
+  if (!Number.isFinite(stoppedMs)) return 0;
+
+  const readBody = deps.readTimingCommentBody || readTimingCommentBody;
+  let lastRowMs = NaN;
+  try {
+    const res = await readBody({
+      issueNumber: String(marker.issue).replace(/^#/, ''),
+      repo: cfg.repo,
+      timeoutMs: cfg.hookNetworkTimeoutMs,
+    });
+    const tsStr = lastRowTsFromBody(bodyOf(res));
+    lastRowMs = tsStr ? Date.parse(tsStr) : NaN;
+  } catch {
+    return 0;
+  }
+  // No prior row (or an unreadable one) means the window has no anchor — we
+  // cannot know when the work turn began, so we credit nothing rather than
+  // inventing a start.
+  if (!Number.isFinite(lastRowMs) || stoppedMs <= lastRowMs) return 0;
+
+  const collect = deps.collectEventTimestamps || collectEventTimestamps;
+  const events = collect(jsonlPath(marker.sessionId || sid), lastRowMs, stoppedMs);
+  const { activeSec } = computeActiveAndIdleSeconds({
+    startMs: lastRowMs,
+    endMs: stoppedMs,
+    events,
+    idleThresholdMs: (Number(cfg.idleThresholdMinutes) || 5) * 60_000,
+  });
+  if (!(activeSec > 0)) return 0;
+
+  const row = buildRow({
+    ts: nowIso,
+    event: 'active-work',
+    activeSec,
+    idleSec: 0,
+    deltaWords: 0,
+    // #475 AC1 — carried-forward durable marker, never null (no live session).
+    wordMarker: durableWordMarker(projDir),
+    description: `<!-- sess: ${sid} reason: ${reason}-active -->`,
+  });
+  await postRowOrEnqueue({ cfg, projDir, marker, row, deps });
+  return activeSec;
+}
+
+async function postOrEnqueue({ cfg, projDir, marker, sid, reason, idleSeconds, nowIso, deps }) {
+  // #802 — credit any active work in the [lastRowTs → stoppedAt] turn first,
+  // so the idle row below no longer swallows it as pure idle.
+  await emitActiveWorkSegment({ cfg, projDir, marker, sid, reason, nowIso, deps });
+  const row = buildRow({
+    ts: nowIso,
+    event: 'idle',
+    idleSec: idleSeconds,
+    activeSec: 0,
+    deltaWords: 0,
+    // #475 AC1 — carried-forward durable marker, never null (idle finalize, no live session)
+    wordMarker: durableWordMarker(projDir),
+    description: `<!-- sess: ${sid} reason: ${reason} -->`,
+  });
+  await postRowOrEnqueue({ cfg, projDir, marker, row, deps });
   return row;
 }
 

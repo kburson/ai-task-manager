@@ -5,7 +5,13 @@ import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { pendingPausePath } from '../../hooks/on-stop.mjs';
-import { finalizeOrphanPause } from '../../orphan-finalize.mjs';
+
+// #802 — finalize now reads the issue's last timing-row ts to anchor an
+// active-work segment. These idle-path cases inject no `readTimingCommentBody`
+// dep, so suppress the wire read here; the active-credit path is exercised
+// hermetically in orphan-finalize-active-credit.test.mjs.
+process.env.TT_SKIP_NETWORK = '1';
+const { finalizeOrphanPause } = await import('../../orphan-finalize.mjs');
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-orphan-fin-'));
 
