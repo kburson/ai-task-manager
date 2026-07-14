@@ -12,8 +12,11 @@
 
 import './registry.mjs';
 
-// V1–V6 validator imports are appended here as they land:
-// import './validators/v1-body-sections.mjs';
+// V1–V6 validator imports are appended here as they land; because every import
+// self-registers on the shared singleton, the order of these lines is the
+// registry run order.
+import './validators/body-sections.mjs';
+// import './validators/v2-required-comments.mjs';
 // import './validators/v2-required-comments.mjs';
 // import './validators/v3-timing-log-sequence.mjs';
 // import './validators/v4-new-tests-content.mjs';
