@@ -29,6 +29,7 @@ Reference tables previously embedded in `CLAUDE.md`. Read on demand when picking
 | `scripts/task-tracker/config.mjs`           | Config loader (project > user > defaults)                                         |
 | `scripts/gh/move-state.mjs`                 | Move issue to Kanban state                                                        |
 | `scripts/gh/set-priority.mjs`               | Set issue priority P0/P1/P2                                                       |
+| `scripts/gh/set-rank.mjs`                   | Set issue project Rank (wave ordering) number field                              |
 | `scripts/gh/init-project-config.sh`         | Interactive setup: GH auth, project discovery, issue templates                    |
 | `docs/DESIGN.md`                            | Full design specification                                                         |
 | `docs/guides/workflow.md`                   | GitHub Issues, Kanban, estimates, cleanup — full workflow rules                   |

@@ -122,6 +122,7 @@ Grouped by responsibility. This is the substantive surface — the layer that su
 | [`scripts/task-tracker/project-fields.mjs`](../../scripts/task-tracker/project-fields.mjs) | Reads / writes Projects v2 custom fields                                |
 | [`scripts/task-tracker/issue-field-db.mjs`](../../scripts/task-tracker/issue-field-db.mjs) | Local cache of issue/field state                                        |
 | [`scripts/gh/set-priority.mjs`](../../scripts/gh/set-priority.mjs)                         | Single priority writer; supports `--cascade` for sub-issue trees        |
+| [`scripts/gh/set-rank.mjs`](../../scripts/gh/set-rank.mjs)                                 | Single Rank writer; sets the wave-ordering number field on one issue    |
 | [`scripts/gh/update-event-fields.mjs`](../../scripts/gh/update-event-fields.mjs)           | Stamps phase-event fields (start, plan-approved, …) on every transition |
 
 ## Properties this architecture gives you
