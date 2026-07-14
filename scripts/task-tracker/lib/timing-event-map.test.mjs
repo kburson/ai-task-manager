@@ -102,4 +102,17 @@ test('isCanonicalPhaseSlug rejects non-canonical neutral slugs', () => {
 test('audit-phase slugs are canonical', () => {
   assert.equal(isCanonicalPhaseSlug('demoted'), true);
   assert.equal(isCanonicalPhaseSlug('out-of-band-move'), true);
+  assert.equal(isCanonicalPhaseSlug('active-work'), true);
+});
+
+test('the ad-hoc review-verb slugs are recognized neutral phase rows (#812)', () => {
+  // The `review` verb emits two bare-verb rows on every review entry; V3's
+  // known-slug gate derives from isCanonicalPhaseSlug, so these must be
+  // recognized or every timing log fails the moment it enters Review.
+  for (const slug of ['review', 'review-ready']) {
+    assert.equal(isCanonicalPhaseSlug(slug), true, slug);
+    assert.equal(classifyTimingEvent(slug), EVENT_CLASS.PHASE, slug);
+    assert.equal(isDepartureEvent(slug), false, slug);
+    assert.equal(isReengagementEvent(slug), false, slug);
+  }
 });

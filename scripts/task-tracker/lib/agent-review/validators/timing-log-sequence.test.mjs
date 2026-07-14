@@ -53,6 +53,26 @@ test('a leading reengagement (resumed at row 1) is legal, not an orphan close', 
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
+test('accepts the ad-hoc review-verb rows the review gate emits (#812)', () => {
+  // The `review` verb appends bare `review` + `review-ready` rows on entry; V3
+  // must walk them as neutral phase rows, not flag them as unknown slugs — else
+  // every log fails the moment it reaches Review.
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'start', 'bound'],
+        [T(1), 'test:passed', 'testing complete'],
+        [T(2), 'review:started', 'waiting in review'],
+        [T(3), 'review', 'starting review'],
+        [T(4), 'review-ready', 'task is now in Review'],
+      ],
+      [{ stage: 'test' }, { stage: 'review' }]
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+  assert.deepEqual(res.failures, []);
+});
+
 // --- Format schema -----------------------------------------------------------
 
 test('fails a malformed row with an unknown event slug, naming the row', () => {

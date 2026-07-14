@@ -52,7 +52,23 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // reengagement. Registering it here makes `isCanonicalPhaseSlug` (and thus V3's
 // `isKnownSlug`) accept it, so a real `active-work → idle` pair walks legally
 // instead of surfacing as `malformed` + cascade `doubled-step`.
-const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'active-work']);
+//
+// `review` / `review-ready` (#812): the two ad-hoc bare-verb rows the `review`
+// verb emits on every review entry — `review` ("starting review", the deferred
+// verb-level session-start row, review.mjs) and `review-ready` ("task is now in
+// Review", the state-move row, review.mjs). phase-events.mjs deliberately keeps
+// them OUT of the canonical PHASE_EVENTS table pending the separate "extra
+// timing-log rows" discussion; recognizing them HERE as neutral phase slugs is
+// orthogonal to that deferral (it does not canonicalize them — it just stops V3
+// from flagging legitimate emitter rows as `malformed — unknown event slug`).
+// Without this, every timing log fails V3 the moment it enters Review.
+const AUDIT_PHASE_SLUGS = Object.freeze([
+  'demoted',
+  'out-of-band-move',
+  'active-work',
+  'review',
+  'review-ready',
+]);
 
 // Classify a single Event-cell slug into one of EVENT_CLASS. Case-insensitive.
 // Interruption openers/closers defer to `classifyEvent` (the canonical #534
