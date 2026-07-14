@@ -16,10 +16,56 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
-import { buildContext } from '../../runtime.mjs';
-import { lastRowFromBody } from '../../lib/timing-rows.mjs';
-import { validate } from '../../lib/agent-review/validators/timing-log-sequence.mjs';
+import { mkdtempProjectIsolated } from '../../lib/scratch-dir.mjs';
+
+// #822 — the guard is gated on `activeSec > 0`, and when a session id resolves,
+// `flushActiveToGH` derives active seconds from the session transcript's
+// user/assistant event timestamps inside the flush window — NOT from wall-clock
+// width. Running under a live Claude session, `currentSessionId()` returns the
+// real sid and reads the real transcript, so the active/idle split of the test's
+// synthetic window depended on whatever the operator happened to be doing in the
+// last N minutes — nondeterministic (green locally, red in the sandbox when the
+// window landed in a quiet gap → activeSec 0 → guard silent). We pin a fixed sid
+// and an isolated transcript dir, then write a deterministic transcript whose
+// events span the whole window so `activeSec > 0` is guaranteed. `SESSION_ID`
+// (the orchestrator key) is first in `resolveSessionId`'s precedence, so it wins
+// over the ambient provider key. Env is set before `runtime.mjs` is imported so
+// the module's env-reading path helpers resolve against the fixture.
+const FIXTURE_SID = 'tt-822-fixture';
+const ISO_ROOT = mkdtempProjectIsolated('tt-822-finalize-idle-');
+process.env.AI_TASK_MANAGER_PROJECT_DIR = ISO_ROOT;
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(ISO_ROOT, 'transcripts');
+process.env.AI_TASK_MANAGER_SESSION_ID = FIXTURE_SID;
+mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
+
+const { buildContext } = await import('../../runtime.mjs');
+const { lastRowFromBody } = await import('../../lib/timing-rows.mjs');
+const { validate } = await import('../../lib/agent-review/validators/timing-log-sequence.mjs');
+
+// Write a transcript for FIXTURE_SID with a user/assistant event every 30s
+// across [startMs, endMs]. Every gap (start→first, between, last→end) stays well
+// under the 5-minute idle threshold, so `computeActiveAndIdleSeconds` credits the
+// entire window as active → `activeSec > 0` deterministically, independent of the
+// real operator's activity.
+function writeDenseTranscript(startMs, endMs) {
+  const lines = [];
+  for (let t = startMs + 30_000; t < endMs; t += 30_000) {
+    lines.push(JSON.stringify({ type: 'assistant', timestamp: new Date(t).toISOString() }));
+  }
+  // Guarantee at least one in-window event even for a very short window.
+  if (lines.length === 0) {
+    const mid = Math.floor((startMs + endMs) / 2);
+    lines.push(JSON.stringify({ type: 'assistant', timestamp: new Date(mid).toISOString() }));
+  }
+  writeFileSync(
+    path.join(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, `${FIXTURE_SID}.jsonl`),
+    lines.join('\n'),
+    'utf8'
+  );
+}
 
 // cells[2] is the Event cell of a freshly-built row string.
 function eventOf(row) {
@@ -48,7 +94,9 @@ function offlineCtx() {
 }
 
 // Drive one flush with a given tail row and departure event, capturing every
-// posted row in order. `activeMinutes` sets the width of the active window.
+// posted row in order. `activeMinutes` sets the width of the active window; a
+// dense transcript is written across it so the active/idle computation is
+// deterministic (see writeDenseTranscript).
 async function driveFlush({ tailEvent, departureEvent, activeMinutes }) {
   const { ctx, restore } = offlineCtx();
   const posted = [];
@@ -56,8 +104,10 @@ async function driveFlush({ tailEvent, departureEvent, activeMinutes }) {
     posted.push(row);
     return { ok: true };
   };
-  const entryMs = Date.now() - activeMinutes * 60_000;
+  const now = Date.now();
+  const entryMs = now - activeMinutes * 60_000;
   const entryIso = new Date(entryMs).toISOString();
+  writeDenseTranscript(entryMs, now);
   ctx.safeReadLastRow =
     tailEvent == null ? async () => null : async () => ({ ts: entryIso, event: tailEvent });
   const state = { active: '#812', entryStartTs: entryIso, lastWordMarker: 0 };
