@@ -5,6 +5,7 @@ import {
   computeReviewMin,
   computePlanMin,
   rollupTotals,
+  pendingClosePairState,
 } from '../../timing-rollup.mjs';
 
 function buildLog(rows) {
@@ -223,5 +224,69 @@ assert.equal(
   900,
   'lastWordMarker holds the max despite later wm=0 rows'
 );
+
+// #817 AC1 — idempotent terminal seal. When `issue:closed` is the terminal
+// (last) row, the close-pair for that terminal precedes it, so
+// `pendingClosePairState` must report BOTH halves present — otherwise the close
+// verb re-appends `review:approved`/`issue:wrap` AFTER the seal (the observed
+// doubling / illegal-after-terminal defect). The after-window is empty here; the
+// terminal-seal branch inspects the pre-terminal window instead.
+const sealedBody = buildLog([
+  { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5, wm: 100 },
+  { ts: '2026-05-09 10:09 -07:00', event: 'develop:complete', active: 4, wm: 200 },
+  { ts: '2026-05-09 10:10 -07:00', event: 'review:approved', active: 0, wm: 210 },
+  { ts: '2026-05-09 10:11 -07:00', event: 'issue:wrap', active: 0, wm: 210 },
+  { ts: '2026-05-09 10:12 -07:00', event: 'issue:closed', active: 1, wm: 210 },
+]);
+const sealed = pendingClosePairState(sealedBody);
+assert.equal(sealed.reviewApproved, true, 'terminal seal: review:approved reported present');
+assert.equal(sealed.issueWrap, true, 'terminal seal: issue:wrap reported present');
+
+// #817 AC2 — a well-formed close sequence records exactly one `review:approved`
+// and exactly one `issue:wrap` before a single terminal `issue:closed`.
+const sealedRows = parseTimingRows(sealedBody);
+assert.equal(
+  sealedRows.filter((r) => r.event === 'review:approved').length,
+  1,
+  'exactly one review:approved before terminal'
+);
+assert.equal(
+  sealedRows.filter((r) => r.event === 'issue:wrap').length,
+  1,
+  'exactly one issue:wrap before terminal'
+);
+assert.equal(
+  sealedRows.filter((r) => r.event === 'issue:closed').length,
+  1,
+  'exactly one issue:closed'
+);
+assert.equal(
+  sealedRows[sealedRows.length - 1].event,
+  'issue:closed',
+  'issue:closed is the terminal row'
+);
+
+// #817 AC3 — re-running the close/flush tail after close is a no-op. The gate
+// (`pendingClosePairState`) reports both halves already handled, so the caller
+// emits nothing and the row set is unchanged (regression guard vs the #809
+// double-write). Idempotent on repeat evaluation.
+const rerun = pendingClosePairState(sealedBody);
+assert.deepEqual(
+  rerun,
+  { reviewApproved: true, issueWrap: true },
+  're-evaluation of a sealed log is a stable no-op signal'
+);
+
+// #817 — mid-flow (non-terminal `issue:closed`) semantics are unchanged: a fresh
+// in-flight close attempt whose after-window still lacks a half reports that half
+// pending so the caller emits it.
+const inFlightBody = buildLog([
+  { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5, wm: 100 },
+  { ts: '2026-05-09 10:11 -07:00', event: 'issue:closed', active: 1, wm: 210 },
+  { ts: '2026-05-09 10:20 -07:00', event: 'review:approved', active: 0, wm: 220 },
+]);
+const inFlight = pendingClosePairState(inFlightBody);
+assert.equal(inFlight.reviewApproved, true, 'in-flight window: review:approved already emitted');
+assert.equal(inFlight.issueWrap, false, 'in-flight window: issue:wrap still pending');
 
 console.log('timing-rollup.test.mjs: all passed');

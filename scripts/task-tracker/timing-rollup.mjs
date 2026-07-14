@@ -183,10 +183,30 @@ export function pendingClosePairState(body) {
   const closedEvent = PHASE_EVENTS.done.complete.event; // issue:closed
   const approvedEvent = PHASE_EVENTS.review.complete.event; // review:approved
   const wrapEvent = PHASE_EVENTS.done.enter.event; // issue:wrap
-  let lastClosedIdx = -1;
+  const closedIndexes = [];
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i].event === closedEvent) lastClosedIdx = i;
+    if (rows[i].event === closedEvent) closedIndexes.push(i);
   }
+  const lastClosedIdx = closedIndexes.length ? closedIndexes[closedIndexes.length - 1] : -1;
+
+  // Terminal seal (#817): when `issue:closed` is the LAST recorded row the log is
+  // sealed — the close-pair for that terminal necessarily precedes it, so the
+  // after-window is empty and would falsely read as "pair unwritten," letting a
+  // re-run of the close/flush tail append a second `review:approved`/`issue:wrap`
+  // AFTER the terminal event (the doubled/illegal-after-terminal defect). Inspect
+  // the pre-terminal window instead — the rows between the PRIOR `issue:closed`
+  // (if any) and this terminal one — and report the pair as present so the caller
+  // skips re-emission. Non-terminal `issue:closed` (a cleanly closed-then-reopened
+  // issue mid re-close) keeps the original after-window semantics below.
+  if (lastClosedIdx !== -1 && lastClosedIdx === rows.length - 1) {
+    const priorClosedIdx = closedIndexes.length > 1 ? closedIndexes[closedIndexes.length - 2] : -1;
+    const sealedWindow = rows.slice(priorClosedIdx + 1, lastClosedIdx);
+    return {
+      reviewApproved: sealedWindow.some((r) => r.event === approvedEvent),
+      issueWrap: sealedWindow.some((r) => r.event === wrapEvent),
+    };
+  }
+
   const windowRows = rows.slice(lastClosedIdx + 1);
   return {
     reviewApproved: windowRows.some((r) => r.event === approvedEvent),
