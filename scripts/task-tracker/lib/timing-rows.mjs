@@ -149,6 +149,26 @@ export function lastRowTsFromBody(body) {
   return last;
 }
 
+// #822 — read the last timing-log row's timestamp AND Event-cell slug from an
+// issue body. Returns `{ ts, event }` (event lower-cased, trimmed) or null when
+// no rows are present. The departure choke point (`ctx.flushActiveToGH`) uses
+// this to detect an unclosed finalize/orphan `idle` tail before it appends a
+// second departure row — the Fault Z doubled-step. The Event cell is the 2nd
+// pipe-delimited field (`| ts | event | active | ... |`); a trailing
+// `<!-- row-sec -->` marker lives after the last pipe and never perturbs it.
+export function lastRowFromBody(body) {
+  if (!body || typeof body !== 'string') return null;
+  const lines = body.split('\n');
+  let last = null;
+  for (const line of lines) {
+    const m = line.match(TS_LINE_RE);
+    if (!m) continue;
+    const cells = line.split('|').map((s) => s.trim());
+    last = { ts: m[1], event: (cells[2] ?? '').toLowerCase() };
+  }
+  return last;
+}
+
 // Parse every `aitm-pause` marker in the body and return
 // `Array<{from: Date, until: Date, reason: string}>`. Accepts both forms:
 //   `<!-- aitm-pause: <from>..<until> -->`                (back-compat)

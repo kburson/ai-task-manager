@@ -11,7 +11,8 @@ import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
 import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
-import { lastRowTsFromBody } from './lib/timing-rows.mjs';
+import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
+import { isDepartureEvent } from './lib/timing-event-map.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 
 // Re-exported so downstream verbs (promote/demote/review/new/close/switch —
@@ -312,6 +313,24 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
   };
 
+  // #822 — read the last timing-log row's `{ ts, event }` (event lower-cased).
+  // Same swallow-on-failure contract as `safeReadLastRowTs`: SKIP_NETWORK and any
+  // read/parse failure return null. Used by `flushActiveToGH` to detect an
+  // unclosed finalize/orphan `idle` tail before appending a departure row.
+  ctx.safeReadLastRow = async (issue) => {
+    if (SKIP_NETWORK) return null;
+    try {
+      const result = await readTimingCommentBody({
+        issueNumber: String(issue).replace(/^#/, ''),
+        repo: cfg.repo,
+        timeoutMs: cfg.hookNetworkTimeoutMs,
+      });
+      return lastRowFromBody(bodyOf(result));
+    } catch {
+      return null;
+    }
+  };
+
   ctx.drainQueueIfAny = async () => {
     if (SKIP_NETWORK) return;
     await drain(async (evt) => {
@@ -450,7 +469,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // row (computeOnly/SKIP_NETWORK/unreadable body → null), it falls back to
     // `entryStartTs`, preserving the pre-fix window exactly.
     const entryStartMs = new Date(state.entryStartTs).getTime();
-    const lastRowMs = opts.computeOnly ? null : await ctx.safeReadLastRowTs(state.active);
+    // #822 — read the whole tail row (ts + Event slug) in one fetch. The ts
+    // still anchors the Active-duration window (#720); the Event slug lets the
+    // Fault Z guard below detect an unclosed finalize/orphan `idle` tail.
+    const lastRow = opts.computeOnly ? null : await ctx.safeReadLastRow(state.active);
+    const lastRowMs =
+      lastRow?.ts && Number.isFinite(Date.parse(lastRow.ts)) ? Date.parse(lastRow.ts) : null;
     const startMs = resolveFlushStartMs(entryStartMs, lastRowMs);
     const endMs = new Date(ts).getTime();
     const wallMs = Math.max(0, endMs - startMs);
@@ -484,6 +508,45 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // only words added after this row's segment (no re-count, no frozen cursor).
     if (!opts.computeOnly && sid && markerLineToPersist != null) {
       saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active, wordMarkerFull);
+    }
+    // #822 (Fault Z) — a live departure must not stack on an unclosed
+    // finalize/orphan `idle` tail. The orphan/pause-finalize path (#802) ends its
+    // window with a trailing `idle` departure that opens an idle span it cannot
+    // close (the dead session has no reengagement to record). When the live
+    // session then accrues real active work (`activeSec > 0`) and emits its own
+    // departure (`pause:*` / `switch-out:#N`), appending it directly yields
+    // `idle → pause:*` — departure-on-departure — which V3 (correctly) reports as
+    // a doubled step. Interpose the canonical `resumed` reengagement (#568, the
+    // sole closer) at the window start, closing the finalize idle span and
+    // opening active, so the walk becomes `idle → resumed → pause:*` — legal, one
+    // interruption. Gated on `activeSec > 0` so a genuine re-departure with no
+    // intervening work (a real doubled step to surface) is never papered over,
+    // and on the tail being a departure so normal `reengagement → departure`
+    // flows are untouched. The interposed row credits zero duration; the active
+    // seconds stay on the departure row's `A=` cell (no double-count). It is
+    // stamped at `ts` (now, the recording moment) — NOT retroactively at the
+    // window start: `buildRow`'s anti-fabrication guard (#521) forbids backdated
+    // rows, and every row is timestamped when written, carrying elapsed work in
+    // its duration cells, not in timestamp deltas. The reengagement thus sits
+    // immediately before the departure at the same instant, closing the idle.
+    if (
+      !opts.computeOnly &&
+      activeSec > 0 &&
+      isDepartureEvent(effectiveEvent) &&
+      lastRow &&
+      isDepartureEvent(lastRow.event)
+    ) {
+      const reengageRow = buildRow({
+        ts,
+        event: 'resumed',
+        activeSec: 0,
+        idleSec: 0,
+        deltaWords: 0,
+        deltaWordsFull: 0,
+        wordMarker,
+        description: 'resumed',
+      });
+      await ctx.safePostTiming(state.active, reengageRow);
     }
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
