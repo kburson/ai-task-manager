@@ -20,9 +20,13 @@ function localMinuteWithOffset(iso) {
 }
 
 // All "now-ish" timestamps used below — buildRow refuses retroactive entries
-// outside a ±60s window, so tests must use current time anchors.
-const tsNow1 = new Date().toISOString();
-const tsNow2 = new Date(Date.now() - 30_000).toISOString(); // 30 s ago, within window
+// outside a ±60s window, so tests must use current time anchors. The first
+// appended row (`start`) is the earlier anchor and the second
+// (`pre-compact-flush`) is `now`, so the appended sequence is monotonic — #821's
+// appendRow clamp only ever moves a row whose timestamp precedes the current log
+// tail, so an in-order append must be left byte-for-byte untouched.
+const tsNow1 = new Date(Date.now() - 30_000).toISOString(); // 30 s ago, within window
+const tsNow2 = new Date().toISOString();
 const tsNow3 = new Date(Date.now() - 5_000).toISOString();
 
 // Test 1: buildRow formats correctly

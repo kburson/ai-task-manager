@@ -7,7 +7,7 @@ import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
-import { formatDurationSeconds } from './lib/timing-rows.mjs';
+import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
 const pexec = promisify(execFile);
 
@@ -321,6 +321,25 @@ function rewriteEventCell(row, nextEvent) {
   });
 }
 
+// #821 — read the Timestamp cell (1st pipe-delimited field) of a row string.
+// cells[0] is the empty pre-pipe cell, cells[1] the Timestamp.
+function rowTs(row) {
+  const cells = String(row)
+    .split('|')
+    .map((s) => s.trim());
+  return cells.length >= 2 ? cells[1] : '';
+}
+
+// #821 — rewrite ONLY the Timestamp cell (the 1st pipe-delimited field),
+// preserving every other cell and the trailing marker byte-for-byte.
+function rewriteTsCell(row, nextTs) {
+  let seen = 0;
+  return String(row).replace(/\|([^|]*)/g, (match) => {
+    seen += 1;
+    return seen === 1 ? `| ${nextTs} ` : match;
+  });
+}
+
 // #568 keystone — the structural duplicate-`start` guard. A `start` row may only
 // land on a log that has no data rows yet (the genuine first-ever bind). Over a
 // non-empty log:
@@ -341,6 +360,24 @@ function appendRow(body, row) {
       );
     }
   }
+  // #821 — monotonic-timestamp guard. A late/deferred finalize row drained from
+  // the durable queue (postRowOrEnqueue → enqueue → flush) carries the timestamp
+  // of the window it credits, which may precede rows that have since landed.
+  // Appending it as-is corrupts the monotonic sequence that V3
+  // (timing-log-sequence) and every time-series consumer depend on. Clamp its
+  // Timestamp cell forward to the current log tail so the row can never sort
+  // before an already-posted row. This only ever moves a timestamp forward — a
+  // live in-order row (ts >= tail) is a no-op — and the credited seconds carried
+  // in the trailing `row-sec` marker are left untouched.
+  const tailTs = lastRowTsFromBody(body);
+  if (tailTs) {
+    const rowMs = _tsToMs(rowTs(effectiveRow));
+    const tailMs = _tsToMs(tailTs);
+    if (Number.isFinite(rowMs) && Number.isFinite(tailMs) && rowMs < tailMs) {
+      effectiveRow = rewriteTsCell(effectiveRow, tailTs);
+    }
+  }
+
   const lines = body.split('\n');
   let lastTableIdx = -1;
   for (let i = 0; i < lines.length; i++) {

@@ -44,7 +44,15 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 
 // Non-phase audit rows that still open ACTIVE spans (they record real
 // orchestration work, not a departure or a re-engagement).
-const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move']);
+//
+// `active-work` (#821): the #802 finalize credit that orphan/pause-finalize emits
+// for the `[lastRowTs → stoppedAt]` window before the paired `idle` row. It
+// records real active work, so it belongs to the phase class — it closes an open
+// idle span and sets state → active, and is neither a departure nor a
+// reengagement. Registering it here makes `isCanonicalPhaseSlug` (and thus V3's
+// `isKnownSlug`) accept it, so a real `active-work → idle` pair walks legally
+// instead of surfacing as `malformed` + cascade `doubled-step`.
+const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'active-work']);
 
 // Classify a single Event-cell slug into one of EVENT_CLASS. Case-insensitive.
 // Interruption openers/closers defer to `classifyEvent` (the canonical #534
