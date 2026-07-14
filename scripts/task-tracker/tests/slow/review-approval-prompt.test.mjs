@@ -138,7 +138,21 @@ appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({argv, stdinBody}) + 
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
   if (argv.includes('comments')) {
     const traceComment = ${JSON.stringify(traceComment)};
-    fs.writeSync(1,JSON.stringify({ comments: traceComment ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }] : [] }));
+    // V2 required-comments (#811): the inline Agent Review Gate now demotes
+    // any issue reaching Review without all five required report comments. A
+    // genuinely review-ready issue has them, so the shim supplies them here.
+    // Refusal fixtures fail earlier (preflight/attribution), so this never
+    // rescues them.
+    const requiredComments = [
+      { id: 'IC_req_timing', body: '⏱ Timing Log\\n\\n| Timestamp | Event | Detail |\\n| --- | --- | --- |\\n| 2026-05-10 00:00 | refine:started | bind |' },
+      { id: 'IC_req_estimate', body: '<!-- aitm-refined-estimate: 101 -->\\n\\n### Planned Estimate\\n\\n| Field | Value |' },
+      { id: 'IC_req_audit', body: '### Full-Auto Plan-Approval Audit\\n\\nNo human reviewer.' },
+      { id: 'IC_req_tests', body: '## New Automated Tests\\n\\n- \`foo.test.mjs\`' },
+    ];
+    const comments = traceComment
+      ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }, ...requiredComments]
+      : [...requiredComments];
+    fs.writeSync(1,JSON.stringify({ comments }));
     process.exit(0);
   }
   const currentBody = readFileSync(${JSON.stringify(bodyStatePath)}, 'utf8');
@@ -190,6 +204,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   }
   // projectItemForIssue query → nodes { id project { id } }
   // getIssueBoardState query → fieldValueByName { optionId }
+  // fetchProjectMeta query (log-issue-time.mjs) → data.node.fields.nodes
   // generic repository.issue query
   const env = {
     data: {
@@ -201,7 +216,16 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
           projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} } }] },
           comments: { nodes: [] }
         }
-      }
+      },
+      // fetchProjectMeta reads data.node.fields.nodes for the timing board fields;
+      // supplying them here lets runLogIssueTime complete its board-field sync.
+      node: { fields: { nodes: [
+        { id: 'F_session', name: 'Session Time' },
+        { id: 'F_engaged', name: 'Engaged Time' },
+        { id: 'F_review', name: 'Review Time' },
+        { id: 'F_plan', name: 'Plan Time' },
+        { id: 'F_start', name: 'Start time' },
+      ] } }
     }
   };
   fs.writeSync(1,JSON.stringify(env));

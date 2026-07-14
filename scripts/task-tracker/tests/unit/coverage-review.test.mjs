@@ -2,18 +2,12 @@
 // @story #622
 // cspell:ignore gctx deadbee bbbbbbbbcccc
 // Coverage test for verbs/review.mjs — drives every branch of `verbReview`
-// (and the pure `buildDeferredReviewRow`) offline. The network block runs with
-// SKIP_NETWORK:false; all real I/O is redirected through the ctx injection bag:
-//   - ctx.runReviewPreflight   (preflight git+gh)
-//   - ctx.mutateIssueBody      (issue-body write)
-//   - ctx.deriveAndStampFunctionalDod (derived-DoD stamp inside deriveAndRescan)
-//   - ctx.runGuards            (test→review guard set; its child-cannot-lead-epic
-//                               guard otherwise does a live gh GraphQL lookup)
-//   - ctx.pexec                (gh/git subprocesses)
-// plus the already-injected safePostTiming/runMoveState/fetchSubIssues/etc.
-// No gh/git subprocess is spawned (the lone exception, the validateBody-refusal
-// branch's un-injected postTimingEvent, is neutralized with an empty PATH so it
-// ENOENTs into review's best-effort catch).
+// (and the pure `buildDeferredReviewRow`) offline. Real I/O is redirected
+// through the ctx injection bag (runReviewPreflight, mutateIssueBody,
+// deriveAndStampFunctionalDod, runGuards, pexec, plus safePostTiming/
+// runMoveState/fetchSubIssues). No gh/git subprocess is spawned — the lone
+// exception (validateBody-refusal branch's un-injected postTimingEvent) is
+// neutralized with an empty PATH so it ENOENTs into review's best-effort catch.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -39,11 +33,25 @@ const baseState = (over = {}) => ({
   ...over,
 });
 
+// The five report comments the V2 required-comments validator (#811) demands
+// on any issue reaching Review; the pexec stub returns them for the
+// `--json comments` fetch or the inline gate would demote to Develop.
+const REQUIRED_COMMENTS_STUB = [
+  { body: '⏱ Timing Log\n\n| Row | Event |\n| --- | --- |' },
+  { body: '<!-- aitm-refined-estimate: 777 -->\n\n### Planned Estimate\n\n| Field | Value |' },
+  { body: '### Full-Auto Plan-Approval Audit\n\nNo human reviewer.' },
+  { body: '### 🔗 Commits\n\n- abc1234 fixture deliverable' },
+  { body: '## New Automated Tests\n\n- `foo.test.mjs`' },
+];
+
 function makePexec({ gateBody, rawBody, scanBody, headSha }) {
   let jq = 0;
   return async (cmd, args = []) => {
     if (cmd === 'git') return { stdout: headSha, stderr: '' };
-    if (args.includes('--jq')) {
+    if (Array.isArray(args) && args.includes('comments')) {
+      return { stdout: JSON.stringify({ comments: REQUIRED_COMMENTS_STUB }), stderr: '' };
+    }
+    if (Array.isArray(args) && args.includes('--jq')) {
       jq += 1;
       return { stdout: jq === 1 ? gateBody : scanBody, stderr: '' };
     }
@@ -163,8 +171,6 @@ const CLEAN_BODY = [
   '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
 ].join('\n');
 
-// ── pure helper ──────────────────────────────────────────────────────────────
-
 test('buildDeferredReviewRow: null spec → null', () => {
   assert.equal(buildDeferredReviewRow(null, 't'), null);
 });
@@ -184,8 +190,6 @@ test('buildDeferredReviewRow: row kind → buildRow row', () => {
   );
   assert.ok(row && typeof row === 'string');
 });
-
-// ── argument / preflight / gate guards ───────────────────────────────────────
 
 test('no target → exit 1', async () => {
   const { statePath, dir } = tmpState(baseState({ active: 'discover' }));
@@ -246,8 +250,6 @@ test('non-empty clean gate body passes validateBody (no refusal)', async () => {
   }
 });
 
-// ── dod fast-path guard ──────────────────────────────────────────────────────
-
 test('dod-verified guard refusal → exit 4 (else timing branch)', async () => {
   const { statePath, dir } = tmpState(baseState({ active: '#888' }));
   try {
@@ -261,8 +263,6 @@ test('dod-verified guard refusal → exit 4 (else timing branch)', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
-// ── SHA drift ────────────────────────────────────────────────────────────────
 
 test('HEAD drift from aitm-test-started → exit 4', async () => {
   const { statePath, dir } = tmpState(baseState());
@@ -280,8 +280,6 @@ test('HEAD drift from aitm-test-started → exit 4', async () => {
   }
 });
 
-// ── verification failures → revert to develop ────────────────────────────────
-
 test('unbacked checkbox → failures revert to Develop, exit 3', async () => {
   const { statePath, dir } = tmpState(baseState());
   try {
@@ -296,8 +294,6 @@ test('unbacked checkbox → failures revert to Develop, exit 3', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
-// ── sub-issue gate ───────────────────────────────────────────────────────────
 
 test('epic child not in review → exit 3', async () => {
   const { statePath, dir } = tmpState(baseState());
@@ -314,8 +310,6 @@ test('epic child not in review → exit 3', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
-// ── completeness guard ───────────────────────────────────────────────────────
 
 test('completeness guard refusal → exit 4', async () => {
   const { statePath, dir } = tmpState(baseState());
@@ -344,8 +338,6 @@ test('completeness guard refusal → exit 4', async () => {
   }
 });
 
-// ── move-state refusal ───────────────────────────────────────────────────────
-
 test('runMoveState refuses the review move → propagates its status', async () => {
   const { statePath, dir } = tmpState(baseState());
   try {
@@ -360,8 +352,6 @@ test('runMoveState refuses the review move → propagates its status', async () 
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
-// ── success path (s.active === target) ───────────────────────────────────────
 
 test('success: all checks pass → moves to Review, prompts approval', async () => {
   const { statePath, dir } = tmpState(baseState());
@@ -379,8 +369,6 @@ test('success: all checks pass → moves to Review, prompts approval', async () 
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
-// ── else timing branch reaching success (no active session for target) ───────
 
 test('success via else branch (target not the active session)', async () => {
   const { statePath, dir } = tmpState(baseState({ active: '#888' }));

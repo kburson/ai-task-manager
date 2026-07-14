@@ -678,7 +678,8 @@ export async function verbReview(ctx) {
       let comments = [];
       try {
         const { stdout } = await pexec(
-          `gh issue view ${issueNum} --repo ${cfg.repo} --json comments`,
+          'gh',
+          ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'comments'],
           { timeout: GH_API_TIMEOUT_MS }
         );
         const parsed = JSON.parse(stdout || '{}');
