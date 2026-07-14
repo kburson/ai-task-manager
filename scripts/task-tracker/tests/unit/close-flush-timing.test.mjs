@@ -44,12 +44,16 @@ assert.equal(
   1,
   `expected exactly 1 buildReviewToDoneClosePair call in verbClose, found ${pairBuildCount}`
 );
-// The wrap (done.enter) row from that pair is posted exactly once.
-const wrapPostCount = (src.match(/safePostTiming\(closeTarget,\s*_issueWrapRow\)/g) || []).length;
+// #801 — the terminal pair emission is centralized in the
+// `emitReviewToDoneClosePair` helper, which posts the wrap (done.enter) row via
+// `safePostTiming(closeTarget, issueWrapRow)` exactly once (the helper is the
+// single emission point; it is invoked from both the converge fast-path and the
+// full pipeline, but the post text appears once, in the helper body).
+const wrapPostCount = (src.match(/safePostTiming\(closeTarget,\s*issueWrapRow\)/g) || []).length;
 assert.equal(
   wrapPostCount,
   1,
-  `expected exactly 1 safePostTiming(closeTarget, _issueWrapRow) call in verbClose, found ${wrapPostCount}`
+  `expected exactly 1 safePostTiming(closeTarget, issueWrapRow) call in verbClose, found ${wrapPostCount}`
 );
 
 const flushCount = (src.match(/await runLogIssueTime\(closeTarget\)/g) || []).length;
@@ -59,17 +63,26 @@ assert.equal(
   `expected exactly 1 runLogIssueTime(closeTarget) call in verbClose, found ${flushCount}`
 );
 
-// Ordering: terminal wrap row must precede runLogIssueTime, which must precede runMoveStateDone.
+// Ordering: the terminal pair emission must precede runLogIssueTime, which must
+// precede runMoveStateDone.
+// #801 — the wrap row now posts inside `emitReviewToDoneClosePair` (a top-level
+// helper), so its raw `safePostTiming` text no longer sits at the pipeline call
+// site. Anchor instead on the FULL-PATH helper call — the LAST
+// `emitReviewToDoneClosePair(` occurrence (the converge fast-path call is
+// earlier; the terminal full-pipeline call is last).
 // #425 added an earlier `runMoveStateDone` call in the close-convergence
 // short-circuit (board-drift recovery on an already-CLOSED issue), so anchor
-// this ordering check to the TERMINAL (last) board move in the full pipeline,
-// not the first textual occurrence.
-const doneIdx = src.search(/safePostTiming\(closeTarget,\s*_issueWrapRow\)/);
+// this ordering check to the TERMINAL (last) board move, not the first.
+const emitMatches = [...src.matchAll(/await emitReviewToDoneClosePair\(\{/g)];
+const doneIdx = emitMatches.length ? emitMatches[emitMatches.length - 1].index : -1;
 const flushIdx = src.indexOf('await runLogIssueTime(closeTarget)');
 const moveDoneMatches = [...src.matchAll(/runMoveStateDone\(/g)];
 const moveDoneIdx = moveDoneMatches.length ? moveDoneMatches[moveDoneMatches.length - 1].index : -1;
 assert.ok(doneIdx >= 0 && flushIdx >= 0 && moveDoneIdx >= 0);
-assert.ok(doneIdx < flushIdx, 'runLogIssueTime must come after the terminal issue:wrap row');
+assert.ok(
+  doneIdx < flushIdx,
+  'runLogIssueTime must come after the terminal emitReviewToDoneClosePair (issue:wrap) call'
+);
 assert.ok(flushIdx < moveDoneIdx, 'runLogIssueTime must come before runMoveStateDone');
 
 console.log('close-flush-timing.test.mjs: all passed');
