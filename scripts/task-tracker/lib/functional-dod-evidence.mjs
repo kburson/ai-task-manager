@@ -24,6 +24,7 @@ import {
   extractVerifiedCommands,
   upsertProofMarker,
 } from './proof-marker.mjs';
+import { parseVerificationCommands } from './verification-commands.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -59,8 +60,13 @@ const BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 // run-props), so this delegates to the shared extractor. The pre-#481 local copy
 // guarded on `hasExecutionProof`, which broke once run-props were upserted onto
 // the same `aitm-verified` marker.
-function extractCommands(text) {
-  return extractVerifiedCommands(text);
+//
+// #806 — thread the issue's parsed `## Verification Commands` list (`vcItems`) so
+// a Functional-DoD line citing `vc-list="vc:<n>"` resolves to concrete commands,
+// at parity with the AC path. `vcItems` defaults to `[]`, so a legacy inline
+// `cmd="\`…\`"` line resolves unchanged.
+function extractCommands(text, vcItems = []) {
+  return extractVerifiedCommands(text, vcItems);
 }
 
 function parseEvidence(text) {
@@ -135,6 +141,10 @@ export function parseFunctionalDodKeys(body) {
   const lines = src.split('\n');
   const sectionStartLine = src.slice(0, sectionStart).split('\n').length - 1;
   const sectionEndLine = src.slice(0, loc.before.length + loc.section.length).split('\n').length;
+  // #806 — parse the issue's Verification Commands list once so each Functional
+  // line's `vc-list` citation resolves to concrete commands (parity with the AC
+  // path, which parses `vcItems` once in `parseEvidenceAcs`).
+  const vcItems = parseVerificationCommands(src);
   const out = [];
   for (let i = sectionStartLine; i < sectionEndLine && i < lines.length; i += 1) {
     const line = lines[i];
@@ -152,7 +162,7 @@ export function parseFunctionalDodKeys(body) {
         .replace(EVIDENCE_ANY_RE, '')
         .replace(/<!--[\s\S]*?-->/g, '')
         .trim(),
-      evidenceCommands: extractCommands(rest),
+      evidenceCommands: extractCommands(rest, vcItems),
       evidenceMarker: parseFunctionalEvidence(rest, km[1]),
       classification: KEY_CLASSIFICATION[km[1].toLowerCase()] || null,
     });

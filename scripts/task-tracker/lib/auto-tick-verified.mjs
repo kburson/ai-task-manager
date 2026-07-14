@@ -56,12 +56,14 @@ const AC_HEADING_RE = /^#{1,6}\s+Acceptance Criteria\b/i;
 // preserving leading whitespace and the label that follows.
 const UNCHECKED_RE = /^(\s*- \[) (\]\s+)(.*)$/;
 
-// Extract the backtick-wrapped commands declared on a Functional item's label.
+// Extract the commands declared on a Functional item's label.
 // #418 — routed through the shared dual-form extractor so a consolidated
 // `aitm-verified cmd="..."` declaration is recognized identically to the legacy
 // `aitm-verified-by` form. Returns [] when the item carries no declaration.
-function evidenceCommands(label) {
-  return extractVerifiedCommands(label);
+// #806 — `vcItems` threads the issue's parsed VC list so a Functional line citing
+// `vc-list="vc:<n>"` resolves to concrete commands (parity with the AC branch).
+function evidenceCommands(label, vcItems = []) {
+  return extractVerifiedCommands(label, vcItems);
 }
 
 // #481 — run-props upserted into the line's single `aitm-verified` marker at
@@ -170,8 +172,15 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
     }
 
     // Functional: tick only when the item is command-backed and every
-    // referenced command passed.
-    const cmds = evidenceCommands(rest);
+    // referenced command passed. #806 — resolve `vc-list` citations against the
+    // issue's own VC list; a malformed citation is not sandbox evidence to act
+    // on, so treat a resolution failure as "no commands" and leave the box alone.
+    let cmds;
+    try {
+      cmds = evidenceCommands(rest, vcItems);
+    } catch {
+      cmds = [];
+    }
     if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
       const keyMatch = rest.match(FUNCTIONAL_KEY_RE);
       const key = keyMatch ? keyMatch[1].toLowerCase() : null;

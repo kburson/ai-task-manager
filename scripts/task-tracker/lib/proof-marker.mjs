@@ -30,6 +30,12 @@
 // the line and accepts it only when a record-of-run key is present, so a
 // cmd-only consolidated marker is correctly read as a declaration, not proof.
 
+import {
+  resolveVcRefCommands,
+  resolveCitedOrLiteralCommands,
+  parseVcRefIndexes,
+} from './vc-ref.mjs';
+
 export function escapeValue(v) {
   return String(v).replace(/"/g, '&quot;');
 }
@@ -151,8 +157,8 @@ export function resolveVerifiedBy(line) {
   return null;
 }
 
-// #418 — Shared DECLARATION extractor. Returns the backtick-wrapped command(s)
-// declared on a label by the consolidated `aitm-verified cmd="..."` form.
+// #418 — Shared DECLARATION extractor. Returns the command(s) declared on a
+// label by the consolidated `aitm-verified` marker.
 //
 // #481 — `cmd` is the PERSISTENT declaration component: it is read regardless of
 // whether the marker also carries run-props (`ts`/`sha`/`evidence`/`exit`). The
@@ -161,21 +167,47 @@ export function resolveVerifiedBy(line) {
 // comment) unreadable as a declaration — `ac-stamp`/re-verification could no
 // longer find the command to re-run. `hasExecutionProof` keeps its "has this run
 // yet?" meaning but no longer gates `cmd`.
-export function extractVerifiedCommands(label) {
+//
+// #806 — brought to vc-list parity with the AC path (`ac-evidence.mjs::extractCommands`,
+// #803). Resolution order mirrors it exactly: the canonical by-id `vc-list`
+// citation (#774) resolves first against the issue's parsed `## Verification
+// Commands` list (`vcItems`), then the legacy `cmd` attribute (itself either an
+// older `vc:<n>` citation or a backtick-embedded command) via the shared
+// `vc-ref` resolver. `vcItems` defaults to `[]`, so a legacy inline
+// `cmd="\`npm test\`"` label resolves byte-identically to the pre-#806 backtick
+// scan with no regression. A `vc-list` citation naming a missing VC entry throws
+// (loud malformed-body signal), matching the AC path.
+export function extractVerifiedCommands(label, vcItems = []) {
   const haystack = String(label || '');
-  const commands = [];
   const props = parseProofMarker(haystack);
-  if (props && typeof props.cmd === 'string') {
-    for (const cmd of props.cmd.matchAll(/`([^`]+)`/g)) commands.push(cmd[1]);
+  if (props && typeof props['vc-list'] === 'string') {
+    return resolveVcRefCommands(props['vc-list'], vcItems) || [];
   }
-  return commands;
+  if (props && typeof props.cmd === 'string') {
+    return resolveCitedOrLiteralCommands(props.cmd, vcItems);
+  }
+  return [];
 }
 
-// True when a label carries a verifier DECLARATION in either form. The boolean
-// counterpart to `extractVerifiedCommands`; use this where a reader only needs
-// to know "is this line command-backed?" rather than the commands themselves.
+// True when a label carries a verifier DECLARATION. The boolean counterpart to
+// `extractVerifiedCommands`; use this where a reader only needs to know "is this
+// line command-backed?" rather than the commands themselves.
+//
+// #806 — a pure PRESENCE check that does NOT resolve the declaration, so it never
+// throws when called without `vcItems` on a `vc-list`-cited label (the case that
+// would make a resolving `extractVerifiedCommands(label).length > 0` blow up with
+// a RangeError against an empty VC list). A declaration exists when the marker
+// carries a non-empty `vc-list` citation, or a `cmd` that is either a `vc:<n>`
+// citation or a backtick-embedded command.
 export function hasVerifiedDeclaration(label) {
-  return extractVerifiedCommands(label).length > 0;
+  const props = parseProofMarker(label);
+  if (!props) return false;
+  if (typeof props['vc-list'] === 'string' && props['vc-list'].trim()) return true;
+  if (typeof props.cmd === 'string') {
+    if (parseVcRefIndexes(props.cmd)) return true;
+    if (/`[^`]+`/.test(props.cmd)) return true;
+  }
+  return false;
 }
 
 // #423 — validate a declaration `cmd` value. A declaration's `cmd` records HOW
