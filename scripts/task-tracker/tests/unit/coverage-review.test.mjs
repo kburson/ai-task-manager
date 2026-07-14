@@ -35,9 +35,23 @@ const baseState = (over = {}) => ({
 
 // The five report comments the V2 required-comments validator (#811) demands
 // on any issue reaching Review; the pexec stub returns them for the
-// `--json comments` fetch or the inline gate would demote to Develop.
+// `--json comments` fetch or the inline gate would demote to Develop. The
+// ⏱ Timing Log body must also be a legal walk for the V3 timing-log-sequence
+// validator (#812): a real header, monotonic timestamps, and balanced
+// engage/depart/reengage rows (start → pause → resumed). Non-lifecycle events
+// keep it decoupled from the aitm-entered-<stage> marker reconciliation.
 const REQUIRED_COMMENTS_STUB = [
-  { body: '⏱ Timing Log\n\n| Row | Event |\n| --- | --- |' },
+  {
+    body: [
+      '## ⏱ Timing Log',
+      '',
+      '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |',
+      '|---|---|---|---|---|---|---|',
+      '| 2026-06-19 00:00:00 -05:00 | start |  |  |  | 0 | bound |',
+      '| 2026-06-19 00:01:00 -05:00 | pause |  |  |  | 0 | question |',
+      '| 2026-06-19 00:02:00 -05:00 | resumed |  |  |  | 0 | answered |',
+    ].join('\n'),
+  },
   { body: '<!-- aitm-refined-estimate: 777 -->\n\n### Planned Estimate\n\n| Field | Value |' },
   { body: '### Full-Auto Plan-Approval Audit\n\nNo human reviewer.' },
   { body: '### 🔗 Commits\n\n- abc1234 fixture deliverable' },
