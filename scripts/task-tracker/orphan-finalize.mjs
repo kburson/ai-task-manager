@@ -64,6 +64,46 @@ export function computeGapSeconds(stoppedAt, nowMs = Date.now()) {
   return Math.max(0, Math.floor((nowMs - t) / 1000));
 }
 
+// Seconds in `[anchorMs → nowMs]`, clamped at 0. Returns 0 for a non-finite
+// anchor (mirrors computeGapSeconds' unparseable-timestamp contract).
+function gapSecondsFromMs(anchorMs, nowMs) {
+  if (!Number.isFinite(anchorMs)) return 0;
+  return Math.max(0, Math.floor((nowMs - anchorMs) / 1000));
+}
+
+// #818 — read the issue's last timing-row timestamp (ms), or NaN when there is
+// no readable anchor. Honors the SKIP_NETWORK escape hatch unless an injected
+// reader overrides it (so tests stay hermetic). Never throws — a hook must
+// survive a read failure, degrading to the raw-stoppedAt anchor.
+async function safeReadLastRowMs({ cfg, marker, deps }) {
+  if (process.env.TT_SKIP_NETWORK === '1' && !deps.readTimingCommentBody) return NaN;
+  const readBody = deps.readTimingCommentBody || readTimingCommentBody;
+  try {
+    const res = await readBody({
+      issueNumber: String(marker.issue).replace(/^#/, ''),
+      repo: cfg.repo,
+      timeoutMs: cfg.hookNetworkTimeoutMs,
+    });
+    const tsStr = lastRowTsFromBody(bodyOf(res));
+    return tsStr ? Date.parse(tsStr) : NaN;
+  } catch {
+    return NaN;
+  }
+}
+
+// #818 — anchor the idle window at `max(stoppedMs, lastRowMs)`. When a state-
+// move row was emitted AFTER the agent's Stop (lastRowMs > stoppedMs), that
+// post-stop wall-clock is already credited active by the row; anchoring idle at
+// raw stoppedMs would re-count `[stoppedMs → lastRowMs]` as idle (double-count).
+// Clamping to the later of the two confines idle to the genuinely-unaccounted
+// tail `[lastRowMs → now]`. A non-finite lastRowMs (no anchor / read failure /
+// SKIP_NETWORK) falls back to stoppedMs — the pre-fix behavior.
+function clampIdleAnchorMs(stoppedMs, lastRowMs) {
+  if (!Number.isFinite(lastRowMs)) return stoppedMs;
+  if (!Number.isFinite(stoppedMs)) return lastRowMs;
+  return Math.max(stoppedMs, lastRowMs);
+}
+
 // Post one row to the marker's issue, falling back to the durable queue on any
 // network error. Shared by the active-segment and idle emitters so both honor
 // the same never-break-a-hook contract.
@@ -106,32 +146,25 @@ async function postRowOrEnqueue({ cfg, projDir, marker, row, deps }) {
 // at ~now and advances the issue's last-row timestamp, so a subsequent
 // transition flush (anchored on `max(entryStartTs, lastRowTs)`) cannot
 // double-count this same interval.
-async function emitActiveWorkSegment({ cfg, projDir, marker, sid, reason, nowIso, deps }) {
-  // Mirror runtime's `safeReadLastRowTs` contract: the SKIP_NETWORK escape
-  // hatch suppresses the anchor read (and thus the active row) entirely. An
-  // injected `readTimingCommentBody` dep overrides this so tests stay hermetic
-  // without touching the wire.
-  if (process.env.TT_SKIP_NETWORK === '1' && !deps.readTimingCommentBody) return 0;
-
+async function emitActiveWorkSegment({
+  cfg,
+  projDir,
+  marker,
+  sid,
+  reason,
+  lastRowMs,
+  nowIso,
+  deps,
+}) {
   const stoppedMs = Date.parse(marker.stoppedAt);
   if (!Number.isFinite(stoppedMs)) return 0;
 
-  const readBody = deps.readTimingCommentBody || readTimingCommentBody;
-  let lastRowMs = NaN;
-  try {
-    const res = await readBody({
-      issueNumber: String(marker.issue).replace(/^#/, ''),
-      repo: cfg.repo,
-      timeoutMs: cfg.hookNetworkTimeoutMs,
-    });
-    const tsStr = lastRowTsFromBody(bodyOf(res));
-    lastRowMs = tsStr ? Date.parse(tsStr) : NaN;
-  } catch {
-    return 0;
-  }
-  // No prior row (or an unreadable one) means the window has no anchor — we
-  // cannot know when the work turn began, so we credit nothing rather than
-  // inventing a start.
+  // #818 — `lastRowMs` is now read once by the finalize caller (via
+  // safeReadLastRowMs) and threaded in, so both the idle-anchor clamp and this
+  // active segment share a single network read. No prior row (or an unreadable
+  // one) means the window has no anchor — we credit nothing rather than
+  // inventing a start; an inverted window (last row after the stop) is the
+  // post-stop-row case the clamp handles on the idle side, never here.
   if (!Number.isFinite(lastRowMs) || stoppedMs <= lastRowMs) return 0;
 
   const collect = deps.collectEventTimestamps || collectEventTimestamps;
@@ -158,10 +191,20 @@ async function emitActiveWorkSegment({ cfg, projDir, marker, sid, reason, nowIso
   return activeSec;
 }
 
-async function postOrEnqueue({ cfg, projDir, marker, sid, reason, idleSeconds, nowIso, deps }) {
+async function postOrEnqueue({
+  cfg,
+  projDir,
+  marker,
+  sid,
+  reason,
+  idleSeconds,
+  lastRowMs,
+  nowIso,
+  deps,
+}) {
   // #802 — credit any active work in the [lastRowTs → stoppedAt] turn first,
   // so the idle row below no longer swallows it as pure idle.
-  await emitActiveWorkSegment({ cfg, projDir, marker, sid, reason, nowIso, deps });
+  await emitActiveWorkSegment({ cfg, projDir, marker, sid, reason, lastRowMs, nowIso, deps });
   const row = buildRow({
     ts: nowIso,
     event: 'idle',
@@ -208,7 +251,13 @@ export async function finalizeOrphanPause({
   const cfg = loadConfig();
   const threshold = Number(cfg.pauseThresholdSeconds) || 0;
   const nowDate = now();
-  const idleSeconds = computeGapSeconds(marker.stoppedAt, nowDate.getTime());
+  // #818 — read the last-row ts once, clamp the idle anchor to
+  // max(stoppedMs, lastRowMs), and gate on the clamped tail. When a post-stop
+  // state-move row advanced lastRowMs past stoppedMs, the clamped tail can fall
+  // below threshold and this finalize now correctly emits nothing.
+  const lastRowMs = await safeReadLastRowMs({ cfg, marker, deps });
+  const anchorMs = clampIdleAnchorMs(Date.parse(marker.stoppedAt), lastRowMs);
+  const idleSeconds = gapSecondsFromMs(anchorMs, nowDate.getTime());
   if (idleSeconds < threshold) {
     deleteMarker(markerPath);
     return null;
@@ -221,6 +270,7 @@ export async function finalizeOrphanPause({
     sid,
     reason,
     idleSeconds,
+    lastRowMs,
     nowIso: nowDate.toISOString(),
     deps,
   });
@@ -257,7 +307,13 @@ export async function finalizePauseForSwitch({
 
   const cfg = loadConfig();
   const nowDate = now();
-  const idleSeconds = computeGapSeconds(marker.stoppedAt, nowDate.getTime());
+  // #818 — same clamp as the natural path. The switch row is forced out
+  // regardless of pauseThresholdSeconds, but its idle seconds must still cover
+  // only the unaccounted tail `[max(stoppedMs, lastRowMs) → now]`, never wall-
+  // clock already credited active by a post-stop row.
+  const lastRowMs = await safeReadLastRowMs({ cfg, marker, deps });
+  const anchorMs = clampIdleAnchorMs(Date.parse(marker.stoppedAt), lastRowMs);
+  const idleSeconds = gapSecondsFromMs(anchorMs, nowDate.getTime());
   await postOrEnqueue({
     cfg,
     projDir,
@@ -265,6 +321,7 @@ export async function finalizePauseForSwitch({
     sid,
     reason: 'switch',
     idleSeconds,
+    lastRowMs,
     nowIso: nowDate.toISOString(),
     deps,
   });
