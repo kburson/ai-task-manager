@@ -144,7 +144,11 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
     // Refusal fixtures fail earlier (preflight/attribution), so this never
     // rescues them.
     const requiredComments = [
-      { id: 'IC_req_timing', body: '⏱ Timing Log\\n\\n| Timestamp | Event | Detail |\\n| --- | --- | --- |\\n| 2026-05-10 00:00 | refine:started | bind |' },
+      // V3 timing-log-sequence (#812): the log must be a legal walk with a
+      // parseable timestamp. A single leading start (a bare reengagement) is
+      // the minimal legal walk and, being non-lifecycle, needs no
+      // aitm-entered-stage marker to reconcile against.
+      { id: 'IC_req_timing', body: '⏱ Timing Log\\n\\n| Timestamp | Event | Detail |\\n| --- | --- | --- |\\n| 2026-05-10 00:00:00 -05:00 | start | bind |' },
       { id: 'IC_req_estimate', body: '<!-- aitm-refined-estimate: 101 -->\\n\\n### Planned Estimate\\n\\n| Field | Value |' },
       { id: 'IC_req_audit', body: '### Full-Auto Plan-Approval Audit\\n\\nNo human reviewer.' },
       { id: 'IC_req_tests', body: '## New Automated Tests\\n\\n- \`foo.test.mjs\`' },
