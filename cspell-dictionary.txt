@@ -24,6 +24,8 @@ dedup
 dedups
 DEEPDIVE
 dflt
+dfull
+dwords
 dogfood
 Dogfood
 dogfooding
