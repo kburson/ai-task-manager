@@ -177,3 +177,81 @@ span (~2h38m52s active, zero idle). The heal treats history "as if the
 - No new yield-detection or auto-pause heuristic (Option A is deliberate).
 - No change to the forward monotonic chain or to `/task` verb names.
 - No new headline metric; `Δwords` per phase preserves the existing value-framework signal.
+
+---
+
+## Addendum 2026-07-15 — write-side emission correctness (C6–C8)
+
+Inspecting the live logs of #824 and #825 after C1–C4 landed surfaced **write-side
+emission defects that the C1–C5 scope never covered**. C1 removed the `idle`/
+`active-work` emitters, but three classes of malformed rows are still produced by
+paths C1 didn't touch, and one attribution bug survives. C5's validator cannot be
+made strict against them until the writers are fixed, so C5 (#828) is **blocked by
+C6 and C7**.
+
+### Defects (from the #824 / #825 log audit)
+
+- **D1 — bare `review` / `review-ready` cruft rows.** `verbs/review.mjs` posts a
+  deferred bare `review` row ("starting review") and a `review-ready` row ("task is
+  now in Review") around the test→review move (pre-v2 scaffolding, deferred under
+  #516, never removed by C1). Neither is in the v2 vocabulary. **(#825, #824 rows
+  32-33.)**
+- **D2 — review-gate failure emits out-of-order / incomplete rows.** On a gate
+  objection `verbs/review.mjs` (via `agent-review/review-gate.mjs`) writes
+  `review:failed` **before** the test→review move settles, so the log shows
+  `test:started → review:failed → test:passed → develop:started`: a failure verdict
+  for a review that has no `review:started`, a spurious `test:passed` **after** the
+  failure, and **no `demoted:` audit row**. The successful-review path emits the
+  correct order (`test:passed → review:started → review:approved`), so the bug is
+  isolated to the gate-failure emission path. **(#824 rows 17-20 and 22-25.)**
+- **D3 — bare `demoted`.** The demote row carries `event: demoted` with a
+  source-naming description ("demoted from test") and no target or reason. It must
+  be `demoted:{target}` (e.g. `demoted:develop`) with the failing-test / objection
+  summary in the description. **(#824 row 14.)**
+- **D4 — `Δwords` leak onto interruption rows.** During a long develop span the
+  Word Marker stays frozen and the accrued `Δwords` are attributed to whatever
+  interruption row closes the span (`switch-out`, `pause`, or the bare `review`
+  cruft row) instead of the `develop:completed` row where the work happened. The
+  C2 "Δwords on `:completed`" contract is not honored when an interruption
+  intervenes. **(#825 develop span; #824 Δ162/Δ110/Δ620/Δ21 on non-phase rows.)**
+
+### Decision record
+
+- **D5 rejected — `resume` stays bare.** The proposal to echo the departure reason
+  on return (`resumed:question`) was declined: decision #568 stands — the departure
+  row (`pause:{reason}` / `switch-out:{issue}`) records why/where, and the
+  re-engagement verb is always the bare `resume`/`resumed`. No change to the resume
+  emitter.
+
+### Work breakdown — three new children of #823 (C6 #830, C7 #831, C8 #832)
+
+- **C6 (#830) — Retire bare `review` / `review-ready` rows (D1).** Stop emitting both rows
+  in `verbs/review.mjs`; extend the `heal-timing-log.mjs` strip set to remove them
+  from historical logs (folding any `Δwords` they carried onto the enclosing
+  `:completed` row); drop `review`/`review-ready` from `AUDIT_PHASE_SLUGS` in
+  `timing-event-map.mjs`. Small, isolated.
+- **C7 (#831) — Fix review-gate failure emission (D2 + D3).** On a gate objection emit the
+  canonical order `test:passed → review:started → review:failed → demoted:{target}
+  → <phase>:started`, with the objection summary in the `demoted:` description and
+  the target-state entry marker re-stamped. Kill the spurious post-failure
+  `test:passed` and the dropped `review:started`. Change bare `demoted` →
+  `demoted:{target}` on every demote path.
+- **C8 (#832) — Fix `Δwords` attribution leak (D4).** Ensure accrued context-words land on
+  the `<phase>:completed` row for the span in which they were produced, not on an
+  intervening `pause` / `switch-out` / `review` row. Independent of the validator
+  (does not block C5).
+
+### C5 (#828) scope expansion
+
+Blocked by **C6 (#830) + C7 (#831)**. Once they land, the `timing-log-sequence` validator must
+additionally **fail**: bare `review` / `review-ready` rows, a `review:failed` row
+not preceded by a `review:started` in the same review entry, and a bare `demoted`
+row lacking a `{target}`. (The idle/active-work rejection and the four-legal-
+reverse-edge walk from the original C5 scope are unchanged.)
+
+### Sequencing
+
+C6 and C7 are siblings, both blockers of C5; drive **deepest-first** (C6 then C7,
+or either order — no shared files beyond `heal-timing-log.mjs` vs `review.mjs`),
+then unblock and finish C5. C8 blocks nothing and can land any time before the
+epic closes.
