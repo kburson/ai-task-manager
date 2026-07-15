@@ -1,12 +1,14 @@
-// Tests for the V3 timing-log-sequence validator (#812).
+// Tests for the V3 timing-log-sequence validator (#812, rewritten for the
+// timing model v2 grammar under #828).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validate, extractDataRows, findTimingLogBody } from './timing-log-sequence.mjs';
 
 // Build a ⏱ Timing Log comment body from `[ts, event, desc?]` rows, mirroring
-// the live 8-column table shape. Returns a review-context object.
-const HEADER = '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |';
-const SEP = '|---|---|---|---|---|---|---|';
+// the live table shape. Returns a review-context object.
+const HEADER =
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |';
+const SEP = '|---|---|---|---|---|---|---|---|';
 
 function logCtx(rows, enteredStages = []) {
   const body = [
@@ -14,12 +16,15 @@ function logCtx(rows, enteredStages = []) {
     '',
     HEADER,
     SEP,
-    ...rows.map(([ts, ev, desc = '']) => `| ${ts} | ${ev} |  |  |  | 0 | ${desc} |`),
+    ...rows.map(([ts, ev, desc = '']) => `| ${ts} | ${ev} |  |  |  | 0 | ${desc} |  |`),
     '',
     '<sub>auto-logged</sub>',
   ].join('\n');
   return { comments: [{ body }], markers: { enteredStages } };
 }
+
+// `stages` → enteredStages marker list.
+const entered = (...stages) => stages.map((stage) => ({ stage }));
 
 // Monotonic non-decreasing table timestamps.
 const T = (n) => `2026-07-14 03:${String(n).padStart(2, '0')}:00 -05:00`;
@@ -32,7 +37,7 @@ const GOOD_ROWS = [
   [T(3), 'resumed', 'answered'],
   [T(4), 'develop:completed', 'done'],
 ];
-const GOOD_STAGES = [{ stage: 'develop' }];
+const GOOD_STAGES = entered('develop');
 
 test('passes a well-formed sequential log', () => {
   const res = validate(logCtx(GOOD_ROWS, GOOD_STAGES));
@@ -53,24 +58,194 @@ test('a leading reengagement (resumed at row 1) is legal, not an orphan close', 
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
-test('accepts the ad-hoc review-verb rows the review gate emits (#812)', () => {
-  // The `review` verb appends bare `review` + `review-ready` rows on entry; V3
-  // must walk them as neutral phase rows, not flag them as unknown slugs — else
-  // every log fails the moment it reaches Review.
+test('passes a full healed v2 log including the review→develop rework path', () => {
+  // The real shape of a healed v2 log (from #834): a single leading `resumed`,
+  // the forward ladder walk, one failed-review rework rewind
+  // (review:started → review:failed → demoted:develop → develop:started), then a
+  // clean second pass to review:approved and close. Exercises every concern at
+  // once: no retired rows, balanced bracket, legal stage walk (including the
+  // sanctioned review→develop reverse), and the `:failed` reconciliation exempt.
+  const rows = [
+    [T(0), 'resumed'],
+    [T(1), 'on-deck:started'],
+    [T(2), 'refine:started'],
+    [T(3), 'refine:completed'],
+    [T(4), 'plan:started'],
+    [T(5), 'plan:completed'],
+    [T(6), 'develop:started'],
+    [T(7), 'develop:completed'],
+    [T(8), 'test:started'],
+    [T(9), 'test:passed'],
+    [T(10), 'review:started'],
+    [T(11), 'review:failed'],
+    [T(12), 'demoted:develop'],
+    [T(13), 'develop:started'],
+    [T(14), 'develop:completed'],
+    [T(15), 'test:started'],
+    [T(16), 'test:passed'],
+    [T(17), 'review:started'],
+    [T(18), 'review:approved'],
+    [T(19), 'issue:wrap'],
+    [T(20), 'issue:closed'],
+  ];
   const res = validate(
-    logCtx(
-      [
-        [T(0), 'start', 'bound'],
-        [T(1), 'test:passed', 'testing complete'],
-        [T(2), 'review:started', 'waiting in review'],
-        [T(3), 'review', 'starting review'],
-        [T(4), 'review-ready', 'task is now in Review'],
-      ],
-      [{ stage: 'test' }, { stage: 'review' }]
-    )
+    logCtx(rows, entered('on-deck', 'refine', 'plan', 'develop', 'test', 'review'))
   );
   assert.equal(res.pass, true, JSON.stringify(res.failures));
   assert.deepEqual(res.failures, []);
+});
+
+// --- Retired v2 vocabulary (AC1) ---------------------------------------------
+
+test('fails a bare `idle` row as retired vocabulary, naming the row', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'start'],
+        [T(1), 'idle'],
+      ],
+      GOOD_STAGES
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /row 2\b/.test(f) && /retired vocabulary/.test(f) && /idle/.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('fails a bare `active-work` row as retired vocabulary', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'start'],
+        [T(1), 'active-work'],
+      ],
+      GOOD_STAGES
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /retired vocabulary/.test(f) && /active-work/.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('a qualified idle slug (idle:whatever) is also rejected by its base', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'start'],
+        [T(1), 'idle:auto'],
+      ],
+      GOOD_STAGES
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /retired vocabulary/.test(f) && /idle/.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
+// --- Kanban stage-transition walk --------------------------------------------
+
+test('fails a forward-skip stage transition (develop → review, skipping test)', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'start'],
+        [T(1), 'develop:started'],
+        [T(2), 'review:started'],
+      ],
+      entered('develop', 'review')
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some(
+      (f) => /illegal stage transition/.test(f) && /forward skip/.test(f) && /row 3\b/.test(f)
+    ),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('fails an unsanctioned reverse stage transition (develop → refine)', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'start'],
+        [T(1), 'develop:started'],
+        [T(2), 'refine:started'],
+      ],
+      entered('develop', 'refine')
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some(
+      (f) => /illegal stage transition/.test(f) && /reverse/.test(f) && /sanctioned/.test(f)
+    ),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('passes the sanctioned reverse edge test→develop (failed sandbox rework)', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'develop:started'],
+        [T(1), 'test:started'],
+        [T(2), 'develop:started'],
+      ],
+      entered('develop', 'test')
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('passes the sanctioned reverse edge review→test', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'test:started'],
+        [T(1), 'review:started'],
+        [T(2), 'test:started'],
+      ],
+      entered('test', 'review')
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('passes the sanctioned reverse edge done→test (reopened issue re-verifies)', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'review:started'],
+        [T(1), 'done:started'],
+        [T(2), 'test:started'],
+      ],
+      entered('review', 'done', 'test')
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('seeds the walk on the first stage row (a log starting mid-ladder is legal)', () => {
+  // No backlog/on-deck rows; walk seeds at refine and never trips a phantom
+  // forward-skip against a backlog it never recorded.
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'resumed'],
+        [T(1), 'refine:started'],
+        [T(2), 'plan:started'],
+      ],
+      entered('refine', 'plan')
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
 // --- Format schema -----------------------------------------------------------
@@ -188,14 +363,29 @@ test('fails when a timing phase row names a stage the body never entered', () =>
   // Log records test:started but enteredStages only has develop.
   const rows = [
     [T(0), 'start'],
-    [T(1), 'test:started'],
+    [T(1), 'develop:started'],
+    [T(2), 'test:started'],
   ];
-  const res = validate(logCtx(rows, [{ stage: 'develop' }]));
+  const res = validate(logCtx(rows, entered('develop')));
   assert.equal(res.pass, false);
   assert.ok(
     res.failures.some((f) => /stage "test"/.test(f) && /aitm-entered-test/.test(f)),
     JSON.stringify(res.failures)
   );
+});
+
+test('a review:failed audit row is exempt from entered-marker reconciliation (#829)', () => {
+  // review:failed records a rejected attempt; the gate demotes without stamping
+  // aitm-entered-review, so it must not demand that marker.
+  const rows = [
+    [T(0), 'test:started'],
+    [T(1), 'review:started'],
+    [T(2), 'review:failed'],
+    [T(3), 'demoted:develop'],
+    [T(4), 'develop:started'],
+  ];
+  const res = validate(logCtx(rows, entered('test', 'review', 'develop')));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
 test('non-lifecycle qualified slugs (switch-out:#N, issue:wrap) are not reconciled', () => {
@@ -229,7 +419,7 @@ test('fails when the timing log has no data rows', () => {
 // --- Helper units ------------------------------------------------------------
 
 test('extractDataRows bounds the scan to the table and skips the separator', () => {
-  const body = `## ⏱ Timing Log\n\n${HEADER}\n${SEP}\n| ${T(0)} | start |  |  |  | 0 | x |\n\nafter table`;
+  const body = `## ⏱ Timing Log\n\n${HEADER}\n${SEP}\n| ${T(0)} | start |  |  |  | 0 | x |  |\n\nafter table`;
   const rows = extractDataRows(body);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].index, 1);

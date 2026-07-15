@@ -1,21 +1,30 @@
-// Agent Review Gate — V3 timing-log-sequence validator (#812).
+// Agent Review Gate — V3 timing-log-sequence validator (#812, rewritten for the
+// timing model v2 grammar under #828).
 //
-// Verifies the ⏱ Timing Log is BOTH format-correct AND a legal state-machine
-// walk over its event rows. This is the validator that directly targets the
-// skip/double-step corruption we repeatedly hand-fix: a step that got skipped
-// (an interruption opened but never closed) or doubled (two `pause`s with no
-// intervening `resume`, an orphan `resumed` against nothing open).
+// Verifies the ⏱ Timing Log is BOTH format-correct AND a legal walk over its
+// event rows. Four concerns, each self-locating:
+//   1. Retired vocabulary — a bare `idle` / `active-work` data row is illegal
+//      under v2 (idle spans are bracketed by an explicit departure/return pair).
+//   2. Marker reconciliation — every `<stage>:started|completed` row must have a
+//      matching `aitm-entered-<stage>` body marker (`<stage>:failed` audit rows
+//      are exempt, per #829).
+//   3. Kanban stage-transition walk — each entered stage must be one forward rung
+//      up the canonical ladder or one of the four sanctioned reverse edges
+//      (test→develop, review→test, review→develop, done→test). A multi-rung
+//      forward jump is a skipped stage; any other backward jump is a corruption.
+//   4. Departure/return bracketing — the skip/double-step machine that catches an
+//      interruption opened but never closed, or a return with nothing open.
 //
 // Pure `validate`-family member: never mutates the body, returns
-// `{ pass, failures }` where each failure is self-locating (1-based row index +
-// `timestamp | event`). It consumes `context.comments` (locating the ⏱ Timing
+// `{ pass, failures }`. It consumes `context.comments` (locating the ⏱ Timing
 // Log comment itself — there is no pre-parsed table in the context) and
 // `context.markers.enteredStages` for the marker-reconciliation check.
 //
 // The event vocabulary and open/close taxonomy are NOT re-derived here: bare
 // openers/closers come from `bind-event.mjs::classifyEvent`, the departure /
 // reengagement predicates and the canonical phase-slug set come from
-// `timing-event-map.mjs`, and timestamp parsing reuses `timing-rows.mjs`.
+// `timing-event-map.mjs`, the ordered stage ladder comes from
+// `stage-entry-markers.mjs`, and timestamp parsing reuses `timing-rows.mjs`.
 
 import { registry } from '../registry.mjs';
 import { classifyEvent } from '../../bind-event.mjs';
@@ -25,24 +34,58 @@ import {
   isCanonicalPhaseSlug,
 } from '../../timing-event-map.mjs';
 import { _tsToMs } from '../../timing-rows.mjs';
+import { STAGES } from '../../stage-entry-markers.mjs';
 
 const TIMING_LOG_RE = /⏱\s*Timing Log/;
 // The timing table's header row: `| Timestamp | Event | ... |`.
 const HEADER_RE = /^\|\s*Timestamp\s*\|\s*Event\b/i;
 // A markdown table separator row: `|---|---|...|` (dashes, colons, pipes only).
 const SEPARATOR_RE = /^\|[\s|:-]+\|?$/;
-// Lifecycle stages reconciled against `aitm-entered-<stage>` markers. Non-stage
-// qualified slugs (`issue:wrap`, `switch-out:#N`, `pause:reason`) are ignored.
-const LIFECYCLE_STAGES = new Set([
-  'backlog',
-  'on-deck',
-  'refine',
-  'plan',
-  'develop',
-  'test',
-  'review',
-  'done',
-]);
+// Lifecycle stages reconciled against `aitm-entered-<stage>` markers, and the
+// ordered kanban ladder the stage-transition walk indexes into. Sourced from the
+// single canonical ladder in stage-entry-markers.mjs so the two never drift.
+// Non-stage qualified slugs (`issue:wrap`, `switch-out:#N`, `pause:reason`) are
+// ignored by both passes.
+const LIFECYCLE_STAGES = new Set(STAGES);
+const LADDER_INDEX = new Map(STAGES.map((s, i) => [s, i]));
+
+// Timing model v2 retired the free-floating `idle` / `active-work` rows: idle
+// spans are now bracketed by an explicit departure/return pair, so a bare
+// `idle`/`active-work` data row is illegal vocabulary and fails outright (AC1).
+// classifyEvent still resolves bare `idle` on the WRITE side and the read-side
+// event map maps both to a neutral PHASE, so neither the format-schema check nor
+// the departure/return machine would flag them — this validator carries its own
+// explicit guard.
+const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
+
+// The only legal reverse edges in the kanban stage walk. Every other backward
+// jump is a corruption. `test→develop` (rework after a failed sandbox),
+// `review→test` and `review→develop` (rework after a failed review — the latter
+// via `review:failed` + `demoted:develop`), and `done→test` (a reopened issue
+// re-verifying) are the sanctioned rewinds. Forward motion must advance exactly
+// one ladder rung; a multi-rung forward jump is a skipped stage.
+const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>develop', 'done>test']);
+
+// Extract the kanban stage a row drives the walk to, or null if the row is not a
+// stage-transition event. `<stage>:failed` rows are gate-audit records of a
+// rejected attempt (not a real entry) and must not move the walk; qualified slugs
+// whose prefix is not a ladder stage (`demoted:develop`, `issue:wrap`,
+// `switch-out:#N`) and bare non-stage events (`resumed`, `pause`) return null.
+function stageOf(event) {
+  const colon = event.indexOf(':');
+  if (colon > 0) {
+    const stage = event.slice(0, colon);
+    const qualifier = event.slice(colon + 1);
+    if (qualifier === 'failed') return null;
+    return LADDER_INDEX.has(stage) ? stage : null;
+  }
+  return LADDER_INDEX.has(event) ? event : null;
+}
+
+function baseSlug(event) {
+  const colon = event.indexOf(':');
+  return colon > 0 ? event.slice(0, colon) : event;
+}
 
 // Locate the ⏱ Timing Log comment body. Returns the body string or null.
 export function findTimingLogBody(comments) {
@@ -124,6 +167,10 @@ export function validate(context = {}) {
   let state = 'idle';
   let openDeparture = null; // the departure row that opened the current idle span
   let lastActiveRow = null; // the row that last set 'active'
+  // Kanban stage-transition walk: the current stage, seeded from the first stage
+  // row seen (so a log that legitimately starts mid-ladder never trips a phantom
+  // forward-skip against a backlog it never recorded).
+  let currentStage = null;
 
   for (const row of rows) {
     // --- Format schema -------------------------------------------------------
@@ -135,6 +182,15 @@ export function validate(context = {}) {
     if (!row.event) {
       failures.push(`${loc(row)}: malformed — empty Event cell`);
       continue;
+    }
+    // Retired v2 vocabulary — reject before any other check so the message names
+    // the real problem (AC1).
+    if (RETIRED_EVENT_SLUGS.has(baseSlug(row.event))) {
+      failures.push(
+        `${loc(row)}: retired vocabulary — "${baseSlug(row.event)}" rows are not permitted under ` +
+          `timing model v2 (idle spans are bracketed by an explicit departure/return pair)`
+      );
+      continue; // not a legal row; do not sequence-check it
     }
     if (!isKnownSlug(row.event)) {
       failures.push(`${loc(row)}: malformed — unknown event slug "${row.event}"`);
@@ -165,6 +221,38 @@ export function validate(context = {}) {
         failures.push(
           `${loc(row)}: timing row records stage "${stage}" but body has no aitm-entered-${stage} marker`
         );
+      }
+    }
+
+    // --- Kanban stage-transition walk ----------------------------------------
+    // Every stage the log claims to enter must be reachable from the previous
+    // stage by a single forward rung or one of the four sanctioned reverse edges.
+    // Non-stage rows (departures, returns, `demoted:*`, `issue:*`, `<stage>:failed`)
+    // do not move the walk.
+    const stage = stageOf(row.event);
+    if (stage) {
+      if (currentStage === null) {
+        currentStage = stage; // seed on the first stage row; no edge to check yet
+      } else if (stage !== currentStage) {
+        const from = LADDER_INDEX.get(currentStage);
+        const to = LADDER_INDEX.get(stage);
+        const edge = `${currentStage}>${stage}`;
+        if (to === from + 1) {
+          // legal single-rung advance
+        } else if (LEGAL_REVERSE_EDGES.has(edge)) {
+          // legal sanctioned rework rewind
+        } else if (to > from) {
+          failures.push(
+            `${loc(row)}: illegal stage transition — forward skip ${currentStage}→${stage} ` +
+              `(must advance exactly one stage)`
+          );
+        } else {
+          failures.push(
+            `${loc(row)}: illegal stage transition — reverse ${currentStage}→${stage} ` +
+              `is not one of the four sanctioned rework edges`
+          );
+        }
+        currentStage = stage;
       }
     }
 
@@ -217,7 +305,9 @@ export function validate(context = {}) {
 
 export const timingLogSequenceValidator = {
   id: 'timing-log-sequence',
-  describe: () => 'V3: ⏱ Timing Log is format-correct and a legal state-machine walk',
+  describe: () =>
+    'V3: ⏱ Timing Log is v2-grammar-correct — no retired idle/active-work rows, a legal ' +
+    'kanban stage walk, and a balanced departure/return bracket',
   validate,
 };
 

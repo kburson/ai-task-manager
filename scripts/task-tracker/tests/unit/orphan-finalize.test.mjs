@@ -7,8 +7,11 @@
 // `/task resume` bracket, so there is nothing to finalize into an `idle` row.
 //
 // The retired emission behaviors (threshold gating, `idleSeconds`, `finalized`,
-// enqueue-on-post-failure, the `deps.postTimingEvent` row text) are gone; the
-// broader timing-grammar/fixture suites are reconciled in C5 (#828).
+// enqueue-on-post-failure, the `deps.postTimingEvent` row text) are gone. C5
+// (#828) completes the v2 reconciliation: this suite asserts the finalize path
+// produces NO row at all (no `idle`/`active-work`, no emission of any kind) — the
+// v2 contract that idle time lives only inside explicit departure/return
+// brackets, never a synthesized finalize row.
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
