@@ -51,7 +51,7 @@ export async function emitPhasePairRows(ctx) {
   try {
     const { timing, rows, events } = await resolveTimingDeps(ctx);
     const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } = timing;
-    const { deriveStateMoveDelta } = rows;
+    const { deriveStateMoveDelta, computePhaseCloseDelta } = rows;
     const { PHASE_EVENTS } = events;
 
     const ts = new Date().toISOString();
@@ -88,12 +88,25 @@ export async function emitPhasePairRows(ctx) {
       // wrap-up row close.mjs posts ahead of this terminal board move).
       // Emitting `review:approved` here as well would (a) duplicate the row
       // and (b) land it AFTER `issue:wrap`, reproducing the #535 misordering.
+      // v2 (#823 C2) — stamp the phase-span active/idle and Δwords for this
+      // completion instead of the v1 row-to-row delta. `computePhaseCloseDelta`
+      // scopes to the LAST `<prev>:started` row (so a demote re-entry yields the
+      // per-entry span) and derives idle from paired departure→re-engagement
+      // rows. Fall back to the v1 delta only when no enter row is found
+      // (legacy/anomalous log) so we never regress to a 0-active row.
+      const close = computePhaseCloseDelta(timingBody, prev, ts);
+      const closeActive = close.matched ? close.activeSec : activeSec;
+      const closeIdle = close.matched ? close.idleSec : idleSec;
+      const deltaWords =
+        close.matched && Number.isFinite(close.startWordMarker)
+          ? Math.max(0, _phaseMarker - close.startWordMarker)
+          : 0;
       const row = buildRow({
         ts,
         phase: { state: prev, phase: 'complete' },
-        activeSec,
-        idleSec,
-        deltaWords: 0,
+        activeSec: closeActive,
+        idleSec: closeIdle,
+        deltaWords,
         wordMarker: _phaseMarker,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });

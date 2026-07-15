@@ -11,6 +11,9 @@
 // comment `<!-- row-sec: a=NNN i=NNN -->` appended by `buildRow`. The
 // visible 7-column timing-log table schema is unchanged.
 
+import { classifyTimingEvent, EVENT_CLASS } from './timing-event-map.mjs';
+import { PHASE_EVENTS } from '../phase-events.mjs';
+
 // Pause-span markers use `..` separator between from/until because raw
 // ISO timestamps contain `:` and a colon separator would be ambiguous.
 // Format: `<!-- aitm-pause: <fromIsoOrMs>..<untilIsoOrMs> -->`.
@@ -252,6 +255,79 @@ export function deriveStateMoveDelta(body, nowTs) {
   const endMs = tsToMs(nowTs);
   const pauseSpans = pauseSpansBetween(body, startMs, endMs);
   return computeStateMoveDelta({ prevRowTs: prevTs, nowTs, pauseSpans });
+}
+
+// EPIC #823 timing model v2 (C2) — phase-span close delta.
+//
+// Replaces the v1 row-to-row inference (`deriveStateMoveDelta`) on the
+// `<phase>:complete` writer branch. Where v1 measured "last row → now minus
+// aitm-pause marker spans", v2 measures the whole phase span from its opening
+// `<phase>:started` row to `nowTs`, and derives idle strictly by pairing
+// departure → re-engagement ROWS inside that span:
+//
+//   activeSec = (nowTs − started.ts) − Σ(resume.ts − departure.ts)
+//
+// Brackets are found by walking the rows from the phase's last `:started` row
+// forward and classifying each sub-span by its OPENING row: a sub-span opened
+// by a DEPARTURE row (`pause` / `switch-out`) is idle, every other sub-span is
+// active. This is deliberately row-paired rather than idle-cell-summed — a
+// `switch-out:#N` bracket is recorded on the *outgoing* issue's log and the
+// return `resumed` row carries `idleSec: 0`, so idle cells never capture a
+// switch-out window. The classifier (`classifyTimingEvent`) already treats
+// retired `idle`/`active-work` slugs as neutral PHASE, so a legacy row inside
+// the span opens an active sub-span, never idle.
+//
+// `phase` is the kanban STATE name (e.g. `develop`); the opening slug is read
+// from `PHASE_EVENTS[phase].enter.event`. The MATCH scopes to the LAST such
+// enter row at/before `nowTs`, so a demote re-entry (a second `<phase>:started`
+// after a `demoted` audit row) yields the per-entry span, not the whole history.
+//
+// `startWordMarker` is the Word-Marker cell (`cells[6]`) of that enter row, so
+// the caller can stamp `Δwords = currentMarker − startWordMarker`.
+//
+// Returns `{ activeSec, idleSec, startWordMarker, matched }`. `matched:false`
+// (no enter row found, or unusable input) signals the caller to fall back to
+// `deriveStateMoveDelta` rather than emit a 0-active row.
+export function computePhaseCloseDelta(body, phase, nowTs) {
+  const enterEvent = PHASE_EVENTS?.[phase]?.enter?.event;
+  const nowMs = tsToMs(nowTs);
+  if (!enterEvent || !Number.isFinite(nowMs) || !body || typeof body !== 'string') {
+    return { activeSec: 0, idleSec: 0, startWordMarker: NaN, matched: false };
+  }
+  const parsed = [];
+  for (const line of body.split('\n')) {
+    const m = line.match(TS_LINE_RE);
+    if (!m) continue;
+    const ms = tsToMs(m[1]);
+    if (!Number.isFinite(ms) || ms > nowMs) continue;
+    const cells = line.split('|').map((s) => s.trim());
+    const markerNum = Number(cells[6]);
+    parsed.push({
+      ms,
+      event: (cells[2] ?? '').toLowerCase(),
+      marker: Number.isFinite(markerNum) ? markerNum : NaN,
+    });
+  }
+  let enterIdx = -1;
+  for (let i = parsed.length - 1; i >= 0; i--) {
+    if (parsed[i].event === enterEvent) {
+      enterIdx = i;
+      break;
+    }
+  }
+  if (enterIdx === -1) {
+    return { activeSec: 0, idleSec: 0, startWordMarker: NaN, matched: false };
+  }
+  let activeSec = 0;
+  let idleSec = 0;
+  for (let i = enterIdx; i < parsed.length; i++) {
+    const thisMs = parsed[i].ms;
+    const nextMs = i + 1 < parsed.length ? parsed[i + 1].ms : nowMs;
+    const spanSec = Math.max(0, Math.floor((nextMs - thisMs) / 1000));
+    if (classifyTimingEvent(parsed[i].event) === EVENT_CLASS.DEPARTURE) idleSec += spanSec;
+    else activeSec += spanSec;
+  }
+  return { activeSec, idleSec, startWordMarker: parsed[enterIdx].marker, matched: true };
 }
 
 export { tsToMs as _tsToMs };
