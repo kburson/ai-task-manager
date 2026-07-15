@@ -29,13 +29,13 @@ boundaries and explicit human-blocking brackets. There is no inference.
 
 ### Row vocabulary — the complete set
 
-| Row | Carries | Meaning |
-|---|---|---|
-| `<phase>:started` | ts only (`activeSec: 0`, `words: 0`) | phase entry (including demote re-entry) |
-| `<phase>:completed` | ts, **`activeSec`**, **`Δwords`** | phase exit; the only row that carries totals |
-| `pause:{reason}` | ts | idle-bracket opens (agent blocked on human) |
-| `switch-out:{issue}` | ts | idle-bracket opens (context-switch to another issue) |
-| `resume:{reason}` | ts | idle-bracket closes; re-enters the last action-verb phase |
+| Row                  | Carries                              | Meaning                                                   |
+| -------------------- | ------------------------------------ | --------------------------------------------------------- |
+| `<phase>:started`    | ts only (`activeSec: 0`, `words: 0`) | phase entry (including demote re-entry)                   |
+| `<phase>:completed`  | ts, **`activeSec`**, **`Δwords`**    | phase exit; the only row that carries totals              |
+| `pause:{reason}`     | ts                                   | idle-bracket opens (agent blocked on human)               |
+| `switch-out:{issue}` | ts                                   | idle-bracket opens (context-switch to another issue)      |
+| `resume:{reason}`    | ts                                   | idle-bracket closes; re-enters the last action-verb phase |
 
 `phase ∈ {refine, plan, develop, test, review}`. `done` is terminal (but
 re-openable — see reverse edges).
@@ -56,6 +56,7 @@ activeSec = (completed.ts − started.ts) − Σ(resume.ts − departure.ts)
 delta. `Δwords` = context-words accrued since that phase's `:started`.
 
 Consequences that fall out of this definition:
+
 - Tool execution, API round-trips, and model thinking are **active** by
   construction — the agent has not yielded, so no bracket is open.
 - A between-turn gap with no open `pause` is **active** phase time. Passive
@@ -145,7 +146,7 @@ One-time, **idempotent, re-runnable** sweep across **open and closed** issues:
 - Fold the stripped `active-work` rows' word counts into the enclosing
   `:completed` `Δwords` (lossless).
 
-#813's develop phase collapses to a single `develop:started → develop:completed`
+Issue #813's develop phase collapses to a single `develop:started → develop:completed`
 span (~2h38m52s active, zero idle). The heal treats history "as if the
 `active-work`/`idle` stamping never existed."
 

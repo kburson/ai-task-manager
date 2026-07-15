@@ -6,7 +6,10 @@
 //
 //   • 'departure'    — work STOPPED. Opens an IDLE span. Openers per #534:
 //                      `pause`/`paused`/`pause:<reason>`, `switch-out`/
-//                      `switch-out:#N`, `idle`.
+//                      `switch-out:#N`. (`idle` was a departure opener until
+//                      EPIC #823 timing model v2 retired the `idle` row; the
+//                      READ side now treats a legacy `idle` slug as neutral —
+//                      see RETIRED_SLUGS below.)
 //   • 'reengagement' — work RESUMED. Opens an ACTIVE span and closes the open
 //                      departure. `resumed` is the sole canonical return verb
 //                      (#568); `start`, `resume`/`resume:<slug>`, and the
@@ -45,13 +48,11 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // Non-phase audit rows that still open ACTIVE spans (they record real
 // orchestration work, not a departure or a re-engagement).
 //
-// `active-work` (#821): the #802 finalize credit that orphan/pause-finalize emits
-// for the `[lastRowTs → stoppedAt]` window before the paired `idle` row. It
-// records real active work, so it belongs to the phase class — it closes an open
-// idle span and sets state → active, and is neither a departure nor a
-// reengagement. Registering it here makes `isCanonicalPhaseSlug` (and thus V3's
-// `isKnownSlug`) accept it, so a real `active-work → idle` pair walks legally
-// instead of surfacing as `malformed` + cascade `doubled-step`.
+// EPIC #823 timing model v2 (C1): `active-work` is REMOVED from this set. It was
+// the #802/#821 finalize credit that orphan/pause-finalize emitted before the
+// paired `idle` row; both the emitter and the row type are retired, so the
+// READ-side no longer needs to recognize `active-work` as a legal slug. A healed
+// v2 log never contains it.
 //
 // `review` / `review-ready` (#812): the two ad-hoc bare-verb rows the `review`
 // verb emits on every review entry — `review` ("starting review", the deferred
@@ -62,13 +63,13 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // orthogonal to that deferral (it does not canonicalize them — it just stops V3
 // from flagging legitimate emitter rows as `malformed — unknown event slug`).
 // Without this, every timing log fails V3 the moment it enters Review.
-const AUDIT_PHASE_SLUGS = Object.freeze([
-  'demoted',
-  'out-of-band-move',
-  'active-work',
-  'review',
-  'review-ready',
-]);
+const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'review', 'review-ready']);
+
+// Retired vocabulary — slugs that legacy (pre-v2) logs may still carry but that
+// timing model v2 (EPIC #823) no longer treats as interruption events. A legacy
+// `idle` row is classified as neutral PHASE at the READ side so it opens no idle
+// span; the historical heal (C4) strips these rows entirely.
+const RETIRED_SLUGS = Object.freeze(['idle', 'active-work']);
 
 // Classify a single Event-cell slug into one of EVENT_CLASS. Case-insensitive.
 // Interruption openers/closers defer to `classifyEvent` (the canonical #534
@@ -77,6 +78,10 @@ export function classifyTimingEvent(slug) {
   if (slug == null) return null;
   const s = String(slug).trim().toLowerCase();
   if (s === '') return null;
+  // v2 (#823): a retired `idle`/`active-work` slug is neutral — it never opens
+  // an idle span. Short-circuit before delegating to the #534 taxonomy, which
+  // still classifies bare `idle` as a departure on the WRITE side.
+  if (RETIRED_SLUGS.includes(s)) return EVENT_CLASS.PHASE;
   const c = classifyEvent(s);
   if (c && c.role === 'open') return EVENT_CLASS.DEPARTURE;
   if (c && c.role === 'close') return EVENT_CLASS.REENGAGEMENT;
