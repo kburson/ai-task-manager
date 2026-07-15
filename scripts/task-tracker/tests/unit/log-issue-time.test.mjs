@@ -8,12 +8,16 @@ import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 const repoRoot = new URL('../../../..', import.meta.url).pathname;
 const script = join(repoRoot, 'scripts/gh/log-issue-time.mjs');
 
+// EPIC #823 timing model v2 (C3): the rollup recomputes active time from phase
+// SPANS, not per-row Active cells. A 45-minute develop span (started → completed)
+// yields sessionTime 45 with no per-row minute column.
 const TIMING_COMMENT_BODY =
   '## ⏱ Timing Log\n\n' +
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |\n' +
   '|---|---|---|---|---|---|---|\n' +
-  '| 2026-05-15 09:00 +00:00 | start | — | — | — | — | started |\n' +
-  '| 2026-05-15 09:45 +00:00 | end | 45 | — | 100 | 500 | done |\n';
+  '| 2026-05-15 09:00 +00:00 | start |  |  |  | 400 | session start |\n' +
+  '| 2026-05-15 09:00 +00:00 | develop:started |  |  |  | 400 | started |\n' +
+  '| 2026-05-15 09:45 +00:00 | develop:completed |  |  | 100 | 500 | done |\n';
 
 const BODY_NO_START =
   '<!-- aitm-fields: {"schema":1,"values":{"startTime":null,"engagedTime":null,"sessionTime":null,"reviewTime":null}} -->';

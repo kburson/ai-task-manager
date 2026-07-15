@@ -4,7 +4,7 @@
 // (engagedTime, sessionTime, reviewTime, planTime) from the timing comment of
 // record.
 
-import { pauseSpansBetween } from './lib/timing-rows.mjs';
+import { pauseSpansBetween, computeActiveByPhaseSpans } from './lib/timing-rows.mjs';
 import { parseEntryMarkers, STAGES } from './lib/stage-entry-markers.mjs';
 import { PHASE_EVENTS } from './phase-events.mjs';
 
@@ -306,12 +306,18 @@ export function upsertStageRollupMarker(body, rollup) {
 // only legacy rows lacking that marker fall back to minutes×60 (see
 // parseTimingRows). `reviewSec`/`planMin` are timestamp-delta derived at minute
 // granularity — there is no finer source — and never use float hours.
-export function rollupTotals(rows, thresholdMin) {
+// EPIC #823 timing model v2 (C3, AC2): `totalActiveSec`/`totalIdleSec` are the
+// sum of per-phase active/idle across re-entries, computed from phase SPANS by
+// `computeActiveByPhaseSpans(body)` — NOT from summing each row's per-row
+// `activeSec`. Under v2 the `<phase>:completed` row already carries the whole
+// phase span's active total, so summing every row (completed + intermediate
+// pause/switch-out/resume + legacy per-turn rows) double-counts. Pass the raw
+// timing-comment `body` to take the span path; omit it and the function falls
+// back to the legacy per-row sum so pre-v2 callers keep working.
+export function rollupTotals(rows, thresholdMin, body = null) {
   let totalActiveMin = 0;
   let totalActiveSec = 0;
-  // #475 AC2 — idle is now aggregated alongside active time. Each row carries
-  // `idleSec` (from the `row-sec` marker or pause-span subtraction); the rollup
-  // sums them so total idle surfaces in the summary instead of being dropped.
+  // #475 AC2 — idle is now aggregated alongside active time.
   let totalIdleSec = 0;
   // #475 AC1 — the cumulative Word Marker is monotonic non-decreasing. Take the
   // running max rather than the last value so a stray `0` audit row (legacy
@@ -319,11 +325,21 @@ export function rollupTotals(rows, thresholdMin) {
   let lastWordMarker = null;
   for (const r of rows) {
     if (r.activeMin != null) totalActiveMin += r.activeMin;
-    if (r.activeSec != null && Number.isFinite(r.activeSec)) totalActiveSec += r.activeSec;
-    if (r.idleSec != null && Number.isFinite(r.idleSec)) totalIdleSec += r.idleSec;
     if (r.wordMarker != null) {
       lastWordMarker =
         lastWordMarker == null ? r.wordMarker : Math.max(lastWordMarker, r.wordMarker);
+    }
+  }
+  if (body && typeof body === 'string') {
+    const spans = computeActiveByPhaseSpans(body);
+    totalActiveSec = spans.totalActiveSec;
+    totalIdleSec = spans.totalIdleSec;
+    totalActiveMin = Math.round(totalActiveSec / 60);
+  } else {
+    // Legacy back-compat: sum per-row seconds when no body is supplied.
+    for (const r of rows) {
+      if (r.activeSec != null && Number.isFinite(r.activeSec)) totalActiveSec += r.activeSec;
+      if (r.idleSec != null && Number.isFinite(r.idleSec)) totalIdleSec += r.idleSec;
     }
   }
   const reviewMin = computeReviewMin(rows, thresholdMin);

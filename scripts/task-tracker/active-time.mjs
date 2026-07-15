@@ -11,6 +11,14 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 
+// EPIC #823 timing model v2 (C3, AC1): a phase's active time is computed as its
+// span − Σ(pause/switch-out→resume brackets), reading no `idle`/`active-work`
+// row. The JSONL heuristics below are the WRITE-side per-turn producer; the
+// canonical phase-span reader lives in `lib/timing-rows.mjs` and is re-exported
+// here so `active-time.mjs` is the single import surface for active-time
+// computation. Neither path reads a legacy `idle`/`active-work` row.
+export { computeActiveByPhaseSpans } from './lib/timing-rows.mjs';
+
 const ACTIVITY_TYPES = new Set(['user', 'assistant']);
 
 export function collectEventTimestamps(filePath, startMs, endMs) {

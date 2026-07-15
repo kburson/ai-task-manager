@@ -330,4 +330,100 @@ export function computePhaseCloseDelta(body, phase, nowTs) {
   return { activeSec, idleSec, startWordMarker: parsed[enterIdx].marker, matched: true };
 }
 
+// EPIC #823 timing model v2 (C3) — whole-log phase-span active-time calculator.
+//
+// Generalizes `computePhaseCloseDelta` across the ENTIRE timing log: every phase
+// ENTER row (`PHASE_EVENTS[*].enter.event`) opens a span that runs to the next
+// phase boundary — any enter/complete slug, or a `demoted` audit row — or to
+// `nowTs` (default: the last row's timestamp) for the trailing open phase. Within
+// each span, adjacent sub-spans are classified by their OPENING row via
+// `classifyTimingEvent`: a DEPARTURE (`paused`/`switch-out`) opens an IDLE
+// bracket, everything else is ACTIVE. Idle is NEVER stored — it is exactly the
+// bracket delta.
+//
+// Because enters tile the worked timeline contiguously and non-overlapping,
+// summing per-enter spans sums per-phase active time with no double-count;
+// between-phase gaps (e.g. `plan:completed → develop:started`, awaiting approval)
+// fall outside every span and are excluded. Re-entries (a repeated enter slug
+// after a `demoted`) accumulate under the same phase key.
+//
+// v2 invariants: a legacy `idle`/`active-work` row classifies as neutral PHASE
+// (active), so a span's active/idle split is invariant to whether such a row is
+// present (a healed log with it stripped yields identical totals) — and the walk
+// keys on a whitelist of phase/departure events, never on `idle`/`active-work`.
+//
+// Returns `{ totalActiveSec, totalIdleSec, perPhase: [{ event, activeSec, idleSec }] }`.
+export function computeActiveByPhaseSpans(body, nowTs) {
+  const empty = { totalActiveSec: 0, totalIdleSec: 0, perPhase: [] };
+  if (!body || typeof body !== 'string') return empty;
+
+  const nowMsArg = nowTs == null ? null : tsToMs(nowTs);
+  const parsed = [];
+  for (const line of body.split('\n')) {
+    const m = line.match(TS_LINE_RE);
+    if (!m) continue;
+    const ms = tsToMs(m[1]);
+    if (!Number.isFinite(ms)) continue;
+    const cells = line.split('|').map((s) => s.trim());
+    parsed.push({ ms, event: (cells[2] ?? '').toLowerCase() });
+  }
+  if (parsed.length === 0) return empty;
+
+  const nowMs =
+    nowMsArg != null && Number.isFinite(nowMsArg) ? nowMsArg : parsed[parsed.length - 1].ms;
+  const rows = parsed.filter((r) => r.ms <= nowMs);
+  if (rows.length === 0) return empty;
+
+  // Boundary set = every enter slug ∪ every complete slug ∪ `demoted`. An enter
+  // row's span ends at the FIRST boundary strictly after it — its own complete,
+  // a demote, or the next phase's enter — so the awaiting-approval gap between a
+  // complete and the next enter is never counted.
+  const enterSlugs = new Set();
+  const boundarySlugs = new Set(['demoted']);
+  for (const state of Object.values(PHASE_EVENTS)) {
+    if (state.enter?.event) {
+      enterSlugs.add(state.enter.event);
+      boundarySlugs.add(state.enter.event);
+    }
+    if (state.complete?.event) boundarySlugs.add(state.complete.event);
+  }
+
+  const perPhaseMap = new Map();
+  for (let ei = 0; ei < rows.length; ei++) {
+    if (!enterSlugs.has(rows[ei].event)) continue;
+    let endIdx = rows.length;
+    for (let j = ei + 1; j < rows.length; j++) {
+      if (boundarySlugs.has(rows[j].event)) {
+        endIdx = j;
+        break;
+      }
+    }
+    const endMs = endIdx < rows.length ? rows[endIdx].ms : nowMs;
+    let activeSec = 0;
+    let idleSec = 0;
+    for (let j = ei; j < endIdx; j++) {
+      const thisMs = rows[j].ms;
+      const nextMs = j + 1 < endIdx ? rows[j + 1].ms : endMs;
+      const spanSec = Math.max(0, Math.floor((nextMs - thisMs) / 1000));
+      if (classifyTimingEvent(rows[j].event) === EVENT_CLASS.DEPARTURE) idleSec += spanSec;
+      else activeSec += spanSec;
+    }
+    const key = rows[ei].event;
+    const acc = perPhaseMap.get(key) || { event: key, activeSec: 0, idleSec: 0 };
+    acc.activeSec += activeSec;
+    acc.idleSec += idleSec;
+    perPhaseMap.set(key, acc);
+  }
+
+  let totalActiveSec = 0;
+  let totalIdleSec = 0;
+  const perPhase = [];
+  for (const acc of perPhaseMap.values()) {
+    totalActiveSec += acc.activeSec;
+    totalIdleSec += acc.idleSec;
+    perPhase.push(acc);
+  }
+  return { totalActiveSec, totalIdleSec, perPhase };
+}
+
 export { tsToMs as _tsToMs };

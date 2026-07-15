@@ -16,7 +16,6 @@ import {
   loadProjectFieldDefs,
 } from '../task-tracker/project-fields.mjs';
 import {
-  applyPauseSpansToRows,
   computeStageDurations,
   humanizeSec,
   parseTimingRows,
@@ -139,12 +138,14 @@ async function fetchProjectMeta() {
     process.exit(0);
   }
 
-  const rawRows = parseTimingRows(comment.body);
-  // Pause-aware rollup: subtract `aitm-pause` spans inside each row's window.
-  // Body carries the markers; comment body does not.
+  const rows = parseTimingRows(comment.body);
   const issueBodyForPauses = await fetchIssueBody();
-  const rows = applyPauseSpansToRows(rawRows, issueBodyForPauses);
   const thresholdMin = Number(cfg.reviewPauseThresholdMin) || 5;
+  // EPIC #823 timing model v2 (C3): active/idle totals are recomputed from phase
+  // spans by passing the raw timing-comment body to rollupTotals. The old
+  // `applyPauseSpansToRows` per-row pause subtraction is retired here — it
+  // double-subtracted brackets already netted inside each `<phase>:completed`
+  // row's span. `reviewMin`/`planMin` are timestamp-delta derived from the rows.
   const {
     rowCount,
     totalActiveMin,
@@ -154,7 +155,7 @@ async function fetchProjectMeta() {
     planMin,
     engagedMin,
     engagedSec,
-  } = rollupTotals(rows, thresholdMin);
+  } = rollupTotals(rows, thresholdMin, comment.body);
 
   if (rowCount === 0) {
     console.error('Timing comment found but contains no data rows');
