@@ -154,7 +154,14 @@ export function validate(context = {}) {
     const colon = row.event.indexOf(':');
     if (colon > 0) {
       const stage = row.event.slice(0, colon);
-      if (LIFECYCLE_STAGES.has(stage) && !enteredSet.has(stage)) {
+      const qualifier = row.event.slice(colon + 1);
+      // A `<stage>:failed` row is a gate AUDIT record of a rejected attempt, not
+      // a stage-entry claim: the Agent Review Gate writes it on a failed review
+      // and demotes without stamping `aitm-entered-<stage>`. Excluding it here
+      // (only in this reconciliation pass) prevents the catch-22 where a
+      // failed-then-retried review poisons its own timing log. Genuine entry
+      // rows (`<stage>:started` / `<stage>:completed`) still require their marker.
+      if (qualifier !== 'failed' && LIFECYCLE_STAGES.has(stage) && !enteredSet.has(stage)) {
         failures.push(
           `${loc(row)}: timing row records stage "${stage}" but body has no aitm-entered-${stage} marker`
         );
