@@ -41,6 +41,17 @@ function makeTimingDeps({ posted, readBody = { status: 'found', body: 'LOG' }, b
     },
     timingRows: {
       deriveStateMoveDelta: () => ({ activeSec: 11, idleSec: 22 }),
+      // #825: the forward `<prev>:complete` branch now composes the phase-span
+      // close delta. A `matched:false` stub routes it back to the
+      // `deriveStateMoveDelta` fallback, preserving this suite's row-shape
+      // assertions; the delta math itself is pinned by
+      // tests/unit/timing-phase-close-delta.test.mjs.
+      computePhaseCloseDelta: () => ({
+        activeSec: 0,
+        idleSec: 0,
+        startWordMarker: NaN,
+        matched: false,
+      }),
     },
   };
 }
