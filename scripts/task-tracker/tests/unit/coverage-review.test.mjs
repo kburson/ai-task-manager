@@ -381,7 +381,11 @@ test('success: all checks pass → moves to Review, prompts approval', async () 
     assert.equal(await runExit(ctx), null);
     assert.ok(calls.move.includes('review'));
     assert.equal(calls.logTime, 1);
-    assert.ok(calls.post.length >= 2);
+    // EPIC #823 timing model v2 (C6 / defect D1): the success path no longer
+    // emits the two ad-hoc verb rows (bare `review` + `review-ready`). The
+    // canonical `test:passed` + `review:started` pair is written by runMoveState
+    // (tracked via calls.move), so the verb posts zero timing rows of its own.
+    assert.equal(calls.post.length, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
