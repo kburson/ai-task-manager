@@ -46,6 +46,79 @@ export function buildDeferredReviewRow(spec, ts) {
   return kind === 'flush' ? buildFlushRow({ ...params, ts }) : buildRow({ ...params, ts });
 }
 
+// EPIC #823 timing model v2 (C7 / defects D2+D3): emit an agent-review-gate
+// failure as a canonically-ordered timeline. Extracted from `verbReview` so the
+// ORDER is unit-testable without the verb's dynamic-import network path
+// (runReviewPreflight / runGuards can't be intercepted by node:test).
+//
+// Ordered side effects — the review DID start, and the objections are its
+// outcome, so the sequence is:
+//   1. runMoveState(target,'review')             → test:passed + review:started
+//   2. mutateBodyFn(… failedBody)                → stamp aitm-review-failed
+//   3. safePostTiming(target, review:failed row)
+//   4. runMoveState(target,'develop', --demote)  → demoted:develop + develop:started
+//
+// Step 1's transient Review board touch is intentional: without it the
+// `review:failed` row would dangle with no preceding `review:started` (defect
+// D2). Step 4 carries `--demote-reason` so the audit row is `demoted:develop`
+// with the objection summary rather than a bare `demoted` (defect D3). The
+// demote branch (by design) emits NO `review:approved` row.
+export async function emitReviewGateFailureTimeline({
+  target,
+  issueNum,
+  repo,
+  failures,
+  failedBody,
+  ts,
+  delta,
+  wordMarker,
+  deps,
+}) {
+  const {
+    runMoveState,
+    safePostTiming,
+    mutateBodyFn,
+    buildRow: buildRowFn = buildRow,
+    pexec,
+    ghApiTimeoutMs = GH_API_TIMEOUT_MS,
+    logError = (m) => console.error(m),
+  } = deps;
+  const objectionSummary = `agent review failed — ${failures.length} objection(s)`;
+  // (1) transient Test→Review — lays down test:passed + review:started.
+  await runMoveState(target, 'review', { silent: true });
+  // (2) stamp the aitm-review-failed marker.
+  try {
+    await mutateBodyFn({
+      issueNumber: issueNum,
+      repo,
+      mutate: () => failedBody,
+      timeout: ghApiTimeoutMs,
+      deps: { pexec },
+      allowUnverifiedTicks: true,
+    });
+  } catch (e) {
+    logError(`[task-tracker] failed to stamp aitm-review-failed: ${e.message}`);
+  }
+  // (3) the review outcome row itself.
+  await safePostTiming(
+    target,
+    buildRowFn({
+      ts,
+      event: 'review:failed',
+      activeSec: delta.activeSec,
+      idleSec: delta.idleSec,
+      deltaWords: 0,
+      // #475 AC1 — carried-forward durable marker (gate failure, no live session)
+      wordMarker,
+      description: `${objectionSummary}, reverted to Develop`,
+    })
+  );
+  // (4) Review→Develop demote carrying the objection summary (D3).
+  await runMoveState(target, 'develop', {
+    extraArgs: ['--demote', '--demote-reason', objectionSummary],
+  });
+}
+
 export async function verbReview(ctx) {
   const {
     cfg,
@@ -654,39 +727,38 @@ export async function verbReview(ctx) {
         comments,
       });
       if (!gate.pass) {
-        // FAIL — stamp the review-failed marker (on the normalizer's rewrite if
-        // one was produced), post a `review:failed` row, demote to Develop, and
-        // exit non-zero. Nothing moves to Review.
+        // FAIL — emit the review-gate failure in canonical timeline order, then
+        // exit non-zero. EPIC #823 timing model v2 (C7 / defects D2+D3): the
+        // gate ran while the board was still at Test, so the failure timeline is
+        //
+        //   test:passed → review:started → review:failed → demoted:develop → develop:started
+        //
+        // (1) advance Test→Review so the `test:passed` + `review:started` pair
+        //     is laid down — the review DID start; the objections are its
+        //     outcome, so a `review:failed` row with no preceding
+        //     `review:started` (the old bug) is a lie. This is a deliberate,
+        //     transient Review touch: the very next move demotes straight back.
+        // (2) stamp the `aitm-review-failed` marker + post the `review:failed`
+        //     row.
+        // (3) demote Review→Develop with `--demote-reason` so the audit row is
+        //     `demoted:develop` carrying the objection summary (D3), not a bare
+        //     `demoted`. The demote branch emits `demoted:develop` +
+        //     `develop:started` and (by design) NO `review:approved`.
         const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
         const _tsRF = nowIso();
         const failedBody = stampReviewFailed(baseBody, gate.failures, { ts: _tsRF });
-        try {
-          await mutateBodyFn({
-            issueNumber: issueNum,
-            repo: cfg.repo,
-            mutate: () => failedBody,
-            timeout: GH_API_TIMEOUT_MS,
-            deps: { pexec },
-            allowUnverifiedTicks: true,
-          });
-        } catch (e) {
-          console.error(`[task-tracker] failed to stamp aitm-review-failed: ${e.message}`);
-        }
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
-        await safePostTiming(
+        await emitReviewGateFailureTimeline({
           target,
-          buildRow({
-            ts: _tsRF,
-            event: 'review:failed',
-            activeSec: _dRF.activeSec,
-            idleSec: _dRF.idleSec,
-            deltaWords: 0,
-            // #475 AC1 — carried-forward durable marker (gate failure, no live session)
-            wordMarker: s.lastWordMarker ?? 0,
-            description: `agent review failed — ${gate.failures.length} objection(s), reverted to Develop`,
-          })
-        );
-        await runMoveState(target, 'develop');
+          issueNum,
+          repo: cfg.repo,
+          failures: gate.failures,
+          failedBody,
+          ts: _tsRF,
+          delta: _dRF,
+          wordMarker: s.lastWordMarker ?? 0,
+          deps: { runMoveState, safePostTiming, mutateBodyFn, pexec },
+        });
         process.stderr.write('\n');
         process.stderr.write(
           `⛔ Agent Review Gate failed for ${target} — ${gate.failures.length} objection(s):\n`

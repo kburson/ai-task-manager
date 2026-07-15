@@ -51,6 +51,7 @@ export function parseMoveStateArgs(argv) {
     itemIdOverride: '',
     fromOverride: '',
     demoteFlag: false,
+    demoteReason: '',
     supersedeFlag: false,
     forceFlag: false,
     outOfBandReason: '',
@@ -82,6 +83,12 @@ export function parseMoveStateArgs(argv) {
       i++;
     } else if (cliArgs[i] === '--demote') {
       result.demoteFlag = true;
+    } else if (cliArgs[i] === '--demote-reason' && cliArgs[i + 1] !== undefined) {
+      // #831 (EPIC #823 D3) — the demote's audit row carries this reason (e.g. the
+      // review-gate objection summary). Parsed here so both the verb path (via
+      // extraArgs) and a raw script invocation reach `emitPhasePairRows` with it.
+      result.demoteReason = String(cliArgs[i + 1]).trim();
+      i++;
     } else if (cliArgs[i] === '--supersede') {
       result.supersedeFlag = true;
     } else if (cliArgs[i] === '--force') {

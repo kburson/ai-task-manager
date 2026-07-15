@@ -106,7 +106,13 @@ export function isCanonicalPhaseSlug(slug) {
   const s = String(slug ?? '')
     .trim()
     .toLowerCase();
-  return PHASE_EVENT_SLUGS.includes(s) || AUDIT_PHASE_SLUGS.includes(s);
+  if (PHASE_EVENT_SLUGS.includes(s) || AUDIT_PHASE_SLUGS.includes(s)) return true;
+  // v2 (#823 C7 / defect D3) — the demote audit row names its TARGET state
+  // (`demoted:<target>`, e.g. `demoted:develop`). Recognize the prefixed form as
+  // canonical so the strict validator accepts it; the bare `demoted` slug stays
+  // in AUDIT_PHASE_SLUGS for legacy logs that predate the target suffix.
+  if (/^demoted:[a-z-]+$/.test(s)) return true;
+  return false;
 }
 
 // The ladder rule in one predicate: a span is IDLE iff opened by a departure

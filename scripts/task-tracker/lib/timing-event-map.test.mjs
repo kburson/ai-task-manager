@@ -110,6 +110,26 @@ test('audit-phase slugs are canonical', () => {
   assert.equal(isCanonicalPhaseSlug('active-work'), false);
 });
 
+test('target-suffixed demote slug is canonical + classifies as PHASE (C7 / #831 D3)', () => {
+  // EPIC #823 timing model v2 (C7 / defect D3): the demote audit row names its
+  // TARGET state (`demoted:<target>`, e.g. `demoted:develop`). The prefixed form
+  // must be a canonical phase slug so the strict v2 validator (C5) accepts it,
+  // and it must classify as neutral PHASE (never a departure/reengagement).
+  for (const slug of ['demoted:develop', 'demoted:test', 'demoted:backlog']) {
+    assert.equal(isCanonicalPhaseSlug(slug), true, slug);
+    assert.equal(classifyTimingEvent(slug), EVENT_CLASS.PHASE, slug);
+    assert.equal(isDepartureEvent(slug), false, slug);
+    assert.equal(isReengagementEvent(slug), false, slug);
+    assert.equal(opensIdleSpan(slug), false, slug);
+  }
+  // Case-insensitive, and the bare legacy form stays canonical.
+  assert.equal(isCanonicalPhaseSlug('DEMOTED:Develop'), true);
+  assert.equal(isCanonicalPhaseSlug('demoted'), true);
+  // A malformed suffix (non-slug chars) is NOT canonical.
+  assert.equal(isCanonicalPhaseSlug('demoted:'), false);
+  assert.equal(isCanonicalPhaseSlug('demoted:Dev123'), false);
+});
+
 test('the retired review-verb slugs are no longer canonical (C6 / #830)', () => {
   // The `review` verb used to emit two bare-verb rows (`review`, `review-ready`)
   // on every review entry, and #812 registered them as canonical so V3 would not

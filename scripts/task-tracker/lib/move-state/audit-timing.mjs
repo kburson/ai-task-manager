@@ -46,7 +46,8 @@ async function resolveTimingDeps(ctx) {
 // state and no entry event for the target). Best-effort — failures here
 // do not roll back the committed board move.
 export async function emitPhasePairRows(ctx) {
-  const { issueArg, stateArg, resolvedFromState, demoteFlag, cfg, SKIP_NETWORK } = ctx;
+  const { issueArg, stateArg, resolvedFromState, demoteFlag, demoteReason, cfg, SKIP_NETWORK } =
+    ctx;
   if (SKIP_NETWORK) return;
   try {
     const { timing, rows, events } = await resolveTimingDeps(ctx);
@@ -70,14 +71,28 @@ export async function emitPhasePairRows(ctx) {
     const _phaseMarker = durableWordMarker(getProjectDir());
     // First row: completion of the previous state (or `demoted` for demote).
     if (demoteFlag) {
+      // v2 (#823 C7 / defect D3) — the demote audit row names its TARGET state
+      // (`demoted:${stateArg}`, e.g. `demoted:develop`) so the strict validator
+      // and any auditor can read where the work reverted to; the bare `demoted`
+      // form is retired. The row description carries the caller-supplied reason
+      // (e.g. the review-gate objection summary) when present, falling back to
+      // the origin-state note.
+      const reason = String(demoteReason || '').trim();
+      const description = reason
+        ? prev
+          ? `demoted from ${prev}: ${reason}`
+          : `demoted: ${reason}`
+        : prev
+          ? `demoted from ${prev}`
+          : 'demoted';
       const row = buildRow({
         ts,
-        event: 'demoted',
+        event: `demoted:${stateArg}`,
         activeSec,
         idleSec,
         deltaWords: 0,
         wordMarker: _phaseMarker,
-        description: prev ? `demoted from ${prev}` : 'demoted',
+        description,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     } else if (prev && PHASE_EVENTS[prev]?.complete && stateArg !== 'done') {

@@ -374,10 +374,12 @@ export function computeActiveByPhaseSpans(body, nowTs) {
   const rows = parsed.filter((r) => r.ms <= nowMs);
   if (rows.length === 0) return empty;
 
-  // Boundary set = every enter slug ∪ every complete slug ∪ `demoted`. An enter
-  // row's span ends at the FIRST boundary strictly after it — its own complete,
-  // a demote, or the next phase's enter — so the awaiting-approval gap between a
-  // complete and the next enter is never counted.
+  // Boundary set = every enter slug ∪ every complete slug ∪ a demote row. An
+  // enter row's span ends at the FIRST boundary strictly after it — its own
+  // complete, a demote, or the next phase's enter — so the awaiting-approval gap
+  // between a complete and the next enter is never counted. The demote row is
+  // matched via `isBoundary` below, which accepts both the legacy bare `demoted`
+  // slug and the v2 (#823 C7 / D3) target-suffixed `demoted:<target>` form.
   const enterSlugs = new Set();
   const boundarySlugs = new Set(['demoted']);
   for (const state of Object.values(PHASE_EVENTS)) {
@@ -387,13 +389,14 @@ export function computeActiveByPhaseSpans(body, nowTs) {
     }
     if (state.complete?.event) boundarySlugs.add(state.complete.event);
   }
+  const isBoundary = (event) => boundarySlugs.has(event) || event.startsWith('demoted:');
 
   const perPhaseMap = new Map();
   for (let ei = 0; ei < rows.length; ei++) {
     if (!enterSlugs.has(rows[ei].event)) continue;
     let endIdx = rows.length;
     for (let j = ei + 1; j < rows.length; j++) {
-      if (boundarySlugs.has(rows[j].event)) {
+      if (isBoundary(rows[j].event)) {
         endIdx = j;
         break;
       }
