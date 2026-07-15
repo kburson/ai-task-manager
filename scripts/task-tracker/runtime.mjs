@@ -439,13 +439,21 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         );
       }
       const { buildFlushRow } = await import('./gh-timing-comment.mjs');
+      // #832 (D4) — an interruption flush (`pause` / `switch-out` / `review`)
+      // banks its words onto the durable marker + cursor above but renders the
+      // row's Δ Words cell as 0, so the accrued words are attributed to the
+      // phase's `<phase>:completed` row, not to the interruption row. The Word
+      // Marker cell still advances (the close walker reads it), so no words are
+      // lost — only their display moves off the interruption row (AC1/AC3).
+      const rowDeltaWords = opts.suppressRowWords ? 0 : deltaWords;
+      const rowDeltaWordsFull = opts.suppressRowWords ? 0 : deltaWordsFull;
       const row = buildFlushRow({
         ts,
         event: effectiveEvent,
         activeMin: 0,
         idleMin: 0,
-        deltaWords,
-        deltaWordsFull,
+        deltaWords: rowDeltaWords,
+        deltaWordsFull: rowDeltaWordsFull,
         wordMarker,
         description: effectiveDescription,
       });
@@ -551,13 +559,18 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
     // render `Xh Ym Zs` + the canonical `row-sec` marker, matching System A rows.
+    // #832 (D4) — see the zero-duration branch: an interruption flush banks its
+    // words onto the durable marker but renders the row's Δ Words cell as 0 so
+    // they attribute to the `<phase>:completed` row, not the interruption row.
+    const rowDeltaWords = opts.suppressRowWords ? 0 : deltaWords;
+    const rowDeltaWordsFull = opts.suppressRowWords ? 0 : deltaWordsFull;
     const row = buildRow({
       ts,
       event: effectiveEvent,
       activeSec,
       idleSec,
-      deltaWords,
-      deltaWordsFull,
+      deltaWords: rowDeltaWords,
+      deltaWordsFull: rowDeltaWordsFull,
       wordMarker,
       description: effectiveDescription,
     });

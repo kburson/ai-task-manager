@@ -285,14 +285,24 @@ export function deriveStateMoveDelta(body, nowTs) {
 // `startWordMarker` is the Word-Marker cell (`cells[6]`) of that enter row, so
 // the caller can stamp `Δwords = currentMarker − startWordMarker`.
 //
-// Returns `{ activeSec, idleSec, startWordMarker, matched }`. `matched:false`
-// (no enter row found, or unusable input) signals the caller to fall back to
-// `deriveStateMoveDelta` rather than emit a 0-active row.
-export function computePhaseCloseDelta(body, phase, nowTs) {
+// EPIC #823 (C8, #832) — `deltaWords` is the own-issue context-word delta for
+// this phase visit: the sum, over every NON-departure (active) sub-span, of the
+// growth in the Word-Marker cell from that sub-span's opening row to the next
+// row (`nowMarker` for the trailing sub-span). Departure sub-spans — the marker
+// growth bracketed by a `pause` / `switch-out` / `review` row — are EXCLUDED, so
+// a `switch-out → resumed` bracket's growth (the PEER issue's away words, which
+// rode the same per-project marker) never leaks onto this issue's completed row
+// (AC2). `nowMarker` is the durable marker AFTER the completing verb banked the
+// uninterrupted trailing tail, so the final active sub-span captures it.
+//
+// Returns `{ activeSec, idleSec, startWordMarker, deltaWords, matched }`.
+// `matched:false` (no enter row found, or unusable input) signals the caller to
+// fall back to `deriveStateMoveDelta` rather than emit a 0-active row.
+export function computePhaseCloseDelta(body, phase, nowTs, nowMarker = NaN) {
   const enterEvent = PHASE_EVENTS?.[phase]?.enter?.event;
   const nowMs = tsToMs(nowTs);
   if (!enterEvent || !Number.isFinite(nowMs) || !body || typeof body !== 'string') {
-    return { activeSec: 0, idleSec: 0, startWordMarker: NaN, matched: false };
+    return { activeSec: 0, idleSec: 0, startWordMarker: NaN, deltaWords: 0, matched: false };
   }
   const parsed = [];
   for (const line of body.split('\n')) {
@@ -316,18 +326,36 @@ export function computePhaseCloseDelta(body, phase, nowTs) {
     }
   }
   if (enterIdx === -1) {
-    return { activeSec: 0, idleSec: 0, startWordMarker: NaN, matched: false };
+    return { activeSec: 0, idleSec: 0, startWordMarker: NaN, deltaWords: 0, matched: false };
   }
   let activeSec = 0;
   let idleSec = 0;
+  let deltaWords = 0;
   for (let i = enterIdx; i < parsed.length; i++) {
     const thisMs = parsed[i].ms;
     const nextMs = i + 1 < parsed.length ? parsed[i + 1].ms : nowMs;
     const spanSec = Math.max(0, Math.floor((nextMs - thisMs) / 1000));
-    if (classifyTimingEvent(parsed[i].event) === EVENT_CLASS.DEPARTURE) idleSec += spanSec;
+    const isDeparture = classifyTimingEvent(parsed[i].event) === EVENT_CLASS.DEPARTURE;
+    if (isDeparture) idleSec += spanSec;
     else activeSec += spanSec;
+    // Own-issue word delta: accrue marker growth only across ACTIVE sub-spans.
+    // A departure sub-span's growth is either idle (~0 for pause) or the peer's
+    // away words (switch-out bracket) — excluded either way.
+    if (!isDeparture) {
+      const thisMarker = parsed[i].marker;
+      const nextMarker = i + 1 < parsed.length ? parsed[i + 1].marker : nowMarker;
+      if (Number.isFinite(thisMarker) && Number.isFinite(nextMarker)) {
+        deltaWords += Math.max(0, nextMarker - thisMarker);
+      }
+    }
   }
-  return { activeSec, idleSec, startWordMarker: parsed[enterIdx].marker, matched: true };
+  return {
+    activeSec,
+    idleSec,
+    startWordMarker: parsed[enterIdx].marker,
+    deltaWords,
+    matched: true,
+  };
 }
 
 // EPIC #823 timing model v2 (C3) — whole-log phase-span active-time calculator.

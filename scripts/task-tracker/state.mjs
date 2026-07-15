@@ -7,7 +7,14 @@ import {
   TMP_AITM_SEGMENT,
 } from './paths.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
-import { currentSessionId } from './word-counter.mjs';
+import {
+  currentSessionId,
+  jsonlPath,
+  markerPathFor,
+  loadMarker,
+  saveMarker,
+  countWords,
+} from './word-counter.mjs';
 
 export const EMPTY_STATE = {
   active: null,
@@ -46,6 +53,43 @@ export function durableWordMarker(projDir) {
     return loadState(sp).lastWordMarker ?? 0;
   } catch {
     return 0;
+  }
+}
+
+// EPIC #823 (C8, #832) — bank the UNINTERRUPTED transcript tail into the durable
+// marker + per-sid cursor. The promote verbs (`develop`/`test`/`review`) never
+// call `flushActiveToGH`, so context-words accrued since the last flush sit
+// un-counted in the per-sid cursor when a phase closes. Called by the phase-pair
+// writer (`emitPhasePairRows`) BEFORE it stamps the `<phase>:completed` row, so
+// the completed row's Word-Marker cell — and the own-issue Δwords the close
+// walker derives from it — include this trailing tail (Case 4: an uninterrupted
+// develop span). Advancing the cursor makes the bank idempotent: a second close
+// with no further words counts 0. Best-effort: any failure (no sid, unreadable
+// transcript) returns the unchanged durable marker and never throws.
+export function bankTranscriptTail(projDir) {
+  const fallback = () => ({ banked: 0, marker: durableWordMarker(projDir) });
+  try {
+    const sid = currentSessionId();
+    if (!sid) return fallback();
+    const markerPath = markerPathFor(sid);
+    const marker = loadMarker(markerPath);
+    const counted = countWords(jsonlPath(sid), marker.line);
+    const tail = Math.max(0, Number(counted.count) || 0);
+    const sp = resolveStatePath(projDir);
+    const state = loadState(sp);
+    const prior = state.lastWordMarker ?? 0;
+    const nextMarker = advanceWordMarker(prior, prior + tail);
+    if (tail > 0) {
+      state.lastWordMarker = nextMarker;
+      saveState(state, sp);
+      const priorFull = marker.wordsFull ?? marker.words ?? 0;
+      const tailFull = Math.max(0, Number(counted.fullExpansion ?? counted.count) || 0);
+      const nextFull = advanceWordMarker(priorFull, priorFull + tailFull);
+      saveMarker(markerPath, counted.totalLines, nextMarker, state.active, nextFull);
+    }
+    return { banked: tail, marker: nextMarker };
+  } catch {
+    return fallback();
   }
 }
 

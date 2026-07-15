@@ -18,7 +18,7 @@
 // builtins are imported directly here (identical module instances, no behavior
 // drift).
 
-import { durableWordMarker } from '../../state.mjs';
+import { durableWordMarker, bankTranscriptTail } from '../../state.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -66,6 +66,16 @@ export async function emitPhasePairRows(ctx) {
     );
     const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
 
+    // EPIC #823 (C8, #832) — bank the uninterrupted transcript tail into the
+    // durable marker BEFORE reading it, so the `<phase>:completed` row (and the
+    // own-issue Δwords the close walker derives from the marker cells) credits
+    // words accrued since the last flush. Promote verbs never call
+    // `flushActiveToGH`, so without this bank an uninterrupted phase span leaves
+    // its words stranded in the per-sid cursor and the completed row reads 0.
+    // Injectable for tests (`ctx.deps.bankTail`); best-effort in production.
+    const bankTail = (ctx.deps && ctx.deps.bankTail) || bankTranscriptTail;
+    bankTail(getProjectDir());
+
     // #475 AC1 — every phase-pair row carries the carried-forward durable
     // marker rather than collapsing to 0.
     const _phaseMarker = durableWordMarker(getProjectDir());
@@ -109,13 +119,21 @@ export async function emitPhasePairRows(ctx) {
       // per-entry span) and derives idle from paired departure→re-engagement
       // rows. Fall back to the v1 delta only when no enter row is found
       // (legacy/anomalous log) so we never regress to a 0-active row.
-      const close = computePhaseCloseDelta(timingBody, prev, ts);
+      // v2 (#823 C8 / defect D4) — pass the just-banked durable marker as
+      // `nowMarker` so the close walker's trailing active sub-span captures the
+      // uninterrupted tail. `close.deltaWords` sums marker growth over ONLY the
+      // active sub-spans, so an intervening `pause` / `switch-out` / `review`
+      // bracket (idle, or the peer's away words) is excluded — the words land on
+      // THIS completed row, not the interruption row (AC1/AC2).
+      const close = computePhaseCloseDelta(timingBody, prev, ts, _phaseMarker);
       const closeActive = close.matched ? close.activeSec : activeSec;
       const closeIdle = close.matched ? close.idleSec : idleSec;
       const deltaWords =
-        close.matched && Number.isFinite(close.startWordMarker)
-          ? Math.max(0, _phaseMarker - close.startWordMarker)
-          : 0;
+        close.matched && Number.isFinite(close.deltaWords)
+          ? Math.max(0, close.deltaWords)
+          : close.matched && Number.isFinite(close.startWordMarker)
+            ? Math.max(0, _phaseMarker - close.startWordMarker)
+            : 0;
       const row = buildRow({
         ts,
         phase: { state: prev, phase: 'complete' },

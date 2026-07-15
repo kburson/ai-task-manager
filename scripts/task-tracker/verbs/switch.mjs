@@ -83,7 +83,15 @@ export async function verbSwitch(ctx, target) {
     // carries the peer. The Description spells it out for humans.
     const eventSlug = `switch-out:${target}`;
     const eventDesc = `Switching out to task ${target}`;
-    const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc);
+    // #832 (D4) — switch-out is an interruption: bank the outgoing span's words
+    // onto the durable marker but render this row's Δ Words cell as 0, so the
+    // words attribute to the outgoing phase's `<phase>:completed` row. Crucially,
+    // the peer's away words then ride the same durable marker across the bracket;
+    // the close walker excludes this departure sub-span, so they never leak onto
+    // the outgoing issue's completed row (AC2).
+    const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc, undefined, {
+      suppressRowWords: true,
+    });
     previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
     await runLogIssueTime(previous);
     try {

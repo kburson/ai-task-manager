@@ -22,10 +22,15 @@ export async function verbPause(ctx) {
   // Description. For a canonical slug, still echo any free text the operator
   // typed so context is never lost.
   const pauseDesc = reasonText ?? (isOtherReason(reasonSlug) ? undefined : reasonSlug);
+  // #832 (D4) — pause is an interruption: bank the span's words onto the durable
+  // marker but render this pause row's Δ Words cell as 0, so the words attribute
+  // to the phase's `<phase>:completed` row rather than to this interruption.
   const { deltaMin, deltaWallMin, deltaWords, ts } = await flushActiveToGH(
     s,
     pauseEvent,
-    pauseDesc
+    pauseDesc,
+    undefined,
+    { suppressRowWords: true }
   );
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   saveState(
