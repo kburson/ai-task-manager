@@ -74,7 +74,10 @@ test('emitPhasePairRows: SKIP_NETWORK short-circuits before any emission', async
   assert.equal(posted.length, 0);
 });
 
-test('emitPhasePairRows: demote emits a `demoted` row then the <next>:enter row', async () => {
+test('emitPhasePairRows: demote emits a `demoted:<target>` row then the <next>:enter row', async () => {
+  // EPIC #823 timing model v2 (C7 / defect D3): the demote audit row names its
+  // TARGET state (`demoted:${stateArg}`) rather than a bare `demoted`, so the
+  // reverse move is self-describing in the timing log.
   const posted = [];
   await emitPhasePairRows({
     issueArg: '10',
@@ -89,7 +92,7 @@ test('emitPhasePairRows: demote emits a `demoted` row then the <next>:enter row'
     },
   });
   assert.equal(posted.length, 2);
-  assert.equal(posted[0].row.__row.event, 'demoted');
+  assert.equal(posted[0].row.__row.event, 'demoted:refine');
   assert.deepEqual(posted[1].row.__row.phase, { state: 'refine', phase: 'enter' });
 });
 
