@@ -19,6 +19,7 @@ import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
 import { isNoCommitKind, hasDeliverableMarker, isAcWaived } from './issue-kind.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
+import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 
@@ -196,16 +197,59 @@ export async function gateCommitTrailContainsHead({
     };
   }
 
-  const matched = trailShas.some((s) => headSha.startsWith(s) || s.startsWith(headSha));
-  if (!matched) {
-    const shortHead = headSha.slice(0, 6);
+  const inTrail = (sha) => trailShas.some((s) => sha.startsWith(s) || s.startsWith(sha));
+
+  const matched = inTrail(headSha);
+  if (matched) {
+    return { ok: true, headSha, trailShas };
+  }
+
+  // #834 — HEAD is not literally in the trail. On a shared trunk this is the
+  // norm, not a defect: a *sibling* issue's commit (or an unattributed commit)
+  // can become HEAD while THIS issue added no new commit in its resumed Develop
+  // visit. Exact-SHA membership mis-fires there — the tree the sandbox verifies
+  // still contains every commit this issue shipped, all recorded in the trail.
+  //
+  // Message-based attribution (per #727/#733): the move is acceptable IFF every
+  // commit reachable from HEAD that bears THIS issue's `[#N]` token is already
+  // recorded in the trail. If any `[#N]`-attributed commit reachable from HEAD
+  // is MISSING from the trail, the developer forgot `/task commit-trace` after a
+  // new commit — keep blocking with the existing `stale-trail` message. This
+  // preserves the gate's guarantee (the trail records all of the issue's shipped
+  // work) without punishing a shared-trunk resume that added nothing of its own.
+  const attributingCommits = deps.attributingCommits || defaultAttributingCommits;
+  let ownCommits = [];
+  try {
+    // Scope the walk to HEAD's ancestry (`refs: ['HEAD']`) so every returned
+    // commit is reachable from HEAD by construction — no separate reachability
+    // probe needed.
+    ownCommits = await attributingCommits(issueNumber, {
+      cwd: projectDir,
+      refs: ['HEAD'],
+    });
+  } catch (err) {
     return {
       ok: false,
-      blocker: `develop-to-test-stale-trail: HEAD \`${shortHead}\` not in commit-trail (marker has ${trailShas.length} SHA(s)) — run \`/task commit-trace\` to record the latest commit`,
+      blocker: `develop-to-test-attribution-failed: ${err.message}`,
       headSha,
       trailShas,
     };
   }
+
+  const missing = ownCommits.filter((c) => c && c.sha && !inTrail(c.sha));
+  if (missing.length > 0) {
+    const shortHead = headSha.slice(0, 6);
+    const shortMissing = missing.map((c) => c.sha.slice(0, 6)).join(', ');
+    return {
+      ok: false,
+      blocker: `develop-to-test-stale-trail: HEAD \`${shortHead}\` not in commit-trail (marker has ${trailShas.length} SHA(s)); ${missing.length} attributed commit(s) not recorded (${shortMissing}) — run \`/task commit-trace\` to record the latest commit`,
+      headSha,
+      trailShas,
+    };
+  }
+
+  // Only sibling/unattributed commits advanced HEAD past the trail tip; all of
+  // this issue's shipped commits are recorded. Shared-trunk resume — allow.
   return { ok: true, headSha, trailShas };
 }
 
