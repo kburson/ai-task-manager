@@ -210,3 +210,11 @@ backcompat
 repoint
 repoints
 Δwords
+retargeted
+unparking
+Rovo
+METR
+Kiro
+Sayagh
+inspectable
+Overclaiming

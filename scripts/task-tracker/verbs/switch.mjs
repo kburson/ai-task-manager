@@ -37,10 +37,31 @@ export async function verbSwitch(ctx, target) {
   }
   await drainQueueIfAny();
   const s = loadState(statePath);
+  // #833 — self-bind no-op. Rebinding to the already-active, never-paused issue
+  // (`previous === target`, no open pause) never actually stopped work, so there
+  // is nothing to resume. Emit ZERO timing rows — neither the outgoing flush nor
+  // the incoming bind row — and leave the live active span (`entryStartTs`,
+  // `wordsAtEntryStart`, `lastWordMarker`) untouched so accrued active time is
+  // credited to the next genuine `<phase>:completed`. This supersedes the #460
+  // self-bind branch below (emit `resumed`, not `switch-out`): emitting nothing
+  // is strictly stronger. A legitimate resume-after-pause arrives with
+  // `s.active === null` (pause.mjs clears it), never satisfies this guard, and
+  // still emits its single closing `resumed` via the incoming-bind path.
+  if (s.active === target && !s.paused) {
+    try {
+      registerTask(projectDir, target, projectDir, currentBranch(projectDir));
+    } catch {
+      /* best-effort: keep the fleet registry warm; never block a no-op */
+    }
+    console.log(`Active: ${target} (already bound; no-op).`);
+    return;
+  }
   let previousNote = '';
   if (s.active && s.active !== 'discover' && cfg.autoEndOnSwitch) {
     const previous = s.active;
-    const isSelfBind = previous === target;
+    // #833 — self-bind can no longer reach here: the no-op guard above returns
+    // for `s.active === target && !s.paused`, so `previous !== target` always
+    // holds and this branch handles only genuine cross-issue switches.
     // #215 — a switch IS a pause: force-finalize any pending-pause row
     // against the OUTGOING issue regardless of sub-threshold gap. This must
     // happen BEFORE flushActiveToGH so the row lands on the old binding.
@@ -56,25 +77,19 @@ export async function verbSwitch(ctx, target) {
     } catch {
       /* never block switch on finalize failure */
     }
-    // #460 — self-bind (rebinding to the already-active issue) is a resume,
-    // not a switch-out. Guard prevents self-referential timing log entries.
     // #534 — a real switch records `switch-out:#<target>` on the OUTGOING issue,
     // naming the peer it is handing off to. #568 — the eventual return is the
     // sole closer `resumed` (not `switch-in:#<target>`); the departure row alone
     // carries the peer. The Description spells it out for humans.
-    const eventSlug = isSelfBind ? 'resumed' : `switch-out:${target}`;
-    const eventDesc = isSelfBind ? `resumed ${target}` : `Switching out to task ${target}`;
+    const eventSlug = `switch-out:${target}`;
+    const eventDesc = `Switching out to task ${target}`;
     const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc);
-    previousNote = isSelfBind
-      ? ` Resumed: ${previous} (+${deltaMin} min, +${deltaWords} words).`
-      : ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
+    previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
     await runLogIssueTime(previous);
-    if (!isSelfBind) {
-      try {
-        deregisterTask(projectDir, previous);
-      } catch {
-        /* best-effort: cleanup; failure is non-fatal */
-      }
+    try {
+      deregisterTask(projectDir, previous);
+    } catch {
+      /* best-effort: cleanup; failure is non-fatal */
     }
   } else if (s.active === 'discover') {
     console.log('Discarding discovery bucket (switch to concrete issue).');

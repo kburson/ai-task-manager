@@ -255,3 +255,79 @@ C6 and C7 are siblings, both blockers of C5; drive **deepest-first** (C6 then C7
 or either order — no shared files beyond `heal-timing-log.mjs` vs `review.mjs`),
 then unblock and finish C5. C8 blocks nothing and can land any time before the
 epic closes.
+
+## Addendum D5 2026-07-15 — self-bind no-op (#833)
+
+> **Label note.** The "D5 rejected" entry in the C6–C8 decision record above
+> concerns a _different_ proposal (echoing the departure reason on return,
+> `resumed:question`) which stays rejected. This addendum introduces a new,
+> unrelated defect that was assigned the **D5** child-defect label as the fifth
+> sibling under #823 (D1 #830, D2/D3 #831, D4 #832, **D5 #833**). It fixes a
+> **write-side emission** bug, not a resume-vocabulary change.
+
+### Defect (observed live on #831, rows 8-9)
+
+Rebinding to the already-active issue — `/task #N` (a bare `task-tracker.mjs <N>`
+routing to `verbSwitch`) while `#N` is already bound and was never paused — emits
+**two** spurious `resumed` rows in a single invocation, neither paired with a
+`pause` or `switch-out`:
+
+1. **outgoing flush** — the pre-#833 self-bind branch calls
+   `flushActiveToGH(s, 'resumed', 'resumed #N')`, carrying the live active deltas
+   out under a `resumed` slug; and
+2. **incoming bind row** — `resolveBindEvent(...)` returns `resumed` for an issue
+   with timing history (#568), so `buildRow` posts a second `resumed`
+   (description defaulting to the role, `solo`).
+
+The C5/#828 validator correctly flags both as "reengagement with no open
+interruption."
+
+### Why the self-bind case is _always_ illegitimate
+
+`pause.mjs` sets `active: null`. A legitimate resume-after-pause therefore arrives
+with `s.active === null` and can never satisfy `previous === target`; it falls to
+the incoming-bind path and emits exactly **one** `resumed` that closes the open
+pause. So whenever `s.active === target` holds the issue is by definition
+**active and never-paused** — the session never stopped, and there is nothing to
+resume. The bind was not lost across the context boundary; the state file
+persisted `active: #N`, which is precisely why the self-bind fired.
+
+### Fix — true no-op guard at the top of `verbSwitch`
+
+Guard immediately after `loadState`, **before** the `cfg.autoEndOnSwitch` block
+(so it also covers the `autoEndOnSwitch=false` path, which otherwise still emits
+one `resumed` via the incoming path):
+
+```
+if (s.active === target && !s.paused) {
+  try { registerTask(projectDir, target, projectDir, currentBranch(projectDir)); } catch {}
+  console.log(`Active: ${target} (already bound; no-op).`);
+  return;
+}
+```
+
+Emit **zero** timing rows and leave the live active span (`entryStartTs`,
+`wordsAtEntryStart`, `lastWordMarker`) untouched so accrued active time flows to
+the next genuine `<phase>:completed`. This corrects the defect at its source
+rather than suppressing rows downstream or relaxing the validator (epic-owner
+directive: ignoring the resume "papers over the problem that you need to rebind
+at all and makes the defect harder to notice"). Supersedes the #460 self-bind
+behavior (emit `resumed`-not-`switch-out`): emitting nothing is strictly stronger,
+so the now-dead `isSelfBind` conditional in the `autoEndOnSwitch` branch is
+removed.
+
+### Tests
+
+- `tests/unit/self-bind-resume.test.mjs` (#460, retargeted): asserts the guard
+  and early `return` are present and the `isSelfBind` conditional is gone, while
+  keeping the `resumed` / `switch-out` row-grammar assertions.
+- `tests/unit/switch-verb-noop.test.mjs` (new): drives the real `verbSwitch` with
+  a stubbed ctx + isolated temp state across three cases — (a) self-bind → 0 flush
+  - 0 bind rows + span byte-for-byte unchanged; (b) resume-after-pause
+    (`active: null`, `paused: true`) → exactly one incoming bind row; (c) cross-issue
+    switch → one `switch-out:<target>` flush + one incoming bind row.
+
+### Downstream
+
+Once landed, #831's live timing log is healed (drop its two spurious `resumed`
+rows) via the `heal-timing-log.mjs` transform (C4/#830), unparking #831.

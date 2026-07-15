@@ -1,30 +1,41 @@
 #!/usr/bin/env node
-// @story #460
-// Self-bind resume — issue #460.
+// @story #460 #833
+// Self-bind no-op — issue #833 (supersedes the #460 self-bind-resume behavior).
 //
-// When the user re-binds to the already-active issue (/task #N while on #N),
-// verbSwitch must emit a `resumed` row rather than a self-referential
-// `switch-out → task #N` row.
+// #460 originally made a re-bind to the already-active issue (/task #N while on
+// #N) emit a `resumed` row instead of a self-referential `switch-out → #N` row.
+// #833 goes further: a self-bind to an active, never-paused issue never actually
+// stopped work, so it must be a TRUE no-op — verbSwitch emits ZERO timing rows
+// and leaves the live active span intact. The doubled `resumed` (outgoing flush
+// + incoming bind) is the defect this test now guards against.
 //
 // Asserts:
-//   1. `buildRow` with event `resumed` does not contain "switch-out".
-//   2. `buildRow` with event `switch-out` + a DIFFERENT target does contain
-//      the target ref (validates the positive case is unaffected).
-//   3. The runtime source does NOT have an unconditional `switch-out` emission
-//      that would bypass the self-bind guard.
+//   1. `buildRow` with event `resumed` grammar is intact — still used by the
+//      legitimate resume-after-pause path (which is NOT a self-bind).
+//   2. `buildRow` with event `switch-out` + a DIFFERENT target still references
+//      the target ref (cross-issue switch is unaffected).
+//   3. switch.mjs contains the #833 self-bind no-op guard (`s.active === target`
+//      && not paused) with an early `return` before any timing emission.
+//   4. switch.mjs no longer conditions emission on `isSelfBind` — the dead
+//      self-bind branch was removed once the guard made it unreachable.
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildRow } from '../../gh-timing-comment.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '../../..');
+const switchSrc = readFileSync(
+  path.join(repoRoot, 'scripts/task-tracker/verbs/switch.mjs'),
+  'utf8'
+);
 
 const ts = new Date(Date.now() - 2000).toISOString();
 
-// ---- 1. Self-bind emits `resumed`, not `switch-out` -----------------------
-const selfBindRow = buildRow({
+// ---- 1. resume-after-pause row grammar is intact (`resumed`) ---------------
+const resumeRow = buildRow({
   ts,
   event: 'resumed',
   activeMin: 5,
@@ -33,8 +44,8 @@ const selfBindRow = buildRow({
   wordMarker: 500,
   description: 'resumed #430',
 });
-assert.match(selfBindRow, /\| resumed \|/, 'self-bind row must use resumed slug');
-assert.ok(!selfBindRow.includes('switch-out'), 'self-bind row must not contain switch-out');
+assert.match(resumeRow, /\| resumed \|/, 'resume-after-pause row must use resumed slug');
+assert.ok(!resumeRow.includes('switch-out'), 'resume row must not contain switch-out');
 
 // ---- 2. Cross-issue switch still emits `switch-out` with the target ref ----
 const crossRow = buildRow({
@@ -49,33 +60,38 @@ const crossRow = buildRow({
 assert.match(crossRow, /\| switch-out \|/, 'cross-issue switch must use switch-out slug');
 assert.match(crossRow, /switch-out → task #999/, 'cross-issue row must reference the target');
 
-// ---- 3. switch.mjs uses the isSelfBind guard before emitting switch-out ----
-// Grep for the guard that conditions the event slug on self-bind. The fix
-// must be present in the production source, not just in tests.
-let guardSrc = '';
-try {
-  guardSrc = execFileSync('grep', ['-n', 'isSelfBind', 'scripts/task-tracker/verbs/switch.mjs'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
-} catch (err) {
-  if (err.status !== 1) throw err;
-  guardSrc = '';
-}
-assert.ok(guardSrc.length > 0, 'switch.mjs must contain an isSelfBind guard (#460 fix)');
+// ---- 3. switch.mjs carries the #833 self-bind no-op guard -------------------
+// The guard short-circuits a re-bind to the already-active, never-paused issue
+// with an early `return` before any flush/bind emission.
+assert.match(
+  switchSrc,
+  /s\.active === target && !s\.paused/,
+  'switch.mjs must guard self-bind with `s.active === target && !s.paused` (#833)'
+);
+// The guard body must return early (no-op) — locate a `return;` after the guard.
+const guardIdx = switchSrc.indexOf('s.active === target && !s.paused');
+assert.ok(guardIdx > 0, 'self-bind guard condition must be present');
+const afterGuard = switchSrc.slice(guardIdx, guardIdx + 400);
+assert.match(afterGuard, /\breturn;/, 'self-bind no-op guard must return early (#833)');
 
-// ---- 4. The `eventSlug` selection uses isSelfBind, not a bare `switch-out` --
-let slugSrc = '';
+// ---- 4. The dead `isSelfBind` conditional was removed ----------------------
+// Once the guard makes self-bind unreachable in the switch-out branch, the old
+// `isSelfBind` event-slug conditional is gone. Grep must find no runtime use.
+let selfBindHits = '';
 try {
-  slugSrc = execFileSync('grep', ['-n', 'eventSlug', 'scripts/task-tracker/verbs/switch.mjs'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
+  selfBindHits = execFileSync(
+    'grep',
+    ['-n', 'isSelfBind', 'scripts/task-tracker/verbs/switch.mjs'],
+    { cwd: repoRoot, encoding: 'utf8' }
+  ).trim();
 } catch (err) {
   if (err.status !== 1) throw err;
-  slugSrc = '';
+  selfBindHits = '';
 }
-assert.ok(slugSrc.includes('resumed'), 'eventSlug in switch.mjs must reference resumed slug');
-assert.ok(slugSrc.includes('switch-out'), 'eventSlug in switch.mjs must reference switch-out slug');
+assert.equal(
+  selfBindHits,
+  '',
+  'switch.mjs must no longer branch on isSelfBind — the no-op guard replaces it (#833)'
+);
 
 console.log('self-bind-resume.test.mjs: ok');
