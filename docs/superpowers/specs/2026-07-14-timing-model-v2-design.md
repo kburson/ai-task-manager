@@ -232,7 +232,7 @@ C6 and C7**.
   `timing-event-map.mjs`. Small, isolated.
 - **C7 (#831) — Fix review-gate failure emission (D2 + D3).** On a gate objection emit the
   canonical order `test:passed → review:started → review:failed → demoted:{target}
-  → <phase>:started`, with the objection summary in the `demoted:` description and
+→ <phase>:started`, with the objection summary in the `demoted:` description and
   the target-state entry marker re-stamped. Kill the spurious post-failure
   `test:passed` and the dropped `review:started`. Change bare `demoted` →
   `demoted:{target}` on every demote path.

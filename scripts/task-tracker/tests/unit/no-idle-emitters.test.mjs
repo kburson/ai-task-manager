@@ -54,6 +54,33 @@ test('AUDIT_PHASE_SLUGS source no longer lists `active-work`', () => {
   );
 });
 
+// ---- C6 (#830): the bare `review` / `review-ready` slugs are retired ---------
+
+test('C6 — `review` and `review-ready` are no longer canonical phase slugs', () => {
+  assert.equal(isCanonicalPhaseSlug('review'), false);
+  assert.equal(isCanonicalPhaseSlug('review-ready'), false);
+  // A legacy log that still carries them classifies them as neutral PHASE (they
+  // open an ACTIVE span, never a departure/reengagement) until the heal strips
+  // them — so span active/idle accounting is invariant pre-heal.
+  assert.equal(classifyTimingEvent('review'), EVENT_CLASS.PHASE);
+  assert.equal(classifyTimingEvent('review-ready'), EVENT_CLASS.PHASE);
+});
+
+test('C6 — AUDIT_PHASE_SLUGS source no longer lists `review` / `review-ready`', () => {
+  const src = read('lib/timing-event-map.mjs');
+  const start = src.indexOf('const AUDIT_PHASE_SLUGS');
+  const auditBlock = src.slice(start, src.indexOf(']);', start) + 3);
+  assert.ok(start >= 0 && auditBlock.length > 0, 'AUDIT_PHASE_SLUGS block located');
+  assert.ok(
+    !/['"]review['"]/.test(auditBlock),
+    'bare `review` must not appear inside AUDIT_PHASE_SLUGS'
+  );
+  assert.ok(
+    !/['"]review-ready['"]/.test(auditBlock),
+    '`review-ready` must not appear inside AUDIT_PHASE_SLUGS'
+  );
+});
+
 test('orphan-finalize.mjs contains no idle/active-work emitter', () => {
   const src = read('orphan-finalize.mjs');
   assert.ok(!src.includes('emitActiveWorkSegment'), 'emitActiveWorkSegment must be removed');

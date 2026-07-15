@@ -37,6 +37,21 @@ import { PHASE_EVENTS } from '../phase-events.mjs';
 // strip in step 1, so the two operations are order-independent.
 const RETIRED_SLUGS = new Set(['idle', 'active-work']);
 
+// EPIC #823 timing model v2 (C6): the two pre-v2 review scaffolding rows the
+// `review` verb used to emit — `review` ("starting review") and `review-ready`
+// ("task is now in Review"). Neither is part of the canonical PHASE_EVENTS pair
+// (`test:passed` + `review:started` come from move-state). C6 stops emitting
+// them on the WRITE side; here on the READ/heal side they are stripped from
+// historical logs and their `Δ Words` folded forward onto the enclosing
+// completion row exactly like the retired slugs. Kept separate from
+// RETIRED_SLUGS so the "retired vocabulary" intent (idle/active-work) stays
+// distinct from the "cruft review rows" intent in the classifier docs.
+const REVIEW_CRUFT_SLUGS = new Set(['review', 'review-ready']);
+
+// Every slug pass-1 strips-and-folds: retired interruption rows plus the C6
+// review cruft rows. Both fold their words forward onto the next `:completed`.
+const STRIP_SLUGS = new Set([...RETIRED_SLUGS, ...REVIEW_CRUFT_SLUGS]);
+
 // Timing-log timestamp pattern — mirrors TS_LINE_RE in timing-rows.mjs.
 const TS_LINE_RE = /\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\s+[+-]\d{2}:\d{2})\s*\|/;
 // Trailing `<!-- row-sec: a=N i=N -->` marker (with its leading whitespace).
@@ -124,7 +139,7 @@ export function healTimingLog(body) {
       continue;
     }
     const ev = eventOf(line);
-    if (RETIRED_SLUGS.has(ev)) {
+    if (STRIP_SLUGS.has(ev)) {
       const { core } = splitRowMarker(line);
       pendingWords += parseWordsCell(core.split('|')[5]);
       continue; // strip the row

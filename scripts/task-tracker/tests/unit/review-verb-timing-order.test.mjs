@@ -1,11 +1,16 @@
 #!/usr/bin/env node
-// @story #463
-// Unit tests for review.mjs timing-row deferral (#463).
+// @story #463 (deferral) / #830 (C6 — bare-row retirement)
+// Unit tests for review.mjs timing-row emission.
 //
-// Verifies that the verb-level "starting review" row is NOT posted before
-// runMoveState — i.e., flushActiveToGH is called with { computeOnly: true }
-// so the row is deferred until after the board move emits test:passed +
-// review:started.
+// Original #463 intent: the verb-level "starting review" row was deferred past
+// runMoveState. EPIC #823 timing model v2 (C6 / #830) RETIRES that bare `review`
+// row and the `review-ready` state-move row entirely — the canonical
+// `test:passed` + `review:started` pair (emitted by runMoveState) is now the
+// complete lifecycle record. These tests therefore assert the review verb:
+//   • never posts a timing row on the pre-network path (SKIP_NETWORK short-
+//     circuits before the board move), and
+//   • no longer calls flushActiveToGH at all (the computeOnly deferral seam the
+//     #463 mechanism relied on is gone).
 //
 // Full ordering verification (runMoveState before safePostTiming) requires
 // the E2E suite because runReviewPreflight and runGuards use dynamic import()
@@ -60,7 +65,7 @@ function makeCtx({ statePath, rest = ['#999'], active = '#999', flushFn } = {}) 
 
 // ── Branch: s.active === target ──────────────────────────────────────────────
 
-test('s.active === target: flushActiveToGH called with computeOnly:true', async () => {
+test('s.active === target: C6 no longer calls flushActiveToGH (deferral seam removed)', async () => {
   const state = {
     active: '#999',
     entryStartTs: '2026-06-19T00:00:00.000Z',
@@ -71,7 +76,7 @@ test('s.active === target: flushActiveToGH called with computeOnly:true', async 
   const { statePath, dir } = makeTmpStatePath(state);
   try {
     const flushCalls = [];
-    const { ctx } = makeCtx({
+    const { ctx, calls } = makeCtx({
       statePath,
       rest: ['#999'],
       flushFn: async (_s, event, desc, _phase, opts) => {
@@ -82,14 +87,12 @@ test('s.active === target: flushActiveToGH called with computeOnly:true', async 
 
     await verbReview(ctx);
 
-    assert.equal(flushCalls.length, 1, 'flushActiveToGH called exactly once');
-    assert.equal(flushCalls[0].event, 'review');
-    assert.equal(flushCalls[0].desc, 'starting review');
     assert.equal(
-      flushCalls[0].opts?.computeOnly,
-      true,
-      'flushActiveToGH must be called with computeOnly:true so row is deferred'
+      flushCalls.length,
+      0,
+      'C6 retired the bare `review` row, so flushActiveToGH must not be called by the review verb'
     );
+    assert.equal(calls.postTiming.length, 0, 'no timing row is posted on the pre-network path');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

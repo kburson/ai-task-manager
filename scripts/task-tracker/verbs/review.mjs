@@ -1,4 +1,4 @@
-import { loadState, saveState, pauseTimingKeepBinding, advanceWordMarker } from '../state.mjs';
+import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
@@ -56,7 +56,6 @@ export async function verbReview(ctx) {
     pexec,
     drainQueueIfAny,
     safePostTiming,
-    flushActiveToGH,
     runMoveState,
     runLogIssueTime,
     fetchSubIssues,
@@ -162,80 +161,38 @@ export async function verbReview(ctx) {
   const agentWords = wordsIdx >= 0 ? parseFlag(rest[wordsIdx + 1]) : null;
   const hasAgentTiming = agentDurationMin !== null || agentWords !== null;
 
-  // #463 — compute the verb-level "starting review" timing row here but defer
-  // posting it until after runMoveState (line ~583) emits the test:passed +
-  // review:started phase-pair rows. Posting before the board move produced
-  // out-of-order timing logs (#458 symptom).
-  // #515 — `pendingReviewRow` is a timestamp-free spec; the ts is stamped at the
-  // post site (below) via buildDeferredReviewRow so it reflects post-move time.
-  let pendingReviewRow = null;
-  if (hasAgentTiming) {
-    const activeMin = agentDurationMin ?? 0;
-    const deltaWords = agentWords ?? 0;
-    pendingReviewRow = {
-      kind: 'row',
-      event: 'review',
-      activeSec: activeMin * 60,
-      idleSec: 0,
-      deltaWords,
-      // #475 AC1 — monotonic carry-forward over the durable marker
-      wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + deltaWords),
-      description: 'agent session — starting review',
-    };
-    // #407 — preserve the binding across review (a non-terminal verb). Only
-    // the timing session closes; the issue stays bound so a follow-up verb
-    // needs no intervening re-`start`. `pause` is the sole verb that nulls
-    // `active`.
-    saveState(pauseTimingKeepBinding(s, target), statePath);
+  // EPIC #823 timing model v2 (C6 / defect D1): the review verb no longer emits
+  // the bare `review` ("starting review") or `review-ready` ("task is now in
+  // Review") timing rows. Neither was part of the canonical PHASE_EVENTS pair
+  // (`test:passed` + `review:started`, emitted by runMoveState below) — they
+  // were pre-v2 scaffolding retained by #516 DEFERRED (and deferred-posted per
+  // #463). Word/time accounting is NOT lost by dropping them: the durable word
+  // marker (advanced by hook-handler on each agent turn) and the phase-span
+  // calculator carry both signals, and the `<phase>:completed` rows report
+  // them. The bare rows merely re-displayed the same numbers, double-counting
+  // them in the visible log.
+  //
+  // What we KEEP is the session pause. Review is a non-terminal verb (#407):
+  // it closes the active timing session while preserving the binding, so a
+  // follow-up verb needs no intervening `start`. `pauseTimingKeepBinding` nulls
+  // the entry clock (entryStartTs / wordsAtEntryStart) without flushing a row;
+  // the `--duration-minutes` / `--words` agent-session flags are still parsed
+  // above but no longer materialize a row. `setTaskStatus(...,'paused')` runs
+  // only when there was a live session to pause (agent-timing flags present or
+  // the target is the active binding) — matching the pre-C6 branch behavior
+  // where the cold/no-session path left fleet status untouched.
+  //
+  // #408 — no test→test self-move here: by the time `review` runs the issue is
+  // already in `test`, so the authoritative test→review move is runMoveState
+  // below, not a self-loop the transition matrix would reject as illegal.
+  const hadActiveSession = hasAgentTiming || s.active === target;
+  saveState(pauseTimingKeepBinding(s, target), statePath);
+  if (hadActiveSession) {
     try {
       setTaskStatus(projectDir, target, 'paused');
     } catch {
       /* best-effort: failure must not abort the primary operation */
     }
-    // #408 — no test→test self-move here. By the time `review` runs, the issue
-    // is already in `test` (the test-exit-dod-verified guard below refuses
-    // otherwise), so a move-state to `test` is a self-loop the transition
-    // matrix rejects as `illegal transition: test → test`, producing spurious
-    // doubled BLOCKED noise. The authoritative test→review move is below.
-  } else if (s.active === target) {
-    // computeOnly: true — row is built from the live session but not posted yet.
-    const flush = await flushActiveToGH(s, 'review', 'starting review', undefined, {
-      computeOnly: true,
-    });
-    // #515 — capture the flush's computed params (not its pre-stamped row) so the
-    // ts can be re-bound at post time; buildFlushRow reproduces the same row.
-    pendingReviewRow = {
-      kind: 'flush',
-      event: 'review',
-      activeMin: flush.deltaMin,
-      idleMin: flush.idleMin,
-      deltaWords: flush.deltaWords,
-      wordMarker: flush.wordMarker,
-      description: 'starting review',
-    };
-    // #407 — preserve binding (see note above).
-    saveState(pauseTimingKeepBinding(s, target), statePath);
-    try {
-      setTaskStatus(projectDir, target, 'paused');
-    } catch {
-      /* best-effort: failure must not abort the primary operation */
-    }
-    // #408 — redundant test→test self-move removed (see note above).
-  } else {
-    // Body not loaded in this branch; honest 0/0.
-    pendingReviewRow = {
-      kind: 'row',
-      event: 'review',
-      activeSec: 0,
-      idleSec: 0,
-      deltaWords: 0,
-      // #475 AC1 — carried-forward durable marker (no active session for this target on review entry)
-      wordMarker: s.lastWordMarker ?? 0,
-      description: 'starting review',
-    };
-    // #408 — redundant test→test self-move removed (see note above).
-    // #407 — preserve binding (see note above).
-    saveState(pauseTimingKeepBinding(s, target), statePath);
   }
   console.log(`Review ${target}: task paused.`);
   if (!SKIP_NETWORK) {
@@ -777,33 +734,15 @@ export async function verbReview(ctx) {
       process.stderr.write('\n');
       process.exit(reviewMove.status || 4);
     }
-    // #463 — post deferred verb-level "starting review" row AFTER move-state
-    // emits test:passed + review:started, so timing log order matches lifecycle order.
-    if (pendingReviewRow) {
-      // #515 — sample the ts NOW (after the move-state pair) so the row's
-      // Timestamp is monotonically non-decreasing relative to test:passed /
-      // review:started, then build and post.
-      await safePostTiming(target, buildDeferredReviewRow(pendingReviewRow, nowIso()));
-    }
-    // #516 DEFERRED — the ad-hoc `review` (verb session-start, above) and
-    // `review-ready` (this state-move row) timing rows are intentionally left in
-    // place. They are NOT part of the canonical PHASE_EVENTS pair and are tracked
-    // for the separate "extra timing-log rows" cleanup; do not fold into the
-    // uniform vocabulary here.
-    const reviewTs = nowIso();
-    const { buildRow: br2 } = await import('../gh-timing-comment.mjs');
-    const _dR2 = deriveStateMoveDelta(rawBody, reviewTs);
-    const reviewRow = br2({
-      ts: reviewTs,
-      event: 'review-ready',
-      activeSec: _dR2.activeSec,
-      idleSec: _dR2.idleSec,
-      deltaWords: 0,
-      // #475 AC1 — carried-forward durable marker (post-move state event, no active session)
-      wordMarker: s.lastWordMarker ?? 0,
-      description: 'task is now in Review',
-    });
-    await safePostTiming(target, reviewRow);
+    // EPIC #823 timing model v2 (C6 / defect D1): the bare `review` row (the
+    // #463 deferred verb-level "starting review" post) and the `review-ready`
+    // state-move row (#516 DEFERRED) are both retired here. runMoveState above
+    // emits the canonical `test:passed` + `review:started` pair, which is the
+    // complete lifecycle record for the test→review transition; the two ad-hoc
+    // rows only re-displayed word/time already carried by those rows and the
+    // durable word marker (see the entry-side note above). `buildDeferredReviewRow`
+    // remains an exported pure helper for its own unit tests; it is no longer
+    // called from the verb path.
     await runLogIssueTime(target);
     console.log(`✓ ${target} moved to Review — all verification passed.`);
     console.log(`PROMPT_REQUIRED: review-approval ${target}`);

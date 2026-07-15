@@ -54,16 +54,15 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // READ-side no longer needs to recognize `active-work` as a legal slug. A healed
 // v2 log never contains it.
 //
-// `review` / `review-ready` (#812): the two ad-hoc bare-verb rows the `review`
-// verb emits on every review entry — `review` ("starting review", the deferred
-// verb-level session-start row, review.mjs) and `review-ready` ("task is now in
-// Review", the state-move row, review.mjs). phase-events.mjs deliberately keeps
-// them OUT of the canonical PHASE_EVENTS table pending the separate "extra
-// timing-log rows" discussion; recognizing them HERE as neutral phase slugs is
-// orthogonal to that deferral (it does not canonicalize them — it just stops V3
-// from flagging legitimate emitter rows as `malformed — unknown event slug`).
-// Without this, every timing log fails V3 the moment it enters Review.
-const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'review', 'review-ready']);
+// EPIC #823 timing model v2 (C6): `review` / `review-ready` are REMOVED from
+// this set. They were the two ad-hoc bare-verb rows the `review` verb emitted on
+// every review entry — `review` ("starting review", the deferred verb-level
+// session-start row) and `review-ready` ("task is now in Review", the state-move
+// row). C6 stops emitting both on the WRITE side (verbs/review.mjs) and strips
+// them from historical logs (lib/heal-timing-log.mjs), so no live or healed v2
+// log contains them; the READ side no longer needs to recognize them as neutral
+// phase slugs. A legacy log that still carries them is healed before V3 runs.
+const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move']);
 
 // Retired vocabulary — slugs that legacy (pre-v2) logs may still carry but that
 // timing model v2 (EPIC #823) no longer treats as interruption events. A legacy

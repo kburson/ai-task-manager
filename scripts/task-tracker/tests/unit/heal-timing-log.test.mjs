@@ -130,6 +130,61 @@ test('a log with no retired rows and correct completions is unchanged', () => {
   assert.equal(countRetiredRows(once), 0);
 });
 
+// ---- C6 (#830): strip the bare `review` / `review-ready` cruft rows ---------
+//
+// A legacy review span carries two pre-v2 scaffolding rows the review verb used
+// to emit — a bare `review` ("agent session — starting review", holding the
+// agent-session Δ Words) and a `review-ready` state-move row. C6 stops emitting
+// both; the heal strips them from history and folds their Δ Words forward onto
+// the enclosing `review:approved` completion, exactly like the retired slugs.
+
+const REVIEW_STARTED =
+  '| 2026-07-14 22:00:00 -05:00 | review:started |  |  |  | 90,000 | entering review | <!-- row-sec: a=0 i=0 -->';
+const BARE_REVIEW =
+  '| 2026-07-14 22:00:05 -05:00 | review | 0h 30m 00s |  | 40 | 90,040 | agent session — starting review | <!-- row-sec: a=1800 i=0 -->';
+const REVIEW_READY =
+  '| 2026-07-14 22:00:06 -05:00 | review-ready |  |  |  | 90,040 | task is now in Review | <!-- row-sec: a=0 i=0 -->';
+const REVIEW_APPROVED =
+  '| 2026-07-14 22:30:00 -05:00 | review:approved | 0h 30m 00s |  |  | 90,050 | approved | <!-- row-sec: a=1800 i=0 -->';
+
+function reviewCruftBody() {
+  return [
+    '## ⏱ Timing Log',
+    '',
+    HEADER,
+    SEP,
+    REVIEW_STARTED,
+    BARE_REVIEW,
+    REVIEW_READY,
+    REVIEW_APPROVED,
+    '',
+  ].join('\n');
+}
+
+test('C6 — heal removes the bare `review` and `review-ready` rows', () => {
+  const healed = healTimingLog(reviewCruftBody());
+  const slugs = rowsOf(healed).map((l) => l.split('|')[2].trim());
+  assert.ok(!slugs.includes('review'), 'bare `review` row stripped');
+  assert.ok(!slugs.includes('review-ready'), '`review-ready` row stripped');
+  assert.deepEqual(slugs, ['review:started', 'review:approved'], 'only canonical rows survive');
+});
+
+test('C6 — the stripped review-cruft Δ Words fold into review:approved', () => {
+  const healed = healTimingLog(reviewCruftBody());
+  const row = findRow(healed, 'review:approved');
+  // Bare `review` carried 40 words; review-ready carried 0. Both fold onto the
+  // (blank=0) review:approved Δ Words cell → 40. No word signal is lost.
+  assert.equal(row.split('|')[5].trim(), '40', 'review:approved absorbs the folded words');
+  // Span recompute: review:started 22:00:00 → review:approved 22:30:00 = 1800s,
+  // no departure bracket → active 0h 30m 00s, idle blank.
+  assert.match(row, /\|\s*0h 30m 00s\s*\|\s*\|/, 'active recomputed from span, idle blank');
+});
+
+test('C6 — review-cruft heal is idempotent', () => {
+  const once = healTimingLog(reviewCruftBody());
+  assert.equal(healTimingLog(once), once, 'second heal is a byte-for-byte no-op');
+});
+
 // ---- Guard: non-string input returned unchanged ----------------------------
 
 test('non-string input is returned unchanged', () => {
