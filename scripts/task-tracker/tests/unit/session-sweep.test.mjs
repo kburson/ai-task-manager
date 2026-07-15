@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @story #215
+// EPIC #823 (timing model v2) C1 — the onSessionStart sweep no longer finalizes
+// an idle row for a stale marker; it only removes stale session dirs (after
+// stripping any marker as cleanup). `sweepStaleSessionDirs` returns `{ swept }`
+// only — the `finalized` count and the timing-post are retired.
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync, utimesSync } from 'node:fs';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
@@ -40,21 +44,15 @@ const fresh = makeSession('fresh', { ageDays: 0, withMarker: true });
 const staleWithMarker = makeSession('stale-with', { ageDays: 5, withMarker: true });
 const staleNoMarker = makeSession('stale-empty', { ageDays: 5, withMarker: false });
 
-const calls = [];
 const r = await sweepStaleSessionDirs({
   projDir: tmp,
   maxAgeMs: 2 * 86_400_000,
-  deps: { postTimingEvent: async (a) => calls.push(a) },
 });
 
 assert.equal(existsSync(fresh), true, 'fresh dir preserved');
 assert.equal(existsSync(staleWithMarker), false, 'stale-with-marker dir removed');
 assert.equal(existsSync(staleNoMarker), false, 'stale-no-marker dir removed');
 assert.equal(r.swept, 2, 'swept count = 2 stale dirs');
-assert.equal(r.finalized, 1, 'finalized count = 1 (the one with marker)');
-assert.equal(calls.length, 1, 'one timing post for the stale marker');
-assert.equal(calls[0].issueNumber, '#sw-stale-with', 'post goes to the marker.issue');
-assert.match(calls[0].row, /sess: stale-with reason: stale-session/);
 
 rmSync(tmp, { recursive: true });
 console.log('session-sweep.test.mjs: all passed');
