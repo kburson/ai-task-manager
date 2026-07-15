@@ -19,6 +19,9 @@ import {
 import { PHASE_EVENTS } from '../phase-events.mjs';
 
 test('departure openers classify as departure', () => {
+  // EPIC #823 timing model v2 (C1): `idle` is no longer a departure opener — it
+  // is retired vocabulary the READ side treats as neutral PHASE. See the retired
+  // case below and no-idle-emitters.test.mjs.
   for (const slug of [
     'pause',
     'paused',
@@ -26,7 +29,6 @@ test('departure openers classify as departure', () => {
     'pause:question',
     'switch-out',
     'switch-out:#626',
-    'idle',
   ]) {
     assert.equal(classifyTimingEvent(slug), EVENT_CLASS.DEPARTURE, slug);
     assert.equal(isDepartureEvent(slug), true, slug);
@@ -102,15 +104,22 @@ test('isCanonicalPhaseSlug rejects non-canonical neutral slugs', () => {
 test('audit-phase slugs are canonical', () => {
   assert.equal(isCanonicalPhaseSlug('demoted'), true);
   assert.equal(isCanonicalPhaseSlug('out-of-band-move'), true);
-  assert.equal(isCanonicalPhaseSlug('active-work'), true);
+  // EPIC #823 timing model v2 (C1): `active-work` is retired vocabulary, no
+  // longer a canonical/recognized slug. (Guarded positively in
+  // no-idle-emitters.test.mjs.)
+  assert.equal(isCanonicalPhaseSlug('active-work'), false);
 });
 
-test('the ad-hoc review-verb slugs are recognized neutral phase rows (#812)', () => {
-  // The `review` verb emits two bare-verb rows on every review entry; V3's
-  // known-slug gate derives from isCanonicalPhaseSlug, so these must be
-  // recognized or every timing log fails the moment it enters Review.
+test('the retired review-verb slugs are no longer canonical (C6 / #830)', () => {
+  // The `review` verb used to emit two bare-verb rows (`review`, `review-ready`)
+  // on every review entry, and #812 registered them as canonical so V3 would not
+  // reject a live review log. EPIC #823 timing model v2 (C6) STOPS emitting them
+  // and strips them from historical logs, so they are no longer canonical. A
+  // legacy log that still carries them classifies them as neutral PHASE (never a
+  // departure/reengagement) until the heal removes them — accounting stays
+  // invariant pre-heal.
   for (const slug of ['review', 'review-ready']) {
-    assert.equal(isCanonicalPhaseSlug(slug), true, slug);
+    assert.equal(isCanonicalPhaseSlug(slug), false, slug);
     assert.equal(classifyTimingEvent(slug), EVENT_CLASS.PHASE, slug);
     assert.equal(isDepartureEvent(slug), false, slug);
     assert.equal(isReengagementEvent(slug), false, slug);
