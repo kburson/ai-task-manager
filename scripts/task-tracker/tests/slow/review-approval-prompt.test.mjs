@@ -151,7 +151,9 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
       { id: 'IC_req_timing', body: '⏱ Timing Log\\n\\n| Timestamp | Event | Detail |\\n| --- | --- | --- |\\n| 2026-05-10 00:00:00 -05:00 | start | bind |' },
       { id: 'IC_req_estimate', body: '<!-- aitm-refined-estimate: 101 -->\\n\\n### Planned Estimate\\n\\n| Field | Value |' },
       { id: 'IC_req_audit', body: '### Full-Auto Plan-Approval Audit\\n\\nNo human reviewer.' },
-      { id: 'IC_req_tests', body: '## New Automated Tests\\n\\n- \`foo.test.mjs\`' },
+      // V4 new-tests-content (#813): the file bullet needs ≥1 nested test-name
+      // bullet, else the gate demotes on an empty report.
+      { id: 'IC_req_tests', body: '## New Automated Tests\\n\\n- \`foo.test.mjs\`\\n  - exercises a thing' },
     ];
     const comments = traceComment
       ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }, ...requiredComments]

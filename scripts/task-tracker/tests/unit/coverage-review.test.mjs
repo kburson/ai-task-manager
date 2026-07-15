@@ -40,6 +40,9 @@ const baseState = (over = {}) => ({
 // validator (#812): a real header, monotonic timestamps, and balanced
 // engage/depart/reengage rows (start → pause → resumed). Non-lifecycle events
 // keep it decoupled from the aitm-entered-<stage> marker reconciliation.
+// The New Automated Tests comment must also carry ≥1 nested test-name bullet
+// under its file bullet for the V4 new-tests-content validator (#813): a bare
+// file bullet with no test names is exactly the empty-report shape V4 demotes.
 const REQUIRED_COMMENTS_STUB = [
   {
     body: [
@@ -55,7 +58,7 @@ const REQUIRED_COMMENTS_STUB = [
   { body: '<!-- aitm-refined-estimate: 777 -->\n\n### Planned Estimate\n\n| Field | Value |' },
   { body: '### Full-Auto Plan-Approval Audit\n\nNo human reviewer.' },
   { body: '### 🔗 Commits\n\n- abc1234 fixture deliverable' },
-  { body: '## New Automated Tests\n\n- `foo.test.mjs`' },
+  { body: '## New Automated Tests\n\n- `foo.test.mjs`\n  - exercises a thing' },
 ];
 
 function makePexec({ gateBody, rawBody, scanBody, headSha }) {
