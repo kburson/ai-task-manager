@@ -62,7 +62,17 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // them from historical logs (lib/heal-timing-log.mjs), so no live or healed v2
 // log contains them; the READ side no longer needs to recognize them as neutral
 // phase slugs. A legacy log that still carries them is healed before V3 runs.
-const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move']);
+//
+// #843: `gate-refused` is the audit row emitted on every gate refusal — by
+// `verbs/review.mjs` (completeness-refusal / review-entry) and
+// `lib/move-state/guard-execution.mjs` (body-gates-entry). It records real
+// orchestration work (an attempted, refused transition), never a departure or a
+// stage move, so it belongs in this ACTIVE-span audit set. Without it the V3
+// `timing-log-sequence` validator flagged the row `malformed — unknown event
+// slug` (it is not a ladder rung, so `stageOf` returns null and the
+// reconciliation walk is unaffected), which permanently failed the Agent Review
+// Gate for any issue whose log carried a gate refusal.
+const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'gate-refused']);
 
 // Retired vocabulary — slugs that legacy (pre-v2) logs may still carry but that
 // timing model v2 (EPIC #823) no longer treats as interruption events. A legacy

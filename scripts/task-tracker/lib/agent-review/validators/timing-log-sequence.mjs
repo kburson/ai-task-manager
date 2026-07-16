@@ -71,7 +71,9 @@ const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>deve
 // rejected attempt (not a real entry) and must not move the walk; qualified slugs
 // whose prefix is not a ladder stage (`demoted:develop`, `issue:wrap`,
 // `switch-out:#N`) and bare non-stage events (`resumed`, `pause`) return null.
-function stageOf(event) {
+// Exported for unit testing (#843): a `gate-refused` audit row must return null
+// here so it neither advances nor rewinds the kanban reconciliation walk.
+export function stageOf(event) {
   const colon = event.indexOf(':');
   if (colon > 0) {
     const stage = event.slice(0, colon);
