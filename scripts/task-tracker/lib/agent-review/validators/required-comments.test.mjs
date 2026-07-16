@@ -67,6 +67,56 @@ test('a comment with no body string is tolerated (treated as empty)', () => {
   assert.equal(res.failures.length, REQUIRED_COMMENTS.length);
 });
 
+// --- #835: kind-aware skipping of code-only rows -------------------------------
+// The `Commits` and `New Automated Tests` rows are report comments only a
+// code-kind deliverable produces. No-commit kinds (epic/audit/spike/research)
+// never emit them, so V2 must skip those two rows for such bodies while still
+// enforcing the three always-required rows.
+const EPIC_BODY = 'Some epic.\n<!-- aitm-issue-kind kind="epic" -->\n';
+const ALWAYS_REQUIRED = ['Timing Log', 'Refine Estimate', 'Full-Auto plan-approval audit'];
+
+test('#835 no-commit body: missing all five reports only the three always-required', () => {
+  const res = validate({ comments: [], body: EPIC_BODY });
+  assert.equal(res.pass, false);
+  assert.equal(res.failures.length, ALWAYS_REQUIRED.length, JSON.stringify(res.failures));
+  for (const label of ALWAYS_REQUIRED) {
+    assert.ok(
+      res.failures.some((f) => f.includes(label)),
+      `always-required '${label}' not reported: ${JSON.stringify(res.failures)}`
+    );
+  }
+  assert.ok(
+    !res.failures.some((f) => /Commits|New Automated Tests/.test(f)),
+    `code-only rows must not be reported for a no-commit body: ${JSON.stringify(res.failures)}`
+  );
+});
+
+test('#835 code-kind body (no marker): missing all five still reports all five', () => {
+  const res = validate({ comments: [], body: 'A plain code issue with no kind marker.' });
+  assert.equal(res.pass, false);
+  assert.equal(res.failures.length, REQUIRED_COMMENTS.length, JSON.stringify(res.failures));
+});
+
+test('#835 no-commit body missing one always-required still reports it', () => {
+  const comments = ALWAYS_REQUIRED.filter((l) => l !== 'Timing Log').map((l) => ({
+    body: SAMPLES[l],
+  }));
+  const res = validate({ comments, body: EPIC_BODY });
+  assert.equal(res.pass, false);
+  assert.deepEqual(
+    res.failures.map((f) => f),
+    ["required comment 'Timing Log' is missing"],
+    JSON.stringify(res.failures)
+  );
+});
+
+test('#835 no-commit body with all three always-required present passes', () => {
+  const comments = ALWAYS_REQUIRED.map((l) => ({ body: SAMPLES[l] }));
+  const res = validate({ comments, body: EPIC_BODY });
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+  assert.deepEqual(res.failures, []);
+});
+
 test('bootstrap registers the validator on the shared singleton', async () => {
   await import('../bootstrap.mjs');
   const { registry } = await import('../registry.mjs');
