@@ -105,9 +105,13 @@ The key distinction is this:
 
 The answer is not to reject AI coding. The answer is to stop treating code generation as the whole job.
 
-## The AITM Pattern
+## AITM And The Backlog Manager Pattern
 
-AI Task Manager explores a concrete operating model for this shift.
+This article series uses **AITM** to mean `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed task workflows with Claude Code and Codex.
+
+That clarification matters because "AI task manager" is also a generic phrase, and there are unrelated npm packages and projects using similar names. This series is about the `@kburson/ai-task-manager` project and the delivery pattern it explores.
+
+`@kburson/ai-task-manager` provides a concrete operating model for this shift.
 
 The pattern is story-governed delivery:
 
@@ -156,7 +160,8 @@ Middle:
 - Argue that SDLC and agile practices become more important under agentic AI.
 - Define Technical Product Operations and the TPO/TPM as delivery architect.
 - Introduce vibe slop as the unmanaged failure mode.
-- Position AITM as a concrete story-governed delivery pattern.
+- Define AITM as `@kburson/ai-task-manager`.
+- Position it as a concrete story-governed delivery pattern.
 
 Close:
 

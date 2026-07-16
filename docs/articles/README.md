@@ -4,6 +4,12 @@
 
 This folder contains draft LinkedIn article collateral for explaining AI Task Manager as a research project and industry pattern. Use [article-production-plan.md](article-production-plan.md) to expand these stubs into publishable prose, diagrams, and supporting assets.
 
+## Naming Note
+
+In this series, **AITM** means `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed task workflows with Claude Code and Codex.
+
+"AI task manager" is also a generic phrase, and unrelated packages/projects use similar names. The articles should use `@kburson/ai-task-manager` on first mention in public-facing prose, then use AITM after the abbreviation is established.
+
 ## Working Thesis
 
 AI-assisted software delivery is moving from prompt craft toward governed, story-level execution. The durable opportunity is not bigger prompts or fully autonomous coding demos. It is a backlog-native operating model where technical product owners shape work into small, sequenced, auditable stories that agent fleets can execute under evidence-based supervision.

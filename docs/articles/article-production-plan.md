@@ -19,6 +19,13 @@ This keeps the series coherent. Each article can stand alone, but the concepts a
 
 Avoid terms that sound like AI marketing copy or dismissive hierarchy.
 
+Naming:
+
+- Use `@kburson/ai-task-manager` on first mention in public-facing prose.
+- Define **AITM** immediately after that first mention.
+- Avoid introducing the project as generic "AI Task Manager" until the scoped package identity is clear.
+- Mention only briefly that unrelated packages/projects use similar generic naming; do not turn the article into a naming dispute.
+
 Preferred terms:
 
 - **Implementation agents:** AI agents responsible for local code construction, syntax, framework mechanics, test execution, and narrow task delivery.

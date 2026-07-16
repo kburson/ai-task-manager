@@ -12,6 +12,8 @@ The public evidence does not support a simple "AI coding works" or "AI coding fa
 
 AI Task Manager fits the second path. Its strongest industry framing is not "another task tracker." It is a backlog-native operating model for agentic software delivery.
 
+Naming note: in this series, **AITM** means `@kburson/ai-task-manager`, an AI skill and npm package that currently supports GitHub-backed workflows with Claude Code and Codex. Use the scoped npm package name on first mention to avoid confusion with unrelated projects using the generic phrase "AI task manager."
+
 ## Core Claim
 
 The next frontier is the Technical Product Owner or Technical Product Manager as operator of an agentic delivery system:
