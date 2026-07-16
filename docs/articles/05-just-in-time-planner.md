@@ -101,7 +101,7 @@ The task-level deep dive answers:
 
 The difference is the timing. AITM does not burn maximum detail at the top of the WBS. It spends detail where uncertainty is lowest and execution is nearest.
 
-The TPO/TPM owns that timing decision. They decide when a feature is still only product intent, when it deserves an epic, when an epic should decompose into stories, and when a story is small enough for an agent technician to pick up for current-code planning.
+The TPO/TPM owns that timing decision. They decide when a feature is still only product intent, when it deserves an epic, when an epic should decompose into stories, and when a story is small enough for an implementation agent to pick up for current-code planning.
 
 ## Series Link
 

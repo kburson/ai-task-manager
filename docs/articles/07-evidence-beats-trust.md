@@ -27,7 +27,7 @@ Agentic delivery needs observable proof:
 
 Without that evidence, AI work becomes a chain of persuasive narratives.
 
-Traditional SDLC ceremonies often degrade into status theater when evidence is weak. Agentic AI raises the cost of that weakness. If low-level code agents are producing work quickly, the TPO/TPM needs objective signals to decide whether work is really ready, blocked, defective, or done.
+Traditional SDLC ceremonies often degrade into status theater when evidence is weak. Agentic AI raises the cost of that weakness. If implementation agents are producing work quickly, the TPO/TPM needs objective signals to decide whether work is really ready, blocked, defective, or done.
 
 ## AITM Perspective
 

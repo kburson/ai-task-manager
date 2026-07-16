@@ -218,3 +218,6 @@ Kiro
 Sayagh
 inspectable
 Overclaiming
+SDLC
+denigrative
+workstreams

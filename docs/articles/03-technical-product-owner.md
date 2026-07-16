@@ -29,7 +29,9 @@ That shifts the product role toward:
 
 This is not ordinary project administration. It is technical product operations.
 
-The agents become low-level code technicians in this operating model. That is not an insult; it is the point of the system. They are effective when given narrow work, current context, explicit constraints, and verifiable exit criteria. The TPO/TPM works above that layer, combining product vision, architectural literacy, dependency awareness, and delivery governance.
+The agents become implementation agents in this operating model. They manage syntax, local code structure, framework mechanics, and test execution inside bounded assignments. The TPO/TPM works above that layer, combining product vision, architectural literacy, dependency awareness, and delivery governance.
+
+This is a meaningful role shift for engineers as well. As agents become better at producing idiomatic code across languages and frameworks, human value moves toward product fit, architecture, interface design, decomposition, risk control, and review. The engineer does not disappear. The engineer moves up the abstraction stack.
 
 ## What The TPO Is Not
 

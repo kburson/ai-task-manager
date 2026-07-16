@@ -48,7 +48,7 @@ AITM's current control-plane capabilities include:
 
 The point is not GitHub specifically. The point is that agentic work needs a persistent system of record outside the chat.
 
-That system of record lets the TPO/TPM operate at the right altitude. They do not micromanage every code edit. They manage the contracts, gates, sequence, and exceptions that keep low-level code agents from drifting away from product and architectural intent.
+That system of record lets the TPO/TPM operate at the right altitude. They do not micromanage every code edit. They manage the contracts, gates, sequence, and exceptions that keep implementation agents from drifting away from product and architectural intent.
 
 ## Adapter Implication
 

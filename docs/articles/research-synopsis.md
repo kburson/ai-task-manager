@@ -24,7 +24,7 @@ The next frontier is the Technical Product Owner or Technical Product Manager as
 
 This does not make SDLC and agile practices obsolete. It makes them more load-bearing. Agent fleets turn ambiguity into multiplied ambiguity. Work breakdown structures, backlog refinement, acceptance criteria, dependency sequencing, test gates, review gates, and lifecycle audit trails become the scaffolding that lets fast code-generation capacity produce accountable software.
 
-In this model, independent agents act as low-level code technicians. They can inspect, modify, test, and report on narrow units of work. The TPO/TPM operates above that layer: product vision, architectural fit, sequencing, risk management, pivot decisions, and evidence review.
+In this model, independent agents act as implementation agents. They can inspect, modify, test, and report on narrow units of work. The TPO/TPM operates above that layer: product vision, architectural fit, sequencing, risk management, pivot decisions, and evidence review.
 
 ## Evidence Map
 
@@ -85,6 +85,16 @@ Spec-driven development defines what should be true. Story-governed development 
 Trust is not a feeling. It is the result of inspectable work products: acceptance criteria, tests, timing logs, review notes, decision records, and state-transition evidence.
 
 ## Article Series Proposal
+
+### Article 0: The Rise Of Technical Product Operations
+
+Purpose: Lead with the provocative thesis. Agentic AI shifts human engineering work away from syntax production and toward product fit, architecture, decomposition, governance, and evidence review.
+
+Primary sources:
+
+- GitHub Spec Kit and Atlassian Rovo Dev.
+- DORA and METR evidence about AI outcomes depending on delivery systems.
+- AITM workflow evidence from the repository docs.
 
 ### Article 1: The Vibe Coding Hangover
 
@@ -180,6 +190,7 @@ Primary sources:
 - How should agent-generated documentation be summarized so it remains auditable without overwhelming humans?
 - How much detail should be generated at each WBS layer before the work is close enough for JIT deep-dive planning?
 - Which workflow rules must be reloaded after compaction, and which can safely stay out of context until a verb needs them?
+- What public term best describes AI agents as the code-construction layer without sounding dismissive or inflated?
 - What metrics best represent human supervision burden: active minutes, context words, review pauses, defect fallout, or all of them?
 - How much workflow autonomy should agents have before a human gate is required?
 - Can product managers operate this system alone, or does the durable role require a technical product owner with engineering literacy?

@@ -47,7 +47,7 @@ The durable shape is:
 
 That is how agentic AI becomes operationally portable.
 
-The same role split still applies across platforms. Agents operate as code technicians inside bounded tasks. The TPO/TPM operates the backlog, sequence, gates, exceptions, and product intent. Engineering leaders provide architecture guardrails and technical standards.
+The same role split still applies across platforms. Implementation agents operate inside bounded tasks. The TPO/TPM operates the backlog, sequence, gates, exceptions, and product intent. Engineering leaders provide architecture guardrails and technical standards.
 
 ## Vendor Signal
 
