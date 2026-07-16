@@ -4,6 +4,7 @@ import { findTrailComment } from '../commit-trail-handler.mjs';
 import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
+import { isNoCommitKind, isAcWaived } from './issue-kind.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 import { hasAttributingCommit as defaultHasAttributingCommit } from './commit-attribution.mjs';
 
@@ -94,6 +95,9 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
 
   const body = String(await getIssueBody());
   if (body.trim()) {
+    // #836 — resolve the no-commit-kind classification once so the waiver skip
+    // below mirrors the sibling Develop→Test gate exactly.
+    const noCommitKind = isNoCommitKind(body);
     const audit = auditEvidenceMarkers(body);
     for (const item of audit.missingEvidence) {
       // #537 — honor the same honest `invalid — non-demonstrable` opt-out the
@@ -103,6 +107,13 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
       // at refine cannot be rejected at review-exit — removing the only remaining
       // pressure to fabricate a verifier just to cross the gate.
       if (NON_DEMONSTRABLE_TAG_RE.test(item.label)) continue;
+      // #836 — honor the epic no-commit-lane waiver (`aitm-ac-waived`) exactly as
+      // the sibling Develop→Test gate does (`code-complete-gate.mjs:295`:
+      // `if (!(audit && isAcWaived(ac.label)))` with `audit = isNoCommitKind(body)`).
+      // Without this, a waived rollup AC that legally clears Develop→Test is
+      // wrongly rejected at Test→Review, forcing a preflight bypass (paper-over)
+      // or a fabricated `cmd=` citation (dishonest).
+      if (noCommitKind && isAcWaived(item.label)) continue;
       reasons.push(
         `acceptance criterion "${item.label}" is missing \`aitm-verified cmd="..."\` evidence declaration`
       );

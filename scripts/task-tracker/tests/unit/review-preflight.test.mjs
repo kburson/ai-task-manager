@@ -246,4 +246,55 @@ const TRAIL = [
   assert.match(blocked.reasons.join('\n'), /missing `aitm-verified/);
 }
 
+// (4) #836 — honor the epic no-commit-lane `aitm-ac-waived` waiver, mirroring the
+//     sibling Develop→Test gate (`code-complete-gate.mjs:295`). A waived AC on a
+//     no-commit kind must NOT raise the missing-evidence reason; the same waiver on
+//     a commit kind (and a non-waived AC on any kind) MUST still raise it.
+{
+  const WAIVED_AC =
+    '- [x] All five children are closed and merged. <!-- aitm-ac-waived reason="epic no-commit lane" -->';
+  const PLAIN_AC = '- [x] Some demonstrable behavior holds.';
+  const withKind = (kind, acLine) =>
+    [
+      '## Acceptance Criteria',
+      '',
+      acLine,
+      '',
+      '## AITM Progress Markers',
+      '',
+      kind ? `<!-- aitm-issue-kind kind="${kind}" -->` : '',
+    ].join('\n');
+
+  // (a) no-commit kind (epic) + waived AC → no evidence reason.
+  const waivedEpic = await runReviewPreflight({
+    issueNumber: '836',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: cleanGateDeps(async () => withKind('epic', WAIVED_AC)),
+  });
+  assert.doesNotMatch(
+    waivedEpic.reasons.join('\n'),
+    /missing `aitm-verified/,
+    waivedEpic.reasons.join('\n')
+  );
+
+  // (b) commit kind (no kind marker = code) + same waiver → still blocks.
+  const waivedCode = await runReviewPreflight({
+    issueNumber: '836',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: cleanGateDeps(async () => withKind(null, WAIVED_AC)),
+  });
+  assert.match(waivedCode.reasons.join('\n'), /missing `aitm-verified/);
+
+  // (c) no-commit kind + non-waived, verifier-less AC → still blocks.
+  const plainEpic = await runReviewPreflight({
+    issueNumber: '836',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: cleanGateDeps(async () => withKind('epic', PLAIN_AC)),
+  });
+  assert.match(plainEpic.reasons.join('\n'), /missing `aitm-verified/);
+}
+
 console.log('review-preflight.test.mjs: all passed');
