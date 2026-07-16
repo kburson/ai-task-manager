@@ -120,6 +120,43 @@ export async function emitReviewGateFailureTimeline({
   });
 }
 
+// #844 (D6) — the SANDBOX-VERIFICATION-FAILURE demote path. Distinct from the
+// gate-objection path above: by the time sandbox verification runs, review has
+// NOT yet performed its authoritative Test→Review move, so this path simply
+// records the failure outcome and demotes. It must mirror
+// `emitReviewGateFailureTimeline` steps (3)+(4): emit a V3-legal `review:failed`
+// AUDIT row — NEVER a bare `develop` ladder slug, which `timing-log-sequence`
+// (V3) rejects as `malformed — unknown event slug "develop"` and which then
+// permanently fails the Agent Review Gate on the issue (the live #823 stranding)
+// — then demote via `runMoveState` with `--demote`/`--demote-reason` so the
+// entry row is the canonical `demoted:develop` rather than a bare `develop`.
+export async function emitSandboxVerificationFailureTimeline({
+  target,
+  ts,
+  delta,
+  wordMarker,
+  deps,
+}) {
+  const { runMoveState, safePostTiming, buildRow: buildRowFn = buildRow } = deps;
+  const reason = 'sandbox verification failed';
+  await safePostTiming(
+    target,
+    buildRowFn({
+      ts,
+      event: 'review:failed',
+      activeSec: delta.activeSec,
+      idleSec: delta.idleSec,
+      deltaWords: 0,
+      // #475 AC1 — carried-forward durable marker (verification-failed revert, no live session)
+      wordMarker,
+      description: `${reason}, reverted to Develop`,
+    })
+  );
+  await runMoveState(target, 'develop', {
+    extraArgs: ['--demote', '--demote-reason', reason],
+  });
+}
+
 export async function verbReview(ctx) {
   const {
     cfg,
@@ -586,23 +623,17 @@ export async function verbReview(ctx) {
         console.error(`[task-tracker] Regressions detected for ${target}:`);
         regressions.forEach((r) => console.error(`   REGRESSION: ${r}`));
       }
-      const { buildRow: br } = await import('../gh-timing-comment.mjs');
       const _tsR1 = nowIso();
       const _dR1 = deriveStateMoveDelta(rawBody, _tsR1);
-      await safePostTiming(
+      // #844 (D6) — emit a V3-legal `review:failed` audit row + `--demote` move
+      // via the shared helper (never a bare `develop` ladder slug).
+      await emitSandboxVerificationFailureTimeline({
         target,
-        br({
-          ts: _tsR1,
-          event: 'develop',
-          activeSec: _dR1.activeSec,
-          idleSec: _dR1.idleSec,
-          deltaWords: 0,
-          // #475 AC1 — carried-forward durable marker (verification-failed revert, no live session)
-          wordMarker: s.lastWordMarker ?? 0,
-          description: 'verification failed — reverted to Develop',
-        })
-      );
-      await runMoveState(target, 'develop');
+        ts: _tsR1,
+        delta: _dR1,
+        wordMarker: s.lastWordMarker ?? 0,
+        deps: { runMoveState, safePostTiming, buildRow },
+      });
       console.error(`[task-tracker] Review failed for ${target}:`);
       failures.forEach((f) => console.error(`   ${f}`));
       process.exit(3);
