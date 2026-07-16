@@ -64,13 +64,18 @@ export function createRegistry() {
   // concatenation of each failing validator's failures, prefixed with the
   // validator id. Zero validators → vacuous pass. `normalizedBody` is the
   // final working body, present only when some normalizer changed it.
+  // `validatorsRun` lists the ids of every validator that executed, in
+  // registration order — the review verb stamps this onto the "Agent Review
+  // Passed" evidence marker (#841) so the proven box records what actually ran.
   function runAll(context = {}) {
     const baseBody = typeof context.body === 'string' ? context.body : '';
     let body = baseBody;
     let allPass = true;
     const failures = [];
+    const validatorsRun = [];
 
     for (const v of registered) {
+      validatorsRun.push(v.id);
       let res = v.validate({ ...context, body });
       if (res && typeof res.normalized === 'string') {
         body = res.normalized;
@@ -91,6 +96,7 @@ export function createRegistry() {
     return {
       pass: allPass,
       failures,
+      validatorsRun,
       normalizedBody: body !== baseBody ? body : undefined,
     };
   }

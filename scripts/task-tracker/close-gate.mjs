@@ -9,6 +9,7 @@
 
 import { LIFECYCLE_LABEL_SET, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
 import { hasFullAutoApproved } from './lib/markers.mjs';
+import { isAcWaived } from './lib/issue-kind.mjs';
 
 export const CLOSE_OWNED_CHECKBOXES = new Set([
   'Issue moved to Done',
@@ -23,11 +24,22 @@ function stripFencedBlocks(src) {
   return String(src ?? '').replace(/^```[^\n]*\n[\s\S]*?^```[ \t]*$/gm, '');
 }
 
+// #841 — marker-robust completeness scan. A lifecycle box may now carry an
+// HTML-comment evidence marker (the proven "Agent Review Passed" box:
+// `- [ ] Agent Review Passed <!-- aitm-verified … -->`), and an AC may carry an
+// `aitm-ac-waived` marker. Compute a marker-stripped label (canonical pattern
+// from `lib/lifecycle-dod.mjs`) for the lifecycle lookup so a marked box is
+// still recognized, and skip any label the mutate-guard grammar deems waived so
+// an intentionally-waived AC never blocks close.
 export function uncheckedPreCloseCheckboxes(body) {
   return [...stripFencedBlocks(body).matchAll(/^- \[ \] (.+)$/gm)]
     .map((m) => m[1])
     .filter((label) => !CLOSE_OWNED_CHECKBOXES.has(label))
-    .filter((label) => !LIFECYCLE_LABEL_SET.has(label.trim()))
+    .filter((label) => {
+      const clean = label.replace(/<!--[\s\S]*?-->/g, '').trim();
+      return !LIFECYCLE_LABEL_SET.has(clean);
+    })
+    .filter((label) => !isAcWaived(label))
     .map((label) => `- [ ] ${label}`);
 }
 

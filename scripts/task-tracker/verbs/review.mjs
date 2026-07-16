@@ -16,6 +16,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
+import { isAcWaived } from '../lib/issue-kind.mjs';
 // #809 — Agent Review Gate. `bootstrap` registers every built-in validator on
 // the shared singleton registry as an import side effect; `runAgentReviewGate`
 // runs them inline in `verbReview` and the marker helpers stamp/clear the
@@ -25,8 +26,8 @@ import {
   runAgentReviewGate,
   stampReviewFailed,
   clearReviewFailed,
+  stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
-import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
 // bound at CALL time (the post site, after runMoveState emits test:passed +
@@ -489,6 +490,12 @@ export async function verbReview(ctx) {
       // flagged as a regression and un-ticked on every `/task review` run,
       // permanently bouncing the issue back to develop.
       if (NON_DEMONSTRABLE_TAG_RE.test(cb.label)) continue;
+      // #841 — honor intentionally-waived ACs. An AC bearing an `aitm-ac-waived`
+      // marker is neither flagged nor un-ticked: the waiver is an explicit,
+      // audited decision that this AC is not gate-verifiable, the same shape the
+      // completeness scan and review-preflight honor. Reimplements the legit half
+      // of the reverted #840 fresh.
+      if (isAcWaived(cb.label)) continue;
       if (cb.evidenceCommands.length === 0) {
         if (cb.checked) {
           regressions.push(cb.label);
@@ -770,10 +777,18 @@ export async function verbReview(ctx) {
         process.exit(3);
       }
       // PASS — adopt any normalizer rewrite, clear a stale review-failed marker,
-      // and tick "Agent Review Passed". A body with no such line (old template)
-      // ticks to a noop and skips the write, which the close gate tolerates.
+      // and stamp the PROVEN "Agent Review Passed" box: tick it AND append the
+      // gate's own run-evidence marker (#841). The box now carries execution
+      // proof (ts + validators + result=pass, sha=`sandbox` since the gate runs
+      // in-process), so the write goes through as a sanctioned `evidenceStamp`
+      // — honest because the gate genuinely ran — WITHOUT the old
+      // `allowUnverifiedTicks` bypass. A body with no such line (old template)
+      // stamps to a noop and skips the write, which the close gate tolerates.
       const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
-      const tickedBody = tickLifecycleItem(clearReviewFailed(passBase), 'agent-review-passed');
+      const tickedBody = stampAgentReviewPassed(clearReviewFailed(passBase), {
+        ts: nowIso(),
+        validators: gate.validatorsRun,
+      });
       if (tickedBody !== scanBody) {
         try {
           await mutateBodyFn({
@@ -782,10 +797,10 @@ export async function verbReview(ctx) {
             mutate: () => tickedBody,
             timeout: GH_API_TIMEOUT_MS,
             deps: { pexec },
-            allowUnverifiedTicks: true,
+            evidenceStamp: true,
           });
         } catch (e) {
-          console.error(`[task-tracker] failed to tick Agent Review Passed: ${e.message}`);
+          console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
         }
       }
     }

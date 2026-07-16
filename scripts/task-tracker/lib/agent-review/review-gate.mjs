@@ -14,6 +14,8 @@
 
 import { registry as defaultRegistry } from './registry.mjs';
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
+import { tickLifecycleItem } from '../lifecycle-dod.mjs';
+import { serializeProofMarker } from '../proof-marker.mjs';
 
 // Tolerant parser for `aitm-entered-<stage>` board markers. Both grammars
 // appear in live bodies:
@@ -49,9 +51,13 @@ export function buildReviewContext({ body = '', issueNumber, repo, comments = []
   };
 }
 
-// Run the Agent Review Gate. Returns { pass, failures, normalizedBody, context }.
+// Run the Agent Review Gate. Returns
+// { pass, failures, validatorsRun, normalizedBody, context }.
 // `normalizedBody` is set only when a normalizer rewrote the body; the caller
 // persists it before deciding pass/fail so the normalization is not lost.
+// `validatorsRun` lists the ids of every validator that executed (#841); the
+// review verb stamps it onto the "Agent Review Passed" evidence marker so the
+// proven box records what actually ran.
 export function runAgentReviewGate({
   body = '',
   issueNumber,
@@ -60,8 +66,57 @@ export function runAgentReviewGate({
   registry = defaultRegistry,
 } = {}) {
   const context = buildReviewContext({ body, issueNumber, repo, comments });
-  const { pass, failures, normalizedBody } = registry.runAll(context);
-  return { pass, failures, normalizedBody, context };
+  const { pass, failures, validatorsRun, normalizedBody } = registry.runAll(context);
+  return { pass, failures, validatorsRun: validatorsRun || [], normalizedBody, context };
+}
+
+// --- proven "Agent Review Passed" box (#841) ---------------------------------
+//
+// On a passing gate the review verb ticks "Agent Review Passed" AND stamps the
+// gate's OWN run-evidence onto the box — a real `aitm-verified` execution-proof
+// marker, never a bare `[x]`. Because the gate runs in-process (not anchored to
+// a commit) the `sha` is the `sandbox` sentinel; `ts` is the review runtime and
+// `validators` lists exactly which validators executed. The box now CARRIES
+// proof, so the verb writes it with `evidenceStamp: true` (a sanctioned stamper
+// — honest because the gate genuinely ran) and WITHOUT the `allowUnverifiedTicks`
+// bypass. This replaces the fake `agent-review-validator-suite` VC scheme.
+
+// Build the run-evidence marker. `ts` must be a real ISO timestamp (caller
+// passes review-runtime `nowIso()`); `validators` is the executed-id list.
+export function buildAgentReviewEvidenceMarker({ ts, validators = [] } = {}) {
+  return serializeProofMarker({
+    gate: 'agent-review',
+    ts: ts || '',
+    sha: 'sandbox',
+    validators: (Array.isArray(validators) ? validators : []).join(','),
+    result: 'pass',
+  });
+}
+
+// Tick "Agent Review Passed" and append the fresh run-evidence marker to that
+// box, replacing any prior agent-review marker on the line (idempotent). Other
+// lines are untouched. Returns the rewritten body; when the box is absent the
+// body comes back with only the tick applied (a no-op if it too is absent).
+export function stampAgentReviewPassed(body, { ts, validators = [] } = {}) {
+  const ticked = tickLifecycleItem(typeof body === 'string' ? body : '', 'agent-review-passed');
+  const marker = buildAgentReviewEvidenceMarker({ ts, validators });
+  const lines = ticked.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!/^- \[[ xX]\] /.test(line)) continue;
+    const label = line
+      .replace(/^- \[[ xX]\]\s+/, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .trim();
+    if (label !== 'Agent Review Passed') continue;
+    const stripped = line.replace(
+      /\s*<!--\s*aitm-verified\s+[^>]*gate="agent-review"[^>]*-->/g,
+      ''
+    );
+    lines[i] = `${stripped.replace(/\s+$/, '')} ${marker}`;
+    break;
+  }
+  return lines.join('\n');
 }
 
 // --- aitm-review-failed body marker -----------------------------------------
