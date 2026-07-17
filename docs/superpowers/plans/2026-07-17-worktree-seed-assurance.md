@@ -26,11 +26,13 @@
 ### Task 1: Spike — resolve the two open questions the spec forbids assuming
 
 **Files:**
+
 - Create: `docs/superpowers/specs/2026-07-17-worktree-seed-assurance-findings.md`
 
 The spec (`## Open questions the plan must resolve, not assume`) records two unknowns that gate later tasks. This task answers them from evidence and commits the findings. No production code.
 
 **Interfaces:**
+
 - Produces: findings doc consumed by Task 6 (`deps-missing` remedy text) and Task 8 (mid-session-link coexistence assertion).
 
 - [ ] **Step 1: Reproduce the mid-session self-link creation**
@@ -38,6 +40,7 @@ The spec (`## Open questions the plan must resolve, not assume`) records two unk
 Create a throwaway worktree and record whether a self-link appears without an explicit `ensureSelfLink` call.
 
 Run:
+
 ```bash
 git worktree add /tmp/aitm-probe-wt HEAD 2>&1 | tail -2
 ls -la ".claude/worktrees" 2>/dev/null || true
@@ -47,6 +50,7 @@ ls -la /tmp/aitm-probe-wt/node_modules 2>&1 | head -3
 ( cd /tmp/aitm-probe-wt && npx --no-install aitm help >/dev/null 2>&1 || true )
 ls -la /tmp/aitm-probe-wt/node_modules/ai-task-manager 2>&1 | head -3
 ```
+
 Expected: EITHER the link appears after the `npx` invocation (confirms npm `prepare` firing) OR it does not (confirms something else created it). Record which, verbatim, in the findings doc. Clean up: `git worktree remove --force /tmp/aitm-probe-wt`.
 
 Note: `/tmp` here is a git-worktree path outside the project tree, used only for this throwaway probe; no project scratch files are written there.
@@ -56,11 +60,13 @@ Note: `/tmp` here is a git-worktree path outside the project tree, used only for
 The package publishes as `@kburson/ai-task-manager`; every hook resolves the **unscoped** `node_modules/ai-task-manager/…`. Determine how a consumer obtains it.
 
 Run:
+
 ```bash
 node -p "require('./package.json').name"          # confirm scoped publish name
 grep -rn "ai-task-manager@npm:\|npm:@kburson\|install alias\|node_modules/ai-task-manager" docs/ README.md 2>/dev/null | grep -v node_modules | head
 grep -rn "postinstall\|prepare\|link:self\|ensureSelfLink" package.json | head
 ```
+
 Expected: one of — (a) a documented install alias `npm i ai-task-manager@npm:@kburson/ai-task-manager`, (b) a `postinstall`/`prepare` script that provisions it, or (c) no consumer mechanism exists (path is untested). Record which.
 
 - [ ] **Step 3: Write and commit the findings doc**
@@ -77,10 +83,12 @@ git commit -m "[#869] docs(specs): worktree-seed open-question findings"
 ### Task 2: `inspectSeed` — pure seed-state classifier
 
 **Files:**
+
 - Create: `scripts/task-tracker/lib/worktree-seed.mjs`
 - Test: `scripts/task-tracker/tests/unit/worktree-seed.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `isDevPackage(pkgRoot)` from `bin/lib/stamp-skill-version.mjs`.
 - Produces: `inspectSeed({ projectRoot }) → { status, detail }` where `status ∈ {'seeded','missing-link','foreign-link','deps-missing','not-applicable'}`. `detail` is a human string. Pure — no writes.
 
@@ -90,13 +98,7 @@ git commit -m "[#869] docs(specs): worktree-seed open-question findings"
 // @story #869
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  symlinkSync,
-  rmSync,
-} from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import { inspectSeed } from '../../lib/worktree-seed.mjs';
@@ -246,10 +248,12 @@ git commit -m "[#869] feat(worktree-seed): pure inspectSeed seed-state classifie
 ### Task 3: `ensure-worktree-seeded.mjs` — heal CLI + SessionStart hook
 
 **Files:**
+
 - Create: `scripts/task-tracker/ensure-worktree-seeded.mjs`
 - Test: `scripts/task-tracker/tests/unit/ensure-worktree-seeded.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `inspectSeed` (Task 2); `ensureSelfLink({ pkgRoot })` from `lib/ensure-self-link.mjs`.
 - Produces: `runSeedCheck({ cwd, stdin, stdout, stderr, heal }) → 0` — reads the SessionStart JSON payload from stdin, inspects, heals `missing-link`/`foreign-link` via `ensureSelfLink` then re-inspects; emits `additionalContext` when the final state is not `seeded`; **always returns 0**. `heal` defaults true; `--check` sets it false (report only).
 
@@ -259,7 +263,15 @@ git commit -m "[#869] feat(worktree-seed): pure inspectSeed seed-state classifie
 // @story #869
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, realpathSync, lstatSync, rmSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  symlinkSync,
+  realpathSync,
+  lstatSync,
+  rmSync,
+} from 'node:fs';
 import path from 'node:path';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import { runSeedCheck } from '../../ensure-worktree-seeded.mjs';
@@ -276,7 +288,12 @@ test('missing-link → heals, ends seeded, exit 0, no additionalContext', async 
   const root = makeDevRoot('ehs-missing-');
   let out = '';
   try {
-    const code = await runSeedCheck({ cwd: root, stdin: PAYLOAD, stdout: (s) => (out += s), stderr: () => {} });
+    const code = await runSeedCheck({
+      cwd: root,
+      stdin: PAYLOAD,
+      stdout: (s) => (out += s),
+      stderr: () => {},
+    });
     assert.equal(code, 0);
     assert.ok(lstatSync(linkOf(root)).isSymbolicLink(), 'link created');
     assert.equal(realpathSync(linkOf(root)), realpathSync(root), 'resolves to worktree');
@@ -292,7 +309,12 @@ test('foreign-link → replaced, resolves to worktree not the foreign tree', asy
   try {
     mkdirSync(path.join(root, 'node_modules'), { recursive: true });
     symlinkSync(elsewhere, linkOf(root), 'dir');
-    const code = await runSeedCheck({ cwd: root, stdin: PAYLOAD, stdout: () => {}, stderr: () => {} });
+    const code = await runSeedCheck({
+      cwd: root,
+      stdin: PAYLOAD,
+      stdout: () => {},
+      stderr: () => {},
+    });
     assert.equal(code, 0);
     assert.equal(realpathSync(linkOf(root)), realpathSync(root));
   } finally {
@@ -305,7 +327,13 @@ test('--check (heal:false) on missing-link → reports, creates nothing, exit 0'
   const root = makeDevRoot('ehs-check-');
   let out = '';
   try {
-    const code = await runSeedCheck({ cwd: root, stdin: PAYLOAD, heal: false, stdout: (s) => (out += s), stderr: () => {} });
+    const code = await runSeedCheck({
+      cwd: root,
+      stdin: PAYLOAD,
+      heal: false,
+      stdout: (s) => (out += s),
+      stderr: () => {},
+    });
     assert.equal(code, 0);
     assert.throws(() => lstatSync(linkOf(root)), 'nothing created under --check');
     assert.match(out, /additionalContext/, 'reports the un-seeded state');
@@ -318,7 +346,12 @@ test('consumer deps-missing → non-fatal, emits npm ci remedy in additionalCont
   const root = mkdtempSync(path.join(projectScratchDir('test'), 'ehs-consumer-'));
   let out = '';
   try {
-    const code = await runSeedCheck({ cwd: root, stdin: PAYLOAD, stdout: (s) => (out += s), stderr: () => {} });
+    const code = await runSeedCheck({
+      cwd: root,
+      stdin: PAYLOAD,
+      stdout: (s) => (out += s),
+      stderr: () => {},
+    });
     assert.equal(code, 0, 'never fatal');
     assert.match(out, /npm ci/, 'remedy names npm ci');
   } finally {
@@ -387,8 +420,7 @@ export async function runSeedCheck({
     return 0; // silent: nothing to say
   }
 
-  const additionalContext =
-    `aitm worktree seed check: status=${state.status} (${state.detail}). ${remedyFor(state.status, cwd)}`;
+  const additionalContext = `aitm worktree seed check: status=${state.status} (${state.detail}). ${remedyFor(state.status, cwd)}`;
   stderr(additionalContext + '\n');
   stdout(
     JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext } }) + '\n'
@@ -396,8 +428,7 @@ export async function runSeedCheck({
   return 0;
 }
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const heal = !process.argv.includes('--check');
   runSeedCheck({ heal })
@@ -424,12 +455,14 @@ git commit -m "[#869] feat(worktree-seed): SessionStart heal CLI over ensureSelf
 ### Task 4: Generalize the bootstrap shim for lifecycle hooks
 
 **Files:**
+
 - Modify: `scripts/task-tracker/lib/guard-entrypoint.mjs`
 - Test: `scripts/task-tracker/tests/unit/hook-entrypoint.test.mjs`
 
 **Why this task exists (the crux):** The guards run their logic at **top-level module scope** (`bash-guard.mjs` has no `isMain` gate), so `import(pathToFileURL(p))` executes them. Every lifecycle hook instead gates entry on `process.argv[1]` matching its own filename (`on-ask.mjs:255`, `on-stop.mjs:53`, `hook-handler.mjs:401`, `commit-trail-handler.mjs:279`, `on-user-prompt.mjs:80`, `stop-audit-pause-resume.mjs:144`). Under the plain guard shim, `argv[1]` is not the module path, so the hook's main block never runs — a silent no-op. The generalized command must set `process.argv` to `[argv0, resolvedPath, ...extraArgs]` **before** importing, so both the `isMain` check and arg-reads like `on-ask.mjs:259` (`process.argv[2]`) work.
 
 **Interfaces:**
+
 - Consumes: existing `guardEntrypointCandidates`, unchanged.
 - Produces:
   - `entrypointCandidates(repoRelPath)` → `['node_modules/ai-task-manager/' + repoRelPath, repoRelPath]` (general form).
@@ -550,11 +583,13 @@ git commit -m "[#869] feat(hooks): argv-normalizing bootstrap shim for lifecycle
 ### Task 5: Wire seed check + convert bare-path hooks in `patchSettingsJson`
 
 **Files:**
+
 - Modify: `bin/cli.mjs` (hook command constants at `126-161`; `patchSettingsJson` at `193-373`)
 - Modify: `.claude/settings.json` (regenerated by running the installer against this repo)
 - Test: `scripts/task-tracker/tests/unit/settings-hook-bootstrap.test.mjs`
 
 **Interfaces:**
+
 - Consumes: `hookBootstrapCommand` (Task 4); `entrypointCandidates` for the seed-check SessionStart entry.
 - Produces: `patchSettingsJson` output where (a) a SessionStart entry runs `ensure-worktree-seeded.mjs` via `hookBootstrapCommand`, and (b) **no** hook command is a bare `node node_modules/…` form — every one goes through the shim.
 
@@ -620,10 +655,20 @@ In `bin/cli.mjs`, replace each bare-path constant (`126-156`) with a `hookBootst
 const TIMING_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hook-handler.mjs');
 const COMMIT_TRAIL_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/commit-trail-handler.mjs');
 const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-stop.mjs');
-const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-user-prompt.mjs');
-const ON_ASK_PAUSE_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-ask.mjs', 'pause');
-const ON_ASK_RESUME_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-ask.mjs', 'resume');
-const STOP_AUDIT_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/stop-audit-pause-resume.mjs');
+const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/on-user-prompt.mjs'
+);
+const ON_ASK_PAUSE_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/on-ask.mjs',
+  'pause'
+);
+const ON_ASK_RESUME_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/on-ask.mjs',
+  'resume'
+);
+const STOP_AUDIT_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/stop-audit-pause-resume.mjs'
+);
 const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
 const SEED_CHECK_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/ensure-worktree-seeded.mjs');
 
@@ -671,6 +716,7 @@ The dogfooding repo's own settings must match. Run the installer's settings patc
 node -e "import('./bin/cli.mjs').then(m => m.patchSettingsJson('.claude/settings.json', { memoryIndexHook: true }))"
 grep -c '"command": "node node_modules/' .claude/settings.json
 ```
+
 Expected: `0`.
 
 - [ ] **Step 6: Commit**
@@ -686,12 +732,14 @@ git commit -m "[#869] fix(hooks): route lifecycle hooks + seed check through res
 ### Task 6: Consumer branch — reconcile `deps-missing`/`not-applicable` with findings
 
 **Files:**
+
 - Modify: `scripts/task-tracker/ensure-worktree-seeded.mjs` (`remedyFor` text only, if Task 1 changed the mechanism)
 - Modify: `scripts/task-tracker/tests/unit/ensure-worktree-seeded.test.mjs` (assert the exact remedy string)
 
 **Gate:** Only adjust the remedy wording if Task 1's findings show a consumer mechanism other than plain `npm ci`. If findings conclude "consumer path does not exist / is untested," the `deps-missing` branch stays as the dev-only diagnostic already written in Task 3 — make no code change and record that decision in the commit body.
 
 **Interfaces:**
+
 - Consumes: Task 1 findings doc; Task 3's `remedyFor`.
 - Produces: `deps-missing` remedy text that matches the established consumer install path.
 
@@ -726,12 +774,14 @@ git commit -m "[#869] fix(worktree-seed): consumer deps-missing remedy matches i
 ### Task 7: Step 0 directive in the reachable skill stub
 
 **Files:**
+
 - Modify: `bin/cli.mjs` (`claudeStub()` at `488-526`, `codexStub()` at `528-566`)
 - Modify: `skill/adapters/claude/SKILL.md` (packaged copy — document the same contract; confirm exact path via `getProvider('claude').skillAdapterPath`)
 - Test: `scripts/task-tracker/tests/unit/skill-stub-seed-directive.test.mjs`
 - Regenerate: `.claude/skills/task/SKILL.md` (this worktree's reachable copy)
 
 **Interfaces:**
+
 - Consumes: nothing runtime — this is a behavioral directive for the agent, backstopping the SessionStart hook.
 - Produces: a `## Step 0` section in both stubs, **above** the Load-Once Procedure's `node_modules` reads.
 
@@ -759,7 +809,7 @@ Expected: FAIL.
 
 Insert immediately after `'# Task',` `''`, and before `'## Load-Once Procedure',` in each stub array:
 
-```javascript
+````javascript
 '## Step 0 — Verify worktree seeding (run before anything else)',
 '',
 'If this session runs in a git worktree, its `node_modules` may be absent, which',
@@ -773,7 +823,7 @@ Insert immediately after `'# Task',` `''`, and before `'## Load-Once Procedure',
 '',
 'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
 '',
-```
+````
 
 Add a shorter prose note to the packaged `skill/adapters/claude/SKILL.md` documenting the same contract (the packaged copy is unreachable in the exact failure case, so it only documents; the stub is authoritative).
 
@@ -790,6 +840,7 @@ node -e "import('./bin/cli.mjs').then(async m => { /* if claudeStub is not expor
 # regenerated on next install. Confirm the reachable copy now contains Step 0:
 grep -n "Step 0" .claude/skills/task/SKILL.md
 ```
+
 Expected: the reachable `.claude/skills/task/SKILL.md` shows the Step 0 heading. (If `claudeStub()` is not currently exported, add `export` so the regeneration/test can call it directly.)
 
 - [ ] **Step 6: Commit**
@@ -805,9 +856,11 @@ git commit -m "[#869] feat(skill): Step 0 worktree-seed directive in reachable s
 ### Task 8: Integration — real worktree end-to-end
 
 **Files:**
+
 - Test: `scripts/task-tracker/tests/slow/worktree-seed-integration.test.mjs`
 
 **Interfaces:**
+
 - Consumes: everything above, exercised through a real `git worktree add`.
 - Produces: proof that a fresh worktree, after the seed check, has a reachable skill file and a worktree-resolving link — and that a pre-existing self-link (the mid-session-creation case from Task 1) is left converged, not fought.
 
@@ -828,7 +881,10 @@ test('fresh worktree → seed check yields worktree-resolving link', async () =>
   const wt = path.join(base, 'wt');
   const repoRoot = realpathSync(path.resolve(process.cwd()));
   try {
-    execFileSync('git', ['worktree', 'add', '--detach', wt, 'HEAD'], { cwd: repoRoot, stdio: 'pipe' });
+    execFileSync('git', ['worktree', 'add', '--detach', wt, 'HEAD'], {
+      cwd: repoRoot,
+      stdio: 'pipe',
+    });
     assert.ok(!existsSync(path.join(wt, 'node_modules', 'ai-task-manager')), 'starts unseeded');
 
     await runSeedCheck({
@@ -842,7 +898,10 @@ test('fresh worktree → seed check yields worktree-resolving link', async () =>
     assert.ok(lstatSync(link).isSymbolicLink(), 'link created');
     assert.equal(realpathSync(link), realpathSync(wt), 'resolves to the worktree, not trunk');
     // skill adapter reachable through the link
-    assert.ok(existsSync(path.join(link, 'skill', 'adapters', 'claude', 'SKILL.md')), 'skill reachable');
+    assert.ok(
+      existsSync(path.join(link, 'skill', 'adapters', 'claude', 'SKILL.md')),
+      'skill reachable'
+    );
   } finally {
     try {
       execFileSync('git', ['worktree', 'remove', '--force', wt], { cwd: repoRoot, stdio: 'pipe' });
@@ -858,7 +917,10 @@ test('second seed check is idempotent (pre-existing link left converged)', async
   const wt = path.join(base, 'wt');
   const repoRoot = realpathSync(path.resolve(process.cwd()));
   try {
-    execFileSync('git', ['worktree', 'add', '--detach', wt, 'HEAD'], { cwd: repoRoot, stdio: 'pipe' });
+    execFileSync('git', ['worktree', 'add', '--detach', wt, 'HEAD'], {
+      cwd: repoRoot,
+      stdio: 'pipe',
+    });
     const payload = JSON.stringify({ hook_event_name: 'SessionStart' });
     await runSeedCheck({ cwd: wt, stdin: payload, stdout: () => {}, stderr: () => {} });
     let out = '';
@@ -893,6 +955,7 @@ git commit -m "[#869] test(worktree-seed): real-worktree end-to-end integration"
 ## Self-Review
 
 **Spec coverage:**
+
 - `inspectSeed` 5-status classifier → Task 2. ✔
 - `foreign-link` = trunk-code trap, not seeded → Task 2 (test) + Task 8 (real link resolves to worktree). ✔
 - Heal delegates to `ensureSelfLink`, re-inspects → Task 3. ✔
