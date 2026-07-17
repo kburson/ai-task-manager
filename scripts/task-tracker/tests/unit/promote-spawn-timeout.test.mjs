@@ -6,10 +6,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnVerbTimeout, MOVE_STATE_DELEGATE_TIMEOUT_MS } from '../../verbs/promote.mjs';
-import { GH_API_TIMEOUT_MS } from '../../lib/process-timeouts.mjs';
+// #858 — this used to carry a local `900_000` mirror of `SANDBOX_TIMEOUT_MS`
+// because the real constant was private to `verbs/test.mjs`. It now lives in
+// process-timeouts.mjs, so import it: a hand-copied cap goes stale the moment
+// the real one moves, which is the drift that produced #858 in the first place.
+import { GH_API_TIMEOUT_MS, SANDBOX_TIMEOUT_MS } from '../../lib/process-timeouts.mjs';
 
-// Mirror of `SANDBOX_TIMEOUT_MS` in `verbs/test.mjs` (15 min per command).
-const SANDBOX_TIMEOUT_MS = 900_000;
 const OLD_CAP = GH_API_TIMEOUT_MS * 4; // 60s — the broken value.
 
 test('AC1: test delegate gets no outer timeout (or >= SANDBOX_TIMEOUT_MS), never the GH-API cap', () => {

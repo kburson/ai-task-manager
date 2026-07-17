@@ -32,11 +32,10 @@ import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 
-const SANDBOX_TIMEOUT_MS = 900_000; // 15 min per command — npm test in a fresh worktree runs ~100 files
 const NPM_CI_TIMEOUT_MS = 600_000; // 10 min worst-case fresh install
 const TAIL_LINES = 50;
 // #254 — bounded retry of the sandbox SETUP chain (worktree add / config seed /
@@ -153,7 +152,7 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
   try {
     const { stdout, stderr } = await pexec(argv[0], argv.slice(1), {
       cwd: wtPath,
-      timeout: SANDBOX_TIMEOUT_MS,
+      timeout: sandboxTimeoutMs(),
       maxBuffer: 64 * 1024 * 1024,
       // @story #541 — strip leaked lock state, then set the project dir.
       env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),

@@ -22,6 +22,10 @@
 //   GIT_TIMEOUT_MS         — git read commands (`git rev-parse`, `git status`).
 //   LOCAL_FAST_TIMEOUT_MS  — local-only commands expected to return instantly.
 //   TEST_RUNNER_TIMEOUT_MS — node test runner / suite invocations.
+//   SANDBOX_TIMEOUT_MS     — one command inside the Test-stage sandbox worktree
+//                            (`verbs/test.mjs`), i.e. a full `npm run test:all`
+//                            against a fresh checkout. Overridable per-machine;
+//                            see `sandboxTimeoutMs()`.
 //
 // Conventions for callers:
 //   - On ETIMEDOUT: propagate, OR log a stderr warning that names the command
@@ -45,6 +49,21 @@ export const LOCAL_FAST_TIMEOUT_MS = 5000;
 // while still catching a truly runaway suite.
 export const TEST_RUNNER_TIMEOUT_MS = 600000;
 
+// #858 — the Test-stage sandbox's per-command budget. This lived as a private
+// 900_000 constant in `verbs/test.mjs`, whose comment sized it for a fresh
+// worktree running roughly a hundred files. The suite hit 615 / ~18 min, so the cap
+// SIGTERM-killed a passing suite and nothing could clear Test. Nobody revisited
+// the number as the suite grew because nothing made them: it was invisible from
+// outside the verb and required a code change to move.
+//
+// 45 min ≈ 2.5× the observed ~17.8 min. A cap exists to catch a *runaway* run
+// (infinite loop, hung `gh`), not to police growth — so the multiple is
+// deliberate slack for a slower machine and for the ~28 files #860 will add.
+// #859 is what makes this number stop mattering.
+export const SANDBOX_TIMEOUT_MS = 2_700_000;
+export const SANDBOX_TIMEOUT_ENV = 'AITM_SANDBOX_TIMEOUT_MS';
+export const SANDBOX_TIMEOUT_DEFAULT_MS = SANDBOX_TIMEOUT_MS;
+
 // Convenience: map a class label to its value (used by the helper below).
 export const TIMEOUT_CLASSES = Object.freeze({
   gh: GH_API_TIMEOUT_MS,
@@ -52,7 +71,52 @@ export const TIMEOUT_CLASSES = Object.freeze({
   git: GIT_TIMEOUT_MS,
   local: LOCAL_FAST_TIMEOUT_MS,
   test: TEST_RUNNER_TIMEOUT_MS,
+  sandbox: SANDBOX_TIMEOUT_MS,
 });
+
+/**
+ * Resolve a timeout from an env override, falling back to `defaultMs`.
+ *
+ * Only a positive integer is accepted. This is not fussiness: Node's
+ * `timeout` option treats `0` as *no timeout*, and a `NaN` timeout never arms
+ * the timer either — so the obvious `Number(process.env.X)` one-liner turns a
+ * typo into an unbounded hang, which is strictly worse than the over-run it was
+ * meant to bound. Anything unusable is rejected loudly and the default stands.
+ *
+ * @param {string} envName - the variable to read (e.g. 'AITM_SANDBOX_TIMEOUT_MS').
+ * @param {number} defaultMs - used when unset or unusable.
+ * @param {Record<string,string|undefined>} [env] - env source; injectable for tests.
+ * @param {object} [opts]
+ * @param {(msg: string) => void} [opts.warn] - warning sink; defaults to stderr.
+ * @returns {number} a positive integer, always.
+ */
+export function resolveTimeoutMs(envName, defaultMs, env = process.env, opts = {}) {
+  const raw = env[envName];
+  // Unset or blank is the normal case, not a misconfiguration — stay silent.
+  if (raw === undefined || raw === null || String(raw).trim() === '') return defaultMs;
+
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed > 0) return parsed;
+
+  const warn = opts.warn ?? ((msg) => process.stderr.write(`${msg}\n`));
+  warn(
+    `[timeout] ignoring ${envName}="${raw}" — expected a positive integer (milliseconds); ` +
+      `using the default ${defaultMs}ms`
+  );
+  return defaultMs;
+}
+
+/**
+ * The per-command timeout for the Test-stage sandbox, honoring
+ * `AITM_SANDBOX_TIMEOUT_MS`.
+ *
+ * @param {Record<string,string|undefined>} [env]
+ * @param {{ warn?: (msg: string) => void }} [opts]
+ * @returns {number}
+ */
+export function sandboxTimeoutMs(env = process.env, opts = {}) {
+  return resolveTimeoutMs(SANDBOX_TIMEOUT_ENV, SANDBOX_TIMEOUT_DEFAULT_MS, env, opts);
+}
 
 /**
  * Emit a structured warning to stderr describing an ETIMEDOUT event.
