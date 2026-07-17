@@ -43,6 +43,7 @@ import { getProvider } from '../scripts/providers/index.mjs';
 import {
   GUARD_NAMES,
   guardBootstrapCommand,
+  hookBootstrapCommand,
 } from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -123,37 +124,61 @@ function hasFlag(args, name) {
   return args.includes(name);
 }
 
-const TIMING_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs';
-const COMMIT_TRAIL_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs';
+// #869 — every lifecycle hook command now routes through `hookBootstrapCommand`
+// (node_modules → repo-relative existence pick + argv normalization) so it
+// resolves in a node_modules-less worktree of this repo. The bare
+// `node node_modules/…` forms these replace are listed in `LEGACY_HOOK_COMMANDS`
+// and stripped on re-install so old settings migrate idempotently (mirrors #792).
+const TIMING_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hook-handler.mjs');
+const COMMIT_TRAIL_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/commit-trail-handler.mjs');
 // EPIC #207 / #213 — Seq 2: Stop + UserPromptSubmit hooks for hook-driven
 // pause/resume. The hook handlers write/drain a per-session pending-pause
 // marker; the resume hook posts a single idle row when the inter-turn gap
 // exceeds `pauseThresholdSeconds`.
-const ON_STOP_HOOK_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
-const ON_USER_PROMPT_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
+const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-stop.mjs');
+const ON_USER_PROMPT_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/on-user-prompt.mjs'
+);
 const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
 // EPIC #238 / #240 — AskUserQuestion pause/resume hooks. The same module is
 // invoked twice with a phase argument: `pause` (PreToolUse) brackets the
 // question open, `resume` (PostToolUse) closes it with the measured wait.
-const ON_ASK_PAUSE_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs pause';
-const ON_ASK_RESUME_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume';
+const ON_ASK_PAUSE_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/on-ask.mjs',
+  'pause'
+);
+const ON_ASK_RESUME_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/on-ask.mjs',
+  'resume'
+);
 // EPIC #238 / #241 — Stop hook that audits the bound issue's ⏱ Timing Log for
 // the current session and warns when pause/resume rows do not balance. Warn-
 // only, fail-open; the safety net for chat-only questions that never trip the
 // AskUserQuestion hook (#240).
-const STOP_AUDIT_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs';
+const STOP_AUDIT_HOOK_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/stop-audit-pause-resume.mjs'
+);
 // #728 — always-loaded memory-index hook. Emits ONLY `.ai-task-manager/memory/
 // MEMORY.md` as additionalContext on SessionStart + PostCompact. Registered only
 // when at least one seed file was accepted at install (a `none` selection
 // installs no hook).
-const MEMORY_INDEX_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs';
+const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
+// #869 — SessionStart seed check: inspect + heal an unseeded worktree before any
+// other hook resolves a node_modules path. Routed through the shim like the rest.
+const SEED_CHECK_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/ensure-worktree-seeded.mjs');
+// Bare-path forms shipped before #869 — stripped and re-registered as shims so
+// re-running the installer migrates old settings idempotently (mirrors #792).
+const LEGACY_HOOK_COMMANDS = [
+  'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs pause',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs',
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
+];
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
@@ -201,6 +226,26 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   }
 
   if (!settings.hooks) settings.hooks = {};
+
+  // #869 — strip every pre-shim bare-path lifecycle hook command across all
+  // events, then let the registrations below re-add the shim forms. A global
+  // strip (rather than one per event loop) guarantees no bare
+  // `node node_modules/…` command survives, whichever event array it sat in.
+  for (const event of Object.keys(settings.hooks)) {
+    if (Array.isArray(settings.hooks[event])) {
+      settings.hooks[event] = removeHookCommands(settings.hooks[event], LEGACY_HOOK_COMMANDS);
+    }
+  }
+
+  // #869 — seed check FIRST on SessionStart: heal an unseeded worktree before
+  // any other hook resolves a node_modules path. Idempotent by command string.
+  if (!Array.isArray(settings.hooks.SessionStart)) settings.hooks.SessionStart = [];
+  if (!settings.hooks.SessionStart.some((h) => hookEntryHasCommand(h, SEED_CHECK_HOOK_CMD))) {
+    settings.hooks.SessionStart.unshift({
+      matcher: '',
+      hooks: [{ type: 'command', command: SEED_CHECK_HOOK_CMD }],
+    });
+  }
 
   const hookEntry = { matcher: '', hooks: [{ type: 'command', command: TIMING_HOOK_CMD }] };
   for (const event of ['SessionStart', 'PreCompact', 'PostCompact']) {
