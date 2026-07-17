@@ -33,6 +33,7 @@ import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
+import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 
 const pexec = promisify(execFile);
 
@@ -149,20 +150,28 @@ async function defaultNpmCi({ path: wtPath }) {
 }
 
 async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
+  const timeoutMs = sandboxTimeoutMs();
+  const startedAt = Date.now();
   try {
     const { stdout, stderr } = await pexec(argv[0], argv.slice(1), {
       cwd: wtPath,
-      timeout: sandboxTimeoutMs(),
+      timeout: timeoutMs,
       maxBuffer: 64 * 1024 * 1024,
       // @story #541 — strip leaked lock state, then set the project dir.
       env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
     });
     return { exit: 0, stdout: String(stdout || ''), stderr: String(stderr || '') };
   } catch (err) {
+    // #856 — a timeout/signal kill leaves `err.code === null`, so the bare
+    // `?? 1` fallback used to render it as `exit 1`, hiding the real cause.
+    // Compute an honest cause string that names a timeout (ceiling + elapsed)
+    // or a signal, keeping the numeric `exit` for the pass/fail logic.
+    const cause = describeSandboxFailure({ err, timeoutMs, elapsedMs: Date.now() - startedAt });
     return {
       exit: err.code ?? err.exitCode ?? 1,
       stdout: String(err.stdout || ''),
       stderr: String(err.stderr || err.message || ''),
+      ...(cause ? { cause } : {}),
     };
   }
 }
@@ -199,7 +208,10 @@ async function defaultPostComment({ cfg, issueNum, body }) {
 function buildResultTable(results, { sha, status, autoTicked = 0 }) {
   const rows = results.map((r) => {
     const mark = r.passed ? '✓' : r.rejected ? '⚠' : '✗';
-    return `| ${mark} | \`${r.command}\` | exit ${r.exit ?? 'n/a'} |`;
+    // #856 — a killed command carries an honest `cause` (e.g. a timeout naming
+    // the ceiling, or a signal); render it instead of the misleading `exit 1`.
+    const result = r.cause ? r.cause : `exit ${r.exit ?? 'n/a'}`;
+    return `| ${mark} | \`${r.command}\` | ${result} |`;
   });
   const header = `## ${status === 'green' ? '✓ Sandboxed verification passed' : '✗ Sandboxed verification failed'}\n\nHEAD: \`${shortSha(sha)}\``;
   const ticked =
@@ -214,7 +226,10 @@ function buildResultTable(results, { sha, status, autoTicked = 0 }) {
         `### \`${r.command}\` — tail\n\n` +
         (r.rejected
           ? `_rejected: ${r.rejected}_\n`
-          : '```\n' + tail([r.stdout, r.stderr].filter(Boolean).join('\n')) + '\n```\n')
+          : (r.cause ? `_${r.cause}_\n\n` : '') +
+            '```\n' +
+            tail([r.stdout, r.stderr].filter(Boolean).join('\n')) +
+            '\n```\n')
     )
     .join('\n');
   return `${header}\n\n${table}\n${tails ? '\n' + tails : ''}`;
@@ -441,6 +456,7 @@ export async function runVerbTest({
         command: vc.command,
         passed: r.exit === 0,
         exit: r.exit,
+        cause: r.cause,
         stdout: r.stdout,
         stderr: r.stderr,
       });
