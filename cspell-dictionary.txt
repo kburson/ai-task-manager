@@ -227,3 +227,10 @@ cheerleading
 overexplaining
 realpath
 realpaths
+unshift
+argv
+mkdtemp
+lstat
+symlink
+deps
+pkg
