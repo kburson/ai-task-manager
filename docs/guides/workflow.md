@@ -385,6 +385,11 @@ flowchart TD
 
 Full design: [`docs/superpowers/specs/2026-07-11-blocking-defect-isolation-design.md`](../superpowers/specs/2026-07-11-blocking-defect-isolation-design.md).
 
+For the complementary practice of **aggregating an epic's child results** on a
+persistent inline branch in the main working tree (while keeping `trunk`
+emergency-switchable), see
+[Local Parallel Development — inline epic-staging branches](local-parallel-development.md).
+
 ---
 
 ## Priority Tiers
