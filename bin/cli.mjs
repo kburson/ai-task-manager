@@ -530,7 +530,7 @@ function replaceWithSymlink(dest, src, label) {
   ok(`${label} ${dim(relative(process.cwd(), dest))} -> ${dim(src)}`);
 }
 
-function claudeStub() {
+export function claudeStub() {
   return [
     '---',
     'name: task',
@@ -538,6 +538,19 @@ function claudeStub() {
     '---',
     '',
     '# Task',
+    '',
+    '## Step 0 — Verify worktree seeding (run before anything else)',
+    '',
+    'If this session runs in a git worktree, its `node_modules` may be absent, which',
+    'breaks the skill reads below and silently redirects module resolution to the',
+    'parent checkout. The SessionStart hook heals this automatically; if you have any',
+    'doubt it ran, verify and self-heal before loading the skill:',
+    '',
+    '```bash',
+    "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
+    '```',
+    '',
+    'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
     '',
     '## Load-Once Procedure',
     '',
@@ -578,6 +591,19 @@ function codexStub() {
     '---',
     '',
     '# Task',
+    '',
+    '## Step 0 — Verify worktree seeding (run before anything else)',
+    '',
+    'If this session runs in a git worktree, its `node_modules` may be absent, which',
+    'breaks the skill reads below and silently redirects module resolution to the',
+    'parent checkout. The SessionStart hook heals this automatically; if you have any',
+    'doubt it ran, verify and self-heal before loading the skill:',
+    '',
+    '```bash',
+    "node -e \"const{existsSync}=require('fs');const{resolve}=require('path');const{pathToFileURL}=require('url');const c=['node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs','scripts/task-tracker/ensure-worktree-seeded.mjs'];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(p){process.argv=[process.argv[0],p];import(pathToFileURL(p).href);}\"",
+    '```',
+    '',
+    'Proceed to the Load-Once Procedure only once the self-link resolves to THIS worktree.',
     '',
     '## Load-Once Procedure',
     '',
