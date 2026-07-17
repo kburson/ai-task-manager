@@ -225,3 +225,5 @@ checkmarks
 automatable
 cheerleading
 overexplaining
+realpath
+realpaths
