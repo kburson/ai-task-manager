@@ -1,0 +1,13 @@
+flowchart TB
+    Vision["Product vision\nbusiness goals, user outcomes"] --> TPO["TPO/TPM\nTechnical Product Operations"]
+    Architecture["Architecture guardrails\nstandards, interfaces, risks"] --> TPO
+    TPO --> Backlog["Executable backlog\nstories, sequence, gates"]
+    Backlog --> AgentA["Implementation agent\nbounded task"]
+    Backlog --> AgentB["Implementation agent\nbounded task"]
+    Backlog --> AgentC["Implementation agent\nbounded task"]
+    AgentA --> Evidence["Evidence\ncode, tests, timing, decisions"]
+    AgentB --> Evidence
+    AgentC --> Evidence
+    Evidence --> Review["Human review\nfit, finish, acceptance"]
+    Review --> TPO
+

@@ -1,0 +1,8 @@
+flowchart TB
+    Product["Product spec"] --> Feature["Feature epics"]
+    Feature --> StoryEpic["Story epics"]
+    StoryEpic --> Story["Stories"]
+    Story --> PBI["Atomic PBI"]
+    PBI --> DeepDive["JIT deep dive\ncurrent codebase"]
+    DeepDive --> Develop["Development"]
+

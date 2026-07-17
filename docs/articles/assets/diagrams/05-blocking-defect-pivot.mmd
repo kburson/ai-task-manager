@@ -1,0 +1,11 @@
+flowchart TB
+    Planned["Planned task"] --> Develop["Development"]
+    Develop --> Defect{"Blocking defect found?"}
+    Defect -->|no| Finish["Finish planned task"]
+    Defect -->|yes| Block["Block planned task"]
+    Block --> DefectStory["Create defect/refactor story"]
+    DefectStory --> Fix["Fix in isolated work"]
+    Fix --> Merge["Merge to trunk"]
+    Merge --> Resume["Resume planned task\non updated codebase"]
+    Resume --> Finish
+

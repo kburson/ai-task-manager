@@ -1,0 +1,8 @@
+flowchart TB
+    Vague["Vague prompt"] --> Plausible["Plausible output"]
+    Plausible --> Buried["Assumptions buried in code"]
+    Buried --> SlowReview["Slow review"]
+    SlowReview --> Fixes["Patch fixes"]
+    Fixes --> MoreContext["More context and drift"]
+    MoreContext --> Plausible
+

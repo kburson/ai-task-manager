@@ -1,0 +1,7 @@
+flowchart TB
+    Summary["Compacted summary\nhint only"] --> Reload["Recovery decision"]
+    Source["Source files\nrules and templates"] --> Reload
+    Issue["Issue body\nACs, gates, state"] --> Reload
+    State["Session state\ndecisions, files, risks"] --> Reload
+    Reload --> Resume["Resume work\nwith authoritative context"]
+

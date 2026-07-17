@@ -1,0 +1,9 @@
+flowchart LR
+    Prompt["Large prompt"] --> Output["Large generated output"]
+    Output --> ReviewDebt["Hidden review debt"]
+    ReviewDebt --> Rework["Rework, defects, distrust"]
+
+    Story["Thin story"] --> Bounded["Bounded implementation"]
+    Bounded --> Evidence["Verification evidence"]
+    Evidence --> Increment["Reviewable increment"]
+

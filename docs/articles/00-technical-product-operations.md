@@ -2,96 +2,147 @@
 
 <!-- markdownlint-disable MD034 -->
 
-[Series](README.md) | Previous: [Research Synopsis](research-synopsis.md) | Next: [The Vibe Coding Hangover](01-vibe-coding-hangover.md)
+## Series Roadmap
 
-## Draft Thesis
+| Status      | #      | Article                                                                                    | Role In Series                                |
+| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| **Current** | **00** | **[The Rise Of Technical Product Operations](00-technical-product-operations.md)**         | Industry thesis: Technical Product Operations |
+|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
+|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
+|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
+|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
+|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
+|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
+|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
+|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
 
-The future software team may not be organized around who writes the most code. It may be organized around who can govern the most agent-produced code safely.
+The future software team may not be organized around who writes the most code. It may be organized around who can safely accept the most agent-produced code.
 
-As implementation agents take over more code construction, the scarce human skill becomes the ability to define product intent, shape architecture, decompose work, sequence dependencies, govern evidence, and decide whether the result fits.
+That sounds backward only if we assume code production remains the scarce part of software delivery. For most of the industry's history, that assumption was reasonable. A team needed people who knew the programming language, the framework, the build system, the test conventions, and the local architecture. Syntax fluency was delivery capacity.
 
-That is Technical Product Operations: the product-facing discipline of operating an agentic delivery system.
+Agentic AI is changing that equation.
 
-## Core Argument
+Implementation agents can already move across languages, frameworks, file layouts, and test conventions faster than most humans can retool. They can inspect a repository, mimic its patterns, draft code, run tests, respond to failures, and produce a plausible implementation. They are not perfect, but they are good enough to shift the bottleneck.
 
-For decades, software organizations invested heavily in abstractions that helped humans reason about code: frameworks, libraries, managed runtimes, scaffolding systems, conventions, and architectural patterns. Those abstractions still matter, but their center of gravity is changing.
+The harder problem is no longer simply "who can write the code?"
 
-AI agents are becoming increasingly capable syntax operators. They can move across languages, frameworks, file layouts, and test conventions faster than most humans can retool. That does not make engineering easier in every sense. It moves the bottleneck.
+The harder problem is:
 
-The hard work shifts from:
+- who defines the intent clearly enough,
+- who decomposes it into safe work,
+- who decides what should run first,
+- who prevents parallel agents from colliding,
+- who knows when the result fits the product,
+- who decides whether the evidence is strong enough,
+- who can tell the difference between useful acceleration and expensive slop?
 
-- remembering framework APIs,
-- producing boilerplate,
-- managing local syntax,
-- wiring repetitive structure,
-- drafting tests from known patterns,
+That is the emerging discipline I am calling **Technical Product Operations**.
 
-to:
+Technical Product Operations is the discipline of turning product intent, architecture guardrails, and delivery risk into an executable backlog that implementation agents can safely act on.
 
-- defining product fit,
-- shaping architecture,
-- choosing boundaries,
-- decomposing work,
-- sequencing dependencies,
-- controlling risk,
-- verifying evidence,
-- deciding when generated work is good enough to accept.
-
-This is not the end of engineering. It is a shift in where engineering judgment concentrates.
+It is not prompt engineering with a better title. It is not project management with AI vocabulary. It is not product management replacing engineering. It is the coordination layer that lets product vision, architecture, backlog governance, implementation agents, and evidence review operate as one delivery system.
 
 ## The Syntax Inversion
 
-Software teams used to treat syntax fluency as a major component of delivery capacity. The person who knew React, Angular, Spring Boot, Go, Rust, Swift, Kotlin, or a cloud SDK could move faster than the person who had to look everything up.
+Software organizations have spent decades building abstractions to help humans reason about code.
 
-Implementation agents weaken that advantage. They can become near-instant syntax specialists for the local project. They can inspect the repository, mimic conventions, produce code in the language already in use, and adjust to test failures.
+Frameworks, managed runtimes, scaffolding tools, design systems, ORMs, dependency injection containers, build pipelines, and service templates all help humans manage complexity. Some abstractions improve correctness and maintainability. Some exist because raw platform code is tedious. Some exist because a team would rather standardize on one familiar structure than ask every developer to reason from first principles.
+
+Those abstractions will not disappear overnight. But their center of gravity is changing.
+
+When implementation agents become competent syntax operators, syntax becomes cheaper. They can learn the local project faster than a newly assigned human. They can operate in React, Angular, Go, Rust, Swift, Kotlin, Java, Python, or a project-specific internal framework without needing a multi-week ramp. They can follow lint rules, infer file conventions, copy testing patterns, and adjust to compiler or test failures.
 
 That creates a syntax inversion:
 
-> Syntax becomes cheaper. Intent, architecture, verification, and fit become more expensive.
+```mermaid
+flowchart LR
+    Past["Past bottleneck\nsyntax fluency"] --> HumanCode["Human writes code\nframework by framework"]
+    HumanCode --> Delivery["Delivery capacity"]
 
-In that world, language and framework debates do not disappear, but they change. The question becomes less "which framework is easiest for humans to type?" and more "which technical foundation best fits this product's performance, operational, security, maintainability, and deployment needs?"
+    Future["Emerging bottleneck\nfit and governance"] --> Agents["Implementation agents\nsyntax + local construction"]
+    Agents --> Review["Human review\narchitecture, evidence, product fit"]
+    Review --> Delivery2["Accepted delivery"]
+```
 
-If agents reduce the cost of lower-level implementation, teams may choose more specialized foundations. They may write thinner internal frameworks. They may prefer native platforms or lower-level services when those choices improve product fit. The old justification for large kitchen-sink frameworks weakens when the main reason for using them was to help humans produce familiar structure quickly.
+The question becomes less "which framework lets humans type this fastest?" and more "which technical foundation best fits this product's performance, operational, security, maintainability, and deployment needs?"
 
-This is a pressure vector, not a completed transition. But it is the direction worth preparing for.
+That is a very different conversation.
+
+It means teams may care less about whether one developer personally knows every API in a framework. They may care more about whether the architecture exposes stable boundaries, whether services can be verified independently, whether generated changes are reviewable, and whether the chosen technology gives the product the right long-term shape.
+
+It also opens an uncomfortable possibility for the last twenty years of framework debate: some abstractions were selected because they made humans faster, not because they made the product better. As implementation agents reduce the human cost of lower-level construction, teams may choose thinner internal frameworks, more native platform code, or more specialized utilities instead of hauling in large kitchen-sink frameworks where only a fraction of the surface area is used.
+
+This is not a claim that framework choices no longer matter. They still matter. But the reason they matter shifts. Framework choice becomes less about human memorization and more about product fit, operational cost, security surface, testability, and long-term control.
 
 ## Why SDLC And Agile Matter More
 
-Agentic AI does not eliminate SDLC and agile disciplines. It makes them more load-bearing.
+Agentic AI does not make SDLC and agile practices obsolete. It makes the useful parts more load-bearing.
 
-When one human writes one feature, ambiguity is often handled through informal judgment. The developer asks a question, infers a missing detail, or remembers a prior architectural decision.
+When one human developer works on one feature, ambiguity can be handled informally. The developer asks a question. They remember a decision from last month. They infer a missing dependency. They notice a ticket is too broad and push back.
 
-When a fleet of implementation agents works from vague prompts, ambiguity multiplies. Each agent can make a different plausible choice. Each one can produce confident output. Each one can leave the team with review debt.
+When a fleet of implementation agents works from vague prompts, ambiguity multiplies.
 
-That is why familiar practices become more important:
+Each agent can make a different plausible choice. Each one can generate code that looks reasonable in isolation. Each one can bury assumptions in a branch. Each one can produce a confident explanation that sounds more complete than it is. The result may be a lot of code and very little acceptance confidence.
+
+This is why the boring parts of delivery become strategic:
 
 - Work breakdown structures prevent giant prompts from becoming giant failures.
 - Backlog refinement turns intent into executable slices.
 - Acceptance criteria define what the agent must prove.
 - Dependency sequencing prevents parallel agents from colliding.
 - Review gates prevent generated code from becoming accepted code too early.
+- Timing and context records show the human supervision cost.
 - Audit trails preserve why work changed, paused, failed, or pivoted.
 
-These are not ceremonial controls. They are the operating system for agentic delivery.
+These are not ceremonies. They are the operating system for agentic delivery.
+
+The teams that win with AI will not be the teams that simply let agents generate the most code. They will be the teams that build the best system for accepting, rejecting, steering, and learning from AI-generated work.
 
 ## The New Human Role
 
 The Technical Product Owner or Technical Product Manager becomes a delivery architect.
 
-That role is not a project administrator and not a prompt typist. It is the person who can translate product vision into a governed execution system:
+That role sits between product intent and implementation execution. It requires more technical depth than traditional status-oriented project management, but it does not require the person to personally write every line of code.
+
+The TPO/TPM operating this system needs to answer questions like:
 
 - What is the product trying to become?
 - Which work matters first?
+- Which parts are architectural load-bearing decisions?
+- Which parts can be delegated to implementation agents?
 - What should be decomposed now, and what should wait?
 - Which stories can run in parallel?
-- Which work requires architectural review before implementation?
-- Which evidence proves the agent did the right thing?
+- Which stories share files, interfaces, or migration paths?
+- What evidence proves that a story is complete?
 - When does a defect become a separate task?
 - When should the plan pivot because the codebase revealed a better path?
 
-Engineering leaders still own architecture standards, security posture, production readiness, and code quality expectations. The TPO/TPM makes those expectations operational in the backlog.
+Engineering leaders still own architecture standards, production readiness, security posture, and code quality expectations. The TPO/TPM does not replace that responsibility. The TPO/TPM makes those expectations operational in the backlog.
 
-That is the role shift: product ownership becomes more technical because the backlog becomes executable.
+That distinction matters. The future role is not "product manager as amateur engineer." It is product-facing delivery architecture: turning vision, constraints, and risk into a work system implementation agents can execute without losing the plot.
+
+## The Operating Model
+
+The model looks less like a single developer receiving a prompt and more like an evidence-driven delivery system.
+
+```mermaid
+flowchart TB
+    Vision["Product vision\nbusiness goals, user outcomes"] --> TPO["TPO/TPM\nTechnical Product Operations"]
+    Architecture["Architecture guardrails\nstandards, interfaces, risks"] --> TPO
+    TPO --> Backlog["Executable backlog\nstories, sequence, gates"]
+    Backlog --> AgentA["Implementation agent\nbounded task"]
+    Backlog --> AgentB["Implementation agent\nbounded task"]
+    Backlog --> AgentC["Implementation agent\nbounded task"]
+    AgentA --> Evidence["Evidence\ncode, tests, timing, decisions"]
+    AgentB --> Evidence
+    AgentC --> Evidence
+    Evidence --> Review["Human review\nfit, finish, acceptance"]
+    Review --> TPO
+```
+
+The important detail is the feedback loop. Agents do not disappear into a black box and return "done." They return evidence. That evidence informs review. Review informs backlog sequencing. Backlog sequencing keeps the next wave of agent work aligned with the current state of the product and codebase.
+
+This is where the product role becomes more technical. If the backlog becomes executable, backlog quality becomes delivery quality.
 
 ## Failure Mode: Vibe Slop
 
@@ -103,15 +154,17 @@ The key distinction is this:
 
 > Vibe slop is not caused by AI writing code. It is caused by AI writing code outside a governed delivery system.
 
+This is why "better prompts" are not enough. A prompt can describe what the user wants. It cannot, by itself, maintain dependency order, enforce review gates, preserve evidence, manage blocked work, recover from context compaction, or decide when a discovered defect deserves its own story.
+
 The answer is not to reject AI coding. The answer is to stop treating code generation as the whole job.
 
 ## AITM And The Backlog Manager Pattern
 
-This article series uses **AITM** to mean `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed task workflows with Claude Code and Codex.
+In this series, **AITM** means `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed task workflows with Claude Code and Codex.
 
 That clarification matters because "AI task manager" is also a generic phrase, and there are unrelated npm packages and projects using similar names. This series is about the `@kburson/ai-task-manager` project and the delivery pattern it explores.
 
-`@kburson/ai-task-manager` provides a concrete operating model for this shift.
+AITM provides a concrete operating model for Technical Product Operations.
 
 The pattern is story-governed delivery:
 
@@ -125,24 +178,30 @@ The pattern is story-governed delivery:
 8. Require verification evidence before review.
 9. Preserve timing, context, decisions, defects, pivots, and approvals.
 
-AITM's point is not that every team must use GitHub Projects. The deeper point is that agentic software delivery needs a durable control plane outside the chat window.
+The current implementation uses GitHub Projects because GitHub provides issues, project fields, sub-issues, comments, pull requests, and API access in one practical surface. But the pattern is not GitHub-specific.
 
-## Operating Model
+The deeper idea is the **Backlog Manager Pattern**: use the backlog as the durable control plane for agentic execution. The chat window is not the system of record. The backlog item is.
 
-```mermaid
-flowchart TB
-    Vision["Product vision\nbusiness goals, user outcomes"] --> TPO["TPO/TPM\nTechnical Product Operations"]
-    Architecture["Architecture guardrails\nstandards, interfaces, risks"] --> TPO
-    TPO --> Backlog["Executable backlog\nstories, sequence, gates"]
-    Backlog --> A1["Implementation agent\nbounded task"]
-    Backlog --> A2["Implementation agent\nbounded task"]
-    Backlog --> A3["Implementation agent\nbounded task"]
-    A1 --> Evidence["Evidence\ncode, tests, timing, decisions"]
-    A2 --> Evidence
-    A3 --> Evidence
-    Evidence --> Review["Human review\nfit, finish, acceptance"]
-    Review --> TPO
-```
+That backlog item carries intent, scope, dependency order, acceptance criteria, state, evidence, review status, and recovery context. The implementation agent works inside that boundary. The human operator reviews the evidence and decides whether the result fits.
+
+## Practical Takeaway
+
+If you are a product manager, project manager, TPO, TPM, or engineering leader, the question is not whether AI can write code. It can.
+
+The useful question is whether your delivery system can answer:
+
+- What work was the agent supposed to do?
+- Why was that work next?
+- What assumptions did the agent make?
+- What tests or checks prove the result?
+- What changed when the codebase disagreed with the plan?
+- Who accepted the result, and based on what evidence?
+
+If those answers live only in a chat transcript, the process is fragile.
+
+If those answers live in the backlog, in gates, in evidence records, and in review decisions, agentic AI becomes governable.
+
+That is the promise of Technical Product Operations. Not more prompt craft. Not less engineering. A better operating model for a world where code construction is increasingly automated and acceptance judgment becomes the scarce resource.
 
 ## Series Link
 

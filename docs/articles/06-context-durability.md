@@ -2,7 +2,19 @@
 
 <!-- markdownlint-disable MD034 -->
 
-[Series](README.md) | Previous: [The Just-In-Time Planner](05-just-in-time-planner.md) | Next: [Evidence Beats Trust](07-evidence-beats-trust.md)
+## Series Roadmap
+
+| Status      | #      | Article                                                                                    | Role In Series                                |
+| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
+|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
+|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
+|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
+|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
+|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
+|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
+| **Current** | **06** | **[Context Durability Is A Feature](06-context-durability.md)**                            | JIT loading and post-compaction recovery      |
+|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
+|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
 
 ## Draft Thesis
 

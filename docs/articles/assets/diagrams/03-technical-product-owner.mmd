@@ -1,0 +1,12 @@
+flowchart TB
+    Vision["Product vision"] --> TPO["TPO/TPM\nDelivery architect"]
+    Guardrails["Engineering guardrails"] --> TPO
+    TPO --> Backlog["Executable backlog"]
+    Backlog --> AgentA["Implementation agent A"]
+    Backlog --> AgentB["Implementation agent B"]
+    Backlog --> AgentC["Implementation agent C"]
+    AgentA --> Evidence["Evidence + review"]
+    AgentB --> Evidence
+    AgentC --> Evidence
+    Evidence --> TPO
+

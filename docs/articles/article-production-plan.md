@@ -15,6 +15,14 @@ Use Option B, then Option A:
 
 This keeps the series coherent. Each article can stand alone, but the concepts accumulate: technical product operations -> vibe slop -> specifications -> TPO/TPM role -> backlog control plane -> JIT planning -> context durability -> evidence -> adapters.
 
+Option B support files:
+
+- [series-style-guide.md](series-style-guide.md)
+- [series-argument-map.md](series-argument-map.md)
+- [series-visual-system.md](series-visual-system.md)
+- [assets/diagrams](assets/diagrams/)
+- [assets/image-prompts](assets/image-prompts/)
+
 ## Public Terminology
 
 Avoid terms that sound like AI marketing copy or dismissive hierarchy.

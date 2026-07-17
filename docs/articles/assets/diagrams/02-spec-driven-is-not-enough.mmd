@@ -1,0 +1,7 @@
+flowchart TB
+    Spec["Specification\nwhat should be true"] --> Backlog["Backlog control\nwhat runs next"]
+    Backlog --> Agents["Implementation agents\nbounded execution"]
+    Agents --> Evidence["Evidence\nwhat was proven"]
+    Evidence --> Review["Human review\nfit and finish"]
+    Review --> Spec
+

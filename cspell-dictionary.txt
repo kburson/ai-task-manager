@@ -221,3 +221,7 @@ Overclaiming
 SDLC
 denigrative
 workstreams
+checkmarks
+automatable
+cheerleading
+overexplaining

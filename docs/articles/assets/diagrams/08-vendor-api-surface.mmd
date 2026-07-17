@@ -1,0 +1,12 @@
+flowchart LR
+    Backlog["Backlog system"] --> Issues["Issues + hierarchy"]
+    Backlog --> Fields["Fields + rank"]
+    Backlog --> State["Workflow transitions"]
+    Backlog --> Comments["Comments + evidence"]
+    Backlog --> Links["PRs + CI checks"]
+    Issues --> AgentHost["Agent host"]
+    Fields --> AgentHost
+    State --> AgentHost
+    Comments --> AgentHost
+    Links --> AgentHost
+

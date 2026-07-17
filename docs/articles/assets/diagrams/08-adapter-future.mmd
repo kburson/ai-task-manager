@@ -1,0 +1,12 @@
+flowchart TB
+    Core["AITM workflow core\nstates, gates, evidence, timing"] --> BacklogAdapters["Backlog adapters"]
+    Core --> AgentAdapters["Agent adapters"]
+    BacklogAdapters --> GitHub["GitHub"]
+    BacklogAdapters --> Jira["Jira"]
+    BacklogAdapters --> GitLab["GitLab"]
+    BacklogAdapters --> Bitbucket["Bitbucket"]
+    AgentAdapters --> Claude["Claude Code"]
+    AgentAdapters --> Codex["Codex"]
+    AgentAdapters --> Copilot["Copilot"]
+    AgentAdapters --> Rovo["Rovo Dev"]
+

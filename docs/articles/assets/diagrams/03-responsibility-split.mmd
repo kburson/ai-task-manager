@@ -1,0 +1,8 @@
+flowchart LR
+    Human["TPO/TPM + engineering leaders"] --> HumanOwns["Own\nvision, architecture, sequence, risk, acceptance"]
+    Agent["Implementation agents"] --> AgentOwns["Own\nsyntax, local edits, tests, narrow task execution"]
+    HumanOwns --> Backlog["Executable backlog"]
+    Backlog --> AgentOwns
+    AgentOwns --> Evidence["Evidence"]
+    Evidence --> HumanOwns
+
