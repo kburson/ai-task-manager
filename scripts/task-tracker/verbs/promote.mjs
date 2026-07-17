@@ -177,7 +177,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
 // #533 — the alias delegate spawned for a forward transition is `test`
 // (develop→test) or `close` (review→done). The `test` delegate stages a fresh
 // worktree, runs `npm ci`, then every `## Verification Commands` entry under a
-// per-command `SANDBOX_TIMEOUT_MS` (15 min, `verbs/test.mjs`). A single
+// per-command `SANDBOX_TIMEOUT_MS` (`lib/process-timeouts.mjs`). A single
 // `GH_API_TIMEOUT_MS`-class budget (a one-API-call timeout) reused as the outer
 // cap SIGTERMs the sandbox at 60s, before `npm ci` even finishes — no results
 // comment, leftover worktree, swallowed exit 1. So `test` gets NO outer
