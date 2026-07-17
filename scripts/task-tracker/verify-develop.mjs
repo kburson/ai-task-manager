@@ -20,6 +20,8 @@
  */
 
 import { execSync, spawnSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { findUnitTests } from './find-unit-tests.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
@@ -39,11 +41,6 @@ export function buildLintFormatSteps() {
   ];
 }
 
-if (wantsHelp(process.argv.slice(2))) {
-  emitSelfDoc('verify-develop');
-  process.exit(0);
-}
-
 function run(cmd, args = [], { label = cmd, allowFailure = false } = {}) {
   const result = spawnSync(cmd, args, { stdio: 'inherit', shell: false });
   if (result.error) throw result.error;
@@ -54,62 +51,99 @@ function run(cmd, args = [], { label = cmd, allowFailure = false } = {}) {
   return result.status;
 }
 
-// Steps 1–3: lint:js --fix, format, then full lint suite
-const lintFormatSteps = buildLintFormatSteps();
-lintFormatSteps.forEach((step, i) => {
-  console.log(`verify-develop: step ${i + 1} — ${step.label}`);
-  run(step.cmd, step.args, { label: step.label });
-});
+/**
+ * True only when this file is the process entry point (invoked as
+ * `node verify-develop.mjs`), false when it is `import`-ed. Guards the gate so
+ * importing a pure export (e.g. `buildLintFormatSteps`) never executes lint,
+ * format, tests, or `process.exit` as an import side effect (#867). Uses the
+ * `argv[1]`/`import.meta.url` realpath compare (portable to Node 18; survives
+ * the `node_modules/ai-task-manager` self-symlink this repo relies on) rather
+ * than the newer `import.meta.main`.
+ */
+export function isMainModule() {
+  try {
+    return (
+      Boolean(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+    );
+  } catch {
+    return false;
+  }
+}
 
-// Step 3: Collect changed files (working tree vs HEAD)
-console.log('verify-develop: step 3 — collecting changed files');
-let rawTests = '';
-let rawSources = '';
-try {
-  rawTests = execSync("git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'", {
-    encoding: 'utf8',
-    shell: true,
+/**
+ * The Develop gate. Runs steps 1–4 and exits the process on completion or
+ * failure. Only invoked under the main-module guard, never on import.
+ */
+export function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('verify-develop');
+    process.exit(0);
+  }
+
+  // Steps 1–3: lint:js --fix, format, then full lint suite
+  const lintFormatSteps = buildLintFormatSteps();
+  lintFormatSteps.forEach((step, i) => {
+    console.log(`verify-develop: step ${i + 1} — ${step.label}`);
+    run(step.cmd, step.args, { label: step.label });
   });
-  rawSources = execSync("git diff --diff-filter=ACMR --name-only HEAD -- '*.mjs' ':!*.test.mjs'", {
-    encoding: 'utf8',
-    shell: true,
-  });
-} catch {
-  console.error('verify-develop: git diff failed');
-  process.exit(1);
+
+  // Step 3: Collect changed files (working tree vs HEAD)
+  console.log('verify-develop: step 3 — collecting changed files');
+  let rawTests = '';
+  let rawSources = '';
+  try {
+    rawTests = execSync("git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'", {
+      encoding: 'utf8',
+      shell: true,
+    });
+    rawSources = execSync(
+      "git diff --diff-filter=ACMR --name-only HEAD -- '*.mjs' ':!*.test.mjs'",
+      {
+        encoding: 'utf8',
+        shell: true,
+      }
+    );
+  } catch {
+    console.error('verify-develop: git diff failed');
+    process.exit(1);
+  }
+
+  const testFiles = rawTests
+    .split('\n')
+    .map((f) => f.trim())
+    .filter(Boolean);
+
+  const sourceFiles = rawSources
+    .split('\n')
+    .map((f) => f.trim())
+    .filter(Boolean);
+
+  // Step 3b: Discover unit tests for changed source files (C2 of #431)
+  const discoveredTests = findUnitTests(sourceFiles);
+  if (discoveredTests.length > 0) {
+    console.log(
+      `verify-develop: step 3b — discovered ${discoveredTests.length} unit test(s) from source changes`
+    );
+  }
+
+  const allTestFiles = [...new Set([...testFiles, ...discoveredTests])];
+
+  if (allTestFiles.length === 0) {
+    console.log('verify-develop: nothing to verify (no test files changed vs HEAD)');
+    process.exit(0);
+  }
+
+  console.log(`verify-develop: step 4 — running ${allTestFiles.length} test file(s)`);
+
+  // Step 4: Run each test file
+  for (const file of allTestFiles) {
+    console.log(`  node --test ${file}`);
+    run('node', ['--test', file], { label: `node --test ${file}` });
+  }
+
+  console.log('verify-develop: all checks passed');
 }
 
-const testFiles = rawTests
-  .split('\n')
-  .map((f) => f.trim())
-  .filter(Boolean);
-
-const sourceFiles = rawSources
-  .split('\n')
-  .map((f) => f.trim())
-  .filter(Boolean);
-
-// Step 3b: Discover unit tests for changed source files (C2 of #431)
-const discoveredTests = findUnitTests(sourceFiles);
-if (discoveredTests.length > 0) {
-  console.log(
-    `verify-develop: step 3b — discovered ${discoveredTests.length} unit test(s) from source changes`
-  );
+if (isMainModule()) {
+  main();
 }
-
-const allTestFiles = [...new Set([...testFiles, ...discoveredTests])];
-
-if (allTestFiles.length === 0) {
-  console.log('verify-develop: nothing to verify (no test files changed vs HEAD)');
-  process.exit(0);
-}
-
-console.log(`verify-develop: step 4 — running ${allTestFiles.length} test file(s)`);
-
-// Step 4: Run each test file
-for (const file of allTestFiles) {
-  console.log(`  node --test ${file}`);
-  run('node', ['--test', file], { label: `node --test ${file}` });
-}
-
-console.log('verify-develop: all checks passed');
