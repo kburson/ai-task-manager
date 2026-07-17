@@ -9,13 +9,15 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { buildLintFormatSteps } from '../../verify-develop.mjs';
+import { buildLintFormatSteps, isMainModule } from '../../verify-develop.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '../../../..');
+const MODULE_URL = pathToFileURL(resolve(HERE, '../../verify-develop.mjs')).href;
 
 // ---------------------------------------------------------------------------
 // Pure helpers extracted for testing (mirrors the script's logic)
@@ -147,6 +149,40 @@ describe('diff-filter semantics (documentation assertions)', () => {
 // ---------------------------------------------------------------------------
 // AC2 (#529): the lint/format step plan runs the FULL `npm run lint`
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// #867: main-module guard — importing the module must NOT execute the gate.
+// Before the guard, importing verify-develop.mjs ran lint/format/tests and hit
+// process.exit during import, killing this runner before any assertion ran
+// (the file reported `tests 1 / pass 1` at ~21s with zero real assertions).
+// These tests are the regression wall: they fail loudly if import-time
+// execution is ever reintroduced.
+// ---------------------------------------------------------------------------
+
+describe('main-module guard (#867 — import has no side effects)', () => {
+  it('importing the module in a child process runs no gate step and exits fast', () => {
+    const child = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `import * as m from ${JSON.stringify(MODULE_URL)};` +
+          `console.log('IMPORT_OK', typeof m.buildLintFormatSteps);`,
+      ],
+      { encoding: 'utf8', cwd: REPO_ROOT, timeout: 10000 }
+    );
+    assert.equal(child.status, 0, `import child exited ${child.status}: ${child.stderr}`);
+    assert.match(child.stdout, /IMPORT_OK function/);
+    // If the gate had run on import, these step banners would appear in stdout.
+    assert.doesNotMatch(child.stdout, /verify-develop: step/);
+    assert.doesNotMatch(child.stdout, /nothing to verify/);
+    assert.doesNotMatch(child.stdout, /all checks passed/);
+  });
+
+  it('isMainModule() returns false when the module is imported', () => {
+    assert.equal(isMainModule(), false);
+  });
+});
 
 describe('buildLintFormatSteps (#529 — full lint in Develop)', () => {
   const steps = buildLintFormatSteps();
