@@ -81,3 +81,36 @@ export function guardBootstrapCommand(name) {
     `import(pathToFileURL(p).href);`;
   return `node -e "${program}"`;
 }
+
+// #869 — general candidate builder for ANY repo-relative entrypoint (not just
+// the four guards). Same node_modules-first / repo-relative-second ordering.
+export function entrypointCandidates(repoRelPath) {
+  if (!repoRelPath || typeof repoRelPath !== 'string') {
+    throw new TypeError('entrypointCandidates: repoRelPath must be a non-empty string');
+  }
+  return [`node_modules/ai-task-manager/${repoRelPath}`, repoRelPath];
+}
+
+// #869 — bootstrap command for the lifecycle HOOKS. Unlike the guards (which run
+// at top-level module scope), hooks gate their main block on process.argv[1]
+// matching their own filename and read positional args from process.argv[2+]
+// (e.g. on-ask `pause`/`resume`). So before importing we rewrite process.argv to
+// [argv0, resolvedPath, ...extraArgs] — this makes the module's isMain check
+// pass and its argv reads resolve. Hooks are non-security: on no-resolution we
+// fail OPEN (exit 0 + stderr diagnostic), never closed.
+export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
+  const candidates = JSON.stringify(entrypointCandidates(repoRelPath));
+  const argvTail = extraArgs.map((a) => JSON.stringify(String(a))).join(',');
+  const label = repoRelPath.split('/').pop();
+  const program =
+    `const {existsSync}=require('fs');` +
+    `const {resolve}=require('path');` +
+    `const {pathToFileURL}=require('url');` +
+    `const c=${candidates};` +
+    `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
+    `if(!p){process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
+    `(node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}` +
+    `process.argv=[process.argv[0],p${argvTail ? ',' + argvTail : ''}];` +
+    `import(pathToFileURL(p).href);`;
+  return `node -e "${program}"`;
+}
