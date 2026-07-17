@@ -91,7 +91,15 @@ test('consumer deps-missing → non-fatal, emits npm ci remedy in additionalCont
       stderr: () => {},
     });
     assert.equal(code, 0, 'never fatal');
-    assert.match(out, /npm ci/, 'remedy names npm ci');
+    // #869 findings conclusion (c): the unscoped `node_modules/ai-task-manager`
+    // path is a dev-checkout artifact with no distinct consumer install
+    // mechanism, so the deps-missing remedy stays the plain `npm ci` diagnostic
+    // (no scoped-alias wording). Lock the exact string so any future change to
+    // the consumer story must revisit this decision explicitly.
+    assert.ok(
+      out.includes(`Run \`npm ci\` in ${root} to install ai-task-manager.`),
+      'remedy is the plain npm ci diagnostic, no scoped alias'
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
