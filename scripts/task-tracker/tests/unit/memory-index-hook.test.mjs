@@ -6,9 +6,11 @@ import { join } from 'node:path';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import { buildMemoryIndexContext, runMemoryIndexHook } from '../../hooks/memory-index.mjs';
 import { patchSettingsJson } from '../../../../bin/cli.mjs';
+import { hookBootstrapCommand } from '../../lib/guard-entrypoint.mjs';
 
-const MEMORY_INDEX_HOOK_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs';
+// #869 — lifecycle hooks register via the node_modules-first / repo-relative
+// bootstrap shim, matching cli.mjs. Compute the expected command the same way.
+const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
 
 function tmp() {
   return mkdtempSync(join(projectScratchDir('test'), 'aitm-idx-'));

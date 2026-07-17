@@ -5,13 +5,15 @@ import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'nod
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { patchSettingsJson } from '../../../../bin/cli.mjs';
-import { guardBootstrapCommand } from '../../lib/guard-entrypoint.mjs';
+import { guardBootstrapCommand, hookBootstrapCommand } from '../../lib/guard-entrypoint.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
 
-const STOP_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs';
-const UP_CMD = 'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs';
+// #869 — lifecycle hooks register via the node_modules-first / repo-relative
+// bootstrap shim, matching cli.mjs. Compute the expected commands the same way.
+const STOP_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-stop.mjs');
+const UP_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-user-prompt.mjs');
 
 function hasCommand(entries, cmd) {
   return (entries || []).some((e) => e?.hooks?.some((h) => h.command === cmd));
@@ -87,10 +89,8 @@ assert.equal(gateEntriesAfter.length, 1, 'source-edit-gate is idempotent across 
 
 // #240 — installer must register the AskUserQuestion pause/resume hooks under
 // PreToolUse / PostToolUse (matcher 'AskUserQuestion'), idempotently.
-const ON_ASK_PAUSE_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs pause';
-const ON_ASK_RESUME_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs resume';
+const ON_ASK_PAUSE_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-ask.mjs', 'pause');
+const ON_ASK_RESUME_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-ask.mjs', 'resume');
 
 function askEntries(entries, cmd) {
   return (entries || []).filter((h) => h.matcher === 'AskUserQuestion' && hasCommand([h], cmd));
@@ -128,8 +128,9 @@ assert.equal(
 
 // #241 — installer must register the stop-audit-pause-resume hook under Stop,
 // alongside the on-stop hook, once each and idempotently.
-const STOP_AUDIT_CMD =
-  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs';
+const STOP_AUDIT_CMD = hookBootstrapCommand(
+  'scripts/task-tracker/hooks/stop-audit-pause-resume.mjs'
+);
 
 rmSync(settingsPath, { force: true });
 patchSettingsJson(settingsPath);
