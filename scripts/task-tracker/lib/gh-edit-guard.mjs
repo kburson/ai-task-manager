@@ -163,25 +163,119 @@ function lastKnownStateTs(body) {
   return m ? m[1].trim() : null;
 }
 
+// #849 — split a Bash command string into individual command segments so a flag
+// on one command is never attributed to another. Cuts at any UNQUOTED `;`, `&&`,
+// `||`, `|`, `&`, newline, or `$(`; inside a single- or double-quoted region
+// those bytes are ordinary text (`--body-file "a;b.md"` stays one segment).
+//
+// `bash-guard.mjs` already segments this way for the move-state invocation guard
+// (#675) and the commit assignee-lock (#769), but both split the quote-STRIPPED
+// command. The entry points here are called with the RAW command — `evaluateGhCreate`
+// must read body text that lives inside quotes — so the segmenter is quote-aware
+// itself rather than relying on pre-stripping.
+export function splitCommandSegments(command) {
+  const s = String(command || '');
+  const segments = [];
+  let current = '';
+  let quote = null;
+  let i = 0;
+
+  const flush = () => {
+    segments.push(current);
+    current = '';
+  };
+
+  while (i < s.length) {
+    const c = s[i];
+
+    if (quote) {
+      current += c;
+      // A backslash escape only suppresses the closing quote in double quotes;
+      // inside single quotes bash treats it literally.
+      if (c === '\\' && quote === '"' && i + 1 < s.length) {
+        current += s[i + 1];
+        i += 2;
+        continue;
+      }
+      if (c === quote) quote = null;
+      i += 1;
+      continue;
+    }
+
+    if (c === "'" || c === '"') {
+      quote = c;
+      current += c;
+      i += 1;
+      continue;
+    }
+
+    // `$(` opens a nested command — evaluate its contents as their own segment.
+    if (c === '$' && s[i + 1] === '(') {
+      flush();
+      i += 2;
+      continue;
+    }
+
+    if (c === '&' && s[i + 1] === '&') {
+      flush();
+      i += 2;
+      continue;
+    }
+    if (c === '|' && s[i + 1] === '|') {
+      flush();
+      i += 2;
+      continue;
+    }
+    if (c === ';' || c === '|' || c === '&' || c === '\n') {
+      flush();
+      i += 1;
+      continue;
+    }
+
+    current += c;
+    i += 1;
+  }
+  flush();
+
+  return segments;
+}
+
+// #849 — locate the body-write flag WITHIN a single segment. Callers must pass
+// one segment, never a whole chain.
+function parseBodySource(segment) {
+  const fileMatch = segment.match(BODY_FILE_RE);
+  if (fileMatch) return { source: 'file', path: fileMatch[1] };
+  const inlineMatch = segment.match(BODY_INLINE_RE);
+  if (inlineMatch) return { source: 'inline', body: inlineMatch[2] };
+  return { source: 'none' };
+}
+
+// Returns the parse of the FIRST `gh issue edit` segment that carries a body
+// flag, falling back to the first `gh issue edit` segment at all. Pre-#849 this
+// scanned the whole command string for `--body*`, so a neighboring command's
+// flag produced a refusal that was false of the edit it named.
 export function parseGhIssueEdit(command) {
-  const m = String(command || '').match(ISSUE_EDIT_RE);
-  if (!m) return null;
-  const issueNumber = Number(m[1]);
-  const fileMatch = command.match(BODY_FILE_RE);
-  if (fileMatch) return { issueNumber, source: 'file', path: fileMatch[1] };
-  const inlineMatch = command.match(BODY_INLINE_RE);
-  if (inlineMatch) return { issueNumber, source: 'inline', body: inlineMatch[2] };
-  return { issueNumber, source: 'none' };
+  let fallback = null;
+  for (const segment of splitCommandSegments(command)) {
+    const m = segment.match(ISSUE_EDIT_RE);
+    if (!m) continue;
+    const issueNumber = Number(m[1]);
+    const body = parseBodySource(segment);
+    if (body.source !== 'none') return { issueNumber, ...body };
+    if (!fallback) fallback = { issueNumber, source: 'none' };
+  }
+  return fallback;
 }
 
 export function parseGhIssueCreate(command) {
-  const cmd = String(command || '');
-  if (!ISSUE_CREATE_RE.test(cmd)) return null;
-  const fileMatch = cmd.match(BODY_FILE_RE);
-  if (fileMatch) return { source: 'file', path: fileMatch[1] };
-  const inlineMatch = cmd.match(BODY_INLINE_RE);
-  if (inlineMatch) return { source: 'inline', body: inlineMatch[2] };
-  return { source: 'none' };
+  let fallback = null;
+  for (const segment of splitCommandSegments(command)) {
+    if (!ISSUE_CREATE_RE.test(segment)) continue;
+    const body = parseBodySource(segment);
+    if (body.source !== 'none') return body;
+    if (!fallback) fallback = { source: 'none' };
+  }
+  return fallback;
 }
 
 // #659 AC1 — classify a `gh api` command as an issue-creation attempt.
@@ -189,17 +283,21 @@ export function parseGhIssueCreate(command) {
 // `gh api graphql` command whose query contains a `createIssue(` selection, or
 // null for everything else (GETs, `.../issues/<n>` edits, unrelated POSTs,
 // non-issue endpoints, non-`gh api` commands). Pure and side-effect-free.
+// #849 — classified per command segment, so a `-f`/`--body-file` flag on a
+// neighboring command in the same chain cannot promote an innocent `gh api`
+// GET into a "create".
 export function classifyGhApiIssueCreate(command) {
-  const cmd = String(command || '');
-  if (!GH_API_RE.test(cmd)) return null;
-  // GraphQL createIssue mutation.
-  if (GH_API_GRAPHQL_RE.test(cmd) && GH_API_CREATE_MUTATION_RE.test(cmd)) return 'graphql';
-  // REST POST to the issues collection endpoint.
-  if (GH_API_ISSUES_ENDPOINT_RE.test(cmd)) {
-    const methodMatch = cmd.match(GH_API_METHOD_RE);
-    const method = methodMatch ? methodMatch[1].toUpperCase() : null;
-    const isPost = method ? method === 'POST' : GH_API_FIELD_FLAG_RE.test(cmd);
-    if (isPost) return 'rest';
+  for (const cmd of splitCommandSegments(command)) {
+    if (!GH_API_RE.test(cmd)) continue;
+    // GraphQL createIssue mutation.
+    if (GH_API_GRAPHQL_RE.test(cmd) && GH_API_CREATE_MUTATION_RE.test(cmd)) return 'graphql';
+    // REST POST to the issues collection endpoint.
+    if (GH_API_ISSUES_ENDPOINT_RE.test(cmd)) {
+      const methodMatch = cmd.match(GH_API_METHOD_RE);
+      const method = methodMatch ? methodMatch[1].toUpperCase() : null;
+      const isPost = method ? method === 'POST' : GH_API_FIELD_FLAG_RE.test(cmd);
+      if (isPost) return 'rest';
+    }
   }
   return null;
 }
