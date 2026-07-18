@@ -27,12 +27,27 @@ import {
   buildFullAutoApprovedMarker,
 } from '../task-tracker/lib/markers.mjs';
 import { HUMAN_REVIEWER_MARKER_RE } from '../task-tracker/lib/human-reviewer-audit.mjs';
+import { assertKnownArgv, reportStrictArgvError } from '../task-tracker/lib/argv-strict.mjs';
+
+export const USAGE =
+  'Usage: heal-full-auto-footnote.mjs [--apply] [--issue <n>]\n' +
+  '  (default)   audit only, no writes\n' +
+  '  --apply     write the healed full-auto footnote\n' +
+  '  --issue <n> restrict to a single issue\n' +
+  '  --help, -h  print this usage and exit; never writes\n';
 
 const HEAL_SIGNALS = 'reviewer-unset=1,env=0,tty=1,ci=0,heal=1';
 const HEAL_AUDIT_RE = /<!--\s*aitm-full-auto-footnote-heal\s*-->/i;
 
 function parseArgs(argv) {
   const args = { apply: false, issue: null };
+
+  // #878 — refuse unknown flags before any gh call.
+  if (assertKnownArgv(argv, { flags: ['--apply'], options: ['--issue'], usage: USAGE })) {
+    args.help = true;
+    return args;
+  }
+
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
@@ -115,7 +130,11 @@ function postHealComment(repo, issueNumber, ts) {
 }
 
 async function main() {
-  const { apply, issue } = parseArgs(process.argv.slice(2));
+  const { apply, issue, help } = parseArgs(process.argv.slice(2));
+  if (help) {
+    console.log(USAGE);
+    return;
+  }
   const cfg = loadConfig();
   if (!cfg.repo) {
     console.error('repo not configured. Run: /task config repo owner/repo');
@@ -155,6 +174,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (reportStrictArgvError(err, { usage: USAGE })) process.exit(2);
   console.error(err.stack || err.message);
   process.exit(1);
 });

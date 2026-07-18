@@ -61,21 +61,35 @@ test('no flags defaults to audit-only — no writes without --apply', async () =
   assert.match(logs.join('\n'), /audit — no writes; pass --apply to write/);
 });
 
-test('an unrecognized flag also defaults to audit-only, not live-write', async () => {
-  const logs = [];
+// #878 tightened this from "an unrecognized flag falls through to audit-only"
+// to an outright refusal. Silently degrading to audit was safe only because this
+// script has no other flags; when the ignored token was meant to *narrow* an
+// `--apply` run (`--apply --scope 877`), tolerance produced a repo-wide write.
+test('an unrecognized flag is refused outright, not degraded to audit-only', async () => {
   let mutated = 0;
-  await main(['--bogus-flag'], {
-    listOpenIssues: async () => [
-      { number: 1, body: ['# Title', '', 'no VC section here', ''].join('\n') },
-    ],
-    mutateIssueBody: async () => {
-      mutated += 1;
-      return { status: 'ok' };
-    },
-    log: (s) => logs.push(s),
-    err: () => {},
-  });
+  let listed = 0;
+  await assert.rejects(
+    () =>
+      main(['--bogus-flag'], {
+        listOpenIssues: async () => {
+          listed += 1;
+          return [{ number: 1, body: ['# Title', '', 'no VC section here', ''].join('\n') }];
+        },
+        mutateIssueBody: async () => {
+          mutated += 1;
+          return { status: 'ok' };
+        },
+        log: () => {},
+        err: () => {},
+      }),
+    (err) => {
+      assert.equal(err.name, 'StrictArgvError');
+      assert.match(err.message, /unrecognized argument: --bogus-flag/);
+      return true;
+    }
+  );
   assert.equal(mutated, 0, 'unrecognized flag must never fall through to a live write');
+  assert.equal(listed, 0, 'refusal must precede the gh issue list call');
 });
 
 console.log('backfill-vc-sections-help.test.mjs: all assertions passed');

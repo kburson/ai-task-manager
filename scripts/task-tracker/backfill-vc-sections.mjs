@@ -22,6 +22,7 @@ import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { parseVerificationCommands } from './lib/verification-commands.mjs';
 import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
+import { parseStrict, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 const pexec = promisify(execFile);
 
@@ -90,7 +91,13 @@ const USAGE =
 export async function main(argv = process.argv.slice(2), deps = {}) {
   const log = deps.log || ((s) => console.log(s));
 
-  if (argv.includes('--help') || argv.includes('-h')) {
+  // Strict argv first: refuse unknown tokens before any `gh` call, so a typo is
+  // a no-op rather than an unbounded write (#878).
+  const parsed = parseStrict(argv, {
+    flags: ['--apply', '--dry-run'],
+    usage: USAGE,
+  });
+  if (parsed.help) {
     log(USAGE);
     return;
   }
@@ -98,7 +105,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const list = deps.listOpenIssues || listOpenIssues;
   const mutate = deps.mutateIssueBody || mutateIssueBody;
   const err = deps.err || ((s) => console.error(s));
-  const apply = argv.includes('--apply');
+  const apply = Boolean(parsed.values['--apply']);
   const repo = 'kburson/ai-task-manager';
   const issues = await list(deps);
 
@@ -141,6 +148,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
 const invokedDirectly = import.meta.url === `file://${process.argv[1]}`;
 if (invokedDirectly) {
   main(process.argv.slice(2)).catch((err) => {
+    if (reportStrictArgvError(err, { usage: USAGE })) process.exit(2);
     console.error(err);
     process.exit(1);
   });

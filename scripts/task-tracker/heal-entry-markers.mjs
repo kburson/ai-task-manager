@@ -51,6 +51,14 @@ import {
 // directly) keep working unchanged.
 export { safeBackfillTs };
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+
+export const USAGE =
+  'Usage: heal-entry-markers.mjs [<issue#> ...] [--apply | --check-only]\n' +
+  '  (default)     audit only, no writes; all open issues when none are named\n' +
+  '  --apply       write the healed entry markers\n' +
+  '  --check-only  exit 1 if any issue would be healed\n' +
+  '  --help, -h    print this usage and exit; never writes\n';
 
 const pexec = promisify(execFile);
 
@@ -383,6 +391,24 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const out = deps.out || ((s) => process.stdout.write(s));
   const err = deps.err || ((s) => process.stderr.write(s));
   const exit = deps.exit || ((c) => process.exit(c));
+  // #878 — refuse unknown flags before any config load or gh call. Bare issue
+  // numbers are legitimate positionals here, so the budget is unbounded.
+  try {
+    if (
+      assertKnownArgv(argv, {
+        flags: ['--apply', '--check-only'],
+        positionals: { max: Infinity },
+        usage: USAGE,
+      })
+    ) {
+      out(USAGE);
+      return exit(0);
+    }
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err })) throw e;
+    return exit(2);
+  }
+
   const { issues, apply, checkOnly } = parseArgs(argv);
   if (apply && checkOnly) {
     err('heal-entry-markers: --apply and --check-only are mutually exclusive\n');

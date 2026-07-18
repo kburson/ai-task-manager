@@ -33,6 +33,7 @@ import {
 import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs';
 import { loadConfig } from './config.mjs';
 import { getProjectDir } from './paths.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 const pexec = promisify(execFile);
 
@@ -226,6 +227,19 @@ export async function main(argv, deps = {}) {
   const err = deps.err || ((s) => process.stderr.write(s));
   const exit = deps.exit || ((c) => process.exit(c));
   const stampNow = deps.stamp || new Date().toISOString().replace(/[:.]/g, '-');
+
+  // #878 — refuse unknown flags before anything else.
+  try {
+    assertKnownArgv(argv, {
+      flags: ['--all-open', '--apply'],
+      options: ['--issue', '--cap-hours'],
+    });
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err })) throw e;
+    printUsage(err);
+    return exit(2);
+  }
+
   const args = parseArgs(argv);
   if (args.help) {
     printUsage(out);

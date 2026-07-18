@@ -21,6 +21,7 @@ import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { loadConfig } from './config.mjs';
 import { healTimingStarts, countStartRows } from './lib/heal-timing-starts.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 // Core, testable with injected I/O. `deps.findTimingComment` /
 // `deps.updateTimingComment` default to the real GraphQL-backed helpers.
@@ -87,6 +88,19 @@ export async function main(argv, deps = {}) {
   const out = deps.out || process.stdout;
   const err = deps.err || process.stderr;
   const exit = deps.exit || ((code) => process.exit(code));
+
+  // #878 — refuse unknown flags before any config load or gh call. The bare
+  // `<issue#>` positional is required by this script's own usage.
+  try {
+    assertKnownArgv(argv, {
+      flags: ['--apply', '--check-only'],
+      positionals: { max: 1 },
+    });
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err: (s) => err.write(s) })) throw e;
+    printUsage(err);
+    return exit(2);
+  }
 
   const args = parseArgs(argv);
   if (args.help || !args.issue) {

@@ -15,8 +15,28 @@ import path from 'node:path';
 import { gql } from '../gh/lib/github-projects.mjs';
 import { mapOption } from './lib/state-map.mjs';
 import { RUNTIME_REL } from '../task-tracker/paths.mjs';
+import { parseStrict, reportStrictArgvError } from '../task-tracker/lib/argv-strict.mjs';
+
+const USAGE =
+  'Usage: migrate-to-7-state.mjs [--apply] [--config <path>]\n' +
+  '  (default)      dry run, no writes\n' +
+  '  --apply        write the migrated Status options\n' +
+  '  --config <p>   task-tracker config path\n' +
+  '  --help, -h     print this usage and exit; never writes\n';
 
 const argv = process.argv.slice(2);
+
+// #878 — refuse unknown flags at module load, before any config read or gh call.
+try {
+  if (parseStrict(argv, { flags: ['--apply'], options: ['--config'], usage: USAGE }).help) {
+    process.stdout.write(USAGE);
+    process.exit(0);
+  }
+} catch (e) {
+  if (!reportStrictArgvError(e, { usage: USAGE })) throw e;
+  process.exit(2);
+}
+
 const APPLY = argv.includes('--apply');
 const DRY_RUN = !APPLY;
 const cfgIdx = argv.indexOf('--config');
