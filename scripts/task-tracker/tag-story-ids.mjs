@@ -5,26 +5,14 @@
 // Shebang lines are preserved on line 1; the @story tag follows on line 2.
 
 import { execSync } from 'child_process';
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync } from 'fs';
+
+import { discoverTestFiles } from './lib/discover-test-files.mjs';
 
 const FALLBACK_STORY = '#309';
 const STORY_TAG_RE = /^\/\/ @story #\d/;
 const SHEBANG_RE = /^#!.+/;
 const ISSUE_RE = /#(\d+)/;
-
-function findTestFiles(dir) {
-  const results = [];
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) {
-      results.push(...findTestFiles(full));
-    } else if (entry.endsWith('.test.mjs')) {
-      results.push(full);
-    }
-  }
-  return results;
-}
 
 function findCreationIssue(filePath) {
   try {
@@ -66,15 +54,15 @@ function fixMisplacedTag(content) {
   return null; // no fix needed
 }
 
+// Discovery is the canonical walker (#875) instead of a private recursive
+// readdirSync; same repo-relative `*.test.mjs` set the runner sees. This
+// run-once script operates on "the repo I am run in", so discovery is rooted at
+// `process.cwd()` — matching the prior cwd-relative `readdirSync` walk. Under
+// npm cwd is the repo root (identical to the canonical default), and the
+// coverage harness drives it as a child process with a fixture cwd.
 const roots = ['scripts/task-tracker/tests', 'scripts/providers/tests'];
 const files = roots
-  .flatMap((r) => {
-    try {
-      return findTestFiles(r);
-    } catch {
-      return [];
-    }
-  })
+  .flatMap((r) => discoverTestFiles({ root: r, projectRoot: process.cwd() }))
   .sort();
 
 let tagged = 0;

@@ -13,21 +13,20 @@
 // Anything else is a regression and fails lint.
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
-import path from 'node:path';
 
-const ROOT = path.resolve('scripts');
+import { discoverFiles } from '../task-tracker/lib/discover-test-files.mjs';
 
 const ALLOWED = new Set([
-  path.resolve('scripts/task-tracker/lib/scratch-dir.mjs'),
-  path.resolve('scripts/maintenance/lint-no-system-tmp.mjs'),
+  'scripts/task-tracker/lib/scratch-dir.mjs',
+  'scripts/maintenance/lint-no-system-tmp.mjs',
 ]);
 
-// All `.mjs` files in scripts/.
-const files = execSync(`find ${ROOT} -type f -name '*.mjs'`, { encoding: 'utf8' })
-  .trim()
-  .split('\n')
-  .filter(Boolean);
+// All `.mjs` under scripts/, sourced from the canonical walker (#875) instead of
+// a private `execSync('find …')`. `excludes` is narrowed to node_modules only so
+// fixtures are still scanned — a fixture that writes to system tmp is still a
+// regression. Paths are repo-relative POSIX (cwd is the repo root under npm), so
+// the ALLOWED and `/tests/` filters below match on that shape.
+const files = discoverFiles({ match: /\.mjs$/, excludes: ['node_modules'] });
 
 const offenders = [];
 
@@ -48,21 +47,20 @@ const PATTERNS = [
   { re: /['"`]\/private\/tmp\//g, label: 'literal `/private/tmp/` path', testsToo: false },
 ];
 
-const isTestFile = (abs) => /\/tests\//.test(abs);
+const isTestFile = (rel) => /\/tests\//.test(rel);
 
 for (const f of files) {
-  const abs = path.resolve(f);
-  if (ALLOWED.has(abs)) continue;
-  const src = readFileSync(abs, 'utf8');
+  if (ALLOWED.has(f)) continue;
+  const src = readFileSync(f, 'utf8');
   const lines = src.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     for (const { re, label, testsToo } of PATTERNS) {
-      if (!testsToo && isTestFile(abs)) continue;
+      if (!testsToo && isTestFile(f)) continue;
       re.lastIndex = 0;
       if (re.test(line)) {
         offenders.push(
-          `${path.relative(process.cwd(), abs)}:${i + 1}: ${label} — use projectScratchDir/mkdtempProjectIsolated/mkdtempOutsideRepo from lib/scratch-dir.mjs`
+          `${f}:${i + 1}: ${label} — use projectScratchDir/mkdtempProjectIsolated/mkdtempOutsideRepo from lib/scratch-dir.mjs`
         );
         break;
       }

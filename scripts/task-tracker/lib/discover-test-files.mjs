@@ -29,7 +29,7 @@ const TEST_FILE_RE = /\.test\.mjs$/;
 // file such as `fixtures-helpers.mjs` is never misclassified.
 export const DEFAULT_EXCLUDES = Object.freeze(['node_modules', 'fixtures', '__fixtures__']);
 
-function walk(absDir, relDir, excludeSet, out) {
+function walk(absDir, relDir, excludeSet, match, out) {
   let entries;
   try {
     entries = readdirSync(absDir, { withFileTypes: true });
@@ -40,8 +40,8 @@ function walk(absDir, relDir, excludeSet, out) {
     const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       if (excludeSet.has(entry.name)) continue; // segment-level exclude
-      walk(path.join(absDir, entry.name), rel, excludeSet, out);
-    } else if (entry.isFile() && TEST_FILE_RE.test(entry.name)) {
+      walk(path.join(absDir, entry.name), rel, excludeSet, match, out);
+    } else if (entry.isFile() && match.test(entry.name)) {
       out.push(rel);
     }
   }
@@ -49,15 +49,23 @@ function walk(absDir, relDir, excludeSet, out) {
 }
 
 /**
- * Recursively discover every `*.test.mjs` file under `root`.
+ * Recursively discover every file whose basename matches `match` under `root`.
+ *
+ * The single recursive walker in the repo (#875, C4). `discoverTestFiles` is a
+ * thin `match: TEST_FILE_RE` view over this; consumers that need a wider set —
+ * e.g. the fleet-sandbox lint scans **all** `.mjs` under `/tests/`, a superset
+ * of `*.test.mjs` — pass their own `match` and `excludes` rather than keeping a
+ * private `find`/`readdirSync` walk that could drift from ground truth.
  *
  * @param {object} [opts]
+ * @param {RegExp} [opts.match=/\.mjs$/] - tested against each file's basename
  * @param {string} [opts.root='scripts'] - repo-relative (or absolute) start dir
  * @param {string[]} [opts.excludes] - directory names to skip (segment match)
  * @param {string} [opts.projectRoot] - repo root; inferred from this file's path
  * @returns {string[]} sorted, repo-relative paths with POSIX separators
  */
-export function discoverTestFiles({
+export function discoverFiles({
+  match = /\.mjs$/,
   root = DEFAULT_ROOT,
   excludes = DEFAULT_EXCLUDES,
   projectRoot = DEFAULT_PROJECT_ROOT,
@@ -65,8 +73,22 @@ export function discoverTestFiles({
   const excludeSet = new Set(excludes);
   const abs = path.isAbsolute(root) ? root : path.join(projectRoot, root);
   const relRoot = path.isAbsolute(root) ? path.relative(projectRoot, root) : root;
-  const out = walk(abs, relRoot, excludeSet, []);
+  const out = walk(abs, relRoot, excludeSet, match, []);
   return out.sort();
+}
+
+/**
+ * Recursively discover every `*.test.mjs` file under `root`. A `match`-fixed
+ * view over {@link discoverFiles}, kept as the named primitive most callers use.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.root='scripts'] - repo-relative (or absolute) start dir
+ * @param {string[]} [opts.excludes] - directory names to skip (segment match)
+ * @param {string} [opts.projectRoot] - repo root; inferred from this file's path
+ * @returns {string[]} sorted, repo-relative paths with POSIX separators
+ */
+export function discoverTestFiles(opts = {}) {
+  return discoverFiles({ ...opts, match: TEST_FILE_RE });
 }
 
 /**
