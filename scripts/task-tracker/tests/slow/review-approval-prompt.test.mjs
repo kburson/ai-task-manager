@@ -136,7 +136,12 @@ if (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && ar
 appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({argv, stdinBody}) + '\\n');
 
 if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
-  if (argv.includes('comments')) {
+  // #881 — \`--json\` takes ONE comma-joined token, so a combined request arrives
+  // as the single arg 'body,comments'. Branching on argv.includes('comments')
+  // missed it and fell through to the body-only reply, leaving the Agent Review
+  // Gate with zero comments and six spurious required-comments objections.
+  const jsonFields = String(argv[argv.indexOf('--json') + 1] || '').split(',');
+  if (jsonFields.includes('comments')) {
     const traceComment = ${JSON.stringify(traceComment)};
     // V2 required-comments (#811): the inline Agent Review Gate now demotes
     // any issue reaching Review without all five required report comments. A
@@ -158,7 +163,11 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
     const comments = traceComment
       ? [{ id: 'IC_trace', body: traceComment, url: 'https://example.test/comment' }, ...requiredComments]
       : [...requiredComments];
-    fs.writeSync(1,JSON.stringify({ comments }));
+    // Mirror the real \`gh\` contract: reply with every requested field, so a
+    // 'body,comments' request carries the live body alongside the comments.
+    const payload = { comments };
+    if (jsonFields.includes('body')) payload.body = readFileSync(${JSON.stringify(bodyStatePath)}, 'utf8');
+    fs.writeSync(1,JSON.stringify(payload));
     process.exit(0);
   }
   const currentBody = readFileSync(${JSON.stringify(bodyStatePath)}, 'utf8');
