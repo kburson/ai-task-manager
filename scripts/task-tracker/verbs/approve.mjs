@@ -35,6 +35,10 @@ import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { assertMarkerPersisted } from '../lib/stamp-verify.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
+import {
+  isAgentReviewComplete,
+  agentReviewIncompleteReason,
+} from '../lib/agent-review/review-gate.mjs';
 
 const pexec = promisify(execFile);
 
@@ -200,6 +204,22 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
       if (hasApprovalMarker(body)) {
         return { status: 'already-approved' };
+      }
+      // #881 — the human approval is the Review → Done EXIT condition, offered
+      // only once the Review state's ACTION (the Agent Review Gate) has completed
+      // with `result="pass"`. Refuse while it is incomplete or failing, so a human
+      // is never asked to sign off on a story the agent has not signed off on
+      // (observed on #878, where the gate ran only after the human was asked).
+      if (!isAgentReviewComplete(body)) {
+        const reason = agentReviewIncompleteReason(body);
+        return {
+          status: 'agent-review-incomplete',
+          reason,
+          message:
+            reason === 'review-failed'
+              ? `#${issueNumber} carries an \`aitm-review-failed\` marker — the Agent Review Gate objected and its objections are unresolved. Fix them in place, then re-run \`/task review #${issueNumber}\` before approving.`
+              : `#${issueNumber} has no passing Agent Review evidence — the Review state's action has not completed. Run \`/task review #${issueNumber}\` first; the human approval is the exit condition, not the action.`,
+        };
       }
       const ts = nowIso();
       const auto = detect();
@@ -380,6 +400,11 @@ export async function verbApprove(rest, cfg, deps = {}) {
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(3);
+    // #881 — distinct exit code from `wrong-state`: the issue IS in Review, but
+    // the state's action has not completed, so the exit condition is not offered.
+    case 'agent-review-incomplete':
+      process.stderr.write(`⛔ ${result.message}\n`);
+      process.exit(6);
     default:
       process.stderr.write(`approve: unknown result: ${result.status}\n`);
       process.exit(1);

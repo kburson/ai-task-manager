@@ -111,15 +111,22 @@ function refusalsToVerbResult(refusals, { issueNumber, target }) {
 }
 
 // Map source state → stage alias verb. Promote delegates to the alias so its
-// gate stack runs unchanged. States with no alias (`backlog`, `refine`, `plan`,
-// `test`) fall through to a direct internal move-state call.
+// gate stack runs unchanged. States with no alias (`backlog`, `refine`, `plan`)
+// fall through to a direct internal move-state call.
 //
 // `refine` and `plan` previously delegated to `analyze` and `approve`
 // (plan→develop walker), both retired in #98 — they now use the direct-move
-// fall-through, same as `backlog` and `test`. The plan→develop gate that
-// required the `aitm-plan-approved` marker is enforced by move-state itself.
-const ALIAS_VERB = {
+// fall-through, same as `backlog`. The plan→develop gate that required the
+// `aitm-plan-approved` marker is enforced by move-state itself.
+//
+// #881 — `test` gained an alias. Without one, a Test-column promote took the
+// bare direct-move branch and parked the issue in Review having never run the
+// Agent Review Gate, so the driving agent went straight on to solicit the human's
+// `approve` on an agent-unreviewed story (observed on #878). Delegating to
+// `review` means the Review state's action always runs on arrival.
+export const ALIAS_VERB = {
   develop: 'test',
+  test: 'review',
   review: 'close',
 };
 

@@ -21,6 +21,12 @@ import {
   detectFullAuto,
 } from '../../verbs/approve.mjs';
 
+// #881 — approve requires evidence that the Agent Review Gate (the Review state's
+// action) passed. Every fixture body below is suffixed with it; tests that care
+// about the refusal path live in approve-agent-review-complete.test.mjs.
+const AGENT_REVIEW_PASSED =
+  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
 
@@ -29,7 +35,7 @@ function makeDeps(overrides = {}) {
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  let body = initialBody;
+  let body = initialBody + AGENT_REVIEW_PASSED;
   return {
     calls,
     deps: {
@@ -230,16 +236,17 @@ function makeDeps(overrides = {}) {
 // inline `aitm-verified-at` HTML comment (which would also
 // break lifecycle-dod.mjs's exact-label match).
 {
-  const body = [
-    '## Acceptance Criteria',
-    '- [x] x',
-    '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [ ] Passed final human review',
-    '- [ ] Story closed and moved to Done',
-    '- [ ] Timing data flushed to issue',
-    '',
-  ].join('\n');
+  const body =
+    [
+      '## Acceptance Criteria',
+      '- [x] x',
+      '',
+      '#### Lifecycle (auto-ticked at Review/Close)',
+      '- [ ] Passed final human review',
+      '- [ ] Story closed and moved to Done',
+      '- [ ] Timing data flushed to issue',
+      '',
+    ].join('\n') + AGENT_REVIEW_PASSED;
   let capturedOpts = null;
   let liveBody = body;
   const r = await runApprove({
@@ -280,14 +287,15 @@ function makeDeps(overrides = {}) {
 // required because the lifecycle line is still ticked by the verb itself,
 // not by an agent attestation.
 {
-  const body = [
-    '## Acceptance Criteria',
-    '- [x] x',
-    '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [ ] Passed final human review',
-    '',
-  ].join('\n');
+  const body =
+    [
+      '## Acceptance Criteria',
+      '- [x] x',
+      '',
+      '#### Lifecycle (auto-ticked at Review/Close)',
+      '- [ ] Passed final human review',
+      '',
+    ].join('\n') + AGENT_REVIEW_PASSED;
   let capturedOpts = null;
   let liveBody = body;
   const r = await runApprove({

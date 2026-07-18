@@ -208,13 +208,19 @@ test('runPromote: develop→test refused when CODE_COMPLETE gate blocks', async 
   assert.equal(r.status, 'code-complete-refused');
   assert.equal(calls.spawns.length, 0);
 });
-test('runPromote: test→review direct move when dod-verified + all ticked', async () => {
+// #881 — `test` gained an alias. It used to take the bare direct-move branch, so
+// the issue landed in Review having never run the Agent Review Gate (the Review
+// state's action) and the human was then asked to approve an agent-unreviewed
+// story. Delegating to `review` runs the action on arrival.
+test('runPromote: test→review delegates to /task review', async () => {
   const body = bodyWithState('test') + DOD_MARKER + '\n## Acceptance Criteria\n- [x] First AC\n';
-  const { deps, calls } = makeDeps({ body, live: 'test' });
+  const { deps, calls } = makeDeps({ body, live: 'test', liveAfter: 'review' });
   const r = await runPromote({ issueNumber: 2572, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'review');
-  assert.deepEqual(calls.moves, [{ issueNumber: 2572, target: 'review' }]);
+  assert.equal(r.via, 'alias:review');
+  assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 2572 }]);
+  assert.deepEqual(calls.moves, [], 'the alias verb owns the move, not promote');
 });
 test('runPromote: test→review refused when dod-verified marker missing', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
