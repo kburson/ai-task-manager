@@ -7,27 +7,29 @@
 // the rationale and scoping rules.
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import path from 'node:path';
 
 import { findFleetSandboxViolations } from '../task-tracker/lib/lint-fleet-sandbox-isolation.mjs';
-
-const ROOT = path.resolve('scripts');
+import { discoverFiles } from '../task-tracker/lib/discover-test-files.mjs';
 
 // The guard's own unit test contains fixture strings (bare-mkdtemp + a
 // registering token) that would self-trip the guard. It exercises the guard via
 // its exported functions, so it never creates a real sandbox — exclude it.
 const ALLOWED = new Set(['lint-fleet-sandbox-isolation.test.mjs']);
 
-const testFiles = execSync(`find ${ROOT} -type f -name '*.mjs'`, { encoding: 'utf8' })
-  .trim()
-  .split('\n')
-  .filter(Boolean)
+// Source the file list from the canonical walker (#875) instead of a private
+// `execSync('find …')`. This scans ALL `.mjs` under `/tests/` — helpers and
+// fixture modules included, a superset of `*.test.mjs` — so `excludes` is
+// narrowed to `node_modules` only: dropping the canonical default's `fixtures`
+// exclusion here would silently shrink the guard's scope (a fixture that creates
+// a bare sandbox must still be linted). Repo-relative paths match the prior
+// `path.relative(cwd, …)` shape, so the `/tests/` and ALLOWED filters are intact.
+const testFiles = discoverFiles({ match: /\.mjs$/, excludes: ['node_modules'] })
   .filter((f) => /\/tests\//.test(f))
   .filter((f) => !ALLOWED.has(path.basename(f)));
 
 const files = testFiles.map((f) => ({
-  path: path.relative(process.cwd(), path.resolve(f)),
+  path: f,
   src: readFileSync(f, 'utf8'),
 }));
 
