@@ -207,8 +207,9 @@ test('childCreationAllowedAtEpicState: true for every state except done', () => 
 });
 
 // ------------------------------------------------------------------
-// developEpicTestChildrenGate (#337) — develop → test admission.
-// Predicate: every child must be at `done`.
+// developEpicTestChildrenGate (#337, relaxed by #877) — develop → test
+// admission. Predicate: every child must be at `review` or later.
+// The stricter child-`done` rule moved to `reviewEpicDoneChildrenGate`.
 // ------------------------------------------------------------------
 
 test('developEpicTestChildrenGate passes for non-epic (no children)', async () => {
@@ -221,7 +222,7 @@ test('developEpicTestChildrenGate passes for non-epic (no children)', async () =
   assert.deepEqual(result.children, []);
 });
 
-for (const pendingState of ['backlog', 'refine', 'plan', 'develop', 'test', 'review']) {
+for (const pendingState of ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test']) {
   test(`developEpicTestChildrenGate refuses when any child is at ${pendingState}`, async () => {
     const result = await developEpicTestChildrenGate({
       cfg,
@@ -235,7 +236,7 @@ for (const pendingState of ['backlog', 'refine', 'plan', 'develop', 'test', 'rev
     });
     assert.equal(result.ok, false);
     assert.equal(result.blockers.length, 1);
-    assert.match(result.blockers[0], /epic-children-not-done/);
+    assert.match(result.blockers[0], /epic-children-not-in-review/);
     assert.match(result.blockers[0], /#102/);
     assert.equal(result.offendingChildren.length, 1);
     assert.equal(result.offendingChildren[0].number, 102);
@@ -256,6 +257,68 @@ test('developEpicTestChildrenGate passes when every child is done', async () => 
   });
   assert.equal(result.ok, true);
   assert.equal(result.children.length, 3);
+});
+
+// #877 — the relaxation itself. `done` still passes (above); these assert the
+// widening: `review` children now admit the epic to Test, alone and mixed.
+test('developEpicTestChildrenGate passes when every child is at review', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([
+        { number: 101, state: 'review', rank: 1 },
+        { number: 102, state: 'review', rank: 2 },
+      ]),
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.children.length, 2);
+});
+
+test('developEpicTestChildrenGate passes on a mix of review and done children', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([
+        { number: 101, state: 'done', rank: 1 },
+        { number: 102, state: 'review', rank: 2 },
+        { number: 103, state: 'done', rank: 3 },
+      ]),
+    },
+  });
+  assert.equal(result.ok, true);
+});
+
+test('developEpicTestChildrenGate names every pre-review offender, not just the first', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([
+        { number: 101, state: 'develop', rank: 1 },
+        { number: 102, state: 'review', rank: 2 },
+        { number: 103, state: 'backlog', rank: 3 },
+      ]),
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.blockers[0], /#101/);
+  assert.match(result.blockers[0], /#103/);
+  assert.doesNotMatch(result.blockers[0], /#102/);
+  assert.equal(result.offendingChildren.length, 2);
+});
+
+test('developEpicTestChildrenGate accepts mixed-case "REVIEW"', async () => {
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 100,
+    deps: {
+      fetchSiblings: stubFetch([{ number: 101, state: 'REVIEW', rank: 1 }]),
+    },
+  });
+  assert.equal(result.ok, true);
 });
 
 test('developEpicTestChildrenGate surfaces fetch failure as blocker', async () => {

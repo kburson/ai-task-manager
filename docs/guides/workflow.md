@@ -252,6 +252,18 @@ Within a wave, child flow is further constrained:
   guard refuses new children under a Done parent (override
   `AITM_SKIP_PARENT_STATE_GATE=1`). Children are no longer required to all reach
   Refine before the epic may move to Plan — that exit-gate requirement was retired.
+- **Epic child-state floors** (#877) — two gates, on two different arcs:
+  - **Develop → Test** requires every child at **Review or later**
+    (`developEpicTestChildrenGate`, refusal `epic-children-not-in-review`).
+  - **Review → Done** requires every child at **Done**
+    (`reviewEpicDoneChildrenGate`, refusal `epic-children-not-done`).
+
+  The strict child-`done` requirement used to sit on develop → test, which
+  deadlocked the PR-based flow: a child cannot reach Done until the epic branch
+  lands on trunk, but the branch cannot land until the epic itself clears Test
+  and Review. Holding children at Review lets the epic be reviewed alongside
+  them and close together once the branch merges. The invariant was **moved,
+  not dropped** — an epic still cannot reach Done with an unfinished child.
 
 ### Backlog vs Refine
 
@@ -408,7 +420,7 @@ scripts/gh/set-priority.mjs 42 p1 --cascade
 
 ## Sub-Issues Hierarchy
 
-Use native GitHub sub-issues to track epic completion. **A parent issue cannot be marked Done until all child issues are complete.**
+Use native GitHub sub-issues to track epic completion. **A parent issue cannot be marked Done until all child issues are complete** — enforced on the Review → Done arc by `reviewExitEpicChildrenDoneGuard` (#877). The parent may reach Test and Review while its children sit at Review; only the final close requires them all at Done. See _Epic child-state floors_ under Wave & WIP rules.
 
 Link a new issue as a sub-issue of its parent epic:
 
