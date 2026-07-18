@@ -145,3 +145,39 @@ test('the operator is told to fix in place and re-run, not to fix in Develop', (
   assert.match(reviewSrc, /stays in Review with its state action incomplete/);
   assert.doesNotMatch(reviewSrc, /Fix the objections above in Develop/);
 });
+
+// ── The gate reads a POST-move body ─────────────────────────────────────────
+//
+// Hoisting the move above the gate created a stale-body read: `scanBody` is
+// captured upstream of `runMoveState`, which stamps `aitm-entered-review` and
+// writes the `review:started` timing row. Feeding the gate that pre-move copy
+// made `timing-log-sequence` object on EVERY issue — it saw the new
+// `review:started` row in the live timing log but no `aitm-entered-review`
+// marker in the body — and the failure stamp, derived from the same stale copy,
+// then threw `MarkerLossError` for dropping that marker. Observed live on #881.
+
+test('the gate is handed a body fetched AFTER the move, not the pre-move scanBody', () => {
+  const moveIdx = reviewSrc.indexOf("await runMoveState(target, 'review'");
+  const refetchIdx = reviewSrc.indexOf("'body,comments'");
+  const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
+  assert.notEqual(refetchIdx, -1, 'the post-move body+comments re-fetch must exist');
+  assert.ok(moveIdx < refetchIdx, 're-fetch must happen after the move that stamps the marker');
+  assert.ok(refetchIdx < gateIdx, 're-fetch must happen before the gate consumes it');
+  assert.match(
+    reviewSrc.slice(gateIdx, gateIdx + 200),
+    /body:\s*gateBody/,
+    'the gate must consume the post-move snapshot'
+  );
+});
+
+test('both gate outcome paths derive their write from the post-move body', () => {
+  const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
+  const tail = reviewSrc.slice(gateIdx);
+  // The fail path stamps aitm-review-failed; the pass path stamps the tick.
+  // Either deriving from `scanBody` reintroduces the dropped-marker throw.
+  assert.doesNotMatch(
+    tail.slice(0, 2500),
+    /:\s*scanBody;/,
+    'neither baseBody nor passBase may fall back to the pre-move scanBody'
+  );
+});

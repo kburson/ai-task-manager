@@ -762,23 +762,34 @@ export async function verbReview(ctx) {
     // with its state action incomplete, to be fixed in place and re-run. With
     // zero validators registered the gate is a vacuous pass.
     {
+      // #881 — re-fetch the body HERE, after the move, not before it. `scanBody`
+      // was captured upstream of `runMoveState`, which stamps `aitm-entered-review`
+      // and writes the `review:started` timing row. Handing the gate that stale
+      // copy made `timing-log-sequence` object against every issue: it read the
+      // new `review:started` row from the live timing log but no matching
+      // `aitm-entered-review` marker in the body, and the failure stamp derived
+      // from the same stale copy then threw `MarkerLossError` for dropping that
+      // very marker. Fetch body and comments together so both halves of the
+      // gate's input come from one post-move snapshot.
       let comments = [];
+      let gateBody = scanBody;
       try {
         const { stdout } = await pexec(
           'gh',
-          ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'comments'],
+          ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'body,comments'],
           { timeout: GH_API_TIMEOUT_MS }
         );
         const parsed = JSON.parse(stdout || '{}');
         comments = Array.isArray(parsed.comments) ? parsed.comments : [];
+        if (typeof parsed.body === 'string' && parsed.body.trim()) gateBody = parsed.body;
       } catch {
-        // Best-effort: a comment-fetch failure leaves `comments` empty. Any
-        // validator that requires a comment reports its own failure, so the
-        // gate never silently passes on missing evidence.
+        // Best-effort: a fetch failure leaves `comments` empty and `gateBody` on
+        // the pre-move `scanBody`. Any validator that requires a comment reports
+        // its own failure, so the gate never silently passes on missing evidence.
         comments = [];
       }
       const gate = runAgentReviewGate({
-        body: scanBody,
+        body: gateBody,
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         comments,
@@ -795,7 +806,7 @@ export async function verbReview(ctx) {
         //
         // with no `demoted:develop` / `develop:started` pair and (by design) no
         // `review:approved`.
-        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
+        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
         const _tsRF = nowIso();
         const failedBody = stampReviewFailed(baseBody, gate.failures, { ts: _tsRF });
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
@@ -828,12 +839,12 @@ export async function verbReview(ctx) {
       // — honest because the gate genuinely ran — WITHOUT the old
       // `allowUnverifiedTicks` bypass. A body with no such line (old template)
       // stamps to a noop and skips the write, which the close gate tolerates.
-      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
+      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
       const tickedBody = stampAgentReviewPassed(clearReviewFailed(passBase), {
         ts: nowIso(),
         validators: gate.validatorsRun,
       });
-      if (tickedBody !== scanBody) {
+      if (tickedBody !== gateBody) {
         try {
           await mutateBodyFn({
             issueNumber: issueNum,
