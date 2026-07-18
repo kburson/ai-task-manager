@@ -47,23 +47,25 @@ export function buildDeferredReviewRow(spec, ts) {
   return kind === 'flush' ? buildFlushRow({ ...params, ts }) : buildRow({ ...params, ts });
 }
 
-// EPIC #823 timing model v2 (C7 / defects D2+D3): emit an agent-review-gate
-// failure as a canonically-ordered timeline. Extracted from `verbReview` so the
-// ORDER is unit-testable without the verb's dynamic-import network path
+// EPIC #823 timing model v2 (C7 / defect D2): emit an agent-review-gate failure
+// as a canonically-ordered timeline. Extracted from `verbReview` so the ORDER is
+// unit-testable without the verb's dynamic-import network path
 // (runReviewPreflight / runGuards can't be intercepted by node:test).
 //
-// Ordered side effects — the review DID start, and the objections are its
-// outcome, so the sequence is:
-//   1. runMoveState(target,'review')             → test:passed + review:started
-//   2. mutateBodyFn(… failedBody)                → stamp aitm-review-failed
-//   3. safePostTiming(target, review:failed row)
-//   4. runMoveState(target,'develop', --demote)  → demoted:develop + develop:started
+// Ordered side effects:
+//   1. mutateBodyFn(… failedBody)                → stamp aitm-review-failed
+//   2. safePostTiming(target, review:failed row)
 //
-// Step 1's transient Review board touch is intentional: without it the
-// `review:failed` row would dangle with no preceding `review:started` (defect
-// D2). Step 4 carries `--demote-reason` so the audit row is `demoted:develop`
-// with the objection summary rather than a bare `demoted` (defect D3). The
-// demote branch (by design) emits NO `review:approved` row.
+// #881 — this function no longer moves the board. The Agent Review Gate is the
+// ACTION of the Review state, so by the time it can fail the caller has already
+// performed the Test→Review move and the `test:passed` + `review:started` pair is
+// on the record (defect D2 stays fixed without the old transient Review touch).
+// A failed action leaves the issue IN Review to be fixed in place and re-run; the
+// Review→Develop demote that used to be step 4 is deliberately gone, because it
+// discarded Test-stage verification over objections that Review's own activity
+// policy (`WRITE_ISSUE`/`WRITE_DOCS`) permits fixing where the issue stands. The
+// `deps.runMoveState` this function used to require is therefore unused; callers
+// may still pass it harmlessly.
 export async function emitReviewGateFailureTimeline({
   target,
   issueNum,
@@ -76,7 +78,6 @@ export async function emitReviewGateFailureTimeline({
   deps,
 }) {
   const {
-    runMoveState,
     safePostTiming,
     mutateBodyFn,
     buildRow: buildRowFn = buildRow,
@@ -85,9 +86,7 @@ export async function emitReviewGateFailureTimeline({
     logError = (m) => console.error(m),
   } = deps;
   const objectionSummary = `agent review failed — ${failures.length} objection(s)`;
-  // (1) transient Test→Review — lays down test:passed + review:started.
-  await runMoveState(target, 'review', { silent: true });
-  // (2) stamp the aitm-review-failed marker.
+  // (1) stamp the aitm-review-failed marker.
   try {
     await mutateBodyFn({
       issueNumber: issueNum,
@@ -100,7 +99,7 @@ export async function emitReviewGateFailureTimeline({
   } catch (e) {
     logError(`[task-tracker] failed to stamp aitm-review-failed: ${e.message}`);
   }
-  // (3) the review outcome row itself.
+  // (2) the review outcome row itself.
   await safePostTiming(
     target,
     buildRowFn({
@@ -111,13 +110,9 @@ export async function emitReviewGateFailureTimeline({
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (gate failure, no live session)
       wordMarker,
-      description: `${objectionSummary}, reverted to Develop`,
+      description: `${objectionSummary}, staying in Review`,
     })
   );
-  // (4) Review→Develop demote carrying the objection summary (D3).
-  await runMoveState(target, 'develop', {
-    extraArgs: ['--demote', '--demote-reason', objectionSummary],
-  });
 }
 
 // #844 (D6) — the SANDBOX-VERIFICATION-FAILURE demote path. Distinct from the
@@ -734,55 +729,84 @@ export async function verbReview(ctx) {
         process.exit(4);
       }
     }
-    // #809 — Agent Review Gate. Run the structural validator registry inline,
-    // after the completeness gate and before the move to Review. This is the
-    // objective, machine-checkable half of review sign-off: a pass ticks the
-    // "Agent Review Passed" DoD item and review continues; a failure writes a
-    // `review:failed` timing row + an `aitm-review-failed` body marker listing
-    // every objection and demotes the issue straight to Develop (the Test-state
-    // WRITE_CODE gate forbids fixing in place). With zero validators registered
-    // the gate is a vacuous pass, so this is inert until V1 lands.
+    // #881 — the move to Review runs FIRST, unconditionally. Entering Review is
+    // not gated on the agent review: the Agent Review Gate is the ACTION of the
+    // Review state, not an exit condition of Test and not an entry condition of
+    // Review. Test's own exit guards (completeness, above; dod-verified; sandbox
+    // proof) already ran and are the real exit conditions.
+    //
+    // #406 — the move is authoritative. `runMoveState` returns a structured
+    // result; a genuine refusal (`ok:false` and not a benign self-loop) must NOT
+    // fall through to the gate. The matrix gate (`validateTransition`) that
+    // refused live on #233 is not replicated by the inline guards above, so
+    // gating on this result is the only correct check. A re-run while already in
+    // Review is a satisfied no-op (#882) and passes here, which is what makes the
+    // state action re-runnable in place.
+    const reviewMove = await runMoveState(target, 'review', { silent: true });
+    if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
+      process.stderr.write('\n');
+      process.stderr.write(
+        `⛔ ${target} verification passed but the move to Review was refused:\n`
+      );
+      for (const line of String(reviewMove.stderr || '').split('\n')) {
+        if (line.trim()) process.stderr.write(`   ${line}\n`);
+      }
+      process.stderr.write('\n');
+      process.exit(reviewMove.status || 4);
+    }
+    // #809 — Agent Review Gate: the Review state's action, run on arrival. This
+    // is the objective, machine-checkable half of review sign-off: a pass ticks
+    // the "Agent Review Passed" DoD item and review continues to the human gate;
+    // a failure writes a `review:failed` timing row + an `aitm-review-failed`
+    // body marker listing every objection and LEAVES THE ISSUE IN REVIEW (#881)
+    // with its state action incomplete, to be fixed in place and re-run. With
+    // zero validators registered the gate is a vacuous pass.
     {
+      // #881 — re-fetch the body HERE, after the move, not before it. `scanBody`
+      // was captured upstream of `runMoveState`, which stamps `aitm-entered-review`
+      // and writes the `review:started` timing row. Handing the gate that stale
+      // copy made `timing-log-sequence` object against every issue: it read the
+      // new `review:started` row from the live timing log but no matching
+      // `aitm-entered-review` marker in the body, and the failure stamp derived
+      // from the same stale copy then threw `MarkerLossError` for dropping that
+      // very marker. Fetch body and comments together so both halves of the
+      // gate's input come from one post-move snapshot.
       let comments = [];
+      let gateBody = scanBody;
       try {
         const { stdout } = await pexec(
           'gh',
-          ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'comments'],
+          ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'body,comments'],
           { timeout: GH_API_TIMEOUT_MS }
         );
         const parsed = JSON.parse(stdout || '{}');
         comments = Array.isArray(parsed.comments) ? parsed.comments : [];
+        if (typeof parsed.body === 'string' && parsed.body.trim()) gateBody = parsed.body;
       } catch {
-        // Best-effort: a comment-fetch failure leaves `comments` empty. Any
-        // validator that requires a comment reports its own failure, so the
-        // gate never silently passes on missing evidence.
+        // Best-effort: a fetch failure leaves `comments` empty and `gateBody` on
+        // the pre-move `scanBody`. Any validator that requires a comment reports
+        // its own failure, so the gate never silently passes on missing evidence.
         comments = [];
       }
       const gate = runAgentReviewGate({
-        body: scanBody,
+        body: gateBody,
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         comments,
       });
       if (!gate.pass) {
-        // FAIL — emit the review-gate failure in canonical timeline order, then
-        // exit non-zero. EPIC #823 timing model v2 (C7 / defects D2+D3): the
-        // gate ran while the board was still at Test, so the failure timeline is
+        // FAIL — the Review state's action did not complete. The issue STAYS IN
+        // REVIEW (#881); the objection is fixed in place and `review <N>` re-run.
+        // EPIC #823 timing model v2 (C7 / defect D2) is preserved: the move above
+        // already laid down `test:passed` + `review:started`, so the
+        // `review:failed` row has its preceding `review:started` and the timeline
+        // reads
         //
-        //   test:passed → review:started → review:failed → demoted:develop → develop:started
+        //   test:passed → review:started → review:failed
         //
-        // (1) advance Test→Review so the `test:passed` + `review:started` pair
-        //     is laid down — the review DID start; the objections are its
-        //     outcome, so a `review:failed` row with no preceding
-        //     `review:started` (the old bug) is a lie. This is a deliberate,
-        //     transient Review touch: the very next move demotes straight back.
-        // (2) stamp the `aitm-review-failed` marker + post the `review:failed`
-        //     row.
-        // (3) demote Review→Develop with `--demote-reason` so the audit row is
-        //     `demoted:develop` carrying the objection summary (D3), not a bare
-        //     `demoted`. The demote branch emits `demoted:develop` +
-        //     `develop:started` and (by design) NO `review:approved`.
-        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
+        // with no `demoted:develop` / `develop:started` pair and (by design) no
+        // `review:approved`.
+        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
         const _tsRF = nowIso();
         const failedBody = stampReviewFailed(baseBody, gate.failures, { ts: _tsRF });
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
@@ -803,7 +827,7 @@ export async function verbReview(ctx) {
         );
         for (const f of gate.failures) process.stderr.write(`   ${f}\n`);
         process.stderr.write(
-          '\nFix the objections above in Develop, then re-run the verb chain to Review.\n\n'
+          `\n${target} stays in Review with its state action incomplete. Fix the objections\nabove in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of\nfix every registered validator asks for — then re-run \`/task review ${target}\`.\n\n`
         );
         process.exit(3);
       }
@@ -815,12 +839,12 @@ export async function verbReview(ctx) {
       // — honest because the gate genuinely ran — WITHOUT the old
       // `allowUnverifiedTicks` bypass. A body with no such line (old template)
       // stamps to a noop and skips the write, which the close gate tolerates.
-      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : scanBody;
+      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
       const tickedBody = stampAgentReviewPassed(clearReviewFailed(passBase), {
         ts: nowIso(),
         validators: gate.validatorsRun,
       });
-      if (tickedBody !== scanBody) {
+      if (tickedBody !== gateBody) {
         try {
           await mutateBodyFn({
             issueNumber: issueNum,
@@ -835,23 +859,11 @@ export async function verbReview(ctx) {
         }
       }
     }
-    // #406 — the move is authoritative. `runMoveState` returns a structured
-    // result; a genuine refusal (`ok:false` and not the benign done→done
-    // self-loop) must NOT print the success banner. The matrix gate
-    // (`validateTransition`) that refused live on #233 is not replicated by the
-    // inline guards above, so gating on this result is the only correct fix.
-    const reviewMove = await runMoveState(target, 'review', { silent: true });
-    if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
-      process.stderr.write('\n');
-      process.stderr.write(
-        `⛔ ${target} verification passed but the move to Review was refused:\n`
-      );
-      for (const line of String(reviewMove.stderr || '').split('\n')) {
-        if (line.trim()) process.stderr.write(`   ${line}\n`);
-      }
-      process.stderr.write('\n');
-      process.exit(reviewMove.status || 4);
-    }
+    // #881 — the authoritative Test→Review move used to sit HERE, after the
+    // Agent Review Gate, which made the gate a precondition of the transition.
+    // It has been hoisted above the gate block: entering Review is unconditional
+    // and the gate is the Review state's action. The refusal handling moved with
+    // it verbatim.
     // EPIC #823 timing model v2 (C6 / defect D1): the bare `review` row (the
     // #463 deferred verb-level "starting review" post) and the `review-ready`
     // state-move row (#516 DEFERRED) are both retired here. runMoveState above

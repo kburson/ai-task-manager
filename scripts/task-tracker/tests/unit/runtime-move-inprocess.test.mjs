@@ -33,7 +33,15 @@ test('runMoveStateInProcess drives the in-process host with the right argv/env (
   assert.deepEqual(argv.slice(1), ['move-state.mjs', '123', 'develop']);
   assert.equal(env.AITM_INTERNAL, '1');
   assert.equal(env.AITM_VERB_CONTEXT, 'runtime');
-  assert.deepEqual(res, { ok: true, status: 0, benign: false, stdout: '✓ moved\n', stderr: '' });
+  // #882 added `noop` to the structured result: false on an ordinary move.
+  assert.deepEqual(res, {
+    ok: true,
+    status: 0,
+    benign: false,
+    noop: false,
+    stdout: '✓ moved\n',
+    stderr: '',
+  });
 });
 
 test('runMoveStateInProcess folds extraArgs (--force) into the synthetic argv', async () => {

@@ -30,6 +30,8 @@ import { validateTransition } from '../../state-machine.mjs';
 //       ok,                //   validateTransition result (true when skipped)
 //       reason,            //   refusal reason string when !ok, else null
 //     },
+//     noop,                // #882 target === current state: satisfied no-op,
+//                          //   host must short-circuit before any side-effect
 //     runGuardPipeline,    // entry/exit guard pipeline applies (skipped on bypass)
 //     dirtyCheckOnReview,  // non-blocking dirty-workspace warn on move to review
 //     backlogWarn,         // sized-issue→backlog warning applies
@@ -44,10 +46,16 @@ export function computeTransitionPlan({ fromState = '', toState, flags = {} } = 
   // Matrix gate applies only when a from-state is known AND we are not
   // bypassing (supersede/force jump straight to done from any source).
   const matrix = { applies: Boolean(from) && !bypass, ok: true, reason: null };
+  // #882 — a self-transition is a satisfied no-op. Surfaced as a top-level plan
+  // flag so the host can short-circuit BEFORE the guard pipeline and every
+  // mutation/timing side-effect. False whenever the matrix gate does not apply
+  // (unknown `from`, or a supersede/force bypass) — there is nothing to compare.
+  let noop = false;
   if (matrix.applies) {
     const v = validateTransition(from, toState);
     matrix.ok = v.ok;
     matrix.reason = v.ok ? null : v.reason;
+    noop = Boolean(v.noop);
   }
 
   const isDoneMove = toState === 'done';
@@ -58,6 +66,7 @@ export function computeTransitionPlan({ fromState = '', toState, flags = {} } = 
     bypass,
     demote: Boolean(demote),
     matrix,
+    noop,
     // The guard pipeline (entry + exit guards) is skipped on supersede/force
     // exactly as the matrix gate is — an abandoned or operator-forced move is
     // not subject to the forward-progress / close gates.

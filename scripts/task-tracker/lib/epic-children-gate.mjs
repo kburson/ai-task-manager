@@ -63,12 +63,60 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   return { ok: true, children };
 }
 
-// Develop→test admission gate (#337): an epic refuses to leave Develop unless
-// every sub-issue is at `done`. Mirrors `planEpicDevelopChildrenGate` but with
-// the stricter predicate. Leaf issues (no children) pass trivially.
+// Develop→test admission gate (#337, relaxed by #877): an epic refuses to leave
+// Develop unless every sub-issue has reached `review`. Mirrors
+// `planEpicDevelopChildrenGate` with a later floor. Leaf issues (no children)
+// pass trivially.
+//
+// #877 moved the child-`done` requirement off this arc and onto review→done
+// (see `reviewEpicDoneChildrenGate` below). Rationale: under the PR-based flow a
+// child cannot reach `done` until the epic branch lands on trunk, but the epic
+// cannot reach the branch-landing step without first passing Test and Review —
+// a deadlock. Holding children at `review` lets the epic and its children be
+// reviewed together and close together once the branch merges.
 export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} } = {}) {
   if (!cfg) throw new Error('developEpicTestChildrenGate: cfg is required');
   if (!issueNumber) throw new Error('developEpicTestChildrenGate: issueNumber is required');
+  let children;
+  try {
+    children = await fetchEpicChildren({
+      cfg,
+      parentEpicNumber: issueNumber,
+      deps,
+    });
+  } catch (err) {
+    return { ok: false, blockers: [`epic-children-fetch-failed: ${err.message}`] };
+  }
+  if (!children.length) {
+    return { ok: true, children: [] };
+  }
+  const REVIEW_OR_LATER = new Set(['review', 'done']);
+  const offenders = children.filter(
+    (c) => !REVIEW_OR_LATER.has(String(c.state || '').toLowerCase())
+  );
+  if (offenders.length) {
+    const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+    return {
+      ok: false,
+      blockers: [
+        `epic-children-not-in-review: every child must be at review or later before the epic promotes to Test: ${lines.join(', ')}`,
+      ],
+      offendingChildren: offenders,
+    };
+  }
+  return { ok: true, children };
+}
+
+// Review→done admission gate (#877): the child-`done` invariant relaxed off the
+// develop→test arc lands here. An epic refuses to leave Review unless every
+// sub-issue is at `done`. This is the load-bearing half of #877 — before it
+// existed there was NO epic-side children check on the review→done arc
+// (`childCannotLeadEpicExitGuard` inspects the issue's own *parent*, not its
+// children), so relaxing the develop gate alone would have dropped the
+// invariant entirely rather than moved it. Leaf issues pass trivially.
+export async function reviewEpicDoneChildrenGate({ cfg, issueNumber, deps = {} } = {}) {
+  if (!cfg) throw new Error('reviewEpicDoneChildrenGate: cfg is required');
+  if (!issueNumber) throw new Error('reviewEpicDoneChildrenGate: issueNumber is required');
   let children;
   try {
     children = await fetchEpicChildren({
@@ -88,7 +136,7 @@ export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} 
     return {
       ok: false,
       blockers: [
-        `epic-children-not-done: every child must be at done before the epic promotes to Test: ${lines.join(', ')}`,
+        `epic-children-not-done: every child must be at done before the epic promotes to Done: ${lines.join(', ')}`,
       ],
       offendingChildren: offenders,
     };

@@ -226,7 +226,16 @@ function drive(overrides = {}) {
   return { log, deps };
 }
 
-test('gate-failure timeline: canonical order test:passed → review:started → review:failed → demoted:develop → develop:started', async () => {
+// #881 reshaped this function. The Agent Review Gate is the ACTION of the Review
+// state, so by the time it can fail the caller has already performed the
+// Test -> Review move: the `test:passed` + `review:started` pair is on the record
+// before this function is reached, and D2 (no `test:passed` after `review:failed`)
+// stays fixed structurally rather than by an internal transient move. A failed
+// action leaves the issue IN Review, so the demote and its `--demote` /
+// `--demote-reason` args are gone. The move-ordering half of the contract is
+// pinned in `review-state-action.test.mjs`.
+
+test('gate-failure timeline: the only timing row is review:failed', async () => {
   const { log, deps } = drive();
   await emitReviewGateFailureTimeline({
     target: '#999',
@@ -242,16 +251,10 @@ test('gate-failure timeline: canonical order test:passed → review:started → 
 
   // Strip the body-stamp (not a timing row) to check the timing sequence.
   const timing = log.filter((e) => e !== 'stamp:aitm-review-failed');
-  assert.deepEqual(timing, [
-    'test:passed',
-    'review:started',
-    'review:failed',
-    'demoted:develop:agent review failed — 2 objection(s)',
-    'develop:started',
-  ]);
+  assert.deepEqual(timing, ['review:failed']);
 });
 
-test('gate-failure timeline: review:started precedes review:failed', async () => {
+test('gate-failure timeline: the marker stamp precedes the review:failed row', async () => {
   const { log, deps } = drive();
   await emitReviewGateFailureTimeline({
     target: '#999',
@@ -265,12 +268,12 @@ test('gate-failure timeline: review:started precedes review:failed', async () =>
     deps,
   });
   assert.ok(
-    log.indexOf('review:started') < log.indexOf('review:failed'),
-    'review:started must precede review:failed'
+    log.indexOf('stamp:aitm-review-failed') < log.indexOf('review:failed'),
+    'the objection marker is stamped before the row that reports it'
   );
 });
 
-test('gate-failure timeline: no test:passed emitted AFTER review:failed (D2)', async () => {
+test('gate-failure timeline: no state-change row is emitted at all (D2)', async () => {
   const { log, deps } = drive();
   await emitReviewGateFailureTimeline({
     target: '#999',
@@ -283,20 +286,18 @@ test('gate-failure timeline: no test:passed emitted AFTER review:failed (D2)', a
     wordMarker: 0,
     deps,
   });
-  const failedIdx = log.indexOf('review:failed');
-  assert.ok(failedIdx !== -1, 'review:failed row present');
-  assert.equal(
-    log.slice(failedIdx + 1).includes('test:passed'),
-    false,
-    'no spurious test:passed after review:failed'
-  );
+  // `test:passed` / `review:started` belong to the caller's move, which already
+  // ran; re-emitting either here is the D2 regression.
+  for (const slug of ['test:passed', 'review:started', 'develop:started']) {
+    assert.equal(log.includes(slug), false, `${slug} must not be emitted from the failure path`);
+  }
 });
 
-test('gate-failure timeline: demote carries --demote and --demote-reason with objection summary (D3)', async () => {
-  const seen = { extraArgs: null };
+test('gate-failure timeline: no demote is driven, with or without extraArgs (D3)', async () => {
+  const seen = [];
   const { deps } = drive({
     runMoveState: async (_target, state, opts = {}) => {
-      if (state === 'develop') seen.extraArgs = opts.extraArgs;
+      seen.push({ state, extraArgs: opts.extraArgs });
       return { ok: true };
     },
     safePostTiming: async () => {},
@@ -313,14 +314,10 @@ test('gate-failure timeline: demote carries --demote and --demote-reason with ob
     wordMarker: 0,
     deps,
   });
-  assert.ok(Array.isArray(seen.extraArgs), 'develop demote received extraArgs');
-  assert.ok(seen.extraArgs.includes('--demote'), 'demote flag present');
-  const ri = seen.extraArgs.indexOf('--demote-reason');
-  assert.ok(ri !== -1, '--demote-reason present');
-  assert.equal(seen.extraArgs[ri + 1], 'agent review failed — 3 objection(s)');
+  assert.deepEqual(seen, [], 'the issue stays in Review - no move, demote or otherwise');
 });
 
-test('gate-failure timeline: body-stamp survives a mutate throw (best-effort) and order is unchanged', async () => {
+test('gate-failure timeline: a mutate throw is best-effort and does not lose the row', async () => {
   const { log, deps } = drive({
     mutateBodyFn: async () => {
       throw new Error('gh edit failed');
@@ -338,11 +335,5 @@ test('gate-failure timeline: body-stamp survives a mutate throw (best-effort) an
     deps: { ...deps, logError: () => {} },
   });
   const timing = log.filter((e) => e !== 'stamp:aitm-review-failed');
-  assert.deepEqual(timing, [
-    'test:passed',
-    'review:started',
-    'review:failed',
-    'demoted:develop:agent review failed — 1 objection(s)',
-    'develop:started',
-  ]);
+  assert.deepEqual(timing, ['review:failed']);
 });

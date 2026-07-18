@@ -32,6 +32,13 @@ import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 import { parseMarker } from '../task-tracker/lib/commit-trail.mjs';
 import { classifyIssue, retraceSha, LOG_FIELD_SEP } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
+import { assertKnownArgv, reportStrictArgvError } from '../task-tracker/lib/argv-strict.mjs';
+
+export const USAGE =
+  'Usage: heal-backlog-attribution.mjs [--apply] [--json] [--repo owner/name]\n' +
+  '                                   [--trunk <ref>] [--limit <n>]\n' +
+  '  (default)   audit only, no writes\n' +
+  '  --help, -h  print this usage and exit; never writes\n';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -114,6 +121,17 @@ function orphanRetraceKeys(sha) {
 // --- main ---
 
 function parseArgs(argv) {
+  // #878 — refuse unknown flags before any gh/git call.
+  if (
+    assertKnownArgv(argv, {
+      flags: ['--apply', '--json'],
+      options: ['--repo', '--trunk', '--limit'],
+      usage: USAGE,
+    })
+  ) {
+    return { help: true };
+  }
+
   const flag = (f, def = null) => {
     const i = argv.indexOf(f);
     return i >= 0 ? argv[i + 1] : def;
@@ -149,6 +167,10 @@ function fetchClosedIssues(repo, limit) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    console.log(USAGE);
+    return;
+  }
 
   const ttCfg = loadConfig({
     projectPath: path.join(__dir, '..', '..', '.ai-task-manager', 'task-tracker.json'),
@@ -254,6 +276,7 @@ const isMain =
   process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   main().catch((err) => {
+    if (reportStrictArgvError(err, { usage: USAGE })) process.exit(2);
     console.error(err.message);
     process.exit(1);
   });

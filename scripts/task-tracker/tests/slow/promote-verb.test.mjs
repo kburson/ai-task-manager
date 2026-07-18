@@ -424,17 +424,20 @@ test('promote: develop→test allowed when CODE_COMPLETE gate passes (#136)', as
   assert.deepEqual(calls.spawns, [{ verb: 'test', issueNumber: 1362 }]);
 });
 
-test('promote: test→review is a direct move-state call (no alias verb exists)', async () => {
+// #881 — test→review is an ALIAS transition (the `review` verb), so the Agent
+// Review Gate — the Review state's action — runs on arrival. It used to be a
+// direct move, which parked the issue in Review with its action never run.
+test('promote: test→review delegates to the review verb', async () => {
   // #210 (Fix C) — test→review requires `aitm-dod-verified` in the body.
   const body =
     bodyWithState('test') + '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n';
-  const { deps, calls } = makeDeps({ body, live: 'test' });
+  const { deps, calls } = makeDeps({ body, live: 'test', liveAfter: 'review' });
   const r = await runPromote({ issueNumber: 103, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'review');
-  assert.equal(r.via, 'direct');
-  assert.equal(calls.spawns.length, 0);
-  assert.deepEqual(calls.moves, [{ issueNumber: 103, target: 'review' }]);
+  assert.equal(r.via, 'alias:review');
+  assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 103 }]);
+  assert.deepEqual(calls.moves, [], 'the alias verb owns the move, not promote');
 });
 
 test('promote: test→review refused when aitm-dod-verified marker is missing (#210 Fix C)', async () => {
@@ -474,12 +477,12 @@ test('promote: test→review ALLOWED when dod-verified present and every checkbo
     bodyWithState('test') +
     '\n<!-- aitm-dod-verified: abc1234:2026-05-18T00:00:00Z -->\n' +
     '\n## Acceptance Criteria\n- [x] First AC\n- [x] Second AC\n';
-  const { deps, calls } = makeDeps({ body, live: 'test' });
+  const { deps, calls } = makeDeps({ body, live: 'test', liveAfter: 'review' });
   const r = await runPromote({ issueNumber: 2572, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'review');
-  assert.equal(r.via, 'direct');
-  assert.deepEqual(calls.moves, [{ issueNumber: 2572, target: 'review' }]);
+  assert.equal(r.via, 'alias:review');
+  assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 2572 }]);
 });
 
 test('promote: review→done delegates to /task close', async () => {

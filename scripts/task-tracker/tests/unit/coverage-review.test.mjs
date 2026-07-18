@@ -65,8 +65,18 @@ function makePexec({ gateBody, rawBody, scanBody, headSha }) {
   let jq = 0;
   return async (cmd, args = []) => {
     if (cmd === 'git') return { stdout: headSha, stderr: '' };
-    if (Array.isArray(args) && args.includes('comments')) {
-      return { stdout: JSON.stringify({ comments: REQUIRED_COMMENTS_STUB }), stderr: '' };
+    // #881 — the gate's fetch asks for `--json body,comments`, which arrives as
+    // ONE comma-joined arg. Match on the parsed field list, not on a bare
+    // 'comments' element, and reply with every requested field the way `gh` does.
+    const jsonFields = Array.isArray(args)
+      ? String(args[args.indexOf('--json') + 1] || '').split(',')
+      : [];
+    if (jsonFields.includes('comments')) {
+      const payload = { comments: REQUIRED_COMMENTS_STUB };
+      // The post-move snapshot the gate consumes is the post-derive `scanBody`,
+      // which is what it received before the fetch was hoisted below the move.
+      if (jsonFields.includes('body')) payload.body = scanBody;
+      return { stdout: JSON.stringify(payload), stderr: '' };
     }
     if (Array.isArray(args) && args.includes('--jq')) {
       jq += 1;

@@ -30,6 +30,7 @@ import { locateFunctionalSection } from './lib/lifecycle-dod.mjs';
 import { parseFunctionalDodKeys } from './lib/functional-dod-evidence.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 const pexec = promisify(execFile);
 
@@ -149,6 +150,17 @@ export function parseArgs(argv, io = {}) {
   const err = io.err || process.stderr;
   const exit = io.exit || ((code) => process.exit(code));
   const args = { state: 'open', apply: false, scope: null };
+
+  // #878 — refuse unknown flags before interpreting anything.
+  try {
+    assertKnownArgv(argv, { flags: ['--apply'], options: ['--state', '--scope'] });
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err: (s) => err.write(s) })) throw e;
+    printUsage(err);
+    exit(2);
+    return args;
+  }
+
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;

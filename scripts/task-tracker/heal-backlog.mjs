@@ -48,6 +48,7 @@ import { STATE_TO_CONFIG_KEY } from './lib/move-state/policy.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs';
 import { renameTimingLogBody } from './lib/timing-slug-rename.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
 // only when the corresponding marker is present; otherwise left alone to
@@ -364,6 +365,21 @@ export function parseArgs(argv, io = {}) {
     ignoreSchemaDrift: false,
     renameTimingSlugs: false,
   };
+
+  // #878 — refuse unknown flags before interpreting anything. `--no-schema-check`
+  // is a literal declared boolean here, not a generic `--no-` prefix convention.
+  try {
+    assertKnownArgv(argv, {
+      flags: ['--apply', '--no-schema-check', '--ignore-schema-drift', '--rename-timing-slugs'],
+      options: ['--state', '--scope'],
+    });
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err: (s) => err.write(s) })) throw e;
+    printUsage(err);
+    exit(2);
+    return args;
+  }
+
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;

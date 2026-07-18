@@ -23,6 +23,7 @@ import {
   findUnboldPlanMetadataLabels,
 } from './lib/plan-metadata.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 const pexec = promisify(execFile);
 
@@ -62,7 +63,9 @@ const USAGE =
 export async function main(argv = process.argv.slice(2), deps = {}) {
   const log = deps.log || ((s) => console.log(s));
 
-  if (argv.includes('--help') || argv.includes('-h')) {
+  // #878 — refuse unknown flags before any gh call, so a typo cannot leave
+  // `--apply` honored and the intended narrowing silently dropped.
+  if (assertKnownArgv(argv, { flags: ['--apply'], usage: USAGE })) {
     log(USAGE);
     return;
   }
@@ -110,6 +113,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
 const invokedDirectly = import.meta.url === `file://${process.argv[1]}`;
 if (invokedDirectly) {
   main(process.argv.slice(2)).catch((err) => {
+    if (reportStrictArgvError(err, { usage: USAGE })) process.exit(2);
     console.error(err);
     process.exit(1);
   });

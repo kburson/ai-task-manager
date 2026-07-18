@@ -18,6 +18,12 @@ import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 import { runApprove, verbApprove, detectFullAuto } from '../../verbs/approve.mjs';
 import { IssueLockError } from '../../issue-mutator-lock.mjs';
 
+// #881 — approve requires evidence that the Agent Review Gate (the Review state's
+// action) passed. Every fixture body below is suffixed with it; tests that care
+// about the refusal path live in approve-agent-review-complete.test.mjs.
+const AGENT_REVIEW_PASSED =
+  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-06-29T00:00:00Z';
 
@@ -35,7 +41,7 @@ writeFileSync(
     '#!/usr/bin/env node',
     'const a = process.argv.slice(2);',
     'if (a.includes("graphql")) {',
-    '  const body = "## AC\\n- [x] x\\n\\n#### Lifecycle (auto-ticked at Review/Close)\\n- [ ] Passed final human review\\n";',
+    '  const body = "## AC\\n- [x] x\\n\\n#### Lifecycle (auto-ticked at Review/Close)\\n- [ ] Passed final human review\\n- [ ] Agent Review Passed <!-- aitm-verified gate=\\"agent-review\\" ts=\\"2026-06-29T00:00:00Z\\" sha=\\"sandbox\\" validators=\\"body-sections\\" result=\\"pass\\" -->\\n";',
     '  process.stdout.write(JSON.stringify({ data: { repository: { issue: { body } } } }));',
     '} else if (a.includes("view")) {',
     '  process.stdout.write(JSON.stringify({ comments: [] }));',
@@ -48,20 +54,21 @@ writeFileSync(
 chmodSync(join(FAKE_GH_DIR, 'gh'), 0o755);
 process.env.PATH = `${FAKE_GH_DIR}:${process.env.PATH}`;
 
-const REVIEW_BODY = [
-  '## AC',
-  '- [x] x',
-  '',
-  '#### Lifecycle (auto-ticked at Review/Close)',
-  '- [ ] Passed final human review',
-  '- [ ] Story closed and moved to Done',
-  '',
-  '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
-  '',
-].join('\n');
+const REVIEW_BODY =
+  [
+    '## AC',
+    '- [x] x',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
+    '',
+  ].join('\n') + AGENT_REVIEW_PASSED;
 
 // Body with no Lifecycle section → tickLifecycleItem is a no-op → warn branch.
-const NO_LIFECYCLE_BODY = '## AC\n- [x] x\n';
+const NO_LIFECYCLE_BODY = '## AC\n- [x] x\n' + AGENT_REVIEW_PASSED;
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], comments: [], stamps: [] };

@@ -162,3 +162,33 @@ export function clearReviewFailed(body) {
 export function hasReviewFailed(body) {
   return REVIEW_FAILED_BLOCK_RE.test(typeof body === 'string' ? body : '');
 }
+
+// --- Review state-action completeness (#881) ---------------------------------
+//
+// The Agent Review Gate is the ACTION of the Review state; the human approval is
+// the state's EXIT condition. `approve` must therefore refuse while the action is
+// incomplete, so a human is never asked to sign off on a story the agent has not.
+//
+// Complete means BOTH: no `aitm-review-failed` block (the last run objected), and
+// an "Agent Review Passed" box carrying this gate's own run evidence
+// (`gate="agent-review" … result="pass"`). The evidence marker — not the tick — is
+// the signal: `stampAgentReviewPassed` writes the marker and leaves the checkbox
+// for the derived ticking pass, so keying on `[x]` would reject a genuine run.
+// Keying on the marker is also what makes a hand-ticked box insufficient.
+const AGENT_REVIEW_PASS_EVIDENCE_RE =
+  /^- \[[ xX]\] .*<!--\s*aitm-verified\s+[^>]*gate="agent-review"[^>]*result="pass"[^>]*-->/m;
+
+export function isAgentReviewComplete(body) {
+  const src = typeof body === 'string' ? body : '';
+  if (hasReviewFailed(src)) return false;
+  return AGENT_REVIEW_PASS_EVIDENCE_RE.test(src);
+}
+
+// Which signal blocked completeness, for a message the operator can act on.
+// Returns null when the action IS complete.
+export function agentReviewIncompleteReason(body) {
+  const src = typeof body === 'string' ? body : '';
+  if (hasReviewFailed(src)) return 'review-failed';
+  if (!AGENT_REVIEW_PASS_EVIDENCE_RE.test(src)) return 'not-run';
+  return null;
+}

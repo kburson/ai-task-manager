@@ -6,11 +6,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runApprove } from '../../verbs/approve.mjs';
 
+// #881 — approve requires evidence that the Agent Review Gate (the Review state's
+// action) passed. Every fixture body below is suffixed with it; tests that care
+// about the refusal path live in approve-agent-review-complete.test.mjs.
+const AGENT_REVIEW_PASSED =
+  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+
 function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = {}) {
   const posted = [];
   const written = [];
   let body =
-    '## Definition of Done\n\n#### Lifecycle (auto-ticked at Review/Close)\n- [ ] Passed final human review\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n';
+    '## Definition of Done\n\n#### Lifecycle (auto-ticked at Review/Close)\n- [ ] Passed final human review\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n' +
+    AGENT_REVIEW_PASSED;
   return {
     posted,
     written,

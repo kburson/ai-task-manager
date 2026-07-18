@@ -26,6 +26,13 @@ import { projectScratchDir } from './lib/scratch-dir.mjs';
 import { loadConfig } from './config.mjs';
 import { backfillEntryMarker } from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+
+export const USAGE =
+  'Usage: heal-refine-entry-marker.mjs [<issue#> ...] [--apply]\n' +
+  '  (default)   audit only, no writes; all open issues when none are named\n' +
+  '  --apply     write the backfilled refine entry marker\n' +
+  '  --help, -h  print this usage and exit; never writes\n';
 
 const pexec = promisify(execFile);
 
@@ -150,6 +157,25 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const heal = deps.healOne || healOne;
   const out = deps.out || ((s) => process.stdout.write(s));
   const err = deps.err || ((s) => process.stderr.write(s));
+  const exit = deps.exit || ((c) => process.exit(c));
+
+  // #878 — refuse unknown flags before any config load or gh call.
+  try {
+    if (
+      assertKnownArgv(argv, {
+        flags: ['--apply'],
+        positionals: { max: Infinity },
+        usage: USAGE,
+      })
+    ) {
+      out(USAGE);
+      return exit(0);
+    }
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err })) throw e;
+    return exit(2);
+  }
+
   const { issues, apply } = parseArgs(argv);
   const cfg = load();
   const repo = cfg.repo;

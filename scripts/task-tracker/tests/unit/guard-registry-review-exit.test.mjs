@@ -59,6 +59,10 @@ function makeApprovedBody({ withApproved = true, withDod = true } = {}) {
 // `attributingCommits` (default: an attributed [#N] commit exists on trunk).
 function makeCloseGatesDeps({ dirty = [], attributedOnTrunk = true } = {}) {
   return {
+    // #877 — review exit now runs reviewExitEpicChildrenDoneGuard. These
+    // fixtures are leaf issues, so stub the children fetch to empty; without
+    // the stub the gate would reach the live GraphQL client.
+    epicChildren: { fetchSiblings: async () => [] },
     closeGates: {
       getHeadSha: async () => HEAD_SHA,
       commitsSince: async () => [],
@@ -212,6 +216,20 @@ test('STATES.review.exitGuards: blockedBy runs before review-exit guards', () =>
   assert.ok(blocked < close, `blocked-by should run before close-gates; got [${ids.join(', ')}]`);
 });
 
+test('STATES.review.exitGuards: epic-children-done runs before close-gates (#877)', () => {
+  // Ordering is deliberate: the children check is a cheap structural read, the
+  // close-gates guard shells out to git. An operator closing an epic with open
+  // children should see that refusal first.
+  const ids = STATES.review.exitGuards.map((g) => g.id);
+  const children = ids.indexOf('review-exit-epic-children-done');
+  const close = ids.indexOf('review-exit-close-gates');
+  assert.ok(children !== -1, `review-exit-epic-children-done missing; got [${ids.join(', ')}]`);
+  assert.ok(
+    children < close,
+    `epic-children-done should run before close-gates; got [${ids.join(', ')}]`
+  );
+});
+
 // ── runGuards integration ────────────────────────────────────────────────────
 
 test('runGuards(review,done): missing review-approved marker → refusal surfaces from registry', async () => {
@@ -267,6 +285,7 @@ test('runGuards(review,done): no commits trail → dirtyCheckSkipped warn surfac
     body: makeApprovedBody(),
     cfg: CFG,
     deps: {
+      ...makeCloseGatesDeps(),
       closeGates: {
         ...makeCloseGatesDeps().closeGates,
         listComments: async () => [],

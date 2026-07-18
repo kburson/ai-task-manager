@@ -55,6 +55,10 @@ function makeCtx({ body }) {
     body,
     cfg: CFG,
     deps: {
+      // #877 — review exit now runs reviewExitEpicChildrenDoneGuard. This
+      // fixture is a leaf issue, so stub the children fetch to empty; without
+      // the stub the gate would reach the live GraphQL client.
+      epicChildren: { fetchSiblings: async () => [] },
       closeGates: {
         getHeadSha: async () => HEAD_SHA,
         commitsSince: async () => [],

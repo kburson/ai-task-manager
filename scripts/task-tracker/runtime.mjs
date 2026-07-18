@@ -53,24 +53,33 @@ export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
 }
 
-// #385 / #444 — classify a non-zero `move-state.mjs` outcome as benign or
-// genuine. Two benign non-zero cases, both exit-5 illegal self-loops:
-//   1. `done → done` (#385): GitHub Projects' auto-close workflow moves the
-//      board item to Done on `gh issue close`, so a subsequent manual move to
-//      `done` is an illegal self-transition. No-op re-entry.
-//   2. `test → test` (#444): once an issue is already in `test`, re-running the
-//      `test` verb to re-exercise newly-added `## Verification Commands` issues
-//      a `test → test` move. This is the supported in-place re-verify path — the
-//      sandbox run already happened on the green path; the board column simply
-//      stays put. Same shape/intent as the done self-loop.
+// #385 / #444 / #882 — classify a non-zero `move-state.mjs` outcome as benign or
+// genuine. The one benign class is an exit-5 illegal SELF-loop (`X → X`): the
+// issue is already in the requested state, so the request was already satisfied.
+//
+// #882 made self-transitions a legal no-op in `validateTransition`, so the host
+// now exits 0 on this path and the branch is unreachable in normal operation. It
+// is kept as a backstop for a stale `--from` override, and — critically —
+// de-enumerated: it was previously a hardcoded list patched once per self-loop
+// encountered (`done → done`, then `test → test`), which is what let
+// `review → review` fail. The regex backreference covers every state, so it can
+// never again need a per-state patch.
+//
 // Every other non-zero (a real gate refusal, a spawn `ENOENT`, an unknown
 // state) is genuine and must be surfaced. Pure + exported for tests.
+const SELF_LOOP_REFUSAL = /illegal transition:\s*([\w-]+)\s*→\s*\1\b/i;
+
 export function classifyMoveStateBenign({ state, status, stderr } = {}) {
-  const text = String(stderr || '');
-  return (
-    (state === 'done' && status === 5 && /illegal transition:\s*done\s*→\s*done/i.test(text)) ||
-    (state === 'test' && status === 5 && /illegal transition:\s*test\s*→\s*test/i.test(text))
-  );
+  if (status !== 5) return false;
+  const m = SELF_LOOP_REFUSAL.exec(String(stderr || ''));
+  return Boolean(m) && String(state || '').toLowerCase() === m[1].toLowerCase();
+}
+
+// #882 — the machine token `scripts/gh/move-state.mjs` writes to stdout when it
+// short-circuits a self-transition. Pure + exported so the token contract is
+// pinned by a test rather than duplicated as a bare literal at each read site.
+export function isMoveStateNoop(stdout) {
+  return /^aitm-move-noop\b/m.test(String(stdout || ''));
 }
 
 // #385 — map a rejected `move-state.mjs` subprocess (promisify(execFile) error
@@ -161,6 +170,11 @@ export async function runMoveStateInProcess(
       ok: true,
       status: 0,
       benign: false,
+      // #882 — the host emits this token when the requested state IS the current
+      // state and it short-circuited without side-effects. Callers that need to
+      // distinguish "moved" from "already there" (e.g. the `reverified` banner in
+      // verbs/test.mjs) read this instead of the old exit-5 `benign` signal.
+      noop: isMoveStateNoop(outBuf),
       stdout: String(outBuf || ''),
       stderr: String(errBuf || ''),
     };

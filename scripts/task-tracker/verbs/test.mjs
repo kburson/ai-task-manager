@@ -577,7 +577,13 @@ export async function runVerbTest({
     // current VC set in place (an in-place re-verify, not a fresh entry). The
     // board column is unchanged; surface a distinct loud-success status so the
     // banner does not falsely claim a develop→test promotion.
-    if (moveResult && moveResult.ok === false && moveResult.benign === true) {
+    // #882 — a self-transition is now a legal no-op (`ok:true, noop:true`) rather
+    // than the exit-5 refusal this branch originally keyed on. Both shapes are
+    // accepted so the status survives regardless of which path produced it.
+    if (
+      moveResult &&
+      (moveResult.noop === true || (moveResult.ok === false && moveResult.benign === true))
+    ) {
       return { status: 'reverified', sha, ts, results, wtPath, target: 'test', move: moveResult };
     }
     return { status: 'passed', sha, ts, results, wtPath, target: 'test' };

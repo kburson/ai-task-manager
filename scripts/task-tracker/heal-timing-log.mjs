@@ -30,6 +30,7 @@ import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.
 import { loadConfig } from './config.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { healTimingLog, countRetiredRows } from './lib/heal-timing-log.mjs';
+import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 
 // Core, testable with injected I/O. `deps.findTimingComment` /
 // `deps.updateTimingComment` default to the real GraphQL-backed helpers.
@@ -209,6 +210,20 @@ export async function main(argv, deps = {}) {
   const out = deps.out || process.stdout;
   const err = deps.err || process.stderr;
   const exit = deps.exit || ((code) => process.exit(code));
+
+  // #878 — refuse unknown flags before any config load or gh call. This script
+  // also accepts a bare `<issue#>` positional.
+  try {
+    assertKnownArgv(argv, {
+      flags: ['--sweep', '--apply', '--check-only'],
+      options: ['--state', '--scope'],
+      positionals: { max: 1 },
+    });
+  } catch (e) {
+    if (!reportStrictArgvError(e, { err: (s) => err.write(s) })) throw e;
+    printUsage(err);
+    return exit(2);
+  }
 
   const args = parseArgs(argv);
   if (args.help || (!args.sweep && !args.issue)) {

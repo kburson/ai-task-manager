@@ -1,14 +1,20 @@
-// Develop-exit guard: epic-children done-admission (#337, parent epic #259).
+// Develop-exit guard: epic-children review-admission (#337, parent epic #259;
+// predicate relaxed by #877).
 //
 // Wraps `developEpicTestChildrenGate` (scripts/task-tracker/lib/epic-children-
-// gate.mjs) so the epic-children done rule reaches the registry through the
+// gate.mjs) so the epic-children rule reaches the registry through the
 // existing `runGuards('develop', 'test', ctx)` call in
 // scripts/gh/move-state.mjs.
 //
-// Rule: an EPIC moving develop → test is refused if any sub-issue is in any
-// state other than `done`. Mirrors `planEpicChildrenGuard` (#277) shape, with
-// the predicate flipped from "child at refine or later" to "child at done".
-// Leaf issues (no `aitm-sub-issues` children) pass trivially.
+// Rule: an EPIC moving develop → test is refused if any sub-issue has not yet
+// reached `review`. Mirrors `planEpicChildrenGuard` (#277) shape with a later
+// floor. Leaf issues (no `aitm-sub-issues` children) pass trivially.
+//
+// #877 moved the stricter child-`done` requirement to the review → done arc;
+// it lives in `reviewExitEpicChildrenDoneGuard`. The guard id and export name
+// here are deliberately unchanged — this is still "the develop-exit epic
+// children guard", and the id is referenced by the guard-registry doc table
+// and by existing tests.
 //
 // Context contract:
 //   { cfg: Config, issueNumber: number, toState: 'test', deps?: { epicChildren?: GhDeps } }
@@ -36,7 +42,7 @@ export const developExitEpicChildrenDoneGuard = {
       deps: ctx.deps?.epicChildren,
     });
     if (result.ok) return { ok: true };
-    const reason = (result.blockers || []).join('; ') || 'epic-children-not-done';
+    const reason = (result.blockers || []).join('; ') || 'epic-children-not-in-review';
     return { ok: false, reason, blockers: result.blockers || [] };
   },
 };
