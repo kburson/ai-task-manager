@@ -74,6 +74,23 @@ for three reasons:
 3. **Single inspection point.** `git log feature/epic/859` on the main tree shows
    the whole epic's integrated state without touching any worktree.
 
+### Child branches stay local — only the epic branch is origin-facing
+
+A child's worktree branch (`feature/bug/<N>`, `claude/…`) is a **local** working
+branch. Do **not** push it to origin. The single origin-facing integration branch
+is `feature/epic/<N>` (plus `trunk` itself); everything a child produces reaches
+origin **through** the epic branch once its commits merge in.
+
+- A child's work is safe the moment it merges into `feature/epic/<N>` — and that
+  branch is what you push. Pushing the child branch too just duplicates those
+  commits onto a throwaway remote branch you then have to clean up.
+- The flow is: child worktree branch (local) → `merge --no-ff` into
+  `feature/epic/<N>` at code-complete → push `feature/epic/<N>` → PR/merge the epic
+  branch to `trunk` at the end. N child branches, one origin branch.
+- If a child branch was pushed to origin as a one-off (e.g. an explicit backup), it
+  is harmless but redundant. Delete it once its commits have landed in the epic
+  branch: `git push origin --delete feature/bug/<N>`.
+
 ## Closing children — the trunk-scoped gate
 
 **This is the sharp edge.** The `close` (Review→Done) gate `commitsOnTrunkGate`
@@ -144,3 +161,6 @@ flowchart TD
   subject descriptive and greppable instead.
 - Under Model A, resist closing children early. The board card sitting at Review is
   correct until the epic's trunk merge; that is the whole point of the model.
+- **Child working branches are local.** Don't push them to origin — only
+  `feature/epic/<N>` and `trunk` are origin-facing. A child's commits reach origin
+  by merging into the epic branch, not on their own remote branch.
