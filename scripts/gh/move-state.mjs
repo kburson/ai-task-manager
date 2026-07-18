@@ -278,6 +278,18 @@ export async function runMoveStateHost({
     return 5;
   }
 
+  // #882 — satisfied no-op: the issue is already in the requested state. Return
+  // BEFORE the ctx below so nothing downstream runs — no guard pipeline, no body
+  // mutation, no entry marker, no timing row, no board write. Re-entering a state
+  // would double-stamp `aitm-entered-<stage>` and open a duplicate stage-timing
+  // row, corrupting the stage table. The machine token is what
+  // `runMoveStateInProcess` matches to set `noop` on its structured result.
+  if (plan.noop) {
+    process.stdout.write(`↻ #${issueArg} is already in ${stateArg} — no state change\n`);
+    process.stdout.write(`aitm-move-noop state=${stateArg}\n`);
+    return 0;
+  }
+
   // #559 — the shared context the extracted move-state concern modules consume.
   // Runtime values + cfg + the I/O primitives (`gh`/`pexec`) and the cross-tree
   // helpers (`projectItemForIssue`, dirty-workspace, backlog-warning) plus the

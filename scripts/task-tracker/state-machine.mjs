@@ -61,6 +61,15 @@ export function validateTransition(from, to) {
   if (!STATES.includes(to)) {
     return { ok: false, reason: `unknown state: ${to}` };
   }
+  // #882 — a move whose target IS the current state is a SATISFIED NO-OP, not an
+  // illegal transition. The request is "be in state X"; the issue already is, so
+  // there is nothing to transition and nothing to refuse. Callers must treat
+  // `noop` as "short-circuit before any side-effect" rather than "perform the
+  // move": re-entering a state would re-stamp `aitm-entered-<stage>` and open a
+  // duplicate stage-timing row. Before this, each self-loop was patched one at a
+  // time as it was encountered (#385 done→done, #444 test→test, #882
+  // review→review); the enumeration was the defect, not its missing entries.
+  if (from === to) return { ok: true, noop: true };
   if (FORWARD[from] === to) return { ok: true };
   if (BACKWARD[from] === to) return { ok: true };
   const allowed = [FORWARD[from], BACKWARD[from]].filter(Boolean).join(', ') || 'none';

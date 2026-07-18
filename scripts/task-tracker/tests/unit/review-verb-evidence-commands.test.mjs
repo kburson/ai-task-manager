@@ -236,18 +236,17 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   );
   console.log('PASS: review.mjs issues no test→test self-move (#408)');
 
-  // AC3 (behavioral): the transition matrix rejects test→test, which is exactly
-  // why the removed self-move emitted `illegal transition: test → test` on a
-  // successful review. Replicate the matrix decision to prove the noise was real
-  // and that removing the self-move is what eliminates it.
+  // AC3 (behavioral): the removed self-move was pure waste. Until #882 the matrix
+  // REJECTED test→test, so it emitted `illegal transition: test → test` on every
+  // successful review — that stderr noise is what #408 eliminated. #882 then made
+  // a self-transition a satisfied no-op, so the same self-move is now silent but
+  // still does nothing. Either way, review.mjs must not issue it: the assertion
+  // above (moveTargets never includes 'test') remains the AC. Here we pin that
+  // the self-move carries no effect to lose.
   const { validateTransition } = await import('../../state-machine.mjs');
   const selfLoop = validateTransition('test', 'test');
-  assert.equal(selfLoop.ok, false, 'matrix rejects the test→test self-move');
-  assert.match(
-    selfLoop.reason ?? '',
-    /illegal transition: test → test/,
-    'rejected self-move yields the exact illegal-transition text that polluted stderr'
-  );
+  assert.equal(selfLoop.ok, true, 'test→test is a legal no-op post-#882');
+  assert.equal(selfLoop.noop, true, 'and is flagged as a no-op, so it moves nothing');
   // The real move review performs (test→review) is allowed — no noise.
   const realMove = validateTransition('test', 'review');
   assert.equal(realMove.ok, true, 'test→review (the authoritative review move) is allowed');

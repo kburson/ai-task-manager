@@ -168,10 +168,18 @@ assert.match(
   /skipNetwork:\s*SKIP_NETWORK/,
   'ctx.runMoveState must bind the SKIP_NETWORK short-circuit into the helper'
 );
+// #882 inserted `noop:` (with its explanatory comment) between `benign` and
+// `stdout` on the success path; the invariant being pinned — a structured ok
+// result rather than bare undefined — is unchanged.
 assert.match(
   runtimeSrc,
-  /return \{\s*\n\s*ok: true,\s*\n\s*status: 0,\s*\n\s*benign: false,\s*\n\s*stdout:/,
+  /return \{\s*\n\s*ok: true,\s*\n\s*status: 0,\s*\n\s*benign: false,\s*\n[\s\S]{0,600}?\n\s*stdout:/,
   'the success path must return a structured ok result'
+);
+assert.match(
+  runtimeSrc,
+  /noop: isMoveStateNoop\(outBuf\)/,
+  'the success path must classify the self-transition no-op'
 );
 
 // --- close.mjs source: branch on the structured result ----------------------

@@ -55,11 +55,15 @@ test('BACKWARD allows on-deck→backlog, test→develop and review→develop', (
   assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
 });
 
-test('same-state transitions refuse', () => {
+// #882 — same-state transitions used to refuse; they are now a SATISFIED NO-OP.
+// Callers short-circuit on `noop` rather than performing the move, so re-running
+// a state's verb in place no longer hits an illegal-transition refusal. Full
+// coverage of the rule lives in state-machine-self-transition.test.mjs.
+test('same-state transitions are a legal no-op', () => {
   for (const s of STATES) {
     const r = validateTransition(s, s);
-    assert.equal(r.ok, false);
-    assert.match(r.reason, /illegal transition/);
+    assert.equal(r.ok, true);
+    assert.equal(r.noop, true);
   }
 });
 
