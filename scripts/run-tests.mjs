@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // Carve-out: uses spawnSync (not execFileSync) because the test runner needs non-throwing exit-code introspection to accumulate failures across files (see #22).
 //
-// Lanes (#305):
-//   --lane fast (default) — every *.test.mjs except scripts/task-tracker/tests/slow/
-//   --lane slow           — only scripts/task-tracker/tests/slow/
-//   --lane all            — both lanes
+// Lanes (#305, canonicalized #874):
+//   --lane fast (default) — unit ∪ integration (every *.test.mjs except slow)
+//   --lane slow           — the slow lane only
+//   --lane all            — every lane; what DoD verification (`test:all`) invokes
 //
-// `scripts/task-tracker/tests/slow/` holds the ~15 files that each take ≥2s.
-// The fast lane keeps the develop tight-loop under ~40s; the slow lane and
-// `--lane all` are what DoD verification (`npm run test:all`) invokes.
-import { readdirSync } from 'node:fs';
+// Discovery and lane assignment come from the canonical modules
+// (`discoverTestFiles` #872 + `laneManifest` #873) via `run-tests-lanes.mjs`;
+// there is no hardcoded directory list here. A divergence guard fails the run if
+// the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
+// every committed test file (the 624-vs-652 false green cannot recur).
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,18 +22,13 @@ import {
 } from './task-tracker/fleet-registry.mjs';
 import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
+import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');
-const testsDir = path.resolve(__dir, 'task-tracker', 'tests');
-const slowDir = path.resolve(testsDir, 'slow');
-const providersTestsDir = path.resolve(__dir, 'providers', 'tests');
-const ttIntegrationDir = path.resolve(testsDir, 'integration');
-// Tests skipped due to unrelated tracked bugs. Each entry must reference an issue.
-const SKIP = new Map([]);
 
 // ---- arg parsing ---------------------------------------------------------
-const VALID_LANES = new Set(['fast', 'slow', 'all']);
+const VALID_LANES = new Set(RUN_LANES);
 let lane = 'fast';
 for (let i = 2; i < process.argv.length; i++) {
   const a = process.argv[i];
@@ -50,37 +46,21 @@ if (!VALID_LANES.has(lane)) {
   process.exit(2);
 }
 
-function safeReaddir(dir) {
-  try {
-    return readdirSync(dir);
-  } catch {
-    return [];
-  }
+// ---- divergence guard ----------------------------------------------------
+// Every lane's selection is a slice of the canonical manifest; the union of the
+// three lanes must equal the on-disk `*.test.mjs` set. If it ever doesn't, a
+// test would silently vanish from the suite — fail loudly instead of printing a
+// false green. Runs on every invocation, independent of the selected lane.
+const { missing, extra } = discoveryDivergence();
+if (missing.length || extra.length) {
+  console.error('run-tests: discovery divergence — the runner is not covering every on-disk test:');
+  for (const f of missing) console.error(`  MISSING (on disk, not selected): ${f}`);
+  for (const f of extra) console.error(`  EXTRA   (selected, not on disk): ${f}`);
+  process.exit(1);
 }
 
-// Fast-lane: unit tests from tests/unit/ subfolder.
-const unitDir = path.resolve(testsDir, 'unit');
-const unitFiles = readdirSync(unitDir)
-  .filter((f) => f.endsWith('.test.mjs'))
-  .sort()
-  .map((f) => ({ label: f, full: path.join(unitDir, f) }));
-const providerFiles = safeReaddir(providersTestsDir)
-  .filter((f) => f.endsWith('.test.mjs'))
-  .sort()
-  .map((f) => ({ label: `providers/${f}`, full: path.join(providersTestsDir, f) }));
-const ttIntegrationFiles = safeReaddir(ttIntegrationDir)
-  .filter((f) => f.endsWith('.test.mjs'))
-  .sort()
-  .map((f) => ({ label: `task-tracker/integration/${f}`, full: path.join(ttIntegrationDir, f) }));
-const slowFiles = safeReaddir(slowDir)
-  .filter((f) => f.endsWith('.test.mjs'))
-  .sort()
-  .map((f) => ({ label: `slow/${f}`, full: path.join(slowDir, f) }));
-
-const fastFiles = [...unitFiles, ...providerFiles, ...ttIntegrationFiles];
-
-const files =
-  lane === 'fast' ? fastFiles : lane === 'slow' ? slowFiles : [...fastFiles, ...slowFiles];
+// Canonical selection: repo-relative paths → { label, full } run entries.
+const files = laneFiles(lane).map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));
 
 console.log(`▶ lane=${lane} (${files.length} files)\n`);
 
