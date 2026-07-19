@@ -27,6 +27,7 @@ import {
   parseProofMarker,
 } from './proof-marker.mjs';
 import { parseAcEvidence } from './ac-evidence.mjs';
+import { parseAcCommitCitation } from './epic-ac-commit-citation.mjs';
 import { isAcWaived } from './issue-kind.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
 import {
@@ -44,6 +45,7 @@ const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/
 // from the non-global presence pattern in `lib/session-ref.mjs` because
 // `matchAll` requires the /g flag.
 const SESSION_REF_COUNT_RE = /<!--\s*aitm-session-ref\s+sid="/gi;
+const AC_STRUCK_COUNT_RE = /<!--\s*aitm-ac-struck\b/gi;
 
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
@@ -67,6 +69,16 @@ export const INVARIANT_MARKER_PATTERNS = [
     kind: 'single',
   },
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i, kind: 'single' },
+  // #887 — epic AC reconciliation. The marker takes no variable parameter, so
+  // `kind: 'single'` needs no custom `findLostMarkers` branch (contrast the
+  // `aitm-entered-<stage>` family). Registering it here makes *un*-reconciling
+  // an epic require the explicit `allowMarkerLoss: true` hatch, which is the
+  // intended asymmetry: reconciliation should be hard to silently undo.
+  {
+    name: 'aitm-epic-ac-reconciled',
+    re: /<!--\s*aitm-epic-ac-reconciled(?:\s*:|\s+ts=")/i,
+    kind: 'single',
+  },
   {
     name: 'aitm-deep-dive-posted',
     re: /<!--\s*aitm-deep-dive-posted(?:\s*:|\s+ts=")/i,
@@ -97,6 +109,13 @@ export const INVARIANT_MARKER_PATTERNS = [
   // dropped prior entry on an unrelated edit is a loss. Uses the `count` kind
   // so `findLostMarkers` compares occurrence counts rather than a stage set.
   { name: 'aitm-session-ref', re: SESSION_REF_COUNT_RE, kind: 'count' },
+  // #888 — epic AC strikes. Append-only, hence `count`: a strike records that a
+  // promise was withdrawn, which is a fact about history, so the occurrence
+  // count must never decrease. `count` needs no custom `findLostMarkers` branch.
+  // Un-striking an AC therefore requires the explicit `allowMarkerLoss: true`
+  // hatch — the intended asymmetry, since quietly deleting the record of dropped
+  // scope is exactly what this marker exists to prevent.
+  { name: 'aitm-ac-struck', re: AC_STRUCK_COUNT_RE, kind: 'count' },
 ];
 
 function countMarkers(body, re) {
@@ -463,6 +482,14 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     const labelRaw = box[4];
     if (NON_DEMONSTRABLE_TAG_RE.test(labelRaw)) continue; // honest opt-out
     if (isAcWaived(labelRaw)) continue; // #688 — no-commit lane waiver is a valid opt-out
+    // #886 — a commit citation is evidence of a different kind: an epic AC
+    // delegates to a child's deliverable, so there is nothing to run. Checked
+    // BEFORE command resolution but AFTER the opt-outs, so a line carrying both
+    // `commits` and `cmd` is accepted here and its command still resolves
+    // unchanged everywhere else. Resolution and attribution of the cited shas
+    // need git and therefore live in `runReviewPreflight`'s epic branch — this
+    // function stays pure.
+    if (parseAcCommitCitation(labelRaw)) continue;
     const cmds = acDeclaredCommands(labelRaw, vcItems);
     const label = String(labelRaw)
       .replace(/<!--[\s\S]*?-->/g, '')

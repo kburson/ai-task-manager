@@ -7,6 +7,14 @@ import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 import { isNoCommitKind, isAcWaived } from './issue-kind.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 import { hasAttributingCommit as defaultHasAttributingCommit } from './commit-attribution.mjs';
+import { fetchEpicChildren as defaultFetchEpicChildren } from './epic-children-gate.mjs';
+import {
+  buildEpicDerivedTrail,
+  epicTrailLogArgs,
+  parseEpicTrailLog,
+} from './epic-derived-commit-trail.mjs';
+import { parseAcCommitCitation, verifyAcCommitCitations } from './epic-ac-commit-citation.mjs';
+import { parseIssueKind } from './issue-kind.mjs';
 
 const pexec = promisify(execFile);
 
@@ -35,7 +43,18 @@ async function defaultGetIssueBody({ issueNumber, repo }) {
   return stdout || '';
 }
 
-export async function runReviewPreflight({ issueNumber, repo, projectDir, deps = {} } = {}) {
+// The epic HEAD is the branch under review, i.e. this worktree's HEAD. Scoped
+// to HEAD and never `--all` — see the reachability note in
+// epic-derived-commit-trail.mjs.
+async function defaultEpicCommits({ projectDir }) {
+  const { stdout } = await pexec('git', epicTrailLogArgs('HEAD'), {
+    cwd: projectDir,
+    timeout: GIT_TIMEOUT_MS,
+  });
+  return parseEpicTrailLog(stdout);
+}
+
+export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('review-preflight: issueNumber is required');
   if (!repo) throw new Error('review-preflight: repo is required');
   if (!projectDir) throw new Error('review-preflight: projectDir is required');
@@ -49,6 +68,10 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
   // as long as a `[#N]`-attributed commit exists somewhere across `--all`.
   const hasAttribution = deps.hasAttributingCommit || defaultHasAttributingCommit;
   const getIssueBody = deps.getIssueBody || (() => defaultGetIssueBody({ issueNumber, repo }));
+  const fetchChildren =
+    deps.fetchEpicChildren ||
+    (() => defaultFetchEpicChildren({ cfg: cfg || { repo }, parentEpicNumber: issueNumber }));
+  const epicCommits = deps.epicCommits || (() => defaultEpicCommits({ projectDir }));
 
   const reasons = [];
   const status = String(await gitStatus()).trim();
@@ -57,43 +80,80 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
   }
 
   const headSha = String(await gitHeadSha()).trim();
-  const comment = await find(String(issueNumber), repo);
-  const trailBody = comment?.body ? String(comment.body) : '';
-  if (!trailBody) {
-    reasons.push(
-      `missing canonical \`### 🔗 Commits\` comment recording this issue's commit trail`
-    );
-  } else if (!trailBody.startsWith(TRAIL_HEADING)) {
-    reasons.push(
-      `canonical \`### 🔗 Commits\` comment is malformed (does not start with \`${TRAIL_HEADING}\` heading)`
-    );
+
+  // #885 — the body is fetched BEFORE the trail block (it used to be read after)
+  // because the trail requirement branches on kind. An epic has no commit of its
+  // own by construction, so demanding a direct `### 🔗 Commits` comment refused
+  // every epic no matter how complete its children were. The fix is a BRANCH,
+  // not a skip: an epic's trail is DERIVED from its children (#884), so the
+  // evidence its children produced is consumed rather than discarded.
+  const body = String(await getIssueBody());
+  const isEpic = parseIssueKind(body) === 'epic';
+
+  let derivedTrail = null;
+  if (isEpic) {
+    const epicNumber = Number(String(issueNumber).replace(/^#/, ''));
+    // Fetched once and shared: the derived trail and the #886 AC-citation check
+    // ask different questions of the same two inputs. Both fetches stay INSIDE
+    // the try — a failure to reach the children or the log is a preflight
+    // refusal reason, never an exception out of `runReviewPreflight`.
+    try {
+      const children = await fetchChildren();
+      const commits = await epicCommits();
+
+      // #886 — an epic AC may be satisfied by citing the child commits that
+      // delivered it. Every cited sha must resolve against the epic HEAD and be
+      // attributable to a child of this epic; each refusal names its citation.
+      reasons.push(...verifyAcCommitCitations({ epicNumber, children, commits, body }));
+
+      derivedTrail = buildEpicDerivedTrail({ epicNumber, children, commits });
+    } catch (err) {
+      // `UnreachableChildrenError` already names EVERY unreachable child, so
+      // surface its message verbatim rather than re-deriving the check here.
+      reasons.push(err.message);
+    }
   } else {
-    const trailShas = [...parseMarker(trailBody).shas];
-    if (trailShas.length === 0) {
-      reasons.push(`canonical \`### 🔗 Commits\` comment records no commits`);
+    await checkDirectTrail();
+  }
+
+  async function checkDirectTrail() {
+    const comment = await find(String(issueNumber), repo);
+    const trailBody = comment?.body ? String(comment.body) : '';
+    if (!trailBody) {
+      reasons.push(
+        `missing canonical \`### 🔗 Commits\` comment recording this issue's commit trail`
+      );
+    } else if (!trailBody.startsWith(TRAIL_HEADING)) {
+      reasons.push(
+        `canonical \`### 🔗 Commits\` comment is malformed (does not start with \`${TRAIL_HEADING}\` heading)`
+      );
     } else {
-      // #733 — the trail records ≥1 commit, so assert MESSAGE-based attribution
-      // exists rather than SHA reachability. A `[#N]`-attributed commit found
-      // anywhere across `--all` (unmerged branch, rebased/squashed history) is
-      // accepted; only the absence of ANY such commit is a failure.
-      let attributed;
-      try {
-        attributed = await hasAttribution(issueNumber, { cwd: projectDir });
-      } catch (err) {
-        reasons.push(
-          `commit-attribution lookup failed while verifying \`[#${String(issueNumber).replace(/^#/, '')}]\` message attribution: ${err.message}`
-        );
-        attributed = true; // do not double-report as a missing-attribution reason
-      }
-      if (attributed === false) {
-        reasons.push(
-          `canonical \`### 🔗 Commits\` comment records commits, but no commit message references \`[#${String(issueNumber).replace(/^#/, '')}]\` — attribution is message-based (#727); prefix a commit subject with \`[#${String(issueNumber).replace(/^#/, '')}] \``
-        );
+      const trailShas = [...parseMarker(trailBody).shas];
+      if (trailShas.length === 0) {
+        reasons.push(`canonical \`### 🔗 Commits\` comment records no commits`);
+      } else {
+        // #733 — the trail records ≥1 commit, so assert MESSAGE-based attribution
+        // exists rather than SHA reachability. A `[#N]`-attributed commit found
+        // anywhere across `--all` (unmerged branch, rebased/squashed history) is
+        // accepted; only the absence of ANY such commit is a failure.
+        let attributed;
+        try {
+          attributed = await hasAttribution(issueNumber, { cwd: projectDir });
+        } catch (err) {
+          reasons.push(
+            `commit-attribution lookup failed while verifying \`[#${String(issueNumber).replace(/^#/, '')}]\` message attribution: ${err.message}`
+          );
+          attributed = true; // do not double-report as a missing-attribution reason
+        }
+        if (attributed === false) {
+          reasons.push(
+            `canonical \`### 🔗 Commits\` comment records commits, but no commit message references \`[#${String(issueNumber).replace(/^#/, '')}]\` — attribution is message-based (#727); prefix a commit subject with \`[#${String(issueNumber).replace(/^#/, '')}] \``
+          );
+        }
       }
     }
   }
 
-  const body = String(await getIssueBody());
   if (body.trim()) {
     // #836 — resolve the no-commit-kind classification once so the waiver skip
     // below mirrors the sibling Develop→Test gate exactly.
@@ -114,6 +174,12 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
       // wrongly rejected at Test→Review, forcing a preflight bypass (paper-over)
       // or a fabricated `cmd=` citation (dishonest).
       if (noCommitKind && isAcWaived(item.label)) continue;
+      // #886 — same reasoning as #537 one branch up: an AC the Refine→Plan gate
+      // accepted on a commit citation must not be rejected at review-exit for
+      // lacking a `cmd`. The citation IS the declaration; its shas are verified
+      // above by `verifyAcCommitCitations`, which is strictly stronger than the
+      // presence check this loop performs.
+      if (parseAcCommitCitation(item.label)) continue;
       reasons.push(
         `acceptance criterion "${item.label}" is missing \`aitm-verified cmd="..."\` evidence declaration`
       );
@@ -123,5 +189,5 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, deps =
     }
   }
 
-  return { ok: reasons.length === 0, reasons, headSha };
+  return { ok: reasons.length === 0, reasons, headSha, derivedTrail };
 }

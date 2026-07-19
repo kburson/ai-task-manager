@@ -320,6 +320,13 @@ export const COMMAND_MANIFEST = [
     dispatch: 'verbs/kind.mjs',
   },
   {
+    verb: 'epic-reconcile',
+    aliases: [],
+    description: "Record that an epic's ACs were reconciled against its delivered children.",
+    category: 'meta',
+    dispatch: 'verbs/epic-reconcile.mjs',
+  },
+  {
     verb: 'cancel',
     aliases: [],
     description: 'Clear a stuck discovery bucket and binding without logging time.',

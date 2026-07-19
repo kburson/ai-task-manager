@@ -38,6 +38,11 @@ const KIND_MARKER_RE = /<!--\s*aitm-issue-kind\s+kind="((?:[^"]|&quot;)*)"\s*-->
 const KIND_MARKER_STRIP_RE = /[ \t]*<!--\s*aitm-issue-kind\s+kind="(?:[^"]|&quot;)*"\s*-->\n?/gi;
 const DELIVERABLE_MARKER_RE = /<!--\s*aitm-deliverable-posted(?:\s+[^>]*?)?\s*-->/i;
 const AC_WAIVED_RE = /<!--\s*aitm-ac-waived(?:\s+[^>]*?)?\s*-->/i;
+// #887 — epic AC reconciliation. Matches with or without a `ts` so a
+// hand-written bare marker is still honored; `setEpicAcReconciled` always
+// writes the timestamped form.
+const EPIC_AC_RECONCILED_RE = /<!--\s*aitm-epic-ac-reconciled(?:\s+[^>]*?)?\s*-->/i;
+const EPIC_AC_RECONCILED_STRIP_RE = /[ \t]*<!--\s*aitm-epic-ac-reconciled(?:\s+[^>]*?)?\s*-->\n?/gi;
 const PROGRESS_MARKERS_RE = /(^##\s+AITM Progress Markers\s*\n)/im;
 
 /** Normalize + validate a kind string. Throws on an unknown kind. */
@@ -83,6 +88,37 @@ export function hasDeliverableMarker(body) {
 /** True when an AC label carries a sanctioned `aitm-ac-waived` marker. */
 export function isAcWaived(label) {
   return AC_WAIVED_RE.test(String(label || ''));
+}
+
+/**
+ * True when the body records that its ACs have been reconciled against what its
+ * children actually delivered (#887).
+ *
+ * An epic's ACs are written at decomposition time, when the children are still
+ * proposals. By the time the last child lands, what was delivered has usually
+ * drifted from what was described — so the epic's own acceptance is stale
+ * exactly when it is about to be relied on. Reconciliation is the act of
+ * re-reading the epic's goals against the delivered children; this marker
+ * records that the act happened, and when.
+ */
+export function hasEpicAcReconciledMarker(body) {
+  return EPIC_AC_RECONCILED_RE.test(String(body || ''));
+}
+
+/**
+ * Idempotent upsert of the reconciliation marker (#887).
+ *
+ * Placement mirrors `setIssueKindMarker`: under `## AITM Progress Markers` when
+ * that block exists, else appended. `ts` is load-bearing — it lets a reader tell
+ * whether reconciliation predates the last child landing.
+ */
+export function setEpicAcReconciled(body, ts = new Date().toISOString()) {
+  const stripped = String(body || '').replace(EPIC_AC_RECONCILED_STRIP_RE, '');
+  const marker = serializeMarker('epic-ac-reconciled', { ts });
+  if (PROGRESS_MARKERS_RE.test(stripped)) {
+    return stripped.replace(PROGRESS_MARKERS_RE, `$1\n${marker}\n`);
+  }
+  return `${stripped.replace(/\s*$/, '')}\n\n${marker}\n`;
 }
 
 /**
