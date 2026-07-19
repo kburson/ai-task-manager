@@ -27,6 +27,7 @@ import {
   parseProofMarker,
 } from './proof-marker.mjs';
 import { parseAcEvidence } from './ac-evidence.mjs';
+import { parseAcCommitCitation } from './epic-ac-commit-citation.mjs';
 import { isAcWaived } from './issue-kind.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
 import {
@@ -463,6 +464,14 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     const labelRaw = box[4];
     if (NON_DEMONSTRABLE_TAG_RE.test(labelRaw)) continue; // honest opt-out
     if (isAcWaived(labelRaw)) continue; // #688 — no-commit lane waiver is a valid opt-out
+    // #886 — a commit citation is evidence of a different kind: an epic AC
+    // delegates to a child's deliverable, so there is nothing to run. Checked
+    // BEFORE command resolution but AFTER the opt-outs, so a line carrying both
+    // `commits` and `cmd` is accepted here and its command still resolves
+    // unchanged everywhere else. Resolution and attribution of the cited shas
+    // need git and therefore live in `runReviewPreflight`'s epic branch — this
+    // function stays pure.
+    if (parseAcCommitCitation(labelRaw)) continue;
     const cmds = acDeclaredCommands(labelRaw, vcItems);
     const label = String(labelRaw)
       .replace(/<!--[\s\S]*?-->/g, '')

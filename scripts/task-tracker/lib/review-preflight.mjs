@@ -13,6 +13,7 @@ import {
   epicTrailLogArgs,
   parseEpicTrailLog,
 } from './epic-derived-commit-trail.mjs';
+import { parseAcCommitCitation, verifyAcCommitCitations } from './epic-ac-commit-citation.mjs';
 import { parseIssueKind } from './issue-kind.mjs';
 
 const pexec = promisify(execFile);
@@ -91,12 +92,21 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
 
   let derivedTrail = null;
   if (isEpic) {
+    const epicNumber = Number(String(issueNumber).replace(/^#/, ''));
+    // Fetched once and shared: the derived trail and the #886 AC-citation check
+    // ask different questions of the same two inputs. Both fetches stay INSIDE
+    // the try — a failure to reach the children or the log is a preflight
+    // refusal reason, never an exception out of `runReviewPreflight`.
     try {
-      derivedTrail = buildEpicDerivedTrail({
-        epicNumber: Number(String(issueNumber).replace(/^#/, '')),
-        children: await fetchChildren(),
-        commits: await epicCommits(),
-      });
+      const children = await fetchChildren();
+      const commits = await epicCommits();
+
+      // #886 — an epic AC may be satisfied by citing the child commits that
+      // delivered it. Every cited sha must resolve against the epic HEAD and be
+      // attributable to a child of this epic; each refusal names its citation.
+      reasons.push(...verifyAcCommitCitations({ epicNumber, children, commits, body }));
+
+      derivedTrail = buildEpicDerivedTrail({ epicNumber, children, commits });
     } catch (err) {
       // `UnreachableChildrenError` already names EVERY unreachable child, so
       // surface its message verbatim rather than re-deriving the check here.
@@ -164,6 +174,12 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
       // wrongly rejected at Test→Review, forcing a preflight bypass (paper-over)
       // or a fabricated `cmd=` citation (dishonest).
       if (noCommitKind && isAcWaived(item.label)) continue;
+      // #886 — same reasoning as #537 one branch up: an AC the Refine→Plan gate
+      // accepted on a commit citation must not be rejected at review-exit for
+      // lacking a `cmd`. The citation IS the declaration; its shas are verified
+      // above by `verifyAcCommitCitations`, which is strictly stronger than the
+      // presence check this loop performs.
+      if (parseAcCommitCitation(item.label)) continue;
       reasons.push(
         `acceptance criterion "${item.label}" is missing \`aitm-verified cmd="..."\` evidence declaration`
       );
