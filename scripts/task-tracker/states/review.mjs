@@ -14,6 +14,11 @@
 //     reviewExitEpicChildrenDoneGuard (#877). It is ordered ahead of
 //     reviewExitCloseGatesGuard so the cheap structural refusal surfaces
 //     before the expensive trunk/commit checks.
+//   - Children-*disposition* (may this epic close over a child that was closed
+//     `not planned` while an AC it was carrying still dangles?) is
+//     reviewExitEpicChildDispositionGuard (#888). Ordered right after the
+//     done-check: an epic with an OPEN child should hear about the open child
+//     first, not about the dispositions of the ones that closed.
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
@@ -22,6 +27,7 @@ import { bodyGatesEntryGuardReview } from '../lib/body-gates-entry-guard.mjs';
 import { reviewExitReviewApprovedGuard } from '../lib/review-exit-review-approved-guard.mjs';
 import { reviewExitCloseGatesGuard } from '../lib/review-exit-close-gates-guard.mjs';
 import { reviewExitEpicChildrenDoneGuard } from '../lib/review-exit-epic-children-done-guard.mjs';
+import { reviewExitEpicChildDispositionGuard } from '../lib/review-exit-epic-child-disposition-guard.mjs';
 
 export default Object.freeze({
   name: 'review',
@@ -30,6 +36,7 @@ export default Object.freeze({
     blockedByGuard,
     reviewExitReviewApprovedGuard,
     reviewExitEpicChildrenDoneGuard,
+    reviewExitEpicChildDispositionGuard,
     reviewExitCloseGatesGuard,
     childCannotLeadEpicExitGuard,
   ]),
