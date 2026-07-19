@@ -317,6 +317,11 @@ if (_isMain)
           await verbKind(ctx);
           break;
         }
+        case 'epic-reconcile': {
+          const { verbEpicReconcile } = await import('./verbs/epic-reconcile.mjs');
+          await verbEpicReconcile(ctx);
+          break;
+        }
         case 'report': {
           const { verbReport } = await import('./verbs/report.mjs');
           await verbReport(ctx);
