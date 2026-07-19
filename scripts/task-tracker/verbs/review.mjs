@@ -200,6 +200,8 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       projectDir,
+      // #885 — the epic branch needs cfg to fetch the epic's children.
+      cfg,
     });
     if (!preflight.ok) {
       process.stderr.write('\n');
