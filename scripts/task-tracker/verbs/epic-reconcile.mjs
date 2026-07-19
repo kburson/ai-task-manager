@@ -19,6 +19,8 @@
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { setEpicAcReconciled, parseIssueKind } from '../lib/issue-kind.mjs';
+import { fetchEpicChildren } from '../lib/epic-children-gate.mjs';
+import { bijectionReport, formatBijectionReport } from '../lib/epic-ac-child-bijection.mjs';
 
 export async function verbEpicReconcile(ctx) {
   const { cfg, statePath, rest, pexec } = ctx;
@@ -44,11 +46,13 @@ export async function verbEpicReconcile(ctx) {
   }
 
   let refused = null;
+  let reconciledBody = null;
   await mutateIssueBody({
     issueNumber: target,
     repo: cfg.repo,
     deps: { pexec },
     mutate: (base) => {
+      reconciledBody = base;
       const kind = parseIssueKind(base);
       if (kind !== 'epic') {
         // Refuse by returning the body unchanged — `mutateIssueBody` owns the
@@ -71,4 +75,25 @@ export async function verbEpicReconcile(ctx) {
   console.log(
     `[task-tracker] ✓ #${target} AC-reconciled: epic goals re-read against delivered children.`
   );
+
+  // #889 — the bijection report prints HERE, at the one moment it is actionable.
+  // #887 made develop-exit depend on the operator asserting they re-read the
+  // epic's ACs against what shipped, but handed them nothing to read; naming the
+  // ACs with no child and the children with no AC is what turns the stamp from
+  // ceremony into a decision. Advisory by design — see the module header. Its
+  // failure is swallowed for the same reason: an advisory that can break the
+  // stamp it advises would be a gate wearing a report's clothes.
+  try {
+    const children = await fetchEpicChildren({
+      cfg,
+      parentEpicNumber: target,
+      deps: { pexec },
+    });
+    const text = formatBijectionReport(bijectionReport({ body: reconciledBody, children }), {
+      issueNumber: target,
+    });
+    if (text) console.log(text);
+  } catch (err) {
+    console.log(`[task-tracker] AC↔child bijection report unavailable: ${err.message}`);
+  }
 }
