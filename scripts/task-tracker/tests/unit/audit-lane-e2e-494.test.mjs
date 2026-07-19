@@ -149,6 +149,7 @@ const EPIC_BODY = `# EPIC: coordination issue
 
 <!-- aitm-issue-kind kind="epic" -->
 <!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
+<!-- aitm-epic-ac-reconciled ts="2026-07-19T12:00:00.000Z" -->
 <!-- aitm-dod-verified sha="abc1234" ts="2026-06-22T00:00:00Z" -->
 
 ## Acceptance Criteria

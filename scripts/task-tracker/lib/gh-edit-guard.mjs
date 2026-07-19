@@ -62,6 +62,10 @@ const MARKER_PATTERNS = [
   // Widened (#375) to detect both legacy colon and new `ts="..."` grammars.
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i },
+  // #887 — mirrors the `INVARIANT_MARKER_PATTERNS` entry. Without this line an
+  // external `gh issue edit --body` would strip the reconciliation marker past
+  // the Bash-level guard, silently un-reconciling an epic.
+  { name: 'aitm-epic-ac-reconciled', re: /<!--\s*aitm-epic-ac-reconciled(?:\s*:|\s+ts=")/i },
   { name: 'aitm-review-approved', re: /<!--\s*aitm-review-approved(?:\s*:|\s+ts=")/i },
   // Widened (#380) to protect both legacy colon and new `ts="..."` grammars.
   { name: 'aitm-full-auto-approved', re: /<!--\s*aitm-full-auto-approved(?:\s*:|\s+ts=")/i },

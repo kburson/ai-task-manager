@@ -17,7 +17,13 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
-import { isNoCommitKind, hasDeliverableMarker, isAcWaived } from './issue-kind.mjs';
+import {
+  isNoCommitKind,
+  hasDeliverableMarker,
+  isAcWaived,
+  parseIssueKind,
+  hasEpicAcReconciledMarker,
+} from './issue-kind.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 
@@ -307,6 +313,24 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
     if (!hasDeliverableMarker(body)) {
       blockers.push(
         'code-complete-deliverable-missing: audit-kind issue requires an `aitm-deliverable-posted` marker (the deliverable comment/document/decision) in place of a `### 🔗 Commits` trail'
+      );
+    }
+    // #887 — AC reconciliation is a develop-exit event, not a continuous one
+    // (epic #883, decision 1). An epic's ACs were written at decomposition time,
+    // when its children were still proposals; by the time the last child lands
+    // they describe intent rather than delivery. This is the single point at
+    // which that drift is required to be resolved.
+    //
+    // Keyed on `parseIssueKind(body) === 'epic'` rather than the `audit` flag
+    // above: `isNoCommitKind` also covers audit/research/spike, which have no
+    // children to reconcile against. Same predicate `review-preflight.mjs` uses.
+    //
+    // What this can and cannot prove: it establishes that reconciliation was
+    // CLAIMED, not that it was DONE. #889's AC<->child bijection check is what
+    // makes the claim checkable. The two are a pair, not a redundancy.
+    if (parseIssueKind(body) === 'epic' && !hasEpicAcReconciledMarker(body)) {
+      blockers.push(
+        `code-complete-epic-unreconciled: epic #${issueNumber} has not been AC-reconciled — re-read the epic's goals against what its children actually delivered, record the mapping in the epic body, then run \`/task epic-reconcile ${issueNumber}\`. Epic ACs are provisional from decomposition until the last child lands, so this is the single reconciliation point.`
       );
     }
     return { ok: blockers.length === 0, blockers, shas };
