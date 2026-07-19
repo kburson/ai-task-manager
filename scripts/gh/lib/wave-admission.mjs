@@ -59,6 +59,14 @@ export function admit({
   });
 }
 
+// #888 — GitHub's `IssueStateReason` enum, lower-snake-cased. Only meaningful on
+// a CLOSED issue; an open one has no disposition to report.
+export function normalizeCloseReason(sub) {
+  if (!sub || String(sub.state || '').toUpperCase() !== 'CLOSED') return null;
+  const raw = String(sub.stateReason || '').toLowerCase();
+  return raw === 'not_planned' || raw === 'completed' ? raw : null;
+}
+
 // Default sibling fetcher. Queries the parent epic's sub-issues and resolves
 // each sub-issue's project status (kanban single-select) and Sequence number.
 //
@@ -76,6 +84,7 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
             nodes {
               number
               state
+              stateReason
               projectItems(first: 20) {
                 nodes {
                   project { id }
@@ -121,7 +130,12 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
     }
     // GitHub closed sub-issues that aren't on the board count as Done.
     if (!state && sub.state === 'CLOSED') state = 'done';
-    out.push({ number: sub.number, rank, state });
+    // #888 — close disposition, additive. `{number, rank, state}` is unchanged
+    // for every existing consumer; `closeReason` is normalized off GitHub's
+    // `COMPLETED` / `NOT_PLANNED` enum so no caller sees the API casing. An OPEN
+    // child gets `null`: "still open" is not a disposition, and the children-done
+    // gate already refuses it.
+    out.push({ number: sub.number, rank, state, closeReason: normalizeCloseReason(sub) });
   }
   return out;
 }

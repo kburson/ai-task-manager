@@ -45,6 +45,7 @@ const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/
 // from the non-global presence pattern in `lib/session-ref.mjs` because
 // `matchAll` requires the /g flag.
 const SESSION_REF_COUNT_RE = /<!--\s*aitm-session-ref\s+sid="/gi;
+const AC_STRUCK_COUNT_RE = /<!--\s*aitm-ac-struck\b/gi;
 
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i, kind: 'single' },
@@ -108,6 +109,13 @@ export const INVARIANT_MARKER_PATTERNS = [
   // dropped prior entry on an unrelated edit is a loss. Uses the `count` kind
   // so `findLostMarkers` compares occurrence counts rather than a stage set.
   { name: 'aitm-session-ref', re: SESSION_REF_COUNT_RE, kind: 'count' },
+  // #888 — epic AC strikes. Append-only, hence `count`: a strike records that a
+  // promise was withdrawn, which is a fact about history, so the occurrence
+  // count must never decrease. `count` needs no custom `findLostMarkers` branch.
+  // Un-striking an AC therefore requires the explicit `allowMarkerLoss: true`
+  // hatch — the intended asymmetry, since quietly deleting the record of dropped
+  // scope is exactly what this marker exists to prevent.
+  { name: 'aitm-ac-struck', re: AC_STRUCK_COUNT_RE, kind: 'count' },
 ];
 
 function countMarkers(body, re) {
