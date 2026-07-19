@@ -31,7 +31,7 @@ async function main(argv) {
   }
   const epicNumber = Number(String(args[0] || '').replace(/^#/, ''));
   if (!Number.isInteger(epicNumber) || epicNumber <= 0) {
-    console.error('Usage: node scripts/task-tracker/verify-epic-trail.mjs <epic#>');
+    console.error('Usage: node scripts/task-tracker/verify-epic-trail.mjs <epic#> [<epic-ref>]');
     return 2;
   }
 
@@ -42,7 +42,12 @@ async function main(argv) {
     return 1;
   }
 
-  const { stdout } = await pexec('git', epicTrailLogArgs('HEAD'), { timeout: GIT_TIMEOUT_MS });
+  // Optional second positional: the epic ref to scope the log to. Defaults to
+  // HEAD (the branch under review). Naming another ref lets the trail be
+  // verified for an epic whose branch is not currently checked out — read-only,
+  // with none of `review`'s board side effects.
+  const epicRef = args[1] || 'HEAD';
+  const { stdout } = await pexec('git', epicTrailLogArgs(epicRef), { timeout: GIT_TIMEOUT_MS });
   try {
     buildEpicDerivedTrail({
       epicNumber,
