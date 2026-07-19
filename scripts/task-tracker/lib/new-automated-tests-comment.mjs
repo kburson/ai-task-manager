@@ -32,7 +32,15 @@ export const NEW_TESTS_FOOTER =
   'goes green._';
 
 const FILE_HEADER_RE = /^\+\+\+ b\/(.+)$/;
-const TEST_DECL_RE = /^\+\s*test(?:\.skip|\.only|\.todo)?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1/;
+// Matches an added (`+`) test-declaration line for either node:test idiom:
+// the `test(` form and the `describe/it` form's `it(` calls (nested `it(`
+// included — the leading anchor only requires the verb to follow the diff
+// marker + indentation, so an `it(` inside a `describe(` block still matches).
+// `describe(` itself is a grouping wrapper, not a test declaration, so it is
+// deliberately excluded — the reported entry is the individual `it(` name.
+// The `\s*\(` suffix keeps identifiers like `visit(` / `iterate(` from matching.
+const TEST_DECL_RE =
+  /^\+\s*(?:test|it)(?:\.skip|\.only|\.todo)?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1/;
 
 export function parseTestEntriesFromDiff(diffText) {
   const entries = [];

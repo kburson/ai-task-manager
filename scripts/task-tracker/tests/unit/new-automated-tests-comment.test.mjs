@@ -176,3 +176,61 @@ test('postNewAutomatedTestsComment: skips if a New Automated Tests comment alrea
   assert.equal(result.status, 'duplicate');
   assert.equal(createCalled, false);
 });
+
+// #901 — the generator must detect the `describe/it` idiom, not only `test(`.
+// 23 existing test files in this repo use `it(` / `describe(`-nested `it(`; the
+// pre-#901 matcher was blind to them, producing an empty New-Automated-Tests
+// comment that the Agent Review Gate reads as "missing" and refuses at Test→Review.
+
+// AC1 — a top-level `it(` addition is captured.
+test('parseTestEntriesFromDiff: it() declaration is captured (#901)', () => {
+  const diff = ['+++ b/foo.test.mjs', "+it('adds two numbers', () => {});"].join('\n');
+  assert.deepEqual(parseTestEntriesFromDiff(diff), [
+    { file: 'foo.test.mjs', name: 'adds two numbers' },
+  ]);
+});
+
+// AC2 — the `.skip` / `.only` / `.todo` suffixes work on `it(` as they do on `test(`.
+test('parseTestEntriesFromDiff: it.skip/.only/.todo declarations are captured (#901)', () => {
+  const diff = [
+    '+++ b/foo.test.mjs',
+    "+it.skip('not ready yet', () => {});",
+    "+it.only('focused case', () => {});",
+    "+it.todo('planned case');",
+  ].join('\n');
+  assert.deepEqual(parseTestEntriesFromDiff(diff), [
+    { file: 'foo.test.mjs', name: 'not ready yet' },
+    { file: 'foo.test.mjs', name: 'focused case' },
+    { file: 'foo.test.mjs', name: 'planned case' },
+  ]);
+});
+
+// AC3 — an `it(` nested inside a `describe(` block is captured (indentation and the
+// enclosing group do not defeat the leading-anchor match).
+test('parseTestEntriesFromDiff: describe-nested it() is captured (#901)', () => {
+  const diff = [
+    '+++ b/foo.test.mjs',
+    "+describe('the widget', () => {",
+    "+  it('renders', () => {});",
+    "+  it('handles clicks', () => {});",
+    '+});',
+  ].join('\n');
+  assert.deepEqual(parseTestEntriesFromDiff(diff), [
+    { file: 'foo.test.mjs', name: 'renders' },
+    { file: 'foo.test.mjs', name: 'handles clicks' },
+  ]);
+});
+
+// AC4 — a bare `describe(` line yields NO phantom entry (describe is a grouping
+// wrapper, not a test declaration), and identifiers that merely start with the
+// verb letters (`visit(`, `iterate(`, `testify(`) do not false-match.
+test('parseTestEntriesFromDiff: describe() and lookalike identifiers produce no phantom entries (#901)', () => {
+  const diff = [
+    '+++ b/foo.test.mjs',
+    "+describe('a group with no direct tests', () => {});",
+    '+  const visited = visit(node);',
+    '+  iterate(items);',
+    "+  testify('not a test call', x);",
+  ].join('\n');
+  assert.deepEqual(parseTestEntriesFromDiff(diff), []);
+});
