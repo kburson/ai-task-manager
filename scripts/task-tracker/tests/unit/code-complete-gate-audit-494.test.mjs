@@ -130,11 +130,18 @@ test('AC4 REGRESSION: code-kind body with NO commit trail is still refused', asy
   );
 });
 
-test('#500 epic-kind: deliverable + waived ACs ⇒ ok, no trail fetch', async () => {
+test('#500 epic-kind: deliverable + waived ACs + reconciled ⇒ ok, no trail fetch', async () => {
   // An epic is delivered by its children; it has no commits of its own. The
   // no-commit lane must accept it on posted-deliverable evidence alone.
+  //
+  // #887 added a SECOND epic-only requirement to this lane: the reconciliation
+  // marker. The deliverable marker attests that the children shipped; the
+  // reconciliation marker attests that the epic's own ACs were re-read against
+  // what they actually shipped. Neither absorbs the other, so this case — the
+  // fully-clean epic — now carries both.
   const body = `<!-- aitm-issue-kind kind="epic" -->
 <!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
+<!-- aitm-epic-ac-reconciled ts="2026-07-19T12:00:00.000Z" -->
 
 ## Acceptance Criteria
 
@@ -145,6 +152,25 @@ test('#500 epic-kind: deliverable + waived ACs ⇒ ok, no trail fetch', async ()
   assert.equal(r.ok, true, `blockers: ${r.blockers.join(' | ')}`);
   assert.deepEqual(r.blockers, []);
   assert.deepEqual(r.shas, []);
+});
+
+test('#887 epic-kind: deliverable present but NOT reconciled ⇒ blocked', async () => {
+  // The complement of the case above, pinned here rather than only in the #887
+  // suite so a future reader of THIS file sees both epic-lane requirements
+  // together and does not "restore" the old single-requirement shape.
+  const body = `<!-- aitm-issue-kind kind="epic" -->
+<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
+
+## Acceptance Criteria
+
+- [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
+`;
+  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.some((b) => b.startsWith('code-complete-epic-unreconciled')),
+    `expected epic-unreconciled, got: ${r.blockers.join(' | ')}`
+  );
 });
 
 test('#500 epic-kind: MISSING deliverable ⇒ blocked on deliverable-missing', async () => {
