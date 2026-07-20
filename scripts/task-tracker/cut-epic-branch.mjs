@@ -14,6 +14,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Cut `feature/epic/<issue>` from its resolved parent branch. Returns
 // `{ branch, base }`. Throws if the issue does not resolve to an epic, or if git
@@ -51,6 +52,10 @@ function realGit(projectDir) {
 }
 
 async function main(argv) {
+  if (wantsHelp(argv)) {
+    emitSelfDoc('cut-epic-branch');
+    return;
+  }
   const issue = Number(String(argv[0] || '').replace(/^#/, ''));
   if (!Number.isInteger(issue) || issue <= 0) {
     process.stderr.write('usage: cut-epic-branch.mjs <issue#>\n');

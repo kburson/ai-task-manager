@@ -16,6 +16,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Create `feature/child/<issue>` + its worktree at `path`, based on the child's
 // epic head. Returns `{ branch, path, base }`. Throws if the issue is not a child
@@ -53,6 +54,10 @@ function realGit(projectDir) {
 }
 
 async function main(argv) {
+  if (wantsHelp(argv)) {
+    emitSelfDoc('cut-child-worktree');
+    return;
+  }
   const issue = Number(String(argv[0] || '').replace(/^#/, ''));
   const wtPath = argv[1];
   if (!Number.isInteger(issue) || issue <= 0 || !wtPath) {
