@@ -639,14 +639,14 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 
 ## Design and References
 
-| Document                                                               | Contents                                                                                  |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [docs/README.md](docs/README.md)                                       | Documentation table of contents and archive map                                           |
-| [docs/introduction/README.md](docs/introduction/README.md)             | Current onboarding guide and quickstart path                                              |
-| [docs/DESIGN.md](docs/DESIGN.md)                                       | Full design spec — data model, state file format, timing comment structure, hook behavior |
-| [docs/guides/workflow.md](docs/guides/workflow.md)                     | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                       |
-| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated         |
-| [docs/guides/settings-guide.md](docs/guides/settings-guide.md)         | Recommended Claude Code settings for this tool                                            |
+| Document                                                                                                | Contents                                                                                         |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [docs/README.md](docs/README.md)                                                                        | Documentation table of contents and archive map                                                  |
+| [Introduction guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/README.md) | Current onboarding guide and quickstart path (hosted on the project, not shipped in the package) |
+| [docs/DESIGN.md](docs/DESIGN.md)                                                                        | Full design spec — data model, state file format, timing comment structure, hook behavior        |
+| [docs/guides/workflow.md](docs/guides/workflow.md)                                                      | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                              |
+| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md)                                  | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated                |
+| [docs/guides/settings-guide.md](docs/guides/settings-guide.md)                                          | Recommended Claude Code settings for this tool                                                   |
 
 ---
 
