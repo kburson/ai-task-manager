@@ -774,4 +774,31 @@ Ignored paths in every tool include `node_modules/`, `.tmp/`, `.worktrees/`, `.c
 
 When CSpell flags a legitimate token (project jargon, library name, person name), add it to `cspell-dictionary.txt` — keep the file sorted (`sort -u -o cspell-dictionary.txt cspell-dictionary.txt`). Don't disable spell-check inline.
 
+### House lints (repo-specific)
+
+Beyond the four generic tools, `npm run lint` also runs several repo-specific
+"house lints" — a pure detector under `scripts/task-tracker/lib/` plus a thin
+FS-walking runner under `scripts/maintenance/` (or `scripts/task-tracker/tests/`):
+`lint:tmp`, `lint:fleet-sandbox`, `lint:story-tags`, `lint:line-cap`, and
+`lint:test-reach`.
+
+`npm run lint:test-reach` (`scripts/maintenance/lint-test-coverage-reach.mjs`,
+detector in `scripts/task-tracker/lib/lint-test-coverage-reach.mjs`, issue #866)
+**rejects a `*.test.mjs` file that exercises no code in this repo.** The standard
+it enforces: every test must exercise a module under `scripts/`. A test that
+references no repo source module — no import of, and no spawned/resolved path to,
+any non-test `.mjs` — never appears in the c8 coverage report (`.c8rc.json`
+scopes `src` to `scripts/` with `all: true`), so it costs a process spawn on every
+full run and proves nothing about the product. Reach is deliberately broader than
+_import_: the CLI tests reach product code by spawning it
+(`execFileSync('node', ['scripts/...'])`), which c8 still measures, so a
+spawned/resolved `.mjs` path counts as reach and the detector DEFAULT-ALLOWs on
+ambiguity (it only ever decides whether to _reject_ a file). Because roughly three
+dozen such tests predate the lint, the runner records them in
+`scripts/maintenance/lint-test-coverage-reach.baseline.json`: it prints **every**
+offender it finds each run (the baseline never blinds the detector) but exits
+non-zero only when a **new**, non-baselined freeloader appears. Fix a new
+offender by making it exercise a `scripts/**` module, converting its assertions to
+a lint, or deleting it — do not append it to the baseline to silence the gate.
+
 `npm run quality` must exit 0 before close. CI runs the same script.
