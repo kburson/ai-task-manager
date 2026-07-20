@@ -61,6 +61,22 @@ test('fails a dangling vc:N citation and names the AC', () => {
   );
 });
 
+test('fails a resolvable-but-legacy backtick-embedded-cmd AC (vc-list-only form enforced)', () => {
+  // The command is runnable, but the AC cites it via the deprecated embedded
+  // `cmd="`…`"` attribute instead of a `vc-list="vc:N"` reference. V5 rejects
+  // the legacy form at Review even though it resolves — the corpus is
+  // vc-list-only for ACs (#773). Reason must be the specific `backtick-embedded-cmd`.
+  const body = withAcLines(
+    '- [ ] Ships the widget. <!-- aitm-verified cmd="`node --test scripts/foo.test.mjs`" -->'
+  );
+  const res = validate({ body });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /Ships the widget/.test(f) && /backtick-embedded-cmd/.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
 test('fails a stampable DoD item missing its verifier and names it', () => {
   const body = WELL_FORMED.replace(
     '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->',

@@ -25,6 +25,11 @@
 //       `evidenceCommands`. *Derived* keys (acs, checkboxes) are computed from the
 //       body and carry no verifier by design, so they are skipped.
 //
+//       NOTE — deliberate asymmetry with the AC half: the DoD half still accepts
+//       the legacy literal `cmd="`…`"` form, whereas ACs are vc-list-only. This is
+//       intentional for now; retiring the literal `cmd` form for DoD (to make DoD
+//       citation match AC handling) is tracked in #903.
+//
 // Absence defers. A body with no `## Acceptance Criteria` heading, or no
 // Functional DoD block, is V1 body-sections' concern — V5 returns a vacuous pass
 // for the missing section so the demotion reason is not mis-attributed (mirrors
