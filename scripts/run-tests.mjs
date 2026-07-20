@@ -11,6 +11,7 @@
 // there is no hardcoded directory list here. A divergence guard fails the run if
 // the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
 // every committed test file (the 624-vs-652 false green cannot recur).
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +24,13 @@ import {
 import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
+import {
+  parseInProcessDurationMs,
+  formatPassLine,
+  buildTimingReport,
+  formatTimingReport,
+  serializeArtifact,
+} from './run-tests-timing.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');
@@ -30,12 +38,18 @@ const repoRoot = path.resolve(__dir, '..');
 // ---- arg parsing ---------------------------------------------------------
 const VALID_LANES = new Set(RUN_LANES);
 let lane = 'fast';
+// #861 — opt-in slow-test report. The per-file timing dataset and JSON artifact
+// are ALWAYS produced; this flag (or AITM_TEST_TIMING=1) only controls whether
+// the human-readable top-N/Pareto/slow-bucket report is printed at the end.
+let timingReport = process.env.AITM_TEST_TIMING === '1';
 for (let i = 2; i < process.argv.length; i++) {
   const a = process.argv[i];
   if (a === '--lane') {
     lane = process.argv[++i];
   } else if (a.startsWith('--lane=')) {
     lane = a.slice('--lane='.length);
+  } else if (a === '--timing-report') {
+    timingReport = true;
   } else {
     console.error(`run-tests: unknown argument: ${a}`);
     process.exit(2);
@@ -85,6 +99,8 @@ const registryKeysBefore = liveRegistryKeySet();
 
 let failed = 0;
 const failures = [];
+// #861 — one timing record per executed file, keyed later by repo-relative path.
+const timingRecords = [];
 for (const entry of files) {
   const { label, full } = entry;
   if (SKIP.has(label)) {
@@ -106,8 +122,20 @@ for (const entry of files) {
     env: { ...process.env, [TEST_NO_RETRY_ENV]: '1' },
   });
   const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  // #861 — in-process test time comes from node:test's own duration line, so
+  // spawn/IO overhead = wall − in-process. Null when the child printed none.
+  const inProcMs = parseInProcessDurationMs(res.stdout);
+  timingRecords.push({
+    file: path.relative(repoRoot, full),
+    label,
+    wallMs: elapsedMs,
+    inProcMs,
+    status: res.status,
+  });
   if (res.status === 0) {
-    console.log('ok');
+    // #861 — the pass path now surfaces per-file elapsed time (`ok (1.7s)`),
+    // so a green run is a timing dataset instead of a wall of bare `ok`s.
+    console.log(formatPassLine(elapsedMs));
   } else {
     failed++;
     failures.push({ file: label, stdout: res.stdout, stderr: res.stderr, status: res.status });
@@ -121,6 +149,28 @@ for (const entry of files) {
       })
     );
   }
+}
+
+// #861 — always persist the machine-readable timing artifact, keyed by
+// repo-relative file path, so two runs can be diffed rather than eyeballed. The
+// artifact is gitignored; the write must never fail the run.
+const TIMING_ARTIFACT_PATH = path.resolve(repoRoot, '.aitm', 'test-timing.json');
+function writeTimingArtifact() {
+  try {
+    const artifact = serializeArtifact(timingRecords, {
+      lane,
+      generatedAt: new Date().toISOString(),
+    });
+    mkdirSync(path.dirname(TIMING_ARTIFACT_PATH), { recursive: true });
+    writeFileSync(TIMING_ARTIFACT_PATH, `${JSON.stringify(artifact, null, 2)}\n`);
+  } catch (err) {
+    console.error(`run-tests: could not write timing artifact: ${err.message}`);
+  }
+}
+writeTimingArtifact();
+
+if (timingReport) {
+  console.log(`\n${formatTimingReport(buildTimingReport(timingRecords))}`);
 }
 
 if (failed > 0) {
