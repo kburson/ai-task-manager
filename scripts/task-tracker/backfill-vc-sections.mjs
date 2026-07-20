@@ -32,11 +32,15 @@ const pexec = promisify(execFile);
 // section into the middle of that prose instead of before the real heading.
 const PICKUP_HEADING_RE = /^##\s+Pickup Directive\b.*$/im;
 
-// The four standard Functional-DoD commands a freshly-created post-#410 body
+// The standard Functional-DoD commands a freshly-created post-#410 body
 // seeds when no AC/DoD command is declared. Matches preflight-issue.mjs' result
 // for a standard DoD, so a defaulted back-fill equals a recreated body.
+// #934 — the two-lane `tests` DoD split seeds `npm test` + `npm run test:slow`
+// (each under its own runner budget) in place of the single `npm run test:all`,
+// so a defaulted back-fill still equals a recreated body.
 export const DEFAULT_VC_COMMANDS = [
-  'npm run test:all',
+  'npm test',
+  'npm run test:slow',
   'npm run lint',
   'npm run format:check',
   'git log --oneline -1',

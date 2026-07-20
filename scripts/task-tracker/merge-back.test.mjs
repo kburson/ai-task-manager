@@ -1,0 +1,106 @@
+// #905 — merge a child back into its epic (design: "Merge-back protocol").
+// Opportunistically sync the epic onto its parent (skip if already current),
+// rebase the child onto the epic head, run the child's tests, then fast-forward
+// only. Refuse on rebase conflict or test failure; clean up on success. git +
+// graph + test-runner injected.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { mergeBack } from './merge-back.mjs';
+
+const GRAPH = {
+  905: { parent: null, children: [910] }, // root epic (parent = trunk)
+  910: { parent: 905, children: [] }, // child of 905
+};
+const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
+
+function makeGit({ grandparentIsAncestor = true, rebaseChildFails = false } = {}) {
+  const calls = [];
+  const git = (args) => {
+    calls.push(args);
+    if (args[0] === 'merge-base' && args.includes('--is-ancestor')) {
+      if (!grandparentIsAncestor) {
+        const e = new Error('trunk moved ahead');
+        e.status = 1;
+        throw e;
+      }
+      return '';
+    }
+    // rebase of the CHILD onto the epic: args = ['rebase','feature/epic/905','feature/child/910']
+    if (args[0] === 'rebase' && args[2] === 'feature/child/910' && rebaseChildFails) {
+      const e = new Error('rebase conflict in child');
+      e.status = 1;
+      throw e;
+    }
+    return '';
+  };
+  git.calls = calls;
+  return git;
+}
+
+test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', () => {
+  const git = makeGit(); // grandparent already ancestor → epic sync is a no-op
+  const r = mergeBack({
+    child: 910,
+    path: '/wt/910',
+    deps: { graph, git, runTests: () => true },
+  });
+  assert.equal(r.merged, true);
+  assert.equal(r.epic, 'feature/epic/905');
+  assert.equal(r.child, 'feature/child/910');
+  const kinds = git.calls.map((c) => c.join(' '));
+  // epic was NOT rebased onto trunk (grandparent unchanged) ...
+  assert.ok(!kinds.includes('rebase trunk feature/epic/905'));
+  // ... but the child WAS rebased onto the epic, then ff-merged, then cleaned up.
+  assert.ok(kinds.includes('rebase feature/epic/905 feature/child/910'));
+  assert.ok(kinds.includes('merge --ff-only feature/child/910'));
+  assert.ok(kinds.includes('worktree remove /wt/910'));
+  assert.ok(kinds.some((k) => k.startsWith('branch -d feature/child/910')));
+});
+
+test('grandparent advanced: epic is rebased onto trunk before the child merge', () => {
+  const git = makeGit({ grandparentIsAncestor: false });
+  mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } });
+  const kinds = git.calls.map((c) => c.join(' '));
+  assert.ok(kinds.includes('rebase trunk feature/epic/905'));
+});
+
+test('rebase conflict on the child refuses before any merge', () => {
+  const git = makeGit({ rebaseChildFails: true });
+  assert.throws(
+    () => mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } }),
+    /rebase|conflict/i
+  );
+  const kinds = git.calls.map((c) => c.join(' '));
+  assert.ok(!kinds.some((k) => k.startsWith('merge --ff-only')));
+});
+
+test('post-rebase test failure refuses the merge and skips cleanup', () => {
+  const git = makeGit();
+  assert.throws(
+    () => mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => false } }),
+    /test/i
+  );
+  const kinds = git.calls.map((c) => c.join(' '));
+  assert.ok(!kinds.some((k) => k.startsWith('merge --ff-only')));
+  assert.ok(!kinds.some((k) => k.startsWith('worktree remove')));
+});
+
+test('refuses a non-child issue', () => {
+  const git = makeGit();
+  assert.throws(
+    () => mergeBack({ child: 905, path: '/wt/x', deps: { graph, git, runTests: () => true } }),
+    /not a child/i
+  );
+});
+
+test('requires child, git, and a test runner', () => {
+  const git = makeGit();
+  assert.throws(
+    () => mergeBack({ path: '/wt/x', deps: { graph, git, runTests: () => true } }),
+    /child/i
+  );
+  assert.throws(() => mergeBack({ child: 910, path: '/wt/x', deps: { graph } }), /git/i);
+  assert.throws(() => mergeBack({ child: 910, path: '/wt/x', deps: { graph, git } }), /runTests/i);
+});

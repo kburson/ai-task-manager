@@ -122,6 +122,7 @@ subfolders
 subheader
 subheaders
 subshell
+testless
 toggleable
 tombstoned
 toplevel
@@ -240,3 +241,14 @@ interceptable
 destructures
 wontfixed
 unstruck
+stopword
+stopwords
+jaccard
+dupguard
+desync
+desyncs
+desyncing
+desynced
+conflatable
+conflates
+unshippable

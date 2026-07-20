@@ -270,11 +270,15 @@ test('runCloseGates: no attributed commit on trunk blocks close', async () => {
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-no-attributed-commit-on-trunk/.test(b)));
+  // #913 — the lineage-aware gate refuses with a done-target-branch message.
+  // For a standalone story (no epic lineage) the target IS trunk, so the
+  // refusal is equivalent to the former close-no-attributed-commit-on-trunk.
+  assert.ok(r.blockers.some((b) => /close-not-on-parent-branch/.test(b)));
+  assert.ok(r.blockers.some((b) => /merge into trunk/.test(b)));
   assert.equal(r.trunkCheckSkipped, null);
 });
 
-test('runCloseGates: commitsOnTrunkGate throws → close-trunk-gate-error caught', async () => {
+test('runCloseGates: lineageDoneGate throws → close-lineage-gate-error caught', async () => {
   const r = await runCloseGates({
     cfg,
     issueNumber: 1,
@@ -289,7 +293,7 @@ test('runCloseGates: commitsOnTrunkGate throws → close-trunk-gate-error caught
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-trunk-gate-error/.test(b)));
+  assert.ok(r.blockers.some((b) => /close-lineage-gate-error/.test(b)));
 });
 
 test('runCloseGates: issueDirtyGate throws → close-dirty-gate-error caught', async () => {
@@ -359,7 +363,7 @@ test('commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef', a
   assert.equal(r.trunkRef, 'trunk');
 });
 
-test('commitsOnTrunkGate: default trunk-ref fallback + default attributingCommits (real git)', async () => {
+test('commitsOnTrunkGate: default trunk-ref resolution + default attributingCommits (real git)', async () => {
   const sha = await headSha();
   const r = await commitsOnTrunkGate({
     cfg,
@@ -371,7 +375,10 @@ test('commitsOnTrunkGate: default trunk-ref fallback + default attributingCommit
     r.ok === true || /close-no-attributed-commit-on-trunk/.test(r.blocker || ''),
     JSON.stringify(r)
   ); // #729/#733
-  assert.equal(r.trunkRef, 'trunk');
+  // #927 — the real default resolver prefers the remote-tracking ref
+  // (`origin/trunk`) and only falls back to the local `trunk` branch when no
+  // remote exists. Accept either so this runs green in a clone or a solo repo.
+  assert.match(r.trunkRef, /^(origin\/)?trunk$/);
 });
 
 test('issueDirtyGate: default filesForSha + dirtyFiles (real git) on HEAD', async () => {

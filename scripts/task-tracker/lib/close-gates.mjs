@@ -26,6 +26,8 @@ import { DOD_VERIFIED_RE, parseDodVerifiedMarker } from './markers.mjs';
 import { verifyChainIntegrity, STAGES } from './stage-entry-markers.mjs';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
+import { resolveTrunkRef as defaultResolveTrunkRef, fetchTrunk } from './trunk-ref.mjs';
+import { lineageDoneGate } from './close-gates-lineage.mjs';
 
 const pexec = promisify(execFile);
 
@@ -208,37 +210,21 @@ async function defaultGetHeadSha({ projectDir }) {
 // search is scoped to `trunkRef`, NOT `--all`: a never-merged feature branch's
 // own commit does not satisfy it.
 //
-// Trunk ref resolution (in order): cfg.trunkRef → first existing local
-// branch among `trunk`, `main`, `master` → refusal. `origin/HEAD` is
-// intentionally not probed: this project is solo / local-only.
+// Trunk ref resolution is delegated to the one shared `resolveTrunkRef`
+// (#927, `lib/trunk-ref.mjs`): cfg.trunkRef → first existing `origin/<branch>`
+// remote-tracking ref among `trunk`/`main`/`master` → local-branch fallback
+// (no-remote case) → refusal. The gate `fetchTrunk`s first so the read is
+// authoritative regardless of what any worktree has checked out — reading the
+// remote-tracking ref is desync-proof where reading local `trunk` was not.
 //
 // Skip semantics match issueDirtyGate: no trail → skip, empty marker → skip.
-
-const TRUNK_FALLBACKS = ['trunk', 'main', 'master'];
-
-async function defaultResolveTrunkRef({ cfg, projectDir }) {
-  if (cfg && typeof cfg.trunkRef === 'string' && cfg.trunkRef.trim()) {
-    return cfg.trunkRef.trim();
-  }
-  for (const ref of TRUNK_FALLBACKS) {
-    try {
-      await pexec('git', ['rev-parse', '--verify', '--quiet', `refs/heads/${ref}`], {
-        cwd: projectDir,
-        timeout: 10000,
-      });
-      return ref;
-    } catch {
-      // try next
-    }
-  }
-  return null;
-}
 
 export async function commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps = {} } = {}) {
   if (!cfg) throw new Error('commitsOnTrunkGate: cfg is required');
   if (!issueNumber) throw new Error('commitsOnTrunkGate: issueNumber is required');
   const listComments = deps.listComments || defaultListComments;
   const resolveTrunkRef = deps.resolveTrunkRef || defaultResolveTrunkRef;
+  const fetchTrunkRef = deps.fetchTrunk || fetchTrunk;
   // #733 — trunk-scoped MESSAGE attribution replaces per-SHA reachability.
   const attributing = deps.attributingCommits || defaultAttributingCommits;
 
@@ -256,12 +242,15 @@ export async function commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps = 
   }
   if (shas.length === 0) return { ok: true, skipped: 'empty-commits-marker' };
 
+  // Fetch before read so the remote-tracking ref is authoritative — never
+  // fatal (offline / no-remote falls through to the local ref).
+  await fetchTrunkRef({ cfg, projectDir });
   const trunkRef = await resolveTrunkRef({ cfg, projectDir });
   if (!trunkRef) {
     return {
       ok: false,
       blocker:
-        'close-trunk-ref-unresolved: no `trunkRef` configured and none of [trunk, main, master] exist locally — set `trunkRef` in `.ai-task-manager/task-tracker.json`',
+        'close-trunk-ref-unresolved: no `trunkRef` configured and no `origin/{trunk,main,master}` remote-tracking ref nor local [trunk, main, master] branch exists — set `trunkRef` in `.ai-task-manager/task-tracker.json`',
     };
   }
 
@@ -306,12 +295,18 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     if (c.blockers) blockers.push(...c.blockers);
   }
 
+  // #913 — Axis-1 "done" is delivered-to-parent-branch, not delivered-to-trunk.
+  // The lineage-aware gate greps the `[#N]` deliverable on the issue's parent
+  // branch (walking up to the nearest surviving ancestor → trunk), and for an
+  // epic asserts the derived child-trail on the epic's own branch. For a
+  // trunk-only (no-epic) repo the parent branch IS trunk, so this degenerates to
+  // exactly the former `commitsOnTrunkGate` reachability check — no regression.
   let trunkResult = null;
   try {
-    trunkResult = await commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps });
+    trunkResult = await lineageDoneGate({ cfg, issueNumber, projectDir, body, deps });
     if (!trunkResult.ok) blockers.push(trunkResult.blocker);
   } catch (err) {
-    blockers.push(`close-trunk-gate-error: ${err.message}`);
+    blockers.push(`close-lineage-gate-error: ${err.message}`);
   }
 
   let dirtyResult = null;
@@ -326,8 +321,12 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     ok: blockers.length === 0,
     blockers,
     dirtyCheckSkipped: dirtyResult?.skipped || null,
+    // `trunkCheckSkipped`/`trunkRef` retain their legacy names for existing
+    // consumers; `doneBranch` is the #913 lineage-aware Axis-1 target branch
+    // (the walked-up parent branch, or the epic's own branch for an epic).
     trunkCheckSkipped: trunkResult?.skipped || null,
-    trunkRef: trunkResult?.trunkRef || null,
+    trunkRef: trunkResult?.doneBranch || trunkResult?.epicHead || trunkResult?.trunkRef || null,
+    doneBranch: trunkResult?.doneBranch || trunkResult?.epicHead || null,
     headSha,
   };
 }

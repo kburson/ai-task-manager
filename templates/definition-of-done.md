@@ -20,7 +20,7 @@ no phantom evidence marker is ever required for it.
 
 ### Functional (verified at Test)
 
-- [ ] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research,docs-only" -->
 - [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->
 - [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->
 - [ ] All children's commits are present on this branch (derived epic trail) <!-- aitm-verified cmd="`node scripts/task-tracker/verify-epic-trail.mjs`" --> <!-- dod:functional:commits --> <!-- dod:kinds include="epic" -->

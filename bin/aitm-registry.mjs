@@ -88,6 +88,11 @@ export const INTERNAL = {
   'source-edit-gate': {
     reason: 'Plumbing: edit gate consulted by hooks; imported/invoked internally.',
   },
+  'epic-base-edit-guard': {
+    reason:
+      'Plumbing: PreToolUse Edit/Write epic-base gate (#905); invoked by the hook ' +
+      'runner only. Fails closed on a managed child branch whose base is not its epic head.',
+  },
 };
 
 // kind('promote') -> 'verb'; kind('set-priority') -> 'script'; else null.

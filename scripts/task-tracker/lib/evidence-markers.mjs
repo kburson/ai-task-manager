@@ -1,11 +1,19 @@
-// `npm test` (fast lane) stays in the set so legacy bodies keep passing;
-// `npm run test:all` is the new canonical Functional-DoD command (#305).
+// `npm test` (fast lane) and `npm run test:slow` (slow lane) are the two
+// canonical Functional-DoD `tests` commands (#934): declaring them separately
+// keeps each verifier under the per-command runner budget. `npm run test:all`
+// stays in the set so legacy single-command bodies keep passing (#305).
 import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { citeCommands, resolveCitedOrLiteralCommands, resolveVcRefCommands } from './vc-ref.mjs';
+import {
+  citeCommands,
+  parseVcRefIndexes,
+  resolveCitedOrLiteralCommands,
+  resolveVcRefCommands,
+} from './vc-ref.mjs';
 
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
+  'npm run test:slow',
   'npm run test:all',
   'npm run lint',
   'npm run format:check',
@@ -150,7 +158,20 @@ export function auditEvidenceMarkers(body = '', _opts = {}) {
 // default when a VC list is available to cite into) or a legacy space-joined
 // backtick-embedded command list (the compat path when no VC context exists).
 // Every reader is dual-form (#418/#419/#721), so both remain readable.
+//
+// #928 — serialize into the citation-form-appropriate attribute. A pure
+// `vc:<n>` run is a by-id VC-list citation and MUST land in the canonical
+// `vc-list` attribute: the deprecated ordinal `cmd="vc:N"` shape is rejected at
+// the Refine→Plan exit gate (`findAcsWithLegacyVerificationForm`,
+// `ordinal-cmd-citation`) and by the V5 review validator (#814), so emitting it
+// forced every freshly-backfilled AC through a `heal-vc-refs` pass. A
+// non-citation string (the legacy literal backtick-embedded command, produced
+// only when no VC context is available to cite into) keeps the `cmd` attribute
+// unchanged.
 function buildMarker(cmd) {
+  if (parseVcRefIndexes(cmd) !== null) {
+    return serializeProofMarker({ 'vc-list': cmd });
+  }
   return serializeProofMarker({ cmd });
 }
 

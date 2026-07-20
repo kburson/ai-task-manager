@@ -52,10 +52,16 @@ attribution is **message-based, not SHA-reachability**: `commit-trace`,
 `review-preflight`, and `close` locate an issue's deliverable by grepping the
 `[#N]` token (`\[#(\d+)\]`) across commit messages, so the branch → PR → trunk
 flow attributes correctly even when a deliverable lives on an unmerged branch or
-worktree. `close` scopes its query to the trunk ref, so an issue closes only once
-its `[#N]` commit is merged and pulled into local trunk. Full contract:
+worktree. `close` scopes its query to the **resolved trunk ref** (`resolveTrunkRef`,
+default `origin/trunk`), so an issue closes only once its `[#N]` commit is present on
+`origin/trunk`. The gate runs `git fetch` before it reads, so the check is against the
+authoritative remote tip — never a stale local `trunk`. Do **not** advance trunk from a
+scope-blocked worktree with `git update-ref refs/heads/trunk` (it strands the main
+worktree's index → inverted staged diff); land the deliverable via PR merge and let
+`git fetch origin` bring `origin/trunk` current. Full contract:
 `docs/guides/workflow.md` → Commit Attribution. Source of truth:
-`scripts/task-tracker/lib/commit-attribution-format.mjs`.
+`scripts/task-tracker/lib/commit-attribution-format.mjs` and
+`scripts/task-tracker/lib/trunk-ref.mjs`.
 
 ## Blocked-Task Annotation (mandatory when spawning a defect mid-task)
 

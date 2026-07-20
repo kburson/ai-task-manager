@@ -16,11 +16,21 @@ import { readParentStatus } from './lib/parent-status.mjs';
 import { childCreationAllowedAtEpicState } from '../task-tracker/lib/epic-children-gate.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { ensureKindPrefix } from './lib/kind-prefix.mjs';
+import {
+  evaluateDuplicateChild,
+  formatDuplicateRefusal,
+  defaultFetchOpenChildren,
+  DUPLICATE_CHILD_EXIT_CODE,
+} from './lib/duplicate-child-guard.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
 //   2 — usage error (missing/invalid flag)
 //   4 — issue-body verifier refusal (--body-file content failed canonical-structure check)
+//   6 — partial success (issue created but a follow-up gh step exited non-zero)
+//   7 — duplicate-child refusal (#921: new sub-issue is a high-similarity match to
+//       an existing open sibling under the same parent epic; override with
+//       --allow-duplicate-child)
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TETHER_SCRIPT =
@@ -31,7 +41,7 @@ const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -44,7 +54,9 @@ function parseArgs(argv) {
       key === 'no-tether' ||
       key === 'no-placeholder-substitution' ||
       key === 'dry-run' ||
-      key === 'internal'
+      key === 'internal' ||
+      // #921 — greppable override that bypasses the duplicate-child guard.
+      key === 'allow-duplicate-child'
     ) {
       out[key] = true;
       continue;
@@ -353,6 +365,66 @@ async function main() {
           `AITM_SKIP_PARENT_STATE_GATE=1.`,
         2
       );
+    }
+  }
+
+  // #921 — Duplicate-child guard. Before fanning out a new sub-issue, enumerate
+  // the parent epic's existing OPEN children and refuse when the new title is a
+  // high-similarity match to one of them (unless --allow-duplicate-child). This
+  // catches the recurring failure mode where a resumed/compacted session re-runs
+  // an epic's decomposition without having loaded its current sub-issue tree.
+  //
+  // Placed BEFORE body materialization (and the --dry-run return) so the
+  // regression test can drive both branches with `--dry-run` + injected
+  // siblings and no `gh` dependency. Skippable via AITM_SKIP_DUP_CHILD_GATE=1
+  // (parity with AITM_SKIP_PARENT_STATE_GATE).
+  if (
+    args.shape === 'sub-issue' &&
+    typeof args.parent === 'string' &&
+    process.env.AITM_SKIP_DUP_CHILD_GATE !== '1'
+  ) {
+    // Sibling source. Test/CLI seam first: an injected JSON list bypasses the
+    // GraphQL fetch entirely (and works under --dry-run). Otherwise fetch live,
+    // but only for a real (non-dry-run) create with a repo configured — a
+    // dry-run with no injected siblings performs no I/O, keeping existing
+    // no-sibling dry-run tests untouched.
+    let siblings = null;
+    const injected = process.env.AITM_DUP_CHILD_SIBLINGS_JSON;
+    if (typeof injected === 'string' && injected.trim()) {
+      try {
+        const parsed = JSON.parse(injected);
+        siblings = Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        die(`AITM_DUP_CHILD_SIBLINGS_JSON is not valid JSON: ${err.message}`, 2);
+      }
+    } else if (!dryRun && cfg.repo) {
+      try {
+        siblings = await defaultFetchOpenChildren({
+          parentEpicNumber: Number(args.parent),
+          repo: cfg.repo,
+        });
+      } catch (err) {
+        // Fail-OPEN: the recurring failure is operator-side (unloaded tree),
+        // orthogonal to a transient GitHub read error. Blocking every child on
+        // any API hiccup is worse than a rare missed dup caught by the next
+        // human glance. The detected-duplicate path stays fully deterministic.
+        console.error(
+          `create-issue: WARNING — could not enumerate epic #${args.parent} children ` +
+            `for the duplicate guard (${err.message}); proceeding without the check.`
+        );
+        siblings = null;
+      }
+    }
+
+    if (Array.isArray(siblings)) {
+      const { refuse, matches } = evaluateDuplicateChild({
+        newTitle: args.title,
+        siblings,
+        overridden: args['allow-duplicate-child'] === true,
+      });
+      if (refuse) {
+        die(formatDuplicateRefusal(args.parent, matches), DUPLICATE_CHILD_EXIT_CODE);
+      }
     }
   }
 

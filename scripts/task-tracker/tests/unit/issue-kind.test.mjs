@@ -10,11 +10,14 @@ import {
   DEFAULT_KIND,
   AUDIT_KINDS,
   NO_COMMIT_KINDS,
+  TESTLESS_KINDS,
   VALID_KINDS,
   normalizeKind,
   parseIssueKind,
   isAuditKind,
   isNoCommitKind,
+  isTestlessKind,
+  expectsAutomatedTests,
   hasDeliverableMarker,
   isAcWaived,
   setIssueKindMarker,
@@ -74,6 +77,41 @@ describe('#500 — epic joins the no-commit lane', () => {
   it('AUDIT_KINDS is the same frozen set as NO_COMMIT_KINDS (back-compat alias)', () => {
     assert.equal(AUDIT_KINDS, NO_COMMIT_KINDS);
     assert.ok(AUDIT_KINDS.has('epic'));
+  });
+});
+
+describe('#923 — docs-only kind: commit-bearing but testless', () => {
+  const DOCS_ONLY_BODY = '<!-- aitm-issue-kind kind="docs-only" -->';
+
+  it('docs-only is a valid kind and round-trips', () => {
+    assert.equal(normalizeKind('DOCS-ONLY'), 'docs-only');
+    assert.ok(VALID_KINDS.has('docs-only'));
+    assert.equal(parseIssueKind(DOCS_ONLY_BODY), 'docs-only');
+  });
+  it('docs-only is NOT a no-commit kind (commit-trail gate still applies)', () => {
+    assert.ok(!NO_COMMIT_KINDS.has('docs-only'));
+    assert.equal(isNoCommitKind(DOCS_ONLY_BODY), false);
+  });
+  it('docs-only IS a testless kind', () => {
+    assert.ok(TESTLESS_KINDS.has('docs-only'));
+    assert.equal(isTestlessKind(DOCS_ONLY_BODY), true);
+    assert.equal(expectsAutomatedTests(DOCS_ONLY_BODY), false);
+  });
+  it('TESTLESS_KINDS is the no-commit kinds plus docs-only', () => {
+    for (const k of NO_COMMIT_KINDS) assert.ok(TESTLESS_KINDS.has(k), `missing ${k}`);
+    assert.ok(TESTLESS_KINDS.has('docs-only'));
+    assert.equal(TESTLESS_KINDS.size, NO_COMMIT_KINDS.size + 1);
+  });
+  it('every no-commit kind is also testless', () => {
+    for (const k of NO_COMMIT_KINDS) {
+      assert.equal(isTestlessKind(`<!-- aitm-issue-kind kind="${k}" -->`), true);
+      assert.equal(expectsAutomatedTests(`<!-- aitm-issue-kind kind="${k}" -->`), false);
+    }
+  });
+  it('code expects tests and is not testless', () => {
+    assert.equal(isTestlessKind('no marker'), false);
+    assert.equal(expectsAutomatedTests('no marker'), true);
+    assert.equal(expectsAutomatedTests('<!-- aitm-issue-kind kind="code" -->'), true);
   });
 });
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #773
+// @story #804
 // Unit tests for the VC-citation id-scheme Refine→Plan exit guardrail
 // (`findAcsWithLegacyVerificationForm` wired into `gateRefineToPlan`). The
 // guardrail forbids the three legacy AC verification forms so new work binds
@@ -53,11 +54,14 @@ test('reject: interim ordinal `cmd="vc:N"` citation → refine-exit-vc-citation'
   const b = r.blockers.find((x) => /refine-exit-vc-citation/.test(x));
   assert.ok(b, 'a refine-exit-vc-citation blocker is raised');
   assert.ok(/deprecated `cmd` attribute/.test(b), 'message names the deprecated cmd attribute');
-  // The demonstrable gate must NOT also fire: `cmd="vc:1"` resolves to a real
-  // command, so it is demonstrable even while the citation attribute is wrong.
+  // #804 — with the ordinal `cmd="vc:N"` resolution fallback RETIRED, `cmd="vc:1"`
+  // no longer resolves to any command, so the demonstrable gate now ALSO flags it
+  // as `no-verifier`. The ordinal citation is doubly-invalid: forbidden form AND
+  // non-demonstrable. (Pre-#804 it resolved via the fallback and only the
+  // citation-form blocker fired.)
   assert.ok(
-    !r.blockers.some((x) => /refine-exit-demonstrable/.test(x)),
-    'ordinal cmd citation resolves, so no demonstrable blocker'
+    r.blockers.some((x) => /refine-exit-demonstrable/.test(x)),
+    'ordinal cmd citation no longer resolves post-#804, so the demonstrable gate also fires'
   );
 });
 
@@ -85,6 +89,24 @@ test('multi-id `vc-list` citation resolves and passes', async () => {
   const r = await gateRefineToPlan({ cfg, issueNumber: 773, deps });
   assert.equal(r.ok, true, JSON.stringify(r.blockers));
   assert.ok(!r.blockers.some((x) => /refine-exit-vc-citation/.test(x)));
+});
+
+test('reject: empty `vc-list=""` on a verified AC → refine-exit-vc-citation (#804 no silent green)', async () => {
+  const deps = makeDeps(['- [ ] AC empty. <!-- aitm-verified vc-list="" -->']);
+  const r = await gateRefineToPlan({ cfg, issueNumber: 804, deps });
+  assert.equal(r.ok, false);
+  const b = r.blockers.find((x) => /refine-exit-vc-citation/.test(x));
+  assert.ok(b, 'an empty vc-list raises a refine-exit-vc-citation blocker');
+  assert.ok(/present but empty/.test(b), 'message names the empty-vc-list case');
+});
+
+test('reject: verified marker with no citation attribute → refine-exit-vc-citation (#804 missing)', async () => {
+  const deps = makeDeps(['- [ ] AC bare. <!-- aitm-verified sha=abc123 exit=0 -->']);
+  const r = await gateRefineToPlan({ cfg, issueNumber: 804, deps });
+  assert.equal(r.ok, false);
+  const b = r.blockers.find((x) => /refine-exit-vc-citation/.test(x));
+  assert.ok(b, 'a citation-less verified marker raises a refine-exit-vc-citation blocker');
+  assert.ok(/no `vc-list` citation/.test(b), 'message names the missing-vc-list case');
 });
 
 test('guardrail is scoped to the AC section — a `## Verification Commands` entry is never flagged', async () => {

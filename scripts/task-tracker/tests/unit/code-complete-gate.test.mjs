@@ -246,4 +246,44 @@ test('gateCodeComplete: lifecycle DoD unticked ignored when functional ACs pass'
   assert.equal(r.ok, true);
 });
 
+test('gateCodeComplete: docs-only body takes the commit-trail path, not the deliverable lane (#923)', async () => {
+  // docs-only is commit-bearing (NOT a no-commit kind), so it must satisfy the
+  // `### 🔗 Commits` trail like any code issue — it must NOT be routed onto the
+  // `aitm-deliverable-posted` deliverable lane, and the gate never demands a
+  // `tests` DoD stamp. A docs-only body with a commit trail passes.
+  const body = `${PASSING_BODY}\n<!-- aitm-issue-kind kind="docs-only" -->\n`;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1,
+    body,
+    deps: {
+      listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits: abc123 -->' }],
+      filesForSha: async () => ['docs/guides/foo.md'],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.blockers));
+  assert.deepEqual(r.blockers, []);
+  assert.deepEqual(r.shas, ['abc123']);
+});
+
+test('gateCodeComplete: docs-only with NO commit trail still blocks (not deliverable-waived) (#923)', async () => {
+  const body = `${PASSING_BODY}\n<!-- aitm-issue-kind kind="docs-only" -->\n`;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1,
+    body,
+    deps: {
+      listComments: async () => [{ body: 'no trail here' }],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.some((b) => b.startsWith('code-complete-commits-missing')),
+    JSON.stringify(r.blockers)
+  );
+});
+
 console.log('All code-complete-gate tests passed.');

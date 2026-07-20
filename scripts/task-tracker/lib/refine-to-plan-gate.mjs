@@ -143,7 +143,11 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
           ? 'cites verification commands through the deprecated `cmd` attribute — move the citation to `vc-list="vc:N"`'
           : ac.reason === 'dangling-vc-list'
             ? '`vc-list` cites a `vc:N` with no matching `## Verification Commands` id — fix the citation or add the entry'
-            : 'declares a literal `cmd="`…`"` command — replace it with a `vc-list="vc:N"` citation into `## Verification Commands`';
+            : ac.reason === 'empty-vc-list'
+              ? '`vc-list` is present but empty / not a `vc:N` citation — a verified AC must cite at least one `## Verification Commands` entry, never a silent zero-command green'
+              : ac.reason === 'missing-vc-list'
+                ? 'declares a verifier marker with no `vc-list` citation — add `vc-list="vc:N"` naming a `## Verification Commands` entry so the AC resolves to a real command'
+                : 'declares a literal `cmd="`…`"` command — replace it with a `vc-list="vc:N"` citation into `## Verification Commands`';
       blockers.push(
         `refine-exit-vc-citation: AC line ${ac.lineIndex + 1}: "${ac.label}" — ${why}.`
       );

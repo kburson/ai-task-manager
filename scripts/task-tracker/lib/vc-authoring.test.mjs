@@ -75,7 +75,10 @@ test('buildEvidenceBackfill: cites an existing VC command without re-listing it 
   assert.equal(r.ok, true);
   const lines = r.body.split('\n');
   const ac1 = lines.find((l) => l.startsWith('- [ ] First criterion'));
-  assert.match(ac1, /aitm-verified cmd="vc:1"/);
+  // #928 — a pure `vc:<n>` citation run serializes into the canonical
+  // `vc-list` attribute, never the deprecated ordinal `cmd` attribute.
+  assert.match(ac1, /aitm-verified vc-list="vc:1"/);
+  assert.doesNotMatch(ac1, /cmd="vc:1"/);
   // AC1's own command was already present, so it is NOT re-appended to the list.
   assert.equal(r.addedVerificationCommands.includes('node --test existing.test.mjs'), false);
 });
@@ -84,7 +87,9 @@ test('buildEvidenceBackfill: appends an absent command and cites its new positio
   const r = buildEvidenceBackfill(BODY, { mappings: MAPPINGS });
   const lines = r.body.split('\n');
   const ac2 = lines.find((l) => l.startsWith('- [ ] Second criterion'));
-  assert.match(ac2, /aitm-verified cmd="vc:2"/);
+  // #928 — canonical `vc-list` attribute, not the deprecated ordinal `cmd`.
+  assert.match(ac2, /aitm-verified vc-list="vc:2"/);
+  assert.doesNotMatch(ac2, /cmd="vc:2"/);
   assert.deepEqual(r.addedVerificationCommands, ['node --test new.test.mjs']);
   // The new command is now bullet #2 in the VC list.
   const vc = parseVerificationCommands(r.body);
@@ -137,7 +142,7 @@ test('buildEvidenceBackfill: second pass is a no-op (idempotent)', () => {
 const FANIN_BODY = [
   '## Acceptance Criteria',
   '',
-  `- [ ] Combo criterion ${serializeProofMarker({ cmd: 'vc:1 vc:2' })}`,
+  `- [ ] Combo criterion ${serializeProofMarker({ 'vc-list': 'vc:1 vc:2' })}`,
   '',
   '## Verification Commands',
   '',

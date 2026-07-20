@@ -63,17 +63,42 @@ export function resolveVcRefCommands(cmd, vcItems) {
   });
 }
 
-// Resolve a declaration's `cmd` value to a list of literal commands, trying
-// the `vc:<n>` citation form first and falling back to the legacy
-// backtick-embedded-command form. Never throws for the legacy fallback path;
-// a citation naming a missing VC entry still throws (caller-visible bug, not
-// a parse ambiguity).
-export function resolveCitedOrLiteralCommands(cmd, vcItems) {
-  const cited = resolveVcRefCommands(cmd, vcItems);
-  if (cited) return cited;
+// Resolve a declaration's `cmd` value to a list of literal commands. Only the
+// legacy backtick-embedded-command form is honored here.
+//
+// #804 — the ordinal `cmd="vc:N"` citation fallback is RETIRED. The canonical
+// by-id citation lives on the `vc-list` attribute (resolved via
+// `resolveVcListStrict`), and DoD-Functional literal declarations keep using the
+// backtick form below. A `cmd` value that happens to look like a `vc:N` run is
+// no longer resolved as a citation — it simply carries no backtick literals and
+// yields `[]`. Never throws.
+export function resolveCitedOrLiteralCommands(cmd, _vcItems) {
   const out = [];
   for (const m of String(cmd || '').matchAll(/`([^`]+)`/g)) out.push(m[1]);
   return out;
+}
+
+// #804 — strict resolver for the canonical `vc-list="vc:N"` AC citation. Unlike
+// `resolveVcRefCommands` (which returns null for a non-citation / empty value so
+// legacy callers can fall back), this THROWS whenever a verified/stamped AC's
+// `vc-list` fails to resolve to at least one command:
+//   - missing / empty / malformed value → `parseVcRefIndexes` returns null →
+//     `resolveVcRefCommands` returns null → we throw (no silent zero-command
+//     green), and
+//   - a dangling citation → the RangeError from `resolveVcRefCommands`
+//     propagates unchanged.
+// This closes the false-green gap where an empty `vc-list=""` resolved to `[]`
+// and the code-complete gate read the AC as trivially satisfied.
+export function resolveVcListStrict(vcList, vcItems) {
+  const resolved = resolveVcRefCommands(vcList, vcItems);
+  if (resolved === null || resolved.length === 0) {
+    throw new RangeError(
+      `vc-list: verified AC cites no resolvable verification command (vc-list=${JSON.stringify(
+        String(vcList == null ? '' : vcList)
+      )}); a verified AC must cite at least one canonical vc:N entry`
+    );
+  }
+  return resolved;
 }
 
 // #762 — write-side counterpart to `resolveVcRefCommands`. Given a list of

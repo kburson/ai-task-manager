@@ -186,9 +186,11 @@ const CLEAN_BODY = [
   '## Deep-Dive Analysis (2026-01-01)',
   'Design prose.',
   '## Acceptance Criteria',
-  '- [ ] Acceptance criteria met',
+  '- [ ] Acceptance criteria met <!-- aitm-verified vc-list="vc:1" -->',
   '## Verification Commands',
-  '- [ ] `npm test`',
+  // #934: an AC verifier must be targeted — a full-lane command (`npm test`,
+  // `npm run test:slow`, `npm run test:all`) is now rejected by the AC-floor.
+  '- [ ] `node --test acceptance.test.mjs` <!-- id=1 -->',
   '## Definition of Done',
   '- [ ] `npm test` passes',
   '- [ ] Lint clean <!-- aitm-verified cmd="`npm run lint`" exit="0" sha="d" ts="t" -->',
@@ -392,10 +394,13 @@ test('success: all checks pass → moves to Review, prompts approval', async () 
     assert.ok(calls.move.includes('review'));
     assert.equal(calls.logTime, 1);
     // EPIC #823 timing model v2 (C6 / defect D1): the success path no longer
-    // emits the two ad-hoc verb rows (bare `review` + `review-ready`). The
+    // emits the two ad-hoc verb rows (bare `review` + `review-ready`); the
     // canonical `test:passed` + `review:started` pair is written by runMoveState
-    // (tracked via calls.move), so the verb posts zero timing rows of its own.
-    assert.equal(calls.post.length, 0);
+    // (tracked via calls.move). #904 restores exactly ONE verb-level row — the
+    // symmetric `review:passed` the Agent-Review-Gate PASS branch now emits to
+    // mirror the FAIL branch's `review:failed` row.
+    assert.equal(calls.post.length, 1);
+    assert.match(String(calls.post[0]), /review:passed/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

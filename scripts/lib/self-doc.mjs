@@ -141,6 +141,39 @@ export const SELF_DOC = {
     audience: 'Orchestrator just before handing a sub-issue to an agent.',
     usage: 'aitm dispatch-prep <issue#> [--description "<text>"]',
   },
+  'cut-epic-branch': {
+    group: 'Epic Branching',
+    path: 'scripts/task-tracker/cut-epic-branch.mjs',
+    synopsis:
+      'Cut a role-typed epic branch `feature/epic/<N>` from its resolved parent head (trunk for a root epic, the outer epic for a nested one).',
+    audience: 'Orchestrator opening an epic. Lineage is resolved live from the sub-issue graph.',
+    usage: 'aitm cut-epic-branch <epic#>',
+  },
+  'cut-child-worktree': {
+    group: 'Epic Branching',
+    path: 'scripts/task-tracker/cut-child-worktree.mjs',
+    synopsis:
+      'Correct-by-construction child worktree: `git worktree add -b feature/child/<N> <path> <epicHead>`. The owned replacement for native worktree isolation on epic children.',
+    audience:
+      'Orchestrator dispatching an epic child. Bases the child on the epic head, never trunk.',
+    usage: 'aitm cut-child-worktree <child#> <worktree-path>',
+  },
+  'merge-back': {
+    group: 'Epic Branching',
+    path: 'scripts/task-tracker/merge-back.mjs',
+    synopsis:
+      'Merge a child back into its epic: opportunistic epic sync, rebase child onto epic head, run child tests, `--ff-only`, then clean up. Refuses on conflict or test failure.',
+    audience: 'Orchestrator landing a finished child. Keeps the epic a clean linear branch.',
+    usage: 'aitm merge-back <child#> <worktree-path>',
+  },
+  'sync-epic': {
+    group: 'Epic Branching',
+    path: 'scripts/task-tracker/sync-epic.mjs',
+    synopsis:
+      'Re-sync an epic branch onto trunk (rebase, then push --force-with-lease unless noPushToOrigin). Keeps the epic a clean linear descendant of trunk.',
+    audience: 'Orchestrator/operator after trunk advances under a live epic.',
+    usage: 'aitm sync-epic <epic#>',
+  },
 };
 
 // Print the full self-doc for one command to stdout. Called by each exposed

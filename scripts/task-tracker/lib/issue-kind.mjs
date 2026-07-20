@@ -28,7 +28,19 @@ export const NO_COMMIT_KINDS = Object.freeze(new Set(['audit', 'research', 'spik
 // Deprecated #494 alias retained for back-compat (tests, any external import).
 // New code should read `NO_COMMIT_KINDS` / `isNoCommitKind`.
 export const AUDIT_KINDS = NO_COMMIT_KINDS;
-export const VALID_KINDS = Object.freeze(new Set([DEFAULT_KIND, ...NO_COMMIT_KINDS]));
+// #923 — `docs-only` is a third axis: commit-bearing (NOT a no-commit kind, so the
+// commit-trail code-complete gate still applies) but testless. A documentation
+// deliverable commits real files yet ships no `*.test.mjs`, so it cannot honestly
+// satisfy `npm run test:all`, the `tests` DoD item, or the `## New Automated Tests`
+// review comment. It is a member of `VALID_KINDS` but deliberately absent from
+// `NO_COMMIT_KINDS`.
+export const VALID_KINDS = Object.freeze(new Set([DEFAULT_KIND, 'docs-only', ...NO_COMMIT_KINDS]));
+// #923 — the kinds for which the test machinery (`test:all`, the `tests` DoD item,
+// the New-Automated-Tests review requirement) is NOT expected: the no-commit kinds
+// (which ship a deliverable, not code) plus commit-bearing `docs-only`. Drives the
+// `expectsAutomatedTests` predicate so "expects tests" is kind-derived rather than
+// a hardcoded `isNoCommitKind` check.
+export const TESTLESS_KINDS = Object.freeze(new Set(['docs-only', ...NO_COMMIT_KINDS]));
 
 // Quoted-attribute grammar, mirroring `aitm-commits` (#381). Case-insensitive
 // on the comment delimiters; the kind value itself is normalized to lowercase.
@@ -78,6 +90,26 @@ export function isNoCommitKind(body) {
  */
 export function isAuditKind(body) {
   return isNoCommitKind(body);
+}
+
+/**
+ * True when the body is marked one of the testless kinds — the no-commit kinds
+ * plus commit-bearing `docs-only` (#923). Distinct from `isNoCommitKind`: a
+ * `docs-only` body is testless but still commit-bearing.
+ */
+export function isTestlessKind(body) {
+  return TESTLESS_KINDS.has(parseIssueKind(body));
+}
+
+/**
+ * True when an issue of this kind is expected to produce automated tests — i.e.
+ * `npm run test:all`, the `tests` DoD item, and the `## New Automated Tests`
+ * review comment apply (#923). This is the kind-driven predicate the test
+ * machinery branches on instead of a hardcoded `isNoCommitKind` check, so
+ * commit-bearing-but-testless `docs-only` is handled correct-by-construction.
+ */
+export function expectsAutomatedTests(body) {
+  return !isTestlessKind(body);
 }
 
 /** True when the body carries an `aitm-deliverable-posted` evidence marker. */

@@ -1,8 +1,12 @@
 // @story #721
+// @story #804
 import assert from 'node:assert/strict';
 
 import { autoTickVerified } from '../../lib/auto-tick-verified.mjs';
 
+// #804 — the fan-in behavior is exercised through the canonical `vc-list`
+// citation (the ordinal `cmd="vc:N"` fallback these ACs originally used is
+// retired). VC entries carry no ids, so `vc:N` resolves by ordinal fallback.
 function fixtureBody() {
   return [
     '## Verification Commands',
@@ -12,8 +16,8 @@ function fixtureBody() {
     '',
     '## Acceptance Criteria',
     '',
-    '- [ ] Single-citation AC <!-- aitm-verified cmd="vc:1" -->',
-    '- [ ] Multi-citation AC (AND-fan-in) <!-- aitm-verified cmd="vc:1 vc:2" -->',
+    '- [ ] Single-citation AC <!-- aitm-verified vc-list="vc:1" -->',
+    '- [ ] Multi-citation AC (AND-fan-in) <!-- aitm-verified vc-list="vc:1 vc:2" -->',
     '',
     '## Definition of Done',
     '',

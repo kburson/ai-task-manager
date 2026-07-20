@@ -359,10 +359,12 @@ function emitShape(args, dodPath, root) {
         ? spliceVcSection(finalBody, vcSection, '')
         : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
   }
-  // #494, #500 — `--kind <audit|research|spike|epic>` stamps the issue-kind
-  // marker at creation, routing the new issue onto the deliverable-evidence
-  // lane. `code` (the default) leaves the body unmarked. The kind was already
-  // resolved above (#681) for DoD filtering; reuse it.
+  // #494, #500, #923 — `--kind <audit|research|spike|epic|docs-only>` stamps the
+  // issue-kind marker at creation. The no-commit kinds route onto the
+  // deliverable-evidence lane; commit-bearing-but-testless `docs-only` keeps the
+  // commit trail but drops the `tests` DoD item + derived `test:all` VC. `code`
+  // (the default) leaves the body unmarked. The kind was already resolved above
+  // (#681) for DoD filtering; reuse it.
   if (typeof args.kind === 'string') {
     finalBody = setIssueKindMarker(finalBody, kind);
   }

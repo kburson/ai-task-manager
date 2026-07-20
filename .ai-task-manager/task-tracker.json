@@ -1,5 +1,6 @@
 {
   "repo": "kburson/ai-task-manager",
+  "trunkRef": "origin/trunk",
   "projectId": "PVT_kwHOABCEY84BXill",
   "kanbanFieldId": "PVTSSF_lAHOABCEY84BXillzhSuw0o",
   "kanbanOptionBacklog": "1f366e8c",

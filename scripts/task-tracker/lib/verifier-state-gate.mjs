@@ -6,13 +6,18 @@
 // sandboxed `promote` run).
 //
 // This module gates any verifier command matching a restricted pattern —
-// currently just the full-suite `npm run test:all` — to issues whose live
-// state is `test` or later.
+// the full-suite `npm run test:all` and the slow lane `npm run test:slow`
+// (#934) — to issues whose live state is `test` or later. The slow lane is
+// restricted because the two-lane Functional-DoD `tests` command declares
+// `npm test` + `npm run test:slow`; gating the slow lane keeps the whole
+// `tests` stamp barred before Test (you cannot stamp without both lanes),
+// preserving the Develop-Phase Verification Contract without also restricting
+// the fast lane's targeted use.
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateSlug, STATES } from '../state-machine.mjs';
 
-const RESTRICTED_COMMAND_RE = /\bnpm\s+run\s+test:all\b/;
+const RESTRICTED_COMMAND_RE = /\bnpm\s+run\s+test:(all|slow)\b/;
 const MIN_STATE = 'test';
 
 export function isRestrictedVerifierCommand(cmd) {

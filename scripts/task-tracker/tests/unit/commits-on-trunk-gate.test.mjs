@@ -172,6 +172,55 @@ test('commitsOnTrunkGate: cfg.trunkRef takes precedence, attribution scoped to i
   assert.deepEqual(scopedRefs, ['develop']);
 });
 
+test('commitsOnTrunkGate (#927): fetches before it resolves, then attributes against origin/trunk', async () => {
+  // The [#1] commit is present on origin/trunk but absent from a stale local
+  // `trunk`. The gate must fetch first, resolve to the remote-tracking ref, and
+  // attribute against it — closing without ever reading local `trunk`.
+  const order = [];
+  const r = await commitsOnTrunkGate({
+    cfg,
+    issueNumber: 1,
+    projectDir: '/tmp/x',
+    deps: {
+      listComments: async () => trail(['abc1234']),
+      fetchTrunk: async () => {
+        order.push('fetch');
+        return { fetched: true, remote: 'origin', branch: 'trunk' };
+      },
+      resolveTrunkRef: async () => {
+        order.push('resolve');
+        return 'origin/trunk';
+      },
+      attributingCommits: async (_issue, { refs } = {}) =>
+        refs && refs.includes('origin/trunk')
+          ? [{ sha: 'abc1234', subject: '[#1] feat', ts: 't' }]
+          : [], // nothing attributed to stale local `trunk`
+    },
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.trunkRef, 'origin/trunk');
+  assert.deepEqual(order, ['fetch', 'resolve'], 'fetch must run before resolve');
+});
+
+test('commitsOnTrunkGate (#927): a fetch failure is non-fatal — still resolves and closes', async () => {
+  const r = await commitsOnTrunkGate({
+    cfg,
+    issueNumber: 1,
+    projectDir: '/tmp/x',
+    deps: {
+      listComments: async () => trail(['abc1234']),
+      fetchTrunk: async () => ({ fetched: false, remote: 'origin' }), // offline
+      resolveTrunkRef: async () => 'origin/trunk',
+      attributingCommits: async (_issue, { refs } = {}) =>
+        refs && refs.includes('origin/trunk')
+          ? [{ sha: 'abc1234', subject: '[#1] feat', ts: 't' }]
+          : [],
+    },
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.trunkRef, 'origin/trunk');
+});
+
 test('runCloseGates: no attributed commit on trunk composes into blockers', async () => {
   const r = await runCloseGates({
     cfg,
@@ -188,7 +237,9 @@ test('runCloseGates: no attributed commit on trunk composes into blockers', asyn
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-no-attributed-commit-on-trunk/.test(b)));
+  // #913 lineage gate: a standalone story's done-target IS trunk, so the leaf
+  // refusal names the parent branch (trunk) rather than the old flat-trunk string.
+  assert.ok(r.blockers.some((b) => /close-not-on-parent-branch/.test(b)));
   assert.equal(r.trunkRef, 'trunk');
 });
 

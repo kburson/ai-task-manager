@@ -56,6 +56,58 @@ Skill cross-references (read these before authoring a worktree dispatch):
 - `~/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/using-git-worktrees/SKILL.md`
 - `~/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/dispatching-parallel-agents/SKILL.md`
 
+### 2b. Epic-child dispatch — base on the epic head, not trunk (#905)
+
+Native `Agent({ isolation: "worktree" })` always forks off `trunk`/`HEAD`. That is
+correct for a **standalone** story, but **wrong for an epic child**: a child cut from
+trunk misses its siblings' merged work and cannot fast-forward back into the epic
+(the #859 wrong-base debacle). When the sub-issue belongs to an epic, do **not** use
+native isolation — cut the worktree from the epic head, by construction:
+
+```
+node scripts/task-tracker/cut-child-worktree.mjs <child#> <worktree-path>
+```
+
+This resolves the child's epic branch live from the sub-issue graph and runs
+`git worktree add -b feature/child/<N> <path> <epicHead>`, so the child is based on
+the epic head every time. Dispatch the agent into that pre-cut path. Two fail-closed
+backstops make the gap safe if the wrong path is ever taken:
+
+- The **epic-base edit-guard** (`epic-base-edit-guard.mjs`, PreToolUse Edit/Write)
+  refuses the first source edit in any `feature/child/<N>` worktree whose base is not
+  its epic head — the mis-based child is caught before any work is wasted.
+- **Merge-back** is owned too: `node scripts/task-tracker/merge-back.mjs <child#> <path>`
+  opportunistically syncs the epic, rebases the child onto the epic head, runs the
+  child's tests, then `git merge --ff-only` into the epic and cleans up — refusing on
+  rebase conflict or test failure. When trunk advances under a live epic, resync it
+  with `node scripts/task-tracker/sync-epic.mjs <epic#>` (see `aitm help` → Epic Branching).
+
+The epic branch itself is cut once with `node scripts/task-tracker/cut-epic-branch.mjs <epic#>`
+(from trunk for a root epic, from the parent-epic head for a nested one).
+
+### 2c. Block-or-drop a feature (epic child that can't ship) (#912)
+
+An epic child that turns out unshippable mid-flight is **never silently
+abandoned** — leaving it half-done desyncs the epic head and hides the reason the
+work stopped. There are exactly two sanctioned outcomes:
+
+- **Block it.** When the child is blocked by a defect that must be fixed first,
+  annotate it as blocked the moment the blocker issue is filed: add the `BLOCKED`
+  label, set the project `Blocked By` field, and write the `aitm-blocked-by: #B`
+  body marker. Then drive the blocker chain **deepest-first** — finish the blocker
+  (and anything it itself spawns) to Done before resuming the child; `pull-next`
+  auto-unparks the child when its blocker lands. See the
+  [Blocking-defect isolation dance](workflow.md#blocking-defect-isolation-dance).
+- **Drop it.** When the feature is not merely blocked but should not ship at all,
+  remove it from the epic's child set explicitly (unlink the sub-issue and close it
+  `not planned`, or `supersede` it if the work moved under another issue) so the
+  epic's done/delivered accounting no longer waits on it. Done-vs-delivered
+  (workflow.md → Two-Axis Delivery Model) is only correct if every remaining child
+  is one the epic still intends to deliver.
+
+The rule is: a child is either driven to done on its parent branch, blocked with a
+recorded blocker, or dropped with an audit trail — but never left dangling.
+
 ---
 
 ## 3. Per-agent prompt requirements
