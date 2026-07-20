@@ -22,7 +22,11 @@ import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../lib/scratch-dir.mjs';
 
-import { verbReview, emitReviewGateFailureTimeline } from '../../verbs/review.mjs';
+import {
+  verbReview,
+  emitReviewGateFailureTimeline,
+  emitReviewGatePassTimeline,
+} from '../../verbs/review.mjs';
 
 function makeTmpStatePath(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-463-'));
@@ -210,12 +214,15 @@ function drive(overrides = {}) {
     },
     // Inject a fake buildRow so the helper does not hit the real buildRow's
     // retroactive-ts guard (which rejects any ts >60s from now). We assert
-    // emission ORDER, not row formatting — the fake just carries the Event slug.
-    buildRow: ({ event }) => `ROW event=${event}`,
+    // emission ORDER, not row formatting — the fake carries the Event slug and
+    // the description so pass-path tests can inspect the recorded validator set.
+    buildRow: ({ event, description }) => `ROW event=${event} :: ${description ?? ''}`,
     safePostTiming: async (_target, row) => {
       // The fake buildRow above returns a string carrying the Event slug.
       const s = String(row);
-      log.push(/review:failed/.test(s) ? 'review:failed' : `post:${s.slice(0, 24)}`);
+      if (/event=review:failed/.test(s)) log.push('review:failed');
+      else if (/event=review:passed/.test(s)) log.push('review:passed');
+      else log.push(`post:${s.slice(0, 24)}`);
     },
     mutateBodyFn: async () => {
       log.push('stamp:aitm-review-failed');
@@ -336,4 +343,83 @@ test('gate-failure timeline: a mutate throw is best-effort and does not lose the
   });
   const timing = log.filter((e) => e !== 'stamp:aitm-review-failed');
   assert.deepEqual(timing, ['review:failed']);
+});
+
+// ── #904: gate-PASS timeline — the symmetric review:passed row ────────────────
+//
+// emitReviewGatePassTimeline is the pass-path counterpart to the failure helper.
+// Driving it with the same ordered-log fakes lets us assert the pass path emits
+// exactly one `review:passed` row (and never a failure / state-change row),
+// without the verb's dynamic-import network path that node:test cannot intercept.
+
+test('gate-pass timeline: the only timing row is review:passed', async () => {
+  const { log, deps } = drive();
+  await emitReviewGatePassTimeline({
+    target: '#999',
+    ts: '2026-07-15T00:00:00.000Z',
+    delta: { activeSec: 12, idleSec: 3 },
+    wordMarker: 42,
+    validators: ['timing-log-sequence', 'ac-dod-vc-attributes'],
+    deps,
+  });
+  assert.deepEqual(log, ['review:passed']);
+});
+
+test('gate-pass timeline: the row description records the validator set and result=pass', async () => {
+  const rows = [];
+  const { deps } = drive({
+    // Capture the real row object the helper builds (bypass the log-reducing
+    // fake) so we can inspect the description the pass row carries.
+    buildRow: (row) => row,
+    safePostTiming: async (_target, row) => {
+      rows.push(row);
+    },
+  });
+  await emitReviewGatePassTimeline({
+    target: '#999',
+    ts: '2026-07-15T00:00:00.000Z',
+    delta: { activeSec: 0, idleSec: 0 },
+    wordMarker: 0,
+    validators: ['timing-log-sequence', 'ac-dod-vc-attributes'],
+    deps,
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].event, 'review:passed');
+  assert.match(rows[0].description, /timing-log-sequence, ac-dod-vc-attributes/);
+  assert.match(rows[0].description, /result=pass/);
+});
+
+test('gate-pass timeline: an empty validator set is recorded as "none", still result=pass', async () => {
+  const rows = [];
+  const { deps } = drive({
+    buildRow: (row) => row,
+    safePostTiming: async (_target, row) => {
+      rows.push(row);
+    },
+  });
+  await emitReviewGatePassTimeline({
+    target: '#999',
+    ts: '2026-07-15T00:00:00.000Z',
+    delta: { activeSec: 0, idleSec: 0 },
+    wordMarker: 0,
+    validators: [],
+    deps,
+  });
+  assert.match(rows[0].description, /validators: none/);
+  assert.match(rows[0].description, /result=pass/);
+});
+
+test('gate-pass timeline: no failure or state-change row leaks from the pass path', async () => {
+  const { log, deps } = drive();
+  await emitReviewGatePassTimeline({
+    target: '#999',
+    ts: '2026-07-15T00:00:00.000Z',
+    delta: { activeSec: 0, idleSec: 0 },
+    wordMarker: 0,
+    validators: ['timing-log-sequence'],
+    deps,
+  });
+  for (const slug of ['review:failed', 'test:passed', 'review:started', 'develop:started']) {
+    assert.equal(log.includes(slug), false, `${slug} must not be emitted from the pass path`);
+  }
 });
