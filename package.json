@@ -60,7 +60,6 @@
     "docs/README.md",
     "docs/QUICKSTART.md",
     "docs/DESIGN.md",
-    "docs/introduction/",
     "docs/guides/",
     "docs/ai-memory/",
     "!docs/ai-memory/archive/**",
