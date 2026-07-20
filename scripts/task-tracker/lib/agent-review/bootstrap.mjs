@@ -20,4 +20,4 @@ import './validators/required-comments.mjs';
 import './validators/timing-log-sequence.mjs';
 import './validators/new-tests-content.mjs';
 import './validators/ac-dod-vc-attributes.mjs';
-// import './validators/v6-marker-organization.mjs';
+import './validators/v6-marker-organization.mjs';
