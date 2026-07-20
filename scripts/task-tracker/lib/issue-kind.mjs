@@ -28,7 +28,16 @@ export const NO_COMMIT_KINDS = Object.freeze(new Set(['audit', 'research', 'spik
 // Deprecated #494 alias retained for back-compat (tests, any external import).
 // New code should read `NO_COMMIT_KINDS` / `isNoCommitKind`.
 export const AUDIT_KINDS = NO_COMMIT_KINDS;
-export const VALID_KINDS = Object.freeze(new Set([DEFAULT_KIND, ...NO_COMMIT_KINDS]));
+// #865 — `docs` is a COMMIT-BEARING kind: a documentation task ships committed
+// source (prose under `docs/` or `*.md`), so it must NOT join NO_COMMIT_KINDS —
+// commit-trace / review-preflight / close keep attributing its `[#N]` commit
+// exactly as for `code`. What `docs` buys is diff-conditional relief from the
+// functional-test DoD item: the kind DECLARES intent, but the Test-stage
+// classification of the actual `trunk...HEAD` diff DECIDES (see
+// `filterDodForKindAndDiff` in lib/dod-kind-filter.mjs). Membership here is all
+// it takes for `normalizeKind`/`parseIssueKind`/`setIssueKindMarker` to accept
+// `docs` and for `isNoCommitKind` to return false.
+export const VALID_KINDS = Object.freeze(new Set([DEFAULT_KIND, 'docs', ...NO_COMMIT_KINDS]));
 
 // Quoted-attribute grammar, mirroring `aitm-commits` (#381). Case-insensitive
 // on the comment delimiters; the kind value itself is normalized to lowercase.

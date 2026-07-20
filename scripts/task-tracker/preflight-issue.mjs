@@ -40,7 +40,7 @@ import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
-import { filterDodForKind } from './lib/dod-kind-filter.mjs';
+import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -254,9 +254,34 @@ function resolveRenderKind(args) {
 // `## Acceptance Criteria` / `## Verification Commands`, so the CODE_COMPLETE
 // AC slice (`NEXT_HEADING_RE = /^##\s+/`) terminates at it and stops slurping
 // the DoD Functional/Lifecycle items.
-function dodBlock(dodPath, kind = DEFAULT_KIND) {
-  const dod = filterDodForKind(readFileSync(dodPath, 'utf8').replace(/\s+$/, ''), kind);
+// #865 — `changedPaths` (null unless a docs-kind render supplies
+// `--changed-paths-file`) drives the diff-conditional drop of the functional
+// `tests` item. `filterDodForKindAndDiff` is byte-identical to the #681
+// `filterDodForKind` for every non-`docs` kind and for any `docs` diff that is
+// not provably documentation-only (null/empty/mixed), so the code-kind
+// back-compat guarantee holds.
+function dodBlock(dodPath, kind = DEFAULT_KIND, changedPaths = null) {
+  const dod = filterDodForKindAndDiff(
+    readFileSync(dodPath, 'utf8').replace(/\s+$/, ''),
+    kind,
+    changedPaths
+  );
   return ['## Definition of Done', dod, ''].join('\n');
+}
+
+// #865 — Read the diff's changed-path list for the docs-kind diff-decides rule.
+// Returns null (→ no conditional drop; keep the suite) UNLESS the render is
+// `--kind docs` AND `--changed-paths-file <p>` is supplied. The file is a plain
+// newline-delimited list of repo-relative paths (e.g. `git diff --name-only
+// trunk...HEAD`); blank lines are ignored. Absent the flag, the safe default is
+// to keep the functional-test item — mislabelling alone can never skip the suite.
+function readChangedPaths(args, kind) {
+  if (kind !== 'docs' || typeof args['changed-paths-file'] !== 'string') return null;
+  const raw = readFileOrDie(args['changed-paths-file'], '--changed-paths-file');
+  return raw
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 // Legacy tail-only mode (no `--shape`): pre-#700 callers spliced DoD + Pickup
@@ -320,11 +345,15 @@ function emitShape(args, dodPath, root) {
   // are filtered for the issue's kind and the derived Verification Commands seed
   // is computed over the surviving items.
   const kind = resolveRenderKind(args);
+  // #865 — for a docs-kind render, a supplied `--changed-paths-file` decides
+  // whether the functional `tests` item (and its derived `npm run test:all` VC
+  // seed) survives; null for every other kind / absent flag → item kept.
+  const changedPaths = readChangedPaths(args, kind);
 
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
-  const assembled = body + dodBlock(dodPath, kind);
+  const assembled = body + dodBlock(dodPath, kind, changedPaths);
   warnMissingLifecycleLabels(assembled);
   const lint = lintChecklistCommands(assembled);
   if (!lint.ok) {

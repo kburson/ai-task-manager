@@ -16,6 +16,14 @@ findings rather than code and would otherwise carry a test-suite DoD item and a
 `npm run test:all` verification command they can never satisfy. Filtering happens
 at render time in `preflight-issue.mjs`; a filtered-out item is simply absent, so
 no phantom evidence marker is ever required for it.
+
+Docs-conditional `tests` (#865): the `docs` kind is NOT added to the `exclude`
+list above, because unlike `spike`/`research` a `docs` issue carries commits and
+could otherwise edit functional code. Instead the `tests` item is dropped for a
+`docs`-kind render only when the actual `trunk...HEAD` diff is provably
+documentation-only — "the kind declares, the diff decides." `preflight-issue.mjs`
+reads the diff via `--changed-paths-file` and applies default-deny: any
+unclassified path keeps the item, so mislabelling alone can never skip the suite.
 -->
 
 ### Functional (verified at Test)
