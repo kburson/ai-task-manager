@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 // Walk up from this file to the repo root (the dir holding package.json).
 function repoRoot() {
@@ -78,6 +78,33 @@ test('package-boundary: excluded directories do not reappear', () => {
     forbidden,
     [],
     `excluded paths leaked back into the package: ${forbidden.slice(0, 10).join(', ')}`
+  );
+});
+
+// #910 — docs/introduction/ is human onboarding/marketing prose with no runtime
+// or installer consumer; it was dropped from the `files` allowlist. Guard the
+// removal so the directory cannot silently re-enter the tarball.
+test('package-boundary: docs/introduction/ is not packed', () => {
+  const files = packedFiles();
+  const intro = files.filter((p) => /^docs\/introduction\//.test(p));
+  assert.deepEqual(
+    intro,
+    [],
+    `docs/introduction/ leaked back into the package: ${intro.slice(0, 10).join(', ')}`
+  );
+});
+
+// #910 — the shipped README is the package entry point; once docs/introduction/
+// stopped shipping, a relative link into it became a dead link in the tarball.
+// Assert the shipped README carries no relative docs/introduction/ link (an
+// absolute project URL is fine — it does not depend on packed files).
+test('package-boundary: shipped README has no dead docs/introduction link', () => {
+  const readme = readFileSync(join(repoRoot(), 'README.md'), 'utf8');
+  const deadLinks = readme.match(/\]\(docs\/introduction\//g) || [];
+  assert.deepEqual(
+    deadLinks,
+    [],
+    `README links relatively into unshipped docs/introduction/: ${deadLinks.length} occurrence(s)`
   );
 });
 
