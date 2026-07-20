@@ -99,7 +99,7 @@ feature/child/<N>    # child of an epic              (cut from its epic head)
 - **Segment 3** `<issue#>` — the **globally-unique key**. Because the issue
   number is already unique, encoding the parent path in front of it (the
   hierarchical alternative, `feature/epic/859/epic/860/child/872`) would be
-  redundant *and* would bake the one thing that legitimately changes —
+  redundant _and_ would bake the one thing that legitimately changes —
   parentage — into an identifier, forcing renames on every re-parent.
 
 **Lineage is never encoded in the name.** A re-parent is a `git rebase` onto the
@@ -154,7 +154,7 @@ child `C` back into parent `P`:
 
 ## Epic ↔ trunk re-sync (rebase, force-with-lease)
 
-Step 1 of the merge-back protocol, at the epic level, *is* the re-sync: **rebase
+Step 1 of the merge-back protocol, at the epic level, _is_ the re-sync: **rebase
 the epic onto trunk.** Rebase (not merge-trunk-in) is correct here because
 attribution is SHA-agnostic, so rewriting the epic's commits costs nothing, and
 children are cut from the **local** epic — the rewritten commits are refs nothing
@@ -173,7 +173,7 @@ depends on.
 - **Self-healing siblings:** when a re-sync rebases the epic, in-flight siblings
   still cut from the old epic head **trip the guard** and cannot edit until they
   rebase — the fail-closed signal forcing them to absorb trunk. Step 2 rebases
-  each sibling at *its* own merge, so no proactive sibling re-sync is needed.
+  each sibling at _its_ own merge, so no proactive sibling re-sync is needed.
 
 ## Durability
 
@@ -210,12 +210,12 @@ REFUSE otherwise                                        # childBase == epicFork 
 
 Properties:
 
-- **Staleness passes, wrong-base fails.** A child cut from an *old* epic head has
+- **Staleness passes, wrong-base fails.** A child cut from an _old_ epic head has
   `childBase` = that old head, still a proper descendant of `epicFork` → passes;
   the merge-back rebase absorbs the catch-up. Naive "`== current epic head`"
   would false-positive-block a correct child the instant a sibling merges — hence
   the ancestor test, not equality.
-- **Nested-correct.** `P` is the *epic's* parent, not always trunk, so a child of
+- **Nested-correct.** `P` is the _epic's_ parent, not always trunk, so a child of
   a nested epic wrongly cut from the grandparent is caught. The invariant recurses
   with the graph.
 - **Empty-epic no-op.** Before the epic has any commit past its fork, cutting from
@@ -227,16 +227,16 @@ Properties:
 
 ## Components
 
-| Unit | Responsibility |
-| --- | --- |
-| `lib/branch-name.mjs` | Compose/parse `feature/<role>/<N>`; classify by role. |
+| Unit                           | Responsibility                                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/branch-name.mjs`          | Compose/parse `feature/<role>/<N>`; classify by role.                                                                                 |
 | `lib/resolve-epic-lineage.mjs` | `issue#`/branch → `{role, branch, epicBranch, parentBranch}` via gh graph + naming. Single source used by every script and the guard. |
-| `cut-epic-branch.mjs` | Create `feature/epic/<N>` from the resolved parent. |
-| `cut-child-worktree.mjs` | Create a correctly-based child worktree via `git worktree add -b … <epicHead>`. |
-| `merge-back.mjs` | Recursive rebase → test → `--ff-only`; conflict/failure refusal; child branch+worktree cleanup. |
-| `sync-epic.mjs` | Rebase epic onto trunk; `--force-with-lease` push. |
-| PreToolUse guard | Extend the existing agent guard (`agent-guard.mjs` / `hook-handler.mjs`) with the invariant above. |
-| Integration seams | `dispatch-prep.mjs`, `move-state.mjs` — call owned creation instead of native worktree isolation. |
+| `cut-epic-branch.mjs`          | Create `feature/epic/<N>` from the resolved parent.                                                                                   |
+| `cut-child-worktree.mjs`       | Create a correctly-based child worktree via `git worktree add -b … <epicHead>`.                                                       |
+| `merge-back.mjs`               | Recursive rebase → test → `--ff-only`; conflict/failure refusal; child branch+worktree cleanup.                                       |
+| `sync-epic.mjs`                | Rebase epic onto trunk; `--force-with-lease` push.                                                                                    |
+| PreToolUse guard               | Extend the existing agent guard (`agent-guard.mjs` / `hook-handler.mjs`) with the invariant above.                                    |
+| Integration seams              | `dispatch-prep.mjs`, `move-state.mjs` — call owned creation instead of native worktree isolation.                                     |
 
 Each unit has one clear purpose and a well-defined interface; lineage resolution
 is centralized so the naming convention and graph are read in exactly one place.

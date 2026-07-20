@@ -116,6 +116,7 @@ test('AC6: plumbing scripts are excluded and carry a do-not-invoke header', () =
     'issue-field-db': 'scripts/task-tracker/issue-field-db.mjs',
     'commit-trail-handler': 'scripts/task-tracker/commit-trail-handler.mjs',
     'source-edit-gate': 'scripts/task-tracker/source-edit-gate.mjs',
+    'epic-base-edit-guard': 'scripts/task-tracker/epic-base-edit-guard.mjs',
     'move-state': 'scripts/gh/move-state.mjs',
   };
   for (const [name, rel] of Object.entries(plumbing)) {

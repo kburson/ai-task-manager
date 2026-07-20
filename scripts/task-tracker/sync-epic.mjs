@@ -18,6 +18,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 function requireEpic(epic, deps) {
   if (epic == null) throw new Error('sync-epic: epic issue is required');
@@ -76,6 +77,10 @@ function realGit(projectDir) {
 }
 
 async function main(argv) {
+  if (wantsHelp(argv)) {
+    emitSelfDoc('sync-epic');
+    return;
+  }
   const epic = Number(String(argv[0] || '').replace(/^#/, ''));
   if (!Number.isInteger(epic) || epic <= 0) {
     process.stderr.write('usage: sync-epic.mjs <epic#>\n');

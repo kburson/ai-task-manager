@@ -12,14 +12,15 @@
 //   4. `git merge --ff-only` the child into the epic — guaranteed linear.
 //   5. On success, delete the child worktree and branch.
 //
-// Because every child rebases onto the epic before it lands, the epic stays
-// fast-forwardable and children never cross-contaminate. Core is injectable
+// Because every child rebases onto the epic before it lands, the epic stays a
+// clean fast-forward target and children never cross-contaminate. Core is injectable
 // (git + graph + test-runner); the CLI wires the real ones.
 
 import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { parseBranchName } from './lib/branch-name.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
 // signals via exit code; deps.git throws on non-zero.
@@ -101,6 +102,10 @@ function realGit(projectDir) {
 }
 
 async function main(argv) {
+  if (wantsHelp(argv)) {
+    emitSelfDoc('merge-back');
+    return;
+  }
   const child = Number(String(argv[0] || '').replace(/^#/, ''));
   const wtPath = argv[1];
   if (!Number.isInteger(child) || child <= 0) {
