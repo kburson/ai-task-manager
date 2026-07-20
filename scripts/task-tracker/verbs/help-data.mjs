@@ -234,6 +234,22 @@ export const VERB_REFERENCE = {
     usage: '/task reconcile #N <accept-live|revert-to-recorded>',
     examples: ['/task reconcile 667 accept-live'],
   },
+  board: {
+    topic: 'board',
+    summary:
+      'Read the live Project-board `Status` for an issue (resolved via the bound projectId — never a guessed project number).',
+    usage: '/task board [#N]',
+    exitCodes: [{ code: 1, meaning: 'no target issue (no #N and no active bound issue)' }],
+    examples: ['/task board', '/task board 900'],
+  },
+  'epic-reconcile': {
+    topic: 'board',
+    summary:
+      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered (stamps the epic-only marker `gateCodeComplete` requires to exit develop).",
+    usage: '/task epic-reconcile [<N>]',
+    exitCodes: [{ code: 1, meaning: 'no active/valid issue number, or the target is not an epic' }],
+    examples: ['/task epic-reconcile', '/task epic-reconcile 883'],
+  },
   'pull-next': {
     topic: 'board',
     summary: 'JIT child-pull: promote the next refine-state child of an epic (by rank) into Plan.',

@@ -25,6 +25,7 @@ import {
   upsertProofMarker,
 } from './proof-marker.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
+import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -217,6 +218,31 @@ export function stampEvidenceMarker(body, key, evidence) {
   if (next === line) return src;
   lines[target.lineIndex] = next;
   return lines.join('\n');
+}
+
+// #902 — stamp a Functional DoD item's evidence marker AND reconcile that item's
+// declared verifier command(s) into `## Verification Commands`, in one body
+// transform. The sibling of #443's `stampAcEvidenceAndReconcile`: `dod-stamp`
+// historically stamped only the inline evidence marker and left the command
+// unlisted in the VC section, so `review-preflight`'s
+// `auditEvidenceMarkers().missingVerificationCommands` refused `test → review`
+// for any DoD item whose verifier was declared only on the DoD line.
+//
+// Scope: only the just-stamped key's own `declaredCommands` are reconciled, so an
+// unrelated item's gap is not dragged into this transaction. Idempotent: on a
+// re-run the command is already in the VC set, `missingVerificationCommands` no
+// longer lists it, the intersection is empty, and the body returns unchanged (no
+// duplicate VC entry). Reuses `insertVerificationCommands` — the same #296
+// heading-level-aware primitive `ac-stamp` uses — which creates the section when
+// absent, so a legacy body with no VC section is handled rather than throwing.
+export function stampEvidenceAndReconcile(body, key, evidence, declaredCommands = []) {
+  const stamped = stampEvidenceMarker(body, key, evidence);
+  const declared = new Set((declaredCommands || []).filter(Boolean));
+  if (!declared.size) return stamped;
+  const audit = auditEvidenceMarkers(stamped);
+  const toInsert = audit.missingVerificationCommands.filter((cmd) => declared.has(cmd));
+  if (!toInsert.length) return stamped;
+  return insertVerificationCommands(stamped.split('\n'), toInsert).join('\n');
 }
 
 // Parse Acceptance Criteria checkbox state. Returns { total, ticked, allTicked }.

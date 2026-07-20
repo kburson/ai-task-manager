@@ -114,18 +114,37 @@ describe('AC1: dod:kinds annotation grammar + default', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC3 — the `tests` item is annotated in the real template; the other four
-// Functional items are not.
+// AC3 — the `tests` item and BOTH kind-split `commits` items are annotated in
+// the real template (#883 split `commits` into a non-epic `git log` line and an
+// epic-only derived-trail line); lint/acs/checkboxes stay kind-agnostic.
 // ---------------------------------------------------------------------------
-describe('AC3: template annotation is scoped to the tests item', () => {
-  it('tests line carries exclude="spike,research"; lint/commits/acs/checkboxes do not', () => {
+describe('AC3: template annotation is scoped to the tests + split commits items', () => {
+  it('tests + kind-split commits lines carry annotations; lint/acs/checkboxes stay kind-agnostic', () => {
     for (const dodPath of [RUNTIME_DOD, PACKAGED_DOD]) {
       const text = readFileSync(dodPath, 'utf8');
-      const testsLine = text.split('\n').find((l) => l.includes('dod:functional:tests'));
+      const lines = text.split('\n');
+
+      const testsLine = lines.find((l) => l.includes('dod:functional:tests'));
       assert.ok(testsLine, `tests line present in ${dodPath}`);
       assert.match(testsLine, /dod:kinds\s+exclude="spike,research"/);
-      for (const key of ['lint', 'commits', 'acs', 'checkboxes']) {
-        const line = text.split('\n').find((l) => l.includes(`dod:functional:${key}`));
+
+      // `commits` is now two kind-scoped lines sharing one functional key: the
+      // non-epic `git log` line (exclude="epic") and the epic-only derived-trail
+      // line (include="epic").
+      const gitLogCommitsLine = lines.find(
+        (l) => l.includes('dod:functional:commits') && l.includes('git log')
+      );
+      assert.ok(gitLogCommitsLine, `git-log commits line present in ${dodPath}`);
+      assert.match(gitLogCommitsLine, /dod:kinds\s+exclude="epic"/);
+
+      const epicTrailLine = lines.find(
+        (l) => l.includes('dod:functional:commits') && l.includes('verify-epic-trail')
+      );
+      assert.ok(epicTrailLine, `epic-trail commits line present in ${dodPath}`);
+      assert.match(epicTrailLine, /dod:kinds\s+include="epic"/);
+
+      for (const key of ['lint', 'acs', 'checkboxes']) {
+        const line = lines.find((l) => l.includes(`dod:functional:${key}`));
         assert.ok(line, `${key} line present`);
         assert.doesNotMatch(line, /dod:kinds/, `${key} must stay kind-agnostic`);
       }
@@ -198,11 +217,27 @@ describe('AC4: check/close enumeration is body-derived; no phantom key', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC6 — back-compat: code/default renders byte-identical DoD tail + VC
+// AC6 — code-kind back-compat: the code kind still renders every non-epic item.
+// Since #883 added an epic-only derived-trail line (include="epic"), the code
+// filter drops exactly that one line and nothing else; default === --kind code.
 // ---------------------------------------------------------------------------
-describe('AC6: code-kind back-compat is byte-identical', () => {
-  it('filterDodForKind is a no-op for the code kind', () => {
-    assert.equal(filterDodForKind(RUNTIME_DOD_TEXT, 'code'), RUNTIME_DOD_TEXT);
+describe('AC6: code-kind back-compat', () => {
+  it('filterDodForKind drops only the epic-only derived-trail line for the code kind', () => {
+    const filtered = filterDodForKind(RUNTIME_DOD_TEXT, 'code');
+    // the epic-only derived-trail line is the sole removal
+    assert.doesNotMatch(filtered, /verify-epic-trail/);
+    assert.doesNotMatch(filtered, /include="epic"/);
+    // every other item survives, including the non-epic git-log commits line
+    assert.match(filtered, /dod:functional:tests/);
+    assert.match(filtered, /git log --oneline -1/);
+    assert.match(filtered, /dod:functional:lint/);
+    assert.match(filtered, /dod:functional:acs/);
+    assert.match(filtered, /dod:functional:checkboxes/);
+    // exactly the include="epic" line, and only it, is filtered out
+    const expected = RUNTIME_DOD_TEXT.split('\n')
+      .filter((l) => !l.includes('include="epic"'))
+      .join('\n');
+    assert.equal(filtered, expected);
   });
 
   it('default output === explicit --kind code output, for each shape', async () => {
