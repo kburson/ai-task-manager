@@ -42,6 +42,12 @@ export function mergeBack({ child, path, deps } = {}) {
     throw new Error('merge-back: deps.runTests() runner is required');
   }
   const git = deps.git;
+  // The child branch is checked out in its own worktree, so its rebase must run
+  // from inside that worktree — git refuses to check out a branch that is active
+  // in another worktree from the main tree. `deps.worktreeGit` is git bound to
+  // the child's worktree path; it falls back to `deps.git` for unit tests that
+  // inject a single cwd-agnostic fake.
+  const wtGit = deps.worktreeGit || deps.git;
 
   const childLineage = resolveEpicLineage(child, { deps });
   if (childLineage.role !== 'child' || !childLineage.epicBranch) {
@@ -62,9 +68,10 @@ export function mergeBack({ child, path, deps } = {}) {
     git(['rebase', grandparent, epicBranch]);
   }
 
-  // 2. Rebase the child onto the epic head. Conflict → refuse.
+  // 2. Rebase the child onto the epic head, from inside the child worktree.
+  // Conflict → refuse.
   try {
-    git(['rebase', epicBranch, childBranch]);
+    wtGit(['rebase', epicBranch, childBranch]);
   } catch (err) {
     throw new Error(
       `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
@@ -130,7 +137,12 @@ async function main(argv) {
   const { epic } = mergeBack({
     child,
     path: wtPath,
-    deps: { graph: () => node, git: realGit(projectDir), runTests },
+    deps: {
+      graph: () => node,
+      git: realGit(projectDir),
+      worktreeGit: wtPath ? realGit(wtPath) : realGit(projectDir),
+      runTests,
+    },
   });
   process.stdout.write(`merged feature/child/${child} into ${epic}\n`);
 }
