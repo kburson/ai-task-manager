@@ -18,7 +18,7 @@ import {
   KEY_CLASSIFICATION,
   STAMPABLE_KEYS,
   parseFunctionalDodKeys,
-  stampEvidenceMarker,
+  stampEvidenceAndReconcile,
 } from '../lib/functional-dod-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
 
@@ -125,6 +125,10 @@ export async function verbDodStamp(ctx) {
   // `cmd` field; future readers can re-parse `aitm-verified-by` if they need
   // the full list. Idempotent — replaces an existing marker in place.
   const canonicalCmd = ran[0]?.cmd || '';
+  // #902 — the commands actually executed (raw, backtick-stripped), reconciled
+  // into `## Verification Commands` below so the tick and the #231 orphan-command
+  // check can never strand against each other.
+  const executedCommands = ran.map((r) => r.cmd).filter(Boolean);
 
   await mutateIssueBody({
     issueNumber: issueNum,
@@ -133,13 +137,21 @@ export async function verbDodStamp(ctx) {
     // #522 — sanctioned stamper: evidence derived from the real verifier run
     // executed above; bypass the proof-introduction guard for this minting site.
     evidenceStamp: true,
+    // #902 — stamp the evidence marker AND reconcile the cited verifier
+    // command(s) into `## Verification Commands` in one transform.
+    // `review-preflight` (the #231 invariant) refuses Test→Review if an evidence
+    // command is absent from that list; without this, stamping a DoD item whose
+    // verifier was declared only on the DoD line stranded an orphan.
+    // `stampEvidenceAndReconcile` inserts only genuinely-missing commands
+    // (idempotent) and creates the VC section when absent (legacy-body safe) —
+    // the same primitive `ac-stamp` uses.
     mutate: (base) =>
-      stampEvidenceMarker(base, key, {
-        cmd: canonicalCmd,
-        sha,
-        ts,
-        exit: 0,
-      }),
+      stampEvidenceAndReconcile(
+        base,
+        key,
+        { cmd: canonicalCmd, sha, ts, exit: 0 },
+        executedCommands
+      ),
   });
 
   console.log(
