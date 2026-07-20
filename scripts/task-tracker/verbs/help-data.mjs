@@ -120,14 +120,6 @@ export const VERB_REFERENCE = {
     exitCodes: [GATE_REFUSAL],
     examples: ['/task demote 667'],
   },
-  board: {
-    topic: 'board',
-    summary:
-      'Read the Project-board `Status` field for an issue (the active bound issue when #N is omitted); the sanctioned alternative to guessed raw `gh project` reads.',
-    usage: '/task board [#N]',
-    exitCodes: [{ code: 1, meaning: 'no issue given and no active task bound' }],
-    examples: ['/task board 667', '/task board'],
-  },
   refine: {
     topic: 'board',
     summary:
