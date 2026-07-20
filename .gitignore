@@ -11,6 +11,10 @@ tmp/
 # c8 code-coverage output (#570) — regenerable from `npm run test:coverage`
 coverage/
 
+# ai-task-manager — per-run test-timing artifact (#861), regenerable from
+# `node scripts/run-tests.mjs`. A run artifact, never committed.
+.aitm/test-timing.json
+
 # ai-task-manager — volatile per-session active-issue cache sidecar (#664)
 .ai-task-manager/.cache/
 
