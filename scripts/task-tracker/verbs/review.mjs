@@ -115,6 +115,45 @@ export async function emitReviewGateFailureTimeline({
   );
 }
 
+// #904 — the PASS-path counterpart to `emitReviewGateFailureTimeline`. The fail
+// path emits a `review:failed` row; the pass path historically emitted NONE,
+// leaving the Timing Log recording only failures. This helper appends the
+// symmetric `review:passed` row. It is timing-row-ONLY (no marker stamp): the
+// pass branch already stamps the proven "Agent Review Passed" DoD box inline
+// (via `stampAgentReviewPassed` + an `evidenceStamp` write) before calling this.
+//
+// `review:passed` is V3-legal without any `timing-log-sequence` change: it is a
+// colon-qualified (⇒ known) slug in stage `review`; the preceding row is
+// `review:started` (also `review`), so the stage walk sees a same-stage no-op;
+// and the non-`:failed` qualifier's `aitm-entered-review` marker requirement is
+// already met by the Test→Review move that ran before the gate. It is therefore
+// a neutral same-stage active PHASE row.
+export async function emitReviewGatePassTimeline({
+  target,
+  ts,
+  delta,
+  wordMarker,
+  validators,
+  deps,
+}) {
+  const { safePostTiming, buildRow: buildRowFn = buildRow } = deps;
+  const validatorSummary =
+    Array.isArray(validators) && validators.length ? validators.join(', ') : 'none';
+  await safePostTiming(
+    target,
+    buildRowFn({
+      ts,
+      event: 'review:passed',
+      activeSec: delta.activeSec,
+      idleSec: delta.idleSec,
+      deltaWords: 0,
+      // #475 AC1 — carried-forward durable marker (gate pass, no live session)
+      wordMarker,
+      description: `agent review passed — validators: ${validatorSummary}, result=pass`,
+    })
+  );
+}
+
 // #844 (D6) — the SANDBOX-VERIFICATION-FAILURE demote path. Distinct from the
 // gate-objection path above: by the time sandbox verification runs, review has
 // NOT yet performed its authoritative Test→Review move, so this path simply
@@ -860,6 +899,22 @@ export async function verbReview(ctx) {
           console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
         }
       }
+      // #904 — emit the symmetric `review:passed` timing row, mirroring the fail
+      // path's `review:failed`. Emitted UNCONDITIONALLY on pass (outside the
+      // stamp `if` above, which is skipped for old-template bodies that tick to a
+      // no-op). The Test→Review move already laid down `test:passed` +
+      // `review:started` above the gate block, so this row is strictly monotonic
+      // after `review:started` and lands before `runLogIssueTime`.
+      const _tsRP = nowIso();
+      const _dRP = deriveStateMoveDelta(rawBody, _tsRP);
+      await emitReviewGatePassTimeline({
+        target,
+        ts: _tsRP,
+        delta: _dRP,
+        wordMarker: s.lastWordMarker ?? 0,
+        validators: gate.validatorsRun,
+        deps: { safePostTiming, buildRow },
+      });
     }
     // #881 — the authoritative Test→Review move used to sit HERE, after the
     // Agent Review Gate, which made the gate a precondition of the transition.
