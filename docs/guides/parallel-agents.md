@@ -85,6 +85,29 @@ backstops make the gap safe if the wrong path is ever taken:
 The epic branch itself is cut once with `node scripts/task-tracker/cut-epic-branch.mjs <epic#>`
 (from trunk for a root epic, from the parent-epic head for a nested one).
 
+### 2c. Block-or-drop a feature (epic child that can't ship) (#912)
+
+An epic child that turns out unshippable mid-flight is **never silently
+abandoned** — leaving it half-done desyncs the epic head and hides the reason the
+work stopped. There are exactly two sanctioned outcomes:
+
+- **Block it.** When the child is blocked by a defect that must be fixed first,
+  annotate it as blocked the moment the blocker issue is filed: add the `BLOCKED`
+  label, set the project `Blocked By` field, and write the `aitm-blocked-by: #B`
+  body marker. Then drive the blocker chain **deepest-first** — finish the blocker
+  (and anything it itself spawns) to Done before resuming the child; `pull-next`
+  auto-unparks the child when its blocker lands. See the
+  [Blocking-defect isolation dance](workflow.md#blocking-defect-isolation-dance).
+- **Drop it.** When the feature is not merely blocked but should not ship at all,
+  remove it from the epic's child set explicitly (unlink the sub-issue and close it
+  `not planned`, or `supersede` it if the work moved under another issue) so the
+  epic's done/delivered accounting no longer waits on it. Done-vs-delivered
+  (workflow.md → Two-Axis Delivery Model) is only correct if every remaining child
+  is one the epic still intends to deliver.
+
+The rule is: a child is either driven to done on its parent branch, blocked with a
+recorded blocker, or dropped with an audit trail — but never left dangling.
+
 ---
 
 ## 3. Per-agent prompt requirements

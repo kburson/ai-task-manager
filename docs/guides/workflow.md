@@ -149,6 +149,36 @@ staged diff. Because the close gate reads `origin/trunk` after a fetch, local `t
 is cosmetic: land the deliverable via PR merge and let `git fetch origin` bring the
 remote-tracking ref current. The main worktree may sit on any branch throughout.
 
+### Two-Axis Delivery Model (done vs delivered)
+
+Delivered by epic [#912](https://github.com/kburson/ai-task-manager/issues/912).
+An epic child has **two** delivery states, and they are deliberately not the same
+thing:
+
+- **Axis 1 — done (recorded).** An issue is _done_ when its `[#N]` deliverable is
+  reachable on its immediate parent branch (Axis 1) — walk the epic lineage up to
+  the nearest surviving ancestor branch, ultimately `trunk`. This is a fact the
+  board records; it is what lets a child finish against its epic's integration
+  branch long before the epic itself lands.
+- **Axis 2 — delivered-to-customer (derived).** _Delivered_ is trunk reachability
+  of the same `[#N]` token. It is **never persisted** — it is recomputed on demand
+  every time a report needs it, so no stale delivered-flag can ever disagree with
+  the actual state of `trunk`. Reporting consumers must source it from git, not
+  from a recorded Status field; conflating the recorded done-axis with delivery is
+  the exact bug the #915 consumer-registry audit exists to catch.
+
+**Delivery split by parent.** How a done child reaches trunk forks on its parent:
+
+- A **non-trunk parent** takes the local merge-back path: rebase the child onto the
+  parent, run the close/done gates, fast-forward the parent, and delete the child
+  branch (verify-not-perform under the epic-branch guardrail).
+- The **trunk** parent takes the **PR-only** path: a squash merge. A squash would
+  normally destroy the per-commit subjects a SHA-based scheme relied on, but ours
+  survives it because **trunk attribution greps commit bodies**, not just subjects
+  — the squash concatenates the child commits' messages into the squash-commit
+  body, so every `[#N]` token is preserved and message-based attribution still
+  resolves. That is why the PR-only path is attribution-safe.
+
 ### Full-Auto PR merge + local-trunk sync
 
 Delivered by [#908](https://github.com/kburson/ai-task-manager/issues/908) (epic
