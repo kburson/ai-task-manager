@@ -117,6 +117,33 @@ test('#835 no-commit body with all three always-required present passes', () => 
   assert.deepEqual(res.failures, []);
 });
 
+// --- #923: docs-only is commit-bearing but testless ---------------------------
+// A `docs-only` body KEEPS the `Commits` row (it commits real doc files) but
+// SKIPS the `New Automated Tests` row (it ships no tests). This is the case #835's
+// single `codeKindOnly` flag conflated — the two rows now have distinct predicates.
+const DOCS_ONLY_BODY = 'Some docs.\n<!-- aitm-issue-kind kind="docs-only" -->\n';
+
+test('#923 docs-only body: missing all five reports four (skips only New Automated Tests)', () => {
+  const res = validate({ comments: [], body: DOCS_ONLY_BODY });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /Commits/.test(f)),
+    `docs-only must still require the Commits row: ${JSON.stringify(res.failures)}`
+  );
+  assert.ok(
+    !res.failures.some((f) => /New Automated Tests/.test(f)),
+    `docs-only must skip the New Automated Tests row: ${JSON.stringify(res.failures)}`
+  );
+  assert.equal(res.failures.length, REQUIRED_COMMENTS.length - 1, JSON.stringify(res.failures));
+});
+
+test('#923 docs-only body with Commits + three always-required (no NAT) passes', () => {
+  const comments = [...ALWAYS_REQUIRED, 'Commits'].map((l) => ({ body: SAMPLES[l] }));
+  const res = validate({ comments, body: DOCS_ONLY_BODY });
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+  assert.deepEqual(res.failures, []);
+});
+
 test('bootstrap registers the validator on the shared singleton', async () => {
   await import('../bootstrap.mjs');
   const { registry } = await import('../registry.mjs');

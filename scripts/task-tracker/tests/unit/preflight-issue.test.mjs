@@ -180,6 +180,52 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
   });
 });
 
+describe('preflight-issue --kind docs-only render (#923)', () => {
+  it('drops the tests DoD item + derived test:all VC, keeps the commits item', async () => {
+    const fx = makeFixture('- [ ] Some AC.\n');
+    try {
+      const r = await runPreflight([
+        '--shape',
+        'solo',
+        '--kind',
+        'docs-only',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+      assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+
+      // Stamped as docs-only.
+      assert.match(r.stdout, /<!-- aitm-issue-kind kind="docs-only" -->/);
+
+      // The `tests` DoD item is filtered out.
+      assert.doesNotMatch(r.stdout, /<!-- dod:functional:tests -->/);
+      // ...and the derived `npm run test:all` VC is absent from the seed.
+      assert.doesNotMatch(
+        r.stdout,
+        /^- \[ \] `npm run test:all` <!-- id=\d+ -->\s*$/m,
+        'docs-only must not seed a test:all verification command'
+      );
+
+      // The commits DoD item (excluded only for epic) still renders.
+      assert.match(r.stdout, /<!-- dod:functional:commits -->/);
+      assert.match(
+        r.stdout,
+        /^- \[ \] `git log --oneline -1` <!-- id=\d+ -->\s*$/m,
+        'docs-only must keep the git-log commits verification command'
+      );
+
+      // The body is still a fixed point of the evidence audit.
+      assert.deepEqual(auditEvidenceMarkers(r.stdout).missingVerificationCommands, []);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('normalizePlanMetadata (#416)', () => {
   it('bolds a simple word label', () => {
     assert.equal(normalizePlanMetadata('origin: foo'), '**origin**: foo');
