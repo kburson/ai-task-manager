@@ -249,3 +249,5 @@ desync
 desyncs
 desyncing
 desynced
+conflatable
+conflates
