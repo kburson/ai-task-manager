@@ -4,8 +4,9 @@
 // materializes a local `refs/heads/trunk` on `pull_request` checkouts so the
 // real-git close-gate tests (#733) resolve trunk in a detached merge-ref
 // checkout. Backs AC1 (both lanes materialize the ref), AC2 (the step is
-// pull_request-scoped), and AC4 (no change to close-gate assertions or the
-// production `close-gates.mjs` trunk-resolution logic — the fix is CI-only).
+// pull_request-scoped), and AC4 (trunk-resolution logic + gate assertions
+// intact — #927 later relocated that logic from `close-gates.mjs` into the
+// shared `lib/trunk-ref.mjs`, which close-gates now delegates to).
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -19,6 +20,7 @@ const read = (rel) => readFileSync(resolve(REPO_ROOT, rel), 'utf8');
 
 const ci = read('.github/workflows/ci.yml');
 const closeGates = read('scripts/task-tracker/lib/close-gates.mjs');
+const trunkRef = read('scripts/task-tracker/lib/trunk-ref.mjs');
 const closeGateTests = read('scripts/task-tracker/tests/unit/coverage-close-gates.test.mjs');
 
 const STEP_NAME = 'Materialize local trunk ref for real-git tests (#745)';
@@ -47,11 +49,22 @@ test('AC2: the materialize step is scoped to pull_request events only', () => {
   }
 });
 
-test('AC4: production close-gates trunk resolution and gate assertions are unchanged', () => {
-  // The fix touched only CI config: the production trunk-resolution logic still
-  // probes local refs/heads in the documented [trunk, main, master] order...
-  assert.match(closeGates, /TRUNK_FALLBACKS\s*=\s*\[\s*'trunk',\s*'main',\s*'master'\s*\]/);
-  assert.match(closeGates, /refs\/heads\/\$\{ref\}/, 'probes refs/heads/<ref> for a local branch');
+test('AC4: production trunk resolution and gate assertions are intact (now via the shared resolver)', () => {
+  // #927 relocated trunk resolution out of close-gates.mjs into the one shared
+  // `lib/trunk-ref.mjs`. The documented [trunk, main, master] order and the
+  // local refs/heads probe still exist — they just live in the shared module
+  // now, and close-gates.mjs delegates to `resolveTrunkRef`.
+  assert.match(trunkRef, /TRUNK_BRANCHES\s*=\s*\[\s*'trunk',\s*'main',\s*'master'\s*\]/);
+  assert.match(
+    trunkRef,
+    /refs\/heads\/\$\{branch\}/,
+    'probes refs/heads/<branch> for a local branch'
+  );
+  assert.match(
+    closeGates,
+    /resolveTrunkRef[^\n]*from '\.\/trunk-ref\.mjs'/,
+    'close-gates delegates to the shared resolver'
+  );
   // ...and the close-gate tests still exercise the real message-attribution
   // path, tolerating the "nothing attributed on trunk" blocker (assertions not
   // weakened by the #745 fix).
