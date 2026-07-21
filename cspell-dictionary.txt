@@ -240,3 +240,7 @@ interceptable
 destructures
 wontfixed
 unstruck
+stopword
+stopwords
+jaccard
+dupguard
