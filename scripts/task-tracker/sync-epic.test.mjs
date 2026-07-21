@@ -36,13 +36,14 @@ function makeGit({ ancestor = true, rebaseFails = false } = {}) {
 }
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
 
-test('syncEpic rebases the epic onto trunk then force-with-lease pushes', () => {
+test('syncEpic rebases the epic onto origin/trunk (default) then force-with-lease pushes', () => {
   const git = makeGit();
   const r = syncEpic({ epic: 905, deps: { graph, git } });
   assert.equal(r.branch, 'feature/epic/905');
   assert.equal(r.pushed, true);
+  assert.equal(r.rebasedOnto, 'origin/trunk');
   assert.deepEqual(git.calls, [
-    ['rebase', 'trunk', 'feature/epic/905'],
+    ['rebase', 'origin/trunk', 'feature/epic/905'],
     ['push', '--force-with-lease', 'origin', 'feature/epic/905'],
   ]);
 });
@@ -51,7 +52,25 @@ test('syncEpic skips the push when noPushToOrigin is set (rebase-only)', () => {
   const git = makeGit();
   const r = syncEpic({ epic: 905, deps: { graph, git, noPushToOrigin: true } });
   assert.equal(r.pushed, false);
-  assert.deepEqual(git.calls, [['rebase', 'trunk', 'feature/epic/905']]);
+  assert.deepEqual(git.calls, [['rebase', 'origin/trunk', 'feature/epic/905']]);
+});
+
+test('#927 — syncEpic rebases onto the injected resolved ref, and it equals the ancestor-check ref', () => {
+  const rebaseGit = makeGit();
+  const r = syncEpic({ epic: 905, deps: { graph, git: rebaseGit, trunk: 'origin/trunk' } });
+  assert.equal(r.rebasedOnto, 'origin/trunk');
+  assert.deepEqual(rebaseGit.calls[0], ['rebase', 'origin/trunk', 'feature/epic/905']);
+
+  // The same injected ref is the ref epicNeedsSync checks ancestry against —
+  // the two functions must agree (the #927 pre-fix disagreement was the bug).
+  const ancestorGit = makeGit({ ancestor: false });
+  epicNeedsSync({ epic: 905, deps: { graph, git: ancestorGit, trunk: 'origin/trunk' } });
+  assert.deepEqual(ancestorGit.calls[0], [
+    'merge-base',
+    '--is-ancestor',
+    'origin/trunk',
+    'feature/epic/905',
+  ]);
 });
 
 test('syncEpic surfaces a rebase conflict rather than pushing a bad state', () => {

@@ -87,6 +87,14 @@ test('trunk name is injectable', () => {
   assert.equal(r.parentBranch, 'main');
 });
 
+test('#927 — the resolved trunk ref roots both a root epic and a standalone story', () => {
+  const resolvedDeps = { ...deps, trunk: 'origin/trunk' };
+  // Root epic forks from the resolved ref.
+  assert.equal(resolveEpicLineage(905, { deps: resolvedDeps }).parentBranch, 'origin/trunk');
+  // Standalone story likewise bases on the resolved ref (not local `trunk`).
+  assert.equal(resolveEpicLineage(42, { deps: resolvedDeps }).parentBranch, 'origin/trunk');
+});
+
 test('rejects an unresolvable input', () => {
   assert.throws(() => resolveEpicLineage('not-a-branch', { deps }), /resolve-epic-lineage/);
   assert.throws(() => resolveEpicLineage(0, { deps }), /resolve-epic-lineage/);

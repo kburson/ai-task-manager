@@ -18,16 +18,16 @@ aitm-skill-loaded:rules/parallel:1.0.0
 
 ## Worktree creation (NON-NEGOTIABLE)
 
-Every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool's `isolation: "worktree"` flag does NOT guarantee this — it may reuse a pre-existing local branch with the same name and check out its stale tip. Stale-base work is wasted at best, regression-introducing at worst.
+Every worktree MUST start from a fresh branch off the **resolved trunk ref** — the shared ref `resolveTrunkRef` returns (default `origin/trunk`, overridable via `cfg.trunkRef`, local `trunk` only when no remote). Anchor on the remote-tracking ref, never the local `trunk` branch: the main worktree may sit on any branch and its local `trunk` may be stale or absent, so cutting from local `trunk` risks a stale base. The `Agent` tool's `isolation: "worktree"` flag does NOT guarantee a fresh cut either — it may reuse a pre-existing local branch with the same name and check out its stale tip. Stale-base work is wasted at best, regression-introducing at worst.
 
 **Orchestrator pre-flight (every dispatch):**
 
-1. `git fetch origin trunk` if needed; verify `git rev-parse trunk` is current.
+1. `git fetch origin trunk` first, then read the resolved trunk ref (`git rev-parse origin/trunk`) — this is authoritative regardless of what any worktree has checked out. Never rely on `git rev-parse trunk` (local) being current.
 2. Delete pre-existing local branches that would collide with planned worktree names: `git branch -D <name>` for each.
-3. After dispatch, verify each worktree's base SHA matches trunk HEAD:
+3. After dispatch, verify each worktree's base SHA matches the resolved trunk ref:
 
    ```bash
-   git -C .claude/worktrees/<agent-id> rev-parse HEAD  # must equal `git rev-parse trunk`
+   git -C .claude/worktrees/<agent-id> rev-parse HEAD  # must equal `git rev-parse origin/trunk`
    ```
 
    If it doesn't: kill the agent, `git worktree remove -f -f <path>`, `git worktree prune`, delete the stale branch, relaunch.
@@ -37,7 +37,7 @@ Every worktree MUST start from a fresh branch off `trunk` HEAD. The `Agent` tool
 ```
 1. cd into the assigned worktree path
 2. git rev-parse HEAD                # capture current SHA
-3. git rev-parse origin/trunk        # capture trunk HEAD (or local trunk if no remote)
+3. git fetch origin trunk; git rev-parse origin/trunk   # resolved trunk ref (local trunk only if no remote)
 4. If they differ: STOP. Report "stale base; please relaunch" and exit.
    Do NOT rebase/merge/reset — risks corrupting state across worktrees.
 5. npm install --no-audit --no-fund

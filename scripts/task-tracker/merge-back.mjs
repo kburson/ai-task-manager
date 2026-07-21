@@ -123,6 +123,12 @@ async function main(argv) {
   const cfg = loadConfig();
   const node = await realGraphNode(child, cfg);
   const projectDir = cfg.projectDir || process.cwd();
+  // #927 — the epic's grandparent, for a root epic, is trunk; the opportunistic
+  // epic sync (step 1) rebases the epic onto it. Resolve+fetch the trunk ref so
+  // that sync targets origin/trunk, not a stale local `trunk`.
+  const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
+  await fetchTrunk({ cfg, projectDir });
+  const trunk = await resolveTrunkRef({ cfg, projectDir });
   const runTests = ({ path }) => {
     try {
       execFileSync('npm', ['run', 'test:all'], {
@@ -141,6 +147,7 @@ async function main(argv) {
       graph: () => node,
       git: realGit(projectDir),
       worktreeGit: wtPath ? realGit(wtPath) : realGit(projectDir),
+      trunk,
       runTests,
     },
   });

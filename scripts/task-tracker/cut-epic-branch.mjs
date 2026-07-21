@@ -63,10 +63,17 @@ async function main(argv) {
   }
   const { loadConfig } = await import('./config.mjs');
   const cfg = loadConfig();
+  const projectDir = cfg.projectDir || process.cwd();
   const node = await realGraphNode(issue, cfg);
+  // #927 — a root epic forks from trunk, so cut from the resolved trunk ref
+  // (default origin/trunk) after a fetch, never from a possibly-stale local
+  // `trunk`. Nested sub-epics fork from their parent epic head and ignore this.
+  const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
+  await fetchTrunk({ cfg, projectDir });
+  const trunk = await resolveTrunkRef({ cfg, projectDir });
   const { branch, base } = cutEpicBranch({
     issue,
-    deps: { graph: () => node, git: realGit(cfg.projectDir || process.cwd()) },
+    deps: { graph: () => node, git: realGit(projectDir), trunk },
   });
   process.stdout.write(`cut ${branch} from ${base}\n`);
 }
