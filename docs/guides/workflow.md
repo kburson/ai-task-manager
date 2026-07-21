@@ -149,6 +149,42 @@ staged diff. Because the close gate reads `origin/trunk` after a fetch, local `t
 is cosmetic: land the deliverable via PR merge and let `git fetch origin` bring the
 remote-tracking ref current. The main worktree may sit on any branch throughout.
 
+### Full-Auto PR merge + local-trunk sync
+
+Delivered by [#908](https://github.com/kburson/ai-task-manager/issues/908) (epic
+[#912](https://github.com/kburson/ai-task-manager/issues/912)). The interactive
+flow above assumes a human clicks **Merge** and then `git pull`s trunk. Two steps
+in that chain cannot be completed by the agent in a Full-Auto batch, so the drive
+would otherwise stall at every story's merge step:
+
+1. **The local merge is classifier-blocked.** `gh pr merge <N> --merge` performs an
+   irreversible outward merge and is denied in auto mode (observed closing #904).
+   The sanctioned path is **GitHub-native auto-merge**: the agent runs
+   `gh pr merge <N> --auto --<method>`, which only _enables_ auto-merge — GitHub
+   performs the actual merge once required checks pass. Enabling auto-merge is an
+   idempotent request, not the blocked local merge, so the classifier permits it.
+   A repo without auto-merge enabled / branch protection configured cannot use this
+   path; see the `fullAutoMerge` config in the settings guide. An operator who
+   wants a local-only batch instead authorizes the **local-trunk lane** (no push,
+   no PR — the existing merge-to-trunk close path).
+
+2. **Local `trunk` cannot be fast-forwarded from a worktree** without desyncing the
+   main worktree (`git update-ref refs/heads/trunk …` advances the shared ref but
+   leaves the main worktree's tree/index behind). The fix is to **not touch local
+   `trunk`**: when `close` runs inside a linked worktree, its trunk-attribution
+   query targets **`origin/trunk`** — a remote-tracking ref that is never checked
+   out, so reading it can never dirty the main worktree. An explicit
+   `cfg.trunkRef` override always wins; the main-worktree path still reads local
+   `trunk`.
+
+Policy lives in pure functions in `scripts/task-tracker/lib/full-auto-merge.mjs`
+(`resolveMergeMechanism`, `planFullAutoMerge`, `resolveCloseTrunkRef`); the close
+verb supplies config + the worktree flag and executes the returned plan. When
+`fullAutoMerge` is unconfigured, resolution fails **closed** with an actionable
+message naming the missing key and pointing at the settings guide — the batch
+halts with a clear error rather than a mid-drive classifier denial. This changes
+only the Full-Auto path; the interactive human-merge flow is unchanged.
+
 ### Epic #727 — VCS-process-agnostic commit attribution
 
 | Sub-issue                                                     | Delivers                                                                     |

@@ -257,6 +257,43 @@ log — useful for migrations or experimental workflows. See
 [`docs/internals/checkbox-gates.md`](../internals/checkbox-gates.md) for the
 full policy and inventory of label-string matches.
 
+### `fullAutoMerge` (default absent → Full-Auto PR merge disabled)
+
+Enables the agent to complete the PR-based close flow — merge the reviewed PR and
+re-sync local trunk — without a human clicking **Merge**. Delivered by story
+`#908` under epic `#912`; see the "Full-Auto PR merge + local-trunk sync" section
+in [`workflow.md`](workflow.md). Absent by default: a Full-Auto batch that reaches
+a PR merge with no `fullAutoMerge` block halts with an actionable error rather
+than a mid-drive classifier denial.
+
+```jsonc
+"fullAutoMerge": {
+  // "gh-auto-merge": enable GitHub auto-merge (agent runs
+  //   `gh pr merge <N> --auto --<method>`; GitHub merges once checks pass).
+  // "local-trunk-lane": operator-authorized no-push/no-PR local merge to trunk.
+  "mechanism": "gh-auto-merge",
+  "mergeMethod": "merge",        // gh-auto-merge only: merge | squash | rebase
+  "operatorAuthorized": false    // local-trunk-lane only: must be true to use it
+}
+```
+
+**Required repo settings for `gh-auto-merge`:** the repository must have
+**Allow auto-merge** enabled (Settings → General → Pull Requests) and a
+**branch-protection rule** on trunk with at least one required status check —
+GitHub only performs an auto-merge once required checks pass. Without these,
+`gh pr merge --auto` errors; the flow surfaces that as an actionable message.
+
+**Optional Bash permission rule.** An operator who prefers the direct path may
+add a `gh pr merge` allowlist entry (analogous to the human-gate toggles asked
+about before parallel fan-out) for the duration of a Full-Auto batch, and remove
+it afterward. `gh-auto-merge` avoids needing this because it is not
+classifier-blocked.
+
+**Trunk re-sync.** `close` reads `origin/trunk` (never local `trunk`) when it runs
+inside a linked worktree, so the merged `[#N]` commit is seen without desyncing
+the main worktree. Set `trunkRef` here to override the ref used for the
+close-attribution query.
+
 ## Lock primitive
 
 EPIC #207 (multi-session safety) needs a mutual-exclusion primitive when two
