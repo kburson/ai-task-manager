@@ -41,7 +41,9 @@ const KNOWN_PREFIXES = [...Object.values(KIND_PREFIXES), EPIC_PREFIX, ...LEGACY_
 // Strip a single leading known prefix from `title`, if present. Prefixes are
 // compared as opaque substrings (never by code-point length) so ZWJ sequences
 // like the epic glyph are handled correctly. Returns the unprefixed remainder.
-function stripKnownPrefix(title) {
+// Exported (#921) so the duplicate-child guard normalizes titles against the
+// same prefix set before comparing similarity.
+export function stripKnownPrefix(title) {
   const t = String(title ?? '');
   for (const p of KNOWN_PREFIXES) {
     if (t.startsWith(p)) return t.slice(p.length);
