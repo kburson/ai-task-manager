@@ -72,8 +72,9 @@ const metadata = [
   assert.equal(result.ok, true, JSON.stringify(result));
   // #762 — backfill now authors a `vc:<n>` citation, not an embedded command.
   // The command is absent from the (initially empty) VC list, so it is appended
-  // at position 1 and the AC cites `vc:1`.
-  assert.match(result.body, /Plain AC <!-- aitm-verified cmd="vc:1" -->/);
+  // at position 1 and the AC cites `vc:1`. #928 — the citation serializes into
+  // the canonical `vc-list` attribute, never the deprecated ordinal `cmd`.
+  assert.match(result.body, /Plain AC <!-- aitm-verified vc-list="vc:1" -->/);
   assert.match(
     result.body,
     /### Verification Commands\n\n- \[ \] `node scripts\/task-tracker\/tests\/evidence-marker-backfill\.test\.mjs`/
@@ -108,7 +109,9 @@ const metadata = [
     },
   });
   assert.equal(result.status, 'backfilled');
-  assert.match(written, /aitm-verified cmd=/);
+  // #928 — a pure `vc:<n>` citation serializes into the canonical `vc-list`
+  // attribute, never the deprecated ordinal `cmd`.
+  assert.match(written, /aitm-verified vc-list=/);
 }
 
 // #296 — regression: when `### Verification Commands` (H3) is nested under
@@ -216,8 +219,9 @@ const metadata = [
   );
   // Case 2: plain line (no evidence) still receives the declaration — now as a
   // `vc:1` citation (#762). The dod-evidence AC is skipped and never appends its
-  // command, so Plain AC's command is the first VC entry.
-  assert.match(plainLine, /Plain AC <!-- aitm-verified cmd="vc:1" -->/);
+  // command, so Plain AC's command is the first VC entry. #928 — serialized into
+  // the canonical `vc-list` attribute, not the deprecated ordinal `cmd`.
+  assert.match(plainLine, /Plain AC <!-- aitm-verified vc-list="vc:1" -->/);
 }
 
 console.log('evidence-marker-backfill.test.mjs: all passed');
