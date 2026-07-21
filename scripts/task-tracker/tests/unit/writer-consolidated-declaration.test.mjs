@@ -18,7 +18,6 @@ import { extractVerifiedCommands } from '../../lib/proof-marker.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..', '..');
 
-const CONSOLIDATED_RE = /<!--\s*aitm-verified\s+cmd="/;
 const LEGACY_RE = /aitm-verified-by:/;
 
 // --- (a) WRITERS emit consolidated form ------------------------------------
@@ -61,11 +60,19 @@ const LEGACY_RE = /aitm-verified-by:/;
 }
 
 // Writer #3: evidence-markers buildMarker (exercised via buildEvidenceBackfill).
+// #928 — a backfill cites the command as a `vc:<n>` id-run, which serializes
+// into the canonical `vc-list` attribute (never the deprecated ordinal `cmd`).
+// It is still the consolidated single-`aitm-verified` declaration form this
+// test guards — just the by-id citation attribute rather than an embedded cmd.
 {
   const body = ['## Acceptance Criteria', '', '- [ ] Plain AC', ''].join('\n');
   const res = buildEvidenceBackfill(body, { mappings: { 'Plain AC': ['npm test'] } });
   assert.equal(res.ok, true, JSON.stringify(res));
-  assert.match(res.body, CONSOLIDATED_RE, 'backfill writer emits consolidated declaration');
+  assert.match(
+    res.body,
+    /<!--\s*aitm-verified\s+vc-list="/,
+    'backfill writer emits consolidated declaration (canonical vc-list citation)'
+  );
   assert.ok(!LEGACY_RE.test(res.body), 'backfill writer emits no legacy marker');
 }
 
