@@ -270,11 +270,15 @@ test('runCloseGates: no attributed commit on trunk blocks close', async () => {
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-no-attributed-commit-on-trunk/.test(b)));
+  // #913 — the lineage-aware gate refuses with a done-target-branch message.
+  // For a standalone story (no epic lineage) the target IS trunk, so the
+  // refusal is equivalent to the former close-no-attributed-commit-on-trunk.
+  assert.ok(r.blockers.some((b) => /close-not-on-parent-branch/.test(b)));
+  assert.ok(r.blockers.some((b) => /merge into trunk/.test(b)));
   assert.equal(r.trunkCheckSkipped, null);
 });
 
-test('runCloseGates: commitsOnTrunkGate throws → close-trunk-gate-error caught', async () => {
+test('runCloseGates: lineageDoneGate throws → close-lineage-gate-error caught', async () => {
   const r = await runCloseGates({
     cfg,
     issueNumber: 1,
@@ -289,7 +293,7 @@ test('runCloseGates: commitsOnTrunkGate throws → close-trunk-gate-error caught
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-trunk-gate-error/.test(b)));
+  assert.ok(r.blockers.some((b) => /close-lineage-gate-error/.test(b)));
 });
 
 test('runCloseGates: issueDirtyGate throws → close-dirty-gate-error caught', async () => {

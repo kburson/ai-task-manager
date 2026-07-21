@@ -27,6 +27,7 @@ import { verifyChainIntegrity, STAGES } from './stage-entry-markers.mjs';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
 import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 import { resolveTrunkRef as defaultResolveTrunkRef, fetchTrunk } from './trunk-ref.mjs';
+import { lineageDoneGate } from './close-gates-lineage.mjs';
 
 const pexec = promisify(execFile);
 
@@ -294,12 +295,18 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     if (c.blockers) blockers.push(...c.blockers);
   }
 
+  // #913 — Axis-1 "done" is delivered-to-parent-branch, not delivered-to-trunk.
+  // The lineage-aware gate greps the `[#N]` deliverable on the issue's parent
+  // branch (walking up to the nearest surviving ancestor → trunk), and for an
+  // epic asserts the derived child-trail on the epic's own branch. For a
+  // trunk-only (no-epic) repo the parent branch IS trunk, so this degenerates to
+  // exactly the former `commitsOnTrunkGate` reachability check — no regression.
   let trunkResult = null;
   try {
-    trunkResult = await commitsOnTrunkGate({ cfg, issueNumber, projectDir, deps });
+    trunkResult = await lineageDoneGate({ cfg, issueNumber, projectDir, body, deps });
     if (!trunkResult.ok) blockers.push(trunkResult.blocker);
   } catch (err) {
-    blockers.push(`close-trunk-gate-error: ${err.message}`);
+    blockers.push(`close-lineage-gate-error: ${err.message}`);
   }
 
   let dirtyResult = null;
@@ -314,8 +321,12 @@ export async function runCloseGates({ cfg, issueNumber, body, projectDir, deps =
     ok: blockers.length === 0,
     blockers,
     dirtyCheckSkipped: dirtyResult?.skipped || null,
+    // `trunkCheckSkipped`/`trunkRef` retain their legacy names for existing
+    // consumers; `doneBranch` is the #913 lineage-aware Axis-1 target branch
+    // (the walked-up parent branch, or the epic's own branch for an epic).
     trunkCheckSkipped: trunkResult?.skipped || null,
-    trunkRef: trunkResult?.trunkRef || null,
+    trunkRef: trunkResult?.doneBranch || trunkResult?.epicHead || trunkResult?.trunkRef || null,
+    doneBranch: trunkResult?.doneBranch || trunkResult?.epicHead || null,
     headSha,
   };
 }

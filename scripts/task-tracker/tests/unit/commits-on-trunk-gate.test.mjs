@@ -237,7 +237,9 @@ test('runCloseGates: no attributed commit on trunk composes into blockers', asyn
     },
   });
   assert.equal(r.ok, false);
-  assert.ok(r.blockers.some((b) => /close-no-attributed-commit-on-trunk/.test(b)));
+  // #913 lineage gate: a standalone story's done-target IS trunk, so the leaf
+  // refusal names the parent branch (trunk) rather than the old flat-trunk string.
+  assert.ok(r.blockers.some((b) => /close-not-on-parent-branch/.test(b)));
   assert.equal(r.trunkRef, 'trunk');
 });
 
