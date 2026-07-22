@@ -188,7 +188,9 @@ const CLEAN_BODY = [
   '## Acceptance Criteria',
   '- [ ] Acceptance criteria met <!-- aitm-verified vc-list="vc:1" -->',
   '## Verification Commands',
-  '- [ ] `npm test` <!-- id=1 -->',
+  // #934: an AC verifier must be targeted — a full-lane command (`npm test`,
+  // `npm run test:slow`, `npm run test:all`) is now rejected by the AC-floor.
+  '- [ ] `node --test acceptance.test.mjs` <!-- id=1 -->',
   '## Definition of Done',
   '- [ ] `npm test` passes',
   '- [ ] Lint clean <!-- aitm-verified cmd="`npm run lint`" exit="0" sha="d" ts="t" -->',

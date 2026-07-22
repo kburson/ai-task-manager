@@ -25,7 +25,12 @@ const LEGACY_RE = /aitm-verified-by:/;
 // Writer #1: the DoD template file.
 {
   const tmpl = readFileSync(path.join(repoRoot, 'templates', 'definition-of-done.md'), 'utf8');
-  assert.match(tmpl, /aitm-verified cmd="`npm run test:all`"/, 'template tests line consolidated');
+  // #934: the tests line is the two-lane split (`npm test` + `npm run test:slow`).
+  assert.match(
+    tmpl,
+    /aitm-verified cmd="`npm test` `npm run test:slow`"/,
+    'template tests line consolidated (two-lane)'
+  );
   assert.match(
     tmpl,
     /aitm-verified cmd="`npm run lint` `npm run format:check`"/,
@@ -50,7 +55,11 @@ const LEGACY_RE = /aitm-verified-by:/;
   ].join('\n');
   const { body, changed } = healFunctionalSection(stale);
   assert.equal(changed, true, 'stale section is healed');
-  assert.match(body, /aitm-verified cmd="`npm run test:all`"/, 'heal re-seeds consolidated tests');
+  assert.match(
+    body,
+    /aitm-verified cmd="`npm test` `npm run test:slow`"/,
+    'heal re-seeds consolidated tests (two-lane)'
+  );
   assert.match(
     body,
     /aitm-verified cmd="`npm run lint` `npm run format:check`"/,

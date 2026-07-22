@@ -42,7 +42,9 @@ test('buildVcBackfill: no section + no markers → healed-default', () => {
   assert.equal(r.mode, 'default');
   assert.deepEqual(r.commands, DEFAULT_VC_COMMANDS);
   assert.match(r.body, /## Verification Commands/);
-  assert.match(r.body, /- \[ \] `npm run test:all`/);
+  // #934: the default seed is the two-lane tests split, not single `test:all`.
+  assert.match(r.body, /- \[ \] `npm test`/);
+  assert.match(r.body, /- \[ \] `npm run test:slow`/);
 });
 
 test('buildVcBackfill: AC evidence command → healed-derived, placed before Pickup', () => {

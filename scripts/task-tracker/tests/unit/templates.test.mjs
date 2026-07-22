@@ -45,7 +45,7 @@ const preflightBlock = execFileSync(
 // children (was a 3-hash section with 4-hash children).
 for (const fragment of [
   '### Functional (verified at Test)',
-  'aitm-verified cmd="`npm run test:all`"',
+  'aitm-verified cmd="`npm test` `npm run test:slow`"',
   'aitm-verified cmd="`npm run lint` `npm run format:check`"',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
