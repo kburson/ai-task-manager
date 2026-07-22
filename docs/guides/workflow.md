@@ -829,15 +829,32 @@ After `/clear`, `/compact`, or `npm update ai-task-manager`, the sentinel/marker
 
 `scripts/run-tests.mjs` accepts a `--lane fast|slow|all` flag. Three npm wrappers:
 
-| Script              | Lane | Roughly | When to use                                             |
-| ------------------- | ---- | ------- | ------------------------------------------------------- |
-| `npm test`          | fast | ~40s    | develop tight-loop; default after every meaningful edit |
-| `npm run test:slow` | slow | ~90s    | when iterating on a file under `tests/slow/`            |
-| `npm run test:all`  | both | ~130s   | DoD verification — what `/task dod-stamp tests` invokes |
+| Script              | Lane | Roughly | When to use                                               |
+| ------------------- | ---- | ------- | --------------------------------------------------------- |
+| `npm test`          | fast | ~340s   | develop tight-loop; default after every meaningful edit   |
+| `npm run test:slow` | slow | ~190s   | when iterating on a file under `tests/slow/`              |
+| `npm run test:all`  | both | ~530s+  | full regression floor (`fast ∪ slow`, coverage-identical) |
 
 The slow lane is everything under `scripts/task-tracker/tests/slow/`: integration-y tests that each spawn child processes and take ≥2s. Add a new file there when its measured runtime exceeds ~2s; otherwise default to `scripts/task-tracker/tests/`.
 
-`STANDARD_DOD_COMMANDS` recognizes both `npm test` and `npm run test:all` so legacy issue bodies keep passing; new bodies authored via `preflight-issue.mjs` ship with `npm run test:all` in the Functional-DoD `tests` marker.
+### Two-lane DoD `tests` verification (#934)
+
+The Functional-DoD `tests` item declares **two** verifier commands — `npm test`
+**and** `npm run test:slow` — not the single `npm run test:all`. `runVerifiers`
+runs each declared command as a separate child under its own
+`TEST_RUNNER_TIMEOUT_MS` (600s) budget; the full suite's combined ~530–690s
+wall-time exceeds that per-command cap, so a single `npm run test:all` was
+SIGTERM-killed and `/task dod-stamp tests` could never stamp. Because
+`scripts/run-tests.mjs` defines `--lane all` as exactly `fast ∪ slow`, the two
+lanes cover byte-for-byte the same file set as `test:all` — the split is
+coverage-identical, only the timeout budget differs. `TEST_RUNNER_TIMEOUT_MS`
+is untouched.
+
+`STANDARD_DOD_COMMANDS` recognizes `npm test`, `npm run test:slow`, and
+`npm run test:all`, so legacy single-command bodies keep passing; new bodies
+authored via `preflight-issue.mjs` ship the two-lane `tests` marker, and
+`scripts/task-tracker/lib/tests-lane-split.mjs` migrates an in-flight body from
+the single command to the two-lane form.
 
 ## Quality Gates
 

@@ -1,5 +1,7 @@
-// `npm test` (fast lane) stays in the set so legacy bodies keep passing;
-// `npm run test:all` is the new canonical Functional-DoD command (#305).
+// `npm test` (fast lane) and `npm run test:slow` (slow lane) are the two
+// canonical Functional-DoD `tests` commands (#934): declaring them separately
+// keeps each verifier under the per-command runner budget. `npm run test:all`
+// stays in the set so legacy single-command bodies keep passing (#305).
 import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
 import {
@@ -11,6 +13,7 @@ import {
 
 export const STANDARD_DOD_COMMANDS = new Set([
   'npm test',
+  'npm run test:slow',
   'npm run test:all',
   'npm run lint',
   'npm run format:check',
