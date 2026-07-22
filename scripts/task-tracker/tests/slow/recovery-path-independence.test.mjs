@@ -89,7 +89,10 @@ function makeDemoteDeps({ body, live, moveCode = 0 }) {
 
 test('AC4: runDemote succeeds on a marker-heavy body (write path is not fragile)', async () => {
   const { deps, calls } = makeDemoteDeps({ body: markerHeavyBody('test'), live: 'test' });
-  const r = await runDemote({ issueNumber: 500, cfg, deps });
+  // #935 — demote-to-develop is a code-rework path and hard-refuses without a
+  // declared `--rework` reason; supply one so this exercises the success write
+  // path (the point of this test) rather than the refusal.
+  const r = await runDemote({ issueNumber: 500, cfg, rework: 'rebuild the resolver', deps });
   assert.equal(r.status, 'demoted');
   assert.equal(r.from, 'test');
   assert.equal(r.to, 'develop');

@@ -17,6 +17,14 @@ import { runDemote, verbDemote } from '../../verbs/demote.mjs';
 const CFG = { repo: 'o/r' };
 const TS = '2026-06-01T00:00:00Z';
 
+// #935 — demote-to-develop hard-refuses (after the arg guards + assertBound, but
+// before any fetch/move) unless a code-change reason is declared. These branch
+// tests reach the downstream demote logic, so runDemote calls pass a reason and
+// verbDemote arg vectors carry `--rework <reason>`. The refusal branch itself is
+// asserted explicitly at the end of this file.
+const REWORK = 'code rework needed';
+const REWORK_ARGS = ['--rework', REWORK];
+
 // A fake `gh` on PATH so the default I/O dep functions (defaultFetchIssueBody /
 // defaultGetLiveState, which both route through `gql` → `gh api graphql`) run
 // offline. The fake reads the GraphQL payload on stdin and answers based on the
@@ -88,6 +96,7 @@ test('runDemote: no recorded + no live → error (board item missing)', async ()
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor(null), live: null }),
   });
   assert.equal(r.status, 'error');
@@ -99,6 +108,7 @@ test('runDemote: no recorded + live → bootstrap, then demoted', async () => {
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor(null), live: 'test', onMutate: (b) => stamps.push(b) }),
   });
   assert.equal(r.status, 'demoted');
@@ -114,6 +124,7 @@ test('runDemote: live disagrees with recorded → drift-refused', async () => {
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor('test'), live: 'review' }),
   });
   assert.equal(r.status, 'drift-refused');
@@ -125,6 +136,7 @@ test('runDemote: unknown recorded state → error', async () => {
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor('banana'), live: 'banana' }),
   });
   assert.equal(r.status, 'error');
@@ -135,6 +147,7 @@ test('runDemote: legal-but-non-source state → invalid-source-refused', async (
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor('develop'), live: 'develop' }),
   });
   assert.equal(r.status, 'invalid-source-refused');
@@ -145,6 +158,7 @@ test('runDemote: move-state nonzero exit → transition-failed', async () => {
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor('review'), live: 'review', moveExit: 7 }),
   });
   assert.equal(r.status, 'transition-failed');
@@ -156,6 +170,7 @@ test('runDemote: recorded test, live test, move ok → demoted (no bootstrap)', 
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor('test'), live: 'test', onMutate: (b) => (stamped = b) }),
   });
   assert.equal(r.status, 'demoted');
@@ -169,6 +184,7 @@ test('runDemote: recorded review → demoted from review', async () => {
   const r = await runDemote({
     issueNumber: 5,
     cfg: CFG,
+    rework: REWORK,
     deps: deps({ body: bodyFor('review'), live: 'review' }),
   });
   assert.equal(r.status, 'demoted');
@@ -182,6 +198,7 @@ test('runDemote: default fetch + live-state deps run via fake gh → demoted', a
   const r = await runDemote({
     issueNumber: 5,
     cfg: { repo: 'o/r', projectId: 'P' },
+    rework: REWORK,
     deps: {
       assertBound: () => {},
       runMoveState: async () => 0,
@@ -231,31 +248,39 @@ test('verbDemote: no issue number → usage, exit 1', async () => {
 });
 
 test('verbDemote: demoted → stdout, no exit', async () => {
-  const r = await runVerb(['5'], { deps: deps({ body: bodyFor('test'), live: 'test' }) });
+  const r = await runVerb(['5', ...REWORK_ARGS], {
+    deps: deps({ body: bodyFor('test'), live: 'test' }),
+  });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /demoted: test → develop/);
 });
 
 test('verbDemote: bootstrap demoted → stdout notes bootstrap', async () => {
-  const r = await runVerb(['#5'], { deps: deps({ body: bodyFor(null), live: 'test' }) });
+  const r = await runVerb(['#5', ...REWORK_ARGS], {
+    deps: deps({ body: bodyFor(null), live: 'test' }),
+  });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /bootstrap/);
 });
 
 test('verbDemote: drift-refused → stderr, exit 4', async () => {
-  const r = await runVerb(['5'], { deps: deps({ body: bodyFor('test'), live: 'review' }) });
+  const r = await runVerb(['5', ...REWORK_ARGS], {
+    deps: deps({ body: bodyFor('test'), live: 'review' }),
+  });
   assert.equal(r.exitCode, 4);
   assert.match(r.stderr, /drift detected/);
 });
 
 test('verbDemote: invalid-source-refused → stderr, exit 4', async () => {
-  const r = await runVerb(['5'], { deps: deps({ body: bodyFor('develop'), live: 'develop' }) });
+  const r = await runVerb(['5', ...REWORK_ARGS], {
+    deps: deps({ body: bodyFor('develop'), live: 'develop' }),
+  });
   assert.equal(r.exitCode, 4);
   assert.match(r.stderr, /only valid from test or review/);
 });
 
 test('verbDemote: transition-failed → stderr, exit code', async () => {
-  const r = await runVerb(['5'], {
+  const r = await runVerb(['5', ...REWORK_ARGS], {
     deps: deps({ body: bodyFor('review'), live: 'review', moveExit: 7 }),
   });
   assert.equal(r.exitCode, 7);
@@ -263,7 +288,9 @@ test('verbDemote: transition-failed → stderr, exit code', async () => {
 });
 
 test('verbDemote: error status → stderr, exit 1', async () => {
-  const r = await runVerb(['5'], { deps: deps({ body: bodyFor(null), live: null }) });
+  const r = await runVerb(['5', ...REWORK_ARGS], {
+    deps: deps({ body: bodyFor(null), live: null }),
+  });
   assert.equal(r.exitCode, 1);
   assert.match(r.stderr, /board item missing/);
 });
@@ -273,6 +300,30 @@ test('verbDemote: runDemote throws → stderr, exit 1', async () => {
   assert.equal(r.exitCode, 1);
   assert.match(r.stderr, /demote: not bound/);
 });
+test('runDemote: no --rework → rework-required (refuses before any fetch)', async () => {
+  let fetched = false;
+  const r = await runDemote({
+    issueNumber: 5,
+    cfg: CFG,
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ((fetched = true), { body: bodyFor('test') }),
+      getLiveState: async () => 'test',
+      runMoveState: async () => 0,
+      mutateIssueBody: async () => ({ status: 'ok' }),
+    },
+  });
+  assert.equal(r.status, 'rework-required');
+  assert.match(r.message, /CODE-REWORK path/);
+  assert.equal(fetched, false, 'no network fetch on the refusal path');
+});
+
+test('verbDemote: rework-required → stderr, exit 4', async () => {
+  const r = await runVerb(['5'], { deps: deps({ body: bodyFor('test'), live: 'test' }) });
+  assert.equal(r.exitCode, 4);
+  assert.match(r.stderr, /CODE-REWORK path/);
+});
+
 // NB: verbDemote's `default` switch arm is unreachable here on purpose —
 // runDemote only ever returns the statuses tested above, so forcing it would
 // require fabricating an impossible result. Left uncovered honestly.

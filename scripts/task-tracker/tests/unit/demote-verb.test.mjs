@@ -9,6 +9,14 @@ import { runDemote } from '../../verbs/demote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
+// #935 — demote-to-develop is a code-rework path and hard-refuses (before any
+// fetch) unless the caller declares a code-change reason via `--rework`. These
+// #68 tests predate that gate and exercise downstream behavior (source refusal,
+// drift, transition, bootstrap, write-path), so every call declares a reason to
+// clear the rework gate first. The rework gate itself is covered in
+// verbs/demote.test.mjs.
+const REWORK = 'code rework needed';
+
 function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
   // #295 — the verb writes through `deps.mutateIssueBody({mutate})`. The
   // closure is invoked with the FRESH base; the fake tracks the resulting
@@ -50,7 +58,7 @@ function bodyWithState(state) {
 
 test('demote: test→develop happy path', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
-  const r = await runDemote({ issueNumber: 200, cfg, deps });
+  const r = await runDemote({ issueNumber: 200, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'demoted');
   assert.equal(r.from, 'test');
   assert.equal(r.to, 'develop');
@@ -63,7 +71,7 @@ test('demote: test→develop happy path', async () => {
 
 test('demote: review→develop happy path', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('review'), live: 'review' });
-  const r = await runDemote({ issueNumber: 201, cfg, deps });
+  const r = await runDemote({ issueNumber: 201, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'demoted');
   assert.equal(r.from, 'review');
   assert.equal(r.to, 'develop');
@@ -73,7 +81,7 @@ test('demote: review→develop happy path', async () => {
 test('demote: refused from every non-{test,review} source', async () => {
   for (const from of ['backlog', 'refine', 'plan', 'develop', 'done']) {
     const { deps, calls } = makeDeps({ body: bodyWithState(from), live: from });
-    const r = await runDemote({ issueNumber: 202, cfg, deps });
+    const r = await runDemote({ issueNumber: 202, cfg, rework: REWORK, deps });
     assert.equal(r.status, 'invalid-source-refused', `from=${from} expected refusal`);
     assert.equal(r.from, from);
     assert.match(r.message, /demote only valid from test or review/);
@@ -84,7 +92,7 @@ test('demote: refused from every non-{test,review} source', async () => {
 
 test('demote: drift refused when live ≠ recorded', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'review' });
-  const r = await runDemote({ issueNumber: 203, cfg, deps });
+  const r = await runDemote({ issueNumber: 203, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'drift-refused');
   assert.equal(r.live, 'review');
   assert.equal(r.recorded, 'test');
@@ -99,7 +107,7 @@ test('demote: transition-failed when move-state exits non-zero', async () => {
     live: 'test',
     moveCode: 3,
   });
-  const r = await runDemote({ issueNumber: 204, cfg, deps });
+  const r = await runDemote({ issueNumber: 204, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'transition-failed');
   assert.equal(r.exitCode, 3);
   // No timing row on failed transition.
@@ -108,14 +116,14 @@ test('demote: transition-failed when move-state exits non-zero', async () => {
 
 test('demote: bootstrap when lastKnownState absent — syncs to live, then refuses if live is not test/review', async () => {
   const { deps } = makeDeps({ body: '## just a body\n', live: 'plan' });
-  const r = await runDemote({ issueNumber: 205, cfg, deps });
+  const r = await runDemote({ issueNumber: 205, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'invalid-source-refused');
   assert.equal(r.from, 'plan');
 });
 
 test('demote: bootstrap then demote from test succeeds', async () => {
   const { deps, calls } = makeDeps({ body: '## just a body\n', live: 'test' });
-  const r = await runDemote({ issueNumber: 206, cfg, deps });
+  const r = await runDemote({ issueNumber: 206, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'demoted');
   assert.equal(r.bootstrapped, true);
   assert.equal(r.from, 'test');
@@ -133,7 +141,7 @@ test('demote: bootstrap then demote from test succeeds', async () => {
 
 test('demote: test→develop landed write carries develop marker (#295 closure semantics)', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('test'), live: 'test' });
-  const r = await runDemote({ issueNumber: 207, cfg, deps });
+  const r = await runDemote({ issueNumber: 207, cfg, rework: REWORK, deps });
   assert.equal(r.status, 'demoted');
   // Exactly one write — the post-move develop stamp.
   assert.equal(calls.writes.length, 1);
