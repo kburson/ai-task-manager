@@ -2,10 +2,11 @@
 // Full-Auto PR merge path + desync-safe local-trunk re-sync.
 //
 // Two steps in the PR-based close flow cannot be completed by the agent in
-// Full-Auto today (observed live closing #904):
+// Full-Auto today:
 //
-//   1. `gh pr merge <N> --merge` (the local, irreversible merge) is denied by the
-//      auto-mode classifier — correct, it is an outward irreversible act.
+//   1. `gh pr merge <N> --merge` is an immediate outward, irreversible merge — a
+//      step an auto-mode run should not fire blind, and one an auto-mode safety
+//      classifier may refuse outright.
 //   2. Fast-forwarding the LOCAL `trunk` ref from a linked worktree desyncs the
 //      main worktree (durable memory: "update-ref trunk desyncs main tree").
 //

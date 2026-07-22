@@ -286,8 +286,9 @@ GitHub only performs an auto-merge once required checks pass. Without these,
 **Optional Bash permission rule.** An operator who prefers the direct path may
 add a `gh pr merge` allowlist entry (analogous to the human-gate toggles asked
 about before parallel fan-out) for the duration of a Full-Auto batch, and remove
-it afterward. `gh-auto-merge` avoids needing this because it is not
-classifier-blocked.
+it afterward. `gh-auto-merge` avoids needing this because it never issues the
+immediate local merge — it only enables GitHub's own auto-merge, which lands the
+PR after required checks pass.
 
 **Trunk re-sync.** `close` reads `origin/trunk` (never local `trunk`) when it runs
 inside a linked worktree, so the merged `[#N]` commit is seen without desyncing

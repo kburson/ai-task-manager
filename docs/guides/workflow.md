@@ -187,16 +187,21 @@ flow above assumes a human clicks **Merge** and then `git pull`s trunk. Two step
 in that chain cannot be completed by the agent in a Full-Auto batch, so the drive
 would otherwise stall at every story's merge step:
 
-1. **The local merge is classifier-blocked.** `gh pr merge <N> --merge` performs an
-   irreversible outward merge and is denied in auto mode (observed closing #904).
-   The sanctioned path is **GitHub-native auto-merge**: the agent runs
-   `gh pr merge <N> --auto --<method>`, which only _enables_ auto-merge — GitHub
-   performs the actual merge once required checks pass. Enabling auto-merge is an
-   idempotent request, not the blocked local merge, so the classifier permits it.
-   A repo without auto-merge enabled / branch protection configured cannot use this
-   path; see the `fullAutoMerge` config in the settings guide. An operator who
-   wants a local-only batch instead authorizes the **local-trunk lane** (no push,
-   no PR — the existing merge-to-trunk close path).
+1. **The human normally clicks Merge; a batch drive has nobody there.** Having the
+   agent perform the merge itself (`gh pr merge <N> --merge`) is an immediate
+   outward, irreversible act — the kind of unattended step an auto-mode safety
+   classifier may refuse, and one that should not fire blind regardless. The
+   sanctioned path sidesteps it entirely: **GitHub-native auto-merge**. The agent
+   runs `gh pr merge <N> --auto --<method>`, which only _enables_ auto-merge —
+   GitHub performs the actual merge once required checks pass. This is safe to
+   issue unattended for two independent reasons: enabling auto-merge is
+   **idempotent** (re-running it is a no-op, so a retried batch never
+   double-merges), and the merge itself stays **gated on CI**, not on the agent —
+   nothing lands until required checks are green. A repo without auto-merge enabled
+   / branch protection configured cannot use this path; see the `fullAutoMerge`
+   config in the settings guide. An operator who wants a local-only batch instead
+   authorizes the **local-trunk lane** (no push, no PR — the existing
+   merge-to-trunk close path).
 
 2. **Local `trunk` cannot be fast-forwarded from a worktree** without desyncing the
    main worktree (`git update-ref refs/heads/trunk …` advances the shared ref but
@@ -208,12 +213,19 @@ would otherwise stall at every story's merge step:
    `trunk`.
 
 Policy lives in pure functions in `scripts/task-tracker/lib/full-auto-merge.mjs`
-(`resolveMergeMechanism`, `planFullAutoMerge`, `resolveCloseTrunkRef`); the close
-verb supplies config + the worktree flag and executes the returned plan. When
-`fullAutoMerge` is unconfigured, resolution fails **closed** with an actionable
-message naming the missing key and pointing at the settings guide — the batch
-halts with a clear error rather than a mid-drive classifier denial. This changes
-only the Full-Auto path; the interactive human-merge flow is unchanged.
+(`resolveMergeMechanism`, `planFullAutoMerge`, `resolveCloseTrunkRef`); the impure
+executor `scripts/task-tracker/lib/full-auto-merge-execute.mjs` performs the side
+effects (detect the linked worktree, resolve the open PR, run the permitted `gh`
+enable) and the `close` verb calls it after its close gates pass. The trunk-ref
+resolver is injected into `lineageDoneGate` via the `deps.closeGates.resolveTrunkRef`
+override so a worktree close attributes against `origin/trunk`. The step is inert
+unless an **open PR exists for the branch** — a branch-based or interactive close
+never triggers it. When a PR is present under Full-Auto but `fullAutoMerge` is
+unconfigured, resolution fails **closed** with an actionable message naming the
+missing key and pointing at the settings guide, and the issue is left OPEN — the
+batch halts with a clear error instead of silently stalling at the merge step.
+This changes only the Full-Auto PR path; the interactive human-merge flow is
+unchanged.
 
 ### Epic #727 — VCS-process-agnostic commit attribution
 
