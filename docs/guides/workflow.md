@@ -131,12 +131,23 @@ the token. Stable grep regex: `\[#(\d+)\]`. Full grammar:
 
 **Gate query scope.** `commit-trace` and `review-preflight` attribute against
 `refs: ['--all']` — a commit _anywhere_ in the repo satisfies them. `close`
-deliberately scopes to the trunk ref only: a branch that was never merged to
-trunk must **not** satisfy the close gate. This asymmetry is the correctness
-argument — it means an issue closes only once its deliverable actually reaches
-trunk. In the PR-based flow that dictates the ordering **push → PR → merge to
-trunk → `git pull` → `/task close`**: the `[#N]` commit must be merged and pulled
-into local trunk before close, or the close gate correctly refuses.
+deliberately scopes to the **resolved trunk ref** only (`resolveTrunkRef`, default
+`origin/trunk` — see `scripts/task-tracker/lib/trunk-ref.mjs`): a branch that was
+never merged to trunk must **not** satisfy the close gate. This asymmetry is the
+correctness argument — it means an issue closes only once its deliverable actually
+reaches trunk. The gate runs `git fetch` before it reads `origin/trunk`, so it
+checks the authoritative remote tip regardless of what any worktree has checked
+out. In the PR-based flow that dictates the ordering **push → PR → merge to
+`origin/trunk` → `/task close`**: the `[#N]` commit must be present on `origin/trunk`
+before close, or the close gate correctly refuses.
+
+**Never `git update-ref refs/heads/trunk` from a worktree.** A scope-isolated task
+worktree cannot `git pull --ff-only` the main worktree's checked-out `trunk`, and
+advancing the branch with `git update-ref refs/heads/trunk` moves the ref but strands
+the main worktree's index/working-tree at the old commit → a persistent inverted
+staged diff. Because the close gate reads `origin/trunk` after a fetch, local `trunk`
+is cosmetic: land the deliverable via PR merge and let `git fetch origin` bring the
+remote-tracking ref current. The main worktree may sit on any branch throughout.
 
 ### Epic #727 — VCS-process-agnostic commit attribution
 

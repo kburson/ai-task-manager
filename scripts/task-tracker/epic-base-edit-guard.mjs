@@ -32,6 +32,7 @@ import { SCRATCH_REL_PREFIX } from './paths.mjs';
 import { currentBranch } from './fleet-registry.mjs';
 import { parseBranchName } from './lib/branch-name.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
+import { resolveTrunkRefSync } from './lib/trunk-ref.mjs';
 import { evaluateEpicBase } from './lib/epic-base-guard.mjs';
 
 export const GATED_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit']);
@@ -215,7 +216,15 @@ export function runHook(payload, deps = {}) {
 
   const graph = deps.graph || realGraph(projectDir);
   const git = deps.git || realGit(projectDir);
-  const evaluation = computeEvaluation(branch, { graph, git });
+  // #927 — resolve the trunk ref the root epic forks from, WITHOUT fetching: this
+  // is the PreToolUse hot path, so it must not do a network round-trip. Reading
+  // the existing remote-tracking ref (default origin/trunk) instead of a local
+  // `trunk` keeps the fork-point resolvable even when the main worktree sits on a
+  // non-trunk branch and local `trunk` is stale or absent — otherwise the epic
+  // fork-point would fail to resolve and a legitimately-based child edit would be
+  // wrongly BLOCKED. `deps.trunk` lets tests inject a fixed ref.
+  const trunk = 'trunk' in deps ? deps.trunk : resolveTrunkRefSync({ projectDir });
+  const evaluation = computeEvaluation(branch, { graph, git, trunk });
 
   return decideEpicBaseEdit({ toolName, branch, relPath, evaluation });
 }

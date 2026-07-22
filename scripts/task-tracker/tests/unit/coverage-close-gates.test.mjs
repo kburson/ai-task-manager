@@ -359,7 +359,7 @@ test('commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef', a
   assert.equal(r.trunkRef, 'trunk');
 });
 
-test('commitsOnTrunkGate: default trunk-ref fallback + default attributingCommits (real git)', async () => {
+test('commitsOnTrunkGate: default trunk-ref resolution + default attributingCommits (real git)', async () => {
   const sha = await headSha();
   const r = await commitsOnTrunkGate({
     cfg,
@@ -371,7 +371,10 @@ test('commitsOnTrunkGate: default trunk-ref fallback + default attributingCommit
     r.ok === true || /close-no-attributed-commit-on-trunk/.test(r.blocker || ''),
     JSON.stringify(r)
   ); // #729/#733
-  assert.equal(r.trunkRef, 'trunk');
+  // #927 — the real default resolver prefers the remote-tracking ref
+  // (`origin/trunk`) and only falls back to the local `trunk` branch when no
+  // remote exists. Accept either so this runs green in a clone or a solo repo.
+  assert.match(r.trunkRef, /^(origin\/)?trunk$/);
 });
 
 test('issueDirtyGate: default filesForSha + dirtyFiles (real git) on HEAD', async () => {

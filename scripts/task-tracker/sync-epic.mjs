@@ -32,13 +32,22 @@ function requireEpic(epic, deps) {
   return lineage;
 }
 
-// True when trunk has advanced past the epic's base — i.e. origin/trunk is NOT an
-// ancestor of the epic head — so the epic should re-sync before absorbing a child.
-// `git merge-base --is-ancestor` signals via exit code; deps.git throws on non-zero.
+// #927 — the ONE trunk ref both functions use. The ancestor-check and the rebase
+// target MUST agree (they previously did not: the check read `origin/trunk` while
+// the rebase read local `trunk`). `deps.trunk` is the resolved ref injected by the
+// CLI (`resolveTrunkRef`, default `origin/trunk`); the pure default matches so a
+// test that injects nothing still sees a consistent pair.
+function trunkRefOf(deps) {
+  return deps.trunk || 'origin/trunk';
+}
+
+// True when trunk has advanced past the epic's base — i.e. the resolved trunk ref
+// is NOT an ancestor of the epic head — so the epic should re-sync before absorbing
+// a child. `git merge-base --is-ancestor` signals via exit code; deps.git throws on
+// non-zero.
 export function epicNeedsSync({ epic, deps } = {}) {
   const lineage = requireEpic(epic, deps);
-  const trunk = deps.trunk || 'trunk';
-  const trunkRef = deps.trunkRemoteRef || `origin/${trunk}`;
+  const trunkRef = trunkRefOf(deps);
   try {
     deps.git(['merge-base', '--is-ancestor', trunkRef, lineage.branch]);
     return false; // ancestor → epic already contains trunk tip
@@ -47,19 +56,20 @@ export function epicNeedsSync({ epic, deps } = {}) {
   }
 }
 
-// Rebase the epic onto trunk, then (unless noPushToOrigin) push --force-with-lease.
-// Returns `{ branch, rebasedOnto, pushed }`. A rebase conflict propagates before
-// any push, so a broken state is never published.
+// Rebase the epic onto the resolved trunk ref, then (unless noPushToOrigin) push
+// --force-with-lease. Returns `{ branch, rebasedOnto, pushed }`. A rebase conflict
+// propagates before any push, so a broken state is never published. The rebase
+// target is the SAME ref `epicNeedsSync` checked ancestry against.
 export function syncEpic({ epic, deps } = {}) {
   const lineage = requireEpic(epic, deps);
-  const trunk = deps.trunk || 'trunk';
-  deps.git(['rebase', trunk, lineage.branch]);
+  const trunkRef = trunkRefOf(deps);
+  deps.git(['rebase', trunkRef, lineage.branch]);
   let pushed = false;
   if (!deps.noPushToOrigin) {
     deps.git(['push', '--force-with-lease', 'origin', lineage.branch]);
     pushed = true;
   }
-  return { branch: lineage.branch, rebasedOnto: trunk, pushed };
+  return { branch: lineage.branch, rebasedOnto: trunkRef, pushed };
 }
 
 // ---- CLI wiring (real git + real gh sub-issue graph) --------------------------
@@ -88,12 +98,19 @@ async function main(argv) {
   }
   const { loadConfig } = await import('./config.mjs');
   const cfg = loadConfig();
+  const projectDir = cfg.projectDir || process.cwd();
   const node = await realGraphNode(epic, cfg);
+  // #927 — fetch, then resolve the one trunk ref both the ancestor-check and the
+  // rebase must agree on. Injecting it makes local `trunk` cosmetic.
+  const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
+  await fetchTrunk({ cfg, projectDir });
+  const trunk = await resolveTrunkRef({ cfg, projectDir });
   const { branch, rebasedOnto, pushed } = syncEpic({
     epic,
     deps: {
       graph: () => node,
-      git: realGit(cfg.projectDir || process.cwd()),
+      git: realGit(projectDir),
+      trunk,
       noPushToOrigin: !!cfg.noPushToOrigin,
     },
   });
