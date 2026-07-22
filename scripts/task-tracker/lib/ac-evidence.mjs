@@ -17,7 +17,7 @@ import { unescapeValue } from './marker-grammar.mjs';
 import { parseProofMarker, hasExecutionProof, upsertProofMarker } from './proof-marker.mjs';
 import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { resolveCitedOrLiteralCommands, resolveVcRefCommands } from './vc-ref.mjs';
+import { resolveCitedOrLiteralCommands, resolveVcListStrict } from './vc-ref.mjs';
 
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
@@ -67,10 +67,13 @@ function extractCommands(text, vcItems = []) {
   const props = parseProofMarker(haystack);
   // #774 — the canonical by-id citation lives in the `vc-list` attribute (the
   // form #773's Refine-exit guardrail mandates). It is always a `vc:<id>`
-  // citation run — resolve it strictly by id against the VC list; a `vc-list`
-  // that resolves to nothing is not a gated command.
+  // citation run — resolve it strictly by id against the VC list.
+  // #804 — a present-but-empty (`vc-list=""`) or otherwise unresolvable
+  // `vc-list` on a verified AC is NOT a silent zero-command green: it THROWS via
+  // `resolveVcListStrict`, so the code-complete gate that consumes this resolver
+  // fails loudly instead of reading the AC as trivially satisfied.
   if (props && typeof props['vc-list'] === 'string') {
-    return resolveVcRefCommands(props['vc-list'], vcItems) || [];
+    return resolveVcListStrict(props['vc-list'], vcItems);
   }
   // #481 — `cmd` is the persistent declaration component, read regardless of any
   // run-props upserted onto the same `aitm-verified` marker. The pre-#481 guard

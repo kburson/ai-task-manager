@@ -66,12 +66,15 @@ test('a legacy id-less VC list still resolves by ordinal (backward-compat)', () 
   assert.deepEqual(resolveVcRefCommands('vc:2', legacy), ['npm run lint']);
 });
 
-// ---- resolveCitedOrLiteralCommands still falls back to literals -------------
+// ---- resolveCitedOrLiteralCommands: #804 ordinal fallback retired -----------
 
-test('resolveCitedOrLiteralCommands: by-id citation, else embedded literal', () => {
+test('resolveCitedOrLiteralCommands: only backtick literals (ordinal citation retired #804)', () => {
   const vc = vcOf(['node --test a.test.mjs', 'node --test b.test.mjs']); // 1,2
-  assert.deepEqual(resolveCitedOrLiteralCommands('vc:2', vc), ['node --test b.test.mjs']);
-  // A non-citation cmd falls back to backtick-embedded literals, unchanged.
+  // #804 — a `vc:N` value is no longer resolved as a citation here; the canonical
+  // by-id citation lives on `vc-list` (resolveVcListStrict), so an ordinal `cmd`
+  // value carries no backtick literals and yields nothing.
+  assert.deepEqual(resolveCitedOrLiteralCommands('vc:2', vc), []);
+  // A backtick-embedded literal command still extracts, unchanged (DoD form).
   assert.deepEqual(resolveCitedOrLiteralCommands('`node --test z.test.mjs`', vc), [
     'node --test z.test.mjs',
   ]);

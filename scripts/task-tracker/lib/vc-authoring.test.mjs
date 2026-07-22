@@ -142,7 +142,7 @@ test('buildEvidenceBackfill: second pass is a no-op (idempotent)', () => {
 const FANIN_BODY = [
   '## Acceptance Criteria',
   '',
-  `- [ ] Combo criterion ${serializeProofMarker({ cmd: 'vc:1 vc:2' })}`,
+  `- [ ] Combo criterion ${serializeProofMarker({ 'vc-list': 'vc:1 vc:2' })}`,
   '',
   '## Verification Commands',
   '',

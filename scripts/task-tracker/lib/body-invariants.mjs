@@ -441,19 +441,21 @@ const TEST_ALL_CMD_RE = /^npm\s+run\s+test:all$/;
 function acDeclaredCommands(text, vcItems = []) {
   const props = parseProofMarker(String(text || ''));
   if (!props) return [];
-  // #773 — `vc-list` is the id-citation attribute that supersedes `cmd` on ACs.
-  // Prefer it when present; keep reading `cmd` for one release so legacy bodies
-  // (and the deprecated ordinal `cmd="vc:N"` citation) still resolve as
-  // demonstrable while the corpus migrates.
-  const source =
-    typeof props['vc-list'] === 'string'
-      ? props['vc-list']
-      : typeof props.cmd === 'string'
-        ? props.cmd
-        : null;
-  if (source == null) return [];
+  // #773/#804 — `vc-list` is the canonical id-citation attribute; resolve it by
+  // id (never through the retired ordinal `cmd` fallback). A `cmd` attribute is
+  // read only for the DoD-Functional backtick-literal form. An empty/dangling
+  // citation resolves to nothing → the AC is treated as unverified
+  // (`no-verifier`), which the vc-citation guardrail separately flags with a
+  // sharper `empty-vc-list` / `dangling-vc-list` reason.
   try {
-    return resolveCitedOrLiteralCommands(source, vcItems).map((c) => c.trim());
+    if (typeof props['vc-list'] === 'string') {
+      const cited = resolveVcRefCommands(props['vc-list'], vcItems);
+      return (cited || []).map((c) => c.trim());
+    }
+    if (typeof props.cmd === 'string') {
+      return resolveCitedOrLiteralCommands(props.cmd, vcItems).map((c) => c.trim());
+    }
+    return [];
   } catch {
     return [];
   }
@@ -581,6 +583,14 @@ export function findAcsWithLegacyVerificationForm(body) {
     // every cited id resolves against a live VC entry; a dangling citation is
     // rejected here rather than swallowed.
     if (typeof props['vc-list'] === 'string') {
+      // #804 — a present-but-empty (or otherwise non-citation) `vc-list` is a
+      // silent-false-green vector: it resolves to zero commands without failing.
+      // Reject it here so a verified AC can never be authored with an empty
+      // verifier citation.
+      if (parseVcRefIndexes(props['vc-list']) === null) {
+        offenders.push({ lineIndex: i, label, reason: 'empty-vc-list' });
+        continue;
+      }
       try {
         resolveVcRefCommands(props['vc-list'], vcItems);
       } catch {
@@ -597,7 +607,13 @@ export function findAcsWithLegacyVerificationForm(body) {
       const reason =
         parseVcRefIndexes(props.cmd) !== null ? 'ordinal-cmd-citation' : 'backtick-embedded-cmd';
       offenders.push({ lineIndex: i, label, reason });
+      continue;
     }
+
+    // #804 — a recognized `aitm-verified` marker carrying neither a `vc-list`
+    // nor a `cmd` attribute declares a verifier with no citation at all: another
+    // zero-command silent green. Reject it so every verified AC names a verifier.
+    offenders.push({ lineIndex: i, label, reason: 'missing-vc-list' });
   }
   return offenders;
 }

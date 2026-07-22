@@ -1,10 +1,12 @@
 // @story #721
+// @story #804
 import assert from 'node:assert/strict';
 
 import {
   parseVcRefIndexes,
   resolveVcRefCommands,
   resolveCitedOrLiteralCommands,
+  resolveVcListStrict,
 } from '../../lib/vc-ref.mjs';
 
 const VC_ITEMS = [
@@ -55,13 +57,16 @@ const VC_ITEMS = [
   );
 }
 
-// --- resolveCitedOrLiteralCommands: citation-first, legacy fallback --------
+// --- resolveCitedOrLiteralCommands: #804 ordinal citation fallback RETIRED --
 {
+  // AC2 — the ordinal `cmd="vc:N"` citation fallback is gone. A value that is a
+  // pure `vc:N` run carries no backtick literals, so it now yields NO commands.
   assert.deepEqual(
     resolveCitedOrLiteralCommands('vc:2', VC_ITEMS),
-    ['npm run lint'],
-    'citation form resolves via the shared VC list'
+    [],
+    'ordinal cmd citation no longer resolves (fallback retired)'
   );
+  // AC4 — the DoD-Functional backtick-embedded literal declaration is untouched.
   assert.deepEqual(
     resolveCitedOrLiteralCommands('`npm test` `npm run lint`', VC_ITEMS),
     ['npm test', 'npm run lint'],
@@ -71,6 +76,44 @@ const VC_ITEMS = [
     resolveCitedOrLiteralCommands('', VC_ITEMS),
     [],
     'empty cmd resolves to no commands'
+  );
+}
+
+// --- resolveVcListStrict: #804 no silent false green ------------------------
+{
+  // AC3 — a resolvable vc-list returns the cited commands, same as the loose form.
+  assert.deepEqual(
+    resolveVcListStrict('vc:1', VC_ITEMS),
+    ['npm test'],
+    'a resolvable vc-list returns its cited commands'
+  );
+  assert.deepEqual(
+    resolveVcListStrict('vc:1 vc:2', VC_ITEMS),
+    ['npm test', 'npm run lint'],
+    'a multi vc-list resolves in cited order'
+  );
+  // AC3 — the whole point: empty / missing / non-citation THROWS, never []..
+  assert.throws(
+    () => resolveVcListStrict('', VC_ITEMS),
+    RangeError,
+    'empty vc-list throws instead of resolving to a silent []'
+  );
+  assert.throws(
+    () => resolveVcListStrict('   ', VC_ITEMS),
+    RangeError,
+    'whitespace-only vc-list throws'
+  );
+  assert.throws(() => resolveVcListStrict(null, VC_ITEMS), RangeError, 'missing vc-list throws');
+  assert.throws(
+    () => resolveVcListStrict('`npm test`', VC_ITEMS),
+    RangeError,
+    'a non-citation vc-list value throws (not a silent [])'
+  );
+  // AC3 — a dangling citation still throws (the pre-existing contract).
+  assert.throws(
+    () => resolveVcListStrict('vc:99', VC_ITEMS),
+    RangeError,
+    'a dangling vc-list citation throws'
   );
 }
 

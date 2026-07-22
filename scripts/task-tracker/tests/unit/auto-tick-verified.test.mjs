@@ -315,7 +315,11 @@ function vcListFixture() {
   assert.ok(body.includes('- [ ] vc-list-cited AC two'), 'failing vc-list AC (vc:2) left unticked');
 }
 
-// AC3 — the legacy `cmd="vc:N"` citation path still auto-ticks unchanged.
+// #804 — the ordinal `cmd="vc:N"` citation fallback is RETIRED. An AC that cites
+// verification through the deprecated `cmd` attribute no longer resolves to a
+// command, so a green sandbox does NOT auto-tick it (the canonical `vc-list`
+// form is the only citation path). This AC would also be refused at the
+// Refine→Plan gate — it must never reach a green-sandbox auto-tick in practice.
 {
   const { body } = autoTickVerified(
     vcListFixture(),
@@ -325,7 +329,10 @@ function vcListFixture() {
     ],
     '2026-07-13T00:00:00Z'
   );
-  assert.ok(body.includes('- [x] cmd-cited AC three'), 'legacy cmd="vc:1" AC still ticked');
+  assert.ok(
+    body.includes('- [ ] cmd-cited AC three'),
+    'ordinal cmd="vc:1" AC no longer auto-ticks (fallback retired #804)'
+  );
 }
 
 console.log('auto-tick-verified.test.mjs: all assertions passed');

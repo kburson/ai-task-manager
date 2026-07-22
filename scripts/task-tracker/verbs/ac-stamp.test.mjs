@@ -1,10 +1,15 @@
 // #762 (AC3) — `/task ac-stamp` resolves a `vc:<n>` citation to its literal
 // verifier command and stamps the AC evidence marker exactly as it does for a
 // legacy embedded-command AC. `verbAcStamp` is thin gh/runner plumbing around
-// two library seams — `findEvidenceAc` (which resolves the declared command via
-// `resolveCitedOrLiteralCommands`) and `stampAcEvidenceAndReconcile` (the exact
-// body mutate the verb applies). These tests drive that seam directly so the
-// citation path is proven without a live GitHub round-trip.
+// two library seams — `findEvidenceAc` (which resolves the declared command)
+// and `stampAcEvidenceAndReconcile` (the exact body mutate the verb applies).
+// These tests drive that seam directly so the citation path is proven without a
+// live GitHub round-trip.
+//
+// #804 — the citation AC uses the canonical `vc-list="vc:N"` form (resolved via
+// `resolveVcListStrict`); the deprecated ordinal `cmd="vc:N"` fallback is
+// retired. The legacy-body case keeps the DoD-Functional backtick literal, which
+// is unaffected.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,7 +29,7 @@ const CMD = 'node --test scripts/task-tracker/lib/vc-authoring.test.mjs';
 const CITED_BODY = [
   '## Acceptance Criteria',
   '',
-  '- [ ] Cited AC <!-- aitm-verified cmd="vc:1" -->',
+  '- [ ] Cited AC <!-- aitm-verified vc-list="vc:1" -->',
   '',
   '## Verification Commands',
   '',

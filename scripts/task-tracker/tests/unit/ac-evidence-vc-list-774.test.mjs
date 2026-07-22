@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #774
+// @story #804
 // #774 — the AC-evidence runner must consume the canonical by-id `vc-list`
 // citation (the form #773's Refine-exit guardrail mandates), not just the
 // legacy embedded/ordinal `cmd`. These cases pin the three read-sites that were
@@ -38,6 +39,31 @@ test('#774 parseEvidenceAcs resolves a vc-list citation to its VC command(s)', (
     ['node --test x.test.mjs', 'npm run lint'],
     'multi vc-list citation resolves each id in order'
   );
+});
+
+test('#804 an empty vc-list on a verified AC THROWS at resolution — no silent zero-command green', () => {
+  const EMPTY_VC_LIST_BODY = [
+    '## Verification Commands',
+    '',
+    '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [ ] Verified AC with an empty citation <!-- aitm-verified vc-list="" -->',
+    '',
+    '## Definition of Done',
+    '',
+  ].join('\n');
+  assert.throws(
+    () => parseEvidenceAcs(EMPTY_VC_LIST_BODY),
+    /no resolvable verification command/,
+    'the code-complete resolver fails loudly instead of reading the AC as satisfied'
+  );
+});
+
+test('#804 a valid vc-list still resolves and stays gated (strictness does not over-fire)', () => {
+  const acs = parseEvidenceAcs(VC_LIST_BODY);
+  assert.equal(acs.length, 2, 'both real vc-list ACs remain gated after the strict change');
 });
 
 test('#774 findEvidenceAc locates a vc-list-declared AC by its stripped label', () => {
