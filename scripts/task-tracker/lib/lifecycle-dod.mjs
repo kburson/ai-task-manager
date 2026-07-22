@@ -145,7 +145,12 @@ export function parseLifecycleItems(body) {
   let m;
   while ((m = re.exec(loc.section)) !== null) {
     const checked = m[1] === 'x';
-    const label = m[2].trim();
+    // #933 — strip any trailing HTML-comment marker before resolving the key.
+    // A passed `agent-review` gate line carries a trailing `<!-- ... -->`
+    // marker; folding it into the label broke the exact-string `labelToKey`
+    // match, so a marker-bearing lifecycle item resolved to key=null and was
+    // invisible to the close-gate, pretick detection, and satisfaction scan.
+    const label = m[2].replace(/<!--[\s\S]*?-->/g, '').trim();
     const key = labelToKey(label);
     items.push({ key, label, checked });
   }
@@ -200,7 +205,15 @@ function _toggleLifecycleItem(body, key, tick) {
   const labels = [LIFECYCLE_LABELS[key], ...(LIFECYCLE_LABEL_ALIASES[key] || [])];
   for (const label of labels) {
     const labelRe = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`(^- )\\[${fromChar}\\](\\s+${labelRe}\\s*$)`, 'm');
+    // #933 — match the box + whitespace + label, then require only a word
+    // boundary (whitespace or EOL) AFTER the label via lookahead — never the
+    // old `\s*$` EOL anchor. That anchor silently no-op'd every toggle once the
+    // line carried a trailing `<!-- ... -->` marker (e.g. a passed
+    // `agent-review` gate line after a Review demote + re-drive). The lookahead
+    // keeps the marker (and any trailing content) outside the match, so the
+    // replace flips only the single box char and preserves the rest of the line
+    // byte-for-byte.
+    const re = new RegExp(`(^- )\\[${fromChar}\\](\\s+${labelRe})(?=\\s|$)`, 'm');
     const next = loc.section.replace(re, `$1[${toChar}]$2`);
     if (next !== loc.section) return loc.before + next + loc.after;
   }
