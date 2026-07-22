@@ -2,9 +2,18 @@
 //
 // The only backward path on the kanban is `test → develop` and
 // `review → develop` — both for failed-tests / review-rework loops. From
-// every other state demote refuses. There is no gate (rework is intentional)
-// and no alias delegation — demote calls `scripts/gh/move-state.mjs` directly
-// with `AITM_INTERNAL=1`.
+// every other state demote refuses.
+//
+// #935 — demote-to-develop is a CODE-REWORK path and nothing else. The single
+// legitimate reason to send an issue back to Develop is to commit further code
+// changes; re-running a stage's own validation (e.g. re-triggering the Agent
+// Review gate) is done in place by re-invoking that stage's verb (`/task review`,
+// `/task test`), NOT by demoting. So the verb HARD-REFUSES unless the caller
+// declares that code-change intent with an explicit `--rework "<reason>"` flag
+// (non-empty reason). This mirrors the #361 body-write hard-refusal: fail-loud,
+// hint-carrying, with an explicit grep-able override. The reason is threaded into
+// `move-state.mjs --demote-reason` so it surfaces in the `demoted:<state>` timing
+// row.
 //
 // Drift detection mirrors `promote.mjs` exactly: if the live board state
 // disagrees with the recorded lastKnownState, refuse and point at
@@ -86,9 +95,17 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
 // branching is unchanged. The synthetic argv preserves the `--demote` flag so the
 // host's parse/matrix path is identical to the old CLI invocation. host is
 // injectable for tests.
-export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+export function defaultRunMoveState(
+  { issueNumber, target, rework },
+  { host = runMoveStateHost } = {}
+) {
+  const argv = [process.execPath, 'move-state.mjs', String(issueNumber), target, '--demote'];
+  // #935 — surface the declared code-change reason in the `demoted:<state>` timing
+  // row via the existing `--demote-reason` policy path.
+  const reason = String(rework || '').trim();
+  if (reason) argv.push('--demote-reason', reason);
   return host({
-    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target, '--demote'],
+    argv,
     env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'demote' },
   });
 }
@@ -97,11 +114,26 @@ export function defaultRunMoveState({ issueNumber, target }, { host = runMoveSta
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
+export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
   if (!issueNumber) throw new Error('demote: issueNumber is required');
   if (!cfg) throw new Error('demote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
   assertBound(issueNumber);
+
+  // #935 — hard-refuse a demote that does not declare a code-change need, BEFORE
+  // any network fetch or board move. An empty/whitespace-only reason is treated
+  // as absent. The message names re-invoking the current stage verb as the
+  // in-place way to re-run that stage's validation.
+  const reworkReason = String(rework || '').trim();
+  if (!reworkReason) {
+    return {
+      status: 'rework-required',
+      message:
+        'demote-to-develop is a CODE-REWORK path — pass `--rework "<reason>"` to declare the code change you intend to commit.\n' +
+        "   To re-run a stage's validation WITHOUT changing code, re-invoke that stage's verb in place\n" +
+        '   (e.g. `/task review` re-runs the Agent Review gate; `/task test` re-runs the suite) — do NOT demote.',
+    };
+  }
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
@@ -165,7 +197,12 @@ export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
     return { status: 'error', message: `demote: ${mx.reason}` };
   }
 
-  const exitCode = await runMoveState({ issueNumber, target: DEMOTE_TARGET, cfg });
+  const exitCode = await runMoveState({
+    issueNumber,
+    target: DEMOTE_TARGET,
+    rework: reworkReason,
+    cfg,
+  });
   if (exitCode !== 0) {
     return {
       status: 'transition-failed',
@@ -196,24 +233,38 @@ export async function runDemote({ issueNumber, cfg, deps = {} } = {}) {
 // CLI wrapper.
 // ---------------------------------------------------------------------------
 
-function parseArgs(rest) {
-  for (const a of rest) {
-    const m = String(a).match(/^#?(\d+)$/);
-    if (m) return { issueNumber: Number(m[1]) };
+export function parseArgs(rest) {
+  let issueNumber = null;
+  let rework = null;
+  const args = Array.isArray(rest) ? rest.map(String) : [];
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    // #935 — `--rework <reason>` and `--rework=<reason>` both accepted.
+    if (a === '--rework') {
+      rework = args[i + 1] !== undefined ? args[i + 1] : '';
+      i += 1;
+      continue;
+    }
+    if (a.startsWith('--rework=')) {
+      rework = a.slice('--rework='.length);
+      continue;
+    }
+    const m = a.match(/^#?(\d+)$/);
+    if (m && issueNumber === null) issueNumber = Number(m[1]);
   }
-  return { issueNumber: null };
+  return { issueNumber, rework };
 }
 
 export async function verbDemote(rest, cfg, deps = {}) {
-  const { issueNumber } = parseArgs(rest);
+  const { issueNumber, rework } = parseArgs(rest);
   if (!issueNumber) {
-    process.stderr.write('Usage: demote #N\n');
+    process.stderr.write('Usage: demote #N --rework "<reason>"\n');
     process.exit(1);
   }
 
   let result;
   try {
-    result = await runDemote({ issueNumber, cfg, deps });
+    result = await runDemote({ issueNumber, cfg, rework, deps });
   } catch (err) {
     process.stderr.write(`demote: ${err.message}\n`);
     process.exit(1);
@@ -237,6 +288,12 @@ export async function verbDemote(rest, cfg, deps = {}) {
     case 'invalid-source-refused': {
       process.stderr.write(
         `\n⛔ Refusing to demote #${issueNumber} from ${result.from}:\n   BLOCKED: ${result.message}\n\n`
+      );
+      process.exit(4);
+    }
+    case 'rework-required': {
+      process.stderr.write(
+        `\n⛔ Refusing to demote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`
       );
       process.exit(4);
     }

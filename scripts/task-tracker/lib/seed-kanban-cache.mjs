@@ -22,6 +22,7 @@ import { formatDefectHint } from './defect-hint.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { setSessionKanbanState } from '../session-state.mjs';
 import { parseEntryMarkers, STAGES } from './stage-entry-markers.mjs';
+import { reviewRemediationHint } from './review-remediation-hint.mjs';
 
 const RETRY_BACKOFF_MS = 500;
 
@@ -102,5 +103,11 @@ export async function seedSessionKanbanFromBody({ sid, issue, projDir, repo, dep
     if (highestEnteredIdx > backlogIdx) throw new SeederMarkerMissingError(issueNumber);
     state = 'backlog';
   }
-  return setSessionKanbanState(sid, state, projDir);
+  const record = setSessionKanbanState(sid, state, projDir);
+  // #935 — compute the bind-time review-remediation hint from the body we already
+  // fetched, and attach it so bind paths can surface it without a second read.
+  // Preserve the existing `null`-return contract when there is no session record.
+  const hint = reviewRemediationHint({ state, body, issueNumber });
+  if (!record) return record;
+  return { ...record, reviewRemediationHint: hint };
 }
