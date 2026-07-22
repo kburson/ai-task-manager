@@ -31,7 +31,14 @@ function repoRoot() {
 // (`docs/ai-memory/*.md`, ~47 files) is an intentional, one-time surface growth
 // to ~442 entries. The seed is bounded (ephemeral trackers and `archive/` are
 // excluded), so 500 keeps headroom without re-opening the door to the test suite.
-const ENTRY_CEILING = 500;
+//
+// #912 raised this from 500 to 550: the two-axis delivery model + epic-branch
+// guardrail ship a bounded set of new runtime libs (`close-gates-lineage`,
+// `two-axis-delivery`, `gated-delivery`, `tests-lane-split`, `full-auto-merge*`,
+// etc.), taking the runtime surface to ~502 entries. 550 restores headroom while
+// staying well below the pre-tightening surface (797) — a test-suite re-ship
+// still blows straight past it.
+const ENTRY_CEILING = 550;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
