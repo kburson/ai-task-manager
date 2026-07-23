@@ -18,7 +18,7 @@
 // Non-goal: code-kind issues are NOT loosened — the no-commit branch only
 // activates on an explicit `aitm-issue-kind` marker; absence means `code`.
 
-import { serializeMarker } from './marker-grammar.mjs';
+import { serializeMarker, parseMarker } from './marker-grammar.mjs';
 
 export const DEFAULT_KIND = 'code';
 // #500 — the no-commit deliverable lane. `epic` joins the original #494 trio so
@@ -49,6 +49,11 @@ const KIND_MARKER_RE = /<!--\s*aitm-issue-kind\s+kind="((?:[^"]|&quot;)*)"\s*-->
 // whitespace so upsert leaves no blank-line residue.
 const KIND_MARKER_STRIP_RE = /[ \t]*<!--\s*aitm-issue-kind\s+kind="(?:[^"]|&quot;)*"\s*-->\n?/gi;
 const DELIVERABLE_MARKER_RE = /<!--\s*aitm-deliverable-posted(?:\s+[^>]*?)?\s*-->/i;
+// #944 — the "no new tests — guarded by a pre-existing test" escape. Matches the
+// marker comment tolerant of attribute order; the pass condition (a non-empty
+// `reason`) is enforced by `hasNoNewTestsDeclaration`, not the regex.
+const NO_NEW_TESTS_MARKER_RE =
+  /<!--\s*aitm-no-new-tests(?:\s+[a-zA-Z0-9_-]+="(?:[^"]|&quot;)*")*\s*-->/i;
 const AC_WAIVED_RE = /<!--\s*aitm-ac-waived(?:\s+[^>]*?)?\s*-->/i;
 // #887 — epic AC reconciliation. Matches with or without a `ts` so a
 // hand-written bare marker is still honored; `setEpicAcReconciled` always
@@ -110,6 +115,35 @@ export function isTestlessKind(body) {
  */
 export function expectsAutomatedTests(body) {
   return !isTestlessKind(body);
+}
+
+/**
+ * True when the body carries a valid "no new tests" escape declaration (#944).
+ *
+ * A code-kind bug fix whose entire deliverable greens a **pre-existing**,
+ * already-committed test authors no new `*.test.mjs` content, so the
+ * New-Automated-Tests auto-poster stays silent and the Agent Review V2 gate would
+ * object `required comment 'New Automated Tests' is missing` with no honest path
+ * forward (`docs-only` reclassification is default-deny-rejected for a non-doc diff,
+ * and fabricating a NAT comment is forbidden and fails the V4 content validator).
+ *
+ * This OPT-IN, FAIL-CLOSED marker lets an operator declare, on the record, that the
+ * issue ships no new test:
+ *
+ *   <!-- aitm-no-new-tests reason="<non-empty>" guarded-by="<test path>" -->
+ *
+ * The escape is the declaration itself; `guarded-by` names the guarding test for the
+ * human reviewer but is not part of the pass condition. Default-deny: an absent
+ * marker, an empty `reason`, or a whitespace-only `reason` all return false so the
+ * NAT requirement still fires — a silent or accidental escape is impossible.
+ */
+export function hasNoNewTestsDeclaration(body) {
+  const m = String(body || '').match(NO_NEW_TESTS_MARKER_RE);
+  if (!m) return false;
+  const parsed = parseMarker(m[0]);
+  if (!parsed || parsed.name !== 'no-new-tests') return false;
+  const reason = typeof parsed.props.reason === 'string' ? parsed.props.reason.trim() : '';
+  return reason.length > 0;
 }
 
 /** True when the body carries an `aitm-deliverable-posted` evidence marker. */
