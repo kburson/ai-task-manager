@@ -19,8 +19,9 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.mjs --lane fast",
+    "test:unit": "node scripts/run-tests.mjs --lane unit",
+    "test:integration": "node scripts/run-tests.mjs --lane integration",
     "test:slow": "node scripts/run-tests.mjs --lane slow",
-    "test:all": "node scripts/run-tests.mjs --lane all",
     "test:coverage": "c8 node scripts/run-tests.mjs --lane all",
     "test:coverage:fast": "c8 node scripts/run-tests.mjs --lane fast",
     "log-time": "node scripts/gh/log-issue-time.mjs",

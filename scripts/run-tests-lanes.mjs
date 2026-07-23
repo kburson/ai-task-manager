@@ -19,8 +19,17 @@
 import { discoverTestFiles, divergence } from './task-tracker/lib/discover-test-files.mjs';
 import { laneManifest } from './task-tracker/lib/test-lanes.mjs';
 
-/** The runner's selectable run-lanes. */
-export const RUN_LANES = Object.freeze(['fast', 'slow', 'all']);
+/**
+ * The runner's selectable run-lanes.
+ *
+ * `unit` and `integration` are the bounded sections (#864): each runs one half of
+ * the former `fast` lane on its own so integration tests stop interleaving with
+ * unit tests. `all` remains a valid lane value — but only as an **internal** union
+ * consumed by {@link discoveryDivergence} and `test:coverage` (one c8 process over
+ * every file); it is deliberately no longer exposed as a `test:all` npm script,
+ * because a single unbounded run breaches the 10-minute wall-time ceiling.
+ */
+export const RUN_LANES = Object.freeze(['unit', 'integration', 'fast', 'slow', 'all']);
 
 /**
  * Tests skipped due to unrelated tracked bugs. Keyed by **repo-relative path**;
@@ -35,18 +44,22 @@ export const SKIP = new Map([]);
  * The sorted repo-relative test paths for a run-lane, sourced entirely from the
  * canonical lane manifest.
  *
- * @param {'fast'|'slow'|'all'} lane
+ * @param {'unit'|'integration'|'fast'|'slow'|'all'} lane
  * @param {object} [opts] - forwarded to {@link laneManifest}/{@link discoverTestFiles}
  * @returns {string[]} sorted, repo-relative POSIX paths
  */
 export function laneFiles(lane, opts = {}) {
   const manifest = laneManifest(opts);
+  const unit = [...manifest.unit].sort();
+  const integration = [...manifest.integration].sort();
   const fast = [...manifest.unit, ...manifest.integration].sort();
   const slow = [...manifest.slow].sort();
+  if (lane === 'unit') return unit;
+  if (lane === 'integration') return integration;
   if (lane === 'fast') return fast;
   if (lane === 'slow') return slow;
   if (lane === 'all') return [...fast, ...slow].sort();
-  throw new Error(`run-tests: --lane must be one of fast|slow|all (got: ${lane})`);
+  throw new Error(`run-tests: --lane must be one of ${RUN_LANES.join('|')} (got: ${lane})`);
 }
 
 /**

@@ -50,8 +50,16 @@ test('AC1: laneFiles is a pure view over canonical discovery', () => {
     'fast = unit ∪ integration'
   );
   assert.deepEqual(laneFiles('slow', opts), [...m.slow].sort(), 'slow = slow');
+  // #864 — unit and integration are now first-class sections; `all` stays as the
+  // internal union that backs this divergence guard and `test:coverage`.
+  assert.deepEqual(laneFiles('unit', opts), [...m.unit].sort(), 'unit = unit');
+  assert.deepEqual(
+    laneFiles('integration', opts),
+    [...m.integration].sort(),
+    'integration = integration'
+  );
 
-  assert.deepEqual([...RUN_LANES], ['fast', 'slow', 'all']);
+  assert.deepEqual([...RUN_LANES], ['unit', 'integration', 'fast', 'slow', 'all']);
 });
 
 // AC2 — the divergence guard fails a run that would omit an on-disk test.

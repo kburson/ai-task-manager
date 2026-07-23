@@ -10,10 +10,17 @@
 // alongside integration + slow, which are serial too (#864 isolates integration
 // next; #868 relocates the misplaced integration files out of tests/unit/).
 //
-// Lanes (#305, canonicalized #874):
-//   --lane fast (default) — unit ∪ integration (every *.test.mjs except slow)
+// Lanes (#305, canonicalized #874; sectioned #864):
+//   --lane unit           — the pure/parallel-safe unit population (pooled)
+//   --lane integration    — the shared-resource population, on its own channel
+//   --lane fast (default)  — unit ∪ integration (the retained regression floor)
 //   --lane slow           — the slow lane only
-//   --lane all            — every lane; what DoD verification (`test:all`) invokes
+//   --lane all            — every lane; INTERNAL union for the divergence guard
+//                           and `test:coverage` only — no `test:all` script exists
+//
+// #864 — every lane except `all` is fail-closed against a 10-minute wall-time
+// ceiling (run-tests-ceiling.mjs): a section over budget exits non-zero so it
+// cannot silently regrow; the overage goes to #945, the ceiling is never relaxed.
 //
 // Discovery and lane assignment come from the canonical modules
 // (`discoverTestFiles` #872 + `laneManifest` #873) via `run-tests-lanes.mjs`;
@@ -35,6 +42,7 @@ import {
 import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
+import { evaluateCeiling } from './run-tests-ceiling.mjs';
 import {
   parseInProcessDurationMs,
   formatPassLine,
@@ -67,7 +75,7 @@ for (let i = 2; i < process.argv.length; i++) {
   }
 }
 if (!VALID_LANES.has(lane)) {
-  console.error(`run-tests: --lane must be one of fast|slow|all (got: ${lane})`);
+  console.error(`run-tests: --lane must be one of ${RUN_LANES.join('|')} (got: ${lane})`);
   process.exit(2);
 }
 
@@ -143,6 +151,10 @@ const poolEligible = (e) => laneOf(e.label) === 'unit' && isParallelSafe(e.full)
 const unitEntries = runnable.filter(poolEligible);
 const serialEntries = runnable.filter((e) => !poolEligible(e));
 
+// #864 — wall-clock the whole section (pool + serial) so the ceiling guard below
+// measures real elapsed execution, not per-file time.
+const sectionStart = process.hrtime.bigint();
+
 const { results: unitResults, peakConcurrency } = await runPool({
   entries: unitEntries,
   concurrency: CONCURRENCY,
@@ -154,6 +166,8 @@ const serialResults = [];
 for (const entry of serialEntries) {
   serialResults.push(await runEntry(entry));
 }
+
+const sectionElapsedMs = Number(process.hrtime.bigint() - sectionStart) / 1e6;
 
 // Stitch results back onto their entries so emission can walk `files` in INPUT
 // order (#863 AC6 — deterministic output independent of completion order).
@@ -250,6 +264,15 @@ if (leaked.length) {
     liveFleet = {};
   }
   console.error(formatFleetLeak(leaked, liveFleet));
+  process.exit(1);
+}
+
+// #864 — fail-closed section ceiling. Even a fully green section is failed if its
+// wall time breaches the 10-minute budget, so a section can never silently regrow
+// past it. `all` (the internal coverage/divergence union) is exempt.
+const ceiling = evaluateCeiling({ lane, elapsedMs: sectionElapsedMs });
+if (ceiling.breached) {
+  console.error(`\n${ceiling.message}`);
   process.exit(1);
 }
 

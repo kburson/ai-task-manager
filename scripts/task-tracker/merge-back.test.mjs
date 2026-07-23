@@ -6,8 +6,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { mergeBack } from './merge-back.mjs';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const GRAPH = {
   905: { parent: null, children: [910] }, // root epic (parent = trunk)
@@ -85,6 +90,22 @@ test('post-rebase test failure refuses the merge and skips cleanup', () => {
   const kinds = git.calls.map((c) => c.join(' '));
   assert.ok(!kinds.some((k) => k.startsWith('merge --ff-only')));
   assert.ok(!kinds.some((k) => k.startsWith('worktree remove')));
+});
+
+test('#864: the test-runner runs bounded sections, not the retired test:all', () => {
+  const src = readFileSync(path.join(__dir, 'merge-back.mjs'), 'utf8');
+  // No functional caller of the retired monolith may remain.
+  assert.ok(
+    !/\brun',\s*'test:all'|\['run',\s*'test:all'\]/.test(src),
+    'merge-back.mjs must not invoke `npm run test:all` (it is retired by #864)'
+  );
+  // It must instead run each bounded section, each under its own ceiling.
+  for (const section of ['test:unit', 'test:integration', 'test:slow']) {
+    assert.ok(
+      src.includes(`'${section}'`),
+      `merge-back.mjs must run the ${section} section in place of test:all`
+    );
+  }
 });
 
 test('refuses a non-child issue', () => {
