@@ -18,6 +18,12 @@ import { projectItemForIssue, deleteProjectV2Item } from '../../gh/lib/github-pr
 import { hasReviewApprovedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
+import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
+import {
+  detectLinkedWorktree,
+  makeCloseTrunkRefResolver,
+  enableFullAutoMergeForClose,
+} from '../lib/full-auto-merge-execute.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -550,6 +556,12 @@ export async function verbClose(ctx) {
         // toggle filters the review-approved refusal post-hoc so the
         // existing bypass-audit row stays the only side-effect of disabling
         // human review.
+        // #908 — desync-safe trunk-ref for the close-attribution gate. When close
+        // runs inside a linked worktree, `lineageDoneGate` must attribute against
+        // `origin/trunk` (a remote-tracking ref that is never checked out) so the
+        // shared local `trunk` ref is never touched. Injected via the existing
+        // `deps.closeGates.resolveTrunkRef` override hook. cfg.trunkRef still wins.
+        const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
         const guardResult = await runGuards('review', 'done', {
           issueNumber: Number(closeIssueNum),
           repo: cfg.repo,
@@ -558,6 +570,7 @@ export async function verbClose(ctx) {
           body,
           cfg,
           projectDir,
+          deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
         });
 
         const refusals = (guardResult.refusals || []).filter(
@@ -820,6 +833,53 @@ export async function verbClose(ctx) {
       );
       process.exitCode = 1;
       return;
+    }
+  }
+
+  // #908 — Full-Auto PR merge step. Before the terminal Done/close sequence, on a
+  // Full-Auto PR-based close (an open PR exists for this branch), enable
+  // GitHub-native auto-merge so the drive does not stall at the human "Merge"
+  // click. `fullAutoMerge` is absent by default → `fail-closed`: the batch HALTS
+  // with an actionable message rather than a mid-drive classifier denial, and the
+  // issue is left OPEN. No open PR (branch-based / interactive close) → inert.
+  // Gated on `isFullAuto()` — an interactive close leaves the merge to the human,
+  // and the distinct guard keeps this block from shadowing the #654 pre-walk guard
+  // below (whose source-shape contract anchors on its exact `if (!force && …)`).
+  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
+    let closeBranch = '';
+    try {
+      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
+      closeBranch = String(br || '').trim();
+    } catch {
+      // no branch resolvable — treated as no-PR (inert) below
+    }
+    const fam = await enableFullAutoMergeForClose({
+      cfg,
+      branch: closeBranch,
+      isFullAuto: isFullAuto(),
+      pexec,
+    });
+    if (fam.status === 'fail-closed') {
+      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
+      console.error(
+        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (fam.status === 'exec-failed') {
+      console.error(
+        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
+          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (fam.status === 'enabled') {
+      console.log(
+        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
+          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
+      );
     }
   }
 

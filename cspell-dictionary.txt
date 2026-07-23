@@ -246,3 +246,9 @@ stopwords
 jaccard
 dupguard
 desync
+desyncs
+desyncing
+desynced
+conflatable
+conflates
+unshippable

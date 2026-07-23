@@ -149,6 +149,84 @@ staged diff. Because the close gate reads `origin/trunk` after a fetch, local `t
 is cosmetic: land the deliverable via PR merge and let `git fetch origin` bring the
 remote-tracking ref current. The main worktree may sit on any branch throughout.
 
+### Two-Axis Delivery Model (done vs delivered)
+
+Delivered by epic [#912](https://github.com/kburson/ai-task-manager/issues/912).
+An epic child has **two** delivery states, and they are deliberately not the same
+thing:
+
+- **Axis 1 — done (recorded).** An issue is _done_ when its `[#N]` deliverable is
+  reachable on its immediate parent branch (Axis 1) — walk the epic lineage up to
+  the nearest surviving ancestor branch, ultimately `trunk`. This is a fact the
+  board records; it is what lets a child finish against its epic's integration
+  branch long before the epic itself lands.
+- **Axis 2 — delivered-to-customer (derived).** _Delivered_ is trunk reachability
+  of the same `[#N]` token. It is **never persisted** — it is recomputed on demand
+  every time a report needs it, so no stale delivered-flag can ever disagree with
+  the actual state of `trunk`. Reporting consumers must source it from git, not
+  from a recorded Status field; conflating the recorded done-axis with delivery is
+  the exact bug the #915 consumer-registry audit exists to catch.
+
+**Delivery split by parent.** How a done child reaches trunk forks on its parent:
+
+- A **non-trunk parent** takes the local merge-back path: rebase the child onto the
+  parent, run the close/done gates, fast-forward the parent, and delete the child
+  branch (verify-not-perform under the epic-branch guardrail).
+- The **trunk** parent takes the **PR-only** path: a squash merge. A squash would
+  normally destroy the per-commit subjects a SHA-based scheme relied on, but ours
+  survives it because **trunk attribution greps commit bodies**, not just subjects
+  — the squash concatenates the child commits' messages into the squash-commit
+  body, so every `[#N]` token is preserved and message-based attribution still
+  resolves. That is why the PR-only path is attribution-safe.
+
+### Full-Auto PR merge + local-trunk sync
+
+Delivered by [#908](https://github.com/kburson/ai-task-manager/issues/908) (epic
+[#912](https://github.com/kburson/ai-task-manager/issues/912)). The interactive
+flow above assumes a human clicks **Merge** and then `git pull`s trunk. Two steps
+in that chain cannot be completed by the agent in a Full-Auto batch, so the drive
+would otherwise stall at every story's merge step:
+
+1. **The human normally clicks Merge; a batch drive has nobody there.** Having the
+   agent perform the merge itself (`gh pr merge <N> --merge`) is an immediate
+   outward, irreversible act — the kind of unattended step an auto-mode safety
+   classifier may refuse, and one that should not fire blind regardless. The
+   sanctioned path sidesteps it entirely: **GitHub-native auto-merge**. The agent
+   runs `gh pr merge <N> --auto --<method>`, which only _enables_ auto-merge —
+   GitHub performs the actual merge once required checks pass. This is safe to
+   issue unattended for two independent reasons: enabling auto-merge is
+   **idempotent** (re-running it is a no-op, so a retried batch never
+   double-merges), and the merge itself stays **gated on CI**, not on the agent —
+   nothing lands until required checks are green. A repo without auto-merge enabled
+   / branch protection configured cannot use this path; see the `fullAutoMerge`
+   config in the settings guide. An operator who wants a local-only batch instead
+   authorizes the **local-trunk lane** (no push, no PR — the existing
+   merge-to-trunk close path).
+
+2. **Local `trunk` cannot be fast-forwarded from a worktree** without desyncing the
+   main worktree (`git update-ref refs/heads/trunk …` advances the shared ref but
+   leaves the main worktree's tree/index behind). The fix is to **not touch local
+   `trunk`**: when `close` runs inside a linked worktree, its trunk-attribution
+   query targets **`origin/trunk`** — a remote-tracking ref that is never checked
+   out, so reading it can never dirty the main worktree. An explicit
+   `cfg.trunkRef` override always wins; the main-worktree path still reads local
+   `trunk`.
+
+Policy lives in pure functions in `scripts/task-tracker/lib/full-auto-merge.mjs`
+(`resolveMergeMechanism`, `planFullAutoMerge`, `resolveCloseTrunkRef`); the impure
+executor `scripts/task-tracker/lib/full-auto-merge-execute.mjs` performs the side
+effects (detect the linked worktree, resolve the open PR, run the permitted `gh`
+enable) and the `close` verb calls it after its close gates pass. The trunk-ref
+resolver is injected into `lineageDoneGate` via the `deps.closeGates.resolveTrunkRef`
+override so a worktree close attributes against `origin/trunk`. The step is inert
+unless an **open PR exists for the branch** — a branch-based or interactive close
+never triggers it. When a PR is present under Full-Auto but `fullAutoMerge` is
+unconfigured, resolution fails **closed** with an actionable message naming the
+missing key and pointing at the settings guide, and the issue is left OPEN — the
+batch halts with a clear error instead of silently stalling at the merge step.
+This changes only the Full-Auto PR path; the interactive human-merge flow is
+unchanged.
+
 ### Epic #727 — VCS-process-agnostic commit attribution
 
 | Sub-issue                                                     | Delivers                                                                     |
@@ -751,15 +829,32 @@ After `/clear`, `/compact`, or `npm update ai-task-manager`, the sentinel/marker
 
 `scripts/run-tests.mjs` accepts a `--lane fast|slow|all` flag. Three npm wrappers:
 
-| Script              | Lane | Roughly | When to use                                             |
-| ------------------- | ---- | ------- | ------------------------------------------------------- |
-| `npm test`          | fast | ~40s    | develop tight-loop; default after every meaningful edit |
-| `npm run test:slow` | slow | ~90s    | when iterating on a file under `tests/slow/`            |
-| `npm run test:all`  | both | ~130s   | DoD verification — what `/task dod-stamp tests` invokes |
+| Script              | Lane | Roughly | When to use                                               |
+| ------------------- | ---- | ------- | --------------------------------------------------------- |
+| `npm test`          | fast | ~340s   | develop tight-loop; default after every meaningful edit   |
+| `npm run test:slow` | slow | ~190s   | when iterating on a file under `tests/slow/`              |
+| `npm run test:all`  | both | ~530s+  | full regression floor (`fast ∪ slow`, coverage-identical) |
 
 The slow lane is everything under `scripts/task-tracker/tests/slow/`: integration-y tests that each spawn child processes and take ≥2s. Add a new file there when its measured runtime exceeds ~2s; otherwise default to `scripts/task-tracker/tests/`.
 
-`STANDARD_DOD_COMMANDS` recognizes both `npm test` and `npm run test:all` so legacy issue bodies keep passing; new bodies authored via `preflight-issue.mjs` ship with `npm run test:all` in the Functional-DoD `tests` marker.
+### Two-lane DoD `tests` verification (#934)
+
+The Functional-DoD `tests` item declares **two** verifier commands — `npm test`
+**and** `npm run test:slow` — not the single `npm run test:all`. `runVerifiers`
+runs each declared command as a separate child under its own
+`TEST_RUNNER_TIMEOUT_MS` (600s) budget; the full suite's combined ~530–690s
+wall-time exceeds that per-command cap, so a single `npm run test:all` was
+SIGTERM-killed and `/task dod-stamp tests` could never stamp. Because
+`scripts/run-tests.mjs` defines `--lane all` as exactly `fast ∪ slow`, the two
+lanes cover byte-for-byte the same file set as `test:all` — the split is
+coverage-identical, only the timeout budget differs. `TEST_RUNNER_TIMEOUT_MS`
+is untouched.
+
+`STANDARD_DOD_COMMANDS` recognizes `npm test`, `npm run test:slow`, and
+`npm run test:all`, so legacy single-command bodies keep passing; new bodies
+authored via `preflight-issue.mjs` ship the two-lane `tests` marker, and
+`scripts/task-tracker/lib/tests-lane-split.mjs` migrates an in-flight body from
+the single command to the two-lane form.
 
 ## Quality Gates
 

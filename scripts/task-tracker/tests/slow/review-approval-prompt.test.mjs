@@ -614,7 +614,9 @@ async function run(sandbox, binDir, args) {
       '',
       '## Verification Commands',
       '',
-      '- [ ] `npm test` <!-- id=1 -->',
+      // #934: AC verifiers must be targeted — a full-lane command is rejected by
+      // the AC-floor. vc:1 backs the "Fresh install" AC with a targeted command.
+      '- [ ] `node --test tests/fresh-install.test.mjs` <!-- id=1 -->',
       '- [ ] `npm run lint` <!-- id=2 -->',
       '',
       '## Definition of Done',

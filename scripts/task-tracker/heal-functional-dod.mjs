@@ -40,8 +40,11 @@ export const CANONICAL_KEYS = Object.freeze(['tests', 'lint', 'commits', 'acs', 
 // Canonical line text per key (everything after `- [x] ` / `- [ ] `). Mirrors
 // templates/definition-of-done.md exactly.
 const CANONICAL_LINE = Object.freeze({
+  // #934 — two lane commands (`npm test` + `npm run test:slow`), each a separate
+  // verifier under its own runner budget, replace the single `npm run test:all`
+  // whose ~530–690s wall-time now exceeds the 600s per-command cap.
   tests:
-    'All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->',
+    'All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests -->',
   lint: 'Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->',
   commits:
     'All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits -->',

@@ -418,10 +418,11 @@ export class MalformedDeclarationCmdError extends Error {
 //     real targeted command (a `node --test <file>`-style probe), OR
 //   - it is explicitly tagged `invalid — non-demonstrable` (an honest opt-out
 //     for a genuinely unverifiable assertion).
-// `npm run test:all` is the regression FLOOR, not an AC verifier: an AC whose
-// only declared command is `test:all` proves nothing specific to that AC, so it
-// is flagged with reason `test-all-verifier`. An AC lacking both a verifier and
-// the invalid tag is flagged `no-verifier`.
+// The whole-suite/whole-lane commands are the regression FLOOR, not AC
+// verifiers: an AC whose only declared command is `npm run test:all`, `npm
+// test` (fast lane), or `npm run test:slow` (slow lane, #934) proves nothing
+// specific to that AC, so it is flagged with reason `test-all-verifier`. An AC
+// lacking both a verifier and the invalid tag is flagged `no-verifier`.
 //
 // Returns `{ lineIndex, label, reason }` for each offending AC line, in body
 // order. Empty array means every AC is demonstrable (or honestly tagged).
@@ -429,7 +430,9 @@ const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const AC_SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const AC_BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 export const NON_DEMONSTRABLE_TAG_RE = /invalid\s+[—-]+\s+non-demonstrable/i;
-const TEST_ALL_CMD_RE = /^npm\s+run\s+test:all$/;
+// The regression-floor commands rejected as AC verifiers (#934 adds the two
+// lane commands alongside the legacy `npm run test:all`).
+const TEST_ALL_CMD_RE = /^npm(\s+run\s+test:(all|slow)|\s+test)$/;
 
 // #762 — resolve an AC declaration's `cmd` against the issue's parsed VC list so
 // a `vc:<n>` citation names the same real command(s) an embedded backtick form

@@ -163,3 +163,66 @@ test('lifecycleItemState: label present and already ticked', () => {
 test('lifecycleItemState: unknown key → throws', () => {
   assert.throws(() => lifecycleItemState({ body: TEMPLATE, key: 'nope' }), /unknown lifecycle key/);
 });
+
+// #933 — the tick primitive must toggle a lifecycle box even when the line
+// carries a trailing HTML-comment marker. The pre-#933 regex anchored the label
+// to end-of-line (`\s*$`), so a marker-bearing line silently no-op'd every
+// toggle after the first — reproduced live on #908 where "Agent Review Passed"
+// stayed `[ ]` across two `/task review` runs despite a fresh `result="pass"`
+// marker.
+const AGENT_REVIEW_MARKER =
+  '<!-- aitm-verified gate="agent-review" ts="2026-07-22T13:56:18.000Z" sha="sandbox" result="pass" -->';
+const MARKER_TEMPLATE = [
+  '## DoD',
+  '',
+  '#### Lifecycle (auto-ticked at Review/Close)',
+  `- [ ] Agent Review Passed ${AGENT_REVIEW_MARKER}`,
+  '- [ ] Final Review Passed',
+  '- [ ] Story closed and moved to Done',
+  '- [ ] Timing data flushed to issue',
+  '',
+  '## Pickup Directive',
+].join('\n');
+
+test('#933 tickLifecycleItem: ticks a marker-bearing line, marker preserved byte-for-byte', () => {
+  const out = tickLifecycleItem(MARKER_TEMPLATE, 'agent-review-passed');
+  assert.equal(out.includes(`- [x] Agent Review Passed ${AGENT_REVIEW_MARKER}`), true);
+  // the marker (and all trailing content) survives unchanged
+  assert.equal(out.includes(AGENT_REVIEW_MARKER), true);
+  // only the one box flipped — the other three stay unticked
+  assert.equal(out.includes('- [ ] Final Review Passed'), true);
+  assert.equal(out.includes('- [ ] Story closed and moved to Done'), true);
+});
+
+test('#933 tickLifecycleItem: marker-bearing tick is idempotent', () => {
+  const once = tickLifecycleItem(MARKER_TEMPLATE, 'agent-review-passed');
+  const twice = tickLifecycleItem(once, 'agent-review-passed');
+  assert.equal(twice, once);
+});
+
+test('#933 untickLifecycleItem: un-ticks a marker-bearing ticked line (demote/pretick path)', () => {
+  const ticked = tickLifecycleItem(MARKER_TEMPLATE, 'agent-review-passed');
+  const reverted = untickLifecycleItem(ticked, 'agent-review-passed');
+  assert.equal(reverted.includes(`- [ ] Agent Review Passed ${AGENT_REVIEW_MARKER}`), true);
+  assert.equal(reverted, MARKER_TEMPLATE);
+});
+
+test('#933 detectLifecyclePretick: catches a marker-bearing pre-tick and un-ticks it', () => {
+  const preTicked = tickLifecycleItem(MARKER_TEMPLATE, 'agent-review-passed');
+  const { body, regressions } = detectLifecyclePretick(preTicked);
+  assert.deepEqual(
+    regressions.map((r) => r.key),
+    ['agent-review-passed']
+  );
+  assert.equal(body, MARKER_TEMPLATE);
+});
+
+test('#933 no regression: first-tick on a no-marker line still works', () => {
+  const out = tickLifecycleItem(TEMPLATE, 'story-closed');
+  assert.equal(out.includes('- [x] Story closed and moved to Done'), true);
+});
+
+test('#933 no regression: unknown key still throws on both toggles', () => {
+  assert.throws(() => tickLifecycleItem(MARKER_TEMPLATE, 'nope'), /unknown lifecycle key/);
+  assert.throws(() => untickLifecycleItem(MARKER_TEMPLATE, 'nope'), /unknown lifecycle key/);
+});

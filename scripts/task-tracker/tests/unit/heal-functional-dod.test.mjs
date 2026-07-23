@@ -20,7 +20,7 @@ function canonicalBody() {
     '',
     '#### Functional (verified at Test)',
     '',
-    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->',
+    '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests -->', // #934: canonical tests line is the two-lane split
     '- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->',
     '- [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits -->',
     '- [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->',
