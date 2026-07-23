@@ -2,10 +2,13 @@
 // Carve-out (see #22; parallelized by #863): the runner needs non-throwing
 // exit-code introspection to accumulate failures across files. #863 replaced the
 // blocking `for … spawnSync` loop with an async bounded pool (run-tests-pool.mjs)
-// so the pure-unit lane runs at `cpus - 1` concurrency; `spawnTestChild` reshapes
-// each async child into the same `{status,signal,error}` object spawnSync gave,
-// so failure accounting and `describeSpawnResult` are unchanged. Integration +
-// slow lanes still run one file at a time here (#864 isolates integration next).
+// so PURE in-process unit files run at `cpus - 1` concurrency; `spawnTestChild`
+// reshapes each async child into the same `{status,signal,error}` object
+// spawnSync gave, so failure accounting and `describeSpawnResult` are unchanged.
+// Subprocess-spawning unit files (`isParallelSafe === false`, e.g. execFileSync/
+// gh shell-outs) run SERIAL so their children aren't CPU-starved under the pool —
+// alongside integration + slow, which are serial too (#864 isolates integration
+// next; #868 relocates the misplaced integration files out of tests/unit/).
 //
 // Lanes (#305, canonicalized #874):
 //   --lane fast (default) — unit ∪ integration (every *.test.mjs except slow)
@@ -22,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
 import { laneOf } from './task-tracker/lib/test-lanes.mjs';
+import { isParallelSafe } from './task-tracker/lib/test-parallel-safety.mjs';
 import { runPool, poolConcurrency, spawnTestChild } from './run-tests-pool.mjs';
 import {
   findMainWorktreePath,
@@ -125,14 +129,19 @@ async function runEntry(entry) {
   return { res, elapsedMs };
 }
 
-// #863 — the pure-unit lane (`laneOf === 'unit'`) runs concurrently at a bounded
-// `cpus - 1` pool; integration + slow stay serial here (#864 gives integration
-// its own isolated channel next). Output is emitted in INPUT order below, so the
-// log is deterministic regardless of which child finishes first.
+// #863 — only PURE in-process unit files run concurrently at a bounded `cpus - 1`
+// pool. A unit file that spawns subprocesses (`isParallelSafe === false`) would
+// have its child CPU-starved under a saturated pool and flake (exit `null` where
+// `1` was expected — the `coverage-close.test.mjs` case), so it joins the serial
+// phase alongside integration + slow (#864 isolates integration next; #868
+// physically relocates these files, after which the unit lane is pure by
+// construction). Output is emitted in INPUT order below, so the log stays
+// deterministic regardless of which child finishes first.
 const CONCURRENCY = poolConcurrency();
 const runnable = files.filter((e) => !SKIP.has(e.label));
-const unitEntries = runnable.filter((e) => laneOf(e.label) === 'unit');
-const serialEntries = runnable.filter((e) => laneOf(e.label) !== 'unit');
+const poolEligible = (e) => laneOf(e.label) === 'unit' && isParallelSafe(e.full);
+const unitEntries = runnable.filter(poolEligible);
+const serialEntries = runnable.filter((e) => !poolEligible(e));
 
 const { results: unitResults, peakConcurrency } = await runPool({
   entries: unitEntries,
@@ -191,7 +200,7 @@ for (const entry of files) {
 
 if (unitEntries.length) {
   console.log(
-    `\n▶ unit lane: ${unitEntries.length} file(s) at pool concurrency ${CONCURRENCY} (peak ${peakConcurrency})`
+    `\n▶ unit lane: ${unitEntries.length} pure file(s) at pool concurrency ${CONCURRENCY} (peak ${peakConcurrency}); ${serialEntries.length} subprocess-spawning/integration/slow file(s) serial`
   );
 }
 
