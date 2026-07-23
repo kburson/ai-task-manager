@@ -182,8 +182,20 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
   });
 });
 
-describe('preflight-issue --kind docs-only render (#923)', () => {
-  it('drops the tests DoD item + derived test:all VC, keeps the commits item', async () => {
+// #865 / #923 — `docs-only` is commit-bearing but its `tests` DoD item is
+// diff-conditional: "the kind declares, the diff decides". The kind alone never
+// drops the suite (a `docs-only` issue can quietly touch code) — the drop fires
+// ONLY when a supplied `--changed-paths-file` proves the diff is
+// documentation-only. Default-deny: no diff file, or any diff touching a non-doc
+// path, keeps the item.
+describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', () => {
+  function writeChangedPaths(dir, paths) {
+    const p = path.join(dir, 'changed.txt');
+    writeFileSync(p, paths.join('\n') + '\n', 'utf8');
+    return p;
+  }
+
+  it('default-deny: docs-only with NO --changed-paths-file KEEPS the tests DoD item', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
     try {
       const r = await runPreflight([
@@ -200,16 +212,53 @@ describe('preflight-issue --kind docs-only render (#923)', () => {
       ]);
       assert.equal(r.code, 0, `stderr: ${r.stderr}`);
 
-      // Stamped as docs-only.
+      // Stamped as docs-only...
       assert.match(r.stdout, /<!-- aitm-issue-kind kind="docs-only" -->/);
+      // ...but mislabelling alone must NOT launder the suite away.
+      assert.match(
+        r.stdout,
+        /<!-- dod:functional:tests -->/,
+        'docs-only with no diff proof must keep the tests DoD item (default-deny)'
+      );
+      assert.deepEqual(auditEvidenceMarkers(r.stdout).missingVerificationCommands, []);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
 
+  it('docs-only + provably documentation-only diff DROPS the tests item + its VC seeds', async () => {
+    const fx = makeFixture('- [ ] Some AC.\n');
+    const cp = writeChangedPaths(fx.dir, ['docs/guides/workflow.md', 'README.md']);
+    try {
+      const r = await runPreflight([
+        '--shape',
+        'solo',
+        '--kind',
+        'docs-only',
+        '--changed-paths-file',
+        cp,
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+      assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+
+      assert.match(r.stdout, /<!-- aitm-issue-kind kind="docs-only" -->/);
       // The `tests` DoD item is filtered out.
       assert.doesNotMatch(r.stdout, /<!-- dod:functional:tests -->/);
-      // ...and the derived `npm run test:all` VC is absent from the seed.
+      // ...and its derived suite VC seeds drop with it.
       assert.doesNotMatch(
         r.stdout,
-        /^- \[ \] `npm run test:all` <!-- id=\d+ -->\s*$/m,
-        'docs-only must not seed a test:all verification command'
+        /^- \[ \] `npm run test:slow` <!-- id=\d+ -->\s*$/m,
+        'docs-only docs-diff must not seed the test:slow verification command'
+      );
+      assert.doesNotMatch(
+        r.stdout,
+        /^- \[ \] `npm test` <!-- id=\d+ -->\s*$/m,
+        'docs-only docs-diff must not seed the npm test verification command'
       );
 
       // The commits DoD item (excluded only for epic) still renders.
@@ -221,6 +270,42 @@ describe('preflight-issue --kind docs-only render (#923)', () => {
       );
 
       // The body is still a fixed point of the evidence audit.
+      assert.deepEqual(auditEvidenceMarkers(r.stdout).missingVerificationCommands, []);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('docs-only + a diff that touches code KEEPS the tests item (default-deny)', async () => {
+    const fx = makeFixture('- [ ] Some AC.\n');
+    const cp = writeChangedPaths(fx.dir, [
+      'docs/guides/workflow.md',
+      'scripts/task-tracker/lib/foo.mjs',
+    ]);
+    try {
+      const r = await runPreflight([
+        '--shape',
+        'solo',
+        '--kind',
+        'docs-only',
+        '--changed-paths-file',
+        cp,
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+      assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+
+      // A docs-only-labelled issue whose diff edits code must still carry the
+      // suite — the diff, not the label, decides.
+      assert.match(
+        r.stdout,
+        /<!-- dod:functional:tests -->/,
+        'a docs-only issue that edits code must still carry the tests DoD item'
+      );
       assert.deepEqual(auditEvidenceMarkers(r.stdout).missingVerificationCommands, []);
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });

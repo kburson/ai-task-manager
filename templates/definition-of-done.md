@@ -16,11 +16,19 @@ findings rather than code and would otherwise carry a test-suite DoD item and a
 `npm run test:all` verification command they can never satisfy. Filtering happens
 at render time in `preflight-issue.mjs`; a filtered-out item is simply absent, so
 no phantom evidence marker is ever required for it.
+
+Diff-decides for `docs-only` (#865): the `tests` item deliberately does NOT
+static-exclude `docs-only`. A `docs-only` issue can quietly touch code, so the
+kind alone must not launder it out of the suite. Instead the `tests` item is
+dropped only when the render is `--kind docs-only` AND a supplied
+`--changed-paths-file` proves the `trunk...HEAD` diff is documentation-only
+(default-deny: any unclassified/empty/mixed diff keeps the item). "The kind
+declares, the diff decides."
 -->
 
 ### Functional (verified at Test)
 
-- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research,docs-only" -->
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->
 - [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->
 - [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->
 - [ ] All children's commits are present on this branch (derived epic trail) <!-- aitm-verified cmd="`node scripts/task-tracker/verify-epic-trail.mjs`" --> <!-- dod:functional:commits --> <!-- dod:kinds include="epic" -->

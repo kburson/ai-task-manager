@@ -40,7 +40,7 @@ import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
-import { filterDodForKind } from './lib/dod-kind-filter.mjs';
+import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -254,9 +254,35 @@ function resolveRenderKind(args) {
 // `## Acceptance Criteria` / `## Verification Commands`, so the CODE_COMPLETE
 // AC slice (`NEXT_HEADING_RE = /^##\s+/`) terminates at it and stops slurping
 // the DoD Functional/Lifecycle items.
-function dodBlock(dodPath, kind = DEFAULT_KIND) {
-  const dod = filterDodForKind(readFileSync(dodPath, 'utf8').replace(/\s+$/, ''), kind);
+// #865 — `changedPaths` (null unless a `docs-only` render supplies
+// `--changed-paths-file`) drives the diff-conditional drop of the functional
+// `tests` item. `filterDodForKindAndDiff` is byte-identical to the #681
+// `filterDodForKind` for every non-`docs-only` kind and for any `docs-only` diff
+// that is not provably documentation-only (null/empty/mixed), so the code-kind
+// back-compat guarantee holds.
+function dodBlock(dodPath, kind = DEFAULT_KIND, changedPaths = null) {
+  const dod = filterDodForKindAndDiff(
+    readFileSync(dodPath, 'utf8').replace(/\s+$/, ''),
+    kind,
+    changedPaths
+  );
   return ['## Definition of Done', dod, ''].join('\n');
+}
+
+// #865 — Read the diff's changed-path list for the `docs-only` diff-decides rule.
+// Returns null (→ no conditional drop; keep the suite) UNLESS the render is
+// `--kind docs-only` AND `--changed-paths-file <p>` is supplied. The file is a
+// plain newline-delimited list of repo-relative paths (e.g. `git diff
+// --name-only trunk...HEAD`); blank lines are ignored. Absent the flag, the safe
+// default is to keep the functional-test item — mislabelling alone can never
+// skip the suite.
+function readChangedPaths(args, kind) {
+  if (kind !== 'docs-only' || typeof args['changed-paths-file'] !== 'string') return null;
+  const raw = readFileOrDie(args['changed-paths-file'], '--changed-paths-file');
+  return raw
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 // Legacy tail-only mode (no `--shape`): pre-#700 callers spliced DoD + Pickup
@@ -320,11 +346,16 @@ function emitShape(args, dodPath, root) {
   // are filtered for the issue's kind and the derived Verification Commands seed
   // is computed over the surviving items.
   const kind = resolveRenderKind(args);
+  // #865 — for a `docs-only` render, a supplied `--changed-paths-file` decides
+  // whether the functional `tests` item (and its derived `test:all` VC seed) is
+  // dropped: only a provably documentation-only diff drops it (default-deny).
+  // null for every other kind and for a `docs-only` render with no diff file.
+  const changedPaths = readChangedPaths(args, kind);
 
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
-  const assembled = body + dodBlock(dodPath, kind);
+  const assembled = body + dodBlock(dodPath, kind, changedPaths);
   warnMissingLifecycleLabels(assembled);
   const lint = lintChecklistCommands(assembled);
   if (!lint.ok) {
@@ -359,12 +390,14 @@ function emitShape(args, dodPath, root) {
         ? spliceVcSection(finalBody, vcSection, '')
         : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
   }
-  // #494, #500, #923 — `--kind <audit|research|spike|epic|docs-only>` stamps the
-  // issue-kind marker at creation. The no-commit kinds route onto the
-  // deliverable-evidence lane; commit-bearing-but-testless `docs-only` keeps the
-  // commit trail but drops the `tests` DoD item + derived `test:all` VC. `code`
-  // (the default) leaves the body unmarked. The kind was already resolved above
-  // (#681) for DoD filtering; reuse it.
+  // #494, #500, #923, #865 — `--kind <audit|research|spike|epic|docs-only>`
+  // stamps the issue-kind marker at creation. The no-commit kinds route onto the
+  // deliverable-evidence lane; commit-bearing `docs-only` keeps the commit trail
+  // and drops the `tests` DoD item + derived `test:all` VC ONLY when a supplied
+  // `--changed-paths-file` proves the diff is documentation-only (#865
+  // diff-decides; default-deny keeps the suite otherwise). `code` (the default)
+  // leaves the body unmarked. The kind was already resolved above (#681) for DoD
+  // filtering; reuse it.
   if (typeof args.kind === 'string') {
     finalBody = setIssueKindMarker(finalBody, kind);
   }
