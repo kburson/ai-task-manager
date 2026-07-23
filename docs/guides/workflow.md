@@ -420,6 +420,17 @@ Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the ed
 
 A stub deliberately fails the Refine→Plan gate (which still demands Sequence, labels, Start Time, and substantive ACs) until Refine fleshes it out. Creation is cheap; promotion past Refine still enforces the full contract.
 
+### Issue kinds (`/task kind <N> <kind>`)
+
+A shape decides creation ceremony; a **kind** decides which Definition-of-Done items an issue is held to and how its deliverable is attributed. The kind is stored as an `aitm-issue-kind` marker (`code` — the default — carries no marker) and set with `/task kind <N> <kind>`. Two families:
+
+- **No-commit kinds** — `audit`, `research`, `spike`, `epic`. Their deliverable is an artifact in the issue itself (a comment, document, decision, or the rollup of children's commits), not committed source. The develop→test gate replaces the `### 🔗 Commits` trail requirement with an `aitm-deliverable-posted` evidence marker, and the `tests` DoD item is statically excluded — these kinds ship no code, so a test-suite line would be un-satisfiable ceremony.
+- **Commit-bearing kinds** — `code` (default) and `docs-only` (#865/#923). Both ship committed source and are attributed identically: `commit-trace`, `review-preflight`, and `close` locate the deliverable by grepping the `[#N]` commit token exactly as for `code`. `docs-only` is **not** a no-commit kind.
+
+**The `docs-only` kind: "the kind declares, the diff decides" (#865).** A `docs-only` issue is a documentation task — prose under a `docs/` directory or `*.md` / `*.markdown` files. It would be dishonest to run the functional test suite against a pure prose edit, but a static `exclude="docs-only"` on the `tests` DoD item would be unsafe: unlike `spike`/`research`, a `docs-only` issue carries commits and could quietly edit `scripts/**` and launder its way out of the suite by label alone. So the relief is **conditional on the actual diff**: the `docs-only` kind _declares_ the intent to skip tests, but the Test-stage classification of the real `trunk...HEAD` changed-path set _decides_. The functional `tests` item (and its derived `npm test` + `npm run test:slow` verification commands) is dropped only when the diff is **provably documentation-only** — every changed path is a doc path. The rule is **default-deny**: an empty diff is not proven docs-only, and any unrecognized or non-doc path counts as functional, so the item is kept. `preflight-issue.mjs` reads the changed-path list via `--changed-paths-file <p>` when rendering a `--kind docs-only` issue; absent that flag the suite is always kept. Lint and format DoD items carry no kind annotation and are required for `docs-only` exactly as for `code`. Because mislabelling can never subtract from what the diff proves, the kind is a convenience, not a bypass.
+
+This diff-decides relief lives at the **DoD/VC layer** only. The Agent Review "New Automated Tests" gate still keys off the body-level `expectsAutomatedTests(body)` classifier (a `docs-only` body is testless there), which reads no diff — making that gate diff-aware is the focused follow-up **#940**.
+
 ---
 
 ## Blocking-defect isolation dance
