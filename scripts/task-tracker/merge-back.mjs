@@ -129,16 +129,22 @@ async function main(argv) {
   const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
   await fetchTrunk({ cfg, projectDir });
   const trunk = await resolveTrunkRef({ cfg, projectDir });
+  // #864 — `test:all` is retired; the suite runs only in bounded sections. Run
+  // each section sequentially, each under its own 10-minute ceiling. Any section
+  // failing (including a ceiling breach) fails the merge-back gate.
+  const TEST_SECTIONS = ['test:unit', 'test:integration', 'test:slow'];
   const runTests = ({ path }) => {
-    try {
-      execFileSync('npm', ['run', 'test:all'], {
-        cwd: path || projectDir,
-        stdio: 'inherit',
-      });
-      return true;
-    } catch {
-      return false;
+    for (const section of TEST_SECTIONS) {
+      try {
+        execFileSync('npm', ['run', section], {
+          cwd: path || projectDir,
+          stdio: 'inherit',
+        });
+      } catch {
+        return false;
+      }
     }
+    return true;
   };
   const { epic } = mergeBack({
     child,
