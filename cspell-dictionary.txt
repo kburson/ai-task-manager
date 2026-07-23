@@ -253,3 +253,13 @@ desynced
 conflatable
 conflates
 unshippable
+relane
+relanes
+unlaned
+laned
+ismain
+splitcmd
+unbypassable
+monotonize
+chrono
+multistep
