@@ -28,6 +28,7 @@ import {
   clearReviewFailed,
   stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
+import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
 
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
 // bound at CALL time (the post site, after runMoveState emits test:passed +
@@ -829,11 +830,21 @@ export async function verbReview(ctx) {
         // its own failure, so the gate never silently passes on missing evidence.
         comments = [];
       }
+      // #940 — the `trunk...HEAD` changed-path set makes the V2 "New Automated
+      // Tests" required-comment diff-aware for `docs-only` issues. Best-effort:
+      // any failure yields [], which is default-deny at the consumer (an unknown
+      // diff keeps the NAT requirement).
+      const changedPaths = await computeReviewChangedPaths({
+        cfg,
+        projectDir,
+        deps: { pexec },
+      });
       const gate = runAgentReviewGate({
         body: gateBody,
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         comments,
+        changedPaths,
       });
       if (!gate.pass) {
         // FAIL — the Review state's action did not complete. The issue STAYS IN

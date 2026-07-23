@@ -11,26 +11,27 @@
 // missing/non-array value is tolerated as "no comments present", which fails
 // every required-comment row.
 //
-// #835/#923 — kind-aware. Two rows (`Commits`, `New Automated Tests`) are report
-// comments only some kinds produce. Each such row carries a `requiredFor(body)`
-// predicate; the row is skipped when it returns false. The predicates are
-// distinct, not a single `codeKindOnly` flag (#923):
+// #835/#923/#940 — kind- and diff-aware. Two rows (`Commits`, `New Automated
+// Tests`) are report comments only some kinds/diffs produce. Each such row
+// carries a `requiredFor(body, changedPaths)` predicate; the row is skipped when
+// it returns false. The predicates are distinct, not a single `codeKindOnly`
+// flag (#923):
 //   - `Commits` applies to every commit-bearing kind — everything EXCEPT the
 //     no-commit kinds (`epic`/`audit`/`spike`/`research`), whose deliverable is a
 //     posted marker rather than a commit trail. So `!isNoCommitKind(body)`.
-//   - `New Automated Tests` applies only when the kind is expected to ship tests —
-//     `expectsAutomatedTests(body)`. Commit-bearing-but-testless `docs-only` keeps
-//     the `Commits` row but skips this one, so a docs issue is not forced to
-//     fabricate a NAT comment it can never honestly produce.
-// The kind is read from the issue `body` the same context threads to V1
-// (`body-sections`), so no plumbing change is needed for other validators.
+//   - `New Automated Tests` uses `natCommentRequired(body, changedPaths)` (#940):
+//     the kind declares, the diff decides. A `docs-only` body skips this row only
+//     when its `trunk...HEAD` diff is provably documentation-only; a `docs-only`
+//     body whose diff touches code (or is empty/unclassifiable — default-deny)
+//     still requires the NAT comment. Non-`docs-only` kinds fall back to the
+//     prior kind-only `expectsAutomatedTests` behavior. This mirrors, at the
+//     Review layer, the DoD/VC-layer `docsKindDropsTests` guarantee from #865.
+// The kind is read from the issue `body`, and `changedPaths` is threaded from the
+// review context (`buildReviewContext`), so no plumbing change is needed for
+// other validators.
 
 import { registry } from '../registry.mjs';
-import {
-  isNoCommitKind,
-  expectsAutomatedTests,
-  hasNoNewTestsDeclaration,
-} from '../../issue-kind.mjs';
+import { isNoCommitKind, natCommentRequired } from '../../issue-kind.mjs';
 
 // One row per required report comment. `label` is the human name used in
 // failures[]; `match(bodies)` returns true when at least one comment body
@@ -61,28 +62,33 @@ export const REQUIRED_COMMENTS = [
     match: (bodies) => bodies.some((b) => /^#{1,6}\s*🔗\s*Commits\b/im.test(b)),
   },
   {
-    // #944 — required when the kind expects tests AND the issue has not filed a
-    // valid, fail-closed "no new tests — guarded by a pre-existing test"
-    // declaration. The escape lets a code-kind fix that greens an already-committed
-    // test skip the NAT comment it can never honestly produce; a body with an
-    // absent/empty-reason marker still requires the comment (default-deny).
+    // #944 + #940 — required when `natCommentRequired(body, changedPaths)` holds:
+    // the kind expects tests (or is a `docs-only` body whose diff touches code),
+    // AND the issue has not filed a valid, fail-closed `no-new-tests` declaration.
+    // The #944 escape lets a code-kind fix that greens an already-committed test
+    // skip the NAT comment it can never honestly produce; the #940 diff-awareness
+    // stops a mislabelled `docs-only` code change from skipping it. Default-deny:
+    // an empty/unclassifiable diff keeps the requirement.
     label: 'New Automated Tests',
-    requiredFor: (body) => expectsAutomatedTests(body) && !hasNoNewTestsDeclaration(body),
+    requiredFor: (body, changedPaths) => natCommentRequired(body, changedPaths),
     match: (bodies) => bodies.some((b) => /^#{1,6}\s*New Automated Tests\b/im.test(b)),
   },
 ];
 
 // V2 validator. `context.comments` is the raw comment array; each element's
 // `.body` is the comment markdown. `context.body` is the issue body, used to
-// resolve the issue kind so a row whose `requiredFor(body)` predicate returns
-// false is skipped (#835/#923).
-export function validate({ comments, body } = {}) {
+// resolve the issue kind so a row whose `requiredFor(body, changedPaths)`
+// predicate returns false is skipped (#835/#923). `context.changedPaths` is the
+// `trunk...HEAD` changed-path set (#940), consulted by the diff-aware NAT row;
+// a missing value normalizes to `[]` (default-deny).
+export function validate({ comments, body, changedPaths } = {}) {
   const list = Array.isArray(comments) ? comments : [];
   const bodies = list.map((c) => (c && typeof c.body === 'string' ? c.body : ''));
+  const paths = Array.isArray(changedPaths) ? changedPaths : [];
 
   const failures = [];
   for (const row of REQUIRED_COMMENTS) {
-    if (row.requiredFor && !row.requiredFor(body)) continue;
+    if (row.requiredFor && !row.requiredFor(body, paths)) continue;
     if (!row.match(bodies)) {
       failures.push(`required comment '${row.label}' is missing`);
     }

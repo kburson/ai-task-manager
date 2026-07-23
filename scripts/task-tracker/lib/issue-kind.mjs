@@ -19,6 +19,7 @@
 // activates on an explicit `aitm-issue-kind` marker; absence means `code`.
 
 import { serializeMarker, parseMarker } from './marker-grammar.mjs';
+import { diffIsDocsOnly } from './dod-kind-filter.mjs';
 
 export const DEFAULT_KIND = 'code';
 // #500 — the no-commit deliverable lane. `epic` joins the original #494 trio so
@@ -144,6 +145,32 @@ export function hasNoNewTestsDeclaration(body) {
   if (!parsed || parsed.name !== 'no-new-tests') return false;
   const reason = typeof parsed.props.reason === 'string' ? parsed.props.reason.trim() : '';
   return reason.length > 0;
+}
+
+/**
+ * Diff-aware predicate for the Agent Review "New Automated Tests" (NAT) required
+ * comment (#940). Extends the kind-only `expectsAutomatedTests` with "the kind
+ * declares, the diff decides": a `docs-only`-marked issue whose `trunk...HEAD`
+ * diff actually touches code must NOT skip the NAT summary. This mirrors, at the
+ * Review layer, the DoD/VC-layer `docsKindDropsTests` guarantee shipped by #865.
+ *
+ * Returns true when the NAT comment IS required. Precedence:
+ *   1. A valid `no-new-tests` declaration (#944) → not required (honest escape).
+ *   2. `docs-only` kind → required exactly when the diff is NOT provably
+ *      documentation-only, i.e. `!diffIsDocsOnly(changedPaths)`. `diffIsDocsOnly`
+ *      is default-deny (empty/unclassifiable diff → false), so an unresolvable or
+ *      code-touching diff keeps the requirement; only a proven docs-only diff skips.
+ *   3. Every other kind → `expectsAutomatedTests(body)` (byte-identical to the
+ *      prior kind-only behavior; no-commit/testless kinds still skip).
+ *
+ * `changedPaths` is the `trunk...HEAD` changed-path set threaded from the
+ * `/task review` verb; pass `[]` (never `undefined`) when it can't be computed so
+ * the default-deny holds.
+ */
+export function natCommentRequired(body, changedPaths) {
+  if (hasNoNewTestsDeclaration(body)) return false;
+  if (parseIssueKind(body) === 'docs-only') return !diffIsDocsOnly(changedPaths);
+  return expectsAutomatedTests(body);
 }
 
 /** True when the body carries an `aitm-deliverable-posted` evidence marker. */

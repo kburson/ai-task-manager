@@ -35,7 +35,19 @@ export function parseEnteredStages(body) {
 
 // Build the context object passed to every validator. Kept deliberately flat:
 // validators read what they need and ignore the rest.
-export function buildReviewContext({ body = '', issueNumber, repo, comments = [] } = {}) {
+//
+// `changedPaths` (#940) is the `trunk...HEAD` changed-path set the `/task review`
+// verb computes; the required-comments (V2) validator consults it to make the
+// "New Automated Tests" requirement diff-aware for `docs-only` issues. It is
+// normalized to an array; a missing value becomes `[]`, which is default-deny at
+// every consumer (an unknown diff keeps the NAT requirement).
+export function buildReviewContext({
+  body = '',
+  issueNumber,
+  repo,
+  comments = [],
+  changedPaths = [],
+} = {}) {
   const src = typeof body === 'string' ? body : '';
   const lastKnown = readLastKnownState(src);
   return {
@@ -43,6 +55,7 @@ export function buildReviewContext({ body = '', issueNumber, repo, comments = []
     issueNumber,
     repo,
     comments: Array.isArray(comments) ? comments : [],
+    changedPaths: Array.isArray(changedPaths) ? changedPaths : [],
     markers: {
       enteredStages: parseEnteredStages(src),
       lastKnownState: lastKnown.state,
@@ -63,9 +76,10 @@ export function runAgentReviewGate({
   issueNumber,
   repo,
   comments = [],
+  changedPaths = [],
   registry = defaultRegistry,
 } = {}) {
-  const context = buildReviewContext({ body, issueNumber, repo, comments });
+  const context = buildReviewContext({ body, issueNumber, repo, comments, changedPaths });
   const { pass, failures, validatorsRun, normalizedBody } = registry.runAll(context);
   return { pass, failures, validatorsRun: validatorsRun || [], normalizedBody, context };
 }
