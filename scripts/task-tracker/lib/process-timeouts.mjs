@@ -14,9 +14,11 @@
 //     pure-unit lane, so it now uses async `spawn` via the bounded pool in
 //     `scripts/run-tests-pool.mjs` (`spawnTestChild` reshapes each child's
 //     close/error into the same non-throwing `{status,signal,error}` object
-//     `spawnSync` produced, preserving the `describeSpawnResult` contract). The
-//     integration + slow lanes still run one child at a time. No other
-//     production site should reach for `spawnSync`/`spawn` for exit-code polling.
+//     `spawnSync` produced, preserving the `describeSpawnResult` contract). Only
+//     PURE in-process unit files are pooled; subprocess-spawning unit files
+//     (`test-parallel-safety.mjs`), integration, and slow all run one child at a
+//     time so their own children aren't CPU-starved. No other production site
+//     should reach for `spawnSync`/`spawn` for exit-code polling.
 //
 // Classes:
 //   GH_API_TIMEOUT_MS      — `gh` CLI calls (issue view/edit, graphql, comments).
