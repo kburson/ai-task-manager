@@ -1,5 +1,11 @@
 #!/usr/bin/env node
-// Carve-out: uses spawnSync (not execFileSync) because the test runner needs non-throwing exit-code introspection to accumulate failures across files (see #22).
+// Carve-out (see #22; parallelized by #863): the runner needs non-throwing
+// exit-code introspection to accumulate failures across files. #863 replaced the
+// blocking `for … spawnSync` loop with an async bounded pool (run-tests-pool.mjs)
+// so the pure-unit lane runs at `cpus - 1` concurrency; `spawnTestChild` reshapes
+// each async child into the same `{status,signal,error}` object spawnSync gave,
+// so failure accounting and `describeSpawnResult` are unchanged. Integration +
+// slow lanes still run one file at a time here (#864 isolates integration next).
 //
 // Lanes (#305, canonicalized #874):
 //   --lane fast (default) — unit ∪ integration (every *.test.mjs except slow)
@@ -12,10 +18,11 @@
 // the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
 // every committed test file (the 624-vs-652 false green cannot recur).
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
+import { laneOf } from './task-tracker/lib/test-lanes.mjs';
+import { runPool, poolConcurrency, spawnTestChild } from './run-tests-pool.mjs';
 import {
   findMainWorktreePath,
   fleetRegistryPath,
@@ -101,27 +108,57 @@ let failed = 0;
 const failures = [];
 // #861 — one timing record per executed file, keyed later by repo-relative path.
 const timingRecords = [];
+
+// #863 — run ONE file: async `spawn` shaped into a spawnSync-style result, timed
+// here so run-tests-pool.mjs stays a generic scheduler. env/timeout/maxBuffer are
+// the runner's policy — #531 AC1 (TEST_NO_RETRY_ENV) + AC2 (RUN_TESTS_MAX_BUFFER)
+// carry forward unchanged into every child, serial or pooled.
+async function runEntry(entry) {
+  const t0 = process.hrtime.bigint();
+  const res = await spawnTestChild({
+    full: entry.full,
+    timeout: TEST_RUNNER_TIMEOUT_MS,
+    maxBuffer: RUN_TESTS_MAX_BUFFER,
+    env: { ...process.env, [TEST_NO_RETRY_ENV]: '1' },
+  });
+  const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  return { res, elapsedMs };
+}
+
+// #863 — the pure-unit lane (`laneOf === 'unit'`) runs concurrently at a bounded
+// `cpus - 1` pool; integration + slow stay serial here (#864 gives integration
+// its own isolated channel next). Output is emitted in INPUT order below, so the
+// log is deterministic regardless of which child finishes first.
+const CONCURRENCY = poolConcurrency();
+const runnable = files.filter((e) => !SKIP.has(e.label));
+const unitEntries = runnable.filter((e) => laneOf(e.label) === 'unit');
+const serialEntries = runnable.filter((e) => laneOf(e.label) !== 'unit');
+
+const { results: unitResults, peakConcurrency } = await runPool({
+  entries: unitEntries,
+  concurrency: CONCURRENCY,
+  runOne: runEntry,
+});
+
+// Integration + slow: one child at a time, semantics unchanged from the old loop.
+const serialResults = [];
+for (const entry of serialEntries) {
+  serialResults.push(await runEntry(entry));
+}
+
+// Stitch results back onto their entries so emission can walk `files` in INPUT
+// order (#863 AC6 — deterministic output independent of completion order).
+const resultByLabel = new Map();
+unitEntries.forEach((e, i) => resultByLabel.set(e.label, unitResults[i]));
+serialEntries.forEach((e, i) => resultByLabel.set(e.label, serialResults[i]));
+
 for (const entry of files) {
   const { label, full } = entry;
   if (SKIP.has(label)) {
     console.log(`▶ ${label} ... SKIP (${SKIP.get(label)})`);
     continue;
   }
-  process.stdout.write(`▶ ${label} ... `);
-  const t0 = process.hrtime.bigint();
-  const res = spawnSync('node', [full], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    encoding: 'utf8',
-    timeout: TEST_RUNNER_TIMEOUT_MS,
-    // #531 AC2 — raise the per-file ceiling so a chatty-but-passing file is
-    // never buffer-killed (and mis-reported as a hang) by the 1 MB default.
-    maxBuffer: RUN_TESTS_MAX_BUFFER,
-    // #531 AC1 — cap `gh` retries to 0 in every spawned test child, so a test
-    // that escapes its shim and reaches a live `gh` call against an
-    // unresolvable repo fails fast instead of hanging until timeout-kill.
-    env: { ...process.env, [TEST_NO_RETRY_ENV]: '1' },
-  });
-  const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  const { res, elapsedMs } = resultByLabel.get(label);
   // #861 — in-process test time comes from node:test's own duration line, so
   // spawn/IO overhead = wall − in-process. Null when the child printed none.
   const inProcMs = parseInProcessDurationMs(res.stdout);
@@ -133,22 +170,29 @@ for (const entry of files) {
     status: res.status,
   });
   if (res.status === 0) {
-    // #861 — the pass path now surfaces per-file elapsed time (`ok (1.7s)`),
-    // so a green run is a timing dataset instead of a wall of bare `ok`s.
-    console.log(formatPassLine(elapsedMs));
+    // #861 — the pass path surfaces per-file elapsed time (`ok (1.7s)`), so a
+    // green run is a timing dataset instead of a wall of bare `ok`s.
+    console.log(`▶ ${label} ... ${formatPassLine(elapsedMs)}`);
   } else {
     failed++;
     failures.push({ file: label, stdout: res.stdout, stderr: res.stderr, status: res.status });
     // #531 AC2 — never print a bare `(exit null)`; name the real kill cause.
     console.log(
-      describeSpawnResult({
-        status: res.status,
-        signal: res.signal,
-        error: res.error,
-        elapsedMs: Math.round(elapsedMs),
-      })
+      `▶ ${label} ... ` +
+        describeSpawnResult({
+          status: res.status,
+          signal: res.signal,
+          error: res.error,
+          elapsedMs: Math.round(elapsedMs),
+        })
     );
   }
+}
+
+if (unitEntries.length) {
+  console.log(
+    `\n▶ unit lane: ${unitEntries.length} file(s) at pool concurrency ${CONCURRENCY} (peak ${peakConcurrency})`
+  );
 }
 
 // #861 — always persist the machine-readable timing artifact, keyed by

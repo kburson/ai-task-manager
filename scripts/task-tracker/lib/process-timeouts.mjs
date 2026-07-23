@@ -5,13 +5,18 @@
 // `spawnSync` site under `scripts/` should pass an explicit `timeout` option
 // sourced from one of the named classes below.
 //
-// Child-process API convention (see #22):
+// Child-process API convention (see #22, updated by #863):
 //   - Sync calls in production code: use `execFileSync` (throws on non-zero,
 //     consistent error shape, plays well with the `timeout:` contract here).
 //   - Async calls in production code: use `promisify(execFile)`.
-//   - `spawnSync` is reserved for the test runner (`scripts/run-tests.mjs`),
-//     which needs non-throwing exit-code introspection and `stdio:'inherit'`
-//     to accumulate per-file failures. No other production site should use it.
+//   - The test runner (`scripts/run-tests.mjs`) needs non-throwing exit-code
+//     introspection to accumulate per-file failures. #863 parallelized its
+//     pure-unit lane, so it now uses async `spawn` via the bounded pool in
+//     `scripts/run-tests-pool.mjs` (`spawnTestChild` reshapes each child's
+//     close/error into the same non-throwing `{status,signal,error}` object
+//     `spawnSync` produced, preserving the `describeSpawnResult` contract). The
+//     integration + slow lanes still run one child at a time. No other
+//     production site should reach for `spawnSync`/`spawn` for exit-code polling.
 //
 // Classes:
 //   GH_API_TIMEOUT_MS      — `gh` CLI calls (issue view/edit, graphql, comments).
