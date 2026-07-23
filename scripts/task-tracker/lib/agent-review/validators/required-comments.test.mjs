@@ -117,14 +117,19 @@ test('#835 no-commit body with all three always-required present passes', () => 
   assert.deepEqual(res.failures, []);
 });
 
-// --- #923: docs-only is commit-bearing but testless ---------------------------
+// --- #923 + #940: docs-only is commit-bearing but testless --------------------
 // A `docs-only` body KEEPS the `Commits` row (it commits real doc files) but
-// SKIPS the `New Automated Tests` row (it ships no tests). This is the case #835's
-// single `codeKindOnly` flag conflated — the two rows now have distinct predicates.
+// SKIPS the `New Automated Tests` row — NOW ONLY when its diff is provably
+// documentation-only (#940 "the kind declares, the diff decides"). #835's single
+// `codeKindOnly` flag conflated the two rows; #923 split them; #940 made the NAT
+// row diff-aware. These cases thread a docs-only changed-path set so the NAT row
+// is skipped; the default-deny case (no diff → NAT required) is covered in
+// nat-gate-diff-aware.test.mjs.
 const DOCS_ONLY_BODY = 'Some docs.\n<!-- aitm-issue-kind kind="docs-only" -->\n';
+const DOCS_ONLY_DIFF = ['docs/guide.md', 'README.md'];
 
-test('#923 docs-only body: missing all five reports four (skips only New Automated Tests)', () => {
-  const res = validate({ comments: [], body: DOCS_ONLY_BODY });
+test('#923/#940 docs-only body + docs-only diff: skips only New Automated Tests', () => {
+  const res = validate({ comments: [], body: DOCS_ONLY_BODY, changedPaths: DOCS_ONLY_DIFF });
   assert.equal(res.pass, false);
   assert.ok(
     res.failures.some((f) => /Commits/.test(f)),
@@ -132,16 +137,30 @@ test('#923 docs-only body: missing all five reports four (skips only New Automat
   );
   assert.ok(
     !res.failures.some((f) => /New Automated Tests/.test(f)),
-    `docs-only must skip the New Automated Tests row: ${JSON.stringify(res.failures)}`
+    `docs-only + docs-only diff must skip the NAT row: ${JSON.stringify(res.failures)}`
   );
   assert.equal(res.failures.length, REQUIRED_COMMENTS.length - 1, JSON.stringify(res.failures));
 });
 
-test('#923 docs-only body with Commits + three always-required (no NAT) passes', () => {
+test('#923/#940 docs-only body + docs-only diff + Commits + three always-required passes', () => {
   const comments = [...ALWAYS_REQUIRED, 'Commits'].map((l) => ({ body: SAMPLES[l] }));
-  const res = validate({ comments, body: DOCS_ONLY_BODY });
+  const res = validate({ comments, body: DOCS_ONLY_BODY, changedPaths: DOCS_ONLY_DIFF });
   assert.equal(res.pass, true, JSON.stringify(res.failures));
   assert.deepEqual(res.failures, []);
+});
+
+test('#940 docs-only body + code-touching diff: NAT row is required', () => {
+  const comments = [...ALWAYS_REQUIRED, 'Commits'].map((l) => ({ body: SAMPLES[l] }));
+  const res = validate({
+    comments,
+    body: DOCS_ONLY_BODY,
+    changedPaths: ['scripts/task-tracker/lib/foo.mjs'],
+  });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /New Automated Tests/.test(f)),
+    `docs-only + code diff must require the NAT row: ${JSON.stringify(res.failures)}`
+  );
 });
 
 test('bootstrap registers the validator on the shared singleton', async () => {

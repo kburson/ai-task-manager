@@ -138,8 +138,21 @@ describe('required-comments V2 — NAT row escape integration (#944)', () => {
     assert.equal(natRequired(`code body\n${MARKER('')}`), true);
   });
 
-  it('docs-only body is unchanged — NAT already skipped, no marker needed', () => {
-    assert.equal(natRequired('body\n<!-- aitm-issue-kind kind="docs-only" -->'), false);
+  it('docs-only body with a proven docs-only diff skips NAT (#940 diff-aware)', () => {
+    const body = 'body\n<!-- aitm-issue-kind kind="docs-only" -->';
+    const { failures } = validateRequiredComments({
+      comments: [],
+      body,
+      changedPaths: ['docs/readme.md', 'README.md'],
+    });
+    assert.equal(failures.includes(NAT_FAILURE), false);
+  });
+
+  it('docs-only body with no diff info now REQUIRES NAT (#940 default-deny)', () => {
+    // Pre-#940 a docs-only body skipped NAT unconditionally (kind-only). Post-#940
+    // the diff decides: an empty/unclassifiable changed-path set is default-deny,
+    // so the NAT requirement is kept until a docs-only diff is proven.
+    assert.equal(natRequired('body\n<!-- aitm-issue-kind kind="docs-only" -->'), true);
   });
 
   it('epic body is unchanged — NAT already skipped', () => {
