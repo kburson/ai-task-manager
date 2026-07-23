@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // @story #681
 // Kind-aware Definition-of-Done: no-code kinds (spike/research) omit the
-// code-oriented `tests` DoD item and its derived `npm run test:all` verification
-// command, while code kinds render a byte-identical DoD.
+// code-oriented `tests` DoD item and its derived two-lane (`npm test` +
+// `npm run test:slow`) verification commands, while code kinds render a
+// byte-identical DoD.
 //
 // This file is the verifier bound to all seven ACs of #681:
 //   AC1  declarative per-item kind annotation + documented default
@@ -11,7 +12,8 @@
 //   AC4  filtered body has no phantom-required Functional key (check/close contract)
 //   AC5  documentation ships (template inline comment + functional-dod.md)
 //   AC6  back-compat: code/default renders byte-identical DoD tail + VC
-//   AC7  render-by-kind coverage: code keeps test:all; spike/research omit it
+//   AC7  render-by-kind coverage: code keeps the two-lane test commands;
+//        spike/research omit them
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -160,29 +162,31 @@ describe('AC3: template annotation is scoped to the tests + split commits items'
 // AC2 + AC7 — preflight render-by-kind
 // ---------------------------------------------------------------------------
 describe('AC2/AC7: preflight filters DoD + derived VC by kind', () => {
-  it('code (default) renders the tests item AND the test:all verification command', async () => {
+  it('code (default) renders the tests item AND its two-lane verification commands', async () => {
     const fx = makeFixture();
     try {
       const r = await runPreflight(subIssueArgs(fx));
       assert.equal(r.code, 0, r.stderr);
       assert.match(r.stdout, /dod:functional:tests/);
       assert.match(r.stdout, /## Verification Commands/);
-      assert.match(r.stdout, /- \[ \] `npm run test:all`/);
+      assert.match(r.stdout, /- \[ \] `npm test`/);
+      assert.match(r.stdout, /- \[ \] `npm run test:slow`/);
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });
     }
   });
 
   for (const kind of ['spike', 'research']) {
-    it(`${kind} omits the tests item AND drops its derived test:all command`, async () => {
+    it(`${kind} omits the tests item AND drops its derived test commands`, async () => {
       const fx = makeFixture();
       try {
         const r = await runPreflight(subIssueArgs(fx, ['--kind', kind]));
         assert.equal(r.code, 0, r.stderr);
         assert.doesNotMatch(r.stdout, /dod:functional:tests/);
         // the derived VC checkbox for the tests item must be gone (the DoD
-        // header comment still *mentions* the command, so scope to the VC line)
-        assert.doesNotMatch(r.stdout, /- \[ \] `npm run test:all`/);
+        // header comment still *mentions* the commands, so scope to the VC line);
+        // `test:slow` is unique to the tests item, so its absence proves the drop
+        assert.doesNotMatch(r.stdout, /- \[ \] `npm run test:slow`/);
         // the other Functional items still render
         for (const key of ['lint', 'commits', 'acs', 'checkboxes']) {
           assert.match(r.stdout, new RegExp(`dod:functional:${key}`), `${key} must survive`);
@@ -261,7 +265,8 @@ describe('AC6: code-kind back-compat', () => {
         assert.equal(code.code, 0, code.stderr);
         assert.equal(def.stdout, code.stdout, `shape ${shapeArgs[0]} byte-identical`);
         assert.match(def.stdout, /dod:functional:tests/);
-        assert.match(def.stdout, /- \[ \] `npm run test:all`/);
+        assert.match(def.stdout, /- \[ \] `npm test`/);
+        assert.match(def.stdout, /- \[ \] `npm run test:slow`/);
       } finally {
         rmSync(fx.dir, { recursive: true, force: true });
       }
