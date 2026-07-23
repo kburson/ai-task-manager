@@ -15,6 +15,11 @@ coverage/
 # `node scripts/run-tests.mjs`. A run artifact, never committed.
 .aitm/test-timing.json
 
+# ai-task-manager — deterministic pool-scheduling bench artifact (#863),
+# regenerable from the vc:2 bench (`run-tests-pool.bench.test.mjs`). A run
+# artifact, never committed.
+.aitm/pool-bench.json
+
 # ai-task-manager — volatile per-session active-issue cache sidecar (#664)
 .ai-task-manager/.cache/
 
