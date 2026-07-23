@@ -26,7 +26,11 @@
 // (`body-sections`), so no plumbing change is needed for other validators.
 
 import { registry } from '../registry.mjs';
-import { isNoCommitKind, expectsAutomatedTests } from '../../issue-kind.mjs';
+import {
+  isNoCommitKind,
+  expectsAutomatedTests,
+  hasNoNewTestsDeclaration,
+} from '../../issue-kind.mjs';
 
 // One row per required report comment. `label` is the human name used in
 // failures[]; `match(bodies)` returns true when at least one comment body
@@ -57,8 +61,13 @@ export const REQUIRED_COMMENTS = [
     match: (bodies) => bodies.some((b) => /^#{1,6}\s*🔗\s*Commits\b/im.test(b)),
   },
   {
+    // #944 — required when the kind expects tests AND the issue has not filed a
+    // valid, fail-closed "no new tests — guarded by a pre-existing test"
+    // declaration. The escape lets a code-kind fix that greens an already-committed
+    // test skip the NAT comment it can never honestly produce; a body with an
+    // absent/empty-reason marker still requires the comment (default-deny).
     label: 'New Automated Tests',
-    requiredFor: (body) => expectsAutomatedTests(body),
+    requiredFor: (body) => expectsAutomatedTests(body) && !hasNoNewTestsDeclaration(body),
     match: (bodies) => bodies.some((b) => /^#{1,6}\s*New Automated Tests\b/im.test(b)),
   },
 ];
