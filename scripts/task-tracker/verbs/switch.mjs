@@ -134,12 +134,15 @@ export async function verbSwitch(ctx, target) {
   // #273: tagged seeder errors are reported, not swallowed.
   if (sid && cfg?.repo) {
     try {
-      await seedSessionKanbanFromBody({
+      const seeded = await seedSessionKanbanFromBody({
         sid,
         issue: target,
         projDir: projectDir,
         repo: cfg.repo,
       });
+      // #935 — warn when switching INTO a review-state issue whose Agent Review
+      // has not been run; names `/task review` as the in-place remediation.
+      if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
     } catch (err) {
       process.stderr.write(
         `[switch] ${target}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`

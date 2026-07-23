@@ -132,6 +132,9 @@ export async function verbResume(ctx) {
         if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
           console.log(formatPickupDirectiveDeferredBanner(s.lastActive, seeded.kanbanState));
         }
+        // #935 — warn when binding to a review-state issue whose Agent Review
+        // has not been run; names `/task review` as the in-place remediation.
+        if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
       } catch (err) {
         process.stderr.write(
           `[resume] ${s.lastActive}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
@@ -245,6 +248,9 @@ export async function verbResume(ctx) {
       if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
         console.log(formatPickupDirectiveDeferredBanner(normalizedTarget, seeded.kanbanState));
       }
+      // #935 — warn when binding to a review-state issue whose Agent Review has
+      // not been run; names `/task review` as the in-place remediation.
+      if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
     } catch (err) {
       process.stderr.write(
         `[resume] ${normalizedTarget}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
