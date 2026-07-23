@@ -49,18 +49,44 @@ there are exactly two test roots: `scripts/task-tracker/tests/` and
 
 ### 2. Subdirectory taxonomy under `scripts/task-tracker/tests/`
 
-| Path                                         | Contents                                                                                                                          |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/task-tracker/tests/unit/*.test.mjs` | Unit tests — one file per module, named after the module (e.g., `deep-dive.test.mjs` tests `deep-dive.mjs`)                       |
-| `scripts/task-tracker/tests/integration/`    | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees |
-| `scripts/task-tracker/tests/slow/`           | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                             |
-| `scripts/task-tracker/tests/fixtures/`       | Shared fixture data — JSON, markdown, or static files referenced by multiple tests                                                |
+| Path                                                  | Contents                                                                                                                          |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/task-tracker/tests/unit/<subsystem>/`        | Unit tests — one file per module, named after the module (e.g., `deep-dive.test.mjs` tests `deep-dive.mjs`), nested by subsystem  |
+| `scripts/task-tracker/tests/integration/<subsystem>/` | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees |
+| `scripts/task-tracker/tests/slow/<subsystem>/`        | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                             |
+| `scripts/task-tracker/tests/fixtures/`                | Shared fixture data — JSON, markdown, or static files referenced by multiple tests                                                |
 
 The three fast-lane subdirectories (`unit/`, `slow/`, `integration/`) are siblings under
 `tests/`. The `tests/` root retains only audit scripts and the subdirectories themselves.
 
-No additional nesting level is introduced unless a single category exceeds 20 files and
-a coherent sub-grouping is obvious. Depth is a last resort, not a default.
+#### Subsystem nesting (amended by #868)
+
+Within each lane directory, test files are **nested into subsystem subdirectories that
+mirror the source tree**, rather than sitting flat in the lane root. The original
+convention ("no additional nesting … depth is a last resort") is superseded: the flat
+`tests/unit/` had grown to 622 files in one directory, at which point mirroring the
+source layout is what makes the source→test mapping mechanical rather than archaeological.
+
+The mapping is: for a test named `<module>.test.mjs`, its subsystem subdirectory is the
+directory of the source `<module>.mjs` relative to its package root under `scripts/` —
+e.g. a test covering `scripts/task-tracker/lib/foo.mjs` lives at
+`tests/unit/lib/foo.test.mjs`, and one covering `scripts/gh/create-issue.mjs` (were it
+under a lane) mirrors to `gh/`. The subsystem set is exactly the source subsystems:
+`lib/`, `lib/agent-review/`, `lib/agent-review/validators/`, `lib/move-state/`,
+`lib/config-init/`, `verbs/`, `gh/`, `gh/lib/`, `states/`, `hooks/`, `maintenance/`,
+`maintenance/lib/`, `tools/`, `migrate/lib/`. Two buckets have no 1:1 source directory:
+
+- **`core/`** — tests for modules at a package root (e.g. `scripts/task-tracker/*.mjs`)
+  or with no single source module.
+- **`meta/`** — tests about the test tree itself (e.g. `test-tree-layout.test.mjs`, the
+  layout-invariant verifier).
+
+Each lane (`unit/`, `integration/`, `slow/`) is nested identically. **No `*.test.mjs`
+file lives directly in a lane root** — every file is under a subsystem or bucket
+subdirectory. Lane classification is unchanged by the nesting: `laneOf` is path-segment
+based, so `tests/unit/lib/foo.test.mjs` is still a unit test. The layout is enforced at
+runtime by `tests/unit/meta/test-tree-layout.test.mjs`; a per-directory file cap (source
+`lib/` is itself flat) is deferred to #946.
 
 ### 3. Story-ID tagging
 
