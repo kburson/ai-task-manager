@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 import { LANES, laneManifest, laneOf } from '../../../lib/test-lanes.mjs';
 import { discoverTestFiles } from '../../../lib/discover-test-files.mjs';
+import { provenanceVerdict, isShallowRepository } from '../../../lib/git-provenance.mjs';
 
 // scripts/task-tracker/tests/unit/meta/ → five levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -142,7 +143,15 @@ test('AC4: the three lanes are a disjoint partition whose union is the whole dis
   );
 });
 
-test('AC6: git-mv provenance survives for a sampled file from each subsystem', () => {
+test('AC6: git-mv provenance survives for a sampled file from each subsystem', (t) => {
+  // #949 — `git log --follow` reconstructs a rename chain by walking commits, so
+  // it needs commits. A shallow clone (`actions/checkout` defaults to
+  // `fetch-depth: 1`) has exactly one, and this assertion then fails for every
+  // sample with no hint that the repository, not the code, is what is wrong.
+  // CI now checks out with `fetch-depth: 0` — guarded by
+  // meta/ci-workflow-history.test.mjs — so the check genuinely runs there. The
+  // skip below covers only workspaces that truly cannot answer.
+  const shallow = isShallowRepository(git);
   // Staged rename map (pre-commit, e.g. under verify-develop): new paths that
   // arrived via `git mv`, not a fresh add.
   const stagedRenameTargets = new Set(
@@ -172,14 +181,30 @@ test('AC6: git-mv provenance survives for a sampled file from each subsystem', (
     `expected a sample from each subsystem, got only ${samples.length}`
   );
 
+  const skipped = [];
   for (const sample of samples) {
     const follow = git(['log', '--follow', '--format=%h', '--', sample])
       .split('\n')
       .filter(Boolean);
-    const provenanceOk = follow.length >= 2 || stagedRenameTargets.has(sample);
-    assert.ok(
-      provenanceOk,
-      `${sample}: no git-mv provenance (follow-history=${follow.length}, staged-rename=${stagedRenameTargets.has(sample)})`
+    const verdict = provenanceVerdict({
+      followCount: follow.length,
+      stagedRename: stagedRenameTargets.has(sample),
+      shallow,
+    });
+    if (verdict.status === 'skip') {
+      skipped.push(sample);
+      continue;
+    }
+    assert.equal(verdict.status, 'ok', `${sample}: ${verdict.reason}`);
+  }
+
+  // Report the unanswerable case rather than passing quietly — a silent green
+  // here would be indistinguishable from a real proof.
+  if (skipped.length) {
+    t.diagnostic(
+      `provenance unverifiable for ${skipped.length}/${samples.length} sample(s): ` +
+        'shallow repository, clone with full history to check'
     );
+    t.skip('shallow repository — git-mv provenance is unverifiable here');
   }
 });

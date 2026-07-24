@@ -35,14 +35,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The git-mv provenance check (#868 AC6) proves the test-tree reorg was
+          # a real rename by walking `git log --follow`, which needs commits.
+          # `actions/checkout` defaults to a depth-1 shallow clone, where
+          # `--follow` can only ever return one commit — so the assertion failed
+          # unconditionally and trunk was red from `d97151b` onward (#949).
+          # Full history is what makes the check answerable. Guarded by
+          # scripts/task-tracker/tests/unit/meta/ci-workflow-history.test.mjs.
+          fetch-depth: 0
       # The real-git close-gate tests (#733) resolve trunk via a LOCAL
       # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
       # merge ref with no such branch, so those tests fail spuriously (#745).
       # Materialize it. On push/schedule/dispatch a local `trunk` already exists,
-      # so this step is pull_request-only.
+      # so this step is pull_request-only. No `--depth`: a grafted trunk would
+      # reintroduce the shallow-history problem `fetch-depth: 0` just fixed.
       - name: Materialize local trunk ref for real-git tests (#745)
         if: github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=1 origin trunk:trunk
+        run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -69,11 +79,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # See the Fast lane note (#949): full history, or every git-history
+          # assertion in the fleet is unanswerable here too.
+          fetch-depth: 0
       # See the Fast lane note: real-git close-gate tests (#733) need a local
       # `trunk` branch, absent on a pull_request detached checkout (#745).
       - name: Materialize local trunk ref for real-git tests (#745)
         if: github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=1 origin trunk:trunk
+        run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
           node-version: 22
