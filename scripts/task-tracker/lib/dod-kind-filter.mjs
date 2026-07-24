@@ -140,3 +140,76 @@ export function filterDodForKindAndDiff(dodText, kind, changedPaths) {
   const kept = base.split('\n').filter((line) => !FUNCTIONAL_TESTS_TAG_RE.test(line));
   return kept.join('\n');
 }
+
+// ── #899 — re-filter the DoD block when an issue's kind changes post-creation ──
+//
+// `filterDodForKind` only ever runs once, at issue-creation render time
+// (`preflight-issue.mjs`). When an issue's kind changes afterward (e.g. a PBI
+// promoted to `epic` via `/task kind`), the live `### Functional (verified at
+// Test)` block stays frozen at whatever the ORIGINAL kind rendered — it never
+// re-gains an `include=<newKind>` item it was missing, and never loses an
+// `exclude=<newKind>` item it should no longer carry.
+//
+// `reconcileDodForKind` anchors on the shared `dod:functional:<key>` tag (not
+// raw line text or position), so it stays robust to a live block that has
+// drifted from the template's exact shape: for each key the template declares,
+// it keeps the live line untouched when that line still applies to `kind`
+// (preserving any `aitm-verified`/`aitm-dod-evidence` marker already stamped on
+// it), and otherwise swaps in the template's line for the key+kind pair —
+// dropping a key with no applicable alternative for `kind`, and pulling in one
+// that newly applies. Pure (no I/O), so the verb layer supplies both texts.
+const FUNCTIONAL_KEY_RE = /<!--\s*dod:functional:([a-z0-9-]+)\s*-->/i;
+
+function functionalKeyOf(line) {
+  const m = String(line || '').match(FUNCTIONAL_KEY_RE);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/**
+ * Reconcile a live Functional-DoD block against what `templateDodText` would
+ * render for `kind`. `liveDodText` is the current block content (one DoD item
+ * per line, in any order/shape); `templateDodText` is the full kind-blind
+ * template (annotations included). Returns the reconciled block text.
+ *
+ * Idempotent: once every live line agrees with `kind`, re-running is a
+ * byte-identical no-op. A live block with no keyed items at all (nothing to
+ * anchor on) is returned unchanged.
+ */
+export function reconcileDodForKind(liveDodText, templateDodText, kind) {
+  const templateLines = String(templateDodText).split('\n');
+  const templateKeyOrder = [];
+  const templateLineForKind = new Map();
+  for (const line of templateLines) {
+    const key = functionalKeyOf(line);
+    if (!key) continue;
+    if (!templateKeyOrder.includes(key)) templateKeyOrder.push(key);
+    if (dodLineAppliesToKind(line, kind)) templateLineForKind.set(key, line);
+  }
+
+  const liveLines = String(liveDodText).split('\n');
+  let firstItemIdx = -1;
+  let lastItemIdx = -1;
+  const liveLineForKey = new Map();
+  for (let i = 0; i < liveLines.length; i += 1) {
+    const key = functionalKeyOf(liveLines[i]);
+    if (!key) continue;
+    if (firstItemIdx === -1) firstItemIdx = i;
+    lastItemIdx = i;
+    if (!liveLineForKey.has(key)) liveLineForKey.set(key, liveLines[i]);
+  }
+  if (firstItemIdx === -1) return liveLines.join('\n');
+
+  const rebuilt = [];
+  for (const key of templateKeyOrder) {
+    const templateLine = templateLineForKind.get(key);
+    if (!templateLine) continue; // `kind` excludes every alternative for this key
+    const liveLine = liveLineForKey.get(key);
+    rebuilt.push(liveLine && dodLineAppliesToKind(liveLine, kind) ? liveLine : templateLine);
+  }
+
+  return [
+    ...liveLines.slice(0, firstItemIdx),
+    ...rebuilt,
+    ...liveLines.slice(lastItemIdx + 1),
+  ].join('\n');
+}
