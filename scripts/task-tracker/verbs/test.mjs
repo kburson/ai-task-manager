@@ -27,6 +27,7 @@ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
+import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
 import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -368,6 +369,20 @@ export async function runVerbTest({
       body: `⚠️ Functional DoD regression: command-backed items pre-ticked before sandbox evidence and were auto-un-ticked: ${labels}. The sandbox re-ticks them on a passing exit code.`,
     });
   }
+  // #952 — a pre-#864 body's `tests` DoD verifier may still declare the
+  // retired single `npm run test:all` command. Auto-migrate it to the
+  // two-lane split (`npm test` + `npm run test:slow`) on the live body
+  // before the sandbox ever sees the stale command — otherwise the sandbox
+  // hits `npm error Missing script: "test:all"`, a red that `promote`'s
+  // wrapper misreports as a silent exit-0.
+  {
+    const migrated = migrateTestsLaneSplit(body);
+    if (migrated.changed) {
+      body = migrated.body;
+      await mutateBody({ cfg, issueNum, mutate: (base) => migrateTestsLaneSplit(base).body });
+    }
+  }
+
   const vcs = parseVerificationCommands(body);
   if (vcs.length === 0) {
     return {
