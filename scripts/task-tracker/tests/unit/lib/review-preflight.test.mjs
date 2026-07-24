@@ -297,4 +297,102 @@ const TRAIL = [
   assert.match(plainEpic.reasons.join('\n'), /missing `aitm-verified/);
 }
 
+// #970 — an audit-kind body with zero commits and an `aitm-deliverable-posted`
+// marker must NOT be refused for a missing `### 🔗 Commits` comment. Mirrors
+// `code-complete-gate.mjs`'s `isNoCommitKind(body)` → `hasDeliverableMarker(body)`
+// check, which review-preflight previously only applied to kind `epic`.
+{
+  const auditBody = [
+    '## Acceptance Criteria',
+    '',
+    '- [x] Findings recorded in the deliverable comment.',
+    '',
+    '## AITM Progress Markers',
+    '',
+    '<!-- aitm-issue-kind kind="audit" -->',
+    '<!-- aitm-deliverable-posted ts="2026-07-24T00:00:00.000Z" -->',
+  ].join('\n');
+  const r = await runReviewPreflight({
+    issueNumber: '970',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      gitStatus: async () => '',
+      gitHeadSha: async () => SHA,
+      findTrailComment: async () => null,
+      hasAttributingCommit: async () => true,
+      getIssueBody: async () => auditBody,
+    },
+  });
+  assert.doesNotMatch(
+    r.reasons.join('\n'),
+    /canonical `### 🔗 Commits` comment/,
+    r.reasons.join('\n')
+  );
+}
+
+// #970 — negative: an audit-kind body WITHOUT the deliverable marker still
+// blocks, naming the missing marker rather than the (inapplicable) Commits
+// comment or a silent pass.
+{
+  const auditBody = [
+    '## Acceptance Criteria',
+    '',
+    '- [x] Findings recorded in the deliverable comment.',
+    '',
+    '## AITM Progress Markers',
+    '',
+    '<!-- aitm-issue-kind kind="audit" -->',
+  ].join('\n');
+  const r = await runReviewPreflight({
+    issueNumber: '970',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      gitStatus: async () => '',
+      gitHeadSha: async () => SHA,
+      findTrailComment: async () => null,
+      hasAttributingCommit: async () => true,
+      getIssueBody: async () => auditBody,
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.reasons.join('\n'), /missing an `aitm-deliverable-posted` marker/);
+}
+
+// #970 — regression: epic behavior (derive trail from children) is unchanged
+// by the `isNoCommitKind` branch — an epic body still routes to the
+// derive-from-children path, not the deliverable-marker check, even though
+// `epic` is also a member of `NO_COMMIT_KINDS`.
+{
+  const epicBody = [
+    '## Acceptance Criteria',
+    '',
+    '- [x] All children delivered.',
+    '',
+    '## AITM Progress Markers',
+    '',
+    '<!-- aitm-issue-kind kind="epic" -->',
+  ].join('\n');
+  const r = await runReviewPreflight({
+    issueNumber: '970',
+    repo: 'o/r',
+    projectDir: '/repo',
+    deps: {
+      gitStatus: async () => '',
+      gitHeadSha: async () => SHA,
+      findTrailComment: async () => null,
+      hasAttributingCommit: async () => true,
+      getIssueBody: async () => epicBody,
+      fetchEpicChildren: async () => [],
+      epicCommits: async () => [],
+    },
+  });
+  assert.doesNotMatch(
+    r.reasons.join('\n'),
+    /missing an `aitm-deliverable-posted` marker/,
+    r.reasons.join('\n')
+  );
+}
+
 console.log('review-preflight.test.mjs: all passed');

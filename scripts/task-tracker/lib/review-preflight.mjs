@@ -4,7 +4,7 @@ import { findTrailComment } from '../commit-trail-handler.mjs';
 import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
-import { isNoCommitKind, isAcWaived } from './issue-kind.mjs';
+import { isNoCommitKind, isAcWaived, hasDeliverableMarker } from './issue-kind.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 import { hasAttributingCommit as defaultHasAttributingCommit } from './commit-attribution.mjs';
 import { fetchEpicChildren as defaultFetchEpicChildren } from './epic-children-gate.mjs';
@@ -87,8 +87,15 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
   // every epic no matter how complete its children were. The fix is a BRANCH,
   // not a skip: an epic's trail is DERIVED from its children (#884), so the
   // evidence its children produced is consumed rather than discarded.
+  //
+  // #970 — `isEpic` alone under-covers `NO_COMMIT_KINDS` (epic, audit, research,
+  // spike). The other three kinds have no children to derive a trail from either,
+  // but they DO carry a deliverable marker (their deliverable is a posted
+  // comment/analysis, not a commit) — mirrors `code-complete-gate.mjs`'s
+  // `isNoCommitKind(body)` → `hasDeliverableMarker(body)` check.
   const body = String(await getIssueBody());
   const isEpic = parseIssueKind(body) === 'epic';
+  const noCommitKindForTrail = isNoCommitKind(body);
 
   let derivedTrail = null;
   if (isEpic) {
@@ -111,6 +118,12 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
       // `UnreachableChildrenError` already names EVERY unreachable child, so
       // surface its message verbatim rather than re-deriving the check here.
       reasons.push(err.message);
+    }
+  } else if (noCommitKindForTrail) {
+    if (!hasDeliverableMarker(body)) {
+      reasons.push(
+        `no-commit-kind issue is missing an \`aitm-deliverable-posted\` marker recording its deliverable`
+      );
     }
   } else {
     await checkDirectTrail();
