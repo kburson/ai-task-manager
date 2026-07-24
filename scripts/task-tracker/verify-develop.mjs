@@ -13,7 +13,8 @@
  *                                  so spell/markdown violations fail in Develop,
  *                                  not deferred to Test (#529; closes the
  *                                  "multiset" spell-escape gap)
- *  4. Collect *.test.mjs files changed vs HEAD via git diff
+ *  4. Collect *.test.mjs files changed vs HEAD via git diff, unioned with
+ *     never-`git add`-ed *.test.mjs files via `git ls-files --others`
  *  5. `node --test <file>` for each; abort on first failure
  *
  * Exit codes: 0 = pass, 1 = lint/format/test failure
@@ -38,6 +39,37 @@ export function buildLintFormatSteps() {
     { cmd: 'npm', args: ['run', 'lint:js', '--', '--fix'], label: 'npm run lint:js -- --fix' },
     { cmd: 'npm', args: ['run', 'format'], label: 'npm run format' },
     { cmd: 'npm', args: ['run', 'lint'], label: 'npm run lint' },
+  ];
+}
+
+/**
+ * Collects the `*.test.mjs` files verify-develop should run: the tracked diff
+ * vs HEAD (`ACMR` — added/copied/modified/renamed) unioned with never-`git
+ * add`-ed test files (`git ls-files --others --exclude-standard`, which
+ * respects `.gitignore`). Without the untracked union, a brand-new test file
+ * that was never staged is invisible to `git diff` and silently skipped
+ * (#855). Exported and `cwd`-parameterized so it is unit-testable against a
+ * real temp git fixture rather than the live repo.
+ */
+export function collectTestFiles({ cwd = process.cwd() } = {}) {
+  const rawTests = execSync("git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'", {
+    encoding: 'utf8',
+    shell: true,
+    cwd,
+  });
+  const rawUntrackedTests = execSync("git ls-files --others --exclude-standard -- '*.test.mjs'", {
+    encoding: 'utf8',
+    shell: true,
+    cwd,
+  });
+  return [
+    ...new Set(
+      [rawTests, rawUntrackedTests]
+        .join('\n')
+        .split('\n')
+        .map((f) => f.trim())
+        .filter(Boolean)
+    ),
   ];
 }
 
@@ -89,13 +121,10 @@ export function main() {
 
   // Step 3: Collect changed files (working tree vs HEAD)
   console.log('verify-develop: step 3 — collecting changed files');
-  let rawTests = '';
+  let testFiles = [];
   let rawSources = '';
   try {
-    rawTests = execSync("git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'", {
-      encoding: 'utf8',
-      shell: true,
-    });
+    testFiles = collectTestFiles();
     rawSources = execSync(
       "git diff --diff-filter=ACMR --name-only HEAD -- '*.mjs' ':!*.test.mjs'",
       {
@@ -107,11 +136,6 @@ export function main() {
     console.error('verify-develop: git diff failed');
     process.exit(1);
   }
-
-  const testFiles = rawTests
-    .split('\n')
-    .map((f) => f.trim())
-    .filter(Boolean);
 
   const sourceFiles = rawSources
     .split('\n')

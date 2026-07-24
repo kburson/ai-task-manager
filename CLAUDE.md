@@ -118,10 +118,10 @@ This script (implemented in #447) enforces lint-first ordering and targeted test
 
 1. `npm run lint:js -- --fix` — auto-fix eslint violations; aborts if unfixable errors remain
 2. `npm run format` — prettier auto-format; code is now in final committed shape
-3. `git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'` — collect test files changed vs HEAD
+3. `git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'` unioned with `git ls-files --others --exclude-standard -- '*.test.mjs'` — collect test files changed vs HEAD, including brand-new never-`git add`-ed test files (#855)
 4. `node --test <file>` for each collected file; aborts on first failure
 
-If the diff is empty (no test files changed), the script exits 0 with "nothing to verify." Run the script before every commit in Develop.
+If the union is empty (no test files changed or added), the script exits 0 with "nothing to verify." Run the script before every commit in Develop.
 
 `npm run test:all` belongs in the VC section of Test-stage issues, not Develop.
 
