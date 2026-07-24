@@ -150,19 +150,81 @@ test('runUnblock: --by drops the only ref → cleared + per-ref comment', async 
   assert.match(comments[0], /Blocked by #7 cleared/);
 });
 
-test('runUnblock: field-mirror failure is swallowed (best-effort)', async () => {
+test('runUnblock: field-mirror failure does not roll back body/label, but is reported (#847)', async () => {
+  const comments = [];
   const r = await runUnblock({
     target: 5,
     refs: null,
     cfg: { repo: 'o/r', projectId: 'P', fieldBlockedBy: 'F' },
     deps: deps({
       markerRefs: [7],
+      onComment: (b) => comments.push(b),
       writeFieldValue: async () => {
         throw new Error('graphql boom');
       },
     }),
   });
   assert.equal(r.status, 'removed');
+  assert.equal(r.fieldMirrorOk, false);
+  assert.equal(comments.length, 1);
+});
+
+// ── partial-failure + repair lanes (#847) ────────────────────────────────────
+// `writeBlockedByField` used to be unreachable on the no-op/idempotent branch,
+// so a field left unset by a prior failure could never be repaired by simply
+// re-running the verb. These lanes drive that scenario directly.
+
+test('runUnblock: partial-failure lane — marker/label write succeeds, field mirror throws → no ✓ line, status marks field unwritten', async () => {
+  const logs = [];
+  const errs = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (msg) => logs.push(msg);
+  console.error = (msg) => errs.push(msg);
+  let r;
+  try {
+    r = await runUnblock({
+      target: 5,
+      refs: null,
+      cfg: { repo: 'o/r', projectId: 'P', fieldBlockedBy: 'F' },
+      deps: deps({
+        markerRefs: [7, 9],
+        writeFieldValue: async () => {
+          throw new Error('graphql boom');
+        },
+      }),
+    });
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  assert.equal(r.status, 'removed');
+  assert.equal(r.cleared, true);
+  assert.equal(r.fieldMirrorOk, false);
+  assert.ok(!logs.some((l) => /^\[task-tracker\] ✓/.test(l)));
+  assert.ok(errs.some((l) => /Blocked By field mirror failed/.test(l)));
+});
+
+test('runUnblock: repair lane — marker already correct (no-op), field write invoked and succeeds', async () => {
+  let fieldCalls = 0;
+  let capturedRefs = null;
+  const r = await runUnblock({
+    target: 5,
+    refs: [42], // not present in marker → no-op body write (idempotent)
+    cfg: { repo: 'o/r', projectId: 'P', fieldBlockedBy: 'F' },
+    deps: deps({
+      markerRefs: [7],
+      writeFieldValue: async ({ value }) => {
+        fieldCalls += 1;
+        capturedRefs = value;
+        return true;
+      },
+    }),
+  });
+  assert.equal(r.status, 'idempotent');
+  assert.equal(r.fieldMirrorOk, true);
+  assert.equal(fieldCalls, 1);
+  assert.equal(capturedRefs, '#7');
 });
 
 // ── verbUnblock wrapper (ctx.deps seam + process.exit trap) ───────────────────

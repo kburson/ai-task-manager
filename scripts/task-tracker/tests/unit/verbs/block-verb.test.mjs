@@ -25,8 +25,13 @@ function makeFakeIssue({ body = '', labels = [] } = {}) {
   };
 }
 
-function makeDeps({ store, openBlockers = new Set(), closedBlockers = new Set() } = {}) {
-  return {
+function makeDeps({
+  store,
+  openBlockers = new Set(),
+  closedBlockers = new Set(),
+  writeFieldValue,
+} = {}) {
+  const d = {
     validateBlocker: async ({ blockerNumber }) => {
       if (openBlockers.has(blockerNumber)) return { exists: true, state: 'OPEN' };
       if (closedBlockers.has(blockerNumber)) return { exists: true, state: 'CLOSED' };
@@ -54,6 +59,8 @@ function makeDeps({ store, openBlockers = new Set(), closedBlockers = new Set() 
       store.comments.push(body);
     },
   };
+  if (writeFieldValue) d.writeFieldValue = writeFieldValue;
+  return d;
 }
 
 // ── parseByList ──────────────────────────────────────────────────────────────
@@ -124,6 +131,75 @@ test('runBlock: idempotent when refs already present', async () => {
   const deps = makeDeps({ store, openBlockers: new Set([5]) });
   const r = await runBlock({ target: 100, refs: [5], cfg: CFG, deps });
   assert.equal(r.status, 'idempotent');
+  assert.equal(store.labelCalls, 0);
+  assert.deepEqual(store.comments, []);
+});
+
+// ── partial-failure + repair lanes (#847) ────────────────────────────────────
+// Before this fix, `writeBlockedByField` was unreachable on the idempotent
+// no-op branch, so a field left unset by a prior failure could never be
+// repaired by re-running `aitm block <N> --by <M>`, and a field-mirror
+// failure on the added path was swallowed and still reported as a `✓`.
+
+test('runBlock: partial-failure lane — marker/label write succeeds, field mirror throws → no ✓ line, status marks field unwritten', async () => {
+  const store = makeFakeIssue({ body: '## Scope\n\nbody.\n' });
+  const cfgWithField = { repo: CFG.repo, projectId: 'P', fieldBlockedBy: 'F' };
+  const deps = makeDeps({
+    store,
+    openBlockers: new Set([5]),
+    writeFieldValue: async () => {
+      throw new Error('graphql boom');
+    },
+  });
+  const logs = [];
+  const errs = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (msg) => logs.push(msg);
+  console.error = (msg) => errs.push(msg);
+  let r;
+  try {
+    r = await runBlock({ target: 100, refs: [5], cfg: cfgWithField, deps });
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  assert.equal(r.status, 'added');
+  assert.equal(r.fieldMirrorOk, false);
+  // marker + label + audit comment still land — field mirror is best-effort.
+  assert.deepEqual(parseBlockedBy(store.body), [5]);
+  assert.equal(store.labels.has('BLOCKED'), true);
+  assert.deepEqual(store.comments, ['### 🔒 Blocked by #5 added']);
+  // the unconditional ✓ success line must NOT print over a partial failure.
+  assert.ok(!logs.some((l) => /^\[task-tracker\] ✓/.test(l)));
+  assert.ok(errs.some((l) => /Blocked By field mirror failed/.test(l)));
+});
+
+test('runBlock: repair lane — marker already correct (idempotent), field write is invoked and repairs the field', async () => {
+  const store = makeFakeIssue({
+    body: 'x\n\n<!-- aitm-blocked-by: #5 -->\n',
+    labels: ['BLOCKED'],
+  });
+  const cfgWithField = { repo: CFG.repo, projectId: 'P', fieldBlockedBy: 'F' };
+  let fieldCalls = 0;
+  let capturedRefs = null;
+  const deps = makeDeps({
+    store,
+    openBlockers: new Set([5]),
+    writeFieldValue: async ({ value }) => {
+      fieldCalls += 1;
+      capturedRefs = value;
+      return true;
+    },
+  });
+  const r = await runBlock({ target: 100, refs: [5], cfg: cfgWithField, deps });
+  assert.equal(r.status, 'idempotent');
+  assert.equal(r.fieldMirrorOk, true);
+  // the previously-unreachable line: writeBlockedByField IS invoked on the
+  // no-op branch, repairing a field a prior partial failure left unset.
+  assert.equal(fieldCalls, 1);
+  assert.equal(capturedRefs, '#5');
+  // idempotent contract preserved — no redundant label/comment churn.
   assert.equal(store.labelCalls, 0);
   assert.deepEqual(store.comments, []);
 });

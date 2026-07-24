@@ -58,7 +58,7 @@ async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
 /**
  * Core unblock runner. `refs === null` means "drop ALL current refs".
  *
- * @returns {Promise<{status:'removed'|'idempotent', target:number, removed:number[], cleared:boolean}>}
+ * @returns {Promise<{status:'removed'|'idempotent', target:number, removed:number[], cleared:boolean, fieldMirrorOk:boolean}>}
  */
 export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
   if (!Number.isInteger(target) || target <= 0) {
@@ -83,6 +83,7 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
     mutate: (base) => {
       const current = parseBlockedBy(base);
       toDrop = refs === null ? current : refs.filter((m) => current.includes(m));
+      remaining = current;
       if (toDrop.length === 0) return base;
       const next = removeBlockedBy(base, toDrop);
       remaining = parseBlockedBy(next);
@@ -90,19 +91,19 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
     },
   });
 
-  if (writeRes?.status === 'no-op' || toDrop.length === 0) {
-    console.log(`[task-tracker] ✓ #${target} has no matching blockers to clear`);
-    return { status: 'idempotent', target, removed: [], cleared: false };
-  }
+  const isNoOp = writeRes?.status === 'no-op' || toDrop.length === 0;
 
-  const cleared = remaining.length === 0;
-  if (cleared) {
-    await runLabel({ args: blockedLabelRemoveArgs(target), repo: cfg.repo });
-  }
-
-  // Mirror the post-removal marker into the `Blocked By` Project field.
-  // Writes empty string when fully cleared. Best-effort; never throws.
+  // Mirror the post-removal marker into the `Blocked By` Project field on
+  // EVERY invocation — including the no-op/idempotent path (#847), keyed off
+  // `remaining`, which the mutate closure above always sets to the current
+  // (post-mutation) blocker list, even when nothing was dropped. This is the
+  // only way a field left unset by a prior partial failure can ever be
+  // repaired, since re-running used to short-circuit before this call was
+  // reached. Writes empty string when fully cleared. Best-effort; never
+  // rolls back the body edit or label removal on failure.
   const mirrorDeps = deps.writeFieldValue ? { writeFieldValue: deps.writeFieldValue } : {};
+  let fieldMirrorOk = true;
+  let fieldMirrorError = null;
   try {
     await writeBlockedByField({
       issueNumber: target,
@@ -111,7 +112,25 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
       deps: mirrorDeps,
     });
   } catch (err) {
+    fieldMirrorOk = false;
+    fieldMirrorError = err.message;
     console.error(`[task-tracker] warn: writeBlockedByField failed for #${target}: ${err.message}`);
+  }
+
+  if (isNoOp) {
+    if (fieldMirrorOk) {
+      console.log(`[task-tracker] ✓ #${target} has no matching blockers to clear`);
+    } else {
+      console.error(
+        `[task-tracker] ✗ #${target} has no matching blockers to clear — Blocked By field mirror failed: ${fieldMirrorError}`
+      );
+    }
+    return { status: 'idempotent', target, removed: [], cleared: false, fieldMirrorOk };
+  }
+
+  const cleared = remaining.length === 0;
+  if (cleared) {
+    await runLabel({ args: blockedLabelRemoveArgs(target), repo: cfg.repo });
   }
 
   // Audit comment(s) — one per cleared ref, or one summary line when all dropped.
@@ -131,10 +150,17 @@ export async function runUnblock({ target, refs, cfg, deps = {} } = {}) {
     }
   }
 
-  console.log(
-    `[task-tracker] ✓ #${target} unblocked (cleared ${toDrop.map((n) => `#${n}`).join(', ')}${cleared ? '; BLOCKED label dropped' : ''})`
-  );
-  return { status: 'removed', target, removed: toDrop, cleared };
+  const dropList = toDrop.map((n) => `#${n}`).join(', ');
+  if (fieldMirrorOk) {
+    console.log(
+      `[task-tracker] ✓ #${target} unblocked (cleared ${dropList}${cleared ? '; BLOCKED label dropped' : ''})`
+    );
+  } else {
+    console.error(
+      `[task-tracker] ✗ #${target} marker${cleared ? '/label' : ''} updated (cleared ${dropList}${cleared ? '; BLOCKED label dropped' : ''}) — Blocked By field mirror failed: ${fieldMirrorError}`
+    );
+  }
+  return { status: 'removed', target, removed: toDrop, cleared, fieldMirrorOk };
 }
 
 export async function verbUnblock(ctx) {

@@ -105,7 +105,7 @@ async function defaultPostComment({ issueNumber, repo, body }) {
  * @param {number[]} opts.refs  blocker issue numbers (>= 1, validated)
  * @param {object} opts.cfg     `loadConfig()` result, must carry `repo`
  * @param {object} [opts.deps]  injectable side-effect surface
- * @returns {Promise<{status:'added'|'idempotent', target:number, refs:number[]}>}
+ * @returns {Promise<{status:'added'|'idempotent', target:number, refs:number[], fieldMirrorOk:boolean}>}
  */
 export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
   if (!Number.isInteger(target) || target <= 0) {
@@ -161,31 +161,50 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
     },
   });
 
-  if (writeRes?.status === 'no-op') {
-    console.log(
-      `[task-tracker] ✓ #${target} already blocked by ${refs.map((n) => `#${n}`).join(', ')}`
-    );
-    return { status: 'idempotent', target, refs };
-  }
+  const isNoOp = writeRes?.status === 'no-op';
 
-  const next = finalBody;
-  await runLabel({ args: blockedLabelAddArgs(target), repo: cfg.repo });
-
-  // Mirror the canonical marker into the `Blocked By` Project field. No-op
-  // when `cfg.fieldBlockedBy` is absent (older installs pre-#287 migrate).
+  // Mirror the canonical marker into the `Blocked By` Project field on EVERY
+  // invocation — including the no-op/idempotent path (#847). Keyed off
+  // `finalBody`, which the mutate closure above always sets, even when the
+  // body write itself was a no-op. `writeBlockedByField` is already an
+  // idempotent one-way mirror (marker → field), so re-writing an
+  // already-correct value is a no-op network call, not a behavior change —
+  // and it's the only way a field left unset by a prior partial failure can
+  // ever be repaired, since re-running used to short-circuit before this
+  // call was reached. No-op when `cfg.fieldBlockedBy` is absent (older
+  // installs pre-#287 migrate).
   const mirrorDeps = deps.writeFieldValue ? { writeFieldValue: deps.writeFieldValue } : {};
+  let fieldMirrorOk = true;
+  let fieldMirrorError = null;
   try {
     await writeBlockedByField({
       issueNumber: target,
-      refs: parseBlockedBy(next),
+      refs: parseBlockedBy(finalBody),
       cfg,
       deps: mirrorDeps,
     });
   } catch (err) {
     // Field mirror is best-effort. The marker is authoritative; a transient
-    // GraphQL failure must not roll back the body edit or label addition.
+    // GraphQL failure must not roll back the body edit or label addition —
+    // but it must not be reported as unconditional success either (#847).
+    fieldMirrorOk = false;
+    fieldMirrorError = err.message;
     console.error(`[task-tracker] warn: writeBlockedByField failed for #${target}: ${err.message}`);
   }
+
+  if (isNoOp) {
+    const list = refs.map((n) => `#${n}`).join(', ');
+    if (fieldMirrorOk) {
+      console.log(`[task-tracker] ✓ #${target} already blocked by ${list}`);
+    } else {
+      console.error(
+        `[task-tracker] ✗ #${target} already blocked by ${list} — Blocked By field mirror failed: ${fieldMirrorError}`
+      );
+    }
+    return { status: 'idempotent', target, refs, fieldMirrorOk };
+  }
+
+  await runLabel({ args: blockedLabelAddArgs(target), repo: cfg.repo });
 
   // Audit comment — one per newly-added ref (those not already in `existing`).
   const added = refs.filter((m) => !existing.has(m));
@@ -197,8 +216,15 @@ export async function runBlock({ target, refs, cfg, deps = {} } = {}) {
     });
   }
 
-  console.log(`[task-tracker] ✓ #${target} blocked by ${added.map((n) => `#${n}`).join(', ')}`);
-  return { status: 'added', target, refs: added };
+  const addedList = added.map((n) => `#${n}`).join(', ');
+  if (fieldMirrorOk) {
+    console.log(`[task-tracker] ✓ #${target} blocked by ${addedList}`);
+  } else {
+    console.error(
+      `[task-tracker] ✗ #${target} marker + label written, blocked by ${addedList} — Blocked By field mirror failed: ${fieldMirrorError}`
+    );
+  }
+  return { status: 'added', target, refs: added, fieldMirrorOk };
 }
 
 export async function verbBlock(ctx) {
