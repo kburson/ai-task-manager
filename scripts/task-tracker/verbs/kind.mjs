@@ -10,10 +10,23 @@
 //
 // Body write flows through `mutateIssueBody` so the live body is fetched in the
 // same transaction; the marker upsert is idempotent.
+//
+// #899 — the kind-marker write and the Functional DoD block's kind filtering
+// happen in the SAME `mutateIssueBody` transaction: `filterDodForKind` only
+// ran at issue-creation render time, so a kind changed after creation (e.g. a
+// PBI promoted to `epic`) used to leave the DoD block frozen at whatever it was
+// born with (see #899's deep-dive, reproduced live on #860/#859).
+// `reconcileDodForKind` re-derives the block for the new kind, preserving every
+// already-stamped evidence marker on an item whose kind-membership didn't
+// change.
 
+import { readFileSync } from 'node:fs';
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { setIssueKindMarker, normalizeKind, VALID_KINDS } from '../lib/issue-kind.mjs';
+import { reconcileDodForKind } from '../lib/dod-kind-filter.mjs';
+import { locateFunctionalSection } from '../lib/lifecycle-dod.mjs';
+import { dodPath } from '../paths.mjs';
 
 export async function verbKind(ctx) {
   const { cfg, statePath, rest, pexec } = ctx;
@@ -56,7 +69,15 @@ export async function verbKind(ctx) {
     issueNumber: target,
     repo: cfg.repo,
     deps: { pexec },
-    mutate: (base) => setIssueKindMarker(base, kind),
+    mutate: (base) => {
+      const marked = setIssueKindMarker(base, kind);
+      const loc = locateFunctionalSection(marked);
+      if (!loc) return marked;
+      const templateDodText = readFileSync(dodPath(), 'utf8');
+      const reconciled = reconcileDodForKind(loc.section, templateDodText, kind);
+      if (reconciled === loc.section) return marked;
+      return loc.before + reconciled + loc.after;
+    },
   });
 
   const verb = kind === 'code' ? 'cleared (code is the default lane)' : `set to "${kind}"`;
