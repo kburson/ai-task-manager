@@ -1,19 +1,26 @@
-// @story #447 #448 #529
+// @story #447 #448 #529 #855
 /**
  * Unit tests for verify-develop.mjs logic.
  *
  * These tests exercise the file-collection and command-generation logic by
  * stubbing the git diff and child_process calls rather than invoking the script
  * as a subprocess (which would require a real git repo state and npm scripts).
+ *
+ * The `collectTestFiles` suite (#855) is the exception: it runs against a real
+ * temp git fixture, because the bug it regresses (a never-`git add`-ed test
+ * file being invisible to `git diff`) is a property of real git tracked/
+ * untracked state that a stubbed string can't faithfully reproduce.
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, resolve } from 'node:path';
-import { buildLintFormatSteps, isMainModule } from '../../../verify-develop.mjs';
+import { dirname, resolve, join } from 'node:path';
+import { buildLintFormatSteps, isMainModule, collectTestFiles } from '../../../verify-develop.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url)) + '/..';
 const REPO_ROOT = resolve(HERE, '../../../..');
@@ -122,6 +129,133 @@ describe('mergeTestFiles (C2 — source-to-unit-test merge)', () => {
 
   it('returns empty when both lists are empty', () => {
     assert.deepEqual(mergeTestFiles([], []), []);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #855: collectTestFiles must not silently skip a brand-new, never-`git
+// add`-ed test file. Runs against a real temp git repo — the bug is a
+// property of tracked-vs-untracked git state that a stubbed diff string
+// can't reproduce.
+// ---------------------------------------------------------------------------
+
+function git(args, cwd) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
+  }
+  return result.stdout;
+}
+
+function initRepo() {
+  const dir = mkdtempSync(join(projectScratchDir('test'), 'verify-develop-855-'));
+  git(['init', '-q'], dir);
+  git(['config', 'user.email', 'test@example.com'], dir);
+  git(['config', 'user.name', 'Test'], dir);
+  return dir;
+}
+
+function commitFile(dir, relPath, contents) {
+  const abs = join(dir, relPath);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, contents);
+  git(['add', relPath], dir);
+  git(['commit', '-q', '-m', `add ${relPath}`], dir);
+}
+
+describe('collectTestFiles (#855 — untracked test files must not be skipped)', () => {
+  it('discovers a brand-new, never-`git add`-ed *.test.mjs file', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'README.md', '# fixture\n');
+      writeFileSync(join(dir, 'new.test.mjs'), "import { test } from 'node:test';\n");
+      const files = collectTestFiles({ cwd: dir });
+      assert.deepEqual(files, ['new.test.mjs']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('excludes an untracked *.test.mjs file under a .gitignore-d path', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, '.gitignore', '.tmp/\n');
+      mkdirSync(join(dir, '.tmp'), { recursive: true });
+      writeFileSync(join(dir, '.tmp', 'scratch.test.mjs'), "import { test } from 'node:test';\n");
+      const files = collectTestFiles({ cwd: dir });
+      assert.deepEqual(files, []);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('runs a tracked, modified test file exactly once (no duplicate from the untracked union)', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'existing.test.mjs', "import { test } from 'node:test';\n");
+      writeFileSync(
+        join(dir, 'existing.test.mjs'),
+        "import { test } from 'node:test';\n// modified\n"
+      );
+      const files = collectTestFiles({ cwd: dir });
+      assert.deepEqual(files, ['existing.test.mjs']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('unions a tracked-modified file with a new untracked file, deduplicated', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'existing.test.mjs', "import { test } from 'node:test';\n");
+      writeFileSync(
+        join(dir, 'existing.test.mjs'),
+        "import { test } from 'node:test';\n// modified\n"
+      );
+      writeFileSync(join(dir, 'new.test.mjs'), "import { test } from 'node:test';\n");
+      const files = collectTestFiles({ cwd: dir });
+      assert.deepEqual(new Set(files), new Set(['existing.test.mjs', 'new.test.mjs']));
+      assert.equal(files.length, 2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('a discovered untracked test file that fails makes `node --test` exit non-zero', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'README.md', '# fixture\n');
+      writeFileSync(
+        join(dir, 'failing.test.mjs'),
+        "import assert from 'node:assert/strict';\n" +
+          "import { test } from 'node:test';\n" +
+          "test('fails', () => { assert.equal(1, 2); });\n"
+      );
+      const files = collectTestFiles({ cwd: dir });
+      assert.deepEqual(files, ['failing.test.mjs']);
+
+      // NODE_TEST_CONTEXT must not leak into the nested `node --test` child:
+      // when this suite itself runs under `node --test`, that env var makes
+      // the child treat itself as a coordinated subordinate test process
+      // (talking back to a parent via IPC) rather than a standalone run, so
+      // it exits 0 regardless of its own failing assertions.
+      const { NODE_TEST_CONTEXT: _dropped, ...childEnv } = process.env;
+      const result = spawnSync(process.execPath, ['--test', files[0]], { cwd: dir, env: childEnv });
+      assert.notEqual(result.status, 0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns empty array in a repo with no test files at all', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'README.md', '# fixture\n');
+      const files = collectTestFiles({ cwd: dir });
+      assert.deepEqual(files, []);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
