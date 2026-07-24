@@ -143,5 +143,15 @@ assert.equal(
   'configured priorityOptionP3 must survive loadConfig (not be dropped by the allow-list)'
 );
 
+// Test 18 (#968): trunkRef survives loadConfig (was silently dropped pre-#968)
+assert.equal(DEFAULTS.trunkRef, '', 'trunkRef is a known default key');
+writeFileSync(projectPath, JSON.stringify({ trunkRef: 'origin/trunk' }));
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(
+  cfg.trunkRef,
+  'origin/trunk',
+  'configured trunkRef must survive loadConfig (not be dropped by the allow-list)'
+);
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

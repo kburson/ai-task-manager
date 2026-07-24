@@ -10,6 +10,11 @@ export const DEFAULTS = {
   wpm: 180,
   // GitHub repo in "owner/repo" format — required, set via /task config repo <owner/repo>
   repo: '',
+  // Explicit trunk-ref override (e.g. "origin/trunk") consumed by
+  // lib/trunk-ref.mjs and lib/full-auto-merge.mjs; wins outright over the
+  // local refs/heads/{trunk,main,master} probe. Absent from DEFAULTS before
+  // #968, this key was silently dropped by loadConfig.
+  trunkRef: '',
   // GitHub Projects V2 node ID (set by init script)
   projectId: '',
   // Kanban board field + state option IDs (set by init script).

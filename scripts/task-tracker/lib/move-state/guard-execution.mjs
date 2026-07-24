@@ -26,6 +26,21 @@ import { decideBodyFetchFailure } from '../body-fetch-gate.mjs';
 import { parseIssueFieldDb } from '../../issue-field-db.mjs';
 import { durableWordMarker } from '../../state.mjs';
 import { getProjectDir } from '../../paths.mjs';
+import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
+
+// #968 — worktree-aware `deps.closeGates` for the review→done exit-slot.
+// Parity with `verbs/close.mjs`'s #908 fix: `review-exit-close-gates` calls
+// `lineageDoneGate`, which must attribute against `origin/trunk` (not the
+// shared local `trunk` ref) when this pipeline runs inside a linked
+// worktree. Reuses `close.mjs`'s own detection + resolver — no new resolver
+// logic. `cfg.trunkRef` still wins if explicitly set (handled inside
+// `resolveCloseTrunkRef`). Returns `undefined` for any move other than
+// `→ done`, matching `runGuards`'s existing no-override default.
+export async function buildCloseGatesDeps({ stateArg, pexec, projectDir } = {}) {
+  if (stateArg !== 'done') return undefined;
+  const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
+  return { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } };
+}
 
 export async function runGuardExecution(ctx) {
   const {
@@ -38,6 +53,7 @@ export async function runGuardExecution(ctx) {
     SKIP_NETWORK,
     cfg,
     gh,
+    pexec,
     resolveLiveStateName,
     checkDirty,
     formatSummary,
@@ -124,6 +140,8 @@ export async function runGuardExecution(ctx) {
     // side-channels its resolved `refinementPlan` onto ctx; that field is
     // consumed today only by promote.mjs's inline pre-flight (which still runs
     // ahead of move-state spawn), so the in-registry assignment is harmless.
+    const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir: getProjectDir() });
+
     const guardResult = await runGuards(resolvedFromState, stateArg, {
       issueNumber: Number(issueArg),
       repo: cfg.repo,
@@ -132,6 +150,7 @@ export async function runGuardExecution(ctx) {
       body: guardBody,
       fetchBlockerState,
       cfg,
+      deps,
     });
 
     if (!guardResult.ok) {
