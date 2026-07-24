@@ -24,7 +24,13 @@ const trunkRef = read('scripts/task-tracker/lib/trunk-ref.mjs');
 const closeGateTests = read('scripts/task-tracker/tests/unit/lib/coverage-close-gates.test.mjs');
 
 const STEP_NAME = 'Materialize local trunk ref for real-git tests (#745)';
-const MATERIALIZE_RUN = 'git fetch --no-tags --depth=1 origin trunk:trunk';
+// #949 dropped the `--depth=1` this fetch used to carry. The #745 contract is
+// "both lanes materialize a local trunk ref, on pull_request only" — the depth
+// flag was incidental to it, and actively harmful: grafting a shallow trunk
+// re-introduced the truncated history that made #868's `git log --follow`
+// provenance check unanswerable. `meta/ci-workflow-history.test.mjs` now fails
+// the build if any `git fetch` in the workflow forces a `--depth` again.
+const MATERIALIZE_RUN = 'git fetch --no-tags origin trunk:trunk';
 const PR_GUARD = "if: github.event_name == 'pull_request'";
 
 test('AC1: both Fast and Slow lanes materialize a local trunk ref', () => {
