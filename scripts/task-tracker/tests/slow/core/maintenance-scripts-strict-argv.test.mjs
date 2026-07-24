@@ -32,7 +32,6 @@ export const APPLY_SCRIPTS = [
   'scripts/maintenance/heal-full-auto-footnote.mjs',
   'scripts/maintenance/heal-stage-rollups.mjs',
   'scripts/reports/heal-backlog-attribution.mjs',
-  'scripts/migrate/migrate-to-7-state.mjs',
 ];
 
 const BOGUS = '--definitely-not-a-flag';
