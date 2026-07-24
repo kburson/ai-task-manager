@@ -162,18 +162,22 @@ test('runBlock: added → label + audit comment per new ref', async () => {
   assert.match(comments[0], /Blocked by #7 added/);
 });
 
-test('runBlock: field-mirror failure is swallowed (best-effort)', async () => {
+test('runBlock: field-mirror failure does not roll back body/label, but is reported (#847)', async () => {
+  const comments = [];
   const r = await runBlock({
     target: 5,
     refs: [7],
     cfg: { repo: 'o/r', projectId: 'P', fieldBlockedBy: 'F' },
     deps: deps({
+      onComment: (b) => comments.push(b),
       writeFieldValue: async () => {
         throw new Error('graphql boom');
       },
     }),
   });
   assert.equal(r.status, 'added');
+  assert.equal(r.fieldMirrorOk, false);
+  assert.equal(comments.length, 1);
 });
 
 test('runBlock: default validator via fake gh → added', async () => {
