@@ -25,6 +25,7 @@ export const APPLY_SCRIPTS = [
   'scripts/task-tracker/heal-backlog.mjs',
   'scripts/task-tracker/heal-entry-markers.mjs',
   'scripts/task-tracker/heal-functional-dod.mjs',
+  'scripts/task-tracker/heal-lifecycle-dod.mjs',
   'scripts/task-tracker/heal-refine-entry-marker.mjs',
   'scripts/task-tracker/heal-timing-log.mjs',
   'scripts/task-tracker/heal-timing-starts.mjs',
