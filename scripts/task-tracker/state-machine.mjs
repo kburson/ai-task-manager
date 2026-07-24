@@ -40,8 +40,8 @@ export const BACKWARD = {
 };
 
 // Canonical state slugs only. Boards using retired vocabulary
-// (Groom/Analyze/Development/Validate) must be migrated via
-// `scripts/migrate/rename-status-2026-05.mjs` before consumption.
+// (Groom/Analyze/Development/Validate) are not supported by any migration
+// tooling in this repo.
 //
 // #436 — collapse interior whitespace runs to a single hyphen (after trim +
 // lowercase) so multi-word board display names map to their kebab slugs.
