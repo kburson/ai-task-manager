@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 
 import { reviewEpicChildDispositionGate } from '../../../lib/epic-child-disposition-gate.mjs';
 import { parseAcStrike, findAcStrikes, danglingAcs } from '../../../lib/ac-strike.mjs';
-import { normalizeCloseReason } from '../../../../gh/lib/wave-admission.mjs';
+import { normalizeCloseReason, mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
 import { INVARIANT_MARKER_PATTERNS, findLostMarkers } from '../../../lib/body-invariants.mjs';
 import { reviewExitEpicChildDispositionGuard } from '../../../lib/review-exit-epic-child-disposition-guard.mjs';
 
@@ -257,8 +257,39 @@ test('the fetcher query selects stateReason and carries it additively', () => {
     'utf8'
   );
   assert.match(src, /\bstateReason\b/, 'GraphQL selection must request stateReason');
+
   // `{number, rank, state}` must survive untouched — four call sites read it.
-  assert.match(src, /number: sub\.number, rank, state, closeReason:/);
+  // #947 replaced the original source-text assertion on the object literal with
+  // this behavior-level one: the literal is now multi-line and carries a further
+  // additive field (`boardState`), so matching its text pinned formatting rather
+  // than contract. Asserting through `mapSubIssueNodes` pins the contract itself.
+  const [child] = mapSubIssueNodes(
+    [
+      {
+        number: 891,
+        state: 'CLOSED',
+        stateReason: 'NOT_PLANNED',
+        projectItems: {
+          nodes: [
+            {
+              project: { id: cfg.projectId },
+              fieldValues: {
+                nodes: [
+                  { name: 'Review', field: { name: 'Status' } },
+                  { number: 7, field: { name: 'Rank' } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ],
+    cfg.projectId
+  );
+  assert.equal(child.number, 891);
+  assert.equal(child.rank, 7);
+  assert.equal(child.state, 'done');
+  assert.equal(child.closeReason, 'not_planned', 'disposition must ride along additively');
 });
 
 // ---------------------------------------------------------------------------

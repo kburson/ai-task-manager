@@ -8,12 +8,14 @@ import {
   fetchEpicChildren,
   planEpicDevelopChildrenGate,
   developEpicTestChildrenGate,
+  reviewEpicDoneChildrenGate,
   findNextEligibleChild,
   enrichChildrenWithBlockedBy,
   wipAdvanceDecision,
   planRefineWipGate,
   childCreationAllowedAtEpicState,
 } from '../../../lib/epic-children-gate.mjs';
+import { mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
@@ -168,4 +170,122 @@ test('fetchEpicChildren returns array even when underlying returns non-array', a
   });
   assert.ok(Array.isArray(result));
   assert.equal(result.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// #947 — a CLOSED child stranded in a stale board column must not deadlock its
+// epic. These drive the real `mapSubIssueNodes` output through each consumer
+// rather than hand-writing descriptors, so the gates are exercised against the
+// exact shape production hands them.
+// ---------------------------------------------------------------------------
+
+// Build a GraphQL sub-issue node in the shape defaultFetchSiblings selects.
+function ghNode({ number, state = 'OPEN', stateReason = null, column, rank }) {
+  const nodes = [];
+  if (column !== undefined) nodes.push({ name: column, field: { name: 'Status' } });
+  if (rank !== undefined) nodes.push({ number: rank, field: { name: 'Rank' } });
+  return {
+    number,
+    state,
+    stateReason,
+    projectItems: { nodes: [{ project: { id: cfg.projectId }, fieldValues: { nodes } }] },
+  };
+}
+
+function mapped(nodes) {
+  return mapSubIssueNodes(nodes, cfg.projectId);
+}
+
+test('developEpicTestChildrenGate passes when a child was closed from Backlog (#947 — the #859 case)', async () => {
+  const children = mapped([
+    ghNode({ number: 868, state: 'CLOSED', stateReason: 'COMPLETED', column: 'Review', rank: 4 }),
+    ghNode({
+      number: 945,
+      state: 'CLOSED',
+      stateReason: 'NOT_PLANNED',
+      column: 'Backlog',
+      rank: 5,
+    }),
+  ]);
+  const result = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 859,
+    deps: { fetchSiblings: stubFetch(children) },
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.blockers));
+  assert.equal(result.children.length, 2);
+});
+
+test('planEpicDevelopChildrenGate passes with a child closed from Backlog (#947)', async () => {
+  const children = mapped([
+    ghNode({
+      number: 945,
+      state: 'CLOSED',
+      stateReason: 'NOT_PLANNED',
+      column: 'Backlog',
+      rank: 1,
+    }),
+    ghNode({ number: 946, column: 'Refine', rank: 2 }),
+  ]);
+  const result = await planEpicDevelopChildrenGate({
+    cfg,
+    issueNumber: 859,
+    deps: { fetchSiblings: stubFetch(children) },
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.blockers));
+});
+
+test('reviewEpicDoneChildrenGate passes with a child closed mid-flight (#947)', async () => {
+  const children = mapped([
+    ghNode({
+      number: 945,
+      state: 'CLOSED',
+      stateReason: 'NOT_PLANNED',
+      column: 'Develop',
+      rank: 1,
+    }),
+  ]);
+  const result = await reviewEpicDoneChildrenGate({
+    cfg,
+    issueNumber: 859,
+    deps: { fetchSiblings: stubFetch(children) },
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.blockers));
+});
+
+test('reviewEpicDoneChildrenGate still refuses an OPEN child parked mid-flight (#947 regression)', async () => {
+  const children = mapped([ghNode({ number: 946, column: 'Develop', rank: 1 })]);
+  const result = await reviewEpicDoneChildrenGate({
+    cfg,
+    issueNumber: 859,
+    deps: { fetchSiblings: stubFetch(children) },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.blockers[0], /epic-children-not-done/);
+  assert.match(result.blockers[0], /#946/);
+});
+
+test('findNextEligibleChild never selects a child closed from Refine (#947)', () => {
+  const children = mapped([
+    ghNode({ number: 945, state: 'CLOSED', stateReason: 'NOT_PLANNED', column: 'Refine', rank: 1 }),
+    ghNode({ number: 946, column: 'Refine', rank: 2 }),
+  ]);
+  const next = findNextEligibleChild(children);
+  assert.equal(next.number, 946, 'the closed rank-1 child must not be pulled');
+});
+
+test('wipAdvanceDecision does not count a child closed mid-flight against the budget (#947)', () => {
+  const children = mapped([
+    ghNode({
+      number: 945,
+      state: 'CLOSED',
+      stateReason: 'NOT_PLANNED',
+      column: 'Develop',
+      rank: 1,
+    }),
+    ghNode({ number: 946, column: 'Refine', rank: 2 }),
+  ]);
+  const decision = wipAdvanceDecision({ promotingNumber: 946, children });
+  assert.equal(decision.ok, true, decision.reason);
+  assert.deepEqual(decision.advancing, []);
 });

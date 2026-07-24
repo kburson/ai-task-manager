@@ -10,8 +10,11 @@
 //   - same-Sequence sibling in Development → ok (newcomer rule)
 //   - higher-Sequence sibling in Development → ok (next wave)
 
+//   - #947: mapSubIssueNodes coerces every CLOSED sub-issue to `done` and keeps
+//     the raw column in `boardState`
+
 import { strict as assert } from 'node:assert';
-import { admit } from '../../../../../gh/lib/wave-admission.mjs';
+import { admit, mapSubIssueNodes } from '../../../../../gh/lib/wave-admission.mjs';
 
 function stub(siblings) {
   return async () => siblings;
@@ -142,6 +145,112 @@ function stub(siblings) {
   });
   assert.equal(r.ok, false);
   assert.equal(r.blockers[0].state, 'plan');
+}
+
+// ---------------------------------------------------------------------------
+// #947 — mapSubIssueNodes: CLOSED is terminal regardless of board column.
+// ---------------------------------------------------------------------------
+
+const BOARD = 'PVT_board';
+
+// Build a GraphQL sub-issue node in the exact shape defaultFetchSiblings selects.
+function node({ number, state = 'OPEN', stateReason = null, column, rank, projectId = BOARD }) {
+  const fieldValues = { nodes: [] };
+  if (column !== undefined) {
+    fieldValues.nodes.push({ name: column, field: { name: 'Status' } });
+  }
+  if (rank !== undefined) {
+    fieldValues.nodes.push({ number: rank, field: { name: 'Rank' } });
+  }
+  return {
+    number,
+    state,
+    stateReason,
+    projectItems:
+      column === undefined && rank === undefined
+        ? { nodes: [] }
+        : { nodes: [{ project: { id: projectId }, fieldValues }] },
+  };
+}
+
+// 11. CLOSED child ON the board, parked in Backlog → terminal. This is the
+//     exact #859/#945 shape that deadlocked the develop→test gate.
+{
+  const [c] = mapSubIssueNodes(
+    [node({ number: 945, state: 'CLOSED', stateReason: 'NOT_PLANNED', column: 'Backlog' })],
+    BOARD
+  );
+  assert.equal(c.state, 'done', 'a CLOSED child on the board must resolve terminal');
+  assert.equal(c.boardState, 'backlog', 'the raw column must survive additively');
+  assert.equal(c.closeReason, 'not_planned');
+}
+
+// 12. CLOSED child parked mid-flight (Develop) → terminal, raw column kept.
+{
+  const [c] = mapSubIssueNodes(
+    [node({ number: 12, state: 'CLOSED', stateReason: 'COMPLETED', column: 'Develop', rank: 4 })],
+    BOARD
+  );
+  assert.equal(c.state, 'done');
+  assert.equal(c.boardState, 'develop');
+  assert.equal(c.rank, 4, 'rank still reads off the board item');
+  assert.equal(c.closeReason, 'completed');
+}
+
+// 13. No-regression: CLOSED child with NO project item still resolves terminal
+//     (the pre-#947 behaviour), with an empty raw column.
+{
+  const [c] = mapSubIssueNodes([node({ number: 13, state: 'CLOSED' })], BOARD);
+  assert.equal(c.state, 'done');
+  assert.equal(c.boardState, '', 'off-board child has no raw column');
+  assert.equal(c.closeReason, null, 'CLOSED with no stateReason has no disposition');
+}
+
+// 14. OPEN child is never coerced — `state` is the live column.
+{
+  const [c] = mapSubIssueNodes([node({ number: 14, column: 'Develop', rank: 2 })], BOARD);
+  assert.equal(c.state, 'develop');
+  assert.equal(c.boardState, 'develop');
+  assert.equal(c.closeReason, null, 'an open child has no disposition');
+}
+
+// 15. An item on a DIFFERENT board is ignored (item matching unchanged); a
+//     CLOSED child is still terminal through that path.
+{
+  const [open, closed] = mapSubIssueNodes(
+    [
+      node({ number: 15, column: 'Develop', rank: 9, projectId: 'PVT_other' }),
+      node({ number: 16, state: 'CLOSED', column: 'Refine', projectId: 'PVT_other' }),
+    ],
+    BOARD
+  );
+  assert.equal(open.state, '', 'a foreign board item contributes no Status');
+  assert.equal(open.rank, null, 'a foreign board item contributes no Rank');
+  assert.equal(closed.state, 'done');
+  assert.equal(closed.boardState, '');
+}
+
+// 16. Nullish / empty input is tolerated.
+{
+  assert.deepEqual(mapSubIssueNodes(undefined, BOARD), []);
+  assert.deepEqual(mapSubIssueNodes([null], BOARD), []);
+}
+
+// 17. End-to-end through `admit`: a lower-ranked CLOSED sibling stranded in
+//     Develop no longer blocks wave admission.
+{
+  const siblings = mapSubIssueNodes(
+    [node({ number: 47, state: 'CLOSED', stateReason: 'NOT_PLANNED', column: 'Develop', rank: 1 })],
+    BOARD
+  );
+  const r = await admit({
+    parentEpicNumber: 41,
+    rank: 3,
+    repo: 'o/r',
+    projectId: BOARD,
+    fetchSiblings: stub(siblings),
+  });
+  assert.equal(r.ok, true, JSON.stringify(r));
 }
 
 console.log('wave-admission.test.mjs: all passed');
