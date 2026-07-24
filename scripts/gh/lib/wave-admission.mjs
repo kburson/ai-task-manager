@@ -25,6 +25,11 @@
 // of sibling descriptors `{ number, rank, state }` where `state` is one
 // of the lower-cased 8-state slugs (e.g. `'backlog'`, `'on-deck'`, `'review'`,
 // `'done'`).
+//
+// - **CLOSED is terminal (#947).** A sub-issue closed on GitHub always resolves
+//   to `state: 'done'`, whatever column its board item was left in. The raw
+//   column survives additively as `boardState`; the disposition survives as
+//   `closeReason` (#888). Gates read `state`.
 
 import { gql, splitRepo } from './github-projects.mjs';
 
@@ -109,15 +114,31 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
     }`,
     { owner, repo: repoName, issue: Number(parentEpicNumber) }
   );
-  const subs = data?.repository?.issue?.subIssues?.nodes || [];
+  return mapSubIssueNodes(data?.repository?.issue?.subIssues?.nodes, projectId);
+}
+
+/**
+ * Pure mapping from the GraphQL sub-issue nodes to child descriptors.
+ *
+ * Split out of `defaultFetchSiblings` (#947) so the coercion rules are unit
+ * testable against the exact node shape the query selects, without stubbing the
+ * network.
+ *
+ * @param {Array|null|undefined} subs sub-issue nodes from the query above
+ * @param {string} projectId the bound board's node id — only an item on THIS
+ *   board contributes `Status` / `Rank`.
+ * @returns {Array<{number:number, rank:number|null, state:string,
+ *   boardState:string, closeReason:string|null}>}
+ */
+export function mapSubIssueNodes(subs, projectId) {
   const out = [];
-  for (const sub of subs) {
+  for (const sub of subs || []) {
     if (!sub) continue;
     const item = (sub.projectItems?.nodes || []).find((n) => n?.project?.id === projectId);
     let state = '';
     let rank = null;
     if (item) {
-      for (const fv of item.fieldValues.nodes || []) {
+      for (const fv of item.fieldValues?.nodes || []) {
         const fname = fv?.field?.name;
         if (!fname) continue;
         if (fname.toLowerCase() === 'status' && fv.name) state = String(fv.name).toLowerCase();
@@ -128,14 +149,36 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
           rank = Number(fv.number);
       }
     }
-    // GitHub closed sub-issues that aren't on the board count as Done.
-    if (!state && sub.state === 'CLOSED') state = 'done';
+    // #947 — a CLOSED sub-issue is terminal, full stop. This coercion used to
+    // carry an `!state &&` conjunct, so it fired only for a child with no item
+    // on the bound board. A child that WAS on the board and got closed without
+    // its `Status` being advanced kept that stale in-flight column forever —
+    // and nothing could repair it, since no sanctioned verb moves the board for
+    // a closed issue (`promote`/`demote` need an open bound issue, `move-state`
+    // refuses direct invocation, `reconcile` rewrites the marker not the
+    // column). Every consumer that trusts `state` — the three epic children
+    // gates, `findNextEligibleChild`, `wipAdvanceDecision`, and `admit` above —
+    // then read that child as in-flight and blocked its epic permanently.
+    // Discovered on epic #859, whose child #945 was closed NOT_PLANNED from
+    // Backlog and deadlocked the develop→test gate.
+    const boardState = state;
+    if (String(sub.state || '').toUpperCase() === 'CLOSED') state = 'done';
     // #888 — close disposition, additive. `{number, rank, state}` is unchanged
     // for every existing consumer; `closeReason` is normalized off GitHub's
     // `COMPLETED` / `NOT_PLANNED` enum so no caller sees the API casing. An OPEN
     // child gets `null`: "still open" is not a disposition, and the children-done
     // gate already refuses it.
-    out.push({ number: sub.number, rank, state, closeReason: normalizeCloseReason(sub) });
+    //
+    // `boardState` (#947) is likewise additive: the raw column, preserved so
+    // reporting and drift detection can still see where a closed child was
+    // parked. No gate reads it — gates read the coerced `state`.
+    out.push({
+      number: sub.number,
+      rank,
+      state,
+      boardState,
+      closeReason: normalizeCloseReason(sub),
+    });
   }
   return out;
 }
