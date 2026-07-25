@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #854
 // #854 — coverage for the assert-file-excludes.mjs VC evidence helper.
 //
 // AC/VC evidence commands run through shell-free executors that support
@@ -11,8 +12,9 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const SCRIPT = new URL('../../../assert-file-excludes.mjs', import.meta.url).pathname;
 
@@ -26,7 +28,7 @@ function run(args) {
 }
 
 test('exits 0 when the pattern is absent from the file', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'assert-file-excludes-'));
+  const dir = mkdtempSync(join(projectScratchDir('assert-file-excludes'), 'run-'));
   const file = join(dir, 'sample.txt');
   writeFileSync(file, 'nothing relevant here');
   try {
@@ -37,7 +39,7 @@ test('exits 0 when the pattern is absent from the file', () => {
 });
 
 test('exits 1 when the pattern is present in the file', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'assert-file-excludes-'));
+  const dir = mkdtempSync(join(projectScratchDir('assert-file-excludes'), 'run-'));
   const file = join(dir, 'sample.txt');
   writeFileSync(file, 'contains needle right here');
   try {
