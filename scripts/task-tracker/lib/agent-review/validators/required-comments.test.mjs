@@ -72,7 +72,9 @@ test('a comment with no body string is tolerated (treated as empty)', () => {
 // code-kind deliverable produces. No-commit kinds (epic/audit/spike/research)
 // never emit them, so V2 must skip those two rows for such bodies while still
 // enforcing the three always-required rows.
-const EPIC_BODY = 'Some epic.\n<!-- aitm-issue-kind kind="epic" -->\n';
+const KIND_BODY = (kind, intro = `Some ${kind}.`) =>
+  `${intro}\n\n## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="${kind}" -->\n`;
+const EPIC_BODY = KIND_BODY('epic');
 const ALWAYS_REQUIRED = ['Timing Log', 'Refine Estimate', 'Full-Auto plan-approval audit'];
 
 test('#835 no-commit body: missing all five reports only the three always-required', () => {
@@ -125,7 +127,7 @@ test('#835 no-commit body with all three always-required present passes', () => 
 // row diff-aware. These cases thread a docs-only changed-path set so the NAT row
 // is skipped; the default-deny case (no diff → NAT required) is covered in
 // nat-gate-diff-aware.test.mjs.
-const DOCS_ONLY_BODY = 'Some docs.\n<!-- aitm-issue-kind kind="docs-only" -->\n';
+const DOCS_ONLY_BODY = KIND_BODY('docs-only', 'Some docs.');
 const DOCS_ONLY_DIFF = ['docs/guide.md', 'README.md'];
 
 test('#923/#940 docs-only body + docs-only diff: skips only New Automated Tests', () => {

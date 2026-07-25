@@ -34,6 +34,8 @@ const COMMITS = [
 
 function body(acLines) {
   return [
+    '## AITM Progress Markers',
+    '',
     '<!-- aitm-issue-kind kind="epic" -->',
     '',
     '## Acceptance Criteria',

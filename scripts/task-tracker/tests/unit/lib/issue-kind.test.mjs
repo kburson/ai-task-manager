@@ -19,9 +19,15 @@ import {
   isTestlessKind,
   expectsAutomatedTests,
   hasDeliverableMarker,
+  hasEpicAcReconciledMarker,
+  hasNoNewTestsDeclaration,
   isAcWaived,
   setIssueKindMarker,
 } from '../../../lib/issue-kind.mjs';
+
+function progressMarkers(...markers) {
+  return ['## Problem', '', 'prose', '', '## AITM Progress Markers', '', ...markers].join('\n');
+}
 
 describe('normalizeKind', () => {
   it('lowercases + trims a valid kind', () => {
@@ -42,21 +48,45 @@ describe('parseIssueKind / isNoCommitKind', () => {
     assert.equal(parseIssueKind('## Body\n\nno marker'), DEFAULT_KIND);
     assert.equal(isNoCommitKind('## Body\n\nno marker'), false);
   });
-  it('reads a quoted-attribute marker', () => {
-    const body = 'top\n<!-- aitm-issue-kind kind="research" -->\nbottom';
+  it('reads a quoted-attribute marker from the Progress Markers section', () => {
+    const body = progressMarkers('<!-- aitm-issue-kind kind="research" -->');
     assert.equal(parseIssueKind(body), 'research');
     assert.equal(isNoCommitKind(body), true);
   });
   it('classifies every no-commit kind as no-commit-lane and code as not', () => {
     for (const k of NO_COMMIT_KINDS) {
-      assert.equal(isNoCommitKind(`<!-- aitm-issue-kind kind="${k}" -->`), true);
+      assert.equal(isNoCommitKind(progressMarkers(`<!-- aitm-issue-kind kind="${k}" -->`)), true);
     }
-    assert.equal(isNoCommitKind('<!-- aitm-issue-kind kind="code" -->'), false);
+    assert.equal(isNoCommitKind(progressMarkers('<!-- aitm-issue-kind kind="code" -->')), false);
   });
   it('treats an unknown marker value as the default kind', () => {
-    const body = '<!-- aitm-issue-kind kind="bogus" -->';
+    const body = progressMarkers('<!-- aitm-issue-kind kind="bogus" -->');
     assert.equal(parseIssueKind(body), DEFAULT_KIND);
     assert.equal(isNoCommitKind(body), false);
+  });
+  it('#963 ignores a prose-quoted issue-kind marker outside Progress Markers', () => {
+    const body = [
+      '## Problem',
+      '',
+      'Issue #899 documents that `kind-prefix.mjs` stamps `<!-- aitm-issue-kind kind="epic" -->` when creating epics.',
+      '',
+      '## Scope',
+      '',
+      'No live issue-kind marker appears in the Progress Markers section.',
+      '',
+      '## AITM Progress Markers',
+      '',
+      '<!-- aitm-fields: {"schema":1,"values":{}} -->',
+    ].join('\n');
+    assert.equal(parseIssueKind(body), DEFAULT_KIND);
+    assert.equal(isNoCommitKind(body), false);
+    assert.equal(isAuditKind(body), false);
+  });
+  it('#963 ignores an issue-kind marker without Progress Markers', () => {
+    assert.equal(
+      parseIssueKind('top\n<!-- aitm-issue-kind kind="research" -->\nbottom'),
+      DEFAULT_KIND
+    );
   });
 });
 
@@ -67,12 +97,12 @@ describe('#500 — epic joins the no-commit lane', () => {
     assert.ok(NO_COMMIT_KINDS.has('epic'));
   });
   it('an epic-marked body routes to the no-commit lane', () => {
-    const body = '<!-- aitm-issue-kind kind="epic" -->';
+    const body = progressMarkers('<!-- aitm-issue-kind kind="epic" -->');
     assert.equal(parseIssueKind(body), 'epic');
     assert.equal(isNoCommitKind(body), true);
   });
   it('the deprecated isAuditKind alias still reports epic as true', () => {
-    assert.equal(isAuditKind('<!-- aitm-issue-kind kind="epic" -->'), true);
+    assert.equal(isAuditKind(progressMarkers('<!-- aitm-issue-kind kind="epic" -->')), true);
   });
   it('AUDIT_KINDS is the same frozen set as NO_COMMIT_KINDS (back-compat alias)', () => {
     assert.equal(AUDIT_KINDS, NO_COMMIT_KINDS);
@@ -81,7 +111,7 @@ describe('#500 — epic joins the no-commit lane', () => {
 });
 
 describe('#923 — docs-only kind: commit-bearing but testless', () => {
-  const DOCS_ONLY_BODY = '<!-- aitm-issue-kind kind="docs-only" -->';
+  const DOCS_ONLY_BODY = progressMarkers('<!-- aitm-issue-kind kind="docs-only" -->');
 
   it('docs-only is a valid kind and round-trips', () => {
     assert.equal(normalizeKind('DOCS-ONLY'), 'docs-only');
@@ -104,22 +134,57 @@ describe('#923 — docs-only kind: commit-bearing but testless', () => {
   });
   it('every no-commit kind is also testless', () => {
     for (const k of NO_COMMIT_KINDS) {
-      assert.equal(isTestlessKind(`<!-- aitm-issue-kind kind="${k}" -->`), true);
-      assert.equal(expectsAutomatedTests(`<!-- aitm-issue-kind kind="${k}" -->`), false);
+      assert.equal(isTestlessKind(progressMarkers(`<!-- aitm-issue-kind kind="${k}" -->`)), true);
+      assert.equal(
+        expectsAutomatedTests(progressMarkers(`<!-- aitm-issue-kind kind="${k}" -->`)),
+        false
+      );
     }
   });
   it('code expects tests and is not testless', () => {
     assert.equal(isTestlessKind('no marker'), false);
     assert.equal(expectsAutomatedTests('no marker'), true);
-    assert.equal(expectsAutomatedTests('<!-- aitm-issue-kind kind="code" -->'), true);
+    assert.equal(
+      expectsAutomatedTests(progressMarkers('<!-- aitm-issue-kind kind="code" -->')),
+      true
+    );
   });
 });
 
 describe('hasDeliverableMarker / isAcWaived', () => {
   it('detects a bare and a propertied deliverable marker', () => {
-    assert.equal(hasDeliverableMarker('x <!-- aitm-deliverable-posted -->'), true);
-    assert.equal(hasDeliverableMarker('<!-- aitm-deliverable-posted url="https://x" -->'), true);
+    assert.equal(hasDeliverableMarker(progressMarkers('<!-- aitm-deliverable-posted -->')), true);
+    assert.equal(
+      hasDeliverableMarker(progressMarkers('<!-- aitm-deliverable-posted url="https://x" -->')),
+      true
+    );
     assert.equal(hasDeliverableMarker('nothing here'), false);
+  });
+  it('#963 ignores issue-level sibling markers outside Progress Markers', () => {
+    const prose = [
+      '## Problem',
+      '',
+      '`<!-- aitm-deliverable-posted -->` is an example.',
+      '`<!-- aitm-no-new-tests reason="covered" guarded-by="x.test.mjs" -->` is an example.',
+      '`<!-- aitm-epic-ac-reconciled ts="2026-07-25T00:00:00.000Z" -->` is an example.',
+      '',
+      '## AITM Progress Markers',
+      '',
+      '<!-- aitm-fields -->',
+    ].join('\n');
+    assert.equal(hasDeliverableMarker(prose), false);
+    assert.equal(hasNoNewTestsDeclaration(prose), false);
+    assert.equal(hasEpicAcReconciledMarker(prose), false);
+  });
+  it('#963 still reads issue-level sibling markers from Progress Markers', () => {
+    const body = progressMarkers(
+      '<!-- aitm-deliverable-posted -->',
+      '<!-- aitm-no-new-tests reason="covered by existing regression" guarded-by="issue-kind.test.mjs" -->',
+      '<!-- aitm-epic-ac-reconciled ts="2026-07-25T00:00:00.000Z" -->'
+    );
+    assert.equal(hasDeliverableMarker(body), true);
+    assert.equal(hasNoNewTestsDeclaration(body), true);
+    assert.equal(hasEpicAcReconciledMarker(body), true);
   });
   it('detects a waived AC label marker', () => {
     assert.equal(isAcWaived('- [x] analysis done <!-- aitm-ac-waived by="audit" -->'), true);

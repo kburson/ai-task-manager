@@ -31,11 +31,13 @@ const THROW_DEPS = {
   },
 };
 
-const AUDIT_MARKER = '<!-- aitm-issue-kind kind="audit" -->';
+const MARKERS = (...markers) => `## AITM Progress Markers\n\n${markers.join('\n')}`;
+const KIND = (kind) => `<!-- aitm-issue-kind kind="${kind}" -->`;
+const DELIVERABLE = '<!-- aitm-deliverable-posted -->';
+const AUDIT_MARKERS = MARKERS(KIND('audit'), DELIVERABLE);
 
 test('audit + deliverable + waived ACs ⇒ ok, no trail fetch', async () => {
-  const body = `${AUDIT_MARKER}
-<!-- aitm-deliverable-posted url="https://example/decision" -->
+  const body = `${MARKERS(KIND('audit'), '<!-- aitm-deliverable-posted url="https://example/decision" -->')}
 
 ## Acceptance Criteria
 
@@ -49,8 +51,7 @@ test('audit + deliverable + waived ACs ⇒ ok, no trail fetch', async () => {
 });
 
 test('audit + deliverable + a normally-verified AC ⇒ ok (verified-by still honored)', async () => {
-  const body = `${AUDIT_MARKER}
-<!-- aitm-deliverable-posted -->
+  const body = `${AUDIT_MARKERS}
 
 ## Acceptance Criteria
 
@@ -61,7 +62,7 @@ test('audit + deliverable + a normally-verified AC ⇒ ok (verified-by still hon
 });
 
 test('audit but MISSING deliverable ⇒ blocked on deliverable-missing', async () => {
-  const body = `${AUDIT_MARKER}
+  const body = `${MARKERS(KIND('audit'))}
 
 ## Acceptance Criteria
 
@@ -76,8 +77,7 @@ test('audit but MISSING deliverable ⇒ blocked on deliverable-missing', async (
 });
 
 test('audit: a ticked AC that is neither verified nor waived is still blocked', async () => {
-  const body = `${AUDIT_MARKER}
-<!-- aitm-deliverable-posted -->
+  const body = `${AUDIT_MARKERS}
 
 ## Acceptance Criteria
 
@@ -92,8 +92,7 @@ test('audit: a ticked AC that is neither verified nor waived is still blocked', 
 });
 
 test('audit: a waived-but-UNTICKED AC is still blocked (waive ≠ tick)', async () => {
-  const body = `${AUDIT_MARKER}
-<!-- aitm-deliverable-posted -->
+  const body = `${AUDIT_MARKERS}
 
 ## Acceptance Criteria
 
@@ -139,9 +138,11 @@ test('#500 epic-kind: deliverable + waived ACs + reconciled ⇒ ok, no trail fet
   // reconciliation marker attests that the epic's own ACs were re-read against
   // what they actually shipped. Neither absorbs the other, so this case — the
   // fully-clean epic — now carries both.
-  const body = `<!-- aitm-issue-kind kind="epic" -->
-<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
-<!-- aitm-epic-ac-reconciled ts="2026-07-19T12:00:00.000Z" -->
+  const body = `${MARKERS(
+    KIND('epic'),
+    '<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->',
+    '<!-- aitm-epic-ac-reconciled ts="2026-07-19T12:00:00.000Z" -->'
+  )}
 
 ## Acceptance Criteria
 
@@ -158,8 +159,10 @@ test('#887 epic-kind: deliverable present but NOT reconciled ⇒ blocked', async
   // The complement of the case above, pinned here rather than only in the #887
   // suite so a future reader of THIS file sees both epic-lane requirements
   // together and does not "restore" the old single-requirement shape.
-  const body = `<!-- aitm-issue-kind kind="epic" -->
-<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
+  const body = `${MARKERS(
+    KIND('epic'),
+    '<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->'
+  )}
 
 ## Acceptance Criteria
 
@@ -174,7 +177,7 @@ test('#887 epic-kind: deliverable present but NOT reconciled ⇒ blocked', async
 });
 
 test('#500 epic-kind: MISSING deliverable ⇒ blocked on deliverable-missing', async () => {
-  const body = `<!-- aitm-issue-kind kind="epic" -->
+  const body = `${MARKERS(KIND('epic'))}
 
 ## Acceptance Criteria
 

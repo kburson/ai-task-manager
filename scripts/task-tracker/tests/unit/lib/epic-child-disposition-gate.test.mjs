@@ -22,13 +22,15 @@ const cfg = { repo: 'o/r', projectId: 'PVT_test' };
 const STRIKE =
   '<!-- aitm-ac-struck child="#891" reason="cut — subsumed by #886" ts="2026-07-19T00:00:00Z" -->';
 
+const EPIC_MARKERS = ['## AITM Progress Markers', '', '<!-- aitm-issue-kind kind="epic" -->'];
+
 // `deliveredAc` is ticked with ordinary proof; `carriedAc` is the promise the
 // wontfixed child was holding.
 function epicBody({ carriedStruck = false, carriedTicked = false } = {}) {
   const carriedBox = carriedTicked ? 'x' : ' ';
   const carriedTail = carriedStruck ? ` ${STRIKE}` : '';
   return [
-    '<!-- aitm-issue-kind kind="epic" -->',
+    ...EPIC_MARKERS,
     '',
     '## Acceptance Criteria',
     '',
@@ -202,7 +204,7 @@ test('AC4: parseAcStrike reads child/reason/ts, and tolerates a bare child form'
 
 test('AC5: the refusal names the wontfixed child and every dangling AC', async () => {
   const body = [
-    '<!-- aitm-issue-kind kind="epic" -->',
+    ...EPIC_MARKERS,
     '',
     '## Acceptance Criteria',
     '',
