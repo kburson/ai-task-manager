@@ -29,7 +29,7 @@ require_cmd jq
 node_version="$(node -v)"
 node_major="$(version_major "$node_version")"
 if [ "$node_major" -lt 22 ]; then
-  printf '[cloud-setup] ERROR: Node.js 22+ is required; found %s\n' "$node_version" >&2
+  printf '[cloud-setup] ERROR: Node 22 / Node.js 22+ is required; found %s\n' "$node_version" >&2
   exit 1
 fi
 

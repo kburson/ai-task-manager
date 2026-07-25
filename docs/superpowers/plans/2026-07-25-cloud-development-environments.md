@@ -32,10 +32,12 @@
 ### Task 1: Cloud Setup Scripts
 
 **Files:**
+
 - Create: `scripts/dev-env/setup-cloud.sh`
 - Create: `scripts/dev-env/maintenance-cloud.sh`
 
 **Interfaces:**
+
 - Consumes: `package.json`, `package-lock.json`, `git`, `node`, `npm`, `gh`, `jq`.
 - Produces: executable scripts callable from Codex/Claude cloud environment setup settings.
 
@@ -181,7 +183,7 @@ chmod +x scripts/dev-env/setup-cloud.sh scripts/dev-env/maintenance-cloud.sh
 
 Expected: no output.
 
-- [ ] **Step 4: Verify script syntax and executability**
+- [ ] **Step 4: Verify script syntax and executable mode**
 
 Run:
 
@@ -208,6 +210,7 @@ Expected: commit succeeds.
 ### Task 2: Cloud Workflow Guide And Runtime Docs
 
 **Files:**
+
 - Create: `docs/guides/cloud-development-environments.md`
 - Modify: `README.md`
 - Modify: `CLAUDE.md`
@@ -215,6 +218,7 @@ Expected: commit succeeds.
 - Modify: `docs/introduction/install-and-setup.md`
 
 **Interfaces:**
+
 - Consumes: scripts from Task 1.
 - Produces: operator-facing instructions for Codex/Claude cloud workers.
 
@@ -377,9 +381,11 @@ Expected: commit succeeds.
 ### Task 3: Final Verification And Handoff
 
 **Files:**
+
 - Modify: no source files expected beyond Task 1 and Task 2 files.
 
 **Interfaces:**
+
 - Consumes: scripts and docs from prior tasks.
 - Produces: verified branch ready for implementation review.
 

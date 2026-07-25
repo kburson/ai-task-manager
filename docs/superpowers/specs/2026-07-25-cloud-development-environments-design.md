@@ -2,7 +2,7 @@
 
 ## Context
 
-AI Task Manager is increasingly being dogfooded by multiple agent surfaces. Local
+AI Task Manager is increasingly tested on itself by multiple agent surfaces. Local
 worktrees are useful for hand editing and immediate inspection, but longer
 agentic work should be able to run in isolated cloud environments where each
 task owns its branch, issue binding, timing ledger, and eventual push path.

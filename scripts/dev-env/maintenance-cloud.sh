@@ -26,7 +26,9 @@ git fetch --prune origin
 if git show-ref --verify --quiet refs/remotes/origin/trunk; then
   if git show-ref --verify --quiet refs/heads/trunk; then
     log "Refreshing local trunk from origin/trunk"
-    git fetch --no-tags origin trunk:trunk
+    if ! git fetch --no-tags origin trunk:trunk; then
+      warn "Could not refresh local trunk, possibly because trunk is checked out in another worktree; origin/trunk is available"
+    fi
   else
     log "Creating local trunk from origin/trunk"
     git branch trunk origin/trunk
