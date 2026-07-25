@@ -21,7 +21,39 @@ import { serializeMarker } from './marker-grammar.mjs';
 // the idempotent upsert leaves no blank-line residue.
 const NO_NEW_TESTS_STRIP_RE =
   /[ \t]*<!--\s*aitm-no-new-tests(?:\s+[a-zA-Z0-9_-]+="(?:[^"]|&quot;)*")*\s*-->\n?/gi;
-const PROGRESS_MARKERS_RE = /(^##\s+AITM Progress Markers\s*\n)/im;
+const PROGRESS_MARKERS_HEADING_RE = /^##[ \t]+AITM Progress Markers[ \t]*$(?:\n)?/im;
+const ROOT_HEADING_RE = /^##\s+/m;
+
+function splitProgressMarkers(body) {
+  const source = String(body || '');
+  const match = PROGRESS_MARKERS_HEADING_RE.exec(source);
+  if (!match) return { found: false, source, before: source, heading: '', section: '', after: '' };
+  const sectionStart = match.index + match[0].length;
+  const rest = source.slice(sectionStart);
+  const nextHeading = rest.search(ROOT_HEADING_RE);
+  const sectionEnd = nextHeading === -1 ? source.length : sectionStart + nextHeading;
+  return {
+    found: true,
+    source,
+    before: source.slice(0, match.index),
+    heading: match[0],
+    section: source.slice(sectionStart, sectionEnd),
+    after: source.slice(sectionEnd),
+  };
+}
+
+function replaceProgressMarkersSection(body, mutateSection) {
+  const split = splitProgressMarkers(body);
+  if (split.found) {
+    return `${split.before}${split.heading}\n${mutateSection(split.section)}${split.after}`;
+  }
+  const source = String(body || '').replace(/\s*$/, '');
+  return `${source}\n\n## AITM Progress Markers\n\n${mutateSection('')}`;
+}
+
+function trimSectionStart(section) {
+  return String(section || '').replace(/^\s+/, '');
+}
 
 /**
  * Pure, idempotent upsert of the escape marker into a body string.
@@ -40,11 +72,10 @@ export function upsertNoNewTestsMarker(body, { reason, guardedBy } = {}) {
   const g = String(guardedBy == null ? '' : guardedBy).trim();
   if (g) props['guarded-by'] = g;
   const marker = serializeMarker('no-new-tests', props);
-  const stripped = String(body || '').replace(NO_NEW_TESTS_STRIP_RE, '');
-  if (PROGRESS_MARKERS_RE.test(stripped)) {
-    return stripped.replace(PROGRESS_MARKERS_RE, `$1\n${marker}\n`);
-  }
-  return `${stripped.replace(/\s*$/, '')}\n\n${marker}\n`;
+  return replaceProgressMarkersSection(
+    body,
+    (section) => `${marker}\n${trimSectionStart(section.replace(NO_NEW_TESTS_STRIP_RE, ''))}`
+  );
 }
 
 /**

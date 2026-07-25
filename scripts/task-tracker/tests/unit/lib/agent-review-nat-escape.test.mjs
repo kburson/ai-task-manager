@@ -15,6 +15,8 @@ import { validate as validateRequiredComments } from '../../../lib/agent-review/
 
 const MARKER = (reason, guardedBy) =>
   `<!-- aitm-no-new-tests reason="${reason}"${guardedBy ? ` guarded-by="${guardedBy}"` : ''} -->`;
+const PROGRESS = (...markers) => `## AITM Progress Markers\n\n${markers.join('\n')}`;
+const KIND = (kind) => `<!-- aitm-issue-kind kind="${kind}" -->`;
 
 const NAT_FAILURE = "required comment 'New Automated Tests' is missing";
 
@@ -27,12 +29,15 @@ function natRequired(body) {
 
 describe('hasNoNewTestsDeclaration — fail-closed reader (#944)', () => {
   it('true when the marker carries a non-empty reason', () => {
-    assert.equal(hasNoNewTestsDeclaration(`x ${MARKER('greens quality-config.test.mjs')} y`), true);
+    assert.equal(
+      hasNoNewTestsDeclaration(PROGRESS(MARKER('greens quality-config.test.mjs'))),
+      true
+    );
   });
 
   it('true with both reason and guarded-by present', () => {
     assert.equal(
-      hasNoNewTestsDeclaration(MARKER('dedupe fix', 'scripts/x/quality-config.test.mjs')),
+      hasNoNewTestsDeclaration(PROGRESS(MARKER('dedupe fix', 'scripts/x/quality-config.test.mjs'))),
       true
     );
   });
@@ -42,17 +47,17 @@ describe('hasNoNewTestsDeclaration — fail-closed reader (#944)', () => {
   });
 
   it('false when reason is empty (default-deny)', () => {
-    assert.equal(hasNoNewTestsDeclaration(MARKER('')), false);
+    assert.equal(hasNoNewTestsDeclaration(PROGRESS(MARKER(''))), false);
   });
 
   it('false when reason is whitespace-only (default-deny)', () => {
-    assert.equal(hasNoNewTestsDeclaration(MARKER('   ')), false);
+    assert.equal(hasNoNewTestsDeclaration(PROGRESS(MARKER('   '))), false);
   });
 
   it('false when the marker has no reason attribute', () => {
-    assert.equal(hasNoNewTestsDeclaration('<!-- aitm-no-new-tests -->'), false);
+    assert.equal(hasNoNewTestsDeclaration(PROGRESS('<!-- aitm-no-new-tests -->')), false);
     assert.equal(
-      hasNoNewTestsDeclaration('<!-- aitm-no-new-tests guarded-by="foo.test.mjs" -->'),
+      hasNoNewTestsDeclaration(PROGRESS('<!-- aitm-no-new-tests guarded-by="foo.test.mjs" -->')),
       false
     );
   });
@@ -134,15 +139,18 @@ describe('required-comments V2 — NAT row escape integration (#944)', () => {
   });
 
   it('code body with a valid declaration SKIPS the NAT requirement', () => {
-    assert.equal(natRequired(`code body\n${MARKER('greens a pre-existing test')}`), false);
+    assert.equal(
+      natRequired(`code body\n\n${PROGRESS(MARKER('greens a pre-existing test'))}`),
+      false
+    );
   });
 
   it('code body with an empty-reason declaration still REQUIRES the NAT comment', () => {
-    assert.equal(natRequired(`code body\n${MARKER('')}`), true);
+    assert.equal(natRequired(`code body\n\n${PROGRESS(MARKER(''))}`), true);
   });
 
   it('docs-only body with a proven docs-only diff skips NAT (#940 diff-aware)', () => {
-    const body = 'body\n<!-- aitm-issue-kind kind="docs-only" -->';
+    const body = `body\n\n${PROGRESS(KIND('docs-only'))}`;
     const { failures } = validateRequiredComments({
       comments: [],
       body,
@@ -155,11 +163,11 @@ describe('required-comments V2 — NAT row escape integration (#944)', () => {
     // Pre-#940 a docs-only body skipped NAT unconditionally (kind-only). Post-#940
     // the diff decides: an empty/unclassifiable changed-path set is default-deny,
     // so the NAT requirement is kept until a docs-only diff is proven.
-    assert.equal(natRequired('body\n<!-- aitm-issue-kind kind="docs-only" -->'), true);
+    assert.equal(natRequired(`body\n\n${PROGRESS(KIND('docs-only'))}`), true);
   });
 
   it('epic body is unchanged — NAT already skipped', () => {
-    assert.equal(natRequired('body\n<!-- aitm-issue-kind kind="epic" -->'), false);
+    assert.equal(natRequired(`body\n\n${PROGRESS(KIND('epic'))}`), false);
   });
 
   it('a present NAT comment satisfies the row regardless of declaration', () => {

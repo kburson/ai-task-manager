@@ -13,7 +13,7 @@ import { natCommentRequired } from '../../../lib/issue-kind.mjs';
 import { buildReviewContext } from '../../../lib/agent-review/review-gate.mjs';
 import { validate as validateRequiredComments } from '../../../lib/agent-review/validators/required-comments.mjs';
 
-const KIND = (k) => `<!-- aitm-issue-kind kind="${k}" -->`;
+const KIND = (k) => `## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="${k}" -->`;
 const NO_NEW_TESTS = (reason) => `<!-- aitm-no-new-tests reason="${reason}" -->`;
 
 const CODE_DIFF = ['scripts/task-tracker/lib/foo.mjs', 'docs/readme.md'];
@@ -55,12 +55,12 @@ describe('natCommentRequired — diff-aware predicate (#940)', () => {
   });
 
   it('valid no-new-tests declaration → not required (honest #944 escape)', () => {
-    const body = `${KIND('code')} ${NO_NEW_TESTS('greens pre-existing test')}`;
+    const body = `${KIND('code')}\n${NO_NEW_TESTS('greens pre-existing test')}`;
     assert.equal(natCommentRequired(body, CODE_DIFF), false);
   });
 
   it('docs-only + no-new-tests declaration → not required (escape wins)', () => {
-    const body = `${KIND('docs-only')} ${NO_NEW_TESTS('doc-only, no tests')}`;
+    const body = `${KIND('docs-only')}\n${NO_NEW_TESTS('doc-only, no tests')}`;
     assert.equal(natCommentRequired(body, CODE_DIFF), false);
   });
 });

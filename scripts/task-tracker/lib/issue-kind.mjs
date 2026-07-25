@@ -61,7 +61,43 @@ const AC_WAIVED_RE = /<!--\s*aitm-ac-waived(?:\s+[^>]*?)?\s*-->/i;
 // writes the timestamped form.
 const EPIC_AC_RECONCILED_RE = /<!--\s*aitm-epic-ac-reconciled(?:\s+[^>]*?)?\s*-->/i;
 const EPIC_AC_RECONCILED_STRIP_RE = /[ \t]*<!--\s*aitm-epic-ac-reconciled(?:\s+[^>]*?)?\s*-->\n?/gi;
-const PROGRESS_MARKERS_RE = /(^##\s+AITM Progress Markers\s*\n)/im;
+const PROGRESS_MARKERS_HEADING_RE = /^##[ \t]+AITM Progress Markers[ \t]*$(?:\n)?/im;
+const ROOT_HEADING_RE = /^##\s+/m;
+
+function splitProgressMarkers(body) {
+  const source = String(body || '');
+  const match = PROGRESS_MARKERS_HEADING_RE.exec(source);
+  if (!match) return { found: false, source, before: source, heading: '', section: '', after: '' };
+  const sectionStart = match.index + match[0].length;
+  const rest = source.slice(sectionStart);
+  const nextHeading = rest.search(ROOT_HEADING_RE);
+  const sectionEnd = nextHeading === -1 ? source.length : sectionStart + nextHeading;
+  return {
+    found: true,
+    source,
+    before: source.slice(0, match.index),
+    heading: match[0],
+    section: source.slice(sectionStart, sectionEnd),
+    after: source.slice(sectionEnd),
+  };
+}
+
+function progressMarkersSection(body) {
+  return splitProgressMarkers(body).section;
+}
+
+function replaceProgressMarkersSection(body, mutateSection) {
+  const split = splitProgressMarkers(body);
+  if (split.found) {
+    return `${split.before}${split.heading}\n${mutateSection(split.section)}${split.after}`;
+  }
+  const source = String(body || '').replace(/\s*$/, '');
+  return `${source}\n\n## AITM Progress Markers\n\n${mutateSection('')}`;
+}
+
+function trimSectionStart(section) {
+  return String(section || '').replace(/^\s+/, '');
+}
 
 /** Normalize + validate a kind string. Throws on an unknown kind. */
 export function normalizeKind(kind) {
@@ -78,7 +114,7 @@ export function normalizeKind(kind) {
 
 /** Read the issue kind from a body. Returns `code` when no (valid) marker. */
 export function parseIssueKind(body) {
-  const m = String(body || '').match(KIND_MARKER_RE);
+  const m = progressMarkersSection(body).match(KIND_MARKER_RE);
   if (!m) return DEFAULT_KIND;
   const kind = m[1].trim().toLowerCase();
   return VALID_KINDS.has(kind) ? kind : DEFAULT_KIND;
@@ -139,7 +175,7 @@ export function expectsAutomatedTests(body) {
  * NAT requirement still fires — a silent or accidental escape is impossible.
  */
 export function hasNoNewTestsDeclaration(body) {
-  const m = String(body || '').match(NO_NEW_TESTS_MARKER_RE);
+  const m = progressMarkersSection(body).match(NO_NEW_TESTS_MARKER_RE);
   if (!m) return false;
   const parsed = parseMarker(m[0]);
   if (!parsed || parsed.name !== 'no-new-tests') return false;
@@ -175,7 +211,7 @@ export function natCommentRequired(body, changedPaths) {
 
 /** True when the body carries an `aitm-deliverable-posted` evidence marker. */
 export function hasDeliverableMarker(body) {
-  return DELIVERABLE_MARKER_RE.test(String(body || ''));
+  return DELIVERABLE_MARKER_RE.test(progressMarkersSection(body));
 }
 
 /** True when an AC label carries a sanctioned `aitm-ac-waived` marker. */
@@ -195,7 +231,7 @@ export function isAcWaived(label) {
  * records that the act happened, and when.
  */
 export function hasEpicAcReconciledMarker(body) {
-  return EPIC_AC_RECONCILED_RE.test(String(body || ''));
+  return EPIC_AC_RECONCILED_RE.test(progressMarkersSection(body));
 }
 
 /**
@@ -206,12 +242,11 @@ export function hasEpicAcReconciledMarker(body) {
  * whether reconciliation predates the last child landing.
  */
 export function setEpicAcReconciled(body, ts = new Date().toISOString()) {
-  const stripped = String(body || '').replace(EPIC_AC_RECONCILED_STRIP_RE, '');
   const marker = serializeMarker('epic-ac-reconciled', { ts });
-  if (PROGRESS_MARKERS_RE.test(stripped)) {
-    return stripped.replace(PROGRESS_MARKERS_RE, `$1\n${marker}\n`);
-  }
-  return `${stripped.replace(/\s*$/, '')}\n\n${marker}\n`;
+  return replaceProgressMarkersSection(
+    body,
+    (section) => `${marker}\n${trimSectionStart(section.replace(EPIC_AC_RECONCILED_STRIP_RE, ''))}`
+  );
 }
 
 /**
@@ -223,11 +258,16 @@ export function setEpicAcReconciled(body, ts = new Date().toISOString()) {
  */
 export function setIssueKindMarker(body, kind) {
   const k = normalizeKind(kind);
-  const stripped = String(body || '').replace(KIND_MARKER_STRIP_RE, '');
-  if (k === DEFAULT_KIND) return stripped;
-  const marker = serializeMarker('issue-kind', { kind: k });
-  if (PROGRESS_MARKERS_RE.test(stripped)) {
-    return stripped.replace(PROGRESS_MARKERS_RE, `$1\n${marker}\n`);
+  if (k === DEFAULT_KIND) {
+    const split = splitProgressMarkers(body);
+    if (!split.found) return String(body || '');
+    return `${split.before}${split.heading}${trimSectionStart(
+      split.section.replace(KIND_MARKER_STRIP_RE, '')
+    )}${split.after}`;
   }
-  return `${stripped.replace(/\s*$/, '')}\n\n${marker}\n`;
+  const marker = serializeMarker('issue-kind', { kind: k });
+  return replaceProgressMarkersSection(
+    body,
+    (section) => `${marker}\n${trimSectionStart(section.replace(KIND_MARKER_STRIP_RE, ''))}`
+  );
 }

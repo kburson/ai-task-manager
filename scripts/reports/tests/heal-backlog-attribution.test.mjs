@@ -35,7 +35,7 @@ const trunkShas = buildTrunkShaSet(['aaaa1111', 'ffff0000'].join('\n'));
 
 const commitsBody = '## body\n<!-- aitm-commits shas="aaaa1111,bbbb2222" -->\n';
 const offtrunkBody = '## body\n<!-- aitm-commits shas="dead9999,cafe8888" -->\n';
-const deliverableBody = '## body\n<!-- aitm-deliverable-posted -->\n';
+const deliverableBody = '## body\n\n## AITM Progress Markers\n\n<!-- aitm-deliverable-posted -->\n';
 const supersededBody =
   '## body\n<!-- aitm-superseded-by refs="#399" ts="2026-06-14T14:00:00.000Z" -->\n';
 const plainBody = '## body\njust prose, no markers\n';

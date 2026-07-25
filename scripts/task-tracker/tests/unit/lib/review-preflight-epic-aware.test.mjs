@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url';
 const BASE = { issueNumber: 860, repo: 'o/r', projectDir: '/tmp/x' };
 
 const EPIC_BODY = [
+  '## AITM Progress Markers',
+  '',
   '<!-- aitm-issue-kind kind="epic" -->',
   '<!-- aitm-deliverable-posted ts="2026-07-19T00:00:00Z" -->',
   '',
@@ -27,9 +29,14 @@ const EPIC_BODY = [
   '- [x] All children delivered. <!-- aitm-ac-waived -->',
 ].join('\n');
 
-const CODE_BODY = ['<!-- aitm-issue-kind kind="code" -->', '', '## Acceptance Criteria', ''].join(
-  '\n'
-);
+const CODE_BODY = [
+  '## AITM Progress Markers',
+  '',
+  '<!-- aitm-issue-kind kind="code" -->',
+  '',
+  '## Acceptance Criteria',
+  '',
+].join('\n');
 
 const CHILDREN = [
   { number: 861, title: 'child one' },

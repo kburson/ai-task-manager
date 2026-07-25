@@ -29,14 +29,17 @@ import { testExitPreCloseCompletenessGuard } from '../../../lib/test-exit-pre-cl
 import { uncheckedPreCloseCheckboxes } from '../../../close-gate.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PVT_test' };
+const MARKERS = (...markers) => `## AITM Progress Markers\n\n${markers.join('\n')}`;
 
 // A no-commit audit issue: kind=audit, a posted deliverable, a sandbox/dod
 // proof marker, and all ACs ticked + audited-waived. No `### 🔗 Commits` trail.
 const AUDIT_BODY = `# EPIC-free audit issue
 
-<!-- aitm-issue-kind kind="audit" -->
-<!-- aitm-deliverable-posted url="https://example/decision-record" -->
-<!-- aitm-dod-verified sha="abc1234" ts="2026-06-22T00:00:00Z" -->
+${MARKERS(
+  '<!-- aitm-issue-kind kind="audit" -->',
+  '<!-- aitm-deliverable-posted url="https://example/decision-record" -->',
+  '<!-- aitm-dod-verified sha="abc1234" ts="2026-06-22T00:00:00Z" -->'
+)}
 
 ## Acceptance Criteria
 
@@ -147,10 +150,12 @@ test('contrast: a code-kind no-commit body IS refused at develop→test', async 
 // no-commit lane and reaches Done with no lane refusal.
 const EPIC_BODY = `# EPIC: coordination issue
 
-<!-- aitm-issue-kind kind="epic" -->
-<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->
-<!-- aitm-epic-ac-reconciled ts="2026-07-19T12:00:00.000Z" -->
-<!-- aitm-dod-verified sha="abc1234" ts="2026-06-22T00:00:00Z" -->
+${MARKERS(
+  '<!-- aitm-issue-kind kind="epic" -->',
+  '<!-- aitm-deliverable-posted note="children #496 #497 #498 #499 closed" -->',
+  '<!-- aitm-epic-ac-reconciled ts="2026-07-19T12:00:00.000Z" -->',
+  '<!-- aitm-dod-verified sha="abc1234" ts="2026-06-22T00:00:00Z" -->'
+)}
 
 ## Acceptance Criteria
 

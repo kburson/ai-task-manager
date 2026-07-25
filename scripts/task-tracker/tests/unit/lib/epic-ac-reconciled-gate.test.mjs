@@ -24,9 +24,12 @@ const ACS = [
   '',
 ].join('\n');
 
+const MARKERS = (...markers) => `## AITM Progress Markers\n\n${markers.join('\n')}`;
+
 function epicBody({ reconciled = false, deliverable = true } = {}) {
-  let body = ['<!-- aitm-issue-kind kind="epic" -->', '', ACS].join('\n');
-  if (deliverable) body += '\n<!-- aitm-deliverable-posted ts="2026-07-19T00:00:00.000Z" -->\n';
+  const markers = ['<!-- aitm-issue-kind kind="epic" -->'];
+  if (deliverable) markers.push('<!-- aitm-deliverable-posted ts="2026-07-19T00:00:00.000Z" -->');
+  let body = [MARKERS(...markers), '', ACS].join('\n');
   if (reconciled) body = setEpicAcReconciled(body, '2026-07-19T12:00:00.000Z');
   return body;
 }
@@ -84,7 +87,7 @@ test('AC2: setEpicAcReconciled is idempotent — a second stamp adds no second m
 });
 
 test('AC2: hasEpicAcReconciledMarker honors a bare, un-timestamped marker', () => {
-  assert.equal(hasEpicAcReconciledMarker('<!-- aitm-epic-ac-reconciled -->'), true);
+  assert.equal(hasEpicAcReconciledMarker(MARKERS('<!-- aitm-epic-ac-reconciled -->')), true);
   assert.equal(hasEpicAcReconciledMarker('no marker here'), false);
 });
 
@@ -106,7 +109,10 @@ test('AC3: a code-kind issue is unaffected by the new gate', async () => {
 
 test('AC3: the other no-commit kinds are unaffected — they have no children to reconcile', async () => {
   for (const kind of ['audit', 'research', 'spike']) {
-    const body = `<!-- aitm-issue-kind kind="${kind}" -->\n\n${ACS}\n<!-- aitm-deliverable-posted -->\n`;
+    const body = `${MARKERS(
+      `<!-- aitm-issue-kind kind="${kind}" -->`,
+      '<!-- aitm-deliverable-posted -->'
+    )}\n\n${ACS}\n`;
     const res = await gateCodeComplete({ cfg: CFG, issueNumber: 600, body });
     assert.deepEqual(UNRECONCILED(res.blockers), [], `${kind} must not be gated`);
     assert.equal(res.ok, true, `${kind}: ${res.blockers.join('\n')}`);
@@ -178,13 +184,15 @@ test('guard-rail: the marker cannot substitute for a missing deliverable', async
 test('guard-rail: reconciliation does not excuse an unticked AC', async () => {
   const body = setEpicAcReconciled(
     [
+      '## AITM Progress Markers',
+      '',
       '<!-- aitm-issue-kind kind="epic" -->',
+      '<!-- aitm-deliverable-posted -->',
       '',
       '## Acceptance Criteria',
       '',
       '- [ ] Child #872 landed X',
       '',
-      '<!-- aitm-deliverable-posted -->',
     ].join('\n')
   );
   const res = await gateCodeComplete({ cfg: CFG, issueNumber: 883, body });
