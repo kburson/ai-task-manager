@@ -179,7 +179,7 @@ export async function emitReviewGatePassTimeline({
 // gate-objection path above: by the time sandbox verification runs, review has
 // NOT yet performed its authoritative Test→Review move, so this path simply
 // records the failure outcome and demotes. It must mirror
-// `emitReviewGateFailureTimeline` steps (3)+(4): emit a V3-legal `review:failed`
+// `emitReviewGateFailureTimeline` steps (3)+(4): emit a V3-legal `test:failed`
 // AUDIT row — NEVER a bare `develop` ladder slug, which `timing-log-sequence`
 // (V3) rejects as `malformed — unknown event slug "develop"` and which then
 // permanently fails the Agent Review Gate on the issue (the live #823 stranding)
@@ -198,7 +198,7 @@ export async function emitSandboxVerificationFailureTimeline({
     target,
     buildRowFn({
       ts,
-      event: 'review:failed',
+      event: 'test:failed',
       activeSec: delta.activeSec,
       idleSec: delta.idleSec,
       deltaWords: 0,
@@ -693,7 +693,7 @@ export async function verbReview(ctx) {
       }
       const _tsR1 = nowIso();
       const _dR1 = deriveStateMoveDelta(rawBody, _tsR1);
-      // #844 (D6) — emit a V3-legal `review:failed` audit row + `--demote` move
+      // #844 (D6) — emit a V3-legal `test:failed` audit row + `--demote` move
       // via the shared helper (never a bare `develop` ladder slug).
       await emitSandboxVerificationFailureTimeline({
         target,
