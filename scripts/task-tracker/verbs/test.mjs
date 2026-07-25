@@ -514,7 +514,12 @@ export async function runVerbTest({
     }
   }
 
-  const allGreen = results.length > 0 && results.every((r) => r.passed);
+  // #973 — a `rejected` result (blocked by the security allowlist before
+  // execution) is a policy signal, not a functional failure; it must not gate
+  // promotion the same way a genuine nonzero-exit `failed` result does. The
+  // allowlist rejection still renders with its `⚠` mark and reason in
+  // `buildResultTable` so the operator sees the VC needs rewriting.
+  const allGreen = results.length > 0 && results.every((r) => r.passed || r.rejected);
 
   if (allGreen) {
     const ts = now();
@@ -689,7 +694,7 @@ export async function verbTest(ctx) {
       process.exit(result.move?.status || 3);
     }
     case 'failed': {
-      const fails = result.results.filter((r) => !r.passed).length;
+      const fails = result.results.filter((r) => !r.passed && !r.rejected).length;
       console.error(`✗ #${issueNumber} verification failed in sandbox (${fails} command(s)).`);
       process.exit(3);
     }
