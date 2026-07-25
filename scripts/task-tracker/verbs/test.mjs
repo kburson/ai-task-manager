@@ -38,6 +38,22 @@ import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 
 const pexec = promisify(execFile);
 
+// cspell:ignore metachar
+// #973 — `validateVerificationCommand` rejects a command for one of two
+// distinct reasons: a shell-metacharacter/injection-vector match (the
+// `FORBIDDEN` scan in verification-allowlist.mjs — `forbidden semicolon (;)`
+// etc.) or a per-bin shape mismatch (an otherwise well-formed, non-injecting
+// command using a subcommand/flag/bin outside the restrictive allowlist —
+// `bin 'npm' rejects subcommand 'install' ...`). Only the latter is a policy
+// signal about command *shape*, not an attempted attack; it alone is safe to
+// exclude from the pass/fail gate. A metachar-scan rejection must keep
+// blocking — that is the injection-attempt case story #137's regression test
+// guards (a blocked payload must not let the run report "passed").
+const POLICY_SHAPE_REJECTION_RE = /^bin '[^']+' rejects (?:(?:flag|subcommand) )?'/;
+function isPolicyShapeRejection(reason) {
+  return typeof reason === 'string' && POLICY_SHAPE_REJECTION_RE.test(reason);
+}
+
 const NPM_CI_TIMEOUT_MS = 600_000; // 10 min worst-case fresh install
 const TAIL_LINES = 50;
 // #254 — bounded retry of the sandbox SETUP chain (worktree add / config seed /
@@ -514,12 +530,16 @@ export async function runVerbTest({
     }
   }
 
-  // #973 — a `rejected` result (blocked by the security allowlist before
-  // execution) is a policy signal, not a functional failure; it must not gate
-  // promotion the same way a genuine nonzero-exit `failed` result does. The
+  // #973 — a `rejected` result whose reason is a policy-shape mismatch (see
+  // `isPolicyShapeRejection` above) must not gate promotion the same way a
+  // genuine nonzero-exit `failed` result does. A metachar/injection-vector
+  // rejection still does — it keeps `allGreen` false, matching story #137's
+  // invariant that a blocked attack payload must not report as a pass. The
   // allowlist rejection still renders with its `⚠` mark and reason in
-  // `buildResultTable` so the operator sees the VC needs rewriting.
-  const allGreen = results.length > 0 && results.every((r) => r.passed || r.rejected);
+  // `buildResultTable` so the operator sees the VC needs rewriting either way.
+  const allGreen =
+    results.length > 0 &&
+    results.every((r) => r.passed || (r.rejected && isPolicyShapeRejection(r.rejected)));
 
   if (allGreen) {
     const ts = now();
@@ -694,7 +714,9 @@ export async function verbTest(ctx) {
       process.exit(result.move?.status || 3);
     }
     case 'failed': {
-      const fails = result.results.filter((r) => !r.passed && !r.rejected).length;
+      const fails = result.results.filter(
+        (r) => !r.passed && !(r.rejected && isPolicyShapeRejection(r.rejected))
+      ).length;
       console.error(`✗ #${issueNumber} verification failed in sandbox (${fails} command(s)).`);
       process.exit(3);
     }

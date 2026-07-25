@@ -1,3 +1,4 @@
+// cspell:ignore metachar
 // @story #973
 // A VC blocked by the security allowlist (`rejected`, before execution) must
 // not be scored the same as a VC that ran and returned nonzero (`failed`).
@@ -89,6 +90,19 @@ test('runVerbTest: a genuine nonzero-exit failure alongside a rejected VC still 
     const { deps } = makeDeps();
     deps.fetchBody = async () => bodyWithVc(['npm run lint', 'npm install']);
     deps.execInSandbox = async () => ({ exit: 1, stdout: '', stderr: 'lint broke' });
+    const r = await runVerbTest({ cfg, issueNumber: 973, projectDir, deps });
+    assert.equal(r.status, 'failed');
+  });
+});
+
+// #973 — a rejection from the shell-metachar/injection scan (as opposed to a
+// per-bin shape mismatch like `npm install`) must NOT be excluded from the
+// gate. Regression guard for story #137's security invariant: a blocked
+// injection payload must still report the run as failed, not passed.
+test('runVerbTest: a metacharacter/injection-vector rejection is NOT excluded from the gate — status stays "failed"', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    deps.fetchBody = async () => bodyWithVc(['node --version', 'node x; touch PWNED']);
     const r = await runVerbTest({ cfg, issueNumber: 973, projectDir, deps });
     assert.equal(r.status, 'failed');
   });
