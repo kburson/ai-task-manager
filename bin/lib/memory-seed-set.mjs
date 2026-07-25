@@ -13,9 +13,16 @@ import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Ephemeral, non-reusable trackers excluded from the durable seed (#518).
-// Drive-tree and integrity-epic project memories are point-in-time task logs,
-// not reusable lessons — they never ship.
-export const EXCLUDE_PATTERNS = [/^project_drive_.*_tree\.md$/, /^project_integrity_epic_.*\.md$/];
+// Drive, integrity-epic, and per-epic-status project memories are
+// point-in-time task logs, not reusable lessons — they never ship.
+// project_epic_<N>_*.md is deliberately broad (not just `..._state.md`): every
+// per-epic tracker keyed by issue number — state, guardrail, or any other
+// suffix — is a point-in-time status log, never a reusable lesson.
+export const EXCLUDE_PATTERNS = [
+  /^project_drive_.*\.md$/,
+  /^project_integrity_epic_.*\.md$/,
+  /^project_epic_\d+_.*\.md$/,
+];
 
 // Meta-docs live in the seed dir but are not memory facts. MEMORY.md is the
 // always-loaded index (handled separately by the installer); EXCLUDED.md and
