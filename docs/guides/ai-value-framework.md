@@ -80,12 +80,12 @@ Size buckets for the GitHub Projects `Size` field:
 
 Two measurement fields are recorded per issue on the GitHub Projects board:
 
-| Field            | Type                     | What it captures                            |
-| ---------------- | ------------------------ | ------------------------------------------- |
-| **Session Time** | Text (`DDd HHh MMm SSs`) | Active AI-assisted session engagement       |
-| **Engaged Time** | Text (`DDd HHh MMm SSs`) | Report-ready active/review engagement total |
+| Field       | Type                     | What it captures                            |
+| ----------- | ------------------------ | ------------------------------------------- |
+| **Session** | Text (`DDd HHh MMm SSs`) | Active AI-assisted session engagement       |
+| **Engaged** | Text (`DDd HHh MMm SSs`) | Report-ready active/review engagement total |
 
-> **Unit note (#243).** The four board "actuals" fields — **Engaged Time**, **Session Time**, **Review Time**, and **Plan Time** — are GitHub Project **Text** fields holding fixed-width `DDd HHh MMm SSs` duration strings whose canonical stored unit is **integer seconds**. Zero-padding makes lexical sort equal numeric sort. Always render a second count with the shared `formatDuration(totalSeconds)` and read a board string back with `parseDuration(str)` (both in [`scripts/task-tracker/lib/duration.mjs`](../../scripts/task-tracker/lib/duration.mjs)); never hand-format or hand-parse these strings, and never treat the field as float-hours or raw minutes. `Estimate` remains a **Number** field in **hours** — it is the value denominator and is not a duration field.
+> **Unit note (#243).** The four board "actuals" fields — **Engaged**, **Session**, **Review**, and **Plan** — are GitHub Project **Text** fields holding fixed-width `DDd HHh MMm SSs` duration strings whose canonical stored unit is **integer seconds**. Zero-padding makes lexical sort equal numeric sort. Always render a second count with the shared `formatDuration(totalSeconds)` and read a board string back with `parseDuration(str)` (both in [`scripts/task-tracker/lib/duration.mjs`](../../scripts/task-tracker/lib/duration.mjs)); never hand-format or hand-parse these strings, and never treat the field as float-hours or raw minutes. `Estimate` remains a **Number** field in **hours** — it is the value denominator and is not a duration field.
 
 ### Engaged Hours formula
 
@@ -158,7 +158,7 @@ gh api graphql -f query="mutation {
   }) { projectV2Item { id } }
 }"
 
-# Set Session Time — a Text duration string `DDd HHh MMm SSs` (integer seconds,
+# Set Session — a Text duration string `DDd HHh MMm SSs` (integer seconds,
 # produced by formatDuration). Replace FIELD_ID with fieldSessionTime.
 gh api graphql -f query="mutation {
   updateProjectV2ItemFieldValue(input: {
@@ -298,11 +298,11 @@ gh api graphql -f query='
       title: .content.title,
       state: .content.state,
       estimate: (.fieldValues.nodes[] | select(.field.name == "Estimate") | .number) // null,
-      sessionTime: (.fieldValues.nodes[] | select(.field.name == "Session Time") | .text) // null,
+      sessionTime: (.fieldValues.nodes[] | select(.field.name == "Session") | .text) // null,
       status: (.fieldValues.nodes[] | select(.field.name == "Status") | .name) // null
     }
   | select(.estimate != null or .sessionTime != null)
   ]'
 ```
 
-> `Session Time` is now a Text field (`DDd HHh MMm SSs`, integer seconds); select `.text` and parse with `parseDuration` rather than reading `.number`.
+> `Session` is a Text field (`DDd HHh MMm SSs`, integer seconds); select `.text` and parse with `parseDuration` rather than reading `.number`.

@@ -23,9 +23,10 @@ const warned = new Set();
 const DISPLAY_NAMES = {
   fieldBlockedBy: 'Blocked By',
   fieldStartTime: 'Start Time',
-  fieldEngagedTime: 'Engaged Time',
-  fieldSessionTime: 'Session Time',
-  fieldReviewTime: 'Review Time',
+  fieldEngagedTime: 'Engaged',
+  fieldSessionTime: 'Session',
+  fieldReviewTime: 'Review',
+  fieldPlanTime: 'Plan',
   fieldEstimate: 'Estimate',
   fieldRank: 'Rank',
   sizeFieldId: 'Size',

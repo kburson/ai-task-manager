@@ -593,7 +593,7 @@ Then update the board fields and the `aitm-fields` block in the issue body to ma
 
 **Review delta.** When `/task close <N>` advances an issue to Done, the harness posts a read-only retrospective comment recording Estimate vs. Actual:
 
-- Reads `Estimate` (hours) and `Engaged Time` (hours) from the project board.
+- Reads `Estimate` (hours) and `Engaged` from the project board.
 - Posts a `### 📊 Review delta` comment with the Δ percentage and a footer noting that Size/Estimate are not modified.
 - If `Actual` is missing, the cells render as `—` and a fallback note is included; no crash.
 
@@ -723,7 +723,7 @@ When the user says **"cleanup"**, execute in order:
 
 1. **Update docs** — update any `docs/` files that reflect this session's work.
 
-2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Session Time` and `Engaged Time` fields on the board. Open follow-on issues; close completed ones with a resolution comment.
+2. **Update GitHub issues** — for completed issues, post a session log comment using the template in `docs/guides/ai-value-framework.md`. Set `Session` and `Engaged` fields on the board. Open follow-on issues; close completed ones with a resolution comment.
 
 3. **Commit** — stage all changes and commit with a descriptive message referencing issue numbers.
 
@@ -799,8 +799,8 @@ Re-running on a healed body is a no-op: encoding is already canonical, timing fi
 
 At issue close, set these two fields on the GitHub Projects board:
 
-- **Session Time** — total active AI session minutes across all sessions touching this issue.
-- **Engaged Time** — session time plus review-time adjustments used by reports.
+- **Session** — total active AI session time across all sessions touching this issue.
+- **Engaged** — session time plus review-time adjustments used by reports.
 
 The `/task end` command (or `scripts/gh/move-state.mjs <N> done`) handles this automatically when the task skill is active. If closing without the skill, set both fields manually via the GraphQL mutations in `docs/guides/ai-value-framework.md`.
 

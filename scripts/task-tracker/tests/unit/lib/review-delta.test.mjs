@@ -103,7 +103,7 @@ import {
     /\| Story effort \| 00d 08h 00m 00s \| — \| — \|/,
     'em-dash cells when actual missing'
   );
-  assert.match(body, /Actual Session Time.*not set/, 'fallback note present');
+  assert.match(body, /Session.*not set/, 'fallback note present');
   assert.ok(body.endsWith(DELTA_READ_ONLY_FOOTER));
 }
 

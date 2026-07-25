@@ -98,7 +98,7 @@ export function buildDeltaCommentBody(result, { drivers } = {}) {
 
   if (!result.hasActual) {
     lines.push('');
-    lines.push('_`Actual Session Time` was not set on the project board — delta unavailable._');
+    lines.push('_`Session` was not set on the project board — delta unavailable._');
   }
 
   lines.push('');

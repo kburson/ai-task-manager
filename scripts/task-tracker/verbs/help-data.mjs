@@ -509,7 +509,7 @@ export const VERB_REFERENCE = {
   },
   log: {
     topic: 'meta',
-    summary: 'Re-compute and write Engaged/Session Time for an issue.',
+    summary: 'Re-compute and write Engaged/Session/Review/Plan for an issue.',
     usage: '/task log #N',
     examples: ['/task log 667'],
   },

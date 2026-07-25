@@ -138,7 +138,7 @@ export function applyPauseSpansToRows(rows, body) {
 //
 // #692 — the previous implementation keyed on the retired `move:plan`
 // vocabulary that #516 renamed away, so `planMin` was 0 for every post-#516
-// log and the board "Plan Time" field never populated. It now reads the
+// log and the board "Plan" field never populated. It now reads the
 // uniform `<state>:<event>` vocabulary from PHASE_EVENTS. Pause/resume and
 // ad-hoc rows are NOT boundaries, so a mid-plan pause never truncates a window.
 //
