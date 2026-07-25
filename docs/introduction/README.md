@@ -10,7 +10,7 @@ If you are adopting AI coding agents in a real project, this package gives you t
 
 Prerequisites:
 
-- Node.js 18 or newer
+- Node.js 22 or newer
 - GitHub CLI authenticated with `gh auth login`
 - `jq`
 - A GitHub repository and a GitHub Projects V2 board, or permission to create one during setup
