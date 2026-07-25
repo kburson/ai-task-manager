@@ -134,9 +134,10 @@ const BIN_RULES = {
   // would be ideal but for now leave pass-through. Document as follow-up.
   npx: { allowPassthrough: true },
 
-  // `grep`: read-only text search. Common AC evidence command ("file contains
-  // line X"). No destructive flags exist; pass-through.
+  // `grep` / `rg`: read-only text search. Common AC evidence command ("file
+  // contains line X"). No destructive flags exist; pass-through.
   grep: { allowPassthrough: true },
+  rg: { allowPassthrough: true },
 
   // `test` / `[`: POSIX file-test predicates. Side-effect-free evidence checks
   // ("file exists / is executable"). No destructive subforms; the top-level

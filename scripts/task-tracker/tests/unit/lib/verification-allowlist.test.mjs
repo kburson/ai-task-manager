@@ -202,6 +202,8 @@ const canonicalCases = [
   'make build',
   'grep -n "foo" bar.txt',
   'grep -rn "pattern" scripts/',
+  "rg -n 'Node 25' scripts/dev-env/setup-cloud.sh",
+  "rg -n 'Node.js 22' README.md docs/guides/cloud-development-environments.md",
 ];
 for (const input of canonicalCases) {
   const r = validateVerificationCommand(input, opts);
