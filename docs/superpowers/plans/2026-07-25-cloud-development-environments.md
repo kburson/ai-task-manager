@@ -155,12 +155,14 @@ else
   warn "origin/trunk not found; history-sensitive tests may need the repository trunk ref configured"
 fi
 
-if git rev-parse --is-shallow-repository >/tmp/aitm-shallow-state 2>/dev/null; then
-  if [ "$(cat /tmp/aitm-shallow-state)" = "true" ]; then
+mkdir -p .tmp/aitm
+shallow_state=".tmp/aitm/cloud-maintenance-shallow-state"
+if git rev-parse --is-shallow-repository >"$shallow_state" 2>/dev/null; then
+  if [ "$(cat "$shallow_state")" = "true" ]; then
     log "Repository is shallow; fetching full history for git-history tests"
     git fetch --unshallow origin
   fi
-  rm -f /tmp/aitm-shallow-state
+  rm -f "$shallow_state"
 fi
 
 log "Refreshing npm dependencies from package-lock.json"
