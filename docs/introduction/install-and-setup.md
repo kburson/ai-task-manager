@@ -6,7 +6,7 @@ This guide gets AI Task Manager running inside a local project and explains what
 
 Install these before running the package:
 
-- Node.js 18 or newer
+- Node.js 22 or newer
 - GitHub CLI, authenticated with `gh auth login`
 - `jq`
 - Git

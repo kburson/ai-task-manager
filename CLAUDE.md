@@ -2,7 +2,7 @@
 
 ## What This Repo Is
 
-An npm package that installs the `/task` Claude Code skill into any project. The skill binds Claude sessions to GitHub issues and auto-logs time + context words to a "⏱ Timing Log" comment on each issue. Requires Node.js v18+ (ES modules) and the GitHub CLI (`gh`).
+An npm package that installs the `/task` Claude Code skill into any project. The skill binds Claude sessions to GitHub issues and auto-logs time + context words to a "⏱ Timing Log" comment on each issue. Requires Node.js v22+ (ES modules) and the GitHub CLI (`gh`). Node 25 is preferred for cloud development environments.
 
 ## Behavior
 

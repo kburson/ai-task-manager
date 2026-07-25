@@ -26,7 +26,7 @@ As soon as the shape of the skill is stabilized we will publish it as an npm pac
 
 ### Prerequisites
 
-- **Node.js 18+**
+- **Node.js 22+** — minimum supported runtime; Node 25 is preferred for cloud development environments
 - **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
 - **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
 - **Claude Code and/or Codex** — install whichever agent you plan to use
