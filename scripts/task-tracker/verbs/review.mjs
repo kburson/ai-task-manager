@@ -6,9 +6,10 @@ import { parseTestStartedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
-import { parseProofMarker, hasExecutionProof } from '../lib/proof-marker.mjs';
+import { parseProofMarker, hasExecutionProof, unescapeValue } from '../lib/proof-marker.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { resolveVcRefCommands } from '../lib/vc-ref.mjs';
+import { stripMarkers } from '../lib/ac-evidence.mjs';
 import { postTimingEvent, buildRow, buildFlushRow } from '../gh-timing-comment.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
@@ -29,6 +30,24 @@ import {
   stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
+
+// #975 — a VC-section checkbox legitimately ticked via the honest
+// `--allow-unverified-ticks` hatch (#567, `check.mjs`'s `ensureChecked`) is
+// recorded as a trailing `aitm-unverified-tick label="..." ts="..."` marker
+// appended to the END of the body, not inline on the checkbox line — it is
+// deliberately NOT in the `aitm-verified*` proof family, so it never poses as
+// machine evidence. `label` is already `stripMarkers`-stripped by
+// `appendUnverifiedTickAudit` at write time; callers must strip the same way
+// before comparing.
+export function extractUnverifiedTickLabels(rawBody) {
+  const labels = new Set();
+  const re = /<!--\s*aitm-unverified-tick\s+label="([^"]*)"[^>]*-->/g;
+  let m;
+  while ((m = re.exec(String(rawBody || '')))) {
+    labels.add(unescapeValue(m[1]));
+  }
+  return labels;
+}
 
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
 // bound at CALL time (the post site, after runMoveState emits test:passed +
@@ -514,8 +533,19 @@ export async function verbReview(ctx) {
       }
     }
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
+    const unverifiedTickLabels = extractUnverifiedTickLabels(rawBody);
     for (const cb of checkboxes) {
       if (cb.command) {
+        // #975 — an honestly-ticked, categorically non-machine-runnable
+        // command (the `--allow-unverified-ticks` hatch) must not be
+        // re-validated against the sandbox allowlist and demoted as a
+        // regression; trust the audited tick the same way #481 trusts a
+        // sandbox-stamped proof marker, so AC lines citing this VC as
+        // evidence don't cascade into false regressions either.
+        if (cb.checked && unverifiedTickLabels.has(stripMarkers(cb.label))) {
+          commandResults.set(cb.command, true);
+          continue;
+        }
         const validation = validateVerificationCommand(cb.command, { projectDir });
         if (!validation.ok) {
           commandResults.set(cb.command, false);
