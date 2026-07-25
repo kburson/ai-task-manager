@@ -48,12 +48,24 @@ export function spawnsSubprocess(src) {
 }
 
 /**
+ * Explicit per-file opt-out for a test that spawns a subprocess *transitively*,
+ * through an imported helper — invisible to `SUBPROCESS_RE`'s own-source scan
+ * (#974). Mirrors the codebase's existing `@story`/`cspell:ignore` per-file
+ * marker convention: cheap, explicit, grep-able at the point of use, rather than
+ * walking the full transitive import graph for one known offender at a time.
+ */
+export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
+
+/**
  * Is this test file safe to run inside the bounded parallel pool?
  *
  * Pure in-process tests are safe; subprocess-spawning tests are not (they must
  * run serially so their children are not CPU-starved). A file that cannot be read
  * is treated as UNSAFE — unknown provenance defaults to the serial phase rather
- * than risk a flake.
+ * than risk a flake. A file carrying the `@parallel-unsafe` marker is always
+ * treated as UNSAFE, independent of `SUBPROCESS_RE` — it declares a hazard the
+ * own-source scan cannot see (e.g. a transitive subprocess spawn via an imported
+ * helper).
  *
  * @param {string} fullPath - absolute path to the `*.test.mjs` file
  * @param {(p: string, enc: string) => string} [read] - injectable reader (tests)
@@ -66,5 +78,6 @@ export function isParallelSafe(fullPath, read = readFileSync) {
   } catch {
     return false;
   }
+  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return false;
   return !spawnsSubprocess(src);
 }

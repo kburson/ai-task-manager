@@ -11,6 +11,7 @@ import {
   spawnsSubprocess,
   isParallelSafe,
   SUBPROCESS_RE,
+  PARALLEL_UNSAFE_MARKER_RE,
 } from '../../../lib/test-parallel-safety.mjs';
 
 test('spawnsSubprocess flags every child_process reference shape', () => {
@@ -54,4 +55,27 @@ test('isParallelSafe: unreadable file defaults to UNSAFE (serial)', () => {
     throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   };
   assert.equal(isParallelSafe('/x/missing.test.mjs', read), false);
+});
+
+test('PARALLEL_UNSAFE_MARKER_RE is exported for reuse', () => {
+  assert.ok(PARALLEL_UNSAFE_MARKER_RE instanceof RegExp);
+});
+
+test('isParallelSafe: @parallel-unsafe-marked file runs serial, even with no child_process reference (#974)', () => {
+  const read = () =>
+    [
+      '// @parallel-unsafe (spawns transitively via an imported helper)',
+      "import { test } from 'node:test';",
+    ].join('\n');
+  assert.equal(isParallelSafe('/x/coverage-reconcile.test.mjs', read), false);
+});
+
+test('isParallelSafe: unmarked pure file is still pool-eligible (regression guard)', () => {
+  const read = () => "import assert from 'node:assert/strict';";
+  assert.equal(isParallelSafe('/x/still-pure.test.mjs', read), true);
+});
+
+test('isParallelSafe: unmarked SUBPROCESS_RE-matching file is still serial (regression guard)', () => {
+  const read = () => "import { execFileSync } from 'node:child_process';";
+  assert.equal(isParallelSafe('/x/still-subprocess.test.mjs', read), false);
 });
