@@ -36,6 +36,9 @@ import {
   filesForMode,
   writeMemorySeed,
 } from './lib/memory-seed-install.mjs';
+import { classifySeed } from './lib/memory-resync-classify.mjs';
+import { applyResync } from './lib/memory-resync-apply.mjs';
+import { runInteractive, STATUS_ORDER, STATUS_LABELS } from './lib/memory-resync-render.mjs';
 import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
@@ -1222,6 +1225,59 @@ export async function configurePreferences({ targetDir, ask, log = console.log }
   return updated;
 }
 
+// #978 — post-upgrade resync of the installed memory seed against the
+// (possibly newer) upstream package copy. `--dry-run`/`--list` and any
+// non-TTY invocation print the classification and make no filesystem
+// changes; a real TTY with neither flag drives the interactive picker.
+function printResyncSummary(classification) {
+  for (const status of STATUS_ORDER) {
+    const files = classification.filter((c) => c.status === status);
+    if (!files.length) continue;
+    console.log(`\n  ${STATUS_LABELS[status]}:`);
+    for (const { file } of files) console.log(`    ${file}`);
+  }
+  if (!classification.length) console.log('  (no seed files found)');
+}
+
+async function cmdMemoryResync(args) {
+  let targetDir = process.cwd();
+  const targetArg = parseOption(args, '--target');
+  if (targetArg) targetDir = resolve(targetArg);
+
+  const seedDir = join(PKG_ROOT, 'docs', 'ai-memory');
+  const memoryDir = join(targetDir, '.ai-task-manager', 'memory');
+
+  const nonInteractive = hasFlag(args, '--dry-run') || hasFlag(args, '--list');
+  const isTty = Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY);
+
+  const classification = classifySeed({ seedDir, memoryDir });
+
+  if (nonInteractive || !isTty) {
+    banner('Memory seed resync', `target: ${memoryDir}`);
+    printResyncSummary(classification);
+    return;
+  }
+
+  banner('Memory seed resync', `target: ${memoryDir}`);
+  const decisions = await runInteractive({
+    classification,
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  if (!decisions) {
+    ok(`Resync ${dim('cancelled — no changes made')}`);
+    return;
+  }
+
+  const { copied, removed } = applyResync({ seedDir, memoryDir, classification, decisions });
+  ok(
+    copied.length || removed.length
+      ? `Resync ${dim(`${copied.length} updated, ${removed.length} removed`)}`
+      : `Resync ${dim('(no changes selected)')}`
+  );
+}
+
 async function cmdConfigurePreferences(args) {
   let targetDir = process.cwd();
   const targetArg = parseOption(args, '--target');
@@ -1284,6 +1340,12 @@ if (invokedDirectly)
         process.exit(1);
       }
       break;
+    case 'memory-resync':
+      cmdMemoryResync(rest).catch((e) => {
+        err(e.message);
+        process.exit(1);
+      });
+      break;
     default:
       console.log(`
 ${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
@@ -1296,6 +1358,7 @@ ${bold('  Usage')}
     ${cyan('npx ai-task-manager repair')}     ${dim('[--target <dir>] Backfill empty kanbanOption* fields in existing config')}
     ${cyan('npx ai-task-manager statusline')}              ${dim('Install Claude Code status line')}
     ${cyan('npx ai-task-manager configure preferences')}  ${dim('Interactive team-workflow preferences editor')}
+    ${cyan('npx ai-task-manager memory-resync')}          ${dim('[--target <dir>] [--dry-run | --list] Resync installed memory seed against upstream')}
     ${cyan('npx ai-task-manager version')}                ${dim('Print version')}
 
 ${bold('  Quickstart')}

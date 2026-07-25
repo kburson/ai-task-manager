@@ -128,6 +128,30 @@ repo-only / CI-safe (it needs no maintainer `$HOME` memory dir). It fails the bu
 file, or a durable seed file absent from the index. This catches a hand-edited seed that
 forgot to update the index; it deliberately does **not** reach into live memory.
 
+## Post-upgrade resync (`memory-resync`, #978)
+
+Install-time acceptance (above) is a one-shot decision: the seed a project accepted at
+`ai-task-manager install` time never updates itself as the upstream package publishes new
+or revised lessons. `npx ai-task-manager memory-resync` is the supported way to bring an
+already-installed `.ai-task-manager/memory/` back in sync with the upgraded package's seed
+without silently clobbering a user's own edits.
+
+- Classifies every durable seed file into `new` (upstream-only), `changed` (upstream
+  updated it, local copy untouched since last accept), `unchanged`, `locally-modified`
+  (the local copy diverges from what was last accepted, so upstream's diff is never
+  auto-applied), or `deprecated` (local-only, no longer shipped upstream).
+- The distinction between `changed` and `locally-modified` is made against a per-file
+  content-hash baseline (`.ai-task-manager/memory/.seed-state.json`) recorded whenever a
+  file is accepted — install-time or resync-time — so a user's own edit is never mistaken
+  for a safe upstream update. A file with no recorded baseline (pre-#978 installs)
+  conservatively classifies as `locally-modified` rather than assuming it is safe to
+  overwrite.
+- Interactive mode (real TTY, no flags) opens an `npm-check`-style scrollable list grouped
+  by status; space toggles accept/skip (or keep/remove for deprecated files), enter
+  applies the confirmed decisions atomically, escape cancels with no changes made.
+- `--dry-run` / `--list`, or any non-TTY invocation, print the classification only —
+  zero filesystem changes — for scripting and CI use.
+
 ## Build status
 
 Per #518 AC-5, the mechanism _build_ (package.json#files change, manifest group, install-menu
