@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Read an issue's ⏱ Timing Log comment, compute totals, and write them to GitHub Projects V2.
 //
-// Engaged Time / Session Time = sum of all Active Min rows until richer Codex
+// Engaged / Session = sum of all Active Min rows until richer Codex
 // engagement metrics are available.
 //
 // Usage: node log-issue-time.mjs <issue#> [--dry-run]
+
+import { pathToFileURL } from 'node:url';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
@@ -26,32 +28,46 @@ import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
-const args = process.argv.slice(2);
-if (wantsHelp(args)) {
-  emitSelfDoc('log-issue-time');
-  process.exit(0);
-}
-const issueArg = args.find((a) => /^#?\d+$/.test(a));
-const dryRun = args.includes('--dry-run');
+export const DURATION_FIELD_LABELS = {
+  engagedTime: 'Engaged',
+  sessionTime: 'Session',
+  reviewTime: 'Review',
+  planTime: 'Plan',
+};
 
-if (!issueArg) {
-  console.error('Usage: node log-issue-time.mjs <issue#> [--dry-run]');
-  process.exit(1);
-}
+const DURATION_FIELD_ALIASES = {
+  engagedTime: ['Engaged Time', 'Actual Hours'],
+  sessionTime: ['Session Time', 'Actual Session Time'],
+  reviewTime: ['Review Time'],
+  planTime: ['Plan Time'],
+};
 
-const issueNumber = issueArg.replace('#', '');
-const cfg = loadConfig();
-
-if (!cfg.repo) {
-  console.error('repo not configured. Run: /task config repo owner/repo');
-  process.exit(1);
-}
-if (!cfg.projectId) {
-  console.error('projectId not configured. Run: npx ai-task-manager init');
-  process.exit(1);
+export function durationFieldLookupNames(key) {
+  const label = DURATION_FIELD_LABELS[key];
+  if (!label) return [];
+  return [label, ...(DURATION_FIELD_ALIASES[key] || [])];
 }
 
-const { owner, repoName } = splitRepo(cfg.repo);
+export function formatRollupSummaryLines({
+  engagedMin,
+  totalActiveMin,
+  reviewMin,
+  planMin,
+  thresholdMin,
+} = {}) {
+  return [
+    `  ${DURATION_FIELD_LABELS.engagedTime.padEnd(19)}: ${engagedMin} min  (active ${totalActiveMin} + review ${reviewMin})`,
+    `  ${DURATION_FIELD_LABELS.sessionTime.padEnd(19)}: ${totalActiveMin} min`,
+    `  ${DURATION_FIELD_LABELS.reviewTime.padEnd(19)}: ${reviewMin} min  (threshold ${thresholdMin} min)`,
+    `  ${DURATION_FIELD_LABELS.planTime.padEnd(19)}: ${planMin} min`,
+  ];
+}
+
+let issueNumber = '';
+let dryRun = false;
+let cfg = null;
+let owner = '';
+let repoName = '';
 
 async function fetchIssueBody() {
   const out = await gh(['issue', 'view', issueNumber, '-R', cfg.repo, '--json', 'body']);
@@ -99,20 +115,21 @@ async function fetchProjectMeta() {
 
   const engagedField = cfg.fieldEngagedTime
     ? { id: cfg.fieldEngagedTime }
-    : fieldByName('Engaged Time', 'Actual Hours');
+    : fieldByName(...durationFieldLookupNames('engagedTime'));
   const sessionField = cfg.fieldSessionTime
     ? { id: cfg.fieldSessionTime }
-    : fieldByName('Session Time', 'Actual Session Time');
+    : fieldByName(...durationFieldLookupNames('sessionTime'));
   const reviewField = fieldIdFor(cfg, 'reviewTime')
     ? { id: fieldIdFor(cfg, 'reviewTime') }
-    : fieldByName('Review Time');
+    : fieldByName(...durationFieldLookupNames('reviewTime'));
   const planField = fieldIdFor(cfg, 'planTime')
     ? { id: fieldIdFor(cfg, 'planTime') }
-    : fieldByName('Plan Time');
+    : fieldByName(...durationFieldLookupNames('planTime'));
   const startTimeField = cfg.fieldStartTime
     ? { id: cfg.fieldStartTime }
     : fieldByName('Start time');
-  if (!sessionField) throw new Error('Field "Session Time" not found on project');
+  if (!sessionField)
+    throw new Error(`Field "${DURATION_FIELD_LABELS.sessionTime}" not found on project`);
 
   return {
     itemId: itemNode.id,
@@ -126,7 +143,33 @@ async function fetchProjectMeta() {
 
 // ---- Main ----
 
-(async () => {
+export async function main(argv = process.argv.slice(2)) {
+  if (wantsHelp(argv)) {
+    emitSelfDoc('log-issue-time');
+    return 0;
+  }
+  const issueArg = argv.find((a) => /^#?\d+$/.test(a));
+  dryRun = argv.includes('--dry-run');
+
+  if (!issueArg) {
+    console.error('Usage: node log-issue-time.mjs <issue#> [--dry-run]');
+    return 1;
+  }
+
+  issueNumber = issueArg.replace('#', '');
+  cfg = loadConfig();
+
+  if (!cfg.repo) {
+    console.error('repo not configured. Run: /task config repo owner/repo');
+    return 1;
+  }
+  if (!cfg.projectId) {
+    console.error('projectId not configured. Run: npx ai-task-manager init');
+    return 1;
+  }
+
+  ({ owner, repoName } = splitRepo(cfg.repo));
+
   const comment = await fetchTimingComment();
   if (!comment) {
     // Not an error condition: an issue with no timing rows is a legitimate
@@ -135,7 +178,7 @@ async function fetchProjectMeta() {
     // failures. The close-path body-marker assertion (#180) will catch the
     // resulting null engagedTime at the appropriate layer.
     console.error(`No ⏱ Timing Log comment found on issue #${issueNumber}`);
-    process.exit(0);
+    return 0;
   }
 
   const rows = parseTimingRows(comment.body);
@@ -159,16 +202,19 @@ async function fetchProjectMeta() {
 
   if (rowCount === 0) {
     console.error('Timing comment found but contains no data rows');
-    process.exit(1);
+    return 1;
   }
 
   console.log(`Issue #${issueNumber}: ${rowCount} timing rows`);
-  console.log(
-    `  Engaged Time        : ${engagedMin} min  (active ${totalActiveMin} + review ${reviewMin})`
-  );
-  console.log(`  Session Time        : ${totalActiveMin} min`);
-  console.log(`  Review Time         : ${reviewMin} min  (threshold ${thresholdMin} min)`);
-  console.log(`  Plan Time           : ${planMin} min`);
+  for (const line of formatRollupSummaryLines({
+    engagedMin,
+    totalActiveMin,
+    reviewMin,
+    planMin,
+    thresholdMin,
+  })) {
+    console.log(line);
+  }
 
   const stageRollup = computeStageDurations(issueBodyForPauses);
   if (stageRollup.visits.length) {
@@ -187,7 +233,7 @@ async function fetchProjectMeta() {
     const startTimestamp = firstStartTimestamp(comment.body);
     if (startTimestamp) console.log(`  Start Time (from log): ${startTimestamp}`);
     console.log('Dry run — no writes performed.');
-    process.exit(0);
+    return 0;
   }
 
   const { itemId, startTimeFieldId } = await fetchProjectMeta();
@@ -269,7 +315,20 @@ async function fetchProjectMeta() {
   }
 
   console.log('Fields updated on GitHub Projects board.');
-})().catch((err) => {
-  console.error(`log-issue-time: ${err.message}`);
-  process.exit(1);
-});
+  return 0;
+}
+
+function isCliEntry() {
+  return process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+}
+
+if (isCliEntry()) {
+  main()
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((err) => {
+      console.error(`log-issue-time: ${err.message}`);
+      process.exitCode = 1;
+    });
+}

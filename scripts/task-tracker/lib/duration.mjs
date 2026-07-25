@@ -1,7 +1,7 @@
 // Duration unit helpers for board timing fields.
 //
-// CURRENT MODEL (#397/#398/#399): the four board "actuals" fields (Engaged
-// Time, Session Time, Review Time, Plan Time) are TEXT fields holding fixed-
+// CURRENT MODEL (#397/#398/#399): the four board "actuals" fields (Engaged,
+// Session, Review, Plan) are TEXT fields holding fixed-
 // width `DDd HHh MMm SSs` duration strings whose canonical unit is integer
 // SECONDS. Use `formatDuration`/`parseDuration` (below) for all board reads and
 // writes. Downstream consumers were migrated to this representation in #243.

@@ -388,6 +388,19 @@ test('a review:failed audit row is exempt from entered-marker reconciliation (#8
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
+test('a test:failed sandbox audit row permits canonical test→develop demotion', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    [T(1), 'develop:completed'],
+    [T(2), 'test:started'],
+    [T(3), 'test:failed'],
+    [T(4), 'demoted:develop'],
+    [T(5), 'develop:started'],
+  ];
+  const res = validate(logCtx(rows, entered('develop', 'test')));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
 test('non-lifecycle qualified slugs (switch-out:#N, issue:wrap) are not reconciled', () => {
   const rows = [
     [T(0), 'start'],

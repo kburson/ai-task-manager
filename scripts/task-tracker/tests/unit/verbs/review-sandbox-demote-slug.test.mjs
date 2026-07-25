@@ -1,4 +1,4 @@
-// @story #844 (D6 — sandbox-verify-fail demote emits review:failed, not bare develop)
+// @story #844 (D6 — sandbox-verify-fail demote emits test:failed, not bare develop)
 // #844 (D6) — the review verb has TWO demote-to-Develop paths. The gate-objection
 // path (fixed by #831, guarded by review-verb-timing-order.test.mjs) emits a
 // V3-legal `review:failed` audit row and demotes with `--demote`. The
@@ -6,8 +6,9 @@
 // slug (which V3 `timing-log-sequence` rejects as `malformed — unknown event
 // slug "develop"`) and demoting WITHOUT `--demote` — permanently failing the
 // Agent Review Gate on any issue whose Review-stage re-verify failed (the live
-// #823 stranding). These tests pin the corrected emission so the bare-`develop`
-// regression cannot return.
+// #823 stranding). These tests pin the corrected Test-stage failure emission so
+// the bare-`develop` regression cannot return and a failed sandbox run is not
+// misclassified as an Agent Review failure.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -35,7 +36,7 @@ function drive() {
   return { posted, moves, deps };
 }
 
-test('sandbox-verify-fail: emits a `review:failed` audit slug, never a bare `develop`', async () => {
+test('sandbox-verify-fail: emits a `test:failed` audit slug, never a bare `develop` or `review:failed`', async () => {
   const { posted, moves, deps } = drive();
   await emitSandboxVerificationFailureTimeline({
     target: '#844',
@@ -45,10 +46,14 @@ test('sandbox-verify-fail: emits a `review:failed` audit slug, never a bare `dev
     deps,
   });
 
-  assert.deepEqual(posted, ['review:failed'], 'the audit row event must be review:failed');
+  assert.deepEqual(posted, ['test:failed'], 'the audit row event must be test:failed');
   assert.ok(
     !posted.includes('develop'),
     'a bare `develop` ladder slug must never be emitted (V3-malformed, blocks the gate)'
+  );
+  assert.ok(
+    !posted.includes('review:failed'),
+    'sandbox verification failure happens before Test→Review and must not emit review:failed'
   );
   // The demote move is present exactly once.
   const demoteMoves = moves.filter((m) => m.state === 'develop');
@@ -82,9 +87,9 @@ test('sandbox-verify-fail: the produced audit slug is accepted by V3 timing-log-
     wordMarker: 0,
     deps,
   });
-  const producedSlug = posted[0]; // 'review:failed'
+  const producedSlug = posted[0]; // 'test:failed'
 
-  // Build a minimal, V3-legal timing log that walks develop → test → review,
+  // Build a minimal, V3-legal timing log that walks develop → test,
   // then splices the produced audit slug (an audit row does not move the walk)
   // followed by the canonical demote back to develop.
   const makeLog = (auditSlug) =>
@@ -96,8 +101,6 @@ test('sandbox-verify-fail: the produced audit slug is accepted by V3 timing-log-
       '| 2026-07-16T00:00:00.000Z | develop:started | 0h 00m 00s | 0h | 0 | start development |',
       '| 2026-07-16T00:00:01.000Z | develop:completed | 0h 00m 01s | 0h | 0 | development complete |',
       '| 2026-07-16T00:00:01.000Z | test:started | 0h 00m 00s | 0h | 0 | start testing |',
-      '| 2026-07-16T00:00:02.000Z | test:passed | 0h 00m 01s | 0h | 0 | testing complete |',
-      '| 2026-07-16T00:00:02.000Z | review:started | 0h 00m 00s | 0h | 0 | start review |',
       `| 2026-07-16T00:00:03.000Z | ${auditSlug} | 0h 00m 01s | 0h | 0 | sandbox verification failed, reverted to Develop |`,
       '| 2026-07-16T00:00:04.000Z | demoted:develop | 0h 00m 01s | 0h | 0 | reverted to develop |',
       '| 2026-07-16T00:00:04.000Z | develop:started | 0h 00m 00s | 0h | 0 | start development |',
@@ -106,7 +109,7 @@ test('sandbox-verify-fail: the produced audit slug is accepted by V3 timing-log-
   const context = {
     comments: [{ body: makeLog(producedSlug) }],
     markers: {
-      enteredStages: [{ stage: 'develop' }, { stage: 'test' }, { stage: 'review' }],
+      enteredStages: [{ stage: 'develop' }, { stage: 'test' }],
     },
   };
   const res = validateTimingSequence(context);

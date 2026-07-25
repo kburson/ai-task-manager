@@ -87,7 +87,7 @@ function buildDeps({
     /\| Story effort \| 00d 16h 00m 00s \| — \| — \|/,
     'em-dash cells when actual missing'
   );
-  assert.match(c, /Actual Session Time.*not set/i, 'fallback note present');
+  assert.match(c, /Session.*not set/i, 'fallback note present');
 }
 
 // Test 3: TASK_TRACKER_SKIP_DELTA=1 bypass.

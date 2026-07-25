@@ -24,7 +24,7 @@ A project-local AI agent skill that binds the active work session to a specific 
 /task pause             Soft-stop — flushes timing, keeps task as "last active"
 /task update [message]  Checkpoint — flush timing, reset counters, keep task active
 /task close             Hard-stop — flush, update board fields, move to Done
-/task log #N            Re-compute and write Engaged Time and Session Time to GitHub Projects
+/task log #N            Re-compute and write Engaged, Session, Review, and Plan to GitHub Projects
 /task ensureChecked "<label>"    Ensure a checkbox is ticked (idempotent, never unticks; exact label match)
 /task ensureUnchecked "<label>"  Ensure a checkbox is unticked (idempotent, never ticks; exact label match)
 /task fleet             Show all active tasks across parallel agent worktrees
@@ -71,7 +71,7 @@ A project-local AI agent skill that binds the active work session to a specific 
 
 ### `/task log #N`
 
-- Reads the issue's `⏱ Timing Log` comment and computes `Session Time` and `Engaged Time`.
+- Reads the issue's `⏱ Timing Log` comment and computes `Session`, `Engaged`, `Review`, and `Plan`.
 - Writes those values to the GitHub Projects V2 board via `updateProjectV2ItemFieldValue` mutation.
 - Field IDs are looked up by name at runtime — no extra config required.
 - Called automatically by `/task end`. Run manually for issues closed without the skill active.
@@ -231,7 +231,7 @@ Column semantics:
 
 On each event, the skill pulls the current comment, appends a row, and replaces via GraphQL mutation.
 
-When a task review/log/close path flushes timing, the skill updates the Projects V2 fields (`Session Time` and `Engaged Time`) with the cumulative totals.
+When a task review/log/close path flushes timing, the skill updates the Projects V2 fields (`Session`, `Engaged`, `Review`, and `Plan`) with the cumulative totals.
 
 ## Hook Behavior
 

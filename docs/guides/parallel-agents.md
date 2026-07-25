@@ -194,7 +194,7 @@ The canonical user-facing surface for state transitions is:
 The timing log is append-only and reflects only real-time pause/resume events. Gaps stay as gaps.
 
 - A blocking question pauses the timer: `/task pause "pause for question"` before asking; `/task start "question answered"` on resume.
-- Agents that wake from a long idle do NOT backfill the gap. The rollup classifies short pauses (`≤ reviewPauseThresholdMin`) as Review Time; longer gaps are excluded from Engaged Time. Both are correct outcomes — fabricating "I was thinking during those 47 minutes" is not.
+- Agents that wake from a long idle do NOT backfill the gap. The rollup classifies short pauses (`≤ reviewPauseThresholdMin`) as Review; longer gaps are excluded from Engaged. Both are correct outcomes — fabricating "I was thinking during those 47 minutes" is not.
 - Editing past timing-log rows is a guardrail violation. If a row is genuinely wrong (e.g. stuck-timer recovery), use `/task reconcile` — never hand-edit.
 
 ---
