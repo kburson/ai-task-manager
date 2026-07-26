@@ -29,6 +29,7 @@ import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mj
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 
@@ -214,11 +215,25 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
   // #295 — post-move stamp via mutateIssueBody closure; the helper re-fetches
   // the FRESH base inside the closure, so a concurrent writer between move
   // and stamp is preserved.
+  //
+  // #932 — the evidence-invalidation strip rides in the SAME closure as the
+  // state-recording write, so a crash between "board moved" and "evidence
+  // stripped" can't leave the two out of sync (both land in one push, or
+  // neither does). `invalidated` is captured via closure since the retry
+  // helper only returns write-status, not the mutate closure's side data; the
+  // closure may run more than once on a version-conflict retry, but
+  // `invalidateEvidence` is idempotent so the last-observed list is correct.
+  let invalidated = [];
   await writeIssueBodyWithRetry({
     issueNumber,
     repo: cfg.repo,
     target: DEMOTE_TARGET,
-    mutate: (base) => writeLastKnownState(base, DEMOTE_TARGET),
+    mutate: (base) => {
+      const withState = writeLastKnownState(base, DEMOTE_TARGET);
+      const stripped = invalidateEvidence(withState);
+      invalidated = stripped.invalidated;
+      return stripped.body;
+    },
     deps: { mutateIssueBody: mutateBody },
   });
   // #128 — paired `demoted` + `<target>:enter` rows are emitted at the
@@ -226,7 +241,7 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
   // `move:<target>` audit row was redundant with that pair and is
   // intentionally removed.
 
-  return { status: 'demoted', from: recorded, to: DEMOTE_TARGET, bootstrapped };
+  return { status: 'demoted', from: recorded, to: DEMOTE_TARGET, bootstrapped, invalidated };
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +292,14 @@ export async function verbDemote(rest, cfg, deps = {}) {
           (result.bootstrapped ? ' (bootstrap: lastKnownState was empty)' : '') +
           '\n'
       );
+      if (result.invalidated && result.invalidated.length) {
+        process.stdout.write(
+          `  evidence invalidated (${result.invalidated.length} item(s) — will re-verify on next promote):\n`
+        );
+        for (const label of result.invalidated) {
+          process.stdout.write(`   - ${label}\n`);
+        }
+      }
       return;
     }
     case 'drift-refused': {
