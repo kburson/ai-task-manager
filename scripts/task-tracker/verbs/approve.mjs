@@ -173,7 +173,7 @@ export function detectFullAuto({ env = process.env, tty = process.stdin?.isTTY }
   return { fired: true, signals: parts.join(',') };
 }
 
-export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {}) {
+export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, human = false } = {}) {
   if (!issueNumber) throw new Error('approve: issueNumber is required');
   if (!cfg) throw new Error('approve: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
@@ -222,7 +222,20 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
         };
       }
       const ts = nowIso();
-      const auto = detect();
+      // #979 — env-only Full-Auto detection misclassifies a genuinely
+      // human-approved review whenever `TASK_TRACKER_HUMAN_REVIEWER` is
+      // unset. Two independent signals prove a human already reviewed this
+      // issue regardless of env/tty/CI state: the "Passed final human
+      // review" lifecycle box was already ticked (GitHub-UI approval before
+      // approve ran), or the caller passed `--human` (chat-relayed approval
+      // that never touched the UI). Either short-circuits `detect()` so the
+      // marker/footnote stay non-full-auto.
+      const preTickedByHuman = lifecycleItemState({
+        body,
+        key: 'passed-final-review',
+      }).alreadyTicked;
+      const humanOverride = preTickedByHuman || Boolean(human);
+      const auto = humanOverride ? { fired: false, signals: '' } : detect();
 
       // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
       // delta-comment in `close` can consume it. Human mode prompts stdin; full-
@@ -357,9 +370,13 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {} } = {
   );
 }
 
-function parseArgs(rest) {
-  const out = { issueNumber: null };
+export function parseArgs(rest) {
+  const out = { issueNumber: null, human: false };
   for (const a of rest) {
+    if (a === '--human') {
+      out.human = true;
+      continue;
+    }
     const m = String(a).match(/^#?(\d+)$/);
     if (m && out.issueNumber === null) out.issueNumber = Number(m[1]);
   }
@@ -367,9 +384,9 @@ function parseArgs(rest) {
 }
 
 export async function verbApprove(rest, cfg, deps = {}) {
-  const { issueNumber } = parseArgs(rest);
+  const { issueNumber, human } = parseArgs(rest);
   if (!issueNumber) {
-    process.stderr.write('Usage: /task approve #N\n');
+    process.stderr.write('Usage: /task approve #N [--human]\n');
     process.exit(1);
   }
   if (process.env.TT_SKIP_NETWORK === '1') {
@@ -379,7 +396,7 @@ export async function verbApprove(rest, cfg, deps = {}) {
   const projectDir = getProjectDir();
   let result;
   try {
-    result = await runApprove({ issueNumber, cfg, projectDir, deps });
+    result = await runApprove({ issueNumber, cfg, projectDir, deps, human });
   } catch (err) {
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);

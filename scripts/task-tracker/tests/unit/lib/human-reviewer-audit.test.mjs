@@ -11,10 +11,12 @@ import {
   getHumanReviewer,
   buildAuditCommentBody,
   buildHumanReviewerMarker,
+  hasGenuineReviewApprovedMarker,
   FULL_AUTO_AUDIT_RE,
   HUMAN_REVIEWER_MARKER_RE,
   HUMAN_REVIEWER_ENV,
 } from '../../../lib/human-reviewer-audit.mjs';
+import { buildReviewApprovedMarker } from '../../../lib/markers.mjs';
 
 function makeRecorder() {
   const comments = [];
@@ -138,6 +140,62 @@ test('Human-reviewer path is idempotent — does not double-stamp marker', async
   assert.equal(result.mode, 'human-reviewer');
   assert.equal(result.stamped, false, 'no rewrite when marker present');
   assert.equal(rec.writes.length, 0);
+});
+
+test('hasGenuineReviewApprovedMarker: true for non-full-auto marker, false for full-auto marker or absent', () => {
+  const genuine = buildReviewApprovedMarker('2026-07-26T00:00:00Z');
+  const fullAuto = buildReviewApprovedMarker('2026-07-26T00:00:00Z', {
+    fullAuto: true,
+    signals: 'reviewer-unset=1',
+  });
+  assert.equal(hasGenuineReviewApprovedMarker(`body\n\n${genuine}\n`), true);
+  assert.equal(hasGenuineReviewApprovedMarker(`body\n\n${fullAuto}\n`), false);
+  assert.equal(hasGenuineReviewApprovedMarker('body with no marker'), false);
+  assert.equal(hasGenuineReviewApprovedMarker(null), false);
+});
+
+// #979 AC3 — a genuine (non-full-auto) aitm-review-approved marker on the
+// body overrides an env that would otherwise read as Full-Auto: no audit
+// comment, human-reviewer marker stamped instead.
+test('body already carrying a genuine review-approved marker suppresses the Full-Auto audit even with env unset', async () => {
+  const rec = makeRecorder();
+  const genuineMarker = buildReviewApprovedMarker('2026-07-26T00:00:00Z');
+  const result = await enforceFullAutoAudit({
+    issueNumber: 979,
+    repo: 'org/repo',
+    body: `## Acceptance Criteria\n\n${genuineMarker}\n`,
+    env: {},
+    writeIssueBody: rec.writeIssueBody,
+    postComment: rec.postComment,
+    listComments: rec.listComments,
+    now: () => '2026-07-26T00:00:00Z',
+  });
+  assert.equal(result.mode, 'human-reviewer');
+  assert.equal(rec.comments.length, 0, 'no Full-Auto audit comment posted');
+  assert.equal(rec.writes.length, 1);
+  assert.match(rec.writes[0], HUMAN_REVIEWER_MARKER_RE);
+});
+
+// #979 regression — a body carrying the full-auto-flagged review-approved
+// marker does NOT suppress the audit; the Full-Auto path still fires.
+test('a full-auto-flagged review-approved marker does not suppress the audit', async () => {
+  const rec = makeRecorder();
+  const fullAutoMarker = buildReviewApprovedMarker('2026-07-26T00:00:00Z', {
+    fullAuto: true,
+    signals: 'reviewer-unset=1',
+  });
+  const result = await enforceFullAutoAudit({
+    issueNumber: 979,
+    repo: 'org/repo',
+    body: `## Acceptance Criteria\n\n${fullAutoMarker}\n`,
+    env: {},
+    writeIssueBody: rec.writeIssueBody,
+    postComment: rec.postComment,
+    listComments: rec.listComments,
+    now: () => '2026-07-26T00:00:00Z',
+  });
+  assert.equal(result.mode, 'full-auto');
+  assert.equal(result.auditPosted, true);
 });
 
 test('Full-Auto path tolerates listComments throwing — posts comment anyway', async () => {
