@@ -17,7 +17,9 @@ import {
   isTerminalIssueState,
   fetchIssueState,
   claimRecoveryOnce,
+  buildOrphanRecoveryRowSpecs,
 } from '../../../hook-handler.mjs';
+import { SUSPICIOUS_GAP_SEC } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 
 test('isPausedTask: returns true when entry status is "paused"', () => {
   const fleet = { '#167': { status: 'paused' } };
@@ -121,4 +123,37 @@ test('claimRecoveryOnce: a fresh path in the same dir wins independently', () =>
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-recovery-'));
   assert.equal(claimRecoveryOnce(path.join(dir, 'a.lock')), true);
   assert.equal(claimRecoveryOnce(path.join(dir, 'b.lock')), true);
+});
+
+// #983 — background-agent termination leaves an open Develop span; recovery
+// must not credit a suspiciously large gap as active time (the #899 shape).
+test('buildOrphanRecoveryRowSpecs: below threshold posts a single active session-end-recovery row', () => {
+  const specs = buildOrphanRecoveryRowSpecs({ wallMin: 30, wordMarker: 42 });
+  assert.equal(specs.length, 1);
+  assert.equal(specs[0].event, 'session-end-recovery');
+  assert.equal(specs[0].activeMin, 30);
+  assert.equal(specs[0].idleMin, 0);
+  assert.equal(specs[0].wordMarker, 42);
+});
+
+test('buildOrphanRecoveryRowSpecs: at the threshold still posts the active row (boundary is exclusive)', () => {
+  const wallMin = SUSPICIOUS_GAP_SEC / 60;
+  const specs = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker: 1 });
+  assert.equal(specs.length, 1);
+  assert.equal(specs[0].event, 'session-end-recovery');
+  assert.equal(specs[0].activeMin, wallMin);
+});
+
+test('buildOrphanRecoveryRowSpecs: above threshold posts an honest pause/resumed pair, no fabricated active time', () => {
+  const wallMin = SUSPICIOUS_GAP_SEC / 60 + 10; // ~8h10m — the #899 shape
+  const specs = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker: 7 });
+  assert.equal(specs.length, 2);
+  assert.equal(specs[0].event, 'pause:orphan-recovery');
+  assert.equal(specs[0].activeMin, 0);
+  assert.equal(specs[0].idleMin, wallMin);
+  assert.equal(specs[0].wordMarker, 7);
+  assert.equal(specs[1].event, 'resumed');
+  assert.equal(specs[1].activeMin, 0);
+  assert.equal(specs[1].idleMin, 0);
+  assert.equal(specs[1].wordMarker, 7);
 });

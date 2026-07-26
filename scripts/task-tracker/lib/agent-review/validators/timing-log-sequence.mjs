@@ -65,7 +65,7 @@ const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
 // re-verifying) are the sanctioned rewinds. Forward motion must advance exactly
 // one ladder rung; a multi-rung forward jump is a skipped stage.
 const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>develop', 'done>test']);
-const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
+export const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
 
 // Extract the kanban stage a row drives the walk to, or null if the row is not a
 // stage-transition event. `<stage>:failed` rows are gate-audit records of a

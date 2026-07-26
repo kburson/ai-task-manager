@@ -161,4 +161,19 @@ function bodyOf(...rows) {
   assert.match(warnings[0], /#101/);
 }
 
+// Test 11 (#983 AC1): the orphan-recovery departure/return pair posted by
+// hook-handler.mjs's buildOrphanRecoveryRowSpecs must not register as a false
+// imbalance — `pause:orphan-recovery`/`resumed` don't match the strict
+// `pause`/`paused`/`resume` equality checks, same as the pre-existing
+// `session-end-recovery` row.
+{
+  const sid = 's-orphan';
+  const body = bodyOf(row('pause:orphan-recovery', sid), row('resumed', sid));
+  const audit = auditPauseResume(body, sid);
+  assert.equal(audit.pauseCount, 0);
+  assert.equal(audit.resumeCount, 0);
+  assert.equal(audit.delta, 0);
+  assert.equal(audit.balanced, true);
+}
+
 console.log('stop-audit-pause-resume.test.mjs: all assertions passed');

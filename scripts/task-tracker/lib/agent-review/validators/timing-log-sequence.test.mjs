@@ -476,6 +476,25 @@ test('passes a long switch-out/resume gap because issue focus changed explicitly
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
+// #983 — reproduces the #899 timeline shape (background worker terminates
+// minutes after `develop:started`, the multi-hour gap goes unlogged until a
+// later session), but bracketed by the new orphan-recovery honest departure
+// pair (`hook-handler.mjs`'s `buildOrphanRecoveryRowSpecs`) instead of a
+// single row fabricating the whole gap as active. The explicit idle boundary
+// makes this pass the sequence validator exactly like any other pause/resume
+// gap (mirrors the `passes a long pause/resume gap` case above) — no false
+// multi-hour active duration is asserted anywhere in the log.
+test('passes the #899 timeline shape once bracketed by the orphan-recovery pause/resumed pair', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    [T(1), 'pause:orphan-recovery'],
+    ['2026-07-25 19:33:00 -05:00', 'resumed'],
+    ['2026-07-25 19:33:17 -05:00', 'develop:completed', 'development complete'],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
 // --- Absence / degenerate inputs ---------------------------------------------
 
 test('fails when there is no ⏱ Timing Log comment', () => {

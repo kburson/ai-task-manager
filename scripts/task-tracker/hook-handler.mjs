@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
 import { loadState, saveState, advanceWordMarker, clearActive } from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
+import { SUSPICIOUS_GAP_SEC } from './lib/agent-review/validators/timing-log-sequence.mjs';
 import {
   jsonlPath,
   markerPathFor,
@@ -212,6 +213,55 @@ async function bestEffortDrainQueue() {
   }
 }
 
+// #983 — an orphaned session (background worker terminated without
+// `/task pause`) recovers unlogged wall time on the next SessionStart. Below
+// `SUSPICIOUS_GAP_SEC` (the same 8h threshold the Agent Review Gate's
+// `timing-log-sequence` validator uses to flag corruption), crediting the
+// whole gap as active is a reasonable approximation of real work. At or above
+// it, claiming `activeMin: wallMin` produces the #899 shape (a false
+// multi-hour Develop duration from a worker that died minutes in). Post an
+// honest departure/return pair instead — the gap is credited as idle, not
+// active — so the phase-span rollup (`computeActiveByPhaseSpans`) no longer
+// misclassifies it, while the Review Gate's raw-gap forensic check still
+// flags the historical gap for review. Pure: returns `buildRow()` argument
+// objects, does not post them. Exported for testing.
+export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
+  if (wallMin * 60 <= SUSPICIOUS_GAP_SEC) {
+    return [
+      {
+        event: 'session-end-recovery',
+        activeMin: wallMin,
+        idleMin: 0,
+        deltaWords: 0,
+        deltaWordsFull: 0,
+        wordMarker,
+        description: 'recovered — session closed without /task pause (wall time only)',
+      },
+    ];
+  }
+  const gapHours = Math.round(SUSPICIOUS_GAP_SEC / 3600);
+  return [
+    {
+      event: 'pause:orphan-recovery',
+      activeMin: 0,
+      idleMin: wallMin,
+      deltaWords: 0,
+      deltaWordsFull: 0,
+      wordMarker,
+      description: `recovered — session closed without /task pause; gap exceeds ${gapHours}h so it is logged as idle, not active (wall time only)`,
+    },
+    {
+      event: 'resumed',
+      activeMin: 0,
+      idleMin: 0,
+      deltaWords: 0,
+      deltaWordsFull: 0,
+      wordMarker,
+      description: 'orphan-recovery gap closed',
+    },
+  ];
+}
+
 async function onSessionStart(sid) {
   emitWorktreeBanner();
   // #575 — no template self-heal: `.ai-task-manager/templates/` is git-tracked
@@ -344,18 +394,14 @@ async function onSessionStart(sid) {
       }
     }
     if (mayPostRecovery) {
-      const recoveryRow = buildRow({
-        ts: nowTs,
-        event: 'session-end-recovery',
-        activeMin: wallMin,
-        idleMin: 0,
-        deltaWords: 0,
-        deltaWordsFull: 0,
-        // #475 AC1 — carried-forward durable marker (recovery row, no live session)
-        wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
-        description: 'recovered — session closed without /task pause (wall time only)',
-      });
-      await safePost(s.active, recoveryRow);
+      // #475 AC1 — carried-forward durable marker (recovery row, no live session)
+      const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart);
+      const recoveryRows = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }).map((spec) =>
+        buildRow({ ts: nowTs, ...spec })
+      );
+      for (const recoveryRow of recoveryRows) {
+        await safePost(s.active, recoveryRow);
+      }
     }
   }
 

@@ -72,3 +72,24 @@ test('legacy bare paused/resumed still parse as pause/close', () => {
   );
   assert.equal(lastOpenInterruption(closed), null);
 });
+
+// #983 — the orphan-recovery synthetic slug posted by `hook-handler.mjs`'s
+// `buildOrphanRecoveryRowSpecs` for a background worker that terminated
+// mid-Develop. It must classify as an ordinary departure (generic
+// `pause:<slug>` prefix match, no canonical-slug allowlist involved) and the
+// immediately-following `resumed` row must close it — the whole point is that
+// the interruption is NOT left structurally open for a later `/task pause` to
+// silently no-op against (the #972 redundant-departure guard).
+test('pause:orphan-recovery opens a departure that resumed closes (#983)', () => {
+  const open = body(
+    row('develop:started', '2026-07-24 04:42:00 +00:00'),
+    row('pause:orphan-recovery')
+  );
+  assert.deepEqual(lastOpenInterruption(open), { kind: 'pause', reason: 'orphan-recovery' });
+  const closed = body(
+    row('develop:started', '2026-07-24 04:42:00 +00:00'),
+    row('pause:orphan-recovery'),
+    row('resumed', '2026-07-25 05:04:00 +00:00')
+  );
+  assert.equal(lastOpenInterruption(closed), null);
+});
