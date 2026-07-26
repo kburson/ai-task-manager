@@ -23,6 +23,7 @@ import { promisify } from 'node:util';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from './state-recording.mjs';
 import { serializeMarker } from './marker-grammar.mjs';
+import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './markers.mjs';
 
 const pexec = promisify(execFile);
 
@@ -49,6 +50,19 @@ export function getHumanReviewer(env = process.env) {
 // verbs/approve.mjs) so the two cannot drift.
 export function isFullAuto(env = process.env) {
   return getHumanReviewer(env) === null;
+}
+
+// #979 — `enforceFullAutoAudit` used to decide Full-Auto purely from `env`,
+// so a genuinely human-approved review (the `/task approve` verb already
+// stamped a non-full-auto `aitm-review-approved` marker on the body) still
+// got a false "auto-approved under Full-Auto" audit comment at the
+// review→done transition whenever `TASK_TRACKER_HUMAN_REVIEWER` happened to
+// be unset in this later process. The body already carries the ground
+// truth — check it before falling back to the env-only signal.
+export function hasGenuineReviewApprovedMarker(body) {
+  if (!hasReviewApprovedMarker(body)) return false;
+  const parsed = parseReviewApprovedMarker(body);
+  return parsed !== null && parsed.fullAuto === false;
 }
 
 export function buildHumanReviewerMarker(handle, ts) {
@@ -112,7 +126,8 @@ export async function enforceFullAutoAudit({
   if (!repo) throw new Error('enforceFullAutoAudit: repo is required');
   const ts = now();
   const handle = getHumanReviewer(env);
-  const fullAuto = isFullAuto(env);
+  const genuineReviewMarker = body != null && hasGenuineReviewApprovedMarker(body);
+  const fullAuto = !genuineReviewMarker && isFullAuto(env);
   const list = listComments || defaultListComments;
   const post = postComment || defaultPostComment;
 

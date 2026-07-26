@@ -90,6 +90,28 @@ accidental drop. If the body lacks a recognized `Passed final human review`
 checklist line, approve emits a stderr warning
 (`approve: lifecycle-tick-noop`) but does not fail.
 
+## Genuine human approval overrides (`--human`)
+
+`detectFullAuto` only sees env/tty/CI signals, so it cannot tell a real human
+approval from an unattended run whenever `TASK_TRACKER_HUMAN_REVIEWER` is
+unset — the common case for a human approving from a chat client rather than
+a CI wrapper. Two signals suppress the Full-Auto marker/footnote regardless
+of env:
+
+- The body's `Passed final human review` lifecycle checkbox was already
+  ticked (a human approved via the GitHub UI before `/task approve` ran).
+- `/task approve #N --human` was passed explicitly.
+
+Use `--human` when the user has approved the review in chat (e.g. said
+"Approved") and has not touched the GitHub UI checkbox — pass it so
+`/task approve` records a genuine, non-full-auto `aitm-review-approved`
+marker instead of stamping `full-auto="yes"` and inserting the footnote.
+Never pass `--human` unless a human actually approved; it is not a bypass
+for skipping review, only a correction for the env-detection blind spot.
+The same body marker is honored by the review→done `enforceFullAutoAudit`
+gate, so a genuine approval recorded here also suppresses the Full-Auto
+audit comment at close time.
+
 ## Review Notes → Drivers
 
 `/task approve` posts a `### 📝 Review Notes` comment with bullet drivers before

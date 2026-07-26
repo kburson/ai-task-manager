@@ -19,6 +19,7 @@ import {
   hasApprovalMarker,
   insertApprovalMarker,
   detectFullAuto,
+  parseArgs,
 } from '../../../verbs/approve.mjs';
 
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
@@ -203,6 +204,68 @@ function makeDeps(overrides = {}) {
     /lifecycle-tick-noop/,
     'pre-ticked lifecycle box must not trigger the warning'
   );
+}
+
+// #979 AC2 — parseArgs recognizes --human alongside the issue number, in
+// either order, and defaults to false when absent.
+{
+  assert.deepEqual(parseArgs(['58', '--human']), { issueNumber: 58, human: true });
+  assert.deepEqual(parseArgs(['--human', '#58']), { issueNumber: 58, human: true });
+  assert.deepEqual(parseArgs(['58']), { issueNumber: 58, human: false });
+}
+
+// #979 AC1 — pre-ticked "Passed final human review" box overrides a firing
+// detectFullAuto: no full-auto prop, no footnote, even with every Full-Auto
+// env/tty/ci signal present.
+{
+  const preTickedBody = [
+    '## Acceptance Criteria',
+    '- [x] do thing',
+    '',
+    '### Definition of Done',
+    '',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+    '- [ ] Story closed and moved to Done',
+    '- [ ] Timing data flushed to issue',
+    '',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({
+    initialBody: preTickedBody,
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, false);
+  assert.doesNotMatch(getBody(), /full-auto="yes"/);
+  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
+}
+
+// #979 AC2 — `--human` (runApprove's `human: true`) forces the same
+// non-full-auto outcome even when the lifecycle box is NOT pre-ticked and
+// every Full-Auto env signal is present.
+{
+  const { deps, getBody } = makeDeps({
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, false);
+  assert.doesNotMatch(getBody(), /full-auto="yes"/);
+  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
+}
+
+// #979 regression — genuinely-full-auto path (no pretick, no --human) still
+// fires exactly as before when detect() returns fired=true.
+{
+  const { deps, getBody } = makeDeps({
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, true);
+  assert.match(getBody(), /full-auto="yes"/);
+  assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
 }
 
 // 17. (#161 / D4) Legacy lifecycle heading: warn to stderr, verb still succeeds
