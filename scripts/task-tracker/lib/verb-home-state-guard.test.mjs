@@ -3,6 +3,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import {
   VERB_HOME_STATE,
@@ -10,12 +12,28 @@ import {
   assertVerbHomeState,
 } from './verb-home-state-guard.mjs';
 
+const GUARD_SOURCE_PATH = fileURLToPath(new URL('./verb-home-state-guard.mjs', import.meta.url));
+
 test('VERB_HOME_STATE covers exactly test/review/close with their real entry states', () => {
   assert.deepEqual(VERB_HOME_STATE, {
     test: ['develop', 'test'],
-    review: 'test',
+    review: ['test', 'review'],
     close: 'review',
   });
+});
+
+// #997 — restores the review-state self-loop #931 regressed: review.mjs's
+// gate-pass branch is only reachable by re-running the review verb while the
+// issue is still in Review, so that re-run must not be refused.
+test('assertVerbHomeState allows review to re-run in place from review (self-loop)', () => {
+  assert.doesNotThrow(() =>
+    assertVerbHomeState({ verb: 'review', currentState: 'review', issueNumber: '7' })
+  );
+});
+
+test('guard source no longer asserts there is no review-side self-loop', () => {
+  const src = readFileSync(GUARD_SOURCE_PATH, 'utf8');
+  assert.equal(/no review-side self-loop/i.test(src), false);
 });
 
 test('assertVerbHomeState allows test from develop (first entry) or test (re-verify self-loop)', () => {
@@ -27,7 +45,7 @@ test('assertVerbHomeState allows test from develop (first entry) or test (re-ver
   );
 });
 
-test('assertVerbHomeState allows review only from test', () => {
+test('assertVerbHomeState allows review from test', () => {
   assert.doesNotThrow(() =>
     assertVerbHomeState({ verb: 'review', currentState: 'test', issueNumber: '1' })
   );
@@ -57,9 +75,9 @@ test('assertVerbHomeState throws VerbHomeStateError on a wrong-state run', () =>
   );
 });
 
-test('assertVerbHomeState throws when review runs from review instead of test', () => {
+test('assertVerbHomeState throws when review runs from an unrelated wrong state', () => {
   assert.throws(
-    () => assertVerbHomeState({ verb: 'review', currentState: 'review', issueNumber: '7' }),
+    () => assertVerbHomeState({ verb: 'review', currentState: 'develop', issueNumber: '7' }),
     VerbHomeStateError
   );
 });

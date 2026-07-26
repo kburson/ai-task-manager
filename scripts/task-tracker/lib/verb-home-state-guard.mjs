@@ -9,9 +9,12 @@
 //   - `test` runs from `develop` (first entry — sandbox proof, board moves
 //     develop→test) OR from `test` itself (test.mjs #444/#882: an in-place
 //     re-verify self-loop where VCs re-run and the board stays at `test`).
-//   - `review` runs from `test` only (test→review is the one authoritative
-//     move; review.mjs #408 confirms there is no review-side self-loop — a
-//     re-run always starts from `test`, never from `review` itself).
+//   - `review` runs from `test` (test→review, the one authoritative move) OR
+//     from `review` itself (#881 commit 3819132 made Agent Review the Review
+//     state's own action: a re-run in place, after fixing a gate objection,
+//     is the sanctioned way to clear a stale `aitm-review-failed` marker and
+//     tick "Agent Review Passed" — #997 restored this self-loop after #931
+//     regressed it to `test`-only).
 //   - `close` is review's exit action — it runs FROM `review`, not `close`
 //     (close.mjs runs `runGuards('review', 'done', …)`).
 //
@@ -30,7 +33,7 @@
 // source edits, gated by `source-edit-gate.mjs`, not a CLI verb.
 export const VERB_HOME_STATE = {
   test: ['develop', 'test'],
-  review: 'test',
+  review: ['test', 'review'],
   close: 'review',
 };
 
