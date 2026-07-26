@@ -117,10 +117,14 @@ const USER_STORY_SECTION =
   '## User Story\n\nAs a developer\nI want the promote verb to reject false successes\nSo that a blocked close never reports done\n';
 
 function reviewBody() {
+  // #998 — review→close only fires once Agent Review genuinely passed; carry
+  // that evidence marker so these fixtures exercise the close delegation these
+  // tests are about, not the new incomplete-review redirect.
   return (
     `<!-- aitm-last-known-state: review -->\n` +
     `<!-- aitm-last-known-state-ts: 2026-07-05T00:00:00Z -->\n\n` +
-    `${USER_STORY_SECTION}\n## Issue\n\nbody.\n`
+    `${USER_STORY_SECTION}\n## Issue\n\nbody.\n\n` +
+    `- [x] Agent Review Passed <!-- aitm-verified ts="2026-05-10T00:00:00Z" gate="agent-review" result="pass" -->\n`
   );
 }
 
