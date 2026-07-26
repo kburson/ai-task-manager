@@ -181,10 +181,15 @@ test('AC6 — develop still delegates to test', async () => {
   assert.deepEqual(calls.spawns, [{ verb: 'test', issueNumber: 821 }]);
 });
 
-test('AC6 — review still delegates to close', async () => {
+test('AC6 — review still delegates to close (when Agent Review genuinely passed)', async () => {
+  // #998 — promote's review→close alias only fires once the Review state's
+  // own action (the Agent Review Gate) has actually completed with a passing
+  // result; the fixture must carry that evidence or the new precondition
+  // check redirects to `review` instead.
   const body =
     '<!-- aitm-last-known-state: review -->\n' +
-    '<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n';
+    '<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n\n' +
+    '- [x] Agent Review Passed <!-- aitm-verified ts="2026-05-10T00:00:00Z" gate="agent-review" result="pass" -->\n';
   const { deps, calls } = makeDeps({ body, live: 'review', liveAfter: 'done' });
 
   const r = await runPromote({ issueNumber: 822, cfg, deps });

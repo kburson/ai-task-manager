@@ -16,7 +16,7 @@ const GUARD_SOURCE_PATH = fileURLToPath(new URL('./verb-home-state-guard.mjs', i
 
 test('VERB_HOME_STATE covers exactly test/review/close with their real entry states', () => {
   assert.deepEqual(VERB_HOME_STATE, {
-    test: ['develop', 'test'],
+    test: ['develop', 'test', 'review'],
     review: ['test', 'review'],
     close: 'review',
   });
@@ -45,6 +45,21 @@ test('assertVerbHomeState allows test from develop (first entry) or test (re-ver
   );
 });
 
+// #998 — review.mjs's SHA-drift gate (#154) tells the operator to re-run
+// `/task test` when trunk HEAD has moved past the recorded `aitm-test-started`
+// SHA. #931/#997 had tightened `test`'s home states to exactly
+// `develop`/`test`, closing off that prescribed remediation for a story
+// already in `review` and deadlocking it (drift-refused by `review`,
+// wrong-state-refused by `test`, code-rework-refused by `demote`, and
+// silently skipped by `promote`'s blind `review → close` alias). `test` must
+// accept `review` as a legitimate entry state so the drift gate's own advice
+// is actually reachable.
+test('assertVerbHomeState allows test to re-verify from review (drift remediation)', () => {
+  assert.doesNotThrow(() =>
+    assertVerbHomeState({ verb: 'test', currentState: 'review', issueNumber: '998' })
+  );
+});
+
 test('assertVerbHomeState allows review from test', () => {
   assert.doesNotThrow(() =>
     assertVerbHomeState({ verb: 'review', currentState: 'test', issueNumber: '1' })
@@ -59,16 +74,16 @@ test("assertVerbHomeState allows close only from review (close is review's exit 
 
 test('assertVerbHomeState throws VerbHomeStateError on a wrong-state run', () => {
   assert.throws(
-    () => assertVerbHomeState({ verb: 'test', currentState: 'review', issueNumber: '42' }),
+    () => assertVerbHomeState({ verb: 'test', currentState: 'plan', issueNumber: '42' }),
     (err) => {
       assert.ok(err instanceof VerbHomeStateError);
       assert.equal(err.verb, 'test');
-      assert.equal(err.currentState, 'review');
-      assert.deepEqual(err.homeState, ['develop', 'test']);
+      assert.equal(err.currentState, 'plan');
+      assert.deepEqual(err.homeState, ['develop', 'test', 'review']);
       assert.equal(err.issueNumber, '42');
       assert.match(err.message, /#42/);
-      assert.match(err.message, /`review`/);
-      assert.match(err.message, /`develop` or `test`/);
+      assert.match(err.message, /`plan`/);
+      assert.match(err.message, /`develop` or `test` or `review`/);
       assert.match(err.message, /\/task promote #42/);
       return true;
     }

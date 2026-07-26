@@ -59,7 +59,12 @@ function makeDeps({
   };
 }
 const dev = (over = {}) => makeDeps({ body: bodyWithState('develop'), live: 'develop', ...over });
-const rev = (over = {}) => makeDeps({ body: bodyWithState('review'), live: 'review', ...over }); // #710
+// #998 — review→close only fires once Agent Review genuinely passed; the
+// fixture must carry that evidence marker, same signal `approve.mjs` gates on.
+const AGENT_REVIEW_PASSED_LINE =
+  '- [x] Agent Review Passed <!-- aitm-verified ts="2026-05-10T00:00:00Z" gate="agent-review" result="pass" -->\n';
+const rev = (over = {}) =>
+  makeDeps({ body: bodyWithState('review') + AGENT_REVIEW_PASSED_LINE, live: 'review', ...over }); // #710
 const DD_PROSE = Array.from(
   { length: 20 },
   (_, i) =>

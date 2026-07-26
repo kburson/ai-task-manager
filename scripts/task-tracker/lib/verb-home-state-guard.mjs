@@ -7,8 +7,19 @@
 // Each entry is the verb's real entry state(s), confirmed from its own
 // move-state call, not a guess:
 //   - `test` runs from `develop` (first entry — sandbox proof, board moves
-//     develop→test) OR from `test` itself (test.mjs #444/#882: an in-place
-//     re-verify self-loop where VCs re-run and the board stays at `test`).
+//     develop→test), from `test` itself (test.mjs #444/#882: an in-place
+//     re-verify self-loop where VCs re-run and the board stays at `test`), OR
+//     from `review` (#998: `review.mjs`'s SHA-drift gate — #154 — refuses and
+//     tells the operator to re-run `/task test` when trunk HEAD has moved
+//     since the recorded `aitm-test-started` SHA; #931/#997 had tightened
+//     `test`'s home states to exactly `develop`/`test`, silently closing off
+//     that prescribed remediation for anything already in `review` and
+//     deadlocking a story with a drifted HEAD and a failed prior Agent
+//     Review. Entering from `review` re-runs the sandbox against current
+//     HEAD, refreshes the `aitm-test-started` marker, and moves the board
+//     back to `test` — a real board move, not a same-state self-loop — so a
+//     normal `/task promote`/`/task review` afterward re-enters `review` with
+//     a matching SHA).
 //   - `review` runs from `test` (test→review, the one authoritative move) OR
 //     from `review` itself (#881 commit 3819132 made Agent Review the Review
 //     state's own action: a re-run in place, after fixing a gate objection,
@@ -32,7 +43,7 @@
 // There is no `develop` verb file — `develop` is a state worked in via direct
 // source edits, gated by `source-edit-gate.mjs`, not a CLI verb.
 export const VERB_HOME_STATE = {
-  test: ['develop', 'test'],
+  test: ['develop', 'test', 'review'],
   review: ['test', 'review'],
   close: 'review',
 };

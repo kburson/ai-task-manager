@@ -41,6 +41,10 @@ import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { nowIso } from '../lib/evidence-runner.mjs';
+import {
+  isAgentReviewComplete,
+  agentReviewIncompleteReason,
+} from '../lib/agent-review/review-gate.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -302,6 +306,30 @@ export async function runPromote({
   const target = FORWARD[recorded];
   if (!target) {
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
+  }
+
+  // #998 — `ALIAS_VERB.review` is `close` unconditionally; without this check
+  // a story sitting in `review` with an unresolved `aitm-review-failed`
+  // marker (or no Agent Review evidence at all) would sail straight to the
+  // human-approval/close gate the instant "Final Review Passed" happened to
+  // be ticked, shipping on a known-failed, possibly now-stale Agent Review.
+  // Redirect to `/task review` — the same completeness signal `approve.mjs`
+  // already gates human sign-off on — instead of proceeding to `close`.
+  if (recorded === 'review' && !isAgentReviewComplete(body)) {
+    const reason = agentReviewIncompleteReason(body);
+    const exitCode = await spawnVerb({ verb: 'review', issueNumber, cfg });
+    return {
+      status: 'redelegated-to-review',
+      reason,
+      delegate: 'review',
+      delegateExitCode: exitCode,
+      message:
+        reason === 'review-failed'
+          ? `promote: #${issueNumber} carries an \`aitm-review-failed\` marker — redirected to ` +
+            `\`/task review\` instead of \`/task close\` to re-run the Agent Review Gate (exited ${exitCode}).`
+          : `promote: #${issueNumber} has no passing Agent Review evidence — redirected to ` +
+            `\`/task review\` instead of \`/task close\` to run the Review state's action (exited ${exitCode}).`,
+    };
   }
 
   // #357 — refine→plan stage-completion marker check migrated into the
