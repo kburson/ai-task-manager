@@ -39,7 +39,15 @@
 //     and the timeout class. Never silently swallow.
 //   - Prefer importing the constant rather than inlining magic numbers.
 
-export const GH_API_TIMEOUT_MS = 15000;
+// 30s (was 15s until #992). A real `gh` CLI call is a single network
+// round-trip and 15s should be ample — but the fake-`gh` test double in
+// coverage-demote.test.mjs is itself a spawned `node` process, and under the
+// full-suite sandbox's concurrent `node --test` fan-out it was observed
+// taking ~18-19.4s to answer (vs. <1s in isolation), getting SIGTERM-killed
+// by this timeout and surfacing as `Error: gh exited null:`. Doubling gives
+// headroom for that CPU-contention case while still catching a genuinely
+// hung real `gh` call well within human-noticeable range.
+export const GH_API_TIMEOUT_MS = 30000;
 // 120s — #752. `runMoveState` used to bound the ENTIRE move-state child with
 // GH_API_TIMEOUT_MS (sized for ONE `gh` call). On a terminal review→done move
 // the best-effort post-commit tail (audit comment + body edit + unpark + event
