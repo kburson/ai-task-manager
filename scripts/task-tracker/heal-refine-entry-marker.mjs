@@ -27,11 +27,13 @@ import { loadConfig } from './config.mjs';
 import { backfillEntryMarker } from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 export const USAGE =
-  'Usage: heal-refine-entry-marker.mjs [<issue#> ...] [--apply]\n' +
+  'Usage: heal-refine-entry-marker.mjs [<issue#> ...] [--apply] [--yes]\n' +
   '  (default)   audit only, no writes; all open issues when none are named\n' +
   '  --apply     write the backfilled refine entry marker\n' +
+  '  --yes       skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h  print this usage and exit; never writes\n';
 
 const pexec = promisify(execFile);
@@ -47,11 +49,13 @@ const BACKFILL_REASON = 'pre-gate-refine-traversal';
 function parseArgs(argv) {
   const issues = [];
   let apply = false;
+  let yes = false;
   for (const a of argv) {
     if (a === '--apply') apply = true;
+    else if (a === '--yes') yes = true;
     else if (/^#?\d+$/.test(a)) issues.push(String(a).replace(/^#/, ''));
   }
-  return { issues, apply };
+  return { issues, apply, yes };
 }
 
 export async function fetchOpenIssues(repo, deps = {}) {
@@ -163,7 +167,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   try {
     if (
       assertKnownArgv(argv, {
-        flags: ['--apply'],
+        flags: ['--apply', '--yes'],
         positionals: { max: Infinity },
         usage: USAGE,
       })
@@ -176,10 +180,22 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     return exit(2);
   }
 
-  const { issues, apply } = parseArgs(argv);
+  const { issues, apply, yes } = parseArgs(argv);
   const cfg = load();
   const repo = cfg.repo;
   const targets = issues.length > 0 ? issues : await fetchOpen(repo, deps);
+
+  if (apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: targets.map(Number),
+      yes,
+      log: out,
+      warn: err,
+    });
+    if (!decision.proceed) return exit(2);
+  }
+
   const results = [];
   for (const num of targets) {
     try {

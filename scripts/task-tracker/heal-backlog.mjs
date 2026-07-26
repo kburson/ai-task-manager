@@ -49,6 +49,7 @@ import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs';
 import { renameTimingLogBody } from './lib/timing-slug-rename.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
 // only when the corresponding marker is present; otherwise left alone to
@@ -364,13 +365,20 @@ export function parseArgs(argv, io = {}) {
     schemaCheck: true,
     ignoreSchemaDrift: false,
     renameTimingSlugs: false,
+    yes: false,
   };
 
   // #878 — refuse unknown flags before interpreting anything. `--no-schema-check`
   // is a literal declared boolean here, not a generic `--no-` prefix convention.
   try {
     assertKnownArgv(argv, {
-      flags: ['--apply', '--no-schema-check', '--ignore-schema-drift', '--rename-timing-slugs'],
+      flags: [
+        '--apply',
+        '--no-schema-check',
+        '--ignore-schema-drift',
+        '--rename-timing-slugs',
+        '--yes',
+      ],
       options: ['--state', '--scope'],
     });
   } catch (e) {
@@ -383,6 +391,7 @@ export function parseArgs(argv, io = {}) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
+    else if (a === '--yes') args.yes = true;
     else if (a === '--no-schema-check') args.schemaCheck = false;
     else if (a === '--ignore-schema-drift') args.ignoreSchemaDrift = true;
     else if (a === '--rename-timing-slugs') args.renameTimingSlugs = true;
@@ -415,7 +424,8 @@ export function parseArgs(argv, io = {}) {
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs]\n'
+    'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs] [--yes]\n' +
+      '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply\n'
   );
 }
 
@@ -564,6 +574,17 @@ export async function runTimingSlugRename({ cfg, args, projectDir }, deps = {}) 
   reportLines.push(`- repo: ${cfg.repo}`);
   reportLines.push(`- issues: ${numbers.length}`);
   reportLines.push('');
+
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: numbers,
+      yes: args.yes,
+      log: (s) => process.stdout.write(s),
+      warn: (s) => process.stderr.write(s),
+    });
+    if (!decision.proceed) return process.exit(2);
+  }
 
   let scanned = 0;
   let changedCount = 0;
@@ -720,6 +741,17 @@ export async function main(argv, deps = {}) {
   reportLines.push('');
   reportLines.push('```');
   reportLines.push('issue\tenc\tfields\tskip\terror');
+
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: numbers,
+      yes: args.yes,
+      log: (s) => out.write(s),
+      warn: (s) => err.write(s),
+    });
+    if (!decision.proceed) return exit(2);
+  }
 
   let healedCount = 0;
   let issuesWithDeltaCount = 0;

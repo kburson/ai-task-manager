@@ -32,25 +32,45 @@ test('unknown flags return an error instead of falling through', () => {
 });
 
 test('zero arguments defaults to dry-run', () => {
-  assert.deepEqual(parseHealArgs([]), { mode: 'dry-run', issue: null });
+  assert.deepEqual(parseHealArgs([]), { mode: 'dry-run', issue: null, yes: false });
 });
 
 test('write mode requires an explicit --apply (or --write alias)', () => {
-  assert.deepEqual(parseHealArgs(['--apply']), { mode: 'write', issue: null });
-  assert.deepEqual(parseHealArgs(['--write']), { mode: 'write', issue: null });
-  assert.deepEqual(parseHealArgs(['--dry-run']), { mode: 'dry-run', issue: null });
+  assert.deepEqual(parseHealArgs(['--apply']), { mode: 'write', issue: null, yes: false });
+  assert.deepEqual(parseHealArgs(['--write']), { mode: 'write', issue: null, yes: false });
+  assert.deepEqual(parseHealArgs(['--dry-run']), { mode: 'dry-run', issue: null, yes: false });
 });
 
 test('--verify wins over --apply (scan only)', () => {
-  assert.deepEqual(parseHealArgs(['--verify']), { mode: 'verify', issue: null });
-  assert.deepEqual(parseHealArgs(['--verify', '--apply']), { mode: 'verify', issue: null });
+  assert.deepEqual(parseHealArgs(['--verify']), { mode: 'verify', issue: null, yes: false });
+  assert.deepEqual(parseHealArgs(['--verify', '--apply']), {
+    mode: 'verify',
+    issue: null,
+    yes: false,
+  });
 });
 
 test('--issue extracts the number with or without # prefix', () => {
-  assert.deepEqual(parseHealArgs(['--issue', '123']), { mode: 'dry-run', issue: '123' });
-  assert.deepEqual(parseHealArgs(['--issue', '#123', '--apply']), { mode: 'write', issue: '123' });
+  assert.deepEqual(parseHealArgs(['--issue', '123']), {
+    mode: 'dry-run',
+    issue: '123',
+    yes: false,
+  });
+  assert.deepEqual(parseHealArgs(['--issue', '#123', '--apply']), {
+    mode: 'write',
+    issue: '123',
+    yes: false,
+  });
   assert.deepEqual(parseHealArgs(['--issue']), { error: '--issue requires a number' });
   assert.deepEqual(parseHealArgs(['--issue', '--apply']), { error: '--issue requires a number' });
+});
+
+test('--yes is parsed and passed through', () => {
+  assert.deepEqual(parseHealArgs(['--apply', '--yes']), {
+    mode: 'write',
+    issue: null,
+    yes: true,
+  });
 });
 
 // ---- script-level guards (spawned from a bare cwd: no config, no gh) ----
