@@ -107,7 +107,7 @@ Add or extend unit coverage around the installer and hook patcher:
   memory-index commands.
 - Running the patcher twice is idempotent.
 - A full install for `--agent codex --memory-seed=all` or `--agent both
-  --memory-seed=all` includes the Codex memory-index hooks.
+--memory-seed=all` includes the Codex memory-index hooks.
 - A full install with `--memory-seed=none` does not include Codex memory-index
   hooks.
 - Installer `.gitignore` output does not ignore `.claude/` or `.agents/`

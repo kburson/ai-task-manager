@@ -33,10 +33,12 @@
 ### Task 1: Codex Memory Hook Wiring
 
 **Files:**
+
 - Modify: `bin/cli.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/coverage-cli.test.mjs`
 
 **Interfaces:**
+
 - Consumes: existing `MEMORY_INDEX_HOOK_CMD`, `hookEntryHasCommand()`, `patchCodexHooksJson(hooksPath)`, and `installCodex(targetDir, linkMode)`.
 - Produces: `patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})` and `installCodex(targetDir, linkMode, { memoryIndexHook = false } = {})`.
 
@@ -129,10 +131,10 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
 Inside `patchCodexHooksJson()`, after the existing lifecycle timing loop and before `mkdirSync(dirname(hooksPath), ...)`, add:
 
 ```js
-  if (memoryIndexHook) {
-    add('SessionStart', 'startup|resume|clear|compact', MEMORY_INDEX_HOOK_CMD);
-    add('PostCompact', 'manual|auto', MEMORY_INDEX_HOOK_CMD);
-  }
+if (memoryIndexHook) {
+  add('SessionStart', 'startup|resume|clear|compact', MEMORY_INDEX_HOOK_CMD);
+  add('PostCompact', 'manual|auto', MEMORY_INDEX_HOOK_CMD);
+}
 ```
 
 Change `installCodex()` to accept and pass the flag:
@@ -160,7 +162,7 @@ function installCodex(targetDir, linkMode, { memoryIndexHook = false } = {}) {
 Change the install call in `cmdInstall()`:
 
 ```js
-  if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode, { memoryIndexHook });
+if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode, { memoryIndexHook });
 ```
 
 - [ ] **Step 4: Run focused tests and confirm they pass**
@@ -186,11 +188,13 @@ git commit -m "feat(codex): register memory index hook"
 ### Task 2: Clone-Reproducible Install Artifact Policy
 
 **Files:**
+
 - Modify: `bin/cli.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/install.test.mjs`
 - Modify: `.gitignore`
 
 **Interfaces:**
+
 - Consumes: existing `patchGitignore(targetDir)` installer helper.
 - Produces: generated `.gitignore` entries that ignore runtime/local files but do not hide stable install artifacts.
 
@@ -199,32 +203,32 @@ git commit -m "feat(codex): register memory index hook"
 In `scripts/task-tracker/tests/unit/lib/install.test.mjs`, in the existing `.gitignore entries written` section after the `.tmp/` assertion, add:
 
 ```js
-  assert.ok(
-    gitignoreLines.includes('.ai-task-manager/.cache/'),
-    'installer must ignore local AITM cache'
-  );
-  assert.ok(
-    gitignoreLines.includes('.claude/worktrees/'),
-    'installer must ignore Claude worktree checkouts'
-  );
-  assert.ok(
-    gitignoreLines.includes('.claude/settings.local.json'),
-    'installer must ignore local Claude settings overrides'
-  );
-  assert.ok(
-    gitignoreLines.includes('.claude/scheduled_tasks.lock'),
-    'installer must ignore Claude scheduled task lock'
-  );
-  assert.equal(
-    gitignoreLines.includes('.claude/'),
-    false,
-    'installer must not ignore the whole .claude/ directory'
-  );
-  assert.equal(
-    gitignoreLines.includes('.agents/'),
-    false,
-    'installer must not ignore the whole .agents/ directory'
-  );
+assert.ok(
+  gitignoreLines.includes('.ai-task-manager/.cache/'),
+  'installer must ignore local AITM cache'
+);
+assert.ok(
+  gitignoreLines.includes('.claude/worktrees/'),
+  'installer must ignore Claude worktree checkouts'
+);
+assert.ok(
+  gitignoreLines.includes('.claude/settings.local.json'),
+  'installer must ignore local Claude settings overrides'
+);
+assert.ok(
+  gitignoreLines.includes('.claude/scheduled_tasks.lock'),
+  'installer must ignore Claude scheduled task lock'
+);
+assert.equal(
+  gitignoreLines.includes('.claude/'),
+  false,
+  'installer must not ignore the whole .claude/ directory'
+);
+assert.equal(
+  gitignoreLines.includes('.agents/'),
+  false,
+  'installer must not ignore the whole .agents/ directory'
+);
 ```
 
 - [ ] **Step 2: Run the focused installer test and confirm it fails**
@@ -242,31 +246,31 @@ Expected: FAIL because `patchGitignore()` does not currently emit `.claude/workt
 In `bin/cli.mjs`, update `patchGitignore()` entries to:
 
 ```js
-  const entries = [
-    // Machine-local/transient runtime state lives under `.tmp/aitm/`, with
-    // project-local caches under `.ai-task-manager/.cache/`. Stable install
-    // artifacts in `.ai-task-manager/`, `.claude/`, `.codex/`, and `.agents/`
-    // are intentionally trackable so cloud clones inherit the AITM contract.
-    '.ai-task-manager/.cache/',
-    '.ai-task-manager/templates/*.bak',
-    '.ai-task-manager/templates/references/*.bak',
-    '.claude/worktrees/',
-    '.claude/settings.local.json',
-    '.claude/scheduled_tasks.lock',
-    '.tmp/',
-  ];
+const entries = [
+  // Machine-local/transient runtime state lives under `.tmp/aitm/`, with
+  // project-local caches under `.ai-task-manager/.cache/`. Stable install
+  // artifacts in `.ai-task-manager/`, `.claude/`, `.codex/`, and `.agents/`
+  // are intentionally trackable so cloud clones inherit the AITM contract.
+  '.ai-task-manager/.cache/',
+  '.ai-task-manager/templates/*.bak',
+  '.ai-task-manager/templates/references/*.bak',
+  '.claude/worktrees/',
+  '.claude/settings.local.json',
+  '.claude/scheduled_tasks.lock',
+  '.tmp/',
+];
 ```
 
 Change the installer status message near `installTemplates(targetDir)` from:
 
 ```js
-  ok(`Gitignore ${dim('.ai-task-manager/templates backups and .tmp/ runtime tree')}`);
+ok(`Gitignore ${dim('.ai-task-manager/templates backups and .tmp/ runtime tree')}`);
 ```
 
 to:
 
 ```js
-  ok(`Gitignore ${dim('runtime/local artifacts only')}`);
+ok(`Gitignore ${dim('runtime/local artifacts only')}`);
 ```
 
 - [ ] **Step 4: Update this repo's root `.gitignore` to match the policy**
@@ -308,6 +312,7 @@ git commit -m "fix(install): track portable aitm artifacts"
 ### Task 3: Full Install Behavior, Docs, and Repo Artifacts
 
 **Files:**
+
 - Modify: `scripts/task-tracker/tests/unit/lib/install.test.mjs`
 - Modify: `docs/guides/codex-support-matrix.md`
 - Modify: `docs/introduction/install-and-setup.md`
@@ -319,6 +324,7 @@ git commit -m "fix(install): track portable aitm artifacts"
 - Generate/track: `.ai-task-manager/memory/**`
 
 **Interfaces:**
+
 - Consumes: Task 1 Codex memory-index hook plumbing and Task 2 `.gitignore` policy.
 - Produces: committed project-portable install artifacts and docs that describe clone-reproducible setup.
 
@@ -342,58 +348,58 @@ const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/m
 After the default install assertions, add:
 
 ```js
-  await pexec('node', [
-    CLI,
-    'install',
-    '--target',
-    memoryTarget,
-    '--agent',
-    'codex',
-    '--memory-seed=all',
-  ]);
-  const memoryCodexHooks = JSON.parse(
-    readFileSync(path.join(memoryTarget, '.codex', 'hooks.json'), 'utf8')
-  );
-  assert.ok(
-    hasHookCommand(memoryCodexHooks, 'SessionStart', MEMORY_INDEX_HOOK_CMD),
-    'Codex SessionStart memory-index hook missing after memory seed acceptance'
-  );
-  assert.ok(
-    hasHookCommand(memoryCodexHooks, 'PostCompact', MEMORY_INDEX_HOOK_CMD),
-    'Codex PostCompact memory-index hook missing after memory seed acceptance'
-  );
-  assert.equal(
-    hasHookCommand(memoryCodexHooks, 'PreCompact', MEMORY_INDEX_HOOK_CMD),
-    false,
-    'Codex PreCompact must not receive memory-index hook'
-  );
-  assert.ok(
-    existsSync(path.join(memoryTarget, '.ai-task-manager', 'memory', 'MEMORY.md')),
-    'accepted memory seed must write shared MEMORY.md index'
-  );
+await pexec('node', [
+  CLI,
+  'install',
+  '--target',
+  memoryTarget,
+  '--agent',
+  'codex',
+  '--memory-seed=all',
+]);
+const memoryCodexHooks = JSON.parse(
+  readFileSync(path.join(memoryTarget, '.codex', 'hooks.json'), 'utf8')
+);
+assert.ok(
+  hasHookCommand(memoryCodexHooks, 'SessionStart', MEMORY_INDEX_HOOK_CMD),
+  'Codex SessionStart memory-index hook missing after memory seed acceptance'
+);
+assert.ok(
+  hasHookCommand(memoryCodexHooks, 'PostCompact', MEMORY_INDEX_HOOK_CMD),
+  'Codex PostCompact memory-index hook missing after memory seed acceptance'
+);
+assert.equal(
+  hasHookCommand(memoryCodexHooks, 'PreCompact', MEMORY_INDEX_HOOK_CMD),
+  false,
+  'Codex PreCompact must not receive memory-index hook'
+);
+assert.ok(
+  existsSync(path.join(memoryTarget, '.ai-task-manager', 'memory', 'MEMORY.md')),
+  'accepted memory seed must write shared MEMORY.md index'
+);
 
-  await pexec('node', [
-    CLI,
-    'install',
-    '--target',
-    memoryNoneTarget,
-    '--agent',
-    'codex',
-    '--memory-seed=none',
-  ]);
-  const memoryNoneCodexHooks = JSON.parse(
-    readFileSync(path.join(memoryNoneTarget, '.codex', 'hooks.json'), 'utf8')
-  );
-  assert.equal(
-    hasHookCommand(memoryNoneCodexHooks, 'SessionStart', MEMORY_INDEX_HOOK_CMD),
-    false,
-    'Codex SessionStart memory-index hook must not install when memory seed is none'
-  );
-  assert.equal(
-    existsSync(path.join(memoryNoneTarget, '.ai-task-manager', 'memory', 'MEMORY.md')),
-    false,
-    'memory seed none must not write shared memory index'
-  );
+await pexec('node', [
+  CLI,
+  'install',
+  '--target',
+  memoryNoneTarget,
+  '--agent',
+  'codex',
+  '--memory-seed=none',
+]);
+const memoryNoneCodexHooks = JSON.parse(
+  readFileSync(path.join(memoryNoneTarget, '.codex', 'hooks.json'), 'utf8')
+);
+assert.equal(
+  hasHookCommand(memoryNoneCodexHooks, 'SessionStart', MEMORY_INDEX_HOOK_CMD),
+  false,
+  'Codex SessionStart memory-index hook must not install when memory seed is none'
+);
+assert.equal(
+  existsSync(path.join(memoryNoneTarget, '.ai-task-manager', 'memory', 'MEMORY.md')),
+  false,
+  'memory seed none must not write shared memory index'
+);
 ```
 
 - [ ] **Step 2: Run the focused installer test**
@@ -411,7 +417,7 @@ Expected: PASS after Tasks 1 and 2. If it fails, fix the implementation rather t
 In `docs/guides/codex-support-matrix.md`, add this row to the Enforcement Parity table:
 
 ```markdown
-| Operational-lessons memory index                         | `SessionStart`, `PostCompact` load `.ai-task-manager/memory/MEMORY.md` only | Same events via `.codex/hooks.json`; shared index and per-fact corpus |
+| Operational-lessons memory index | `SessionStart`, `PostCompact` load `.ai-task-manager/memory/MEMORY.md` only | Same events via `.codex/hooks.json`; shared index and per-fact corpus |
 ```
 
 Add one paragraph after the table:
@@ -425,13 +431,13 @@ The memory-index hook emits only `.ai-task-manager/memory/MEMORY.md` as addition
 In `docs/introduction/install-and-setup.md`, replace the generated paths table rows with:
 
 ```markdown
-| Path                           | Purpose                                                                                        |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `.ai-task-manager/`            | Project config, runtime templates, memory index, Pickup Directive, and Definition of Done      |
-| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                                    |
-| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                                          |
-| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable                                  |
-| `.codex/hooks.json`            | Codex hook configuration when Codex support is installed                                       |
+| Path                           | Purpose                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| `.ai-task-manager/`            | Project config, runtime templates, memory index, Pickup Directive, and Definition of Done |
+| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                               |
+| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                                     |
+| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable                             |
+| `.codex/hooks.json`            | Codex hook configuration when Codex support is installed                                  |
 ```
 
 Replace the commit example with:
