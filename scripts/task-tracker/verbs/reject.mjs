@@ -67,7 +67,7 @@ export async function verbReject(ctx) {
     target,
     buildRow({
       ts: _ts,
-      event: 'develop',
+      event: 'rejected:develop',
       activeSec: _d.activeSec,
       idleSec: _d.idleSec,
       deltaWords: 0,
