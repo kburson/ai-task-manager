@@ -163,11 +163,16 @@ test('legacy `check` emits a deprecation notice on stderr', async () => {
 
 function grepCount(pattern) {
   // grep exits 1 with no matches; `|| true` keeps execSync from throwing.
-  // Excludes mirror the canonical-live-set definition in the header.
+  // Excludes mirror the canonical-live-set definition in the header. A single
+  // grep with --exclude-dir prunes traversal up front (never walks
+  // node_modules/worktree checkouts) instead of piping through five separate
+  // `grep -v` processes — each spawned subprocess carries a fixed cost that
+  // dominates this test's wall time under sandboxed/CI execution (#993).
   const cmd =
-    `grep -rn --include='*.md' --include='*.mjs' -e ${JSON.stringify(pattern)} . 2>/dev/null` +
-    ` | grep -v node_modules | grep -v 'docs/archive/' | grep -v '\\.tmp/'` +
-    ` | grep -v '.claude/worktrees/' | grep -v '/tests/' || true`;
+    `grep -rn --include='*.md' --include='*.mjs' ` +
+    `--exclude-dir=node_modules --exclude-dir=archive --exclude-dir=worktrees ` +
+    `--exclude-dir=.worktrees --exclude-dir=.tmp --exclude-dir=tests ` +
+    `-e ${JSON.stringify(pattern)} . 2>/dev/null || true`;
   const out = execSync(cmd, { cwd: REPO_ROOT, encoding: 'utf8', shell: '/bin/bash' }).trim();
   return out;
 }
