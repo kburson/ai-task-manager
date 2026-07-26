@@ -15,6 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { durableSeedFiles } from './memory-seed-set.mjs';
+import { recordSeedState } from './memory-resync-state.mjs';
 
 export const MEMORY_SEED_MODES = ['all', 'choose', 'none'];
 
@@ -82,6 +83,8 @@ export function writeMemorySeed({ seedDir, memoryDir, selectedFiles }) {
     return acceptedSet.has(m[1].trim());
   });
   writeFileSync(join(memoryDir, 'MEMORY.md'), kept.join('\n'), 'utf8');
+
+  recordSeedState({ memoryDir, files: accepted });
 
   return { accepted, count: accepted.length };
 }
