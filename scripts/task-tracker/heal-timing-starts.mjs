@@ -22,6 +22,7 @@ import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.
 import { loadConfig } from './config.mjs';
 import { healTimingStarts, countStartRows } from './lib/heal-timing-starts.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 // Core, testable with injected I/O. `deps.findTimingComment` /
 // `deps.updateTimingComment` default to the real GraphQL-backed helpers.
@@ -56,10 +57,11 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
 }
 
 export function parseArgs(argv) {
-  const out = { issue: null, apply: false, help: false };
+  const out = { issue: null, apply: false, help: false, yes: false };
   for (const a of argv) {
     if (a === '--apply') out.apply = true;
     else if (a === '--check-only') out.apply = false;
+    else if (a === '--yes') out.yes = true;
     else if (a === '--help' || a === '-h') out.help = true;
     else if (/^#?\d+$/.test(a)) out.issue = a.replace(/^#/, '');
   }
@@ -68,7 +70,8 @@ export function parseArgs(argv) {
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: node scripts/task-tracker/heal-timing-starts.mjs <issue#> [--apply | --check-only]\n'
+    'Usage: node scripts/task-tracker/heal-timing-starts.mjs <issue#> [--apply | --check-only] [--yes]\n' +
+      '  --yes  skip the blast-radius confirmation prompt on --apply\n'
   );
 }
 
@@ -93,7 +96,7 @@ export async function main(argv, deps = {}) {
   // `<issue#>` positional is required by this script's own usage.
   try {
     assertKnownArgv(argv, {
-      flags: ['--apply', '--check-only'],
+      flags: ['--apply', '--check-only', '--yes'],
       positionals: { max: 1 },
     });
   } catch (e) {
@@ -112,6 +115,17 @@ export async function main(argv, deps = {}) {
   if (!repo) {
     err.write('heal-timing-starts: no repo configured\n');
     return exit(2);
+  }
+
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: [Number(args.issue)],
+      yes: args.yes,
+      log: (s) => out.write(s),
+      warn: (s) => err.write(s),
+    });
+    if (!decision.proceed) return exit(2);
   }
 
   // Serialize the read-transform-write against concurrent timing appenders on

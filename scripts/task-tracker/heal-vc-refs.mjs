@@ -28,6 +28,7 @@ import { healVcRefs, planVcRefHeal } from './lib/heal-vc-refs.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 const pexec = promisify(execFile);
 
@@ -108,11 +109,11 @@ export function parseArgs(argv, io = {}) {
   const out = io.out || process.stdout;
   const err = io.err || process.stderr;
   const exit = io.exit || ((code) => process.exit(code));
-  const args = { state: 'open', apply: false, scope: null };
+  const args = { state: 'open', apply: false, scope: null, yes: false };
 
   // #878 — refuse unknown flags before interpreting anything.
   try {
-    assertKnownArgv(argv, { flags: ['--apply'], options: ['--state', '--scope'] });
+    assertKnownArgv(argv, { flags: ['--apply', '--yes'], options: ['--state', '--scope'] });
   } catch (e) {
     if (!reportStrictArgvError(e, { err: (s) => err.write(s) })) throw e;
     printUsage(err);
@@ -123,6 +124,7 @@ export function parseArgs(argv, io = {}) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
+    else if (a === '--yes') args.yes = true;
     else if (a === '--state') args.state = argv[++i];
     else if (a.startsWith('--state=')) args.state = a.slice('--state='.length);
     else if (a === '--scope')
@@ -151,7 +153,10 @@ export function parseArgs(argv, io = {}) {
 }
 
 export function printUsage(out = process.stdout) {
-  out.write('Usage: heal-vc-refs.mjs [--state open|closed|all] [--apply] [--scope N,N,...]\n');
+  out.write(
+    'Usage: heal-vc-refs.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--yes]\n' +
+      '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply\n'
+  );
 }
 
 // I/O + orchestration seams are injectable (`deps`) so `main` is exercisable
@@ -184,6 +189,17 @@ export async function main(argv, deps = {}) {
   out.write(
     `heal-vc-refs: mode=${args.apply ? 'APPLY' : 'dry-run'} state=${args.state} issues=${numbers.length}\n`
   );
+
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: numbers,
+      yes: args.yes,
+      log: (s) => out.write(s),
+      warn: (s) => err.write(s),
+    });
+    if (!decision.proceed) return exit(2);
+  }
 
   let affectedCount = 0;
   let healedCount = 0;

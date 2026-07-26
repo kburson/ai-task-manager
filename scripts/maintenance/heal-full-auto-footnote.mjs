@@ -28,22 +28,24 @@ import {
 } from '../task-tracker/lib/markers.mjs';
 import { HUMAN_REVIEWER_MARKER_RE } from '../task-tracker/lib/human-reviewer-audit.mjs';
 import { assertKnownArgv, reportStrictArgvError } from '../task-tracker/lib/argv-strict.mjs';
+import { confirmBlastRadius } from '../task-tracker/lib/blast-radius-guard.mjs';
 
 export const USAGE =
-  'Usage: heal-full-auto-footnote.mjs [--apply] [--issue <n>]\n' +
+  'Usage: heal-full-auto-footnote.mjs [--apply] [--issue <n>] [--yes]\n' +
   '  (default)   audit only, no writes\n' +
   '  --apply     write the healed full-auto footnote\n' +
   '  --issue <n> restrict to a single issue\n' +
+  '  --yes       skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h  print this usage and exit; never writes\n';
 
 const HEAL_SIGNALS = 'reviewer-unset=1,env=0,tty=1,ci=0,heal=1';
 const HEAL_AUDIT_RE = /<!--\s*aitm-full-auto-footnote-heal\s*-->/i;
 
 function parseArgs(argv) {
-  const args = { apply: false, issue: null };
+  const args = { apply: false, issue: null, yes: false };
 
   // #878 — refuse unknown flags before any gh call.
-  if (assertKnownArgv(argv, { flags: ['--apply'], options: ['--issue'], usage: USAGE })) {
+  if (assertKnownArgv(argv, { flags: ['--apply', '--yes'], options: ['--issue'], usage: USAGE })) {
     args.help = true;
     return args;
   }
@@ -51,6 +53,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
+    else if (a === '--yes') args.yes = true;
     else if (a === '--issue' && argv[i + 1]) {
       args.issue = String(argv[i + 1]).replace(/^#/, '');
       i++;
@@ -129,8 +132,9 @@ function postHealComment(repo, issueNumber, ts) {
   sh('gh', 'issue', 'comment', String(issueNumber), '-R', repo, '--body', body);
 }
 
-async function main() {
-  const { apply, issue, help } = parseArgs(process.argv.slice(2));
+async function main(deps = {}) {
+  const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+  const { apply, issue, yes, help } = parseArgs(process.argv.slice(2));
   if (help) {
     console.log(USAGE);
     return;
@@ -142,16 +146,25 @@ async function main() {
   }
   const issues = listClosedIssues(cfg.repo, issue);
   const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-  let candidates = 0;
-  let healed = 0;
-  let skipped = 0;
-  for (const it of issues) {
-    if (it.state !== 'CLOSED' && it.state !== 'closed') continue;
-    if (!isHealCandidate(it.body || '')) {
-      skipped++;
-      continue;
+  const closedIssues = issues.filter((it) => it.state === 'CLOSED' || it.state === 'closed');
+  const candidateIssues = closedIssues.filter((it) => isHealCandidate(it.body || ''));
+  const skipped = closedIssues.length - candidateIssues.length;
+
+  if (apply) {
+    const decision = await confirm({
+      issueNumbers: candidateIssues.map((it) => it.number),
+      yes,
+      log: (s) => process.stdout.write(s),
+      warn: (s) => process.stderr.write(s),
+    });
+    if (!decision.proceed) {
+      process.exit(2);
+      return;
     }
-    candidates++;
+  }
+
+  let healed = 0;
+  for (const it of candidateIssues) {
     console.log(
       `#${it.number} closed=${it.closedAt} — would stamp footnote + aitm-full-auto-approved`
     );
@@ -169,7 +182,7 @@ async function main() {
     healed++;
   }
   console.log(
-    `\nheal-full-auto-footnote: candidates=${candidates} healed=${healed} skipped=${skipped} apply=${apply}`
+    `\nheal-full-auto-footnote: candidates=${candidateIssues.length} healed=${healed} skipped=${skipped} apply=${apply}`
   );
 }
 

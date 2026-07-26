@@ -24,6 +24,7 @@ import {
 } from './lib/plan-metadata.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 const pexec = promisify(execFile);
 
@@ -55,9 +56,10 @@ export async function listOpenIssues(deps = {}) {
 }
 
 const USAGE =
-  'Usage: backfill-plan-metadata.mjs [--apply] [--help]\n' +
+  'Usage: backfill-plan-metadata.mjs [--apply] [--yes] [--help]\n' +
   '  (default)   audit only, no writes\n' +
   '  --apply     bold the unbold Plan Metadata labels on each open issue that needs it\n' +
+  '  --yes       skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h  print this usage and exit; never writes\n';
 
 export async function main(argv = process.argv.slice(2), deps = {}) {
@@ -65,7 +67,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
 
   // #878 — refuse unknown flags before any gh call, so a typo cannot leave
   // `--apply` honored and the intended narrowing silently dropped.
-  if (assertKnownArgv(argv, { flags: ['--apply'], usage: USAGE })) {
+  if (assertKnownArgv(argv, { flags: ['--apply', '--yes'], usage: USAGE })) {
     log(USAGE);
     return;
   }
@@ -73,9 +75,25 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const list = deps.listOpenIssues || listOpenIssues;
   const mutate = deps.mutateIssueBody || mutateIssueBody;
   const err = deps.err || ((s) => console.error(s));
+  const confirm = deps.confirmBlastRadius || confirmBlastRadius;
   const apply = argv.includes('--apply');
+  const yes = argv.includes('--yes');
   const repo = 'kburson/ai-task-manager';
   const issues = await list(deps);
+
+  if (apply) {
+    const decision = await confirm({
+      issueNumbers: issues.map((it) => it.number),
+      yes,
+      log,
+      warn: err,
+    });
+    if (!decision.proceed) {
+      if (deps.exit) deps.exit(2);
+      else process.exitCode = 2;
+      return;
+    }
+  }
 
   const summary = { skipped: 0, healed: 0, failed: 0 };
   for (const it of issues.sort((a, b) => a.number - b.number)) {

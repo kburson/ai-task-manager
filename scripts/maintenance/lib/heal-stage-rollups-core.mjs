@@ -198,11 +198,13 @@ export function parseHealArgs(argv = []) {
   let apply = false;
   let verify = false;
   let issue = null;
+  let yes = false;
   for (let i = 0; i < argv.length; i++) {
     const a = String(argv[i]);
     if (a === '--apply' || a === '--write') apply = true;
     else if (a === '--dry-run') apply = false;
     else if (a === '--verify') verify = true;
+    else if (a === '--yes') yes = true;
     else if (a === '--issue') {
       const v = argv[i + 1];
       if (v == null || String(v).startsWith('--')) return { error: '--issue requires a number' };
@@ -210,5 +212,5 @@ export function parseHealArgs(argv = []) {
       i++;
     } else return { error: `unknown flag: ${a}` };
   }
-  return { mode: verify ? 'verify' : apply ? 'write' : 'dry-run', issue };
+  return { mode: verify ? 'verify' : apply ? 'write' : 'dry-run', issue, yes };
 }

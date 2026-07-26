@@ -19,6 +19,7 @@ import { promisify } from 'node:util';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
+import { confirmBlastRadius } from '../task-tracker/lib/blast-radius-guard.mjs';
 import {
   healBody,
   parseHealArgs,
@@ -39,12 +40,15 @@ if (wantsHelp(argv)) {
 const parsed = parseHealArgs(argv);
 if (parsed.error) {
   console.error(`heal-stage-rollups: ${parsed.error}`);
-  console.error('Usage: heal-stage-rollups.mjs [--apply] [--dry-run] [--verify] [--issue <n>]');
+  console.error(
+    'Usage: heal-stage-rollups.mjs [--apply] [--dry-run] [--verify] [--issue <n>] [--yes]'
+  );
   process.exit(2);
 }
 const dryRun = parsed.mode !== 'write';
 const verify = parsed.mode === 'verify';
 const singleIssue = parsed.issue;
+const yes = parsed.yes;
 
 const cfg = loadConfig();
 if (!cfg.repo) {
@@ -161,6 +165,16 @@ async function healIssue(issue) {
     for (const i of legacy) console.log(`#${i.number}: schema:1 marker remains`);
     console.log(`verify: ${legacy.length} schema:1 marker(s) remaining`);
     process.exit(legacy.length > 0 ? 1 : 0);
+  }
+
+  if (!dryRun) {
+    const decision = await confirmBlastRadius({
+      issueNumbers: candidates.map((i) => i.number),
+      yes,
+      log: (s) => process.stdout.write(s),
+      warn: (s) => process.stderr.write(s),
+    });
+    if (!decision.proceed) process.exit(2);
   }
 
   const results = await runPool(candidates, healIssue, 4);

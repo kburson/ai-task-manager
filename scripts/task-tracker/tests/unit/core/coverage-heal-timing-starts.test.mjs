@@ -84,11 +84,27 @@ await assert.rejects(() => runHeal({ issueNumber: '1' }), /repo is required/);
 }
 
 // ---- parseArgs -------------------------------------------------------------
-assert.deepEqual(parseArgs(['#42', '--apply']), { issue: '42', apply: true, help: false });
-assert.deepEqual(parseArgs(['7', '--check-only']), { issue: '7', apply: false, help: false });
-assert.deepEqual(parseArgs(['-h']), { issue: null, apply: false, help: true });
-assert.deepEqual(parseArgs(['--help']), { issue: null, apply: false, help: true });
-assert.deepEqual(parseArgs([]), { issue: null, apply: false, help: false });
+assert.deepEqual(parseArgs(['#42', '--apply']), {
+  issue: '42',
+  apply: true,
+  help: false,
+  yes: false,
+});
+assert.deepEqual(parseArgs(['7', '--check-only']), {
+  issue: '7',
+  apply: false,
+  help: false,
+  yes: false,
+});
+assert.deepEqual(parseArgs(['-h']), { issue: null, apply: false, help: true, yes: false });
+assert.deepEqual(parseArgs(['--help']), { issue: null, apply: false, help: true, yes: false });
+assert.deepEqual(parseArgs([]), { issue: null, apply: false, help: false, yes: false });
+assert.deepEqual(parseArgs(['5', '--yes']), {
+  issue: '5',
+  apply: false,
+  help: false,
+  yes: true,
+});
 
 // ---- printUsage writes to the injected stream ------------------------------
 {

@@ -227,6 +227,7 @@ test('main: apply prints backfilled + skip lines, no dry-run footer', async () =
   await main(['1', '2', '--apply'], {
     loadConfig: () => ({ repo: 'o/r' }),
     healOne: async () => seq[i++],
+    confirmBlastRadius: async () => ({ proceed: true }),
     out: (s) => out.push(s),
     err: () => {},
   });

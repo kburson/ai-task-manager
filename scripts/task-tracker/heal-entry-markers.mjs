@@ -52,12 +52,14 @@ import {
 export { safeBackfillTs };
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 export const USAGE =
-  'Usage: heal-entry-markers.mjs [<issue#> ...] [--apply | --check-only]\n' +
+  'Usage: heal-entry-markers.mjs [<issue#> ...] [--apply | --check-only] [--yes]\n' +
   '  (default)     audit only, no writes; all open issues when none are named\n' +
   '  --apply       write the healed entry markers\n' +
   '  --check-only  exit 1 if any issue would be healed\n' +
+  '  --yes         skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h    print this usage and exit; never writes\n';
 
 const pexec = promisify(execFile);
@@ -75,12 +77,14 @@ function parseArgs(argv) {
   const issues = [];
   let apply = false;
   let checkOnly = false;
+  let yes = false;
   for (const a of argv) {
     if (a === '--apply') apply = true;
     else if (a === '--check-only') checkOnly = true;
+    else if (a === '--yes') yes = true;
     else if (/^#?\d+$/.test(a)) issues.push(String(a).replace(/^#/, ''));
   }
-  return { issues, apply, checkOnly };
+  return { issues, apply, checkOnly, yes };
 }
 
 // Pure decision used by --check-only mode and tested directly: given a set of
@@ -396,7 +400,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   try {
     if (
       assertKnownArgv(argv, {
-        flags: ['--apply', '--check-only'],
+        flags: ['--apply', '--check-only', '--yes'],
         positionals: { max: Infinity },
         usage: USAGE,
       })
@@ -409,7 +413,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     return exit(2);
   }
 
-  const { issues, apply, checkOnly } = parseArgs(argv);
+  const { issues, apply, checkOnly, yes } = parseArgs(argv);
   if (apply && checkOnly) {
     err('heal-entry-markers: --apply and --check-only are mutually exclusive\n');
     return exit(2);
@@ -417,6 +421,18 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const cfg = load();
   const repo = cfg.repo;
   const targets = issues.length > 0 ? issues : await fetchOpen(repo, deps);
+
+  if (apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: targets.map(Number),
+      yes,
+      log: out,
+      warn: err,
+    });
+    if (!decision.proceed) return exit(2);
+  }
+
   const results = [];
   for (const num of targets) {
     try {

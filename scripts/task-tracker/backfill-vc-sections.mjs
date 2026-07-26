@@ -23,6 +23,7 @@ import { parseVerificationCommands } from './lib/verification-commands.mjs';
 import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { parseStrict, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 const pexec = promisify(execFile);
 
@@ -86,10 +87,11 @@ export async function listOpenIssues(deps = {}) {
 }
 
 const USAGE =
-  'Usage: backfill-vc-sections.mjs [--apply] [--dry-run] [--help]\n' +
+  'Usage: backfill-vc-sections.mjs [--apply] [--dry-run] [--yes] [--help]\n' +
   '  (default)   audit only, no writes\n' +
   '  --apply     write the healed VC section to each open issue that needs one\n' +
   '  --dry-run   explicit alias for the audit-only default\n' +
+  '  --yes       skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h  print this usage and exit; never writes\n';
 
 export async function main(argv = process.argv.slice(2), deps = {}) {
@@ -98,7 +100,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   // Strict argv first: refuse unknown tokens before any `gh` call, so a typo is
   // a no-op rather than an unbounded write (#878).
   const parsed = parseStrict(argv, {
-    flags: ['--apply', '--dry-run'],
+    flags: ['--apply', '--dry-run', '--yes'],
     usage: USAGE,
   });
   if (parsed.help) {
@@ -109,9 +111,25 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const list = deps.listOpenIssues || listOpenIssues;
   const mutate = deps.mutateIssueBody || mutateIssueBody;
   const err = deps.err || ((s) => console.error(s));
+  const confirm = deps.confirmBlastRadius || confirmBlastRadius;
   const apply = Boolean(parsed.values['--apply']);
+  const yes = Boolean(parsed.values['--yes']);
   const repo = 'kburson/ai-task-manager';
   const issues = await list(deps);
+
+  if (apply) {
+    const decision = await confirm({
+      issueNumbers: issues.map((it) => it.number),
+      yes,
+      log,
+      warn: err,
+    });
+    if (!decision.proceed) {
+      if (deps.exit) deps.exit(2);
+      else process.exitCode = 2;
+      return;
+    }
+  }
 
   const summary = { skipped: 0, derived: 0, default: 0, failed: 0 };
   for (const it of issues.sort((a, b) => a.number - b.number)) {

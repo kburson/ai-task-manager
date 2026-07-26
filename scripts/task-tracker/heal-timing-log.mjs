@@ -31,6 +31,7 @@ import { loadConfig } from './config.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { healTimingLog, countRetiredRows } from './lib/heal-timing-log.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 // Core, testable with injected I/O. `deps.findTimingComment` /
 // `deps.updateTimingComment` default to the real GraphQL-backed helpers.
@@ -60,12 +61,21 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
 }
 
 export function parseArgs(argv) {
-  const out = { issue: null, sweep: false, apply: false, state: 'all', scope: null, help: false };
+  const out = {
+    issue: null,
+    sweep: false,
+    apply: false,
+    state: 'all',
+    scope: null,
+    help: false,
+    yes: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--sweep') out.sweep = true;
     else if (a === '--apply') out.apply = true;
     else if (a === '--check-only') out.apply = false;
+    else if (a === '--yes') out.yes = true;
     else if (a === '--help' || a === '-h') out.help = true;
     else if (a === '--state') out.state = argv[++i];
     else if (a.startsWith('--state=')) out.state = a.slice('--state='.length);
@@ -89,8 +99,9 @@ export function printUsage(out = process.stdout) {
   out.write(
     'Usage:\n' +
       '  node scripts/task-tracker/heal-timing-log.mjs <issue#> [--apply | --check-only]\n' +
-      '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...]\n' +
-      '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n'
+      '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--yes]\n' +
+      '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n' +
+      '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply sweep\n'
   );
 }
 
@@ -179,6 +190,17 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
       `state=${args.state} issues=${numbers.length}\n`
   );
 
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: numbers,
+      yes: args.yes,
+      log: (s) => out.write(s),
+      warn: (s) => err.write(s),
+    });
+    if (!decision.proceed) return 2;
+  }
+
   let touched = 0;
   let retired = 0;
   const failed = [];
@@ -215,7 +237,7 @@ export async function main(argv, deps = {}) {
   // also accepts a bare `<issue#>` positional.
   try {
     assertKnownArgv(argv, {
-      flags: ['--sweep', '--apply', '--check-only'],
+      flags: ['--sweep', '--apply', '--check-only', '--yes'],
       options: ['--state', '--scope'],
       positionals: { max: 1 },
     });

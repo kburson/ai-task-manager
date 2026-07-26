@@ -351,6 +351,7 @@ test('main: apply prints applied, and healOne throw becomes error', async () => 
   await main(['20', '21', '--apply'], {
     ...s,
     loadConfig: () => ({ repo: 'o/r' }),
+    confirmBlastRadius: async () => ({ proceed: true }),
     healOne: async ({ num }) => {
       if (num === '21') throw new Error('boom');
       return {

@@ -34,6 +34,7 @@ import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs'
 import { loadConfig } from './config.mjs';
 import { getProjectDir } from './paths.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
+import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 
 const pexec = promisify(execFile);
 
@@ -139,19 +140,27 @@ export function backfillTimingBody(body, { sanityCapSec = DEFAULT_SANITY_CAP_SEC
 
 export function printUsage(out = (s) => process.stdout.write(s)) {
   out(
-    'Usage: backfill-timing-logs.mjs (--issue N | --all-open) [--apply] [--cap-hours H]\n' +
-      '  Dry-run by default; --apply mutates the timing comment (backup written to .tmp/heal/).\n'
+    'Usage: backfill-timing-logs.mjs (--issue N | --all-open) [--apply] [--cap-hours H] [--yes]\n' +
+      '  Dry-run by default; --apply mutates the timing comment (backup written to .tmp/heal/).\n' +
+      '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply\n'
   );
 }
 
 export function parseArgs(argv) {
-  const args = { issue: null, allOpen: false, apply: false, capSec: DEFAULT_SANITY_CAP_SEC };
+  const args = {
+    issue: null,
+    allOpen: false,
+    apply: false,
+    yes: false,
+    capSec: DEFAULT_SANITY_CAP_SEC,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--issue') args.issue = Number(String(argv[++i]).replace(/^#/, ''));
     else if (a.startsWith('--issue=')) args.issue = Number(a.slice(8).replace(/^#/, ''));
     else if (a === '--all-open') args.allOpen = true;
     else if (a === '--apply') args.apply = true;
+    else if (a === '--yes') args.yes = true;
     else if (a === '--cap-hours') args.capSec = Math.round(Number(argv[++i]) * 3600);
     else if (a.startsWith('--cap-hours=')) args.capSec = Math.round(Number(a.slice(12)) * 3600);
     else if (a === '--help' || a === '-h') {
@@ -231,7 +240,7 @@ export async function main(argv, deps = {}) {
   // #878 — refuse unknown flags before anything else.
   try {
     assertKnownArgv(argv, {
-      flags: ['--all-open', '--apply'],
+      flags: ['--all-open', '--apply', '--yes'],
       options: ['--issue', '--cap-hours'],
     });
   } catch (e) {
@@ -256,6 +265,13 @@ export async function main(argv, deps = {}) {
     return exit(2);
   }
   const issues = args.allOpen ? await fetchOpen(repo, deps) : [args.issue];
+
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({ issueNumbers: issues, yes: args.yes, log: out, warn: err });
+    if (!decision.proceed) return exit(2);
+  }
+
   for (const n of issues) {
     try {
       await process1(n, { repo, apply: args.apply, capSec: args.capSec, stamp: stampNow, deps });

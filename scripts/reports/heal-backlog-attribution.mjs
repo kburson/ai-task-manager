@@ -33,11 +33,13 @@ import { parseMarker } from '../task-tracker/lib/commit-trail.mjs';
 import { classifyIssue, retraceSha, LOG_FIELD_SEP } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
 import { assertKnownArgv, reportStrictArgvError } from '../task-tracker/lib/argv-strict.mjs';
+import { confirmBlastRadius } from '../task-tracker/lib/blast-radius-guard.mjs';
 
 export const USAGE =
   'Usage: heal-backlog-attribution.mjs [--apply] [--json] [--repo owner/name]\n' +
-  '                                   [--trunk <ref>] [--limit <n>]\n' +
+  '                                   [--trunk <ref>] [--limit <n>] [--yes]\n' +
   '  (default)   audit only, no writes\n' +
+  '  --yes       skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h  print this usage and exit; never writes\n';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -124,7 +126,7 @@ function parseArgs(argv) {
   // #878 — refuse unknown flags before any gh/git call.
   if (
     assertKnownArgv(argv, {
-      flags: ['--apply', '--json'],
+      flags: ['--apply', '--json', '--yes'],
       options: ['--repo', '--trunk', '--limit'],
       usage: USAGE,
     })
@@ -139,6 +141,7 @@ function parseArgs(argv) {
   return {
     apply: argv.includes('--apply'),
     json: argv.includes('--json'),
+    yes: argv.includes('--yes'),
     repo: flag('--repo'),
     trunk: flag('--trunk'),
     limit: Number(flag('--limit', '1000')),
@@ -165,7 +168,7 @@ function fetchClosedIssues(repo, limit) {
   return JSON.parse(out);
 }
 
-async function main() {
+async function main(deps = {}) {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     console.log(USAGE);
@@ -227,6 +230,18 @@ async function main() {
     console.log(
       `\n${offtrunk.length} COMMITS_OFFTRUNK issue(s). Re-run with --apply to re-trace and rewrite markers.`,
     );
+    return;
+  }
+
+  const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+  const decision = await confirm({
+    issueNumbers: offtrunk.map((r) => r.number),
+    yes: args.yes,
+    log: (s) => process.stdout.write(s),
+    warn: (s) => process.stderr.write(s),
+  });
+  if (!decision.proceed) {
+    process.exit(2);
     return;
   }
 

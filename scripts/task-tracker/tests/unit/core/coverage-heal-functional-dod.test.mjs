@@ -128,7 +128,12 @@ function sink() {
   const chunks = [];
   return { chunks, write: (s) => chunks.push(String(s)), text: () => chunks.join('') };
 }
-assert.deepEqual(parseArgs(['--apply']), { state: 'open', apply: true, scope: null });
+assert.deepEqual(parseArgs(['--apply']), {
+  state: 'open',
+  apply: true,
+  scope: null,
+  yes: false,
+});
 assert.deepEqual(parseArgs(['--state', 'closed']).state, 'closed');
 assert.deepEqual(parseArgs(['--state=all']).state, 'all');
 assert.deepEqual(parseArgs(['--scope', '1,#2,x,3']).scope, [1, 2, 3]);
@@ -235,6 +240,7 @@ const PID = 'PVT_target';
   const mutateCalls = [];
   await main(['--scope', '10,11,12,13', '--apply'], {
     loadConfig: () => ({ repo: 'o/r', projectId: PID }),
+    confirmBlastRadius: async () => ({ proceed: true }),
     fetchIssueBody: async (n) => {
       if (n === 10) return STALE; // affected → apply → healed
       if (n === 11) return KEYED; // not affected → skipped
