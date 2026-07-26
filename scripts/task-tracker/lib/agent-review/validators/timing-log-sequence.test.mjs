@@ -16,7 +16,10 @@ function logCtx(rows, enteredStages = []) {
     '',
     HEADER,
     SEP,
-    ...rows.map(([ts, ev, desc = '']) => `| ${ts} | ${ev} |  |  |  | 0 | ${desc} |  |`),
+    ...rows.map(
+      ([ts, ev, desc = '', rowSec = '']) =>
+        `| ${ts} | ${ev} |  |  |  | 0 | ${desc} |  |${rowSec ? ` ${rowSec}` : ''}`
+    ),
     '',
     '<sub>auto-logged</sub>',
   ].join('\n');
@@ -407,6 +410,67 @@ test('non-lifecycle qualified slugs (switch-out:#N, issue:wrap) are not reconcil
     [T(1), 'switch-out:#813'],
     [T(2), 'resumed'],
     [T(3), 'issue:wrap'],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+// --- Forensic suspicious-gap detection (#984) -------------------------------
+
+test('fails a #899-shaped many-hour active lifecycle row with session-log remediation', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    [
+      '2026-07-25 19:33:17 -05:00',
+      'develop:completed',
+      'development complete',
+      '<!-- row-sec: a=139826 i=0 -->',
+    ],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some(
+      (f) =>
+        /suspicious active duration/.test(f) &&
+        /row 2\b/.test(f) &&
+        /session logs/.test(f) &&
+        /heal/.test(f)
+    ),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('fails a long unexplained wall-clock gap without a departure boundary', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    ['2026-07-14 17:00:00 -05:00', 'develop:completed', 'development complete'],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /suspicious wall-clock gap/.test(f) && /row 1→2/.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('passes a long pause/resume gap because the idle boundary is explicit', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    [T(1), 'pause'],
+    ['2026-07-14 17:00:00 -05:00', 'resumed'],
+    ['2026-07-14 17:01:00 -05:00', 'develop:completed'],
+  ];
+  const res = validate(logCtx(rows, GOOD_STAGES));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('passes a long switch-out/resume gap because issue focus changed explicitly', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    [T(1), 'switch-out:#899'],
+    ['2026-07-14 17:00:00 -05:00', 'resumed'],
+    ['2026-07-14 17:01:00 -05:00', 'develop:completed'],
   ];
   const res = validate(logCtx(rows, GOOD_STAGES));
   assert.equal(res.pass, true, JSON.stringify(res.failures));

@@ -33,7 +33,7 @@ import {
   isReengagementEvent,
   isCanonicalPhaseSlug,
 } from '../../timing-event-map.mjs';
-import { _tsToMs } from '../../timing-rows.mjs';
+import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
 import { STAGES } from '../../stage-entry-markers.mjs';
 
 const TIMING_LOG_RE = /⏱\s*Timing Log/;
@@ -65,6 +65,7 @@ const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
 // re-verifying) are the sanctioned rewinds. Forward motion must advance exactly
 // one ladder rung; a multi-rung forward jump is a skipped stage.
 const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>develop', 'done>test']);
+const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
 
 // Extract the kanban stage a row drives the walk to, or null if the row is not a
 // stage-transition event. `<stage>:failed` rows are gate-audit records of a
@@ -143,6 +144,17 @@ function loc(row) {
   return `row ${row.index} (${row.ts} | ${row.event || '∅'})`;
 }
 
+function formatShortDuration(sec) {
+  const total = Math.max(0, Math.floor(Number(sec) || 0));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+}
+
+function forensicRemediation() {
+  return 'inspect session logs or other durable evidence, identify the true stop/pause/resume boundary, then heal the timing rows and derived timing fields before approval';
+}
+
 export function validate(context = {}) {
   const comments = context.comments;
   const markers = context.markers || {};
@@ -205,8 +217,29 @@ export function validate(context = {}) {
         `${loc(row)}: out-of-order — timestamp precedes row ${prevRow.index} (${prevRow.ts})`
       );
     }
+    if (
+      prevMs != null &&
+      ms - prevMs > SUSPICIOUS_GAP_SEC * 1000 &&
+      prevRow &&
+      !isDepartureEvent(prevRow.event)
+    ) {
+      failures.push(
+        `row ${prevRow.index}→${row.index}: suspicious wall-clock gap (${formatShortDuration(
+          (ms - prevMs) / 1000
+        )}) without a departure boundary — ${forensicRemediation()}`
+      );
+    }
     prevMs = ms;
     prevRow = row;
+
+    const rowSec = parseRowSecMarker(row.raw);
+    if (rowSec && rowSec.activeSec > SUSPICIOUS_GAP_SEC) {
+      failures.push(
+        `${loc(row)}: suspicious active duration (${formatShortDuration(
+          rowSec.activeSec
+        )}) — ${forensicRemediation()}`
+      );
+    }
 
     // --- Reconciliation vs aitm-entered markers ------------------------------
     const colon = row.event.indexOf(':');

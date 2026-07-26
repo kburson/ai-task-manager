@@ -36,14 +36,21 @@ export const CANONICAL_SECTIONS = [
 function scanSections(body) {
   const lines = String(body || '').split('\n');
   const headings = [];
-  const offsets = [];
   let pos = 0;
+  let detailsDepth = 0;
   for (const line of lines) {
+    const trimmed = line.trim();
     const m = /^##\s+(.*\S)\s*$/.exec(line);
     if (m && !/^###/.test(line)) {
-      headings.push({ text: m[1].trim(), lineStart: pos, lineEnd: pos + line.length });
+      headings.push({
+        text: m[1].trim(),
+        lineStart: pos,
+        lineEnd: pos + line.length,
+        inDetails: detailsDepth > 0,
+      });
     }
-    offsets.push(pos);
+    if (/^<details\b/i.test(trimmed)) detailsDepth += 1;
+    if (/^<\/details>/i.test(trimmed) && detailsDepth > 0) detailsDepth -= 1;
     pos += line.length + 1; // +1 for the split '\n'
   }
   const total = String(body || '').length;
@@ -54,8 +61,13 @@ function scanSections(body) {
       text: h.text,
       content: String(body || '').slice(contentStart, contentEnd),
       order: h.lineStart,
+      inDetails: h.inDetails,
     };
   });
+}
+
+function isRootOnlySection(label) {
+  return ['Acceptance Criteria', 'Verification Commands', 'Definition of Done'].includes(label);
 }
 
 // V1 validator. `context.body` is the issue body.
@@ -66,8 +78,17 @@ export function validate({ body } = {}) {
   // Resolve each canonical row to the first matching heading in the body.
   const resolved = CANONICAL_SECTIONS.map((row) => ({
     row,
-    hit: sections.find((s) => row.match(s.text)),
+    hit: sections.find((s) => row.match(s.text) && (!isRootOnlySection(row.label) || !s.inDetails)),
   }));
+
+  for (const row of CANONICAL_SECTIONS.filter((r) => isRootOnlySection(r.label))) {
+    const hidden = sections.find((s) => row.match(s.text) && s.inDetails);
+    if (hidden) {
+      failures.push(
+        `section '${row.label}' appears inside a details block; details block opened before ${row.label}; canonical checkbox sections must be root-level and visible`
+      );
+    }
+  }
 
   // Missing + empty checks.
   for (const { row, hit } of resolved) {

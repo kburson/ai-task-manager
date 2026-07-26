@@ -100,6 +100,80 @@ test('a `###` sub-heading does not delimit or satisfy a section', () => {
   assert.ok(res.failures.some((f) => /Scope.*missing/.test(f)));
 });
 
+test('fails when canonical checkbox sections are hidden inside a details block', () => {
+  const body = [
+    '## User Story',
+    'As a maintainer\nI want a gate\nSo that bodies stay well-formed',
+    '## Scope',
+    'Ship V1.',
+    '## Plan Metadata',
+    '- **Size:** S',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
+    '> Follow the directive.',
+    '## Deep-Dive Analysis (2026-07-14)',
+    '<details>',
+    '<summary>Deep dive</summary>',
+    '',
+    '## Acceptance Criteria',
+    '- [x] Hidden criterion.',
+    '## Verification Commands',
+    '- [x] `node --test hidden.test.mjs` <!-- id=1 -->',
+    '## Definition of Done',
+    '- [x] Hidden DoD',
+    '</details>',
+    '## AITM Progress Markers',
+    '<!-- aitm-entered-develop ts="2026-07-14T00:00:00Z" -->',
+  ].join('\n\n');
+
+  const res = validate({ body });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /Acceptance Criteria/.test(f) && /inside.*details/i.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('fails when an unclosed deep-dive details block swallows root checkbox sections', () => {
+  const body = WELL_FORMED.replace(
+    '## Deep-Dive Analysis (2026-07-14)\n\nDesign prose.',
+    [
+      '## Deep-Dive Analysis (2026-07-14)',
+      '',
+      '<details>',
+      '<summary>Deep dive</summary>',
+      '',
+      'Design prose.',
+      '',
+    ].join('\n')
+  );
+
+  const res = validate({ body });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /details block opened before.*Acceptance Criteria/i.test(f)),
+    JSON.stringify(res.failures)
+  );
+});
+
+test('passes when a collapsed deep dive closes before root checkbox sections', () => {
+  const body = WELL_FORMED.replace(
+    '## Deep-Dive Analysis (2026-07-14)\n\nDesign prose.',
+    [
+      '## Deep-Dive Analysis (2026-07-14)',
+      '',
+      '<details>',
+      '<summary>Deep dive</summary>',
+      '',
+      'Design prose.',
+      '',
+      '</details>',
+    ].join('\n')
+  );
+
+  const res = validate({ body });
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
 test('bootstrap registers the validator on the shared singleton', async () => {
   await import('../bootstrap.mjs');
   const { registry } = await import('../registry.mjs');
