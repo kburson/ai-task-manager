@@ -21,7 +21,7 @@ const read = (rel) => readFileSync(resolve(REPO_ROOT, rel), 'utf8');
 const ci = read('.github/workflows/ci.yml');
 const closeGates = read('scripts/task-tracker/lib/close-gates.mjs');
 const trunkRef = read('scripts/task-tracker/lib/trunk-ref.mjs');
-const closeGateTests = read('scripts/task-tracker/tests/unit/lib/coverage-close-gates.test.mjs');
+const closeGateTests = read('scripts/task-tracker/tests/slow/lib/coverage-close-gates.test.mjs');
 
 const STEP_NAME = 'Materialize local trunk ref for real-git tests (#745)';
 // #949 dropped the `--depth=1` this fetch used to carry. The #745 contract is
