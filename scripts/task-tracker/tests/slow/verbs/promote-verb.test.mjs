@@ -485,12 +485,17 @@ test('promote: test→review ALLOWED when dod-verified present and every checkbo
   assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 2572 }]);
 });
 
+// #998 — review→close only fires once Agent Review genuinely passed; these
+// fixtures must carry that evidence marker, same signal `approve.mjs` gates on.
+const AGENT_REVIEW_PASSED_LINE =
+  '- [x] Agent Review Passed <!-- aitm-verified ts="2026-05-10T00:00:00Z" gate="agent-review" result="pass" -->\n';
+
 test('promote: review→done delegates to /task close', async () => {
   // #710 — the happy path now re-reads the live board after the alias close and
   // only reports `promoted` when it actually reached `done`. A successful close
   // moves the board to done, so the fixture must reflect that post-move state.
   const { deps, calls } = makeDeps({
-    body: bodyWithState('review'),
+    body: bodyWithState('review') + AGENT_REVIEW_PASSED_LINE,
     live: 'review',
     liveAfter: 'done',
   });
@@ -506,7 +511,7 @@ test('promote: review→done reports transition-failed when close exits 0 but bo
   // reported a false `✓ promoted`. With the alias re-verify, an exit-0 that did
   // NOT move the board to `done` is caught and downgraded to transition-failed.
   const { deps, calls } = makeDeps({
-    body: bodyWithState('review'),
+    body: bodyWithState('review') + AGENT_REVIEW_PASSED_LINE,
     live: 'review',
     spawnCode: 0,
     liveAfter: 'review',
