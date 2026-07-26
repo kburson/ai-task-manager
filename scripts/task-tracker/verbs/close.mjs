@@ -13,6 +13,8 @@ import {
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { readLastKnownState } from '../gh-timing-comment.mjs';
+import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
 import { projectItemForIssue, deleteProjectV2Item } from '../../gh/lib/github-projects.mjs';
 import { hasReviewApprovedMarker } from '../lib/markers.mjs';
@@ -437,6 +439,17 @@ export async function verbClose(ctx) {
       const data = JSON.parse(stdout);
       let body = data.body ?? '';
       closeBody = body;
+
+      // #931 — refuse before any gate-bypass marker write / DoD derivation if
+      // the issue isn't in `review` (close's home state — it's review's exit
+      // action). Thrown here so it's caught by the fail-closed `catch` below
+      // (still bypassable via `--force`, same as every other guard exception
+      // in this block).
+      assertVerbHomeState({
+        verb: 'close',
+        currentState: readLastKnownState(body).state,
+        issueNumber: closeIssueNum,
+      });
 
       // #279 — review→done close-gates migrated into the guard registry.
       // The marker regex and runCloseGates bundle that used to live inline

@@ -35,6 +35,8 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { detectFunctionalPretick, detectLifecyclePretick } from '../lib/lifecycle-dod.mjs';
 import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
+import { readLastKnownState } from '../gh-timing-comment.mjs';
+import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 
 const pexec = promisify(execFile);
 
@@ -357,6 +359,15 @@ export async function runVerbTest({
   const logIssueTime = deps.logIssueTime;
 
   let body = await fetchBody({ cfg, issueNum });
+  // #931 — refuse before any pretick/sandbox work if the issue isn't in
+  // `develop` (first entry) or `test` (in-place re-verify self-loop). A stale
+  // bind or a hand-run `/task test` from the wrong stage must not burn a
+  // worktree + npm ci for nothing.
+  assertVerbHomeState({
+    verb: 'test',
+    currentState: readLastKnownState(body).state,
+    issueNumber: issueNum,
+  });
   const pretick = detectLifecyclePretick(body);
   if (pretick.regressions.length > 0) {
     body = pretick.body;

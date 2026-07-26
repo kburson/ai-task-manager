@@ -11,7 +11,13 @@ import { unescapeValue } from '../lib/proof-marker.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { resolveVcRefCommands } from '../lib/vc-ref.mjs';
 import { stripMarkers } from '../lib/ac-evidence.mjs';
-import { postTimingEvent, buildRow, buildFlushRow } from '../gh-timing-comment.mjs';
+import {
+  postTimingEvent,
+  buildRow,
+  buildFlushRow,
+  readLastKnownState,
+} from '../gh-timing-comment.mjs';
+import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -288,6 +294,16 @@ export async function verbReview(ctx) {
     } catch {
       /* best-effort: GitHub/telemetry side effect; core flow proceeds */
     }
+    // #931 — refuse before the agent-review gate/any mutation if the issue
+    // isn't in `test` (review's real entry state — test→review is the
+    // authoritative move). A missing/failed best-effort fetch leaves body ''
+    // (currentState null), which is a no-op — this guard only refuses a
+    // *known* wrong state.
+    assertVerbHomeState({
+      verb: 'review',
+      currentState: readLastKnownState(body).state,
+      issueNumber: issueNum,
+    });
     if (body) {
       const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
       const result = validateBody(body, { gates: activeGates });
