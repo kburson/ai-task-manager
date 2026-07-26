@@ -7,6 +7,12 @@ Claude surfaces. Both providers must use the shared project corpus under
 `.ai-task-manager/memory/` and the shared filtered index at
 `.ai-task-manager/memory/MEMORY.md`.
 
+Cloud and other ephemeral task environments must not need to run the interactive
+`ai-task-manager install` flow or the project-binding `aitm init` flow. A
+maintainer runs those authoring-time commands once, commits the project-portable
+outputs, and a fresh clone receives the same AITM contract after ordinary tool
+setup such as `npm ci`.
+
 ## Current Behavior
 
 The memory seed installer copies accepted records into
@@ -42,6 +48,33 @@ index.
 When `memoryIndexHook` is false, Codex installs no memory-index hook. This keeps
 `--memory-seed=none` behavior consistent across providers.
 
+Persist the project-portable install/init artifacts in git so cloned ephemeral
+environments receive the same configuration:
+
+- `.ai-task-manager/**`, including `.ai-task-manager/memory/**`
+- `.claude/settings.json`
+- `.claude/commands/task.md`
+- `.claude/skills/task/SKILL.md`
+- `.codex/hooks.json`
+- `.agents/skills/task/SKILL.md`
+- `AGENTS.md`
+- `CLAUDE.md`
+- `.github/ISSUE_TEMPLATE/**`
+
+Continue excluding host-local or runtime state:
+
+- `.tmp/`
+- `node_modules/`
+- `.ai-task-manager/.cache/`
+- `.claude/worktrees/`
+- `.claude/settings.local.json`
+- `.claude/scheduled_tasks.lock`
+
+The installer-generated `.gitignore` should ignore only the runtime/local paths
+above. It must not blanket-ignore `.claude/` or `.agents/`, because the stable
+hook and skill files under those directories are now part of the project
+contract.
+
 ## Installation Flow
 
 `cmdInstall()` already resolves the memory seed choice before installing provider
@@ -59,6 +92,11 @@ Codex should receive the same flag:
 This makes memory index surfacing standard whenever optional Codex support is
 installed and the user accepts at least one memory seed file.
 
+Install and init remain maintainer-controlled authoring steps. Cloud workers are
+expected to clone the repository, install dependencies, and use the committed
+AITM files. They should not run the interactive installer or initialize project
+board metadata.
+
 ## Testing
 
 Add or extend unit coverage around the installer and hook patcher:
@@ -72,6 +110,11 @@ Add or extend unit coverage around the installer and hook patcher:
   --memory-seed=all` includes the Codex memory-index hooks.
 - A full install with `--memory-seed=none` does not include Codex memory-index
   hooks.
+- Installer `.gitignore` output does not ignore `.claude/` or `.agents/`
+  wholesale.
+- Installer `.gitignore` output continues to ignore `.tmp/`,
+  `.ai-task-manager/.cache/`, `.claude/worktrees/`,
+  `.claude/settings.local.json`, and `.claude/scheduled_tasks.lock`.
 
 ## Documentation
 
@@ -80,9 +123,15 @@ lists operational-lessons memory index surfacing for Codex. The row should make
 clear that Claude and Codex share `.ai-task-manager/memory/MEMORY.md` and that
 both providers load only the index, not the full per-fact corpus.
 
+Update install/setup documentation to make the clone-reproducible contract
+explicit: run `ai-task-manager install` and `aitm init` once in a maintainer
+environment, commit the generated project-portable artifacts, and let ephemeral
+cloud environments inherit them from git.
+
 ## Out of Scope
 
 This change does not create provider-specific memory files, duplicate indexes,
 or modify the memory resync format. It also does not change compaction timing
 semantics: `PreCompact` and `PostCompact` timing rows remain separate from the
-memory-index hook.
+memory-index hook. It does not commit local Claude approval overrides, scheduled
+task locks, worktree checkouts, caches, or package installs.
