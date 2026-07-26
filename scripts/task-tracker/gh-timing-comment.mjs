@@ -8,7 +8,7 @@ import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
-import { lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
+import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
 const pexec = promisify(execFile);
 
 // #568 — raised by `appendRow` when a second `start` row is attempted over a
@@ -360,6 +360,18 @@ function appendRow(body, row) {
       );
     }
   }
+
+  // #972 — redundant-departure guard. A second departure event (`switch-out:*`
+  // / `pause:*` / `idle`) landing while a prior departure is still open (no
+  // `resumed` row between them) would otherwise stack a doubled interruption
+  // row, corrupting the active/idle ladder (`lib/timing-ladder.mjs`) and
+  // failing the `timing-log-sequence` Agent Review validator. Matches the
+  // existing self-bind-to-already-active no-op precedent (#833): skip the
+  // append entirely rather than write the redundant row.
+  if (lastOpenInterruption(body) && classifyEvent(rowEventSlug(effectiveRow))?.role === 'open') {
+    return body;
+  }
+
   // #821 — monotonic-timestamp guard. A late/deferred finalize row drained from
   // the durable queue (postRowOrEnqueue → enqueue → flush) carries the timestamp
   // of the window it credits, which may precede rows that have since landed.
