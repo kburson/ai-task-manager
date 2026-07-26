@@ -136,4 +136,19 @@ async function runExpectFail(args, env) {
   rmSync(sandbox, { recursive: true });
 }
 
+// 6. #999 — drift re-verify (review -> test) → permitted. Reproduces the
+// exact #996 shape: verb-home-state-guard.mjs already let `/task test <N>`
+// run from `review` (#998), and sandbox verification passed, but the
+// terminal board move here used to be refused by this exact matrix gate
+// because state-machine.mjs's BACKWARD map lacked a review->test entry.
+{
+  const sandbox = makeSandbox();
+  const r = await run(
+    ['123', 'test', '--from', 'review'],
+    cleanEnv(sandbox, { AITM_INTERNAL: '1' })
+  );
+  assert.match(r.stdout, /moved to: test/, 'review->test drift re-verify should succeed');
+  rmSync(sandbox, { recursive: true });
+}
+
 console.log('move-state-internal-gate.test.mjs: all passed');

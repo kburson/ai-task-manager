@@ -33,11 +33,22 @@ export const FORWARD = {
   review: 'done',
 };
 
+// #999 — a BACKWARD value may be a single state or an array of states.
+// `review` needs two legal backward targets: `develop` (full rework, #882)
+// and `test` (drift re-verify — the board move #998's verb-home-state-guard
+// fix opened the door for but never landed here). Every other entry stays a
+// single string; existing single-target behavior is unchanged.
 export const BACKWARD = {
   'on-deck': 'backlog',
   test: 'develop',
-  review: 'develop',
+  review: ['develop', 'test'],
 };
+
+export function backwardTargets(from) {
+  const entry = BACKWARD[from];
+  if (entry == null) return [];
+  return Array.isArray(entry) ? entry : [entry];
+}
 
 // Canonical state slugs only. Boards using retired vocabulary
 // (Groom/Analyze/Development/Validate) are not supported by any migration
@@ -71,7 +82,7 @@ export function validateTransition(from, to) {
   // review→review); the enumeration was the defect, not its missing entries.
   if (from === to) return { ok: true, noop: true };
   if (FORWARD[from] === to) return { ok: true };
-  if (BACKWARD[from] === to) return { ok: true };
-  const allowed = [FORWARD[from], BACKWARD[from]].filter(Boolean).join(', ') || 'none';
+  if (backwardTargets(from).includes(to)) return { ok: true };
+  const allowed = [FORWARD[from], ...backwardTargets(from)].filter(Boolean).join(', ') || 'none';
   return { ok: false, reason: `illegal transition: ${from} → ${to}. Allowed: ${allowed}.` };
 }

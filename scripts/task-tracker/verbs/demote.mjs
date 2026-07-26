@@ -24,7 +24,12 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BACKWARD, STATES, validateTransition, normalizeStateSlug } from '../state-machine.mjs';
+import {
+  backwardTargets,
+  STATES,
+  validateTransition,
+  normalizeStateSlug,
+} from '../state-machine.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
@@ -186,11 +191,13 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
     };
   }
 
-  // Matrix sanity check — both legal sources have BACKWARD[from] === 'develop'.
-  if (BACKWARD[recorded] !== DEMOTE_TARGET) {
+  // Matrix sanity check — both legal sources include DEMOTE_TARGET among their
+  // backward targets. #999 widened `review`'s BACKWARD entry to a multi-target
+  // array (`develop` and `test`), so this checks membership, not equality.
+  if (!backwardTargets(recorded).includes(DEMOTE_TARGET)) {
     return {
       status: 'error',
-      message: `demote: matrix says ${recorded}→${BACKWARD[recorded]}; expected ${DEMOTE_TARGET}`,
+      message: `demote: matrix says ${recorded}→${backwardTargets(recorded).join('|')}; expected ${DEMOTE_TARGET}`,
     };
   }
   const mx = validateTransition(recorded, DEMOTE_TARGET);

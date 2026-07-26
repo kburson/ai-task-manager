@@ -86,11 +86,14 @@ export const FORWARD_CHAIN = Object.freeze({ ...FORWARD });
 //
 // Canonical defaults match the existing `BACKWARD` map in
 // `state-machine.mjs` (`on-deck → backlog`, `test → develop`,
-// `review → develop`); additional targets (`review → test`, `review → plan`,
-// `done → plan`) are non-walkable until a future issue widens
-// `validateTransition`. The `on-deck → backlog` edge (#433) IS walkable —
-// it mirrors `state-machine.mjs`'s `BACKWARD['on-deck']` so a deferred
-// tranche item can be demoted back to the raw Backlog.
+// `review → develop`). `review → test` (#999 — drift re-verify, the path
+// #998's verb-home-state-guard fix opened but `validateTransition` never
+// landed) is now ALSO walkable, mirroring `state-machine.mjs`'s
+// `BACKWARD.review` array. `review → plan` and `done → plan` remain
+// non-walkable until a future issue widens `validateTransition` further.
+// The `on-deck → backlog` edge (#433) IS walkable — it mirrors
+// `state-machine.mjs`'s `BACKWARD['on-deck']` so a deferred tranche item
+// can be demoted back to the raw Backlog.
 export const BACKWARD_CHAIN = Object.freeze({
   'on-deck': Object.freeze(['backlog']),
   test: Object.freeze(['develop']),

@@ -49,9 +49,22 @@ test('no backlog→refine shortcut — every item passes through On Deck', () =>
 test('BACKWARD allows on-deck→backlog, test→develop and review→develop', () => {
   assert.equal(BACKWARD['on-deck'], 'backlog');
   assert.equal(BACKWARD.test, 'develop');
-  assert.equal(BACKWARD.review, 'develop');
+  assert.deepEqual(BACKWARD.review, ['develop', 'test']);
   assert.deepEqual(validateTransition('on-deck', 'backlog'), { ok: true });
   assert.deepEqual(validateTransition('test', 'develop'), { ok: true });
+  assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
+});
+
+// #999 — review→test drift re-verify. #998 taught verb-home-state-guard.mjs
+// that `test`'s legal home states include `review`, but state-machine.mjs's
+// BACKWARD map was never updated to match, so the board move that guard
+// fix was supposed to unlock (`/task test <N>` invoked from `review`) landed
+// sandbox verification only to be refused one layer lower at the board move.
+test('review→test is a legal backward transition (drift re-verify, #999)', () => {
+  assert.deepEqual(validateTransition('review', 'test'), { ok: true });
+});
+
+test('review→develop remains legal after #999 widened review to a multi-target array', () => {
   assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
 });
 
@@ -90,7 +103,7 @@ test('illegal backward transitions refuse', () => {
     ['plan', 'refine'],
     ['refine', 'backlog'],
     ['test', 'plan'],
-    ['review', 'test'],
+    ['review', 'plan'],
   ];
   for (const [from, to] of cases) {
     const r = validateTransition(from, to);
