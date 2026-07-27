@@ -193,7 +193,7 @@ their compatibility oracle.
       explicit internal/excluded category.
 - [ ] Every row in the bug-bash evidence register has one disposition and one
       regression owner.
-- [ ] The characterization suite passes against current production code.
+- [ ] The characterization suite passes against pre-refactor production code.
 
 **Required verification:**
 
