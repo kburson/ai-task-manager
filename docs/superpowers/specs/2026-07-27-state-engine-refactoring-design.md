@@ -512,7 +512,7 @@ Every policy migration follows this order:
 7. Remove the facade only in the convergence child after its inventory is empty.
 
 No child combines authority introduction, broad consumer migration, and facade
-removal in one unreviewable change.
+removal in one change that is too broad to review.
 
 ## 10. #1006 JIT Architecture Audit
 
