@@ -283,6 +283,78 @@ test('verbTest #406: legacy stub moveState returning undefined still reports pas
   });
 });
 
+test('#1015 successful Test entry posts the New Automated Tests report', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    const posts = [];
+    deps.moveState = async () => ({ ok: true, status: 0 });
+    deps.postNewAutomatedTestsComment = async (args) => {
+      posts.push(args);
+      return { status: 'posted' };
+    };
+
+    const r = await runVerbTest({ cfg, issueNumber: 1015, projectDir, deps });
+
+    assert.equal(r.status, 'passed');
+    assert.deepEqual(r.newTestsPost, { status: 'posted' });
+    assert.deepEqual(posts, [{ cfg, issueNumber: '1015', cwd: projectDir }]);
+  });
+});
+
+test('#1015 Test self-loop runs the idempotent New Automated Tests poster', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    let postCalls = 0;
+    deps.moveState = async () => ({ ok: true, noop: true, status: 0 });
+    deps.postNewAutomatedTestsComment = async () => {
+      postCalls += 1;
+      return { status: 'duplicate' };
+    };
+
+    const r = await runVerbTest({ cfg, issueNumber: 1015, projectDir, deps });
+
+    assert.equal(r.status, 'reverified');
+    assert.deepEqual(r.newTestsPost, { status: 'duplicate' });
+    assert.equal(postCalls, 1);
+  });
+});
+
+test('#1015 New Automated Tests post failure does not reverse a successful Test entry', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    deps.moveState = async () => ({ ok: true, status: 0 });
+    deps.postNewAutomatedTestsComment = async () => {
+      throw new Error('comment API unavailable');
+    };
+
+    const r = await runVerbTest({ cfg, issueNumber: 1015, projectDir, deps });
+
+    assert.equal(r.status, 'passed');
+    assert.deepEqual(r.newTestsPost, {
+      status: 'post-failed',
+      error: 'comment API unavailable',
+    });
+  });
+});
+
+test('#1015 refused Test move does not post New Automated Tests', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    let postCalls = 0;
+    deps.moveState = async () => ({ ok: false, benign: false, status: 5 });
+    deps.postNewAutomatedTestsComment = async () => {
+      postCalls += 1;
+      return { status: 'posted' };
+    };
+
+    const r = await runVerbTest({ cfg, issueNumber: 1015, projectDir, deps });
+
+    assert.equal(r.status, 'move-failed');
+    assert.equal(r.newTestsPost, undefined);
+    assert.equal(postCalls, 0);
+  });
+});
+
 test('verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox', async () => {
   // Models the spec: a command that relies on a local-only env var passes
   // when run in the author's shell but fails in the clean worktree. We do

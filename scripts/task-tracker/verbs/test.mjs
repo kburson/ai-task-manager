@@ -37,6 +37,7 @@ import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs
 import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
+import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
 
 const pexec = promisify(execFile);
 
@@ -357,6 +358,7 @@ export async function runVerbTest({
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
   const moveState = deps.moveState;
   const logIssueTime = deps.logIssueTime;
+  const postNewTests = deps.postNewAutomatedTestsComment;
 
   let body = await fetchBody({ cfg, issueNum });
   // #931 — refuse before any pretick/sandbox work if the issue isn't in
@@ -623,6 +625,18 @@ export async function runVerbTest({
     if (moveResult && moveResult.ok === false && moveResult.benign !== true) {
       return { status: 'move-failed', sha, ts, results, wtPath, target: 'test', move: moveResult };
     }
+    let newTestsPost = null;
+    if (postNewTests) {
+      try {
+        newTestsPost = await postNewTests({
+          cfg,
+          issueNumber: issueNum,
+          cwd: projectDir,
+        });
+      } catch (err) {
+        newTestsPost = { status: 'post-failed', error: err.message };
+      }
+    }
     // #444 — a benign move result with target 'test' can only be a test→test
     // self-loop: the issue was already in `test` and the sandbox just re-ran the
     // current VC set in place (an in-place re-verify, not a fresh entry). The
@@ -635,9 +649,18 @@ export async function runVerbTest({
       moveResult &&
       (moveResult.noop === true || (moveResult.ok === false && moveResult.benign === true))
     ) {
-      return { status: 'reverified', sha, ts, results, wtPath, target: 'test', move: moveResult };
+      return {
+        status: 'reverified',
+        sha,
+        ts,
+        results,
+        wtPath,
+        target: 'test',
+        move: moveResult,
+        newTestsPost,
+      };
     }
-    return { status: 'passed', sha, ts, results, wtPath, target: 'test' };
+    return { status: 'passed', sha, ts, results, wtPath, target: 'test', newTestsPost };
   }
 
   // #270 — Red path. Gate-first means the board never moved; nothing to undo.
@@ -681,7 +704,7 @@ export async function verbTest(ctx) {
       cfg,
       issueNumber,
       projectDir,
-      deps: { moveState, logIssueTime },
+      deps: { moveState, logIssueTime, postNewAutomatedTestsComment },
     });
   } catch (err) {
     console.error(`/task test: ${err.message}`);
@@ -695,6 +718,11 @@ export async function verbTest(ctx) {
       break;
     case 'passed': {
       console.log(buildPassedMessage(issueNumber, result.target));
+      if (result.newTestsPost?.status === 'posted') {
+        console.log('  ↳ posted "## New Automated Tests" comment');
+      } else if (result.newTestsPost?.status === 'post-failed') {
+        console.error(`  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}`);
+      }
       // #407 — preserve the binding (`active`) across a successful non-terminal
       // verb. Only the timing session closes; the issue stays bound so the next
       // verb needs no intervening re-`start`. `pause` remains the sole verb that
@@ -707,6 +735,11 @@ export async function verbTest(ctx) {
       // and re-stamped results. Loud success, board column unchanged. Same
       // timing/binding handling as `passed`.
       console.log(buildReverifiedMessage(issueNumber));
+      if (result.newTestsPost?.status === 'posted') {
+        console.log('  ↳ posted "## New Automated Tests" comment');
+      } else if (result.newTestsPost?.status === 'post-failed') {
+        console.error(`  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}`);
+      }
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
     }
