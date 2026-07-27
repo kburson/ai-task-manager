@@ -355,6 +355,59 @@ test('#1015 refused Test move does not post New Automated Tests', async () => {
   });
 });
 
+test('#1015 successful move attempts New Automated Tests before a result-comment failure', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    const events = [];
+    deps.moveState = async () => {
+      events.push('move');
+      return { ok: true, status: 0 };
+    };
+    deps.postNewAutomatedTestsComment = async () => {
+      events.push('new-tests');
+      return { status: 'posted' };
+    };
+    deps.postComment = async () => {
+      events.push('result-comment');
+      throw new Error('result comment unavailable');
+    };
+
+    await assert.rejects(
+      () => runVerbTest({ cfg, issueNumber: 1015, projectDir, deps }),
+      /result comment unavailable/
+    );
+    assert.deepEqual(events, ['move', 'new-tests', 'result-comment']);
+  });
+});
+
+test('#1015 successful move attempts New Automated Tests before a timing-log failure', async () => {
+  await withTmpDir(async (projectDir) => {
+    const { deps } = makeDeps();
+    const events = [];
+    deps.moveState = async () => {
+      events.push('move');
+      return { ok: true, status: 0 };
+    };
+    deps.postNewAutomatedTestsComment = async () => {
+      events.push('new-tests');
+      return { status: 'posted' };
+    };
+    deps.postComment = async () => {
+      events.push('result-comment');
+    };
+    deps.logIssueTime = async () => {
+      events.push('timing-log');
+      throw new Error('timing API unavailable');
+    };
+
+    await assert.rejects(
+      () => runVerbTest({ cfg, issueNumber: 1015, projectDir, deps }),
+      /timing API unavailable/
+    );
+    assert.deepEqual(events, ['move', 'new-tests', 'result-comment', 'timing-log']);
+  });
+});
+
 test('verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox', async () => {
   // Models the spec: a command that relies on a local-only env var passes
   // when run in the author's shell but fails in the clean worktree. We do

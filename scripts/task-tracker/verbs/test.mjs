@@ -612,6 +612,19 @@ export async function runVerbTest({
     if (moveState) {
       moveResult = await moveState({ issueNumber: issueNum, target: 'test' });
     }
+    const moveFailed = moveResult && moveResult.ok === false && moveResult.benign !== true;
+    let newTestsPost = null;
+    if (!moveFailed && postNewTests) {
+      try {
+        newTestsPost = await postNewTests({
+          cfg,
+          issueNumber: issueNum,
+          cwd: projectDir,
+        });
+      } catch (err) {
+        newTestsPost = { status: 'post-failed', error: err.message };
+      }
+    }
     await postComment({
       cfg,
       issueNum,
@@ -622,20 +635,8 @@ export async function runVerbTest({
       }),
     });
     if (logIssueTime) await logIssueTime(issueNum);
-    if (moveResult && moveResult.ok === false && moveResult.benign !== true) {
+    if (moveFailed) {
       return { status: 'move-failed', sha, ts, results, wtPath, target: 'test', move: moveResult };
-    }
-    let newTestsPost = null;
-    if (postNewTests) {
-      try {
-        newTestsPost = await postNewTests({
-          cfg,
-          issueNumber: issueNum,
-          cwd: projectDir,
-        });
-      } catch (err) {
-        newTestsPost = { status: 'post-failed', error: err.message };
-      }
     }
     // #444 — a benign move result with target 'test' can only be a test→test
     // self-loop: the issue was already in `test` and the sandbox just re-ran the
