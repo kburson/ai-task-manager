@@ -185,6 +185,63 @@ test('C6 — review-cruft heal is idempotent', () => {
   assert.equal(healTimingLog(once), once, 'second heal is a byte-for-byte no-op');
 });
 
+// ---- [#996] f3a09cc — bare `develop` reject self-audit row requalified -----
+
+const REVIEW_APPROVED_931 =
+  '| 2026-07-26 12:26:04 -05:00 | review:approved | 0h 13m 20s |  |  | 78,389 | story approved | <!-- row-sec: a=800 i=0 -->';
+const DEVELOP_STARTED_931 =
+  '| 2026-07-26 12:26:04 -05:00 | develop:started |  |  |  | 78,389 | start development | <!-- row-sec: a=0 i=0 -->';
+const BARE_REJECT_DEVELOP =
+  '| 2026-07-26 12:26:18 -05:00 | develop |  |  |  | 78,389 | review rejected: Agent Review Gate objections fixed (body | <!-- row-sec: a=0 i=0 -->';
+const DEVELOP_COMPLETED_931 =
+  '| 2026-07-26 12:35:43 -05:00 | develop:completed | 0h 09m 39s |  |  | 78,455 | development complete | <!-- row-sec: a=579 i=0 -->';
+
+function bareRejectDevelopBody() {
+  return [
+    '## ⏱ Timing Log',
+    '',
+    HEADER,
+    SEP,
+    REVIEW_APPROVED_931,
+    DEVELOP_STARTED_931,
+    BARE_REJECT_DEVELOP,
+    DEVELOP_COMPLETED_931,
+    '',
+  ].join('\n');
+}
+
+test('pre-f3a09cc bare `develop` reject row is requalified to `rejected:develop`', () => {
+  const healed = healTimingLog(bareRejectDevelopBody());
+  const slugs = rowsOf(healed).map((l) => l.split('|')[2].trim());
+  assert.deepEqual(
+    slugs,
+    ['review:approved', 'develop:started', 'rejected:develop', 'develop:completed'],
+    'only the bare develop row changes slug; started/completed are untouched'
+  );
+});
+
+test('bare `develop` reject requalify preserves every other cell byte-for-byte', () => {
+  const healed = healTimingLog(bareRejectDevelopBody());
+  const row = findRow(healed, 'rejected:develop');
+  assert.equal(
+    row,
+    BARE_REJECT_DEVELOP.replace('| develop |', '| rejected:develop |'),
+    'only the event cell changes'
+  );
+});
+
+test('a real `develop:started`/`develop:completed` pair is never requalified', () => {
+  const healed = healTimingLog(bareRejectDevelopBody());
+  const slugs = rowsOf(healed).map((l) => l.split('|')[2].trim());
+  assert.ok(slugs.includes('develop:started'));
+  assert.ok(slugs.includes('develop:completed'));
+});
+
+test('bare-reject-develop requalify is idempotent', () => {
+  const once = healTimingLog(bareRejectDevelopBody());
+  assert.equal(healTimingLog(once), once, 'second heal is a byte-for-byte no-op');
+});
+
 // ---- Guard: non-string input returned unchanged ----------------------------
 
 test('non-string input is returned unchanged', () => {

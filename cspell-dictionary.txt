@@ -156,6 +156,8 @@ Reincludes
 reparsed
 repoint
 repoints
+requalified
+requalify
 rescan
 rescanning
 retargeted

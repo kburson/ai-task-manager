@@ -37,6 +37,16 @@ import { PHASE_EVENTS } from '../phase-events.mjs';
 // strip in step 1, so the two operations are order-independent.
 const RETIRED_SLUGS = new Set(['idle', 'active-work']);
 
+// [#996] f3a09cc — reject.mjs used to post its self-audit row with the bare,
+// unqualified slug 'develop', which timing-log-sequence's isKnownSlug()
+// rejects (a colon-less slug must be a recognized phase/opener/closer). The
+// code now emits 'rejected:develop' (mirrors demote.mjs's demoted:<state>
+// convention). Historical rows written before that fix are requalified here
+// in place — same transform as f3a09cc, applied retroactively. Scoped to the
+// exact bare-'develop' + 'review rejected:' description shape so a real
+// develop:started/:completed row is never touched.
+const BARE_REJECT_DEVELOP_DESC_RE = /^\s*review rejected:/i;
+
 // EPIC #823 timing model v2 (C6): the two pre-v2 review scaffolding rows the
 // `review` verb used to emit — `review` ("starting review") and `review-ready`
 // ("task is now in Review"). Neither is part of the canonical PHASE_EVENTS pair
@@ -103,6 +113,27 @@ function eventOf(line) {
   return (cells[2] ?? '').trim().toLowerCase();
 }
 
+// True when `line` is a pre-f3a09cc bare-'develop' reject self-audit row: the
+// event cell is exactly 'develop' (not 'develop:started'/':completed', which
+// have their own distinct slugs) and the description starts with "review
+// rejected:" — the literal template reject.mjs has always used.
+function isBareRejectDevelopRow(line) {
+  if (eventOf(line) !== 'develop') return false;
+  const { core } = splitRowMarker(line);
+  const desc = core.split('|')[7] ?? '';
+  return BARE_REJECT_DEVELOP_DESC_RE.test(desc);
+}
+
+// Rewrite ONLY the event cell (cells[2]) of a bare-reject-develop row to
+// 'rejected:develop', preserving every other cell — including the trailing
+// row-sec marker — byte-for-byte.
+function requalifyRejectDevelopRow(line) {
+  const { core, marker } = splitRowMarker(line);
+  const parts = core.split('|');
+  parts[2] = ' rejected:develop ';
+  return parts.join('|') + marker;
+}
+
 // Re-render a `:completed` row with recomputed active/idle/Δwords, preserving
 // every other cell byte-for-byte. `activeSec`/`idleSec` restamp the visible
 // duration cells AND the canonical row-sec marker; `deltaWords` restamps the Δ
@@ -147,6 +178,10 @@ export function healTimingLog(body) {
     if (COMPLETE_SLUG_TO_STATE.has(ev)) {
       if (pendingWords > 0) foldByLineIdx.set(kept.length, pendingWords);
       pendingWords = 0;
+    }
+    if (isBareRejectDevelopRow(line)) {
+      kept.push(requalifyRejectDevelopRow(line));
+      continue;
     }
     kept.push(line);
   }
