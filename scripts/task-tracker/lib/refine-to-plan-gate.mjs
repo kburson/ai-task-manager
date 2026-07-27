@@ -121,14 +121,14 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
     }
     // #523 — Demonstrable-AC exit gate. Every AC must bind to a targeted
     // verifier (`aitm-verified cmd="…"`) or carry the honest
-    // `invalid — non-demonstrable` opt-out. `npm run test:all` is the
-    // regression floor, not an AC verifier.
+    // `<!-- aitm-non-demonstrable -->` opt-out marker. `npm run test:all` is
+    // the regression floor, not an AC verifier.
     for (const ac of findAcsWithoutVerifierOrInvalidTag(body)) {
       const why = ac.reason.startsWith('malformed-verifier')
-        ? `declared verifier ${ac.reason.slice('malformed-verifier: '.length)} — bind a real targeted command or tag the AC \`invalid — non-demonstrable\``
+        ? `declared verifier ${ac.reason.slice('malformed-verifier: '.length)} — bind a real targeted command or add \`<!-- aitm-non-demonstrable -->\` to the AC`
         : ac.reason === 'test-all-verifier'
-          ? '`npm run test:all` is the regression floor, not an AC verifier — declare a targeted verifier or tag the AC `invalid — non-demonstrable`'
-          : 'no `aitm-verified cmd="…"` verifier and not tagged `invalid — non-demonstrable` — bind a targeted verifier test or tag it invalid';
+          ? '`npm run test:all` is the regression floor, not an AC verifier — declare a targeted verifier or add `<!-- aitm-non-demonstrable -->` to the AC'
+          : 'no `aitm-verified cmd="…"` verifier and no `<!-- aitm-non-demonstrable -->` marker — bind a targeted verifier test or add the opt-out marker';
       blockers.push(
         `refine-exit-demonstrable: AC line ${ac.lineIndex + 1}: "${ac.label}" — ${why}.`
       );

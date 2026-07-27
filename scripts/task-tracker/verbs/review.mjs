@@ -605,8 +605,8 @@ export async function verbReview(ctx) {
     );
 
     for (const cb of evidenceCheckboxes) {
-      // #679 — honor the same honest `invalid — non-demonstrable` opt-out
-      // that refine-to-plan-gate.mjs and review-preflight.mjs already honor.
+      // #679 — honor the same honest `<!-- aitm-non-demonstrable -->` opt-out
+      // marker that refine-to-plan-gate.mjs and review-preflight.mjs already honor.
       // Without this, a legitimately-tagged, zero-evidence checked box gets
       // flagged as a regression and un-ticked on every `/task review` run,
       // permanently bouncing the issue back to develop.

@@ -300,7 +300,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   }
 
   const taggedChecked = {
-    label: 'An AC that cannot be automated <!-- aitm-verified tag="invalid — non-demonstrable" -->',
+    label: 'An AC that cannot be automated <!-- aitm-non-demonstrable -->',
     checked: true,
     evidenceCommands: [],
   };

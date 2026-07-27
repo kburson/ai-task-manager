@@ -38,7 +38,7 @@ test('parseCheckArgs recognizes --allow-unverified-ticks', () => {
 // ── AC2 — eligibility classifier ────────────────────────────────────────────
 const PROOFLESS_BODY = `## Acceptance Criteria
 
-- [ ] Honestly non-demonstrable AC (invalid — non-demonstrable)
+- [ ] Honestly non-demonstrable AC (invalid — non-demonstrable) <!-- aitm-non-demonstrable -->
 `;
 
 const VERIFIER_BODY = `## Acceptance Criteria
@@ -120,7 +120,7 @@ function reviewDeps(body) {
 test('runReviewPreflight exempts an AC tagged invalid — non-demonstrable', async () => {
   const body = `## Acceptance Criteria
 
-- [x] Honestly non-demonstrable AC (invalid — non-demonstrable)
+- [x] Honestly non-demonstrable AC (invalid — non-demonstrable) <!-- aitm-non-demonstrable -->
 `;
   const res = await runReviewPreflight({
     issueNumber: 567,

@@ -222,7 +222,9 @@ test('AC 4 — an AC carrying BOTH a citation and a cmd keeps its command declar
 });
 
 test('AC 4 — the non-demonstrable opt-out still short-circuits ahead of the citation check', () => {
-  const src = body(['- [ ] Subjective goal — invalid — non-demonstrable']);
+  const src = body([
+    '- [ ] Subjective goal — invalid — non-demonstrable <!-- aitm-non-demonstrable -->',
+  ]);
   assert.deepEqual(findAcsWithoutVerifierOrInvalidTag(src), []);
 });
 

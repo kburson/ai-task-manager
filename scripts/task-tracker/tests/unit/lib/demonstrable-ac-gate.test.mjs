@@ -30,7 +30,10 @@ test('AC lacking both a verifier and the invalid tag is flagged with reason no-v
 });
 
 test('AC tagged "invalid — non-demonstrable" is excluded from the offender list', () => {
-  const body = HEAD + '- [ ] Subjective quality goal — invalid — non-demonstrable\n' + TAIL;
+  const body =
+    HEAD +
+    '- [ ] Subjective quality goal — invalid — non-demonstrable <!-- aitm-non-demonstrable -->\n' +
+    TAIL;
   assert.deepEqual(findAcsWithoutVerifierOrInvalidTag(body), []);
 });
 

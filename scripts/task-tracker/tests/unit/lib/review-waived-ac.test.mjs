@@ -49,7 +49,7 @@ test('a plain AC label is not waived', () => {
 
 test('non-demonstrable and waived are distinct opt-outs', () => {
   const nonDemo = labelOf(
-    '- [x] Manual step <!-- invalid — non-demonstrable: verified by inspection -->'
+    '- [x] Manual step, verified by inspection <!-- aitm-non-demonstrable -->'
   );
   // The non-demonstrable label is honored by its OWN branch, not the waived one.
   assert.ok(NON_DEMONSTRABLE_TAG_RE.test(nonDemo));

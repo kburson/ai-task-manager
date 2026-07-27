@@ -181,7 +181,7 @@ test('findAcsWithoutVerifierOrInvalidTag classifies a #670-shaped verifier-less 
 test('findAcsWithoutVerifierOrInvalidTag honors the invalid — non-demonstrable opt-out over a sentinel verifier', () => {
   const body = [
     '## Acceptance Criteria',
-    '- [ ] alpha — tagged `invalid — non-demonstrable` <!-- aitm-verified cmd="`{tbd}`" -->',
+    '- [ ] alpha — tagged `invalid — non-demonstrable` <!-- aitm-non-demonstrable --> <!-- aitm-verified cmd="`{tbd}`" -->',
     '## Definition of Done',
   ].join('\n');
   assert.deepEqual(
@@ -214,7 +214,7 @@ test('findAcsWithoutVerifierOrInvalidTag still passes verified-cmd and invalid-t
   const body = [
     '## Acceptance Criteria',
     '- [ ] alpha <!-- aitm-verified cmd="`node --test scripts/task-tracker/tests/unit/body-invariants.test.mjs`" -->',
-    '- [ ] beta — tagged `invalid — non-demonstrable`',
+    '- [ ] beta — tagged `invalid — non-demonstrable` <!-- aitm-non-demonstrable -->',
     '## Definition of Done',
   ].join('\n');
   assert.deepEqual(

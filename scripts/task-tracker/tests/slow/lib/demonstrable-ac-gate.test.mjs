@@ -56,7 +56,7 @@ test('AC tagged invalid — non-demonstrable passes the demonstrable check', asy
   const deps = makeDeps({
     body: `## Acceptance Criteria
 
-- [ ] Subjective goal — invalid — non-demonstrable
+- [ ] Subjective goal — invalid — non-demonstrable <!-- aitm-non-demonstrable -->
 - [ ] Concrete <!-- aitm-verified cmd="\`node --test x.test.mjs\`" -->
 `,
   });

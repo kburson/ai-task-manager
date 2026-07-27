@@ -286,9 +286,10 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
       if (!ac.checked) {
         blockers.push(`code-complete-ac-unticked: ${shortLabel}`);
       } else if (!ac.verifiedBy || ac.verifiedBy === 'TBD') {
-        // Non-demonstrable opt-out (#532): an AC honestly tagged `invalid —
-        // non-demonstrable` (#523) can never carry a machine verifier by
-        // design. The Refine→Plan gate already `continue`s past such lines
+        // Non-demonstrable opt-out (#532): an AC honestly marked
+        // `<!-- aitm-non-demonstrable -->` (#523/#891) can never carry a
+        // machine verifier by design. The Refine→Plan gate already `continue`s
+        // past such lines
         // (`findAcsWithoutVerifierOrInvalidTag`); mirror that here so the two
         // gates share one definition of the opt-out. Done-ness is preserved —
         // the `!ac.checked` branch above still blocks an UNticked one.

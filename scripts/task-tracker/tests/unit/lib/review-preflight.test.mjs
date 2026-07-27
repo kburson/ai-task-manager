@@ -177,7 +177,7 @@ const TRAIL = [
   const body = [
     '## Acceptance Criteria',
     '',
-    '- [ ] This child is sequenced after the secured siblings — tagged `invalid — non-demonstrable` (board/sequencing fact, no runnable verifier).',
+    '- [ ] This child is sequenced after the secured siblings — tagged `invalid — non-demonstrable` <!-- aitm-non-demonstrable --> (board/sequencing fact, no runnable verifier).',
   ].join('\n');
   const r = await runReviewPreflight({
     issueNumber: '537',
@@ -212,13 +212,13 @@ const TRAIL = [
 //     string the review gate exempts MUST be one the shared regex matches, and
 //     a near-miss the regex rejects MUST still block.
 {
-  const exemptTag = 'invalid — non-demonstrable';
+  const exemptTag = '<!-- aitm-non-demonstrable -->';
   assert.match(exemptTag, NON_DEMONSTRABLE_TAG_RE);
 
   const exemptBody = [
     '## Acceptance Criteria',
     '',
-    `- [ ] Sequencing fact — tagged \`${exemptTag}\` (no verifier).`,
+    `- [ ] Sequencing fact — tagged \`invalid — non-demonstrable\` ${exemptTag} (no verifier).`,
   ].join('\n');
   const exempt = await runReviewPreflight({
     issueNumber: '537',

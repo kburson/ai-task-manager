@@ -32,6 +32,7 @@ export const APPLY_SCRIPTS = [
   'scripts/task-tracker/heal-vc-refs.mjs',
   'scripts/maintenance/heal-full-auto-footnote.mjs',
   'scripts/maintenance/heal-stage-rollups.mjs',
+  'scripts/maintenance/migrate-non-demonstrable-tag-position.mjs',
   'scripts/reports/heal-backlog-attribution.mjs',
 ];
 

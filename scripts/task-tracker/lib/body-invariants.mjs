@@ -416,20 +416,29 @@ export class MalformedDeclarationCmdError extends Error {
 // verifier. An AC is demonstrable when EITHER:
 //   - it carries an `aitm-verified cmd="…"` declaration naming at least one
 //     real targeted command (a `node --test <file>`-style probe), OR
-//   - it is explicitly tagged `invalid — non-demonstrable` (an honest opt-out
-//     for a genuinely unverifiable assertion).
+//   - it carries the `<!-- aitm-non-demonstrable -->` marker (an honest
+//     opt-out for a genuinely unverifiable assertion).
 // The whole-suite/whole-lane commands are the regression FLOOR, not AC
 // verifiers: an AC whose only declared command is `npm run test:all`, `npm
 // test` (fast lane), or `npm run test:slow` (slow lane, #934) proves nothing
 // specific to that AC, so it is flagged with reason `test-all-verifier`. An AC
-// lacking both a verifier and the invalid tag is flagged `no-verifier`.
+// lacking both a verifier and the opt-out marker is flagged `no-verifier`.
 //
 // Returns `{ lineIndex, label, reason }` for each offending AC line, in body
 // order. Empty array means every AC is demonstrable (or honestly tagged).
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const AC_SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const AC_BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
-export const NON_DEMONSTRABLE_TAG_RE = /invalid\s+[—-]+\s+non-demonstrable/i;
+// #891 — anchored to the marker, not the visible label. The prior
+// `/invalid\s+[—-]+\s+non-demonstrable/i` form was a plain substring test
+// against the whole label, so prose that merely *discussed* or *quoted* the
+// tag (rather than genuinely bearing it) satisfied the opt-out. A trailing
+// HTML-comment marker never renders as visible text, so it cannot be
+// satisfied by hand-written prose describing the concept — the same shape
+// already used by every other machine-readable body signal (`aitm-verified`,
+// `aitm-ac-waived`, etc). Legacy bodies carrying the old prose-position tag
+// are migrated by `scripts/maintenance/migrate-non-demonstrable-tag-position.mjs`.
+export const NON_DEMONSTRABLE_TAG_RE = /<!--\s*aitm-non-demonstrable\s*-->/i;
 // The regression-floor commands rejected as AC verifiers (#934 adds the two
 // lane commands alongside the legacy `npm run test:all`).
 const TEST_ALL_CMD_RE = /^npm(\s+run\s+test:(all|slow)|\s+test)$/;

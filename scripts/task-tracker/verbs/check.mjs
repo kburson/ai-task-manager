@@ -4,7 +4,8 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readBoundState } from '../lib/bound-state.mjs';
 import { formatStageBoundRefusal, hasStageBoundGrandfather } from '../lib/stage-bound-reason.mjs';
 import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-dod-evidence.mjs';
-import { findEvidenceAc, stripMarkers } from '../lib/ac-evidence.mjs';
+import { findEvidenceAc, findAcSectionCheckbox, stripMarkers } from '../lib/ac-evidence.mjs';
+import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 import { escapeValue } from '../lib/marker-grammar.mjs';
 
 // Toggle a single checklist line whose VISIBLE label matches `label`.
@@ -175,11 +176,22 @@ export function parseCheckArgs(rest) {
 //   { kind: 'eligible' }
 //   { kind: 'refuse-dod', dodGate }            — Functional DoD item: use dod-stamp
 //   { kind: 'refuse-verifier-ac', label, commands } — AC declares a verifier: use ac-stamp
+//   { kind: 'refuse-undeclared-ac', label }    — AC line: no verifier, no opt-out marker
 export function classifyUnverifiedTick(body, label) {
   const dodGate = gateFunctionalDodTick(body, label);
   if (dodGate.kind !== 'pass') return { kind: 'refuse-dod', dodGate };
   const ac = findEvidenceAc(body, label);
   if (ac) return { kind: 'refuse-verifier-ac', label: ac.label, commands: ac.evidenceCommands };
+  // #891 — an AC-section line with no declared verifier still needs the
+  // explicit `<!-- aitm-non-demonstrable -->` opt-out marker before the hatch
+  // will wave it through; otherwise a brand-new undecorated AC could be
+  // ticked forever without ever meeting the Refine→Plan demonstrable-AC bar.
+  // Lifecycle/DoD checkboxes are outside `## Acceptance Criteria`, so
+  // `findAcSectionCheckbox` returns null for them and this rule never applies.
+  const acLine = findAcSectionCheckbox(body, label);
+  if (acLine && !acLine.checked && !NON_DEMONSTRABLE_TAG_RE.test(acLine.raw)) {
+    return { kind: 'refuse-undeclared-ac', label: acLine.label };
+  }
   return { kind: 'eligible' };
 }
 
@@ -191,9 +203,25 @@ export function formatUnverifiedHatchRefusal({ label, issueRef, commands }) {
   return [
     `UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "${label}" in ${issueRef}.`,
     `  This acceptance criterion declares a verifier (aitm-verified cmd="…"), so it is`,
-    `  demonstrable — the unverified hatch is only for ACs tagged \`invalid — non-demonstrable\``,
-    `  or otherwise carrying no machine verifier. Run \`/task ac-stamp "${label}"\` to execute`,
-    `  \`${cmd}\` and stamp real evidence instead.`,
+    `  demonstrable — the unverified hatch is only for ACs carrying the`,
+    `  \`<!-- aitm-non-demonstrable -->\` opt-out marker or otherwise no machine verifier.`,
+    `  Run \`/task ac-stamp "${label}"\` to execute \`${cmd}\` and stamp real evidence instead.`,
+  ].join('\n');
+}
+
+// #891 — refusal when `--allow-unverified-ticks` is aimed at a plain
+// Acceptance-Criteria line that declares no verifier AND carries no
+// `<!-- aitm-non-demonstrable -->` opt-out marker. The hatch is for honestly
+// non-demonstrable ACs, not a way to tick a brand-new AC that was never
+// classified either way.
+export function formatUndeclaredAcRefusal({ label, issueRef }) {
+  return [
+    `UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "${label}" in ${issueRef}.`,
+    `  This acceptance criterion declares no verifier and carries no`,
+    `  \`<!-- aitm-non-demonstrable -->\` opt-out marker, so it is not yet classified as`,
+    `  demonstrable or honestly non-demonstrable. Either declare a verifier (aitm-verified`,
+    `  cmd="…") and run \`/task ac-stamp "${label}"\`, or add the opt-out marker to the line`,
+    `  if it is genuinely unverifiable.`,
   ].join('\n');
 }
 
@@ -381,8 +409,8 @@ async function runEnsure(ctx, desired) {
     // #567 — `--allow-unverified-ticks` honest hatch for non-demonstrable ACs.
     // Eligibility is the inverse of the evidence gate: a Functional DoD item or
     // a verifier-bearing AC is REFUSED (those have their own stamp paths); only
-    // a proofless / `invalid — non-demonstrable` AC is waved through, with an
-    // audit marker recorded in the same write.
+    // a proofless AC honestly marked `<!-- aitm-non-demonstrable -->` (#891) is
+    // waved through, with an audit marker recorded in the same write.
     if (auv) {
       const cls = classifyUnverifiedTick(body, label);
       if (cls.kind === 'refuse-dod') {
@@ -397,6 +425,10 @@ async function runEnsure(ctx, desired) {
             commands: cls.commands,
           })
         );
+        process.exit(1);
+      }
+      if (cls.kind === 'refuse-undeclared-ac') {
+        console.error(formatUndeclaredAcRefusal({ label: cls.label, issueRef: s.active }));
         process.exit(1);
       }
     } else {
@@ -510,6 +542,8 @@ async function runEnsureBatch({
                 commands: cls.commands,
               })
             );
+          } else if (cls.kind === 'refuse-undeclared-ac') {
+            gateFailures.push(formatUndeclaredAcRefusal({ label: cls.label, issueRef: active }));
           }
         } else {
           const g = gateEvidenceTick(stdout, lbl);

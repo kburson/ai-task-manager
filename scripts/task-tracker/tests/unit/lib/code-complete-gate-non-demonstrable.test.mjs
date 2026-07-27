@@ -21,7 +21,7 @@ const passingDeps = {
 test('gateCodeComplete: a ticked non-demonstrable AC raises no code-complete-ac-unverified', async () => {
   const body = `## Acceptance Criteria
 
-- [x] Determinism is the emergent outcome of AC1+AC2; invalid — non-demonstrable, no single clean verifier.
+- [x] Determinism is the emergent outcome of AC1+AC2; invalid — non-demonstrable, no single clean verifier. <!-- aitm-non-demonstrable -->
 `;
   const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: passingDeps });
   assert.ok(

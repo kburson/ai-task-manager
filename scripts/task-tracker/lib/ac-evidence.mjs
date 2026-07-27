@@ -195,6 +195,31 @@ export function findEvidenceAc(body, requestedLabel) {
   return parseEvidenceAcs(body).find((it) => it.label === wanted) || null;
 }
 
+// #891 — locate a checkbox line inside `## Acceptance Criteria` by visible
+// label REGARDLESS of whether it carries a declared verifier. `parseEvidenceAcs`
+// skips verifier-less lines entirely (nothing to gate on evidence-wise), so it
+// cannot answer "is this label an AC at all" — callers that need to apply the
+// demonstrable-AC opt-out rule (marker required when no verifier is declared)
+// use this instead. Returns `{ label, lineIndex, checked, raw }` (raw includes
+// any trailing markers, for testing NON_DEMONSTRABLE_TAG_RE against) or null.
+export function findAcSectionCheckbox(body, requestedLabel) {
+  const src = String(body || '');
+  const loc = locateAcSection(src);
+  if (!loc) return null;
+  const wanted = stripMarkers(requestedLabel);
+  const lines = src.split('\n');
+  const startLine = src.slice(0, loc.start).split('\n').length - 1;
+  const endLine = src.slice(0, loc.end).split('\n').length;
+  for (let i = startLine; i < endLine && i < lines.length; i += 1) {
+    const box = lines[i].match(BOX_RE);
+    if (!box) continue;
+    const rest = box[4];
+    if (stripMarkers(rest) !== wanted) continue;
+    return { label: stripMarkers(rest), lineIndex: i, checked: box[2] === 'x', raw: rest };
+  }
+  return null;
+}
+
 // #481 — Idempotently record a run on the AC line matching `label` by upserting
 // run-props (`exit`/`sha`/`ts`) plus the AC `key` onto the line's existing
 // `aitm-verified` declaration — the single-expandable marker. The declaration's

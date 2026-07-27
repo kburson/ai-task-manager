@@ -541,7 +541,7 @@ export const STATE_TRANSITIONS = [
     from: 'Refine',
     to: 'Plan',
     verb: 'promote / plan',
-    gate: 'Rank + ≥1 label + Start Time + Pickup Directive heading + every AC demonstrable (verifier or `invalid — non-demonstrable`)',
+    gate: 'Rank + ≥1 label + Start Time + Pickup Directive heading + every AC demonstrable (verifier or `<!-- aitm-non-demonstrable -->`)',
   },
   {
     from: 'Plan',
@@ -584,6 +584,6 @@ export const GATE_EVIDENCE_MODEL = [
   },
   {
     heading: 'Legitimate override hatches',
-    body: '`--allow-unverified-ticks` (genuinely unstampable item), the `invalid — non-demonstrable` AC tag (honest opt-out from the demonstrable-AC gate), and `close --force` (close with unchecked items). These are explicit, grep-able, and never a license to fabricate evidence.',
+    body: '`--allow-unverified-ticks` (genuinely unstampable item), the `<!-- aitm-non-demonstrable -->` AC marker (honest opt-out from the demonstrable-AC gate), and `close --force` (close with unchecked items). These are explicit, grep-able, and never a license to fabricate evidence.',
   },
 ];
