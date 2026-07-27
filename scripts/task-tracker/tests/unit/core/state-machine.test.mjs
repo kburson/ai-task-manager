@@ -101,7 +101,6 @@ test('illegal backward transitions refuse', () => {
     ['done', 'review'],
     ['done', 'develop'],
     ['plan', 'refine'],
-    ['refine', 'backlog'],
     ['test', 'plan'],
     ['review', 'plan'],
   ];
@@ -110,6 +109,16 @@ test('illegal backward transitions refuse', () => {
     assert.equal(r.ok, false, `${from}→${to} should refuse`);
     assert.match(r.reason, /illegal transition/);
   }
+});
+
+// #848 — refine/plan → backlog is the `park` verb's transition (premise
+// falsified / deprioritized), added to the BACKWARD map alongside on-deck→backlog
+// and test|review→develop.
+test('refine→backlog and plan→backlog are legal (park verb, #848)', () => {
+  assert.equal(BACKWARD.refine, 'backlog');
+  assert.equal(BACKWARD.plan, 'backlog');
+  assert.deepEqual(validateTransition('refine', 'backlog'), { ok: true });
+  assert.deepEqual(validateTransition('plan', 'backlog'), { ok: true });
 });
 
 test('unknown state strings refuse with unknown-state message', () => {

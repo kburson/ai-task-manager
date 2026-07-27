@@ -22,14 +22,18 @@ export const STATE_TO_CONFIG_KEY = Object.freeze({
 
 // Which `/task` verb a human should reach for instead of invoking move-state
 // directly, keyed on the move's target state. Forward moves → promote,
-// backlog (the only matrix-legal backward target) → demote, everything else
-// → reconcile.
+// backlog (the only matrix-legal backward target) → park (#848 — `demote` is
+// hardcoded to `develop` and can never reach `backlog`; `park` is the
+// dedicated Refine|Plan → Backlog verb), everything else → reconcile.
 const FORWARD_TARGETS = new Set(['on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
-const BACKWARD_TARGETS = new Set(['backlog']);
+// Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
+// enumerate every backward target `refusalVerbHint` names a verb for, and
+// assert that verb actually declares the target legal — without shelling out.
+export const BACKWARD_TARGETS = new Set(['backlog']);
 
 export function refusalVerbHint(targetState) {
   if (FORWARD_TARGETS.has(targetState)) return '/task promote';
-  if (BACKWARD_TARGETS.has(targetState)) return '/task demote';
+  if (BACKWARD_TARGETS.has(targetState)) return '/task park';
   return '/task reconcile';
 }
 

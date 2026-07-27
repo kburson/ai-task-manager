@@ -38,8 +38,15 @@ export const FORWARD = {
 // and `test` (drift re-verify — the board move #998's verb-home-state-guard
 // fix opened the door for but never landed here). Every other entry stays a
 // single string; existing single-target behavior is unchanged.
+//
+// #848 — `refine`/`plan` → `backlog` is the "park" transition: an issue whose
+// premise was falsified after refinement has a sanctioned way back to Backlog
+// (see verbs/park.mjs) instead of sitting in a ready-to-work column or being
+// closed unresolved.
 export const BACKWARD = {
   'on-deck': 'backlog',
+  refine: 'backlog',
+  plan: 'backlog',
   test: 'develop',
   review: ['develop', 'test'],
 };

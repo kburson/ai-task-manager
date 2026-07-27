@@ -40,8 +40,11 @@ import { runMoveStateHost } from '../../gh/move-state.mjs';
 
 const pexec = promisify(execFile);
 
-const DEMOTE_TARGET = 'develop';
-const LEGAL_FROM = new Set(['test', 'review']);
+// Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
+// assert `refusalVerbHint`'s named verb actually declares the hinted target
+// legal, without shelling out.
+export const DEMOTE_TARGET = 'develop';
+export const LEGAL_FROM = new Set(['test', 'review']);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.

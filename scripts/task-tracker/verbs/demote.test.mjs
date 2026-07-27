@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runDemote, defaultRunMoveState, parseArgs } from './demote.mjs';
+import { runDemote, defaultRunMoveState, parseArgs, DEMOTE_TARGET, LEGAL_FROM } from './demote.mjs';
 import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { upsertProofMarker } from '../lib/proof-marker.mjs';
 import { findLostMarkers } from '../lib/body-invariants.mjs';
@@ -310,4 +310,14 @@ test('#932 runDemote wires invalidateEvidence into the state-recording mutate an
   assert.equal(result.invalidated.length, 3);
   assert.ok(pushedBody.includes('- [ ] Demote invalidates stale evidence'));
   assert.ok(!pushedBody.includes('sha="abc1234"'));
+});
+
+// ---------------------------------------------------------------------------
+// #848 AC6 — adding `park` (Refine|Plan → Backlog) must not widen demote's
+// own scope. Demote stays a develop-only, test/review-only path.
+// ---------------------------------------------------------------------------
+
+test('#848 AC6: demote LEGAL_FROM/DEMOTE_TARGET unchanged by the park addition', () => {
+  assert.equal(DEMOTE_TARGET, 'develop');
+  assert.deepEqual([...LEGAL_FROM].sort(), ['review', 'test']);
 });

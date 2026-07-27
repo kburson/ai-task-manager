@@ -120,6 +120,15 @@ export const VERB_REFERENCE = {
     exitCodes: [GATE_REFUSAL],
     examples: ['/task demote 667'],
   },
+  park: {
+    topic: 'board',
+    summary:
+      'Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.',
+    usage: '/task park <N> --reason "<text>"',
+    flags: [{ flag: '--reason <text>', desc: 'why this issue is returning to Backlog (required)' }],
+    exitCodes: [{ code: 1, meaning: '--reason is missing' }, GATE_REFUSAL],
+    examples: ['/task park 848 --reason "premise falsified after refine review"'],
+  },
   refine: {
     topic: 'board',
     summary:

@@ -108,6 +108,13 @@ export const COMMAND_MANIFEST = [
     dispatch: 'verbs/demote.mjs',
   },
   {
+    verb: 'park',
+    aliases: [],
+    description: 'Send a Refine or Plan issue back to Backlog with a reason.',
+    category: 'lifecycle',
+    dispatch: 'verbs/park.mjs',
+  },
+  {
     verb: 'test',
     aliases: [],
     description: 'Run the Test-stage sandbox verification for the issue.',
