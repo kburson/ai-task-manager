@@ -24,12 +24,18 @@ spread across several modules that independently encode related facts:
 - lifecycle timing events, audit events, and legacy aliases;
 - agent-callable command inventory and help coverage.
 
-The defect chain #931, #996, #1001, and #1002 exposed the cost of that
-distribution. Each fix addressed a real producer, reader, or workflow mismatch,
-and the changes stacked positively. However, fixes repeatedly had to discover
-another independently maintained policy surface. The risk is not an infinite
-loop in the fixes themselves; it is continued policy drift because one behavior
-must be updated in multiple places.
+The immediate defect chain #931, #996, #1001, and #1002 first exposed the cost
+of that distribution, but it is not the complete basis for this design. The
+companion `2026-07-27-state-engine-bug-bash-evidence.md` register collects 53
+`bug` and `beta-defect` issues started on or after 2026-07-19, with an explicit
+creation-date fallback where AITM Start metadata is absent. It covers lifecycle,
+timing, evidence, mutation, CLI, and delivery-stability failures through #1004.
+
+Each fix addressed a real producer, reader, workflow, or execution mismatch, and
+the changes stacked positively. However, the corpus repeatedly had to discover
+another independently maintained policy or mechanism surface. The risk is not
+an infinite loop in the fixes themselves; it is continued drift because one
+behavior must be updated in multiple places.
 
 The current code has at least four different transition projections and multiple
 event vocabularies:
@@ -64,7 +70,8 @@ The refactor must consolidate authority without flattening these distinctions.
    legacy, and retired event vocabulary.
 3. Expose narrow query interfaces so consumers ask policy questions instead of
    importing and interpreting raw manifests.
-4. Preserve all behavior established by the recently closed defects.
+4. Preserve and explicitly disposition every corrected behavior in the
+   2026-07-19-and-later bug-bash evidence register.
 5. Migrate consumers incrementally behind compatibility facades.
 6. Remove duplicated policy only after every known consumer has converged.
 7. Place the complete state-engine refactoring breadth under #1005 for
@@ -442,6 +449,8 @@ The direct policy children execute in order.
 Inventory every policy producer and consumer. Build exhaustive behavioral tests
 for current topology, event vocabulary, action eligibility, and compatibility
 contracts. Establish dependency-boundary tests before introducing authority.
+Create the issue-to-invariant disposition matrix for every row in the bug-bash
+evidence register before any authority migration begins.
 
 ### 8.2 Canonical lifecycle topology
 
@@ -592,15 +601,21 @@ Test:
 
 ### 12.4 Regression coverage
 
-Retain explicit regression cases for:
+The regression basis is the complete companion bug-bash evidence register, not
+only the #931 blocking chain. The foundation child must map every registered
+defect to:
 
-- #931 action home-state enforcement;
-- #996 rejected-develop event handling;
-- #997 review self-loop behavior;
-- #998 drift re-verification behavior;
-- #999 review-to-test executable movement;
-- #1001 review-to-test entry history;
-- #1002 update timing-event validation.
+- a named invariant and existing regression test;
+- a new characterization test when no durable regression exists;
+- a #1006 audit input when the behavior belongs to an operational mechanism;
+- a verification-only constraint for test, CI, package, or delivery stability;
+- or an explicit independent-concern disposition.
+
+At minimum, matrix tests must retain the lifecycle and timing regressions from
+issues `#845`, `#848`, `#904`, `#931`, `#972`, `#981`, `#983`, `#996`,
+`#997`, `#998`, `#999`, `#1001`, `#1002`, and `#1003`. Gate and mechanism
+consumers must preserve the relevant evidence-register regressions assigned to
+their child.
 
 ### 12.5 Structural verification
 
@@ -644,7 +659,9 @@ The policy portion of #1005 is complete when:
 - compatibility facades scheduled for removal have no consumers and are gone;
 - executable, entry-history, and timing-history semantics remain distinct;
 - producer-reader event completeness is enforced by tests;
-- the regression suite for #931 through #1002 passes;
+- every bug-bash evidence row has a documented disposition and regression
+  owner;
+- all regression tests assigned to the completed children pass;
 - duplicate-policy and dependency-boundary scans pass;
 - all agent-callable entry points satisfy the help contract and completeness
   audit;
@@ -664,6 +681,9 @@ The implementation plan derived from this specification will define:
 
 - one story-generation brief for each direct policy child;
 - one story-generation brief for the agentic CLI contract child;
+- a complete mapping from the companion bug-bash evidence register to direct
+  children, #1006 audit areas, verification constraints, or independent
+  concerns;
 - sequential dependencies and JIT entry questions;
 - exact in-scope and out-of-scope boundaries;
 - required evidence, tests, and acceptance criteria;
