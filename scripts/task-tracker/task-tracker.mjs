@@ -73,13 +73,26 @@ function targetFromRest(rest) {
   return null;
 }
 
+// #845 — `active-only` mode (start/resume/pause/stop/update) discards the
+// `<N>` CLI argument unconditionally, so a cold bind (no active task in
+// state) never threads a target into `runPreflight`, which then early-returns
+// before the assignee gate ever runs. On a WARM active-only call (an issue is
+// already bound), `target` must stay `undefined` — that's what lets a
+// switch-style rebind through without tripping `runPreflight`'s bind-mismatch
+// check. Conditioning on `stateBefore.active` preserves that switch behavior
+// exactly while closing the cold-bind gap.
+export function resolvePreflightTarget({ mode, rest, stateBefore }) {
+  if (mode !== 'active-only') return targetFromRest(rest);
+  return stateBefore?.active == null ? targetFromRest(rest) : undefined;
+}
+
 async function runVerbPreflight(ctx) {
   const mode = PREFLIGHT_MODE[ctx.verb];
   if (!mode) return;
   const { preflightVerb } = await import('./lib/verb-preflight.mjs');
   const { loadState } = await import('./state.mjs');
   const stateBefore = loadState(ctx.statePath);
-  const target = mode === 'active-only' ? undefined : targetFromRest(ctx.rest);
+  const target = resolvePreflightTarget({ mode, rest: ctx.rest, stateBefore });
   await preflightVerb({
     stateBefore,
     statePath: ctx.statePath,

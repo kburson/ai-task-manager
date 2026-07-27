@@ -327,4 +327,104 @@ function depsOf({
   assert.equal(v.assigneeKind, 'unverifiable');
 }
 
+// 16. #845: cold bind with target now threaded — assignee gate runs and
+//     refuses when the issue is unassigned. Regression: previously a cold
+//     `start <N>` call always threaded `target: undefined` for active-only
+//     verbs, which early-returned `{ok:true}` before this gate ever ran.
+{
+  const v = await runPreflight({
+    stateBefore: { active: null },
+    target: '#845',
+    cfg: CFG,
+    deps: depsOf({ live: 'develop', marker: 'develop', assignees: [], currentUser: 'kburson' }),
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(v.assigneeKind, 'unassigned');
+}
+
+// 17. #845: cold bind, assigned to someone else — refused.
+{
+  const v = await runPreflight({
+    stateBefore: { active: null },
+    target: '#845',
+    cfg: CFG,
+    deps: depsOf({
+      live: 'develop',
+      marker: 'develop',
+      assignees: ['alice'],
+      currentUser: 'kburson',
+    }),
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(v.assigneeKind, 'assigned-to-other');
+}
+
+// 18. #845: cold bind, assigned to the current user — succeeds.
+{
+  const v = await runPreflight({
+    stateBefore: { active: null },
+    target: '#845',
+    cfg: CFG,
+    deps: depsOf({
+      live: 'develop',
+      marker: 'develop',
+      assignees: ['kburson'],
+      currentUser: 'kburson',
+    }),
+  });
+  assert.equal(v.ok, true);
+}
+
+// 19. #845: cold bind, TT_SKIP_NETWORK=1 — gate short-circuits as elsewhere.
+{
+  const prior = process.env.TT_SKIP_NETWORK;
+  process.env.TT_SKIP_NETWORK = '1';
+  try {
+    let assigneeFetched = false;
+    const v = await runPreflight({
+      stateBefore: { active: null },
+      target: '#845',
+      cfg: CFG,
+      deps: {
+        fetchLive: async () => 'develop',
+        fetchLastKnownState: async () => 'develop',
+        fetchAssignees: async () => {
+          assigneeFetched = true;
+          return [];
+        },
+        fetchCurrentUser: async () => 'kburson',
+      },
+    });
+    assert.equal(v.ok, true);
+    assert.equal(v.skippedNetwork, true);
+    assert.equal(assigneeFetched, false);
+  } finally {
+    if (prior === undefined) delete process.env.TT_SKIP_NETWORK;
+    else process.env.TT_SKIP_NETWORK = prior;
+  }
+}
+
+// 20. #845: cold bind, gateAssigneeMatch=false — gate skipped as elsewhere.
+{
+  let assigneeFetched = false;
+  const v = await runPreflight({
+    stateBefore: { active: null },
+    target: '#845',
+    cfg: CFG_NO_ASSIGNEE_GATE,
+    deps: {
+      fetchLive: async () => 'develop',
+      fetchLastKnownState: async () => 'develop',
+      fetchAssignees: async () => {
+        assigneeFetched = true;
+        return [];
+      },
+      fetchCurrentUser: async () => 'kburson',
+    },
+  });
+  assert.equal(v.ok, true);
+  assert.equal(assigneeFetched, false);
+}
+
 console.log('verb-preflight.test.mjs: ok');
