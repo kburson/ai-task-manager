@@ -121,3 +121,17 @@ test('hasReviewFailed reports presence', () => {
   assert.equal(hasReviewFailed('nothing here'), false);
   assert.equal(hasReviewFailed(stampReviewFailed('x', ['a'], {})), true);
 });
+
+test('#1004 — a prose sentence quoting both delimiters inline does not strand or corrupt a genuine review-failed block', () => {
+  const genuine = stampReviewFailed('placeholder', ['v1: bad'], { ts: 'T' });
+  const proseLine =
+    'Docs note: the block runs from `<!-- aitm-review-failed:start -->` to `<!-- aitm-review-failed:end -->` inline in one sentence.';
+  const body = `# Title\n\n${proseLine}\n\n${genuine}`;
+
+  assert.ok(hasReviewFailed(body), 'the genuine standalone block must still be detected');
+
+  const cleared = clearReviewFailed(body);
+  assert.equal(hasReviewFailed(cleared), false, 'the genuine block must be fully cleared');
+  assert.match(cleared, new RegExp(proseLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(cleared, /Title/);
+});
