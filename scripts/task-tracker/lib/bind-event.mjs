@@ -111,6 +111,83 @@ function hasStartRow(body) {
   return false;
 }
 
+// #981 — minimal timestamp→ms parser, deliberately duplicated from
+// `lib/timing-rows.mjs`'s `tsToMs` rather than imported: `timing-rows.mjs`
+// imports `timing-event-map.mjs`, which imports `classifyEvent` FROM this
+// module — importing timing-rows.mjs back here would close a circular loop.
+// Table format ("2026-05-17 18:58:01 -05:00") and ISO are both accepted.
+function tsToMsLocal(ts) {
+  if (typeof ts !== 'string') return NaN;
+  const tableMatch = ts.match(
+    /^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s+([+-]\d{2}):(\d{2})$/
+  );
+  if (tableMatch) {
+    const [, date, hh, mm, ss, offH, offM] = tableMatch;
+    return Date.parse(`${date}T${hh}:${mm}:${ss ?? '00'}${offH}:${offM}`);
+  }
+  const parsed = Date.parse(ts);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+// #981 — the last timing-log data row's { ts, event, wordMarker } (raw,
+// as-rendered cell strings), or null when the body has no data rows.
+function lastDataRow(body) {
+  if (!body) return null;
+  let last = null;
+  for (const line of String(body).split('\n')) {
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|').map((s) => s.trim());
+    if (cells.length < 7) continue;
+    if (!ROW_TS_RE.test(cells[1])) continue;
+    last = { ts: cells[1], event: cells[2].toLowerCase(), wordMarker: cells[6] };
+  }
+  return last;
+}
+
+// #981 — the Agent Review Gate's `timing-log-sequence` validator flags a gap
+// over this threshold as suspicious at REVIEW time
+// (`lib/agent-review/validators/timing-log-sequence.mjs`); this is the same
+// threshold reused at WRITE time so detection and prevention agree. Exported
+// here (the leaf module) and imported by the validator, rather than the
+// reverse, to avoid a circular import — the validator already imports
+// `classifyEvent` FROM this module.
+export const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
+
+// #981 — detect the shape behind #880/#879: a phase's `:started` (or any
+// other non-departure row) sits unclosed while a session dies without
+// running its exit path, and the next bind is about to write a bare
+// `resumed`/`start` straight over the gap. `computePhaseCloseDelta` only
+// classifies a span as idle when it is OPENED by a departure event
+// (`pause`/`pause:<reason>`, `switch-out`/`switch-out:#N`), so an unmarked
+// gap reads as fully ACTIVE on the phase's next `:completed` row.
+//
+// Returns null when: there is no body/no last row; the last row is already a
+// departure (or an interruption is already open — nothing to fix); the gap
+// is unparseable; or the gap does not exceed `gapSec`. Otherwise returns
+// `{ lastRowTs, lastRowEvent, wordMarker, gapSec, syntheticTs }` —
+// `syntheticTs` (one second after the last row) is where the caller should
+// insert a synthetic departure row (see `buildHistoricalRow` in
+// `gh-timing-comment.mjs`) before writing the re-engagement row.
+export function detectUnmarkedDepartureGap(body, nowTs, gapSec = SUSPICIOUS_GAP_SEC) {
+  if (!body) return null;
+  if (lastOpenInterruption(body)) return null;
+  const last = lastDataRow(body);
+  if (!last) return null;
+  if (classifyEvent(last.event)?.role === 'open') return null;
+  const lastMs = tsToMsLocal(last.ts);
+  const nowMs = tsToMsLocal(nowTs);
+  if (!Number.isFinite(lastMs) || !Number.isFinite(nowMs)) return null;
+  const elapsedSec = (nowMs - lastMs) / 1000;
+  if (elapsedSec <= gapSec) return null;
+  return {
+    lastRowTs: last.ts,
+    lastRowEvent: last.event,
+    wordMarker: last.wordMarker,
+    gapSec: elapsedSec,
+    syntheticTs: new Date(lastMs + 1000).toISOString(),
+  };
+}
+
 // #534 — orphan-pairing guard. A re-engagement event (`resume*` / `switch-in*`)
 // is a violation only when the body carries NO open interruption to pair
 // against AND no prior `start` row (the benign root opener). Returns

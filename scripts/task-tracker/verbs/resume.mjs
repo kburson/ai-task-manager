@@ -15,6 +15,7 @@ import {
   resolveBindEvent,
   timingCommentHasRows,
   assertPairedReengagement,
+  detectUnmarkedDepartureGap,
 } from '../lib/bind-event.mjs';
 import {
   isPickupDirectiveEligible,
@@ -307,6 +308,25 @@ export async function verbResume(ctx) {
     bindEvent = 'start';
   }
   const isStart = bindEvent === 'start';
+  // #981 — a session that dies without running its exit path (timeout, closed
+  // terminal, context end) leaves the prior row unclosed; writing `resumed`
+  // straight over that gap makes `computePhaseCloseDelta` read the ENTIRE
+  // elapsed span as active on the next `<phase>:completed` row (the #880/#879
+  // defect class). Insert a synthetic departure row first so the gap
+  // reclassifies as idle — `buildHistoricalRow` can only ever emit a
+  // zero-delta marker row, never fabricate active time.
+  if (cfg?.repo && !isStart && readStatus !== 'error') {
+    const gap = detectUnmarkedDepartureGap(tcBody, ts);
+    if (gap) {
+      const departureRow = gh.buildHistoricalRow({
+        ts: gap.syntheticTs,
+        event: 'pause:auto-detected-gap',
+        wordMarker: gap.wordMarker,
+        description: `resume after a ${Math.round(gap.gapSec / 3600)}h gap with no departure row — synthetic departure inserted per #981 so the gap reclassifies as idle`,
+      });
+      await safePostTiming(normalizedTarget, departureRow);
+    }
+  }
   const row = buildRow({
     ts,
     event: bindEvent,

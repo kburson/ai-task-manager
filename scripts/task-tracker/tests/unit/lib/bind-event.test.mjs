@@ -1,10 +1,12 @@
-// @story #482 #568
+// @story #482 #568 #981
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveBindEvent,
   timingCommentHasRows,
   lastOpenInterruption,
+  detectUnmarkedDepartureGap,
+  SUSPICIOUS_GAP_SEC,
 } from '../../../lib/bind-event.mjs';
 
 const NOW = new Date().toISOString().replace('T', ' ').replace(/\..*/, ' +00:00');
@@ -123,4 +125,61 @@ test('resolveBindEvent: positive-empty read (absent) → start', () => {
     resolveBindEvent({ hasTimingHistory: false, timingBody: '', readStatus: 'absent' }),
     'start'
   );
+});
+
+// ---- #981: detectUnmarkedDepartureGap ---------------------------------------
+// Reproduces the #880/#879 shape: a phase's `:started` row sits unclosed while
+// the session dies without emitting a departure event, and the gap to the next
+// bind exceeds SUSPICIOUS_GAP_SEC with no pause/switch-out row bracketing it.
+
+const rowAt = (ts, event) => `| ${ts} | ${event} | 0s | 0s | 0 | 1,234 | row |`;
+const logAt = (...rows) =>
+  [
+    '| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...rows,
+  ].join('\n');
+
+test('detectUnmarkedDepartureGap: long gap with no departure row → detected', () => {
+  const started = '2026-07-24 04:17:40 +00:00';
+  const nowTs = '2026-07-27 07:18:22 +00:00'; // ~75h later, no departure row in between
+  const body = logAt(rowAt(started, 'plan:started'));
+  const gap = detectUnmarkedDepartureGap(body, nowTs);
+  assert.ok(gap, 'expected an unmarked-departure gap to be detected');
+  assert.equal(gap.lastRowTs, started);
+  assert.equal(gap.lastRowEvent, 'plan:started');
+  assert.ok(gap.gapSec > SUSPICIOUS_GAP_SEC);
+  assert.equal(gap.syntheticTs, new Date(Date.parse('2026-07-24T04:17:41+00:00')).toISOString());
+});
+
+test('detectUnmarkedDepartureGap: gap below threshold → null', () => {
+  const started = '2026-07-24 04:17:40 +00:00';
+  const nowTs = '2026-07-24 05:17:40 +00:00'; // 1h later
+  const body = logAt(rowAt(started, 'plan:started'));
+  assert.equal(detectUnmarkedDepartureGap(body, nowTs), null);
+});
+
+test('detectUnmarkedDepartureGap: already bracketed by an open departure → null', () => {
+  const body = logAt(
+    rowAt('2026-07-24 04:17:40 +00:00', 'plan:started'),
+    rowAt('2026-07-24 04:20:00 +00:00', 'pause:meeting')
+  );
+  const nowTs = '2026-07-27 07:18:22 +00:00';
+  assert.equal(detectUnmarkedDepartureGap(body, nowTs), null);
+});
+
+test('detectUnmarkedDepartureGap: last row itself a departure event → null', () => {
+  const body = logAt(rowAt('2026-07-24 04:17:40 +00:00', 'switch-out:#7'));
+  const nowTs = '2026-07-27 07:18:22 +00:00';
+  assert.equal(detectUnmarkedDepartureGap(body, nowTs), null);
+});
+
+test('detectUnmarkedDepartureGap: empty/missing body → null', () => {
+  assert.equal(detectUnmarkedDepartureGap('', '2026-07-27 07:18:22 +00:00'), null);
+  assert.equal(detectUnmarkedDepartureGap(null, '2026-07-27 07:18:22 +00:00'), null);
+});
+
+test('detectUnmarkedDepartureGap: no data rows (header only) → null', () => {
+  const body = logAt();
+  assert.equal(detectUnmarkedDepartureGap(body, '2026-07-27 07:18:22 +00:00'), null);
 });

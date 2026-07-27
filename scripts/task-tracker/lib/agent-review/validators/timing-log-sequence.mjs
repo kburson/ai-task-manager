@@ -27,7 +27,7 @@
 // `stage-entry-markers.mjs`, and timestamp parsing reuses `timing-rows.mjs`.
 
 import { registry } from '../registry.mjs';
-import { classifyEvent } from '../../bind-event.mjs';
+import { classifyEvent, SUSPICIOUS_GAP_SEC } from '../../bind-event.mjs';
 import {
   isDepartureEvent,
   isReengagementEvent,
@@ -65,7 +65,10 @@ const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
 // re-verifying) are the sanctioned rewinds. Forward motion must advance exactly
 // one ladder rung; a multi-rung forward jump is a skipped stage.
 const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>develop', 'done>test']);
-export const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
+// #981 — SUSPICIOUS_GAP_SEC now lives in bind-event.mjs (the leaf module) so
+// the write-side prevention (verbResume) and this review-side detection share
+// one threshold. Re-exported here for any existing importer of this module.
+export { SUSPICIOUS_GAP_SEC };
 
 // Extract the kanban stage a row drives the walk to, or null if the row is not a
 // stage-transition event. `<stage>:failed` rows are gate-audit records of a
