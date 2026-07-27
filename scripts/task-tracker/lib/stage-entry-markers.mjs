@@ -26,13 +26,15 @@ export const OPTIONAL_CONTIGUITY_STAGES = new Set(['on-deck']);
 // chain (backlog → on-deck → refine → …); rollback arcs cover legitimate
 // rewinds (review/test → develop on rework, develop → plan/refine on re-plan,
 // plan → refine/backlog on cancel, refine → backlog on demote, on-deck →
-// backlog on tranche-drop). Used by verifyChainIntegrity to validate the
-// timestamp-ordered sequence of visit-numbered entry markers.
+// backlog on tranche-drop, review → test on drift-reverify per #996/#999).
+// Used by verifyChainIntegrity to validate the timestamp-ordered sequence of
+// visit-numbered entry markers.
 function buildLegalTransitions() {
   const set = new Set();
   for (let i = 0; i < STAGES.length - 1; i++) set.add(`${STAGES[i]}->${STAGES[i + 1]}`);
   for (const arc of [
     'review->develop',
+    'review->test',
     'test->develop',
     'develop->plan',
     'develop->refine',
