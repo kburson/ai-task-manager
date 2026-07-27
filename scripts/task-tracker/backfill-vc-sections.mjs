@@ -14,6 +14,18 @@
 //   node scripts/task-tracker/backfill-vc-sections.mjs            # audit only
 //   node scripts/task-tracker/backfill-vc-sections.mjs --apply    # write
 //   node scripts/task-tracker/backfill-vc-sections.mjs --help     # usage, no writes
+//
+// #879 — `--scope N,N,...` narrows the working set to the named issue(s),
+// honored in both audit and `--apply` mode. A scope number absent from the
+// fetched open-issue list is a hard error (typo/closed/nonexistent — mirrors
+// #878's fail-loud philosophy) before any write happens. A scope number that
+// IS open but already has a VC section (`buildVcBackfill` returns
+// `status: 'skip'`) is not a mistake; it gets an explicit
+// `scope-target-already-healed` warning line rather than vanishing into the
+// aggregate `skipped` tally — naming a specific issue means its outcome must
+// be visible.
+//   node scripts/task-tracker/backfill-vc-sections.mjs --scope 877          # audit one
+//   node scripts/task-tracker/backfill-vc-sections.mjs --scope 877,881 --apply
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -87,12 +99,25 @@ export async function listOpenIssues(deps = {}) {
 }
 
 const USAGE =
-  'Usage: backfill-vc-sections.mjs [--apply] [--dry-run] [--yes] [--help]\n' +
+  'Usage: backfill-vc-sections.mjs [--apply] [--dry-run] [--scope N,N,...] [--yes] [--help]\n' +
   '  (default)   audit only, no writes\n' +
   '  --apply     write the healed VC section to each open issue that needs one\n' +
   '  --dry-run   explicit alias for the audit-only default\n' +
+  '  --scope     restrict to the named open issue number(s), comma-separated\n' +
   '  --yes       skip the blast-radius confirmation prompt on a multi-issue --apply\n' +
   '  --help, -h  print this usage and exit; never writes\n';
+
+// Parse `--scope 877,881` (or `--scope=877,881`) into a Set of issue numbers.
+// Non-numeric tokens are dropped silently here; they simply will never match
+// a fetched issue number and so surface via the unmatched-scope hard error.
+function parseScope(value) {
+  return new Set(
+    String(value)
+      .split(',')
+      .map((s) => Number(s.trim().replace(/^#/, '')))
+      .filter(Number.isFinite)
+  );
+}
 
 export async function main(argv = process.argv.slice(2), deps = {}) {
   const log = deps.log || ((s) => console.log(s));
@@ -101,6 +126,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   // a no-op rather than an unbounded write (#878).
   const parsed = parseStrict(argv, {
     flags: ['--apply', '--dry-run', '--yes'],
+    options: ['--scope'],
     usage: USAGE,
   });
   if (parsed.help) {
@@ -115,7 +141,25 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   const apply = Boolean(parsed.values['--apply']);
   const yes = Boolean(parsed.values['--yes']);
   const repo = 'kburson/ai-task-manager';
-  const issues = await list(deps);
+  const allIssues = await list(deps);
+
+  let issues = allIssues;
+  if (parsed.values['--scope'] !== undefined) {
+    const scope = parseScope(parsed.values['--scope']);
+    const matched = allIssues.filter((it) => scope.has(it.number));
+    const matchedNumbers = new Set(matched.map((it) => it.number));
+    const unmatched = [...scope].filter((n) => !matchedNumbers.has(n));
+    if (unmatched.length) {
+      err(
+        `backfill-vc-sections: --scope names issue(s) not found among open issues: ` +
+          `${unmatched.sort((a, b) => a - b).join(', ')}`
+      );
+      if (deps.exit) deps.exit(2);
+      else process.exitCode = 2;
+      return;
+    }
+    issues = matched;
+  }
 
   if (apply) {
     const decision = await confirm({
@@ -136,6 +180,9 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     const plan = buildVcBackfill(it.body || '');
     if (plan.status === 'skip') {
       summary.skipped += 1;
+      if (parsed.values['--scope'] !== undefined) {
+        log(`#${it.number}  scope-target-already-healed  (no write)`);
+      }
       continue;
     }
     const tag = plan.mode === 'derived' ? 'healed-derived' : 'healed-default';
