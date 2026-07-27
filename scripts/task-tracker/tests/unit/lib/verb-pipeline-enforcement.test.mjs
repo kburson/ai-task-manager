@@ -6,7 +6,8 @@
 //   1. AITM_VERB_CONTEXT=promote (no AITM_INTERNAL) → permitted.
 //   2. No env, no TTY, no flag, no cfg → refused; refusal names `/task promote`
 //      for a forward target.
-//   3. Refusal for backward target (backlog) names `/task demote`.
+//   3. Refusal for backward target (backlog) names `/task park` (#848 —
+//      backlog is reached via park, not demote; demote is hardcoded to develop).
 //   4. --out-of-band "<reason>" → permitted under TT_SKIP_NETWORK (audit
 //      emission is best-effort and suppressed when network is skipped).
 //   5. --out-of-band with empty reason → refused (exit 2).
@@ -95,14 +96,14 @@ async function runExpectFail(args, env) {
   rmSync(sandbox, { recursive: true });
 }
 
-// 3. Refusal for backward target names /task demote.
+// 3. Refusal for backward target (backlog) names /task park (#848).
 {
   const sandbox = makeSandbox();
   const e = await runExpectFail(['123', 'backlog'], cleanEnv(sandbox));
   assert.match(
     String(e.stderr || ''),
-    /\/task demote/,
-    'refusal for backlog target must name `/task demote`'
+    /\/task park/,
+    'refusal for backlog target must name `/task park`'
   );
   rmSync(sandbox, { recursive: true });
 }
