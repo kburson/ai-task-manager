@@ -3,7 +3,7 @@
 import { strict as assert } from 'node:assert';
 import {
   buildRow,
-  buildHistoricalRow,
+  buildBackdatedDepartureRow,
   readLastKnownState,
   writeLastKnownState,
 } from '../../../gh-timing-comment.mjs';
@@ -348,14 +348,14 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
 // gh-timing-comment-full-column.test.mjs (split out to stay under the
 // 400-line per-file cap).
 
-// ---- #981 — buildHistoricalRow: exempt from the retroactive-ts guard,
+// ---- #981 — buildBackdatedDepartureRow: exempt from the retroactive-ts guard,
 // but only ever a zero-delta marker row ---------------------------------
 
 // Test 27: a backdated ts (days ago) does NOT throw — the whole point of the
 // exemption — and renders the byte-identical zero-delta shape buildRow itself
 // produces for activeMin/idleMin/deltaWords all 0.
 const historicalTs = '2026-07-24 04:20:00 -05:00';
-const histRow = buildHistoricalRow({
+const histRow = buildBackdatedDepartureRow({
   ts: historicalTs,
   event: 'pause:auto-detected-gap',
   wordMarker: 0,
@@ -368,7 +368,7 @@ assert.equal(
 
 // Test 28: no activeSec/idleSec/deltaWords parameter exists on the signature —
 // extra keys are silently ignored, never escalate the zero-delta claim.
-const histRowIgnoresExtras = buildHistoricalRow({
+const histRowIgnoresExtras = buildBackdatedDepartureRow({
   ts: historicalTs,
   event: 'pause:x',
   wordMarker: 5,
@@ -380,6 +380,6 @@ const histRowIgnoresExtras = buildHistoricalRow({
 assert.ok(histRowIgnoresExtras.includes('<!-- row-sec: a=0 i=0 -->'));
 
 // Test 29: a non-parseable ts throws rather than silently building a bad row.
-assert.throws(() => buildHistoricalRow({ ts: 'not-a-timestamp', event: 'pause:x' }));
+assert.throws(() => buildBackdatedDepartureRow({ ts: 'not-a-timestamp', event: 'pause:x' }));
 
 console.log('gh-timing-comment.test.mjs: all passed');

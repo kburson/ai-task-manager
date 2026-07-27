@@ -166,7 +166,7 @@ export const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
 // is unparseable; or the gap does not exceed `gapSec`. Otherwise returns
 // `{ lastRowTs, lastRowEvent, wordMarker, gapSec, syntheticTs }` —
 // `syntheticTs` (one second after the last row) is where the caller should
-// insert a synthetic departure row (see `buildHistoricalRow` in
+// insert a synthetic departure row (see `buildBackdatedDepartureRow` in
 // `gh-timing-comment.mjs`) before writing the re-engagement row.
 export function detectUnmarkedDepartureGap(body, nowTs, gapSec = SUSPICIOUS_GAP_SEC) {
   if (!body) return null;

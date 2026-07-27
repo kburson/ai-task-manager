@@ -313,12 +313,12 @@ export async function verbResume(ctx) {
   // straight over that gap makes `computePhaseCloseDelta` read the ENTIRE
   // elapsed span as active on the next `<phase>:completed` row (the #880/#879
   // defect class). Insert a synthetic departure row first so the gap
-  // reclassifies as idle — `buildHistoricalRow` can only ever emit a
+  // reclassifies as idle — `buildBackdatedDepartureRow` can only ever emit a
   // zero-delta marker row, never fabricate active time.
   if (cfg?.repo && !isStart && readStatus !== 'error') {
     const gap = detectUnmarkedDepartureGap(tcBody, ts);
     if (gap) {
-      const departureRow = gh.buildHistoricalRow({
+      const departureRow = gh.buildBackdatedDepartureRow({
         ts: gap.syntheticTs,
         event: 'pause:auto-detected-gap',
         wordMarker: gap.wordMarker,

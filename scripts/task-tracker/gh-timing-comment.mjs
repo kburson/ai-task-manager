@@ -169,18 +169,18 @@ export function buildRow({
 // guard (RETROACTIVE_TS_WINDOW_MS, above). That guard exists to stop a caller
 // from BACKDATING a claim of active work. This builder can only ever produce
 // a zero-delta marker row — activeSec/idleSec/deltaWords are hard-zeroed, not
-// caller-settable — so inserting it at a historical instant can only ever
-// RECLASSIFY an already-elapsed gap from active to idle on the next phase
-// close recompute (`computePhaseCloseDelta`), never fabricate a new
-// active-time claim. Do not add activeSec/idleSec/deltaWords parameters to
-// this function; that would reopen the exact hole the guard on `buildRow`
+// caller-settable — so inserting it at an earlier, already-elapsed instant
+// can only ever RECLASSIFY an already-elapsed gap from active to idle on the
+// next phase close recompute (`computePhaseCloseDelta`), never fabricate a
+// new active-time claim. Do not add activeSec/idleSec/deltaWords parameters
+// to this function; that would reopen the exact hole the guard on `buildRow`
 // closes. Used by `verbResume` (via `lib/bind-event.mjs`'s
 // `detectUnmarkedDepartureGap`) to insert a synthetic `pause:<reason>` row
 // before writing `resumed` over a gap with no departure row.
-export function buildHistoricalRow({ ts, event, description = '', wordMarker }) {
+export function buildBackdatedDepartureRow({ ts, event, description = '', wordMarker }) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
-    throw new Error(`buildHistoricalRow: non-parseable ts: ${String(ts)}`);
+    throw new Error(`buildBackdatedDepartureRow: non-parseable ts: ${String(ts)}`);
   }
   const wm = wordMarker == null ? null : Number(String(wordMarker).replace(/,/g, ''));
   return `| ${fmtTs(ts)} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
