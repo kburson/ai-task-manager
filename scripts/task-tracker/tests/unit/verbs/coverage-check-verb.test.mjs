@@ -33,7 +33,7 @@ function fixtureBody() {
   return [
     '## Acceptance Criteria',
     '',
-    `- [ ] ${AC_PLAIN}`,
+    `- [ ] ${AC_PLAIN} <!-- aitm-non-demonstrable -->`,
     `- [ ] ${AC_VERIFIED} <!-- aitm-verified cmd="\`echo ok\`" -->`,
     `- [x] ${AC_VERIFIED_CHECKED} <!-- aitm-verified cmd="\`echo ok\`" -->`,
     `- [ ] ${AC_DUP}`,
