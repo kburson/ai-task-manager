@@ -21,7 +21,8 @@ spread across several modules that independently encode related facts:
 - timing-history transitions;
 - action home-state eligibility;
 - promote, demote, and park behavior;
-- lifecycle timing events, audit events, and legacy aliases.
+- lifecycle timing events, audit events, and legacy aliases;
+- agent-callable command inventory and help coverage.
 
 The defect chain #931, #996, #1001, and #1002 exposed the cost of that
 distribution. Each fix addressed a real producer, reader, or workflow mismatch,
@@ -33,15 +34,16 @@ must be updated in multiple places.
 The current code has at least four different transition projections and multiple
 event vocabularies:
 
-| Policy surface             | Current owner                                            | Important distinction                                            |
-| -------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| Executable lifecycle edges | `state-machine.mjs`                                      | Runtime authority, including side-effect-free self-loop requests |
-| State objects and chains   | `states/index.mjs`                                       | Contains reverse edges that are not all executable               |
-| Entry-marker history edges | `stage-entry-markers.mjs`                                | Includes history-only correction edges                           |
-| Timing-log sequence edges  | `timing-log-sequence.mjs`                                | Uses its own stage indices and reverse-edge set                  |
-| Action eligibility         | `verb-home-state-guard.mjs` and verbs                    | Includes fail-open bootstrap behavior for unknown state          |
-| Move target policy         | `move-state/policy.mjs`                                  | Repeats state/config and forward/backward target facts           |
-| Timing-event vocabulary    | `phase-events.mjs`, `timing-event-map.mjs`, and emitters | Producer and strict-reader completeness is not proven            |
+| Policy surface             | Current owner                                            | Important distinction                                                     |
+| -------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Executable lifecycle edges | `state-machine.mjs`                                      | Runtime authority, including side-effect-free self-loop requests          |
+| State objects and chains   | `states/index.mjs`                                       | Contains reverse edges that are not all executable                        |
+| Entry-marker history edges | `stage-entry-markers.mjs`                                | Includes history-only correction edges                                    |
+| Timing-log sequence edges  | `timing-log-sequence.mjs`                                | Uses its own stage indices and reverse-edge set                           |
+| Action eligibility         | `verb-home-state-guard.mjs` and verbs                    | Includes fail-open bootstrap behavior for unknown state                   |
+| Move target policy         | `move-state/policy.mjs`                                  | Repeats state/config and forward/backward target facts                    |
+| Timing-event vocabulary    | `phase-events.mjs`, `timing-event-map.mjs`, and emitters | Producer and strict-reader completeness is not proven                     |
+| Agentic CLI metadata       | `command-manifest.mjs`, `self-doc.mjs`, and entry points | Existing help coverage does not prove every callable script is classified |
 
 These are not interchangeable views. In particular:
 
@@ -71,6 +73,8 @@ The refactor must consolidate authority without flattening these distinctions.
    architecture audit can use the completed policy interfaces as evidence.
 9. Produce planning artifacts precise enough for a lower-cost model to generate
    GitHub stories without redesigning the architecture.
+10. Make every agent-callable CLI entry point self-documenting and make the
+    collective command surface complete, compact, and mechanically auditable.
 
 ## 3. Non-Goals
 
@@ -87,7 +91,9 @@ The policy-consolidation children do not:
 - remove compatibility facades before all consumers have migrated;
 - create #1006 grandchildren before its JIT architecture audit;
 - turn historical acceptance rules into executable permissions;
-- create GitHub stories during this design session.
+- create GitHub stories during this design session;
+- optimize help output for interactive human tutorials or marketing
+  documentation.
 
 Operational cleanup may later change internal organization under #1006, but only
 after the policy layer has converged and its audit identifies evidence-backed
@@ -127,7 +133,14 @@ policy graph acyclic.
 
 Direct children of #1005 are sequenced. Each child begins with a focused
 deep-dive against the interfaces and findings delivered by its predecessor.
-#1006 does not receive speculative grandchildren in advance.
+Issue #1006 does not receive speculative grandchildren in advance.
+
+### 4.7 Agent-first command discovery
+
+Agents must not need to inspect source code or guess syntax before invoking a
+supported command. Help is part of the command contract, must be safe to request
+in any repository state, and must optimize for fast machine scanning rather than
+extended human-oriented explanation.
 
 ## 5. Target Architecture
 
@@ -227,6 +240,77 @@ The following remain consumers during policy consolidation:
 They may be migrated to policy queries, but their operational algorithms are not
 redesigned in the policy children.
 
+### 5.4 Agentic CLI contract
+
+The existing `aitm` registry, command manifest, and self-documentation metadata
+form the starting point. The refactor formalizes them as one auditable
+agent-command surface.
+
+Every executable JavaScript entry point shipped by the package must be
+classified as exactly one of:
+
+- agent-callable verb;
+- agent-callable standalone command;
+- package lifecycle CLI command;
+- live repository-maintenance or migration command;
+- internal hook or guard entry point;
+- internal library or orchestration entry point;
+- test, fixture, or retired one-shot entry point.
+
+The classification must be explicit. A shebang, npm `bin` declaration,
+`process.argv` main block, or executable file that is absent from both the
+agent-callable catalog and the documented exclusion inventory fails the audit.
+Live maintenance and migration entry points are agent-callable even when they
+are not installed as npm binaries; they must either route through `aitm` or have
+a documented reason for direct-only invocation.
+
+Every agent-callable verb, standalone command, package lifecycle command, and
+live maintenance or migration command must provide:
+
+- `--help` and `-h` through direct invocation;
+- `help`, `?`, `--help`, and `-h` through the `aitm` orchestrator;
+- exit code `0` for a help request;
+- no configuration requirement, network access, lock acquisition, task bind,
+  file mutation, issue mutation, or board mutation before help exits;
+- a stable, compact, plain-text response.
+
+Each command's help metadata must contain:
+
+| Field            | Required content                                                     |
+| ---------------- | -------------------------------------------------------------------- |
+| Purpose          | One-sentence operational result                                      |
+| Usage            | Canonical `npx aitm ...` invocation                                  |
+| Arguments        | Positionals, flags, allowed values, and defaults                     |
+| Preconditions    | Required task state, configuration, credentials, or files            |
+| Effects          | Mutations, dry-run behavior, and idempotency expectations            |
+| Output           | Stable stdout result or token shape; stderr diagnostics              |
+| Exit codes       | Success, usage, gate refusal, and command-specific failures          |
+| Examples         | At least one minimal valid invocation                                |
+| Related commands | Preferred predecessor, successor, or safer alternative when relevant |
+
+Renderers may omit empty optional sections, but the catalog schema and tests
+must not permit required semantics to be silently absent.
+
+The collective `npx aitm help` output must:
+
+- enumerate every agent-callable verb, standalone command, package lifecycle
+  command, and live maintenance or migration command;
+- group commands by operational purpose;
+- include a one-line synopsis for selection;
+- advertise the command's canonical detail-help invocation;
+- avoid implementation file paths and duplicate long-form help;
+- remain free of ANSI escapes when stdout is not a TTY.
+
+For commands routed through `aitm`, `npx aitm help <command>` and
+`npx aitm <command> help` must resolve to the same canonical metadata.
+Direct-only package lifecycle or maintenance commands must expose the same
+record through their canonical `--help` invocation. Unknown commands return the
+usage-error exit code and print the compact aggregate inventory on stderr.
+
+Help metadata is a runtime contract, not parallel prose. Routing, aggregate
+listing, detailed rendering, and completeness tests must read the same
+canonical records.
+
 ## 6. Policy Semantics to Preserve
 
 ### 6.1 Canonical states
@@ -325,7 +409,7 @@ code, including warning and dirty-close audit paths.
 
 ## 7. Epic Structure
 
-#1005 is the top-level State Engine Refactoring Epic:
+Issue #1005 is the top-level State Engine Refactoring Epic:
 
 ```text
 #1005 State Engine Refactoring Epic
@@ -334,6 +418,7 @@ code, including warning and dirty-close audit paths.
 +-- Canonical lifecycle topology
 +-- Lifecycle history and action policies
 +-- Canonical timing-event policy
++-- Agentic CLI contract and discoverability
 +-- Policy convergence and duplicate removal
 `-- #1006 Operational Mechanisms Child Epic
     |
@@ -344,7 +429,7 @@ code, including warning and dirty-close audit paths.
 The named policy items are targeted children of #1005. Their final story titles
 and issue numbers are generated later from the implementation plan.
 
-#1006 is adopted as a child epic rather than deconstructed now. This preserves
+Issue #1006 is adopted as a child epic rather than deconstructed now. This preserves
 the full refactoring breadth under one traceable parent while avoiding
 prematurely specified operational stories.
 
@@ -376,13 +461,25 @@ Introduce the timing-events package. Characterize exact and parameterized
 events, migrate producers and readers, and prove producer-reader completeness.
 Preserve legacy and retired-event handling.
 
-### 8.5 Policy convergence and duplicate removal
+### 8.5 Agentic CLI contract and discoverability
+
+Inventory and classify every executable entry point. Normalize verb,
+standalone-script, and package lifecycle help metadata to the approved schema.
+Migrate aggregate and per-command rendering to canonical records. Add static
+completeness checks and side-effect-free runtime probes for every agent-callable
+command.
+
+This child follows lifecycle and timing-event policy so state preconditions,
+gate behavior, and lifecycle vocabulary in help are derived from the converged
+interfaces rather than copied again.
+
+### 8.6 Policy convergence and duplicate removal
 
 Migrate remaining consumers, run import and duplicate-policy scans, remove
 facades only when their consumer inventories are empty, and prove package
 dependency direction.
 
-### 8.6 #1006 operational JIT audit
+### 8.7 #1006 operational JIT audit
 
 After policy convergence, inspect operational mechanisms against the new
 interfaces. Produce a disposition matrix and create only the grandchildren
@@ -410,7 +507,7 @@ removal in one unreviewable change.
 
 ## 10. #1006 JIT Architecture Audit
 
-#1006 begins only after the policy-convergence acceptance criteria pass. Its
+Issue #1006 begins only after the policy-convergence acceptance criteria pass. Its
 first milestone is an architecture audit across four areas:
 
 1. state-move orchestration, mutation, and post-commit behavior;
@@ -428,7 +525,7 @@ For each finding, the audit records:
 | Optional cleanup                 | Independent backlog item        |
 
 Required #1006 grandchildren remain children of #1006 and therefore trace to
-#1005. Optional cleanup is explicitly separated so it cannot indefinitely hold
+issue #1005. Optional cleanup is explicitly separated so it cannot indefinitely hold
 the epic open.
 
 The audit must cite concrete modules, duplicated decisions, coupling paths,
@@ -516,6 +613,26 @@ Before each child reaches Review:
 - verify timing-event policy depends only on approved lifecycle identities;
 - run the repository's full test suite.
 
+### 12.6 Agentic CLI verification
+
+Test:
+
+- every shipped executable entry point has one explicit classification;
+- every public npm binary and live maintenance or migration entry point
+  satisfies the help contract;
+- every agent-callable command appears in aggregate help;
+- every aggregate command resolves to detailed help;
+- direct `--help` and `-h` work for every callable script;
+- orchestrated `help`, `?`, `--help`, and `-h` forms are equivalent;
+- every help probe exits `0` before configuration, network, lock, or mutation
+  adapters are touched;
+- each help record satisfies the required metadata schema;
+- unknown commands exit with the usage-error code and a compact inventory;
+- non-TTY output contains no ANSI escapes;
+- command aliases resolve to canonical metadata instead of duplicating it;
+- command additions fail CI unless routing, classification, and help metadata
+  are complete.
+
 ## 13. Acceptance Criteria
 
 The policy portion of #1005 is complete when:
@@ -529,9 +646,11 @@ The policy portion of #1005 is complete when:
 - producer-reader event completeness is enforced by tests;
 - the regression suite for #931 through #1002 passes;
 - duplicate-policy and dependency-boundary scans pass;
+- all agent-callable entry points satisfy the help contract and completeness
+  audit;
 - no operational behavior changed without a separately approved story.
 
-#1005 as a whole is complete only when:
+Issue #1005 as a whole is complete only when:
 
 - the policy portion is complete;
 - #1006's JIT audit is complete;
@@ -544,6 +663,7 @@ The policy portion of #1005 is complete when:
 The implementation plan derived from this specification will define:
 
 - one story-generation brief for each direct policy child;
+- one story-generation brief for the agentic CLI contract child;
 - sequential dependencies and JIT entry questions;
 - exact in-scope and out-of-scope boundaries;
 - required evidence, tests, and acceptance criteria;
@@ -553,7 +673,7 @@ The implementation plan derived from this specification will define:
 
 A lower-cost model may translate those briefs into GitHub epic/child bodies, but
 it must not redesign package ownership, flatten policy projections, pre-create
-#1006 grandchildren, or begin implementation. All stories must be created with
+issue #1006 grandchildren, or begin implementation. All stories must be created with
 the repository's sanctioned issue-creation workflow and include durable plan
 provenance.
 
@@ -565,6 +685,10 @@ provenance.
 - **Chosen:** sequential targeted children with JIT deep dives.
 - **Chosen:** #1006 as a child epic with evidence-derived grandchildren.
 - **Chosen:** compatibility facades during migration.
+- **Chosen:** an explicit inventory and compact self-documentation contract for
+  every agent-callable CLI entry point.
+- **Chosen:** help requests are zero-side-effect operations that work before
+  configuration or repository initialization.
 - **Rejected:** one large implementation story followed by an unstructured
   re-analysis.
 - **Rejected:** deconstructing #1006 before policy convergence.
