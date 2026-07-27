@@ -9,7 +9,7 @@
 // but stay undefined on a WARM bind so switch-style rebind is preserved.
 
 import { strict as assert } from 'node:assert';
-import { resolvePreflightTarget } from '../../task-tracker.mjs';
+import { resolvePreflightTarget } from '../../../task-tracker.mjs';
 
 // 1. Cold active-only bind — target threads through.
 {
