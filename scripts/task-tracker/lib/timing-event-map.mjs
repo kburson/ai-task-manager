@@ -72,7 +72,13 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // slug` (it is not a ladder rung, so `stageOf` returns null and the
 // reconciliation walk is unaffected), which permanently failed the Agent Review
 // Gate for any issue whose log carried a gate refusal.
-const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'gate-refused']);
+//
+// #1002: `update` is the row `verbs/update.mjs`'s `verbUpdate` emits for the
+// `/task update <description>` mid-flight checkpoint — flushes active-time and
+// word-count deltas without a stage transition. Same shape as `gate-refused`:
+// real, intentional, non-ladder audit vocabulary that predated its read-side
+// recognition, so it was flagged `malformed — unknown event slug "update"`.
+const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'gate-refused', 'update']);
 
 // Retired vocabulary — slugs that legacy (pre-v2) logs may still carry but that
 // timing model v2 (EPIC #823) no longer treats as interruption events. A legacy
