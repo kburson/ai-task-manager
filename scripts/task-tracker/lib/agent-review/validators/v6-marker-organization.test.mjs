@@ -131,6 +131,78 @@ test('an already-canonical body is a fixed point (pass, no normalized)', () => {
   assert.equal(res.normalized, undefined);
 });
 
+test('#994 — a bracketed aitm-review-failed block survives normalization intact, so clearReviewFailed removes the whole thing including its prose', async () => {
+  const { stampReviewFailed, clearReviewFailed, hasReviewFailed } =
+    await import('../review-gate.mjs');
+  const base = `<!-- aitm-last-known-state state="review" ts="2026-07-20T00:00:00.000Z" -->
+
+## User Story
+
+As a maintainer
+I want normalization
+So that markers are canonical
+
+## Acceptance Criteria
+
+- [ ] Ships it. <!-- aitm-verified vc-list="vc:5" -->
+
+## Verification Commands
+
+- [ ] \`node --test x.test.mjs\` <!-- id=5 -->
+
+## AITM Progress Markers
+
+<!-- aitm-entered-review ts="2026-07-20T00:00:00.000Z" -->
+
+<!-- aitm-fields: {"schema":1,"values":{}} -->
+<!-- aitm-body-version version="9" -->`;
+
+  // Reproduce #932: a failing gate stamps the bracketed block, then a clean
+  // re-review normalizes the body (as the review verb's pass path does) before
+  // clearing it.
+  const withFailure = stampReviewFailed(base, ['some-validator: objection text'], {
+    ts: '2026-07-20T01:00:00.000Z',
+  });
+  assert.ok(hasReviewFailed(withFailure), 'sanity: block present before normalization');
+
+  const res = validate({ body: withFailure });
+  assert.equal(res.pass, true);
+  const normalized = typeof res.normalized === 'string' ? res.normalized : withFailure;
+
+  // The block — including its bracketed prose and bullet list — must survive
+  // normalization byte-for-byte in place, not just its marker lines.
+  assert.ok(
+    normalized.includes('**Agent Review Gate failed.**'),
+    'bracketed failure prose survives normalization'
+  );
+  assert.ok(
+    normalized.includes('- some-validator: objection text'),
+    'bracketed bullet list survives normalization'
+  );
+  assert.ok(
+    hasReviewFailed(normalized),
+    'the paired marker block is still detectable post-normalization'
+  );
+
+  const cleared = clearReviewFailed(normalized);
+  assert.equal(hasReviewFailed(cleared), false);
+  assert.ok(
+    !cleared.includes('**Agent Review Gate failed.**'),
+    'no orphaned failure prose survives a clean pass'
+  );
+  assert.ok(
+    !cleared.includes('some-validator: objection text'),
+    'no orphaned bullet list survives a clean pass'
+  );
+});
+
+test('existing marker-organization behavior for standalone (non-paired) aitm-* markers is unchanged', () => {
+  const out = validate({ body: SCATTERED }).normalized;
+  const before = markerSet(SCATTERED);
+  const after = markerSet(out);
+  assert.deepEqual(after, before);
+});
+
 test('bootstrap registers the validator on the shared singleton', async () => {
   await import('../bootstrap.mjs');
   const { registry } = await import('../registry.mjs');

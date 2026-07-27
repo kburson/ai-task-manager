@@ -44,6 +44,18 @@ import { registry } from '../registry.mjs';
 // anchors demand the comment be the whole line.
 const STANDALONE_MARKER_RE = /^\s*<!--\s*(aitm-[a-z0-9-]+)\b[\s\S]*?-->\s*$/i;
 
+// #994 — the `aitm-review-failed:start` / `-meta` / `:end` triple brackets
+// ordinary prose (the failure explanation + bullet list) between its
+// endpoints. Each of the three lines independently matches
+// `STANDALONE_MARKER_RE`, so without this exception they get gathered to the
+// anchor heading individually, leaving the bracketed prose orphaned at the
+// block's old location once `clearReviewFailed` only finds an empty span at
+// the markers' new, adjacent position. Detected structurally by its start/end
+// line pair and treated as one opaque, untouched span: none of its lines
+// (including the bracketed prose) participate in hoist/gather classification.
+const REVIEW_FAILED_START_RE = /^\s*<!--\s*aitm-review-failed:start\s*-->\s*$/i;
+const REVIEW_FAILED_END_RE = /^\s*<!--\s*aitm-review-failed:end\s*-->\s*$/i;
+
 // The `## AITM Progress Markers` anchor heading (exactly level-2).
 const ANCHOR_HEADING_RE = /^##\s+AITM Progress Markers\b[^\n]*$/im;
 
@@ -87,7 +99,17 @@ export function validate({ body } = {}) {
   const gather = []; // { text }
   const kept = []; // non-marker lines, in place
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (REVIEW_FAILED_START_RE.test(line)) {
+      let end = i;
+      while (end < lines.length && !REVIEW_FAILED_END_RE.test(lines[end])) end += 1;
+      // `end` is either the `:end` line's index or `lines.length` (unterminated
+      // block — leave everything through EOF untouched rather than guess).
+      for (let j = i; j <= end && j < lines.length; j += 1) kept.push(lines[j]);
+      i = end;
+      continue;
+    }
     const m = STANDALONE_MARKER_RE.exec(line);
     if (!m) {
       kept.push(line);
