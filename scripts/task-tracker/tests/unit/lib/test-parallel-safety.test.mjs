@@ -6,6 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 
 import {
   spawnsSubprocess,
@@ -78,4 +79,19 @@ test('isParallelSafe: unmarked pure file is still pool-eligible (regression guar
 test('isParallelSafe: unmarked SUBPROCESS_RE-matching file is still serial (regression guard)', () => {
   const read = () => "import { execFileSync } from 'node:child_process';";
   assert.equal(isParallelSafe('/x/still-subprocess.test.mjs', read), false);
+});
+
+test('#1014 transitive subprocess guard tests are excluded from the parallel pool', () => {
+  const files = [
+    'guard-parity-done-stages.test.mjs',
+    'guard-parity-mid-stages.test.mjs',
+    'guard-parity-plan-develop.test.mjs',
+    'guard-parity-review-done.test.mjs',
+    'guard-registry-review-exit.test.mjs',
+  ];
+
+  for (const file of files) {
+    const fullPath = fileURLToPath(new URL(file, import.meta.url));
+    assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
+  }
 });
