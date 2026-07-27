@@ -28,6 +28,7 @@ import {
 // Definition-of-Done subsection covering every gate branch.
 // ---------------------------------------------------------------------------
 const AC_PLAIN = 'plain ac no verifier';
+const AC_UNDECLARED = 'undeclared ac no verifier no marker';
 const AC_VERIFIED = 'verified ac unchecked';
 const AC_VERIFIED_CHECKED = 'verified ac checked';
 const AC_DUP = 'dup label';
@@ -39,7 +40,8 @@ function fixtureBody() {
   return [
     '## Acceptance Criteria',
     '',
-    `- [ ] ${AC_PLAIN}`,
+    `- [ ] ${AC_PLAIN} <!-- aitm-non-demonstrable -->`,
+    `- [ ] ${AC_UNDECLARED}`,
     `- [ ] ${AC_VERIFIED} <!-- aitm-verified cmd="\`echo ok\`" -->`,
     `- [x] ${AC_VERIFIED_CHECKED} <!-- aitm-verified cmd="\`echo ok\`" -->`,
     `- [ ] ${AC_DUP}`,
@@ -118,8 +120,14 @@ test('parseCheckArgs: trailing --label with no value is ignored', () => {
   assert.deepEqual(p.labels, []);
 });
 
-test('classifyUnverifiedTick: eligible for a proofless AC', () => {
+test('classifyUnverifiedTick: eligible for a proofless AC tagged non-demonstrable', () => {
   assert.deepEqual(classifyUnverifiedTick(fixtureBody(), AC_PLAIN), { kind: 'eligible' });
+});
+
+test('classifyUnverifiedTick: refuses an undeclared AC (no verifier, no marker)', () => {
+  const r = classifyUnverifiedTick(fixtureBody(), AC_UNDECLARED);
+  assert.equal(r.kind, 'refuse-undeclared-ac');
+  assert.equal(r.label, AC_UNDECLARED);
 });
 
 test('classifyUnverifiedTick: refuses a Functional DoD item', () => {

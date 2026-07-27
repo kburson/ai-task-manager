@@ -24,6 +24,7 @@ import { setChecklistLine, setChecklistLines, verbEnsureChecked } from '../../..
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const AC_PLAIN = 'plain ac no verifier';
+const AC_UNDECLARED = 'undeclared ac no verifier no marker';
 const AC_PROVEN = 'proven ac with execution proof';
 const AC_VERIFIED = 'verified ac unchecked';
 const AC_VERIFIED_CHECKED = 'verified ac checked';
@@ -33,15 +34,18 @@ const DOD_TESTS = 'All automated tests pass';
 // A pre-existing execution-proof marker (ts/sha) on the AC_PROVEN line satisfies
 // the write-layer checkbox-proof invariant — it is carried through the tick, not
 // introduced — so that line is the one realistic "ticks cleanly without the
-// hatch" path. A proofless AC (AC_PLAIN) can only be ticked via the honest
-// `--allow-unverified-ticks` hatch.
+// hatch" path. A proofless, honestly-marked AC (AC_PLAIN) can be ticked via the
+// honest `--allow-unverified-ticks` hatch; an AC with neither a verifier NOR the
+// `<!-- aitm-non-demonstrable -->` marker (AC_UNDECLARED, #891) is refused by
+// the same hatch — see `classifyUnverifiedTick`'s `refuse-undeclared-ac` kind.
 const PROOF = '<!-- aitm-verified ts="2026-01-01T00:00:00Z" sha="abc1234" -->';
 
 function fixtureBody() {
   return [
     '## Acceptance Criteria',
     '',
-    `- [ ] ${AC_PLAIN}`,
+    `- [ ] ${AC_PLAIN} <!-- aitm-non-demonstrable -->`,
+    `- [ ] ${AC_UNDECLARED}`,
     `- [ ] ${AC_PROVEN} ${PROOF}`,
     `- [ ] ${AC_VERIFIED} <!-- aitm-verified cmd="\`echo ok\`" -->`,
     `- [x] ${AC_VERIFIED_CHECKED} <!-- aitm-verified cmd="\`echo ok\`" -->`,
@@ -262,6 +266,19 @@ test('verbEnsureChecked: --allow-unverified-ticks hatch ticks a proofless AC', a
   const body = readStore();
   assert.match(body, new RegExp(`- \\[x\\] ${AC_PLAIN}`));
   assert.match(body, /aitm-unverified-tick/); // audit marker recorded
+});
+
+test('verbEnsureChecked: --allow-unverified-ticks refused on an undeclared AC (no verifier, no marker) → exit 1', async () => {
+  resetStore();
+  const r = await runVerb(
+    baseCtx({
+      statePath: stateFile('#777'),
+      rest: ['--allow-unverified-ticks', AC_UNDECLARED],
+      pexec: makePexec(fixtureBody()),
+    })
+  );
+  assert.equal(r.exitCode, 1);
+  assert.match(readStore(), new RegExp(`- \\[ \\] ${AC_UNDECLARED}`)); // untouched
 });
 
 test('verbEnsureChecked: --allow-unverified-ticks refused on verifier AC → exit 1', async () => {
