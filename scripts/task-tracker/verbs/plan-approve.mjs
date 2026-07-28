@@ -22,6 +22,10 @@ import {
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { lintChecklistCommands } from '../lib/checklist-command-lint.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import {
+  ensureFullAutoPlanApprovalAudit,
+  readPlanApprovedTimestamp,
+} from '../lib/plan-approval-audit.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -66,6 +70,12 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getBoardState = deps.getBoardState || defaultGetBoardState;
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
+  const ensureAudit = deps.ensureFullAutoPlanApprovalAudit || ensureFullAutoPlanApprovalAudit;
+  const env = deps.env ?? process.env;
+  const auditDeps = {
+    listComments: deps.listComments,
+    postComment: deps.postComment,
+  };
 
   const state = await getBoardState({ issueNumber, projectDir });
   if (state !== 'plan') {
@@ -100,9 +110,17 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   const hasPlanEntry = PLAN_ENTRY_RE.test(body);
 
   // Both markers present — true no-op. (Diagnostic fast-path; the closure
-  // below would re-check the FRESH base anyway, but skipping the call when
-  // we already know the answer keeps the no-op shape clean.)
+  // below would re-check the FRESH base anyway. The audit still runs here:
+  // this is the repair path when the body write succeeded but the comment post
+  // failed on a prior invocation.
   if (hasApproval && hasPlanEntry) {
+    await ensureAudit({
+      issueNumber,
+      repo: cfg.repo,
+      ts: readPlanApprovedTimestamp(body),
+      env,
+      ...auditDeps,
+    });
     return { status: 'already-approved' };
   }
 
@@ -125,6 +143,14 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
       }
       return wrapDeepDiveInDetails(n);
     },
+  });
+
+  await ensureAudit({
+    issueNumber,
+    repo: cfg.repo,
+    ts: hasApproval ? readPlanApprovedTimestamp(body) || ts : ts,
+    env,
+    ...auditDeps,
   });
 
   if (hasApproval && !hasPlanEntry) {

@@ -32,6 +32,7 @@
 
 import { registry } from '../registry.mjs';
 import { isNoCommitKind, natCommentRequired } from '../../issue-kind.mjs';
+import { PLAN_APPROVAL_AUDIT_RE } from '../../plan-approval-audit.mjs';
 
 // One row per required report comment. `label` is the human name used in
 // failures[]; `match(bodies)` returns true when at least one comment body
@@ -54,7 +55,7 @@ export const REQUIRED_COMMENTS = [
   },
   {
     label: 'Full-Auto plan-approval audit',
-    match: (bodies) => bodies.some((b) => /Full-Auto Plan-Approval Audit/i.test(b)),
+    match: (bodies) => bodies.some((b) => PLAN_APPROVAL_AUDIT_RE.test(b)),
   },
   {
     label: 'Commits',

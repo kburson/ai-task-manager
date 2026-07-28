@@ -26,7 +26,8 @@ const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-16T00:00:00Z';
 
 function makeDeps(overrides = {}) {
-  const calls = { writes: [], bodies: [], stateLookups: 0 };
+  const calls = { writes: [], bodies: [], stateLookups: 0, comments: [], commentReads: 0 };
+  const comments = [...(overrides.comments ?? [])];
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
@@ -53,6 +54,15 @@ function makeDeps(overrides = {}) {
         return overrides.state ?? 'plan';
       },
       nowIso: () => FIXED_TS,
+      env: overrides.env ?? {},
+      listComments: async () => {
+        calls.commentReads++;
+        return comments.map((body) => ({ body }));
+      },
+      postComment: async ({ body: commentBody }) => {
+        calls.comments.push(commentBody);
+        comments.push(commentBody);
+      },
       ...overrides.deps,
     },
     getBody: () => body,
@@ -200,6 +210,55 @@ function makeDeps(overrides = {}) {
     'must not backfill bare aitm-entered-plan when -2 already exists'
   );
   assert.match(out, /<!-- aitm-entered-plan-2: 2026-05-10T00:00:00Z -->/);
+}
+
+// #1021: an explicitly authorized Full-Auto plan approval posts the canonical
+// visible audit with the exact timestamp recorded in the body marker.
+{
+  const { deps, calls } = makeDeps({ env: { TT_FULL_AUTO: '1' } });
+  const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.equal(calls.comments.length, 1);
+  assert.match(calls.comments[0], /^### Full-Auto Plan-Approval Audit — #1021/m);
+  assert.match(calls.comments[0], new RegExp(FIXED_TS));
+  assert.match(calls.comments[0], /no human reviewer/i);
+}
+
+// #1021: absence of reviewer metadata alone is not Full-Auto authorization.
+{
+  const { deps, calls } = makeDeps({ env: {} });
+  await runPlanApprove({ issueNumber: 1021, cfg, deps });
+  assert.equal(calls.comments.length, 0);
+  assert.equal(calls.commentReads, 0);
+}
+
+// #1021: re-running Full-Auto approval neither rewrites the marker nor
+// duplicates the audit comment.
+{
+  const { deps, calls } = makeDeps({ env: { TT_FULL_AUTO: '1' } });
+  await runPlanApprove({ issueNumber: 1021, cfg, deps });
+  const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  assert.equal(calls.writes.length, 1);
+  assert.equal(calls.comments.length, 1);
+  assert.equal(calls.commentReads, 2);
+}
+
+// #1021: a prior marker with no audit is a repairable partial success, not an
+// `already-approved` fast path that permanently skips the required comment.
+{
+  const initialBody =
+    '## Scope\n\n<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->\n\n' +
+    '<!-- aitm-plan-approved ts="2026-05-01T00:00:00Z" -->\n';
+  const { deps, calls } = makeDeps({
+    initialBody,
+    env: { TT_FULL_AUTO: '1' },
+  });
+  const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.comments.length, 1);
+  assert.match(calls.comments[0], /2026-05-01T00:00:00Z/);
 }
 
 console.log('plan-approve.test.mjs: all passed');

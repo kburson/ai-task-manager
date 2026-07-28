@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validate, REQUIRED_COMMENTS } from './required-comments.mjs';
+import { buildPlanApprovalAuditComment } from '../../plan-approval-audit.mjs';
 
 // One satisfying comment body per required row. Signals mirror the live
 // #810 comment stream.
@@ -24,6 +25,20 @@ test('passes when all five required comments are present', () => {
   const res = validate({ comments });
   assert.equal(res.pass, true, JSON.stringify(res.failures));
   assert.deepEqual(res.failures, []);
+});
+
+test('#1021 canonical generated plan-approval audit satisfies the required-comment contract', () => {
+  const comments = REQUIRED_COMMENTS.map((row) => ({
+    body:
+      row.label === 'Full-Auto plan-approval audit'
+        ? buildPlanApprovalAuditComment({
+            issueNumber: 1021,
+            ts: '2026-07-28T03:37:49Z',
+          })
+        : SAMPLES[row.label],
+  }));
+  const res = validate({ comments });
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
 // Table-driven: dropping any one required comment fails and names it.
