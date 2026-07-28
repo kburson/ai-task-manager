@@ -16,6 +16,7 @@ import {
   timingCommentHasRows,
   assertPairedReengagement,
   detectUnmarkedDepartureGap,
+  shouldSuppressActiveBindEvent,
 } from '../lib/bind-event.mjs';
 import {
   isPickupDirectiveEligible,
@@ -327,16 +328,24 @@ export async function verbResume(ctx) {
       await safePostTiming(normalizedTarget, departureRow);
     }
   }
-  const row = buildRow({
-    ts,
-    event: bindEvent,
-    activeSec: 0,
-    idleSec,
-    deltaWords: 0,
-    wordMarker: carriedMarker,
-    description: role ?? (isStart ? 'task started' : 'task resumed'),
+  const suppressBindEvent = shouldSuppressActiveBindEvent({
+    timingBody: tcBody,
+    readStatus,
+    paused: !!s.pausedAtTs,
+    nowTs: ts,
   });
-  await safePostTiming(normalizedTarget, row);
+  if (!suppressBindEvent) {
+    const row = buildRow({
+      ts,
+      event: bindEvent,
+      activeSec: 0,
+      idleSec,
+      deltaWords: 0,
+      wordMarker: carriedMarker,
+      description: role ?? (isStart ? 'task started' : 'task resumed'),
+    });
+    await safePostTiming(normalizedTarget, row);
+  }
   // #758 — audit the just-bound issue for out-of-band Status drift (a raw-API /
   // wrapper move that never wrote the move-complete sentinel). Best-effort: it
   // prints a warning + recommended reconcile on drift and never blocks the bind.
@@ -344,5 +353,9 @@ export async function verbResume(ctx) {
     issueNumber: String(normalizedTarget).replace(/^#/, ''),
     cfg,
   });
-  console.log(`${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`);
+  console.log(
+    suppressBindEvent
+      ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
+      : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
+  );
 }

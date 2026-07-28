@@ -45,6 +45,8 @@ function rowEventSlug(line) {
 // *closer*, or neither. Openers mark work stopping (`pause`/`paused`/`pause:*`,
 // `switch-out`/`switch-out:*`, `idle`). Closers mark work resuming
 // (`resume`/`resumed`/`resume:*`, `switch-in`/`switch-in:*`, `start`).
+// `stop` is also an opener: unlike a phase/checkpoint row, it is explicit
+// evidence that the active session ended and a later bind needs `resumed`.
 // Exported (#683) so `lib/timing-event-map.mjs` reuses the one canonical
 // opener/closer taxonomy instead of re-deriving it.
 export function classifyEvent(slug) {
@@ -63,6 +65,7 @@ export function classifyEvent(slug) {
       peer: slug.startsWith('switch-out:') ? slug.slice('switch-out:'.length) : null,
     };
   }
+  if (slug === 'stop') return { role: 'open', kind: 'stop' };
   if (slug === 'idle') return { role: 'open', kind: 'idle' };
   if (slug === 'resume' || slug === 'resumed' || slug.startsWith('resume:')) {
     return { role: 'close' };
@@ -77,6 +80,7 @@ export function classifyEvent(slug) {
 // currently-open interruption. Returns one of:
 //   { kind: 'pause', reason }   reason = canonical slug after `pause:` or null
 //   { kind: 'switch-out', peer } peer  = `#N` (or bare value) after `switch-out:` or null
+//   { kind: 'stop' }
 //   { kind: 'idle' }
 // or null when no interruption is currently open.
 export function lastOpenInterruption(body) {
@@ -93,7 +97,9 @@ export function lastOpenInterruption(body) {
           ? { kind: 'pause', reason: c.reason }
           : c.kind === 'switch-out'
             ? { kind: 'switch-out', peer: c.peer }
-            : { kind: 'idle' };
+            : c.kind === 'stop'
+              ? { kind: 'stop' }
+              : { kind: 'idle' };
     } else if (c.role === 'close') {
       open = null;
     }
@@ -186,6 +192,30 @@ export function detectUnmarkedDepartureGap(body, nowTs, gapSec = SUSPICIOUS_GAP_
     gapSec: elapsedSec,
     syntheticTs: new Date(lastMs + 1000).toISOString(),
   };
+}
+
+// #1018 — a fresh local session can bind to an issue whose live timing span is
+// already active in another worktree. Binding local state is still correct, but
+// writing `resumed` over a readable active tail creates an illegal active→active
+// reengagement. Suppress only that timing post.
+//
+// Existing safety behavior takes precedence:
+//   - empty history still needs `start`;
+//   - read errors retain the fail-closed event decision;
+//   - local pause evidence and live departures still need their closer;
+//   - a suspicious unmarked gap still receives #981's synthetic departure +
+//     `resumed` repair.
+export function shouldSuppressActiveBindEvent({
+  timingBody = '',
+  readStatus = null,
+  paused = false,
+  nowTs = null,
+} = {}) {
+  if (readStatus === 'error' || paused) return false;
+  if (!timingCommentHasRows(timingBody)) return false;
+  if (lastOpenInterruption(timingBody)) return false;
+  if (nowTs && detectUnmarkedDepartureGap(timingBody, nowTs)) return false;
+  return true;
 }
 
 // #534 — orphan-pairing guard. A re-engagement event (`resume*` / `switch-in*`)

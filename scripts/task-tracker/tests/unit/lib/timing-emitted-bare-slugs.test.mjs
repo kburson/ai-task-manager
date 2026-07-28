@@ -22,6 +22,8 @@ const EMITTED_BARE_SLUGS = Object.freeze([
 ]);
 
 function strictReaderAccepts(event) {
+  const eventClass = classifyTimingEvent(event);
+  const events = eventClass === EVENT_CLASS.DEPARTURE ? ['start', event, 'resumed'] : [event];
   return validateTimingLog({
     comments: [
       {
@@ -29,7 +31,10 @@ function strictReaderAccepts(event) {
           '## ⏱ Timing Log',
           '| Timestamp | Event | Active | Idle | Words | Marker | Description |',
           '|---|---|---:|---:|---:|---:|---|',
-          `| 2026-07-27T00:00:00.000Z | ${event} | 0 | 0 | 0 | 0 | emitted audit |`,
+          ...events.map(
+            (slug, index) =>
+              `| 2026-07-27T00:00:0${index}.000Z | ${slug} | 0 | 0 | 0 | 0 | emitted event |`
+          ),
         ].join('\n'),
       },
     ],
@@ -39,13 +44,21 @@ function strictReaderAccepts(event) {
 
 test('every production-emitted bare slug is canonical and accepted by the strict reader', () => {
   for (const slug of EMITTED_BARE_SLUGS) {
-    assert.equal(isCanonicalPhaseSlug(slug), true, slug);
+    if (slug === 'stop') {
+      assert.equal(isCanonicalPhaseSlug(slug), false, 'stop is a departure, not a phase slug');
+    } else {
+      assert.equal(isCanonicalPhaseSlug(slug), true, slug);
+    }
     assert.equal(strictReaderAccepts(slug), true, slug);
   }
 });
 
-test('recognizing the emitted bare slugs does not change interruption classification', () => {
+test('audit slugs remain phase events while stop is an explicit departure', () => {
   for (const slug of EMITTED_BARE_SLUGS) {
-    assert.equal(classifyTimingEvent(slug), EVENT_CLASS.PHASE, slug);
+    assert.equal(
+      classifyTimingEvent(slug),
+      slug === 'stop' ? EVENT_CLASS.DEPARTURE : EVENT_CLASS.PHASE,
+      slug
+    );
   }
 });

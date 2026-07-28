@@ -95,8 +95,11 @@ const AUDIT_PHASE_SLUGS = Object.freeze([
   'chore-mode-enter',
   'closed-with-dirty-tree',
   'switch-end',
-  'stop',
 ]);
+
+// #1018: `stop` is intentionally absent from AUDIT_PHASE_SLUGS. It is emitted
+// by the stop verb, but now classifies through bind-event.mjs as a departure so
+// wall time stays idle until the next legitimate resume.
 
 // Retired vocabulary — slugs that legacy (pre-v2) logs may still carry but that
 // timing model v2 (EPIC #823) no longer treats as interruption events. A legacy
