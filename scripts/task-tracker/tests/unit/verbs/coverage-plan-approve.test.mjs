@@ -30,6 +30,7 @@ const FORBIDDEN_BODY = [
 
 function deps({ body = CLEAN_BODY, state = 'plan', onMutate } = {}) {
   return {
+    env: {},
     getBoardState: async () => state,
     fetchIssueBody: async () => body,
     nowIso: () => TS,

@@ -22,6 +22,7 @@ import {
   existsSync,
 } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { buildPlanApprovalAuditComment } from '../../../lib/plan-approval-audit.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,6 +89,10 @@ function makeGhShim(
   // entry-marker stamp re-fetches the fixture and overwrites verb writes.
   const bodyStatePath = path.join(sandbox, 'gh-shim-body.txt');
   writeFileSync(bodyStatePath, bodyOnView);
+  const planAuditTemplate = buildPlanApprovalAuditComment({
+    issueNumber: 999999,
+    ts: '2026-05-10T00:00:00.000Z',
+  });
   const gitShim = path.join(binDir, 'git');
   writeFileSync(
     gitShim,
@@ -155,7 +160,13 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
       // aitm-entered-stage marker to reconcile against.
       { id: 'IC_req_timing', body: '⏱ Timing Log\\n\\n| Timestamp | Event | Detail |\\n| --- | --- | --- |\\n| 2026-05-10 00:00:00 -05:00 | start | bind |' },
       { id: 'IC_req_estimate', body: '<!-- aitm-refined-estimate: 101 -->\\n\\n### Planned Estimate\\n\\n| Field | Value |' },
-      { id: 'IC_req_audit', body: '### Full-Auto Plan-Approval Audit\\n\\nNo human reviewer.' },
+      {
+        id: 'IC_req_audit',
+        body: ${JSON.stringify(planAuditTemplate)}.replace(
+          '— #999999',
+          '— #' + String(argv[2] || '').replace(/^#/, '')
+        )
+      },
       // V4 new-tests-content (#813): the file bullet needs ≥1 nested test-name
       // bullet, else the gate demotes on an empty report.
       { id: 'IC_req_tests', body: '## New Automated Tests\\n\\n- \`foo.test.mjs\`\\n  - exercises a thing' },

@@ -22,6 +22,7 @@ function makeDeps(initialBody, state = 'plan') {
   return {
     calls,
     deps: {
+      env: {},
       fetchIssueBody: async () => body,
       // #295 — closure form.
       mutateIssueBody: async ({ mutate }) => {

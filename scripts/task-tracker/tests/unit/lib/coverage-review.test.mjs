@@ -14,6 +14,7 @@ import { test } from 'node:test';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { buildPlanApprovalAuditComment } from '../../../lib/plan-approval-audit.mjs';
 import { verbReview, buildDeferredReviewRow } from '../../../verbs/review.mjs';
 
 function tmpState(state) {
@@ -56,7 +57,12 @@ const REQUIRED_COMMENTS_STUB = [
     ].join('\n'),
   },
   { body: '<!-- aitm-refined-estimate: 777 -->\n\n### Planned Estimate\n\n| Field | Value |' },
-  { body: '### Full-Auto Plan-Approval Audit\n\nNo human reviewer.' },
+  {
+    body: buildPlanApprovalAuditComment({
+      issueNumber: 777,
+      ts: '2026-06-19T00:00:00Z',
+    }),
+  },
   { body: '### 🔗 Commits\n\n- abc1234 fixture deliverable' },
   { body: '## New Automated Tests\n\n- `foo.test.mjs`\n  - exercises a thing' },
 ];
