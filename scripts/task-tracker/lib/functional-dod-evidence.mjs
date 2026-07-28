@@ -16,7 +16,7 @@
 // line without an `aitm-dod-evidence:KEY` marker refuses to flip. Batches are
 // atomic — if any line in the batch fails the gate, the whole batch refuses.
 
-import { locateFunctionalSection } from './lifecycle-dod.mjs';
+import { locateFunctionalSection, locateLifecycleSection } from './lifecycle-dod.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
 import {
   parseProofMarker,
@@ -305,12 +305,14 @@ export function deriveCheckboxesStatus(body, { lifecyclePresent = false } = {}) 
   }
 
   if (lifecyclePresent) {
-    const lcStart = src.match(/^#{3,4}\s+Lifecycle\b[^\n]*$/im);
-    if (lcStart) {
-      const startIdx = lcStart.index + lcStart[0].length;
-      const rest = src.slice(startIdx);
-      const endRel = rest.match(SECTION_END_RE);
-      const endIdx = endRel ? startIdx + endRel.index : src.length;
+    // #1036 — resolve the lifecycle DoD through the canonical locator. A
+    // duplicate broad `Lifecycle…` regex here used to select descriptive
+    // deep-dive headings even after the shared locator found the correct
+    // section.
+    const lifecycle = locateLifecycleSection(src);
+    if (lifecycle) {
+      const startIdx = lifecycle.before.length;
+      const endIdx = lifecycle.before.length + lifecycle.section.length;
       const startLine = src.slice(0, startIdx).split('\n').length - 1;
       const endLine = src.slice(0, endIdx).split('\n').length;
       for (let i = startLine; i < endLine; i += 1) skip.add(i);

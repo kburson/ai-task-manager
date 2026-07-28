@@ -15,6 +15,7 @@ import {
   lifecycleItemState,
   LIFECYCLE_LABELS,
   LIFECYCLE_LABEL_SET,
+  locateLifecycleSection,
 } from '../../../lib/lifecycle-dod.mjs';
 
 const TEMPLATE = [
@@ -84,6 +85,22 @@ test('locateFunctionalSection: bounds end at next heading', () => {
   assert.ok(loc);
   assert.ok(loc.section.includes('All automated tests pass'));
   assert.ok(!loc.section.includes('Passed final human review'));
+});
+
+test('#1036 locateLifecycleSection ignores descriptive lifecycle headings', () => {
+  const body = [
+    '## Deep-Dive Analysis',
+    '',
+    '### Lifecycle and operational boundaries',
+    '',
+    'This prose section describes runtime boundaries.',
+    '',
+    TEMPLATE,
+  ].join('\n');
+  const loc = locateLifecycleSection(body);
+  assert.ok(loc);
+  assert.match(loc.section, /Passed final human review/);
+  assert.doesNotMatch(loc.section, /runtime boundaries/);
 });
 
 test('untickLifecycleItem: reverses a tick (idempotent)', () => {

@@ -33,6 +33,12 @@ function fixtureBody() {
   // items are excluded by uncheckedPreCloseCheckboxes anyway.
   return [
     '<!-- aitm-body-version: 7 -->',
+    '## Deep-Dive Analysis',
+    '',
+    '### Lifecycle and operational boundaries',
+    '',
+    'This real issue-body shape must not shadow the lifecycle DoD section.',
+    '',
     '## Acceptance Criteria',
     '',
     '- [x] AC1',

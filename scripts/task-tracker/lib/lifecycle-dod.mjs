@@ -94,7 +94,10 @@ export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
   return out;
 }
 
-const LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\b[^\n]*$/im;
+// #1036 — "Lifecycle" is common prose-heading vocabulary in deep dives.
+// Match the owned DoD subsection exactly so a preceding heading such as
+// "Lifecycle and operational boundaries" cannot shadow it.
+const LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(auto-ticked at Review\/Close\)\s*$/im;
 const FUNCTIONAL_HEADING_RE = /^#{3,4}\s+Functional\b[^\n]*$/im;
 // Section ends at the next heading of equal-or-shallower depth, the field-DB
 // block, or end-of-body — whichever comes first.
