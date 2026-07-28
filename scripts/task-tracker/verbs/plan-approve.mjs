@@ -130,7 +130,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   // closure independently checks markers so a concurrent writer that
   // landed approval / entry between our pre-fetch and the push is
   // honored (returns base unchanged → no-op).
-  await mutateBody({
+  const writeResult = await mutateBody({
     issueNumber,
     repo: cfg.repo,
     mutate: (base) => {
@@ -144,11 +144,15 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
       return wrapDeepDiveInDetails(n);
     },
   });
+  const persistedBody =
+    typeof writeResult?.body === 'string'
+      ? writeResult.body
+      : await fetchIssueBody({ issueNumber, repo: cfg.repo });
 
   await ensureAudit({
     issueNumber,
     repo: cfg.repo,
-    ts: hasApproval ? readPlanApprovedTimestamp(body) || ts : ts,
+    ts: readPlanApprovedTimestamp(persistedBody),
     env,
     ...auditDeps,
   });

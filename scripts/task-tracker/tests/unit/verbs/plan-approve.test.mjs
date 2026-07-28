@@ -42,12 +42,13 @@ function makeDeps(overrides = {}) {
       // #295 — verb now writes via mutateIssueBody({mutate}); closure runs on
       // the FRESH base. Old `writeIssueBody({body})` signature retired.
       mutateIssueBody: async ({ mutate }) => {
+        if (overrides.beforeMutate) body = overrides.beforeMutate(body);
         const before = body;
         const next = mutate(before);
-        if (next === before) return { status: 'no-op', attempts: 1 };
+        if (next === before) return { status: 'no-op', attempts: 1, body };
         calls.writes.push(next);
         body = next;
-        return { status: 'ok', attempts: 1 };
+        return { status: 'ok', attempts: 1, body };
       },
       getBoardState: async () => {
         calls.stateLookups++;
@@ -259,6 +260,23 @@ function makeDeps(overrides = {}) {
   assert.equal(calls.writes.length, 0);
   assert.equal(calls.comments.length, 1);
   assert.match(calls.comments[0], /2026-05-01T00:00:00Z/);
+}
+
+// #1021 review: a concurrent writer can land an approval marker after the
+// diagnostic fetch. The audit must cite the timestamp in the fresh body that
+// mutateIssueBody actually preserved, not this invocation's stale timestamp.
+{
+  const concurrentTs = '2026-01-01T00:00:00Z';
+  const { deps, calls } = makeDeps({
+    env: { TT_FULL_AUTO: '1' },
+    beforeMutate: (body) =>
+      `${body}\n<!-- aitm-entered-plan ts="${concurrentTs}" -->\n` +
+      `<!-- aitm-plan-approved ts="${concurrentTs}" -->\n`,
+  });
+  await runPlanApprove({ issueNumber: 1021, cfg, deps });
+  assert.equal(calls.comments.length, 1);
+  assert.match(calls.comments[0], new RegExp(concurrentTs));
+  assert.doesNotMatch(calls.comments[0], new RegExp(FIXED_TS));
 }
 
 console.log('plan-approve.test.mjs: all passed');

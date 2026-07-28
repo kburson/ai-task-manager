@@ -10,7 +10,10 @@ const SAMPLES = {
   'Timing Log': '⏱ Timing Log\n\n| Row | ... |',
   'Refine Estimate':
     '<!-- aitm-refined-estimate: 811 -->\n### 🛠 Refine estimate\n\n### Planned Estimate\n\n| Field | ... |',
-  'Full-Auto plan-approval audit': '### Full-Auto Plan-Approval Audit — #811\n\nNo human reviewer.',
+  'Full-Auto plan-approval audit': buildPlanApprovalAuditComment({
+    issueNumber: 811,
+    ts: '2026-05-16T00:00:00Z',
+  }),
   Commits: '### 🔗 Commits\n\n- abc1234 did a thing',
   'New Automated Tests': '## New Automated Tests\n\n- `foo.test.mjs`',
 };
@@ -40,6 +43,31 @@ test('#1021 canonical generated plan-approval audit satisfies the required-comme
   const res = validate({ comments });
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
+
+for (const impostor of [
+  '### Full-Auto Plan-Approval Audit',
+  buildPlanApprovalAuditComment({
+    issueNumber: 999,
+    ts: '2026-07-28T03:37:49Z',
+  }),
+  '### Full-Auto Plan-Approval Audit — #1021\n\nNo human reviewer.',
+]) {
+  test('#1021 rejects a non-canonical or wrong-issue plan-approval audit', () => {
+    const comments = REQUIRED_COMMENTS.map((row) => ({
+      body: row.label === 'Full-Auto plan-approval audit' ? impostor : SAMPLES[row.label],
+    }));
+    const res = validate({
+      comments,
+      issueNumber: 1021,
+      body: '<!-- aitm-plan-approved ts="2026-07-28T03:37:49Z" -->',
+    });
+    assert.equal(res.pass, false);
+    assert.ok(
+      res.failures.some((failure) => /Full-Auto plan-approval audit.*missing/i.test(failure)),
+      JSON.stringify(res.failures)
+    );
+  });
+}
 
 // Table-driven: dropping any one required comment fails and names it.
 for (const row of REQUIRED_COMMENTS) {

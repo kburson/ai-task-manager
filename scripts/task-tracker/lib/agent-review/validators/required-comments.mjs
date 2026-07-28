@@ -32,7 +32,10 @@
 
 import { registry } from '../registry.mjs';
 import { isNoCommitKind, natCommentRequired } from '../../issue-kind.mjs';
-import { PLAN_APPROVAL_AUDIT_RE } from '../../plan-approval-audit.mjs';
+import {
+  isCanonicalPlanApprovalAuditComment,
+  readPlanApprovedTimestamp,
+} from '../../plan-approval-audit.mjs';
 
 // One row per required report comment. `label` is the human name used in
 // failures[]; `match(bodies)` returns true when at least one comment body
@@ -55,7 +58,13 @@ export const REQUIRED_COMMENTS = [
   },
   {
     label: 'Full-Auto plan-approval audit',
-    match: (bodies) => bodies.some((b) => PLAN_APPROVAL_AUDIT_RE.test(b)),
+    match: (bodies, { issueNumber, body }) =>
+      bodies.some((commentBody) =>
+        isCanonicalPlanApprovalAuditComment(commentBody, {
+          issueNumber,
+          ts: readPlanApprovedTimestamp(body),
+        })
+      ),
   },
   {
     label: 'Commits',
@@ -82,7 +91,7 @@ export const REQUIRED_COMMENTS = [
 // predicate returns false is skipped (#835/#923). `context.changedPaths` is the
 // `trunk...HEAD` changed-path set (#940), consulted by the diff-aware NAT row;
 // a missing value normalizes to `[]` (default-deny).
-export function validate({ comments, body, changedPaths } = {}) {
+export function validate({ comments, body, issueNumber, changedPaths } = {}) {
   const list = Array.isArray(comments) ? comments : [];
   const bodies = list.map((c) => (c && typeof c.body === 'string' ? c.body : ''));
   const paths = Array.isArray(changedPaths) ? changedPaths : [];
@@ -90,7 +99,7 @@ export function validate({ comments, body, changedPaths } = {}) {
   const failures = [];
   for (const row of REQUIRED_COMMENTS) {
     if (row.requiredFor && !row.requiredFor(body, paths)) continue;
-    if (!row.match(bodies)) {
+    if (!row.match(bodies, { issueNumber, body })) {
       failures.push(`required comment '${row.label}' is missing`);
     }
   }

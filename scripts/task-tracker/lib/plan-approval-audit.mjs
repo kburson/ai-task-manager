@@ -11,8 +11,7 @@ import { stripFencedCodeBlocks } from './markers.mjs';
 const pexec = promisify(execFile);
 
 export const PLAN_APPROVAL_AUDIT_HEADING = 'Full-Auto Plan-Approval Audit';
-export const PLAN_APPROVAL_AUDIT_RE =
-  /^#{1,6}\s*Full-Auto Plan-Approval Audit(?:\s+—\s+#\d+)?\s*$/im;
+export const PLAN_APPROVAL_AUDIT_RE = /^### Full-Auto Plan-Approval Audit — #(\d+)\s*$/m;
 
 export function isExplicitFullAutoPlanApproval(env = process.env) {
   return env?.TT_FULL_AUTO === '1';
@@ -44,6 +43,24 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts } = {}) {
     '',
     'This audit records automated plan approval and must not be interpreted as human approval.',
   ].join('\n');
+}
+
+export function isCanonicalPlanApprovalAuditComment(body, { issueNumber, ts } = {}) {
+  const src = typeof body === 'string' ? body.trim() : '';
+  const heading = src.match(PLAN_APPROVAL_AUDIT_RE);
+  if (!heading) return false;
+
+  const recordedIssueNumber = Number(heading[1]);
+  if (issueNumber != null && recordedIssueNumber !== Number(issueNumber)) return false;
+
+  const recordedTs = src.match(
+    /Plan approval was recorded at `([^`]+)` under explicit `TT_FULL_AUTO=1`\./
+  )?.[1];
+  if (!recordedTs || (ts != null && recordedTs !== ts)) return false;
+
+  return (
+    src === buildPlanApprovalAuditComment({ issueNumber: recordedIssueNumber, ts: recordedTs })
+  );
 }
 
 async function defaultListComments({ issueNumber, repo }) {
@@ -83,7 +100,7 @@ export async function ensureFullAutoPlanApprovalAudit({
 
   const comments = await listComments({ issueNumber, repo });
   const alreadyPresent = comments.some((comment) =>
-    PLAN_APPROVAL_AUDIT_RE.test(String(comment?.body ?? ''))
+    isCanonicalPlanApprovalAuditComment(comment?.body, { issueNumber, ts })
   );
   if (alreadyPresent) {
     return { mode: 'full-auto', auditPosted: false, alreadyPresent: true };
