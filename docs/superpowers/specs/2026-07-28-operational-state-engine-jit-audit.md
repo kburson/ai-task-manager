@@ -3,6 +3,7 @@
 - **Story:** #1006
 - **Parent:** #1005
 - **Entry tree:** `5add5b0`
+- **Post-defect tree:** `d4317d2`
 - **Entry milestone:** #1012 Closed/Done; policy-convergence and repository
   suites passed on the post-#1036 tree.
 
@@ -41,7 +42,7 @@ Optional cleanup is independent Backlog work and cannot hold #1005 open.
 | #902  | DoD verifier reconciliation    | `dod-stamp.mjs` runs declared commands and delegates the atomic proof-plus-VC update to `functional-dod-evidence.mjs`                                                    | `stampEvidenceAndReconcile` and `insertVerificationCommands`                          | `dod-stamp-vc-reconcile.test.mjs`                                                        | Already clean                                         |
 | #921  | Epic fan-out mutation          | `create-issue.mjs` invokes the pure duplicate classifier before GitHub creation; the guard owns title normalization and sibling similarity only                          | `evaluateDuplicateChild`, `defaultFetchOpenChildren`                                  | `duplicate-child-guard.test.mjs`                                                         | Already clean                                         |
 | #927  | Trunk-reference resolution     | Close gates, epic branch tools, sync, and merge-back resolve after a best-effort fetch through one module                                                                | `resolveTrunkRef`, `resolveTrunkRefSync`, `fetchTrunk`                                | `trunk-ref.test.mjs`, `trunk-ref.integration.test.mjs`, `commits-on-trunk-gate.test.mjs` | Already clean                                         |
-| #932  | Demotion proof cleanup         | `demote.mjs` moves the board before its body mutation; if that mutation fails, `reconcile accept-live` restamps Develop without invoking evidence invalidation           | `invalidateEvidence` exists only on the primary demotion path                         | `verbs/demote.test.mjs`; missing reconcile recovery regression                           | Blocking defect: accept-live can preserve stale proof |
+| #932  | Demotion proof cleanup         | `demote.mjs` moves the board before its body mutation; if that mutation fails, `reconcile accept-live` must finish the interrupted proof invalidation                    | `invalidateEvidence` is shared by demote and its narrow accept-live recovery          | `verbs/demote.test.mjs`; `tests/unit/verbs/reconcile-verb.test.mjs`                      | Blocking defect resolved by #1037                     |
 | #947  | Closed-child reconciliation    | `wave-admission.mjs` converts GitHub-closed children to operational `done` once; epic admission and close guards consume the normalized descriptor                       | `mapSubIssueNodes`, `defaultFetchSiblings`                                            | `wave-admission.test.mjs`, `epic-children-gate-core.test.mjs`                            | Already clean                                         |
 | #952  | Test verifier migration        | `verbs/test.mjs` performs one pre-sandbox migration through the lane-split helper, then parses the live Verification Commands again                                      | `migrateTestsLaneSplit`                                                               | `test-verb-lane-split-migration.test.mjs`                                                | Already clean                                         |
 | #953  | Issue-kind parser boundary     | Superseded by #963; the old unanchored-body approach is no longer the production read path                                                                               | Progress-scoped `parseIssueKind`                                                      | `issue-kind.test.mjs`                                                                    | Already clean, superseded                             |
@@ -70,8 +71,13 @@ DoD, and Agent Review proof remains in the issue body.
 Required defect outcome: the supported accept-live recovery path must apply the
 same idempotent proof invalidation when reconciliation moves the recorded state
 backward to Develop, report what it stripped, and preserve proof on unrelated
-forward/external reconciliations. The defect is filed under `#1005` and blocks
-`#1006`.
+forward/external reconciliations.
+
+Resolution: #1037 is Closed/Done and squash-integrated at `d4317d2` on both
+`trunk` and `feature/epic/1005`. Its focused reconcile and ordinary demote
+regressions cover both Test/Review-to-Develop recovery sources plus
+proof-preserving forward and unrelated reconciliation shapes. The blocker on
+#1006 is cleared.
 
 ### R1 — Shared Timing Log row reader
 
@@ -120,13 +126,15 @@ single current owner and focused regression coverage.
 
 ## Defects and Optional Cleanup
 
-- Blocking correctness defects: D1, demotion recovery can preserve stale proof.
+- Blocking correctness defects: D1 was resolved and closed by #1037 at
+  `d4317d2`; no blocking correctness defect remains open.
 - Optional cleanup: none required. Large operational files alone are not a
   finding without duplicated decisions or an inverted dependency.
 
 ## Delivery Order
 
-1. File and resolve D1 before starting any refactor grandchild.
+1. Resolve D1 before starting any refactor grandchild — completed by #1037 at
+   `d4317d2`.
 2. Extract the shared Timing Log row reader.
 3. Repair the recovery-gap dependency direction after the timing reader settles.
 4. Extract the shared review-failure block boundary parser.

@@ -14,6 +14,7 @@ const EXPECTED_INPUTS = [
 
 test('#1006 JIT audit records the converged entry milestone and scope contract', () => {
   assert.match(audit, /\*\*Entry tree:\*\* `5add5b0`/);
+  assert.match(audit, /\*\*Post-defect tree:\*\* `d4317d2`/);
   assert.match(audit, /#1012 Closed\/Done/);
   assert.match(
     audit,
@@ -53,7 +54,8 @@ test('#1006 JIT audit records only focused required findings', () => {
   ]) {
     assert.match(audit, new RegExp(`^### ${heading}$`, 'm'));
   }
-  assert.match(audit, /Blocking correctness defects: D1/);
+  assert.match(audit, /Blocking correctness defects: D1 was resolved and closed by #1037/);
+  assert.match(audit, /#1006 is cleared/);
   assert.match(audit, /Optional cleanup: none required/);
   assert.doesNotMatch(audit, /\bTBD\b|\bTODO\b/);
 });
