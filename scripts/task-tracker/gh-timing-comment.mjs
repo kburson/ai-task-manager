@@ -7,6 +7,11 @@ import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import {
+  isTableTimingTimestamp,
+  parseTimingRow,
+  replaceTimingRowCell,
+} from './lib/timing-row-reader.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
 import {
@@ -53,22 +58,12 @@ export function fmtTs(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${offset}`;
 }
 
-// Match both legacy minute-precision (HH:MM) and current second-precision
-// (HH:MM:SS) table timestamps so old rows still parse.
-const TS_PATTERN = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})? [+-]\d{2}:\d{2}/;
-
 export function firstStartTimestamp(commentBody) {
   if (!commentBody) return null;
   const lines = commentBody.split('\n');
   for (const line of lines) {
-    if (!line.startsWith('|')) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    if (cells.length < 3) continue;
-    const ts = cells[1];
-    const event = cells[2];
-    if (event?.toLowerCase() === 'start' && TS_PATTERN.test(ts)) {
-      return ts.match(TS_PATTERN)[0];
-    }
+    const row = parseTimingRow(line);
+    if (row?.event === 'start' && isTableTimingTimestamp(row.ts)) return row.ts;
   }
   return null;
 }
@@ -337,39 +332,25 @@ function buildInitialComment() {
 // the Event. A trailing `<!-- row-sec -->` marker lives after the last pipe and
 // never reaches cells[2], so it does not perturb the read.
 function rowEventSlug(row) {
-  const cells = String(row)
-    .split('|')
-    .map((s) => s.trim());
-  return cells.length >= 3 ? cells[2].toLowerCase() : '';
+  return parseTimingRow(String(row))?.event ?? '';
 }
 
 // #568 — rewrite ONLY the Event cell (the 2nd pipe-delimited field) of a row,
 // preserving every other cell and the trailing marker byte-for-byte.
 function rewriteEventCell(row, nextEvent) {
-  let seen = 0;
-  return String(row).replace(/\|([^|]*)/g, (match) => {
-    seen += 1;
-    return seen === 2 ? `| ${nextEvent} ` : match;
-  });
+  return replaceTimingRowCell(row, 2, ` ${nextEvent} `);
 }
 
 // #821 — read the Timestamp cell (1st pipe-delimited field) of a row string.
 // cells[0] is the empty pre-pipe cell, cells[1] the Timestamp.
 function rowTs(row) {
-  const cells = String(row)
-    .split('|')
-    .map((s) => s.trim());
-  return cells.length >= 2 ? cells[1] : '';
+  return parseTimingRow(String(row))?.ts ?? '';
 }
 
 // #821 — rewrite ONLY the Timestamp cell (the 1st pipe-delimited field),
 // preserving every other cell and the trailing marker byte-for-byte.
 function rewriteTsCell(row, nextTs) {
-  let seen = 0;
-  return String(row).replace(/\|([^|]*)/g, (match) => {
-    seen += 1;
-    return seen === 1 ? `| ${nextTs} ` : match;
-  });
+  return replaceTimingRowCell(row, 1, ` ${nextTs} `);
 }
 
 // #568 keystone — the structural duplicate-`start` guard. A `start` row may only

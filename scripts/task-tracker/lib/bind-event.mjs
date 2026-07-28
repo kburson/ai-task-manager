@@ -9,25 +9,18 @@
 // #480.
 
 import { describeTimingEvent } from './timing-events/index.mjs';
+import { isTimingRowTimestamp, parseTimingRow, timingTimestampToMs } from './timing-row-reader.mjs';
 //
 // The canonical first-row slug is `start` — the same slug `verbSwitch` emits
 // for a newcomer and the only slug `firstStartTimestamp` recognizes. A genuine
 // resume keeps `resumed`. The discriminator is whether the issue already has
 // timing-log history (or is mid-pause).
 
-// A timing-log data row: a table line whose first cell is a parseable
-// timestamp. Excludes the header row (`| Timestamp | … |`) and the
-// `|---|` separator. Tolerant of both the space- and `T`-delimited ISO forms
-// the log has used.
-const ROW_TS_RE = /\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/;
-
 export function timingCommentHasRows(body) {
   if (!body) return false;
   for (const line of String(body).split('\n')) {
-    if (!line.startsWith('|')) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    if (cells.length < 3) continue;
-    if (ROW_TS_RE.test(cells[1])) return true;
+    const row = parseTimingRow(line);
+    if (row && isTimingRowTimestamp(row.ts)) return true;
   }
   return false;
 }
@@ -35,12 +28,9 @@ export function timingCommentHasRows(body) {
 // #534 — extract the (lower-cased) Event-cell slug from a timing-log data row.
 // Returns null for the header, the `|---|` separator, and any non-data line.
 function rowEventSlug(line) {
-  if (!line.startsWith('|')) return null;
-  const cells = line.split('|').map((s) => s.trim());
-  // cells[0] is the empty pre-pipe cell; cells[1] is Timestamp, cells[2] Event.
-  if (cells.length < 4) return null;
-  if (!ROW_TS_RE.test(cells[1])) return null;
-  return cells[2].toLowerCase();
+  const row = parseTimingRow(line);
+  if (!row || !isTimingRowTimestamp(row.ts)) return null;
+  return row.event;
 }
 
 // #534 — classify a row event slug as an interruption *opener*, a re-engagement
@@ -121,34 +111,15 @@ function hasStartRow(body) {
   return false;
 }
 
-// #981 — minimal timestamp→ms parser, deliberately duplicated from
-// `lib/timing-rows.mjs`'s `tsToMs` rather than imported: `timing-rows.mjs`
-// importing timing-rows.mjs back here would close an operational timing loop.
-// Table format ("2026-05-17 18:58:01 -05:00") and ISO are both accepted.
-function tsToMsLocal(ts) {
-  if (typeof ts !== 'string') return NaN;
-  const tableMatch = ts.match(
-    /^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s+([+-]\d{2}):(\d{2})$/
-  );
-  if (tableMatch) {
-    const [, date, hh, mm, ss, offH, offM] = tableMatch;
-    return Date.parse(`${date}T${hh}:${mm}:${ss ?? '00'}${offH}:${offM}`);
-  }
-  const parsed = Date.parse(ts);
-  return Number.isFinite(parsed) ? parsed : NaN;
-}
-
 // #981 — the last timing-log data row's { ts, event, wordMarker } (raw,
 // as-rendered cell strings), or null when the body has no data rows.
 function lastDataRow(body) {
   if (!body) return null;
   let last = null;
   for (const line of String(body).split('\n')) {
-    if (!line.startsWith('|')) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    if (cells.length < 7) continue;
-    if (!ROW_TS_RE.test(cells[1])) continue;
-    last = { ts: cells[1], event: cells[2].toLowerCase(), wordMarker: cells[6] };
+    const row = parseTimingRow(line);
+    if (!row || row.cells.length < 7 || !isTimingRowTimestamp(row.ts)) continue;
+    last = { ts: row.ts, event: row.event, wordMarker: row.wordMarker };
   }
   return last;
 }
@@ -183,8 +154,8 @@ export function detectUnmarkedDepartureGap(body, nowTs, gapSec = SUSPICIOUS_GAP_
   const last = lastDataRow(body);
   if (!last) return null;
   if (classifyEvent(last.event)?.role === 'open') return null;
-  const lastMs = tsToMsLocal(last.ts);
-  const nowMs = tsToMsLocal(nowTs);
+  const lastMs = timingTimestampToMs(last.ts);
+  const nowMs = timingTimestampToMs(nowTs);
   if (!Number.isFinite(lastMs) || !Number.isFinite(nowMs)) return null;
   const elapsedSec = (nowMs - lastMs) / 1000;
   if (elapsedSec <= gapSec) return null;
@@ -218,8 +189,8 @@ export function shouldSuppressActiveBindEvent({
   if (!timingCommentHasRows(timingBody)) return false;
   if (lastOpenInterruption(timingBody)) return false;
   const last = lastDataRow(timingBody);
-  const lastMs = tsToMsLocal(last?.ts);
-  const nowMs = tsToMsLocal(nowTs);
+  const lastMs = timingTimestampToMs(last?.ts);
+  const nowMs = timingTimestampToMs(nowTs);
   if (!Number.isFinite(lastMs) || !Number.isFinite(nowMs)) return false;
   const ageSec = (nowMs - lastMs) / 1000;
   return ageSec >= 0 && ageSec <= SUSPICIOUS_GAP_SEC;
