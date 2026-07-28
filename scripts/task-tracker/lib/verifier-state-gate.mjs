@@ -15,7 +15,7 @@
 // the fast lane's targeted use.
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
-import { normalizeStateSlug, STATES } from '../state-machine.mjs';
+import { normalizeStateId, stateIds } from './lifecycle-policy/index.mjs';
 
 const RESTRICTED_COMMAND_RE = /\bnpm\s+run\s+test:(all|slow)\b/;
 const MIN_STATE = 'test';
@@ -46,7 +46,7 @@ export async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateSlug(node?.fieldValueByName?.name);
+  return normalizeStateId(node?.fieldValueByName?.name);
 }
 
 export async function assertVerifierStateAllowed({ issueNumber, cfg, commands, deps = {} }) {
@@ -55,8 +55,8 @@ export async function assertVerifierStateAllowed({ issueNumber, cfg, commands, d
 
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const live = await getLiveState({ issueNumber, cfg });
-  const liveIdx = STATES.indexOf(live);
-  const minIdx = STATES.indexOf(MIN_STATE);
+  const liveIdx = stateIds().indexOf(live);
+  const minIdx = stateIds().indexOf(MIN_STATE);
 
   if (liveIdx === -1 || liveIdx < minIdx) {
     return {

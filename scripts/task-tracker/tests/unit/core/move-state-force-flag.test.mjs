@@ -22,7 +22,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateTransition } from '../../../state-machine.mjs';
+import { validateTransition } from '../../../lib/lifecycle-policy/index.mjs';
 import { parseMoveStateArgs } from '../../../lib/move-state/policy.mjs';
 import { computeTransitionPlan } from '../../../lib/move-state/transition-plan.mjs';
 

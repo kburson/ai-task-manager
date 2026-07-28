@@ -3,12 +3,8 @@
 // `aitm` is a thin front-router. This module is its routing table. It has two
 // halves:
 //
-//   1. VERBS — the /task state-machine verbs, declared in the command manifest
-//      (scripts/task-tracker/command-manifest.mjs). `aitm <verb>` delegates to
-//      task-tracker.mjs. The manifest carries descriptions, aliases, and
-//      category metadata the old regex scrape could not; a parity test asserts
-//      the manifest's verb set equals the dispatch switch's `case` labels so
-//      the two cannot drift (see tests/unit/command-manifest.test.mjs).
+//   1. VERBS — the /task state-machine verbs exposed by the canonical command
+//      catalog. `aitm <verb>` delegates to task-tracker.mjs.
 //   2. SCRIPTS — the curated set of operator-facing standalone support scripts
 //      (from scripts/lib/self-doc.mjs). `aitm <name>` spawns the script.
 //
@@ -22,8 +18,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SELF_DOC } from '../scripts/lib/self-doc.mjs';
-import { manifestVerbNames } from '../scripts/task-tracker/command-manifest.mjs';
-import { agentCommandCatalog } from '../scripts/task-tracker/lib/command-surface/catalog.mjs';
+import {
+  agentCommandCatalog,
+  taskVerbNames,
+} from '../scripts/task-tracker/lib/command-surface/catalog.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
@@ -57,11 +55,7 @@ export function parseVerbs(source = readFileSync(TASK_TRACKER_PATH, 'utf8')) {
 // The verb set — now declared by the command manifest (canonical names plus
 // aliases), not regex-scraped. Help output (groupedListing) and dispatch
 // routing (kind → bin/aitm.mjs) both read this, so they share one source.
-export const VERBS = manifestVerbNames();
-
-// Re-export the manifest so help and other callers can reach descriptions and
-// categories, not just names.
-export { COMMAND_MANIFEST } from '../scripts/task-tracker/command-manifest.mjs';
+export const VERBS = taskVerbNames();
 
 // Operator-facing scripts explicitly safe to route through `aitm`. Direct-only
 // maintenance/package lifecycle help records remain in SELF_DOC/catalog but do
@@ -85,7 +79,6 @@ export const INTERNAL = {
     reason: 'Plumbing: Kanban-state tool gating; invoked by the hook runner only.',
   },
   'agent-guard': { reason: 'Plumbing: sub-agent spawn gate; invoked by the hook runner only.' },
-  'state-machine': { reason: 'Plumbing: library defining legal transitions; imported, not run.' },
   'issue-field-db': { reason: 'Plumbing: library for the embedded field DB; imported, not run.' },
   'commit-trail-handler': {
     reason: 'Plumbing: PostToolUse commit hook; invoked by the hook runner only.',

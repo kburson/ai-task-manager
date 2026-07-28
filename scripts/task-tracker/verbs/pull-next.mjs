@@ -20,7 +20,7 @@ import {
   enrichChildrenWithBlockedBy,
 } from '../lib/epic-children-gate.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { normalizeStateSlug } from '../state-machine.mjs';
+import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
 import { verbPromote } from './promote.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 
@@ -46,7 +46,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateSlug(node?.fieldValueByName?.name);
+  return normalizeStateId(node?.fieldValueByName?.name);
 }
 
 export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {

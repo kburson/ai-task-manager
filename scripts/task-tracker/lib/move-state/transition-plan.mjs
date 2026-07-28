@@ -11,7 +11,7 @@
 // PURE: no I/O, no env, no process.exit. The only dependency is the canonical
 // transition matrix validator.
 
-import { validateTransition } from '../../state-machine.mjs';
+import { validateTransition } from '../lifecycle-policy/index.mjs';
 
 // Compute the ordered gate/side-effect plan for a single move.
 //

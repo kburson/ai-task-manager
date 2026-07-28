@@ -21,7 +21,7 @@ import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
-import { STATES } from '../../../state-machine.mjs';
+import { stateIds } from '../../../lib/lifecycle-policy/index.mjs';
 import { STATUS_CONFIG_KEYS } from '../../../../gh/lib/project-tether.mjs';
 import { DEFAULTS, TYPES, loadConfig } from '../../../config.mjs';
 
@@ -29,12 +29,12 @@ import { DEFAULTS, TYPES, loadConfig } from '../../../config.mjs';
 test('AC2: STATUS_CONFIG_KEYS covers exactly the canonical states', () => {
   assert.deepEqual(
     Object.keys(STATUS_CONFIG_KEYS).sort(),
-    [...STATES].sort(),
+    [...stateIds()].sort(),
     'STATUS_CONFIG_KEYS must map exactly the canonical states — no orphan or missing slug'
   );
 });
 
-for (const slug of STATES) {
+for (const slug of stateIds()) {
   test(`AC2: "${slug}" — registered in all config tables and survives loadConfig`, () => {
     const key = STATUS_CONFIG_KEYS[slug];
     assert.ok(key, `slug ${slug} must have a STATUS_CONFIG_KEYS entry`);

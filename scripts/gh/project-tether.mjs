@@ -3,9 +3,10 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { fieldOptionMap } from './lib/github-projects.mjs';
 import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { stateIds } from '../task-tracker/lib/lifecycle-policy/index.mjs';
 
 function usage() {
-  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status backlog|on-deck|refine|plan|develop|test|review|done] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <N>]`;
+  return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status ${stateIds().join('|')}] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <N>]`;
 }
 
 function parseArgs(args) {
@@ -32,16 +33,7 @@ function numberFlag(value, name) {
   return n;
 }
 
-const VALID_STATUSES = new Set([
-  'backlog',
-  'on-deck',
-  'refine',
-  'plan',
-  'develop',
-  'test',
-  'review',
-  'done',
-]);
+const VALID_STATUSES = new Set(stateIds());
 
 async function main() {
   if (wantsHelp(process.argv.slice(2))) {

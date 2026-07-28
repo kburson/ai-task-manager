@@ -1,6 +1,6 @@
 // #683 — the active/idle ladder: the spec that computes per-row and per-state
 // Active/Idle from a sequence of timing-log rows, keyed off the event
-// vocabulary in `lib/timing-event-map.mjs`.
+// vocabulary in `lib/timing-events/`.
 //
 // THE RULE
 //   A span is IDLE iff it was opened by a Departure event; every other event
@@ -20,7 +20,10 @@
 // the log. The emitters (`resume.mjs`, `deriveStateMoveDelta`, `close.mjs`) are
 // the follow-on repair surface that will be re-pointed at this ladder.
 
-import { classifyTimingEvent, EVENT_CLASS } from './timing-event-map.mjs';
+import {
+  classifyTimingEventForAccounting as classifyTimingEvent,
+  EVENT_CLASS,
+} from './timing-events/index.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
 
 // slug (`refine:started`) → state (`refine`) for canonical ENTER events only.

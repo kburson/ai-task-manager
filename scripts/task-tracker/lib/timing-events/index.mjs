@@ -37,6 +37,42 @@ export function classifyTimingEvent(event) {
   return describeTimingEvent(event)?.eventClass ?? null;
 }
 
+// Timing arithmetic preserves historical unknown rows as neutral active spans.
+// Strict vocabulary readers must continue to use classifyTimingEvent(), which
+// returns null for unknown input.
+export function classifyTimingEventForAccounting(event) {
+  if (event == null || String(event).trim() === '') return null;
+  return classifyTimingEvent(event) ?? EVENT_CLASS.PHASE;
+}
+
+export function lifecycleTimingEventSlugs() {
+  return Object.freeze(
+    exactTimingEventDescriptors()
+      .filter(({ kind }) => kind === 'lifecycle')
+      .map(({ event }) => event)
+  );
+}
+
+export function isDepartureEvent(event) {
+  return classifyTimingEvent(event) === EVENT_CLASS.DEPARTURE;
+}
+
+export function isReengagementEvent(event) {
+  return classifyTimingEvent(event) === EVENT_CLASS.REENGAGEMENT;
+}
+
+export function isPhaseEventForAccounting(event) {
+  return classifyTimingEventForAccounting(event) === EVENT_CLASS.PHASE;
+}
+
+export function isCanonicalPhaseEvent(event) {
+  return describeTimingEvent(event)?.canonicalPhase === true;
+}
+
+export function opensIdleSpan(event) {
+  return isDepartureEvent(event);
+}
+
 export function stageOfTimingEvent(event) {
   return describeTimingEvent(event)?.stage ?? null;
 }

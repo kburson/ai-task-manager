@@ -242,7 +242,7 @@ export function checkRequiredBodySections(body = '') {
 // Solo issues (`parentEpicNumber == null`) bypass the gate without invoking
 // the reader.
 
-import { STATES as STATE_MACHINE_STATES, normalizeStateSlug } from '../state-machine.mjs';
+import { normalizeStateId, stateIds } from './lifecycle-policy/index.mjs';
 
 const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 
@@ -264,8 +264,8 @@ const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 //
 // No env override exists.
 const ADMIT_FLOOR_STATE = 'develop';
-const ADMIT_FLOOR_IDX = STATE_MACHINE_STATES.indexOf(ADMIT_FLOOR_STATE);
-const REFINE_IDX = STATE_MACHINE_STATES.indexOf('refine');
+const ADMIT_FLOOR_IDX = stateIds().indexOf(ADMIT_FLOOR_STATE);
+const REFINE_IDX = stateIds().indexOf('refine');
 
 export async function checkParentAdmission({
   parentEpicNumber,
@@ -275,7 +275,7 @@ export async function checkParentAdmission({
   targetState = DEFAULT_PARENT_ADMIT_STATE,
 }) {
   if (parentEpicNumber == null) return [];
-  const targetIdx = STATE_MACHINE_STATES.indexOf(targetState);
+  const targetIdx = stateIds().indexOf(targetState);
   if (targetIdx < 0) {
     throw new Error(`checkParentAdmission: unknown targetState "${targetState}"`);
   }
@@ -284,9 +284,9 @@ export async function checkParentAdmission({
   // unknown-target validation above.
   void targetIdx;
   const requiredIdx = targetState === 'refine' ? REFINE_IDX : ADMIT_FLOOR_IDX;
-  const requiredState = STATE_MACHINE_STATES[requiredIdx];
+  const requiredState = stateIds()[requiredIdx];
   const raw = await readParentStatus({ parentEpicNumber, repo, projectId });
-  const state = raw == null ? null : normalizeStateSlug(String(raw).toLowerCase());
+  const state = normalizeStateId(raw);
   if (state == null) {
     return [
       {
@@ -295,7 +295,7 @@ export async function checkParentAdmission({
       },
     ];
   }
-  const idx = STATE_MACHINE_STATES.indexOf(state);
+  const idx = stateIds().indexOf(state);
   if (idx >= 0 && idx >= requiredIdx) return [];
   return [
     {

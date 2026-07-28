@@ -79,7 +79,9 @@
 // guards belong here too — register them in the matching state module and
 // append a row above.
 
-const STATES = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+import { stateIds } from './lifecycle-policy/index.mjs';
+
+const STATES = stateIds();
 const KINDS = ['exit', 'entry'];
 
 function makeEmptyRegistry() {

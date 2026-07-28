@@ -1,11 +1,11 @@
-// @story #1011
-// Aggregate normalized command catalog. Existing manifest/help exports remain
-// compatibility facades until #1012 completes consumer convergence.
+// @story #1011 #1012
+// Aggregate normalized command catalog. Help metadata is canonical here;
+// routing identities contribute only the verb-to-dispatch relationship.
 
-import { COMMAND_MANIFEST } from '../../command-manifest.mjs';
 import { COMMON_EXIT_CODES, VERB_REFERENCE } from '../../verbs/help-data.mjs';
 import { SELF_DOC } from '../../../lib/self-doc.mjs';
 import { EXECUTABLE_ENTRYPOINTS } from './entrypoints.mjs';
+import { ROUTE_IDENTITIES, routeIdentityForVerb } from './routing.mjs';
 import { normalizeHelpRecord, validateHelpRecord } from './schema.mjs';
 
 const entrypointByCommand = new Map(
@@ -592,28 +592,30 @@ function verbPath(entry) {
   return `scripts/task-tracker/${entry.dispatch}`;
 }
 
-const manifestByVerb = new Map(COMMAND_MANIFEST.map((entry) => [entry.verb, entry]));
 const coveredReferenceKeys = new Set();
-const verbRecords = COMMAND_MANIFEST.map((manifest) => {
-  const reference = VERB_REFERENCE[manifest.verb];
-  if (!reference) throw new Error(`command catalog: missing verb reference for ${manifest.verb}`);
-  const contract = VERB_CONTRACTS[manifest.verb];
+const verbRecords = ROUTE_IDENTITIES.map((route) => {
+  const reference = VERB_REFERENCE[route.verb];
+  if (!reference) throw new Error(`command catalog: missing verb reference for ${route.verb}`);
+  const contract = VERB_CONTRACTS[route.verb];
   if (!contract)
-    throw new Error(`command catalog: missing explicit verb contract for ${manifest.verb}`);
-  const relatedCommands = VERB_RELATED_COMMANDS[manifest.verb];
+    throw new Error(`command catalog: missing explicit verb contract for ${route.verb}`);
+  const relatedCommands = VERB_RELATED_COMMANDS[route.verb];
   if (!relatedCommands)
-    throw new Error(`command catalog: missing explicit related commands for ${manifest.verb}`);
-  coveredReferenceKeys.add(manifest.verb);
-  for (const alias of manifest.aliases) coveredReferenceKeys.add(alias);
-  const path = verbPath(manifest);
+    throw new Error(`command catalog: missing explicit related commands for ${route.verb}`);
+  const aliases = Object.freeze(
+    (reference.aliases || []).filter((alias) => /^[a-z][a-z0-9-]*$/i.test(alias))
+  );
+  coveredReferenceKeys.add(route.verb);
+  for (const alias of aliases) coveredReferenceKeys.add(alias);
+  const path = verbPath(route);
   return normalizeHelpRecord({
-    name: manifest.verb,
-    aliases: manifest.aliases,
+    name: route.verb,
+    aliases,
     classification: 'agent-callable-verb',
     agentCallable: true,
     purpose: reference.summary,
     usage: reference.usage,
-    arguments: verbArguments(manifest.verb, reference),
+    arguments: verbArguments(route.verb, reference),
     preconditions: contract.preconditions,
     effects: contract.effects,
     output: contract.output,
@@ -621,8 +623,8 @@ const verbRecords = COMMAND_MANIFEST.map((manifest) => {
     examples: reference.examples,
     relatedCommands,
     path,
-    routing: manifest.dispatch,
-    group: reference.topic || manifest.category,
+    routing: route.dispatch,
+    group: reference.topic,
   });
 });
 
@@ -720,7 +722,11 @@ export function agentCommandCatalog() {
   return COMMAND_CATALOG.filter((record) => record.agentCallable);
 }
 
-export function manifestEntryForCommand(name) {
+export function routeIdentityForCommand(name) {
   const record = commandByName(name);
-  return record ? manifestByVerb.get(record.name) || null : null;
+  return record ? routeIdentityForVerb(record.name) : null;
+}
+
+export function taskVerbNames() {
+  return new Set(verbRecords.flatMap((record) => [record.name, ...record.aliases]));
 }

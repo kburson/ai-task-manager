@@ -45,7 +45,7 @@ import {
   parseEntryMarkersFirstVisit,
   safeBackfillTs,
 } from '../lib/stage-entry-markers.mjs';
-import { normalizeStateSlug, STATES, FORWARD } from '../state-machine.mjs';
+import { forwardTarget, normalizeStateId, stateIds } from '../lib/lifecycle-policy/index.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { readMoveCompleteState } from '../lib/move-state/sentinel.mjs';
 import { STATE_TO_CONFIG_KEY } from '../lib/move-state/policy.mjs';
@@ -114,7 +114,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateSlug(node?.fieldValueByName?.name);
+  return normalizeStateId(node?.fieldValueByName?.name);
 }
 
 // #764 — push the board back to the recorded state in-process (was: spawn
@@ -288,7 +288,7 @@ export async function runReconcile({
         message: `reconcile revert-to-sentinel: no move-complete sentinel for #${issueNumber}`,
       };
     }
-    if (!STATES.includes(sentinel)) {
+    if (!stateIds().includes(sentinel)) {
       return {
         status: 'error',
         message: `reconcile revert-to-sentinel: unrecognized sentinel state "${sentinel}" for #${issueNumber}`,
@@ -475,7 +475,7 @@ export async function runReconcile({
   // up to the recorded marker. The prior implementation made a single
   // `runMoveState({ target: recorded })` jump, which only worked when the gap
   // was exactly one state: `move-state` validates every transition against the
-  // adjacency-only matrix (`FORWARD`/`BACKWARD` in state-machine.mjs), so a
+  // adjacency-only executable lifecycle policy, so a
   // multi-state jump is an illegal transition and the lone call fails without
   // ever closing the gap. Composing the repair out of matrix-legal adjacent
   // hops keeps every step audited (each hop is a normal promote) instead of
@@ -492,8 +492,8 @@ export async function runReconcile({
       message: `reconcile revert-to-recorded: cannot resolve live state for #${issueNumber}`,
     };
   }
-  const liveIdx = STATES.indexOf(live);
-  const recIdx = STATES.indexOf(recorded);
+  const liveIdx = stateIds().indexOf(live);
+  const recIdx = stateIds().indexOf(recorded);
   if (liveIdx === -1 || recIdx === -1) {
     return {
       status: 'error',
@@ -521,7 +521,7 @@ export async function runReconcile({
   const walked = [];
   let cursor = live;
   while (cursor !== recorded) {
-    const next = FORWARD[cursor];
+    const next = forwardTarget(cursor);
     if (!next) {
       return {
         status: 'error',

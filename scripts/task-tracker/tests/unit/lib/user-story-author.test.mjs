@@ -18,7 +18,7 @@ import path from 'node:path';
 
 import { setUserStory, buildUserStoryLines } from '../../../lib/user-story-author.mjs';
 import { validateUserStory, PLACEHOLDERS } from '../../../lib/user-story-guard.mjs';
-import { MANIFEST_INDEX, resolveVerb } from '../../../command-manifest.mjs';
+import { commandByName, routeIdentityForCommand } from '../../../lib/command-surface/catalog.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const STORY = {
@@ -150,11 +150,11 @@ test('AC3: markers inside the section are preserved on replace', () => {
 // AC4 — CLI dispatch routes `user-story` / `story`
 // ---------------------------------------------------------------------------
 
-test('AC4: manifest registers `user-story` with the `story` alias', () => {
-  assert.equal(resolveVerb('user-story'), 'user-story');
-  assert.equal(resolveVerb('story'), 'user-story');
-  const entry = MANIFEST_INDEX.get('user-story');
-  assert.ok(entry, 'manifest entry present');
+test('AC4: catalog registers `user-story` with the `story` alias', () => {
+  assert.equal(commandByName('user-story')?.name, 'user-story');
+  assert.equal(commandByName('story'), commandByName('user-story'));
+  const entry = routeIdentityForCommand('user-story');
+  assert.ok(entry, 'routing identity present');
   assert.equal(entry.dispatch, 'verbs/user-story.mjs');
 });
 

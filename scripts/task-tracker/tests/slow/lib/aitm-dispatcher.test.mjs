@@ -112,7 +112,6 @@ test('AC6: plumbing scripts are excluded and carry a do-not-invoke header', () =
     'bash-guard': 'scripts/task-tracker/bash-guard.mjs',
     'activity-guard': 'scripts/task-tracker/activity-guard.mjs',
     'agent-guard': 'scripts/task-tracker/agent-guard.mjs',
-    'state-machine': 'scripts/task-tracker/state-machine.mjs',
     'issue-field-db': 'scripts/task-tracker/issue-field-db.mjs',
     'commit-trail-handler': 'scripts/task-tracker/commit-trail-handler.mjs',
     'source-edit-gate': 'scripts/task-tracker/source-edit-gate.mjs',

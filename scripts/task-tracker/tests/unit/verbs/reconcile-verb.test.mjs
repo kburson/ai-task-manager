@@ -6,7 +6,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { runReconcile } from '../../../verbs/reconcile.mjs';
-import { normalizeStateSlug } from '../../../state-machine.mjs';
+import { normalizeStateId } from '../../../lib/lifecycle-policy/index.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
@@ -109,14 +109,14 @@ test('reconcile accept-live is idempotent for entry marker (#174)', async () => 
 
 // #436 — regression for the live-board-status → slug → stampEntryMarker path
 // that #433's AC5 never exercised. `defaultGetLiveState` resolves the live
-// status by passing the raw board display name through `normalizeStateSlug`;
+// status by passing the raw board display name through `normalizeStateId`;
 // for the On Deck column that name is "On Deck" (a space). Before the fix the
 // slug was "on deck", which `stampEntryMarker` rejected with `unknown stage`,
 // crashing every `reconcile accept-live` of an On-Deck issue. We feed the raw
 // display name through the SAME resolver the production default uses so the
 // test covers the whole chain end-to-end.
 test('reconcile accept-live: On Deck live status stamps aitm-entered-on-deck without throwing (#436)', async () => {
-  const liveSlug = normalizeStateSlug('On Deck'); // mirrors defaultGetLiveState
+  const liveSlug = normalizeStateId('On Deck'); // mirrors defaultGetLiveState
   assert.equal(liveSlug, 'on-deck', 'resolver must produce the kebab slug');
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: liveSlug });
   let result;

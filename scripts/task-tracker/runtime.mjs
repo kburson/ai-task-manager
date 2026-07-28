@@ -12,7 +12,7 @@ import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
 import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
-import { isDepartureEvent } from './lib/timing-event-map.mjs';
+import { isDepartureEvent } from './lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 
 // Re-exported so downstream verbs (promote/demote/review/new/close/switch —

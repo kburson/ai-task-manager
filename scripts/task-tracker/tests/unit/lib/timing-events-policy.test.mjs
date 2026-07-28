@@ -9,17 +9,14 @@ import {
   describeTimingEvent,
   isKnownTimingEvent,
   classifyTimingEvent,
+  classifyTimingEventForAccounting,
+  lifecycleTimingEventSlugs,
+  isCanonicalPhaseEvent,
   stageOfTimingEvent,
   isRetiredTimingEvent,
   isEmittableTimingEvent,
 } from '../../../lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from '../../../phase-events.mjs';
-import {
-  EVENT_CLASS as FACADE_EVENT_CLASS,
-  PHASE_EVENT_SLUGS,
-  classifyTimingEvent as classifyThroughFacade,
-  isCanonicalPhaseSlug,
-} from '../../../lib/timing-event-map.mjs';
 import { classifyEvent } from '../../../lib/bind-event.mjs';
 import { buildRow, buildBackdatedDepartureRow } from '../../../gh-timing-comment.mjs';
 
@@ -187,15 +184,14 @@ test('audit events are neutral timing phases without lifecycle-stage identity', 
   assert.equal(stageOfTimingEvent('test:failed'), null);
 });
 
-test('phase and timing facades preserve their public imports', () => {
-  assert.equal(FACADE_EVENT_CLASS, EVENT_CLASS);
+test('canonical timing queries preserve lifecycle and accounting contracts', () => {
   assert.deepEqual(
-    PHASE_EVENT_SLUGS,
+    lifecycleTimingEventSlugs(),
     LIFECYCLE_EVENTS.map(([event]) => event)
   );
   for (const [event, , stage] of LIFECYCLE_EVENTS) {
-    assert.equal(classifyThroughFacade(event), EVENT_CLASS.PHASE, event);
-    assert.equal(isCanonicalPhaseSlug(event), true, event);
+    assert.equal(classifyTimingEventForAccounting(event), EVENT_CLASS.PHASE, event);
+    assert.equal(isCanonicalPhaseEvent(event), true, event);
     if (stage && PHASE_EVENTS[stage]) {
       const kind = PHASE_EVENTS[stage].enter?.event === event ? 'enter' : 'complete';
       assert.equal(resolvePhaseEvent({ state: stage, phase: kind })?.event, event);
@@ -214,6 +210,13 @@ test('phase and timing facades preserve their public imports', () => {
   });
   assert.deepEqual(classifyEvent('idle'), { role: 'open', kind: 'idle' });
   assert.deepEqual(classifyEvent('resumed'), { role: 'close' });
+});
+
+test('accounting classification keeps unknown historical rows neutral while strict reads reject them', () => {
+  assert.equal(classifyTimingEvent('historical-unknown'), null);
+  assert.equal(classifyTimingEventForAccounting('historical-unknown'), EVENT_CLASS.PHASE);
+  assert.equal(classifyTimingEventForAccounting(''), null);
+  assert.equal(classifyTimingEventForAccounting(null), null);
 });
 
 test('timing-event policy is a leaf package with only sibling lifecycle identity input', () => {

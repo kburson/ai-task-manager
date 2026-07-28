@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isCanonicalPhaseSlug } from '../../../../../lib/timing-event-map.mjs';
+import { isCanonicalPhaseEvent as isCanonicalPhaseSlug } from '../../../../../lib/timing-events/index.mjs';
 import { validate } from '../../../../../lib/agent-review/validators/timing-log-sequence.mjs';
 
 const HEADER = '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |';

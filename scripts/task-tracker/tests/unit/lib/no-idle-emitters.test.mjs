@@ -20,12 +20,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  classifyTimingEvent,
+  classifyTimingEventForAccounting as classifyTimingEvent,
   isDepartureEvent,
-  isCanonicalPhaseSlug,
+  isCanonicalPhaseEvent as isCanonicalPhaseSlug,
   opensIdleSpan,
   EVENT_CLASS,
-} from '../../../lib/timing-event-map.mjs';
+} from '../../../lib/timing-events/index.mjs';
 import {
   isKnownTimingEvent,
   isRetiredTimingEvent,

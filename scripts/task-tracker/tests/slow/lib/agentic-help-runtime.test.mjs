@@ -15,8 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { COMMAND_MANIFEST } from '../../../command-manifest.mjs';
 import { agentCommandCatalog } from '../../../lib/command-surface/catalog.mjs';
+import { ROUTE_IDENTITIES } from '../../../lib/command-surface/routing.mjs';
 import { EXECUTABLE_ENTRYPOINTS } from '../../../lib/command-surface/entrypoints.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 
@@ -196,7 +196,7 @@ test('every routed verb supports help, ?, --help, and -h', () => {
   const temp = mkdtempProjectIsolated('aitm-routed-help-');
   try {
     const before = readdirSync(temp).sort();
-    for (const entry of COMMAND_MANIFEST) {
+    for (const entry of ROUTE_IDENTITIES) {
       for (const token of ['help', '?', '--help', '-h']) {
         assertDetailedHelp(run(AITM, [entry.verb, token], temp), `${entry.verb} ${token}`);
       }

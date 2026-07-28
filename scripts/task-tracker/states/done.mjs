@@ -6,10 +6,9 @@
 // module's entry list via sub-issue #279.
 //
 // `exitGuards` is intentionally empty: `done` has no canonical forward
-// successor in `FORWARD_CHAIN`. Backward edges out of `done` (e.g.
-// `done → plan` via `/task demote --target plan`) are documented in
-// `BACKWARD_CHAIN` but not runtime-walkable until a future issue widens
-// `validateTransition`.
+// successor in `FORWARD_CHAIN`. Historical backward edges out of `done`
+// (e.g. `done → plan`) remain non-executable until a future issue widens the
+// canonical lifecycle policy.
 
 import { bodyGatesEntryGuardDone } from '../lib/body-gates-entry-guard.mjs';
 

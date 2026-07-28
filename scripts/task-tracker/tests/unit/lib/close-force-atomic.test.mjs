@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decideBoardMoveFailure } from '../../../lib/close-convergence.mjs';
-import { validateTransition } from '../../../state-machine.mjs';
+import { validateTransition } from '../../../lib/lifecycle-policy/index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLOSE_SRC = readFileSync(path.resolve(__dirname, '../../verbs/close.mjs'), 'utf8');

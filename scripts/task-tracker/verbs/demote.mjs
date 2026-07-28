@@ -24,10 +24,10 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { normalizeStateSlug } from '../state-machine.mjs';
 import {
   actionPolicyFor,
   backwardTargets,
+  normalizeStateId,
   validateExecutableTransition,
 } from '../lib/lifecycle-policy/index.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
@@ -96,7 +96,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateSlug(node?.fieldValueByName?.name);
+  return normalizeStateId(node?.fieldValueByName?.name);
 }
 
 // #755 — call the move-state host in-process (was: spawn

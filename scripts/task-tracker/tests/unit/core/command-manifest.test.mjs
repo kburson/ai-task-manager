@@ -1,108 +1,65 @@
 #!/usr/bin/env node
-// @story #556
-// Proves the command manifest is the registry's source of truth and that it
-// stays in lockstep with the dispatch switch it replaced the regex scrape of.
-//
-//   1. Shape — every entry declares verb/aliases/description/category/dispatch.
-//   2. Alias resolution — end→close, next→promote resolve to their canonical.
-//   3. Help & dispatch share the manifest — bin/aitm-registry.mjs#VERBS is the
-//      manifest's name set, and groupedListing() (help) lists exactly those.
-//   4. Parity / drift guard — the manifest's verb set equals the dispatch
-//      switch's `case` labels (minus non-command cases). Neither can drift.
+// @story #556 #1012
+// Routing identity is narrow; the command catalog owns public metadata.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+
 import {
-  COMMAND_MANIFEST,
-  MANIFEST_INDEX,
-  manifestVerbNames,
-  resolveVerb,
-} from '../../../command-manifest.mjs';
+  commandByName,
+  routeIdentityForCommand,
+  taskVerbNames,
+} from '../../../lib/command-surface/catalog.mjs';
+import { ROUTE_IDENTITIES, routeIdentityForVerb } from '../../../lib/command-surface/routing.mjs';
 import { VERBS, parseVerbs, groupedListing } from '../../../../../bin/aitm-registry.mjs';
 
-// --- 1. Every entry is fully declared. -----------------------------------
-test('manifest: each entry declares verb, aliases, description, category, dispatch', () => {
-  assert.ok(COMMAND_MANIFEST.length > 0, 'manifest must not be empty');
-  for (const e of COMMAND_MANIFEST) {
-    assert.equal(typeof e.verb, 'string', `verb must be a string: ${JSON.stringify(e)}`);
-    assert.ok(e.verb.length > 0, `verb must be non-empty: ${JSON.stringify(e)}`);
-    assert.ok(Array.isArray(e.aliases), `${e.verb}: aliases must be an array`);
-    assert.ok(
-      typeof e.description === 'string' && e.description.length > 0,
-      `${e.verb}: description must be a non-empty string`
-    );
-    assert.ok(
-      typeof e.category === 'string' && e.category.length > 0,
-      `${e.verb}: category must be a non-empty string`
-    );
-    assert.ok(
-      typeof e.dispatch === 'string' && e.dispatch.length > 0,
-      `${e.verb}: dispatch must be a non-empty string`
-    );
+test('routing identities contain only canonical verb and dispatch metadata', () => {
+  assert.ok(ROUTE_IDENTITIES.length > 0);
+  assert.equal(Object.isFrozen(ROUTE_IDENTITIES), true);
+  for (const route of ROUTE_IDENTITIES) {
+    assert.deepEqual(Object.keys(route).sort(), ['dispatch', 'verb']);
+    assert.equal(typeof route.verb, 'string');
+    assert.ok(route.verb.length > 0);
+    assert.equal(typeof route.dispatch, 'string');
+    assert.ok(route.dispatch.length > 0);
+    assert.equal(Object.isFrozen(route), true);
+    assert.equal(routeIdentityForVerb(route.verb), route);
   }
+  assert.equal(routeIdentityForVerb('not-a-verb'), null);
 });
 
-test('manifest: canonical verbs and aliases are globally unique', () => {
-  const seen = new Set();
-  for (const e of COMMAND_MANIFEST) {
-    for (const name of [e.verb, ...e.aliases]) {
-      assert.ok(!seen.has(name), `duplicate command name: ${name}`);
-      seen.add(name);
-    }
+test('catalog owns alias resolution and resolves each route identity', () => {
+  for (const route of ROUTE_IDENTITIES) {
+    const record = commandByName(route.verb);
+    assert.ok(record, route.verb);
+    assert.equal(record.routing, route.dispatch);
+    assert.equal(routeIdentityForCommand(route.verb), route);
   }
+
+  for (const [alias, canonical] of [
+    ['end', 'close'],
+    ['next', 'promote'],
+    ['story', 'user-story'],
+    ['brainstorm', 'discover'],
+    ['check', 'ensureChecked'],
+  ]) {
+    assert.equal(commandByName(alias), commandByName(canonical), alias);
+    assert.equal(routeIdentityForCommand(alias), routeIdentityForVerb(canonical), alias);
+  }
+  assert.equal(commandByName('not-a-verb'), null);
+  assert.equal(routeIdentityForCommand('not-a-verb'), null);
 });
 
-// --- 2. Alias resolution. -------------------------------------------------
-test('manifest: aliases resolve to their canonical verb', () => {
-  assert.equal(resolveVerb('end'), 'close', 'end is an alias of close');
-  assert.equal(resolveVerb('next'), 'promote', 'next is an alias of promote');
-  assert.equal(resolveVerb('close'), 'close', 'canonical resolves to itself');
-  assert.equal(resolveVerb('promote'), 'promote', 'canonical resolves to itself');
-  assert.equal(resolveVerb('not-a-verb'), null, 'unknown resolves to null');
-
-  // The index maps both the canonical name and each alias to the same entry.
-  assert.equal(MANIFEST_INDEX.get('end'), MANIFEST_INDEX.get('close'));
-  assert.equal(MANIFEST_INDEX.get('next'), MANIFEST_INDEX.get('promote'));
+test('registry and grouped help consume the catalog verb-name query', () => {
+  const expected = [...taskVerbNames()].sort();
+  assert.deepEqual([...VERBS].sort(), expected);
+  assert.deepEqual(groupedListing().verbs, expected);
 });
 
-// #577 — `brainstorm` is an alias of `discover` (easier-to-remember name for
-// the pre-issue ideation bucket). Both the manifest alias and the matching
-// dispatch `case 'brainstorm':` fall-through must exist, and the verb must be
-// globally unique. The parity test below diffs the two sites; these assertions
-// pin the resolution semantics directly.
-test('manifest: brainstorm resolves to discover', () => {
-  assert.equal(resolveVerb('brainstorm'), 'discover', 'brainstorm is an alias of discover');
-  assert.equal(MANIFEST_INDEX.get('brainstorm'), MANIFEST_INDEX.get('discover'));
-  assert.ok(manifestVerbNames().has('brainstorm'), 'brainstorm is in the manifest verb set');
-  assert.ok(parseVerbs().has('brainstorm'), 'brainstorm has a dispatch switch case label');
-});
-
-// --- 3. Help and dispatch share the manifest. ----------------------------
-test('registry VERBS is exactly the manifest name set', () => {
+test('catalog verb names equal the dispatch switch case labels', () => {
   assert.deepEqual(
-    [...VERBS].sort(),
-    [...manifestVerbNames()].sort(),
-    'bin/aitm-registry.mjs#VERBS must be the manifest name set'
-  );
-});
-
-test('groupedListing (help) lists exactly the manifest verbs', () => {
-  const { verbs } = groupedListing();
-  assert.deepEqual(
-    [...verbs].sort(),
-    [...manifestVerbNames()].sort(),
-    'help output and dispatch routing read the same manifest-backed VERBS'
-  );
-});
-
-// --- 4. Parity / drift guard. --------------------------------------------
-test('manifest verb set equals the dispatch switch case labels', () => {
-  const fromSwitch = [...parseVerbs()].sort();
-  const fromManifest = [...manifestVerbNames()].sort();
-  assert.deepEqual(
-    fromManifest,
-    fromSwitch,
-    'manifest and dispatch switch have drifted — a case label or manifest ' +
-      'entry was added without its counterpart'
+    [...taskVerbNames()].sort(),
+    [...parseVerbs()].sort(),
+    'dispatch switch and canonical catalog routing identities have drifted'
   );
 });

@@ -7,6 +7,8 @@
 // permit the requested activity. Both are pure: no I/O, no globals beyond
 // the supplied STATE_MATRIX.
 
+import { stateIds } from './lifecycle-policy/index.mjs';
+
 export function buildReason({ activityClass, target, state, activeIssue, toolName, STATE_MATRIX }) {
   const targetLabel = toolName === 'Bash' ? `\`${truncate(target, 80)}\`` : target;
   const stateLabel = state ?? 'no-active-task';
@@ -40,7 +42,7 @@ export function buildReason({ activityClass, target, state, activeIssue, toolNam
 }
 
 export function suggestTransition(activityClass, currentState, activeIssue, STATE_MATRIX) {
-  const order = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+  const order = stateIds();
   const curIdx = order.indexOf(currentState);
   for (const s of order) {
     if (s === currentState) continue;

@@ -11,7 +11,10 @@
 // comment `<!-- row-sec: a=NNN i=NNN -->` appended by `buildRow`. The
 // visible 7-column timing-log table schema is unchanged.
 
-import { classifyTimingEvent, EVENT_CLASS } from './timing-event-map.mjs';
+import {
+  classifyTimingEventForAccounting as classifyTimingEvent,
+  EVENT_CLASS,
+} from './timing-events/index.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
 
 // Pause-span markers use `..` separator between from/until because raw

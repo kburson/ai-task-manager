@@ -16,8 +16,9 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { checkParentAdmission } from '../../../lib/body-gates.mjs';
-import { STATES } from '../../../state-machine.mjs';
+import { stateIds } from '../../../lib/lifecycle-policy/index.mjs';
 
+const STATES = stateIds();
 const PROMOTABLE_TARGETS = STATES.filter((s) => s !== 'backlog'); // can't promote to backlog
 
 function stub(value) {

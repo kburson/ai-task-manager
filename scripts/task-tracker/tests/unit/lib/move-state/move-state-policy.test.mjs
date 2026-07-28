@@ -20,7 +20,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import { refusalVerbHint, BACKWARD_TARGETS } from '../../../../lib/move-state/policy.mjs';
-import { backwardTargets } from '../../../../state-machine.mjs';
+import { backwardTargets } from '../../../../lib/lifecycle-policy/index.mjs';
 
 // Maps a `/task <verb>` hint string to the module declaring its
 // target/legal-source constants. Extend this map alongside any future
@@ -71,8 +71,8 @@ test('every BACKWARD_TARGETS state has a refusalVerbHint verb that can actually 
     for (const from of mod.LEGAL_FROM) {
       assert.ok(
         backwardTargets(from).includes(target),
-        `"/task ${verbName}" declares ${from} as a legal source, but state-machine.mjs's ` +
-          `BACKWARD map does not list "${target}" among ${from}'s backward targets — ` +
+        `"/task ${verbName}" declares ${from} as a legal source, but lifecycle policy ` +
+          `does not list "${target}" among ${from}'s backward targets — ` +
           `the verb and the matrix have drifted apart`
       );
     }

@@ -61,3 +61,13 @@ export function validateExecutableTransition(from, to) {
     reason: `illegal transition: ${from} → ${to}. Allowed: ${allowed}.`,
   });
 }
+
+// Compatibility-shaped result for operational callers that only need
+// `{ ok, noop?, reason? }`. The decision still comes from the structured
+// canonical validator above.
+export function validateTransition(from, to) {
+  const result = validateExecutableTransition(from, to);
+  if (result.kind === 'noop') return { ok: true, noop: true };
+  if (result.ok) return { ok: true };
+  return { ok: false, reason: result.reason };
+}

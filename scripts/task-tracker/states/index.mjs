@@ -2,9 +2,9 @@
 //
 // Each kanban state owns a module that exports its `{ name, entryGuards,
 // exitGuards, onEnter }` container. This index re-exports a `STATES` map
-// keyed by state name plus `FORWARD_CHAIN` / `BACKWARD_CHAIN` tables that
-// `/task promote` and `/task demote` consume as their only source of
-// directional truth.
+// keyed by state name plus the `FORWARD_CHAIN` compatibility projection that
+// `/task promote` consumes. Backward movement is queried directly from the
+// lifecycle policy package.
 //
 // ─────────────────────────────────────────────────────────────────────
 // Contract: Guard
@@ -81,32 +81,6 @@ export const FORWARD_CHAIN = Object.freeze(
     })
   )
 );
-
-// Documented backward edges consumed by `/task demote` and (in the future)
-// lateral-move callers. Each entry is `state -> target[]`; index-0 is the
-// canonical default (what /task demote with no explicit target picks). The
-// extra entries beyond index-0 document edges that are architecturally
-// supported (the target state's entry guards decide whether to accept from
-// a non-canonical direction) but require explicit caller intent — the
-// runtime `validateTransition` matrix in `state-machine.mjs` continues to
-// gate which edges are walkable today.
-//
-// Canonical defaults match the existing `BACKWARD` map in
-// `state-machine.mjs` (`on-deck → backlog`, `test → develop`,
-// `review → develop`). `review → test` (#999 — drift re-verify, the path
-// #998's verb-home-state-guard fix opened but `validateTransition` never
-// landed) is now ALSO walkable, mirroring `state-machine.mjs`'s
-// `BACKWARD.review` array. `review → plan` and `done → plan` remain
-// non-walkable until a future issue widens `validateTransition` further.
-// The `on-deck → backlog` edge (#433) IS walkable — it mirrors
-// `state-machine.mjs`'s `BACKWARD['on-deck']` so a deferred tranche item
-// can be demoted back to the raw Backlog.
-export const BACKWARD_CHAIN = Object.freeze({
-  'on-deck': Object.freeze(['backlog']),
-  test: Object.freeze(['develop']),
-  review: Object.freeze(['develop', 'test', 'plan']),
-  done: Object.freeze(['plan']),
-});
 
 const KNOWN = new Set(stateIds());
 

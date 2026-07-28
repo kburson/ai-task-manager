@@ -243,7 +243,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   // still does nothing. Either way, review.mjs must not issue it: the assertion
   // above (moveTargets never includes 'test') remains the AC. Here we pin that
   // the self-move carries no effect to lose.
-  const { validateTransition } = await import('../../../state-machine.mjs');
+  const { validateTransition } = await import('../../../lib/lifecycle-policy/index.mjs');
   const selfLoop = validateTransition('test', 'test');
   assert.equal(selfLoop.ok, true, 'test→test is a legal no-op post-#882');
   assert.equal(selfLoop.noop, true, 'and is flagged as a no-op, so it moves nothing');

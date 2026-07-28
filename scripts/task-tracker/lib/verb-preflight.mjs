@@ -27,7 +27,7 @@
 // skipped and the preflight only enforces bind-match.
 
 import { fetchLiveKanbanState } from '../../gh/lib/live-state.mjs';
-import { normalizeStateSlug } from '../state-machine.mjs';
+import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { saveState } from '../state.mjs';
@@ -184,7 +184,7 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   }
   // #436 — normalize through the single slug helper (collapses interior
   // whitespace) so a multi-word board name compares equal to the kebab marker.
-  live = normalizeStateSlug(live) || '';
+  live = normalizeStateId(live) || '';
   if (!live) return { ok: true, stateAfter: stateBefore, changed: false };
 
   // #218: the issue body marker is the single local source of truth. Fetch
@@ -196,7 +196,7 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   } catch {
     marker = null;
   }
-  marker = marker ? normalizeStateSlug(marker) : null;
+  marker = marker ? normalizeStateId(marker) : null;
 
   // Marker absent (freshly created, never moved) or matches live: no drift.
   if (!marker || marker === live) {

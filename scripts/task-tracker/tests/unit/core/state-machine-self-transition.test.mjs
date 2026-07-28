@@ -11,12 +11,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { STATES, validateTransition } from '../../../state-machine.mjs';
+import { stateIds, validateTransition } from '../../../lib/lifecycle-policy/index.mjs';
 import { computeTransitionPlan } from '../../../lib/move-state/transition-plan.mjs';
 import { classifyMoveStateBenign, isMoveStateNoop } from '../../../runtime.mjs';
 
 test('every state self-transition is a legal no-op', () => {
-  for (const s of STATES) {
+  for (const s of stateIds()) {
     const v = validateTransition(s, s);
     assert.equal(v.ok, true, `${s} → ${s} must be legal`);
     assert.equal(v.noop, true, `${s} → ${s} must be flagged noop`);

@@ -3,12 +3,26 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
-  STATES,
-  FORWARD,
-  BACKWARD,
+  backwardTargets,
+  forwardTarget,
+  normalizeStateId as normalizeStateSlug,
+  stateIds,
   validateTransition,
-  normalizeStateSlug,
-} from '../../../state-machine.mjs';
+} from '../../../lib/lifecycle-policy/index.mjs';
+
+const STATES = stateIds();
+const FORWARD = Object.fromEntries(
+  STATES.flatMap((state) => {
+    const target = forwardTarget(state);
+    return target == null ? [] : [[state, target]];
+  })
+);
+const BACKWARD = Object.fromEntries(
+  STATES.flatMap((state) => {
+    const targets = backwardTargets(state);
+    return targets.length === 0 ? [] : [[state, targets.length === 1 ? targets[0] : [...targets]]];
+  })
+);
 
 test('STATES is the canonical 8-state chain in order', () => {
   assert.deepEqual(STATES, [
@@ -56,7 +70,7 @@ test('BACKWARD allows on-deck→backlog, test→develop and review→develop', (
 });
 
 // #999 — review→test drift re-verify. #998 taught verb-home-state-guard.mjs
-// that `test`'s legal home states include `review`, but state-machine.mjs's
+// that `test`'s legal home states include `review`, but the executable policy's
 // BACKWARD map was never updated to match, so the board move that guard
 // fix was supposed to unlock (`/task test <N>` invoked from `review`) landed
 // sandbox verification only to be refused one layer lower at the board move.

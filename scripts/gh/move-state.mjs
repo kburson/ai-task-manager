@@ -30,7 +30,7 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
-import { normalizeStateSlug } from '../task-tracker/state-machine.mjs';
+import { normalizeStateId } from '../task-tracker/lib/lifecycle-policy/index.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
 import {
   withIssueLock,
@@ -208,7 +208,7 @@ export async function runMoveStateHost({
       );
       const nodes = data?.repository?.issue?.projectItems?.nodes || [];
       const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-      return normalizeStateSlug(String(node?.fieldValueByName?.name || '').toLowerCase()) || '';
+      return normalizeStateId(node?.fieldValueByName?.name) || '';
     } catch {
       return '';
     }
@@ -273,7 +273,7 @@ export async function runMoveStateHost({
       '\nThe 7-state kanban only permits one-step forward moves plus test->develop\n'
     );
     process.stderr.write(
-      'and review->develop rework. See scripts/task-tracker/state-machine.mjs.\n\n'
+      'and review->develop rework. See scripts/task-tracker/lib/lifecycle-policy/.\n\n'
     );
     return 5;
   }

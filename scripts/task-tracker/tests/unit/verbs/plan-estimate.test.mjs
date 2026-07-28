@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { parseArgs, resolveTargetIssue, runPlanEstimate } from '../../../verbs/plan-estimate.mjs';
-import { resolveVerb, MANIFEST_INDEX } from '../../../command-manifest.mjs';
+import { commandByName, routeIdentityForCommand } from '../../../lib/command-surface/catalog.mjs';
 
 const CFG = { repo: 'o/r', projectId: 'PVT_x' };
 
@@ -223,9 +223,9 @@ test('runPlanEstimate surfaces no-refine-comment from append', async () => {
 // ---------------------------------------------------------------------------
 // Manifest + dispatch parity
 // ---------------------------------------------------------------------------
-test('plan-estimate is registered in the command manifest', () => {
-  assert.equal(resolveVerb('plan-estimate'), 'plan-estimate');
-  const entry = MANIFEST_INDEX.get('plan-estimate');
-  assert.ok(entry, 'plan-estimate must resolve in the manifest');
+test('plan-estimate is registered in the command catalog', () => {
+  assert.equal(commandByName('plan-estimate')?.name, 'plan-estimate');
+  const entry = routeIdentityForCommand('plan-estimate');
+  assert.ok(entry, 'plan-estimate must resolve in routing identities');
   assert.equal(entry.dispatch, 'verbs/plan-estimate.mjs');
 });

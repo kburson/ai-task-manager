@@ -5,8 +5,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { COMMAND_MANIFEST } from '../../../command-manifest.mjs';
 import { SELF_DOC } from '../../../../lib/self-doc.mjs';
+import { routeIdentityForCommand } from '../../../lib/command-surface/catalog.mjs';
 import {
   ENTRYPOINT_CLASSIFICATIONS,
   EXECUTABLE_ENTRYPOINTS,
@@ -18,7 +18,6 @@ const PACKAGE_BIN_PATHS = new Set(Object.values(PACKAGE.bin));
 const SELF_DOC_PATHS = new Map(
   Object.entries(SELF_DOC).map(([command, { path: scriptPath }]) => [scriptPath, command])
 );
-const MANIFEST_BY_VERB = new Map(COMMAND_MANIFEST.map((entry) => [entry.verb, entry]));
 const ALLOWED_CLASSIFICATIONS = new Set(ENTRYPOINT_CLASSIFICATIONS);
 
 function walk(relativeDir) {
@@ -125,9 +124,9 @@ test('each shipped executable entry point has exactly one explicit classificatio
 test('public classifications resolve through an existing command authority', () => {
   for (const entry of EXECUTABLE_ENTRYPOINTS) {
     if (entry.classification === 'agent-callable-verb') {
-      const manifestEntry = MANIFEST_BY_VERB.get(entry.command);
-      assert.ok(manifestEntry, `${entry.path}: ${entry.command}`);
-      assert.equal(`scripts/task-tracker/${manifestEntry.dispatch}`, entry.path, entry.command);
+      const route = routeIdentityForCommand(entry.command);
+      assert.ok(route, `${entry.path}: ${entry.command}`);
+      assert.equal(`scripts/task-tracker/${route.dispatch}`, entry.path, entry.command);
     }
     if (entry.classification === 'agent-callable-standalone') {
       const selfDocCommand = SELF_DOC_PATHS.get(entry.path);

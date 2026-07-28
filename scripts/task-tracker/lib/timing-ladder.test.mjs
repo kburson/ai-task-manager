@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { deriveLadder, parseRowTs, parseTimingRows } from './timing-ladder.mjs';
-import { EVENT_CLASS } from './timing-event-map.mjs';
+import { EVENT_CLASS } from './timing-events/index.mjs';
 
 // The exact #625 timing fixture (19 rows), CDT (-05:00) throughout.
 const FIXTURE = [

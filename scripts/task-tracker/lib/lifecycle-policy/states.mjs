@@ -48,3 +48,9 @@ export function stateIndex(state) {
 export function stateConfigKey(state) {
   return CONFIG_KEYS.get(state);
 }
+
+export function normalizeStateId(input) {
+  if (input == null) return null;
+  const normalized = String(input).trim().toLowerCase().replace(/\s+/g, '-');
+  return normalized || null;
+}

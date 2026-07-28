@@ -8,11 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import {
   EVENT_CLASS,
-  PHASE_EVENT_SLUGS,
-  classifyTimingEvent,
-  isCanonicalPhaseSlug,
-} from '../../../lib/timing-event-map.mjs';
-import { isKnownTimingEvent, isEmittableTimingEvent } from '../../../lib/timing-events/index.mjs';
+  lifecycleTimingEventSlugs,
+  classifyTimingEventForAccounting as classifyTimingEvent,
+  isCanonicalPhaseEvent as isCanonicalPhaseSlug,
+  isKnownTimingEvent,
+  isEmittableTimingEvent,
+} from '../../../lib/timing-events/index.mjs';
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 import { TIMING_EVENT_BASELINE } from '../../fixtures/state-engine-policy-baseline.mjs';
 
@@ -20,6 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const phaseSlugs = Object.values(PHASE_EVENTS).flatMap((state) =>
   Object.values(state).map(({ event }) => event)
 );
+const PHASE_EVENT_SLUGS = lifecycleTimingEventSlugs();
 
 function ruleFor(event) {
   if (TIMING_EVENT_BASELINE.exact.includes(event)) return 'exact';

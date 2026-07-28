@@ -27,10 +27,10 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { normalizeStateSlug } from '../state-machine.mjs';
 import {
   actionPolicyFor,
   backwardTargets,
+  normalizeStateId,
   validateExecutableTransition,
 } from '../lib/lifecycle-policy/index.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
@@ -98,7 +98,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateSlug(node?.fieldValueByName?.name);
+  return normalizeStateId(node?.fieldValueByName?.name);
 }
 
 // Reuses the `--demote`/`--demote-reason` flag pair (see file header for why):
@@ -188,7 +188,7 @@ export async function runPark({ issueNumber, cfg, reason, deps = {} } = {}) {
   }
 
   // Matrix sanity check — both legal sources include PARK_TARGET among their
-  // backward targets (state-machine.mjs BACKWARD map, #848).
+  // backward targets (canonical lifecycle policy, #848).
   if (!backwardTargets(recorded).includes(PARK_TARGET)) {
     return {
       status: 'error',

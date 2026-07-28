@@ -49,8 +49,7 @@ function rowEventSlug(line) {
 // (`resume`/`resumed`/`resume:*`, `switch-in`/`switch-in:*`, `start`).
 // `stop` is also an opener: unlike a phase/checkpoint row, it is explicit
 // evidence that the active session ended and a later bind needs `resumed`.
-// Exported (#683) so `lib/timing-event-map.mjs` reuses the one canonical
-// opener/closer taxonomy instead of re-deriving it.
+// Exported (#683) as the write-side interruption taxonomy.
 export function classifyEvent(slug) {
   if (!slug) return null;
   const normalized = String(slug).trim().toLowerCase();
@@ -124,8 +123,7 @@ function hasStartRow(body) {
 
 // #981 — minimal timestamp→ms parser, deliberately duplicated from
 // `lib/timing-rows.mjs`'s `tsToMs` rather than imported: `timing-rows.mjs`
-// imports `timing-event-map.mjs`, which imports `classifyEvent` FROM this
-// module — importing timing-rows.mjs back here would close a circular loop.
+// importing timing-rows.mjs back here would close an operational timing loop.
 // Table format ("2026-05-17 18:58:01 -05:00") and ISO are both accepted.
 function tsToMsLocal(ts) {
   if (typeof ts !== 'string') return NaN;

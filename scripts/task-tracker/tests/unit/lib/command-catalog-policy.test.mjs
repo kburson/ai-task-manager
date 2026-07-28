@@ -3,7 +3,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { COMMAND_MANIFEST } from '../../../command-manifest.mjs';
 import {
   COMMAND_CATALOG,
   VERB_CONTRACTS,
@@ -12,6 +11,7 @@ import {
   buildCommandCatalog,
   commandByName,
 } from '../../../lib/command-surface/catalog.mjs';
+import { ROUTE_IDENTITIES } from '../../../lib/command-surface/routing.mjs';
 import { VERB_REFERENCE } from '../../../verbs/help-data.mjs';
 import {
   REQUIRED_HELP_FIELDS,
@@ -322,16 +322,16 @@ test('every task verb has explicit parser-accurate semantics and exit metadata',
 });
 
 test('every routed verb is represented in the aggregate agent catalog', () => {
-  for (const entry of COMMAND_MANIFEST) {
+  for (const entry of ROUTE_IDENTITIES) {
     const record = commandByName(entry.verb);
     assert.ok(record, entry.verb);
     assert.equal(record.agentCallable, true, entry.verb);
-    for (const alias of entry.aliases) assert.equal(commandByName(alias), record, alias);
+    for (const alias of record.aliases) assert.equal(commandByName(alias), record, alias);
   }
 });
 
 test('every agent-callable task record has a real router identity', () => {
-  const routed = new Set(COMMAND_MANIFEST.map((entry) => entry.verb));
+  const routed = new Set(ROUTE_IDENTITIES.map((entry) => entry.verb));
   const routerSpecialForms = new Set(['#N', 'help']);
   for (const record of COMMAND_CATALOG.filter(
     (entry) => entry.classification === 'agent-callable-verb'

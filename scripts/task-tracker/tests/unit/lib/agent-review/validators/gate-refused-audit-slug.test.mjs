@@ -9,8 +9,8 @@
 // rejected the row as `malformed — unknown event slug`, and any issue whose ⏱
 // Timing Log carried a gate refusal permanently failed the Agent Review Gate.
 //
-// The fix adds `'gate-refused'` to `AUDIT_PHASE_SLUGS` in `lib/timing-event-map.mjs`
-// (the single source of truth). Because `gate-refused` is not a kanban ladder
+// The fix adds `'gate-refused'` to the canonical timing-event catalog.
+// Because `gate-refused` is not a kanban ladder
 // rung, `stageOf('gate-refused')` still returns null and the entered-marker
 // reconciliation walk is unaffected.
 
@@ -20,7 +20,7 @@ import {
   validate,
   stageOf,
 } from '../../../../../lib/agent-review/validators/timing-log-sequence.mjs';
-import { isCanonicalPhaseSlug } from '../../../../../lib/timing-event-map.mjs';
+import { isCanonicalPhaseEvent as isCanonicalPhaseSlug } from '../../../../../lib/timing-events/index.mjs';
 
 const HEADER = '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |';
 const SEP = '|---|---|---|---|---|---|---|';

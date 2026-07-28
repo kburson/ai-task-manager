@@ -8,15 +8,17 @@ import assert from 'node:assert/strict';
 
 import {
   EVENT_CLASS,
-  PHASE_EVENT_SLUGS,
-  classifyTimingEvent,
+  lifecycleTimingEventSlugs,
+  classifyTimingEventForAccounting as classifyTimingEvent,
   isDepartureEvent,
   isReengagementEvent,
-  isPhaseEvent,
-  isCanonicalPhaseSlug,
+  isPhaseEventForAccounting as isPhaseEvent,
+  isCanonicalPhaseEvent as isCanonicalPhaseSlug,
   opensIdleSpan,
-} from './timing-event-map.mjs';
+} from './timing-events/index.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
+
+const PHASE_EVENT_SLUGS = lifecycleTimingEventSlugs();
 
 test('departure openers classify as departure', () => {
   // EPIC #823 timing model v2 (C1): `idle` is no longer a departure opener — it

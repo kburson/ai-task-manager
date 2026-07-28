@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// @story #309
+// @story #309 #1025
 // State-object skeleton tests (#292, parent epic #259).
 //
 // Asserts each `scripts/task-tracker/states/<state>.mjs` module exports the
 // `{ name, entryGuards, exitGuards, onEnter }` container shape, that `STATES`
-// contains exactly the eight kanban state names, and that `FORWARD_CHAIN` /
-// `BACKWARD_CHAIN` cover the documented edges. Shape-only — no behavior
-// assertions; the parity test covers guard behavior.
+// contains exactly the eight kanban state names, and that `FORWARD_CHAIN`
+// covers the documented edges. Shape-only — no behavior assertions; the
+// parity test covers guard behavior.
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { STATES, FORWARD_CHAIN, BACKWARD_CHAIN, getState } from '../../../states/index.mjs';
+import { STATES, FORWARD_CHAIN, getState } from '../../../states/index.mjs';
 
 const EXPECTED_NAMES = [
   'backlog',
@@ -93,16 +93,5 @@ describe('states-skeleton: FORWARD_CHAIN', () => {
       review: 'done',
     };
     assert.deepEqual({ ...FORWARD_CHAIN }, expected);
-  });
-});
-
-describe('states-skeleton: BACKWARD_CHAIN', () => {
-  it('documents the four backward edges from #292 deep dive', () => {
-    // Canonical (index-0): test→develop, review→develop, done→plan.
-    // Additional documented edges (review→test, review→plan) are
-    // architecturally supported but not yet runtime-walkable.
-    assert.deepEqual(BACKWARD_CHAIN.test, ['develop']);
-    assert.deepEqual([...BACKWARD_CHAIN.review], ['develop', 'test', 'plan']);
-    assert.deepEqual([...BACKWARD_CHAIN.done], ['plan']);
   });
 });

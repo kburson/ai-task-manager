@@ -16,7 +16,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { STATES, FORWARD, validateTransition } from '../../../state-machine.mjs';
+import {
+  forwardTarget,
+  stateIds,
+  validateTransition,
+} from '../../../lib/lifecycle-policy/index.mjs';
 import { STATUS_CONFIG_KEYS } from '../../../../gh/lib/project-tether.mjs';
 import { DEFAULTS } from '../../../config.mjs';
 
@@ -24,7 +28,7 @@ import { DEFAULTS } from '../../../config.mjs';
 // option ID, mirroring a board that init-script provisioned correctly.
 function populatedConfig() {
   const cfg = { ...DEFAULTS };
-  for (const slug of STATES) {
+  for (const slug of stateIds()) {
     const key = STATUS_CONFIG_KEYS[slug];
     cfg[key] = `OPT_${slug.toUpperCase().replace(/-/g, '_')}`;
   }
@@ -48,8 +52,8 @@ test('AC1: every canonical FORWARD hop is legal and resolves a non-empty option 
   // Entry state itself must resolve.
   assert.ok(resolveOptionId(cfg, from), `entry state ${from} must resolve a non-empty option ID`);
 
-  while (FORWARD[from]) {
-    const to = FORWARD[from];
+  while (forwardTarget(from)) {
+    const to = forwardTarget(from);
     const v = validateTransition(from, to);
     assert.ok(v.ok, `transition ${from} → ${to} must be legal: ${v.reason ?? ''}`);
 

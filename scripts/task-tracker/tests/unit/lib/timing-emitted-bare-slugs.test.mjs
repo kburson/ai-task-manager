@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 
 import {
   EVENT_CLASS,
-  classifyTimingEvent,
-  isCanonicalPhaseSlug,
-} from '../../../lib/timing-event-map.mjs';
+  classifyTimingEventForAccounting as classifyTimingEvent,
+  isCanonicalPhaseEvent as isCanonicalPhaseSlug,
+} from '../../../lib/timing-events/index.mjs';
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 
 const EMITTED_BARE_SLUGS = Object.freeze([

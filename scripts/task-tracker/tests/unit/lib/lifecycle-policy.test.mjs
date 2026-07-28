@@ -11,9 +11,9 @@ import {
   forwardTarget,
   backwardTargets,
   validateExecutableTransition,
+  validateTransition,
 } from '../../../lib/lifecycle-policy/index.mjs';
 import { EXECUTABLE_MATRIX } from '../../fixtures/state-engine-policy-baseline.mjs';
-import { validateTransition } from '../../../state-machine.mjs';
 
 const EXPECTED_STATES = [
   'backlog',
@@ -127,8 +127,12 @@ test('canonical executable validation and the compatibility facade preserve the 
       `canonical ${key}`
     );
 
-    const legacy = validateTransition(from, to);
-    assert.deepEqual({ allowed: legacy.ok, noop: legacy.noop === true }, expected, `facade ${key}`);
+    const operational = validateTransition(from, to);
+    assert.deepEqual(
+      { allowed: operational.ok, noop: operational.noop === true },
+      expected,
+      `operational ${key}`
+    );
   }
 });
 
@@ -158,11 +162,7 @@ test('lifecycle policy has a one-way, side-effect-free import boundary', async (
   }
 });
 
-test('compatibility modules derive topology and config metadata from lifecycle policy', async () => {
-  const stateMachineSource = await readFile(
-    fileURLToPath(new URL('../../../state-machine.mjs', import.meta.url)),
-    'utf8'
-  );
+test('operational registries derive topology and config metadata from lifecycle policy', async () => {
   const movePolicySource = await readFile(
     fileURLToPath(new URL('../../../lib/move-state/policy.mjs', import.meta.url)),
     'utf8'
@@ -172,7 +172,6 @@ test('compatibility modules derive topology and config metadata from lifecycle p
     'utf8'
   );
 
-  assert.match(stateMachineSource, /lib\/lifecycle-policy\/index\.mjs/);
   assert.match(movePolicySource, /lifecycle-policy\/index\.mjs/);
   assert.match(stateObjectsSource, /lifecycle-policy\/index\.mjs/);
 });

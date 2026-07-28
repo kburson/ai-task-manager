@@ -9,7 +9,7 @@ import {
   TIMING_HISTORY_MATRIX,
   ACTION_BASELINE,
 } from '../../fixtures/state-engine-policy-baseline.mjs';
-import { STATES as PRODUCTION_STATES, validateTransition } from '../../../state-machine.mjs';
+import { stateIds, validateTransition } from '../../../lib/lifecycle-policy/index.mjs';
 import { LEGAL_TRANSITIONS } from '../../../lib/stage-entry-markers.mjs';
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 import { VERB_HOME_STATE, assertVerbHomeState } from '../../../lib/verb-home-state-guard.mjs';
@@ -20,6 +20,7 @@ import { LEGAL_FROM as DEMOTE_FROM, DEMOTE_TARGET } from '../../../verbs/demote.
 import { LEGAL_FROM as PARK_FROM, PARK_TARGET } from '../../../verbs/park.mjs';
 
 const TEST_CFG = { repo: 'owner/repo', projectId: 'PVT_TEST' };
+const PRODUCTION_STATES = stateIds();
 
 function orderedPairKeys() {
   return STATE_IDS.flatMap((from) => STATE_IDS.map((to) => `${from}->${to}`));
