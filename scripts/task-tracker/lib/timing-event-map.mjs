@@ -78,7 +78,25 @@ export const PHASE_EVENT_SLUGS = Object.freeze(
 // word-count deltas without a stage transition. Same shape as `gate-refused`:
 // real, intentional, non-ladder audit vocabulary that predated its read-side
 // recognition, so it was flagged `malformed — unknown event slug "update"`.
-const AUDIT_PHASE_SLUGS = Object.freeze(['demoted', 'out-of-band-move', 'gate-refused', 'update']);
+const AUDIT_PHASE_SLUGS = Object.freeze([
+  'demoted',
+  'out-of-band-move',
+  'gate-refused',
+  'update',
+  // #1020 — existing production writers emit these bare audit/checkpoint rows
+  // into the Timing Log. They have always classified as neutral PHASE events;
+  // listing them here closes the stricter validator's vocabulary without
+  // changing active/idle semantics or rewriting historical rows.
+  'pre-compact-flush',
+  'post-compact-resume',
+  'session-end-recovery',
+  'session-start',
+  'lifecycle-warn',
+  'chore-mode-enter',
+  'closed-with-dirty-tree',
+  'switch-end',
+  'stop',
+]);
 
 // Retired vocabulary — slugs that legacy (pre-v2) logs may still carry but that
 // timing model v2 (EPIC #823) no longer treats as interruption events. A legacy

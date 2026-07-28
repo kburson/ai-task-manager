@@ -226,13 +226,9 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/hook-handler.mjs', 254, 'event-spec', "'resumed'", [
       'resumed',
     ]),
-    timingEmitter(
-      'scripts/task-tracker/hook-handler.mjs',
-      417,
-      'event-call',
-      "'session-start'",
-      ['session-start']
-    ),
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 417, 'event-call', "'session-start'", [
+      'session-start',
+    ]),
     timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 183, 'event-call', "'paused'", [
       'paused',
     ]),
@@ -399,6 +395,8 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'start',
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/update.mjs', 21, 'flush-call', "'update'", ['update']),
+    timingEmitter('scripts/task-tracker/verbs/update.mjs', 21, 'flush-call', "'update'", [
+      'update',
+    ]),
   ]),
 });

@@ -34,8 +34,7 @@ function strictReaderAccepts(event) {
         ? ['start', 'paused', event]
         : [event];
   const rows = events.map(
-    (slug, index) =>
-      `| 2026-07-27T00:00:0${index}.000Z | ${slug} | 0 | 0 | 0 | 0 | characterized |`
+    (slug, index) => `| 2026-07-27T00:00:0${index}.000Z | ${slug} | 0 | 0 | 0 | 0 | characterized |`
   );
   const stage = event.match(
     /^(backlog|on-deck|refine|plan|develop|test|review|done):(?!failed)/
@@ -195,7 +194,7 @@ test('vocabulary definitions are separate from emitters and source-verified', ()
   }
 });
 
-test('production timing emitter discovery is bijective with the characterized call sites', () => {
+test('production timing emitter discovery exactly matches the characterized call sites', () => {
   const actual = discoverTimingEmitters();
   const expected = TIMING_EVENT_BASELINE.emitters
     .map(({ file, line, kind, expression }) => ({ file, line, kind, expression }))
