@@ -214,8 +214,12 @@ export function shouldSuppressActiveBindEvent({
   if (readStatus === 'error' || paused) return false;
   if (!timingCommentHasRows(timingBody)) return false;
   if (lastOpenInterruption(timingBody)) return false;
-  if (nowTs && detectUnmarkedDepartureGap(timingBody, nowTs)) return false;
-  return true;
+  const last = lastDataRow(timingBody);
+  const lastMs = tsToMsLocal(last?.ts);
+  const nowMs = tsToMsLocal(nowTs);
+  if (!Number.isFinite(lastMs) || !Number.isFinite(nowMs)) return false;
+  const ageSec = (nowMs - lastMs) / 1000;
+  return ageSec >= 0 && ageSec <= SUSPICIOUS_GAP_SEC;
 }
 
 // #534 — orphan-pairing guard. A re-engagement event (`resume*` / `switch-in*`)

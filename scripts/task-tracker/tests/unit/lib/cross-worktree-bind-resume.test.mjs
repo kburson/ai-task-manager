@@ -3,7 +3,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
@@ -70,6 +70,30 @@ test('fresh, unreadable, paused, and long-gap tails retain their existing bind b
   );
 });
 
+test('malformed and future-dated tails are not treated as confirmed recent', () => {
+  const malformedBody = body(row('2026-99-99 99:99:99 +00:00', 'plan:started'));
+  assert.equal(
+    shouldSuppressActiveBindEvent({
+      timingBody: malformedBody,
+      readStatus: 'found',
+      nowTs: '2026-07-28 01:05:00 -05:00',
+    }),
+    false,
+    'an unparseable tail retains the existing fail-closed bind event'
+  );
+
+  const futureBody = body(row('2026-07-28 01:10:00 -05:00', 'plan:started'));
+  assert.equal(
+    shouldSuppressActiveBindEvent({
+      timingBody: futureBody,
+      readStatus: 'found',
+      nowTs: '2026-07-28 01:05:00 -05:00',
+    }),
+    false,
+    'a negative tail age cannot prove the live span is current'
+  );
+});
+
 test('pause, switch-out, and stop are recorded departures that still need resumed', () => {
   for (const event of ['pause:question', 'switch-out:#1007', 'stop']) {
     const timingBody = body(
@@ -96,8 +120,6 @@ process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
 const { verbResume } = await import('../../../verbs/resume.mjs');
-const { loadState } = await import('../../../state.mjs');
-
 test('fresh worktree binds locally but posts no row over an already-active live span', async () => {
   process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
   const statePath = path.join(tmp, 'state.json');
@@ -123,7 +145,8 @@ test('fresh worktree binds locally but posts no row over an already-active live 
     seedKanban: async () => ({ kanbanState: 'develop' }),
   });
 
-  assert.equal(loadState(statePath).active, '#1018', 'the new local session is bound');
+  const persisted = JSON.parse(readFileSync(statePath, 'utf8'));
+  assert.equal(persisted.active, '#1018', 'the new local session is bound');
   assert.equal(posts.length, 0, 'no duplicate active→active reengagement row is posted');
 });
 
