@@ -24,12 +24,12 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { normalizeStateSlug } from '../state-machine.mjs';
 import {
+  actionPolicyFor,
   backwardTargets,
-  STATES,
-  validateTransition,
-  normalizeStateSlug,
-} from '../state-machine.mjs';
+  validateExecutableTransition,
+} from '../lib/lifecycle-policy/index.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
@@ -43,8 +43,9 @@ const pexec = promisify(execFile);
 // Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
 // assert `refusalVerbHint`'s named verb actually declares the hinted target
 // legal, without shelling out.
-export const DEMOTE_TARGET = 'develop';
-export const LEGAL_FROM = new Set(['test', 'review']);
+const DEMOTE_POLICY = actionPolicyFor('demote');
+export const DEMOTE_TARGET = DEMOTE_POLICY.target;
+export const LEGAL_FROM = new Set(DEMOTE_POLICY.allowedStates);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -180,13 +181,14 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
     };
   }
 
-  if (!STATES.includes(recorded)) {
+  const demotePolicy = actionPolicyFor('demote', recorded);
+  if (demotePolicy.kind === 'unknown-state') {
     return {
       status: 'error',
       message: `demote: unknown recorded state "${recorded}" for #${issueNumber}`,
     };
   }
-  if (!LEGAL_FROM.has(recorded)) {
+  if (!demotePolicy.ok) {
     return {
       status: 'invalid-source-refused',
       from: recorded,
@@ -203,7 +205,7 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
       message: `demote: matrix says ${recorded}→${backwardTargets(recorded).join('|')}; expected ${DEMOTE_TARGET}`,
     };
   }
-  const mx = validateTransition(recorded, DEMOTE_TARGET);
+  const mx = validateExecutableTransition(recorded, DEMOTE_TARGET);
   if (!mx.ok) {
     return { status: 'error', message: `demote: ${mx.reason}` };
   }

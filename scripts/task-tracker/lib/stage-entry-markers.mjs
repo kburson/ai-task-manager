@@ -9,10 +9,11 @@ import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../iss
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 import { PROGRESS_MARKERS_HEADING } from './markers.mjs';
+import { stateIds, isEntryHistoryEdge } from './lifecycle-policy/index.mjs';
 
 const pexec = promisify(execFile);
 
-export const STAGES = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+export const STAGES = [...stateIds()];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 const KNOWN_STAGES = new Set(STAGES);
 
@@ -22,28 +23,17 @@ const KNOWN_STAGES = new Set(STAGES);
 // a hard forward-move prerequisite for the in-flight corpus.
 export const OPTIONAL_CONTIGUITY_STAGES = new Set(['on-deck']);
 
-// Legal transitions in the 8-state machine. Forward arcs follow the linear
-// chain (backlog → on-deck → refine → …); rollback arcs cover legitimate
-// rewinds (review/test → develop on rework, develop → plan/refine on re-plan,
-// plan → refine/backlog on cancel, refine → backlog on demote, on-deck →
-// backlog on tranche-drop, review → test on drift-reverify per #996/#999).
+// Legal entry-history transitions. This compatibility Set is derived from the
+// named lifecycle-policy projection so recovery-only arcs never become runtime
+// movement authority.
 // Used by verifyChainIntegrity to validate the timestamp-ordered sequence of
 // visit-numbered entry markers.
 function buildLegalTransitions() {
   const set = new Set();
-  for (let i = 0; i < STAGES.length - 1; i++) set.add(`${STAGES[i]}->${STAGES[i + 1]}`);
-  for (const arc of [
-    'review->develop',
-    'review->test',
-    'test->develop',
-    'develop->plan',
-    'develop->refine',
-    'plan->refine',
-    'plan->backlog',
-    'refine->backlog',
-    'on-deck->backlog',
-  ]) {
-    set.add(arc);
+  for (const from of STAGES) {
+    for (const to of STAGES) {
+      if (isEntryHistoryEdge(from, to)) set.add(`${from}->${to}`);
+    }
   }
   return set;
 }

@@ -27,12 +27,12 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { normalizeStateSlug } from '../state-machine.mjs';
 import {
+  actionPolicyFor,
   backwardTargets,
-  STATES,
-  validateTransition,
-  normalizeStateSlug,
-} from '../state-machine.mjs';
+  validateExecutableTransition,
+} from '../lib/lifecycle-policy/index.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
@@ -45,8 +45,9 @@ const pexec = promisify(execFile);
 // Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
 // assert `refusalVerbHint`'s named verb actually declares the hinted target
 // legal, without shelling out.
-export const PARK_TARGET = 'backlog';
-export const LEGAL_FROM = new Set(['refine', 'plan']);
+const PARK_POLICY = actionPolicyFor('park');
+export const PARK_TARGET = PARK_POLICY.target;
+export const LEGAL_FROM = new Set(PARK_POLICY.allowedStates);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -171,13 +172,14 @@ export async function runPark({ issueNumber, cfg, reason, deps = {} } = {}) {
     };
   }
 
-  if (!STATES.includes(recorded)) {
+  const parkPolicy = actionPolicyFor('park', recorded);
+  if (parkPolicy.kind === 'unknown-state') {
     return {
       status: 'error',
       message: `park: unknown recorded state "${recorded}" for #${issueNumber}`,
     };
   }
-  if (!LEGAL_FROM.has(recorded)) {
+  if (!parkPolicy.ok) {
     return {
       status: 'invalid-source-refused',
       from: recorded,
@@ -193,7 +195,7 @@ export async function runPark({ issueNumber, cfg, reason, deps = {} } = {}) {
       message: `park: matrix says ${recorded}→${backwardTargets(recorded).join('|')}; expected ${PARK_TARGET}`,
     };
   }
-  const mx = validateTransition(recorded, PARK_TARGET);
+  const mx = validateExecutableTransition(recorded, PARK_TARGET);
   if (!mx.ok) {
     return { status: 'error', message: `park: ${mx.reason}` };
   }

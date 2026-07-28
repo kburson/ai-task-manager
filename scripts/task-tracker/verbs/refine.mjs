@@ -34,11 +34,13 @@ import {
   STUB_AC_PLACEHOLDER,
   STUB_PLAN_META_PLACEHOLDER,
 } from '../lib/refine-exit-stub-placeholder-guard.mjs';
+import { actionPolicyFor } from '../lib/lifecycle-policy/index.mjs';
 
 const pexec = promisify(execFile);
 
 const SIZE_ENUM = ['XS', 'S', 'M', 'L', 'XL'];
 const PRIORITY_ENUM = ['p0', 'p1', 'p2'];
+const PRE_REFINE_STATES = new Set(actionPolicyFor('refine').entryStates);
 
 export function parseArgs(argv = []) {
   const args = argv.slice();
@@ -243,7 +245,6 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   //     either Backlog (2 hops: backlog → on-deck → refine) or On Deck (1 hop).
   const body = await fetchBody({ issueNumber, repo: cfg.repo });
   const { state: recordedState } = readLastKnownState(body);
-  const PRE_REFINE_STATES = new Set(['backlog', 'on-deck']);
   const isPreRefineEntry = recordedState == null || PRE_REFINE_STATES.has(recordedState);
 
   // 2. Set Priority + Size + Estimate (+ Sequence when supplied) atomically on

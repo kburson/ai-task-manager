@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { FORWARD, STATES, normalizeStateSlug } from '../state-machine.mjs';
+import { normalizeStateSlug } from '../state-machine.mjs';
+import { actionPolicyFor } from '../lib/lifecycle-policy/index.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
@@ -128,11 +129,12 @@ function refusalsToVerbResult(refusals, { issueNumber, target }) {
 // Agent Review Gate, so the driving agent went straight on to solicit the human's
 // `approve` on an agent-unreviewed story (observed on #878). Delegating to
 // `review` means the Review state's action always runs on arrival.
-export const ALIAS_VERB = {
-  develop: 'test',
-  test: 'review',
-  review: 'close',
-};
+export const ALIAS_VERB = Object.fromEntries(
+  actionPolicyFor('promote').allowedStates.flatMap((state) => {
+    const delegate = actionPolicyFor('promote', state).delegate;
+    return delegate ? [[state, delegate]] : [];
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Default I/O — extracted so tests inject stubs.
@@ -291,19 +293,20 @@ export async function runPromote({
     };
   }
 
-  if (recorded === 'done') {
+  const promotePolicy = actionPolicyFor('promote', recorded);
+  if (promotePolicy.kind === 'refused' && recorded === 'done') {
     return {
       status: 'terminal-refused',
       message: `already in done (#${issueNumber}); promote is forward-only.`,
     };
   }
-  if (!STATES.includes(recorded)) {
+  if (promotePolicy.kind === 'unknown-state') {
     return {
       status: 'error',
       message: `promote: unknown recorded state "${recorded}" for #${issueNumber}`,
     };
   }
-  const target = FORWARD[recorded];
+  const target = promotePolicy.target;
   if (!target) {
     return { status: 'error', message: `promote: no forward transition from "${recorded}"` };
   }
@@ -399,7 +402,7 @@ export async function runPromote({
   // states). The runGuards call above already evaluated it; refusals are
   // surfaced as `parent-admission-refused` via REFUSAL_ID_TO_STATUS.
 
-  const aliasVerb = ALIAS_VERB[recorded] || null;
+  const aliasVerb = promotePolicy.delegate || null;
   const transitionResult = aliasVerb
     ? {
         kind: 'alias',

@@ -42,11 +42,14 @@
 //     live board query), not its own state `plan`.
 // There is no `develop` verb file — `develop` is a state worked in via direct
 // source edits, gated by `source-edit-gate.mjs`, not a CLI verb.
-export const VERB_HOME_STATE = {
-  test: ['develop', 'test', 'review'],
-  review: ['test', 'review'],
-  close: 'review',
-};
+import { actionPolicyFor } from './lifecycle-policy/index.mjs';
+
+export const VERB_HOME_STATE = Object.fromEntries(
+  ['test', 'review', 'close'].map((verb) => {
+    const allowed = [...actionPolicyFor(verb).allowedStates];
+    return [verb, allowed.length === 1 ? allowed[0] : allowed];
+  })
+);
 
 export class VerbHomeStateError extends Error {
   constructor({ verb, currentState, homeState, issueNumber }) {
@@ -70,11 +73,11 @@ export class VerbHomeStateError extends Error {
 // `null` (no recorded marker yet — first-touch/bootstrap), is also a no-op:
 // this guard only refuses a *known* wrong state, it does not invent one.
 export function assertVerbHomeState({ verb, currentState, issueNumber }) {
+  const result = actionPolicyFor(verb, currentState);
+  if (result.kind === 'unknown-action' || result.kind === 'bootstrap' || result.ok) return;
   const homeState = VERB_HOME_STATE[verb];
-  if (!homeState) return;
-  if (currentState == null) return;
   const allowed = Array.isArray(homeState) ? homeState : [homeState];
-  if (!allowed.includes(currentState)) {
+  if (result.kind === 'refused' || result.kind === 'unknown-state') {
     throw new VerbHomeStateError({ verb, currentState, homeState: allowed, issueNumber });
   }
 }

@@ -23,8 +23,8 @@
 // The event vocabulary and open/close taxonomy are NOT re-derived here: bare
 // openers/closers come from `bind-event.mjs::classifyEvent`, the departure /
 // reengagement predicates and the canonical phase-slug set come from
-// `timing-event-map.mjs`, the ordered stage ladder comes from
-// `stage-entry-markers.mjs`, and timestamp parsing reuses `timing-rows.mjs`.
+// `timing-event-map.mjs`, the ordered stage ladder and legal stage walk come
+// from lifecycle policy, and timestamp parsing reuses `timing-rows.mjs`.
 
 import { registry } from '../registry.mjs';
 import { classifyEvent, SUSPICIOUS_GAP_SEC } from '../../bind-event.mjs';
@@ -35,7 +35,7 @@ import {
 } from '../../timing-event-map.mjs';
 import { parseMarker } from '../../marker-grammar.mjs';
 import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
-import { STAGES } from '../../stage-entry-markers.mjs';
+import { stateIds, isTimingHistoryEdge } from '../../lifecycle-policy/index.mjs';
 
 const TIMING_LOG_RE = /⏱\s*Timing Log/;
 // The timing table's header row: `| Timestamp | Event | ... |`.
@@ -43,10 +43,11 @@ const HEADER_RE = /^\|\s*Timestamp\s*\|\s*Event\b/i;
 // A markdown table separator row: `|---|---|...|` (dashes, colons, pipes only).
 const SEPARATOR_RE = /^\|[\s|:-]+\|?$/;
 // Lifecycle stages reconciled against `aitm-entered-<stage>` markers, and the
-// ordered kanban ladder the stage-transition walk indexes into. Sourced from the
-// single canonical ladder in stage-entry-markers.mjs so the two never drift.
+// ordered kanban ladder the stage-transition walk indexes into. Sourced from
+// lifecycle policy so history validation cannot drift from canonical identity.
 // Non-stage qualified slugs (`issue:wrap`, `switch-out:#N`, `pause:reason`) are
 // ignored by both passes.
+const STAGES = stateIds();
 const LIFECYCLE_STAGES = new Set(STAGES);
 const LADDER_INDEX = new Map(STAGES.map((s, i) => [s, i]));
 
@@ -59,13 +60,6 @@ const LADDER_INDEX = new Map(STAGES.map((s, i) => [s, i]));
 // explicit guard.
 const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
 
-// The only legal reverse edges in the kanban stage walk. Every other backward
-// jump is a corruption. `test→develop` (rework after a failed sandbox),
-// `review→test` and `review→develop` (rework after a failed review — the latter
-// via `review:failed` + `demoted:develop`), and `done→test` (a reopened issue
-// re-verifying) are the sanctioned rewinds. Forward motion must advance exactly
-// one ladder rung; a multi-rung forward jump is a skipped stage.
-const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>develop', 'done>test']);
 const SENTINEL_REVERT_DETAIL_RE =
   /^revert-to-sentinel: board "([^"]+)", recorded "[^"]+" → sentinel "([^"]+)"$/;
 // #981 — SUSPICIOUS_GAP_SEC now lives in bind-event.mjs (the leaf module) so
@@ -312,11 +306,8 @@ export function validate(context = {}) {
       } else if (stage !== currentStage) {
         const from = LADDER_INDEX.get(currentStage);
         const to = LADDER_INDEX.get(stage);
-        const edge = `${currentStage}>${stage}`;
-        if (to === from + 1) {
-          // legal single-rung advance
-        } else if (LEGAL_REVERSE_EDGES.has(edge)) {
-          // legal sanctioned rework rewind
+        if (isTimingHistoryEdge(currentStage, stage)) {
+          // legal named history edge
         } else if (to > from) {
           failures.push(
             `${loc(row)}: illegal stage transition — forward skip ${currentStage}→${stage} ` +
