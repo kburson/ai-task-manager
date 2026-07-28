@@ -16,10 +16,10 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 // #547 — single-token help-probe guard. `/task new <token>` where <token> is
 // the SOLE positional title and one of these (case-insensitive) is a request
-// for the verb's usage, not a title. The global `hasHelpFlag` (#394) already
-// intercepts `?`, `--help`, `-h` in any argv position, but the bare word
-// `help` and `--?` fall through to `verbNew`'s legacy title path and create a
-// junk issue (clobbering the active bind). This guard closes that gap.
+// for the verb's usage, not a title. The global `hasHelpFlag` (#394/#1023)
+// intercepts `?`, `--help`, and `-h` only in the command-help position, while
+// the bare word `help` and legacy `--?` still reach this verb-local guard.
+// It never reinterprets later option values as a help request.
 const HELP_TOKENS = new Set(['help', '?', '--help', '--?', '-h']);
 
 // True only when `rest` is exactly one token and that token is a help token.

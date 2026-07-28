@@ -133,14 +133,26 @@ function checkInit(ctx) {
   }
 }
 
-// #394 — global help-flag detection. Returns true when any argv element is
-// exactly `--help`, `-h`, or `?`. Exact match only: an embedded `?` in a title
-// (`new "what now?"`) or a `--help-me` substring must NOT trip it. Used by the
-// `_isMain` dispatch to print help and exit before `buildContext()` runs any
-// config/network side-effect or a verb swallows the flag as positional data
-// (which once created a junk issue titled "--help" via `task new --help`).
+// #394/#1023 — recognize only canonical top-level or verb-level help positions.
+// A help-shaped option value (for example `refine ... --reason help`) must reach
+// the verb parser instead of short-circuiting the command.
+const TASK_HELP_TOKENS = new Set(['help', '--help', '-h', '?']);
+
 export function hasHelpFlag(argv) {
-  return (argv || []).some((a) => a === '--help' || a === '-h' || a === '?');
+  const args = argv || [];
+  if (args.length === 1) return TASK_HELP_TOKENS.has(args[0]);
+  if (args.length !== 2) return false;
+  return args[0] === 'help' || TASK_HELP_TOKENS.has(args[1]);
+}
+
+export function earlyHelpTarget(argv) {
+  const args = argv || [];
+  if (!hasHelpFlag(args)) return null;
+  if (args[0] === 'help') {
+    return { matched: true, target: TASK_HELP_TOKENS.has(args[1]) ? undefined : args[1] };
+  }
+  if (args.length === 2) return { matched: true, target: args[0] };
+  return { matched: true, target: undefined };
 }
 
 // Re-export for tests that import these from task-tracker.mjs.
@@ -170,18 +182,14 @@ const _isMain = (() => {
 
 if (_isMain)
   (async () => {
-    // #394 — intercept a help flag in ANY argv position before buildContext()
-    // touches config/network or a verb consumes it as positional data. Help is
-    // INIT_EXEMPT and must work in an unconfigured directory; this early exit
-    // mutates no state (no issue create, board write, or bind switch).
-    if (hasHelpFlag(process.argv.slice(2))) {
+    // #394/#1023 — intercept only canonical command-help positions before
+    // buildContext() touches config/network. Help is INIT_EXEMPT and must work
+    // in an unconfigured directory; this early exit mutates no state (no issue
+    // create, board write, or bind switch).
+    const helpRequest = earlyHelpTarget(process.argv.slice(2));
+    if (helpRequest) {
       const { verbHelp } = await import('./verbs/help.mjs');
-      // Forward the first non-flag token so `/task refine --help` prints
-      // refine's page (not the generic listing). Skips help flags themselves.
-      const helpTarget = process.argv
-        .slice(2)
-        .find((a) => a !== '--help' && a !== '-h' && a !== '?' && !a.startsWith('-'));
-      verbHelp(helpTarget);
+      verbHelp(helpRequest.target);
       process.exit(0);
     }
     const ctx = buildContext();
@@ -390,7 +398,7 @@ if (_isMain)
         }
         case 'pull-next': {
           const { verbPullNext } = await import('./verbs/pull-next.mjs');
-          await verbPullNext(ctx.rest, ctx.cfg);
+          process.exitCode = await verbPullNext(ctx.rest, ctx.cfg);
           break;
         }
         case 'demote': {

@@ -1,4 +1,5 @@
-// Drift guard for the `/task help` surface (#667).
+// @story #667 #1011 #1023
+// Drift guard for the `/task help` surface.
 //
 // The single source of truth for "what verbs exist" is the `switch (ctx.verb)`
 // block in task-tracker.mjs — its `case '<verb>':` labels. This test parses
@@ -31,10 +32,9 @@ function aitm(args) {
 }
 
 // Labels that are dispatched but intentionally NOT documented as standalone
-// reference pages (pure error-stubs). Every current label has an entry, so this
-// is empty — it exists so a deliberately-undocumented future stub can be
-// allow-listed explicitly rather than by silently loosening the assertion.
-const ALIAS_OR_STUB = new Set([]);
+// reference pages. `move` is an explicit error stub that directs callers to
+// promote/demote; advertising a full page would invent a callable route.
+const ALIAS_OR_STUB = new Set(['move']);
 
 function liveVerbsFromRouter() {
   const src = readFileSync(ROUTER, 'utf8');
@@ -62,6 +62,11 @@ test('(a) every dispatched verb has a VERB_REFERENCE entry', () => {
   // an alias (e.g. `next` → `promote`, `?` → `help`).
   const missing = live.filter((v) => !ALIAS_OR_STUB.has(v) && resolveVerb(v) === null);
   assert.deepEqual(missing, [], `verbs dispatched but undocumented: ${missing.join(', ')}`);
+});
+
+test('standalone commands never resolve as /task verbs', () => {
+  assert.equal(resolveVerb('create-issue'), null);
+  assert.equal(resolveVerb('value-report'), null);
 });
 
 test('(b) every entry has a non-empty usage and >=1 example', () => {

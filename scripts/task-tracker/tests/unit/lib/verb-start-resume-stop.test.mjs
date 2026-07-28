@@ -66,6 +66,8 @@ function captureLog(fn) {
 // ─── start: no arg → error, no state change ───────────────────────────────────
 {
   resetSession();
+  const priorExitCode = process.exitCode;
+  process.exitCode = 0;
   const statePath = writeState({ active: null, lastActive: null });
   const { ctx } = makeCtx({ rest: [], statePath });
   const lines = await captureLog(() => verbStart(ctx));
@@ -74,6 +76,8 @@ function captureLog(fn) {
     'start no-arg logs error'
   );
   assert.equal(loadState(statePath).active, null, 'state unchanged on start no-arg');
+  assert.equal(process.exitCode, 1, 'start no-arg exits non-zero');
+  process.exitCode = priorExitCode;
 }
 
 // ─── start #N → bind ─────────────────────────────────────────────────────────

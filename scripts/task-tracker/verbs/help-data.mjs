@@ -97,26 +97,26 @@ export const VERB_REFERENCE = {
     usage: '/task words-count',
     examples: ['/task words-count'],
   },
-  switch: {
-    topic: 'lifecycle',
-    summary: 'Internal: switch the active task to a bare `#N` verb (dispatched from `/task #N`).',
-    usage: '/task #N',
-    examples: ['/task #667'],
-  },
 
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {
     topic: 'board',
     summary: 'Advance one forward state (Backlog→Refine→Plan→Develop→Test→Review→Done).',
-    usage: '/task promote [#N]',
+    usage: '/task promote #N',
     aliases: ['next'],
     exitCodes: [GATE_REFUSAL],
-    examples: ['/task promote 667', '/task next'],
+    examples: ['/task promote 667', '/task next 667'],
   },
   demote: {
     topic: 'board',
     summary: 'Return one state backward (from Test or Review back to Develop).',
-    usage: '/task demote [#N]',
+    usage: '/task demote #N [--rework "<reason>"]',
+    flags: [
+      {
+        flag: '--rework "<reason>"',
+        desc: 'required provenance when demoting Review to Develop; --rework=<reason> is also accepted',
+      },
+    ],
     exitCodes: [GATE_REFUSAL],
     examples: ['/task demote 667'],
   },
@@ -126,7 +126,12 @@ export const VERB_REFERENCE = {
       'Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.',
     usage: '/task park <N> --reason "<text>"',
     flags: [{ flag: '--reason <text>', desc: 'why this issue is returning to Backlog (required)' }],
-    exitCodes: [{ code: 1, meaning: '--reason is missing' }, GATE_REFUSAL],
+    exitCodes: [
+      {
+        code: 4,
+        meaning: 'drift, source state, missing reason, or transition gate refused; state unchanged',
+      },
+    ],
     examples: ['/task park 848 --reason "premise falsified after refine review"'],
   },
   refine: {
@@ -141,9 +146,12 @@ export const VERB_REFERENCE = {
       { flag: '--priority <p0|p1|p2>', desc: 'priority (required)' },
       { flag: '--reason <text>', desc: 'refinement rationale (required)' },
       { flag: '--rank <n>', desc: 'optional board Rank' },
-      { flag: '--labels / --add-label <name>', desc: 'optional labels to add' },
+      {
+        flag: '--labels <name[,name...]>',
+        desc: 'optional comma-separated labels to add',
+      },
     ],
-    exitCodes: [{ code: 1, meaning: 'a required flag is missing' }, GATE_REFUSAL],
+    exitCodes: [{ code: 2, meaning: 'a required flag is missing or malformed' }, GATE_REFUSAL],
     examples: [
       '/task refine 667 --size L --estimate 6 --priority p2 --reason "per-verb help rework"',
     ],
@@ -160,8 +168,8 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Record human plan approval (stamps the `aitm-plan-approved` marker Plan→Develop needs).',
-    usage: '/task plan-approve [#N]',
-    exitCodes: [{ code: 1, meaning: 'issue not in plan state' }],
+    usage: '/task plan-approve #N',
+    exitCodes: [{ code: 3, meaning: 'issue is not in Plan' }],
     examples: ['/task plan-approve 667'],
   },
   'plan-estimate': {
@@ -192,9 +200,14 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Record final review approval (Review→Done gate). In Full-Auto, pair with an audit comment.',
-    usage: '/task approve [#N]',
-    exitCodes: [GATE_REFUSAL],
-    examples: ['/task approve 667'],
+    usage: '/task approve #N [--human]',
+    flags: [
+      {
+        flag: '--human',
+        desc: 'record an explicit human approval instead of Full-Auto provenance',
+      },
+    ],
+    examples: ['/task approve 667', '/task approve 667 --human'],
   },
   review: {
     topic: 'board',
@@ -219,22 +232,27 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Develop→Test sandbox verification — runs the Verification Commands in an isolated worktree.',
-    usage: '/task test #N [--detach] [--force] [--no-audit] [--no-fund]',
-    flags: [
-      { flag: '--detach', desc: 'run the sandbox without holding the session' },
-      { flag: '--force', desc: 'proceed past soft warnings' },
-      { flag: '--no-audit', desc: 'skip the audit sub-step' },
-      { flag: '--no-fund', desc: 'skip the funding sub-step' },
+    usage: '/task test #N',
+    exitCodes: [
+      { code: 1, meaning: 'missing target or test setup/runtime failure' },
+      { code: 3, meaning: 'verification command or post-verification state update failed' },
+      { code: 4, meaning: 'no Verification Commands exist or the transition gate refused' },
+      { code: 5, meaning: 'the delegated board transition is invalid' },
+      { code: 6, meaning: 'the delegated evidence-contiguity gate refused' },
+      { code: 7, meaning: 'the delegated issue mutation lock is held' },
     ],
-    exitCodes: [{ code: 1, meaning: 'a verification command failed in the sandbox' }, GATE_REFUSAL],
     examples: ['/task test 667'],
   },
   reconcile: {
     topic: 'board',
     summary:
       'Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.',
-    usage: '/task reconcile #N <accept-live|revert-to-recorded|revert-to-sentinel>',
-    examples: ['/task reconcile 667 accept-live', '/task reconcile 667 revert-to-sentinel'],
+    usage: '/task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill> #N',
+    examples: [
+      '/task reconcile accept-live 667',
+      '/task reconcile revert-to-sentinel 667',
+      '/task reconcile backfill 667',
+    ],
   },
   board: {
     topic: 'board',
@@ -256,12 +274,22 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary: 'JIT child-pull: promote the next refine-state child of an epic (by rank) into Plan.',
     usage: '/task pull-next <epic#>',
+    exitCodes: [
+      { code: 4, meaning: 'the selected child failed a Refine-to-Plan gate' },
+      { code: 5, meaning: 'the selected child no longer has a legal Refine-to-Plan edge' },
+      { code: 6, meaning: 'the selected child is missing required entry-marker history' },
+      {
+        code: 7,
+        meaning: 'the child mutation lock is held or the completed move could not be verified',
+      },
+    ],
     examples: ['/task pull-next 508'],
   },
   close: {
     topic: 'board',
     summary: 'Close the active or specified task (runs the pre-close gate).',
-    usage: '/task close [#N] [--force] [--repair] [--answer yes|no|cancel]',
+    usage:
+      '/task close [#N] [--force] [--repair] [--answer yes|no|cancel] [--as duplicate|not-planned] [--of <N>]',
     aliases: ['end'],
     flags: [
       { flag: '--force', desc: 'close even if unchecked items remain' },
@@ -270,6 +298,11 @@ export const VERB_REFERENCE = {
         desc: 'replay the full atomic close from Done (timing flush, board fields, lifecycle boxes, audit rows) when a PR closing-reference auto-closed the issue and bypassed the gated chain',
       },
       { flag: '--answer <yes|no|cancel>', desc: 'pre-answer the dirty-tree close confirmation' },
+      {
+        flag: '--as <duplicate|not-planned>',
+        desc: 'close with a non-Done disposition instead of the delivery gate',
+      },
+      { flag: '--of <N>', desc: 'canonical issue for the duplicate disposition' },
     ],
     exitCodes: [{ code: 1, meaning: 'pre-close gate refused (unchecked boxes / dirty tree)' }],
     examples: ['/task close', '/task close 667 --answer yes', '/task close 708 --repair'],
@@ -277,19 +310,23 @@ export const VERB_REFERENCE = {
   'inflate-estimate': {
     topic: 'board',
     summary: 'Adjust Size/Estimate mid-flight and record the change on the board + comment.',
-    usage: '/task inflate-estimate [#N] --size <S> --estimate <H> --reason "<text>"',
+    usage:
+      '/task inflate-estimate <N> --size <S> --estimate <H> --reason "<text>" --item "<work (~effort)>" [--item "<work (~effort)>" ...]',
     flags: [
       { flag: '--size <S>', desc: 'new size' },
       { flag: '--estimate <H>', desc: 'new estimate (hours)' },
       { flag: '--reason "<text>"', desc: 'why it grew' },
+      { flag: '--item "<work (~effort)>"', desc: 'discovered work item (required, repeatable)' },
     ],
-    examples: ['/task inflate-estimate 667 --size XL --estimate 12 --reason "scope grew"'],
+    examples: [
+      '/task inflate-estimate 667 --size XL --estimate 12 --reason "scope grew" --item "parser audit (~2h)"',
+    ],
   },
   kind: {
     topic: 'board',
-    summary: 'Set (or clear) the no-commit-lane issue kind (epic / sub-issue / solo).',
-    usage: '/task kind [<N>] <kind>',
-    examples: ['/task kind 667 epic'],
+    summary: 'Set the issue kind, or clear its marker by selecting the default code lane.',
+    usage: '/task kind [<N>] <code|docs-only|audit|research|spike|epic>',
+    examples: ['/task kind 667 epic', '/task kind 667 code'],
   },
   block: {
     topic: 'board',
@@ -325,16 +362,12 @@ export const VERB_REFERENCE = {
       { flag: 'review', desc: 'only the review→done gate OFF' },
       { flag: 'off / reset', desc: 'restore both human gates' },
     ],
-    exitCodes: [{ code: 1, meaning: 'unknown choice' }],
+    exitCodes: [
+      { code: 2, meaning: 'mode is missing or unknown' },
+      { code: 3, meaning: 'no active session exists for the override' },
+    ],
     examples: ['/task auto both', '/task auto off'],
   },
-  move: {
-    topic: 'board',
-    summary: 'Removed — use `/task promote` or `/task demote` (directional, one step at a time).',
-    usage: '/task promote [#N]  |  /task demote [#N]',
-    examples: ['/task promote 667'],
-  },
-
   // ── evidence & proof ──────────────────────────────────────────────────────
   'ac-stamp': {
     topic: 'evidence',
@@ -355,13 +388,16 @@ export const VERB_REFERENCE = {
     topic: 'evidence',
     summary:
       'Deprecated alias of `ensureChecked` (no longer toggles) — tick a checkbox if its proof gate passes.',
-    usage: '/task check <label>   (deprecated alias of ensureChecked)',
+    usage:
+      '/task check ["<label>" | --label "<label>" ... | --labels-file <path>] [--allow-unverified-ticks]   (deprecated alias of ensureChecked)',
     aliases: ['ensureChecked'],
     flags: [
       {
         flag: '--allow-unverified-ticks',
         desc: 'honest override when an item genuinely cannot be stamped',
       },
+      { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },
+      { flag: '--labels-file <path>', desc: 'newline-delimited checkbox labels for batch mode' },
     ],
     examples: ['/task check <label>   (deprecated — use /task ensureChecked "<label>")'],
   },
@@ -369,20 +405,27 @@ export const VERB_REFERENCE = {
     topic: 'evidence',
     summary:
       'Ensure a checkbox is ticked (idempotent; never unticks). Refuses stampable items without evidence.',
-    usage: '/task ensureChecked "<label>" [--allow-unverified-ticks]',
+    usage:
+      '/task ensureChecked ["<label>" | --label "<label>" ... | --labels-file <path>] [--allow-unverified-ticks]',
     aliases: ['check'],
     flags: [
       {
         flag: '--allow-unverified-ticks',
         desc: 'honest override for a genuinely unstampable item',
       },
+      { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },
+      { flag: '--labels-file <path>', desc: 'newline-delimited checkbox labels for batch mode' },
     ],
     examples: ['/task ensureChecked "Deep dive complete"'],
   },
   ensureUnchecked: {
     topic: 'evidence',
     summary: 'Ensure a checkbox is unticked (idempotent; never ticks).',
-    usage: '/task ensureUnchecked "<label>"',
+    usage: '/task ensureUnchecked ["<label>" | --label "<label>" ... | --labels-file <path>]',
+    flags: [
+      { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },
+      { flag: '--labels-file <path>', desc: 'newline-delimited checkbox labels for batch mode' },
+    ],
     examples: ['/task ensureUnchecked "Passed final human review"'],
   },
   'evidence-markers': {
@@ -419,15 +462,14 @@ export const VERB_REFERENCE = {
     topic: 'discovery',
     summary: 'Create a new issue (via the sanctioned create-issue script) and start tracking it.',
     usage:
-      '/task new [title] [--shape <epic|sub-issue|solo>] [--label <name>] [--assignee <who>] [--from-file <path>]',
+      '/task new [title|docs/plans/<file>.md] [--kind <code|docs-only|audit|research|spike|epic>]',
     flags: [
-      { flag: '--shape <epic|sub-issue|solo>', desc: 'issue shape' },
-      { flag: '--title <text>', desc: 'issue title' },
-      { flag: '--label <name>', desc: 'label(s) to apply' },
-      { flag: '--assignee <who>', desc: 'assignee', default: 'config `assignee` (@me)' },
-      { flag: '--from-file <path>', desc: 'body source file' },
+      {
+        flag: '--kind <code|docs-only|audit|research|spike|epic>',
+        desc: 'optional issue kind passed to sanctioned creation',
+      },
     ],
-    examples: ['/task new "Fix flaky timing test" --shape solo'],
+    examples: ['/task new "Fix flaky timing test" --kind code'],
   },
   discover: {
     topic: 'discovery',
@@ -489,8 +531,11 @@ export const VERB_REFERENCE = {
     aliases: ['story'],
     flags: [
       { flag: '--as "<role>"', desc: 'the actor' },
+      { flag: '--as-a "<role>"', desc: 'alias of --as' },
       { flag: '--want "<goal>"', desc: 'the desired capability' },
+      { flag: '--i-want "<goal>"', desc: 'alias of --want' },
       { flag: '--so-that "<benefit>"', desc: 'the value' },
+      { flag: '--so "<benefit>"', desc: 'alias of --so-that' },
     ],
     examples: [
       '/task user-story 667 --as "an operator" --want "per-verb help" --so-that "I skip reading source"',
@@ -507,15 +552,24 @@ export const VERB_REFERENCE = {
   migrate: {
     topic: 'meta',
     summary: 'Migrate repo issues into the selected/configured project.',
-    usage: '/task migrate [--dry-run]',
-    flags: [{ flag: '--dry-run', desc: 'preview without writing' }],
-    examples: ['/task migrate --dry-run'],
+    usage: '/task migrate [--dry-run] [--skip-init] [--closed|--all] [--keep-retired]',
+    flags: [
+      { flag: '--dry-run', desc: 'preview without writing' },
+      { flag: '--skip-init', desc: 'skip initialization checks or setup' },
+      { flag: '--closed', desc: 'include closed issues' },
+      { flag: '--all', desc: 'include both open and closed issues' },
+      { flag: '--keep-retired', desc: 'retain retired Project fields' },
+    ],
+    examples: ['/task migrate --dry-run', '/task migrate --all --keep-retired'],
   },
   fleet: {
     topic: 'meta',
-    summary: 'Show all active tasks across parallel worktrees.',
-    usage: '/task fleet',
-    examples: ['/task fleet'],
+    summary: 'Show active tasks across worktrees, or prune stale fleet registrations.',
+    usage: '/task fleet [prune [--dry-run]]',
+    flags: [
+      { flag: '--dry-run', desc: 'preview stale registrations without rewriting the registry' },
+    ],
+    examples: ['/task fleet', '/task fleet prune --dry-run', '/task fleet prune'],
   },
   log: {
     topic: 'meta',
@@ -526,7 +580,7 @@ export const VERB_REFERENCE = {
   'chore-mode': {
     topic: 'meta',
     summary: 'Toggle chore-mode so unrelated edits are allowed past the source-edit gate.',
-    usage: '/task chore-mode <on "<reason>"|off|status> [--resume]',
+    usage: '/task chore-mode <on ["reason"]|off|status> [--resume]',
     flags: [{ flag: '--resume', desc: 'resume a suspended chore-mode session' }],
     examples: ['/task chore-mode on "fix lint across repo"', '/task chore-mode off'],
   },

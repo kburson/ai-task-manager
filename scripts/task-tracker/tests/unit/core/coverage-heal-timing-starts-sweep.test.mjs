@@ -1,4 +1,4 @@
-// @story #603
+// @story #603 #1023
 // Smoke leaf for `scripts/task-tracker/heal-timing-starts-sweep.mjs` (epic #586,
 // Group B). Per the #586 smoke-only split this backlog-wide heal driver is
 // covered by a clean-invocation smoke rather than a >=80% coverage target: its
@@ -23,7 +23,8 @@ test('heal-timing-starts-sweep smoke: --help prints usage and exits 0', () => {
   const res = run(['--help']);
   assert.equal(res.status, 0, res.stderr);
   assert.match(res.stdout, /^heal-timing-starts-sweep —/);
-  assert.match(res.stdout, /Usage:\s+heal-timing-starts-sweep \[options\]/);
+  assert.match(res.stdout, /Usage:\s+heal-timing-starts-sweep .*--state closed\|open\|all/);
+  assert.match(res.stdout, /--scope N,N/);
   assert.match(res.stdout, /Exit codes:/);
 });
 

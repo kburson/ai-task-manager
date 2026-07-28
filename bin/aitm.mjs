@@ -35,9 +35,10 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, TASK_TRACKER_PATH, SCRIPTS, kind, groupedListing } from './aitm-registry.mjs';
+import { emitSelfDoc } from '../scripts/lib/self-doc.mjs';
 
 const HELP_NAMES = new Set(['help', '?', '--help', '-h', undefined, '']);
-// Flag-shaped help tokens task-tracker already recognizes in any argv position.
+// Flag-shaped help tokens task-tracker recognizes only in the command-help slot.
 const HELP_FLAGS = new Set(['--help', '-h', '?']);
 // The bare word `help` — the canonical `aitm <name> help` self-doc token. It is
 // NOT a flag, so task-tracker would otherwise swallow it as verb positional
@@ -111,6 +112,7 @@ export function run(argv = process.argv.slice(2)) {
     }
     // Bare top-level: the orchestrator command index (names-only, incl. scripts)
     // followed by the /task verb reference (topics + state map + gate model).
+    emitSelfDoc('aitm');
     printListing();
     return delegate(TASK_TRACKER_PATH, ['--help']);
   }
@@ -120,7 +122,7 @@ export function run(argv = process.argv.slice(2)) {
     // Canonical self-doc form is `aitm <verb> help`; normalize the bare `help`
     // word to the help flag task-tracker recognizes (it already honors ?/-h/
     // --help). Every other arg passes through untouched.
-    const forwarded = rest.map((a) => (isHelpWord(a) ? '--help' : a));
+    const forwarded = rest.length === 1 && isHelpWord(rest[0]) ? ['--help'] : rest;
     return delegate(TASK_TRACKER_PATH, [name, ...forwarded]);
   }
   if (k === 'script') {

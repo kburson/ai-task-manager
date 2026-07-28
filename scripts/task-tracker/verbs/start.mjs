@@ -7,6 +7,7 @@ export async function verbStart(ctx) {
   const raw = ctx.rest[0];
   if (!raw || !/^#?\d+$/.test(String(raw))) {
     console.log('no task number provided; use "/task start <N>"');
+    process.exitCode = 1;
     return;
   }
   await verbResume(ctx);

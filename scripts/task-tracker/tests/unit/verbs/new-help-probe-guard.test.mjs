@@ -6,10 +6,9 @@
 // single- or multi-word title (including one that merely contains the word
 // "help") still creates an issue. The no-arg form is unchanged.
 //
-// Background: #394's global `hasHelpFlag` already intercepts `?`, `--help`,
-// `-h` in any argv position, but the bare word `help` and `--?` fall through
-// to junk-issue creation + bind clobber. This verifier pins the verb-local
-// single-token guard that closes that gap.
+// Background: #394/#1023's global `hasHelpFlag` intercepts `?`, `--help`, and
+// `-h` only in the command-help position. The verb-local guard also retains
+// the legacy `--?` form while rejecting multi-token title values.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';

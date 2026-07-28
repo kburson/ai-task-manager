@@ -43,6 +43,7 @@ import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
 import { getProvider } from '../scripts/providers/index.mjs';
+import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
   guardBootstrapCommand,
@@ -1321,11 +1322,17 @@ const PACKAGE_COMMANDS = new Set([
   'memory-resync',
 ]);
 
+const packageSubcommandHelp =
+  wantsHelp(rest) ||
+  (command === 'configure' && rest[0] === 'preferences' && wantsHelp(rest.slice(1)));
+
 if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
   process.stderr.write(
     `ai-task-manager: unknown command "${command}"\nUsage: npx ai-task-manager <install|init|repair|statusline|configure|memory-resync|version>\n`
   );
   process.exitCode = 2;
+} else if (invokedDirectly && packageSubcommandHelp) {
+  emitSelfDoc('ai-task-manager');
 } else if (invokedDirectly)
   switch (command) {
     case 'version':
@@ -1368,24 +1375,5 @@ if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
       });
       break;
     default:
-      console.log(`
-${bgBlue(bold('  ai-task-manager  '))} ${dim('v' + pkg.version)}
-
-  ${dim('Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow.')}
-
-${bold('  Usage')}
-    ${cyan('npx ai-task-manager install')}    ${dim('[--agent claude|codex] [--link-mode stub|symlink] [--codex-superpowers] [--codex-superpowers-global] [--target <dir>]')}
-    ${cyan('npx ai-task-manager init')}       ${dim('[--target <dir>] [--project <url|owner:number>] [--codex-superpowers] [--codex-superpowers-global]')}
-    ${cyan('npx ai-task-manager repair')}     ${dim('[--target <dir>] Backfill empty kanbanOption* fields in existing config')}
-    ${cyan('npx ai-task-manager statusline')}              ${dim('Install Claude Code status line')}
-    ${cyan('npx ai-task-manager configure preferences')}  ${dim('Interactive team-workflow preferences editor')}
-    ${cyan('npx ai-task-manager memory-resync')}          ${dim('[--target <dir>] [--dry-run | --list] Resync installed memory seed against upstream')}
-    ${cyan('npx ai-task-manager version')}                ${dim('Print version')}
-
-${bold('  Quickstart')}
-    ${green('1.')} ${cyan('npx ai-task-manager install')}
-    ${green('2.')} ${cyan('npx ai-task-manager init')}
-    ${green('3.')} ${dim('Claude Code:')} ${magenta('/task #<issue-number>')}
-    ${green('4.')} ${dim('Codex:')} ${magenta('Use the task skill to start issue #<issue-number>.')}
-`);
+      emitSelfDoc('ai-task-manager');
   }

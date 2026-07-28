@@ -57,10 +57,16 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { readSessionMinutes } from './lib/session-field.mjs';
 import { readEngagedMinutes, readDurationMinutes, readStartedAt, accelRatio } from './lib/board-fields.mjs';
-import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { wantsHelp, emitSelfDoc, isDirectInvocation } from '../lib/self-doc.mjs';
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
 import { bucketRowsByDay, renderDailyChart, extractTimingBody } from './lib/daily-activity.mjs';
+
+const argv = process.argv.slice(2);
+if (isDirectInvocation(import.meta.url) && wantsHelp(argv)) {
+  emitSelfDoc('value-report');
+  process.exit(0);
+}
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const RATES = JSON.parse(readFileSync(path.join(__dir, 'regional-rates.json'), 'utf8'));
@@ -78,11 +84,6 @@ const ttCfg = loadConfig({
   legacyProjectPath: path.join(projectRoot, '.claude', 'task-tracker.json'),
 });
 
-const argv = process.argv.slice(2);
-if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(argv)) {
-  emitSelfDoc('value-report');
-  process.exit(0);
-}
 const flag = (f, def = null) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : def; };
 const has  = f => argv.includes(f);
 
@@ -1131,8 +1132,7 @@ async function main() {
 
 // Only run the CLI pipeline when invoked directly, not when imported (tests
 // import buildHtml to assert the rendered section order).
-const invokedDirectly =
-  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const invokedDirectly = isDirectInvocation(import.meta.url);
 if (invokedDirectly) {
   main().catch(err => { console.error(err.message); process.exit(1); });
 }

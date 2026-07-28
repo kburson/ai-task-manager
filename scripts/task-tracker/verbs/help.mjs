@@ -15,7 +15,8 @@ import { agentCommandCatalog, commandByName } from '../lib/command-surface/catal
 // aliases. Returns null when the token names no known verb.
 export function resolveVerb(target) {
   if (!target) return null;
-  return commandByName(String(target).trim())?.name || null;
+  const record = commandByName(String(target).trim());
+  return record?.classification === 'agent-callable-verb' ? record.name : null;
 }
 
 function renderVerb(key) {

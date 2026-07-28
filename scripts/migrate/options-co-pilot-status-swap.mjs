@@ -7,14 +7,11 @@
 // Strategy:
 //   1. --create   → create `_Status` SINGLE_SELECT with the 7 target options.
 //   2. --translate → for every project item, copy current Status (mapped) into _Status.
-//   3. --finalize → delete old `Status`, rename `_Status → Status`, delete `Iteration`.
-//      NOTE: Status is a built-in field — cannot be deleted. Use --rename-status
-//      + --cleanup instead.
-//   4. --rename-status → update old Status options in place: rename 5 existing
+//   3. --rename-status → update old Status options in place: rename 5 existing
 //      options (Ready→Groom, In progress→Development, In review→Validate;
 //      Backlog/Done unchanged), add 2 new (Analyze, Review). Existing option
 //      IDs are preserved so already-set Status values auto-display new names.
-//   5. --cleanup → delete `_Status` (custom field, OK to delete) and attempt
+//   4. --cleanup → delete `_Status` (custom field, OK to delete) and attempt
 //      to delete `Iteration` (skips if not deletable).
 //
 // Each phase supports --dry-run. Run them in order, verifying between.
@@ -51,11 +48,10 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const create = args.includes('--create');
 const translate = args.includes('--translate');
-const finalize = args.includes('--finalize');
 const renameStatus = args.includes('--rename-status');
 const cleanup = args.includes('--cleanup');
 
-if (!create && !translate && !finalize && !renameStatus && !cleanup) {
+if (!create && !translate && !renameStatus && !cleanup) {
   console.error(
     'usage: options-co-pilot-status-swap.mjs --create|--translate|--rename-status|--cleanup [--dry-run]'
   );
@@ -222,57 +218,6 @@ async function translateStatusValues() {
   }
 }
 
-async function finalizeSwap() {
-  const fields = await fetchFields();
-  const status = findField(fields, 'Status');
-  const underscore = findField(fields, '_Status');
-  const iteration = findField(fields, 'Iteration');
-
-  console.log('plan:');
-  if (status) console.log(`  delete Status (${status.id})`);
-  else console.log('  Status already absent');
-  if (underscore) console.log(`  rename _Status → Status (${underscore.id})`);
-  else console.log('  _Status absent — nothing to rename');
-  if (iteration) console.log(`  delete Iteration (${iteration.id})`);
-  else console.log('  Iteration already absent');
-
-  if (dryRun) {
-    console.log('--dry-run: skipping mutations');
-    return;
-  }
-
-  if (status) {
-    await gql(
-      `
-      mutation($f: ID!) {
-        deleteProjectV2Field(input: { fieldId: $f }) { projectV2Field { ... on ProjectV2FieldCommon { id } } }
-      }`,
-      { f: status.id }
-    );
-    console.log(`deleted Status (${status.id})`);
-  }
-  if (underscore) {
-    await gql(
-      `
-      mutation($f: ID!, $n: String!) {
-        updateProjectV2Field(input: { fieldId: $f, name: $n }) { projectV2Field { ... on ProjectV2FieldCommon { id name } } }
-      }`,
-      { f: underscore.id, n: 'Status' }
-    );
-    console.log(`renamed _Status → Status (${underscore.id})`);
-  }
-  if (iteration) {
-    await gql(
-      `
-      mutation($f: ID!) {
-        deleteProjectV2Field(input: { fieldId: $f }) { projectV2Field { ... on ProjectV2FieldCommon { id } } }
-      }`,
-      { f: iteration.id }
-    );
-    console.log(`deleted Iteration (${iteration.id})`);
-  }
-}
-
 // Renames the existing built-in Status field's options in place to the 7-state
 // schema. Preserves existing option IDs for the 5 that map (so already-set
 // Status values auto-pick up new names) and adds 2 new options (Analyze, Review).
@@ -408,7 +353,6 @@ async function main() {
   if (translate) await translateStatusValues();
   if (renameStatus) await renameStatusInPlace();
   if (cleanup) await cleanupExtras();
-  if (finalize) await finalizeSwap();
 }
 
 await main();
