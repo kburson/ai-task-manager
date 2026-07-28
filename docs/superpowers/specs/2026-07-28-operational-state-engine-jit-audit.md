@@ -76,8 +76,8 @@ forward/external reconciliations.
 Resolution: #1037 is Closed/Done and squash-integrated at `d4317d2` on both
 `trunk` and `feature/epic/1005`. Its focused reconcile and ordinary demote
 regressions cover both Test/Review-to-Develop recovery sources plus
-proof-preserving forward and unrelated reconciliation shapes. The blocker on
-#1006 is cleared.
+proof-preserving forward and unrelated reconciliation shapes. This cleared the
+blocker on #1006.
 
 ### R1 — Shared Timing Log row reader
 
