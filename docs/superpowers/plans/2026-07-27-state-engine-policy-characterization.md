@@ -4,7 +4,7 @@
 
 **Goal:** Create an executable, machine-readable baseline of AITM's current lifecycle, timing-event, action, command-entry, and bug-bash behavior without moving production policy authority.
 
-**Architecture:** Keep every new policy record under `scripts/task-tracker/tests/fixtures/`; production modules remain unchanged. Focused tests compare the fixtures bidirectionally with the unrefactored production exports and shipped-file inventory, so later policy children can reuse the fixtures as compatibility oracles while stale or incomplete records fail CI.
+**Architecture:** Keep every new policy record under `scripts/task-tracker/tests/fixtures/`; production modules remain unchanged. Focused tests compare the fixtures bidirectionally with the pre-refactor production exports and shipped-file inventory, so later policy children can reuse the fixtures as compatibility oracles while stale or incomplete records fail CI.
 
 **Tech Stack:** Node.js 22+, ECMAScript modules, `node:test`, `node:assert/strict`, repository-native static file scans.
 
@@ -252,10 +252,7 @@ git commit -m "test(state-engine): inventory timing event emitters [#1007]"
 ```js
 test('each shipped executable entry point has exactly one classification', () => {
   const discovered = discoverShippedEntrypoints(ROOT);
-  assert.deepEqual(
-    EXECUTABLE_ENTRYPOINTS.map(({ path }) => path).sort(),
-    discovered.sort()
-  );
+  assert.deepEqual(EXECUTABLE_ENTRYPOINTS.map(({ path }) => path).sort(), discovered.sort());
   for (const entry of EXECUTABLE_ENTRYPOINTS) {
     assert.ok(ALLOWED_CLASSIFICATIONS.has(entry.classification));
     assert.ok(entry.command || entry.reason);
@@ -332,7 +329,10 @@ test('every evidence issue has one disposition and one regression owner', () => 
   const evidenceIssues = parseEvidenceIssueIds(readFileSync(EVIDENCE_PATH, 'utf8'));
   const dispositionIssues = BUG_BASH_DISPOSITIONS.map(({ issue }) => issue);
   assert.equal(new Set(dispositionIssues).size, dispositionIssues.length);
-  assert.deepEqual([...dispositionIssues].sort((a, b) => a - b), evidenceIssues);
+  assert.deepEqual(
+    [...dispositionIssues].sort((a, b) => a - b),
+    evidenceIssues
+  );
   for (const row of BUG_BASH_DISPOSITIONS) {
     assert.ok(ALLOWED_DISPOSITIONS.has(row.disposition));
     assert.ok(row.target.length > 0);
