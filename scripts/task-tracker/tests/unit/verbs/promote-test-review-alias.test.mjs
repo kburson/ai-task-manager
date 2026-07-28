@@ -31,15 +31,17 @@ test('the states with no alias are exactly backlog, on-deck, refine, plan, done'
   assert.deepEqual(aliased, ['develop', 'review', 'test']);
 });
 
-test('promote reaches the alias branch whenever the source state has one', () => {
-  // The delegate/direct fork is a single ternary on `ALIAS_VERB[recorded]`, so
-  // membership in the map IS the behavioral difference. Pin the fork's shape so
-  // a refactor cannot quietly reintroduce a hardcoded state list beside it.
+test('promote reaches the canonical policy delegate branch whenever the source has one', () => {
+  // The delegate/direct fork uses `promotePolicy.delegate`, while `ALIAS_VERB`
+  // remains a compatibility export derived from the same policy. Pin the
+  // canonical query and fork shape so a refactor cannot quietly reintroduce a
+  // hardcoded state list beside it.
   const src = readFileSync(
     fileURLToPath(new URL('../../../verbs/promote.mjs', import.meta.url)),
     'utf8'
   );
-  assert.match(src, /const aliasVerb = ALIAS_VERB\[recorded\] \|\| null;/);
+  assert.match(src, /const promotePolicy = actionPolicyFor\('promote', recorded\);/);
+  assert.match(src, /const aliasVerb = promotePolicy\.delegate \|\| null;/);
   assert.match(src, /aliasVerb\s*\n?\s*\?\s*\{/, 'the fork branches on aliasVerb');
 });
 
