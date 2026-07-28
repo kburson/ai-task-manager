@@ -10,7 +10,7 @@ const HEADER =
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |';
 const SEP = '|---|---|---|---|---|---|---|---|';
 
-function logCtx(rows, enteredStages = []) {
+function logCtx(rows, enteredStages = [], issueBody = '') {
   const body = [
     '## ⏱ Timing Log',
     '',
@@ -23,7 +23,7 @@ function logCtx(rows, enteredStages = []) {
     '',
     '<sub>auto-logged</sub>',
   ].join('\n');
-  return { comments: [{ body }], markers: { enteredStages } };
+  return { comments: [{ body }], markers: { enteredStages }, body: issueBody };
 }
 
 // `stages` → enteredStages marker list.
@@ -31,6 +31,19 @@ const entered = (...stages) => stages.map((stage) => ({ stage }));
 
 // Monotonic non-decreasing table timestamps.
 const T = (n) => `2026-07-14 03:${String(n).padStart(2, '0')}:00 -05:00`;
+
+function sentinelRevertMarker({
+  ts = '2026-07-14T08:03:30.000Z',
+  from = 'develop',
+  recorded = from,
+  to = 'plan',
+} = {}) {
+  return (
+    `<!-- aitm-reverted ts="${ts}" detail="revert-to-sentinel: ` +
+    `board &quot;${from}&quot;, recorded &quot;${recorded}&quot; ` +
+    `→ sentinel &quot;${to}&quot;" -->`
+  );
+}
 
 // A well-formed, sequential log: engage → phase → pause → resume → phase.
 const GOOD_ROWS = [
@@ -233,6 +246,72 @@ test('passes the sanctioned reverse edge done→test (reopened issue re-verifies
     )
   );
   assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('applies a timestamped sentinel-revert audit before the next stage row', () => {
+  const rows = [
+    [T(0), 'plan:started'],
+    [T(1), 'plan:completed'],
+    [T(2), 'develop:started'],
+    [T(4), 'plan:completed'],
+    [T(5), 'develop:started'],
+  ];
+  const res = validate(logCtx(rows, entered('plan', 'develop'), sentinelRevertMarker()));
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('compares sentinel audits at the Timing Log row precision within the same second', () => {
+  const rows = [
+    [T(0), 'plan:started'],
+    [T(1), 'develop:started'],
+    [T(4), 'plan:completed'],
+  ];
+  const res = validate(
+    logCtx(
+      rows,
+      entered('plan', 'develop'),
+      sentinelRevertMarker({ ts: '2026-07-14T08:04:00.500Z' })
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('a sentinel-revert audit after the reverse row cannot authorize it', () => {
+  const rows = [
+    [T(0), 'plan:started'],
+    [T(1), 'develop:started'],
+    [T(4), 'plan:completed'],
+  ];
+  const res = validate(
+    logCtx(
+      rows,
+      entered('plan', 'develop'),
+      sentinelRevertMarker({ ts: '2026-07-14T08:05:00.000Z' })
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(res.failures.some((failure) => /reverse develop→plan/.test(failure)));
+});
+
+test('malformed or source-mismatched sentinel audits do not open a reverse edge', () => {
+  const rows = [
+    [T(0), 'develop:started'],
+    [T(4), 'plan:completed'],
+  ];
+  const malformed = validate(
+    logCtx(
+      rows,
+      entered('plan', 'develop'),
+      '<!-- aitm-reverted ts="2026-07-14T08:03:30.000Z" detail="manual rewind" -->'
+    )
+  );
+  const mismatched = validate(
+    logCtx(rows, entered('plan', 'develop'), sentinelRevertMarker({ from: 'test' }))
+  );
+  for (const result of [malformed, mismatched]) {
+    assert.equal(result.pass, false);
+    assert.ok(result.failures.some((failure) => /reverse develop→plan/.test(failure)));
+  }
 });
 
 test('seeds the walk on the first stage row (a log starting mid-ladder is legal)', () => {

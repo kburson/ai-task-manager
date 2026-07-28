@@ -33,6 +33,7 @@ import {
   isReengagementEvent,
   isCanonicalPhaseSlug,
 } from '../../timing-event-map.mjs';
+import { parseMarker } from '../../marker-grammar.mjs';
 import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
 import { STAGES } from '../../stage-entry-markers.mjs';
 
@@ -65,6 +66,8 @@ const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
 // re-verifying) are the sanctioned rewinds. Forward motion must advance exactly
 // one ladder rung; a multi-rung forward jump is a skipped stage.
 const LEGAL_REVERSE_EDGES = new Set(['test>develop', 'review>test', 'review>develop', 'done>test']);
+const SENTINEL_REVERT_DETAIL_RE =
+  /^revert-to-sentinel: board "([^"]+)", recorded "[^"]+" → sentinel "([^"]+)"$/;
 // #981 — SUSPICIOUS_GAP_SEC now lives in bind-event.mjs (the leaf module) so
 // the write-side prevention (verbResume) and this review-side detection share
 // one threshold. Re-exported here for any existing importer of this module.
@@ -130,6 +133,31 @@ export function extractDataRows(logBody) {
   return rows;
 }
 
+// Reconcile's `revert-to-sentinel` repair intentionally leaves the historical
+// Timing Log untouched: its canonical `aitm-reverted` audit marker is the proof
+// that the board/recorded state was reset. Convert only that exact, parseable
+// marker shape into timestamped stage-walk resets. Timing Log rows preserve
+// whole seconds, so audit timestamps are compared at that same precision; a
+// sub-second ordering claim cannot be recovered from the table. Other
+// `aitm-reverted` audit kinds, malformed details, and non-lifecycle
+// source/target values are ignored.
+export function extractSentinelStageResets(issueBody) {
+  const resets = [];
+  for (const line of String(issueBody || '').split('\n')) {
+    const marker = parseMarker(line);
+    if (!marker || marker.name !== 'reverted') continue;
+    const detail = marker.props.detail || '';
+    const match = detail.match(SENTINEL_REVERT_DETAIL_RE);
+    const ms = _tsToMs(marker.props.ts);
+    if (!match || !Number.isFinite(ms)) continue;
+    const from = match[1].toLowerCase();
+    const to = match[2].toLowerCase();
+    if (!LADDER_INDEX.has(from) || !LADDER_INDEX.has(to)) continue;
+    resets.push({ ms: Math.floor(ms / 1000) * 1000, from, to });
+  }
+  return resets.sort((a, b) => a.ms - b.ms);
+}
+
 // A row's event slug is well-formed when it is a qualified event (`stage:phase`,
 // `pause:reason`, `switch-out:#N`), a recognized bare opener/closer, a canonical
 // phase slug, or the neutral `end`. Anything else (`bound`, `foobar`) is
@@ -165,6 +193,7 @@ export function validate(context = {}) {
   const enteredSet = new Set(
     enteredList.map((e) => (e && e.stage ? String(e.stage).toLowerCase() : '')).filter(Boolean)
   );
+  const sentinelResets = extractSentinelStageResets(context.body);
 
   const failures = [];
   const logBody = findTimingLogBody(comments);
@@ -188,6 +217,7 @@ export function validate(context = {}) {
   // row seen (so a log that legitimately starts mid-ladder never trips a phantom
   // forward-skip against a backlog it never recorded).
   let currentStage = null;
+  let sentinelResetIndex = 0;
 
   for (const row of rows) {
     // --- Format schema -------------------------------------------------------
@@ -267,6 +297,14 @@ export function validate(context = {}) {
     // stage by a single forward rung or one of the four sanctioned reverse edges.
     // Non-stage rows (departures, returns, `demoted:*`, `issue:*`, `<stage>:failed`)
     // do not move the walk.
+    while (
+      sentinelResetIndex < sentinelResets.length &&
+      sentinelResets[sentinelResetIndex].ms <= ms
+    ) {
+      const reset = sentinelResets[sentinelResetIndex];
+      if (currentStage === reset.from) currentStage = reset.to;
+      sentinelResetIndex++;
+    }
     const stage = stageOf(row.event);
     if (stage) {
       if (currentStage === null) {
