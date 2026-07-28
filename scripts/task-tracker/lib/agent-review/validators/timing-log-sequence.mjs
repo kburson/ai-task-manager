@@ -36,6 +36,7 @@ import {
 } from '../../timing-events/index.mjs';
 import { parseMarker } from '../../marker-grammar.mjs';
 import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
+import { parseTimingRow } from '../../timing-row-reader.mjs';
 import { stateIds, isTimingHistoryEdge } from '../../lifecycle-policy/index.mjs';
 
 const TIMING_LOG_RE = /⏱\s*Timing Log/;
@@ -100,12 +101,11 @@ export function extractDataRows(logBody) {
     const line = lines[i].trim();
     if (!line.startsWith('|')) break; // table ended
     if (SEPARATOR_RE.test(line)) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    // cells[0] is the empty pre-pipe cell; cells[1] = Timestamp, cells[2] = Event.
+    const row = parseTimingRow(line);
     rows.push({
       index: rows.length + 1,
-      ts: cells[1] ?? '',
-      event: (cells[2] ?? '').toLowerCase(),
+      ts: row?.ts ?? '',
+      event: row?.event ?? '',
       raw: line,
     });
   }

@@ -349,6 +349,24 @@ test('fails a malformed row with an unknown event slug, naming the row', () => {
   );
 });
 
+test('a truncated malformed row preserves its timestamp and event in the failure (#1038)', () => {
+  const body = ['## ⏱ Timing Log', '', HEADER, SEP, '| 2026-07-28 10:00:00 +00:00 | bogus'].join(
+    '\n'
+  );
+  const res = validate({ comments: [{ body }], markers: { enteredStages: [] }, body: '' });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some(
+      (failure) =>
+        /row 1\b/.test(failure) &&
+        /2026-07-28 10:00:00 \+00:00/.test(failure) &&
+        /bogus/.test(failure) &&
+        /unknown event slug/.test(failure)
+    ),
+    JSON.stringify(res.failures)
+  );
+});
+
 test('fails malformed colon-qualified events that match no canonical family', () => {
   for (const event of ['demoted:not-a-state', 'pause:two words', 'switch-out:#abc']) {
     const res = validate(logCtx([[T(0), event]], GOOD_STAGES));

@@ -29,6 +29,13 @@ import {
   formatDurationSeconds,
   formatRowSecMarker,
 } from './timing-rows.mjs';
+import {
+  isTableTimingTimestamp,
+  parseTimingRow,
+  replaceTimingRowCell,
+  replaceTimingRowCells,
+  splitTimingRowMarker,
+} from './timing-row-reader.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
 
 // Retired v1 slugs that C1 stopped emitting. `classifyTimingEvent` treats them
@@ -62,11 +69,6 @@ const REVIEW_CRUFT_SLUGS = new Set(['review', 'review-ready']);
 // review cruft rows. Both fold their words forward onto the next `:completed`.
 const STRIP_SLUGS = new Set([...RETIRED_SLUGS, ...REVIEW_CRUFT_SLUGS]);
 
-// Timing-log timestamp pattern — mirrors TS_LINE_RE in timing-rows.mjs.
-const TS_LINE_RE = /\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\s+[+-]\d{2}:\d{2})\s*\|/;
-// Trailing `<!-- row-sec: a=N i=N -->` marker (with its leading whitespace).
-const TRAILING_ROW_SEC_RE = /(\s*<!--\s*row-sec:\s*a=-?\d+\s+i=-?\d+\s*-->)\s*$/;
-
 // Completion slug → kanban state, derived from the canonical PHASE_EVENTS table
 // (e.g. `develop:completed` → `develop`, `review:approved` → `review`,
 // `issue:closed` → `done`). `computePhaseCloseDelta` keys off the STATE name.
@@ -97,41 +99,20 @@ function parseWordsCell(cell) {
   return Number.isFinite(v) ? v : 0;
 }
 
-// Split a timing row into { core, marker } where `core` is the pipe-delimited
-// table portion (ending in `|`) and `marker` is the trailing row-sec comment
-// (including its leading space), or '' when absent.
-function splitRowMarker(line) {
-  const m = line.match(TRAILING_ROW_SEC_RE);
-  if (!m) return { core: line, marker: '' };
-  return { core: line.slice(0, m.index), marker: m[1] };
-}
-
-// The lowercased, trimmed event slug of a timing row (cells[2]).
-function eventOf(line) {
-  const { core } = splitRowMarker(line);
-  const cells = core.split('|');
-  return (cells[2] ?? '').trim().toLowerCase();
-}
-
 // True when `line` is a pre-f3a09cc bare-'develop' reject self-audit row: the
 // event cell is exactly 'develop' (not 'develop:started'/':completed', which
 // have their own distinct slugs) and the description starts with "review
 // rejected:" — the literal template reject.mjs has always used.
 function isBareRejectDevelopRow(line) {
-  if (eventOf(line) !== 'develop') return false;
-  const { core } = splitRowMarker(line);
-  const desc = core.split('|')[7] ?? '';
-  return BARE_REJECT_DEVELOP_DESC_RE.test(desc);
+  const row = parseTimingRow(line);
+  return row?.event === 'develop' && BARE_REJECT_DEVELOP_DESC_RE.test(row.description);
 }
 
 // Rewrite ONLY the event cell (cells[2]) of a bare-reject-develop row to
 // 'rejected:develop', preserving every other cell — including the trailing
 // row-sec marker — byte-for-byte.
 function requalifyRejectDevelopRow(line) {
-  const { core, marker } = splitRowMarker(line);
-  const parts = core.split('|');
-  parts[2] = ' rejected:develop ';
-  return parts.join('|') + marker;
+  return replaceTimingRowCell(line, 2, ' rejected:develop ');
 }
 
 // Re-render a `:completed` row with recomputed active/idle/Δwords, preserving
@@ -139,15 +120,15 @@ function requalifyRejectDevelopRow(line) {
 // duration cells AND the canonical row-sec marker; `deltaWords` restamps the Δ
 // Words cell. Empty cells collapse to the two-space form buildRow emits.
 function renderCompletedRow(line, { activeSec, idleSec, deltaWords }) {
-  const { core } = splitRowMarker(line);
-  const parts = core.split('|');
-  // parts: ['', ts, event, active, idle, dwords, marker, desc, (dfull,) '']
+  const { core } = splitTimingRowMarker(line);
   const aSec = Math.max(0, Math.floor(Number(activeSec) || 0));
   const iSec = Math.max(0, Math.floor(Number(idleSec) || 0));
-  parts[3] = ` ${aSec === 0 ? '' : formatDurationSeconds(aSec)} `;
-  parts[4] = ` ${iSec === 0 ? '' : formatDurationSeconds(iSec)} `;
-  parts[5] = ` ${fmtNumBlankZero(deltaWords)} `;
-  return parts.join('|') + ' ' + formatRowSecMarker({ activeSec: aSec, idleSec: iSec });
+  const rewritten = replaceTimingRowCells(core, {
+    3: ` ${aSec === 0 ? '' : formatDurationSeconds(aSec)} `,
+    4: ` ${iSec === 0 ? '' : formatDurationSeconds(iSec)} `,
+    5: ` ${fmtNumBlankZero(deltaWords)} `,
+  });
+  return rewritten + ' ' + formatRowSecMarker({ activeSec: aSec, idleSec: iSec });
 }
 
 // Pure transform. Returns the healed body string; input is never mutated.
@@ -165,14 +146,14 @@ export function healTimingLog(body) {
   const foldByLineIdx = new Map(); // index into `kept` → folded word count
   let pendingWords = 0;
   for (const line of lines) {
-    if (!TS_LINE_RE.test(line)) {
+    const row = parseTimingRow(line);
+    if (!row || !isTableTimingTimestamp(row.ts)) {
       kept.push(line);
       continue;
     }
-    const ev = eventOf(line);
+    const ev = row.event;
     if (STRIP_SLUGS.has(ev)) {
-      const { core } = splitRowMarker(line);
-      pendingWords += parseWordsCell(core.split('|')[5]);
+      pendingWords += parseWordsCell(row.cells[5]);
       continue; // strip the row
     }
     if (COMPLETE_SLUG_TO_STATE.has(ev)) {
@@ -195,15 +176,14 @@ export function healTimingLog(body) {
 
   // Pass 2 — recompute + fold each `:completed` row.
   const out = kept.map((line, idx) => {
-    if (!TS_LINE_RE.test(line)) return line;
-    const ev = eventOf(line);
+    const row = parseTimingRow(line);
+    if (!row || !isTableTimingTimestamp(row.ts)) return line;
+    const ev = row.event;
     const state = COMPLETE_SLUG_TO_STATE.get(ev);
     if (!state) return line;
-    const tsMatch = line.match(TS_LINE_RE);
-    const close = computePhaseCloseDelta(strippedBody, state, tsMatch[1]);
+    const close = computePhaseCloseDelta(strippedBody, state, row.ts);
 
-    const { core } = splitRowMarker(line);
-    const existingWords = parseWordsCell(core.split('|')[5]);
+    const existingWords = parseWordsCell(row.cells[5]);
     const foldedWords = existingWords + (foldByLineIdx.get(idx) || 0);
 
     // Fall back to the row's existing active/idle when no enter row matched
@@ -226,10 +206,7 @@ export function healTimingLog(body) {
 // Used on the unmatched-span fallback path where we fold words but cannot
 // safely recompute the span.
 function renderExistingWithWords(line, deltaWords) {
-  const { core, marker } = splitRowMarker(line);
-  const parts = core.split('|');
-  parts[5] = ` ${fmtNumBlankZero(deltaWords)} `;
-  return parts.join('|') + marker;
+  return replaceTimingRowCell(line, 5, ` ${fmtNumBlankZero(deltaWords)} `);
 }
 
 // Count the retired `idle`/`active-work` rows in a body — used by the CLI/sweep
@@ -238,7 +215,8 @@ export function countRetiredRows(body) {
   if (!body || typeof body !== 'string') return 0;
   let n = 0;
   for (const line of body.split('\n')) {
-    if (TS_LINE_RE.test(line) && RETIRED_SLUGS.has(eventOf(line))) n++;
+    const row = parseTimingRow(line);
+    if (row && isTableTimingTimestamp(row.ts) && RETIRED_SLUGS.has(row.event)) n++;
   }
   return n;
 }

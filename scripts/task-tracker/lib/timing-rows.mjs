@@ -15,6 +15,11 @@ import {
   classifyTimingEventForAccounting as classifyTimingEvent,
   EVENT_CLASS,
 } from './timing-events/index.mjs';
+import {
+  isTableTimingTimestamp,
+  parseTimingRow,
+  timingTimestampToMs as tsToMs,
+} from './timing-row-reader.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
 
 // Pause-span markers use `..` separator between from/until because raw
@@ -26,28 +31,6 @@ const PAUSE_MARKER_RE = /<!--\s*aitm-pause:\s*([^\s>]+?)\.\.([^\s>]+?)\s*-->/g;
 const PAUSE_MARKER_KV_RE =
   /<!--\s*aitm-pause:\s+(?=[^>]*\bfrom=)(?=[^>]*\buntil=)((?:\s*[a-z]+=\S+)+)\s*-->/g;
 const ROW_SEC_RE = /<!--\s*row-sec:\s*a=(-?\d+)\s+i=(-?\d+)\s*-->/;
-
-// Timing-log timestamp pattern (supports both legacy HH:MM and new
-// second-precision HH:MM:SS).
-const TS_LINE_RE = /\|\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\s+[+-]\d{2}:\d{2})\s*\|/;
-
-function tsToMs(ts) {
-  if (ts == null) return NaN;
-  if (ts instanceof Date) return ts.getTime();
-  if (typeof ts === 'number') return Number.isFinite(ts) ? ts : NaN;
-  if (typeof ts !== 'string') return NaN;
-  // Accept both ISO ("2026-05-17T23:58:01.123Z") and table-format
-  // ("2026-05-17 18:58:01 -05:00").
-  const tableMatch = ts.match(
-    /^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s+([+-]\d{2}):(\d{2})$/
-  );
-  if (tableMatch) {
-    const [, date, hh, mm, ss, offH, offM] = tableMatch;
-    return Date.parse(`${date}T${hh}:${mm}:${ss ?? '00'}${offH}:${offM}`);
-  }
-  const parsed = Date.parse(ts);
-  return Number.isFinite(parsed) ? parsed : NaN;
-}
 
 export function formatHMS(sec) {
   if (sec == null || !Number.isFinite(Number(sec))) return '—';
@@ -149,8 +132,8 @@ export function lastRowTsFromBody(body) {
   const lines = body.split('\n');
   let last = null;
   for (const line of lines) {
-    const m = line.match(TS_LINE_RE);
-    if (m) last = m[1];
+    const row = parseTimingRow(line);
+    if (row && isTableTimingTimestamp(row.ts)) last = row.ts;
   }
   return last;
 }
@@ -167,10 +150,9 @@ export function lastRowFromBody(body) {
   const lines = body.split('\n');
   let last = null;
   for (const line of lines) {
-    const m = line.match(TS_LINE_RE);
-    if (!m) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    last = { ts: m[1], event: (cells[2] ?? '').toLowerCase() };
+    const row = parseTimingRow(line);
+    if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    last = { ts: row.ts, event: row.event };
   }
   return last;
 }
@@ -309,15 +291,14 @@ export function computePhaseCloseDelta(body, phase, nowTs, nowMarker = NaN) {
   }
   const parsed = [];
   for (const line of body.split('\n')) {
-    const m = line.match(TS_LINE_RE);
-    if (!m) continue;
-    const ms = tsToMs(m[1]);
+    const row = parseTimingRow(line);
+    if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    const ms = tsToMs(row.ts);
     if (!Number.isFinite(ms) || ms > nowMs) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    const markerNum = Number(cells[6]);
+    const markerNum = Number(row.wordMarker);
     parsed.push({
       ms,
-      event: (cells[2] ?? '').toLowerCase(),
+      event: row.event,
       marker: Number.isFinite(markerNum) ? markerNum : NaN,
     });
   }
@@ -391,12 +372,11 @@ export function computeActiveByPhaseSpans(body, nowTs) {
   const nowMsArg = nowTs == null ? null : tsToMs(nowTs);
   const parsed = [];
   for (const line of body.split('\n')) {
-    const m = line.match(TS_LINE_RE);
-    if (!m) continue;
-    const ms = tsToMs(m[1]);
+    const row = parseTimingRow(line);
+    if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    const ms = tsToMs(row.ts);
     if (!Number.isFinite(ms)) continue;
-    const cells = line.split('|').map((s) => s.trim());
-    parsed.push({ ms, event: (cells[2] ?? '').toLowerCase() });
+    parsed.push({ ms, event: row.event });
   }
   if (parsed.length === 0) return empty;
 
