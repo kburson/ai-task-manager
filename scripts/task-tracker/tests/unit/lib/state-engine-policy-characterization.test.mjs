@@ -12,10 +12,13 @@ import {
 import { STATES as PRODUCTION_STATES, validateTransition } from '../../../state-machine.mjs';
 import { LEGAL_TRANSITIONS } from '../../../lib/stage-entry-markers.mjs';
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
-import { VERB_HOME_STATE } from '../../../lib/verb-home-state-guard.mjs';
-import { ALIAS_VERB } from '../../../verbs/promote.mjs';
+import { VERB_HOME_STATE, assertVerbHomeState } from '../../../lib/verb-home-state-guard.mjs';
+import { ALIAS_VERB, runPromote } from '../../../verbs/promote.mjs';
+import { runRefine } from '../../../verbs/refine.mjs';
 import { LEGAL_FROM as DEMOTE_FROM, DEMOTE_TARGET } from '../../../verbs/demote.mjs';
 import { LEGAL_FROM as PARK_FROM, PARK_TARGET } from '../../../verbs/park.mjs';
+
+const TEST_CFG = { repo: 'owner/repo', projectId: 'PVT_TEST' };
 
 function orderedPairKeys() {
   return STATE_IDS.flatMap((from) => STATE_IDS.map((to) => `${from}->${to}`));
@@ -37,6 +40,45 @@ function timingWalkPasses(from, to) {
   ];
   const enteredStages = [...new Set([from, to])].map((stage) => ({ stage }));
   return validateTimingLog({ comments, markers: { enteredStages } }).pass;
+}
+
+function bodyWithRecordedState(state) {
+  const marker =
+    state == null
+      ? ''
+      : `<!-- aitm-last-known-state: ${state} -->\n` +
+        '<!-- aitm-last-known-state-ts: 2026-07-27T00:00:00Z -->\n';
+  return `${marker}\n## User Story\n\nCharacterization fixture.\n`;
+}
+
+async function observeRefine(recordedState) {
+  const body = bodyWithRecordedState(recordedState);
+  const promoteCalls = [];
+  const result = await runRefine({
+    args: {
+      issueNumber: 1007,
+      size: 'S',
+      estimate: '2',
+      priority: 'p1',
+      reason: `characterize ${recordedState ?? 'bootstrap'}`,
+    },
+    cfg: TEST_CFG,
+    deps: {
+      assertBound: () => {},
+      tetherIssueToProject: async () => ({ itemId: 'PVTI_TEST' }),
+      fetchBody: async () => body,
+      mutateBody: async ({ mutate }) => {
+        mutate(body);
+        return { status: 'ok' };
+      },
+      loadProjectFieldDefs: () => [],
+      ensureIssueFieldDb: (next) => ({ body: next }),
+      verbPromote: async () => {
+        promoteCalls.push(recordedState);
+      },
+    },
+  });
+  return { recordedState, promoteCalls, result };
 }
 
 test('the baseline names the canonical eight states in production order', () => {
@@ -107,16 +149,65 @@ test('action eligibility and delegation match current verb exports', () => {
     to: PARK_TARGET,
     requires: 'reason',
   });
-  assert.deepEqual(ACTION_BASELINE.refine, {
-    from: ['backlog', 'on-deck'],
-    selfRun: 're-estimate-in-place',
-  });
 });
 
-test('bootstrap semantics remain explicit rather than inferred as a transition edge', () => {
-  assert.deepEqual(ACTION_BASELINE.bootstrap, {
-    recordedState: null,
-    behavior: 'resolve-live-state-then-apply-action-policy',
-    missingBoardItem: 'refuse',
+test('refine entry and self-run policy match injected production behavior', async () => {
+  const observations = await Promise.all(
+    ['backlog', 'on-deck', 'refine', 'plan'].map(observeRefine)
+  );
+  assert.deepEqual(
+    observations.map(({ promoteCalls }) => promoteCalls.length),
+    [2, 1, 0, 0]
+  );
+  assert.deepEqual(
+    ACTION_BASELINE.refine.from,
+    observations
+      .filter(({ promoteCalls }) => promoteCalls.length > 0)
+      .map(({ recordedState }) => recordedState)
+  );
+  const refineSelfRun = observations.find(({ recordedState }) => recordedState === 'refine');
+  assert.equal(refineSelfRun.result.status, 'refined');
+  assert.equal(refineSelfRun.result.promoted, false);
+  assert.equal(ACTION_BASELINE.refine.selfRun, 're-estimate-in-place');
+});
+
+test('bootstrap policy resolves live state and refuses a missing board item', async () => {
+  assert.doesNotThrow(() =>
+    assertVerbHomeState({ verb: 'test', currentState: null, issueNumber: 1007 })
+  );
+
+  const missing = await runPromote({
+    issueNumber: 1007,
+    cfg: TEST_CFG,
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ({ body: bodyWithRecordedState(null) }),
+      getLiveState: async () => null,
+    },
   });
+  assert.equal(missing.status, 'error');
+  assert.match(missing.message, /no recorded state and no live state/);
+  assert.equal(ACTION_BASELINE.bootstrap.recordedState, null);
+  assert.equal(ACTION_BASELINE.bootstrap.missingBoardItem, 'refuse');
+
+  let bootstrappedBody = null;
+  const resolved = await runPromote({
+    issueNumber: 1007,
+    cfg: TEST_CFG,
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ({ body: bodyWithRecordedState(null) }),
+      getLiveState: async () => 'backlog',
+      mutateIssueBody: async ({ mutate }) => {
+        bootstrappedBody = mutate(bodyWithRecordedState(null));
+        return { status: 'ok' };
+      },
+      runMoveState: async () => 0,
+    },
+  });
+  assert.equal(resolved.status, 'promoted');
+  assert.equal(resolved.bootstrapped, true);
+  assert.deepEqual([resolved.from, resolved.to], ['backlog', 'on-deck']);
+  assert.match(bootstrappedBody, /aitm-last-known-state state="backlog"/);
+  assert.equal(ACTION_BASELINE.bootstrap.behavior, 'resolve-live-state-then-apply-action-policy');
 });
