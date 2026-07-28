@@ -66,7 +66,7 @@ test('a genuine `<stage>:started` row WITHOUT its marker still fails reconciliat
 test('a genuine `<stage>:completed` row WITHOUT its marker still fails reconciliation', () => {
   const body = bodyWith([
     row('13:00:00', 'develop:started'),
-    row('13:30:00', 'test:completed', 'exited test'),
+    row('13:30:00', 'test:passed', 'exited test'),
   ]);
   const ctx = {
     comments: [{ body }],
@@ -75,7 +75,7 @@ test('a genuine `<stage>:completed` row WITHOUT its marker still fails reconcili
   const res = validate(ctx);
   assert.ok(
     reconFailures(res).some((f) => /records stage "test"/.test(f)),
-    `test:completed without its marker must still fail: ${JSON.stringify(res.failures)}`
+    `test:passed without its marker must still fail: ${JSON.stringify(res.failures)}`
   );
 });
 

@@ -26,6 +26,11 @@ import {
   opensIdleSpan,
   EVENT_CLASS,
 } from '../../../lib/timing-event-map.mjs';
+import {
+  isKnownTimingEvent,
+  isRetiredTimingEvent,
+  isEmittableTimingEvent,
+} from '../../../lib/timing-events/index.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const taskRoot = path.resolve(here, '../..');
@@ -43,15 +48,10 @@ test('`active-work` is no longer a canonical/recognized phase slug', () => {
   assert.equal(classifyTimingEvent('active-work'), EVENT_CLASS.PHASE);
 });
 
-test('AUDIT_PHASE_SLUGS source no longer lists `active-work`', () => {
-  const src = read('lib/timing-event-map.mjs');
-  const start = src.indexOf('const AUDIT_PHASE_SLUGS');
-  const auditBlock = src.slice(start, src.indexOf(']);', start) + 3);
-  assert.ok(start >= 0 && auditBlock.length > 0, 'AUDIT_PHASE_SLUGS block located');
-  assert.ok(
-    !/['"]active-work['"]/.test(auditBlock),
-    'active-work must not appear inside AUDIT_PHASE_SLUGS'
-  );
+test('canonical policy retains `active-work` only as non-emittable retired input', () => {
+  assert.equal(isKnownTimingEvent('active-work'), true);
+  assert.equal(isRetiredTimingEvent('active-work'), true);
+  assert.equal(isEmittableTimingEvent('active-work'), false);
 });
 
 // ---- C6 (#830): the bare `review` / `review-ready` slugs are retired ---------
@@ -66,19 +66,11 @@ test('C6 — `review` and `review-ready` are no longer canonical phase slugs', (
   assert.equal(classifyTimingEvent('review-ready'), EVENT_CLASS.PHASE);
 });
 
-test('C6 — AUDIT_PHASE_SLUGS source no longer lists `review` / `review-ready`', () => {
-  const src = read('lib/timing-event-map.mjs');
-  const start = src.indexOf('const AUDIT_PHASE_SLUGS');
-  const auditBlock = src.slice(start, src.indexOf(']);', start) + 3);
-  assert.ok(start >= 0 && auditBlock.length > 0, 'AUDIT_PHASE_SLUGS block located');
-  assert.ok(
-    !/['"]review['"]/.test(auditBlock),
-    'bare `review` must not appear inside AUDIT_PHASE_SLUGS'
-  );
-  assert.ok(
-    !/['"]review-ready['"]/.test(auditBlock),
-    '`review-ready` must not appear inside AUDIT_PHASE_SLUGS'
-  );
+test('C6 — canonical policy cannot emit bare `review` / `review-ready`', () => {
+  assert.equal(isKnownTimingEvent('review'), false);
+  assert.equal(isKnownTimingEvent('review-ready'), false);
+  assert.equal(isEmittableTimingEvent('review'), false);
+  assert.equal(isEmittableTimingEvent('review-ready'), false);
 });
 
 test('orphan-finalize.mjs contains no idle/active-work emitter', () => {

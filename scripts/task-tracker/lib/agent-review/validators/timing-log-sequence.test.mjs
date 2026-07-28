@@ -349,6 +349,17 @@ test('fails a malformed row with an unknown event slug, naming the row', () => {
   );
 });
 
+test('fails malformed colon-qualified events that match no canonical family', () => {
+  for (const event of ['demoted:not-a-state', 'pause:two words', 'switch-out:#abc']) {
+    const res = validate(logCtx([[T(0), event]], GOOD_STAGES));
+    assert.equal(res.pass, false, event);
+    assert.ok(
+      res.failures.some((failure) => /malformed/.test(failure) && failure.includes(`"${event}"`)),
+      `${event}: ${JSON.stringify(res.failures)}`
+    );
+  }
+});
+
 test('fails a malformed row with an unparseable timestamp, naming the row', () => {
   const res = validate(
     logCtx(

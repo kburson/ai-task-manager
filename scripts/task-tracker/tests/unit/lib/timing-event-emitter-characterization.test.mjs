@@ -12,6 +12,7 @@ import {
   classifyTimingEvent,
   isCanonicalPhaseSlug,
 } from '../../../lib/timing-event-map.mjs';
+import { isKnownTimingEvent, isEmittableTimingEvent } from '../../../lib/timing-events/index.mjs';
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 import { TIMING_EVENT_BASELINE } from '../../fixtures/state-engine-policy-baseline.mjs';
 
@@ -217,6 +218,8 @@ test('every characterized production timing emitter maps to known strict-reader 
     assert.ok(emitter.events.length > 0, `${emitter.file}:${emitter.line}`);
     for (const event of emitter.events) {
       assert.ok(ruleFor(event), `${emitter.file}:${emitter.line}: ${event}`);
+      assert.equal(isKnownTimingEvent(event), true, event);
+      assert.equal(isEmittableTimingEvent(event), true, event);
       assert.equal(classifyTimingEvent(event) == null, false, event);
       if (!strictReaderAccepts(event)) {
         strictReaderGaps.push(`${emitter.file}:${emitter.line}: ${event}`);

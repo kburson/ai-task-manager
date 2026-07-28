@@ -7,6 +7,8 @@
 // `resumed`, so the first-ever row on a never-bound issue read `resumed` — a
 // contradiction (you cannot resume without a prior start/pause), observed on
 // #480.
+
+import { describeTimingEvent } from './timing-events/index.mjs';
 //
 // The canonical first-row slug is `start` — the same slug `verbSwitch` emits
 // for a newcomer and the only slug `firstStartTimestamp` recognizes. A genuine
@@ -51,28 +53,31 @@ function rowEventSlug(line) {
 // opener/closer taxonomy instead of re-deriving it.
 export function classifyEvent(slug) {
   if (!slug) return null;
-  if (slug === 'pause' || slug === 'paused' || slug.startsWith('pause:')) {
+  const normalized = String(slug).trim().toLowerCase();
+  // Historical write-side compatibility: retired `idle` opened an
+  // interruption. The canonical read-side descriptor intentionally remains a
+  // neutral retired phase so modern timing arithmetic never opens a new span.
+  if (normalized === 'idle') return { role: 'open', kind: 'idle' };
+
+  const descriptor = describeTimingEvent(normalized);
+  if (!descriptor?.role) return null;
+  if (descriptor.role === 'close') return { role: 'close' };
+  if (descriptor.interruptionKind === 'pause') {
     return {
       role: 'open',
       kind: 'pause',
-      reason: slug.startsWith('pause:') ? slug.slice(6) : null,
+      reason: descriptor.reason ?? null,
     };
   }
-  if (slug === 'switch-out' || slug.startsWith('switch-out:')) {
+  if (descriptor.interruptionKind === 'switch-out') {
     return {
       role: 'open',
       kind: 'switch-out',
-      peer: slug.startsWith('switch-out:') ? slug.slice('switch-out:'.length) : null,
+      peer: descriptor.peer ?? null,
     };
   }
-  if (slug === 'stop') return { role: 'open', kind: 'stop' };
-  if (slug === 'idle') return { role: 'open', kind: 'idle' };
-  if (slug === 'resume' || slug === 'resumed' || slug.startsWith('resume:')) {
-    return { role: 'close' };
-  }
-  if (slug === 'switch-in' || slug.startsWith('switch-in:')) return { role: 'close' };
-  if (slug === 'start') return { role: 'close' };
-  return null; // neutral (move:*, end, etc.) — neither opens nor closes
+  if (descriptor.interruptionKind === 'stop') return { role: 'open', kind: 'stop' };
+  return null;
 }
 
 // #534 — scan the timing body top-to-bottom and return the last interruption

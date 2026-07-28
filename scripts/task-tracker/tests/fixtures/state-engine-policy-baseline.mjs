@@ -150,8 +150,8 @@ const TIMING_EXACT = Object.freeze([
 const TIMING_DEFINITIONS = Object.freeze(
   TIMING_EXACT.slice(0, 14).map((event, index) =>
     Object.freeze({
-      file: 'scripts/task-tracker/phase-events.mjs',
-      line: [45, 48, 51, 52, 55, 57, 62, 63, 66, 67, 70, 72, 79, 81][index],
+      file: 'scripts/task-tracker/lib/timing-events/catalog.mjs',
+      line: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55][index],
       expression: `'${event}'`,
       event,
     })

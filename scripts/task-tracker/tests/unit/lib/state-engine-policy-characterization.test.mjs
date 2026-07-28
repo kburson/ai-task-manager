@@ -13,6 +13,7 @@ import { STATES as PRODUCTION_STATES, validateTransition } from '../../../state-
 import { LEGAL_TRANSITIONS } from '../../../lib/stage-entry-markers.mjs';
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 import { VERB_HOME_STATE, assertVerbHomeState } from '../../../lib/verb-home-state-guard.mjs';
+import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import { ALIAS_VERB, runPromote } from '../../../verbs/promote.mjs';
 import { runRefine } from '../../../verbs/refine.mjs';
 import { LEGAL_FROM as DEMOTE_FROM, DEMOTE_TARGET } from '../../../verbs/demote.mjs';
@@ -33,13 +34,20 @@ function timingWalkPasses(from, to) {
         '## ⏱ Timing Log',
         '| Timestamp | Event | Active | Idle | Words | Marker | Description |',
         '|---|---|---:|---:|---:|---:|---|',
-        `| ${ts1} | ${from}:started | 0 | 0 | 0 | 0 | first |`,
-        `| ${ts2} | ${to}:started | 0 | 0 | 0 | 0 | second |`,
+        `| ${ts1} | ${timingEntryEvent(from)} | 0 | 0 | 0 | 0 | first |`,
+        `| ${ts2} | ${timingEntryEvent(to)} | 0 | 0 | 0 | 0 | second |`,
       ].join('\n'),
     },
   ];
   const enteredStages = [...new Set([from, to])].map((stage) => ({ stage }));
   return validateTimingLog({ comments, markers: { enteredStages } }).pass;
+}
+
+function timingEntryEvent(state) {
+  // Done's canonical current event is `issue:wrap`, which intentionally has no
+  // lifecycle-stage prefix. The strict reader retains `done:started` as a
+  // historical alias so this C1 matrix can still observe done-stage edges.
+  return state === 'done' ? 'done:started' : PHASE_EVENTS[state].enter.event;
 }
 
 function bodyWithRecordedState(state) {

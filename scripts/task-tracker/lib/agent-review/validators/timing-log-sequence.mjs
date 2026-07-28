@@ -20,19 +20,20 @@
 // Log comment itself — there is no pre-parsed table in the context) and
 // `context.markers.enteredStages` for the marker-reconciliation check.
 //
-// The event vocabulary and open/close taxonomy are NOT re-derived here: bare
-// openers/closers come from `bind-event.mjs::classifyEvent`, the departure /
-// reengagement predicates and the canonical phase-slug set come from
-// `timing-event-map.mjs`, the ordered stage ladder and legal stage walk come
-// from lifecycle policy, and timestamp parsing reuses `timing-rows.mjs`.
+// Event vocabulary, parameterized grammar, retirement, interruption class, and
+// stage association come from timing-events. The ordered stage ladder and legal
+// stage walk come from lifecycle policy, and timestamp parsing reuses
+// timing-rows.mjs.
 
 import { registry } from '../registry.mjs';
-import { classifyEvent, SUSPICIOUS_GAP_SEC } from '../../bind-event.mjs';
+import { SUSPICIOUS_GAP_SEC } from '../../bind-event.mjs';
 import {
-  isDepartureEvent,
-  isReengagementEvent,
-  isCanonicalPhaseSlug,
-} from '../../timing-event-map.mjs';
+  EVENT_CLASS,
+  classifyTimingEvent,
+  isKnownTimingEvent,
+  isRetiredTimingEvent,
+  stageOfTimingEvent,
+} from '../../timing-events/index.mjs';
 import { parseMarker } from '../../marker-grammar.mjs';
 import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
 import { stateIds, isTimingHistoryEdge } from '../../lifecycle-policy/index.mjs';
@@ -51,15 +52,6 @@ const STAGES = stateIds();
 const LIFECYCLE_STAGES = new Set(STAGES);
 const LADDER_INDEX = new Map(STAGES.map((s, i) => [s, i]));
 
-// Timing model v2 retired the free-floating `idle` / `active-work` rows: idle
-// spans are now bracketed by an explicit departure/return pair, so a bare
-// `idle`/`active-work` data row is illegal vocabulary and fails outright (AC1).
-// classifyEvent still resolves bare `idle` on the WRITE side and the read-side
-// event map maps both to a neutral PHASE, so neither the format-schema check nor
-// the departure/return machine would flag them — this validator carries its own
-// explicit guard.
-const RETIRED_EVENT_SLUGS = new Set(['idle', 'active-work']);
-
 const SENTINEL_REVERT_DETAIL_RE =
   /^revert-to-sentinel: board "([^"]+)", recorded "[^"]+" → sentinel "([^"]+)"$/;
 // #981 — SUSPICIOUS_GAP_SEC now lives in bind-event.mjs (the leaf module) so
@@ -75,14 +67,7 @@ export { SUSPICIOUS_GAP_SEC };
 // Exported for unit testing (#843): a `gate-refused` audit row must return null
 // here so it neither advances nor rewinds the kanban reconciliation walk.
 export function stageOf(event) {
-  const colon = event.indexOf(':');
-  if (colon > 0) {
-    const stage = event.slice(0, colon);
-    const qualifier = event.slice(colon + 1);
-    if (qualifier === 'failed') return null;
-    return LADDER_INDEX.has(stage) ? stage : null;
-  }
-  return LADDER_INDEX.has(event) ? event : null;
+  return stageOfTimingEvent(event);
 }
 
 function baseSlug(event) {
@@ -157,12 +142,15 @@ export function extractSentinelStageResets(issueBody) {
 // phase slug, or the neutral `end`. Anything else (`bound`, `foobar`) is
 // malformed.
 function isKnownSlug(slug) {
-  if (!slug) return false;
-  if (slug.includes(':')) return true;
-  if (classifyEvent(slug)) return true;
-  if (isCanonicalPhaseSlug(slug)) return true;
-  if (slug === 'end') return true;
-  return false;
+  return isKnownTimingEvent(slug);
+}
+
+function isDepartureEvent(slug) {
+  return classifyTimingEvent(slug) === EVENT_CLASS.DEPARTURE;
+}
+
+function isReengagementEvent(slug) {
+  return classifyTimingEvent(slug) === EVENT_CLASS.REENGAGEMENT;
 }
 
 function loc(row) {
@@ -226,7 +214,7 @@ export function validate(context = {}) {
     }
     // Retired v2 vocabulary — reject before any other check so the message names
     // the real problem (AC1).
-    if (RETIRED_EVENT_SLUGS.has(baseSlug(row.event))) {
+    if (isRetiredTimingEvent(row.event)) {
       failures.push(
         `${loc(row)}: retired vocabulary — "${baseSlug(row.event)}" rows are not permitted under ` +
           `timing model v2 (idle spans are bracketed by an explicit departure/return pair)`
