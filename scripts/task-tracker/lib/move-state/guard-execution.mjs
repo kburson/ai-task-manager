@@ -27,6 +27,7 @@ import { parseIssueFieldDb } from '../../issue-field-db.mjs';
 import { durableWordMarker } from '../../state.mjs';
 import { getProjectDir } from '../../paths.mjs';
 import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
+import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
 
 // #968 — worktree-aware `deps.closeGates` for the review→done exit-slot.
 // Parity with `verbs/close.mjs`'s #908 fix: `review-exit-close-gates` calls
@@ -142,7 +143,7 @@ export async function runGuardExecution(ctx) {
     // ahead of move-state spawn), so the in-registry assignment is harmless.
     const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir: getProjectDir() });
 
-    const guardResult = await runGuards(resolvedFromState, stateArg, {
+    let guardResult = await runGuards(resolvedFromState, stateArg, {
       issueNumber: Number(issueArg),
       repo: cfg.repo,
       fromState: resolvedFromState,
@@ -152,6 +153,23 @@ export async function runGuardExecution(ctx) {
       cfg,
       deps,
     });
+
+    // #1017 — a just-created issue can briefly return a stale body snapshot
+    // without its verified Backlog marker. Only when contiguity objects on one
+    // of the two first-Refine arcs, read the body once more and re-evaluate that
+    // guard before any move mutation. Every unrelated refusal remains intact;
+    // refresh failure or genuine absence stays fail-closed.
+    const refreshedContiguity = await refreshPreRefineContiguity({
+      fromState: resolvedFromState,
+      toState: stateArg,
+      issueNumber: Number(issueArg),
+      guardResult,
+      fetchFreshBody: async () =>
+        (
+          await gh(['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body', '--jq', '.body'])
+        ).trim(),
+    });
+    guardResult = refreshedContiguity.guardResult;
 
     if (!guardResult.ok) {
       // Contiguity refusal (story #355): preserve the legacy inline banner
