@@ -25,7 +25,7 @@ const ts = () => new Date().toISOString();
 test('buildFlushRow: a pause row renders Active/Idle in Xh Ym Zs duration form (#484)', () => {
   const row = buildFlushRow({
     ts: ts(),
-    event: 'pause',
+    event: 'pause:other',
     activeMin: 6,
     idleMin: 0,
     deltaWords: 0,
@@ -35,13 +35,13 @@ test('buildFlushRow: a pause row renders Active/Idle in Xh Ym Zs duration form (
   // Active cell is the duration form, not the bare scalar `6`. Idle is
   // effective-zero, so under #489 it renders blank (not `0h 00m 00s`).
   assert.match(row, /\| 0h 06m 00s \| {2}\|/, 'non-zero Active duration-form, blank Idle (#489)');
-  assert.doesNotMatch(row, /\| pause \| 6 \|/, 'no bare minute scalar in Active');
+  assert.doesNotMatch(row, /\| pause:other \| 6 \|/, 'no bare minute scalar in Active');
 });
 
 test('buildFlushRow: carries the canonical row-sec marker (#484)', () => {
   const row = buildFlushRow({
     ts: ts(),
-    event: 'pause',
+    event: 'pause:other',
     activeMin: 6,
     idleMin: 3,
     deltaWords: 0,
@@ -58,7 +58,7 @@ test('buildFlushRow: carries the canonical row-sec marker (#484)', () => {
 test('buildFlushRow: row-sec seconds round-trip through the duration cells (#484)', () => {
   const row = buildFlushRow({
     ts: ts(),
-    event: 'develop-complete',
+    event: 'develop:completed',
     activeMin: 16,
     idleMin: 0,
     deltaWords: 42,
@@ -72,7 +72,7 @@ test('buildFlushRow: row-sec seconds round-trip through the duration cells (#484
 test('buildFlushRow: effective-zero Active/Idle render blank, not a bare 0 or 0h 00m 00s (#489 supersedes #484)', () => {
   const row = buildFlushRow({
     ts: ts(),
-    event: 'review',
+    event: 'update',
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,
@@ -84,7 +84,7 @@ test('buildFlushRow: effective-zero Active/Idle render blank, not a bare 0 or 0h
   // so it still renders `0`. The row-sec marker keeps the raw seconds.
   assert.match(
     row,
-    /\| review \| {2}\| {2}\| {2}\| 0 \| {2}\| <!-- row-sec: a=0 i=0 -->/,
+    /\| update \| {2}\| {2}\| {2}\| 0 \| {2}\| <!-- row-sec: a=0 i=0 -->/,
     'effective-zero Active/Idle/ΔWords blank; wordMarker 0 preserved; row-sec marker intact'
   );
   assert.doesNotMatch(row, /0h 00m 00s/, 'no duration-form zero cells under #489');
@@ -93,7 +93,7 @@ test('buildFlushRow: effective-zero Active/Idle render blank, not a bare 0 or 0h
 test('buildFlushRow: non-numeric / missing minute values clamp to zero (#484)', () => {
   const row = buildFlushRow({
     ts: ts(),
-    event: 'pause',
+    event: 'pause:other',
     activeMin: undefined,
     idleMin: NaN,
     deltaWords: 0,

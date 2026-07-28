@@ -287,7 +287,7 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
   const tsLocal = localMinuteWithOffset(ts);
   const subMinute = buildRow({
     ts,
-    event: 'plan',
+    event: 'plan:started',
     activeSec: 37,
     idleSec: 0,
     deltaWords: 0,
@@ -299,7 +299,7 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
   // (here non-zero 100); row-sec marker carries raw seconds unchanged.
   assert.equal(
     subMinute,
-    `| ${tsLocal} | plan | 0h 00m 37s |  |  | 100 | refine -> plan | <!-- row-sec: a=37 i=0 -->`,
+    `| ${tsLocal} | plan:started | 0h 00m 37s |  |  | 100 | refine -> plan | <!-- row-sec: a=37 i=0 -->`,
     'sub-minute active renders 0h 00m 37s; zero idle/ΔWords blank (#489)'
   );
   // AC5: the Active cell shows 0h 00m Ns with N > 0.
@@ -313,7 +313,7 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
   const ts = new Date().toISOString();
   const row = buildRow({
     ts,
-    event: 'review',
+    event: 'review:started',
     activeSec: 3852, // 1h 04m 12s
     idleSec: 90, // 0h 01m 30s
     deltaWords: 0,

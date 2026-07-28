@@ -7,14 +7,14 @@ import { computePauseIdleSec } from '../../../verbs/resume.mjs';
 {
   const row = buildRow({
     ts: new Date().toISOString(),
-    event: 'pause',
+    event: 'pause:other',
     activeMin: 5,
     idleMin: 0,
     deltaWords: 1200,
     wordMarker: 5000,
     description: 'pause for question',
   });
-  assert.match(row, /\| pause \|/);
+  assert.match(row, /\| pause:other \|/);
   assert.match(row, /\| pause for question \|$/);
 }
 
@@ -38,7 +38,7 @@ import { computePauseIdleSec } from '../../../verbs/resume.mjs';
 {
   const row = buildRow({
     ts: new Date(Date.now() - 10000).toISOString(),
-    event: 'pause',
+    event: 'pause:other',
     activeMin: 1,
     idleMin: 0,
     deltaWords: 0,

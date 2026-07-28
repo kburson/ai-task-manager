@@ -9,6 +9,11 @@ import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
+import {
+  EVENT_CLASS,
+  classifyTimingEvent,
+  isEmittableTimingEvent,
+} from './lib/timing-events/index.mjs';
 const pexec = promisify(execFile);
 
 // #568 — raised by `appendRow` when a second `start` row is attempted over a
@@ -132,6 +137,9 @@ export function buildRow({
       if (!description) description = resolved.description;
     }
   }
+  if (!isEmittableTimingEvent(event)) {
+    throw new Error(`refusing non-emittable Timing Log event: ${String(event)}`);
+  }
   // When second precision is supplied, render the Active and Idle cells with
   // the fixed-width `Xh Ym Zs` duration form so sub-minute moves are no longer
   // rounded away to 0. A trailing `<!-- row-sec: a=N i=N -->` comment carries
@@ -181,6 +189,9 @@ export function buildBackdatedDepartureRow({ ts, event, description = '', wordMa
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
     throw new Error(`buildBackdatedDepartureRow: non-parseable ts: ${String(ts)}`);
+  }
+  if (!isEmittableTimingEvent(event) || classifyTimingEvent(event) !== EVENT_CLASS.DEPARTURE) {
+    throw new Error(`refusing non-emittable departure Timing Log event: ${String(event)}`);
   }
   const wm = wordMarker == null ? null : Number(String(wordMarker).replace(/,/g, ''));
   return `| ${fmtTs(ts)} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;

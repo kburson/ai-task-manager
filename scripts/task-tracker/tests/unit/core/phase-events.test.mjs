@@ -167,7 +167,7 @@ assert.ok(
 // ---- 8. buildRow — explicit event/description override descriptor ---------
 const rowOverride = buildRow({
   ts,
-  event: 'pause',
+  event: 'pause:other',
   description: 'task paused',
   phase: { state: 'develop', phase: 'enter' },
   activeMin: 0,
@@ -176,7 +176,7 @@ const rowOverride = buildRow({
   wordMarker: 0,
 });
 assert.ok(
-  rowOverride.includes('| pause |'),
+  rowOverride.includes('| pause:other |'),
   `explicit event must win over descriptor; got: ${rowOverride}`
 );
 assert.ok(
@@ -187,21 +187,21 @@ assert.ok(
 // ---- 9. buildRow — back-compat: legacy callers (no phase) unchanged -------
 const rowLegacy = buildRow({
   ts,
-  event: 'pause',
+  event: 'pause:other',
   description: 'task paused',
   activeMin: 1,
   idleMin: 0,
   deltaWords: 42,
   wordMarker: 100,
 });
-assert.ok(rowLegacy.includes('| pause |'), 'legacy event slug preserved');
+assert.ok(rowLegacy.includes('| pause:other |'), 'raw canonical event slug preserved');
 assert.ok(rowLegacy.includes('task paused'), 'legacy description preserved');
 assert.ok(rowLegacy.includes('| 42 |'), 'legacy deltaWords preserved');
 
 // ---- 10. buildRow — unresolvable descriptor falls back to caller args -----
 const rowUnresolvable = buildRow({
   ts,
-  event: 'pause',
+  event: 'pause:other',
   description: 'task paused',
   phase: { state: 'bogus', phase: 'enter' },
   activeMin: 0,
@@ -210,7 +210,7 @@ const rowUnresolvable = buildRow({
   wordMarker: 0,
 });
 assert.ok(
-  rowUnresolvable.includes('| pause |'),
+  rowUnresolvable.includes('| pause:other |'),
   'unresolvable descriptor must not clobber caller event'
 );
 

@@ -104,5 +104,10 @@ export function describeLegacyTimingEvent(event) {
 }
 
 export function isRetiredTimingEventInput(event) {
-  return event === 'idle' || event === 'active-work' || event.startsWith('idle:');
+  return (
+    event === 'idle' ||
+    event === 'active-work' ||
+    event.startsWith('idle:') ||
+    event.startsWith('active-work:')
+  );
 }

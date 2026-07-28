@@ -50,14 +50,18 @@ assert.ok(!resumeRow.includes('switch-out'), 'resume row must not contain switch
 // ---- 2. Cross-issue switch still emits `switch-out` with the target ref ----
 const crossRow = buildRow({
   ts,
-  event: 'switch-out',
+  event: 'switch-out:#999',
   activeMin: 10,
   idleMin: 0,
   deltaWords: 100,
   wordMarker: 1000,
   description: 'switch-out → task #999',
 });
-assert.match(crossRow, /\| switch-out \|/, 'cross-issue switch must use switch-out slug');
+assert.match(
+  crossRow,
+  /\| switch-out:#999 \|/,
+  'cross-issue switch must use the target-specific switch-out slug'
+);
 assert.match(crossRow, /switch-out → task #999/, 'cross-issue row must reference the target');
 
 // ---- 3. switch.mjs carries the #833 self-bind no-op guard -------------------

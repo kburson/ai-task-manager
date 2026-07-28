@@ -28,7 +28,7 @@ const postTime = new Date().toISOString(); // move-state round-trip advanced the
 
 const specRow = {
   kind: 'row',
-  event: 'review',
+  event: 'update',
   activeSec: 1800,
   idleSec: 0,
   deltaWords: 500,
@@ -38,7 +38,7 @@ const specRow = {
 
 const specFlush = {
   kind: 'flush',
-  event: 'review',
+  event: 'update',
   activeMin: 12,
   idleMin: 3,
   deltaWords: 0,

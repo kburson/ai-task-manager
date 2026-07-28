@@ -39,7 +39,7 @@ chmodSync(ghShim, 0o755);
 writeFileSync(store, JSON.stringify({ comments: [], nextId: 1 }));
 
 // Worker script — calls postTimingEvent once with the description + event from
-// argv. The event defaults to a neutral `move:*` slug: the concurrent rows in
+// argv. The event defaults to the neutral canonical `update` slug: the concurrent rows in
 // this test exercise lock serialization, not bind semantics, and #568's
 // append-guard forbids a *second* `start` row. The comment is established by one
 // sequential `start` seed below; the racing workers then append neutral rows.
@@ -49,7 +49,7 @@ writeFileSync(
   `
 import { postTimingEvent, buildRow } from '${path.join(repoRoot, 'scripts/task-tracker/gh-timing-comment.mjs').replace(/\\/g, '/')}';
 const description = process.argv[2];
-const event = process.argv[3] || 'move:dev';
+const event = process.argv[3] || 'update';
 const row = buildRow({
   ts: new Date().toISOString(),
   event,
@@ -97,7 +97,7 @@ await runWorker('seed-row', 'start');
 // Now race two concurrent neutral-event appenders. The 50ms delay inside the
 // fake's graphql update path widens the lost-update window; the per-issue lock
 // must serialize them so BOTH rows survive.
-await Promise.all([runWorker('alpha-row', 'move:dev'), runWorker('beta-row', 'move:dev')]);
+await Promise.all([runWorker('alpha-row', 'update'), runWorker('beta-row', 'update')]);
 
 const final = JSON.parse(readFileSync(store, 'utf8'));
 assert.equal(final.comments.length, 1, 'one timing comment created');

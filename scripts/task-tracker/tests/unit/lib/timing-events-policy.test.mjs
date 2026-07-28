@@ -21,6 +21,7 @@ import {
   isCanonicalPhaseSlug,
 } from '../../../lib/timing-event-map.mjs';
 import { classifyEvent } from '../../../lib/bind-event.mjs';
+import { buildRow, buildBackdatedDepartureRow } from '../../../gh-timing-comment.mjs';
 
 const LIFECYCLE_EVENTS = [
   ['backlog:created', 'lifecycle', 'backlog'],
@@ -133,6 +134,46 @@ test('legacy aliases remain readable while retired vocabulary cannot be emitted'
     assert.equal(isEmittableTimingEvent(event), false, event);
   }
   assert.equal(isRetiredTimingEvent('idle:legacy-detail'), true);
+  assert.equal(isRetiredTimingEvent('active-work:legacy-detail'), true);
+});
+
+test('central row construction refuses unknown, legacy, and retired emission', () => {
+  const row = {
+    ts: new Date().toISOString(),
+    activeSec: 0,
+    idleSec: 0,
+    deltaWords: 0,
+    wordMarker: 0,
+  };
+  for (const event of ['unknown:anything', 'pause', 'idle', 'active-work']) {
+    assert.throws(
+      () => buildRow({ ...row, event }),
+      /refusing non-emittable Timing Log event/,
+      event
+    );
+  }
+  assert.match(buildRow({ ...row, event: 'update' }), /\| update \|/);
+
+  for (const event of ['unknown:anything', 'idle', 'active-work', 'update']) {
+    assert.throws(
+      () =>
+        buildBackdatedDepartureRow({
+          ts: row.ts,
+          event,
+          wordMarker: 0,
+        }),
+      /refusing non-emittable departure Timing Log event/,
+      event
+    );
+  }
+  assert.match(
+    buildBackdatedDepartureRow({
+      ts: row.ts,
+      event: 'pause:auto-detected-gap',
+      wordMarker: 0,
+    }),
+    /\| pause:auto-detected-gap \|/
+  );
 });
 
 test('audit events are neutral timing phases without lifecycle-stage identity', () => {

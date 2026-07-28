@@ -45,7 +45,7 @@ test('second-precision: zero Active/Idle render blank, row-sec marker preserved 
 test('second-precision: only the zero cell blanks; the non-zero sibling renders (#489)', () => {
   const row = buildRow({
     ts: ts(),
-    event: 'review',
+    event: 'update',
     activeSec: 90, // 0h 01m 30s
     idleSec: 0,
     deltaWords: 12,
@@ -64,7 +64,7 @@ test('null is NOT effective-zero — Active/Idle/ΔWords keep the — sentinel (
   // scalars. null must remain `—`, distinct from a blanked zero.
   const row = buildRow({
     ts: ts(),
-    event: 'note',
+    event: 'update',
     activeMin: null,
     idleMin: null,
     deltaWords: null,
@@ -81,7 +81,7 @@ test('null is NOT effective-zero — Active/Idle/ΔWords keep the — sentinel (
 test('legacy minute path: zero minutes blank, non-zero render (#489)', () => {
   const row = buildRow({
     ts: ts(),
-    event: 'heartbeat',
+    event: 'update',
     activeMin: 0,
     idleMin: 5,
     deltaWords: 0,
@@ -98,7 +98,7 @@ test('legacy minute path: zero minutes blank, non-zero render (#489)', () => {
 test('buildFlushRow: effective-zero pause/flush cells blank, marker intact (#489 supersedes #484)', () => {
   const row = buildFlushRow({
     ts: ts(),
-    event: 'pause',
+    event: 'pause:other',
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,

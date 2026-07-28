@@ -212,7 +212,7 @@ test('buildDeferredReviewRow: null spec → null', () => {
 
 test('buildDeferredReviewRow: flush kind → buildFlushRow row', () => {
   const row = buildDeferredReviewRow(
-    { kind: 'flush', event: 'review', activeMin: 1, idleMin: 0, deltaWords: 0, wordMarker: 0 },
+    { kind: 'flush', event: 'update', activeMin: 1, idleMin: 0, deltaWords: 0, wordMarker: 0 },
     new Date().toISOString()
   );
   assert.ok(row && typeof row === 'string');
@@ -220,7 +220,7 @@ test('buildDeferredReviewRow: flush kind → buildFlushRow row', () => {
 
 test('buildDeferredReviewRow: row kind → buildRow row', () => {
   const row = buildDeferredReviewRow(
-    { kind: 'row', event: 'review', activeSec: 60, idleSec: 0, deltaWords: 0, wordMarker: 0 },
+    { kind: 'row', event: 'update', activeSec: 60, idleSec: 0, deltaWords: 0, wordMarker: 0 },
     new Date().toISOString()
   );
   assert.ok(row && typeof row === 'string');
