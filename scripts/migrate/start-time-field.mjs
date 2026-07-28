@@ -17,8 +17,13 @@
 import { loadConfig } from '../task-tracker/config.mjs';
 import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gql, writeProjectFieldValue } from '../gh/lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const args = process.argv.slice(2);
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(args)) {
+  emitSelfDoc('start-time-field');
+  process.exit(0);
+}
 const dryRun = args.includes('--dry-run');
 const deleteOldFields = args.includes('--delete-old-fields');
 

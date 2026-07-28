@@ -22,8 +22,9 @@ function run(args) {
 test('heal-timing-starts-sweep smoke: --help prints usage and exits 0', () => {
   const res = run(['--help']);
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /Usage: heal-timing-starts-sweep\.mjs/);
-  assert.match(res.stdout, /--state closed\|open\|all/);
+  assert.match(res.stdout, /^heal-timing-starts-sweep —/);
+  assert.match(res.stdout, /Usage:\s+heal-timing-starts-sweep \[options\]/);
+  assert.match(res.stdout, /Exit codes:/);
 });
 
 test('heal-timing-starts-sweep smoke: invalid --state errors and exits 2', () => {

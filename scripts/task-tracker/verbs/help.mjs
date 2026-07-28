@@ -8,62 +8,57 @@
 // No runtime behavior beyond printing; the data lives in help-data.mjs so the
 // drift guard can assert against it without capturing stdout.
 
-import {
-  VERB_REFERENCE,
-  TOPICS,
-  COMMON_EXIT_CODES,
-  STATE_TRANSITIONS,
-  GATE_EVIDENCE_MODEL,
-} from './help-data.mjs';
+import { TOPICS, STATE_TRANSITIONS, GATE_EVIDENCE_MODEL } from './help-data.mjs';
+import { agentCommandCatalog, commandByName } from '../lib/command-surface/catalog.mjs';
 
 // Resolve a user-typed token to a canonical VERB_REFERENCE key, following
 // aliases. Returns null when the token names no known verb.
 export function resolveVerb(target) {
   if (!target) return null;
-  const t = String(target)
-    .trim()
-    .replace(/^#/, (m) => m); // keep leading # for '#N'
-  if (Object.prototype.hasOwnProperty.call(VERB_REFERENCE, t)) return t;
-  // alias lookup: an entry whose `aliases` contains the token
-  for (const [key, entry] of Object.entries(VERB_REFERENCE)) {
-    if (Array.isArray(entry.aliases) && entry.aliases.includes(t)) return key;
-  }
-  return null;
+  return commandByName(String(target).trim())?.name || null;
 }
 
 function renderVerb(key) {
-  const e = VERB_REFERENCE[key];
+  const e = commandByName(key);
   const lines = [];
-  lines.push(`/task ${key} — ${e.summary}`);
+  lines.push(`/task ${e.name} — ${e.purpose}`);
   lines.push('');
+  lines.push(`  Purpose: ${e.purpose}`);
   lines.push(`  Usage:  ${e.usage}`);
-  if (Array.isArray(e.aliases) && e.aliases.length) {
+  if (e.aliases.length) {
     lines.push(`  Alias:  ${e.aliases.join(', ')}`);
   }
-  if (Array.isArray(e.flags) && e.flags.length) {
-    lines.push('');
-    lines.push('  Flags:');
-    for (const f of e.flags) {
-      const def = f.default ? `  (default: ${f.default})` : '';
-      lines.push(`    ${f.flag}`);
-      lines.push(`        ${f.desc}${def}`);
+  lines.push('');
+  lines.push('  Arguments:');
+  if (e.arguments.length === 0) {
+    lines.push('    none');
+  } else {
+    for (const argument of e.arguments) {
+      const def = argument.default ? `  (default: ${argument.default})` : '';
+      lines.push(`    ${argument.name}`);
+      lines.push(`        ${argument.description}${def}`);
     }
+  }
+  for (const [heading, values] of [
+    ['Preconditions', e.preconditions],
+    ['Effects', e.effects],
+    ['Output', e.output],
+  ]) {
+    lines.push('');
+    lines.push(`  ${heading}:`);
+    for (const value of values) lines.push(`    ${value}`);
   }
   lines.push('');
   lines.push('  Exit codes:');
-  const codes = [...COMMON_EXIT_CODES];
-  // verb-specific codes override/augment the common set by code number
-  for (const c of e.exitCodes || []) {
-    const idx = codes.findIndex((x) => x.code === c.code);
-    if (idx >= 0) codes[idx] = c;
-    else codes.push(c);
-  }
-  for (const c of codes.sort((a, b) => a.code - b.code)) {
+  for (const c of e.exitCodes) {
     lines.push(`    ${c.code}  ${c.meaning}`);
   }
   lines.push('');
   lines.push('  Examples:');
   for (const ex of e.examples) lines.push(`    ${ex}`);
+  lines.push('');
+  lines.push('  Related:');
+  for (const related of e.relatedCommands) lines.push(`    ${related}`);
   return lines.join('\n');
 }
 
@@ -74,13 +69,15 @@ function renderTopLevel() {
   lines.push('Run `/task help <verb>` (or `/task <verb> --help`) for full detail on any command.');
 
   for (const topic of TOPICS) {
-    const entries = Object.entries(VERB_REFERENCE).filter(([, e]) => e.topic === topic.key);
+    const entries = agentCommandCatalog()
+      .filter((entry) => entry.routing !== 'standalone')
+      .filter((entry) => entry.group === topic.key);
     if (!entries.length) continue;
     lines.push('');
     lines.push(`${topic.title}:`);
-    for (const [, e] of entries) {
+    for (const e of entries) {
       const usage = e.usage.padEnd(30);
-      lines.push(`  ${usage}  ${e.summary}`);
+      lines.push(`  ${usage}  ${e.purpose}`);
     }
   }
 

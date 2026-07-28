@@ -136,13 +136,13 @@ test('version subcommand and aliases print the package version', () => {
   }
 });
 
-test('no-args and unknown verb print the help banner with exit 0', () => {
+test('no-args prints help while an unknown verb returns a usage error', () => {
   const r = run([]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /Usage/);
   const r2 = run(['totally-unknown-verb']);
-  assert.equal(r2.status, 0, r2.stderr);
-  assert.match(r2.stdout, /Usage/);
+  assert.equal(r2.status, 2, r2.stderr);
+  assert.match(`${r2.stdout}${r2.stderr}`, /Usage/);
 });
 
 test('configure with a bad or missing subcommand exits 1', () => {

@@ -32,6 +32,12 @@ import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { healTimingLog, countRetiredRows } from './lib/heal-timing-log.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('heal-timing-log');
+  process.exit(0);
+}
 
 // Core, testable with injected I/O. `deps.findTimingComment` /
 // `deps.updateTimingComment` default to the real GraphQL-backed helpers.

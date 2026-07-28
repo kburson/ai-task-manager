@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, copyFileSync, readdirSync, statSync } from 'node:fs';
 
 import { TEMPLATE_FILES } from '../bin/lib/template-manifest.mjs';
+import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
@@ -87,6 +88,10 @@ export function syncReferenceTree({ srcDir, destDir, prefix = '' } = {}) {
 }
 
 function main() {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('sync-templates');
+    return;
+  }
   const results = [
     ...syncTemplates({
       srcDir: join(REPO_ROOT, 'templates'),

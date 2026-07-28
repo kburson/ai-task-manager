@@ -29,6 +29,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..', '..');
@@ -235,4 +236,8 @@ function main() {
   }
 }
 
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('ai-memory-parity');
+  process.exit(0);
+}
 process.exit(main());

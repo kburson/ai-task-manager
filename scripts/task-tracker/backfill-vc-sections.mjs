@@ -36,6 +36,12 @@ import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { parseStrict, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('backfill-vc-sections');
+  process.exit(0);
+}
 
 const pexec = promisify(execFile);
 

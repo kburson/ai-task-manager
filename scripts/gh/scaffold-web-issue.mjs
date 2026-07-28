@@ -15,6 +15,12 @@ import {
   stampEntryMarker,
   parseEntryMarkersFirstVisit,
 } from '../task-tracker/lib/stage-entry-markers.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('scaffold-web-issue');
+  process.exit(0);
+}
 
 // True when the body has no `aitm-entered-backlog` marker at all — the
 // signature of an issue that never passed through create-issue.mjs.

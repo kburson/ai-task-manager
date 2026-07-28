@@ -25,9 +25,15 @@ import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
 import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const REPO = 'kburson/options-co-pilot';
 const PROJECT_ID = 'PVT_kwHOABCEY84BVBBe';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('heal-options-co-pilot-bodies');
+  process.exit(0);
+}
 
 // AITM key → project field name for options-co-pilot. Order here also defines
 // the order of keys in the body fields-block (via fieldDefs passed to

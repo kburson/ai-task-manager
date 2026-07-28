@@ -26,6 +26,12 @@ import {
   buildPlanApprovedMarker as approvalMarker,
 } from './lib/markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('migrate-plan-approved');
+  process.exit(0);
+}
 
 const pexec = promisify(execFile);
 

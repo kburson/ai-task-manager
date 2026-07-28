@@ -34,6 +34,12 @@ import { classifyIssue, retraceSha, LOG_FIELD_SEP } from './lib/attribution-reso
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
 import { assertKnownArgv, reportStrictArgvError } from '../task-tracker/lib/argv-strict.mjs';
 import { confirmBlastRadius } from '../task-tracker/lib/blast-radius-guard.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('heal-backlog-attribution');
+  process.exit(0);
+}
 
 export const USAGE =
   'Usage: heal-backlog-attribution.mjs [--apply] [--json] [--repo owner/name]\n' +

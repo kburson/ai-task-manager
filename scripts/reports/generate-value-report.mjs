@@ -79,7 +79,7 @@ const ttCfg = loadConfig({
 });
 
 const argv = process.argv.slice(2);
-if (wantsHelp(argv)) {
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(argv)) {
   emitSelfDoc('value-report');
   process.exit(0);
 }

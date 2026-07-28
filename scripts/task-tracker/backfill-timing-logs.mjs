@@ -35,6 +35,12 @@ import { loadConfig } from './config.mjs';
 import { getProjectDir } from './paths.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('backfill-timing-logs');
+  process.exit(0);
+}
 
 const pexec = promisify(execFile);
 

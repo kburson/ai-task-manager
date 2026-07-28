@@ -1305,7 +1305,28 @@ if (process.argv[1]) {
 }
 const [, , command = 'help', ...rest] = process.argv;
 
-if (invokedDirectly)
+const PACKAGE_COMMANDS = new Set([
+  'help',
+  '?',
+  '--help',
+  '-h',
+  'version',
+  '-v',
+  '--version',
+  'install',
+  'init',
+  'repair',
+  'statusline',
+  'configure',
+  'memory-resync',
+]);
+
+if (invokedDirectly && !PACKAGE_COMMANDS.has(command)) {
+  process.stderr.write(
+    `ai-task-manager: unknown command "${command}"\nUsage: npx ai-task-manager <install|init|repair|statusline|configure|memory-resync|version>\n`
+  );
+  process.exitCode = 2;
+} else if (invokedDirectly)
   switch (command) {
     case 'version':
     case '-v':

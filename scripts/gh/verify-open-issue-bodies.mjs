@@ -17,6 +17,12 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('verify-open-issue-bodies');
+  process.exit(0);
+}
 
 // Injectable seam (#650): production wiring defaults to the real bindings; tests
 // override these to drive the fetch-paging, no-repo guard, JSON/text output, and

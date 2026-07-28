@@ -18,8 +18,14 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureSelfLink } from './lib/ensure-self-link.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('ensure-self-link');
+  process.exit(0);
+}
 
 try {
   const res = ensureSelfLink({ pkgRoot });

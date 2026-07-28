@@ -8,11 +8,17 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 
 import { discoverTestFiles } from './lib/discover-test-files.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const FALLBACK_STORY = '#309';
 const STORY_TAG_RE = /^\/\/ @story #\d/;
 const SHEBANG_RE = /^#!.+/;
 const ISSUE_RE = /#(\d+)/;
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('tag-story-ids');
+  process.exit(0);
+}
 
 function findCreationIssue(filePath) {
   try {

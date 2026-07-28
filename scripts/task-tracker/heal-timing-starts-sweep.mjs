@@ -21,6 +21,12 @@ import { findTimingComment } from './gh-timing-comment.mjs';
 import { runHeal } from './heal-timing-starts.mjs';
 import { auditBacklog, healBacklog } from './lib/heal-timing-sweep.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('heal-timing-starts-sweep');
+  process.exit(0);
+}
 
 function parseArgs(argv) {
   const args = { state: 'closed', apply: false, scope: null };

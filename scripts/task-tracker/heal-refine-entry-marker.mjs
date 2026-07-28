@@ -28,6 +28,12 @@ import { backfillEntryMarker } from './lib/stage-entry-markers.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('heal-refine-entry-marker');
+  process.exit(0);
+}
 
 export const USAGE =
   'Usage: heal-refine-entry-marker.mjs [<issue#> ...] [--apply] [--yes]\n' +

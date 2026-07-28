@@ -22,6 +22,8 @@
 // handler the hub routes to, for documentation and the parity cross-check; it
 // is not a second dispatch mechanism.
 
+import { VERB_REFERENCE } from './verbs/help-data.mjs';
+
 /**
  * @typedef {Object} CommandEntry
  * @property {string}   verb        Canonical command name.
@@ -33,7 +35,7 @@
  */
 
 /** @type {CommandEntry[]} */
-export const COMMAND_MANIFEST = [
+const ROUTING_MANIFEST = [
   // --- Binding & timer -----------------------------------------------------
   {
     verb: 'start',
@@ -383,6 +385,21 @@ export const COMMAND_MANIFEST = [
     dispatch: 'inline',
   },
 ];
+
+// #1011 — help metadata is canonical in VERB_REFERENCE. Preserve the
+// historical manifest shape as a derived routing facade until #1012 removes
+// remaining compatibility consumers.
+export const COMMAND_MANIFEST = Object.freeze(
+  ROUTING_MANIFEST.map((entry) => {
+    const reference = VERB_REFERENCE[entry.verb];
+    return Object.freeze({
+      ...entry,
+      aliases: Object.freeze([...entry.aliases]),
+      description: reference?.summary || entry.description,
+      category: reference?.topic || entry.category,
+    });
+  })
+);
 
 // name (canonical OR alias) → its CommandEntry.
 export const MANIFEST_INDEX = (() => {

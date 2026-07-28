@@ -19,6 +19,12 @@ import path from 'node:path';
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from './issue-field-db.mjs';
 import { loadConfig } from './config.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('migrate-fields-encoding');
+  process.exit(0);
+}
 
 const pexec = promisify(execFile);
 

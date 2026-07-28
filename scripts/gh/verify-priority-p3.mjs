@@ -11,8 +11,14 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { RUNTIME_REL } from '../task-tracker/paths.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const CONFIG = RUNTIME_REL.config;
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('verify-priority-p3');
+  process.exit(0);
+}
 
 function fail(msg) {
   console.error(`verify-priority-p3: ${msg}`);

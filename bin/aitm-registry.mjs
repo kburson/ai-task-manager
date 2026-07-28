@@ -23,6 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SELF_DOC } from '../scripts/lib/self-doc.mjs';
 import { manifestVerbNames } from '../scripts/task-tracker/command-manifest.mjs';
+import { agentCommandCatalog } from '../scripts/task-tracker/lib/command-surface/catalog.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
@@ -62,8 +63,12 @@ export const VERBS = manifestVerbNames();
 // categories, not just names.
 export { COMMAND_MANIFEST } from '../scripts/task-tracker/command-manifest.mjs';
 
-// Operator-facing scripts, keyed by command name → { group, path, ...doc }.
-export const SCRIPTS = SELF_DOC;
+// Operator-facing scripts explicitly safe to route through `aitm`. Direct-only
+// maintenance/package lifecycle help records remain in SELF_DOC/catalog but do
+// not broaden the orchestrator's mutation authority.
+export const SCRIPTS = Object.freeze(
+  Object.fromEntries(Object.entries(SELF_DOC).filter(([, doc]) => doc.routable !== false))
+);
 
 // Deliberate exclusions — documented so the omission is auditable, not an
 // oversight. Each entry states WHY the name is not reachable through `aitm`.
@@ -124,8 +129,11 @@ export function resolveAitmPath(scriptRelPath) {
 // filepaths. Verbs collapse under a single "Workflow verbs" group.
 export function groupedListing() {
   const groups = {};
-  for (const [name, doc] of Object.entries(SCRIPTS)) {
-    (groups[doc.group] ||= []).push({ name, synopsis: doc.synopsis });
+  for (const record of agentCommandCatalog().filter((entry) => entry.routing === 'standalone')) {
+    (groups[record.group] ||= []).push({
+      name: record.name,
+      synopsis: record.purpose,
+    });
   }
   for (const g of Object.values(groups)) g.sort((a, b) => a.name.localeCompare(b.name));
   return {

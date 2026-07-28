@@ -43,6 +43,7 @@ import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './ru
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
 import { evaluateCeiling } from './run-tests-ceiling.mjs';
+import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 import {
   parseInProcessDurationMs,
   formatPassLine,
@@ -50,6 +51,11 @@ import {
   formatTimingReport,
   serializeArtifact,
 } from './run-tests-timing.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('run-tests');
+  process.exit(0);
+}
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dir, '..');

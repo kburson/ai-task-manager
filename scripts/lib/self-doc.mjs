@@ -10,6 +10,9 @@
 // Intended caller: the exposed scripts themselves (guard) and
 // `bin/aitm-registry.mjs` (to build the grouped command listing). Not a CLI.
 
+import path from 'node:path';
+import { EXECUTABLE_ENTRYPOINTS } from '../task-tracker/lib/command-surface/entrypoints.mjs';
+
 // Help-token detection. Bare `help`/`?` (the `aitm <name> help` form) and the
 // conventional `--help`/`-h` flags all count.
 const HELP_TOKENS = new Set(['help', '?', '--help', '-h']);
@@ -22,7 +25,7 @@ export function wantsHelp(argv = []) {
 // `path` is repo-root-relative. `synopsis` is the one-line summary, `audience`
 // states who should call it (and via what), `usage` is the invocation line
 // shown as `aitm <name> ...` (never a node_modules filepath).
-export const SELF_DOC = {
+const ROUTABLE_SELF_DOC = {
   'create-issue': {
     group: 'GitHub',
     path: 'scripts/gh/create-issue.mjs',
@@ -176,6 +179,59 @@ export const SELF_DOC = {
   },
 };
 
+const DIRECT_HELP_CLASSIFICATIONS = new Set([
+  'agent-callable-standalone',
+  'package-lifecycle-cli',
+  'live-maintenance-or-migration',
+]);
+
+function derivedCommandName(entry) {
+  return entry.command || path.posix.basename(entry.path).replace(/\.(?:mjs|js)$/, '');
+}
+
+function derivedSelfDoc(entry) {
+  const name = derivedCommandName(entry);
+  const lifecycle = entry.classification === 'package-lifecycle-cli';
+  const maintenance = entry.classification === 'live-maintenance-or-migration';
+  return {
+    group: lifecycle ? 'Package lifecycle' : maintenance ? 'Maintenance' : 'CLI',
+    path: entry.path,
+    synopsis: `Run the ${name} command or inspect its side-effect-free help contract.`,
+    audience: maintenance
+      ? 'Operator maintaining or migrating an AITM repository; review effects before execution.'
+      : 'AITM operator or package lifecycle automation.',
+    usage: `${name} [options]`,
+    routable: false,
+    classification: entry.classification,
+    agentCallable: entry.classification === 'agent-callable-standalone',
+    preconditions: [
+      'Help has no prerequisites; normal execution may require an initialized project.',
+    ],
+    effects: [
+      'Help is read-only; normal execution may change the repository or connected project.',
+    ],
+    output: ['Human-readable help on stdout and diagnostics on stderr.'],
+    exitCodes: [
+      { code: 0, meaning: 'help or command completed successfully' },
+      { code: 1, meaning: 'runtime failure' },
+      { code: 2, meaning: 'usage error or unknown command' },
+    ],
+    examples: [`node ${entry.path} --help`],
+    relatedCommands: ['aitm help'],
+  };
+}
+
+const DERIVED_SELF_DOC = Object.fromEntries(
+  EXECUTABLE_ENTRYPOINTS.filter((entry) =>
+    DIRECT_HELP_CLASSIFICATIONS.has(entry.classification)
+  ).map((entry) => [derivedCommandName(entry), derivedSelfDoc(entry)])
+);
+
+export const SELF_DOC = Object.freeze({
+  ...DERIVED_SELF_DOC,
+  ...ROUTABLE_SELF_DOC,
+});
+
 // Print the full self-doc for one command to stdout. Called by each exposed
 // script's help guard.
 export function emitSelfDoc(name, write = (s) => process.stdout.write(s)) {
@@ -187,12 +243,24 @@ export function emitSelfDoc(name, write = (s) => process.stdout.write(s)) {
   const lines = [
     `${name} — ${doc.synopsis}`,
     '',
-    `  Group:    ${doc.group}`,
-    `  Usage:    ${doc.usage}`,
-    `  Audience: ${doc.audience}`,
+    `  Purpose:       ${doc.synopsis}`,
+    `  Group:         ${doc.group}`,
+    `  Usage:         ${doc.usage}`,
+    `  Audience:      ${doc.audience}`,
+    `  Arguments:     ${(doc.arguments || []).map((item) => item.name || item).join(', ') || 'See usage'}`,
+    `  Preconditions: ${(doc.preconditions || ['See usage and runtime diagnostics']).join('; ')}`,
+    `  Effects:       ${(doc.effects || ['Performs the command action; help is read-only']).join('; ')}`,
+    `  Output:        ${(doc.output || ['Results on stdout; diagnostics on stderr']).join('; ')}`,
+    `  Exit codes:    ${(doc.exitCodes || [{ code: 0, meaning: 'success' }])
+      .map((item) => `${item.code}=${item.meaning}`)
+      .join('; ')}`,
+    `  Examples:      ${(doc.examples || [`npx ${doc.usage}`]).join('; ')}`,
+    `  Related:       ${(doc.relatedCommands || ['aitm help']).join(', ')}`,
     '',
-    'Invoke via the orchestrator (never by node_modules filepath):',
-    `  npx ${doc.usage}`,
+    doc.routable === false
+      ? 'Invoke this entry point directly only after reviewing its effects.'
+      : 'Invoke via the orchestrator (never by node_modules filepath):',
+    doc.routable === false ? `  node ${doc.path} --help` : `  npx ${doc.usage}`,
     '',
   ];
   write(lines.join('\n'));

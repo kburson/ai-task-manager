@@ -12,6 +12,12 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { gql } from './lib/github-projects.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('init-repair');
+  process.exit(0);
+}
 
 // Injectable seam (#648): production wiring defaults to the real node:fs calls,
 // the shared gql binding, and getProjectDir. Tests override these to drive the

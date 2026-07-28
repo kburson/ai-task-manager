@@ -20,8 +20,14 @@
 // Each phase supports --dry-run. Run them in order, verifying between.
 
 import { gql } from '../gh/lib/github-projects.mjs';
+import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const PROJECT_ID = 'PVT_kwHOABCEY84BVBBe'; // @kburson's Options Copilot
+
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
+  emitSelfDoc('options-co-pilot-status-swap');
+  process.exit(0);
+}
 
 const TARGET_OPTIONS = [
   { name: 'Backlog', color: 'GRAY', description: 'Unvetted ideas' },

@@ -25,7 +25,7 @@ const STATE_TO_EVENT = {
 };
 
 const args = process.argv.slice(2);
-if (wantsHelp(args)) {
+if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(args)) {
   emitSelfDoc('update-event-fields');
   process.exit(0);
 }
