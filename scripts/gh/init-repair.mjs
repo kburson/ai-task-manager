@@ -12,6 +12,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { gql } from './lib/github-projects.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
+import { stateConfigKey, stateIds } from '../task-tracker/lib/lifecycle-policy/index.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {
@@ -35,16 +36,9 @@ export const deps = {
   exit: (c) => process.exit(c),
 };
 
-const OPTION_KEYS = {
-  kanbanOptionBacklog: 'backlog',
-  kanbanOptionOnDeck: 'on deck',
-  kanbanOptionRefine: 'refine',
-  kanbanOptionPlan: 'plan',
-  kanbanOptionDevelop: 'develop',
-  kanbanOptionTest: 'test',
-  kanbanOptionReview: 'review',
-  kanbanOptionDone: 'done',
-};
+export const OPTION_KEYS = Object.freeze(
+  Object.fromEntries(stateIds().map((state) => [stateConfigKey(state), state.replaceAll('-', ' ')]))
+);
 
 function configPath(d = deps) {
   return path.join(d.getProjectDir(), '.ai-task-manager', 'task-tracker.json');

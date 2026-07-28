@@ -1,19 +1,13 @@
 import { gql, splitRepo } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
+import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
 
-export const STATUS_CONFIG_KEYS = {
-  backlog: 'kanbanOptionBacklog',
-  'on-deck': 'kanbanOptionOnDeck',
-  refine: 'kanbanOptionRefine',
-  plan: 'kanbanOptionPlan',
-  develop: 'kanbanOptionDevelop',
-  test: 'kanbanOptionTest',
-  review: 'kanbanOptionReview',
-  done: 'kanbanOptionDone',
-};
+export const STATUS_CONFIG_KEYS = Object.freeze(
+  Object.fromEntries(stateIds().map((state) => [state, stateConfigKey(state)]))
+);
 
 const PRIORITY_CONFIG_KEYS = {
   P0: 'priorityOptionP0',
