@@ -107,3 +107,85 @@ export const ACTION_BASELINE = Object.freeze({
     missingBoardItem: 'refuse',
   }),
 });
+
+const TIMING_EXACT = Object.freeze([
+  'backlog:created',
+  'on-deck:started',
+  'refine:started',
+  'refine:completed',
+  'plan:started',
+  'plan:completed',
+  'develop:started',
+  'develop:completed',
+  'test:started',
+  'test:passed',
+  'review:started',
+  'review:approved',
+  'issue:wrap',
+  'issue:closed',
+  'demoted',
+  'out-of-band-move',
+  'gate-refused',
+  'update',
+]);
+
+const PHASE_EMITTERS = Object.freeze(
+  TIMING_EXACT.slice(0, 14).map((event, index) =>
+    Object.freeze({
+      file: 'scripts/task-tracker/phase-events.mjs',
+      line: [45, 48, 51, 52, 55, 57, 62, 63, 66, 67, 70, 72, 79, 81][index],
+      expression: `PHASE_EVENTS lifecycle record for ${event}`,
+      event,
+      rule: 'exact',
+    })
+  )
+);
+
+export const TIMING_EVENT_BASELINE = Object.freeze({
+  exact: TIMING_EXACT,
+  parameterized: Object.freeze([
+    Object.freeze({ name: 'demoted-target', pattern: /^demoted:[a-z-]+$/ }),
+    Object.freeze({ name: 'pause-reason', pattern: /^pause:.+$/ }),
+    Object.freeze({ name: 'resume-reason', pattern: /^resume:.+$/ }),
+    Object.freeze({ name: 'switch-out-issue', pattern: /^switch-out:#\d+$/ }),
+  ]),
+  retired: Object.freeze(['idle', 'active-work']),
+  emitters: Object.freeze([
+    ...PHASE_EMITTERS,
+    Object.freeze({
+      file: 'scripts/task-tracker/lib/move-state/audit-timing.mjs',
+      line: 100,
+      expression: '`demoted:${stateArg}`',
+      event: 'demoted:develop',
+      rule: 'demoted-target',
+    }),
+    Object.freeze({
+      file: 'scripts/task-tracker/lib/move-state/audit-timing.mjs',
+      line: 286,
+      expression: "'out-of-band-move'",
+      event: 'out-of-band-move',
+      rule: 'exact',
+    }),
+    Object.freeze({
+      file: 'scripts/task-tracker/lib/move-state/guard-execution.mjs',
+      line: 198,
+      expression: "'gate-refused'",
+      event: 'gate-refused',
+      rule: 'exact',
+    }),
+    Object.freeze({
+      file: 'scripts/task-tracker/verbs/review.mjs',
+      line: 317,
+      expression: "'gate-refused'",
+      event: 'gate-refused',
+      rule: 'exact',
+    }),
+    Object.freeze({
+      file: 'scripts/task-tracker/verbs/update.mjs',
+      line: 21,
+      expression: "'update'",
+      event: 'update',
+      rule: 'exact',
+    }),
+  ]),
+});
