@@ -138,3 +138,65 @@ exactly one disposition:
 A disposition must cite the target child or audit area and the regression test
 that preserves the corrected behavior. Multiple issues may map to one invariant;
 the plan must not create one refactoring story per defect.
+
+## 6. Disposition and Regression Ownership
+
+This table is the durable rendering of C1's executable disposition fixture.
+Targets name a policy child, the deferred #1006 audit area, or a delivery
+constraint without expanding the approved epic scope.
+
+| Issue | Disposition               | Target                                            | Regression owner                                                   |
+| ----- | ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
+| #819  | `1006-audit-input`        | #1006 lifecycle DoD migration audit               | #1006 JIT audit and existing corrective regression suite           |
+| #845  | `direct-child`            | #1009 lifecycle action and bootstrap policy       | `state-engine-policy-characterization.test.mjs`                    |
+| #848  | `direct-child`            | #1009 lifecycle action and park policy            | `state-engine-policy-characterization.test.mjs`                    |
+| #853  | `verification-constraint` | C1-C6 package-version delivery gates              | repository lint, format, fast, integration, and slow quality gates |
+| #854  | `direct-child`            | #1011 agentic CLI maintenance contract            | `executable-entrypoint-classification.test.mjs`                    |
+| #855  | `verification-constraint` | C1-C6 untracked-test reach gate                   | repository lint, format, fast, integration, and slow quality gates |
+| #879  | `direct-child`            | #1011 agentic CLI maintenance scope               | `executable-entrypoint-classification.test.mjs`                    |
+| #891  | `already-centralized`     | demonstrable AC policy and verifier               | #1006 JIT audit and existing corrective regression suite           |
+| #899  | `1006-audit-input`        | #1006 issue-kind body migration audit             | #1006 JIT audit and existing corrective regression suite           |
+| #900  | `verification-constraint` | C1-C6 trunk quality gates                         | repository lint, format, fast, integration, and slow quality gates |
+| #901  | `verification-constraint` | C1-C6 test-discovery gate                         | repository lint, format, fast, integration, and slow quality gates |
+| #902  | `1006-audit-input`        | #1006 DoD verifier reconciliation audit           | #1006 JIT audit and existing corrective regression suite           |
+| #904  | `direct-child`            | #1010 canonical timing-event policy               | `timing-event-emitter-characterization.test.mjs`                   |
+| #921  | `1006-audit-input`        | #1006 epic fan-out and mutation audit             | #1006 JIT audit and existing corrective regression suite           |
+| #922  | `verification-constraint` | C1-C6 sandbox timeout budget                      | repository lint, format, fast, integration, and slow quality gates |
+| #923  | `already-centralized`     | issue-kind commit-requirement policy              | #1006 JIT audit and existing corrective regression suite           |
+| #927  | `1006-audit-input`        | #1006 trunk-reference resolution audit            | #1006 JIT audit and existing corrective regression suite           |
+| #928  | `already-centralized`     | AC evidence-reference policy                      | #1006 JIT audit and existing corrective regression suite           |
+| #931  | `direct-child`            | #1009 lifecycle action home-state policy          | `state-engine-policy-characterization.test.mjs`                    |
+| #932  | `1006-audit-input`        | #1006 demotion evidence cleanup audit             | #1006 JIT audit and existing corrective regression suite           |
+| #933  | `already-centralized`     | lifecycle DoD marker parser                       | #1006 JIT audit and existing corrective regression suite           |
+| #934  | `verification-constraint` | C1-C6 functional DoD runtime budget               | repository lint, format, fast, integration, and slow quality gates |
+| #941  | `verification-constraint` | C1-C6 documentation test-reach gate               | repository lint, format, fast, integration, and slow quality gates |
+| #942  | `verification-constraint` | C1-C6 spelling dictionary gate                    | repository lint, format, fast, integration, and slow quality gates |
+| #943  | `verification-constraint` | C1-C6 kind-aware DoD regression gate              | repository lint, format, fast, integration, and slow quality gates |
+| #947  | `1006-audit-input`        | #1006 closed-child board reconciliation audit     | #1006 JIT audit and existing corrective regression suite           |
+| #949  | `verification-constraint` | C1-C6 full-history provenance gate                | repository lint, format, fast, integration, and slow quality gates |
+| #952  | `1006-audit-input`        | #1006 Test verifier migration audit               | #1006 JIT audit and existing corrective regression suite           |
+| #953  | `1006-audit-input`        | #1006 issue-kind parser boundary audit            | #1006 JIT audit and existing corrective regression suite           |
+| #963  | `1006-audit-input`        | #1006 issue-kind section parser audit             | #1006 JIT audit and existing corrective regression suite           |
+| #964  | `direct-child`            | #1011 agentic CLI safety inventory                | `executable-entrypoint-classification.test.mjs`                    |
+| #968  | `1006-audit-input`        | #1006 Review-to-Done trunk resolution audit       | #1006 JIT audit and existing corrective regression suite           |
+| #970  | `already-centralized`     | no-commit issue-kind review policy                | #1006 JIT audit and existing corrective regression suite           |
+| #972  | `1006-audit-input`        | #1006 timing-writer sequence audit                | #1006 JIT audit and existing corrective regression suite           |
+| #973  | `already-centralized`     | VC evidence outcome policy                        | #1006 JIT audit and existing corrective regression suite           |
+| #974  | `verification-constraint` | C1-C6 transitive parallel-safety gate             | repository lint, format, fast, integration, and slow quality gates |
+| #975  | `already-centralized`     | honest unverified evidence policy                 | #1006 JIT audit and existing corrective regression suite           |
+| #979  | `already-centralized`     | explicit human approval policy                    | #1006 JIT audit and existing corrective regression suite           |
+| #981  | `1006-audit-input`        | #1006 interrupted-session timing audit            | #1006 JIT audit and existing corrective regression suite           |
+| #983  | `1006-audit-input`        | #1006 terminated-agent span audit                 | #1006 JIT audit and existing corrective regression suite           |
+| #984  | `1006-audit-input`        | #1006 agent-review forensic audit                 | #1006 JIT audit and existing corrective regression suite           |
+| #991  | `verification-constraint` | C1-C6 documentation quality gates                 | repository lint, format, fast, integration, and slow quality gates |
+| #992  | `verification-constraint` | C1-C6 GitHub timeout budget                       | repository lint, format, fast, integration, and slow quality gates |
+| #993  | `verification-constraint` | C1-C6 fast-lane ceiling                           | repository lint, format, fast, integration, and slow quality gates |
+| #994  | `1006-audit-input`        | #1006 marker-normalization audit                  | #1006 JIT audit and existing corrective regression suite           |
+| #996  | `direct-child`            | #1010 canonical timing-event grammar              | `timing-event-emitter-characterization.test.mjs`                   |
+| #997  | `direct-child`            | #1008 executable self-loop topology               | `state-engine-policy-characterization.test.mjs`                    |
+| #998  | `direct-child`            | #1008 Review drift topology                       | `state-engine-policy-characterization.test.mjs`                    |
+| #999  | `direct-child`            | #1008 executable lifecycle topology               | `state-engine-policy-characterization.test.mjs`                    |
+| #1001 | `direct-child`            | #1009 lifecycle history policy                    | `state-engine-policy-characterization.test.mjs`                    |
+| #1002 | `direct-child`            | #1010 canonical timing-event strict-reader policy | `timing-event-emitter-characterization.test.mjs`                   |
+| #1003 | `1006-audit-input`        | #1006 timing-log healing audit                    | #1006 JIT audit and existing corrective regression suite           |
+| #1004 | `1006-audit-input`        | #1006 review-failure parser boundary audit        | #1006 JIT audit and existing corrective regression suite           |
