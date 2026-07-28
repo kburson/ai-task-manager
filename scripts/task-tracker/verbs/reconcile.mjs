@@ -9,6 +9,9 @@
 //   revert-to-recorded   — push board state back to the recorded value via
 //                          `scripts/gh/move-state.mjs` (AITM_INTERNAL=1).
 //                          Logs `drift-revert` audit row.
+//   revert-to-sentinel   — restore board + recorded state to the final
+//                          saga-verified move-complete sentinel without
+//                          creating lifecycle history or replacing the sentinel.
 //   backfill             — repair historical contiguity holes: stamp any missing
 //                          prior-stage `aitm-entered-*` marker on the chain up to
 //                          the current stage (#544). No board move; recovers the
@@ -31,7 +34,7 @@ import {
   findRecordingFailureFromComments,
   writeIssueBodyWithRetry,
 } from '../lib/state-recording.mjs';
-import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql, gh, projectItemForIssue } from '../../gh/lib/github-projects.mjs';
 import { getActiveTask, setSessionKanbanState } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import {
@@ -44,6 +47,9 @@ import {
 } from '../lib/stage-entry-markers.mjs';
 import { normalizeStateSlug, STATES, FORWARD } from '../state-machine.mjs';
 import { getProjectDir } from '../paths.mjs';
+import { readMoveCompleteState } from '../lib/move-state/sentinel.mjs';
+import { STATE_TO_CONFIG_KEY } from '../lib/move-state/policy.mjs';
+import { runStatusWrite } from '../lib/move-state/github-mutation.mjs';
 // keep: recovery snapshot semantics intentional — reconcile force-rewrites the
 // body verbatim (no closure), so pushIssueBody is the correct primitive here.
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
@@ -52,7 +58,7 @@ import { runMoveStateHost } from '../../gh/move-state.mjs';
 
 const pexec = promisify(execFile);
 
-const MODES = new Set(['accept-live', 'revert-to-recorded', 'backfill']);
+const MODES = new Set(['accept-live', 'revert-to-recorded', 'revert-to-sentinel', 'backfill']);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -123,6 +129,29 @@ export function defaultRunMoveState({ issueNumber, target }, { host = runMoveSta
   });
 }
 
+// #1016 — sentinel recovery writes ONLY the authoritative Status field. It
+// deliberately reuses the saga's confirmed write/read-back seam but does not
+// call stampEntryMarkers, timing writers, or writeMoveCompleteMarker: the
+// sentinel target was already entered and is the provenance being restored.
+export async function defaultRunSentinelStatusWrite(
+  { issueNumber, target, cfg },
+  { statusWriter = runStatusWrite, ghFn = gh, projectItemForIssueFn = projectItemForIssue } = {}
+) {
+  const optionId = cfg?.[STATE_TO_CONFIG_KEY[target]];
+  if (!optionId) return 1;
+  const result = await statusWriter({
+    issueArg: String(issueNumber),
+    stateArg: target,
+    optionId,
+    cfg,
+    SKIP_NETWORK: false,
+    gh: ghFn,
+    projectItemForIssue: projectItemForIssueFn,
+    itemIdOverride: null,
+  });
+  return result.exit ?? 0;
+}
+
 // #218: the local cache no longer carries a `state` field — the issue body
 // marker (rewritten above by `writeIssueBodyWithRetry`) is the source of
 // truth. The helper now also refreshes the per-session `kanbanState` derived
@@ -161,13 +190,14 @@ export async function runReconcile({
   if (!mode) {
     return {
       status: 'error',
-      message: 'reconcile: mode is required — use `accept-live` or `revert-to-recorded`',
+      message:
+        'reconcile: mode is required — use `accept-live`, `revert-to-recorded`, or `revert-to-sentinel`',
     };
   }
   if (!MODES.has(mode)) {
     return {
       status: 'error',
-      message: `reconcile: unknown mode "${mode}" — use accept-live, revert-to-recorded, or backfill`,
+      message: `reconcile: unknown mode "${mode}" — use accept-live, revert-to-recorded, revert-to-sentinel, or backfill`,
     };
   }
 
@@ -175,6 +205,7 @@ export async function runReconcile({
   const writeIssueBody = deps.writeIssueBody || defaultWriteIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const runSentinelStatusWrite = deps.runSentinelStatusWrite || defaultRunSentinelStatusWrite;
   const persistTrackerState = deps.persistTrackerState || defaultPersistTrackerState;
   const listComments = deps.listComments || null;
   // #516 — drift events are demoted to body audit markers via mutateIssueBody.
@@ -238,6 +269,90 @@ export async function runReconcile({
     });
     persistTrackerState({ issueNumber, state: currentStage });
     return { status: 'backfilled', stage: currentStage, filled: holes };
+  }
+
+  // #1016 — sentinel-only drift is intentionally checked before the historical
+  // board===recorded early return. In the reproduced out-of-band shape those
+  // two values agree; the final saga sentinel is the disagreeing proof source.
+  if (mode === 'revert-to-sentinel') {
+    if (!live) {
+      return {
+        status: 'error',
+        message: `reconcile revert-to-sentinel: cannot resolve live state for #${issueNumber}`,
+      };
+    }
+    const sentinel = readMoveCompleteState(body);
+    if (!sentinel) {
+      return {
+        status: 'error',
+        message: `reconcile revert-to-sentinel: no move-complete sentinel for #${issueNumber}`,
+      };
+    }
+    if (!STATES.includes(sentinel)) {
+      return {
+        status: 'error',
+        message: `reconcile revert-to-sentinel: unrecognized sentinel state "${sentinel}" for #${issueNumber}`,
+      };
+    }
+    if (live === sentinel) {
+      return {
+        status: 'no-drift-refused',
+        live,
+        recorded,
+        message: `no sentinel drift detected for #${issueNumber}: board already matches "${sentinel}"`,
+      };
+    }
+
+    const exitCode = await runSentinelStatusWrite({
+      issueNumber,
+      target: sentinel,
+      cfg,
+    });
+    if (exitCode !== 0) {
+      return {
+        status: 'transition-failed',
+        exitCode,
+        walked: [],
+        failedAt: sentinel,
+        message: `reconcile revert-to-sentinel: confirmed Status write to "${sentinel}" exited ${exitCode}`,
+      };
+    }
+
+    const nowTs = now();
+    const withRecordedState = writeLastKnownState(body, sentinel);
+    await writeIssueBodyWithRetry({
+      issueNumber,
+      repo: cfg.repo,
+      body: withRecordedState,
+      bodyBefore: body,
+      target: sentinel,
+      writeIssueBody: ({ body: next }) =>
+        writeIssueBody({ issueNumber, repo: cfg.repo, body: next }),
+    });
+    persistTrackerState({ issueNumber, state: sentinel });
+    try {
+      await mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: (base) =>
+          appendAuditMarker(base, {
+            kind: 'reverted',
+            ts: nowTs,
+            detail:
+              `revert-to-sentinel: board "${live}", recorded "${recorded ?? '∅'}" ` +
+              `→ sentinel "${sentinel}"`,
+          }),
+      });
+    } catch {
+      /* best-effort: failure must not abort the confirmed primary repair */
+    }
+    return {
+      status: 'reconciled',
+      mode,
+      from: live,
+      recorded,
+      to: sentinel,
+    };
   }
 
   if (recorded && live && recorded === live) {
@@ -452,7 +567,9 @@ function parseArgs(rest) {
 export async function verbReconcile(rest, cfg, deps = {}) {
   const { issueNumber, mode } = parseArgs(rest);
   if (!issueNumber || !mode) {
-    process.stderr.write('Usage: /task reconcile <accept-live|revert-to-recorded|backfill> #N\n');
+    process.stderr.write(
+      'Usage: /task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill> #N\n'
+    );
     process.exit(1);
   }
 

@@ -231,9 +231,10 @@ export const VERB_REFERENCE = {
   },
   reconcile: {
     topic: 'board',
-    summary: 'Drift recovery — align recorded state with the live board.',
-    usage: '/task reconcile #N <accept-live|revert-to-recorded>',
-    examples: ['/task reconcile 667 accept-live'],
+    summary:
+      'Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.',
+    usage: '/task reconcile #N <accept-live|revert-to-recorded|revert-to-sentinel>',
+    examples: ['/task reconcile 667 accept-live', '/task reconcile 667 revert-to-sentinel'],
   },
   board: {
     topic: 'board',
