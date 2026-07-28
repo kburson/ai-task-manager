@@ -294,7 +294,7 @@ export async function runReconcile({
         message: `reconcile revert-to-sentinel: unrecognized sentinel state "${sentinel}" for #${issueNumber}`,
       };
     }
-    if (live === sentinel) {
+    if (live === sentinel && recorded === sentinel) {
       return {
         status: 'no-drift-refused',
         live,
@@ -303,32 +303,53 @@ export async function runReconcile({
       };
     }
 
-    const exitCode = await runSentinelStatusWrite({
-      issueNumber,
-      target: sentinel,
-      cfg,
-    });
-    if (exitCode !== 0) {
-      return {
-        status: 'transition-failed',
-        exitCode,
-        walked: [],
-        failedAt: sentinel,
-        message: `reconcile revert-to-sentinel: confirmed Status write to "${sentinel}" exited ${exitCode}`,
-      };
+    if (live !== sentinel) {
+      const exitCode = await runSentinelStatusWrite({
+        issueNumber,
+        target: sentinel,
+        cfg,
+      });
+      if (exitCode !== 0) {
+        return {
+          status: 'transition-failed',
+          exitCode,
+          walked: [],
+          failedAt: sentinel,
+          message: `reconcile revert-to-sentinel: confirmed Status write to "${sentinel}" exited ${exitCode}`,
+        };
+      }
     }
 
     const nowTs = now();
-    const withRecordedState = writeLastKnownState(body, sentinel);
-    await writeIssueBodyWithRetry({
+    const recording = await writeIssueBodyWithRetry({
       issueNumber,
       repo: cfg.repo,
-      body: withRecordedState,
-      bodyBefore: body,
       target: sentinel,
-      writeIssueBody: ({ body: next }) =>
-        writeIssueBody({ issueNumber, repo: cfg.repo, body: next }),
+      mutate: (base) => {
+        const freshSentinel = readMoveCompleteState(base);
+        if (freshSentinel !== sentinel) {
+          throw new Error(
+            `reconcile revert-to-sentinel: expected sentinel "${sentinel}" on fresh body, found "${freshSentinel || 'none'}"`
+          );
+        }
+        return writeLastKnownState(base, sentinel);
+      },
+      postComment: deps.postComment,
+      warn: deps.warn,
+      deps: { mutateIssueBody: mutateBody },
     });
+    if (recording.status === 'failed') {
+      return {
+        status: 'recording-failed',
+        exitCode: 8,
+        from: live,
+        recorded,
+        to: sentinel,
+        message:
+          `reconcile revert-to-sentinel: board is "${sentinel}" but recorded marker remains ` +
+          `"${recorded ?? '∅'}": ${recording.error}`,
+      };
+    }
     persistTrackerState({ issueNumber, state: sentinel });
     try {
       await mutateBody({
@@ -615,6 +636,10 @@ export async function verbReconcile(rest, cfg, deps = {}) {
     case 'transition-failed': {
       process.stderr.write(`reconcile: ${result.message}\n`);
       process.exit(result.exitCode || 1);
+    }
+    case 'recording-failed': {
+      process.stderr.write(`reconcile: ${result.message}\n`);
+      process.exit(result.exitCode || 8);
     }
     case 'wrong-direction': {
       process.stderr.write(`\n⛔ ${result.message}\n\n`);

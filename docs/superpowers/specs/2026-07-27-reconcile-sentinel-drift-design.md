@@ -40,10 +40,16 @@ already entered and the operation is recovery, not a new lifecycle visit.
 ## Failure Semantics
 
 The mode is fail-closed. A missing or invalid sentinel performs no write. A
-failed or unconfirmed Status write leaves the recorded marker unchanged. If the
-Status write succeeds but the later body write fails, board and sentinel are
-again aligned; the existing board-versus-recorded recovery can repair the
-remaining lag without fabricating provenance.
+failed or unconfirmed Status write leaves the recorded marker unchanged. The
+recorded-state update is a closure over a freshly fetched body and rechecks that
+the sentinel still names the expected target before writing, so a concurrent
+provenance change cannot be overwritten.
+
+If the Status write succeeds but the later body write exhausts its retries, the
+command returns a distinct nonzero partial-recovery result and does not stamp a
+success audit or update the session cache. A retry recognizes the
+board-equals-sentinel/recorded-lags shape, skips the already-completed Status
+write, and resumes only the closure-based marker, audit, and cache repair.
 
 ## Compatibility
 

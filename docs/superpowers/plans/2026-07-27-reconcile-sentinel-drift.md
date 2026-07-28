@@ -92,9 +92,11 @@ git commit -m "[#1016] fix(reconcile): restore sentinel-verified state"
 - [ ] **Step 1: Add failing adapter and help tests**
 
 Assert the default adapter selects `cfg[STATE_TO_CONFIG_KEY[target]]` and maps
-`runStatusWrite`'s `{ exit }` result to a numeric exit code. Assert reconcile
-help and invalid-usage text list `revert-to-sentinel`, while the existing
-move-invariant readout continues to recommend the same accepted mode.
+`runStatusWrite`'s `{ exit }` result to a numeric exit code. Add body-write
+exhaustion, fresh-body sentinel-change, concurrent-edit preservation, and
+partial-success retry cases. Assert reconcile help and invalid-usage text list
+`revert-to-sentinel`, while the existing move-invariant readout continues to
+recommend the same accepted mode through an exercised public verb call.
 
 - [ ] **Step 2: Run the focused tests and verify RED**
 
@@ -108,10 +110,13 @@ Expected: FAIL because the adapter is not exported and help omits the new mode.
 
 - [ ] **Step 3: Implement the confirmed Status-only adapter**
 
-Build the existing `runStatusWrite` context with the target option id,
-`gh`, and `projectItemForIssue`. Do not call `stampEntryMarkers`, timing
-writers, or `writeMoveCompleteMarker`. Update reconcile help, usage, and error
-messages to enumerate the accepted public mode.
+Build the existing `runStatusWrite` context with the target option id, `gh`,
+and `projectItemForIssue`. Do not call `stampEntryMarkers`, timing writers, or
+`writeMoveCompleteMarker`. Use `writeIssueBodyWithRetry`'s closure path,
+revalidate the expected sentinel on its fresh base, return nonzero on exhausted
+recording, and allow marker-only retry when Status already equals the sentinel.
+Update reconcile help, usage, and error messages to enumerate the accepted
+public mode.
 
 - [ ] **Step 4: Run the complete focused verification**
 
