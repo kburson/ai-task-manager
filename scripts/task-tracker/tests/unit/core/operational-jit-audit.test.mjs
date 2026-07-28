@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
+import { stateIds } from '../../../lib/lifecycle-policy/index.mjs';
+
 const AUDIT_PATH = 'docs/superpowers/specs/2026-07-28-operational-state-engine-jit-audit.md';
 const audit = readFileSync(join(process.cwd(), AUDIT_PATH), 'utf8');
 
@@ -16,6 +18,16 @@ test('#1006 JIT audit records the converged entry milestone and scope contract',
   assert.match(audit, /\*\*Entry tree:\*\* `5add5b0`/);
   assert.match(audit, /\*\*Post-defect tree:\*\* `d4317d2`/);
   assert.match(audit, /#1012 Closed\/Done/);
+  assert.deepEqual(stateIds(), [
+    'backlog',
+    'on-deck',
+    'refine',
+    'plan',
+    'develop',
+    'test',
+    'review',
+    'done',
+  ]);
   assert.match(
     audit,
     /does not\s+reopen lifecycle, timing-event, or command-surface policy ownership/
@@ -55,7 +67,7 @@ test('#1006 JIT audit records only focused required findings', () => {
     assert.match(audit, new RegExp(`^### ${heading}$`, 'm'));
   }
   assert.match(audit, /Blocking correctness defects: D1 was resolved and closed by #1037/);
-  assert.match(audit, /#1006 is cleared/);
+  assert.match(audit, /cleared the\s+blocker on #1006/);
   assert.match(audit, /Optional cleanup: none required/);
   assert.doesNotMatch(audit, /\bTBD\b|\bTODO\b/);
 });

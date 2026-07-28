@@ -41,6 +41,11 @@ test('parseTimingRow retains minute-precision legacy and T-delimited ISO shapes'
   assert.equal(iso.event, 'resumed');
   assert.equal(isTableTimingTimestamp(iso.ts), false);
   assert.equal(isTimingRowTimestamp(iso.ts), true);
+
+  const isoDerivedTable = '2026-07-28 17:00:00.123 +00:00';
+  assert.equal(isTableTimingTimestamp(isoDerivedTable), false);
+  assert.equal(isTimingRowTimestamp(isoDerivedTable), true);
+  assert.equal(timingTimestampToMs(isoDerivedTable), Date.parse(isoDerivedTable));
 });
 
 test('parseTimingRow is lexical: headers parse, non-table text does not', () => {

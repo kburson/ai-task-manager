@@ -6,7 +6,11 @@
 // pair interruptions, validate lifecycle walks, or decide healing policy.
 
 const TABLE_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\s+[+-]\d{2}:\d{2}$/;
-const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+// Bind/review historically accepted the datetime prefix before validating the
+// complete timestamp. Keep that compatibility for ISO-derived table values
+// carrying fractional seconds; policy-aware table consumers use the stricter
+// matcher above.
+const TIMING_TIMESTAMP_PREFIX_RE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/;
 const SEPARATOR_ROW_RE = /^\|\s*:?-{3,}/;
 const TRAILING_ROW_SEC_RE = /(\s*<!--\s*row-sec:\s*a=-?\d+\s+i=-?\d+\s*-->)(\s*)$/;
 
@@ -17,7 +21,7 @@ export function isTableTimingTimestamp(value) {
 export function isTimingRowTimestamp(value) {
   if (typeof value !== 'string') return false;
   const timestamp = value.trim();
-  return isTableTimingTimestamp(timestamp) || ISO_TIMESTAMP_RE.test(timestamp);
+  return isTableTimingTimestamp(timestamp) || TIMING_TIMESTAMP_PREFIX_RE.test(timestamp);
 }
 
 export function timingTimestampToMs(value) {
