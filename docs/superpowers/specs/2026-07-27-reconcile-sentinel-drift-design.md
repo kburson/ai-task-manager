@@ -16,11 +16,11 @@ board-versus-recorded drift.
 Add an explicit public reconcile mode named `revert-to-sentinel`.
 
 The mode reads the final move-complete sentinel from the freshly fetched issue
-body. It refuses when the marker is missing, names an unknown state, or already
-matches the board. For valid drift, it writes only the board Status field through
-the existing confirmed status-write seam, then updates
-`aitm-last-known-state` to the sentinel value. It preserves the sentinel instead
-of manufacturing a new saga completion.
+body. It refuses when the marker is missing, names an unknown state, or the
+board, recorded state, and sentinel already align. For valid drift, it writes
+only the board Status field through the existing confirmed status-write seam,
+then updates `aitm-last-known-state` to the sentinel value. It preserves the
+sentinel instead of manufacturing a new saga completion.
 
 The recovery appends a `reverted` audit marker containing the prior board,
 recorded, and sentinel values, then refreshes the active-session state cache.
