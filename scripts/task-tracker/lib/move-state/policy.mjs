@@ -7,25 +7,20 @@
 // isolation. The host script keeps ownership of process.exit / stderr; it
 // asks these helpers WHAT to do and performs the side effect itself.
 
+import { stateIds, stateConfigKey, forwardTarget } from '../lifecycle-policy/index.mjs';
+
 // Canonical board-state → config option-id key map. The host reads
 // `cfg[STATE_TO_CONFIG_KEY[state]]` to find the single-select option id.
-export const STATE_TO_CONFIG_KEY = Object.freeze({
-  backlog: 'kanbanOptionBacklog',
-  'on-deck': 'kanbanOptionOnDeck',
-  refine: 'kanbanOptionRefine',
-  plan: 'kanbanOptionPlan',
-  develop: 'kanbanOptionDevelop',
-  test: 'kanbanOptionTest',
-  review: 'kanbanOptionReview',
-  done: 'kanbanOptionDone',
-});
+export const STATE_TO_CONFIG_KEY = Object.freeze(
+  Object.fromEntries(stateIds().map((state) => [state, stateConfigKey(state)]))
+);
 
 // Which `/task` verb a human should reach for instead of invoking move-state
 // directly, keyed on the move's target state. Forward moves → promote,
 // backlog (the only matrix-legal backward target) → park (#848 — `demote` is
 // hardcoded to `develop` and can never reach `backlog`; `park` is the
 // dedicated Refine|Plan → Backlog verb), everything else → reconcile.
-const FORWARD_TARGETS = new Set(['on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done']);
+const FORWARD_TARGETS = new Set(stateIds().map(forwardTarget).filter(Boolean));
 // Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
 // enumerate every backward target `refusalVerbHint` names a verb for, and
 // assert that verb actually declares the target legal — without shelling out.

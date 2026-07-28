@@ -1,7 +1,7 @@
 // INTERNAL — library module, imported, never executed as a CLI and not exposed
 // through `aitm`. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
 //
-// Canonical 8-state kanban transition matrix. Pure data + a validator.
+// Compatibility facade over the canonical lifecycle policy.
 // Consumers: move-state.mjs hardening (W2.3), /task move verb (W3.1),
 // parent-admission gate (W1.3), activity-policy lookup (W1.2).
 //
@@ -10,28 +10,35 @@
 // Backlog. Every item passes through it (no backlog→refine shortcut); the
 // long-standing Priority entry gate lives on the on-deck→refine boundary.
 
+import {
+  stateIds,
+  forwardTarget,
+  backwardTargets as executableBackwardTargets,
+  validateExecutableTransition,
+} from './lib/lifecycle-policy/index.mjs';
+
+const CANONICAL_STATE_IDS = stateIds();
+
 export const KANBAN_STATES = Object.freeze({
-  BACKLOG: 'backlog',
-  ON_DECK: 'on-deck',
-  REFINE: 'refine',
-  PLAN: 'plan',
-  DEVELOP: 'develop',
-  TEST: 'test',
-  REVIEW: 'review',
-  DONE: 'done',
+  BACKLOG: CANONICAL_STATE_IDS[0],
+  ON_DECK: CANONICAL_STATE_IDS[1],
+  REFINE: CANONICAL_STATE_IDS[2],
+  PLAN: CANONICAL_STATE_IDS[3],
+  DEVELOP: CANONICAL_STATE_IDS[4],
+  TEST: CANONICAL_STATE_IDS[5],
+  REVIEW: CANONICAL_STATE_IDS[6],
+  DONE: CANONICAL_STATE_IDS[7],
 });
 
-export const STATES = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+// Preserve the legacy mutable-array export while deriving it from policy.
+export const STATES = [...CANONICAL_STATE_IDS];
 
-export const FORWARD = {
-  backlog: 'on-deck',
-  'on-deck': 'refine',
-  refine: 'plan',
-  plan: 'develop',
-  develop: 'test',
-  test: 'review',
-  review: 'done',
-};
+export const FORWARD = Object.fromEntries(
+  CANONICAL_STATE_IDS.flatMap((state) => {
+    const target = forwardTarget(state);
+    return target == null ? [] : [[state, target]];
+  })
+);
 
 // #999 — a BACKWARD value may be a single state or an array of states.
 // `review` needs two legal backward targets: `develop` (full rework, #882)
@@ -43,18 +50,16 @@ export const FORWARD = {
 // premise was falsified after refinement has a sanctioned way back to Backlog
 // (see verbs/park.mjs) instead of sitting in a ready-to-work column or being
 // closed unresolved.
-export const BACKWARD = {
-  'on-deck': 'backlog',
-  refine: 'backlog',
-  plan: 'backlog',
-  test: 'develop',
-  review: ['develop', 'test'],
-};
+export const BACKWARD = Object.fromEntries(
+  CANONICAL_STATE_IDS.flatMap((state) => {
+    const targets = executableBackwardTargets(state);
+    if (targets.length === 0) return [];
+    return [[state, targets.length === 1 ? targets[0] : [...targets]]];
+  })
+);
 
 export function backwardTargets(from) {
-  const entry = BACKWARD[from];
-  if (entry == null) return [];
-  return Array.isArray(entry) ? entry : [entry];
+  return [...executableBackwardTargets(from)];
 }
 
 // Canonical state slugs only. Boards using retired vocabulary
@@ -73,12 +78,7 @@ export function normalizeStateSlug(input) {
 }
 
 export function validateTransition(from, to) {
-  if (!STATES.includes(from)) {
-    return { ok: false, reason: `unknown state: ${from}` };
-  }
-  if (!STATES.includes(to)) {
-    return { ok: false, reason: `unknown state: ${to}` };
-  }
+  const result = validateExecutableTransition(from, to);
   // #882 — a move whose target IS the current state is a SATISFIED NO-OP, not an
   // illegal transition. The request is "be in state X"; the issue already is, so
   // there is nothing to transition and nothing to refuse. Callers must treat
@@ -87,9 +87,7 @@ export function validateTransition(from, to) {
   // duplicate stage-timing row. Before this, each self-loop was patched one at a
   // time as it was encountered (#385 done→done, #444 test→test, #882
   // review→review); the enumeration was the defect, not its missing entries.
-  if (from === to) return { ok: true, noop: true };
-  if (FORWARD[from] === to) return { ok: true };
-  if (backwardTargets(from).includes(to)) return { ok: true };
-  const allowed = [FORWARD[from], ...backwardTargets(from)].filter(Boolean).join(', ') || 'none';
-  return { ok: false, reason: `illegal transition: ${from} → ${to}. Allowed: ${allowed}.` };
+  if (result.kind === 'noop') return { ok: true, noop: true };
+  if (result.ok) return { ok: true };
+  return { ok: false, reason: result.reason };
 }

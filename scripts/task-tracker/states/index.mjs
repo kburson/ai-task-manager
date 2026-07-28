@@ -48,7 +48,7 @@
 // by `/task <verb>` sessions inhabiting the state. The verb commands are
 // inhabitants of states, not parts of the state object.
 
-import { FORWARD } from '../state-machine.mjs';
+import { stateIds, forwardTarget } from '../lib/lifecycle-policy/index.mjs';
 
 import backlog from './backlog.mjs';
 import onDeck from './on-deck.mjs';
@@ -71,9 +71,16 @@ export const STATES = Object.freeze({
 });
 
 // Canonical forward-walk table consumed by `/task promote`.
-// Mirrors `state-machine.mjs`'s `FORWARD` to avoid drift between the
-// validateTransition matrix and the promote direction-picker.
-export const FORWARD_CHAIN = Object.freeze({ ...FORWARD });
+// Derived from lifecycle policy so the validator and direction picker cannot
+// drift.
+export const FORWARD_CHAIN = Object.freeze(
+  Object.fromEntries(
+    stateIds().flatMap((state) => {
+      const target = forwardTarget(state);
+      return target == null ? [] : [[state, target]];
+    })
+  )
+);
 
 // Documented backward edges consumed by `/task demote` and (in the future)
 // lateral-move callers. Each entry is `state -> target[]`; index-0 is the
@@ -101,7 +108,7 @@ export const BACKWARD_CHAIN = Object.freeze({
   done: Object.freeze(['plan']),
 });
 
-const KNOWN = new Set(Object.keys(STATES));
+const KNOWN = new Set(stateIds());
 
 export function getState(name) {
   if (!KNOWN.has(name)) {
@@ -111,4 +118,4 @@ export function getState(name) {
 }
 
 // Exposed for tests.
-export const __STATE_NAMES = [...KNOWN];
+export const __STATE_NAMES = [...stateIds()];
