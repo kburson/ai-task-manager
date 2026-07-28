@@ -1,7 +1,7 @@
 // @story #1007
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,9 +18,7 @@ const PACKAGE_BIN_PATHS = new Set(Object.values(PACKAGE.bin));
 const SELF_DOC_PATHS = new Map(
   Object.entries(SELF_DOC).map(([command, { path: scriptPath }]) => [scriptPath, command])
 );
-const MANIFEST_VERBS = new Set(
-  COMMAND_MANIFEST.flatMap(({ verb, aliases = [] }) => [verb, ...aliases])
-);
+const MANIFEST_BY_VERB = new Map(COMMAND_MANIFEST.map((entry) => [entry.verb, entry]));
 const ALLOWED_CLASSIFICATIONS = new Set(ENTRYPOINT_CLASSIFICATIONS);
 
 function walk(relativeDir) {
@@ -32,17 +30,74 @@ function walk(relativeDir) {
   });
 }
 
-function isPackageShipped(relativePath) {
-  if (!/^(bin|hooks|scripts)\//.test(relativePath)) return false;
-  if (/^scripts\/maintenance\//.test(relativePath)) return false;
-  if (/\/tests\//.test(relativePath) || /\.test\.mjs$/.test(relativePath)) return false;
-  return /\.(?:mjs|js)$/.test(relativePath);
+function globToRegExp(pattern) {
+  let source = '';
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    if (char === '*') {
+      if (pattern[index + 1] === '*') {
+        index += 1;
+        if (pattern[index + 1] === '/') {
+          index += 1;
+          source += '(?:.*/)?';
+        } else {
+          source += '.*';
+        }
+      } else {
+        source += '[^/]*';
+      }
+    } else if (char === '?') {
+      source += '[^/]';
+    } else {
+      source += char.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+    }
+  }
+  return new RegExp(`^${source}$`);
+}
+
+function packageRuleMatches(relativePath, rule) {
+  if (rule.endsWith('/')) return relativePath.startsWith(rule);
+  return globToRegExp(rule).test(relativePath);
+}
+
+function filesForPositiveRule(rule) {
+  const wildcardAt = rule.search(/[*?]/);
+  if (wildcardAt === -1) {
+    const exactPath = rule.endsWith('/') ? rule.slice(0, -1) : rule;
+    const absoluteExact = path.join(ROOT, exactPath);
+    if (!existsSync(absoluteExact)) return [];
+    return statSync(absoluteExact).isDirectory() ? walk(exactPath) : [exactPath];
+  }
+  const staticPrefix = wildcardAt === -1 ? rule : rule.slice(0, wildcardAt);
+  const candidatePath = staticPrefix.endsWith('/')
+    ? staticPrefix.slice(0, -1)
+    : path.posix.dirname(staticPrefix);
+  const root = candidatePath === '.' ? '' : candidatePath;
+  const absolute = path.join(ROOT, root);
+  if (!existsSync(absolute)) return [];
+  const candidates = statSync(absolute).isDirectory() ? walk(root) : [root];
+  return candidates.filter((relativePath) => packageRuleMatches(relativePath, rule));
+}
+
+function discoverPackageShippedFiles() {
+  const positiveRules = PACKAGE.files.filter((rule) => !rule.startsWith('!'));
+  const negativeRules = PACKAGE.files
+    .filter((rule) => rule.startsWith('!'))
+    .map((rule) => rule.slice(1));
+  return [
+    ...new Set(
+      positiveRules
+        .flatMap(filesForPositiveRule)
+        .filter(
+          (relativePath) => !negativeRules.some((rule) => packageRuleMatches(relativePath, rule))
+        )
+    ),
+  ];
 }
 
 export function discoverShippedEntrypoints() {
-  return ['bin', 'hooks', 'scripts']
-    .flatMap(walk)
-    .filter(isPackageShipped)
+  return discoverPackageShippedFiles()
+    .filter((relativePath) => /\.(?:mjs|js)$/.test(relativePath))
     .filter((relativePath) => {
       if (PACKAGE_BIN_PATHS.has(relativePath)) return true;
       const source = readFileSync(path.join(ROOT, relativePath), 'utf8');
@@ -70,7 +125,9 @@ test('each shipped executable entry point has exactly one explicit classificatio
 test('public classifications resolve through an existing command authority', () => {
   for (const entry of EXECUTABLE_ENTRYPOINTS) {
     if (entry.classification === 'agent-callable-verb') {
-      assert.ok(MANIFEST_VERBS.has(entry.command), `${entry.path}: ${entry.command}`);
+      const manifestEntry = MANIFEST_BY_VERB.get(entry.command);
+      assert.ok(manifestEntry, `${entry.path}: ${entry.command}`);
+      assert.equal(`scripts/task-tracker/${manifestEntry.dispatch}`, entry.path, entry.command);
     }
     if (entry.classification === 'agent-callable-standalone') {
       const selfDocCommand = SELF_DOC_PATHS.get(entry.path);
