@@ -29,6 +29,7 @@ import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { appendAuditMarker } from '../lib/markers.mjs';
 import {
   findRecordingFailureFromComments,
@@ -59,6 +60,7 @@ import { runMoveStateHost } from '../../gh/move-state.mjs';
 const pexec = promisify(execFile);
 
 const MODES = new Set(['accept-live', 'revert-to-recorded', 'revert-to-sentinel', 'backfill']);
+const DEMOTION_RECOVERY_SOURCES = new Set(['test', 'review']);
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -420,11 +422,19 @@ export async function runReconcile({
       };
     }
     const nowTs = now();
-    const stamped = writeLastKnownState(body, live);
+    // #1037 — the supported recovery for a demotion interrupted after its
+    // board move must finish the evidence invalidation that normal demote
+    // performs. Keep this deliberately demotion-shaped: accept-live remains
+    // non-destructive for forward and unrelated external drift.
+    const invalidation =
+      live === 'develop' && DEMOTION_RECOVERY_SOURCES.has(recorded)
+        ? invalidateEvidence(body)
+        : { body, invalidated: [] };
+    const stamped = writeLastKnownState(invalidation.body, live);
     // Visit-aware schema (#181): preserve forward markers as history.
     // stampEntryMarker increments the visit suffix; the chain-integrity gate
     // validates the resulting sequence against LEGAL_TRANSITIONS.
-    const stripped = [];
+    const stripped = invalidation.invalidated;
     const withEntry = stampEntryMarker(stamped, live, nowTs);
     await writeIssueBodyWithRetry({
       issueNumber,

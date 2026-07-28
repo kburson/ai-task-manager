@@ -40,6 +40,22 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-11T00:00:00Z -->\n\nbody.\n`;
 }
 
+function proofBodyWithState(state) {
+  return [
+    `<!-- aitm-last-known-state: ${state} -->`,
+    '<!-- aitm-last-known-state-ts: 2026-07-28T00:00:00Z -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [x] Recovery invalidates stale AC proof <!-- aitm-verified vc-list="vc:1" sha="abc1234" ts="2026-07-28T00:01:00Z" exit="0" -->',
+    '',
+    '### Functional (verified at Test)',
+    '',
+    '- [x] All automated tests pass <!-- aitm-verified cmd="`npm test`" sha="abc1234" ts="2026-07-28T00:02:00Z" exit="0" --> <!-- dod:functional:tests -->',
+    '',
+  ].join('\n');
+}
+
 test('reconcile accept-live: drifted issue writes new state + reconciled audit marker', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });
   const r = await runReconcile({ issueNumber: 300, mode: 'accept-live', cfg, deps });
@@ -57,6 +73,64 @@ test('reconcile accept-live: drifted issue writes new state + reconciled audit m
   assert.equal(calls.moves.length, 0);
   assert.deepEqual(calls.persists, [{ issueNumber: 300, state: 'develop' }]);
 });
+
+for (const recorded of ['test', 'review']) {
+  test(`reconcile accept-live: ${recorded} → develop invalidates stale demotion proof and reports it (#1037)`, async () => {
+    const { deps, calls } = makeDeps({
+      body: proofBodyWithState(recorded),
+      live: 'develop',
+    });
+
+    const result = await runReconcile({
+      issueNumber: 1037,
+      mode: 'accept-live',
+      cfg,
+      deps,
+      now: () => '2026-07-28T01:00:00Z',
+    });
+
+    assert.equal(result.status, 'reconciled');
+    assert.deepEqual(result.stripped, [
+      'Recovery invalidates stale AC proof',
+      'All automated tests pass',
+    ]);
+    assert.equal(calls.writes.length, 1);
+    assert.match(
+      calls.writes[0],
+      /- \[ \] Recovery invalidates stale AC proof <!-- aitm-verified vc-list="vc:1" -->/
+    );
+    assert.match(
+      calls.writes[0],
+      /- \[ \] All automated tests pass <!-- aitm-verified cmd="`npm test`" --> <!-- dod:functional:tests -->/
+    );
+    assert.doesNotMatch(calls.writes[0], /aitm-verified[^>]*(?:sha|ts|exit)=/);
+    assert.equal(calls.markers.length, 1);
+    assert.match(calls.markers[0], /stripped: Recovery invalidates stale AC proof/);
+    assert.match(calls.markers[0], /All automated tests pass/);
+  });
+}
+
+for (const scenario of [
+  { recorded: 'plan', live: 'develop', label: 'forward drift' },
+  { recorded: 'done', live: 'review', label: 'unrelated rollback' },
+]) {
+  test(`reconcile accept-live preserves execution proof for ${scenario.label} (#1037)`, async () => {
+    const body = proofBodyWithState(scenario.recorded);
+    const { deps, calls } = makeDeps({ body, live: scenario.live });
+
+    const result = await runReconcile({
+      issueNumber: 1037,
+      mode: 'accept-live',
+      cfg,
+      deps,
+    });
+
+    assert.deepEqual(result.stripped, []);
+    assert.match(calls.writes[0], /- \[x\] Recovery invalidates stale AC proof/);
+    assert.match(calls.writes[0], /sha="abc1234"/);
+    assert.doesNotMatch(calls.markers[0], /stripped:/);
+  });
+}
 
 test('reconcile accept-live stamps aitm-entered-<live> when absent (#174)', async () => {
   const body =
