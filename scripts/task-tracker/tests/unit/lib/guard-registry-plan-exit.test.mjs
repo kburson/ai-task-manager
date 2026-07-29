@@ -48,6 +48,10 @@ const APPROVED_BODY = [
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '',
+  '## Plan Metadata',
+  '',
+  '- **size**: XS',
+  '',
   '## Deep-Dive Analysis',
   '',
   // #358 — substantive-chars floor folded into planDeepDiveGate; pad section.

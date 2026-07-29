@@ -1,23 +1,22 @@
 // @story #450
-// #450 — refine→plan gate: stub TBD placeholders not checked before refine-complete stamp.
+// #450/#892 — refine→plan gate keeps the AC stub refusal while Plan Metadata
+// becomes a Plan→Develop concern.
 //
 // Acceptance criteria:
 //   1. Guard returns ok:false when AC placeholder is present
-//   2. Guard returns ok:false when Plan Metadata placeholder is present
-//   3. Guard returns ok:true when both placeholders are absent
+//   2. Guard ignores the retired Plan Metadata placeholder text
+//   3. Guard returns ok:true when the AC placeholder is absent
 //   4. Guard returns ok:true when toState is not 'plan'
 //   5. Guard returns ok:true when ctx is falsy
 //   6. runRefine throws when AC placeholder is in body
-//   7. runRefine throws when Plan Metadata placeholder is in body
+//   7. runRefine permits the retired Plan Metadata placeholder text
 //   8. runPromote returns refine-stub-placeholder-refused when AC placeholder blocks
-//   9. runPromote returns refine-stub-placeholder-refused when Plan Metadata placeholder blocks
 
 import assert from 'node:assert/strict';
 
 import {
   refineExitStubPlaceholderGuard,
   STUB_AC_PLACEHOLDER,
-  STUB_PLAN_META_PLACEHOLDER,
   GUARD_ID,
 } from '../../../lib/refine-exit-stub-placeholder-guard.mjs';
 import { runRefine } from '../../../verbs/refine.mjs';
@@ -63,10 +62,16 @@ function bodyWithACPlaceholder(state = 'refine') {
   ].join('\n');
 }
 
-function bodyWithPlanMetaPlaceholder(state = 'refine') {
+const RETIRED_PLAN_PLACEHOLDER = '_TBD — set Size, Estimate, Priority, and Rank at Refine._';
+
+function bodyWithRetiredPlanPlaceholderMention(state = 'refine') {
   return [
     `<!-- aitm-last-known-state: ${state} -->`,
     `<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->`,
+    '',
+    '## Issue',
+    '',
+    `Historical prose quotes ${RETIRED_PLAN_PLACEHOLDER}`,
     '',
     '## Acceptance Criteria',
     '',
@@ -74,7 +79,6 @@ function bodyWithPlanMetaPlaceholder(state = 'refine') {
     '',
     '## Plan Metadata',
     '',
-    `_${STUB_PLAN_META_PLACEHOLDER}`,
   ].join('\n');
 }
 
@@ -97,17 +101,13 @@ function bodyWithPlanMetaPlaceholder(state = 'refine') {
   );
 }
 
-// AC #2 — guard rejects Plan Metadata placeholder
+// AC #2 — guard ignores the retired Plan Metadata placeholder text
 {
   const result = await refineExitStubPlaceholderGuard.run({
     toState: 'plan',
-    body: bodyWithPlanMetaPlaceholder(),
+    body: bodyWithRetiredPlanPlaceholderMention(),
   });
-  assert.equal(result.ok, false, 'AC #2: ok should be false for Plan Metadata placeholder');
-  assert.ok(
-    result.reason.includes('stub Plan Metadata placeholder'),
-    'AC #2: reason should mention stub Plan Metadata placeholder'
-  );
+  assert.equal(result.ok, true, 'AC #2: Plan Metadata is no longer a Refine-exit concern');
 }
 
 // AC #3 — guard passes substantive body
@@ -170,23 +170,16 @@ function makeRefineDeps(bodyOverride) {
   }
 }
 
-// AC #7 — runRefine throws on Plan Metadata placeholder
+// AC #7 — runRefine permits the retired Plan Metadata placeholder text
 {
-  const planBody = bodyWithPlanMetaPlaceholder('refine');
+  const planBody = bodyWithRetiredPlanPlaceholderMention('refine');
   const deps = makeRefineDeps(planBody);
-  try {
-    await runRefine({
-      args: { issueNumber: 7, size: 'S', estimate: 2, priority: 'p2', reason: 'test' },
-      cfg: baseCfg,
-      deps,
-    });
-    assert.fail('AC #7: runRefine should have thrown for Plan Metadata placeholder');
-  } catch (err) {
-    assert.ok(
-      err.message.includes('stub Plan Metadata placeholder'),
-      `AC #7: error should mention stub Plan Metadata placeholder, got: ${err.message}`
-    );
-  }
+  const result = await runRefine({
+    args: { issueNumber: 7, size: 'S', estimate: 2, priority: 'p2', reason: 'test' },
+    cfg: baseCfg,
+    deps,
+  });
+  assert.equal(result.status, 'refined');
 }
 
 // ---------------------------------------------------------------------------
@@ -218,21 +211,5 @@ function bodyWithRefineCompleteMarker(base) {
     result.status,
     'refine-stub-placeholder-refused',
     `AC #8: expected refine-stub-placeholder-refused, got ${result.status}`
-  );
-}
-
-// AC #9 — runPromote returns refine-stub-placeholder-refused for Plan Metadata placeholder
-{
-  const body = bodyWithRefineCompleteMarker(bodyWithPlanMetaPlaceholder('refine'));
-  const deps = makePromoteDeps(body);
-  const result = await runPromote({
-    issueNumber: 9,
-    cfg: baseCfg,
-    deps,
-  });
-  assert.equal(
-    result.status,
-    'refine-stub-placeholder-refused',
-    `AC #9: expected refine-stub-placeholder-refused, got ${result.status}`
   );
 }

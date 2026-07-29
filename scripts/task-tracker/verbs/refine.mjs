@@ -30,10 +30,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { serializeMarker } from '../lib/marker-grammar.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
-import {
-  STUB_AC_PLACEHOLDER,
-  STUB_PLAN_META_PLACEHOLDER,
-} from '../lib/refine-exit-stub-placeholder-guard.mjs';
+import { STUB_AC_PLACEHOLDER } from '../lib/refine-exit-stub-placeholder-guard.mjs';
 import { actionPolicyFor } from '../lib/lifecycle-policy/index.mjs';
 
 const pexec = promisify(execFile);
@@ -289,11 +286,6 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
       if (next.includes(STUB_AC_PLACEHOLDER)) {
         throw new Error(
           'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
-        );
-      }
-      if (next.includes(STUB_PLAN_META_PLACEHOLDER)) {
-        throw new Error(
-          'stub Plan Metadata placeholder still present — replace the TBD plan metadata before running refine'
         );
       }
       // 2d. Stamp the Refine stage-completion marker (#282).
