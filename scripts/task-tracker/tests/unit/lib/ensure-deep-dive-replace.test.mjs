@@ -10,6 +10,7 @@
 // Hermetic: injects a fake `mutateIssueBody` so no GH I/O occurs.
 import { strict as assert } from 'node:assert';
 import { ensureDeepDive, readDeepDiveSignals } from '../../../lib/deep-dive.mjs';
+import { validate as validateBodySections } from '../../../lib/agent-review/validators/body-sections.mjs';
 
 const TS = '2026-06-06T10:00:00.000Z';
 
@@ -157,6 +158,78 @@ function fakeMutateFactory(initial) {
       }),
     /Acceptance Criteria/
   );
+}
+
+// #1046 — Plan approval wraps Deep Dive in <details>. Replacing below-floor
+// prose after that point must preserve </details>; otherwise every root
+// lifecycle section below it becomes hidden and Agent Review cannot proceed.
+{
+  const seeded = [
+    '## User Story',
+    'As a maintainer',
+    'I want safe replacement',
+    'So that review stays possible',
+    '',
+    '## Scope',
+    'Preserve collapsed structure.',
+    '',
+    '## Plan Metadata',
+    '- **Size:** XS',
+    '',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
+    '> Follow the directive.',
+    '',
+    '<!-- aitm-deep-dive-posted ts="2026-06-05T00:00:00Z" -->',
+    '',
+    '<details>',
+    '<summary>Deep-Dive Analysis (collapsed on plan approval — expand if revisiting scope)</summary>',
+    '',
+    '## Deep-Dive Analysis (2026-06-05)',
+    '',
+    'stale below-floor prose',
+    '',
+    '</details>',
+    '',
+    '## Acceptance Criteria',
+    '- [ ] Root-visible AC.',
+    '',
+    '## Verification Commands',
+    '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
+    '',
+    '## Definition of Done',
+    '- [ ] Root-visible DoD.',
+    '',
+    '## AITM Progress Markers',
+    '<!-- aitm-deep-dive-complete ts="2026-06-05T00:00:00Z" -->',
+    '',
+  ].join('\n');
+  const revised = 'Revised above-floor prose that must stay inside the collapsed wrapper.';
+  const { fn, log } = fakeMutateFactory(seeded);
+
+  await ensureDeepDive({
+    issueNumber: 1045,
+    repo: 'fake/repo',
+    prose: revised,
+    ts: TS,
+    deps: { mutateIssueBody: fn },
+  });
+
+  assert.equal((log.next.match(/^<\/details>$/gm) || []).length, 1, 'closing details tag survives');
+  assert.ok(log.next.indexOf('</details>') < log.next.indexOf('## Acceptance Criteria'));
+  assert.ok(!log.next.includes('stale below-floor prose'));
+  assert.ok(log.next.includes(revised));
+  assert.deepEqual(validateBodySections({ body: log.next }).failures, []);
+
+  const { fn: fn2, log: log2 } = fakeMutateFactory(log.next);
+  const second = await ensureDeepDive({
+    issueNumber: 1045,
+    repo: 'fake/repo',
+    prose: revised,
+    ts: TS,
+    deps: { mutateIssueBody: fn2 },
+  });
+  assert.equal(second.status, 'no-op');
+  assert.equal(log2.next, log2.base);
 }
 
 console.log('ensure-deep-dive-replace.test.mjs — all assertions passed');

@@ -207,13 +207,15 @@ export function appendProseToDeepDiveSection(body, prose) {
 // unrelated `##` sections (Acceptance Criteria, What I want, etc.) to reach a
 // distant marker far downstream, silently deleting everything in between —
 // confirmed live on #718. Stopping at any `## ` heading except `##
-// Dependency Map` fixes that without truncating the canonical appendix. The
-// heading line itself, the `aitm-deep-dive-posted` marker above it, and
-// every marker/section below are all preserved; only the prose (and old
-// Dependency Map, if present) between them is swapped. Replace is
+// Dependency Map` fixes that without truncating the canonical appendix.
+// Plan approval may also wrap this section in `<details>`; its closing tag is
+// a structural trailer, not replaceable prose, so it is an equally strong
+// boundary. The heading line itself, the `aitm-deep-dive-posted` marker above
+// it, and every wrapper/marker/section below are all preserved; only the prose
+// (and old Dependency Map, if present) between them is swapped. Replace is
 // idempotent: re-running with identical prose reproduces the same bytes, so
 // `mutateIssueBody` short-circuits to a no-op.
-const DEEP_DIVE_SECTION_END_RE = /^(?:<!--\s*aitm-|##\s+(?!Dependency Map\b))/m;
+const DEEP_DIVE_SECTION_END_RE = /^(?:<\/details>\s*$|<!--\s*aitm-|##\s+(?!Dependency Map\b))/im;
 
 export function replaceDeepDiveSection(body, prose) {
   const src = String(body || '');
