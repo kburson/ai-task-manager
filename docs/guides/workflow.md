@@ -65,7 +65,7 @@ npx aitm create-issue \
   --title "Feature: ..." \
   --scope-file ./.tmp/gh/scope.md \
   --ac-file ./.tmp/gh/acs.md \
-  --plan-metadata-file ./.tmp/gh/plan-meta.md \
+  --story-origin-file ./.tmp/gh/story-origin.md \
   --label needs-triage
 ```
 
@@ -560,12 +560,12 @@ Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the ed
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
 
-- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope / Acceptance Criteria / Plan Metadata are placeholders the Refine stage fills. Use this when you are capturing a raw idea at Backlog and the ACs, scope decomposition, and plan-metadata block do not yet exist and should not be invented. **Do not** set Size or Estimate on a stub — those are Refine-exit gate fields, not creation-time fields.
-- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--plan-metadata-file`. Use this when you already have the scope, acceptance criteria, and plan worked out at creation time and want to chain straight into `promote`.
-- **`epic`** — a parent/XL story; same three-file requirement as solo.
-- **`sub-issue`** — a child story; same three-file requirement plus `--parent <N>`.
+- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope and Acceptance Criteria remain Refine placeholders; Story Origin records the resolved kind immediately, and Plan Metadata stays empty until planning. **Do not** set Size or Estimate on a stub — those are planning fields, not creation-time provenance.
+- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--story-origin-file`; `--plan-metadata-file` is optional when planning output is already known.
+- **`epic`** — a parent/XL story; same Story Origin requirement as solo.
+- **`sub-issue`** — a child story; same Story Origin requirement plus `--parent <N>`, recorded inside Story Origin.
 
-A stub deliberately fails the Refine→Plan gate (which still demands Sequence, labels, Start Time, and substantive ACs) until Refine fleshes it out. Creation is cheap; promotion past Refine still enforces the full contract.
+A stub deliberately fails the Refine→Plan gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
 
 ### Issue kinds (`/task kind <N> <kind>`)
 
@@ -963,6 +963,7 @@ npx aitm create-issue \
   --title "Planning: <epic title>" \
   --scope-file ./.tmp/gh/planning-scope.md \
   --ac-file ./.tmp/gh/planning-acs.md \
+  --story-origin-file ./.tmp/gh/planning-origin.md \
   --plan-metadata-file ./.tmp/gh/planning-meta.md \
   --label planning
 ```

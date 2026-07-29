@@ -11,6 +11,7 @@ full scope/AC/plan worked out at creation time.
 
 Canonical heading order (the parity test enforces this):
   ## Scope
+  ## Story Origin
   ## Plan Metadata
   ## Pickup Directive             (static; sits under Plan Metadata, #700)
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
@@ -20,7 +21,8 @@ Canonical heading order (the parity test enforces this):
 Placeholders (substituted by preflight-issue.mjs --shape stub):
 {{scope}} Idea seed (from --idea-file) or a TBD placeholder
 {{acceptance_criteria}} Placeholder checkbox — filled at Refine
-{{plan_metadata}} Placeholder — filled at Refine
+{{story_origin}} Minimal create-time provenance
+{{plan_metadata}} Empty until planning
 
 Stub policy — DO NOT include an implementation plan, task breakdown, code
 snippets, or step-by-step instructions. The deep-dive happens at pickup time
@@ -30,6 +32,10 @@ against the current state of the repo, not at creation time.
 ## Scope
 
 {{scope}}
+
+## Story Origin
+
+{{story_origin}}
 
 ## Plan Metadata
 

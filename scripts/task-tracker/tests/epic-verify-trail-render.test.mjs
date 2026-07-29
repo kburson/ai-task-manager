@@ -137,9 +137,11 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
       const dir = mkdtempSync(path.join(projectScratchDir('test'), 'epic-trail-render-'));
       const scope = path.join(dir, 'scope.md');
       const ac = path.join(dir, 'ac.md');
+      const origin = path.join(dir, 'origin.md');
       const meta = path.join(dir, 'meta.md');
       writeFileSync(scope, 'Scope.\n', 'utf8');
       writeFileSync(ac, '- [ ] X. <!-- aitm-verified cmd="`node --test x.mjs`" -->\n', 'utf8');
+      writeFileSync(origin, '- **kind**: epic\n', 'utf8');
       writeFileSync(meta, '- **Size**: M\n', 'utf8');
       try {
         const { stdout } = await pexec('node', [
@@ -153,6 +155,8 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
           scope,
           '--ac-file',
           ac,
+          '--story-origin-file',
+          origin,
           '--plan-metadata-file',
           meta,
         ]);

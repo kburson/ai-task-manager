@@ -51,8 +51,10 @@ test('buildShapeFlags forwards section files for non-stub shapes without --kind 
     title: 'x',
     'scope-file': 's.md',
     'ac-file': 'a.md',
+    'story-origin-file': 'o.md',
     'plan-metadata-file': 'p.md',
   });
   assert.equal(flags.includes('--scope-file'), true);
+  assert.equal(flags.includes('--story-origin-file'), true);
   assert.equal(flags.includes('--kind'), false);
 });

@@ -117,6 +117,7 @@ function cliSetup() {
   );
   writeFileSync(join(temp, 'scope.md'), 'Some scope text.\n');
   writeFileSync(join(temp, 'ac.md'), '- [ ] first criterion\n');
+  writeFileSync(join(temp, 'origin.md'), '- kind: code\n');
   writeFileSync(join(temp, 'plan.md'), 'key: value\n');
   return temp;
 }
@@ -134,6 +135,8 @@ function runCreate(temp, { title, siblings, extraArgs = [] }) {
       join(temp, 'scope.md'),
       '--ac-file',
       join(temp, 'ac.md'),
+      '--story-origin-file',
+      join(temp, 'origin.md'),
       '--plan-metadata-file',
       join(temp, 'plan.md'),
       '--parent',

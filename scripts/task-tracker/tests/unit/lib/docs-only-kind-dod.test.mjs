@@ -54,6 +54,7 @@ function makeFixture() {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'docs-only-kind-dod-'));
   const scope = path.join(dir, 'scope.md');
   const ac = path.join(dir, 'ac.md');
+  const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(
@@ -61,8 +62,9 @@ function makeFixture() {
     '- [ ] Something happens. <!-- aitm-verified cmd="`node --test x.mjs`" -->\n',
     'utf8'
   );
+  writeFileSync(origin, '- **kind**: docs-only\n', 'utf8');
   writeFileSync(meta, '- **Size**: S\n', 'utf8');
-  return { dir, scope, ac, meta };
+  return { dir, scope, ac, origin, meta };
 }
 
 function writeChangedPaths(fx, paths) {
@@ -90,6 +92,8 @@ function subIssueArgs(fx, extra = []) {
     fx.scope,
     '--ac-file',
     fx.ac,
+    '--story-origin-file',
+    fx.origin,
     '--plan-metadata-file',
     fx.meta,
     ...extra,

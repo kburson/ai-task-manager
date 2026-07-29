@@ -242,6 +242,7 @@ npx aitm create-issue \
   --title "Planning: <epic title>" \
   --scope-file ./.tmp/gh/planning-scope.md \
   --ac-file ./.tmp/gh/planning-acs.md \
+  --story-origin-file ./.tmp/gh/planning-origin.md \
   --plan-metadata-file ./.tmp/gh/planning-meta.md \
   --label planning \
   --assignee <your-login>

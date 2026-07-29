@@ -68,6 +68,8 @@ function runDryRun() {
     path.join(FIXTURE_DIR, 'scope.md'),
     '--ac-file',
     path.join(FIXTURE_DIR, 'ac.md'),
+    '--story-origin-file',
+    path.join(FIXTURE_DIR, 'story-origin.md'),
     '--plan-metadata-file',
     path.join(FIXTURE_DIR, 'plan-meta.md'),
     '--parent',
@@ -234,13 +236,14 @@ test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
     assert.match(body, /<!--\s*aitm-body-version\s+version="\d+"\s*-->/);
   });
 
-  await t.test('parent epic marker emitted exactly once', () => {
-    const occurrences = body.match(/\*\*Parent epic:\*\*/g) || [];
+  await t.test('parent provenance field emitted exactly once in Story Origin', () => {
+    const occurrences = body.match(/- \*\*parent\*\*: #1/g) || [];
     assert.equal(
       occurrences.length,
       1,
-      `expected 1 **Parent epic:** line, got ${occurrences.length}`
+      `expected 1 Story Origin parent field, got ${occurrences.length}`
     );
+    assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
   });
 
   await t.test('numbered ACs were normalized to checkbox form', () => {

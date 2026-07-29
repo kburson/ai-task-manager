@@ -22,7 +22,8 @@
 //   node preflight-issue.mjs                    # tail block only
 //   node preflight-issue.mjs --check-only       # verify templates, no stdout
 //   node preflight-issue.mjs --shape <shape> \
-//        --scope-file <p> --ac-file <p> --plan-metadata-file <p> \
+//        --scope-file <p> --ac-file <p> --story-origin-file <p> \
+//        [--plan-metadata-file <p>] \
 //        [--parent <N>] [--sub-issue-list-file <p>]
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -37,6 +38,7 @@ import { lintChecklistCommands, formatViolations } from './lib/checklist-command
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
+import { normalizeStoryOriginValue, upsertStoryOriginField } from './lib/story-origin.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
@@ -47,12 +49,11 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
 const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'stub'];
 
-// #426 — placeholder fills for the lightweight `stub` shape. These deliberately
-// fail the Refine→Plan gate (no substantive ACs, no Plan Metadata) until the
-// Refine stage replaces them; a stub is fast idea-capture, not a planned story.
+// #426/#892 — placeholder fills for the lightweight `stub` shape. Scope and AC
+// deliberately fail Refine gates until expanded. Story Origin is real
+// create-time data; Plan Metadata is intentionally empty until planning.
 const STUB_SCOPE_PLACEHOLDER = '_Stub — describe the work at Refine._';
 const STUB_AC_PLACEHOLDER = '- [ ] _TBD — define acceptance criteria at Refine._';
-const STUB_PLAN_METADATA_PLACEHOLDER = '_TBD — set Size, Estimate, Priority, and Rank at Refine._';
 
 function repoRoot() {
   try {
@@ -143,6 +144,7 @@ function fillTemplate(template, fills) {
 // already start with `- [` (checkbox) are left alone. One pass.
 const SECTION_HEADINGS = {
   scope: '## Scope',
+  story_origin: '## Story Origin',
   acceptance_criteria: '## Acceptance Criteria',
   plan_metadata: '## Plan Metadata',
 };
@@ -175,6 +177,10 @@ export function normalizePlanMetadata(value) {
   return normalizePlanMetadataValue(value);
 }
 
+export function normalizeStoryOrigin(value) {
+  return normalizeStoryOriginValue(value);
+}
+
 export function normalizeFills(fills) {
   const out = { ...fills };
   for (const [key, heading] of Object.entries(SECTION_HEADINGS)) {
@@ -184,6 +190,9 @@ export function normalizeFills(fills) {
   }
   if (typeof out.acceptance_criteria === 'string') {
     out.acceptance_criteria = normalizeAcceptanceCriteria(out.acceptance_criteria);
+  }
+  if (typeof out.story_origin === 'string') {
+    out.story_origin = normalizeStoryOrigin(out.story_origin);
   }
   if (typeof out.plan_metadata === 'string') {
     out.plan_metadata = normalizePlanMetadata(out.plan_metadata);
@@ -309,6 +318,7 @@ function emitShape(args, dodPath, root) {
     die('--parent <N> required with --shape sub-issue');
   }
 
+  const kind = resolveRenderKind(args);
   let rawFills;
   if (shape === 'stub') {
     // #426 — stub: no section files required. An optional --idea-file seeds
@@ -319,22 +329,34 @@ function emitShape(args, dodPath, root) {
         : '';
     rawFills = {
       scope: idea || STUB_SCOPE_PLACEHOLDER,
+      story_origin: `- kind: ${kind}`,
       acceptance_criteria: STUB_AC_PLACEHOLDER,
-      plan_metadata: STUB_PLAN_METADATA_PLACEHOLDER,
+      plan_metadata: '',
     };
   } else {
-    const required = ['scope-file', 'ac-file', 'plan-metadata-file'];
+    const required = ['scope-file', 'ac-file', 'story-origin-file'];
     for (const flag of required) {
       if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
     }
     rawFills = {
       scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
+      story_origin: readFileOrDie(args['story-origin-file'], '--story-origin-file').trim(),
       acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),
-      plan_metadata: readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim(),
+      plan_metadata:
+        typeof args['plan-metadata-file'] === 'string'
+          ? readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim()
+          : '',
     };
   }
-  const fills = normalizeFills(rawFills);
-  if (shape === 'sub-issue') fills.parent_epic = `#${args.parent}`;
+  let fills = normalizeFills(rawFills);
+  if (shape === 'sub-issue') {
+    const wrapped = `## Story Origin\n\n${fills.story_origin}\n`;
+    const withParent = upsertStoryOriginField(wrapped, 'parent', `#${args.parent}`);
+    fills = {
+      ...fills,
+      story_origin: withParent.replace(/^## Story Origin\s*\n+/, '').trim(),
+    };
+  }
   if (shape === 'epic') {
     fills.sub_issue_list =
       typeof args['sub-issue-list-file'] === 'string'
@@ -345,7 +367,6 @@ function emitShape(args, dodPath, root) {
   // #681 — resolve kind BEFORE the DoD tail is injected so the Functional items
   // are filtered for the issue's kind and the derived Verification Commands seed
   // is computed over the surviving items.
-  const kind = resolveRenderKind(args);
   // #865 — for a `docs-only` render, a supplied `--changed-paths-file` decides
   // whether the functional `tests` item (and its derived `test:all` VC seed) is
   // dropped: only a provably documentation-only diff drops it (default-deny).

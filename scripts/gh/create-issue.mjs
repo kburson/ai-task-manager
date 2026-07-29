@@ -41,7 +41,7 @@ const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -121,11 +121,11 @@ function validateArgs(args) {
       die(`--shape must be one of: epic, sub-issue, solo, stub (got: ${args.shape})`, 2);
     }
     // #426 — the stub shape is a lightweight idea-capture path: only --title is
-    // required (an optional --idea-file seeds Scope). Scope / AC / Plan Metadata
-    // are placeholders the Refine stage fills, so the three section files are NOT
-    // required at creation. The Refine→Plan gate still enforces them later.
+    // required (an optional --idea-file seeds Scope). Scope / AC are placeholders
+    // the Refine stage fills; Story Origin is synthesized and Plan Metadata stays
+    // empty until planning, so section files are not required for a stub.
     if (args.shape !== 'stub') {
-      for (const flag of ['scope-file', 'ac-file', 'plan-metadata-file']) {
+      for (const flag of ['scope-file', 'ac-file', 'story-origin-file']) {
         if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`, 2);
       }
     }
@@ -142,7 +142,8 @@ function validateArgs(args) {
 export function buildShapeFlags(args) {
   const flags = ['--shape', args.shape];
   // #426 — stub forwards only an optional --idea-file (no section files);
-  // every other shape forwards the three required section files.
+  // every other shape forwards Scope, AC, and required create-time Story Origin.
+  // Plan Metadata is optional until the Plan stage.
   if (args.shape === 'stub') {
     if (typeof args['idea-file'] === 'string') flags.push('--idea-file', args['idea-file']);
   } else {
@@ -151,9 +152,12 @@ export function buildShapeFlags(args) {
       args['scope-file'],
       '--ac-file',
       args['ac-file'],
-      '--plan-metadata-file',
-      args['plan-metadata-file']
+      '--story-origin-file',
+      args['story-origin-file']
     );
+    if (typeof args['plan-metadata-file'] === 'string') {
+      flags.push('--plan-metadata-file', args['plan-metadata-file']);
+    }
   }
   if (typeof args.parent === 'string') flags.push('--parent', args.parent);
   if (typeof args['sub-issue-list-file'] === 'string') {
@@ -450,7 +454,8 @@ async function main() {
   } else {
     bodyContent = readBody(bodyFilePath);
     // Canonical issue-body verification. The `--body-file` shortcut bypasses
-    // the fragment path (`--shape` + scope/ac/plan-metadata), so we re-run the
+    // the fragment path (`--shape` + scope/AC/Story Origin/optional planning), so
+    // we re-run the
     // structural check here. Internal/testing callers may opt out with BOTH
     // `--internal` AND env `AITM_CREATE_ISSUE_INTERNAL=1` set.
     const internalFlag = args.internal === true;

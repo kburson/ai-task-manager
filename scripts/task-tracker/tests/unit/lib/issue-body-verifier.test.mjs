@@ -143,9 +143,11 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
   const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-rt-'));
   const scopeFile = join(tmp, 'scope.md');
   const acFile = join(tmp, 'ac.md');
+  const originFile = join(tmp, 'origin.md');
   const pmFile = join(tmp, 'pm.md');
   writeFileSync(scopeFile, 'Scope text here.\n');
   writeFileSync(acFile, '- [ ] Something works\n');
+  writeFileSync(originFile, '- **kind**: code\n');
   writeFileSync(
     pmFile,
     '**Size:** S\n**Estimate:** 2h\n**Priority:** P1\n**Rank:** 1\n**Parent:** #1\n'
@@ -161,6 +163,8 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
       scopeFile,
       '--ac-file',
       acFile,
+      '--story-origin-file',
+      originFile,
       '--plan-metadata-file',
       pmFile,
       '--parent',

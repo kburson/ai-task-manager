@@ -194,7 +194,8 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--shape epic|sub-issue|solo|stub', 'Assemble a sanctioned issue shape.'),
     argument('--scope-file <path>', 'Scope section required for non-stub shape assembly.'),
     argument('--ac-file <path>', 'Acceptance Criteria required for non-stub shape assembly.'),
-    argument('--plan-metadata-file <path>', 'Plan Metadata required for non-stub assembly.'),
+    argument('--story-origin-file <path>', 'Story Origin required for non-stub assembly.'),
+    argument('--plan-metadata-file <path>', 'Optional early Plan Metadata for shaped assembly.'),
     argument('--sub-issue-list-file <path>', 'Optional epic sub-issue list section.'),
     argument('--idea-file <path>', 'Optional initial Scope content for a stub.'),
     argument('--label <name>', 'Repeatable issue label.'),
@@ -218,7 +219,11 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--shape epic|sub-issue|solo|stub', 'Optional full-body template shape.'),
     argument('--scope-file <path>', 'Scope section source for full-body rendering.'),
     argument('--ac-file <path>', 'Acceptance Criteria source for full-body rendering.'),
-    argument('--plan-metadata-file <path>', 'Plan Metadata source for full-body rendering.'),
+    argument('--story-origin-file <path>', 'Story Origin source for full-body rendering.'),
+    argument(
+      '--plan-metadata-file <path>',
+      'Optional Plan Metadata source for full-body rendering.'
+    ),
     argument('--parent <N>', 'Parent issue substituted into a sub-issue body.'),
     argument('--sub-issue-list-file <path>', 'Epic sub-issue list section source.'),
     argument('--idea-file <path>', 'Optional stub idea source.'),

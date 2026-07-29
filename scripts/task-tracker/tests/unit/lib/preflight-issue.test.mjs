@@ -26,11 +26,13 @@ function makeFixture(acBody) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-preflight-test-'));
   const ac = path.join(dir, 'ac.md');
   const scope = path.join(dir, 'scope.md');
+  const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(ac, acBody, 'utf8');
   writeFileSync(scope, 'Scope.\n', 'utf8');
+  writeFileSync(origin, '- kind: code\n', 'utf8');
   writeFileSync(meta, 'Metadata.\n', 'utf8');
-  return { dir, ac, scope, meta };
+  return { dir, ac, scope, origin, meta };
 }
 
 async function runPreflight(args) {
@@ -56,6 +58,8 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -80,6 +84,8 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -98,11 +104,12 @@ describe('preflight-issue --shape stub (#426)', () => {
     const r = await runPreflight(['--shape', 'stub']);
     assert.equal(r.code, 0, `stderr: ${r.stderr}`);
     assert.match(r.stdout, /^## Scope\b/m);
+    assert.match(r.stdout, /^## Story Origin\b/m);
     assert.match(r.stdout, /^## Acceptance Criteria\b/m);
     assert.match(r.stdout, /^## Plan Metadata\b/m);
     assert.match(r.stdout, /Stub — describe the work at Refine\./);
     assert.match(r.stdout, /TBD — define acceptance criteria at Refine\./);
-    assert.match(r.stdout, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
+    assert.doesNotMatch(r.stdout, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
     // Tail still appended.
     assert.match(r.stdout, /^## Definition of Done\b/m);
     assert.match(r.stdout, /^## Pickup Directive\b/m);
@@ -135,6 +142,8 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -207,6 +216,8 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -241,6 +252,8 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -294,6 +307,8 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);

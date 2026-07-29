@@ -149,9 +149,11 @@ function makeDeps(overrides = {}) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'preflight-test-'));
   const scopeFile = path.join(dir, 'scope.md');
   const acFile = path.join(dir, 'ac.md');
+  const originFile = path.join(dir, 'origin.md');
   const planFile = path.join(dir, 'plan.md');
   writeFileSync(scopeFile, 'Scope text.\n');
   writeFileSync(acFile, '- [ ] one\n');
+  writeFileSync(originFile, '- **kind**: code\n');
   writeFileSync(planFile, '- **Size:** S\n- **Estimate:** 1h\n- **Priority:** P2\n- **Rank:** —\n');
   const rendered = execFileSync(
     'node',
@@ -163,6 +165,8 @@ function makeDeps(overrides = {}) {
       scopeFile,
       '--ac-file',
       acFile,
+      '--story-origin-file',
+      originFile,
       '--plan-metadata-file',
       planFile,
     ],

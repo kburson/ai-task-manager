@@ -46,7 +46,7 @@ npx aitm create-issue \
   --title "Feature: ..." \
   --scope-file ./.tmp/gh/scope.md \
   --ac-file ./.tmp/gh/acs.md \
-  --plan-metadata-file ./.tmp/gh/plan-meta.md
+  --story-origin-file ./.tmp/gh/story-origin.md
 ```
 
 Bind existing work inside the cloud environment before editing:
