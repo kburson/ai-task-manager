@@ -4,6 +4,7 @@
 - **Parent:** #1005
 - **Entry tree:** `5add5b0`
 - **Post-defect tree:** `d4317d2`
+- **Completion tree:** `91379bf`
 - **Entry milestone:** #1012 Closed/Done; policy-convergence and repository
   suites passed on the post-#1036 tree.
 
@@ -35,26 +36,30 @@ Optional cleanup is independent Backlog work and cannot hold #1005 open.
 
 ## Evidence Disposition Matrix
 
-| Input | Audit area                     | Concrete modules and coupling path                                                                                                                                       | Current owner or query                                                                | Regression evidence                                                                      | Disposition                                           |
-| ----- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| #819  | Lifecycle DoD migration        | `heal-lifecycle-dod.mjs` CLI delegates to `lib/heal-lifecycle-dod.mjs`, which consumes canonical labels from `lifecycle-dod.mjs`                                         | `LIFECYCLE_LABELS`, `LIFECYCLE_LABEL_ALIASES`, and the pure healer                    | `heal-lifecycle-dod.test.mjs`                                                            | Already clean                                         |
-| #899  | Issue-kind body migration      | `verbs/kind.mjs` writes the kind marker, filters the template, and reconciles the live Functional section                                                                | `parseIssueKind`, `reconcileDodForKind`, `locateFunctionalSection`                    | `dod-kind-heal.test.mjs`, `kind-aware-dod.test.mjs`                                      | Already clean                                         |
-| #902  | DoD verifier reconciliation    | `dod-stamp.mjs` runs declared commands and delegates the atomic proof-plus-VC update to `functional-dod-evidence.mjs`                                                    | `stampEvidenceAndReconcile` and `insertVerificationCommands`                          | `dod-stamp-vc-reconcile.test.mjs`                                                        | Already clean                                         |
-| #921  | Epic fan-out mutation          | `create-issue.mjs` invokes the pure duplicate classifier before GitHub creation; the guard owns title normalization and sibling similarity only                          | `evaluateDuplicateChild`, `defaultFetchOpenChildren`                                  | `duplicate-child-guard.test.mjs`                                                         | Already clean                                         |
-| #927  | Trunk-reference resolution     | Close gates, epic branch tools, sync, and merge-back resolve after a best-effort fetch through one module                                                                | `resolveTrunkRef`, `resolveTrunkRefSync`, `fetchTrunk`                                | `trunk-ref.test.mjs`, `trunk-ref.integration.test.mjs`, `commits-on-trunk-gate.test.mjs` | Already clean                                         |
-| #932  | Demotion proof cleanup         | `demote.mjs` moves the board before its body mutation; if that mutation fails, `reconcile accept-live` must finish the interrupted proof invalidation                    | `invalidateEvidence` is shared by demote and its narrow accept-live recovery          | `verbs/demote.test.mjs`; `tests/unit/verbs/reconcile-verb.test.mjs`                      | Blocking defect resolved by #1037                     |
-| #947  | Closed-child reconciliation    | `wave-admission.mjs` converts GitHub-closed children to operational `done` once; epic admission and close guards consume the normalized descriptor                       | `mapSubIssueNodes`, `defaultFetchSiblings`                                            | `wave-admission.test.mjs`, `epic-children-gate-core.test.mjs`                            | Already clean                                         |
-| #952  | Test verifier migration        | `verbs/test.mjs` performs one pre-sandbox migration through the lane-split helper, then parses the live Verification Commands again                                      | `migrateTestsLaneSplit`                                                               | `test-verb-lane-split-migration.test.mjs`                                                | Already clean                                         |
-| #953  | Issue-kind parser boundary     | Superseded by #963; the old unanchored-body approach is no longer the production read path                                                                               | Progress-scoped `parseIssueKind`                                                      | `issue-kind.test.mjs`                                                                    | Already clean, superseded                             |
-| #963  | Issue-kind section parser      | `issue-kind.mjs` isolates `## AITM Progress Markers` before parsing kind and delivery markers; all kind consumers delegate to it                                         | `progressMarkersSection`, `parseIssueKind`, `isNoCommitKind`, `isTestlessKind`        | `issue-kind.test.mjs`, `audit-lane-e2e-494.test.mjs`                                     | Already clean                                         |
-| #968  | Review-to-Done trunk read      | Move-state guard execution detects a linked worktree and injects the pure close-lane remote-trunk resolver into close gates                                              | `resolveCloseTrunkRef`, `makeCloseTrunkRefResolver`                                   | `move-state-worktree-trunk-ref.test.mjs`                                                 | Already clean                                         |
-| #972  | Timing-writer sequencing       | The writer asks `bind-event.mjs` whether an interruption is open and uses timing-event policy for departure classification; Markdown row lexical reads remain duplicated | `lastOpenInterruption`, `classifyTimingEvent`, and the timing-event emission query    | `timing-departure-guard.test.mjs`                                                        | Targeted refactor: shared timing-row reader           |
-| #981  | Interrupted-session timing     | Resume/bind resolution, writer suppression, and Agent Review all parse the same Timing Log rows; event policy is shared but row extraction is not                        | `resolveBindEvent`, `detectUnmarkedDepartureGap`, timing-event queries                | `bind-event.test.mjs`, `gh-timing-comment.test.mjs`, `timing-log-sequence.test.mjs`      | Targeted refactor: shared timing-row reader           |
-| #983  | Terminated-agent recovery      | `hook-handler.mjs` imports the suspicious-gap threshold through an Agent Review validator even though the validator re-exports it from the lower-level bind module       | `SUSPICIOUS_GAP_SEC` currently owned by `bind-event.mjs`                              | `hook-session-start.test.mjs`, `timing-log-sequence.test.mjs`                            | Targeted refactor: recovery-policy dependency         |
-| #984  | Agent-review forensics         | Body and Timing Log forensic checks are registered pure validators; the review orchestrator only supplies context and aggregates results                                 | validator `registry.runAll`, `body-sections.validate`, `timing-log-sequence.validate` | `body-sections.test.mjs`, `timing-log-sequence.test.mjs`                                 | Already clean                                         |
-| #994  | Marker normalization           | V6 must preserve review-failure blocks but independently scans the same start/end delimiters owned by `review-gate.mjs`                                                  | No shared block-boundary query exists                                                 | `v6-marker-organization.test.mjs`                                                        | Targeted refactor: shared review-failure block parser |
-| #1003 | Timing-log healing             | The healer correctly owns historical rewrite policy, but it carries another Markdown Timing Log event/timestamp reader beside writer, bind, and validator readers        | `healTimingLog` plus timing-event accounting queries                                  | `heal-timing-log.test.mjs`                                                               | Targeted refactor: shared timing-row reader           |
-| #1004 | Review-failure parser boundary | `review-gate.mjs` line-anchors failure-block detection, while V6 duplicates equivalent delimiter regexes to keep the same block opaque                                   | `stampReviewFailed`, `clearReviewFailed`, `hasReviewFailed`                           | `review-gate.test.mjs`                                                                   | Targeted refactor: shared review-failure block parser |
+The matrix records the topology observed at the post-defect audit tree
+`d4317d2`. The Required Findings resolutions below record the completion-tree
+topology after the targeted refactors landed.
+
+| Input | Audit area                     | Post-defect-tree modules and coupling path                                                                                                                               | Post-defect-tree owner or query                                                       | Regression evidence                                                                      | Disposition                         |
+| ----- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------- |
+| #819  | Lifecycle DoD migration        | `heal-lifecycle-dod.mjs` CLI delegates to `lib/heal-lifecycle-dod.mjs`, which consumes canonical labels from `lifecycle-dod.mjs`                                         | `LIFECYCLE_LABELS`, `LIFECYCLE_LABEL_ALIASES`, and the pure healer                    | `heal-lifecycle-dod.test.mjs`                                                            | Already clean                       |
+| #899  | Issue-kind body migration      | `verbs/kind.mjs` writes the kind marker, filters the template, and reconciles the live Functional section                                                                | `parseIssueKind`, `reconcileDodForKind`, `locateFunctionalSection`                    | `dod-kind-heal.test.mjs`, `kind-aware-dod.test.mjs`                                      | Already clean                       |
+| #902  | DoD verifier reconciliation    | `dod-stamp.mjs` runs declared commands and delegates the atomic proof-plus-VC update to `functional-dod-evidence.mjs`                                                    | `stampEvidenceAndReconcile` and `insertVerificationCommands`                          | `dod-stamp-vc-reconcile.test.mjs`                                                        | Already clean                       |
+| #921  | Epic fan-out mutation          | `create-issue.mjs` invokes the pure duplicate classifier before GitHub creation; the guard owns title normalization and sibling similarity only                          | `evaluateDuplicateChild`, `defaultFetchOpenChildren`                                  | `duplicate-child-guard.test.mjs`                                                         | Already clean                       |
+| #927  | Trunk-reference resolution     | Close gates, epic branch tools, sync, and merge-back resolve after a best-effort fetch through one module                                                                | `resolveTrunkRef`, `resolveTrunkRefSync`, `fetchTrunk`                                | `trunk-ref.test.mjs`, `trunk-ref.integration.test.mjs`, `commits-on-trunk-gate.test.mjs` | Already clean                       |
+| #932  | Demotion proof cleanup         | `demote.mjs` moves the board before its body mutation; if that mutation fails, `reconcile accept-live` must finish the interrupted proof invalidation                    | `invalidateEvidence` is shared by demote and its narrow accept-live recovery          | `verbs/demote.test.mjs`; `tests/unit/verbs/reconcile-verb.test.mjs`                      | Blocking defect resolved by #1037   |
+| #947  | Closed-child reconciliation    | `wave-admission.mjs` converts GitHub-closed children to operational `done` once; epic admission and close guards consume the normalized descriptor                       | `mapSubIssueNodes`, `defaultFetchSiblings`                                            | `wave-admission.test.mjs`, `epic-children-gate-core.test.mjs`                            | Already clean                       |
+| #952  | Test verifier migration        | `verbs/test.mjs` performs one pre-sandbox migration through the lane-split helper, then parses the live Verification Commands again                                      | `migrateTestsLaneSplit`                                                               | `test-verb-lane-split-migration.test.mjs`                                                | Already clean                       |
+| #953  | Issue-kind parser boundary     | Superseded by #963; the old unanchored-body approach is no longer the production read path                                                                               | Progress-scoped `parseIssueKind`                                                      | `issue-kind.test.mjs`                                                                    | Already clean, superseded           |
+| #963  | Issue-kind section parser      | `issue-kind.mjs` isolates `## AITM Progress Markers` before parsing kind and delivery markers; all kind consumers delegate to it                                         | `progressMarkersSection`, `parseIssueKind`, `isNoCommitKind`, `isTestlessKind`        | `issue-kind.test.mjs`, `audit-lane-e2e-494.test.mjs`                                     | Already clean                       |
+| #968  | Review-to-Done trunk read      | Move-state guard execution detects a linked worktree and injects the pure close-lane remote-trunk resolver into close gates                                              | `resolveCloseTrunkRef`, `makeCloseTrunkRefResolver`                                   | `move-state-worktree-trunk-ref.test.mjs`                                                 | Already clean                       |
+| #972  | Timing-writer sequencing       | The writer asks `bind-event.mjs` whether an interruption is open and uses timing-event policy for departure classification; Markdown row lexical reads remain duplicated | `lastOpenInterruption`, `classifyTimingEvent`, and the timing-event emission query    | `timing-departure-guard.test.mjs`                                                        | Targeted refactor resolved by #1038 |
+| #981  | Interrupted-session timing     | Resume/bind resolution, writer suppression, and Agent Review all parse the same Timing Log rows; event policy is shared but row extraction is not                        | `resolveBindEvent`, `detectUnmarkedDepartureGap`, timing-event queries                | `bind-event.test.mjs`, `gh-timing-comment.test.mjs`, `timing-log-sequence.test.mjs`      | Targeted refactor resolved by #1038 |
+| #983  | Terminated-agent recovery      | `hook-handler.mjs` imports the suspicious-gap threshold through an Agent Review validator even though the validator re-exports it from the lower-level bind module       | `SUSPICIOUS_GAP_SEC` currently owned by `bind-event.mjs`                              | `hook-session-start.test.mjs`, `timing-log-sequence.test.mjs`                            | Targeted refactor resolved by #1039 |
+| #984  | Agent-review forensics         | Body and Timing Log forensic checks are registered pure validators; the review orchestrator only supplies context and aggregates results                                 | validator `registry.runAll`, `body-sections.validate`, `timing-log-sequence.validate` | `body-sections.test.mjs`, `timing-log-sequence.test.mjs`                                 | Already clean                       |
+| #994  | Marker normalization           | V6 must preserve review-failure blocks but independently scans the same start/end delimiters owned by `review-gate.mjs`                                                  | No shared block-boundary query exists                                                 | `v6-marker-organization.test.mjs`                                                        | Targeted refactor resolved by #1040 |
+| #1003 | Timing-log healing             | The healer correctly owns historical rewrite policy, but it carries another Markdown Timing Log event/timestamp reader beside writer, bind, and validator readers        | `healTimingLog` plus timing-event accounting queries                                  | `heal-timing-log.test.mjs`                                                               | Targeted refactor resolved by #1038 |
+| #1004 | Review-failure parser boundary | `review-gate.mjs` line-anchors failure-block detection, while V6 duplicates equivalent delimiter regexes to keep the same block opaque                                   | `stampReviewFailed`, `clearReviewFailed`, `hasReviewFailed`                           | `review-gate.test.mjs`                                                                   | Targeted refactor resolved by #1040 |
 
 ## Required Findings
 
@@ -93,6 +98,11 @@ existing policy-aware `lib/timing-rows.mjs`. The existing module and the writer,
 bind resolver, validator, and healer consume the lexical reader while retaining
 their distinct arithmetic, sequence, emission, and healing decisions.
 
+Resolution: #1038 is Closed/Done and squash-integrated at `d79d988`. The
+dependency-light `timing-row-reader.mjs` now owns lexical row decoding for all
+five audited consumers, while timing-event classification, arithmetic,
+recovery, validation, and healing policy remain in their prior owners.
+
 ### R2 — Recovery-gap policy dependency direction
 
 `hook-handler.mjs` imports `SUSPICIOUS_GAP_SEC` from an Agent Review validator.
@@ -102,6 +112,10 @@ for a leaf timing-recovery policy it already owns indirectly.
 
 Expected owner: the operational bind/recovery leaf. The hook and validator
 consume it directly; no threshold or recovery behavior changes.
+
+Resolution: #1039 is Closed/Done and squash-integrated at `8b9f420`.
+`hook-handler.mjs` and the validator now import `SUSPICIOUS_GAP_SEC` directly
+from `bind-event.mjs`; the threshold and recovery behavior are unchanged.
 
 ### R3 — Shared review-failure block boundary parser
 
@@ -113,6 +127,11 @@ gate mutation fail together when those boundaries drift.
 Expected owner: a dependency-light marker-block helper consumed by both the
 review gate and V6 normalizer. Review-failure content, formatting, and lifecycle
 semantics remain owned by `review-gate.mjs`.
+
+Resolution: #1040 is Closed/Done and squash-integrated at `91379bf`.
+`review-failure-block.mjs` now owns delimiter recognition and span location;
+the review gate retains complete-block policy and V6 retains conservative
+through-EOF opacity for an unterminated block.
 
 ## Other Audit Areas
 
@@ -128,6 +147,9 @@ single current owner and focused regression coverage.
 
 - Blocking correctness defects: D1 was resolved and closed by #1037 at
   `d4317d2`; no blocking correctness defect remains open.
+- Required refactors: #1038, #1039, and #1040 are Closed/Done and integrated;
+  their final independent reviews found no remaining defects, and no descendant
+  defect issue remains open.
 - Optional cleanup: none required. Large operational files alone are not a
   finding without duplicated decisions or an inverted dependency.
 
@@ -135,10 +157,13 @@ single current owner and focused regression coverage.
 
 1. Resolve D1 before starting any refactor grandchild — completed by #1037 at
    `d4317d2`.
-2. Extract the shared Timing Log row reader.
-3. Repair the recovery-gap dependency direction after the timing reader settles.
-4. Extract the shared review-failure block boundary parser.
-5. Re-run the #1006 audit verifier and all focused child regressions.
+2. Extract the shared Timing Log row reader — completed by #1038 at `d79d988`.
+3. Repair the recovery-gap dependency direction — completed by #1039 at
+   `8b9f420`.
+4. Extract the shared review-failure block boundary parser — completed by #1040
+   at `91379bf`.
+5. Re-run the #1006 audit verifier and all focused child regressions — required
+   by #1006 VC6 before closure.
 
 Each required finding becomes a sequential #1006 grandchild with this document
 and `docs/superpowers/plans/2026-07-27-state-engine-refactoring-epic.md` as

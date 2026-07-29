@@ -17,6 +17,7 @@ const EXPECTED_INPUTS = [
 test('#1006 JIT audit records the converged entry milestone and scope contract', () => {
   assert.match(audit, /\*\*Entry tree:\*\* `5add5b0`/);
   assert.match(audit, /\*\*Post-defect tree:\*\* `d4317d2`/);
+  assert.match(audit, /\*\*Completion tree:\*\* `91379bf`/);
   assert.match(audit, /#1012 Closed\/Done/);
   assert.deepEqual(stateIds(), [
     'backlog',
@@ -70,4 +71,20 @@ test('#1006 JIT audit records only focused required findings', () => {
   assert.match(audit, /cleared the\s+blocker on #1006/);
   assert.match(audit, /Optional cleanup: none required/);
   assert.doesNotMatch(audit, /\bTBD\b|\bTODO\b/);
+});
+
+test('#1006 JIT audit records every required child as closed and integrated', () => {
+  for (const [issue, tree] of [
+    [1038, 'd79d988'],
+    [1039, '8b9f420'],
+    [1040, '91379bf'],
+  ]) {
+    assert.match(
+      audit,
+      new RegExp(`Resolution: #${issue} is Closed/Done and squash-integrated at \\\`${tree}\\\``)
+    );
+  }
+  assert.match(audit, /final independent reviews found no remaining defects/);
+  assert.match(audit, /no descendant\s+defect issue remains open/);
+  assert.match(audit, /#1006 VC6 before closure/);
 });
