@@ -3,12 +3,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validate } from './body-sections.mjs';
 
-// A well-formed body: all nine canonical sections, in order, each non-empty.
+// A well-formed body: all ten canonical sections, in order, each non-empty.
 const WELL_FORMED = [
   '## User Story',
   'As a maintainer\nI want a gate\nSo that bodies stay well-formed',
   '## Scope',
   'Ship V1.',
+  '## Story Origin',
+  '- **kind**: code',
   '## Plan Metadata',
   '- **Size:** S',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
@@ -25,7 +27,7 @@ const WELL_FORMED = [
   '<!-- aitm-entered-develop ts="2026-07-14T00:00:00Z" -->',
 ].join('\n\n');
 
-test('passes a well-formed body with all nine sections in order', () => {
+test('passes a well-formed body with all ten sections in order', () => {
   const res = validate({ body: WELL_FORMED });
   assert.equal(res.pass, true, JSON.stringify(res.failures));
   assert.deepEqual(res.failures, []);
@@ -68,6 +70,8 @@ test('fails and names an out-of-order pair', () => {
     'As a\nI want\nSo that',
     '## Scope',
     'x',
+    '## Story Origin',
+    '- **kind**: code',
     '## Plan Metadata',
     'x',
     '## Pickup Directive — MANDATORY, DO NOT SKIP',
@@ -106,6 +110,8 @@ test('fails when canonical checkbox sections are hidden inside a details block',
     'As a maintainer\nI want a gate\nSo that bodies stay well-formed',
     '## Scope',
     'Ship V1.',
+    '## Story Origin',
+    '- **kind**: code',
     '## Plan Metadata',
     '- **Size:** S',
     '## Pickup Directive — MANDATORY, DO NOT SKIP',
@@ -172,6 +178,30 @@ test('passes when a collapsed deep dive closes before root checkbox sections', (
 
   const res = validate({ body });
   assert.equal(res.pass, true, JSON.stringify(res.failures));
+});
+
+test('fails when Story Origin is missing', () => {
+  const body = WELL_FORMED.replace('## Story Origin\n\n- **kind**: code\n\n', '');
+  const res = validate({ body });
+  assert.equal(res.pass, false);
+  assert.ok(res.failures.some((f) => /Story Origin.*missing/.test(f)));
+});
+
+test('fails when Story Origin follows Plan Metadata', () => {
+  const body = WELL_FORMED.replace(
+    ['## Story Origin', '', '- **kind**: code', '', '## Plan Metadata', '', '- **Size:** S'].join(
+      '\n'
+    ),
+    ['## Plan Metadata', '', '- **Size:** S', '', '## Story Origin', '', '- **kind**: code'].join(
+      '\n'
+    )
+  );
+  const res = validate({ body });
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((f) => /Plan Metadata.*before.*Story Origin/.test(f)),
+    JSON.stringify(res.failures)
+  );
 });
 
 test('bootstrap registers the validator on the shared singleton', async () => {

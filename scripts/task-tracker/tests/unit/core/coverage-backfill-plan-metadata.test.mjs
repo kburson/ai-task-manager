@@ -53,7 +53,7 @@ test('listOpenIssues: parses gh json via injected pexec', async () => {
 });
 
 // ── main orchestration ───────────────────────────────────────────────────────
-test('main: audit dry-run logs would-bold + skips clean issues, no writes', async () => {
+test('main: audit dry-run logs would-heal + skips clean issues, no writes', async () => {
   const logs = [];
   let mutated = 0;
   await main([], {
@@ -69,7 +69,7 @@ test('main: audit dry-run logs would-bold + skips clean issues, no writes', asyn
     err: () => {},
   });
   const joined = logs.join('\n');
-  assert.match(joined, /#3 {2}would-bold {2}\[effort, risk\] {2}\(audit\)/);
+  assert.match(joined, /#3 {2}would-heal {2}\[effort, risk\] {2}\(audit\)/);
   assert.match(joined, /skipped=1 {2}healed=1/);
   assert.match(joined, /audit — no writes/);
   assert.equal(mutated, 0); // audit never writes
@@ -92,7 +92,7 @@ test('main: --apply writes healed issues through mutateIssueBody', async () => {
   assert.equal(mutations.length, 1);
   assert.equal(mutations[0].issueNumber, 5);
   assert.match(mutations[0].nb, /\*\*effort\*\*/);
-  assert.match(logs.join('\n'), /#5 {2}bolded {2}updated/);
+  assert.match(logs.join('\n'), /#5 {2}healed {2}updated/);
   assert.match(logs.join('\n'), /healed=1 {2}failed=0/);
 });
 

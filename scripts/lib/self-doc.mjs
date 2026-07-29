@@ -913,14 +913,16 @@ const DIRECT_SELF_DOC = Object.freeze({
     group: 'Maintenance',
     path: 'scripts/task-tracker/backfill-plan-metadata.mjs',
     classification: 'live-maintenance-or-migration',
-    synopsis: 'Bold legacy Plan Metadata labels across open issues.',
+    synopsis: 'Split legacy Story Origin provenance and normalize metadata labels.',
     usage: 'backfill-plan-metadata [--apply] [--yes]',
     arguments: [
       argument(APPLY_FLAG, 'Write matching issue bodies.'),
       argument('--yes', 'Skip multi-issue confirmation.'),
     ],
     preconditions: ['Configured repository and issue access are required.'],
-    effects: ['Dry-run by default; --apply rewrites matching Plan Metadata sections.'],
+    effects: [
+      'Dry-run by default; --apply rewrites matching Story Origin and Plan Metadata sections.',
+    ],
     output: ['Reports issues needing or receiving the backfill.'],
     relatedCommands: ['heal-backlog'],
   }),

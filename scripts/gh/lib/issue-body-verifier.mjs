@@ -2,12 +2,14 @@
 //
 // Pure: takes a Markdown body string, returns { ok, missing }.
 // Used by `create-issue.mjs --body-file` to refuse arbitrary bodies that
-// bypass the canonical Scope / AC / DoD / Pickup Directive structure assembled
-// by `preflight-issue.mjs --shape`.
+// bypass the canonical Scope / Story Origin / Plan Metadata / AC / DoD /
+// Pickup Directive structure assembled by `preflight-issue.mjs --shape`.
 //
 // Required sections (anchored heading regex; allow lifecycle marker blocks
 // between sections):
 //   ## Scope  (or ## Problem — either framing is canonical)
+//   ## Story Origin
+//   ## Plan Metadata
 //   ## Acceptance Criteria
 //   ## Definition of Done       (top-level sibling; legacy ### still accepted)
 //     ### Functional            (required subheader, present DoD only)
@@ -24,6 +26,8 @@
 // require both subheaders, so an empty/stub DoD is reported as malformed.
 
 const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
+const STORY_ORIGIN_REGEX = /^##\s+Story Origin\s*$/m;
+const PLAN_METADATA_REGEX = /^##\s+Plan Metadata\s*$/m;
 const DOD_REGEX = /^#{2,3}\s+Definition of Done\s*$/m;
 // Subheaders are matched tolerantly: the canonical text is
 // "### Functional (verified at Test)" / "### Lifecycle (auto-ticked at
@@ -31,18 +35,20 @@ const DOD_REGEX = /^#{2,3}\s+Definition of Done\s*$/m;
 // subsections from #### to ###), but only the leading word is load-bearing.
 const DOD_FUNCTIONAL_REGEX = /^#{3,4}\s+Functional\b/m;
 const DOD_LIFECYCLE_REGEX = /^#{3,4}\s+Lifecycle\b/m;
+const PICKUP_HEADING_REGEX = /^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m;
 
 const SECTION_CHECKS = [
   { name: '## Scope (or ## Problem)', regex: SCOPE_REGEX },
+  { name: '## Story Origin', regex: STORY_ORIGIN_REGEX },
+  { name: '## Plan Metadata', regex: PLAN_METADATA_REGEX },
   { name: '## Acceptance Criteria', regex: /^##\s+Acceptance Criteria\s*$/m },
   { name: '## Definition of Done', regex: DOD_REGEX },
   {
     name: '## Pickup Directive — MANDATORY, DO NOT SKIP',
-    regex: /^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m,
+    regex: PICKUP_HEADING_REGEX,
   },
 ];
 
-const PICKUP_HEADING_REGEX = SECTION_CHECKS[3].regex;
 const PICKUP_FOLLOW_LINE = '> Follow: `.ai-task-manager/templates/pickup-directive.md`';
 
 export function verifyIssueBody(body) {
@@ -60,6 +66,14 @@ export function verifyIssueBody(body) {
 
   for (const check of SECTION_CHECKS) {
     if (!check.regex.test(body)) missing.push(check.name);
+  }
+
+  if (
+    STORY_ORIGIN_REGEX.test(body) &&
+    PLAN_METADATA_REGEX.test(body) &&
+    body.search(STORY_ORIGIN_REGEX) > body.search(PLAN_METADATA_REGEX)
+  ) {
+    missing.push('## Story Origin must precede ## Plan Metadata');
   }
 
   // #171 — when the DoD heading is present, both subheaders must be too. We

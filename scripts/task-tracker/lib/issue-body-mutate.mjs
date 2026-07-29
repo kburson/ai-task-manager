@@ -175,7 +175,7 @@ export async function mutateIssueBody({
             .map((u) => u.label)
             .join(
               ', '
-            )} — run \`node scripts/task-tracker/backfill-plan-metadata.mjs --apply\` to bold Plan Metadata labels`
+            )} — run \`node scripts/task-tracker/backfill-plan-metadata.mjs --apply\` to normalize metadata`
         );
       }
     }
