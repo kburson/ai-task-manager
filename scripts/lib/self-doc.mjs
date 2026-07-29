@@ -654,6 +654,20 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Prints per-file and aggregate test results.'],
     relatedCommands: ['npm test', 'npm run test:slow'],
   }),
+  'verify-local-worktree': directDoc('verify-local-worktree', {
+    group: 'Package lifecycle',
+    path: 'scripts/dev-env/verify-local-worktree.mjs',
+    classification: 'package-lifecycle-cli',
+    synopsis: 'Verify a local AITM dogfood worktree and its required development tools.',
+    usage: 'verify-local-worktree',
+    arguments: [],
+    preconditions: [
+      'Run from an AITM source checkout with Node.js 22 or newer after dependencies and the self-link are installed.',
+    ],
+    effects: ['Reads environment and worktree state without modifying either.'],
+    output: ['Reports every contract violation or confirms the local worktree is ready.'],
+    relatedCommands: ['ensure-self-link', 'npm ci', 'npm run link:self'],
+  }),
   'heal-stage-rollups': directDoc('heal-stage-rollups', {
     group: 'Maintenance',
     path: 'scripts/maintenance/heal-stage-rollups.mjs',

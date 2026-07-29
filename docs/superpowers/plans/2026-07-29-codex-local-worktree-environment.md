@@ -35,8 +35,7 @@ Git, GitHub CLI, jq, Markdown.
 
 **Files:**
 
-- Create:
-  `scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs`
+- Create: `scripts/dev-env/verify-local-worktree.test.mjs`
 - Create: `scripts/dev-env/verify-local-worktree.mjs`
 
 **Interfaces:**
@@ -57,7 +56,7 @@ Git, GitHub CLI, jq, Markdown.
   Run:
 
   ```bash
-  node --test scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs
+  node --test scripts/dev-env/verify-local-worktree.test.mjs
   ```
 
   Expected: failure because
@@ -78,8 +77,7 @@ Git, GitHub CLI, jq, Markdown.
 **Files:**
 
 - Create: `scripts/dev-env/setup-local-worktree.sh`
-- Modify:
-  `scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs`
+- Modify: `scripts/dev-env/verify-local-worktree.test.mjs`
 
 **Interfaces:**
 
@@ -107,7 +105,7 @@ Git, GitHub CLI, jq, Markdown.
   Run:
 
   ```bash
-  node --test scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs
+  node --test scripts/dev-env/verify-local-worktree.test.mjs
   bash -n scripts/dev-env/setup-local-worktree.sh
   ```
 
@@ -116,8 +114,7 @@ Git, GitHub CLI, jq, Markdown.
 **Files:**
 
 - Create: `docs/guides/codex-local-worktree-environment.md`
-- Modify:
-  `scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs`
+- Modify: `scripts/dev-env/verify-local-worktree.test.mjs`
 
 **Interfaces:**
 
@@ -146,10 +143,9 @@ Git, GitHub CLI, jq, Markdown.
   Run:
 
   ```bash
-  node --test scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs
-  npm exec prettier -- --check scripts/dev-env/setup-local-worktree.sh \
-    scripts/dev-env/verify-local-worktree.mjs \
-    scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs \
+  node --test scripts/dev-env/verify-local-worktree.test.mjs
+  npm exec prettier -- --check scripts/dev-env/verify-local-worktree.mjs \
+    scripts/dev-env/verify-local-worktree.test.mjs \
     docs/guides/codex-local-worktree-environment.md
   ```
 
@@ -167,7 +163,7 @@ Git, GitHub CLI, jq, Markdown.
 - [ ] **Step 1: Run focused tests and syntax checks**
 
   ```bash
-  node --test scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs
+  node --test scripts/dev-env/verify-local-worktree.test.mjs
   bash -n scripts/dev-env/setup-local-worktree.sh
   node scripts/dev-env/verify-local-worktree.mjs
   ```
@@ -197,6 +193,6 @@ Git, GitHub CLI, jq, Markdown.
     docs/superpowers/plans/2026-07-29-codex-local-worktree-environment.md \
     scripts/dev-env/setup-local-worktree.sh \
     scripts/dev-env/verify-local-worktree.mjs \
-    scripts/task-tracker/tests/unit/dev-env/verify-local-worktree.test.mjs
+    scripts/dev-env/verify-local-worktree.test.mjs
   git commit -m "chore: add Codex local worktree environment"
   ```
