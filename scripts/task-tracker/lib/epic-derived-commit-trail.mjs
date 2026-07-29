@@ -60,6 +60,27 @@ function childTitle(child) {
   return (child && typeof child === 'object' && child.title) || '';
 }
 
+// A closed NOT_PLANNED child has no retained delivery to prove reachable from
+// the epic HEAD. The sibling mapper normalizes GitHub's terminal reason to this
+// exact value; everything else (including absent or unfamiliar data) remains
+// fail-closed and therefore still requires a commit.
+function isNonDeliveryChild(child) {
+  return (
+    child &&
+    typeof child === 'object' &&
+    String(child.closeReason || '').toLowerCase() === 'not_planned'
+  );
+}
+
+export function partitionChildrenByDeliveryRequirement(children = []) {
+  const deliveryRequired = [];
+  const excluded = [];
+  for (const child of children || []) {
+    (isNonDeliveryChild(child) ? excluded : deliveryRequired).push(child);
+  }
+  return { deliveryRequired, excluded };
+}
+
 export class UnreachableChildrenError extends Error {
   constructor(epicNumber, children) {
     const names = children.map((c) => `#${c.number}${c.title ? ` (${c.title})` : ''}`);
@@ -97,7 +118,8 @@ export function groupCommitsByChild({ children = [], commits = [] } = {}) {
 export function buildEpicDerivedTrail({ epicNumber, children = [], commits = [] } = {}) {
   if (!epicNumber) throw new Error('buildEpicDerivedTrail: epicNumber is required');
 
-  const groups = groupCommitsByChild({ children, commits });
+  const { deliveryRequired, excluded } = partitionChildrenByDeliveryRequirement(children);
+  const groups = groupCommitsByChild({ children: deliveryRequired, commits });
   const unreachable = groups.filter((g) => g.commits.length === 0);
   if (unreachable.length > 0) throw new UnreachableChildrenError(epicNumber, unreachable);
 
@@ -116,7 +138,10 @@ export function buildEpicDerivedTrail({ epicNumber, children = [], commits = [] 
     '',
     buildLedgerCaveat(epicNumber),
     '',
-    `<!-- aitm-epic-derived-trail children="${groups.map((g) => g.number).join(',')}" -->`,
+    `<!-- aitm-epic-derived-trail children="${groups.map((g) => g.number).join(',')}" excluded="${excluded
+      .map((child) => childNumber(child))
+      .filter(Boolean)
+      .join(',')}" -->`,
     '',
     serializeMarker('commits', { shas: shas.join(',') }),
     '',

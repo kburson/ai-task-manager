@@ -115,6 +115,16 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
       assert.equal(code, 1);
     });
 
+    it('exits 0 when a non-delivery child has no reachable commit', async () => {
+      const { deps } = stubDeps({
+        active: '883',
+        children: [{ number: 890, title: 'discarded', closeReason: 'not_planned' }],
+        log: '',
+      });
+      const code = await main([], deps);
+      assert.equal(code, 0);
+    });
+
     it('exits 2 when the epic cannot be resolved from args or session', async () => {
       const { deps } = stubDeps({ active: null, children: [], log: '' });
       const code = await main([], deps);

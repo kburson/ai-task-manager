@@ -110,7 +110,7 @@ export async function main(argv, deps = {}) {
   }
 
   console.log(
-    `verify-epic-trail: every child of epic #${epicNumber} (${children.length}) has a [#N] commit reachable from HEAD`
+    `verify-epic-trail: epic #${epicNumber} trail verified for ${children.length} child(ren); every delivery-requiring child has a [#N] commit reachable from HEAD`
   );
   return 0;
 }

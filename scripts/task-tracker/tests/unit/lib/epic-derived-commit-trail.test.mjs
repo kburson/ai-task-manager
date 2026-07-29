@@ -143,6 +143,46 @@ test('the refusal names every unreachable child, not just the first', () => {
   assert.match(err.message, /#885/);
 });
 
+test('non-delivery children are excluded while completed children still require commits', () => {
+  const children = [
+    { number: 884, title: 'replaced child', closeReason: 'not_planned' },
+    { number: 885, title: 'delivered child', closeReason: 'completed' },
+  ];
+  const commits = REACHABLE.filter((c) => c.subject.includes('[#885]'));
+
+  const body = buildEpicDerivedTrail({ epicNumber: 883, children, commits });
+
+  assert.match(body, /aitm-epic-derived-trail children="885" excluded="884"/);
+  assert.doesNotMatch(body, /\*\*#884/);
+  assert.match(body, /\*\*#885/);
+});
+
+test('an absent or unfamiliar close reason remains fail-closed', () => {
+  const children = [
+    { number: 884, title: 'missing reason' },
+    { number: 885, title: 'unknown reason', closeReason: 'discarded' },
+  ];
+
+  const err = caught(() => buildEpicDerivedTrail({ epicNumber: 883, children, commits: [] }));
+
+  assert.deepEqual(
+    err.unreachable.map((c) => c.number),
+    [884, 885]
+  );
+});
+
+test('an epic with only non-delivery children emits an auditable canonical empty trail', () => {
+  const children = [
+    { number: 884, title: 'replaced child', closeReason: 'not_planned' },
+    { number: 885, title: 'discarded child', closeReason: 'not_planned' },
+  ];
+
+  const body = buildEpicDerivedTrail({ epicNumber: 883, children, commits: [] });
+
+  assert.match(body, /aitm-epic-derived-trail children="" excluded="884,885"/);
+  assert.deepEqual([...parseMarker(body).shas], []);
+});
+
 // AC 4 — commits that exist elsewhere but are not reachable from the epic HEAD
 // are unreachable. The builder only ever sees the epic-HEAD-scoped log, so a
 // sibling-branch commit is simply absent from `commits` and must still refuse.

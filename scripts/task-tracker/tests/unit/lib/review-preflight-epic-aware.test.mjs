@@ -106,6 +106,24 @@ test('every unreachable child is named in a single refusal', async () => {
   assert.match(res.reasons[0], /#862/);
 });
 
+test('an epic passes when only non-delivery children lack reachable commits', async () => {
+  const children = [
+    { number: 861, title: 'replaced child', closeReason: 'not_planned' },
+    { number: 862, title: 'delivered child', closeReason: 'completed' },
+  ];
+  const commits = EPIC_COMMITS.filter((c) => c.subject.includes('#862'));
+  const res = await runReviewPreflight({
+    ...BASE,
+    deps: deps({
+      fetchEpicChildren: async () => children,
+      epicCommits: async () => commits,
+    }),
+  });
+
+  assert.deepEqual(res.reasons, []);
+  assert.match(res.derivedTrail, /children="862" excluded="861"/);
+});
+
 // AC 3 — the non-epic path is unchanged.
 test('a code issue with no trail comment is still refused for the missing trail', async () => {
   const res = await runReviewPreflight({
