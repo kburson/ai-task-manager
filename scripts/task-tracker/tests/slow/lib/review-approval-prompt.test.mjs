@@ -296,7 +296,7 @@ async function run(sandbox, binDir, args) {
         wordsAtEntryStart: 0,
       })
     );
-    // Well-formed per the V1 agent-review gate (#810): all nine canonical `##`
+    // Well-formed per the V1 agent-review gate (#810): all ten canonical `##`
     // sections in order, each non-empty. The AC/DoD sections carry no evaluable
     // checkboxes, so the evidence + completeness preflight checks stay vacuous
     // and the success path is preserved.
@@ -306,6 +306,9 @@ async function run(sandbox, binDir, args) {
       '',
       '## Scope',
       'Exercise the review-approval success path.',
+      '',
+      '## Story Origin',
+      '- **kind**: code',
       '',
       '## Plan Metadata',
       '- **Size:** S',
@@ -598,7 +601,7 @@ async function run(sandbox, binDir, args) {
         },
       })
     );
-    // Well-formed per the V1 agent-review gate (#810): the nine canonical `##`
+    // Well-formed per the V1 agent-review gate (#810): the ten canonical `##`
     // sections in order. The AC evidence markers, VC list, and DoD boxes are the
     // evaluable content the evidence-based auto-tick ticks on the success path.
     const fixtureBody = [
@@ -607,6 +610,9 @@ async function run(sandbox, binDir, args) {
       '',
       '## Scope',
       'Exercise the evidence-based auto-tick path.',
+      '',
+      '## Story Origin',
+      '- **kind**: code',
       '',
       '## Plan Metadata',
       '- **Size:** S',

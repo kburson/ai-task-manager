@@ -20,6 +20,11 @@ const script = join(repoRoot, 'scripts/gh/create-issue.mjs');
 // Use this in tests that exercise create-issue end-to-end with --body-file.
 const CANONICAL_TAIL = [
   '',
+  '## Story Origin',
+  '- **kind**: code',
+  '',
+  '## Plan Metadata',
+  '',
   '## Acceptance Criteria',
   '- [ ] something',
   '',
