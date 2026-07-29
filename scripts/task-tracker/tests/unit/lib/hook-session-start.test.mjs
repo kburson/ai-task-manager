@@ -19,7 +19,7 @@ import {
   claimRecoveryOnce,
   buildOrphanRecoveryRowSpecs,
 } from '../../../hook-handler.mjs';
-import { SUSPICIOUS_GAP_SEC } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
+import { SUSPICIOUS_GAP_SEC } from '../../../lib/bind-event.mjs';
 
 test('isPausedTask: returns true when entry status is "paused"', () => {
   const fleet = { '#167': { status: 'paused' } };

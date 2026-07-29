@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
 import { loadState, saveState, advanceWordMarker, clearActive } from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
-import { SUSPICIOUS_GAP_SEC } from './lib/agent-review/validators/timing-log-sequence.mjs';
+import { SUSPICIOUS_GAP_SEC } from './lib/bind-event.mjs';
 import {
   jsonlPath,
   markerPathFor,

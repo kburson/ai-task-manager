@@ -55,11 +55,6 @@ const LADDER_INDEX = new Map(STAGES.map((s, i) => [s, i]));
 
 const SENTINEL_REVERT_DETAIL_RE =
   /^revert-to-sentinel: board "([^"]+)", recorded "[^"]+" → sentinel "([^"]+)"$/;
-// #981 — SUSPICIOUS_GAP_SEC now lives in bind-event.mjs (the leaf module) so
-// the write-side prevention (verbResume) and this review-side detection share
-// one threshold. Re-exported here for any existing importer of this module.
-export { SUSPICIOUS_GAP_SEC };
-
 // Extract the kanban stage a row drives the walk to, or null if the row is not a
 // stage-transition event. `<stage>:failed` rows are gate-audit records of a
 // rejected attempt (not a real entry) and must not move the walk; qualified slugs
