@@ -21,6 +21,9 @@ const legacyTarget = mkdtempSync(
 const codexTarget = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-test-')
 );
+const memoryTarget = mkdtempSync(
+  path.join(projectScratchDir('test'), 'install-memory-format-policy-test-')
+);
 const fakeHome = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-home-')
 );
@@ -327,6 +330,49 @@ try {
     'root .gitignore must track portable agent artifacts'
   );
 
+  await pexec('node', [
+    CLI,
+    'install',
+    '--target',
+    memoryTarget,
+    '--agent',
+    'codex',
+    '--memory-seed=all',
+  ]);
+  const installedMemoryDir = path.join(memoryTarget, '.ai-task-manager', 'memory');
+  const representativeFact = 'feedback_xl_epics_standalone.md';
+  assert.equal(
+    readFileSync(path.join(installedMemoryDir, representativeFact), 'utf8'),
+    readFileSync(path.join(ROOT, 'docs', 'ai-memory', representativeFact), 'utf8'),
+    'install must preserve accepted memory fact content'
+  );
+  assert.ok(
+    existsSync(path.join(installedMemoryDir, 'MEMORY.md')),
+    'all-memory install must write the filtered memory index'
+  );
+  const prettierIgnoreLines = readFileSync(path.join(ROOT, '.prettierignore'), 'utf8')
+    .split('\n')
+    .map((line) => line.trim());
+  assert.ok(
+    prettierIgnoreLines.includes('docs/ai-memory/'),
+    '.prettierignore must preserve the opaque upstream memory policy'
+  );
+  assert.ok(
+    prettierIgnoreLines.includes('.ai-task-manager/memory/'),
+    '.prettierignore must apply the opaque memory policy to installed artifacts'
+  );
+  const markdownlintConfig = JSON.parse(
+    readFileSync(path.join(ROOT, '.markdownlint-cli2.jsonc'), 'utf8')
+  );
+  assert.ok(
+    markdownlintConfig.ignores.includes('docs/ai-memory/**'),
+    'Markdownlint must preserve the opaque upstream memory policy'
+  );
+  assert.ok(
+    markdownlintConfig.ignores.includes('.ai-task-manager/memory/**'),
+    'Markdownlint must apply the opaque memory policy to installed artifacts'
+  );
+
   // Templates written to shared runtime folder under templates/ (#574)
   assert.ok(
     existsSync(path.join(target, '.ai-task-manager', 'templates', 'pickup-directive.md')),
@@ -445,5 +491,6 @@ try {
   rmSync(target, { recursive: true, force: true });
   rmSync(legacyTarget, { recursive: true, force: true });
   rmSync(codexTarget, { recursive: true, force: true });
+  rmSync(memoryTarget, { recursive: true, force: true });
   rmSync(fakeHome, { recursive: true, force: true });
 }

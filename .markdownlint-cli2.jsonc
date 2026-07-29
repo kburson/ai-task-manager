@@ -23,6 +23,7 @@
     "coverage/**",
     "output/**",
     "docs/postmortems/**",
-    "docs/ai-memory/**"
+    "docs/ai-memory/**",
+    ".ai-task-manager/memory/**"
   ]
 }
