@@ -11,6 +11,7 @@ import {
   PLAN_APPROVED_RE,
   buildPlanApprovedMarker,
   hasPlanApprovedMarker,
+  insertPlanApprovedMarker,
   REVIEW_APPROVED_RE,
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
@@ -22,6 +23,7 @@ import {
   hasDeepDiveHeading,
   hasDeepDiveEvidence,
   backfillDeepDiveCompleteMarker,
+  stripFencedCodeBlocks,
 } from '../../../lib/markers.mjs';
 
 const TS = '2026-05-11T12:00:00Z';
@@ -50,6 +52,57 @@ const TS = '2026-05-11T12:00:00Z';
 
   // Idempotent: re-insert leaves body unchanged.
   assert.equal(insertReviewApprovedMarker(out, TS), out);
+}
+
+// ── #1024: fenced marker examples do not suppress genuine insertion ─────────
+{
+  const cases = [
+    {
+      name: 'plan-approved',
+      marker: `<!-- aitm-plan-approved ts="${TS}" -->`,
+      insert: (body) => insertPlanApprovedMarker(body, TS),
+      has: hasPlanApprovedMarker,
+    },
+    {
+      name: 'review-approved',
+      marker: `<!-- aitm-review-approved ts="${TS}" -->`,
+      insert: (body) => insertReviewApprovedMarker(body, TS),
+      has: hasReviewApprovedMarker,
+    },
+    {
+      name: 'deep-dive-complete',
+      marker: `<!-- aitm-deep-dive-complete ts="${TS}" -->`,
+      insert: (body) => insertDeepDiveCompleteMarker(body, TS),
+      has: hasDeepDiveCompleteMarker,
+    },
+  ];
+
+  for (const markerCase of cases) {
+    const body = [
+      '## Scope',
+      '',
+      'Illustrative marker syntax:',
+      '',
+      '```html',
+      markerCase.marker,
+      '```',
+      '',
+    ].join('\n');
+    assert.equal(markerCase.has(body), false, `${markerCase.name}: fenced example is not genuine`);
+
+    const inserted = markerCase.insert(body);
+    assert.notEqual(inserted, body, `${markerCase.name}: genuine marker is inserted`);
+    assert.equal(
+      markerCase.has(stripFencedCodeBlocks(inserted)),
+      true,
+      `${markerCase.name}: genuine marker exists outside the fence`
+    );
+    assert.equal(
+      markerCase.insert(inserted),
+      inserted,
+      `${markerCase.name}: insertion is idempotent`
+    );
+  }
 }
 
 // ── deep-dive-complete: build + has + insert ─────────────────────────────────

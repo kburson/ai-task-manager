@@ -105,11 +105,15 @@ export function parseReviewApprovedMarker(body) {
 }
 
 export function insertReviewApprovedMarker(body, ts, opts = {}) {
-  return insertMarkerBeforeFieldDb(body, REVIEW_APPROVED_RE, buildReviewApprovedMarker(ts, opts));
+  return insertMarkerBeforeFieldDb(
+    body,
+    buildReviewApprovedMarker(ts, opts),
+    hasReviewApprovedMarker
+  );
 }
 
 export function insertPlanApprovedMarker(body, ts) {
-  return insertMarkerBeforeFieldDb(body, PLAN_APPROVED_RE, buildPlanApprovedMarker(ts));
+  return insertMarkerBeforeFieldDb(body, buildPlanApprovedMarker(ts), hasPlanApprovedMarker);
 }
 
 // ---------------------------------------------------------------------------
@@ -180,8 +184,8 @@ export function parseFullAutoApprovedMarker(body) {
 export function insertFullAutoApprovedMarker(body, ts, signals) {
   return insertMarkerBeforeFieldDb(
     body,
-    FULL_AUTO_APPROVED_RE,
-    buildFullAutoApprovedMarker(ts, signals)
+    buildFullAutoApprovedMarker(ts, signals),
+    hasFullAutoApprovedMarker
   );
 }
 
@@ -362,7 +366,7 @@ export function insertDodVerifiedMarker(body, sha, ts) {
   const stripped = String(body || '')
     .replace(DOD_VERIFIED_RE, '')
     .replace(/\n{3,}/g, '\n\n');
-  return insertMarkerBeforeFieldDb(stripped, DOD_VERIFIED_RE, buildDodVerifiedMarker(sha, ts));
+  return insertMarkerBeforeFieldDb(stripped, buildDodVerifiedMarker(sha, ts), hasDodVerifiedMarker);
 }
 
 // ---------------------------------------------------------------------------
@@ -411,7 +415,7 @@ export function insertTestStartedMarker(body, sha, ts) {
   const stripped = String(body || '')
     .replace(TEST_STARTED_RE, '')
     .replace(/\n{3,}/g, '\n\n');
-  return insertMarkerBeforeFieldDb(stripped, TEST_STARTED_RE, buildTestStartedMarker(sha, ts));
+  return insertMarkerBeforeFieldDb(stripped, buildTestStartedMarker(sha, ts), hasTestStartedMarker);
 }
 
 // ---------------------------------------------------------------------------
@@ -431,7 +435,11 @@ export function hasDeepDiveCompleteMarker(body) {
 }
 
 export function insertDeepDiveCompleteMarker(body, ts) {
-  return insertMarkerBeforeFieldDb(body, DEEP_DIVE_COMPLETE_RE, buildDeepDiveCompleteMarker(ts));
+  return insertMarkerBeforeFieldDb(
+    body,
+    buildDeepDiveCompleteMarker(ts),
+    hasDeepDiveCompleteMarker
+  );
 }
 
 // Heading-fallback for legacy issues authored before the marker existed. A
@@ -596,9 +604,9 @@ function placeProgressMarker(main, marker) {
   return `${trimmed}\n\n${PROGRESS_MARKERS_HEADING}\n\n${marker}`;
 }
 
-function insertMarkerBeforeFieldDb(body, markerRe, marker) {
+function insertMarkerBeforeFieldDb(body, marker, hasMarker) {
   const src = String(body || '');
-  if (markerRe.test(src)) return src;
+  if (hasMarker(src)) return src;
   const parsed = parseIssueFieldDb(src);
   if (parsed.ok) {
     const stripped = stripIssueFieldDb(src);
