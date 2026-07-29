@@ -37,6 +37,7 @@
 // Consumes `context.body` — the raw issue-body string. Pure, no side effects.
 
 import { registry } from '../registry.mjs';
+import { findReviewFailureBlockSpan } from '../../review-failure-block.mjs';
 
 // A line that is EXACTLY one `<!-- aitm-<name> … -->` comment (ignoring
 // surrounding whitespace). `name` is captured so we can classify hoist vs.
@@ -53,9 +54,6 @@ const STANDALONE_MARKER_RE = /^\s*<!--\s*(aitm-[a-z0-9-]+)\b[\s\S]*?-->\s*$/i;
 // the markers' new, adjacent position. Detected structurally by its start/end
 // line pair and treated as one opaque, untouched span: none of its lines
 // (including the bracketed prose) participate in hoist/gather classification.
-const REVIEW_FAILED_START_RE = /^\s*<!--\s*aitm-review-failed:start\s*-->\s*$/i;
-const REVIEW_FAILED_END_RE = /^\s*<!--\s*aitm-review-failed:end\s*-->\s*$/i;
-
 // The `## AITM Progress Markers` anchor heading (exactly level-2).
 const ANCHOR_HEADING_RE = /^##\s+AITM Progress Markers\b[^\n]*$/im;
 
@@ -101,13 +99,14 @@ export function validate({ body } = {}) {
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    if (REVIEW_FAILED_START_RE.test(line)) {
-      let end = i;
-      while (end < lines.length && !REVIEW_FAILED_END_RE.test(lines[end])) end += 1;
-      // `end` is either the `:end` line's index or `lines.length` (unterminated
-      // block — leave everything through EOF untouched rather than guess).
-      for (let j = i; j <= end && j < lines.length; j += 1) kept.push(lines[j]);
-      i = end;
+    const reviewFailureSpan = findReviewFailureBlockSpan(lines, {
+      fromIndex: i,
+      requireStartAt: true,
+      includeUnterminated: true,
+    });
+    if (reviewFailureSpan) {
+      for (let j = i; j <= reviewFailureSpan.end; j += 1) kept.push(lines[j]);
+      i = reviewFailureSpan.end;
       continue;
     }
     const m = STANDALONE_MARKER_RE.exec(line);

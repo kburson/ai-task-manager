@@ -196,6 +196,22 @@ So that markers are canonical
   );
 });
 
+test('an unterminated review-failed start keeps every following line opaque through EOF', () => {
+  const body = `## AITM Progress Markers
+
+<!-- aitm-review-failed:start -->
+**Agent Review Gate failed.**
+<!-- aitm-body-version version="9" -->`;
+
+  const res = validate({ body });
+  assert.equal(res.pass, true);
+  assert.equal(
+    res.normalized,
+    undefined,
+    'the body-version marker must remain inside the opaque span'
+  );
+});
+
 test('existing marker-organization behavior for standalone (non-paired) aitm-* markers is unchanged', () => {
   const out = validate({ body: SCATTERED }).normalized;
   const before = markerSet(SCATTERED);

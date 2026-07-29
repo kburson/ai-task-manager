@@ -135,3 +135,9 @@ test('#1004 — a prose sentence quoting both delimiters inline does not strand 
   assert.match(cleared, new RegExp(proseLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(cleared, /Title/);
 });
+
+test('an unterminated standalone start is not reported or cleared as a complete failure block', () => {
+  const body = `keep me\n${REVIEW_FAILED_START}\nunfinished failure prose`;
+  assert.equal(hasReviewFailed(body), false);
+  assert.equal(clearReviewFailed(body), body);
+});

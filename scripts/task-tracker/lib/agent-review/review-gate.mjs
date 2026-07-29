@@ -16,6 +16,11 @@ import { registry as defaultRegistry } from './registry.mjs';
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { tickLifecycleItem } from '../lifecycle-dod.mjs';
 import { serializeProofMarker } from '../proof-marker.mjs';
+import {
+  REVIEW_FAILED_START,
+  REVIEW_FAILED_END,
+  findReviewFailureBlockSpan,
+} from '../review-failure-block.mjs';
 
 // Tolerant parser for `aitm-entered-<stage>` board markers. Both grammars
 // appear in live bodies:
@@ -140,31 +145,7 @@ export function stampAgentReviewPassed(body, { ts, validators = [] } = {}) {
 // is NOT an invariant marker (MarkerLossError does not guard it), so stamping
 // and clearing it through the sanctioned mutate path is safe.
 
-export const REVIEW_FAILED_START = '<!-- aitm-review-failed:start -->';
-export const REVIEW_FAILED_END = '<!-- aitm-review-failed:end -->';
-
-// #1004 — line-anchored detection, mirroring v6-marker-organization.mjs's
-// REVIEW_FAILED_START_RE/END_RE. A body-wide, non-greedy regex over the raw
-// text (the prior implementation) collides with prose that merely quotes the
-// delimiter syntax rather than carrying a real marker line; requiring each
-// delimiter to occupy its own standalone line rules that out.
-const REVIEW_FAILED_START_LINE_RE = /^\s*<!--\s*aitm-review-failed:start\s*-->\s*$/i;
-const REVIEW_FAILED_END_LINE_RE = /^\s*<!--\s*aitm-review-failed:end\s*-->\s*$/i;
-
-// Locate the [start, end] line-index span (inclusive) of a standalone
-// review-failed block: a line that is exactly the start marker through the
-// nearest following line that is exactly the end marker. Returns null when
-// no standalone start line exists, or a start has no matching standalone end.
-function findReviewFailedLineSpan(lines) {
-  for (let i = 0; i < lines.length; i++) {
-    if (!REVIEW_FAILED_START_LINE_RE.test(lines[i])) continue;
-    for (let j = i + 1; j < lines.length; j++) {
-      if (REVIEW_FAILED_END_LINE_RE.test(lines[j])) return { start: i, end: j };
-    }
-    return null;
-  }
-  return null;
-}
+export { REVIEW_FAILED_START, REVIEW_FAILED_END };
 
 // Build the marker block. `failures` is the aggregate failure list; each line
 // is rendered verbatim so the fixer sees exactly which validator objected.
@@ -192,7 +173,7 @@ export function stampReviewFailed(body, failures = [], { ts } = {}) {
 export function clearReviewFailed(body) {
   const src = typeof body === 'string' ? body : '';
   const lines = src.split('\n');
-  const span = findReviewFailedLineSpan(lines);
+  const span = findReviewFailureBlockSpan(lines);
   if (!span) return src;
   lines.splice(span.start, span.end - span.start + 1, '');
   return lines.join('\n');
@@ -200,7 +181,7 @@ export function clearReviewFailed(body) {
 
 export function hasReviewFailed(body) {
   const src = typeof body === 'string' ? body : '';
-  return findReviewFailedLineSpan(src.split('\n')) !== null;
+  return findReviewFailureBlockSpan(src.split('\n')) !== null;
 }
 
 // --- Review state-action completeness (#881) ---------------------------------
