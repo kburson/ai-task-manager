@@ -60,13 +60,13 @@ The installer writes stable, project-local files so every developer and agent in
 
 Common generated paths:
 
-| Path                           | Purpose                                                                                        |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `.ai-task-manager/`            | Project config, runtime templates, Pickup Directive, and Definition of Done                    |
-| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                                    |
-| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                                          |
-| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable                                  |
-| `.claude/hooks/`               | Optional project-local helper hooks; timing and commit trail use direct Node settings commands |
+| Path                           | Purpose                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| `.ai-task-manager/`            | Project config, runtime templates, memory index, Pickup Directive, and Definition of Done |
+| `.claude/skills/task/SKILL.md` | Claude Code task skill shim                                                               |
+| `.agents/skills/task/SKILL.md` | Codex task skill shim                                                                     |
+| `.claude/settings.json`        | Claude Code hook and allow-rule configuration when applicable                             |
+| `.codex/hooks.json`            | Codex hook configuration when Codex support is installed                                  |
 
 ```mermaid
 flowchart TB
@@ -90,9 +90,11 @@ The `init` command adds GitHub project configuration and issue templates:
 Commit the generated project files:
 
 ```bash
-git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/ .agents/
+git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
+
+Run `install` and `init` once in a maintainer environment, then commit the project-portable outputs. Ephemeral cloud environments should clone the repository and run normal tool setup such as `npm ci`; they should not rerun the interactive installer or initialize project board metadata.
 
 Review the diff before committing. If your repository does not use both Claude Code and Codex, only stage the adapter folder you installed.
 

@@ -21,8 +21,9 @@ const legacyTarget = mkdtempSync(
 const codexTarget = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-test-')
 );
-const memoryTarget = mkdtempSync(
-  path.join(projectScratchDir('test'), 'install-memory-format-policy-test-')
+const memoryTarget = mkdtempSync(path.join(projectScratchDir('test'), 'install-memory-test-'));
+const memoryNoneTarget = mkdtempSync(
+  path.join(projectScratchDir('test'), 'install-memory-none-test-')
 );
 const fakeHome = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-home-')
@@ -32,6 +33,7 @@ const fakeHome = mkdtempSync(
 // bootstrap shim, matching cli.mjs. Compute the expected commands the same way.
 const TIMING_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hook-handler.mjs');
 const COMMIT_TRAIL_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/commit-trail-handler.mjs');
+const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs');
 // #792 — bash-guard registered via node_modules → repo-relative bootstrap form.
 const BASH_GUARD_HOOK_CMD = guardBootstrapCommand('bash-guard');
 const ON_STOP_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-stop.mjs');
@@ -64,6 +66,18 @@ function hasHookCommand(settings, event, command) {
 
 function hookCommandCount(settings, event, command) {
   return hookCommands(settings, event).filter((value) => value === command).length;
+}
+
+async function gitIgnores(repoRelativePath) {
+  try {
+    await pexec('git', ['check-ignore', '--no-index', '--quiet', repoRelativePath], {
+      cwd: ROOT,
+    });
+    return true;
+  } catch (error) {
+    if (error?.code === 1) return false;
+    throw error;
+  }
 }
 
 function writeSkill(name) {
@@ -329,6 +343,17 @@ try {
     false,
     'root .gitignore must track portable agent artifacts'
   );
+  for (const portablePath of [
+    '.claude/settings.json',
+    '.claude/commands/task.md',
+    '.claude/skills/task/SKILL.md',
+    '.codex/hooks.json',
+    '.agents/skills/task/SKILL.md',
+    '.ai-task-manager/memory/MEMORY.md',
+  ]) {
+    assert.ok(existsSync(path.join(ROOT, portablePath)), `${portablePath} must be generated`);
+    assert.equal(await gitIgnores(portablePath), false, `${portablePath} must remain trackable`);
+  }
 
   await pexec('node', [
     CLI,
@@ -393,6 +418,59 @@ try {
   assert.ok(
     !existsSync(path.join(target, 'AGENTS.md')),
     'default install must not create AGENTS.md'
+  );
+
+  await pexec('node', [
+    CLI,
+    'install',
+    '--target',
+    memoryTarget,
+    '--agent',
+    'codex',
+    '--memory-seed=all',
+  ]);
+  const memoryCodexHooks = JSON.parse(
+    readFileSync(path.join(memoryTarget, '.codex', 'hooks.json'), 'utf8')
+  );
+  assert.ok(
+    hasHookCommand(memoryCodexHooks, 'SessionStart', MEMORY_INDEX_HOOK_CMD),
+    'Codex SessionStart memory-index hook missing after memory seed acceptance'
+  );
+  assert.ok(
+    hasHookCommand(memoryCodexHooks, 'PostCompact', MEMORY_INDEX_HOOK_CMD),
+    'Codex PostCompact memory-index hook missing after memory seed acceptance'
+  );
+  assert.equal(
+    hasHookCommand(memoryCodexHooks, 'PreCompact', MEMORY_INDEX_HOOK_CMD),
+    false,
+    'Codex PreCompact must not receive memory-index hook'
+  );
+  assert.ok(
+    existsSync(path.join(memoryTarget, '.ai-task-manager', 'memory', 'MEMORY.md')),
+    'accepted memory seed must write shared MEMORY.md index'
+  );
+
+  await pexec('node', [
+    CLI,
+    'install',
+    '--target',
+    memoryNoneTarget,
+    '--agent',
+    'codex',
+    '--memory-seed=none',
+  ]);
+  const memoryNoneCodexHooks = JSON.parse(
+    readFileSync(path.join(memoryNoneTarget, '.codex', 'hooks.json'), 'utf8')
+  );
+  assert.equal(
+    hasHookCommand(memoryNoneCodexHooks, 'SessionStart', MEMORY_INDEX_HOOK_CMD),
+    false,
+    'Codex SessionStart memory-index hook must not install when memory seed is none'
+  );
+  assert.equal(
+    existsSync(path.join(memoryNoneTarget, '.ai-task-manager', 'memory', 'MEMORY.md')),
+    false,
+    'memory seed none must not write shared memory index'
   );
 
   mkdirSync(path.join(legacyTarget, '.claude'), { recursive: true });
@@ -492,5 +570,6 @@ try {
   rmSync(legacyTarget, { recursive: true, force: true });
   rmSync(codexTarget, { recursive: true, force: true });
   rmSync(memoryTarget, { recursive: true, force: true });
+  rmSync(memoryNoneTarget, { recursive: true, force: true });
   rmSync(fakeHome, { recursive: true, force: true });
 }

@@ -1,0 +1,16 @@
+---
+name: PBI Refine entry/exit gate fields
+description: Definitive field requirements for Backlog→Refine entry and Refine→Plan exit gates on PBIs
+type: feedback
+originSessionId: e96a51b2-052b-40ba-8357-84786b2b5e77
+---
+
+Backlog → Refine entry requires **Priority only**. Size/Estimate/Sequence/Labels/StartTime are NOT required at entry — they get filled in during Refine. PBIs are refined in priority order.
+
+Refine → Plan exit requires **all six fields**: Priority, Sequence, Size, Estimate, Labels (≥1), Start Time (= timestamp of the Refine→Plan transition itself — stamped automatically at promote-time once the field check passes; pinned on the board).
+
+If the PBI is an epic (has sub-issues), Refine→Plan also requires every child to be past Refine.
+
+**Why:** discovered 2026-05-16 that #107's children all have `sequence = null` because `/task refine` writes Priority+Size+Estimate via tetherIssueToProject but not Sequence/Labels/Start Time, and refine→plan was never gated on those fields. This silently breaks `findNextEligibleChild` (filters null sequences) and any priority-ordered refinement workflow.
+
+**How to apply:** when implementing or extending refine-state gates (#147 and any successor), match this field split exactly — don't require Size/Estimate at backlog→refine, do require all six at refine→plan. Start Time is stamped by the Refine→Plan transition itself (clarified 2026-05-16 second pass; earlier draft said backlog→refine — that's wrong). Backfill any pre-existing PBIs that left Refine before the gate landed; for those, best-effort use the earliest `aitm-entered-plan` marker.

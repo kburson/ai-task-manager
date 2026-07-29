@@ -43,16 +43,19 @@ approval, and `/task close #N` for Review → Done.
 
 AITM maps Claude's hook coverage to Codex hook events where Codex exposes an equivalent event:
 
-| Feature                                                     | Claude hook                                              | Codex hook                                                                        |
-| ----------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Timing rows for session/compact lifecycle                   | `SessionStart`, `PreCompact`, `PostCompact`              | Same events via `.codex/hooks.json`                                               |
-| Bash guard (`gh issue edit --body` refusal and path safety) | `PreToolUse` matcher `Bash`                              | `PreToolUse` matcher `Bash`                                                       |
-| Activity guard                                              | `PreToolUse` matcher `Bash`, edit tools                  | `PreToolUse` matcher `Bash`, `apply_patch&#124;Edit&#124;Write&#124;NotebookEdit` |
-| Source-edit gate before deep-dive/develop                   | `PreToolUse` matcher `Edit&#124;Write&#124;NotebookEdit` | `PreToolUse` matcher `apply_patch&#124;Edit&#124;Write&#124;NotebookEdit`         |
-| Commit trail after `git commit`                             | `PostToolUse` matcher `Bash`                             | `PostToolUse` matcher `Bash`                                                      |
-| Natural idle pause/resume                                   | `Stop` + `UserPromptSubmit`                              | `Stop` + `UserPromptSubmit`, using Codex `session_id` payloads                    |
-| Stop audit warning for unbalanced pause/resume rows         | `Stop`                                                   | `Stop`                                                                            |
-| Prompt timestamp context                                    | Not installed                                            | `UserPromptSubmit` adds timestamp context                                         |
+| Feature                                                     | Claude hook                                                                 | Codex hook                                                                        |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Timing rows for session/compact lifecycle                   | `SessionStart`, `PreCompact`, `PostCompact`                                 | Same events via `.codex/hooks.json`                                               |
+| Bash guard (`gh issue edit --body` refusal and path safety) | `PreToolUse` matcher `Bash`                                                 | `PreToolUse` matcher `Bash`                                                       |
+| Activity guard                                              | `PreToolUse` matcher `Bash`, edit tools                                     | `PreToolUse` matcher `Bash`, `apply_patch&#124;Edit&#124;Write&#124;NotebookEdit` |
+| Source-edit gate before deep-dive/develop                   | `PreToolUse` matcher `Edit&#124;Write&#124;NotebookEdit`                    | `PreToolUse` matcher `apply_patch&#124;Edit&#124;Write&#124;NotebookEdit`         |
+| Commit trail after `git commit`                             | `PostToolUse` matcher `Bash`                                                | `PostToolUse` matcher `Bash`                                                      |
+| Natural idle pause/resume                                   | `Stop` + `UserPromptSubmit`                                                 | `Stop` + `UserPromptSubmit`, using Codex `session_id` payloads                    |
+| Stop audit warning for unbalanced pause/resume rows         | `Stop`                                                                      | `Stop`                                                                            |
+| Prompt timestamp context                                    | Not installed                                                               | `UserPromptSubmit` adds timestamp context                                         |
+| Operational-lessons memory index                            | `SessionStart`, `PostCompact` load `.ai-task-manager/memory/MEMORY.md` only | Same events via `.codex/hooks.json`; shared index and per-fact corpus             |
+
+The memory-index hook emits only `.ai-task-manager/memory/MEMORY.md` as additional context. Both providers share the same accepted per-fact files under `.ai-task-manager/memory/`; neither provider injects the full corpus automatically.
 
 The Codex-only prompt timestamp hook cannot rewrite the submitted prompt. It returns Codex's documented `hookSpecificOutput.additionalContext` for `UserPromptSubmit`, which adds a line such as `User prompt submitted at 2026-06-19T14:00:00.000Z (turn turn-456). Use this timestamp when reasoning about conversation drift or relative-time references.`
 

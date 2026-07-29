@@ -1,0 +1,224 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs\",\"scripts/task-tracker/ensure-worktree-seeded.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm ensure-worktree-seeded.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\",\"scripts/task-tracker/hook-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs\",\"scripts/task-tracker/hooks/memory-index.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm memory-index.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\",\"scripts/task-tracker/hook-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\",\"scripts/task-tracker/hook-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs\",\"scripts/task-tracker/hooks/memory-index.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm memory-index.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs\",\"scripts/task-tracker/bash-guard.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm bash-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/agent-guard.mjs\",\"scripts/task-tracker/agent-guard.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm agent-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs\",\"scripts/task-tracker/activity-guard.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm activity-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs\",\"scripts/task-tracker/activity-guard.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm activity-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs\",\"scripts/task-tracker/source-edit-gate.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm source-edit-gate: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\",\"scripts/task-tracker/hooks/on-ask.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p,\"pause\"];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs\",\"scripts/task-tracker/commit-trail-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm commit-trail-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\",\"scripts/task-tracker/hooks/on-ask.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p,\"resume\"];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs\",\"scripts/task-tracker/hooks/on-stop.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-stop.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs\",\"scripts/task-tracker/hooks/stop-audit-pause-resume.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm stop-audit-pause-resume.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs\",\"scripts/task-tracker/hooks/on-user-prompt.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-user-prompt.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run format)",
+      "Bash(npm run format:check)",
+      "Bash(npm ci)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(node scripts/**)",
+      "Bash(node bin/**)",
+      "Bash(node node_modules/ai-task-manager/scripts/**)",
+      "Bash(npx aitm:*)",
+      "Bash(node_modules/.bin/aitm:*)",
+      "Bash(./node_modules/.bin/aitm:*)",
+      "Bash(bash scripts/**)",
+      "Bash(sh scripts/**)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh api repos/*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh label list:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge --no-ff:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git stash:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(wc:*)",
+      "Bash(pwd)",
+      "Bash(mkdir -p .tmp/**)",
+      "Bash(mkdir -p ./.tmp/**)"
+    ]
+  }
+}
