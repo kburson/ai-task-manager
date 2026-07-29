@@ -16,7 +16,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
-import { projectItemForIssue, deleteProjectV2Item } from '../../gh/lib/github-projects.mjs';
+import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import { hasReviewApprovedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
@@ -140,6 +140,24 @@ export async function verbClose(ctx) {
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
   const { runMoveState, runMoveStateDone, runLogIssueTime } = stateRunner;
   const { fetchSubIssues, getIssueBoardState, getIssueClosedState } = githubClient;
+  const dispositionWriter = ctx.writeTerminalDisposition || writeTerminalDisposition;
+  const writeDeliveredOrRefuse = async ({ issueNumber, targetRef }) => {
+    try {
+      await dispositionWriter({
+        cfg,
+        issueNumber,
+        disposition: 'Delivered',
+      });
+      return true;
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${targetRef}: ${err.message}\n` +
+          `   Issue left OPEN — run \`node scripts/gh/init-repair.mjs\` and retry.`
+      );
+      process.exitCode = 1;
+      return false;
+    }
+  };
   // #753 — the lifecycle-box reconcile is invoked from BOTH the converge/no-op
   // fast-path and the full close pipeline, through one seam so a fixture can
   // observe it and the two call sites can never drift apart. Falls back to the
@@ -190,10 +208,9 @@ export async function verbClose(ctx) {
       of: ofRef,
       repo: cfg.repo,
       projectId: cfg.projectId,
+      cfg,
       deps: {
         mutateIssueBody,
-        projectItemForIssue,
-        deleteProjectV2Item,
         pexec: (bin, argv) => pexec(bin, argv, { timeout: GH_API_TIMEOUT_MS }),
         postComment: ({ issueNumber, repo, body }) =>
           pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
@@ -215,7 +232,7 @@ export async function verbClose(ctx) {
     console.log(
       `Closed ${closeTarget} as ${result.reason}` +
         (result.of ? ` (duplicate of ${result.of})` : '') +
-        ` — un-tracked from board, stateReason=${result.stateReason}.`
+        ` — retained in Done, stateReason=${result.stateReason}.`
     );
     return;
   }
@@ -238,6 +255,14 @@ export async function verbClose(ctx) {
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
+      if (
+        !(await writeDeliveredOrRefuse({
+          issueNumber: closeIssueNum,
+          targetRef: closeTarget,
+        }))
+      ) {
+        return;
+      }
       try {
         await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
           timeout: GH_API_TIMEOUT_MS,
@@ -708,6 +733,18 @@ export async function verbClose(ctx) {
         const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
         for (const child of reviewChildren) {
           try {
+            // #1041 — a cascade closes real delivered children, so classify
+            // each child before its Done move or GitHub close. A missing field,
+            // project item, or option aborts the parent close too: continuing
+            // would strand an OPEN child beneath a CLOSED epic.
+            if (
+              !(await writeDeliveredOrRefuse({
+                issueNumber: child.num,
+                targetRef: `#${child.num}`,
+              }))
+            ) {
+              return;
+            }
             // Cascade close: per-child body not fetched here; activeSec=0 is
             // honest because no per-child timing context is loaded.
             await safePostTiming(
@@ -810,6 +847,19 @@ export async function verbClose(ctx) {
     console.log(
       `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
     );
+  }
+  // #1035 — classify delivery before any terminal board or GitHub close. The
+  // write is fail-closed: an upgraded installation must run init-repair rather
+  // than silently create unclassified delivered work.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    if (
+      !(await writeDeliveredOrRefuse({
+        issueNumber: closeIssueNum,
+        targetRef: closeTarget,
+      }))
+    ) {
+      return;
+    }
   }
   // #505 — atomic forced close. A `--force` close deliberately bypasses the
   // close gate (above), but the *terminal board move* used to run only AFTER

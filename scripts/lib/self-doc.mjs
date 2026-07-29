@@ -873,6 +873,35 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Reports issues needing or receiving the backfill.'],
     relatedCommands: ['heal-backlog'],
   }),
+  'backfill-disposition': directDoc('backfill-disposition', {
+    group: 'Maintenance',
+    path: 'scripts/task-tracker/backfill-disposition.mjs',
+    classification: 'live-maintenance-or-migration',
+    synopsis: 'Audit or backfill terminal Disposition values for closed issues.',
+    usage: 'backfill-disposition [--apply] [--issues N,N] [--yes]',
+    arguments: [
+      argument(APPLY_FLAG, 'Write derived Disposition values to the project field.'),
+      argument('--issues N,N', 'Limit the audit or backfill to the listed issue numbers.'),
+      argument('--yes', 'Skip confirmation when applying to more than one issue.'),
+    ],
+    preconditions: [
+      'Configured repository and authenticated issue access are required; --apply also requires the terminal Disposition project field.',
+    ],
+    effects: ['Read-only by default; --apply writes evidence-derived terminal Disposition values.'],
+    output: [
+      'Reports each issue classification and planned, unchanged, updated, or failed totals.',
+    ],
+    exitCodes: [
+      exitCode(0, 'help or backfill completed without item failures'),
+      exitCode(1, 'one or more per-item apply operations failed after the sweep completed'),
+      exitCode(2, 'invalid usage, configuration, issue fetch, or confirmation refusal'),
+    ],
+    examples: [
+      'node scripts/task-tracker/backfill-disposition.mjs --issues 1027,1028',
+      'node scripts/task-tracker/backfill-disposition.mjs --apply --issues 1027,1028',
+    ],
+    relatedCommands: ['close', 'supersede'],
+  }),
   'backfill-timing-logs': directDoc('backfill-timing-logs', {
     group: 'Maintenance',
     path: 'scripts/task-tracker/backfill-timing-logs.mjs',

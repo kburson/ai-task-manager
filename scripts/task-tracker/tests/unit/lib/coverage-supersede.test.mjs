@@ -32,11 +32,21 @@ const nextIssue = () => ++_seq;
 
 // --- runSupersede dep harness ----------------------------------------------
 function makeDeps(overrides = {}) {
-  const calls = { exists: [], mutates: [], moves: [], comments: [], closes: [] };
+  const calls = {
+    exists: [],
+    dispositions: [],
+    mutates: [],
+    moves: [],
+    comments: [],
+    closes: [],
+  };
   const deps = {
     issueExists: async ({ issueNumber }) => {
       calls.exists.push(issueNumber);
       return overrides.exists ?? true;
+    },
+    writeDisposition: async ({ issueNumber, disposition }) => {
+      calls.dispositions.push({ issueNumber, disposition });
     },
     mutateIssueBody: async ({ issueNumber, mutate }) => {
       if (overrides.mutateThrows) throw new Error('mutate boom');
@@ -236,8 +246,8 @@ test('verbSupersede: thrown error → exit 1', async () => {
 });
 
 // --- default I/O helpers via fake gh ----------------------------------------
-// Drive runSupersede injecting ONLY runMoveState (real move-state.mjs spawns a
-// child that needs live board state — impractical to fake). issueExists,
+// Drive runSupersede injecting only the board-specific terminal seams
+// (move-state and Disposition; both need live Projects state). issueExists,
 // defaultMutateBody, defaultPostComment, defaultCloseNotPlanned then execute
 // against a stateful fake `gh` on PATH. No global stdout trap here, so the
 // subprocess can't corrupt node:test's reporter.
@@ -282,7 +292,11 @@ test('runSupersede: default I/O helpers drive a fake gh end-to-end', async () =>
       deadIssue: nextIssue(),
       byIssue: 4242,
       cfg,
-      deps: { runMoveState: async () => 0, now },
+      deps: {
+        runMoveState: async () => 0,
+        writeDisposition: async () => {},
+        now,
+      },
     });
     assert.equal(r.status, 'superseded');
   } finally {

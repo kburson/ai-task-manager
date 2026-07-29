@@ -17,9 +17,8 @@ function makeDeps(overrides = {}) {
     pexec: [],
     comment: [],
     flush: [],
-    item: [],
-    del: [],
-    warn: [],
+    disposition: [],
+    done: [],
   };
   const deps = {
     mutateIssueBody: async ({ mutate }) => {
@@ -36,16 +35,13 @@ function makeDeps(overrides = {}) {
     flushTiming: async (n) => {
       calls.flush.push(n);
     },
-    projectItemForIssue: async ({ issueNumber }) => {
-      calls.item.push(issueNumber);
-      return { issueId: 'ISSUE_ID', itemId: 'ITEM_ID' };
+    writeDisposition: async ({ issueNumber, disposition }) => {
+      calls.disposition.push({ issueNumber, disposition });
     },
-    deleteProjectV2Item: async ({ itemId }) => {
-      calls.del.push(itemId);
-      return itemId;
+    moveToDone: async ({ issueNumber }) => {
+      calls.done.push(issueNumber);
     },
     now: () => '2026-07-10T00:00:00.000Z',
-    warn: (m) => calls.warn.push(m),
     ...overrides,
   };
   return { deps, calls };
@@ -106,27 +102,26 @@ test('AC2: not-planned → stateReason "not planned"', async () => {
   assert.equal(closeCall[closeCall.length - 1], 'not planned');
 });
 
-// ── AC3 — un-tracked from the board, NOT moved to Done ──────────────────────
-test('AC3: the item is deleted from the board and never moved to Done', async () => {
+// ── AC3 — retained on the board with an honest terminal value ───────────────
+test('AC3: duplicate is retained in Done with Disposition Duplicate', async () => {
   const { deps, calls } = makeDeps();
   const r = await runDispose({ issueNumber: '761', reason: 'duplicate', of: '742', ...BASE, deps });
-  assert.deepEqual(calls.item, ['761'], 'resolved the board item');
-  assert.deepEqual(calls.del, ['ITEM_ID'], 'deleted the resolved item');
-  assert.equal(r.untracked, 'ITEM_ID');
-  // No pexec call may reference a move-state / done transition.
-  const doneCall = calls.pexec.find((c) => c.join(' ').includes('done'));
-  assert.equal(doneCall, undefined, 'no move-to-done command was issued');
+  assert.deepEqual(calls.disposition, [{ issueNumber: '761', disposition: 'Duplicate' }]);
+  assert.deepEqual(calls.done, ['761']);
+  assert.equal(r.retained, true);
 });
 
-test('AC3: a board-untrack failure is best-effort and does not throw', async () => {
+test('AC3: a disposition write failure is fail-closed before GitHub close', async () => {
   const { deps, calls } = makeDeps({
-    deleteProjectV2Item: async () => {
-      throw new Error('board offline');
+    writeDisposition: async () => {
+      throw new Error('Disposition field missing');
     },
   });
-  const r = await runDispose({ issueNumber: '761', reason: 'not-planned', ...BASE, deps });
-  assert.equal(r.status, 'closed-as', 'close still succeeds');
-  assert.equal(calls.warn.length, 1, 'the untrack failure is warned, not fatal');
+  await assert.rejects(
+    runDispose({ issueNumber: '761', reason: 'not-planned', ...BASE, deps }),
+    /Disposition field missing/
+  );
+  assert.equal(calls.pexec.length, 0, 'GitHub close was not attempted');
 });
 
 // ── AC4 — aitm-closed-as marker + audit comment ────────────────────────────
@@ -138,6 +133,7 @@ test('AC4: the body is stamped with aitm-closed-as and an audit comment is poste
   assert.equal(calls.comment.length, 1, 'one audit comment posted');
   assert.match(calls.comment[0].body, /Closed as duplicate/);
   assert.match(calls.comment[0].body, /#742/);
+  assert.match(calls.comment[0].body, /retained on the project board/);
 });
 
 test('AC4: not-planned marker omits the of= attribute', async () => {

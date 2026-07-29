@@ -48,6 +48,7 @@ function makeCtx(statePath, dir, over = {}) {
     safePostTiming: async () => {},
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
+    writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',

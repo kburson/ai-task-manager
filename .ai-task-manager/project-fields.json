@@ -7,7 +7,8 @@
     "options": [
       { "name": "P0", "color": "RED", "description": "Critical - blocking" },
       { "name": "P1", "color": "ORANGE", "description": "High - this sprint" },
-      { "name": "P2", "color": "BLUE", "description": "Normal - backlog" }
+      { "name": "P2", "color": "BLUE", "description": "Normal - backlog" },
+      { "name": "P3", "color": "GRAY", "description": "Chore" }
     ]
   },
   {
@@ -21,6 +22,26 @@
       { "name": "M", "color": "YELLOW", "description": "6-10 hours" },
       { "name": "L", "color": "ORANGE", "description": "12-20 hours" },
       { "name": "XL", "color": "RED", "description": "24+ hours" }
+    ]
+  },
+  {
+    "key": "disposition",
+    "name": "Disposition",
+    "type": "single_select",
+    "aliases": [],
+    "options": [
+      { "name": "Delivered", "color": "GREEN", "description": "Work shipped to trunk" },
+      {
+        "name": "Replaced",
+        "color": "PURPLE",
+        "description": "Work was superseded by another issue"
+      },
+      {
+        "name": "Discarded",
+        "color": "GRAY",
+        "description": "Closed without retained delivery"
+      },
+      { "name": "Duplicate", "color": "YELLOW", "description": "Duplicates another issue" }
     ]
   },
   {

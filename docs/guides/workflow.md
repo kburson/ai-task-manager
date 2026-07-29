@@ -272,6 +272,29 @@ The bypass is deliberately narrow: it is only reachable through `supersede`,
 only moves to Done, only with a validated superseder, and always leaves an
 audit trail. There is no general `--skip-gates` surface.
 
+### Terminal disposition
+
+Every closed issue remains tracked in the project with Status **Done**. The
+single-select **Disposition** field records the terminal outcome:
+
+- **Delivered** — verified work shipped to trunk through `/task close`.
+- **Replaced** — work was performed but later superseded through
+  `/task supersede`.
+- **Discarded** — the issue closed through `/task close --as not-planned`
+  without retained delivery.
+- **Duplicate** — the issue closed through `/task close --as duplicate`.
+
+This separation keeps Status a lifecycle signal and makes delivery reporting
+explicit. Use the positive GitHub Projects filter
+`is:closed Disposition:Delivered` for closed issues that actually shipped; it
+excludes replaced, discarded, and duplicate work without relying on negated
+labels or issue-body parsing.
+
+Existing installations must run `node scripts/gh/init-repair.mjs` after an
+upgrade to provision the field and persist `fieldDisposition`. Historical
+closed items can then be classified with
+`node scripts/task-tracker/backfill-disposition.mjs --apply`.
+
 ### Human Gates
 
 Two transitions require explicit human approval. Both are toggleable via config; defaults preserve today's behavior (human required).

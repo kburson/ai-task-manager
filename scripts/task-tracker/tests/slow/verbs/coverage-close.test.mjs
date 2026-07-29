@@ -8,7 +8,7 @@
 // as the fail-closed / force-continue branches, not its happy interior.
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { verbClose, tickLifecycleOnClose } from '../../../verbs/close.mjs';
@@ -57,6 +57,7 @@ function makeCtx(statePath, dir, over = {}) {
     safePostTiming: async () => {},
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
+    writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
@@ -96,11 +97,13 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   console.log = (...a) => stdout.push(a.join(' '));
   console.error = console.warn = (...a) => stderr.push(a.join(' '));
   let thrown = null;
+  let finalState = null;
   try {
     await verbClose(ctx);
   } catch (err) {
     if (!/__exit_\d+__/.test(err.message)) thrown = err;
   } finally {
+    finalState = JSON.parse(readFileSync(statePath, 'utf8'));
     process.exit = real.exit;
     console.log = real.log;
     console.error = real.err;
@@ -110,7 +113,13 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     setEnv('TT_SKIP_DIRTY_CHECK', prevSkip);
     setEnv('CI', prevCI);
   }
-  return { exitCode, stdout: stdout.join('\n'), stderr: stderr.join('\n'), thrown };
+  return {
+    exitCode,
+    stdout: stdout.join('\n'),
+    stderr: stderr.join('\n'),
+    thrown,
+    finalState,
+  };
 }
 
 const exitOf = (r) => r.exitCode ?? process.exitCode;
@@ -164,6 +173,9 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
     over: {
       SKIP_NETWORK: false,
       getIssueBoardState: async () => 'done',
+      writeTerminalDisposition: async ({ issueNumber, disposition }) => {
+        calls.push(`disposition ${issueNumber} ${disposition}`);
+      },
       pexec: async (cmd, args) => (
         calls.push(`${cmd} ${args.join(' ')}`),
         { stdout: '', stderr: '' }
@@ -171,7 +183,35 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
     },
   });
   assert.match(r.stdout, /board was Done but the GitHub issue was still OPEN/);
-  assert.ok(calls.some((c) => c.includes('issue close')));
+  const dispositionIndex = calls.indexOf('disposition 5 Delivered');
+  const closeIndex = calls.findIndex((c) => c.includes('issue close 5'));
+  assert.ok(dispositionIndex >= 0, `expected Delivered write; got ${JSON.stringify(calls)}`);
+  assert.ok(
+    closeIndex > dispositionIndex,
+    `expected write before close; got ${JSON.stringify(calls)}`
+  );
+});
+test('convergence close-issue: disposition failure leaves issue OPEN and active', async () => {
+  resetExit();
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      getIssueBoardState: async () => 'done',
+      writeTerminalDisposition: async () => {
+        throw new Error('Disposition field missing');
+      },
+      pexec: async (cmd, args) => (
+        calls.push(`${cmd} ${args.join(' ')}`),
+        { stdout: '', stderr: '' }
+      ),
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(!calls.some((c) => c.includes('issue close 5')));
+  assert.match(r.stderr, /Disposition field missing/);
+  resetExit();
 });
 test('convergence close-issue: gh close fails → exit 1', async () => {
   const r = await run({
@@ -219,6 +259,9 @@ test('convergence noop, no drift: issue CLOSED + board Done → already closed',
       SKIP_NETWORK: false,
       getIssueBoardState: async () => 'done',
       getIssueClosedState: async () => true,
+      writeTerminalDisposition: async () => {
+        throw new Error('already-closed noop must not infer Delivered');
+      },
     },
   });
   assert.match(r.stdout, /already fully closed/);
@@ -320,7 +363,7 @@ test('gate-eval failure, no --force → fail-closed exit 3', async () => {
   assert.match(r.stderr, /close-gate evaluation failed/);
 });
 test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed', async () => {
-  const ghCalls = [];
+  const calls = [];
   const r = await run({
     over: {
       SKIP_NETWORK: false,
@@ -328,9 +371,20 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
       getIssueBoardState: async (n) =>
         String(n).replace(/^#/, '') === '102' ? 'develop' : 'review',
       fetchSubIssues: async () => ['101', '102'],
+      writeTerminalDisposition: async ({ issueNumber, disposition }) => {
+        calls.push(`disposition ${issueNumber} ${disposition}`);
+      },
+      runMoveState: async (issueNumber, state) => {
+        calls.push(`move ${issueNumber} ${state}`);
+        return { ok: true, benign: false };
+      },
+      runMoveStateDone: async (issueNumber) => {
+        calls.push(`move ${String(issueNumber).replace(/^#/, '')} done`);
+        return { ok: true, benign: false };
+      },
       pexec: async (cmd, args) => {
         const a = args.join(' ');
-        ghCalls.push(`${cmd} ${a}`);
+        calls.push(`${cmd} ${a}`);
         if (cmd === 'gh' && a.includes('issue view') && a.includes('--jq'))
           return { stdout: APPROVED_BODY, stderr: '' };
         if (cmd === 'gh' && a.includes('issue view'))
@@ -340,7 +394,54 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
     },
   });
   assert.match(r.stdout, /Closed #5/);
-  assert.ok(ghCalls.some((c) => /issue close 101/.test(c)));
+  const childDispositionIndex = calls.indexOf('disposition 101 Delivered');
+  const childDoneIndex = calls.indexOf('move 101 done');
+  const childCloseIndex = calls.findIndex((c) => /issue close 101/.test(c));
+  const parentDispositionIndex = calls.indexOf('disposition 5 Delivered');
+  const parentDoneIndex = calls.indexOf('move 5 done');
+  const parentCloseIndex = calls.findIndex((c) => /issue close 5/.test(c));
+  assert.ok(childDispositionIndex >= 0, `expected child Delivered write; got ${calls}`);
+  assert.ok(
+    childDoneIndex > childDispositionIndex && childCloseIndex > childDoneIndex,
+    `expected child write before Done and close; got ${calls}`
+  );
+  assert.ok(parentDispositionIndex >= 0, `expected parent Delivered write; got ${calls}`);
+  assert.ok(
+    parentDoneIndex > parentDispositionIndex && parentCloseIndex > parentDoneIndex,
+    `expected parent write before Done and close; got ${calls}`
+  );
+});
+test('cascade: disposition failure leaves child and parent OPEN and active', async () => {
+  resetExit();
+  const ghCalls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      writeTerminalDisposition: async ({ issueNumber }) => {
+        if (String(issueNumber) === '101') throw new Error('Delivered option missing');
+      },
+      pexec: async (cmd, args) => {
+        const a = args.join(' ');
+        ghCalls.push(`${cmd} ${a}`);
+        if (cmd === 'gh' && a.includes('issue view') && a.includes('--jq')) {
+          return { stdout: APPROVED_BODY, stderr: '' };
+        }
+        if (cmd === 'gh' && a.includes('issue view')) {
+          return { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(!ghCalls.some((c) => /issue close (101|5)/.test(c)));
+  assert.doesNotMatch(r.stdout, /✓ #101 closed/);
+  assert.match(r.stderr, /Delivered option missing/);
+  resetExit();
 });
 
 // --- assertFieldsPersisted throw branches via the --force tail ---

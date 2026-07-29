@@ -25,6 +25,26 @@
     ]
   },
   {
+    "key": "disposition",
+    "name": "Disposition",
+    "type": "single_select",
+    "aliases": [],
+    "options": [
+      { "name": "Delivered", "color": "GREEN", "description": "Work shipped to trunk" },
+      {
+        "name": "Replaced",
+        "color": "PURPLE",
+        "description": "Work was superseded by another issue"
+      },
+      {
+        "name": "Discarded",
+        "color": "GRAY",
+        "description": "Closed without retained delivery"
+      },
+      { "name": "Duplicate", "color": "YELLOW", "description": "Duplicates another issue" }
+    ]
+  },
+  {
     "key": "estimate",
     "name": "Estimate",
     "type": "number",

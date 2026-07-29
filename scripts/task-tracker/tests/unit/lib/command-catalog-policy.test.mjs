@@ -1,4 +1,4 @@
-// @story #1011 #1023
+// @story #1011 #1023 #1042 #1043
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -158,6 +158,19 @@ test('every package bin identity resolves to its classified target', () => {
 });
 
 test('representative maintenance metadata matches real parser contracts', () => {
+  const dispositionBackfill = commandByName('backfill-disposition');
+  assert.match(dispositionBackfill.usage, /\[--apply\] \[--issues N,N\]/);
+  assert.deepEqual(
+    dispositionBackfill.arguments.map((argument) => argument.name),
+    ['--apply', '--issues N,N', '--yes']
+  );
+  assert.match(dispositionBackfill.effects.join(' '), /Read-only by default.*--apply writes/i);
+  assert.deepEqual(
+    dispositionBackfill.exitCodes.map(({ code }) => code),
+    [0, 1, 2]
+  );
+  assert.match(dispositionBackfill.exitCodes[1].meaning, /per-item apply/i);
+  assert.match(dispositionBackfill.exitCodes[2].meaning, /usage.*configuration.*fetch/i);
   assert.match(commandByName('heal-timing-starts').usage, /<issue#>/);
   for (const flag of ['--apply', '--check-only', '--yes']) {
     assert.ok(

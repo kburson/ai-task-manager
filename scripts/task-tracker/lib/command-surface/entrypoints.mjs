@@ -70,6 +70,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/migrate/start-time-field.mjs',
       'scripts/reports/heal-backlog-attribution.mjs',
       'scripts/task-tracker/backfill-plan-metadata.mjs',
+      'scripts/task-tracker/backfill-disposition.mjs',
       'scripts/task-tracker/backfill-timing-logs.mjs',
       'scripts/task-tracker/backfill-vc-sections.mjs',
       'scripts/task-tracker/heal-entry-markers.mjs',

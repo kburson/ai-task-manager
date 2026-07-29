@@ -46,6 +46,7 @@ export const DEFAULTS = {
   fieldRank: '',
   fieldStartTime: '',
   fieldBlockedBy: '',
+  fieldDisposition: '',
   fieldReviewTime: '',
   fieldPlanTime: '',
   // Priority field + option IDs (set by init script)
@@ -129,6 +130,7 @@ export const TYPES = {
   fieldRank: 'string',
   fieldStartTime: 'string',
   fieldBlockedBy: 'string',
+  fieldDisposition: 'string',
   fieldReviewTime: 'string',
   fieldPlanTime: 'string',
   priorityFieldId: 'string',
@@ -280,6 +282,7 @@ export function loadConfig(paths = {}) {
     merged.sizeFieldId ||= merged.fieldIds.size || '';
     merged.fieldStartTime ||= merged.fieldIds.startTime || '';
     merged.fieldBlockedBy ||= merged.fieldIds.blockedBy || '';
+    merged.fieldDisposition ||= merged.fieldIds.disposition || '';
     merged.fieldReviewTime ||= merged.fieldIds.reviewTime || '';
     merged.fieldPlanTime ||= merged.fieldIds.planTime || '';
   }
@@ -381,6 +384,7 @@ const INTERNAL_KEYS = [
   'fieldRank',
   'fieldStartTime',
   'fieldBlockedBy',
+  'fieldDisposition',
   'priorityFieldId',
   'priorityOptionP0',
   'priorityOptionP1',

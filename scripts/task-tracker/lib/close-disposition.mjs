@@ -19,6 +19,7 @@
 // direct assertion.
 
 import { serializeMarker, parseMarker } from './marker-grammar.mjs';
+import { writeTerminalDisposition, writeTerminalStatusDone } from './terminal-disposition.mjs';
 
 const CLOSED_AS_LINE_RE = /^<!--\s*aitm-closed-as(\s|-->).*$/m;
 
@@ -95,29 +96,35 @@ export function parseDisposition({ reason, of } = {}) {
 
 // Execute the disposition close. `deps`:
 //   - mutateIssueBody({ issueNumber, repo, mutate })  — body writer
-//   - projectItemForIssue({ repo, projectId, issueNumber }) -> { itemId }
-//   - deleteProjectV2Item({ projectId, itemId })      — un-track
+//   - writeDisposition({ cfg, issueNumber, disposition })
+//   - moveToDone({ cfg, issueNumber })
 //   - pexec(cmd, args, opts)                           — GitHub CLI runner
 //   - postComment({ issueNumber, repo, body })         — audit comment
 //   - flushTiming(issueNumber)                          — close timing rows
 //   - now()                                             — ISO timestamp source
-//   - log(msg) / warn(msg)                              — optional reporters
-export async function runDispose({ issueNumber, reason, of, repo, projectId, deps = {} } = {}) {
+//   - log(msg)                                          — optional reporter
+export async function runDispose({
+  issueNumber,
+  reason,
+  of,
+  repo,
+  projectId,
+  cfg,
+  deps = {},
+} = {}) {
   if (issueNumber == null) throw new Error('runDispose: issueNumber is required');
   if (!repo) throw new Error('runDispose: repo is required');
   const {
     mutateIssueBody,
-    projectItemForIssue,
-    deleteProjectV2Item,
     pexec,
     postComment,
     flushTiming,
     now = () => new Date().toISOString(),
-    warn = () => {},
   } = deps;
 
   const { key, stateReason, of: ofRef } = parseDisposition({ reason, of });
   const ts = now();
+  const terminalCfg = cfg || { repo, projectId };
 
   // 1. Flush + stop timing before the body is closed out.
   if (typeof flushTiming === 'function') await flushTiming(issueNumber);
@@ -131,25 +138,22 @@ export async function runDispose({ issueNumber, reason, of, repo, projectId, dep
     });
   }
 
-  // 3. Close on GitHub with the correct stateReason. Verb-internal pexec — the
+  // 3. Retain the item as terminal board data: write the honest disposition
+  //    first, then put the item in Done. Both writes are fail-closed so a
+  //    missing field/option cannot silently produce an unclassified close.
+  const writeDisposition = deps.writeDisposition || writeTerminalDisposition;
+  const moveToDone = deps.moveToDone || writeTerminalStatusDone;
+  await writeDisposition({
+    cfg: terminalCfg,
+    issueNumber,
+    disposition: key === 'duplicate' ? 'Duplicate' : 'Discarded',
+  });
+  await moveToDone({ cfg: terminalCfg, issueNumber });
+
+  // 4. Close on GitHub with the correct stateReason. Verb-internal pexec — the
   //    bash-guard only mediates the operator's Bash tool, not tracker code.
   if (typeof pexec === 'function') {
     await pexec('gh', ['issue', 'close', String(issueNumber), '-R', repo, '--reason', stateReason]);
-  }
-
-  // 4. Un-track the project item (best-effort — a residual board item is
-  //    harmless and the step is re-runnable; a failure here must not leave the
-  //    issue OPEN).
-  let untracked = '';
-  try {
-    if (typeof projectItemForIssue === 'function' && typeof deleteProjectV2Item === 'function') {
-      const { itemId } = await projectItemForIssue({ repo, projectId, issueNumber });
-      if (itemId) {
-        untracked = await deleteProjectV2Item({ projectId, itemId });
-      }
-    }
-  } catch (err) {
-    warn(`close --as: failed to un-track #${issueNumber} from the board: ${err.message}`);
   }
 
   // 5. Audit comment.
@@ -162,10 +166,19 @@ export async function runDispose({ issueNumber, reason, of, repo, projectId, dep
         `### 🗂 Closed as ${key}\n\n` +
         `This issue was closed via the sanctioned \`/task close --as ${key}\` ` +
         `disposition lane (GitHub stateReason \`${stateReason}\`).${ofLine} ` +
-        `It was **un-tracked** from the project board rather than moved to Done, ` +
-        `and its timing was flushed. No delivery is implied.`,
+        `It was retained on the project board in **Done** with Disposition ` +
+        `**${key === 'duplicate' ? 'Duplicate' : 'Discarded'}**, and its timing was flushed. ` +
+        `No delivery is implied.`,
     });
   }
 
-  return { status: 'closed-as', issueNumber, reason: key, of: ofRef, stateReason, ts, untracked };
+  return {
+    status: 'closed-as',
+    issueNumber,
+    reason: key,
+    of: ofRef,
+    stateReason,
+    ts,
+    retained: true,
+  };
 }

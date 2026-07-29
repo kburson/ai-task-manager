@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Repair an existing .ai-task-manager/task-tracker.json by backfilling empty
-// kanbanOption* fields. Auto-matches by case-insensitive option name against
-// the live Status field on the configured project.
+// kanbanOption* fields and provisioning additive package-defined fields that
+// terminal workflow correctness requires.
 //
 // Usage: node scripts/gh/init-repair.mjs
 //
@@ -44,6 +44,152 @@ function configPath(d = deps) {
   return path.join(d.getProjectDir(), '.ai-task-manager', 'task-tracker.json');
 }
 
+function loadDispositionDefinition(d = deps) {
+  const candidates = [
+    path.join(d.getProjectDir(), '.ai-task-manager', 'project-fields.json'),
+    new URL('../../config/project-fields.default.json', import.meta.url),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const defs = JSON.parse(d.readFileSync(candidate, 'utf8'));
+      if (!Array.isArray(defs)) continue;
+      const definition = defs.find((field) => field?.key === 'disposition');
+      if (definition) return definition;
+    } catch {
+      // Optional local definition may be absent or stale; continue to package
+      // defaults before deciding the installed package has no such field.
+    }
+  }
+  return null;
+}
+
+export function persistDispositionField(cfg, fieldId) {
+  if (!fieldId) return false;
+  const nextFieldIds = { ...(cfg.fieldIds || {}), disposition: fieldId };
+  const changed = cfg.fieldDisposition !== fieldId || cfg.fieldIds?.disposition !== fieldId;
+  if (!changed) return false;
+  cfg.fieldDisposition = fieldId;
+  cfg.fieldIds = nextFieldIds;
+  return true;
+}
+
+export async function fetchProjectFields(projectId, gqlFn = deps.gql) {
+  const data = await gqlFn(
+    `
+    query($project: ID!) {
+      node(id: $project) {
+        ... on ProjectV2 {
+          fields(first: 100) {
+            nodes {
+              ... on ProjectV2Field { id name dataType }
+              ... on ProjectV2SingleSelectField {
+                id
+                name
+                options { id name color description }
+              }
+            }
+          }
+        }
+      }
+    }`,
+    { project: projectId }
+  );
+  return data?.node?.fields?.nodes || [];
+}
+
+function optionWriteShape(option, existing) {
+  const next = {
+    name: option.name,
+    color: option.color,
+    description: option.description,
+  };
+  if (existing?.id) return { id: existing.id, ...next };
+  return next;
+}
+
+export async function ensureDispositionField({ projectId, definition, gqlFn = deps.gql } = {}) {
+  if (!projectId) throw new Error('ensureDispositionField: projectId is required');
+  if (!definition?.name || !Array.isArray(definition.options)) {
+    throw new Error('ensureDispositionField: a single-select definition is required');
+  }
+
+  const fields = await fetchProjectFields(projectId, gqlFn);
+  const field = fields.find(
+    (candidate) => String(candidate?.name || '').toLowerCase() === definition.name.toLowerCase()
+  );
+  if (!field) {
+    const data = await gqlFn(
+      `
+      mutation(
+        $project: ID!
+        $name: String!
+        $options: [ProjectV2SingleSelectFieldOptionInput!]!
+      ) {
+        createProjectV2Field(
+          input: {
+            projectId: $project
+            dataType: SINGLE_SELECT
+            name: $name
+            singleSelectOptions: $options
+          }
+        ) {
+          projectV2Field { ... on ProjectV2SingleSelectField { id } }
+        }
+      }`,
+      {
+        project: projectId,
+        name: definition.name,
+        options: definition.options.map((option) => optionWriteShape(option)),
+      }
+    );
+    const fieldId = data?.createProjectV2Field?.projectV2Field?.id || '';
+    if (!fieldId) throw new Error(`init-repair: failed to create ${definition.name} field`);
+    return { fieldId, created: true, optionsUpdated: false };
+  }
+  if (!Array.isArray(field.options)) {
+    throw new Error(
+      `init-repair: field "${definition.name}" exists but is not a single-select field`
+    );
+  }
+
+  const existingByName = new Map(
+    field.options.map((option) => [String(option.name).toLowerCase(), option])
+  );
+  const canonical = definition.options.map((option) =>
+    optionWriteShape(option, existingByName.get(option.name.toLowerCase()))
+  );
+  const canonicalNames = new Set(definition.options.map((option) => option.name.toLowerCase()));
+  const extras = field.options.filter(
+    (option) => !canonicalNames.has(String(option.name).toLowerCase())
+  );
+  const desired = [...canonical, ...extras];
+  const currentComparable = field.options.map(({ id, name, color, description }) => ({
+    ...(id ? { id } : {}),
+    name,
+    color,
+    description,
+  }));
+  if (JSON.stringify(currentComparable) === JSON.stringify(desired)) {
+    return { fieldId: field.id, created: false, optionsUpdated: false };
+  }
+
+  await gqlFn(
+    `
+    mutation(
+      $field: ID!
+      $options: [ProjectV2SingleSelectFieldOptionInput!]!
+    ) {
+      updateProjectV2Field(
+        input: { fieldId: $field, singleSelectOptions: $options }
+      ) {
+        projectV2Field { ... on ProjectV2SingleSelectField { id } }
+      }
+    }`,
+    { field: field.id, options: desired }
+  );
+  return { fieldId: field.id, created: false, optionsUpdated: true };
+}
+
 export async function fetchStatusOptions(projectId, kanbanFieldId, gqlFn = deps.gql) {
   const data = await gqlFn(
     `
@@ -81,6 +227,12 @@ export async function runRepair(overrides = {}) {
       : process.env.TT_SKIP_NETWORK === '1';
   const fakeOptions =
     overrides.fakeOptions !== undefined ? overrides.fakeOptions : loadOptionsFromEnv();
+  const fakeDispositionFields =
+    overrides.fakeDispositionFields !== undefined
+      ? overrides.fakeDispositionFields
+      : process.env.TT_REPAIR_FAKE_FIELDS
+        ? JSON.parse(process.env.TT_REPAIR_FAKE_FIELDS)
+        : null;
 
   const cfgPath = configPath(d);
   if (!d.existsSync(cfgPath)) {
@@ -94,16 +246,13 @@ export async function runRepair(overrides = {}) {
   }
 
   const empties = Object.keys(OPTION_KEYS).filter((k) => !cfg[k]);
-  if (empties.length === 0) {
-    d.log('All kanbanOption* fields already populated. Nothing to repair.');
-    return { filled: [], alreadySet: Object.keys(OPTION_KEYS), unmatched: [] };
-  }
-
-  let options;
-  if (skipNetwork) {
-    options = fakeOptions || [];
-  } else {
-    options = await fetchStatusOptions(cfg.projectId, cfg.kanbanFieldId, d.gql);
+  let options = [];
+  if (empties.length > 0) {
+    if (skipNetwork) {
+      options = fakeOptions || [];
+    } else {
+      options = await fetchStatusOptions(cfg.projectId, cfg.kanbanFieldId, d.gql);
+    }
   }
 
   const byName = new Map(options.map((o) => [String(o.name || '').toLowerCase(), o.id]));
@@ -117,11 +266,37 @@ export async function runRepair(overrides = {}) {
     } else unmatched.push(key);
   }
 
-  if (filled.length > 0) {
+  const dispositionDefinition =
+    overrides.dispositionDefinition === undefined
+      ? loadDispositionDefinition(d)
+      : overrides.dispositionDefinition;
+  let disposition = null;
+  let dispositionChanged = false;
+  if (dispositionDefinition && (!skipNetwork || Array.isArray(fakeDispositionFields))) {
+    const dispositionGql = Array.isArray(fakeDispositionFields)
+      ? async (query) => {
+          if (query.includes('fields(first: 100)')) {
+            return { node: { fields: { nodes: fakeDispositionFields } } };
+          }
+          throw new Error('offline disposition repair cannot create or update fields');
+        }
+      : d.gql;
+    disposition = await ensureDispositionField({
+      projectId: cfg.projectId,
+      definition: dispositionDefinition,
+      gqlFn: dispositionGql,
+    });
+    dispositionChanged = persistDispositionField(cfg, disposition.fieldId);
+  }
+
+  if (filled.length > 0 || dispositionChanged) {
     d.mkdirSync(path.dirname(cfgPath), { recursive: true });
     d.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
   }
 
+  if (empties.length === 0 && !dispositionChanged) {
+    d.log('All kanbanOption* fields already populated. Nothing to repair.');
+  }
   d.log(`Filled: ${filled.length === 0 ? '(none)' : filled.join(', ')}`);
   const alreadySet = Object.keys(OPTION_KEYS).filter((k) => !empties.includes(k));
   if (alreadySet.length) d.log(`Already set: ${alreadySet.join(', ')}`);
@@ -131,7 +306,10 @@ export async function runRepair(overrides = {}) {
     );
     d.log('  → Add the missing column(s) to the GitHub Project Status field, then re-run repair.');
   }
-  return { filled, alreadySet, unmatched };
+  if (disposition?.created) d.log(`Created: ${dispositionDefinition.name}`);
+  else if (disposition?.optionsUpdated) d.log(`Updated options: ${dispositionDefinition.name}`);
+  else if (disposition?.fieldId) d.log(`Already set: ${dispositionDefinition.name}`);
+  return { filled, alreadySet, unmatched, disposition };
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

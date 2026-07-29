@@ -19,6 +19,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)) + '/
 // The manifest is exported so the drift test below can prove it is complete:
 // any future `--apply` script that forgets to adopt strict argv fails by omission.
 export const APPLY_SCRIPTS = [
+  'scripts/task-tracker/backfill-disposition.mjs',
   'scripts/task-tracker/backfill-vc-sections.mjs',
   'scripts/task-tracker/backfill-plan-metadata.mjs',
   'scripts/task-tracker/backfill-timing-logs.mjs',

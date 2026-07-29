@@ -94,6 +94,10 @@ function buildCtx({ statePath, rest, sideEffects }) {
       sideEffects.push('runMoveStateDone');
       return { ok: true };
     },
+    writeTerminalDisposition: async ({ disposition }) => {
+      sideEffects.push(`writeTerminalDisposition:${disposition}`);
+      return { disposition };
+    },
     runLogIssueTime: async () => {
       sideEffects.push('runLogIssueTime');
     },
@@ -160,6 +164,10 @@ test('#708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop s
     !sideEffects.includes('runLogIssueTime'),
     'the noop branch must NOT replay the full timing flush — that stays --repair-only (#708)'
   );
+  assert.ok(
+    !sideEffects.includes('writeTerminalDisposition:Delivered'),
+    'the noop branch must not infer Delivered without replaying the full repair pipeline'
+  );
   // #801 SUPERSESSION: the noop branch now backfills the terminal
   // `review:approved → issue:wrap` audit pair (idempotent via
   // pendingClosePairState), because an out-of-band close otherwise loses its
@@ -195,6 +203,15 @@ test('#708 AC2: same state WITH --repair → bypasses noop and replays the full 
   assert.ok(
     sideEffects.includes('runMoveStateDone'),
     'repair must replay the terminal board move to Done'
+  );
+  assert.ok(
+    sideEffects.includes('writeTerminalDisposition:Delivered'),
+    'repair must replay the Delivered classification before the terminal board move'
+  );
+  assert.ok(
+    sideEffects.indexOf('writeTerminalDisposition:Delivered') <
+      sideEffects.indexOf('runMoveStateDone'),
+    'repair must write Delivered before moving the board to Done'
   );
   assert.match(r.stdout, /Closed #708/, 'the full close must reach its terminal line');
 });

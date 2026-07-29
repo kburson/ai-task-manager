@@ -43,6 +43,7 @@ const OPTIONAL_ENV = {
   rankFieldId: 'FIELD_RANK',
   fieldStartTime: 'FIELD_START_TIME',
   fieldBlockedBy: 'FIELD_BLOCKED_BY',
+  fieldDisposition: 'FIELD_DISPOSITION',
   fieldReviewTime: 'FIELD_REVIEW_TIME',
   fieldPlanTime: 'FIELD_PLAN_TIME',
 };

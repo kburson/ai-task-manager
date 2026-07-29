@@ -33,6 +33,7 @@ import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { addSupersededBy } from '../lib/superseded-marker.mjs';
+import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 
 const pexec = promisify(execFile);
@@ -126,6 +127,7 @@ export async function runSupersede({ deadIssue, byIssue, cfg, deps = {} } = {}) 
   const postComment = deps.postComment || defaultPostComment;
   const closeNotPlanned = deps.closeNotPlanned || defaultCloseNotPlanned;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const writeDisposition = deps.writeDisposition || writeTerminalDisposition;
 
   // AC6 — refuse before any write if the superseding issue does not exist.
   const exists = await issueExists({ issueNumber: byIssue, repo: cfg.repo });
@@ -139,6 +141,14 @@ export async function runSupersede({ deadIssue, byIssue, cfg, deps = {} } = {}) 
   }
 
   const ts = nowIso(deps);
+
+  // #1035 — resolve and write Replaced before any marker/Done/close mutation.
+  // Missing field, item, or option is fail-closed and leaves the story active.
+  await writeDisposition({
+    cfg,
+    issueNumber: deadIssue,
+    disposition: 'Replaced',
+  });
 
   // AC1/AC2 — stamp the marker on the dead story.
   await mutateBody({

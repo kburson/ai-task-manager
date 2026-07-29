@@ -17,6 +17,7 @@ const TS = '2026-06-14T12:00:00.000Z';
 function makeDeps({ live = [], moveCode = 0, body = 'dead story body' } = {}) {
   const calls = {
     issueExists: [],
+    writeDisposition: [],
     mutateIssueBody: [],
     runMoveState: [],
     postComment: [],
@@ -28,6 +29,9 @@ function makeDeps({ live = [], moveCode = 0, body = 'dead story body' } = {}) {
     issueExists: async ({ issueNumber }) => {
       calls.issueExists.push(issueNumber);
       return live.includes(issueNumber);
+    },
+    writeDisposition: async ({ issueNumber, disposition }) => {
+      calls.writeDisposition.push({ issueNumber, disposition });
     },
     mutateIssueBody: async ({ issueNumber, mutate }) => {
       currentBody = mutate(currentBody);
@@ -78,6 +82,7 @@ test('happy path: stamps marker, moves done, comments both, closes not-planned',
   assert.equal(result.ts, TS);
   // AC6 checked the superseder, not the dead story
   assert.deepEqual(calls.issueExists, [399]);
+  assert.deepEqual(calls.writeDisposition, [{ issueNumber: 230, disposition: 'Replaced' }]);
   // AC1/AC2 marker written to the dead story
   assert.deepEqual(parseSupersededBy(getBody()), { ref: '#399', ts: TS });
   assert.deepEqual(
@@ -101,6 +106,7 @@ test('superseder-missing: refuses before any write', async () => {
 
   assert.equal(result.status, 'superseder-missing');
   assert.deepEqual(calls.mutateIssueBody, []);
+  assert.deepEqual(calls.writeDisposition, []);
   assert.deepEqual(calls.runMoveState, []);
   assert.deepEqual(calls.postComment, []);
   assert.deepEqual(calls.closeNotPlanned, []);
