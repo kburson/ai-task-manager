@@ -186,12 +186,12 @@ export async function emitPhasePairRows(ctx) {
   }
 }
 
-// #169 — Full-Auto review-gate audit. When the move lands at `done` and
-// `TASK_TRACKER_HUMAN_REVIEWER` is unset, post a structured audit comment
-// so the close is observable as auto-approved. When set, stamp an
-// `aitm-human-reviewer` body marker. Idempotent on both paths.
+// #169 — Full-Auto review-gate audit. When the move lands at `done`, the
+// audit resolves a genuine approval marker first, then explicit
+// `reviewAuthority`, then the legacy reviewer-environment fallback. The
+// resulting Full-Auto comment or `aitm-human-reviewer` marker is idempotent.
 export async function emitFullAutoReviewAudit(ctx) {
-  const { issueArg, stateArg, cfg, SKIP_NETWORK, pexec } = ctx;
+  const { issueArg, stateArg, cfg, SKIP_NETWORK, pexec, reviewAuthority } = ctx;
   if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;
   // #628 — the comment/list side-effects flow through `ctx.deps` when a test
   // injects them; production leaves them undefined so `enforceFullAutoAudit`
@@ -214,6 +214,7 @@ export async function emitFullAutoReviewAudit(ctx) {
       repo: cfg.repo,
       body: currentBody,
       env: process.env,
+      reviewAuthority,
       postComment: deps.postComment,
       listComments: deps.listComments,
       writeIssueBody: async ({ body }) => {

@@ -14,6 +14,12 @@ import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { parseBlockedBy } from './blocked-marker.mjs';
 
+const PENDING_RECOVERY_PHASES = new Set(['intent', 'reopened', 'review', 'timing']);
+
+export function isPendingRecoveryPhase(phase) {
+  return PENDING_RECOVERY_PHASES.has(phase);
+}
+
 export async function fetchEpicChildren({ cfg, parentEpicNumber, deps = {} } = {}) {
   if (!cfg) throw new Error('fetchEpicChildren: cfg is required');
   if (!parentEpicNumber) throw new Error('fetchEpicChildren: parentEpicNumber is required');

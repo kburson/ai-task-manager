@@ -60,6 +60,8 @@ import { runGuardExecution } from '../task-tracker/lib/move-state/guard-executio
 // are preserved verbatim by the core.
 import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
+import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
+import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -74,7 +76,11 @@ export async function runMoveStateHost({
   argv = process.argv,
   env = process.env,
   isTty = process.stdin.isTTY,
+  tailProfile = 'task-owner',
+  reviewAuthority = null,
 } = {}) {
+  const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
+  reviewAuthority = resolveReviewAuthority(reviewAuthority);
   const SKIP_NETWORK = env.TT_SKIP_NETWORK === '1';
 
   // Verb-pipeline gate. move-state.mjs is the chokepoint script for state changes;
@@ -322,6 +328,8 @@ export async function runMoveStateHost({
     formatSummary,
     resolveWorkspaceForIssue,
     backlogMoveWarning,
+    tailProfile: resolvedTailProfile,
+    reviewAuthority,
   };
 
   // #559 — guard-execution concern: the dirty-workspace warn, the universal

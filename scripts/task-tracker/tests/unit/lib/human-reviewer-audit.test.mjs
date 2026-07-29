@@ -12,6 +12,7 @@ import {
   buildAuditCommentBody,
   buildHumanReviewerMarker,
   hasGenuineReviewApprovedMarker,
+  resolveReviewAuthority,
   FULL_AUTO_AUDIT_RE,
   HUMAN_REVIEWER_MARKER_RE,
   HUMAN_REVIEWER_ENV,
@@ -152,6 +153,102 @@ test('hasGenuineReviewApprovedMarker: true for non-full-auto marker, false for f
   assert.equal(hasGenuineReviewApprovedMarker(`body\n\n${fullAuto}\n`), false);
   assert.equal(hasGenuineReviewApprovedMarker('body with no marker'), false);
   assert.equal(hasGenuineReviewApprovedMarker(null), false);
+});
+
+test('explicit review authority takes precedence over legacy reviewer environment detection', async () => {
+  const cases = [
+    {
+      name: 'genuine marker wins over a bypass context',
+      body: '<!-- aitm-review-approved ts="2026-07-29T00:00:00Z" -->',
+      reviewAuthority: 'gate-bypassed',
+      expected: 'human-reviewer',
+    },
+    {
+      name: 'explicit bypass records Full-Auto even with a reviewer env',
+      body: '',
+      env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
+      reviewAuthority: 'gate-bypassed',
+      expected: 'full-auto',
+    },
+    {
+      name: 'human gate does not become Full-Auto when reviewer env is absent',
+      body: '',
+      env: {},
+      reviewAuthority: 'human-gate',
+      expected: 'human-reviewer',
+    },
+  ];
+
+  for (const { name, body, env = {}, reviewAuthority, expected } of cases) {
+    await test(name, async () => {
+      const rec = makeRecorder();
+      const result = await enforceFullAutoAudit({
+        issueNumber: 925,
+        repo: 'org/repo',
+        body,
+        env,
+        reviewAuthority,
+        writeIssueBody: rec.writeIssueBody,
+        postComment: rec.postComment,
+        listComments: rec.listComments,
+        now: () => '2026-07-29T00:00:00Z',
+      });
+      assert.equal(result.mode, expected);
+      if (expected === 'human-reviewer') {
+        assert.equal(rec.writes.length, 1);
+        assert.equal(rec.comments.length, 0);
+        if (reviewAuthority === 'human-gate') {
+          assert.equal(result.handle, 'review-gate');
+          assert.match(rec.writes[0], /aitm-human-reviewer handle="review-gate"/);
+        }
+      } else {
+        assert.equal(rec.writes.length, 0);
+        assert.equal(rec.comments.length, 1);
+        assert.match(rec.comments[0], FULL_AUTO_AUDIT_RE);
+      }
+    });
+  }
+});
+
+test('explicit bypass audit names the bypass without claiming a reviewer signal was absent', async () => {
+  const rec = makeRecorder();
+  const result = await enforceFullAutoAudit({
+    issueNumber: 925,
+    repo: 'org/repo',
+    body: '',
+    env: { [HUMAN_REVIEWER_ENV]: 'alice' },
+    reviewAuthority: 'gate-bypassed',
+    writeIssueBody: rec.writeIssueBody,
+    postComment: rec.postComment,
+    listComments: rec.listComments,
+    now: () => '2026-07-29T00:00:00Z',
+  });
+
+  assert.equal(result.mode, 'full-auto');
+  assert.equal(rec.comments.length, 1);
+  assert.match(rec.comments[0], /review[ -]gate.*explicitly bypassed/i);
+  assert.doesNotMatch(rec.comments[0], /without a `TASK_TRACKER_HUMAN_REVIEWER` signal/);
+  assert.match(rec.comments[0], FULL_AUTO_AUDIT_RE);
+});
+
+test('enforceFullAutoAudit rejects an unsupported explicit review authority', async () => {
+  await assert.rejects(
+    enforceFullAutoAudit({
+      issueNumber: 925,
+      repo: 'org/repo',
+      body: '',
+      reviewAuthority: 'untrusted',
+    }),
+    /invalid reviewAuthority/
+  );
+});
+
+test('resolveReviewAuthority accepts only the internal authority union', () => {
+  assert.equal(resolveReviewAuthority(), null);
+  assert.equal(resolveReviewAuthority(null), null);
+  assert.equal(resolveReviewAuthority('human-gate'), 'human-gate');
+  assert.equal(resolveReviewAuthority('gate-bypassed'), 'gate-bypassed');
+  assert.throws(() => resolveReviewAuthority('untrusted'), /invalid reviewAuthority/);
 });
 
 // #979 AC3 — a genuine (non-full-auto) aitm-review-approved marker on the

@@ -18,11 +18,14 @@ import {
   fetchEpicChildren,
   findNextEligibleChild,
   enrichChildrenWithBlockedBy,
+  isPendingRecoveryPhase,
 } from '../lib/epic-children-gate.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
 import { verbPromote } from './promote.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
+import { buildContext } from '../runtime.mjs';
+import { verbClose } from './close.mjs';
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -47,6 +50,20 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
   return normalizeStateId(node?.fieldValueByName?.name);
+}
+
+export async function defaultConvergeClosedIssue(
+  { issueNumber },
+  { buildContextFn = buildContext, closeFn = verbClose } = {}
+) {
+  const ctx = buildContextFn(['close', `#${issueNumber}`]);
+  // The pull-next caller owns the active epic binding. Child housekeeping may
+  // deregister the completed child, but it must not clear the epic's state.
+  ctx.preserveActiveOnConvergence = true;
+  // Child convergence is background housekeeping. Its Done move must retain
+  // issue/project effects while excluding every session-owned tail effect.
+  ctx.convergenceTailProfile = 'background-convergence';
+  return closeFn(ctx);
 }
 
 export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
@@ -90,6 +107,68 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     };
   }
 
+  // #925 — closed children are compatibility-coerced to `state: done`, while
+  // `boardState` preserves their raw project column. That pair identifies a
+  // CLOSED + not-Done convergence candidate even when stateReason is unknown.
+  // A pending durable recovery is also a candidate regardless of its current
+  // issue/board snapshot so interrupted transactions resume before new work.
+  const sweep = {
+    checked: [],
+    finalized: [],
+    recovered: [],
+    dead: [],
+    failed: [],
+  };
+  const convergeClosedIssue = deps.convergeClosedIssue || defaultConvergeClosedIssue;
+  const candidates = children.filter((child) => {
+    const rawBoardState = normalizeStateId(child.boardState);
+    const closedBehind =
+      String(child.state || '').toLowerCase() === 'done' &&
+      rawBoardState &&
+      rawBoardState !== 'done';
+    return closedBehind || isPendingRecoveryPhase(child.recoveryPhase);
+  });
+  for (const child of candidates) {
+    sweep.checked.push(child.number);
+    let convergence;
+    try {
+      convergence = await convergeClosedIssue({
+        issueNumber: child.number,
+        boardState: child.boardState,
+        stateReason: child.closeReason,
+        recoveryPhase: child.recoveryPhase,
+        recoveryTx: child.recoveryTx,
+        cfg,
+      });
+    } catch {
+      convergence = { action: null, status: 'failed' };
+    }
+
+    if (convergence?.status === 'failed' || !convergence) {
+      sweep.failed.push(child.number);
+      return {
+        status: 'self-heal-paused',
+        sweep,
+        message:
+          `Closed-child convergence failed for #${child.number}; ` + 'no new child was promoted.',
+      };
+    }
+    if (convergence.action === 'aberration' || convergence.status === 'recovered') {
+      sweep.recovered.push(child.number);
+      return {
+        status: 'self-heal-paused',
+        sweep,
+        message:
+          `Recovered unauthorized close on #${child.number}; ` +
+          'resolve the Review-state child before pulling another.',
+      };
+    }
+    if (convergence.action === 'dead') sweep.dead.push(child.number);
+    else if (convergence.action === 'finalize' || convergence.action === 'noop') {
+      sweep.finalized.push(child.number);
+    }
+  }
+
   // Attach each child's `aitm-blocked-by` blockers so selection can skip
   // children with unmet dependencies and prefer blockers (#248).
   const enriched = await enrichChildrenWithBlockedBy({
@@ -109,6 +188,7 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
       status: 'no-eligible',
       message: `No refine-state children eligible for JIT pull on #${epicNumber}. States: ${JSON.stringify(counts)}`,
       counts,
+      sweep,
     };
   }
 
@@ -118,6 +198,7 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     childNumber: next.number,
     childRank: next.rank,
     promoteResult,
+    sweep,
     message: `Pulled #${next.number} (rank=${next.rank}) refine→plan. Perform deep-dive + planned-estimate, then run /task promote ${next.number}.`,
   };
 }
@@ -135,6 +216,10 @@ export async function verbPullNext(rest = [], cfgArg = null) {
     return 0;
   }
   if (result.status === 'no-eligible' || result.status === 'no-children') {
+    console.log(result.message);
+    return 0;
+  }
+  if (result.status === 'self-heal-paused' && result.sweep?.failed?.length === 0) {
     console.log(result.message);
     return 0;
   }

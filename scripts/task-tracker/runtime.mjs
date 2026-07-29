@@ -42,6 +42,8 @@ import { runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
+import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
+import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 
 const pexec = promisify(execFile);
 
@@ -116,7 +118,14 @@ export function buildMoveStateErrorResult({ state, err } = {}) {
 export async function runMoveStateInProcess(
   issue,
   state,
-  { env: envOverride, silent = false, extraArgs = [], skipNetwork = false } = {},
+  {
+    env: envOverride,
+    silent = false,
+    extraArgs = [],
+    skipNetwork = false,
+    tailProfile = 'task-owner',
+    reviewAuthority = null,
+  } = {},
   {
     host = runMoveStateHost,
     stdout = process.stdout,
@@ -156,7 +165,7 @@ export async function runMoveStateInProcess(
   stderr.write = capture(errParts);
   let code;
   try {
-    code = await host({ argv, env: mergedEnv });
+    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority });
   } finally {
     stdout.write = realOut;
     stderr.write = realErr;
@@ -687,25 +696,42 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       ].filter(([k]) => k)
     );
 
-  ctx.fetchSubIssues = async (issueNum) => {
-    if (SKIP_NETWORK) return [];
+  ctx.fetchSubIssueBoardSnapshot = async (issueNum) => {
+    if (SKIP_NETWORK) return { status: 'unknown', error: 'network unavailable' };
     try {
       const { owner, repoName } = splitRepo(cfg.repo);
       const data = await gql(
         `query($owner: String!, $repo: String!, $issue: Int!) {
           repository(owner: $owner, name: $repo) {
             issue(number: $issue) {
-              subIssues(first: 100) { nodes { number } }
+              subIssues(first: 100) {
+                nodes {
+                  number
+                  projectItems(first: 20) {
+                    nodes {
+                      project { id }
+                      fieldValueByName(name: "Status") {
+                        ... on ProjectV2ItemFieldSingleSelectValue { name }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }`,
         { owner, repo: repoName, issue: Number(issueNum) },
         { timeout: GH_API_TIMEOUT_MS }
       );
-      return data?.repository?.issue?.subIssues?.nodes?.map((n) => n.number) ?? [];
-    } catch {
-      return [];
+      return normalizeSubIssueBoardSnapshot(data, cfg.projectId);
+    } catch (err) {
+      return { status: 'unknown', error: err?.message || String(err) };
     }
+  };
+
+  ctx.fetchSubIssues = async (issueNum) => {
+    const snapshot = await ctx.fetchSubIssueBoardSnapshot(issueNum);
+    return snapshot.status === 'ok' ? snapshot.children.map((child) => child.number) : [];
   };
 
   ctx.fetchParentIssue = async (issueNum) => {
@@ -758,28 +784,27 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     }
   };
 
-  // #425 — actual GitHub open/closed state of the primary issue, independent of
-  // the board Status field. true = CLOSED, false = OPEN, null = unknown
-  // (SKIP_NETWORK or any error). Lets close.mjs distinguish a genuinely-closed
-  // issue from a board=Done + issue-OPEN drift the auto-close workflow missed.
-  ctx.getIssueClosedState = async (issueNum) => {
-    if (SKIP_NETWORK) return null;
+  // #925 — additive close snapshot. `stateReason` distinguishes a delivered
+  // closing-keyword close from a dead disposition; the legacy boolean reader
+  // below delegates to this capability so existing callers remain unchanged.
+  ctx.getIssueCloseSnapshot = async (issueNum) => {
+    if (SKIP_NETWORK) return { issueClosed: null, stateReason: null };
     try {
       const { stdout } = await pexec(
         'gh',
-        ['issue', 'view', String(issueNum), '-R', cfg.repo, '--json', 'state', '--jq', '.state'],
+        ['issue', 'view', String(issueNum), '-R', cfg.repo, '--json', 'state,stateReason'],
         { timeout: GH_API_TIMEOUT_MS }
       );
-      const state = String(stdout || '')
-        .trim()
-        .toUpperCase();
-      if (state === 'CLOSED') return true;
-      if (state === 'OPEN') return false;
-      return null;
+      return normalizeIssueCloseSnapshot(JSON.parse(stdout || '{}'));
     } catch {
-      return null;
+      return { issueClosed: null, stateReason: null };
     }
   };
+
+  // #425 — actual GitHub open/closed state of the primary issue, independent of
+  // the board Status field. true = CLOSED, false = OPEN, null = unknown.
+  ctx.getIssueClosedState = async (issueNum) =>
+    (await ctx.getIssueCloseSnapshot(issueNum)).issueClosed;
 
   // #561 — group the flat members into named capability objects. The flat
   // members above remain for back-compat (existing verbs + characterization

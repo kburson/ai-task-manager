@@ -34,30 +34,38 @@ function tmpState(state) {
   return { statePath, dir };
 }
 
-// Drive the real verbClose down the converge/noop path with injected fakes.
-// `getIssueClosedState → true` + a board state make decideCloseConvergence
-// return `{action:'noop'}`; `tickLifecycleOnClose` is injected as a spy so the
-// reconcile is observable without touching GitHub.
+// Drive the real verbClose down the converge/noop path through the grouped
+// capability boundary. `getIssueClosedState → true` + a board state make
+// decideCloseConvergence return `{action:'noop'}`; `tickLifecycleOnClose` is
+// injected as a spy so the reconcile is observable without touching GitHub.
 async function runConverge({ boardState, reconcileSpy }) {
   const { statePath, dir } = tmpState(baseState());
   const ctx = {
-    cfg: { repo: 'o/r' },
-    statePath,
-    projectDir: dir,
     rest: ['#5'],
-    SKIP_NETWORK: false,
-    pexec: async () => ({ stdout: '{}', stderr: '' }),
-    drainQueueIfAny: async () => {},
-    flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
-    safePostTiming: async () => {},
-    runMoveState: async () => ({ ok: true, benign: false }),
-    runMoveStateDone: async () => ({ ok: true, benign: false }),
-    runLogIssueTime: async () => {},
-    fetchSubIssues: async () => [],
-    getIssueBoardState: async () => boardState,
-    getIssueClosedState: async () => true,
-    uncheckedPreCloseCheckboxes: () => [],
-    nowIso: () => new Date().toISOString(),
+    projectConfig: {
+      cfg: { repo: 'o/r' },
+      statePath,
+      projectDir: dir,
+      SKIP_NETWORK: false,
+      pexec: async () => ({ stdout: '{}', stderr: '' }),
+      uncheckedPreCloseCheckboxes: () => [],
+      nowIso: () => new Date().toISOString(),
+    },
+    timingRecorder: {
+      drainQueueIfAny: async () => {},
+      flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
+      safePostTiming: async () => {},
+    },
+    stateRunner: {
+      runMoveState: async () => ({ ok: true, benign: false }),
+      runMoveStateDone: async () => ({ ok: true, benign: false }),
+      runLogIssueTime: async () => {},
+    },
+    githubClient: {
+      fetchSubIssues: async () => [],
+      getIssueBoardState: async () => boardState,
+      getIssueClosedState: async () => true,
+    },
     tickLifecycleOnClose: reconcileSpy,
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;

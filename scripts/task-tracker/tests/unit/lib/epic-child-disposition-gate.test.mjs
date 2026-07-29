@@ -237,7 +237,9 @@ test('AC5: the refusal names the wontfixed child and every dangling AC', async (
 });
 
 // ---------------------------------------------------------------------------
-// Disposition plumbing — `stateReason` had to be added to the fetcher.
+// Disposition + recovery plumbing — the child snapshot must carry enough
+// already-selected data to classify both closed disposition and durable
+// unauthorized-close recovery without an extra body fetch.
 // ---------------------------------------------------------------------------
 
 test('normalizeCloseReason maps GitHub enum casing, and only for CLOSED issues', () => {
@@ -253,24 +255,35 @@ test('normalizeCloseReason maps GitHub enum casing, and only for CLOSED issues',
   assert.equal(normalizeCloseReason(null), null);
 });
 
-test('the fetcher query selects stateReason and carries it additively', () => {
+test('the fetcher query selects stateReason and body, and carries recovery additively', () => {
   const src = readFileSync(
     new URL('../../../../gh/lib/wave-admission.mjs', import.meta.url),
     'utf8'
   );
   assert.match(src, /\bstateReason\b/, 'GraphQL selection must request stateReason');
+  assert.match(src, /\bbody\b/, 'GraphQL selection must request the child body');
 
   // `{number, rank, state}` must survive untouched — four call sites read it.
   // #947 replaced the original source-text assertion on the object literal with
   // this behavior-level one: the literal is now multi-line and carries a further
   // additive field (`boardState`), so matching its text pinned formatting rather
   // than contract. Asserting through `mapSubIssueNodes` pins the contract itself.
-  const [child] = mapSubIssueNodes(
+  const recoveryMarker =
+    '<!-- aitm-unauthorized-close tx="tx-pending" phase="review" state-reason="completed" unticked="[]" actor="octocat" ts="2026-07-29T20:00:00.000Z" -->';
+  const completeMarker = recoveryMarker
+    .replace('tx-pending', 'tx-complete')
+    .replace('phase="review"', 'phase="complete"');
+  const nonCompletedPendingMarker = recoveryMarker
+    .replace('tx-pending', 'tx-not-planned')
+    .replace('state-reason="completed"', 'state-reason="not_planned"');
+  const malformedMarker = '<!-- aitm-unauthorized-close phase="review" unticked="[]" -->';
+  const [pending, complete, fenced, malformed, nonCompletedPending] = mapSubIssueNodes(
     [
       {
         number: 891,
         state: 'CLOSED',
         stateReason: 'NOT_PLANNED',
+        body: recoveryMarker,
         projectItems: {
           nodes: [
             {
@@ -285,13 +298,55 @@ test('the fetcher query selects stateReason and carries it additively', () => {
           ],
         },
       },
+      {
+        number: 892,
+        state: 'OPEN',
+        stateReason: null,
+        body: completeMarker,
+        projectItems: { nodes: [] },
+      },
+      {
+        number: 893,
+        state: 'OPEN',
+        stateReason: null,
+        body: ['```md', recoveryMarker, '```'].join('\n'),
+        projectItems: { nodes: [] },
+      },
+      {
+        number: 894,
+        state: 'OPEN',
+        stateReason: null,
+        body: malformedMarker,
+        projectItems: { nodes: [] },
+      },
+      {
+        number: 895,
+        state: 'OPEN',
+        stateReason: null,
+        body: nonCompletedPendingMarker,
+        projectItems: { nodes: [] },
+      },
     ],
     cfg.projectId
   );
-  assert.equal(child.number, 891);
-  assert.equal(child.rank, 7);
-  assert.equal(child.state, 'done');
-  assert.equal(child.closeReason, 'not_planned', 'disposition must ride along additively');
+  assert.equal(pending.number, 891);
+  assert.equal(pending.rank, 7);
+  assert.equal(pending.state, 'done');
+  assert.equal(pending.closeReason, 'not_planned', 'disposition must ride along additively');
+  assert.equal(pending.recoveryPhase, 'review');
+  assert.equal(pending.recoveryTx, 'tx-pending');
+  assert.equal(complete.recoveryPhase, null, 'completed recovery is not pending');
+  assert.equal(complete.recoveryTx, null, 'completed recovery exposes no pending transaction');
+  assert.equal(fenced.recoveryPhase, null, 'fenced examples are not durable recovery state');
+  assert.equal(fenced.recoveryTx, null, 'fenced examples expose no recovery transaction');
+  assert.equal(malformed.recoveryPhase, null, 'malformed top-level recovery is not pending');
+  assert.equal(malformed.recoveryTx, null, 'malformed top-level recovery exposes no transaction');
+  assert.equal(
+    nonCompletedPending.recoveryPhase,
+    null,
+    'an open child with pending not_planned recovery is not a recovery candidate'
+  );
+  assert.equal(nonCompletedPending.recoveryTx, null);
 });
 
 // ---------------------------------------------------------------------------

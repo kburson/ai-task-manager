@@ -364,6 +364,7 @@ test('gate-eval failure, no --force → fail-closed exit 3', async () => {
 });
 test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed', async () => {
   const calls = [];
+  const parentDoneOptions = [];
   const r = await run({
     over: {
       SKIP_NETWORK: false,
@@ -378,7 +379,8 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
         calls.push(`move ${issueNumber} ${state}`);
         return { ok: true, benign: false };
       },
-      runMoveStateDone: async (issueNumber) => {
+      runMoveStateDone: async (issueNumber, options) => {
+        parentDoneOptions.push(options);
         calls.push(`move ${String(issueNumber).replace(/^#/, '')} done`);
         return { ok: true, benign: false };
       },
@@ -410,6 +412,10 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
     parentDoneIndex > parentDispositionIndex && parentCloseIndex > parentDoneIndex,
     `expected parent write before Done and close; got ${calls}`
   );
+  assert.equal(parentDoneOptions.length, 2, 'forced pre-move and final move must both run');
+  assert.deepEqual(parentDoneOptions[0].extraArgs, ['--force']);
+  assert.equal(parentDoneOptions[0].reviewAuthority, 'human-gate');
+  assert.equal(parentDoneOptions[1].reviewAuthority, 'human-gate');
 });
 test('cascade: disposition failure leaves child and parent OPEN and active', async () => {
   resetExit();

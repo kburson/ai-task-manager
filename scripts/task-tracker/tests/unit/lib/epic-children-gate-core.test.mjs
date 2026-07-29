@@ -14,6 +14,7 @@ import {
   wipAdvanceDecision,
   planRefineWipGate,
   childCreationAllowedAtEpicState,
+  isPendingRecoveryPhase,
 } from '../../../lib/epic-children-gate.mjs';
 import { mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
 
@@ -172,6 +173,15 @@ test('fetchEpicChildren returns array even when underlying returns non-array', a
   assert.equal(result.length, 0);
 });
 
+test('isPendingRecoveryPhase accepts only incomplete durable recovery phases', () => {
+  for (const phase of ['intent', 'reopened', 'review', 'timing']) {
+    assert.equal(isPendingRecoveryPhase(phase), true, `${phase} must remain pending`);
+  }
+  for (const phase of [null, undefined, '', 'complete', 'pending', 'REVIEW']) {
+    assert.equal(isPendingRecoveryPhase(phase), false, `${String(phase)} must not be pending`);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // #947 — a CLOSED child stranded in a stale board column must not deadlock its
 // epic. These drive the real `mapSubIssueNodes` output through each consumer
@@ -180,7 +190,7 @@ test('fetchEpicChildren returns array even when underlying returns non-array', a
 // ---------------------------------------------------------------------------
 
 // Build a GraphQL sub-issue node in the shape defaultFetchSiblings selects.
-function ghNode({ number, state = 'OPEN', stateReason = null, column, rank }) {
+function ghNode({ number, state = 'OPEN', stateReason = null, body = '', column, rank }) {
   const nodes = [];
   if (column !== undefined) nodes.push({ name: column, field: { name: 'Status' } });
   if (rank !== undefined) nodes.push({ number: rank, field: { name: 'Rank' } });
@@ -188,6 +198,7 @@ function ghNode({ number, state = 'OPEN', stateReason = null, column, rank }) {
     number,
     state,
     stateReason,
+    body,
     projectItems: { nodes: [{ project: { id: cfg.projectId }, fieldValues: { nodes } }] },
   };
 }

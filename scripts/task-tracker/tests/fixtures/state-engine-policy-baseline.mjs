@@ -136,6 +136,7 @@ const TIMING_EXACT = Object.freeze([
   'session-start',
   'session-end-recovery',
   'lifecycle-warn',
+  'unauthorized-close',
   'chore-mode-enter',
   'closed-with-dirty-tree',
   'switch-end',
@@ -281,7 +282,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      286,
+      287,
       'event-call',
       "'out-of-band-move'",
       ['out-of-band-move']
@@ -312,17 +313,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      441,
+      577,
+      'event-call',
+      "'unauthorized-close'",
+      ['unauthorized-close']
+    ),
+    timingEmitter(
+      'scripts/task-tracker/verbs/close.mjs',
+      758,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 577, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 891, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      754,
+      1068,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']

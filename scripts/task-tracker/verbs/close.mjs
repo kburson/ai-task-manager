@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { loadState, saveState, clearActive } from '../state.mjs';
 import { deregisterTask } from '../fleet-registry.mjs';
 import { loadSession } from '../lib/session-store.mjs';
@@ -12,7 +14,6 @@ import {
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
@@ -38,6 +39,13 @@ import {
   shouldEmitReviewApprovedRow,
   resolveBoardStateForClose,
 } from '../lib/close-convergence.mjs';
+import {
+  deriveClosedIssueIntegrity,
+  readUnauthorizedCloseRecovery,
+  runClosedIssueConvergence,
+  upsertUnauthorizedCloseRecovery,
+} from '../lib/closed-issue-convergence.mjs';
+import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
 
 // #705 — best-effort: a label-strip failure must never block or fail the
 // close itself, mirroring the deregisterTask cleanup calls below.
@@ -51,6 +59,20 @@ async function stripCloseLabels({ pexec, cfg, issueNum }) {
       `[task-tracker] warn: failed to strip ToDo/BLOCKED labels on #${issueNum}: ${err.message}`
     );
   }
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function timingAuditHasExactTransaction(body, tx) {
+  const exactTxField = new RegExp(`(?:^|[;\\s])tx=${escapeRegExp(tx)}(?=;|\\s|$)`);
+  return String(body || '')
+    .split('\n')
+    .some((line) => {
+      const cells = line.split('|');
+      return String(cells[2] || '').trim() === 'unauthorized-close' && exactTxField.test(line);
+    });
 }
 
 // #801 — emit the terminal `review:approved → issue:wrap` close pair, shared by
@@ -125,6 +147,9 @@ async function emitReviewToDoneClosePair({
 }
 
 export async function verbClose(ctx) {
+  const convergenceTailProfile = resolveTailProfile(
+    ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
+  ).name;
   // #561 — verbClose reads its collaborators from the grouped capability
   // objects assembled by buildContext (the narrow dependency interface) rather
   // than from a flat 18-member destructure. Each `?? ctx` fallback keeps the
@@ -134,12 +159,20 @@ export async function verbClose(ctx) {
   const timingRecorder = ctx.timingRecorder ?? ctx;
   const stateRunner = ctx.stateRunner ?? ctx;
   const githubClient = ctx.githubClient ?? ctx;
+  const issueBodyMutator = ctx.issueBodyMutator;
   const { cfg, statePath, projectDir, SKIP_NETWORK, pexec, uncheckedPreCloseCheckboxes, nowIso } =
     projectConfig;
   const { rest } = ctx;
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
   const { runMoveState, runMoveStateDone, runLogIssueTime } = stateRunner;
-  const { fetchSubIssues, getIssueBoardState, getIssueClosedState } = githubClient;
+  const {
+    fetchSubIssueBoardSnapshot,
+    fetchSubIssues,
+    getIssueBoardState,
+    getIssueCloseSnapshot,
+    getIssueClosedState,
+  } = githubClient;
+  const mutateBody = issueBodyMutator?.mutate;
   const dispositionWriter = ctx.writeTerminalDisposition || writeTerminalDisposition;
   const writeDeliveredOrRefuse = async ({ issueNumber, targetRef }) => {
     try {
@@ -210,7 +243,7 @@ export async function verbClose(ctx) {
       projectId: cfg.projectId,
       cfg,
       deps: {
-        mutateIssueBody,
+        mutateIssueBody: mutateBody,
         pexec: (bin, argv) => pexec(bin, argv, { timeout: GH_API_TIMEOUT_MS }),
         postComment: ({ issueNumber, repo, body }) =>
           pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
@@ -237,19 +270,169 @@ export async function verbClose(ctx) {
     return;
   }
 
-  // #425 — converge board-Done ↔ issue-CLOSED instead of issuing a no-op on
-  // board Status alone. The board and the GitHub open/closed state are
-  // decoupled: a
-  // board=Done + issue-OPEN pair (auto-close workflow missed) must re-close the
-  // issue, not be treated as "already Done" and stranded forever. We gate the
-  // clean no-op on the issue being verifiably CLOSED, and converge the board if
-  // it has drifted behind a closed issue.
+  const configuredReviewToDoneGate = resolveGate('reviewToDone', {
+    session: loadSession(currentSessionId()),
+    projectConfig: rawProjectConfig(),
+  });
+  const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
+
+  // #425 / #925 — converge the independent GitHub issue and project-board
+  // signals. The additive close snapshot lets a CLOSED + not-Done issue be
+  // classified as delivered, dead, or unauthorized before any mutation.
   if (!SKIP_NETWORK && closeIssueNum) {
-    const [boardState, issueClosed] = await Promise.all([
+    const hasExpandedCloseSnapshot = typeof getIssueCloseSnapshot === 'function';
+    const [boardState, closeSnapshot] = await Promise.all([
       getIssueBoardState(closeIssueNum),
-      getIssueClosedState ? getIssueClosedState(closeIssueNum) : Promise.resolve(null),
+      hasExpandedCloseSnapshot
+        ? getIssueCloseSnapshot(closeIssueNum)
+        : Promise.resolve(
+            getIssueClosedState
+              ? getIssueClosedState(closeIssueNum).then((issueClosed) => ({
+                  issueClosed,
+                  stateReason: undefined,
+                }))
+              : { issueClosed: null, stateReason: undefined }
+          ),
     ]);
-    const decision = decideCloseConvergence({ boardState, issueClosed, repair });
+    const decisionInput = {
+      boardState,
+      issueClosed: closeSnapshot.issueClosed,
+      repair,
+    };
+    let convergeBody = ctx.closeBody ?? '';
+    let integrity = { allTicked: false, unticked: [], childrenDone: true };
+    let fullAuto = false;
+    let recovery = null;
+    let authoritativeDoneBodyInspected = false;
+    const configuredFullAuto = configuredReviewAuthority === 'gate-bypassed';
+    const readConvergenceBody = async () => {
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      return JSON.parse(stdout).body ?? '';
+    };
+    const failInspection = (failedStep, error, message) => {
+      const detail = error?.message || String(error);
+      console.error(`${message}: ${detail}\nNo convergence mutation was attempted; retry later.`);
+      process.exitCode = 1;
+      return {
+        action: 'inspect',
+        status: 'failed',
+        failedStep,
+        error: detail,
+      };
+    };
+
+    let decision;
+    if (repair || !hasExpandedCloseSnapshot) {
+      // Explicit repair is the highest authority and runs the existing full
+      // pipeline without integrity inspection. Legacy callers retain their
+      // pre-#925 two-signal decision contract.
+      decision = decideCloseConvergence(decisionInput);
+    } else if (closeSnapshot.issueClosed === true) {
+      Object.assign(decisionInput, {
+        stateReason: closeSnapshot.stateReason,
+      });
+
+      if (closeSnapshot.stateReason !== 'completed') {
+        // A close-for-cause is dead before any issue-body or child read.
+        decision = decideCloseConvergence(decisionInput);
+      } else if (boardState === 'done') {
+        // Completed + Done is already authoritative. Housekeeping below may
+        // make one best-effort body read so a pending durable recovery can
+        // outrank noop; a read outage cannot reinterpret the terminal state.
+        fullAuto = configuredFullAuto;
+        authoritativeDoneBodyInspected = true;
+        try {
+          convergeBody = await readConvergenceBody();
+          const inspectedRecovery = readUnauthorizedCloseRecovery(convergeBody);
+          recovery = inspectedRecovery?.phase === 'complete' ? null : inspectedRecovery;
+          Object.assign(decisionInput, {
+            recoveryPhase: inspectedRecovery?.phase ?? null,
+          });
+        } catch {
+          // Best-effort by design: closed + completed + Done remains noop when
+          // its body is temporarily unreadable.
+        }
+        decision = decideCloseConvergence(decisionInput);
+      } else {
+        // Only completed, closed, not-Done issues require strict integrity.
+        try {
+          convergeBody = await readConvergenceBody();
+        } catch (error) {
+          return failInspection(
+            'readIssueBody',
+            error,
+            `${closeTarget} is closed on GitHub but its body could not be read for integrity checking`
+          );
+        }
+        const inspectedRecovery = readUnauthorizedCloseRecovery(convergeBody);
+        recovery = inspectedRecovery?.phase === 'complete' ? null : inspectedRecovery;
+        Object.assign(decisionInput, {
+          recoveryPhase: inspectedRecovery?.phase ?? null,
+        });
+
+        if (recovery) {
+          // A durable pending transaction has already established recovery
+          // authority. Resume it before unrelated child inventory can fail.
+          decision = decideCloseConvergence(decisionInput);
+        } else {
+          if (typeof fetchSubIssueBoardSnapshot !== 'function') {
+            return failInspection(
+              'fetchSubIssueBoardSnapshot',
+              new Error('strict child snapshot capability is unavailable'),
+              `${closeTarget} child inventory is unknown`
+            );
+          }
+          const childSnapshot = await fetchSubIssueBoardSnapshot(closeIssueNum);
+          if (childSnapshot?.status !== 'ok') {
+            return failInspection(
+              'fetchSubIssueBoardSnapshot',
+              new Error(childSnapshot?.error || 'strict child snapshot returned unknown'),
+              `${closeTarget} child inventory is unknown`
+            );
+          }
+
+          fullAuto = configuredFullAuto;
+          integrity = deriveClosedIssueIntegrity({
+            body: convergeBody,
+            fullAuto,
+            childBoardStates: childSnapshot.children.map(({ number, boardState: childState }) => ({
+              number,
+              state: childState,
+            })),
+          });
+          Object.assign(decisionInput, {
+            nonLifecycleBoxesAllTicked: integrity.allTicked,
+            fullAuto,
+          });
+          decision = decideCloseConvergence(decisionInput);
+        }
+      }
+    } else if (closeSnapshot.issueClosed === false) {
+      // Reopen is an intermediate recovery phase, not evidence that the
+      // transaction disappeared. Read the protected marker before allowing
+      // normal open-state policy to proceed.
+      try {
+        convergeBody = await readConvergenceBody();
+      } catch (error) {
+        return failInspection(
+          'readIssueBody',
+          error,
+          `${closeTarget} is open but its body could not be read for recovery inspection`
+        );
+      }
+      const inspectedRecovery = readUnauthorizedCloseRecovery(convergeBody);
+      recovery = inspectedRecovery?.phase === 'complete' ? null : inspectedRecovery;
+      Object.assign(decisionInput, {
+        recoveryPhase: inspectedRecovery?.phase ?? null,
+      });
+      decision = decideCloseConvergence(decisionInput);
+    } else {
+      decision = decideCloseConvergence(decisionInput);
+    }
 
     if (decision.action === 'close-issue') {
       // Board reads Done but the issue is still OPEN — the Projects auto-close
@@ -288,81 +471,215 @@ export async function verbClose(ctx) {
       return;
     }
 
-    if (decision.action === 'noop') {
-      // Issue is verifiably CLOSED. Converge the board if it lagged behind.
-      if (decision.boardDrift) {
-        const moveResult = await runMoveStateDone(closeTarget, { silent: true });
-        if (!moveResult.ok && !moveResult.benign) {
-          // #435 — re-read the board before surfacing. A race can leave the
-          // board already at Done (auto-close/converge won out-of-band) even
-          // though the move reported a non-benign failure. Only a board that is
-          // NOT Done is a genuine failure.
-          const postBoardState = await getIssueBoardState(closeTarget);
-          if (decideBoardMoveFailure({ moveResult, boardState: postBoardState }).surface) {
-            console.error(
-              `${closeTarget} is closed on GitHub but the board move to Done failed: ${moveResult.stderr || moveResult.status}\n` +
-                `Local state left intact — re-run \`/task close ${closeTarget}\` to retry the board move.`
+    if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
+      const convergence = await runClosedIssueConvergence(
+        {
+          decision,
+          issueNumber: closeIssueNum,
+          issueClosed: closeSnapshot.issueClosed,
+          boardState,
+          stateReason: recovery?.stateReason ?? closeSnapshot.stateReason,
+          unticked: recovery?.unticked ?? integrity.unticked,
+          actor: recovery?.actor ?? 'unknown',
+          ts: recovery?.ts ?? nowIso(),
+          recovery,
+        },
+        {
+          moveToDone: async () => {
+            const moveResult = await runMoveStateDone(closeTarget, {
+              silent: true,
+              tailProfile: convergenceTailProfile,
+              reviewAuthority: configuredReviewAuthority,
+            });
+            if (!moveResult.ok && !moveResult.benign) {
+              const postBoardState = await getIssueBoardState(closeTarget);
+              if (decideBoardMoveFailure({ moveResult, boardState: postBoardState }).surface) {
+                return moveResult;
+              }
+            }
+            return { ok: true };
+          },
+          emitClosePair: async () => {
+            if (!authoritativeDoneBodyInspected) {
+              try {
+                const { stdout } = await pexec(
+                  'gh',
+                  ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+                  { timeout: GH_API_TIMEOUT_MS }
+                );
+                convergeBody = JSON.parse(stdout).body ?? convergeBody;
+              } catch (err) {
+                process.stderr.write(
+                  `⚠ body read for converge close pair failed: ${err.message}\n`
+                );
+              }
+            }
+            await emitReviewToDoneClosePair({
+              closeTarget,
+              closeIssueNum,
+              cfg,
+              hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+              reviewGateBypassed: fullAuto,
+              lastWordMarker: s.lastWordMarker,
+              ctx,
+              SKIP_NETWORK,
+              nowIso,
+              safePostTiming,
+            });
+            return { ok: true };
+          },
+          reconcileLifecycle: async () => {
+            if (
+              reconcileLifecycleBoxes === tickLifecycleOnClose &&
+              typeof issueBodyMutator?.mutate !== 'function'
+            ) {
+              throw new Error(
+                'issueBodyMutator.mutate capability is required for lifecycle reconciliation'
+              );
+            }
+            return reconcileLifecycleBoxes({
+              cfg,
+              issueNum: closeIssueNum,
+              pexec,
+              deps: { mutateIssueBody: issueBodyMutator?.mutate },
+            });
+          },
+          cleanup: async () => {
+            if (!ctx.preserveActiveOnConvergence) clearActive(statePath);
+            try {
+              deregisterTask(projectDir, closeTarget);
+            } catch {
+              /* best-effort: cleanup; failure is non-fatal */
+            }
+            return { ok: true };
+          },
+          reopenIssue: async () => {
+            await pexec('gh', ['issue', 'reopen', closeIssueNum, '-R', cfg.repo], {
+              timeout: GH_API_TIMEOUT_MS,
+            });
+            return { ok: true };
+          },
+          moveToReview: async () => {
+            const extraArgs = ['--force'];
+            if (boardState) extraArgs.push('--from', boardState);
+            return runMoveState(closeTarget, 'review', {
+              silent: true,
+              extraArgs,
+              tailProfile: convergenceTailProfile,
+            });
+          },
+          postTimingAudit: async ({ recovery: activeRecovery }) => {
+            const { buildRow } = await import('../gh-timing-comment.mjs');
+            return safePostTiming(
+              closeTarget,
+              buildRow({
+                ts: nowIso(),
+                event: 'unauthorized-close',
+                // This out-of-band recovery has no active session segment;
+                // honest 0/0 records audit occurrence without fabricating work.
+                activeSec: 0,
+                idleSec: 0,
+                deltaWords: 0,
+                wordMarker: s.lastWordMarker ?? 0,
+                description:
+                  `closed without authorization — reopened and restored to Review; ` +
+                  `tx=${activeRecovery.tx}; ` +
+                  `stateReason=${activeRecovery.stateReason || 'unknown'}; ` +
+                  `unticked=${activeRecovery.unticked.join(', ') || 'unknown'}`,
+              })
             );
-            process.exitCode = 1;
-            return;
-          }
+          },
+          createTransactionId: () => randomUUID(),
+          timingAuditPresent: async (tx) => {
+            const { readTimingCommentBody, bodyOf } = await import('../gh-timing-comment.mjs');
+            const readTiming = ctx.readTimingCommentBody || readTimingCommentBody;
+            const result = await readTiming({
+              issueNumber: closeIssueNum,
+              repo: cfg.repo,
+              timeoutMs: GH_API_TIMEOUT_MS,
+            });
+            if (result?.status === 'error') {
+              throw result.error || new Error('timing audit read failed');
+            }
+            return timingAuditHasExactTransaction(bodyOf(result), tx);
+          },
+          writeRecoveryPhase: async (phase, activeRecovery) => {
+            if (typeof issueBodyMutator?.mutate !== 'function') {
+              throw new Error(
+                'issueBodyMutator.mutate capability is required for recovery persistence'
+              );
+            }
+            const mutation = await issueBodyMutator.mutate({
+              issueNumber: closeIssueNum,
+              repo: cfg.repo,
+              mutate: (base) =>
+                upsertUnauthorizedCloseRecovery(base, {
+                  ...activeRecovery,
+                  phase,
+                }),
+            });
+            const mutationSucceeded =
+              mutation &&
+              mutation !== false &&
+              mutation.ok !== false &&
+              (mutation.status === 'ok' || mutation.status === 'no-op') &&
+              typeof mutation.body === 'string';
+            if (!mutationSucceeded) {
+              throw new Error(
+                `recovery marker mutation failed for phase ${phase}: expected status ok/no-op with verified body`
+              );
+            }
+            const persisted = readUnauthorizedCloseRecovery(mutation.body);
+            if (!persisted) {
+              throw new Error(`recovery marker readback failed for phase ${phase}`);
+            }
+            if (persisted.tx !== activeRecovery.tx) {
+              throw new Error(
+                `recovery marker readback mismatch for transaction: expected ${activeRecovery.tx}, got ${persisted.tx}`
+              );
+            }
+            if (persisted.phase !== phase) {
+              throw new Error(
+                `recovery marker readback mismatch for phase: expected ${phase}, got ${persisted.phase}`
+              );
+            }
+            return persisted;
+          },
         }
-      }
-      // #801 — emit the terminal `review:approved → issue:wrap` close pair on the
-      // converge/no-op path too. When an issue is closed out-of-band (GitHub UI /
-      // Projects auto-close) and `/task close` converges the board, the full
-      // pipeline (which emits the pair) never runs, so the per-issue Timing Log
-      // lost its closing audit rows. Read the live body for the approval marker
-      // (best-effort: a read failure degrades to an empty body → `review:approved`
-      // withheld, `issue:wrap` still emitted). There is no review-gate evaluation
-      // on this path, so `reviewGateBypassed` is false — `review:approved` is
-      // emitted ONLY when the issue actually carries `aitm-review-approved`, never
-      // fabricated. `pendingClosePairState` makes this a no-op when the pair
-      // already exists (issue closed through the normal pipeline earlier).
-      let convergeBody = ctx.closeBody ?? '';
-      if (!SKIP_NETWORK && closeIssueNum) {
-        try {
-          const { stdout } = await pexec(
-            'gh',
-            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
-            { timeout: GH_API_TIMEOUT_MS }
-          );
-          convergeBody = JSON.parse(stdout).body ?? '';
-        } catch (err) {
-          process.stderr.write(`⚠ body read for converge close pair failed: ${err.message}\n`);
-        }
-      }
-      await emitReviewToDoneClosePair({
-        closeTarget,
-        closeIssueNum,
-        cfg,
-        hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
-        reviewGateBypassed: false,
-        lastWordMarker: s.lastWordMarker,
-        ctx,
-        SKIP_NETWORK,
-        nowIso,
-        safePostTiming,
-      });
-      // #753 — reconcile the Lifecycle DoD boxes on the converge/no-op path too.
-      // A prior close that moved the board but died before the tick (crash,
-      // timeout-killed tail, #737 split-brain) left `story-closed` /
-      // `timing-flushed` unchecked; every re-run then took THIS noop path and
-      // skipped the reconcile. The tick is idempotent and best-effort, so it is
-      // safe to run on every converge and never blocks the clean-up below.
-      await reconcileLifecycleBoxes({ cfg, issueNum: closeIssueNum, pexec });
-      clearActive(statePath);
-      try {
-        deregisterTask(projectDir, closeTarget);
-      } catch {
-        /* best-effort: cleanup; failure is non-fatal */
-      }
-      console.log(
-        decision.boardDrift
-          ? `${closeTarget} was already closed on GitHub — converged the board to Done; local state and fleet cleaned up.`
-          : `${closeTarget} is already fully closed (issue CLOSED, board Done) — local state and fleet cleaned up.`
       );
-      return;
+
+      if (convergence.status === 'failed') {
+        if (decision.action === 'noop' && convergence.failedStep === 'moveToDone') {
+          console.error(
+            `${closeTarget} is closed on GitHub but the board move to Done failed: ${convergence.error}\n` +
+              `Local state left intact — re-run \`/task close ${closeTarget}\` to retry the board move.`
+          );
+        } else {
+          console.error(
+            `${closeTarget} closed-issue ${decision.action} failed at ${convergence.failedStep}: ` +
+              `${convergence.error}. Local task state was retained for retry.`
+          );
+        }
+        process.exitCode = 1;
+        return convergence;
+      }
+      if (convergence.status === 'untouched') {
+        console.log(
+          `${closeTarget} is closed for ${closeSnapshot.stateReason || 'an unknown non-delivery reason'} — left issue and board untouched.`
+        );
+        return convergence;
+      }
+      if (convergence.status === 'recovered') {
+        console.log(`${closeTarget} ${convergence.message}.`);
+        return convergence;
+      }
+
+      console.log(
+        decision.action === 'finalize' || decision.boardDrift
+          ? `${closeTarget} was already closed on GitHub — finalized housekeeping and converged the board to Done.`
+          : `${closeTarget} is already fully closed — reconciled housekeeping and cleaned local state.`
+      );
+      return convergence;
     }
     // decision.action === 'proceed' → fall through to the full close pipeline.
   }
@@ -383,7 +700,7 @@ export async function verbClose(ctx) {
   // emission can predicate on it. True iff the review→done gate was explicitly
   // disabled (session/project override), which carries its own
   // `aitm-gate-bypassed` audit row.
-  let reviewGateBypassed = false;
+  let reviewGateBypassed = configuredReviewAuthority === 'gate-bypassed';
   if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
@@ -484,10 +801,7 @@ export async function verbClose(ctx) {
       // derived-DoD stamping so chain-integrity sees the freshly-ticked
       // keys. The session/project `gateReviewToDone` toggle still lives in
       // close.mjs because it controls audit emission, not guard logic.
-      const _resolvedReviewGate = resolveGate('reviewToDone', {
-        session: loadSession(currentSessionId()),
-        projectConfig: rawProjectConfig(),
-      });
+      const _resolvedReviewGate = configuredReviewToDoneGate;
       reviewGateBypassed = !_resolvedReviewGate; // #655 — hoist for the row gate
       if (!_resolvedReviewGate) {
         // #516 — the review-gate bypass is recorded as a body audit marker
@@ -497,7 +811,7 @@ export async function verbClose(ctx) {
         // survives in the issue body.
         const { appendAuditMarker } = await import('../lib/markers.mjs');
         const _ts2 = nowIso();
-        await mutateIssueBody({
+        await mutateBody({
           issueNumber: closeIssueNum,
           repo: cfg.repo,
           mutate: (base) =>
@@ -878,6 +1192,7 @@ export async function verbClose(ctx) {
     const forcedMove = await runMoveStateDone(s.active, {
       silent: true,
       extraArgs: ['--force'],
+      reviewAuthority: configuredReviewAuthority,
     });
     // Same swallow-vs-surface rule as the post-close move (#435): re-read the
     // board and only refuse when the move genuinely failed AND the board is not
@@ -965,7 +1280,10 @@ export async function verbClose(ctx) {
   // recovers. The post-close move (#385) then degrades to a benign `done → done`
   // no-op, exactly as on the force path.
   if (!force && !SKIP_NETWORK && closeIssueNum) {
-    const preMove = await runMoveStateDone(s.active, { silent: true });
+    const preMove = await runMoveStateDone(s.active, {
+      silent: true,
+      reviewAuthority: configuredReviewAuthority,
+    });
     const preBoardState =
       preMove && !preMove.ok && !preMove.benign
         ? await resolveBoardStateForClose({ getIssueBoardState, active: s.active })
@@ -1018,7 +1336,10 @@ export async function verbClose(ctx) {
   // `done` the user needs to see the real reason and a non-zero exit. The
   // benign `done → done` no-op (auto-close already moved the board) is treated
   // as success and produces no warning.
-  const moveResult = await runMoveStateDone(s.active, { silent: true });
+  const moveResult = await runMoveStateDone(s.active, {
+    silent: true,
+    reviewAuthority: configuredReviewAuthority,
+  });
   const lifecycleTickResult = await reconcileLifecycleBoxes({
     cfg,
     issueNum: closeIssueNum,
@@ -1131,7 +1452,8 @@ const LIFECYCLE_TICK_RETRY_DELAY_MS = 500;
 // caller is told via the returned `{ ok: false, message }` so it can surface
 // a warning in the close summary instead of only writing to stderr.
 export async function tickLifecycleOnClose({ cfg, issueNum, pexec, deps = {} }) {
-  const mutateBody = deps.mutateIssueBody || mutateIssueBody;
+  const mutateBody =
+    deps.mutateIssueBody || (await import('../lib/issue-body-mutate.mjs')).mutateIssueBody;
   const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   let lastErr = null;
   for (let attempt = 1; attempt <= LIFECYCLE_TICK_MAX_ATTEMPTS; attempt++) {

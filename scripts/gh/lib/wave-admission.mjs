@@ -32,6 +32,7 @@
 //   `closeReason` (#888). Gates read `state`.
 
 import { gql, splitRepo } from './github-projects.mjs';
+import { readUnauthorizedCloseRecovery } from '../../task-tracker/lib/closed-issue-convergence.mjs';
 
 const IN_FLIGHT_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review']);
 
@@ -90,6 +91,7 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
               number
               state
               stateReason
+              body
               projectItems(first: 20) {
                 nodes {
                   project { id }
@@ -128,7 +130,8 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
  * @param {string} projectId the bound board's node id — only an item on THIS
  *   board contributes `Status` / `Rank`.
  * @returns {Array<{number:number, rank:number|null, state:string,
- *   boardState:string, closeReason:string|null}>}
+ *   boardState:string, closeReason:string|null, recoveryPhase:string|null,
+ *   recoveryTx:string|null}>}
  */
 export function mapSubIssueNodes(subs, projectId) {
   const out = [];
@@ -172,12 +175,21 @@ export function mapSubIssueNodes(subs, projectId) {
     // `boardState` (#947) is likewise additive: the raw column, preserved so
     // reporting and drift detection can still see where a closed child was
     // parked. No gate reads it — gates read the coerced `state`.
+    //
+    // #925 — parse recovery from the body already selected with this child.
+    // The shared protected-marker reader ignores fenced examples and malformed
+    // markers. A complete transaction is historical evidence, not pending
+    // work, so it deliberately maps to null just like no marker.
+    const recovery = readUnauthorizedCloseRecovery(sub.body);
+    const pendingRecovery = recovery?.phase !== 'complete' ? recovery : null;
     out.push({
       number: sub.number,
       rank,
       state,
       boardState,
       closeReason: normalizeCloseReason(sub),
+      recoveryPhase: pendingRecovery?.phase ?? null,
+      recoveryTx: pendingRecovery?.tx ?? null,
     });
   }
   return out;

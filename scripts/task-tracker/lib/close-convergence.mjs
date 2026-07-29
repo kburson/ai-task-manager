@@ -14,7 +14,9 @@
 //
 //   boardState  — board Status slug ('done' | other | null/unknown)
 //   issueClosed — GitHub issue state (true=CLOSED | false=OPEN | null=unknown)
+//   recoveryPhase — durable unauthorized-close phase, when present
 //
+//   → { action: 'aberration', resume: true } pending durable recovery; resume it
 //   → { action: 'noop',        boardDrift }  issue verifiably CLOSED; boardDrift
 //                                            true when the board has NOT caught
 //                                            up to Done (converge the board).
@@ -34,10 +36,36 @@
 // state. The pipeline is safe to replay: `gh issue close` no-ops on an
 // already-closed issue and `runMoveStateDone` Done→Done is swallowed as benign
 // (#385). When `repair` is falsy the noop/close-issue branches are unchanged.
-export function decideCloseConvergence({ boardState, issueClosed, repair } = {}) {
+export function decideCloseConvergence(input = {}) {
+  const {
+    boardState,
+    issueClosed,
+    stateReason,
+    nonLifecycleBoxesAllTicked,
+    recoveryPhase,
+    repair,
+  } = input;
   if (repair) return { action: 'proceed', repair: true };
+  if (['intent', 'reopened', 'review', 'timing'].includes(recoveryPhase)) {
+    return { action: 'aberration', resume: true };
+  }
   const boardDone = boardState === 'done';
-  if (issueClosed === true) return { action: 'noop', boardDrift: !boardDone };
+  if (issueClosed === true) {
+    // #925 — preserve the legacy closed/noop decision until a caller opts into
+    // the richer close snapshot. This additive boundary lets runtime and tests
+    // migrate independently without interpreting a missing stateReason as an
+    // actual GitHub null reason.
+    const hasExpandedSignals =
+      Object.prototype.hasOwnProperty.call(input, 'stateReason') ||
+      Object.prototype.hasOwnProperty.call(input, 'nonLifecycleBoxesAllTicked');
+    if (!hasExpandedSignals) return { action: 'noop', boardDrift: !boardDone };
+
+    const normalizedReason =
+      typeof stateReason === 'string' ? stateReason.trim().toLowerCase() : null;
+    if (normalizedReason !== 'completed') return { action: 'dead' };
+    if (boardDone) return { action: 'noop', boardDrift: false };
+    return nonLifecycleBoxesAllTicked ? { action: 'finalize' } : { action: 'aberration' };
+  }
   if (issueClosed === false && boardDone) return { action: 'close-issue' };
   return { action: 'proceed' };
 }

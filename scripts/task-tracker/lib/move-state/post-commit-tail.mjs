@@ -32,23 +32,24 @@ import {
   syncEventFields,
   endTaskTracking,
 } from './cache-unpark.mjs';
+import { selectTailSteps } from './tail-profiles.mjs';
 
 // The canonical post-commit tail, in the exact order the pre-#714 mutation
-// block invoked it. Each entry is `{ name, fn }` where `fn(ctx)` is the
+// block invoked it. Each entry is `{ name, scope, fn }` where `fn(ctx)` is the
 // best-effort step. Order is load-bearing (#535/#516) — do NOT reorder.
 //
 // #756: `stampEntryMarkers` and `emitPhasePairRows` moved OUT of this tail into
 // the atomic core (move-state-core.mjs), where they run BEFORE the Status write
 // so all entry evidence is durable before the board flips.
 export const DEFAULT_TAIL_STEPS = Object.freeze([
-  { name: 'dispatchOnEnterActions', fn: dispatchOnEnterActions },
-  { name: 'refreshKanbanStateCache', fn: refreshKanbanStateCache },
-  { name: 'emitFullAutoReviewAudit', fn: emitFullAutoReviewAudit },
-  { name: 'unparkDoneDependents', fn: unparkDoneDependents },
-  { name: 'emitOutOfBandAudit', fn: emitOutOfBandAudit },
-  { name: 'syncTrackerState', fn: syncTrackerState },
-  { name: 'syncEventFields', fn: syncEventFields },
-  { name: 'endTaskTracking', fn: endTaskTracking },
+  { name: 'dispatchOnEnterActions', scope: 'project', fn: dispatchOnEnterActions },
+  { name: 'refreshKanbanStateCache', scope: 'project', fn: refreshKanbanStateCache },
+  { name: 'emitFullAutoReviewAudit', scope: 'issue', fn: emitFullAutoReviewAudit },
+  { name: 'unparkDoneDependents', scope: 'project', fn: unparkDoneDependents },
+  { name: 'emitOutOfBandAudit', scope: 'issue', fn: emitOutOfBandAudit },
+  { name: 'syncTrackerState', scope: 'session', fn: syncTrackerState },
+  { name: 'syncEventFields', scope: 'issue', fn: syncEventFields },
+  { name: 'endTaskTracking', scope: 'session', fn: endTaskTracking },
 ]);
 
 // Run the post-commit tail. Each step is best-effort: a throw is caught, logged
@@ -64,7 +65,8 @@ export const DEFAULT_TAIL_STEPS = Object.freeze([
 // even when a custom step list is injected (tests).
 export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
   const failures = [];
-  for (const step of steps) {
+  const selectedSteps = selectTailSteps(steps, ctx.tailProfile);
+  for (const step of selectedSteps) {
     try {
       // Support both async and sync step fns (syncTrackerState / endTaskTracking
       // are synchronous in the original block). `await` on a non-promise is a
@@ -83,7 +85,7 @@ export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
       );
     }
   }
-  return { failures, total: steps.length };
+  return { failures, total: selectedSteps.length };
 }
 
 // #716 — informational / benign stderr lines that a tail step may emit and that

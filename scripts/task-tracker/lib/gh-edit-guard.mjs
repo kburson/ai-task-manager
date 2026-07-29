@@ -66,6 +66,10 @@ const MARKER_PATTERNS = [
   // external `gh issue edit --body` would strip the reconciliation marker past
   // the Bash-level guard, silently un-reconciling an epic.
   { name: 'aitm-epic-ac-reconciled', re: /<!--\s*aitm-epic-ac-reconciled(?:\s*:|\s+ts=")/i },
+  {
+    name: 'aitm-unauthorized-close',
+    re: /<!--\s*aitm-unauthorized-close(?:\s*:|\s+(?:tx|ts)=")/i,
+  },
   // #888 — mirrors the `INVARIANT_MARKER_PATTERNS` entry. This registry is
   // presence-based, so it catches the removal of the LAST strike rather than
   // each individual one; the count-kind invariant inside `mutateIssueBody` is

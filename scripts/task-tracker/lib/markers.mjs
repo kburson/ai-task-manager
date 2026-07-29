@@ -26,16 +26,71 @@ import { serializeMarker, unescapeValue, parseMarker } from './marker-grammar.mj
 // code spans (single backticks) are out of scope: a marker comment inside a
 // single-backtick span is unusual and was not the observed failure mode.
 //
-// Fence pattern: opening fence (```/~~~) at the start of a line (allowing
-// leading whitespace per CommonMark), arbitrary content, closing fence of
-// the SAME shape at the start of a line. Backreference `\\1` enforces the
-// shape match so a ```-opened block doesn't terminate on a stray ~~~.
+// Fence scanner: opening fence of at least three backticks or tildes with up
+// to three leading spaces, arbitrary content, then a closing fence of the same
+// character whose length is at least the opener's. An unclosed fence consumes
+// the rest of the body, matching CommonMark fenced-block behavior.
 // ---------------------------------------------------------------------------
 
-const FENCED_CODE_BLOCK_RE = /^[ \t]*(```|~~~)[\s\S]*?^[ \t]*\1[ \t]*$/gm;
+function sourceLines(body) {
+  const src = String(body || '');
+  const lines = [];
+  let start = 0;
+  while (start < src.length) {
+    const newline = src.indexOf('\n', start);
+    const end = newline === -1 ? src.length : newline + 1;
+    let textEnd = newline === -1 ? end : newline;
+    if (textEnd > start && src[textEnd - 1] === '\r') textEnd -= 1;
+    lines.push({ start, end, text: src.slice(start, textEnd) });
+    start = end;
+  }
+  return { src, lines };
+}
+
+function fencedCodeBlockRanges(body) {
+  const { src, lines } = sourceLines(body);
+  const ranges = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const opener = lines[i].text.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (!opener) continue;
+    const fenceChar = opener[1][0];
+    if (fenceChar === '`' && opener[2].includes('`')) continue;
+    const openerLength = opener[1].length;
+    let end = src.length;
+    let closingLine = lines.length;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const closer = lines[j].text.match(/^ {0,3}(`+|~+)[ \t]*$/);
+      if (closer && closer[1][0] === fenceChar && closer[1].length >= openerLength) {
+        end = lines[j].end;
+        closingLine = j;
+        break;
+      }
+    }
+    ranges.push({ start: lines[i].start, end });
+    i = closingLine;
+  }
+  return { src, ranges };
+}
+
+function transformFencedCodeBlocks(body, transform) {
+  const { src, ranges } = fencedCodeBlockRanges(body);
+  if (ranges.length === 0) return src;
+  let cursor = 0;
+  let result = '';
+  for (const range of ranges) {
+    result += src.slice(cursor, range.start);
+    result += transform(src.slice(range.start, range.end));
+    cursor = range.end;
+  }
+  return result + src.slice(cursor);
+}
 
 export function stripFencedCodeBlocks(body) {
-  return String(body || '').replace(FENCED_CODE_BLOCK_RE, '');
+  return transformFencedCodeBlocks(body, () => '');
+}
+
+function maskFencedCodeBlocksPreservingOffsets(body) {
+  return transformFencedCodeBlocks(body, (block) => block.replace(/[^\r\n]/g, ' '));
 }
 
 // ---------------------------------------------------------------------------
@@ -614,6 +669,23 @@ function insertMarkerBeforeFieldDb(body, marker, hasMarker) {
     return `${placed}\n\n${formatIssueFieldDb(parsed.values)}\n`;
   }
   return `${placeProgressMarker(src, marker)}\n`;
+}
+
+export function upsertProgressMarker(body, { kind, props = {} } = {}) {
+  if (typeof kind !== 'string' || kind.length === 0) {
+    throw new Error(
+      `upsertProgressMarker: 'kind' must be a non-empty string — got ${JSON.stringify(kind)}`
+    );
+  }
+  const marker = serializeMarker(kind, props);
+  const src = String(body || '');
+  const escapedKind = kind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`<!--\\s*aitm-${escapedKind}\\b[^>]*-->`, 'i');
+  const match = re.exec(maskFencedCodeBlocksPreservingOffsets(src));
+  if (match) {
+    return `${src.slice(0, match.index)}${marker}${src.slice(match.index + match[0].length)}`;
+  }
+  return insertMarkerBeforeFieldDb(src, marker, () => false);
 }
 
 // #516 — Append-only audit markers for low-value lifecycle events demoted out

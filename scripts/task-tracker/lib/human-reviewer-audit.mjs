@@ -1,17 +1,16 @@
-// #169 — Enforce audit comment when review→done closes without a human reviewer.
+// #169 — Enforce the review→done audit from the authoritative close decision.
 //
-// `move-state.mjs` invokes `enforceFullAutoAudit` on the review→done
-// transition. The function inspects `TASK_TRACKER_HUMAN_REVIEWER`:
+// `move-state.mjs` invokes `enforceFullAutoAudit` after the review→done
+// transition. Decision precedence is:
 //
-//   • set    → stamp `<!-- aitm-human-reviewer: <handle> -->` into the issue
-//              body (human-path; no audit comment)
-//   • unset  → post a structured audit comment with stable HTML marker
-//              `<!-- aitm-full-auto-approval -->` (Full-Auto path)
+//   1. a genuine non-Full-Auto approval marker → human-reviewer;
+//   2. explicit `reviewAuthority` (`human-gate` or `gate-bypassed`);
+//   3. legacy `TASK_TRACKER_HUMAN_REVIEWER` environment fallback when the
+//      authority is null.
 //
-// Absence is the safe default — assistant under Full-Auto leaves the env var
-// untouched and the audit comment fires automatically. A human running an
-// interactive close sets the env (typically via a wrapper) and the marker is
-// the durable on-issue record.
+// A Full-Auto audit records whether that decision came from an explicit gate
+// bypass or the legacy environment fallback. Human-reviewer paths stamp the
+// durable `aitm-human-reviewer` body marker.
 //
 // Idempotency: both paths check for prior presence before writing. Re-running
 // move-state.mjs against a `done` issue does not double-stamp or duplicate
@@ -52,6 +51,20 @@ export function isFullAuto(env = process.env) {
   return getHumanReviewer(env) === null;
 }
 
+// Review authority is an internal in-process value. It deliberately has no
+// CLI or environment representation: close producers supply it directly and
+// the move-state boundaries reject any unrecognized value before effects run.
+export function resolveReviewAuthority(reviewAuthority = null) {
+  if (
+    reviewAuthority !== null &&
+    reviewAuthority !== 'human-gate' &&
+    reviewAuthority !== 'gate-bypassed'
+  ) {
+    throw new Error(`invalid reviewAuthority ${String(reviewAuthority)}`);
+  }
+  return reviewAuthority;
+}
+
 // #979 — `enforceFullAutoAudit` used to decide Full-Auto purely from `env`,
 // so a genuinely human-approved review (the `/task approve` verb already
 // stamped a non-full-auto `aitm-review-approved` marker on the body) still
@@ -69,13 +82,20 @@ export function buildHumanReviewerMarker(handle, ts) {
   return serializeMarker('human-reviewer', { handle, ts });
 }
 
-export function buildAuditCommentBody({ ts, reviewScope } = {}) {
+export function buildAuditCommentBody({ ts, reviewScope, reviewAuthority = null, reason } = {}) {
   const stamp = ts || new Date().toISOString();
   const scope = reviewScope || 'commits, tests, lint/format';
+  const explicitBypass = reviewAuthority === 'gate-bypassed' && reason === 'explicit-gate-bypass';
+  const headline = explicitBypass
+    ? '> ⚠ auto-approved under Full-Auto — review gate explicitly bypassed'
+    : '> ⚠ auto-approved under Full-Auto — no human reviewer';
+  const decision = explicitBypass
+    ? `The review→done gate at ${stamp} was explicitly bypassed by close authority. This audit records that bypass; \`${HUMAN_REVIEWER_ENV}\` metadata did not determine the outcome.`
+    : `The review→done gate at ${stamp} was passed without a \`${HUMAN_REVIEWER_ENV}\` signal. The assistant ticked "Passed final human review" itself.`;
   return [
-    '> ⚠ auto-approved under Full-Auto — no human reviewer',
+    headline,
     '',
-    `The review→done gate at ${stamp} was passed without a \`${HUMAN_REVIEWER_ENV}\` signal. The assistant ticked "Passed final human review" itself.`,
+    decision,
     '',
     `Scope of self-review: ${scope}`,
     '',
@@ -115,6 +135,7 @@ export async function enforceFullAutoAudit({
   repo,
   body,
   env = process.env,
+  reviewAuthority = null,
   writeIssueBody,
   postComment,
   listComments,
@@ -124,10 +145,23 @@ export async function enforceFullAutoAudit({
 } = {}) {
   if (!issueNumber) throw new Error('enforceFullAutoAudit: issueNumber is required');
   if (!repo) throw new Error('enforceFullAutoAudit: repo is required');
+  reviewAuthority = resolveReviewAuthority(reviewAuthority);
   const ts = now();
-  const handle = getHumanReviewer(env);
   const genuineReviewMarker = body != null && hasGenuineReviewApprovedMarker(body);
-  const fullAuto = !genuineReviewMarker && isFullAuto(env);
+  const explicitMode =
+    reviewAuthority === 'gate-bypassed'
+      ? 'full-auto'
+      : reviewAuthority === 'human-gate'
+        ? 'human-reviewer'
+        : null;
+  const fullAuto = genuineReviewMarker
+    ? false
+    : explicitMode
+      ? explicitMode === 'full-auto'
+      : isFullAuto(env);
+  const fullAutoReason =
+    reviewAuthority === 'gate-bypassed' ? 'explicit-gate-bypass' : 'legacy-environment-fallback';
+  const handle = getHumanReviewer(env) || (reviewAuthority === 'human-gate' ? 'review-gate' : null);
   const list = listComments || defaultListComments;
   const post = postComment || defaultPostComment;
 
@@ -169,7 +203,12 @@ export async function enforceFullAutoAudit({
   if (alreadyPresent) {
     return { mode: 'full-auto', auditPosted: false, alreadyPresent: true };
   }
-  const auditBody = buildAuditCommentBody({ ts, reviewScope });
+  const auditBody = buildAuditCommentBody({
+    ts,
+    reviewScope,
+    reviewAuthority,
+    reason: fullAutoReason,
+  });
   try {
     await post({ repo, issueNumber, body: auditBody });
     return { mode: 'full-auto', auditPosted: true, alreadyPresent: false };

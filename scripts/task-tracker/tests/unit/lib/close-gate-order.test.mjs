@@ -114,14 +114,27 @@ test('source: pre-walk delegates the gate decision to move-state (review-approva
   const guardIdx = closeSrc.indexOf(PRE_WALK_GUARD);
   const block = closeSrc.slice(guardIdx, guardIdx + 1100);
   assert.ok(
-    /runMoveStateDone\(s\.active, \{ silent: true \}\)/.test(block),
+    /runMoveStateDone\(s\.active,\s*\{\s*silent:\s*true,\s*reviewAuthority:\s*configuredReviewAuthority,\s*\}\)/s.test(
+      block
+    ),
     'pre-walk must invoke the terminal move-state walk (not a `--force` bypass) so the ' +
-      'review-approval-missing guard is honored'
+      'review-approval-missing guard is honored with explicit review authority'
   );
   assert.ok(
     !/extraArgs:\s*\[\s*'--force'\s*\]/.test(block),
     'non-force pre-walk must NOT pass --force (that would bypass review-approval-missing)'
   );
+});
+
+test('source: forced pre-move and final move receive configured review authority', () => {
+  const forceStart = closeSrc.indexOf('if (force && !SKIP_NETWORK && closeIssueNum) {');
+  const forceEnd = closeSrc.indexOf('// #908 — Full-Auto PR merge step', forceStart);
+  const forceBlock = closeSrc.slice(forceStart, forceEnd);
+  assert.match(forceBlock, /reviewAuthority:\s*configuredReviewAuthority/);
+
+  const finalStart = closeSrc.indexOf('const moveResult = await runMoveStateDone');
+  const finalBlock = closeSrc.slice(finalStart, finalStart + 240);
+  assert.match(finalBlock, /reviewAuthority:\s*configuredReviewAuthority/);
 });
 
 test('decideBoardMoveFailure: half-state (review + approval-missing refusal) leaves issue OPEN', () => {

@@ -14,6 +14,7 @@ import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import { assembleCapabilities, CAPABILITY_SURFACES } from '../../../lib/runtime-capabilities.mjs';
 import { buildContext } from '../../../runtime.mjs';
 import { verbClose } from '../../../verbs/close.mjs';
+import { deps as githubProjectsDeps } from '../../../../gh/lib/github-projects.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 
@@ -85,16 +86,95 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
     runMoveStateDone: async () => ({ ok: true }),
     worktreeLabel: () => 'main',
     buildStateOptionMap: () => ({}),
+    fetchSubIssueBoardSnapshot: async () => ({ status: 'ok', children: [] }),
     fetchSubIssues: async () => [],
     fetchParentIssue: async () => null,
     getIssueBoardState: async () => null,
+    getIssueCloseSnapshot: async () => ({ issueClosed: null, stateReason: null }),
     getIssueClosedState: async () => null,
   };
   const caps = assembleCapabilities(flat);
   assert.equal(caps.projectConfig.statePath, '/tmp/state.json');
   assert.equal(caps.stateRunner.runMoveState, flat.runMoveState, 'by reference');
+  assert.equal(
+    caps.githubClient.fetchSubIssueBoardSnapshot,
+    flat.fetchSubIssueBoardSnapshot,
+    'strict snapshot by reference'
+  );
   assert.equal(caps.githubClient.fetchSubIssues, flat.fetchSubIssues, 'by reference');
   assert.equal(typeof caps.issueBodyMutator.mutate, 'function');
+});
+
+test('strict sub-issue capability fetches project identity and Status name in one query', () => {
+  const src = readFileSync(path.resolve(here, '..', '..', 'runtime.mjs'), 'utf8');
+  const start = src.indexOf('ctx.fetchSubIssueBoardSnapshot = async');
+  const end = src.indexOf('ctx.fetchSubIssues = async', start);
+
+  assert.notEqual(start, -1, 'runtime defines fetchSubIssueBoardSnapshot');
+  assert.ok(end > start, 'legacy fetchSubIssues follows the strict capability');
+
+  const capabilitySource = src.slice(start, end);
+  assert.match(capabilitySource, /subIssues\(first:\s*100\)/);
+  assert.match(capabilitySource, /projectItems\(first:\s*\d+\)/);
+  assert.match(capabilitySource, /project\s*\{\s*id\s*\}/);
+  assert.match(capabilitySource, /fieldValueByName\(name:\s*"Status"\)/);
+  assert.match(
+    capabilitySource,
+    /ProjectV2ItemFieldSingleSelectValue\s*\{\s*name\s*\}/,
+    'the same child query requests the Status name'
+  );
+});
+
+test('strict sub-issue capability reports a thrown GraphQL query as unknown', async () => {
+  const prevSkipNetwork = process.env.TT_SKIP_NETWORK;
+  const prevSelfCheck = process.env.TT_SKIP_FIELD_SELF_CHECK;
+  const originalSpawn = githubProjectsDeps.spawn;
+  process.env.TT_SKIP_NETWORK = '';
+  process.env.TT_SKIP_FIELD_SELF_CHECK = '1';
+  githubProjectsDeps.spawn = () => {
+    throw new Error('query exploded');
+  };
+
+  try {
+    const result = await buildContext(['status']).fetchSubIssueBoardSnapshot(925);
+    assert.deepEqual(result, { status: 'unknown', error: 'query exploded' });
+  } finally {
+    githubProjectsDeps.spawn = originalSpawn;
+    if (prevSkipNetwork === undefined) delete process.env.TT_SKIP_NETWORK;
+    else process.env.TT_SKIP_NETWORK = prevSkipNetwork;
+    if (prevSelfCheck === undefined) delete process.env.TT_SKIP_FIELD_SELF_CHECK;
+    else process.env.TT_SKIP_FIELD_SELF_CHECK = prevSelfCheck;
+  }
+});
+
+test('legacy fetchSubIssues delegates and preserves numeric issue numbers only for ok snapshots', async () => {
+  const prevSkipNetwork = process.env.TT_SKIP_NETWORK;
+  const prevSelfCheck = process.env.TT_SKIP_FIELD_SELF_CHECK;
+  process.env.TT_SKIP_NETWORK = '1';
+  process.env.TT_SKIP_FIELD_SELF_CHECK = '1';
+
+  try {
+    const ctx = buildContext(['status']);
+    ctx.fetchSubIssueBoardSnapshot = async () => ({
+      status: 'ok',
+      children: [
+        { number: 11, boardState: 'done' },
+        { number: 12, boardState: 'review' },
+      ],
+    });
+    assert.deepEqual(await ctx.fetchSubIssues(925), [11, 12]);
+
+    ctx.fetchSubIssueBoardSnapshot = async () => ({
+      status: 'unknown',
+      error: 'query exploded',
+    });
+    assert.deepEqual(await ctx.fetchSubIssues(925), []);
+  } finally {
+    if (prevSkipNetwork === undefined) delete process.env.TT_SKIP_NETWORK;
+    else process.env.TT_SKIP_NETWORK = prevSkipNetwork;
+    if (prevSelfCheck === undefined) delete process.env.TT_SKIP_FIELD_SELF_CHECK;
+    else process.env.TT_SKIP_FIELD_SELF_CHECK = prevSelfCheck;
+  }
 });
 
 // --- AC2 (source): verbClose reads the grouped capability interface ---------

@@ -80,6 +80,11 @@ export const INVARIANT_MARKER_PATTERNS = [
     kind: 'single',
   },
   {
+    name: 'aitm-unauthorized-close',
+    re: /<!--\s*aitm-unauthorized-close(?:\s*:|\s+(?:tx|ts)=")/i,
+    kind: 'single',
+  },
+  {
     name: 'aitm-deep-dive-posted',
     re: /<!--\s*aitm-deep-dive-posted(?:\s*:|\s+ts=")/i,
     kind: 'single',

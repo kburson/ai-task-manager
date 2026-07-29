@@ -46,9 +46,11 @@ export const CAPABILITY_SURFACES = {
   githubClient: [
     'worktreeLabel',
     'buildStateOptionMap',
+    'fetchSubIssueBoardSnapshot',
     'fetchSubIssues',
     'fetchParentIssue',
     'getIssueBoardState',
+    'getIssueCloseSnapshot',
     'getIssueClosedState',
   ],
   issueBodyMutator: ['mutate'],

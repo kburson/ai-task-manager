@@ -47,6 +47,7 @@ const AUDIT_EVENTS = [
   'session-start',
   'session-end-recovery',
   'lifecycle-warn',
+  'unauthorized-close',
   'chore-mode-enter',
   'closed-with-dirty-tree',
   'switch-end',
@@ -59,7 +60,7 @@ const AUDIT_EVENTS = [
 
 test('every exact event has one frozen canonical descriptor and classification', () => {
   const descriptors = exactTimingEventDescriptors();
-  assert.equal(descriptors.length, 36);
+  assert.equal(descriptors.length, 37);
   assert.equal(new Set(descriptors.map(({ event }) => event)).size, descriptors.length);
   assert.equal(Object.isFrozen(descriptors), true);
 

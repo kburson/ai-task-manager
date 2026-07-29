@@ -15,6 +15,8 @@ import { writeMoveCompleteMarker, readMoveCompleteState, isMoveComplete } from '
 import { getStageVisitCount } from '../stage-entry-markers.mjs';
 import { parseTimingRows } from '../timing-ladder.mjs';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
+import { resolveTailProfile } from './tail-profiles.mjs';
+import { resolveReviewAuthority } from '../human-reviewer-audit.mjs';
 
 // A timing row whose event closes a phase: any canonical `<state>:complete`
 // slug (`refine:completed`, `test:passed`, `review:approved`, `issue:closed`)
@@ -126,6 +128,10 @@ export async function defaultWriteSentinel(ctx) {
 // LAST of all — so a crash anywhere leaves a safely re-runnable partial state
 // and "the move is complete" has a single verifiable definition (sentinel.mjs).
 export async function moveState(ctx) {
+  const { name: tailProfile } = resolveTailProfile(ctx.tailProfile);
+  ctx.tailProfile = tailProfile;
+  ctx.reviewAuthority = resolveReviewAuthority(ctx.reviewAuthority);
+
   const runGuardExecution = ctx._runGuardExecution || defaultRunGuardExecution;
   const probeCompletion = ctx._probeCompletion || defaultProbeCompletion;
   const emitPhasePairRows = ctx._emitPhasePairRows || defaultEmitPhasePairRows;

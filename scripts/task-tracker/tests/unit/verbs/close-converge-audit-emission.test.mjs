@@ -36,39 +36,48 @@ function tmpState(state) {
   return { statePath, dir };
 }
 
-// Drive the real verbClose down the converge/noop path. `getIssueClosedState →
-// true` + a Done board makes decideCloseConvergence return `{action:'noop'}`.
-// `pexec` answers the converge branch's `gh issue view --json body` read with
-// `issueBody`; `ctx.readTimingCommentBody` injects the prior timing rows so the
-// idempotency/delta reads stay offline; `safePostTiming` captures posted rows.
+// Drive the real verbClose down the converge/noop path through grouped
+// capabilities. `getIssueClosedState → true` + a Done board makes
+// decideCloseConvergence return `{action:'noop'}`. `pexec` answers the
+// housekeeping branch's best-effort body read with `issueBody`;
+// `ctx.readTimingCommentBody` injects prior timing rows and `safePostTiming`
+// captures posted rows.
 async function runConverge({ issueBody, timingBody }) {
   const { statePath, dir } = tmpState(baseState());
   const posted = [];
   const ctx = {
-    cfg: { repo: 'o/r' },
-    statePath,
-    projectDir: dir,
     rest: ['#5'],
-    SKIP_NETWORK: false,
-    pexec: async (_cmd, args = []) => {
-      if (args.includes('view') && args.includes('body')) {
-        return { stdout: JSON.stringify({ body: issueBody }), stderr: '' };
-      }
-      return { stdout: '{}', stderr: '' };
+    projectConfig: {
+      cfg: { repo: 'o/r' },
+      statePath,
+      projectDir: dir,
+      SKIP_NETWORK: false,
+      pexec: async (_cmd, args = []) => {
+        if (args.includes('view') && args.includes('body')) {
+          return { stdout: JSON.stringify({ body: issueBody }), stderr: '' };
+        }
+        return { stdout: '{}', stderr: '' };
+      },
+      uncheckedPreCloseCheckboxes: () => [],
+      nowIso: () => new Date().toISOString(),
     },
-    drainQueueIfAny: async () => {},
-    flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
-    safePostTiming: async (_target, row) => {
-      posted.push(row);
+    timingRecorder: {
+      drainQueueIfAny: async () => {},
+      flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
+      safePostTiming: async (_target, row) => {
+        posted.push(row);
+      },
     },
-    runMoveState: async () => ({ ok: true, benign: false }),
-    runMoveStateDone: async () => ({ ok: true, benign: false }),
-    runLogIssueTime: async () => {},
-    fetchSubIssues: async () => [],
-    getIssueBoardState: async () => 'done',
-    getIssueClosedState: async () => true,
-    uncheckedPreCloseCheckboxes: () => [],
-    nowIso: () => new Date().toISOString(),
+    stateRunner: {
+      runMoveState: async () => ({ ok: true, benign: false }),
+      runMoveStateDone: async () => ({ ok: true, benign: false }),
+      runLogIssueTime: async () => {},
+    },
+    githubClient: {
+      fetchSubIssues: async () => [],
+      getIssueBoardState: async () => 'done',
+      getIssueClosedState: async () => true,
+    },
     readTimingCommentBody: async () => ({ status: 'found', body: timingBody, error: null }),
     tickLifecycleOnClose: async () => ({ ok: true }),
   };
