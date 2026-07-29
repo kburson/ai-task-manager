@@ -491,13 +491,16 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
   const entries = [
-    // Machine-local/transient runtime state (state, queue, fleet, sessions,
-    // locks, caches, per-provider app state) all live under `.tmp/aitm/` as of
-    // #573 — covered wholesale by the `.tmp/` entry below. The skill-installed
-    // templates + references/ now live tracked under `.ai-task-manager/templates/`
-    // (#574); only their `.bak` edit backups still need explicit ignores here.
+    // Machine-local/transient runtime state lives under `.tmp/aitm/`, with
+    // project-local caches under `.ai-task-manager/.cache/`. Stable install
+    // artifacts in `.ai-task-manager/`, `.claude/`, `.codex/`, and `.agents/`
+    // are intentionally trackable so cloud clones inherit the AITM contract.
+    '.ai-task-manager/.cache/',
     '.ai-task-manager/templates/*.bak',
     '.ai-task-manager/templates/references/*.bak',
+    '.claude/worktrees/',
+    '.claude/settings.local.json',
+    '.claude/scheduled_tasks.lock',
     '.tmp/',
   ];
   const COMMENT = '# ai-task-manager — local edit backups (do not commit)';
@@ -814,7 +817,7 @@ function installTemplates(targetDir) {
   }
   installReferences(mdTemplatesDest);
   patchGitignore(targetDir);
-  ok(`Gitignore ${dim('.ai-task-manager/templates backups and .tmp/ runtime tree')}`);
+  ok(`Gitignore ${dim('runtime/local artifacts only')}`);
   mergeDefaultPreferences(templateDest);
 }
 

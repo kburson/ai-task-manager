@@ -39,8 +39,9 @@ coverage/
 # already ignored wholesale via the `.tmp/` rule above: state, queue, fleet,
 # cache, orchestrator.lock, locks/, sessions/, gates/, and per-app (app/claude,
 # app/codex) trees. No per-file rules needed here.
-# Per-host install artifacts (Claude Code / Codex / Agents — regenerable from skill/)
-.claude/
-.agents/
+# ai-task-manager — local/runtime artifacts (do not commit)
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 .worktrees/

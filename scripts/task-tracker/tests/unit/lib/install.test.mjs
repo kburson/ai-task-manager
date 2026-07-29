@@ -273,10 +273,58 @@ try {
   // actually write to — never a bare `tmp/`, which nothing writes to.
   const gitignoreLines = gitignore.split('\n').map((l) => l.trim());
   assert.ok(gitignoreLines.includes('.tmp/'), 'installer must ignore the .tmp/ scratch dir');
+  assert.ok(
+    gitignoreLines.includes('.ai-task-manager/.cache/'),
+    'installer must ignore local AITM cache'
+  );
+  assert.ok(
+    gitignoreLines.includes('.claude/worktrees/'),
+    'installer must ignore Claude worktree checkouts'
+  );
+  assert.ok(
+    gitignoreLines.includes('.claude/settings.local.json'),
+    'installer must ignore local Claude settings overrides'
+  );
+  assert.ok(
+    gitignoreLines.includes('.claude/scheduled_tasks.lock'),
+    'installer must ignore Claude scheduled task lock'
+  );
+  assert.equal(
+    gitignoreLines.includes('.claude/'),
+    false,
+    'installer must not ignore the whole .claude/ directory'
+  );
+  assert.equal(
+    gitignoreLines.includes('.agents/'),
+    false,
+    'installer must not ignore the whole .agents/ directory'
+  );
   assert.equal(
     gitignoreLines.includes('tmp/'),
     false,
     'installer must not ignore a bare tmp/ (regression #412)'
+  );
+
+  const repoGitignoreLines = readFileSync(path.join(ROOT, '.gitignore'), 'utf8')
+    .split('\n')
+    .map((line) => line.trim());
+  for (const localPath of [
+    '.ai-task-manager/.cache/',
+    '.claude/worktrees/',
+    '.claude/settings.local.json',
+    '.claude/scheduled_tasks.lock',
+  ]) {
+    assert.ok(repoGitignoreLines.includes(localPath), `root .gitignore must ignore ${localPath}`);
+  }
+  assert.equal(
+    repoGitignoreLines.includes('.claude/'),
+    false,
+    'root .gitignore must track portable Claude artifacts'
+  );
+  assert.equal(
+    repoGitignoreLines.includes('.agents/'),
+    false,
+    'root .gitignore must track portable agent artifacts'
   );
 
   // Templates written to shared runtime folder under templates/ (#574)
