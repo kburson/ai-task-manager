@@ -421,7 +421,7 @@ export function patchSettingsJson(settingsPath, { memoryIndexHook = false } = {}
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
 }
 
-export function patchCodexHooksJson(hooksPath) {
+export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {}) {
   let config = {};
   if (existsSync(hooksPath)) {
     try {
@@ -451,6 +451,11 @@ export function patchCodexHooksJson(hooksPath) {
       event === 'SessionStart' ? 'startup|resume|clear|compact' : 'manual|auto',
       TIMING_HOOK_CMD
     );
+  }
+
+  if (memoryIndexHook) {
+    add('SessionStart', 'startup|resume|clear|compact', MEMORY_INDEX_HOOK_CMD);
+    add('PostCompact', 'manual|auto', MEMORY_INDEX_HOOK_CMD);
   }
 
   // #792 — strip any legacy bare `node node_modules/…/<guard>.mjs` PreToolUse
@@ -686,7 +691,7 @@ function installClaude(targetDir, linkMode, { memoryIndexHook = false } = {}) {
   }
 }
 
-function installCodex(targetDir, linkMode) {
+function installCodex(targetDir, linkMode, { memoryIndexHook = false } = {}) {
   step('Codex files');
   const skillDest = join(targetDir, getProvider('codex').installTarget);
   if (linkMode === 'symlink') {
@@ -699,7 +704,7 @@ function installCodex(targetDir, linkMode) {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
   }
   if (getProvider('codex').hookCapability) {
-    patchCodexHooksJson(join(targetDir, '.codex', 'hooks.json'));
+    patchCodexHooksJson(join(targetDir, '.codex', 'hooks.json'), { memoryIndexHook });
     ok(`Hooks ${dim('.codex/hooks.json')}`);
   }
 }
@@ -1007,7 +1012,9 @@ async function cmdInstall(args) {
 
   if (agent === 'claude' || agent === 'both')
     installClaude(targetDir, linkMode, { memoryIndexHook });
-  if (agent === 'codex' || agent === 'both') installCodex(targetDir, linkMode);
+  if (agent === 'codex' || agent === 'both') {
+    installCodex(targetDir, linkMode, { memoryIndexHook });
+  }
   if ((agent === 'codex' || agent === 'both') && enableCodexSuperpowers) {
     setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
   }

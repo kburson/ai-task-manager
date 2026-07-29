@@ -23,6 +23,18 @@ import * as cli from '../../../../../bin/cli.mjs';
 const repoRoot = fileURLToPath(new URL('../../../../..', import.meta.url));
 const CLI = join(repoRoot, 'bin', 'cli.mjs');
 
+function flatHookCommands(config, event) {
+  return (config.hooks?.[event] ?? []).flatMap((entry) => [
+    ...(typeof entry === 'string' ? [entry] : []),
+    ...(entry.command ? [entry.command] : []),
+    ...(entry.hooks ?? []).map((inner) => inner.command).filter(Boolean),
+  ]);
+}
+
+function commandCount(config, event, commandPart) {
+  return flatHookCommands(config, event).filter((cmd) => cmd.includes(commandPart)).length;
+}
+
 function run(argv, opts = {}) {
   return spawnSync(process.execPath, [CLI, ...argv], { encoding: 'utf8', ...opts });
 }
@@ -122,6 +134,52 @@ test('patchCodexHooksJson creates hooks, is idempotent, tolerates garbage', () =
   writeFileSync(p2, 'nonsense', 'utf8');
   cli.patchCodexHooksJson(p2);
   assert.ok(JSON.parse(readFileSync(p2, 'utf8')).hooks);
+});
+
+test('patchCodexHooksJson registers memory index hooks only when requested', () => {
+  const dir = scratch('cli-codex-memory-');
+  const p = join(dir, '.codex', 'hooks.json');
+
+  cli.patchCodexHooksJson(p, { memoryIndexHook: false });
+  let config = JSON.parse(readFileSync(p, 'utf8'));
+  assert.equal(
+    commandCount(config, 'SessionStart', 'hooks/memory-index.mjs'),
+    0,
+    'no SessionStart memory index hook when seed selection was none'
+  );
+  assert.equal(
+    commandCount(config, 'PostCompact', 'hooks/memory-index.mjs'),
+    0,
+    'no PostCompact memory index hook when seed selection was none'
+  );
+  assert.equal(
+    commandCount(config, 'PreCompact', 'hooks/memory-index.mjs'),
+    0,
+    'memory index hook must never register on PreCompact'
+  );
+
+  cli.patchCodexHooksJson(p, { memoryIndexHook: true });
+  config = JSON.parse(readFileSync(p, 'utf8'));
+  assert.equal(
+    commandCount(config, 'SessionStart', 'hooks/memory-index.mjs'),
+    1,
+    'SessionStart memory index hook registered'
+  );
+  assert.equal(
+    commandCount(config, 'PostCompact', 'hooks/memory-index.mjs'),
+    1,
+    'PostCompact memory index hook registered'
+  );
+  assert.equal(
+    commandCount(config, 'PreCompact', 'hooks/memory-index.mjs'),
+    0,
+    'PreCompact remains timing-only for memory index'
+  );
+
+  cli.patchCodexHooksJson(p, { memoryIndexHook: true });
+  config = JSON.parse(readFileSync(p, 'utf8'));
+  assert.equal(commandCount(config, 'SessionStart', 'hooks/memory-index.mjs'), 1);
+  assert.equal(commandCount(config, 'PostCompact', 'hooks/memory-index.mjs'), 1);
 });
 
 // ---------------------------------------------------------------------------
