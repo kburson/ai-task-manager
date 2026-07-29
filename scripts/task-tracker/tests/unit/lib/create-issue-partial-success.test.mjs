@@ -18,6 +18,11 @@ const script = join(repoRoot, 'scripts/gh/create-issue.mjs');
 
 const CANONICAL_TAIL = [
   '',
+  '## Story Origin',
+  '- **kind**: code',
+  '',
+  '## Plan Metadata',
+  '',
   '## Acceptance Criteria',
   '- [ ] something',
   '',

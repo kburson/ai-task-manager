@@ -178,13 +178,15 @@ async function runExit(ctx) {
   return code;
 }
 
-// A V1-well-formed body: all nine canonical sections, in order, each non-empty,
+// A V1-well-formed body: all ten canonical sections, in order, each non-empty,
 // so the inline Agent Review Gate passes and the success path is reached.
 const CLEAN_BODY = [
   '## User Story',
   'As a maintainer, I want a clean, well-formed body.',
   '## Scope',
   'Exercise the review success path.',
+  '## Story Origin',
+  '- **kind**: code',
   '## Plan Metadata',
   '- **Size:** S',
   '## Pickup Directive',
