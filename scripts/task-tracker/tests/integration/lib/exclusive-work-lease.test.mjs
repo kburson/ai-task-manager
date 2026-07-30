@@ -1,6 +1,6 @@
 // @story #1049
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -23,7 +23,8 @@ import {
 } from '../../../session-state.mjs';
 import { loadState } from '../../../state.mjs';
 import { renewWorkLeaseBeforeResume, verbResume } from '../../../verbs/resume.mjs';
-import { loadMarker, markerPathFor } from '../../../word-counter.mjs';
+import { loadMarker, markerPathFor, saveMarker } from '../../../word-counter.mjs';
+import { pendingPausePath } from '../../../hooks/on-stop.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -2440,6 +2441,10 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
         for (const name of ['session', 'fleet', 'timing', 'github']) {
           const projectionId =
             input.projectionInputs[name].rows?.[0]?.projectionId ??
+            input.projectionInputs[name].switch?.subOperations?.sessionRef?.replace(
+              /:source-session-ref$/,
+              ''
+            ) ??
             `switchLease:switch:${input.sessionId}:1048:1049:request-1:${name}`;
           await input.projections[name]({
             phase: 'forward',
@@ -3191,6 +3196,273 @@ test('genuine cross-issue bind routes through atomic switch before every project
     assert.equal(events.includes('unsafe-switch'), false);
     assert.equal(events.includes('legacy-timing'), false);
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('production GitHub switch suboperations survive response loss with exact remote read-back', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1048', lastActive: '#1048' },
+      session: {
+        issue: '#1048',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    const remoteSessionRefs = new Set();
+    const remoteIssueTimes = new Set();
+    let issueTimeResponseLost = false;
+    ctx.applyWorkLeaseGithubProjection = undefined;
+    ctx.safeRecordSessionRef = async (_issue, input) => {
+      remoteSessionRefs.add(input.operationId);
+      return {
+        ok: true,
+        recent: {
+          sid: input.sid,
+          jsonlPath: input.jsonlPath,
+          ts: input.ts,
+          operationId: input.operationId,
+        },
+      };
+    };
+    ctx.runLogIssueTime = async (_issue, input) => {
+      remoteIssueTimes.add(input.subOperationId);
+      if (!issueTimeResponseLost) {
+        issueTimeResponseLost = true;
+        throw new Error('issue-time response lost after remote success');
+      }
+      return {
+        body: '<!-- aitm-fields: {"schema":1,"values":{"engagedTime":"1m"}} -->',
+        subOperationId: input.subOperationId,
+      };
+    };
+    ctx.coordinateWorkLeaseSwitch = async (input) => {
+      const projectionId = input.projectionInputs.github.switch.subOperations.sessionRef.replace(
+        /:source-session-ref$/,
+        ''
+      );
+      const options = {
+        phase: 'forward',
+        input: input.projectionInputs.github,
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+        transitionId: 'transition-switch',
+        projectionName: 'github',
+        projectionId,
+      };
+      await assert.rejects(
+        () => input.projections.github(options),
+        /issue-time response lost after remote success/
+      );
+      const proof = await input.projections.github(options);
+      assert.deepEqual(proof, { reconciled: true, projectionName: 'github', projectionId });
+      return { lease: options.lease, projectionInputs: input.projectionInputs };
+    };
+
+    await verbResume(ctx);
+
+    assert.equal(remoteSessionRefs.size, 1);
+    assert.equal(remoteIssueTimes.size, 1);
+    assert.match([...remoteSessionRefs][0], /:github:source-session-ref$/);
+    assert.match([...remoteIssueTimes][0], /:github:source-issue-time$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('governed switch keeps the immutable request timestamp but uses the live authority clock', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1048', lastActive: '#1048' },
+      session: {
+        issue: '#1048',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    const plannedAt = new Date().toISOString();
+    const liveAt = new Date(Date.parse(plannedAt) + 20 * 60_000);
+    ctx.nowIso = () => plannedAt;
+    ctx.now = () => liveAt;
+    ctx.coordinateWorkLeaseSwitch = async (input) => {
+      assert.equal(input.requestTimestamp, plannedAt);
+      assert.equal(input.now().toISOString(), liveAt.toISOString());
+      return {
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+        projectionInputs: input.projectionInputs,
+      };
+    };
+
+    await verbResume(ctx);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('claim-first compensation restores exact global, marker, pending-pause, and session state', async () => {
+  const dir = sandbox();
+  const priorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: {
+        active: '#1048',
+        lastActive: '#1048',
+        entryStartTs: '2026-07-30T11:45:00.000Z',
+        wordsAtEntryStart: 21,
+        customGlobal: { preserve: true },
+      },
+      session: {
+        issue: '#1048',
+        entryStartTs: '2026-07-30T11:45:00.000Z',
+        wordsAtStart: 21,
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+        customSession: { preserve: true },
+      },
+      coordinator: 'resume',
+    });
+    const sessionId = ctx.getWorkLeaseIdentity().sessionId;
+    process.env.AI_TASK_MANAGER_SESSION_ID = sessionId;
+    const markerPath = markerPathFor(sessionId);
+    saveMarker(markerPath, 12, 21, '#1048', 34, '2026-07-30T11:45:00.000Z');
+    const pausePath = pendingPausePath(sessionId, dir);
+    mkdirSync(path.dirname(pausePath), { recursive: true });
+    writeFileSync(
+      pausePath,
+      JSON.stringify({ sessionId, issue: '#1048', stoppedAt: '2026-07-30T11:59:00.000Z' })
+    );
+    const beforeGlobal = readFileSync(ctx.statePath);
+    const beforeMarker = readFileSync(markerPath);
+    const beforePause = readFileSync(pausePath);
+    const beforeSession = getActiveTask(sessionId, dir);
+
+    let preflightReads = 0;
+    ctx.runReadOnlyBindPreflight = async () => {
+      preflightReads += 1;
+      if (preflightReads === 1) {
+        return {
+          ok: true,
+          skippedNetwork: false,
+          claimRequired: false,
+          currentUser: 'worker',
+          assignees: ['worker'],
+          assigneeKind: 'assigned-to-current',
+          stateAfter: loadState(ctx.statePath),
+        };
+      }
+      return {
+        ok: false,
+        kind: 'assignee-mismatch',
+        assigneeKind: 'foreign',
+        assignees: ['other-worker'],
+      };
+    };
+    let clockIndex = 0;
+    const clock = [
+      new Date('2026-07-30T12:00:00.000Z'),
+      new Date('2026-07-30T12:05:00.000Z'),
+      new Date('2026-07-30T12:06:00.000Z'),
+    ];
+    ctx.now = () => clock[Math.min(clockIndex++, clock.length - 1)];
+    let currentAuthority;
+    const store = {
+      projectId: LEASE.projectId,
+      async switchLease(request) {
+        const acquiredAt = request.switchedAt;
+        const lease = {
+          projectId: request.projectId,
+          issueId: request.target.issueId,
+          mode: 'write',
+          leaseId: request.idempotencyKey.startsWith('compensate:')
+            ? 'lease-source-restored'
+            : 'lease-target',
+          fencingToken: request.idempotencyKey.startsWith('compensate:') ? '11' : '9',
+          state: 'active',
+          holder: request.target.holder,
+          acquiredAt,
+          heartbeatAt: acquiredAt,
+          expiresAt: new Date(Date.parse(acquiredAt) + request.target.ttlMs).toISOString(),
+          audit: {},
+        };
+        currentAuthority = lease;
+        return {
+          lease,
+          transition: {
+            transitionId: request.idempotencyKey.startsWith('compensate:')
+              ? 'transition-compensation'
+              : 'transition-forward',
+            fromIssueId: request.issueId,
+            fromLeaseId: request.leaseId,
+            fromToken: request.fencingToken,
+            toIssueId: request.target.issueId,
+          },
+        };
+      },
+      async verify() {
+        return { allowed: true, lease: currentAuthority };
+      },
+      async renew(request) {
+        currentAuthority = {
+          ...currentAuthority,
+          heartbeatAt: request.requestedAt,
+          expiresAt: new Date(Date.parse(request.requestedAt) + request.ttlMs).toISOString(),
+        };
+        return currentAuthority;
+      },
+    };
+    ctx.coordinateWorkLeaseSwitch = undefined;
+    ctx.getWorkLeaseStore = () => store;
+    ctx.applyWorkLeaseSwitchCompensationFleetProjection = async ({ projectionId }) => ({
+      reconciled: true,
+      projectionName: 'fleet',
+      projectionId,
+    });
+
+    await assert.rejects(
+      () => verbResume(ctx),
+      (error) => error instanceof WorkLeaseError && error.code === 'authority-forbidden'
+    );
+
+    assert.deepEqual(readFileSync(ctx.statePath), beforeGlobal);
+    assert.deepEqual(readFileSync(markerPath), beforeMarker);
+    assert.deepEqual(readFileSync(pausePath), beforePause);
+    const restored = getActiveTask(sessionId, dir);
+    assert.deepEqual({ ...restored, lease: undefined }, { ...beforeSession, lease: undefined });
+    assert.equal(restored.lease.leaseId, 'lease-source-restored');
+    assert.equal(restored.lease.fencingToken, '11');
+    assert.equal(restored.workLeaseIntent, undefined);
+  } finally {
+    if (priorSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = priorSid;
     rmSync(dir, { recursive: true, force: true });
   }
 });

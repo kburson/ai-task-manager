@@ -42,6 +42,22 @@ test('recordSessionRefOnChange is a no-op when sid+jsonlPath unchanged (AC2)', (
   assert.equal(body, seeded);
 });
 
+test('a governed suboperation is persisted and read back even when sid and path are unchanged', () => {
+  const initial = recordSessionRefOnChange('', E1).body;
+  const governed = recordSessionRefOnChange(initial, {
+    ...E1,
+    ts: '2026-06-21T00:05:00Z',
+    operationId: 'switchLease:tx:github:source-session-ref',
+  });
+  assert.equal(governed.appended, true);
+  assert.deepEqual(mostRecentSessionRef(governed.body), {
+    sid: E1.sid,
+    jsonlPath: E1.jsonlPath,
+    ts: '2026-06-21T00:05:00Z',
+    operationId: 'switchLease:tx:github:source-session-ref',
+  });
+});
+
 test('recordSessionRefOnChange appends on sid change, preserving prior (AC3)', () => {
   const seeded = appendSessionRef('## Body\n', E1);
   const { body, appended } = recordSessionRefOnChange(seeded, E2);

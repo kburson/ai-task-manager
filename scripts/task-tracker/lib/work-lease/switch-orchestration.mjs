@@ -315,7 +315,12 @@ export function validateSwitchGithubProjectionInput(
       switchInput.sourceIssue !== `#${source}` ||
       switchInput.targetIssue !== `#${target}` ||
       switchInput.sessionId !== trustedSessionId ||
-      switchInput.jsonlPath !== jsonlPath(trustedSessionId)
+      switchInput.jsonlPath !== jsonlPath(trustedSessionId) ||
+      typeof switchInput.subOperations?.sessionRef !== 'string' ||
+      switchInput.subOperations.sessionRef === '' ||
+      typeof switchInput.subOperations?.issueTime !== 'string' ||
+      switchInput.subOperations.issueTime === '' ||
+      switchInput.subOperations.sessionRef === switchInput.subOperations.issueTime
     ) {
       throw leaseError(
         'invalid-request',
@@ -351,7 +356,90 @@ export function validateSwitchGithubProjectionInput(
   } else if (!value.claimRequired && value.auditBody !== null) {
     throw leaseError('invalid-request', 'persisted switch assignment audit is unexpected');
   }
+  if (
+    value.switch &&
+    projectionId !== undefined &&
+    (!value.switch.subOperations.sessionRef.startsWith(`${projectionId}:`) ||
+      !value.switch.subOperations.issueTime.startsWith(`${projectionId}:`))
+  ) {
+    throw leaseError(
+      'invalid-request',
+      'persisted GitHub switch suboperations do not match their projection'
+    );
+  }
   return value;
+}
+
+export function validateSwitchProjectionInputs(
+  projections,
+  { sourceIssueId, targetIssueId, sessionId, request } = {}
+) {
+  const source = canonicalIssue(sourceIssueId ?? request?.issueId, 'persisted switch source');
+  const target = canonicalIssue(
+    targetIssueId ?? request?.target?.issueId,
+    'persisted switch target'
+  );
+  const trustedSessionId = requiredString(
+    sessionId ?? request?.target?.holder?.sessionId,
+    'persisted switch sessionId'
+  );
+  const sourceRef = `#${source}`;
+  const targetRef = `#${target}`;
+  const values = Object.fromEntries(
+    WORK_LEASE_PROJECTIONS.map((name) => [
+      name,
+      object(projections?.[name]?.input ?? projections?.[name], `persisted ${name} switch input`),
+    ])
+  );
+  const session = values.session;
+  if (
+    session.sessionId !== trustedSessionId ||
+    session.switch?.sourceIssue !== sourceRef ||
+    session.switch?.targetIssue !== targetRef
+  ) {
+    throw leaseError(
+      'invalid-request',
+      'persisted session switch input does not match source, target, or session'
+    );
+  }
+  const fleet = values.fleet;
+  if (
+    fleet.sourceIssue !== sourceRef ||
+    fleet.targetIssue !== targetRef ||
+    fleet.source?.issue !== sourceRef ||
+    fleet.target?.issue !== targetRef
+  ) {
+    throw leaseError(
+      'invalid-request',
+      'persisted fleet switch input does not match source or target'
+    );
+  }
+  const timing = values.timing;
+  if (
+    timing.sourceIssue !== sourceRef ||
+    timing.targetIssue !== targetRef ||
+    !Array.isArray(timing.rows) ||
+    timing.rows.some(
+      (row) =>
+        !row ||
+        ![source, target].includes(String(row.issueNumber)) ||
+        typeof row.subOperationId !== 'string' ||
+        row.subOperationId === ''
+    )
+  ) {
+    throw leaseError(
+      'invalid-request',
+      'persisted timing switch input does not match source or target'
+    );
+  }
+  validateSwitchGithubProjectionInput(values.github, {
+    sourceIssueId: source,
+    targetIssueId: target,
+    sessionId: trustedSessionId,
+    request,
+    projectionId: projections?.github?.projectionId,
+  });
+  return values;
 }
 
 function isCanonicalTimestamp(value) {
@@ -531,7 +619,7 @@ async function verifyReceiptAuthority({ store, receipt, request, sessionId, host
   return authorityLease;
 }
 
-function deterministicCompensationRequest(forwardRequest, forwardReceipt) {
+function deterministicCompensationRequest(forwardRequest, forwardReceipt, compensationAt) {
   const targetLease = object(forwardReceipt?.lease, 'forward switch receipt target lease');
   const transitionId = requiredString(
     forwardReceipt?.transition?.transitionId,
@@ -543,13 +631,13 @@ function deterministicCompensationRequest(forwardRequest, forwardReceipt) {
     leaseId: targetLease.leaseId,
     fencingToken: targetLease.fencingToken,
     idempotencyKey: `compensate:${transitionId}`,
-    switchedAt: forwardRequest.switchedAt,
+    switchedAt: compensationAt,
     target: {
       projectId: forwardRequest.projectId,
       issueId: forwardRequest.issueId,
       mode: 'write',
       idempotencyKey: `compensate-target:${transitionId}`,
-      requestedAt: forwardRequest.switchedAt,
+      requestedAt: compensationAt,
       ttlMs: forwardRequest.target.ttlMs,
       holder: forwardRequest.target.holder,
     },
@@ -569,7 +657,11 @@ function validateCompensationCorrelation(intent, forwardRequest, forwardReceipt)
       `persisted compensation is malformed: ${error?.message || 'unknown validation error'}`
     );
   }
-  const expected = deterministicCompensationRequest(forwardRequest, forwardReceipt);
+  const expected = deterministicCompensationRequest(
+    forwardRequest,
+    forwardReceipt,
+    request.switchedAt
+  );
   if (
     !sameJson(request, expected) ||
     intent.compensation.reason !== 'target-ineligible-after-switch'
@@ -578,6 +670,22 @@ function validateCompensationCorrelation(intent, forwardRequest, forwardReceipt)
       'invalid-request',
       'persisted compensation does not match the immutable forward transition'
     );
+  }
+  for (const name of WORK_LEASE_PROJECTIONS) {
+    const input = object(
+      intent.compensation.projections?.[name]?.input,
+      `persisted compensation ${name} input`
+    );
+    if (
+      input.compensation !== true ||
+      input.forwardTransitionId !== intent.transitionId ||
+      !sameJson(input.forwardInput, intent.projections[name].input)
+    ) {
+      throw leaseError(
+        'invalid-request',
+        `persisted compensation ${name} input does not match the forward transition`
+      );
+    }
   }
   return request;
 }
@@ -601,7 +709,12 @@ async function coordinateSwitchCompensation({
 }) {
   let intent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
   if (!intent?.compensation) {
-    const request = deterministicCompensationRequest(forwardRequest, forwardReceipt);
+    const compensationAt = canonicalTimestamp(now(), 'work-lease compensation time');
+    const request = deterministicCompensationRequest(
+      forwardRequest,
+      forwardReceipt,
+      compensationAt
+    );
     const projectionInputs = Object.fromEntries(
       WORK_LEASE_PROJECTIONS.map((name) => [
         name,
@@ -728,6 +841,7 @@ export async function coordinateWorkLeaseSwitch({
   restoreSnapshot = restoreActiveTaskSnapshot,
   resolveWorktreeIdentity,
   afterReconcile,
+  requestTimestamp,
   now = () => new Date(),
   randomUUID = defaultRandomUUID,
 } = {}) {
@@ -756,12 +870,11 @@ export async function coordinateWorkLeaseSwitch({
     const existingRequest = validateWorkLeaseIntent(existingIntent, {
       requireAllProjections: true,
     });
-    validateSwitchGithubProjectionInput(existingIntent.projections.github.input, {
+    validateSwitchProjectionInputs(existingIntent.projections, {
       sourceIssueId: source,
       targetIssueId: target,
       sessionId,
       request: existingRequest,
-      projectionId: existingIntent.projections.github.projectionId,
     });
   } else {
     const githubInput = validateSwitchGithubProjectionInput(projectionInputs.github, {
@@ -806,7 +919,12 @@ export async function coordinateWorkLeaseSwitch({
     ) {
       throw leaseError('lease-not-held', 'source session authority does not match switch request');
     }
-    const switchedAt = canonicalTimestamp(now(), 'work-lease switch time');
+    const switchedAt =
+      requestTimestamp === undefined
+        ? canonicalTimestamp(now(), 'work-lease switch time')
+        : new Date(
+            parseTimestamp(requestTimestamp, 'persisted work-lease switch request time')
+          ).toISOString();
     const requestId = randomUUID();
     request = {
       projectId: sourceLease.projectId,
@@ -840,12 +958,11 @@ export async function coordinateWorkLeaseSwitch({
       store,
     });
   }
-  validateSwitchGithubProjectionInput(intent.projections.github.input, {
+  validateSwitchProjectionInputs(intent.projections, {
     sourceIssueId: source,
     targetIssueId: target,
     sessionId,
     request,
-    projectionId: intent.projections.github.projectionId,
   });
 
   let receipt = intent.receipt;

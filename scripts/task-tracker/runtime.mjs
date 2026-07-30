@@ -35,7 +35,8 @@ import {
   computeActiveAndIdleSeconds,
   resolveFlushStartMs,
 } from './active-time.mjs';
-import { recordSessionRefOnChange } from './lib/session-ref.mjs';
+import { mostRecentSessionRef, recordSessionRefOnChange } from './lib/session-ref.mjs';
+import { serializeMarker } from './lib/marker-grammar.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
@@ -351,16 +352,25 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   // so the diff/version guards apply; the mutate only ever ADDS a marker, so it
   // cannot trip `MarkerLossError`. Failures are swallowed: a session-ref write
   // problem must never break the timing flush (parity with `safePostTiming`).
-  ctx.safeRecordSessionRef = async (issue, { sid, jsonlPath: jp, ts }) => {
+  ctx.safeRecordSessionRef = async (issue, { sid, jsonlPath: jp, ts, operationId }) => {
     if (SKIP_NETWORK) return { ok: true, skipped: true };
     try {
       const res = await mutateIssueBody({
         issueNumber: String(issue).replace(/^#/, ''),
         repo: cfg.repo,
-        mutate: (base) => recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts }).body,
+        mutate: (base) =>
+          recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts, operationId }).body,
         deps: { pexec },
       });
-      return { ok: true, status: res?.status };
+      const recent = mostRecentSessionRef(res?.body);
+      if (
+        recent?.sid !== sid ||
+        recent?.jsonlPath !== jp ||
+        (operationId && (recent?.ts !== ts || recent.operationId !== operationId))
+      ) {
+        throw new Error('session reference remote read-back does not match');
+      }
+      return { ok: true, status: res?.status, recent };
     } catch (err) {
       return { ok: false, err: err.message };
     }
@@ -662,14 +672,43 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     };
   };
 
-  ctx.runLogIssueTime = async (issue) => {
-    if (SKIP_NETWORK) return;
+  ctx.runLogIssueTime = async (issue, { subOperationId } = {}) => {
+    if (SKIP_NETWORK) return { skipped: true };
     const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
     try {
       const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
         timeout: GH_API_TIMEOUT_MS,
       });
       if (stdout.trim()) console.log(stdout.trim());
+      let body;
+      if (subOperationId) {
+        const marker = serializeMarker('switch-projection', { op: subOperationId });
+        const result = await mutateIssueBody({
+          issueNumber: String(issue).replace(/^#/, ''),
+          repo: cfg.repo,
+          mutate: (base) => {
+            if (base.includes(marker)) return base;
+            const fields = /^[^\n]*<!--\s*aitm-fields:/m.exec(base);
+            if (!fields) return `${base.trimEnd()}\n${marker}\n`;
+            const lineStart = base.lastIndexOf('\n', fields.index) + 1;
+            return `${base.slice(0, lineStart)}${marker}\n\n${base.slice(lineStart)}`;
+          },
+          deps: { pexec },
+        });
+        body = result?.body;
+        if (!body?.includes(marker)) {
+          throw new Error('issue-time suboperation remote read-back does not match');
+        }
+      } else {
+        const { stdout: issueJson } = await pexec(
+          'gh',
+          ['issue', 'view', String(issue).replace(/^#/, ''), '--repo', cfg.repo, '--json', 'body'],
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        body = JSON.parse(issueJson).body;
+      }
+      if (typeof body !== 'string') throw new Error('issue body read-back is malformed');
+      return { body, ...(subOperationId ? { subOperationId } : {}) };
     } catch (err) {
       // Fail-loud: silent swallow here is the root cause of #180 (board fields
       // never written, body cache stays null, close completes anyway). No env

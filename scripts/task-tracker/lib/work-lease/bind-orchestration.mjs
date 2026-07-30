@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
 import { loadState, saveState, advanceWordMarker } from '../../state.mjs';
+import { parseIssueFieldDb } from '../../issue-field-db.mjs';
 import { rawProjectConfig } from '../../config.mjs';
 import {
   registerTaskProjection,
@@ -25,6 +27,7 @@ import {
   setActiveTask,
 } from '../../session-state.mjs';
 import { consumePendingPauseForBind } from '../../orphan-finalize.mjs';
+import { pendingPausePath } from '../../hooks/on-stop.mjs';
 import { bothGatesExplicit } from '../gate-resolve.mjs';
 import { loadSession as loadRuntimeSession } from '../session-store.mjs';
 import { refuseReadOnlyBindPreflight, runReadOnlyBindPreflight } from '../verb-preflight.mjs';
@@ -127,6 +130,45 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim() !== '';
 }
 
+function captureFileSnapshot(filePath) {
+  const present = existsSync(filePath);
+  return {
+    path: filePath,
+    present,
+    bytesBase64: present ? readFileSync(filePath).toString('base64') : '',
+  };
+}
+
+function validateFileSnapshot(snapshot, label) {
+  if (
+    !isPlainObject(snapshot) ||
+    !isNonEmptyString(snapshot.path) ||
+    typeof snapshot.present !== 'boolean' ||
+    typeof snapshot.bytesBase64 !== 'string' ||
+    (!snapshot.present && snapshot.bytesBase64 !== '')
+  ) {
+    throw new Error(`${label} snapshot is malformed`);
+  }
+  return snapshot;
+}
+
+function restoreFileSnapshot(snapshot, label) {
+  validateFileSnapshot(snapshot, label);
+  if (snapshot.present) {
+    mkdirSync(path.dirname(snapshot.path), { recursive: true });
+    writeFileSync(snapshot.path, Buffer.from(snapshot.bytesBase64, 'base64'));
+  } else if (existsSync(snapshot.path)) {
+    rmSync(snapshot.path);
+  }
+  const present = existsSync(snapshot.path);
+  if (
+    present !== snapshot.present ||
+    (present && readFileSync(snapshot.path).toString('base64') !== snapshot.bytesBase64)
+  ) {
+    throw new Error(`${label} snapshot read-back does not match`);
+  }
+}
+
 function validateSessionProjectionInput(input) {
   if (
     !isPlainObject(input) ||
@@ -161,6 +203,18 @@ function validateSessionProjectionInput(input) {
       !isNonEmptyString(input.marker.ts))
   ) {
     throw new Error('persisted session marker projection is malformed');
+  }
+  if (input.switch) {
+    if (
+      !isPlainObject(input.switch) ||
+      input.switch.sourceIssue === input.switch.targetIssue ||
+      !isPlainObject(input.compensationSnapshot)
+    ) {
+      throw new Error('persisted switch session recovery input is malformed');
+    }
+    validateFileSnapshot(input.compensationSnapshot.globalState, 'global state');
+    validateFileSnapshot(input.compensationSnapshot.wordMarker, 'word marker');
+    validateFileSnapshot(input.compensationSnapshot.pendingPause, 'pending pause');
   }
 }
 
@@ -429,11 +483,30 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
       sid: input.switch.sessionId,
       jsonlPath: input.switch.jsonlPath,
       ts: input.switch.ts,
+      operationId: input.switch.subOperations.sessionRef,
     });
-    if (sessionRef?.ok !== true) {
+    if (
+      sessionRef?.ok !== true ||
+      sessionRef.recent?.sid !== input.switch.sessionId ||
+      sessionRef.recent?.jsonlPath !== input.switch.jsonlPath ||
+      sessionRef.recent?.ts !== input.switch.ts ||
+      sessionRef.recent?.operationId !== input.switch.subOperations.sessionRef
+    ) {
       throw new Error('GitHub switch session reference did not reconcile');
     }
-    await ctx.runLogIssueTime(input.switch.sourceIssue);
+    const issueTime = await ctx.runLogIssueTime(input.switch.sourceIssue, {
+      projectionId,
+      subOperationId: input.switch.subOperations.issueTime,
+    });
+    const fields = parseIssueFieldDb(issueTime?.body);
+    if (
+      issueTime?.subOperationId !== input.switch.subOperations.issueTime ||
+      fields?.ok !== true ||
+      !fields.values ||
+      typeof fields.values !== 'object'
+    ) {
+      throw new Error('GitHub switch issue-time remote read-back does not match');
+    }
   }
   return projectionProof('github', projectionId);
 }
@@ -499,6 +572,11 @@ async function buildGovernedSwitchPlan(
     throw new Error('computed outgoing switch timing prelude is malformed');
   }
   plan.projectionInputs.session.switch = { sourceIssue: source, targetIssue: target };
+  plan.projectionInputs.session.compensationSnapshot = {
+    globalState: captureFileSnapshot(ctx.statePath),
+    wordMarker: captureFileSnapshot(markerPathFor(sessionId)),
+    pendingPause: captureFileSnapshot(pendingPausePath(sessionId, ctx.projectDir)),
+  };
   plan.projectionInputs.fleet = {
     sourceIssue: source,
     targetIssue: target,
@@ -537,6 +615,10 @@ async function buildGovernedSwitchPlan(
     sessionId,
     jsonlPath: jsonlPath(sessionId),
     ts: plan.ts,
+    subOperations: {
+      sessionRef: `${projectionIds.github}:source-session-ref`,
+      issueTime: `${projectionIds.github}:source-issue-time`,
+    },
   };
   plan.projectionInputs = durableJson(plan.projectionInputs);
   return { ...plan, idempotencyKey, projectionIds };
@@ -562,6 +644,13 @@ async function applySwitchProjection(
         );
       }
       restoreCompensatedActiveTask(sessionId, lease, transitionId, projectionId, ctx.projectDir);
+      const recovery = forwardInput?.compensationSnapshot;
+      if (!isPlainObject(recovery)) {
+        throw new Error('work-lease compensation recovery snapshot is missing');
+      }
+      restoreFileSnapshot(recovery.globalState, 'global state');
+      restoreFileSnapshot(recovery.wordMarker, 'word marker');
+      restoreFileSnapshot(recovery.pendingPause, 'pending pause');
       return projectionProof('session', projectionId);
     }
     if (projectionName === 'fleet') {
@@ -685,7 +774,8 @@ async function verbSwitchGoverned(
     projectionInputs: plan.projectionInputs,
     projections,
     resolveWorktreeIdentity: ctx.resolveWorktreeIdentity,
-    now: () => new Date(plan.ts),
+    requestTimestamp: plan.ts,
+    now: ctx.now ?? (() => new Date()),
     randomUUID: () => requestId,
   });
   const startHeartbeat = ctx.createWorkLeaseHeartbeat ?? createWorkLeaseHeartbeat;

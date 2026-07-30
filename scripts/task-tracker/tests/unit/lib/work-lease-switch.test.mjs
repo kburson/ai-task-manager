@@ -123,13 +123,25 @@ function switchOptions(dir, overrides = {}) {
     },
   };
   const projectionInputs = {
-    session: { sourceIssue: '#1049', targetIssue: '#1051' },
-    fleet: { sourceIssue: '#1049', targetIssue: '#1051' },
+    session: {
+      sessionId: 'session-1',
+      switch: { sourceIssue: '#1049', targetIssue: '#1051' },
+    },
+    fleet: {
+      sourceIssue: '#1049',
+      targetIssue: '#1051',
+      source: { issue: '#1049' },
+      target: { issue: '#1051' },
+    },
     timing: {
       skippedNetwork: false,
       sourceIssue: '#1049',
       targetIssue: '#1051',
       operations: ['outgoing', 'incoming'],
+      rows: [
+        { issueNumber: '1049', subOperationId: 'outgoing:switch-out' },
+        { issueNumber: '1051', subOperationId: 'incoming:bind' },
+      ],
     },
     github: {
       issueNumber: '1051',
@@ -149,6 +161,10 @@ function switchOptions(dir, overrides = {}) {
         sessionId: 'session-1',
         jsonlPath: jsonlPath('session-1'),
         ts: NOW.toISOString(),
+        subOperations: {
+          sessionRef: 'switchLease:switch:session-1:1049:1051:request-1:github:source-session-ref',
+          issueTime: 'switchLease:switch:session-1:1049:1051:request-1:github:source-issue-time',
+        },
       },
     },
   };
@@ -897,6 +913,118 @@ test('malformed recovered GitHub input fails before identity, authority replay, 
         rmSync(dir, { recursive: true, force: true });
       }
     });
+  }
+});
+
+test('malformed recovered non-GitHub inputs fail before identity, provider, or authority replay', async (t) => {
+  const cases = {
+    session: (input) => {
+      input.switch.targetIssue = '#999';
+    },
+    fleet: (input) => {
+      input.sourceIssue = '#999';
+    },
+    timing: (input) => {
+      input.rows = [{ issueNumber: '999', subOperationId: 'wrong-issue' }];
+    },
+  };
+  for (const [name, corrupt] of Object.entries(cases)) {
+    await t.test(name, async () => {
+      const dir = sandbox();
+      try {
+        seedSource(dir);
+        const first = switchOptions(dir);
+        first.input.projectionInputs.session.sessionId = 'session-1';
+        first.input.projectionInputs.session.switch = {
+          sourceIssue: '#1049',
+          targetIssue: '#1051',
+        };
+        first.input.projectionInputs.fleet = {
+          sourceIssue: '#1049',
+          targetIssue: '#1051',
+          source: { issue: '#1049' },
+          target: { issue: '#1051' },
+        };
+        first.input.projectionInputs.timing.rows = [
+          { issueNumber: '1049', subOperationId: 'outgoing:switch-out' },
+          { issueNumber: '1051', subOperationId: 'incoming:bind' },
+        ];
+        first.store.switchLease = async () => {
+          throw new WorkLeaseError('authority-unavailable', 'response lost');
+        };
+        await assert.rejects(
+          () => coordinateWorkLeaseSwitch(first.input),
+          (error) => error.code === 'authority-unavailable'
+        );
+
+        const persistedPath = activeTaskPath('session-1', dir);
+        const persisted = JSON.parse(readFileSync(persistedPath, 'utf8'));
+        corrupt(persisted.workLeaseIntent.projections[name].input);
+        writeFileSync(persistedPath, `${JSON.stringify(persisted, null, 2)}\n`);
+
+        const retry = switchOptions(dir);
+        retry.input.resolveWorktreeIdentity = async () => {
+          throw new Error('corrupt recovery must fail before identity');
+        };
+        retry.input.getStore = async () => {
+          throw new Error('corrupt recovery must fail before provider');
+        };
+        await assert.rejects(
+          () => coordinateWorkLeaseSwitch(retry.input),
+          (error) => error.code === 'invalid-request'
+        );
+        assert.deepEqual(retry.log, []);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test('compensation persists a fresh authority timestamp and replays it exactly', async () => {
+  const dir = sandbox();
+  try {
+    seedSource(dir);
+    const compensationNow = new Date('2026-07-30T12:05:00.000Z');
+    let clockReads = 0;
+    const first = switchOptions(dir);
+    first.input.now = () => (clockReads++ === 0 ? NOW : compensationNow);
+    first.input.readEligibility = async () => ({
+      ok: false,
+      kind: 'assignee-mismatch',
+      assigneeKind: 'foreign',
+      assignees: ['other-worker'],
+    });
+    first.store.switchLease = async (request) => {
+      if (request.idempotencyKey.startsWith('switch:')) return FORWARD_RECEIPT;
+      assert.equal(request.switchedAt, compensationNow.toISOString());
+      assert.equal(request.target.requestedAt, compensationNow.toISOString());
+      throw new WorkLeaseError('authority-unavailable', 'compensation response lost');
+    };
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(first.input),
+      (error) => error.code === 'authority-unavailable'
+    );
+    const persisted = getActiveTask('session-1', dir).workLeaseIntent.compensation;
+    const exactRequest = JSON.parse(persisted.canonicalRequest);
+    assert.equal(exactRequest.switchedAt, compensationNow.toISOString());
+
+    const replayed = [];
+    const retry = switchOptions(dir, {
+      now: () => new Date('2026-07-30T12:06:00.000Z'),
+      readEligibility: async () => assert.fail('compensation replay must not re-read eligibility'),
+    });
+    retry.store.switchLease = async (request) => {
+      replayed.push(request);
+      throw new WorkLeaseError('authority-unavailable', 'still unavailable');
+    };
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(retry.input),
+      (error) => error.code === 'authority-unavailable'
+    );
+    assert.deepEqual(replayed, [exactRequest]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 

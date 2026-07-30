@@ -368,14 +368,21 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs',
-      469,
+      555,
+      'flush-call',
+      '`switch-out:${target}`',
+      ['switch-out:#1007']
+    ),
+    timingEmitter(
+      'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs',
+      917,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs',
-      494,
+      942,
       'event-call',
       'event',
       ['start', 'resumed', 'resume:other']
@@ -396,13 +403,6 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 13, 'flush-call', "'stop'", ['stop']),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 92, 'flush-call', 'eventSlug', [
-      'switch-out:#1007',
-    ]),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 194, 'event-call', 'bindEvent', [
-      'start',
-      'resumed',
-    ]),
     timingEmitter('scripts/task-tracker/verbs/update.mjs', 21, 'flush-call', "'update'", [
       'update',
     ]),

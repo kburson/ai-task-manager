@@ -25,10 +25,15 @@ export const SESSION_REF_RE = /<!--\s*aitm-session-ref\s+sid="/i;
 
 // Serialize one entry. The transcript path is stored under the `jsonl`
 // attribute; attribute order is sid, jsonl, ts.
-export function serializeSessionRefMarker({ sid, jsonlPath, ts } = {}) {
+export function serializeSessionRefMarker({ sid, jsonlPath, ts, operationId } = {}) {
   if (!sid) throw new Error('serializeSessionRefMarker: sid is required');
   if (!ts) throw new Error('serializeSessionRefMarker: ts is required');
-  return serializeMarker('session-ref', { sid, jsonl: jsonlPath || '', ts });
+  return serializeMarker('session-ref', {
+    sid,
+    jsonl: jsonlPath || '',
+    ts,
+    ...(operationId ? { op: operationId } : {}),
+  });
 }
 
 // Parse all session-ref entries in document order. Returns
@@ -44,6 +49,7 @@ export function parseSessionRefs(body) {
       sid: parsed.props.sid || '',
       jsonlPath: parsed.props.jsonl || '',
       ts: parsed.props.ts || '',
+      ...(parsed.props.op ? { operationId: parsed.props.op } : {}),
     });
   }
   return out;
@@ -58,9 +64,9 @@ export function mostRecentSessionRef(body) {
 // Insert a new entry's marker line. Append-only: places the marker immediately
 // before the `<!-- aitm-fields:` trailer (the other progress markers'
 // neighborhood), falling back to end-of-body when no trailer exists. Pure.
-export function appendSessionRef(body, { sid, jsonlPath, ts } = {}) {
+export function appendSessionRef(body, { sid, jsonlPath, ts, operationId } = {}) {
   const src = String(body || '');
-  const marker = serializeSessionRefMarker({ sid, jsonlPath, ts });
+  const marker = serializeSessionRefMarker({ sid, jsonlPath, ts, operationId });
   const fieldsRe = /^[^\n]*<!--\s*aitm-fields:/m;
   const m = fieldsRe.exec(src);
   if (m) {
@@ -78,12 +84,20 @@ export function appendSessionRef(body, { sid, jsonlPath, ts } = {}) {
 //   - No prior entry: append the initial entry (AC1).
 //   - sid AND jsonlPath both match most-recent: no-op (AC2).
 //   - sid OR jsonlPath differs: append a new entry; prior entries preserved (AC3).
-export function recordSessionRefOnChange(body, { sid, jsonlPath, ts } = {}) {
+export function recordSessionRefOnChange(body, { sid, jsonlPath, ts, operationId } = {}) {
   const src = String(body || '');
   if (!sid) return { body: src, appended: false };
   const recent = mostRecentSessionRef(src);
-  if (recent && recent.sid === sid && recent.jsonlPath === (jsonlPath || '')) {
+  if (
+    recent &&
+    recent.sid === sid &&
+    recent.jsonlPath === (jsonlPath || '') &&
+    (!operationId || recent.operationId === operationId)
+  ) {
     return { body: src, appended: false };
   }
-  return { body: appendSessionRef(src, { sid, jsonlPath, ts }), appended: true };
+  return {
+    body: appendSessionRef(src, { sid, jsonlPath, ts, operationId }),
+    appended: true,
+  };
 }
