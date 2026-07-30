@@ -1,10 +1,11 @@
+// @story #1050
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { assertLifecycleSatisfied } from '../../../close-gate.mjs';
-import { invalidateEvidence } from '../../../lib/evidence-invalidation.mjs';
+import { decideCloseConvergence } from '../../../lib/close-convergence.mjs';
 import { buildPlanApprovalAuditComment } from '../../../lib/plan-approval-audit.mjs';
 import {
   derivePersistedReviewAuthority,
@@ -16,6 +17,7 @@ import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
 import { writeLastKnownState } from '../../../gh-timing-comment.mjs';
 import { runApprove } from '../../../verbs/approve.mjs';
+import { runDemote } from '../../../verbs/demote.mjs';
 import { verbReview } from '../../../verbs/review.mjs';
 import { runVerbTest } from '../../../verbs/test.mjs';
 
@@ -92,17 +94,27 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
     proof(oldEpoch, oldSha, '2026-07-29T10:01:00Z'),
     approval(oldEpoch, oldSha, '2026-07-29T10:02:00Z'),
   ].join('\n');
-  const afterDemote = writeLastKnownState(
-    invalidateEvidence(initial, {
-      reviewInvalidatedAt: '2026-07-29T10:03:00Z',
-      reviewInvalidationReason: 'demoted',
-    }).body,
-    'develop'
-  );
-  assert.equal(derivePersistedReviewAuthority(afterDemote).status, 'stale');
+  let liveBody = initial;
+  const demoted = await runDemote({
+    issueNumber: 1050,
+    cfg: { repo: 'o/r' },
+    rework: 'renew review authority',
+    now: () => '2026-07-29T10:03:00Z',
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ({ body: liveBody }),
+      getLiveState: async () => 'review',
+      runMoveState: async () => 0,
+      mutateIssueBody: async ({ mutate }) => {
+        liveBody = mutate(liveBody);
+        return { status: 'ok', body: liveBody };
+      },
+    },
+  });
+  assert.equal(demoted.status, 'demoted');
+  assert.equal(derivePersistedReviewAuthority(liveBody).status, 'stale');
 
   const newSha = 'def5678';
-  let liveBody = afterDemote;
   const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'review-epoch-cycle-'));
   const statePath = path.join(projectDir, 'state.json');
   writeFileSync(
@@ -187,6 +199,10 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
       runGuards: async () => ({ refusals: [] }),
     });
     assert.equal(reviewExitReviewApprovedGuard.run({ body: liveBody, toState: 'done' }).ok, false);
+    assert.equal(
+      decideCloseConvergence({ boardState: 'done', issueClosed: false, body: liveBody }).action,
+      'authority-refused'
+    );
 
     const approved = await runApprove({
       issueNumber: 1050,
@@ -211,6 +227,10 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
     assert.equal(derivePersistedReviewAuthority(liveBody).approval.provenance, 'human');
     assert.equal(reviewExitReviewApprovedGuard.run({ body: liveBody, toState: 'done' }).ok, true);
     assert.equal(assertLifecycleSatisfied({ body: liveBody }).block, false);
+    assert.equal(
+      decideCloseConvergence({ boardState: 'done', issueClosed: false, body: liveBody }).action,
+      'close-issue'
+    );
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }

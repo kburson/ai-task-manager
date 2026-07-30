@@ -322,10 +322,29 @@ export async function verbClose(ctx) {
     };
 
     let decision;
-    if (repair || !hasExpandedCloseSnapshot) {
+    if (repair) {
       // Explicit repair is the highest authority and runs the existing full
-      // pipeline without integrity inspection. Legacy callers retain their
-      // pre-#925 two-signal decision contract.
+      // pipeline without integrity inspection.
+      decision = decideCloseConvergence(decisionInput);
+    } else if (!hasExpandedCloseSnapshot) {
+      // Legacy close snapshots still need current authority before a Done-board
+      // convergence can close an open issue. Read the body rather than
+      // preserving the old two-signal shortcut.
+      if (closeSnapshot.issueClosed === false) {
+        try {
+          convergeBody = ctx.closeBody || (await readConvergenceBody());
+        } catch (error) {
+          return failInspection(
+            'readIssueBody',
+            error,
+            `${closeTarget} is open but its body could not be read for convergence authority`
+          );
+        }
+        Object.assign(decisionInput, {
+          body: convergeBody,
+          reviewGateBypassed: configuredFullAuto,
+        });
+      }
       decision = decideCloseConvergence(decisionInput);
     } else if (closeSnapshot.issueClosed === true) {
       Object.assign(decisionInput, {
@@ -424,6 +443,8 @@ export async function verbClose(ctx) {
       recovery = inspectedRecovery?.phase === 'complete' ? null : inspectedRecovery;
       Object.assign(decisionInput, {
         recoveryPhase: inspectedRecovery?.phase ?? null,
+        body: convergeBody,
+        reviewGateBypassed: configuredFullAuto,
       });
       decision = decideCloseConvergence(decisionInput);
     } else {
@@ -464,6 +485,15 @@ export async function verbClose(ctx) {
       console.log(
         `${closeTarget} board was Done but the GitHub issue was still OPEN — closed it now; local state and fleet cleaned up.`
       );
+      return;
+    }
+
+    if (decision.action === 'authority-refused') {
+      process.stderr.write(
+        `${closeTarget} cannot converge Done → closed: current Review authority is ${decision.authority?.status || 'missing'}. ` +
+          'Re-run Test and Review, then record a current approval before closing.\n'
+      );
+      process.exitCode = 3;
       return;
     }
 

@@ -38,7 +38,7 @@ the fencing token before governed effects. Fleet remains a projection.
 - GitHub assignee remains human accountability; mutator locks remain
   short-lived serialization inside a valid lease; fleet is never authority.
 - Read-only status/reporting needs no write lease.
-- This child excludes event journaling, Insights projections, remote service
+- This child excludes event write-ahead logging, Insights projections, remote service
   deployment, and PostgreSQL implementation.
 
 ---

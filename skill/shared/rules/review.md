@@ -34,7 +34,7 @@ For epics: `/task review` refuses if any sub-issue is not already in Review. Dri
 When you see `PROMPT_REQUIRED: review-approval #N` on stdout, surface a structured human decision:
 
 - In Claude Code: invoke `AskUserQuestion` with options **Approve** and **Reject**.
-- **Approve** → `/task approve #N` (writes `<!-- aitm-review-approved: <ts> -->` marker), then wait for explicit human "close" instruction before `/task close #N`.
+- **Approve** → `/task approve #N --human` (writes the current human-provenance approval marker), then wait for explicit human "close" instruction before `/task close #N`.
 - **Reject** → ask follow-up for the rejection reason, then `/task reject #N --reason "<reason>"` (posts a `### ❌ Review rejected` comment and moves the issue back to Develop).
 - **Dismiss / no choice** → `/task pause "review-prompt-dismissed"`. Issue stays in Review.
 
@@ -83,12 +83,44 @@ When `/task approve` runs under `TT_FULL_AUTO=1` (or any signal `detectFullAuto`
 fires on), it appends a visible blockquote footnote under the Lifecycle DoD
 subsection between `<!-- aitm-full-auto-footnote:start -->` and
 `<!-- aitm-full-auto-footnote:end -->` delimiters so a reader can see at a
-glance that no human reviewed the issue. The hidden `aitm-full-auto-approved`
-marker still records the audit signals. The footnote is idempotent (re-runs
+glance that no human reviewed the issue. The consolidated hidden
+`aitm-review-approved` marker records `provenance="full-auto"` and the audit
+signals. The footnote is idempotent (re-runs
 replace the block in place). `gh-edit-guard` protects the delimiters from
 accidental drop. If the body lacks a recognized `Passed final human review`
 checklist line, approve emits a stderr warning
 (`approve: lifecycle-tick-noop`) but does not fail.
+
+## Current Review authority
+
+Review authority is scoped to a persisted Review visit, not to the mere
+presence of a historical approval marker or a checked lifecycle box. A
+structural entry into Review creates one stable identity,
+`review:<visit>:<entered-review-ts>`, from persisted entry history. A retry
+while already in Review reuses that identity; never derive an epoch from the
+current clock.
+
+The persisted Test/DoD marker is the only SHA authority. A passing Agent Review
+proof binds the epoch, that verified SHA, timestamp, validators, and result. An
+approval binds the same epoch and proof SHA with its truthful provenance. All
+writers retain historical proof, approval, and invalidation markers for audit,
+while every lifecycle consumer reads one reducer projection. That projection is
+current only when the latest epoch has a passing proof for the persisted
+Test/DoD SHA, a matching approval, and no later invalidation.
+
+Demotion and demotion-shaped reconcile invalidate the current authority in the
+same way. An active Agent Review failure also invalidates it. A Review re-entry,
+later invalidation, missing proof, SHA mismatch, malformed marker, or ambiguous
+legacy evidence is stale or invalid and must fail closed: it cannot satisfy
+Agent Review Passed, Final Review Passed, the human-review audit, or close.
+
+Repair authority through the workflow, never by hand-editing hidden markers or
+ticking `Final Review Passed`: re-run `/task test` to persist the revision that
+was actually verified, re-run `/task review` to create a current passing Agent
+Review proof, and then record a real approval. `/task approve #N --human` may
+replace stale Full-Auto authority only when a human actually approved and the
+current epoch has a matching proof. A same-epoch approval against the same
+proof is idempotent.
 
 ## Genuine human approval overrides (`--human`)
 

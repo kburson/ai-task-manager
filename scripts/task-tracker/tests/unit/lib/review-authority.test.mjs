@@ -1,3 +1,4 @@
+// @story #1050
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -295,4 +296,20 @@ test('parseReviewAuthority retains every historical authority marker', () => {
   assert.equal(parsed.proofs.length, 1);
   assert.equal(parsed.approvals.length, 1);
   assert.equal(parsed.invalidations.length, 1);
+});
+
+test('#1050 a Review failure invalidation requires a renewed approval even after a later passing proof', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const body = [
+    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    review(1, '2026-07-29T10:00:00Z'),
+    proof({ epoch, ts: '2026-07-29T10:01:00Z' }),
+    approval({ epoch, ts: '2026-07-29T10:02:00Z' }),
+    serializeReviewInvalidation({ epoch, ts: '2026-07-29T10:03:00Z', reason: 'review-failed' }),
+    proof({ epoch, ts: '2026-07-29T10:04:00Z' }),
+  ].join('\n');
+
+  assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc123' }).status, 'stale');
+  const renewed = `${body}\n${approval({ epoch, ts: '2026-07-29T10:05:00Z' })}`;
+  assert.equal(deriveReviewAuthority(renewed, { verifiedSha: 'abc123' }).status, 'current');
 });

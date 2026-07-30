@@ -38,6 +38,7 @@ import {
 } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
 import { reviewEpochId } from '../lib/review-authority.mjs';
+import { appendReviewAuthorityInvalidation } from '../lib/evidence-invalidation.mjs';
 import { latestStageEntry } from '../lib/stage-entry-markers.mjs';
 
 // #975 — a VC-section checkbox legitimately ticked via the honest
@@ -78,6 +79,17 @@ export function buildDeferredReviewRow(spec, ts) {
 
 function sameRevision(left, right) {
   return Boolean(left && right && (left.startsWith(right) || right.startsWith(left)));
+}
+
+// Keep the durable invalidation before the visible failure block. The reducer
+// intentionally treats an active failure block as stale, so this ordering is
+// part of the write contract rather than presentation detail.
+export function buildReviewFailureBody(body, failures, ts) {
+  return stampReviewFailed(
+    appendReviewAuthorityInvalidation(body, { ts, reason: 'review-failed' }).body,
+    failures,
+    { ts }
+  );
 }
 
 // Review accepts only the revision that the Test sandbox selected and then
@@ -164,6 +176,7 @@ export async function emitReviewGateFailureTimeline({
   repo,
   failures,
   failedBody,
+  buildFailedBody = () => failedBody,
   ts,
   delta,
   wordMarker,
@@ -183,13 +196,14 @@ export async function emitReviewGateFailureTimeline({
     await mutateBodyFn({
       issueNumber: issueNum,
       repo,
-      mutate: () => failedBody,
+      mutate: (base) => buildFailedBody(base),
       timeout: ghApiTimeoutMs,
       deps: { pexec },
       allowUnverifiedTicks: true,
     });
   } catch (e) {
     logError(`[task-tracker] failed to stamp aitm-review-failed: ${e.message}`);
+    throw e;
   }
   // (2) the review outcome row itself.
   await safePostTiming(
@@ -935,9 +949,7 @@ export async function verbReview(ctx) {
         comments,
         changedPaths,
       });
-      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
       let failures = gate.pass ? null : gate.failures;
-      let failureBase = passBase;
 
       if (gate.pass) {
         let finalPassStamp = null;
@@ -950,9 +962,8 @@ export async function verbReview(ctx) {
             mutate: makeAgentReviewPassMutator({
               ts: nowIso(),
               validators: gate.validatorsRun,
-              onPrepared: (prepared, freshBase) => {
+              onPrepared: (prepared) => {
                 finalPassStamp = prepared;
-                failureBase = freshBase;
               },
             }),
             timeout: GH_API_TIMEOUT_MS,
@@ -987,14 +998,25 @@ export async function verbReview(ctx) {
         // with no `demoted:develop` / `develop:started` pair and (by design) no
         // `review:approved`.
         const _tsRF = nowIso();
-        const failedBody = stampReviewFailed(failureBase, failures, { ts: _tsRF });
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
         await emitReviewGateFailureTimeline({
           target,
           issueNum,
           repo: cfg.repo,
           failures,
-          failedBody,
+          buildFailedBody: (freshBase) => {
+            // Preserve the Agent Review normalizer without replaying a stale
+            // snapshot over concurrent edits. Validators are pure, so rerun on
+            // the writer's base and adopt only its own normalized output.
+            const freshGate = runAgentReviewGate({
+              body: freshBase,
+              issueNumber: Number(issueNum),
+              repo: cfg.repo,
+              comments,
+              changedPaths,
+            });
+            return buildReviewFailureBody(freshGate.normalizedBody ?? freshBase, failures, _tsRF);
+          },
           ts: _tsRF,
           delta: _dRF,
           wordMarker: s.lastWordMarker ?? 0,

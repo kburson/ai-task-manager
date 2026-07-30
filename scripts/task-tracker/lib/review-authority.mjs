@@ -307,7 +307,10 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
   if (verifiedSha && proof.sha !== verifiedSha) reasons.push('verified-sha-mismatch');
   if (approval.proofSha !== proof.sha) reasons.push('approval-proof-sha-mismatch');
   const laterInvalidation = parsed.invalidations.some(
-    (item) => item.epoch === epoch && item.index > Math.max(proof.index, approval.index)
+    // An invalidation revokes approval authority, not only a particular proof.
+    // A later retry can add a fresh passing proof, but a human must approve that
+    // renewed proof after the invalidation before authority becomes current.
+    (item) => item.epoch === epoch && item.index > approval.index
   );
   if (laterInvalidation) reasons.push('authority-invalidated');
   return { epoch, proof, approval, status: reasons.length ? 'stale' : 'current', reasons };

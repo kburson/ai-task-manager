@@ -15,7 +15,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { emitReviewGateFailureTimeline } from '../../../verbs/review.mjs';
+import { buildReviewFailureBody, emitReviewGateFailureTimeline } from '../../../verbs/review.mjs';
+import {
+  derivePersistedReviewAuthority,
+  serializeAgentReviewProof,
+  serializeReviewApproval,
+} from '../../../lib/review-authority.mjs';
+import { clearReviewFailed } from '../../../lib/agent-review/review-gate.mjs';
 
 const reviewSrc = readFileSync(
   fileURLToPath(new URL('../../../verbs/review.mjs', import.meta.url)),
@@ -52,6 +58,31 @@ const ARGS = {
   wordMarker: 42,
 };
 
+test('#1050 active Review failure persists invalidation before its failure block and demands renewed approval', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const body = [
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    serializeAgentReviewProof({
+      epoch,
+      sha: 'abc1234',
+      ts: '2026-07-29T10:01:00Z',
+      validators: 'unit',
+      result: 'pass',
+    }),
+    serializeReviewApproval({
+      epoch,
+      proofSha: 'abc1234',
+      ts: '2026-07-29T10:02:00Z',
+      provenance: 'human',
+    }),
+  ].join('\n');
+  const failed = buildReviewFailureBody(body, ['lint: failed'], '2026-07-29T10:03:00Z');
+  assert.match(failed, /aitm-review-invalidated[\s\S]*aitm-review-failed:start/);
+  const retried = `${clearReviewFailed(failed)}\n${serializeAgentReviewProof({ epoch, sha: 'abc1234', ts: '2026-07-29T10:04:00Z', validators: 'unit', result: 'pass' })}`;
+  assert.equal(derivePersistedReviewAuthority(retried).status, 'stale');
+});
+
 test('a gate objection performs NO board move — the issue stays in Review', async () => {
   const { log, deps } = drive();
   await emitReviewGateFailureTimeline({ ...ARGS, deps });
@@ -79,15 +110,34 @@ test('the review:failed row says the issue stays in Review, not that it reverted
   assert.match(row, /agent review failed — 2 objection\(s\)/);
 });
 
-test('the marker stamp is best-effort — a mutate throw does not lose the row', async () => {
+test('a failure-marker write error is propagated so an unrevoked authority is never reported safe', async () => {
   const { log, deps } = drive({
     mutateBodyFn: async () => {
       throw new Error('gh edit failed');
     },
   });
-  await emitReviewGateFailureTimeline({ ...ARGS, deps: { ...deps, logError: () => {} } });
-  assert.equal(log.length, 1);
-  assert.match(log[0], /^ROW:ROW event=review:failed/);
+  await assert.rejects(
+    emitReviewGateFailureTimeline({ ...ARGS, deps: { ...deps, logError: () => {} } }),
+    /gh edit failed/
+  );
+  assert.deepEqual(log, []);
+});
+
+test('failure mutation derives both markers from the writer fresh base', async () => {
+  let written = '';
+  const { deps } = drive({
+    mutateBodyFn: async ({ mutate }) => {
+      written = mutate('fresh concurrent text');
+    },
+  });
+  await emitReviewGateFailureTimeline({
+    ...ARGS,
+    buildFailedBody: (base) =>
+      `${base}\n<!-- aitm-review-invalidated schema="1" -->\n<!-- aitm-review-failed:start -->`,
+    deps,
+  });
+  assert.match(written, /^fresh concurrent text/);
+  assert.match(written, /aitm-review-invalidated[\s\S]*aitm-review-failed:start/);
 });
 
 test('the failure path never passes --demote to anything', async () => {

@@ -253,7 +253,7 @@ Use an exclusive, validated directory created under
 - [ ] Reconcile epic ACs only after all children reach Review. Run epic-wide
       focused, fast, slow, format, lint, spell, and whitespace verification.
 - [ ] Produce the exact epic branch versus current origin/trunk audit:
-      commits, file list, numstat, patch equivalence, merge-tree result,
+      commits, file list, per-file added/deleted counts, patch equivalence, merge-tree result,
       whitespace, package contents, and tests.
 - [ ] Squash integrate to trunk with one commit whose subject includes
       `[#${AITM_STABILIZATION_EPIC}]`,

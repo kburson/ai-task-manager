@@ -15,6 +15,9 @@
 //   boardState  — board Status slug ('done' | other | null/unknown)
 //   issueClosed — GitHub issue state (true=CLOSED | false=OPEN | null=unknown)
 //   recoveryPhase — durable unauthorized-close phase, when present
+//   body — current issue body, required by runtime callers for an open issue
+//   reviewGateBypassed — explicit policy bypass; only this bypass may skip
+//                        current Review authority during convergence
 //
 //   → { action: 'aberration', resume: true } pending durable recovery; resume it
 //   → { action: 'noop',        boardDrift }  issue verifiably CLOSED; boardDrift
@@ -46,6 +49,8 @@ export function decideCloseConvergence(input = {}) {
     nonLifecycleBoxesAllTicked,
     recoveryPhase,
     repair,
+    body,
+    reviewGateBypassed = false,
   } = input;
   if (repair) return { action: 'proceed', repair: true };
   if (['intent', 'reopened', 'review', 'timing'].includes(recoveryPhase)) {
@@ -68,7 +73,13 @@ export function decideCloseConvergence(input = {}) {
     if (boardDone) return { action: 'noop', boardDrift: false };
     return nonLifecycleBoxesAllTicked ? { action: 'finalize' } : { action: 'aberration' };
   }
-  if (issueClosed === false && boardDone) return { action: 'close-issue' };
+  if (issueClosed === false && boardDone) {
+    if (typeof body === 'string' && !reviewGateBypassed) {
+      const authority = derivePersistedReviewAuthority(body);
+      if (authority.status !== 'current') return { action: 'authority-refused', authority };
+    }
+    return { action: 'close-issue' };
+  }
   return { action: 'proceed' };
 }
 

@@ -173,6 +173,7 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
   const r = await run({
     over: {
       SKIP_NETWORK: false,
+      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       writeTerminalDisposition: async ({ issueNumber, disposition }) => {
         calls.push(`disposition ${issueNumber} ${disposition}`);
@@ -192,12 +193,32 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
     `expected write before close; got ${JSON.stringify(calls)}`
   );
 });
+test('convergence close-issue: stale authority refuses before gh close', async () => {
+  resetExit();
+  const calls = [];
+  const staleBody = `${APPROVED_BODY}<!-- aitm-review-invalidated schema="1" epoch="review:1:2026-06-28T00:00:01Z" ts="2026-06-28T00:00:04Z" reason="review-failed" -->`;
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      closeBody: staleBody,
+      getIssueBoardState: async () => 'done',
+      pexec: async (cmd, args) => (
+        calls.push(`${cmd} ${args.join(' ')}`),
+        { stdout: '', stderr: '' }
+      ),
+    },
+  });
+  assert.equal(exitOf(r), 3);
+  assert.ok(!calls.some((call) => call.includes('issue close 5')));
+  resetExit();
+});
 test('convergence close-issue: disposition failure leaves issue OPEN and active', async () => {
   resetExit();
   const calls = [];
   const r = await run({
     over: {
       SKIP_NETWORK: false,
+      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       writeTerminalDisposition: async () => {
         throw new Error('Disposition field missing');
@@ -218,6 +239,7 @@ test('convergence close-issue: gh close fails → exit 1', async () => {
   const r = await run({
     over: {
       SKIP_NETWORK: false,
+      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       pexec: async () => {
         throw new Error('gh boom');

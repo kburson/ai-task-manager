@@ -1,3 +1,4 @@
+// @story #1050
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -11,6 +12,7 @@ import {
   serializeReviewApproval,
   serializeReviewInvalidation,
 } from '../../../lib/review-authority.mjs';
+import { decideCloseConvergence } from '../../../lib/close-convergence.mjs';
 
 const epoch = 'review:1:2026-07-29T10:00:00Z';
 
@@ -110,5 +112,30 @@ test('#1050 current full-auto authority alone satisfies Final Review as an audit
   assert.equal(
     gate.results.find((result) => result.key === 'passed-final-review').status,
     'audited'
+  );
+});
+
+test('#1050 Done-board convergence admits only current authority and preserves the explicit bypass', () => {
+  const cases = [
+    ['current', lifecycleBody(bodyWithAuthority()), 'close-issue'],
+    ['stale', lifecycleBody(bodyWithAuthority({ invalidated: true })), 'authority-refused'],
+    ['missing', '', 'authority-refused'],
+    ['malformed', '<!-- aitm-review-approved schema="1" -->', 'authority-refused'],
+  ];
+  for (const [name, body, expected] of cases) {
+    assert.equal(
+      decideCloseConvergence({ boardState: 'done', issueClosed: false, body }).action,
+      expected,
+      name
+    );
+  }
+  assert.equal(
+    decideCloseConvergence({
+      boardState: 'done',
+      issueClosed: false,
+      body: '',
+      reviewGateBypassed: true,
+    }).action,
+    'close-issue'
   );
 });

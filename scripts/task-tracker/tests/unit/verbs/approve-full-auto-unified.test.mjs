@@ -338,7 +338,7 @@ console.log('approve.test.mjs: all passed');
 
 // #1050 / #979 — a fresh `--human` approval supersedes stale Full-Auto
 // authority, removes its footnote, and records human provenance regardless of
-// the stale lifecycle checkmark.
+// the stale lifecycle check mark.
 {
   const epochOne = 'review:1:2026-07-29T10:00:00Z';
   const epochTwo = 'review:2:2026-07-29T11:00:00Z';
