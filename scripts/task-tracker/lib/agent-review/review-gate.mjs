@@ -94,9 +94,9 @@ export function runAgentReviewGate({
 //
 // On a passing gate the review verb ticks "Agent Review Passed" AND stamps the
 // gate's OWN run-evidence onto the box — a real `aitm-verified` execution-proof
-// marker, never a bare `[x]`. Production passes the persisted Test SHA; the
-// `sandbox` fallback remains only for legacy direct callers. `ts` is the review
-// runtime and `validators` lists exactly which validators executed. The box now
+// marker, never a bare `[x]`. The Review epoch and persisted Test SHA are
+// required before this code emits a pass. `ts` is the review runtime and
+// `validators` lists exactly which validators executed. The box now
 // CARRIES proof, so the verb writes it with `evidenceStamp: true` (a sanctioned
 // stamper — honest because the gate genuinely ran) and WITHOUT the old
 // `allowUnverifiedTicks` bypass. This replaces the fake
@@ -104,11 +104,17 @@ export function runAgentReviewGate({
 
 // Build the run-evidence marker. `ts` must be a real ISO timestamp (caller
 // passes review-runtime `nowIso()`); `validators` is the executed-id list.
-export function buildAgentReviewEvidenceMarker({ ts, validators = [], verifiedSha = '' } = {}) {
+export function buildAgentReviewEvidenceMarker({
+  epoch = '',
+  ts,
+  validators = [],
+  verifiedSha = '',
+} = {}) {
+  if (!epoch || !verifiedSha) return null;
   return serializeProofMarker({
     gate: 'agent-review',
     ts: ts || '',
-    sha: verifiedSha || 'sandbox',
+    sha: verifiedSha,
     validators: (Array.isArray(validators) ? validators : []).join(','),
     result: 'pass',
   });
@@ -122,8 +128,9 @@ export function stampAgentReviewPassed(
   body,
   { epoch = '', verifiedSha = '', ts, validators = [] } = {}
 ) {
+  if (!epoch || !verifiedSha) return typeof body === 'string' ? body : '';
   const ticked = tickLifecycleItem(typeof body === 'string' ? body : '', 'agent-review-passed');
-  const marker = buildAgentReviewEvidenceMarker({ ts, validators, verifiedSha });
+  const marker = buildAgentReviewEvidenceMarker({ epoch, ts, validators, verifiedSha });
   const lines = ticked.split('\n');
   let stamped = false;
   for (let i = 0; i < lines.length; i += 1) {
@@ -143,7 +150,7 @@ export function stampAgentReviewPassed(
     break;
   }
   const stampedBody = lines.join('\n');
-  if (!stamped || !epoch || !verifiedSha) return stampedBody;
+  if (!stamped) return stampedBody;
   const proof = serializeAgentReviewProof({
     epoch,
     sha: verifiedSha,

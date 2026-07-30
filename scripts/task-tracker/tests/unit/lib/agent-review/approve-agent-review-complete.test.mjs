@@ -55,6 +55,20 @@ test('a passing gate stamp completes the state action', () => {
   assert.equal(agentReviewIncompleteReason(PASSED), null);
 });
 
+test('a Review entry without persisted Test evidence cannot emit passing Agent Review authority', () => {
+  const missingTestEvidence = UNTICKED.replace(/^<!-- aitm-dod-verified.*-->\n/m, '');
+  const stamped = stampAgentReviewPassed(missingTestEvidence, {
+    epoch: REVIEW_EPOCH,
+    ts: '2026-07-18T00:00:00.000Z',
+    validators: ['body-sections'],
+  });
+
+  assert.doesNotMatch(stamped, /gate="agent-review"[^>]*result="pass"/);
+  assert.doesNotMatch(stamped, /aitm-agent-review-proof/);
+  assert.equal(isAgentReviewComplete(stamped), false);
+  assert.equal(agentReviewIncompleteReason(stamped), 'not-run');
+});
+
 test('a hand-ticked box with no run evidence is NOT complete', () => {
   const handTicked = UNTICKED.replace('- [ ] Agent Review Passed', '- [x] Agent Review Passed');
   assert.equal(isAgentReviewComplete(handTicked), false);

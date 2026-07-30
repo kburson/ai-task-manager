@@ -6,6 +6,7 @@ import { parseDodVerifiedMarker } from '../../../lib/markers.mjs';
 import { parseReviewAuthority, reviewEpochId } from '../../../lib/review-authority.mjs';
 import { latestStageEntry, stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
 import { runVerbTest } from '../../../verbs/test.mjs';
+import { validatePersistedTestEvidence } from '../../../verbs/review.mjs';
 
 const REVIEW_ONE = '2026-07-29T10:00:00.000Z';
 const REVIEW_TWO = '2026-07-29T11:00:00.000Z';
@@ -102,4 +103,27 @@ test('Test pins the sandbox worktree and recorded evidence to one selected revis
   assert.equal(created.length, 1);
   assert.equal(created[0].sha, VERIFIED_SHA);
   assert.equal(parseDodVerifiedMarker(body).sha, VERIFIED_SHA);
+});
+
+test('Review validates Test evidence only from persisted Test markers', () => {
+  const matching = validatePersistedTestEvidence(
+    [
+      `<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="2026-07-29T09:00:00.000Z" -->`,
+      `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
+    ].join('\n')
+  );
+  assert.deepEqual(matching, { ok: true, sha: VERIFIED_SHA });
+
+  const mismatch = validatePersistedTestEvidence(
+    [
+      `<!-- aitm-test-started sha="old1234" ts="2026-07-29T09:00:00.000Z" -->`,
+      `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
+    ].join('\n')
+  );
+  assert.deepEqual(mismatch, { ok: false, reason: 'test-evidence-sha-mismatch' });
+
+  assert.deepEqual(
+    validatePersistedTestEvidence(`<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="t" -->`),
+    { ok: false, reason: 'test-evidence-missing' }
+  );
 });

@@ -76,6 +76,25 @@ export function buildDeferredReviewRow(spec, ts) {
   return kind === 'flush' ? buildFlushRow({ ...params, ts }) : buildRow({ ...params, ts });
 }
 
+function sameRevision(left, right) {
+  return Boolean(left && right && (left.startsWith(right) || right.startsWith(left)));
+}
+
+// Review accepts only the revision that the Test sandbox selected and then
+// persisted as green DoD evidence. This deliberately never reads ambient HEAD:
+// authority is the pair of durable Test markers, not the current checkout.
+export function validatePersistedTestEvidence(body) {
+  const testStarted = parseTestStartedMarker(body);
+  const dodVerified = parseDodVerifiedMarker(body);
+  if (!testStarted?.sha || !dodVerified?.sha) {
+    return { ok: false, reason: 'test-evidence-missing' };
+  }
+  if (!sameRevision(testStarted.sha, dodVerified.sha)) {
+    return { ok: false, reason: 'test-evidence-sha-mismatch' };
+  }
+  return { ok: true, sha: dodVerified.sha };
+}
+
 // EPIC #823 timing model v2 (C7 / defect D2): emit an agent-review-gate failure
 // as a canonically-ordered timeline. Extracted from `verbReview` so the ORDER is
 // unit-testable without the verb's dynamic-import network path
@@ -501,37 +520,14 @@ export async function verbReview(ctx) {
     // that used to live here is retired in favor of the registry. The seed
     // loop below trusts that we either passed the registry gate (will pass
     // when reached) or will refuse before runMoveState.
-    // #154 — SHA-drift gate. The `aitm-test-started` marker records outer HEAD
-    // at the moment Test began; if HEAD has moved since, the sandbox proof is
-    // stale and the issue must be re-tested. Tolerates marker absence on
-    // legacy issues (the dod-verified marker also encodes a SHA, so a future
-    // hardening pass can require both — for now we only block when the
-    // test-started marker is present and mismatched).
-    const testStarted = parseTestStartedMarker(rawBody);
-    if (testStarted) {
-      let currentHeadSha = null;
-      try {
-        const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
-          cwd: projectDir,
-          timeout: 10_000,
-        });
-        currentHeadSha = String(stdout || '').trim();
-      } catch {
-        // best-effort — if we can't resolve HEAD, fall back to the existing
-        // dod-verified path. SHA-drift refusal is opportunistic, not mandatory.
-      }
-      if (currentHeadSha) {
-        const m = testStarted.sha;
-        const matches = currentHeadSha.startsWith(m) || m.startsWith(currentHeadSha);
-        if (!matches) {
-          process.stderr.write('\n');
-          process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
-          process.stderr.write(
-            `   BLOCKED: HEAD drifted from \`${m.slice(0, 8)}\` to \`${currentHeadSha.slice(0, 8)}\` during Test — re-run \`/task test ${target}\` to re-verify.\n\n`
-          );
-          process.exit(4);
-        }
-      }
+    const persistedTestEvidence = validatePersistedTestEvidence(rawBody);
+    if (!persistedTestEvidence.ok) {
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
+      process.stderr.write(
+        `   BLOCKED: persisted Test evidence is ${persistedTestEvidence.reason === 'test-evidence-missing' ? 'missing' : 'for different revisions'} — re-run \`/task test ${target}\` to re-verify.\n\n`
+      );
+      process.exit(4);
     }
     // #226 — under sandbox-verified authority, the standard DoD commands
     // (`npm test`, `npm run lint`, `npm run format:check`) are trusted-passed.
