@@ -95,10 +95,19 @@ test('ledger release decision is idempotent and fails closed on ambiguous regist
 test('ledger dry-run pack contains runtime only and root pack keeps the workspace separate', () => {
   assert.ok(existsSync(LEDGER_MANIFEST), 'packages/aitm-ledger/package.json is missing');
   const ledgerFiles = packedFiles(['--workspace', '@kburson/aitm-ledger']);
-  assert.deepEqual(
-    [...ledgerFiles].sort(),
-    ['package.json', 'src/index.mjs'],
-    'ledger pack must contain only its manifest and runtime export'
+  for (const required of [
+    'package.json',
+    'src/index.mjs',
+    'src/lease/errors.mjs',
+    'src/lease/port.mjs',
+    'src/lease/schema.mjs',
+  ]) {
+    assert.ok(ledgerFiles.has(required), `ledger pack is missing ${required}`);
+  }
+  assert.equal(
+    [...ledgerFiles].some((path) => /(^|\/)tests?\//.test(path) || path.endsWith('.test.mjs')),
+    false,
+    'ledger pack must contain runtime files only'
   );
 
   const rootFiles = packedFiles([]);

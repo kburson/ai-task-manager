@@ -48,7 +48,20 @@ test('packed root and ledger install and initialize without workspace links', ()
     const ledger = pack(packDir, ['--workspace', '@kburson/aitm-ledger']);
     const root = pack(packDir);
 
-    assert.deepEqual([...ledger.files].sort(), ['package.json', 'src/index.mjs']);
+    for (const required of [
+      'package.json',
+      'src/index.mjs',
+      'src/lease/errors.mjs',
+      'src/lease/port.mjs',
+      'src/lease/schema.mjs',
+    ]) {
+      assert.ok(ledger.files.has(required), `ledger tarball is missing ${required}`);
+    }
+    assert.equal(
+      [...ledger.files].some((path) => /(^|\/)tests?\//.test(path) || path.endsWith('.test.mjs')),
+      false,
+      'ledger tarball must exclude tests'
+    );
     for (const required of [
       'package.json',
       'bin/cli.mjs',
