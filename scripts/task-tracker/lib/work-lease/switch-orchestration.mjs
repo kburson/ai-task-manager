@@ -43,6 +43,7 @@ import {
   switchTargetIntegrityKey,
   validateSwitchProjectionIntegrity,
 } from './switch-projection-integrity.mjs';
+import { reconcileTimingProjectionRowEffect } from '../../gh-timing-comment.mjs';
 
 const TERMINAL_SWITCH_CODES = new Set([
   'invalid-request',
@@ -557,7 +558,10 @@ export function validateSwitchProjectionInputs(
         entry.kind !== 'timing' ||
         String(entry.issue).replace(/^#/, '') !== source ||
         typeof entry.row !== 'string' ||
-        entry.row === ''
+        entry.row === '' ||
+        typeof queued.presentInSourceBody !== 'boolean' ||
+        typeof queued.expectedProjectedRow !== 'string' ||
+        queued.expectedProjectedRow === ''
       ) {
         return true;
       }
@@ -660,11 +664,32 @@ export function validateSwitchProjectionInputs(
       .filter((row) => String(row.issueNumber) === source)
       .map((row) => row.row)
       .join('\n');
-    const queuedRows = queuedSourceEntries.map((queued) => queued.entry.row).join('\n');
+    let expectedTimingBody = values.github.switch.issueTimeSourceBody;
+    try {
+      for (const queued of queuedSourceEntries) {
+        const effect = reconcileTimingProjectionRowEffect(expectedTimingBody, {
+          projectionId: queued.deliveryProjectionId,
+          subOperationId: queued.deliverySubOperationId,
+          row: queued.entry.row,
+        });
+        if (
+          queued.presentInSourceBody !== (effect.status === 'present') ||
+          queued.expectedProjectedRow !== effect.row
+        ) {
+          throw new Error('persisted queued timing reconciliation state does not match');
+        }
+        expectedTimingBody = effect.body;
+      }
+    } catch {
+      throw leaseError(
+        'invalid-request',
+        'persisted queued timing reconciliation state is malformed'
+      );
+    }
     let recomputed;
     try {
       recomputed = deriveIssueTimeExpectedFields(
-        `${values.github.switch.issueTimeSourceBody}\n${queuedRows}\n${sourceRows}`,
+        `${expectedTimingBody}\n${sourceRows}`,
         values.github.switch.issueTimeThresholdMin
       );
     } catch {

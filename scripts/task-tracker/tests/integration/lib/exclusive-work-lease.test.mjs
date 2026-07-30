@@ -27,7 +27,14 @@ import { renewWorkLeaseBeforeResume, verbResume } from '../../../verbs/resume.mj
 import { loadMarker, markerPathFor, saveMarker } from '../../../word-counter.mjs';
 import { pendingPausePath } from '../../../hooks/on-stop.mjs';
 import { enqueue, peek as peekQueue, removeExactQueueEntries } from '../../../queue.mjs';
-import { reconcileIssueTimeProjection } from '../../../lib/work-lease/issue-time-projection.mjs';
+import {
+  deriveIssueTimeExpectedFields,
+  reconcileIssueTimeProjection,
+} from '../../../lib/work-lease/issue-time-projection.mjs';
+import {
+  reconcileTimingProjectionRowEffect,
+  timingProjectionMarker,
+} from '../../../gh-timing-comment.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -3307,11 +3314,15 @@ test('queued source timing survives delivery and checkpoint loss with one stable
       coordinator: 'resume',
     });
     ctx.queuePath = path.join(dir, 'timing-queue.json');
+    const genericQueuedRow =
+      '| 2026-07-30 11:59:00 +00:00 | lifecycle-warn |  |  | 0 | 28 | queued source audit | 0 | <!-- row-sec: a=0 i=0 -->';
+    const priorQueuedRow =
+      '| 2026-07-30 11:58:00 +00:00 | develop:completed | 2m 0s |  | 7 | 28 | queued projected source work | 9 | <!-- row-sec: a=120 i=0 -->';
     enqueue(
       {
         kind: 'timing',
         issue: '#1048',
-        row: '| 2026-07-30 11:56:00 +00:00 | develop:started |  |  | 0 | 21 | queued source work | 0 | <!-- row-sec: a=0 i=0 -->',
+        row: genericQueuedRow,
       },
       ctx.queuePath
     );
@@ -3319,27 +3330,62 @@ test('queued source timing survives delivery and checkpoint loss with one stable
       {
         kind: 'timing',
         issue: '#1048',
-        row: '| 2026-07-30 11:58:00 +00:00 | develop:completed | 2m 0s |  | 7 | 28 | queued projected source work | 9 | <!-- row-sec: a=120 i=0 -->',
+        row: priorQueuedRow,
         projectionId: 'prior-projection:timing',
         subOperationId: 'prior-projection:timing:test-started',
       },
       ctx.queuePath
     );
+    const priorReceipt = timingProjectionMarker({
+      projectionId: 'prior-projection:timing',
+      subOperationId: 'prior-projection:timing:test-started',
+    });
+    let liveTimingBody = [
+      '## ⏱ Timing Log',
+      '',
+      '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+      '|---|---|---|---|---|---|---|---|',
+      '| 2026-07-30 11:55:00 +00:00 | develop:started |  |  | 0 | 21 | live source start | 0 | <!-- row-sec: a=0 i=0 -->',
+      priorQueuedRow.replace(/\s*(<!-- row-sec:[^>]+-->)$/, ` ${priorReceipt} $1`),
+    ].join('\n');
+    ctx.readTimingCommentBody = async () => ({
+      status: 'found',
+      body: liveTimingBody,
+      error: null,
+    });
+    ctx.flushActiveToGH = async () => ({
+      precedingRows: [],
+      row: '| 2026-07-30 12:00:00 +00:00 | switch-out:#1049 |  |  | 0 | 28 | switch | 0 | <!-- row-sec: a=0 i=0 -->',
+      deltaMin: 0,
+      deltaWords: 0,
+    });
 
-    const remoteTimingEffects = new Map();
+    const remoteTimingEffects = new Map([
+      ['prior-projection:timing\0prior-projection:timing:test-started', priorQueuedRow],
+    ]);
     let timingPostCalls = 0;
+    let alreadyProjectedSkips = 0;
     ctx.applyWorkLeaseTimingProjection = undefined;
     ctx.drainQueueIfAny = async () => assert.fail('switch must not broad-drain the queue');
     ctx.postTimingProjection = async (input) => {
       timingPostCalls += 1;
+      const effect = reconcileTimingProjectionRowEffect(liveTimingBody, input);
+      if (effect.status === 'present') alreadyProjectedSkips += 1;
+      liveTimingBody = effect.body;
       remoteTimingEffects.set(`${input.projectionId}\0${input.subOperationId}`, input.row);
     };
-    ctx.readTimingProjection = async ({ projectionId, subOperationIds }) => ({
-      reconciled: subOperationIds.every((subOperationId) =>
-        remoteTimingEffects.has(`${projectionId}\0${subOperationId}`)
-      ),
-      projectionId,
-    });
+    ctx.readTimingProjection = async ({ projectionId, subOperationIds, expectedRows }) => {
+      const reconciled = subOperationIds.every(
+        (subOperationId) =>
+          remoteTimingEffects.has(`${projectionId}\0${subOperationId}`) &&
+          reconcileTimingProjectionRowEffect(liveTimingBody, {
+            projectionId,
+            subOperationId,
+            row: expectedRows[subOperationId],
+          }).status === 'present'
+      );
+      return { reconciled, projectionId };
+    };
     let removalAttempts = 0;
     ctx.removeExactQueueEntries = (entries, queuePath) => {
       removalAttempts += 1;
@@ -3360,24 +3406,14 @@ test('queued source timing survives delivery and checkpoint loss with one stable
       },
     });
     let issueTimeMutations = 0;
-    let exactIssueTimeState;
+    let exactIssueTimeState = null;
     ctx.runLogIssueTime = async (_issue, input) => {
-      exactIssueTimeState ??= {
-        bodyFields: {
-          ...input.expected.bodyFields,
-          engagedTime: null,
-        },
-        projectFields: {
-          ...input.expected.projectFields,
-          engagedTime: null,
-        },
-      };
       const proof = await reconcileIssueTimeProjection({
         expected: input.expected,
         readState: async () => structuredClone(exactIssueTimeState),
         mutate: async () => {
           issueTimeMutations += 1;
-          exactIssueTimeState = structuredClone(input.expected);
+          exactIssueTimeState = deriveIssueTimeExpectedFields(liveTimingBody, 5);
         },
       });
       return { ...proof, subOperationId: input.subOperationId };
@@ -3386,14 +3422,27 @@ test('queued source timing survives delivery and checkpoint loss with one stable
     ctx.coordinateWorkLeaseSwitch = async (input) => {
       const queued = input.projectionInputs.timing.queuedSourceEntries;
       assert.equal(queued.length, 2);
-      assert.equal(queued[0].entry.row.includes('queued source work'), true);
+      assert.equal(queued[0].entry.row.includes('queued source audit'), true);
       assert.equal(queued[1].deliveryProjectionId, 'prior-projection:timing');
       assert.equal(queued[1].deliverySubOperationId, 'prior-projection:timing:test-started');
+      assert.equal(queued[0].presentInSourceBody, false);
+      assert.equal(queued[1].presentInSourceBody, true);
       const stableExpected = structuredClone(
         input.projectionInputs.github.switch.issueTimeExpected
       );
-      assert.equal(stableExpected.bodyFields.sessionTime, 2);
-      assert.equal(stableExpected.projectFields.sessionTime, '00d 00h 02m 00s');
+      assert.equal(stableExpected.bodyFields.sessionTime, 3);
+      assert.equal(stableExpected.projectFields.sessionTime, '00d 00h 03m 00s');
+      const racedQueuedEffect = reconcileTimingProjectionRowEffect(liveTimingBody, {
+        projectionId: queued[0].deliveryProjectionId,
+        subOperationId: queued[0].deliverySubOperationId,
+        row: queued[0].entry.row,
+      });
+      assert.equal(racedQueuedEffect.status, 'missing');
+      liveTimingBody = racedQueuedEffect.body;
+      remoteTimingEffects.set(
+        `${queued[0].deliveryProjectionId}\0${queued[0].deliverySubOperationId}`,
+        queued[0].entry.row
+      );
       enqueue({ kind: 'timing', issue: '#9999', row: 'new unrelated queued row' }, ctx.queuePath);
 
       const timingProjectionId = input.projectionInputs.timing.rows[0].projectionId;
@@ -3442,9 +3491,9 @@ test('queued source timing survives delivery and checkpoint loss with one stable
 
     assert.equal(removalAttempts, 3);
     assert.ok(timingPostCalls > remoteTimingEffects.size);
+    assert.ok(alreadyProjectedSkips > 0);
     assert.equal(issueTimeMutations, 1);
-    assert.notEqual(exactIssueTimeState.bodyFields.engagedTime, null);
-    assert.notEqual(exactIssueTimeState.projectFields.engagedTime, null);
+    assert.deepEqual(exactIssueTimeState, deriveIssueTimeExpectedFields(liveTimingBody, 5));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

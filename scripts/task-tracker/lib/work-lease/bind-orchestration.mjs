@@ -446,20 +446,24 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
       issueNumber,
       projectionId: stableProjectionId,
       subOperationIds: [],
+      expectedRows: {},
     };
     operations.subOperationIds.push(item.subOperationId);
+    operations.expectedRows[item.subOperationId] = item.row;
     operationsByIssueAndProjection.set(key, operations);
   }
   for (const {
     issueNumber,
     projectionId: stableProjectionId,
     subOperationIds,
+    expectedRows,
   } of operationsByIssueAndProjection.values()) {
     const proof = await readProjection({
       issueNumber,
       repo: input.repo,
       projectionId: stableProjectionId,
       subOperationIds,
+      expectedRows,
     });
     if (proof?.reconciled !== true || proof.projectionId !== stableProjectionId) {
       throw new Error('timing projection remote read-back does not match');
@@ -738,6 +742,8 @@ async function buildGovernedSwitchPlan(
     const timingBody = sourceBody.includes('| Timestamp |')
       ? sourceBody
       : [
+          '## ⏱ Timing Log',
+          '',
           '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
           '|---|---|---|---|---|---|---|---|',
           sourceBody,
@@ -745,9 +751,19 @@ async function buildGovernedSwitchPlan(
     plan.projectionInputs.github.switch.issueTimeSourceBody = timingBody;
     plan.projectionInputs.github.switch.issueTimeThresholdMin =
       Number(ctx.cfg.reviewPauseThresholdMin) || 5;
-    const queuedSourceRows = queuedSourceEntries.map((queued) => queued.entry.row).join('\n');
+    let expectedTimingBody = timingBody;
+    for (const queued of queuedSourceEntries) {
+      const effect = timingGh.reconcileTimingProjectionRowEffect(expectedTimingBody, {
+        projectionId: queued.deliveryProjectionId,
+        subOperationId: queued.deliverySubOperationId,
+        row: queued.entry.row,
+      });
+      queued.presentInSourceBody = effect.status === 'present';
+      queued.expectedProjectedRow = effect.row;
+      expectedTimingBody = effect.body;
+    }
     plan.projectionInputs.github.switch.issueTimeExpected = deriveIssueTimeExpectedFields(
-      `${timingBody}\n${queuedSourceRows}\n${sourceRows}`,
+      `${expectedTimingBody}\n${sourceRows}`,
       plan.projectionInputs.github.switch.issueTimeThresholdMin
     );
   }

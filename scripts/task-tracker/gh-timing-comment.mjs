@@ -620,6 +620,61 @@ function appendRow(body, row, { projection } = {}) {
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
 
+function appendedProjectionEffect(body, durableRow, projection) {
+  const updatedBody = appendRow(body, durableRow, { projection });
+  const region = locateCanonicalTimingTableRegion(updatedBody);
+  const matches = matchingTimingProjectionReceipts(updatedBody, projection);
+  if (!region || matches.length !== 1) {
+    throw new Error(
+      `timing projection did not produce one exact receipt: ${projection.projectionId} ${projection.subOperationId}`
+    );
+  }
+  return {
+    body: updatedBody,
+    row: region.lines[matches[0].rowIndex],
+  };
+}
+
+// Resolve one requested row against the exact durable receipt embedded in the
+// canonical Timing Log. Existing receipts are replayed through the row policy
+// using only their preceding rows, so timestamp/event normalization is
+// validated rather than trusted from an editable sibling marker.
+export function reconcileTimingProjectionRowEffect(
+  body,
+  { projectionId, subOperationId, row } = {}
+) {
+  const projection = normalizeTimingProjection(projectionId, subOperationId);
+  if (typeof row !== 'string' || row === '') {
+    throw new TypeError('timing projection row must be a non-empty string');
+  }
+  const sourceBody = String(body ?? '');
+  const durableRow = rowWithProjectionMarker(row, projection);
+  const region = locateCanonicalTimingTableRegion(sourceBody);
+  const matches = matchingTimingProjectionReceipts(sourceBody, projection);
+  if (matches.length > 1) {
+    throw new Error(
+      `duplicate timing projection receipt: ${projection.projectionId} ${projection.subOperationId}`
+    );
+  }
+  if (matches.length === 0) {
+    const effect = appendedProjectionEffect(sourceBody, durableRow, projection);
+    return { status: 'missing', ...effect };
+  }
+  if (!region) {
+    throw new Error('timing projection receipt is outside a canonical Timing Log table');
+  }
+  const receipt = matches[0];
+  const prefixBody = `${region.lines.slice(0, receipt.rowIndex).join('\n')}\n`;
+  const expected = appendedProjectionEffect(prefixBody, durableRow, projection);
+  const actualRow = region.lines[receipt.rowIndex];
+  if (actualRow !== expected.row) {
+    throw new Error(
+      `timing projection receipt row does not match: ${projection.projectionId} ${projection.subOperationId}`
+    );
+  }
+  return { status: 'present', body: sourceBody, row: actualRow };
+}
+
 // ---- GH shell-out helpers ----
 
 async function ghExec(args, { timeoutMs = 2000 } = {}) {
@@ -687,24 +742,29 @@ export async function postTimingEvent({
     const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
     if (existing) {
       if (projection) {
-        const matches = matchingTimingProjectionReceipts(existing.body, projection);
-        if (matches.length === 1) {
+        const effect = reconcileTimingProjectionRowEffect(existing.body, {
+          ...projection,
+          row,
+        });
+        if (effect.status === 'present') {
           return {
             status: 'already-reconciled',
             projectionId: projection.projectionId,
             subOperationId: projection.subOperationId,
           };
         }
-        if (matches.length > 1) {
-          throw new Error(
-            `duplicate timing projection receipt: ${projection.projectionId} ${projection.subOperationId}`
-          );
-        }
+        await updateTimingComment(existing.id, repo, effect.body, { timeoutMs });
+      } else {
+        const updated = appendRow(existing.body, durableRow, { projection });
+        await updateTimingComment(existing.id, repo, updated, { timeoutMs });
       }
-      const updated = appendRow(existing.body, durableRow, { projection });
-      await updateTimingComment(existing.id, repo, updated, { timeoutMs });
     } else {
-      const initial = appendRow(buildInitialComment(), durableRow, { projection });
+      const initial = projection
+        ? reconcileTimingProjectionRowEffect(buildInitialComment(), {
+            ...projection,
+            row,
+          }).body
+        : appendRow(buildInitialComment(), durableRow, { projection });
       await createTimingComment(issueNumber, repo, initial, { timeoutMs });
     }
     if (!projection) return undefined;
@@ -763,6 +823,7 @@ export async function readTimingProjection({
   repo,
   projectionId,
   subOperationIds,
+  expectedRows,
   timeoutMs = 2000,
   deps = {},
 } = {}) {
@@ -775,6 +836,18 @@ export async function readTimingProjection({
   );
   if (new Set(stableSubOperationIds).size !== stableSubOperationIds.length) {
     throw new TypeError('timing subOperationIds must be unique');
+  }
+  if (
+    expectedRows !== undefined &&
+    (!expectedRows ||
+      typeof expectedRows !== 'object' ||
+      Array.isArray(expectedRows) ||
+      stableSubOperationIds.some(
+        (subOperationId) =>
+          typeof expectedRows[subOperationId] !== 'string' || expectedRows[subOperationId] === ''
+      ))
+  ) {
+    throw new TypeError('timing expectedRows must map every sub-operation to its exact row');
   }
   const read = deps.readTimingCommentBody || readTimingCommentBody;
   const result = await read({ issueNumber, repo, timeoutMs, deps });
@@ -811,6 +884,30 @@ export async function readTimingProjection({
       missingSubOperationIds: [],
       duplicateSubOperationIds,
     };
+  }
+  if (expectedRows !== undefined) {
+    const mismatchedSubOperationIds = stableSubOperationIds.filter((subOperationId) => {
+      try {
+        return (
+          reconcileTimingProjectionRowEffect(body, {
+            projectionId: stableProjectionId,
+            subOperationId,
+            row: expectedRows[subOperationId],
+          }).status !== 'present'
+        );
+      } catch {
+        return true;
+      }
+    });
+    if (mismatchedSubOperationIds.length > 0) {
+      return {
+        reconciled: false,
+        projectionName: TIMING_PROJECTION_NAME,
+        projectionId: stableProjectionId,
+        missingSubOperationIds: [],
+        mismatchedSubOperationIds,
+      };
+    }
   }
   let priorRowIndex = -1;
   for (const subOperationId of stableSubOperationIds) {

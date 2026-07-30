@@ -446,6 +446,44 @@ try {
     .split('\n')
     .find((line) => line.includes('first projected bind'));
   assert.match(parseTimingRow(projectedStartLine).marker, /row-sec: a=0 i=0/);
+  const forgedReplayRow = row('start', 'forged replay under a real receipt');
+  await assert.rejects(
+    postTimingEvent({
+      issueNumber: '1049',
+      repo: 'owner/repo',
+      row: forgedReplayRow,
+      projectionId,
+      subOperationId: bindId,
+      projDir: tmp,
+    }),
+    /receipt row does not match/
+  );
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: '1049',
+      repo: 'owner/repo',
+      projectionId,
+      subOperationIds: [bindId],
+      expectedRows: { [bindId]: forgedReplayRow },
+    }),
+    {
+      reconciled: false,
+      projectionName: 'timing',
+      projectionId,
+      missingSubOperationIds: [],
+      mismatchedSubOperationIds: [bindId],
+    }
+  );
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: '1049',
+      repo: 'owner/repo',
+      projectionId,
+      subOperationIds: [bindId],
+      expectedRows: { [bindId]: startRow },
+    }),
+    { reconciled: true, projectionName: 'timing', projectionId }
+  );
 
   // A repeated projected `resumed` row is also suppressed by exact identity,
   // rather than by event-shape heuristics.
