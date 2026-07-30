@@ -220,7 +220,26 @@ export function saveState(state, statePath) {
       projDir
     );
   } else {
-    clearActiveTask(sid, projDir);
+    const existing = getActiveTask(sid, projDir);
+    // Timing can pause or close while the session still owns fenced authority,
+    // and an authority request may be awaiting crash reconciliation. Retain
+    // those non-secret records without making the issue active again. Explicit
+    // lease cleanup must use the matching-fence primitive.
+    if (existing?.lease || existing?.workLeaseIntent) {
+      setActiveTask(
+        sid,
+        {
+          issue: null,
+          leaseIssue: existing.issue ?? existing.leaseIssue ?? state.lastActive ?? null,
+          entryStartTs: null,
+          wordsAtStart: 0,
+          boundAt: existing.boundAt,
+        },
+        projDir
+      );
+    } else {
+      clearActiveTask(sid, projDir);
+    }
   }
   // Dual-write during transition (#212): mirror per-session fields in global.
   // Read-path overlays session record, so the session copy is authoritative.

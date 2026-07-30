@@ -11,6 +11,15 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { activeTaskPath, sessionDir } from './paths.mjs';
+import {
+  assertIntentTransition,
+  attachIntentReceipt,
+  checkpointIntentProjection,
+  createWorkLeaseIntent,
+  normalizeLeaseContext,
+  setIntentProjectionInput,
+  workLeaseIntentReconciled,
+} from './lib/work-lease/context.mjs';
 
 function readJson(p) {
   if (!existsSync(p)) return null;
@@ -28,6 +37,19 @@ function atomicWrite(p, payload) {
   const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
   writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8');
   renameSync(tmp, p);
+}
+
+function authorityIssue(record) {
+  return record?.issue ?? record?.leaseIssue ?? null;
+}
+
+function mutateActiveTask(sid, projDir, mutate) {
+  const p = activeTaskPath(sid, projDir);
+  const existing = readJson(p);
+  const next = mutate(existing);
+  if (next == null) return existing;
+  atomicWrite(p, next);
+  return next;
 }
 
 // Returns the active-task record for `sid` or null when none is bound.
@@ -52,23 +74,36 @@ export function setActiveTask(sid, record, projDir) {
   }
   const { state: _droppedState, ...recordWithoutState } = record;
   void _droppedState;
-  // Preserve the derived `kanbanState` cache (#218 follow-up) across saves
-  // that don't carry it. Only setSessionKanbanState / explicit refreshers
-  // should mutate this field; the generic state writer (state.mjs#saveState)
-  // doesn't know about it and would otherwise blow it away on every bind.
-  let stickyKanban = {};
-  if (!('kanbanState' in recordWithoutState) && record.issue != null) {
-    const existing = readJson(activeTaskPath(sid, projDir));
-    if (existing && existing.issue === record.issue && existing.kanbanState) {
-      stickyKanban = { kanbanState: existing.kanbanState };
-    }
+  const existing = readJson(activeTaskPath(sid, projDir));
+  const sameAuthorityIssue =
+    authorityIssue(existing) != null && authorityIssue(existing) === authorityIssue(record);
+  // `kanbanState` and fenced authority are issue-scoped sticky fields. Generic
+  // timing/session saves preserve them only while they still describe the same
+  // issue. A different issue starts without either projection.
+  const stickyIssueState = {};
+  if (sameAuthorityIssue && !('kanbanState' in recordWithoutState) && existing.kanbanState) {
+    stickyIssueState.kanbanState = existing.kanbanState;
+  }
+  if (sameAuthorityIssue && !('lease' in recordWithoutState) && existing.lease) {
+    stickyIssueState.lease = normalizeLeaseContext(existing.lease);
+  }
+  // An incomplete intent is a crash-recovery record, not granted authority.
+  // Keep it through generic projections (including an issue switch) until the
+  // reconciler positively clears it.
+  const stickyIntent = {};
+  if (!('workLeaseIntent' in recordWithoutState) && existing?.workLeaseIntent) {
+    stickyIntent.workLeaseIntent = existing.workLeaseIntent;
+  }
+  if (recordWithoutState.lease !== undefined) {
+    recordWithoutState.lease = normalizeLeaseContext(recordWithoutState.lease);
   }
   const payload = {
     issue: record.issue ?? null,
     entryStartTs: record.entryStartTs ?? null,
     wordsAtStart: record.wordsAtStart ?? 0,
     boundAt: record.boundAt ?? new Date().toISOString(),
-    ...stickyKanban,
+    ...stickyIssueState,
+    ...stickyIntent,
     ...recordWithoutState,
   };
   atomicWrite(activeTaskPath(sid, projDir), payload);
@@ -99,6 +134,118 @@ export function clearActiveTask(sid, projDir) {
   } catch {
     /* tolerate race with another writer */
   }
+}
+
+// Removes granted authority only when the caller still holds the exact fence.
+// A delayed cleanup from an older holder is therefore an idempotent no-op.
+export function clearActiveTaskLease(sid, expectedFencingToken, projDir) {
+  let cleared = false;
+  mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.lease || existing.lease.fencingToken !== expectedFencingToken) {
+      return null;
+    }
+    const next = { ...existing };
+    delete next.lease;
+    if (next.issue == null && !next.workLeaseIntent) delete next.leaseIssue;
+    cleared = true;
+    return next;
+  });
+  return cleared;
+}
+
+// Persists the exact canonical acquire/switch request before authority mutation.
+// The helper validates all content before touching the session record.
+export function setWorkLeaseIntent(sid, input, projDir) {
+  const intent = createWorkLeaseIntent(input);
+  const request = JSON.parse(intent.canonicalRequest);
+  return mutateActiveTask(sid, projDir, (existing) => {
+    const base = existing ?? {
+      issue: null,
+      entryStartTs: null,
+      wordsAtStart: 0,
+      boundAt: new Date().toISOString(),
+    };
+    const currentIssue = authorityIssue(base);
+    if (currentIssue != null && currentIssue !== request.issueId) {
+      throw new Error('work-lease intent issue does not match the current session authority');
+    }
+    return {
+      ...base,
+      ...(currentIssue == null ? { leaseIssue: request.issueId } : {}),
+      workLeaseIntent: intent,
+    };
+  });
+}
+
+export function attachWorkLeaseIntentReceipt(sid, receipt, projDir) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent) {
+      throw new Error('work-lease intent is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: attachIntentReceipt(existing.workLeaseIntent, receipt),
+    };
+  });
+}
+
+export function setWorkLeaseProjectionInput(sid, projection, input, expectedTransitionId, projDir) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent) {
+      throw new Error('work-lease intent is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: setIntentProjectionInput(
+        existing.workLeaseIntent,
+        projection,
+        input,
+        expectedTransitionId
+      ),
+    };
+  });
+}
+
+export function checkpointWorkLeaseProjection(
+  sid,
+  projection,
+  expectedTransitionId,
+  completedAt,
+  projDir
+) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent) {
+      throw new Error('work-lease intent is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: checkpointIntentProjection(
+        existing.workLeaseIntent,
+        projection,
+        expectedTransitionId,
+        completedAt
+      ),
+    };
+  });
+}
+
+export function clearWorkLeaseIntent(sid, expectedTransitionId, projDir) {
+  let cleared = false;
+  mutateActiveTask(sid, projDir, (existing) => {
+    const intent = existing?.workLeaseIntent;
+    if (!intent || !workLeaseIntentReconciled(intent)) return null;
+    try {
+      assertIntentTransition(intent, expectedTransitionId);
+    } catch {
+      return null;
+    }
+    const next = { ...existing };
+    delete next.workLeaseIntent;
+    if (next.issue == null && !next.lease) delete next.leaseIssue;
+    cleared = true;
+    return next;
+  });
+  return cleared;
 }
 
 // Re-export the path helpers so callers that already import session-state
