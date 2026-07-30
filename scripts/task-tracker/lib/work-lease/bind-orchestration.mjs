@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -45,7 +45,11 @@ import {
   coordinateWorkLeaseSwitch,
   validateSwitchGithubProjectionInput,
 } from './switch-orchestration.mjs';
-import { enqueueTimingProjection } from '../../queue.mjs';
+import {
+  enqueueTimingProjection,
+  peek as peekQueue,
+  removeExactQueueEntries,
+} from '../../queue.mjs';
 import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
 import {
   resolveBindEvent,
@@ -355,8 +359,30 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
       throw new Error('persisted timing projection row is malformed');
     }
   }
+  const queuedSourceEntries = input.queuedSourceEntries ?? [];
+  if (!Array.isArray(queuedSourceEntries)) {
+    throw new Error('persisted timing source queue is malformed');
+  }
+  const deliveryIdentities = new Set();
+  for (const queued of queuedSourceEntries) {
+    const deliveryIdentity = `${queued?.deliveryProjectionId}\0${queued?.deliverySubOperationId}`;
+    if (
+      !isPlainObject(queued) ||
+      !isPlainObject(queued.entry) ||
+      queued.entry.kind !== 'timing' ||
+      String(queued.entry.issue).replace(/^#/, '') !==
+        String(input.sourceIssue).replace(/^#/, '') ||
+      !isNonEmptyString(queued.entry.row) ||
+      !isNonEmptyString(queued.deliveryProjectionId) ||
+      !isNonEmptyString(queued.deliverySubOperationId) ||
+      deliveryIdentities.has(deliveryIdentity)
+    ) {
+      throw new Error('persisted timing source queue entry is malformed');
+    }
+    deliveryIdentities.add(deliveryIdentity);
+  }
   if (input.skippedNetwork) {
-    if (input.rows.length !== 0) {
+    if (input.rows.length !== 0 || queuedSourceEntries.length !== 0) {
       throw new Error('offline timing projection must not contain network rows');
     }
     return projectionProof('timing', projectionId);
@@ -368,51 +394,85 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
       projectionId
     );
   }
-  if (input.rows.length === 0) return projectionProof('timing', projectionId);
-  await ctx.drainQueueIfAny();
+  if (input.rows.length === 0 && queuedSourceEntries.length === 0) {
+    return projectionProof('timing', projectionId);
+  }
+  if (input.decision.mode !== 'switch') await ctx.drainQueueIfAny();
   const gh = await import('../../gh-timing-comment.mjs');
   const post = ctx.postTimingProjection ?? gh.postTimingEvent;
-  for (const item of input.rows) {
+  const deliveries = [
+    ...queuedSourceEntries.map((queued) => ({
+      issueNumber: String(queued.entry.issue).replace(/^#/, ''),
+      row: queued.entry.row,
+      projectionId: queued.deliveryProjectionId,
+      subOperationId: queued.deliverySubOperationId,
+      queued: true,
+    })),
+    ...input.rows,
+  ];
+  for (const item of deliveries) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
     try {
       await post({
         issueNumber,
         repo: input.repo,
         row: item.row,
-        projectionId,
+        projectionId: item.projectionId ?? projectionId,
         subOperationId: item.subOperationId,
         projDir: ctx.projectDir,
       });
     } catch (error) {
-      enqueueTimingProjection(
-        {
-          issue: item.issueNumber ?? input.issueNumber,
-          row: item.row,
-          projectionId,
-          subOperationId: item.subOperationId,
-        },
-        ctx.queuePath
-      );
+      if (!item.queued) {
+        enqueueTimingProjection(
+          {
+            issue: item.issueNumber ?? input.issueNumber,
+            row: item.row,
+            projectionId,
+            subOperationId: item.subOperationId,
+          },
+          ctx.queuePath
+        );
+      }
       throw error;
     }
   }
   const readProjection = ctx.readTimingProjection ?? gh.readTimingProjection;
-  const operationsByIssue = new Map();
-  for (const item of input.rows) {
+  const operationsByIssueAndProjection = new Map();
+  for (const item of deliveries) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
-    const operations = operationsByIssue.get(issueNumber) ?? [];
-    operations.push(item.subOperationId);
-    operationsByIssue.set(issueNumber, operations);
+    const stableProjectionId = item.projectionId ?? projectionId;
+    const key = `${issueNumber}\0${stableProjectionId}`;
+    const operations = operationsByIssueAndProjection.get(key) ?? {
+      issueNumber,
+      projectionId: stableProjectionId,
+      subOperationIds: [],
+    };
+    operations.subOperationIds.push(item.subOperationId);
+    operationsByIssueAndProjection.set(key, operations);
   }
-  for (const [issueNumber, subOperationIds] of operationsByIssue) {
+  for (const {
+    issueNumber,
+    projectionId: stableProjectionId,
+    subOperationIds,
+  } of operationsByIssueAndProjection.values()) {
     const proof = await readProjection({
       issueNumber,
       repo: input.repo,
-      projectionId,
+      projectionId: stableProjectionId,
       subOperationIds,
     });
-    if (proof?.reconciled !== true || proof.projectionId !== projectionId) {
+    if (proof?.reconciled !== true || proof.projectionId !== stableProjectionId) {
       throw new Error('timing projection remote read-back does not match');
+    }
+  }
+  if (queuedSourceEntries.length > 0) {
+    const remove = ctx.removeExactQueueEntries ?? removeExactQueueEntries;
+    const removal = await remove(
+      queuedSourceEntries.map((queued) => queued.entry),
+      ctx.queuePath
+    );
+    if (removal?.reconciled !== true) {
+      throw new Error('timing source queue removal did not reconcile');
     }
   }
   return projectionProof('timing', projectionId);
@@ -530,6 +590,42 @@ async function buildGovernedSwitchPlan(
       `switchLease:${idempotencyKey}:${name}`,
     ])
   );
+  const sourceQueueEntries =
+    eligibility.skippedNetwork || !isNonEmptyString(ctx.queuePath)
+      ? []
+      : peekQueue(ctx.queuePath).filter(
+          (entry) =>
+            entry?.kind === 'timing' &&
+            String(entry.issue).replace(/^#/, '') === source.replace(/^#/, '') &&
+            isNonEmptyString(entry.row)
+        );
+  const queuedSourceEntries = sourceQueueEntries.map((entry, index) => {
+    const durableEntry = durableJson(entry);
+    const hasProjectionId = isNonEmptyString(entry.projectionId);
+    const hasSubOperationId = isNonEmptyString(entry.subOperationId);
+    if (hasProjectionId !== hasSubOperationId) {
+      throw new Error('queued source timing identity is incomplete');
+    }
+    const entryDigest = createHash('sha256')
+      .update(JSON.stringify(durableEntry))
+      .digest('hex')
+      .slice(0, 16);
+    return {
+      entry: durableEntry,
+      deliveryProjectionId: hasProjectionId ? entry.projectionId : projectionIds.timing,
+      deliverySubOperationId: hasSubOperationId
+        ? entry.subOperationId
+        : `${projectionIds.timing}:queued-source:${index}:${entryDigest}`,
+    };
+  });
+  const queuedDeliveryIdentities = new Set(
+    queuedSourceEntries.map(
+      (queued) => `${queued.deliveryProjectionId}\0${queued.deliverySubOperationId}`
+    )
+  );
+  if (queuedDeliveryIdentities.size !== queuedSourceEntries.length) {
+    throw new Error('queued source timing identity is duplicated');
+  }
   const sourceFleet =
     readFleet(fleetRegistryPath(findMainWorktreePath(ctx.projectDir)))[source] ?? {};
   const sourceInput = {
@@ -594,6 +690,7 @@ async function buildGovernedSwitchPlan(
     },
     sourceIssue: source,
     targetIssue: target,
+    queuedSourceEntries,
     rows: eligibility.skippedNetwork
       ? []
       : [
@@ -619,6 +716,8 @@ async function buildGovernedSwitchPlan(
     jsonlPath: jsonlPath(sessionId),
     ts: plan.ts,
     issueTimeExpected: null,
+    issueTimeSourceBody: null,
+    issueTimeThresholdMin: null,
     subOperations: {
       sessionRef: `${projectionIds.github}:source-session-ref`,
       issueTime: `${projectionIds.github}:source-issue-time`,
@@ -643,9 +742,13 @@ async function buildGovernedSwitchPlan(
           '|---|---|---|---|---|---|---|---|',
           sourceBody,
         ].join('\n');
+    plan.projectionInputs.github.switch.issueTimeSourceBody = timingBody;
+    plan.projectionInputs.github.switch.issueTimeThresholdMin =
+      Number(ctx.cfg.reviewPauseThresholdMin) || 5;
+    const queuedSourceRows = queuedSourceEntries.map((queued) => queued.entry.row).join('\n');
     plan.projectionInputs.github.switch.issueTimeExpected = deriveIssueTimeExpectedFields(
-      `${timingBody}\n${sourceRows}`,
-      ctx.cfg.reviewPauseThresholdMin
+      `${timingBody}\n${queuedSourceRows}\n${sourceRows}`,
+      plan.projectionInputs.github.switch.issueTimeThresholdMin
     );
   }
   plan.projectionInputs = durableJson(plan.projectionInputs);

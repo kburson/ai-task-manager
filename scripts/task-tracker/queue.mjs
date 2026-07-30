@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { legacyPathFor } from './paths.mjs';
 
 function read(queuePath) {
@@ -84,6 +85,30 @@ export async function drain(handler, queuePath) {
   }
   write(failed, queuePath);
   return failed.length === 0;
+}
+
+// Remove only the exact entries whose remote effects have already received a
+// positive reconciliation proof. A retry after local response loss sees the
+// entry already absent and succeeds; changed or newly queued entries never
+// match and remain untouched.
+export function removeExactQueueEntries(entries, queuePath) {
+  if (!Array.isArray(entries)) {
+    throw new TypeError('exact queue entries must be an array');
+  }
+  const items = read(queuePath);
+  let removed = 0;
+  let alreadyAbsent = 0;
+  for (const expected of entries) {
+    const index = items.findIndex((item) => isDeepStrictEqual(item, expected));
+    if (index < 0) {
+      alreadyAbsent += 1;
+      continue;
+    }
+    items.splice(index, 1);
+    removed += 1;
+  }
+  write(items, queuePath);
+  return { reconciled: true, removed, alreadyAbsent };
 }
 
 // Drain only items matching `predicate`, consuming them regardless of handler

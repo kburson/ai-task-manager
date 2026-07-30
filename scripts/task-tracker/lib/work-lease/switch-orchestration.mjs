@@ -34,7 +34,15 @@ import {
   WORK_LEASE_HEARTBEAT_AGE_MS,
   WORK_LEASE_TTL_MS,
 } from './guard.mjs';
-import { validateIssueTimeExpectedFields } from './issue-time-projection.mjs';
+import {
+  deriveIssueTimeExpectedFields,
+  issueTimeProjectionMatches,
+  validateIssueTimeExpectedFields,
+} from './issue-time-projection.mjs';
+import {
+  switchTargetIntegrityKey,
+  validateSwitchProjectionIntegrity,
+} from './switch-projection-integrity.mjs';
 
 const TERMINAL_SWITCH_CODES = new Set([
   'invalid-request',
@@ -353,7 +361,11 @@ export function validateSwitchGithubProjectionInput(
         );
       }
       if (value.skippedNetwork) {
-        if (switchInput.issueTimeExpected !== null) {
+        if (
+          switchInput.issueTimeExpected !== null ||
+          switchInput.issueTimeSourceBody !== null ||
+          switchInput.issueTimeThresholdMin !== null
+        ) {
           throw leaseError(
             'invalid-request',
             'offline switch issue-time expectation is unexpected'
@@ -366,6 +378,16 @@ export function validateSwitchGithubProjectionInput(
           throw leaseError(
             'invalid-request',
             'persisted switch issue-time expectation is malformed'
+          );
+        }
+        if (
+          typeof switchInput.issueTimeSourceBody !== 'string' ||
+          !Number.isFinite(switchInput.issueTimeThresholdMin) ||
+          switchInput.issueTimeThresholdMin <= 0
+        ) {
+          throw leaseError(
+            'invalid-request',
+            'persisted switch issue-time derivation input is malformed'
           );
         }
       }
@@ -394,7 +416,7 @@ export function validateSwitchGithubProjectionInput(
   ) {
     throw leaseError(
       'invalid-request',
-      'persisted GitHub switch suboperations do not match their projection'
+      'persisted GitHub switch sub-operations do not match their projection'
     );
   }
   return value;
@@ -421,6 +443,19 @@ export function validateSwitchProjectionInputs(
       object(projections?.[name]?.input ?? projections?.[name], `persisted ${name} switch input`),
     ])
   );
+  try {
+    validateSwitchProjectionIntegrity({
+      request,
+      sessionId: trustedSessionId,
+      targetIssueId: target,
+      projectionInputs: values,
+    });
+  } catch (error) {
+    throw leaseError(
+      'invalid-request',
+      `persisted switch projection integrity is invalid: ${error.message}`
+    );
+  }
   const session = values.session;
   if (
     session.sessionId !== trustedSessionId ||
@@ -511,6 +546,40 @@ export function validateSwitchProjectionInputs(
   }
   const timing = values.timing;
   const timingProjectionId = projections?.timing?.projectionId;
+  const queuedSourceEntries = timing.queuedSourceEntries;
+  const queuedDeliveryIdentities = new Set();
+  const queuedSourceMalformed =
+    !Array.isArray(queuedSourceEntries) ||
+    queuedSourceEntries.some((queued, index) => {
+      const entry = queued?.entry;
+      if (
+        !entry ||
+        entry.kind !== 'timing' ||
+        String(entry.issue).replace(/^#/, '') !== source ||
+        typeof entry.row !== 'string' ||
+        entry.row === ''
+      ) {
+        return true;
+      }
+      const hasProjectionId = typeof entry.projectionId === 'string' && entry.projectionId !== '';
+      const hasSubOperationId =
+        typeof entry.subOperationId === 'string' && entry.subOperationId !== '';
+      if (hasProjectionId !== hasSubOperationId) return true;
+      const entryDigest = createHash('sha256')
+        .update(JSON.stringify(entry))
+        .digest('hex')
+        .slice(0, 16);
+      const malformedIdentity = hasProjectionId
+        ? queued.deliveryProjectionId !== entry.projectionId ||
+          queued.deliverySubOperationId !== entry.subOperationId
+        : queued.deliveryProjectionId !== timingProjectionId ||
+          queued.deliverySubOperationId !==
+            `${timingProjectionId}:queued-source:${index}:${entryDigest}`;
+      const deliveryIdentity = `${queued.deliveryProjectionId}\0${queued.deliverySubOperationId}`;
+      if (malformedIdentity || queuedDeliveryIdentities.has(deliveryIdentity)) return true;
+      queuedDeliveryIdentities.add(deliveryIdentity);
+      return false;
+    });
   const expectedOperations = [
     ['outgoing:reengage', source],
     ['outgoing:switch-out', source],
@@ -562,6 +631,7 @@ export function validateSwitchProjectionInputs(
     timing.sourceIssue !== sourceRef ||
     timing.targetIssue !== targetRef ||
     timing.decision?.mode !== 'switch' ||
+    queuedSourceMalformed ||
     (!timing.skippedNetwork &&
       ((timing.decision?.suppressed === true) !==
         !timing.rows?.some((row) => row.subOperationId === 'incoming:bind') ||
@@ -569,7 +639,9 @@ export function validateSwitchProjectionInputs(
           Boolean(
             timing.rows?.some((row) => row.subOperationId === 'incoming:synthetic-departure')
           ))) ||
-    (timing.skippedNetwork ? timing.rows?.length !== 0 : timingRowsMalformed || !sawSwitchOut)
+    (timing.skippedNetwork
+      ? timing.rows?.length !== 0 || queuedSourceEntries.length !== 0
+      : timingRowsMalformed || !sawSwitchOut)
   ) {
     throw leaseError(
       'invalid-request',
@@ -583,6 +655,39 @@ export function validateSwitchProjectionInputs(
     request,
     projectionId: projections?.github?.projectionId,
   });
+  if (!values.github.skippedNetwork) {
+    const sourceRows = timing.rows
+      .filter((row) => String(row.issueNumber) === source)
+      .map((row) => row.row)
+      .join('\n');
+    const queuedRows = queuedSourceEntries.map((queued) => queued.entry.row).join('\n');
+    let recomputed;
+    try {
+      recomputed = deriveIssueTimeExpectedFields(
+        `${values.github.switch.issueTimeSourceBody}\n${queuedRows}\n${sourceRows}`,
+        values.github.switch.issueTimeThresholdMin
+      );
+    } catch {
+      throw leaseError(
+        'invalid-request',
+        'persisted switch issue-time derivation inputs are malformed'
+      );
+    }
+    if (
+      !issueTimeProjectionMatches(
+        {
+          bodyFields: values.github.switch.issueTimeExpected.bodyFields,
+          projectFields: values.github.switch.issueTimeExpected.projectFields,
+        },
+        recomputed
+      )
+    ) {
+      throw leaseError(
+        'invalid-request',
+        'persisted switch issue-time expectation does not match exact timing inputs'
+      );
+    }
+  }
   return values;
 }
 
@@ -1083,7 +1188,12 @@ export async function coordinateWorkLeaseSwitch({
         projectId: sourceLease.projectId,
         issueId: target,
         mode: 'write',
-        idempotencyKey: `switch-target:${sessionId}:${target}:${requestId}`,
+        idempotencyKey: switchTargetIntegrityKey({
+          sessionId,
+          targetIssueId: target,
+          requestId,
+          projectionInputs,
+        }),
         requestedAt: switchedAt,
         ttlMs: WORK_LEASE_TTL_MS,
         holder,

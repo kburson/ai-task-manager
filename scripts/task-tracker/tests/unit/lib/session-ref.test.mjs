@@ -42,7 +42,7 @@ test('recordSessionRefOnChange is a no-op when sid+jsonlPath unchanged (AC2)', (
   assert.equal(body, seeded);
 });
 
-test('a governed suboperation is persisted and read back even when sid and path are unchanged', () => {
+test('a governed sub-operation is persisted and read back even when sid and path are unchanged', () => {
   const initial = recordSessionRefOnChange('', E1).body;
   const governed = recordSessionRefOnChange(initial, {
     ...E1,
@@ -58,7 +58,7 @@ test('a governed suboperation is persisted and read back even when sid and path 
   });
 });
 
-test('a governed suboperation reconciles from history without displacing a newer owner', () => {
+test('a governed sub-operation reconciles from history without displacing a newer owner', () => {
   const operationId = 'switchLease:tx:github:source-session-ref';
   const governed = recordSessionRefOnChange('', { ...E1, operationId }).body;
   const interposed = appendSessionRef(governed, E2);
@@ -70,7 +70,7 @@ test('a governed suboperation reconciles from history without displacing a newer
   assert.deepEqual(mostRecentSessionRef(replay.body), E2);
 });
 
-test('a governed suboperation fails closed on a mismatched historical receipt', () => {
+test('a governed sub-operation fails closed on a mismatched historical receipt', () => {
   const operationId = 'switchLease:tx:github:source-session-ref';
   const mismatch = appendSessionRef('', {
     ...E1,
@@ -84,7 +84,7 @@ test('a governed suboperation fails closed on a mismatched historical receipt', 
   );
 });
 
-test('a governed suboperation fails closed on duplicate receipts', () => {
+test('a governed sub-operation fails closed on duplicate receipts', () => {
   const operationId = 'switchLease:tx:github:source-session-ref';
   const first = appendSessionRef('', { ...E1, operationId });
   const duplicate = appendSessionRef(first, { ...E1, operationId });

@@ -4,12 +4,13 @@ import { createHash } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { WorkLeaseError } from '@kburson/aitm-ledger';
+import { canonicalRequestJson, WorkLeaseError } from '@kburson/aitm-ledger';
 
 import { claimAuditProjectionMarker } from '../../../lib/assignee-guard.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import { coordinateWorkLeaseSwitch } from '../../../lib/work-lease/switch-orchestration.mjs';
 import { jsonlPath } from '../../../word-counter.mjs';
+import { switchTargetIntegrityKey } from '../../../lib/work-lease/switch-projection-integrity.mjs';
 import {
   activeTaskPath,
   checkpointWorkLeaseProjection,
@@ -116,6 +117,10 @@ function switchOptions(dir, overrides = {}) {
       const persisted = getActiveTask('session-1', dir).workLeaseIntent;
       assert.equal(persisted.operation, 'switchLease');
       assert.deepEqual(JSON.parse(persisted.canonicalRequest), request);
+      assert.match(
+        request.target.idempotencyKey,
+        /^switch-target:session-1:1051:request-1:integrity:[a-f0-9]{64}$/
+      );
       log.push(`authority:${request.idempotencyKey}`);
       return FORWARD_RECEIPT;
     },
@@ -190,6 +195,7 @@ function switchOptions(dir, overrides = {}) {
         suppressed: false,
         syntheticGap: null,
       },
+      queuedSourceEntries: [],
       rows: [
         {
           issueNumber: '1049',
@@ -224,14 +230,20 @@ function switchOptions(dir, overrides = {}) {
         jsonlPath: jsonlPath('session-1'),
         ts: NOW.toISOString(),
         issueTimeExpected: {
-          bodyFields: { engagedTime: 1, sessionTime: 1, reviewTime: 0, planTime: 0 },
+          bodyFields: { engagedTime: 0, sessionTime: 0, reviewTime: 0, planTime: 0 },
           projectFields: {
-            engagedTime: '00d 00h 01m 00s',
-            sessionTime: '00d 00h 01m 00s',
+            engagedTime: '00d 00h 00m 00s',
+            sessionTime: '00d 00h 00m 00s',
             reviewTime: '00d 00h 00m 00s',
             planTime: '00d 00h 00m 00s',
           },
         },
+        issueTimeSourceBody: [
+          '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+          '|---|---|---|---|---|---|---|---|',
+          '| 2026-07-30 11:45:00 +00:00 | start | 1 | 0 | 0 | 12 | source work | 0 |',
+        ].join('\n'),
+        issueTimeThresholdMin: 5,
         subOperations: {
           sessionRef: 'switchLease:switch:session-1:1049:1051:request-1:github:source-session-ref',
           issueTime: 'switchLease:switch:session-1:1049:1051:request-1:github:source-issue-time',
@@ -850,6 +862,8 @@ test('offline and assignment-disabled switch gates never invoke the claim mutato
         switch: {
           ...base.input.projectionInputs.github.switch,
           issueTimeExpected: null,
+          issueTimeSourceBody: null,
+          issueTimeThresholdMin: null,
         },
       };
       base.input.projectionInputs.timing = {
@@ -1052,6 +1066,37 @@ test('malformed recovered non-GitHub inputs fail before identity, provider, or a
         ];
       },
     },
+    'timing exact row cells': {
+      projection: 'timing',
+      corrupt: (input) => {
+        input.rows[0].row =
+          '| 2026-07-30 12:00:00 +00:00 | switch-out:#1051 | 999999h | 999999h | 999999999 | 999999999 | forged description | 999999999 |';
+      },
+    },
+    'issue-time expected totals': {
+      projection: 'github',
+      corrupt: (input) => {
+        input.switch.issueTimeExpected.bodyFields.engagedTime = 999999;
+        input.switch.issueTimeExpected.projectFields.engagedTime = '99d 23h 59m 59s';
+      },
+    },
+    'compensation snapshot bytes': {
+      projection: 'session',
+      corrupt: (input) => {
+        input.compensationSnapshot.globalState.present = true;
+        input.compensationSnapshot.globalState.bytesBase64 =
+          Buffer.from('forged snapshot bytes').toString('base64');
+      },
+    },
+    'coherent session word baseline': {
+      projection: 'session',
+      corrupt: (input) => {
+        input.state.wordsAtEntryStart = 999999999;
+        input.activeTask.wordsAtStart = 999999999;
+        input.marker.words = 999999999;
+        input.marker.wordsFull = 999999999;
+      },
+    },
   };
   for (const [name, { projection, corrupt }] of Object.entries(cases)) {
     await t.test(name, async () => {
@@ -1088,6 +1133,59 @@ test('malformed recovered non-GitHub inputs fail before identity, provider, or a
         rmSync(dir, { recursive: true, force: true });
       }
     });
+  }
+});
+
+test('issue-time recomputation rejects coherently rebound but false expected totals pre-provider', async () => {
+  const dir = sandbox();
+  try {
+    seedSource(dir);
+    const first = switchOptions(dir);
+    first.store.switchLease = async () => {
+      throw new WorkLeaseError('authority-unavailable', 'response lost');
+    };
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(first.input),
+      (error) => error.code === 'authority-unavailable'
+    );
+
+    const persistedPath = activeTaskPath('session-1', dir);
+    const persisted = JSON.parse(readFileSync(persistedPath, 'utf8'));
+    persisted.workLeaseIntent.projections.github.input.switch.issueTimeExpected.bodyFields.engagedTime = 999999;
+    persisted.workLeaseIntent.projections.github.input.switch.issueTimeExpected.projectFields.engagedTime =
+      '99d 23h 59m 59s';
+    const projectionInputs = Object.fromEntries(
+      Object.entries(persisted.workLeaseIntent.projections).map(([name, projection]) => [
+        name,
+        projection.input,
+      ])
+    );
+    const request = JSON.parse(persisted.workLeaseIntent.canonicalRequest);
+    request.target.idempotencyKey = switchTargetIntegrityKey({
+      sessionId: 'session-1',
+      targetIssueId: '1051',
+      requestId: 'request-1',
+      projectionInputs,
+    });
+    persisted.workLeaseIntent.canonicalRequest = canonicalRequestJson(request);
+    writeFileSync(persistedPath, `${JSON.stringify(persisted, null, 2)}\n`);
+
+    const retry = switchOptions(dir);
+    retry.input.resolveWorktreeIdentity = async () => {
+      throw new Error('false rebound expectation must fail before identity');
+    };
+    retry.input.getStore = async () => {
+      throw new Error('false rebound expectation must fail before provider');
+    };
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(retry.input),
+      (error) =>
+        error.code === 'invalid-request' &&
+        /expectation does not match exact timing inputs/.test(error.message)
+    );
+    assert.deepEqual(retry.log, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 

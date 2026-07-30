@@ -26,6 +26,8 @@ import { loadState } from '../../../state.mjs';
 import { renewWorkLeaseBeforeResume, verbResume } from '../../../verbs/resume.mjs';
 import { loadMarker, markerPathFor, saveMarker } from '../../../word-counter.mjs';
 import { pendingPausePath } from '../../../hooks/on-stop.mjs';
+import { enqueue, peek as peekQueue, removeExactQueueEntries } from '../../../queue.mjs';
+import { reconcileIssueTimeProjection } from '../../../lib/work-lease/issue-time-projection.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -3205,7 +3207,7 @@ test('genuine cross-issue bind routes through atomic switch before every project
   }
 });
 
-test('production GitHub switch suboperations survive response loss with exact remote read-back', async () => {
+test('production GitHub switch sub-operations survive response loss with exact remote read-back', async () => {
   const dir = sandbox();
   try {
     const { ctx } = governedResumeContext(dir, {
@@ -3282,6 +3284,167 @@ test('production GitHub switch suboperations survive response loss with exact re
     assert.equal(remoteIssueTimes.size, 1);
     assert.match([...remoteSessionRefs][0], /:github:source-session-ref$/);
     assert.match([...remoteIssueTimes][0], /:github:source-issue-time$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('queued source timing survives delivery and checkpoint loss with one stable exact expectation', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1048', lastActive: '#1048' },
+      session: {
+        issue: '#1048',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    ctx.queuePath = path.join(dir, 'timing-queue.json');
+    enqueue(
+      {
+        kind: 'timing',
+        issue: '#1048',
+        row: '| 2026-07-30 11:56:00 +00:00 | develop:started |  |  | 0 | 21 | queued source work | 0 | <!-- row-sec: a=0 i=0 -->',
+      },
+      ctx.queuePath
+    );
+    enqueue(
+      {
+        kind: 'timing',
+        issue: '#1048',
+        row: '| 2026-07-30 11:58:00 +00:00 | develop:completed | 2m 0s |  | 7 | 28 | queued projected source work | 9 | <!-- row-sec: a=120 i=0 -->',
+        projectionId: 'prior-projection:timing',
+        subOperationId: 'prior-projection:timing:test-started',
+      },
+      ctx.queuePath
+    );
+
+    const remoteTimingEffects = new Map();
+    let timingPostCalls = 0;
+    ctx.applyWorkLeaseTimingProjection = undefined;
+    ctx.drainQueueIfAny = async () => assert.fail('switch must not broad-drain the queue');
+    ctx.postTimingProjection = async (input) => {
+      timingPostCalls += 1;
+      remoteTimingEffects.set(`${input.projectionId}\0${input.subOperationId}`, input.row);
+    };
+    ctx.readTimingProjection = async ({ projectionId, subOperationIds }) => ({
+      reconciled: subOperationIds.every((subOperationId) =>
+        remoteTimingEffects.has(`${projectionId}\0${subOperationId}`)
+      ),
+      projectionId,
+    });
+    let removalAttempts = 0;
+    ctx.removeExactQueueEntries = (entries, queuePath) => {
+      removalAttempts += 1;
+      if (removalAttempts === 1) {
+        throw new Error('crash after delivery before exact queue removal');
+      }
+      return removeExactQueueEntries(entries, queuePath);
+    };
+
+    ctx.applyWorkLeaseGithubProjection = undefined;
+    ctx.safeRecordSessionRef = async (_issue, input) => ({
+      ok: true,
+      receipt: {
+        sid: input.sid,
+        jsonlPath: input.jsonlPath,
+        ts: input.ts,
+        operationId: input.operationId,
+      },
+    });
+    let issueTimeMutations = 0;
+    let exactIssueTimeState;
+    ctx.runLogIssueTime = async (_issue, input) => {
+      exactIssueTimeState ??= {
+        bodyFields: {
+          ...input.expected.bodyFields,
+          engagedTime: null,
+        },
+        projectFields: {
+          ...input.expected.projectFields,
+          engagedTime: null,
+        },
+      };
+      const proof = await reconcileIssueTimeProjection({
+        expected: input.expected,
+        readState: async () => structuredClone(exactIssueTimeState),
+        mutate: async () => {
+          issueTimeMutations += 1;
+          exactIssueTimeState = structuredClone(input.expected);
+        },
+      });
+      return { ...proof, subOperationId: input.subOperationId };
+    };
+
+    ctx.coordinateWorkLeaseSwitch = async (input) => {
+      const queued = input.projectionInputs.timing.queuedSourceEntries;
+      assert.equal(queued.length, 2);
+      assert.equal(queued[0].entry.row.includes('queued source work'), true);
+      assert.equal(queued[1].deliveryProjectionId, 'prior-projection:timing');
+      assert.equal(queued[1].deliverySubOperationId, 'prior-projection:timing:test-started');
+      const stableExpected = structuredClone(
+        input.projectionInputs.github.switch.issueTimeExpected
+      );
+      assert.equal(stableExpected.bodyFields.sessionTime, 2);
+      assert.equal(stableExpected.projectFields.sessionTime, '00d 00h 02m 00s');
+      enqueue({ kind: 'timing', issue: '#9999', row: 'new unrelated queued row' }, ctx.queuePath);
+
+      const timingProjectionId = input.projectionInputs.timing.rows[0].projectionId;
+      const timingOptions = {
+        phase: 'forward',
+        input: input.projectionInputs.timing,
+        lease: LEASE,
+        transitionId: 'transition-switch',
+        projectionName: 'timing',
+        projectionId: timingProjectionId,
+      };
+      await assert.rejects(
+        () => input.projections.timing(timingOptions),
+        /crash after delivery before exact queue removal/
+      );
+      await input.projections.timing(timingOptions);
+      assert.deepEqual(input.projectionInputs.github.switch.issueTimeExpected, stableExpected);
+      assert.deepEqual(
+        peekQueue(ctx.queuePath).map((entry) => entry.issue),
+        ['#9999']
+      );
+
+      // Simulate a crash after exact removal but before the outer projection
+      // checkpoint. Replaying the same durable input is a remote/local no-op.
+      await input.projections.timing(timingOptions);
+      assert.deepEqual(
+        peekQueue(ctx.queuePath).map((entry) => entry.issue),
+        ['#9999']
+      );
+
+      const githubProjectionId =
+        input.projectionInputs.github.switch.subOperations.sessionRef.replace(
+          /:source-session-ref$/,
+          ''
+        );
+      await input.projections.github({
+        ...timingOptions,
+        input: input.projectionInputs.github,
+        projectionName: 'github',
+        projectionId: githubProjectionId,
+      });
+      return { lease: LEASE, projectionInputs: input.projectionInputs };
+    };
+
+    await verbResume(ctx);
+
+    assert.equal(removalAttempts, 3);
+    assert.ok(timingPostCalls > remoteTimingEffects.size);
+    assert.equal(issueTimeMutations, 1);
+    assert.notEqual(exactIssueTimeState.bodyFields.engagedTime, null);
+    assert.notEqual(exactIssueTimeState.projectFields.engagedTime, null);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -368,21 +368,21 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs',
-      553,
+      649,
       'flush-call',
       '`switch-out:${target}`',
       ['switch-out:#1007']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs',
-      952,
+      1055,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs',
-      977,
+      1080,
       'event-call',
       'event',
       ['start', 'resumed', 'resume:other']
