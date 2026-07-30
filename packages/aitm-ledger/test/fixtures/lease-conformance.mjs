@@ -94,11 +94,33 @@ export class MemoryLeaseStore extends WorkLeaseStore {
           { projectId: request.projectId, idempotencyKey: request.idempotencyKey, operation }
         );
       }
+      if (previous.error) {
+        throw new WorkLeaseError(
+          previous.error.code,
+          previous.error.message,
+          clone(previous.error.details)
+        );
+      }
       return clone(previous.result);
     }
-    const result = apply();
-    this.#idempotency.set(scope, { operation, digest, result: clone(result) });
-    return clone(result);
+    try {
+      const result = apply();
+      this.#idempotency.set(scope, { operation, digest, result: clone(result) });
+      return clone(result);
+    } catch (error) {
+      if (error instanceof WorkLeaseError && error.code !== 'authority-unavailable') {
+        this.#idempotency.set(scope, {
+          operation,
+          digest,
+          error: {
+            code: error.code,
+            message: error.message,
+            details: clone(error.details),
+          },
+        });
+      }
+      throw error;
+    }
   }
 
   #newLease(request, { acquiredAt = request.requestedAt } = {}) {
@@ -273,6 +295,22 @@ export class MemoryLeaseStore extends WorkLeaseStore {
           currentToken: observed.fencingToken,
         });
       }
+      const worktreeLease = this.#currentByWorktree(
+        request.projectId,
+        request.requester.worktreeId,
+        observed.leaseId
+      );
+      if (worktreeLease) {
+        throw new WorkLeaseError(
+          'worktree-contended',
+          'takeover worktree already has a write lease',
+          {
+            worktreeId: request.requester.worktreeId,
+            holder: worktreeLease.holder,
+            leaseId: worktreeLease.leaseId,
+          }
+        );
+      }
       observed.fencingToken = this.#nextFence();
       observed.state = 'superseded';
       observed.audit = {
@@ -311,37 +349,52 @@ export function createMemoryLeaseStore() {
 }
 
 export async function assertLeaseStoreConformance({ createStore, assert }) {
-  const store = await createStore();
   const requestedAt = '2026-07-30T12:00:00.000Z';
-  const request = {
-    projectId: 'conformance-project',
-    issueId: '1049',
+  const projectId = 'conformance-project';
+  const baseHolder = {
+    principalKind: 'worker',
+    provider: 'conformance',
+    agentRunId: 'run-1',
+    sessionId: 'session-1',
+    hostId: 'host-1',
+    worktreeId: 'wt:v1:conformance',
+    pathHash: 'path-conformance',
+    branch: 'feature/conformance',
+    pid: 123,
+  };
+  const acquireRequest = ({
+    issueId = '1049',
+    idempotencyKey = 'conformance-acquire',
+    holder = baseHolder,
+  } = {}) => ({
+    projectId,
+    issueId,
     mode: 'write',
-    idempotencyKey: 'conformance-acquire',
+    idempotencyKey,
     requestedAt,
     ttlMs: 900_000,
-    holder: {
-      principalKind: 'worker',
-      provider: 'conformance',
-      agentRunId: 'run-1',
-      sessionId: 'session-1',
-      hostId: 'host-1',
-      worktreeId: 'wt:v1:conformance',
-      pathHash: 'path-conformance',
-      branch: 'feature/conformance',
-      pid: 123,
-    },
+    holder,
+  });
+  const expectCode = async (fn, code) => {
+    await assert.rejects(
+      async () => fn(),
+      (error) => error?.code === code
+    );
   };
+
+  const store = await createStore();
+  const request = acquireRequest();
   const acquired = await store.acquire(request);
   assert.deepEqual(await store.acquire(request), acquired);
-  assert.deepEqual(
-    await store.observe({ projectId: request.projectId, issueId: request.issueId }),
-    acquired
+  await expectCode(
+    () => store.acquire({ ...request, issueId: 'different-payload' }),
+    'idempotency-conflict'
   );
+  assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), acquired);
   assert.equal(
     (
       await store.verify({
-        projectId: request.projectId,
+        projectId,
         leaseId: acquired.leaseId,
         fencingToken: acquired.fencingToken,
         operation: 'task-bind',
@@ -350,18 +403,205 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     ).allowed,
     true
   );
-  const releaseRequest = {
-    projectId: request.projectId,
+
+  const renewRequest = {
+    projectId,
     leaseId: acquired.leaseId,
     fencingToken: acquired.fencingToken,
+    idempotencyKey: 'conformance-renew',
+    requestedAt: '2026-07-30T12:01:00.000Z',
+    ttlMs: 900_000,
+  };
+  const renewed = await store.renew(renewRequest);
+  assert.equal(renewed.fencingToken, acquired.fencingToken);
+  assert.deepEqual(await store.renew(renewRequest), renewed);
+
+  const handoffRequest = {
+    projectId,
+    leaseId: acquired.leaseId,
+    fencingToken: acquired.fencingToken,
+    idempotencyKey: 'conformance-handoff',
+    handedOffAt: '2026-07-30T12:02:00.000Z',
+    reason: 'integration',
+    recipient: {
+      principalKind: 'integration',
+      provider: 'conformance',
+      agentRunId: 'integration-1',
+      sessionId: 'orchestrator-1',
+      hostId: 'host-1',
+      pid: 456,
+    },
+  };
+  const handed = await store.handoff(handoffRequest);
+  assert.equal(handed.state, 'active');
+  assert.equal(handed.leaseId, acquired.leaseId);
+  assert.equal(handed.holder.worktreeId, acquired.holder.worktreeId);
+  assert.ok(BigInt(handed.fencingToken) > BigInt(acquired.fencingToken));
+  assert.deepEqual(await store.handoff(handoffRequest), handed);
+  await expectCode(
+    () =>
+      store.verify({
+        projectId,
+        leaseId: acquired.leaseId,
+        fencingToken: acquired.fencingToken,
+        operation: 'review-mutation',
+        verifiedAt: requestedAt,
+      }),
+    'fence-stale'
+  );
+
+  const releaseRequest = {
+    projectId,
+    leaseId: handed.leaseId,
+    fencingToken: handed.fencingToken,
     idempotencyKey: 'conformance-release',
-    releasedAt: requestedAt,
+    releasedAt: '2026-07-30T12:03:00.000Z',
     reason: 'conformance complete',
   };
   const released = await store.release(releaseRequest);
   assert.deepEqual(await store.release(releaseRequest), released);
-  assert.equal(
-    await store.observe({ projectId: request.projectId, issueId: request.issueId }),
-    null
+  assert.equal(await store.observe({ projectId, issueId: request.issueId }), null);
+
+  const switchStore = await createStore();
+  const switchCurrent = await switchStore.acquire(
+    acquireRequest({ idempotencyKey: 'switch-base' })
   );
+  const switchRequest = {
+    projectId,
+    leaseId: switchCurrent.leaseId,
+    fencingToken: switchCurrent.fencingToken,
+    idempotencyKey: 'conformance-switch',
+    switchedAt: '2026-07-30T12:04:00.000Z',
+    target: acquireRequest({ issueId: '1051', idempotencyKey: 'switch-target' }),
+  };
+  const switched = await switchStore.switchLease(switchRequest);
+  assert.equal(switched.lease.issueId, '1051');
+  assert.equal(switched.transition.fromIssueId, '1049');
+  assert.deepEqual(await switchStore.switchLease(switchRequest), switched);
+  await expectCode(
+    () =>
+      switchStore.verify({
+        projectId,
+        leaseId: switchCurrent.leaseId,
+        fencingToken: switchCurrent.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: requestedAt,
+      }),
+    'fence-stale'
+  );
+
+  const failedSwitchStore = await createStore();
+  const preserved = await failedSwitchStore.acquire(
+    acquireRequest({ idempotencyKey: 'preserved-base' })
+  );
+  const otherHolder = {
+    ...baseHolder,
+    agentRunId: 'run-2',
+    sessionId: 'session-2',
+    worktreeId: 'wt:v1:other',
+    pathHash: 'path-other',
+    pid: 456,
+  };
+  const blocker = await failedSwitchStore.acquire(
+    acquireRequest({
+      issueId: '1051',
+      idempotencyKey: 'switch-blocker',
+      holder: otherHolder,
+    })
+  );
+  const failedSwitchRequest = {
+    projectId,
+    leaseId: preserved.leaseId,
+    fencingToken: preserved.fencingToken,
+    idempotencyKey: 'failed-switch',
+    switchedAt: '2026-07-30T12:05:00.000Z',
+    target: acquireRequest({ issueId: '1051', idempotencyKey: 'failed-target' }),
+  };
+  await expectCode(() => failedSwitchStore.switchLease(failedSwitchRequest), 'lease-contended');
+  assert.equal(
+    (
+      await failedSwitchStore.verify({
+        projectId,
+        leaseId: preserved.leaseId,
+        fencingToken: preserved.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: requestedAt,
+      })
+    ).allowed,
+    true
+  );
+  await failedSwitchStore.release({
+    projectId,
+    leaseId: blocker.leaseId,
+    fencingToken: blocker.fencingToken,
+    idempotencyKey: 'release-blocker',
+    releasedAt: '2026-07-30T12:06:00.000Z',
+    reason: 'unblock issue',
+  });
+  await expectCode(() => failedSwitchStore.switchLease(failedSwitchRequest), 'lease-contended');
+
+  const takeoverStore = await createStore();
+  const observed = await takeoverStore.acquire(acquireRequest({ idempotencyKey: 'takeover-base' }));
+  const takeoverRequest = {
+    projectId,
+    issueId: observed.issueId,
+    expectedLeaseId: observed.leaseId,
+    expectedToken: observed.fencingToken,
+    idempotencyKey: 'conformance-takeover',
+    observedAt: '2026-07-30T12:07:00.000Z',
+    reason: 'holder confirmed dead',
+    requester: {
+      ...baseHolder,
+      agentRunId: 'run-3',
+      sessionId: 'session-3',
+      pid: 789,
+    },
+    evidence: {
+      kind: 'local-process-dead',
+      hostId: 'host-1',
+      pid: 123,
+      checkedAt: '2026-07-30T12:07:00.000Z',
+      detailsHash: 'dead-proof',
+    },
+  };
+  const taken = await takeoverStore.takeover(takeoverRequest);
+  assert.notEqual(taken.leaseId, observed.leaseId);
+  assert.ok(BigInt(taken.fencingToken) > BigInt(observed.fencingToken));
+  assert.deepEqual(await takeoverStore.takeover(takeoverRequest), taken);
+  await expectCode(
+    () =>
+      takeoverStore.verify({
+        projectId,
+        leaseId: observed.leaseId,
+        fencingToken: observed.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: requestedAt,
+      }),
+    'fence-stale'
+  );
+
+  const uniquenessStore = await createStore();
+  const unique = await uniquenessStore.acquire(acquireRequest({ idempotencyKey: 'unique-base' }));
+  await expectCode(
+    () =>
+      uniquenessStore.acquire(
+        acquireRequest({
+          idempotencyKey: 'same-issue',
+          holder: { ...baseHolder, agentRunId: 'run-4', sessionId: 'session-4', pid: 999 },
+        })
+      ),
+    'lease-contended'
+  );
+  await expectCode(
+    () =>
+      uniquenessStore.acquire(
+        acquireRequest({
+          issueId: '1051',
+          idempotencyKey: 'same-worktree',
+          holder: { ...baseHolder, agentRunId: 'run-5', sessionId: 'session-5', pid: 1000 },
+        })
+      ),
+    'worktree-contended'
+  );
+  assert.equal(unique.state, 'active');
 }

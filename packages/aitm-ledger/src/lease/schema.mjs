@@ -39,7 +39,13 @@ function nonEmpty(value, label) {
 
 function timestamp(value, label) {
   nonEmpty(value, label);
-  if (!Number.isFinite(Date.parse(value))) invalidRequest(`${label} must be an ISO timestamp`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    invalidRequest(`${label} must be a canonical UTC ISO timestamp`);
+  }
   return value;
 }
 

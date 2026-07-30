@@ -114,6 +114,19 @@ test('closed operation vocabulary accepts every canonical name and rejects alias
       (error) => error.code === 'invalid-request'
     );
   }
+  for (const verifiedAt of ['2026-07-30', '2026-07-30T12:00:00Z', 'July 30, 2026']) {
+    assert.throws(
+      () =>
+        validateVerifyRequest({
+          projectId: 'project-1',
+          leaseId: 'lease-1',
+          fencingToken: '1',
+          operation: 'task-bind',
+          verifiedAt,
+        }),
+      (error) => error.code === 'invalid-request'
+    );
+  }
 });
 
 test('fencing token is a positive base-10 string on every boundary', () => {
@@ -261,6 +274,87 @@ test('memory conformance: uniqueness, exact replay, conflict, verification, and 
         verifiedAt: NOW,
       }),
     (error) => error.code === 'fence-stale'
+  );
+});
+
+test('terminal mutation errors replay even after authority state changes', () => {
+  const store = createMemoryLeaseStore();
+  const winner = store.acquire(acquire());
+  const contended = acquire({
+    idempotencyKey: 'terminal-contention',
+    holder: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 }),
+  });
+  assert.throws(
+    () => store.acquire(contended),
+    (error) => error.code === 'lease-contended'
+  );
+  store.release({
+    projectId: 'project-1',
+    leaseId: winner.leaseId,
+    fencingToken: winner.fencingToken,
+    idempotencyKey: 'release-winner',
+    releasedAt: NOW,
+    reason: 'make issue available',
+  });
+  assert.throws(
+    () => store.acquire(contended),
+    (error) => error.code === 'lease-contended',
+    'exact replay returns original terminal error instead of re-evaluating current state'
+  );
+});
+
+test('takeover cannot claim a worktree that retains another issue lease', () => {
+  const store = createMemoryLeaseStore();
+  const observed = store.acquire(acquire());
+  const other = store.acquire(
+    acquire({
+      issueId: '1051',
+      idempotencyKey: 'other-issue',
+      holder: holder({
+        agentRunId: 'run-2',
+        sessionId: 'session-2',
+        worktreeId: 'wt:v1:two',
+        pathHash: 'path-two',
+        pid: 456,
+      }),
+    })
+  );
+  assert.throws(
+    () =>
+      store.takeover({
+        projectId: 'project-1',
+        issueId: '1049',
+        expectedLeaseId: observed.leaseId,
+        expectedToken: observed.fencingToken,
+        idempotencyKey: 'takeover-conflicting-worktree',
+        observedAt: NOW,
+        reason: 'confirmed dead',
+        requester: holder({
+          agentRunId: 'run-3',
+          sessionId: 'session-3',
+          worktreeId: other.holder.worktreeId,
+          pathHash: other.holder.pathHash,
+          pid: 789,
+        }),
+        evidence: {
+          kind: 'local-process-dead',
+          hostId: 'host-1',
+          pid: 123,
+          checkedAt: NOW,
+          detailsHash: 'dead-proof',
+        },
+      }),
+    (error) => error.code === 'worktree-contended'
+  );
+  assert.equal(
+    store.verify({
+      projectId: 'project-1',
+      leaseId: observed.leaseId,
+      fencingToken: observed.fencingToken,
+      operation: 'task-bind',
+      verifiedAt: NOW,
+    }).allowed,
+    true
   );
 });
 
