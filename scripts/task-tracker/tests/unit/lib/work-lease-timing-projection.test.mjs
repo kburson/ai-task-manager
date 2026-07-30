@@ -81,6 +81,38 @@ try {
     hostileSubOperationId
   );
 
+  const unsupportedProjection = 'acquire:unsupported-header:timing';
+  const unsupportedSubOperation = `${unsupportedProjection}:bind`;
+  const unsupportedStore = JSON.parse(readFileSync(storePath, 'utf8'));
+  unsupportedStore.comments.push({
+    id: `C_${unsupportedStore.nextId++}`,
+    url: 'https://example/unsupported-header',
+    issue: '1041',
+    body: [
+      '⏱ Timing Log',
+      '| Timestamp | Event | Active Min | Idle Min | Δ Words | Word Marker | Description |',
+      '|---|---|---|---|---|---|---|',
+    ].join('\n'),
+  });
+  writeFileSync(storePath, JSON.stringify(unsupportedStore));
+  const unsupportedStoreBeforePost = readFileSync(storePath, 'utf8');
+  await assert.rejects(
+    postTimingEvent({
+      issueNumber: 1041,
+      repo: 'owner/repo',
+      row: row('update', 'must not append under unsupported header'),
+      projectionId: unsupportedProjection,
+      subOperationId: unsupportedSubOperation,
+      projDir: tmp,
+    }),
+    new Error('projected timing append requires a supported canonical Timing Log table region')
+  );
+  assert.equal(
+    readFileSync(storePath, 'utf8'),
+    unsupportedStoreBeforePost,
+    'unsupported projected append must not mutate the GitHub comment store'
+  );
+
   for (const [issueNumber, deltaHeader] of [
     [1042, 'Δ Words'],
     [1043, 'ΔWords'],

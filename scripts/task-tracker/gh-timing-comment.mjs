@@ -529,10 +529,17 @@ function rewriteTsCell(row, nextTs) {
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
 function appendRow(body, row, { projection } = {}) {
+  const canonicalRegion = locateCanonicalTimingTableRegion(body);
+
   // #1049 — an exact projection receipt is stronger than event-shape policy.
   // Check it before duplicate-start and redundant-departure handling so a retry
   // after remote success is a byte-preserving no-op for every event kind.
   if (projection) {
+    if (!canonicalRegion) {
+      throw new Error(
+        'projected timing append requires a supported canonical Timing Log table region'
+      );
+    }
     const matches = matchingTimingProjectionReceipts(body, projection);
     if (matches.length === 1) return body;
     if (matches.length > 1) {
@@ -583,7 +590,6 @@ function appendRow(body, row, { projection } = {}) {
     }
   }
 
-  const canonicalRegion = locateCanonicalTimingTableRegion(body);
   const lines = canonicalRegion?.lines ?? body.split('\n');
   let lastTableIdx = -1;
   if (canonicalRegion) {
