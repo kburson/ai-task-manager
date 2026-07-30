@@ -97,12 +97,15 @@ test('derives current review authority and fails closed for stale, malformed, an
       name: 'same-visit retry retains its first epoch',
       body: [
         review(1, '2026-07-29T10:00:00Z'),
-        proof({ epoch: epoch1 }),
-        approval({ epoch: epoch1 }),
+        proof({ epoch: epoch1, sha: 'old123' }),
+        approval({ epoch: epoch1, proofSha: 'old123' }),
+        proof({ epoch: epoch1, sha: 'abc123', ts: '2026-07-29T10:03:00Z' }),
+        approval({ epoch: epoch1, proofSha: 'abc123', ts: '2026-07-29T10:04:00Z' }),
       ].join('\n'),
       verifiedSha: 'abc123',
       status: 'current',
       epoch: epoch1,
+      proofSha: 'abc123',
     },
     {
       name: 'Review re-entry makes prior authority stale',
@@ -175,6 +178,14 @@ test('derives current review authority and fails closed for stale, malformed, an
       legacy: true,
     },
     {
+      name: 'legacy approval before a structural Review entry is stale',
+      body: [legacyApproval, review(1, '2026-07-29T10:00:00Z')].join('\n'),
+      verifiedSha: 'abc123',
+      status: 'stale',
+      epoch: epoch1,
+      legacy: true,
+    },
+    {
       name: 'legacy approval is stale after Review re-entry',
       body: [
         legacyApproval,
@@ -201,8 +212,22 @@ test('derives current review authority and fails closed for stale, malformed, an
     assert.equal(authority.status, item.status, item.name);
     assert.equal(authority.epoch, item.epoch, `${item.name}: epoch`);
     if (item.provenance) assert.equal(authority.approval.provenance, item.provenance, item.name);
+    if (item.proofSha) {
+      assert.equal(authority.proof.sha, item.proofSha, `${item.name}: latest proof`);
+      assert.equal(authority.approval.proofSha, item.proofSha, `${item.name}: latest approval`);
+    }
     if (item.legacy) assert.equal(authority.approval.legacy, true, item.name);
   }
+});
+
+test('authority without a verified SHA fails closed', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const authority = deriveReviewAuthority(
+    [review(1, '2026-07-29T10:00:00Z'), proof({ epoch }), approval({ epoch })].join('\n'),
+    {}
+  );
+  assert.equal(authority.status, 'missing');
+  assert.ok(authority.reasons.includes('verified-sha-missing'));
 });
 
 test('parseReviewAuthority retains every historical authority marker', () => {

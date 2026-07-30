@@ -158,12 +158,16 @@ export function serializeReviewInvalidation({ epoch, ts, reason }) {
 
 export function parseReviewAuthority(body) {
   const source = stripFencedCodeBlocks(body);
+  const reviewEntryIndexes = markerLines(source)
+    .filter(({ raw }) => /^<!--\s*aitm-entered-review(?:-\d+)?(?:\s|:|-->)/i.test(raw))
+    .map(({ index }) => index);
   const epochs = parseEntryMarkers(source)
     .filter((entry) => entry.stage === 'review')
-    .map((entry) => ({
+    .map((entry, index) => ({
       visit: entry.visit,
       enteredReviewAt: entry.ts,
       epoch: reviewEpochId({ visit: entry.visit, enteredReviewAt: entry.ts }),
+      index: reviewEntryIndexes[index],
     }));
   const proofs = [];
   const approvals = [];
@@ -231,6 +235,15 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
       reasons: ['duplicate-review-visit'],
     };
   }
+  if (!hasText(verifiedSha)) {
+    return {
+      epoch,
+      proof: null,
+      approval: historicalApproval,
+      status: 'missing',
+      reasons: ['verified-sha-missing'],
+    };
+  }
 
   const legacyApprovals = parsed.approvals.filter((item) => item.legacy);
   if (legacyApprovals.length > 1) {
@@ -243,7 +256,11 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
     };
   }
   if (legacyApprovals.length === 1) {
-    if (parsed.epochs.length > 1 || parsed.invalidations.length > 0) {
+    if (
+      parsed.epochs.length > 1 ||
+      parsed.invalidations.length > 0 ||
+      parsed.epochs.some((item) => item.index > legacyApprovals[0].index)
+    ) {
       return {
         epoch,
         proof: null,
