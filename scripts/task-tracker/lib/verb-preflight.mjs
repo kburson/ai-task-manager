@@ -131,11 +131,25 @@ async function runPreflightCore({
       kind: 'bind-mismatch',
       active: stateBefore.active,
       target,
+      ...(readOnlyBind
+        ? {
+            claimRequired: false,
+            sourceIssue: activeIssue,
+            issueNumber: targetIssue,
+          }
+        : {}),
     };
   }
 
   const issueForReconcile = targetIssue || activeIssue;
-  if (!issueForReconcile) return { ok: true, stateAfter: stateBefore, changed: false };
+  if (!issueForReconcile) {
+    return {
+      ok: true,
+      stateAfter: stateBefore,
+      changed: false,
+      ...(readOnlyBind ? { claimRequired: false } : {}),
+    };
+  }
   let bindEligibility = readOnlyBind
     ? {
         claimRequired: false,
@@ -268,7 +282,11 @@ async function runPreflightCore({
 }
 
 export function runPreflight(options) {
-  return runPreflightCore(options);
+  return runPreflightCore({
+    ...options,
+    readOnlyBind: false,
+    allowIssueSwitch: false,
+  });
 }
 
 // Opt-in bind precursor for the lease coordinator. It performs only remote

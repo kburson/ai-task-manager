@@ -504,4 +504,54 @@ async function capturePreflightVerb(opts) {
   assert.equal(legacy.code, 7);
 }
 
+// --- Task 5 review: public wrappers seal modes and return total claim schema -
+{
+  let adversarialReads = 0;
+  const adversarial = await runPreflight({
+    stateBefore: { active: '#769' },
+    target: '#770',
+    cfg: CFG,
+    readOnlyBind: true,
+    allowIssueSwitch: true,
+    deps: {
+      env: { TT_FULL_AUTO: '1' },
+      fetchAssignees: async () => {
+        adversarialReads += 1;
+        return [];
+      },
+      fetchCurrentUser: async () => 'kburson',
+      fetchLive: async () => {
+        adversarialReads += 1;
+        return 'develop';
+      },
+      fetchLastKnownState: async () => 'develop',
+    },
+  });
+  assert.equal(adversarial.ok, false);
+  assert.equal(adversarial.kind, 'bind-mismatch');
+  assert.equal(adversarialReads, 0, 'legacy wrapper must ignore smuggled internal mode flags');
+
+  const readOnlyMismatch = await runReadOnlyBindPreflight({
+    stateBefore: { active: '#769' },
+    target: '#770',
+    cfg: CFG,
+  });
+  assert.equal(readOnlyMismatch.ok, false);
+  assert.equal(readOnlyMismatch.kind, 'bind-mismatch');
+  assert.equal(readOnlyMismatch.claimRequired, false);
+  assert.equal(readOnlyMismatch.sourceIssue, '769');
+  assert.equal(readOnlyMismatch.issueNumber, '770');
+
+  const noIssue = await runReadOnlyBindPreflight({
+    stateBefore: { active: null },
+    target: undefined,
+    cfg: CFG,
+  });
+  assert.equal(noIssue.ok, true);
+  assert.equal(noIssue.changed, false);
+  assert.equal(noIssue.claimRequired, false);
+  assert.equal('issueNumber' in noIssue, false, 'no issue metadata is emitted when none exists');
+  assert.equal('sourceIssue' in noIssue, false, 'no source metadata is emitted when none exists');
+}
+
 console.log('assignment-lock.test.mjs: ok');
