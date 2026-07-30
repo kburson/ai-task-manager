@@ -287,7 +287,7 @@ export async function runMoveStateHost({
       AITM_VERB_CONTEXT ||
       (outOfBandReason
         ? 'out-of-band'
-        : AITM_INTERNAL || gate.decision === 'allow-with-warning'
+        : AITM_INTERNAL || IS_TTY || gate.decision === 'allow-with-warning'
           ? 'move-state'
           : '');
     exactGovernedOperation = resolveGovernedLifecycleOperation(routingVerb, governedOperation);

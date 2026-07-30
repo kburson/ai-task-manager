@@ -1,12 +1,15 @@
 // @story #1049
 import assert from 'node:assert/strict';
+import { rmSync } from 'node:fs';
 import test from 'node:test';
 
 import {
   governedOperationForLifecycleVerb,
   runGovernedLifecycleMutation,
+  runMoveStateHost,
   runOfflineLifecycleProbe,
 } from '../../../../gh/move-state.mjs';
+import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 
 function boundaryFixture(overrides = {}) {
   const events = [];
@@ -118,4 +121,35 @@ test('parent close cannot authorize a child cascade with the parent lease', asyn
     (error) => error.code === 'lease-not-held'
   );
   assert.deepEqual(events, ['lock', 'verify-child:1050']);
+});
+
+test('TTY-allowed host routes ordinary lifecycle authority and stale proof reaches zero effects', async () => {
+  const projectDir = mkdtempProjectIsolated('aitm-tty-governed-');
+  const calls = [];
+  const env = {
+    ...process.env,
+    AI_TASK_MANAGER_PROJECT_DIR: projectDir,
+  };
+  delete env.AITM_VERB_CONTEXT;
+  delete env.AITM_INTERNAL;
+  delete env.TT_SKIP_NETWORK;
+  try {
+    const code = await runMoveStateHost({
+      argv: [process.execPath, 'move-state.mjs', '1049', 'on-deck', '--from', 'backlog'],
+      env,
+      isTty: true,
+      withGovernedEffect: async (options) => {
+        calls.push(options);
+        const error = new Error('stale TTY fence');
+        error.code = 'fence-stale';
+        throw error;
+      },
+    });
+    assert.equal(code, 8);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].issueId, '1049');
+    assert.equal(calls[0].operation, 'lifecycle-mutation');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 });
