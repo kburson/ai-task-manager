@@ -537,10 +537,20 @@ test('foreign assignee discovered after acquire releases before restoring and ne
     setActiveTask('session-1', { issue: '#1049', wordsAtStart: 11 }, dir);
     const before = readFileSync(activeTaskPath('session-1', dir));
     const { input, log } = options(dir, {
-      reconcileClaim: async () => {
-        log.push('claim:foreign');
-        throw new WorkLeaseError('authority-forbidden', 'foreign assignee');
+      readEligibility: async () => {
+        log.push('eligibility');
+        return {
+          ok: false,
+          code: 10,
+          kind: 'assignee-mismatch',
+          assigneeKind: 'assigned-to-other',
+          currentUser: 'worker',
+          assignees: ['other'],
+          issueNumber: '1049',
+          claimRequired: false,
+        };
       },
+      reconcileClaim: async () => assert.fail('a definitive foreign verdict must not reconcile'),
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
           name,
@@ -561,7 +571,6 @@ test('foreign assignee discovered after acquire releases before restoring and ne
       'provider',
       'acquire:acquire:session-1:1049:request-1',
       'eligibility',
-      'claim:foreign',
       'release:release-after-claim:acquire:session-1:1049:request-1:2026-07-30T12:00:00.000Z:assignee-changed-after-acquire',
     ]);
     assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), before);
@@ -624,6 +633,43 @@ test('response-lost assignment with an unavailable read retains the grant and re
     );
     const originalGithubProjectionId = pending.projections.github.projectionId;
     const originalGithubInput = structuredClone(pending.projections.github.input);
+    const originalIntent = structuredClone(pending);
+
+    const unavailableRetry = options(dir);
+    unavailableRetry.input.readEligibility = async () => ({
+      ok: false,
+      code: 10,
+      kind: 'assignee-mismatch',
+      assigneeKind: 'unverifiable',
+      error: 'GitHub assignee read unavailable',
+      issueNumber: '1049',
+      claimRequired: false,
+    });
+    unavailableRetry.input.reconcileClaim = async () =>
+      assert.fail('an unverifiable assignee read must not reconcile the claim');
+    unavailableRetry.input.projections = Object.fromEntries(
+      ['session', 'fleet', 'timing', 'github'].map((name) => [
+        name,
+        async () => assert.fail(`${name} must not run while eligibility is unverifiable`),
+      ])
+    );
+
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(unavailableRetry.input),
+      (error) =>
+        error instanceof WorkLeaseError &&
+        error.code === 'authority-unavailable' &&
+        /GitHub assignee read unavailable/.test(error.message)
+    );
+    assert.equal(
+      unavailableRetry.log.some((entry) => entry.startsWith('release:')),
+      false,
+      'structured unverifiable eligibility must not release the granted lease'
+    );
+    assert.equal(addCalls, 1);
+    assert.equal(fetchCalls, 1);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
+    assert.deepEqual(projectionEffects, []);
 
     const retry = options(dir);
     retry.input.readEligibility = async () => ({

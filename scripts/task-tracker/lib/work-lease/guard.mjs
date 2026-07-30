@@ -547,6 +547,10 @@ function validatePreparedEligibility(prepared, githubInput) {
   }
 }
 
+function isTransientBindEligibilityFailure(eligibility) {
+  return eligibility?.kind === 'assignee-mismatch' && eligibility.assigneeKind === 'unverifiable';
+}
+
 async function reconcilePersistedClaim({ intent, issueId, readEligibility, reconcileClaim }) {
   const projection = intent.projections.github;
   const input = validatePreparedGithubInput(projection.input, issueId);
@@ -563,6 +567,16 @@ async function reconcilePersistedClaim({ intent, issueId, readEligibility, recon
   }
   const liveEligibility = await readEligibility();
   if (!liveEligibility?.ok) {
+    if (isTransientBindEligibilityFailure(liveEligibility)) {
+      const diagnostic =
+        typeof liveEligibility.error === 'string' && liveEligibility.error.trim() !== ''
+          ? `: ${liveEligibility.error}`
+          : '';
+      throw leaseError(
+        'authority-unavailable',
+        `incoming issue assignee is temporarily unverifiable${diagnostic}`
+      );
+    }
     throw leaseError('authority-forbidden', 'incoming issue is no longer eligible for bind');
   }
   if (input.assigneePolicy !== 'enforced') {
