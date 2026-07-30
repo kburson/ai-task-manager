@@ -502,12 +502,14 @@ function patchGitignore(targetDir) {
     '.claude/settings.local.json',
     '.claude/scheduled_tasks.lock',
     '.tmp/',
+    '/.db/',
   ];
   const COMMENT = '# ai-task-manager — local edit backups (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
   for (const entry of entries) {
-    if (!content.includes(entry)) {
+    const lines = content.split(/\r?\n/);
+    if (!lines.includes(entry)) {
       if (!changed && !content.includes(COMMENT)) {
         content += (content.endsWith('\n') || content === '' ? '' : '\n') + '\n' + COMMENT + '\n';
       }

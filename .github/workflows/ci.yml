@@ -31,8 +31,11 @@ permissions:
 
 jobs:
   fast:
-    name: Fast lane (format, lint, unit)
+    name: Fast lane (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['22.15.0', '22']
     steps:
       - uses: actions/checkout@v5
         with:
@@ -55,7 +58,7 @@ jobs:
         run: git fetch --no-tags origin trunk:trunk
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run format:check

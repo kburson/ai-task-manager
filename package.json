@@ -9,8 +9,11 @@
   "license": "AGPL-3.0-or-later",
   "author": "Kendrick Burson <spam.kpb@gmail.com>",
   "homepage": "https://github.com/kburson/ai-task-manager",
+  "workspaces": [
+    "packages/aitm-ledger"
+  ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.15.0"
   },
   "bin": {
     "ai-task-manager": "bin/cli.mjs",
@@ -19,6 +22,7 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.mjs --lane fast",
+    "test:ledger": "node --test packages/aitm-ledger/test/*.test.mjs",
     "test:unit": "node scripts/run-tests.mjs --lane unit",
     "test:integration": "node scripts/run-tests.mjs --lane integration",
     "test:slow": "node scripts/run-tests.mjs --lane slow",
@@ -29,7 +33,8 @@
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
     "prepare": "node scripts/task-tracker/ensure-self-link.mjs",
     "link:self": "node scripts/task-tracker/ensure-self-link.mjs",
-    "release": "npm publish --access public",
+    "release": "npm run release:ledger && npm publish --access public",
+    "release:ledger": "npm publish --access public --workspace @kburson/aitm-ledger",
     "sync:templates": "node scripts/sync-templates.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -99,6 +104,7 @@
     "puppeteer": "^24.42.0"
   },
   "dependencies": {
+    "@kburson/aitm-ledger": "1.0.0",
     "espree": "^10.4.0"
   }
 }

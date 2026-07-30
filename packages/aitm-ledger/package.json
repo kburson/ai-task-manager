@@ -1,0 +1,19 @@
+{
+  "name": "@kburson/aitm-ledger",
+  "version": "1.0.0",
+  "description": "Provider-neutral durable authority primitives for AI Task Manager",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

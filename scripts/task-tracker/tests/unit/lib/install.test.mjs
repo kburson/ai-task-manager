@@ -28,6 +28,7 @@ const memoryNoneTarget = mkdtempSync(
 const fakeHome = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-home-')
 );
+writeFileSync(path.join(target, '.gitignore'), 'nested/.db/\n', 'utf8');
 
 // #869 — lifecycle hooks register via the node_modules-first / repo-relative
 // bootstrap shim, matching cli.mjs. Compute the expected commands the same way.
@@ -290,6 +291,15 @@ try {
   // actually write to — never a bare `tmp/`, which nothing writes to.
   const gitignoreLines = gitignore.split('\n').map((l) => l.trim());
   assert.ok(gitignoreLines.includes('.tmp/'), 'installer must ignore the .tmp/ scratch dir');
+  assert.equal(
+    gitignoreLines.filter((line) => line === '/.db/').length,
+    1,
+    'installer must write exactly one root-scoped /.db/ entry'
+  );
+  assert.ok(
+    gitignoreLines.includes('nested/.db/'),
+    'installer must preserve a similar nested database ignore'
+  );
   assert.ok(
     gitignoreLines.includes('.ai-task-manager/.cache/'),
     'installer must ignore local AITM cache'
@@ -325,6 +335,11 @@ try {
   const repoGitignoreLines = readFileSync(path.join(ROOT, '.gitignore'), 'utf8')
     .split('\n')
     .map((line) => line.trim());
+  assert.equal(
+    repoGitignoreLines.filter((line) => line === '/.db/').length,
+    1,
+    'root .gitignore must contain exactly one root-scoped /.db/ entry'
+  );
   for (const localPath of [
     '.ai-task-manager/.cache/',
     '.claude/worktrees/',

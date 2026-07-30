@@ -131,3 +131,9 @@ test('package-boundary: runtime entry points are still shipped', () => {
     assert.ok(files.has(required), `required runtime file missing from package: ${required}`);
   }
 });
+
+test('package-boundary: independently published ledger is not duplicated in root pack', () => {
+  const files = packedFiles();
+  const duplicated = files.filter((p) => p.startsWith('packages/aitm-ledger/'));
+  assert.deepEqual(duplicated, []);
+});
