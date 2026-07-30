@@ -252,6 +252,49 @@ function verifiedAuthorityLease(
   );
 }
 
+async function verifyCurrentReplayAuthority({
+  store,
+  expectedLease,
+  issueId,
+  worktreeId,
+  sessionId,
+  hostId,
+  holderIdentity,
+  now,
+}) {
+  if (typeof store?.verify !== 'function') {
+    throw leaseError(
+      'invalid-request',
+      'work-lease authority verify operation is required for receipt replay'
+    );
+  }
+  const verifyRequest = {
+    projectId: expectedLease.projectId,
+    leaseId: expectedLease.leaseId,
+    fencingToken: expectedLease.fencingToken,
+    operation: 'task-bind',
+    verifiedAt: canonicalTimestamp(now(), 'work-lease replay verification time'),
+  };
+  validateVerifyRequest(verifyRequest);
+  try {
+    return verifiedAuthorityLease(
+      await store.verify(verifyRequest),
+      expectedLease,
+      issueId,
+      worktreeId,
+      sessionId,
+      hostId,
+      holderIdentity
+    );
+  } catch (error) {
+    throw stableError(
+      error,
+      'authority-unavailable',
+      'current work-lease authority could not be verified for receipt replay'
+    );
+  }
+}
+
 function renewRequest(lease, requestedAt, idempotencyKey) {
   const request = {
     projectId: lease.projectId,
@@ -712,6 +755,7 @@ export async function coordinateWorkLeaseAcquire({
     });
   }
 
+  const replayingPersistedReceipt = intent.receipt !== undefined;
   let receipt = intent.receipt;
   if (!receipt) {
     let candidateReceipt;
@@ -748,6 +792,21 @@ export async function coordinateWorkLeaseAcquire({
   });
   receipt = intent.receipt;
   const { durableLease, acquiredAt } = validateAcquireReceipt(receipt, request);
+  if (replayingPersistedReceipt) {
+    const trustedAuthorityHolder = Object.fromEntries(
+      STABLE_HOLDER_FIELDS.map((field) => [field, holder[field]])
+    );
+    await verifyCurrentReplayAuthority({
+      store,
+      expectedLease: durableLease,
+      issueId: canonicalIssueId,
+      worktreeId: durableLease.worktreeId,
+      sessionId,
+      hostId,
+      holderIdentity: trustedAuthorityHolder,
+      now,
+    });
+  }
 
   const rejectGrantedLease = async ({ code, message, cause }) => {
     try {
@@ -946,6 +1005,7 @@ export async function coordinateWorkLeaseResume({
     store,
     persistedLease,
   });
+  const replayingPersistedReceipt = intent.receipt !== undefined;
   let receipt = intent.receipt;
   if (!receipt) {
     const verifyRequest = {
@@ -1023,6 +1083,18 @@ export async function coordinateWorkLeaseResume({
     fencingToken: authorityLease.fencingToken,
     worktreeId,
   });
+  if (replayingPersistedReceipt) {
+    await verifyCurrentReplayAuthority({
+      store,
+      expectedLease: durableLease,
+      issueId: canonicalIssueId,
+      worktreeId,
+      sessionId,
+      hostId: trustedHostId,
+      holderIdentity: trustedAuthorityHolder,
+      now,
+    });
+  }
 
   await reconcilePersistedClaim({
     intent,

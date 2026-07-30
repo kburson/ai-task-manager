@@ -28,6 +28,7 @@ import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const NOW = new Date('2026-07-30T12:00:00.000Z');
+const DELAYED_NOW = new Date('2026-07-30T12:10:00.000Z');
 const WORKTREE = {
   worktreeId: 'wt:v1:worktree-1',
   pathHash: 'path-hash-1',
@@ -67,6 +68,9 @@ function options(dir, overrides = {}) {
     async acquire(request) {
       log.push(`acquire:${request.idempotencyKey}`);
       return LEASE;
+    },
+    async verify() {
+      return { allowed: true, lease: LEASE };
     },
     async release(request) {
       log.push(`release:${request.idempotencyKey}:${request.releasedAt}:${request.reason}`);
@@ -759,6 +763,148 @@ test('persisted acquire replays authority before current eligibility and validat
   }
 });
 
+test('persisted acquire receipt verifies current authority before claim, projections, checkpoint, or heartbeat', async () => {
+  const dir = sandbox();
+  try {
+    const first = options(dir, {
+      readEligibility: async () => {
+        throw new Error('stop after receipt persistence');
+      },
+    });
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(first.input),
+      /assignee claim outcome is indeterminate/
+    );
+    const originalIntent = structuredClone(getActiveTask('session-1', dir).workLeaseIntent);
+    assert.equal(originalIntent.receipt.leaseId, LEASE.leaseId);
+
+    const staleLog = [];
+    let heartbeatCalls = 0;
+    let checkpointCalls = 0;
+    const stale = options(dir, {
+      getStore: async () => ({
+        projectId: LEASE.projectId,
+        verify(request) {
+          staleLog.push(`verify:${request.verifiedAt}`);
+          return {
+            allowed: true,
+            lease: { ...LEASE, fencingToken: '8' },
+          };
+        },
+        release: async () => assert.fail('stale replay authority must not release the old lease'),
+      }),
+      readEligibility: async () => {
+        staleLog.push('eligibility');
+        return { ok: true, assignees: ['worker'] };
+      },
+      reconcileClaim: async () => {
+        staleLog.push('claim');
+        assert.fail('stale replay authority must not reconcile a claim');
+      },
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => {
+            staleLog.push(name);
+            assert.fail(`stale replay authority must not run ${name}`);
+          },
+        ])
+      ),
+      checkpointProjection: async () => {
+        checkpointCalls += 1;
+        assert.fail('stale replay authority must not checkpoint');
+      },
+      now: () => DELAYED_NOW,
+    });
+
+    await assert.rejects(
+      async () => {
+        await coordinateWorkLeaseAcquire(stale.input);
+        heartbeatCalls += 1;
+      },
+      (error) => error instanceof WorkLeaseError && error.code === 'fence-stale'
+    );
+    assert.deepEqual(staleLog, [`verify:${DELAYED_NOW.toISOString()}`]);
+    assert.equal(checkpointCalls, 0);
+    assert.equal(heartbeatCalls, 0);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
+
+    const replayLog = [];
+    const verifiedRequests = [];
+    const delayed = options(dir, {
+      getStore: async () => ({
+        projectId: LEASE.projectId,
+        verify(request) {
+          verifiedRequests.push(structuredClone(request));
+          replayLog.push('verify');
+          return { allowed: true, lease: LEASE };
+        },
+      }),
+      readEligibility: async () => {
+        replayLog.push('eligibility');
+        return {
+          ok: true,
+          claimRequired: false,
+          currentUser: 'worker',
+          assignees: ['worker'],
+        };
+      },
+      reconcileClaim: async ({ projectionId }) => {
+        replayLog.push('claim');
+        return {
+          reconciled: true,
+          projectionName: 'github-claim',
+          projectionId,
+        };
+      },
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async ({ lease, projectionName, projectionId }) => {
+            replayLog.push(name);
+            if (name === 'session') {
+              setActiveTask('session-1', { issue: '#1049', lease }, dir);
+            }
+            return { reconciled: true, projectionName, projectionId };
+          },
+        ])
+      ),
+      checkpointProjection(...args) {
+        replayLog.push(`checkpoint:${args[1]}`);
+        return checkpointWorkLeaseProjection(...args);
+      },
+      now: () => DELAYED_NOW,
+    });
+
+    await coordinateWorkLeaseAcquire(delayed.input);
+
+    assert.deepEqual(verifiedRequests, [
+      {
+        projectId: LEASE.projectId,
+        leaseId: LEASE.leaseId,
+        fencingToken: LEASE.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: DELAYED_NOW.toISOString(),
+      },
+    ]);
+    assert.deepEqual(replayLog, [
+      'verify',
+      'eligibility',
+      'claim',
+      'session',
+      'checkpoint:session',
+      'fleet',
+      'checkpoint:fleet',
+      'timing',
+      'checkpoint:timing',
+      'github',
+      'checkpoint:github',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('response-lost acquire replays the original PID request after process restart', async () => {
   const dir = sandbox();
   try {
@@ -1217,6 +1363,9 @@ test('response-lost release replays byte-identical request then restores the dur
       async acquire() {
         return lateLease;
       },
+      async verify() {
+        return { allowed: true, lease: lateLease };
+      },
       async release(request) {
         releaseRequests.push(structuredClone(request));
         releaseAttempts += 1;
@@ -1376,6 +1525,80 @@ test('response-lost resume renew replays one exact request before four projectio
     assert.deepEqual(renewRequests[1], renewRequests[0]);
     assert.deepEqual(retry.log.slice(-4), ['session', 'fleet', 'timing', 'github']);
     assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persisted resume receipt verifies current full holder before claim, projections, checkpoint, or heartbeat', async () => {
+  const dir = sandbox();
+  try {
+    const first = resumeOptions(dir, {
+      readEligibility: async () => {
+        throw new Error('stop after resume receipt persistence');
+      },
+    });
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
+      /stop after resume receipt persistence/
+    );
+    const pendingSession = structuredClone(getActiveTask('session-1', dir));
+    const originalIntent = structuredClone(pendingSession.workLeaseIntent);
+    assert.equal(originalIntent.receipt.leaseId, LEASE.leaseId);
+
+    const log = [];
+    let checkpointCalls = 0;
+    let heartbeatCalls = 0;
+    const retry = resumeOptions(dir, {
+      getStore: async () => ({
+        projectId: LEASE.projectId,
+        verify(request) {
+          log.push(`verify:${request.verifiedAt}`);
+          return {
+            allowed: true,
+            lease: {
+              ...LEASE,
+              holder: { ...LEASE.holder, branch: 'feature/taken-over' },
+            },
+          };
+        },
+      }),
+      readEligibility: async () => {
+        log.push('eligibility');
+        return { ok: true, assignees: ['worker'] };
+      },
+      reconcileClaim: async () => {
+        log.push('claim');
+        assert.fail('taken-over replay must not reconcile a claim');
+      },
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => {
+            log.push(name);
+            assert.fail(`taken-over replay must not run ${name}`);
+          },
+        ])
+      ),
+      checkpointProjection: async () => {
+        checkpointCalls += 1;
+        assert.fail('taken-over replay must not checkpoint');
+      },
+      now: () => DELAYED_NOW,
+    });
+    setActiveTask('session-1', pendingSession, dir);
+
+    await assert.rejects(
+      async () => {
+        await workLeaseGuard.coordinateWorkLeaseResume(retry.input);
+        heartbeatCalls += 1;
+      },
+      (error) => error instanceof WorkLeaseError && error.code === 'lease-not-held'
+    );
+    assert.deepEqual(log, [`verify:${DELAYED_NOW.toISOString()}`]);
+    assert.equal(checkpointCalls, 0);
+    assert.equal(heartbeatCalls, 0);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
