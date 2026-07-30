@@ -211,7 +211,7 @@ export class HttpWorkLeaseStore extends WorkLeaseStore {
           { operation }
         );
       }
-      return parseHttpLeaseResponse({ operation, status: response.status, payload });
+      return parseHttpLeaseResponse({ operation, status: response.status, payload, request });
     } finally {
       this.#clearTimeout(timeout);
     }

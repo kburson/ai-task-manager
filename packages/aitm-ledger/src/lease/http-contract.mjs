@@ -271,25 +271,165 @@ function validateTransition(value) {
   }
 }
 
-function validateResult(operation, result) {
+function requireResponse(condition, message) {
+  if (!condition) failUnavailable(message);
+}
+
+function correlateLeaseIdentity(lease, request, { issueId, leaseId } = {}) {
+  requireResponse(request && typeof request === 'object', 'originating request is missing');
+  requireResponse(
+    lease.projectId === request.projectId,
+    'response project does not match the request'
+  );
+  if (issueId !== undefined) {
+    requireResponse(lease.issueId === issueId, 'response issue does not match the request');
+  }
+  if (leaseId !== undefined) {
+    requireResponse(lease.leaseId === leaseId, 'response lease does not match the request');
+  }
+}
+
+function correlateHolder(actual, expected, label = 'response holder') {
+  requireResponse(expected && typeof expected === 'object', 'originating holder is missing');
+  for (const [key, value] of Object.entries(expected)) {
+    requireResponse(actual[key] === value, `${label}.${key} does not match the request`);
+  }
+}
+
+function requireRetaining(lease) {
+  requireResponse(
+    OWNERSHIP_RETAINING_STATES.includes(lease.state),
+    'response lease is not ownership-retaining'
+  );
+}
+
+function requireAdvancedFence(actual, prior) {
+  try {
+    requireResponse(BigInt(actual) > BigInt(prior), 'response fencing token did not advance');
+  } catch (error) {
+    if (error instanceof WorkLeaseError) throw error;
+    failUnavailable('response fencing token cannot be correlated');
+  }
+}
+
+function correlateResult(operation, result, request) {
+  if (operation === 'acquire') {
+    correlateLeaseIdentity(result, request, { issueId: request?.issueId });
+    requireResponse(result.state === 'active', 'acquire response is not active');
+    correlateHolder(result.holder, request?.holder);
+    return;
+  }
+  if (operation === 'renew') {
+    correlateLeaseIdentity(result, request, { leaseId: request?.leaseId });
+    requireResponse(
+      result.fencingToken === request?.fencingToken,
+      'renew response fencing token does not match the request'
+    );
+    requireRetaining(result);
+    return;
+  }
+  if (operation === 'verify') {
+    correlateLeaseIdentity(result.lease, request, { leaseId: request?.leaseId });
+    requireResponse(
+      result.lease.fencingToken === request?.fencingToken,
+      'verify response fencing token does not match the request'
+    );
+    requireRetaining(result.lease);
+    return;
+  }
+  if (operation === 'switchLease') {
+    correlateLeaseIdentity(result.lease, request, { issueId: request?.target?.issueId });
+    requireResponse(result.lease.state === 'active', 'switch response is not active');
+    requireResponse(
+      result.lease.leaseId !== request?.leaseId,
+      'switch response reused the outgoing lease'
+    );
+    requireAdvancedFence(result.lease.fencingToken, request?.fencingToken);
+    correlateHolder(result.lease.holder, request?.target?.holder);
+    requireResponse(
+      result.transition.fromLeaseId === request?.leaseId,
+      'switch transition lease does not match the request'
+    );
+    requireResponse(
+      result.transition.fromToken === request?.fencingToken,
+      'switch transition fence does not match the request'
+    );
+    requireResponse(
+      result.transition.toIssueId === request?.target?.issueId,
+      'switch transition target does not match the request'
+    );
+    return;
+  }
+  if (operation === 'handoff') {
+    correlateLeaseIdentity(result, request, { leaseId: request?.leaseId });
+    requireResponse(result.state === 'active', 'handoff response is not active');
+    requireAdvancedFence(result.fencingToken, request?.fencingToken);
+    correlateHolder(result.holder, request?.recipient);
+    return;
+  }
+  if (operation === 'release') {
+    correlateLeaseIdentity(result, request, { leaseId: request?.leaseId });
+    requireResponse(result.state === 'released', 'release response is not released');
+    requireAdvancedFence(result.fencingToken, request?.fencingToken);
+    return;
+  }
+  if (operation === 'takeover') {
+    correlateLeaseIdentity(result, request, { issueId: request?.issueId });
+    requireResponse(result.state === 'active', 'takeover response is not active');
+    requireResponse(
+      result.leaseId !== request?.expectedLeaseId,
+      'takeover response reused the displaced lease'
+    );
+    requireAdvancedFence(result.fencingToken, request?.expectedToken);
+    correlateHolder(result.holder, request?.requester);
+    return;
+  }
+  if (operation === 'observe' && result.lease !== null) {
+    correlateLeaseIdentity(result.lease, request);
+    requireRetaining(result.lease);
+    if (request?.issueId != null) {
+      requireResponse(
+        result.lease.issueId === request.issueId,
+        'observation issue does not match the selector'
+      );
+    }
+    if (request?.worktreeId != null) {
+      requireResponse(
+        result.lease.holder.worktreeId === request.worktreeId,
+        'observation worktree does not match the selector'
+      );
+    }
+  }
+}
+
+function validateResult(operation, result, request) {
+  requireResponse(
+    request && typeof request === 'object' && !Array.isArray(request),
+    'originating request is missing'
+  );
   if (['acquire', 'renew', 'handoff', 'release', 'takeover'].includes(operation)) {
-    return validateLease(result);
+    validateLease(result);
+    correlateResult(operation, result, request);
+    return result;
   }
   if (operation === 'verify') {
     assertObject(result, 'verify result', { exactKeys: ['allowed', 'lease'] });
     if (result.allowed !== true) failUnavailable('verify result did not authorize the operation');
     validateLease(result.lease);
+    correlateResult(operation, result, request);
     return result;
   }
   if (operation === 'switchLease') {
     assertObject(result, 'switch result', { exactKeys: ['lease', 'transition'] });
     validateLease(result.lease);
     validateTransition(result.transition);
+    correlateResult(operation, result, request);
     return result;
   }
   if (operation === 'observe') {
     assertObject(result, 'observation result', { exactKeys: ['lease'] });
     if (result.lease !== null) validateLease(result.lease);
+    correlateResult(operation, result, request);
     return result;
   }
   failUnavailable('response operation is unknown');
@@ -332,12 +472,12 @@ function parseErrorEnvelope(status, payload) {
   throw new WorkLeaseError(error.code, error.message, error.details);
 }
 
-export function parseHttpLeaseResponse({ operation, status, payload } = {}) {
+export function parseHttpLeaseResponse({ operation, status, payload, request } = {}) {
   if (!Number.isInteger(status)) failUnavailable();
   if (status < 200 || status >= 300) return parseErrorEnvelope(status, payload);
   if (!SUCCESS_STATUS[operation]?.has(status)) {
     failUnavailable('remote lease authority returned an unexpected success status');
   }
   assertObject(payload, 'success envelope', { exactKeys: ['result'] });
-  return validateResult(operation, payload.result);
+  return validateResult(operation, payload.result, request);
 }

@@ -161,7 +161,12 @@ test('every operation uses the specified endpoint, method, and body semantics', 
     renew: lease(),
     verify: { allowed: true, lease: lease() },
     switchLease: {
-      lease: lease({ issueId: '1051', leaseId: 'lease-2', fencingToken: '3' }),
+      lease: lease({
+        issueId: '1051',
+        leaseId: 'lease-2',
+        fencingToken: '3',
+        holder: holder({ sessionId: 'session-2' }),
+      }),
       transition: {
         transitionId: 'transition-1',
         fromIssueId: '1049',
@@ -176,10 +181,16 @@ test('every operation uses the specified endpoint, method, and body semantics', 
         ...holder(),
         principalKind: 'integration',
         agentRunId: 'integration-1',
+        sessionId: 'orchestrator-1',
+        pid: 456,
       },
     }),
     release: lease({ fencingToken: '2', state: 'released' }),
-    takeover: lease({ leaseId: 'lease-2', fencingToken: '3' }),
+    takeover: lease({
+      leaseId: 'lease-2',
+      fencingToken: '3',
+      holder: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 }),
+    }),
     observe: { lease: null },
   };
   const statuses = { acquire: 201, takeover: 201 };

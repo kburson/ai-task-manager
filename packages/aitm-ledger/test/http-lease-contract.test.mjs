@@ -238,6 +238,7 @@ test('GET observation requires exactly one selector and represents absence expli
       operation: 'observe',
       status: 200,
       payload: createHttpSuccessEnvelope({ lease: null }),
+      request: { projectId: 'project-1', issueId: '1049' },
     }),
     { lease: null }
   );
@@ -267,6 +268,7 @@ test('success envelopes validate operation-specific status and fencing fields', 
       operation: 'acquire',
       status: 201,
       payload: createHttpSuccessEnvelope(lease()),
+      request: acquire(),
     }),
     lease()
   );
@@ -275,6 +277,7 @@ test('success envelopes validate operation-specific status and fencing fields', 
       operation: 'acquire',
       status: 200,
       payload: createHttpSuccessEnvelope(lease()),
+      request: acquire(),
     }),
     lease(),
     'an exact replay may retain a stored success status'
@@ -284,6 +287,13 @@ test('success envelopes validate operation-specific status and fencing fields', 
       operation: 'verify',
       status: 200,
       payload: createHttpSuccessEnvelope({ allowed: true, lease: lease() }),
+      request: {
+        projectId: 'project-1',
+        leaseId: 'lease-1',
+        fencingToken: '1',
+        operation: 'source-write',
+        verifiedAt: NOW,
+      },
     }),
     { allowed: true, lease: lease() }
   );
@@ -293,6 +303,7 @@ test('success envelopes validate operation-specific status and fencing fields', 
         operation: 'acquire',
         status: 201,
         payload: createHttpSuccessEnvelope(lease({ fencingToken: 1 })),
+        request: acquire(),
       }),
     (error) => error.code === 'authority-unavailable'
   );
@@ -302,6 +313,14 @@ test('success envelopes validate operation-specific status and fencing fields', 
         operation: 'renew',
         status: 201,
         payload: createHttpSuccessEnvelope(lease()),
+        request: {
+          projectId: 'project-1',
+          leaseId: 'lease-1',
+          fencingToken: '1',
+          idempotencyKey: 'renew-1',
+          requestedAt: NOW,
+          ttlMs: 900_000,
+        },
       }),
     (error) => error.code === 'authority-unavailable'
   );
@@ -311,6 +330,7 @@ test('success envelopes validate operation-specific status and fencing fields', 
         operation: 'acquire',
         status: 201,
         payload: createHttpSuccessEnvelope(lease({ unknownField: true })),
+        request: acquire(),
       }),
     (error) => error.code === 'authority-unavailable'
   );
@@ -322,6 +342,164 @@ test('success envelopes validate operation-specific status and fencing fields', 
         payload: createHttpSuccessEnvelope(
           lease({ holder: holder({ authorizationEcho: 'not-allowed' }) })
         ),
+        request: acquire(),
+      }),
+    (error) => error.code === 'authority-unavailable'
+  );
+});
+
+test('success responses must correlate to the originating fenced request', () => {
+  const verifyRequest = {
+    projectId: 'project-1',
+    leaseId: 'lease-1',
+    fencingToken: '1',
+    operation: 'source-write',
+    verifiedAt: NOW,
+  };
+  const releaseRequest = {
+    projectId: 'project-1',
+    leaseId: 'lease-1',
+    fencingToken: '1',
+    idempotencyKey: 'release-1',
+    releasedAt: NOW,
+    reason: 'done',
+  };
+  const handoffRequest = {
+    projectId: 'project-1',
+    leaseId: 'lease-1',
+    fencingToken: '1',
+    idempotencyKey: 'handoff-1',
+    handedOffAt: NOW,
+    reason: 'integrate',
+    recipient: {
+      principalKind: 'integration',
+      provider: 'codex',
+      agentRunId: 'integration-1',
+      sessionId: 'integration-session',
+      hostId: 'host-1',
+      pid: 456,
+    },
+  };
+  const mismatches = [
+    {
+      operation: 'verify',
+      request: verifyRequest,
+      result: {
+        allowed: true,
+        lease: lease({
+          projectId: 'other-project',
+          leaseId: 'other-lease',
+          fencingToken: '9',
+          state: 'released',
+        }),
+      },
+    },
+    {
+      operation: 'acquire',
+      request: acquire(),
+      status: 201,
+      result: lease({
+        projectId: 'other-project',
+        issueId: '1051',
+        state: 'released',
+        holder: holder({ sessionId: 'other-session' }),
+      }),
+    },
+    {
+      operation: 'release',
+      request: releaseRequest,
+      result: lease({ fencingToken: '2', state: 'active' }),
+    },
+    {
+      operation: 'renew',
+      request: {
+        projectId: 'project-1',
+        leaseId: 'lease-1',
+        fencingToken: '1',
+        idempotencyKey: 'renew-1',
+        requestedAt: NOW,
+        ttlMs: 900_000,
+      },
+      result: lease({ fencingToken: '2' }),
+    },
+    {
+      operation: 'handoff',
+      request: handoffRequest,
+      result: lease({ fencingToken: '2', holder: holder() }),
+    },
+    {
+      operation: 'switchLease',
+      request: {
+        projectId: 'project-1',
+        leaseId: 'lease-1',
+        fencingToken: '1',
+        idempotencyKey: 'switch-1',
+        switchedAt: NOW,
+        target: acquire({ issueId: '1051', idempotencyKey: 'target-1' }),
+      },
+      result: {
+        lease: lease({ issueId: '1051', leaseId: 'lease-2', fencingToken: '3' }),
+        transition: {
+          transitionId: 'transition-1',
+          fromIssueId: '1049',
+          fromLeaseId: 'other-lease',
+          fromToken: '1',
+          toIssueId: '1051',
+        },
+      },
+    },
+    {
+      operation: 'takeover',
+      request: {
+        projectId: 'project-1',
+        issueId: '1049',
+        expectedLeaseId: 'lease-1',
+        expectedToken: '1',
+        requester: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 }),
+        observedAt: NOW,
+        idempotencyKey: 'takeover-1',
+        reason: 'dead holder',
+        evidence: {
+          kind: 'local-process-dead',
+          hostId: 'host-1',
+          pid: 123,
+          checkedAt: NOW,
+          detailsHash: 'proof',
+        },
+      },
+      result: lease({
+        leaseId: 'lease-1',
+        fencingToken: '2',
+        holder: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 }),
+      }),
+    },
+    {
+      operation: 'observe',
+      request: { projectId: 'project-1', worktreeId: 'wt:v1:one' },
+      result: { lease: lease({ holder: holder({ worktreeId: 'wt:v1:other' }) }) },
+    },
+  ];
+
+  for (const mismatch of mismatches) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: mismatch.operation,
+          status: mismatch.status ?? 200,
+          payload: createHttpSuccessEnvelope(mismatch.result),
+          request: mismatch.request,
+        }),
+      (error) => error.code === 'authority-unavailable',
+      mismatch.operation
+    );
+  }
+
+  assert.throws(
+    () =>
+      parseHttpLeaseResponse({
+        operation: 'observe',
+        status: 200,
+        payload: createHttpSuccessEnvelope({ lease: null }),
       }),
     (error) => error.code === 'authority-unavailable'
   );
