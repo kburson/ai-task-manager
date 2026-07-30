@@ -5,6 +5,7 @@
 import { strict as assert } from 'node:assert';
 import {
   checkAssigneeMatch,
+  readOnlyBindEligibility,
   formatAssigneeRefusal,
   formatAssigneePromptLine,
   EXIT_ASSIGNEE_MISMATCH,
@@ -124,7 +125,60 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
   assert.equal(line, 'PROMPT_REQUIRED: assignee-mismatch #219 assigned-to-other alice,bob');
 }
 
-// 10. Exit code constant.
+// 10. Full-Auto bind eligibility is read-only and reports a deferred claim.
+{
+  let addCalls = 0;
+  let postCalls = 0;
+  const verdict = await readOnlyBindEligibility({
+    issueNumber: 219,
+    cfg: CFG,
+    fullAuto: true,
+    deps: {
+      fetchAssignees: async () => [],
+      fetchCurrentUser: async () => 'kburson',
+      addAssignee: async () => {
+        addCalls += 1;
+      },
+      postComment: async () => {
+        postCalls += 1;
+      },
+    },
+  });
+  assert.deepEqual(verdict, {
+    ok: true,
+    kind: 'unassigned',
+    claimRequired: true,
+    currentUser: 'kburson',
+    assignees: [],
+  });
+  assert.equal(addCalls, 0, 'eligibility must not claim the issue');
+  assert.equal(postCalls, 0, 'eligibility must not post an audit comment');
+}
+
+// 11. Interactive unassigned and foreign-assigned binds remain refusals.
+{
+  const interactive = await readOnlyBindEligibility({
+    issueNumber: 219,
+    cfg: CFG,
+    fullAuto: false,
+    deps: depsOf({ assignees: [], currentUser: 'kburson' }),
+  });
+  assert.equal(interactive.ok, false);
+  assert.equal(interactive.kind, 'unassigned');
+  assert.equal(interactive.claimRequired, false);
+
+  const foreign = await readOnlyBindEligibility({
+    issueNumber: 219,
+    cfg: CFG,
+    fullAuto: true,
+    deps: depsOf({ assignees: ['alice'], currentUser: 'kburson' }),
+  });
+  assert.equal(foreign.ok, false);
+  assert.equal(foreign.kind, 'assigned-to-other');
+  assert.equal(foreign.claimRequired, false);
+}
+
+// 12. Exit code constant.
 {
   assert.equal(EXIT_ASSIGNEE_MISMATCH, 10);
 }

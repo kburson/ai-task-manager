@@ -35,6 +35,7 @@ import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import {
   checkAssigneeMatch,
   claimAssignee,
+  readOnlyBindEligibility,
   formatAssigneeRefusal,
   formatAssigneePromptLine,
   formatAssigneeUnverifiable,
@@ -103,7 +104,13 @@ async function defaultFetchLastStatusActor({ issueNumber, repo, exec = pexec }) 
 }
 
 // Pure core. Caller provides loaded state + deps; we return a verdict.
-export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {}) {
+async function runPreflightCore({
+  stateBefore,
+  target,
+  cfg,
+  deps = {},
+  readOnlyBind = false,
+} = {}) {
   if (!stateBefore) throw new Error('runPreflight: stateBefore is required');
 
   const targetIssue = normalizeIssueNumber(target);
@@ -121,20 +128,36 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
 
   const issueForReconcile = targetIssue || activeIssue;
   if (!issueForReconcile) return { ok: true, stateAfter: stateBefore, changed: false };
+  let bindEligibility = readOnlyBind
+    ? {
+        claimRequired: false,
+        issueNumber: issueForReconcile,
+      }
+    : {};
 
   if (process.env.TT_SKIP_NETWORK === '1') {
-    return { ok: true, stateAfter: stateBefore, changed: false, skippedNetwork: true };
+    return {
+      ok: true,
+      stateAfter: stateBefore,
+      changed: false,
+      skippedNetwork: true,
+      ...bindEligibility,
+    };
   }
-  if (!cfg) return { ok: true, stateAfter: stateBefore, changed: false };
+  if (!cfg) {
+    return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
+  }
 
   // #219: assignee guard runs before drift check. Preference-gated; default on.
   const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
   if (gateAssignee) {
     let assigneeVerdict;
     try {
-      assigneeVerdict = await checkAssigneeMatch({
+      const assigneeCheck = readOnlyBind ? readOnlyBindEligibility : checkAssigneeMatch;
+      assigneeVerdict = await assigneeCheck({
         issueNumber: issueForReconcile,
         cfg,
+        ...(readOnlyBind ? { fullAuto: (deps.env || process.env).TT_FULL_AUTO === '1' } : {}),
         deps: {
           fetchAssignees: deps.fetchAssignees,
           fetchCurrentUser: deps.fetchCurrentUser,
@@ -157,6 +180,15 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
         assignees: assigneeVerdict.assignees,
         error: assigneeVerdict.error,
         issueNumber: issueForReconcile,
+        ...(readOnlyBind ? { claimRequired: false } : {}),
+      };
+    }
+    if (readOnlyBind) {
+      bindEligibility = {
+        claimRequired: assigneeVerdict.claimRequired,
+        issueNumber: issueForReconcile,
+        currentUser: assigneeVerdict.currentUser,
+        assignees: assigneeVerdict.assignees,
       };
     }
   }
@@ -185,7 +217,9 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   // #436 — normalize through the single slug helper (collapses interior
   // whitespace) so a multi-word board name compares equal to the kebab marker.
   live = normalizeStateId(live) || '';
-  if (!live) return { ok: true, stateAfter: stateBefore, changed: false };
+  if (!live) {
+    return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
+  }
 
   // #218: the issue body marker is the single local source of truth. Fetch
   // it unconditionally and compare to live; the loaded `stateBefore.state`
@@ -200,7 +234,7 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
 
   // Marker absent (freshly created, never moved) or matches live: no drift.
   if (!marker || marker === live) {
-    return { ok: true, stateAfter: stateBefore, changed: false };
+    return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
   }
 
   let actor = null;
@@ -219,7 +253,19 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
     marker,
     actor,
     issueNumber: issueForReconcile,
+    ...(readOnlyBind ? { claimRequired: false } : {}),
   };
+}
+
+export function runPreflight(options) {
+  return runPreflightCore(options);
+}
+
+// Opt-in bind precursor for the lease coordinator. It performs only remote
+// reads and returns a structured deferred-claim requirement; it never writes
+// session state, assigns an issue, posts comments, or exits the process.
+export function runReadOnlyBindPreflight(options) {
+  return runPreflightCore({ ...options, readOnlyBind: true });
 }
 
 // Verb-facing wrapper. Reads stateBefore, runs preflight, writes back state

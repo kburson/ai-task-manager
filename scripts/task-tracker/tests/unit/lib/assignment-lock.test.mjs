@@ -21,6 +21,7 @@ import {
 } from '../../../lib/assignee-guard.mjs';
 import {
   runPreflight,
+  runReadOnlyBindPreflight,
   preflightVerb,
   EXIT_ASSIGNEE_MISMATCH,
 } from '../../../lib/verb-preflight.mjs';
@@ -285,6 +286,85 @@ async function capturePreflightVerb(opts) {
     'foreign-assigned refused under Full-Auto'
   );
   assert.equal(foreignClaimCalls, 0, 'Full-Auto never claims a foreign-assigned issue');
+}
+
+// --- Task 5: bind eligibility is a read-only precursor to lease acquisition -
+{
+  let claimCalls = 0;
+  let postCalls = 0;
+  const eligible = await runReadOnlyBindPreflight({
+    stateBefore: { active: null },
+    target: '#769',
+    cfg: CFG,
+    verb: 'start',
+    deps: {
+      ...depsOf({ assignees: [], currentUser: 'kburson' }),
+      env: { TT_FULL_AUTO: '1' },
+      claimAssignee: async () => {
+        claimCalls += 1;
+        return { ok: true };
+      },
+      postComment: async () => {
+        postCalls += 1;
+      },
+    },
+  });
+  assert.equal(eligible.ok, true);
+  assert.equal(eligible.claimRequired, true);
+  assert.equal(eligible.issueNumber, '769');
+  assert.equal(eligible.currentUser, 'kburson');
+  assert.deepEqual(eligible.assignees, []);
+  assert.equal(claimCalls, 0, 'bind preflight must defer claim until after lease acquisition');
+  assert.equal(postCalls, 0, 'bind preflight must not post an audit comment');
+
+  const foreign = await runReadOnlyBindPreflight({
+    stateBefore: { active: null },
+    target: '#769',
+    cfg: CFG,
+    verb: 'start',
+    deps: {
+      ...depsOf({ assignees: ['alice'], currentUser: 'kburson' }),
+      env: { TT_FULL_AUTO: '1' },
+    },
+  });
+  assert.equal(foreign.ok, false);
+  assert.equal(foreign.assigneeKind, 'assigned-to-other');
+
+  const unverifiable = await runReadOnlyBindPreflight({
+    stateBefore: { active: null },
+    target: '#769',
+    cfg: CFG,
+    verb: 'start',
+    deps: {
+      ...depsOf(),
+      env: { TT_FULL_AUTO: '1' },
+      fetchAssignees: async () => {
+        throw new Error('network down');
+      },
+    },
+  });
+  assert.equal(unverifiable.ok, false);
+  assert.equal(unverifiable.assigneeKind, 'unverifiable');
+
+  const drift = await runReadOnlyBindPreflight({
+    stateBefore: { active: null },
+    target: '#769',
+    cfg: CFG,
+    verb: 'start',
+    deps: {
+      ...depsOf({
+        live: 'review',
+        marker: 'develop',
+        assignees: [],
+        currentUser: 'kburson',
+      }),
+      env: { TT_FULL_AUTO: '1' },
+    },
+  });
+  assert.equal(drift.ok, false);
+  assert.equal(drift.kind, 'human-move');
+  assert.equal(claimCalls, 0);
+  assert.equal(postCalls, 0);
 }
 
 console.log('assignment-lock.test.mjs: ok');

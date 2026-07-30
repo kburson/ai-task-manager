@@ -93,6 +93,37 @@ export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
   return { ok: true, currentUser, assignees };
 }
 
+// Read-only bind eligibility. Full-Auto may proceed to acquire a work lease
+// for an unassigned issue, but assignment remains a deferred projection:
+// callers must run claimAssignee only after authority acquisition succeeds.
+// This function performs fetches only and never invokes mutation dependencies.
+export async function readOnlyBindEligibility({
+  issueNumber,
+  cfg,
+  fullAuto = false,
+  deps = {},
+} = {}) {
+  const verdict = await checkAssigneeMatch({ issueNumber, cfg, deps });
+  if (verdict.ok) {
+    return {
+      ...verdict,
+      kind: 'assigned-to-current',
+      claimRequired: false,
+    };
+  }
+  if (verdict.kind === 'unassigned' && fullAuto) {
+    return {
+      ...verdict,
+      ok: true,
+      claimRequired: true,
+    };
+  }
+  return {
+    ...verdict,
+    claimRequired: false,
+  };
+}
+
 export function formatAssigneeRefusal({ verb, issueNumber, verdict }) {
   const issue = `#${issueNumber}`;
   const cmd = `gh issue edit ${issueNumber} --add-assignee @me`;
