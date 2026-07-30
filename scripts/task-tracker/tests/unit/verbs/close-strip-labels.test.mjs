@@ -14,10 +14,34 @@ import { join } from 'node:path';
 
 import { verbClose } from '../../../verbs/close.mjs';
 import { closeLabelRemoveArgs } from '../../../lib/close-labels.mjs';
+import {
+  serializeAgentReviewProof,
+  serializeReviewApproval,
+} from '../../../lib/review-authority.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-const APPROVED_BODY =
-  '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
+const REVIEW_EPOCH = 'review:1:2026-06-28T00:00:00Z';
+const VERIFIED_SHA = 'abc1234';
+const APPROVED_BODY = [
+  '## Done',
+  `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-06-27T23:59:00Z" -->`,
+  '<!-- aitm-entered-review ts="2026-06-28T00:00:00Z" -->',
+  serializeAgentReviewProof({
+    epoch: REVIEW_EPOCH,
+    sha: VERIFIED_SHA,
+    ts: '2026-06-28T00:01:00Z',
+    validators: 'fixture',
+    result: 'pass',
+  }),
+  serializeReviewApproval({
+    epoch: REVIEW_EPOCH,
+    proofSha: VERIFIED_SHA,
+    ts: '2026-06-28T00:02:00Z',
+    provenance: 'human',
+  }),
+  '<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->',
+  '',
+].join('\n');
 
 const baseState = (active = '#5') => ({
   active,
@@ -115,6 +139,7 @@ test('convergence close-issue path strips ToDo/BLOCKED labels after gh close', a
   await run({
     over: {
       SKIP_NETWORK: false,
+      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       pexec: async (cmd, args) => (
         calls.push(`${cmd} ${args.join(' ')}`),

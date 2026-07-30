@@ -313,24 +313,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      573,
+      603,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      754,
+      784,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 887, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 917, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      1064,
+      1094,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
@@ -380,19 +380,19 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'start',
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 199, 'event-call', "'review:failed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 213, 'event-call', "'review:failed'", [
       'review:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 238, 'event-call', "'review:passed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 252, 'event-call', "'review:passed'", [
       'review:passed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 272, 'event-call', "'test:failed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 286, 'event-call', "'test:failed'", [
       'test:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 382, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 396, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 843, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 857, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 13, 'flush-call', "'stop'", ['stop']),
