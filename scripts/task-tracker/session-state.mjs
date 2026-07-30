@@ -281,12 +281,31 @@ export function setWorkLeaseIntent(sid, input, projDir) {
     throw new Error('session has an unreconciled work-lease intent');
   }
   const currentIssue = authorityIssue(base);
-  if (currentIssue != null && canonicalIssue(currentIssue) !== request.issueId) {
+  const intentIssue = intent.operation === 'resume' ? intent.issueId : request.issueId;
+  if (
+    (intent.operation === 'resume' && currentIssue == null) ||
+    (currentIssue != null && canonicalIssue(currentIssue) !== intentIssue)
+  ) {
     throw new Error('work-lease intent issue does not match the current session authority');
+  }
+  if (intent.operation === 'resume') {
+    let lease;
+    try {
+      lease = normalizeLeaseContext(base.lease);
+    } catch {
+      throw new Error('resume intent requires the current session authority lease');
+    }
+    if (
+      lease.projectId !== request.projectId ||
+      lease.leaseId !== request.leaseId ||
+      lease.fencingToken !== request.fencingToken
+    ) {
+      throw new Error('resume intent request does not match the current session authority lease');
+    }
   }
   const next = {
     ...base,
-    ...(currentIssue == null ? { leaseIssue: `#${request.issueId}` } : {}),
+    ...(currentIssue == null ? { leaseIssue: `#${intentIssue}` } : {}),
     workLeaseIntent: intent,
   };
   atomicWrite(p, next);

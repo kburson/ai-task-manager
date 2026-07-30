@@ -1,3 +1,4 @@
+// @story #1049
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -54,6 +55,18 @@ function acquireRequest(overrides = {}) {
       pathHash: 'path-1',
       branch: 'feature/child/1049',
     },
+    ...overrides,
+  };
+}
+
+function resumeRequest(overrides = {}) {
+  return {
+    projectId: LEASE.projectId,
+    leaseId: LEASE.leaseId,
+    fencingToken: LEASE.fencingToken,
+    idempotencyKey: 'resume:session-1:1049:request-1',
+    requestedAt: '2026-07-30T12:05:00.000Z',
+    ttlMs: 15 * 60 * 1000,
     ...overrides,
   };
 }
@@ -356,6 +369,89 @@ test('intent persists one exact request and rejects credential material before m
       /intent issue does not match/
     );
     assert.equal(getActiveTask('session-mismatch', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('resume intent persists one exact renew request and four issue-correlated projections', () => {
+  const dir = sandbox();
+  try {
+    setActiveTask(
+      'session-1',
+      {
+        issue: '#1049',
+        lease: LEASE,
+      },
+      dir
+    );
+    const request = resumeRequest();
+    const projectionInputs = {
+      session: { active: '#1049', paused: false },
+      fleet: { issue: '#1049', status: 'active' },
+      timing: { rows: [{ subOperationId: 'resume-row', row: 'exact row' }] },
+      github: { issue: '#1049', claimRequired: false },
+    };
+
+    const stored = setWorkLeaseIntent(
+      'session-1',
+      {
+        operation: 'resume',
+        issueId: '1049',
+        request,
+        projectionInputs,
+      },
+      dir
+    );
+
+    assert.equal(stored.workLeaseIntent.operation, 'resume');
+    assert.equal(stored.workLeaseIntent.issueId, '1049');
+    assert.deepEqual(readWorkLeaseIntentRequest(stored.workLeaseIntent), request);
+    assert.deepEqual(
+      Object.fromEntries(
+        Object.entries(stored.workLeaseIntent.projections).map(([name, projection]) => [
+          name,
+          {
+            input: projection.input,
+            projectionId: projection.projectionId,
+            completed: projection.completed,
+          },
+        ])
+      ),
+      Object.fromEntries(
+        Object.entries(projectionInputs).map(([name, input]) => [
+          name,
+          {
+            input,
+            projectionId: `resume:${request.idempotencyKey}:${name}`,
+            completed: false,
+          },
+        ])
+      )
+    );
+
+    setActiveTask(
+      'session-other-issue',
+      {
+        issue: '#1049',
+        lease: LEASE,
+      },
+      dir
+    );
+    assert.throws(
+      () =>
+        setWorkLeaseIntent(
+          'session-other-issue',
+          {
+            operation: 'resume',
+            issueId: '1050',
+            request,
+            projectionInputs,
+          },
+          dir
+        ),
+      /current session authority/
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

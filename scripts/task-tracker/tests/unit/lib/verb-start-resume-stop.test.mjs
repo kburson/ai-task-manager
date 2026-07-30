@@ -9,8 +9,8 @@ process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
-const { verbStart } = await import('../../../verbs/start.mjs');
-const { verbResume } = await import('../../../verbs/resume.mjs');
+const { verbStartLegacyForTests: verbStart } = await import('../../../verbs/start.mjs');
+const { verbResumeLegacyForTests: verbResume } = await import('../../../verbs/resume.mjs');
 const { verbPause } = await import('../../../verbs/pause.mjs');
 const { verbStop } = await import('../../../verbs/stop.mjs');
 const { loadState, saveState, EMPTY_STATE } = await import('../../../state.mjs');

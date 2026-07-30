@@ -2,6 +2,7 @@ import {
   assertFencingToken,
   canonicalRequestJson,
   validateAcquireRequest,
+  validateRenewRequest,
   validateSwitchLeaseRequest,
 } from '@kburson/aitm-ledger';
 import { createHash } from 'node:crypto';
@@ -9,6 +10,7 @@ import { createHash } from 'node:crypto';
 const LEASE_CONTEXT_KEYS = Object.freeze(['projectId', 'leaseId', 'fencingToken', 'worktreeId']);
 
 export const WORK_LEASE_PROJECTIONS = Object.freeze(['session', 'fleet', 'timing', 'github']);
+const WORK_LEASE_INTENT_OPERATIONS = Object.freeze(['acquire', 'resume', 'switchLease']);
 
 const SENSITIVE_KEY =
   /authorization|bearer|credentials?|token[_-]?env|secrets?|password|api[_-]?key|access[_-]?token|auth[_-]?token|aitm[_-]?lease[_-]?auth[_-]?token/i;
@@ -83,6 +85,18 @@ function validateProjectionName(name) {
 
 function projectionIdentity(operation, idempotencyKey, name) {
   return `${operation}:${idempotencyKey}:${name}`;
+}
+
+function canonicalIssue(value) {
+  const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
+  if (!match) throw new TypeError('work-lease intent issueId must be a canonical positive decimal');
+  return match[1];
+}
+
+function validateIntentRequest(operation, request) {
+  if (operation === 'acquire') validateAcquireRequest(request);
+  else if (operation === 'resume') validateRenewRequest(request);
+  else validateSwitchLeaseRequest(request);
 }
 
 function snapshotDigest(present, bytesBase64 = '') {
@@ -199,17 +213,18 @@ export function leaseContextEnvironment(value) {
 
 export function createWorkLeaseIntent({
   operation,
+  issueId,
   request,
   projectionInputs = {},
   priorSessionSnapshot,
 }) {
-  if (!['acquire', 'switchLease'].includes(operation)) {
-    throw new TypeError('work-lease intent operation must be acquire or switchLease');
+  if (!WORK_LEASE_INTENT_OPERATIONS.includes(operation)) {
+    throw new TypeError('work-lease intent operation must be acquire, resume, or switchLease');
   }
   assertNoSecretMaterial(request);
   assertNoSecretMaterial(projectionInputs);
-  if (operation === 'acquire') validateAcquireRequest(request);
-  else validateSwitchLeaseRequest(request);
+  validateIntentRequest(operation, request);
+  const resumeIssueId = operation === 'resume' ? canonicalIssue(issueId) : undefined;
   plainObject(projectionInputs, 'projectionInputs');
   const durableSnapshot = normalizePriorSessionSnapshot(priorSessionSnapshot);
 
@@ -225,6 +240,7 @@ export function createWorkLeaseIntent({
 
   return {
     operation,
+    ...(resumeIssueId === undefined ? {} : { issueId: resumeIssueId }),
     canonicalRequest: canonicalRequestJson(request),
     idempotencyKey: request.idempotencyKey,
     priorSessionSnapshot: durableSnapshot,
@@ -241,12 +257,12 @@ export function readWorkLeaseIntentRequest(intent) {
 export function validateWorkLeaseIntent(intent, { requireAllProjections = false } = {}) {
   plainObject(intent, 'work-lease intent');
   assertNoSecretMaterial(intent);
-  if (!['acquire', 'switchLease'].includes(intent.operation)) {
+  if (!WORK_LEASE_INTENT_OPERATIONS.includes(intent.operation)) {
     throw new TypeError('work-lease intent operation is malformed');
   }
   const request = readWorkLeaseIntentRequest(intent);
-  if (intent.operation === 'acquire') validateAcquireRequest(request);
-  else validateSwitchLeaseRequest(request);
+  validateIntentRequest(intent.operation, request);
+  if (intent.operation === 'resume') canonicalIssue(intent.issueId);
   if (intent.idempotencyKey !== request.idempotencyKey) {
     throw new Error('work-lease intent idempotency identity does not match');
   }

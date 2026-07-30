@@ -654,6 +654,20 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Prints per-file and aggregate test results.'],
     relatedCommands: ['npm test', 'npm run test:slow'],
   }),
+  'publish-ledger-if-needed': directDoc('publish-ledger-if-needed', {
+    group: 'Package lifecycle',
+    path: 'scripts/release/publish-ledger-if-needed.mjs',
+    classification: 'package-lifecycle-cli',
+    synopsis: 'Publish the ledger workspace only when its exact version is absent from npm.',
+    usage: 'publish-ledger-if-needed',
+    arguments: [],
+    preconditions: [
+      'Root and ledger package versions must match; npm registry access is required.',
+    ],
+    effects: ['Reads the npm registry and conditionally publishes the public ledger workspace.'],
+    output: ['Reports an already-published ledger or npm publish progress.'],
+    relatedCommands: ['npm run release', 'npm run release:ledger'],
+  }),
   'heal-stage-rollups': directDoc('heal-stage-rollups', {
     group: 'Maintenance',
     path: 'scripts/maintenance/heal-stage-rollups.mjs',

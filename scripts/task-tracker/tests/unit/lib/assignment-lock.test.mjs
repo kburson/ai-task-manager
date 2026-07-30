@@ -19,6 +19,7 @@ import {
   claimAssignee,
   parseCommitIssueRefs,
 } from '../../../lib/assignee-guard.mjs';
+import * as assigneeGuard from '../../../lib/assignee-guard.mjs';
 import {
   runPreflight,
   runReadOnlyBindPreflight,
@@ -382,7 +383,12 @@ async function capturePreflightVerb(opts) {
       postCalls += 1;
     },
   };
-  const switchDeps = ({ assignees = ['kburson'], live = 'develop', marker = 'develop' } = {}) => ({
+  const switchDeps = ({
+    assignees = ['kburson'],
+    live = 'develop',
+    marker = 'develop',
+    ...overrides
+  } = {}) => ({
     env: { TT_FULL_AUTO: '1' },
     fetchAssignees: async ({ issueNumber }) => {
       incomingReads.push(['assignees', String(issueNumber)]);
@@ -398,6 +404,7 @@ async function capturePreflightVerb(opts) {
       return marker;
     },
     fetchLastStatusActor: async () => null,
+    ...overrides,
     ...mutationDeps,
   });
 
@@ -422,11 +429,41 @@ async function capturePreflightVerb(opts) {
   assert.equal(assigned.sourceIssue, '769');
   assert.equal(assigned.issueNumber, '770');
   assert.equal(assigned.claimRequired, false);
+  assert.equal(assigned.kanbanState, 'develop');
   assert.equal(assigned.stateAfter, sourceState, 'source binding remains unchanged');
   assert.deepEqual(incomingReads.splice(0), [
     ['assignees', '770'],
     ['live', '770'],
     ['marker', '770'],
+  ]);
+
+  const reviewBody = [
+    '<!-- aitm-last-known-state: review -->',
+    '## Definition of Done',
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+  const review = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    allowIssueSwitch: true,
+    cfg: CFG,
+    deps: switchDeps({
+      live: 'review',
+      marker: 'review',
+      fetchIssueBody: async ({ issueNumber }) => {
+        incomingReads.push(['body', String(issueNumber)]);
+        return reviewBody;
+      },
+    }),
+  });
+  assert.equal(review.ok, true);
+  assert.equal(review.kanbanState, 'review');
+  assert.match(review.reviewRemediationHint, /\/task review #770/);
+  assert.match(review.reviewRemediationHint, /Do NOT demote/);
+  assert.deepEqual(incomingReads.splice(0), [
+    ['assignees', '770'],
+    ['live', '770'],
+    ['body', '770'],
   ]);
 
   const unassigned = await runReadOnlyBindPreflight({
@@ -552,6 +589,49 @@ async function capturePreflightVerb(opts) {
   assert.equal(noIssue.claimRequired, false);
   assert.equal('issueNumber' in noIssue, false, 'no issue metadata is emitted when none exists');
   assert.equal('sourceIssue' in noIssue, false, 'no source metadata is emitted when none exists');
+}
+
+// --- Task 5A: claim audit projection is exact across response loss ----------
+{
+  const projectionId = 'acquire:request-1:github';
+  const body = assigneeGuard.formatClaimAuditComment({
+    verb: 'start',
+    issueNumber: '1049',
+    currentUser: 'kburson',
+    projectionId,
+  });
+  const comments = [];
+  let posts = 0;
+  await assert.rejects(
+    () =>
+      assigneeGuard.reconcileClaimAuditProjection({
+        issueNumber: '1049',
+        repo: CFG.repo,
+        projectionId,
+        body,
+        listComments: async () => comments.map((commentBody) => ({ body: commentBody })),
+        postComment: async ({ body: commentBody }) => {
+          posts += 1;
+          comments.push(commentBody);
+          throw new Error('comment response lost');
+        },
+      }),
+    /comment response lost/
+  );
+  assert.deepEqual(
+    await assigneeGuard.reconcileClaimAuditProjection({
+      issueNumber: '1049',
+      repo: CFG.repo,
+      projectionId,
+      body,
+      listComments: async () => comments.map((commentBody) => ({ body: commentBody })),
+      postComment: async () => {
+        posts += 1;
+      },
+    }),
+    { reconciled: true, projectionId }
+  );
+  assert.equal(posts, 1);
 }
 
 console.log('assignment-lock.test.mjs: ok');

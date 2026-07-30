@@ -1,23 +1,26 @@
 // @story #1049
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { WorkLeaseError } from '@kburson/aitm-ledger';
 
-import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import {
   coordinateWorkLeaseAcquire,
   buildTrustedWorkLeaseHolder,
 } from '../../../lib/work-lease/guard.mjs';
+import * as workLeaseGuard from '../../../lib/work-lease/guard.mjs';
 import {
   activeTaskPath,
+  attachWorkLeaseIntentReceipt,
   checkpointWorkLeaseProjection,
   getActiveTask,
   setActiveTask,
 } from '../../../session-state.mjs';
-import { renewWorkLeaseBeforeResume } from '../../../verbs/resume.mjs';
+import { loadState } from '../../../state.mjs';
+import { renewWorkLeaseBeforeResume, verbResume } from '../../../verbs/resume.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -51,7 +54,7 @@ const LEASE = {
 };
 
 function sandbox() {
-  return mkdtempSync(path.join(projectScratchDir('test'), 'tt-exclusive-bind-'));
+  return mkdtempProjectIsolated('tt-exclusive-bind-');
 }
 
 function options(dir, overrides = {}) {
@@ -110,6 +113,67 @@ function options(dir, overrides = {}) {
             if (name === 'session') {
               setActiveTask('session-1', { issue: '#1049', lease }, dir);
             }
+            return { reconciled: true, projectionName, projectionId };
+          },
+        ])
+      ),
+      ...overrides,
+    },
+  };
+}
+
+function resumeOptions(dir, overrides = {}) {
+  const log = [];
+  const store = {
+    projectId: 'project-1',
+    async verify(request) {
+      log.push(`verify:${request.verifiedAt}`);
+      return { allowed: true, lease: LEASE };
+    },
+    async renew(request) {
+      log.push(`renew:${request.idempotencyKey}`);
+      return LEASE;
+    },
+  };
+  setActiveTask(
+    'session-1',
+    {
+      issue: '#1049',
+      lease: {
+        projectId: LEASE.projectId,
+        leaseId: LEASE.leaseId,
+        fencingToken: LEASE.fencingToken,
+        worktreeId: WORKTREE.worktreeId,
+      },
+    },
+    dir
+  );
+  return {
+    log,
+    input: {
+      issueId: '1049',
+      sessionId: 'session-1',
+      projectDir: dir,
+      hostId: 'host-1',
+      holderIdentity: {
+        provider: 'codex',
+        agentRunId: 'run-1',
+      },
+      getStore: async () => store,
+      resolveWorktreeIdentity: async () => WORKTREE,
+      now: () => NOW,
+      randomUUID: () => 'request-1',
+      projectionInputs: {
+        session: { issue: '#1049', paused: false },
+        fleet: { issue: '#1049', status: 'active' },
+        timing: { rows: [{ row: 'resume row', subOperationId: 'resume' }] },
+        github: { issue: '#1049', claimRequired: false },
+      },
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async ({ projectionName, projectionId }) => {
+            log.push(name);
             return { reconciled: true, projectionName, projectionId };
           },
         ])
@@ -915,6 +979,173 @@ test('clear failure is fail-closed and leaves the reconciled journal persisted',
   }
 });
 
+test('response-lost resume renew replays one exact request before four projections', async () => {
+  const dir = sandbox();
+  try {
+    const renewRequests = [];
+    let renewAttempts = 0;
+    const store = {
+      projectId: 'project-1',
+      async verify() {
+        return { allowed: true, lease: LEASE };
+      },
+      async renew(request) {
+        renewRequests.push(structuredClone(request));
+        renewAttempts += 1;
+        if (renewAttempts === 1) {
+          throw new WorkLeaseError('authority-unavailable', 'renew response lost');
+        }
+        return LEASE;
+      },
+    };
+    const first = resumeOptions(dir, { getStore: async () => store });
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
+      /renew response lost/
+    );
+    const pending = getActiveTask('session-1', dir).workLeaseIntent;
+    assert.equal(pending.operation, 'resume');
+    assert.equal(pending.receipt, undefined);
+    assert.ok(Object.values(pending.projections).every((projection) => !projection.completed));
+
+    const retry = resumeOptions(dir, { getStore: async () => store });
+    await workLeaseGuard.coordinateWorkLeaseResume(retry.input);
+
+    assert.equal(renewRequests.length, 2);
+    assert.deepEqual(renewRequests[1], renewRequests[0]);
+    assert.deepEqual(retry.log.slice(-4), ['session', 'fleet', 'timing', 'github']);
+    assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('resume retries the exact renew after authority success and receipt persistence crash', async () => {
+  const dir = sandbox();
+  try {
+    const renewRequests = [];
+    const store = {
+      projectId: 'project-1',
+      async verify() {
+        return { allowed: true, lease: LEASE };
+      },
+      async renew(request) {
+        renewRequests.push(structuredClone(request));
+        return LEASE;
+      },
+    };
+    let attachAttempts = 0;
+    const first = resumeOptions(dir, {
+      getStore: async () => store,
+      attachReceipt(...args) {
+        attachAttempts += 1;
+        if (attachAttempts === 1) throw new Error('receipt persistence crash');
+        return attachWorkLeaseIntentReceipt(...args);
+      },
+    });
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
+      /receipt persistence crash/
+    );
+
+    const retry = resumeOptions(dir, {
+      getStore: async () => store,
+      attachReceipt: attachWorkLeaseIntentReceipt,
+    });
+    await workLeaseGuard.coordinateWorkLeaseResume(retry.input);
+
+    assert.deepEqual(renewRequests[1], renewRequests[0]);
+    assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('resume rejects a renewal receipt not stamped by its original exact request', async () => {
+  const dir = sandbox();
+  try {
+    const mismatch = resumeOptions(dir, {
+      getStore: async () => ({
+        projectId: 'project-1',
+        async verify() {
+          return { allowed: true, lease: LEASE };
+        },
+        async renew() {
+          return {
+            ...LEASE,
+            heartbeatAt: '2026-07-30T12:00:01.000Z',
+            expiresAt: '2026-07-30T12:15:01.000Z',
+          };
+        },
+      }),
+    });
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(mismatch.input),
+      /renewal receipt.*request/
+    );
+    const session = getActiveTask('session-1', dir);
+    assert.equal(session.workLeaseIntent, undefined);
+    assert.equal(session.issue, '#1049');
+    assert.equal(session.lease.leaseId, LEASE.leaseId);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+for (const crashProjection of ['session', 'fleet', 'timing', 'github']) {
+  test(`resume ${crashProjection} remote success and local checkpoint crash replays one effect`, async () => {
+    const dir = sandbox();
+    try {
+      const effects = new Map();
+      const projectionIds = new Map();
+      let crashed = false;
+      const projections = Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async ({ projectionName, projectionId }) => {
+            assert.equal(projectionName, name);
+            const priorId = projectionIds.get(name);
+            if (priorId === undefined) {
+              projectionIds.set(name, projectionId);
+              effects.set(name, 1);
+            } else {
+              assert.equal(projectionId, priorId);
+            }
+            return { reconciled: true, projectionName, projectionId };
+          },
+        ])
+      );
+      const checkpoint = (...args) => {
+        const [, name] = args;
+        if (name === crashProjection && !crashed) {
+          crashed = true;
+          throw new Error(`resume checkpoint crash:${name}`);
+        }
+        return checkpointWorkLeaseProjection(...args);
+      };
+      const first = resumeOptions(dir, {
+        projections,
+        checkpointProjection: checkpoint,
+      });
+      await assert.rejects(
+        () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
+        new RegExp(`resume checkpoint crash:${crashProjection}`)
+      );
+      const retry = resumeOptions(dir, {
+        projections,
+        checkpointProjection: checkpoint,
+      });
+      await workLeaseGuard.coordinateWorkLeaseResume(retry.input);
+
+      for (const name of ['session', 'fleet', 'timing', 'github']) {
+        assert.equal(effects.get(name), 1, name);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
+
 test('no-argument resume force-renews authority before queue, marker, timing, or GitHub effects', async () => {
   const log = [];
   await renewWorkLeaseBeforeResume(
@@ -939,6 +1170,367 @@ test('no-argument resume force-renews authority before queue, marker, timing, or
   log.push('github');
 
   assert.deepEqual(log, ['verify:true:task-bind', 'queue', 'marker', 'timing', 'github']);
+});
+
+function governedResumeContext(dir, { rest, state, session, coordinator = 'acquire' } = {}) {
+  const sessionId = `resume-wiring-${Math.random().toString(16).slice(2)}`;
+  process.env.AI_TASK_MANAGER_SESSION_ID = sessionId;
+  const statePath = path.join(dir, `${sessionId}-state.json`);
+  writeFileSync(statePath, JSON.stringify(state), 'utf8');
+  if (session) setActiveTask(sessionId, session, dir);
+  const events = [];
+  const durableLease = {
+    projectId: LEASE.projectId,
+    leaseId: LEASE.leaseId,
+    fencingToken: LEASE.fencingToken,
+    worktreeId: WORKTREE.worktreeId,
+  };
+  const runCoordinator = async (input) => {
+    events.push(coordinator);
+    if (coordinator === 'lose') throw new WorkLeaseError('lease-contended', 'held elsewhere');
+    for (const name of ['session', 'fleet', 'timing', 'github']) {
+      await input.projections[name]({
+        input: input.projectionInputs[name],
+        lease: durableLease,
+        projectionName: name,
+        projectionId: `${coordinator}:request:${name}`,
+      });
+    }
+    return { lease: durableLease, projectionInputs: input.projectionInputs };
+  };
+  return {
+    events,
+    ctx: {
+      rest,
+      cfg: {},
+      statePath,
+      projectDir: dir,
+      role: 'agent',
+      nowIso: () => new Date().toISOString(),
+      getWorkLeaseIdentity: () => ({
+        hostId: 'host-1',
+        provider: 'codex',
+        agentRunId: 'run-1',
+        sessionId,
+        pid: 123,
+        branch: 'feature/child/1049',
+      }),
+      getWorkLeaseStore: () => ({ projectId: LEASE.projectId }),
+      runReadOnlyBindPreflight: async () => {
+        events.push('preflight');
+        return {
+          ok: true,
+          claimRequired: false,
+          currentUser: 'worker',
+          stateAfter: state,
+        };
+      },
+      coordinateWorkLeaseAcquire: runCoordinator,
+      coordinateWorkLeaseResume: runCoordinator,
+      applyWorkLeaseSessionProjection: async () => events.push('session'),
+      applyWorkLeaseFleetProjection: async () => events.push('fleet'),
+      applyWorkLeaseTimingProjection: async () => events.push('timing'),
+      applyWorkLeaseGithubProjection: async () => events.push('github'),
+      createWorkLeaseHeartbeat: () => events.push('heartbeat'),
+      readWorkLeaseKanbanProjection: async () => null,
+      readTimingCommentBody: async () => ({ status: 'absent', body: '', error: null }),
+      drainQueueIfAny: async () => events.push('queue'),
+      safePostTiming: async () => events.push('legacy-timing'),
+      seedKanban: async () => events.push('legacy-kanban'),
+      verbSwitch: async () => events.push('unsafe-switch'),
+      runMoveInvariantAudit: async () => events.push('audit'),
+    },
+  };
+}
+
+test('cold bind runs preflight, acquires, reconciles four projections, then starts heartbeat', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    await verbResume(ctx);
+    assert.deepEqual(events, [
+      'preflight',
+      'acquire',
+      'session',
+      'fleet',
+      'timing',
+      'github',
+      'heartbeat',
+      'audit',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('losing cold acquire has no queue, marker, session, fleet, timing, GitHub, or heartbeat effect', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'lose',
+    });
+    await assert.rejects(() => verbResume(ctx), /held elsewhere/);
+    assert.deepEqual(events, ['preflight', 'lose']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('no-argument resume journals renewal projections before bind effects and heartbeat', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: [],
+      state: {
+        active: null,
+        lastActive: '#1049',
+        paused: true,
+        pausedAtTs: new Date(Date.now() - 5_000).toISOString(),
+      },
+      session: {
+        issue: null,
+        leaseIssue: '#1049',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    await verbResume(ctx);
+    assert.deepEqual(events, [
+      'preflight',
+      'resume',
+      'session',
+      'fleet',
+      'timing',
+      'github',
+      'heartbeat',
+      'audit',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('no-argument renewal loss has no queue, marker, session, fleet, timing, GitHub, or heartbeat effect', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: [],
+      state: {
+        active: null,
+        lastActive: '#1049',
+        paused: true,
+        pausedAtTs: new Date(Date.now() - 5_000).toISOString(),
+      },
+      session: {
+        issue: null,
+        leaseIssue: '#1049',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'lose',
+    });
+    await assert.rejects(() => verbResume(ctx), /held elsewhere/);
+    assert.deepEqual(events, ['preflight', 'lose']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pre-upgrade same-session binding adopts before its first governed effect', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: {
+        active: '#1049',
+        lastActive: '#1049',
+        entryStartTs: new Date(Date.now() - 5_000).toISOString(),
+        wordsAtEntryStart: 17,
+      },
+      session: {
+        issue: '#1049',
+        entryStartTs: new Date(Date.now() - 5_000).toISOString(),
+        wordsAtStart: 17,
+      },
+      coordinator: 'acquire',
+    });
+    await verbResume(ctx);
+    assert.deepEqual(events, [
+      'preflight',
+      'acquire',
+      'session',
+      'fleet',
+      'timing',
+      'github',
+      'heartbeat',
+      'audit',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('adoption session projection reads back exact global, session, lease, and kanban state', async () => {
+  const dir = sandbox();
+  try {
+    const initialState = {
+      active: '#1049',
+      lastActive: '#1049',
+      entryStartTs: '2026-07-30T11:55:00.000Z',
+      wordsAtEntryStart: 17,
+    };
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: initialState,
+      session: {
+        issue: '#1049',
+        entryStartTs: initialState.entryStartTs,
+        wordsAtStart: 17,
+      },
+      coordinator: 'acquire',
+    });
+    delete ctx.applyWorkLeaseSessionProjection;
+    ctx.runReadOnlyBindPreflight = async () => ({
+      ok: true,
+      claimRequired: false,
+      currentUser: 'worker',
+      kanbanState: 'develop',
+      stateAfter: initialState,
+    });
+    const projectedState = loadState(ctx.statePath);
+
+    await verbResume(ctx);
+
+    assert.deepEqual(JSON.parse(readFileSync(ctx.statePath, 'utf8')), projectedState);
+    const persisted = getActiveTask(ctx.getWorkLeaseIdentity().sessionId, dir);
+    assert.equal(persisted.issue, '#1049');
+    assert.equal(persisted.lease.leaseId, LEASE.leaseId);
+    assert.equal(persisted.kanbanState, 'develop');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('governed bind surfaces persisted review remediation only after reconciliation', async () => {
+  const dir = sandbox();
+  const lines = [];
+  const originalLog = console.log;
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    ctx.runReadOnlyBindPreflight = async () => ({
+      ok: true,
+      claimRequired: false,
+      currentUser: 'worker',
+      kanbanState: 'review',
+      reviewRemediationHint: 'Run /task review #1049. Do NOT demote.',
+    });
+    console.log = (...args) => lines.push(args.join(' '));
+
+    await verbResume(ctx);
+
+    assert.deepEqual(events.slice(-2), ['heartbeat', 'audit']);
+    assert.match(lines.join('\n'), /\/task review #1049/);
+    assert.match(lines.join('\n'), /Do NOT demote/);
+  } finally {
+    console.log = originalLog;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('invalid no-argument resume is read-only', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: [],
+      state: { active: null, lastActive: null, paused: false },
+    });
+    await verbResume(ctx);
+    assert.deepEqual(events, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('production resume fails closed without a work-lease authority', async () => {
+  await assert.rejects(() => verbResume({}), /resume requires a lazy work-lease authority/);
+});
+
+test('same-issue held-lease self-bind renews without duplicate bind projections', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: {
+        active: '#1049',
+        lastActive: '#1049',
+        entryStartTs: new Date(Date.now() - 5_000).toISOString(),
+        wordsAtEntryStart: 17,
+      },
+      session: {
+        issue: '#1049',
+        entryStartTs: new Date(Date.now() - 5_000).toISOString(),
+        wordsAtStart: 17,
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    ctx.verifyGovernedEffect = async ({ forceRenewal }) => {
+      events.push(`renew:${forceRenewal}`);
+      return { allowed: true };
+    };
+    await verbResume(ctx);
+    assert.deepEqual(events, ['preflight', 'renew:true', 'heartbeat', 'audit']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('genuine cross-issue bind refuses before unsafe legacy switch', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1048', lastActive: '#1048' },
+      session: {
+        issue: '#1048',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    await assert.rejects(() => verbResume(ctx), /atomic work-lease switch/i);
+    assert.deepEqual(events, ['preflight']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('dispatcher leaves start and resume out of legacy mutating preflight', () => {

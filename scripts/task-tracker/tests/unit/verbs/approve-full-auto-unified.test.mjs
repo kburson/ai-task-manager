@@ -13,6 +13,8 @@
 //   8. Legacy-encoded body is normalized to new encoding.
 
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import {
   runApprove,
   buildMarker,
@@ -20,6 +22,13 @@ import {
   insertApprovalMarker,
   detectFullAuto,
 } from '../../../verbs/approve.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+
+const isolatedProjectDir = mkdtempSync(
+  path.join(projectScratchDir('test'), 'approve-full-auto-unified-')
+);
+process.env.AI_TASK_MANAGER_PROJECT_DIR = isolatedProjectDir;
+process.once('exit', () => rmSync(isolatedProjectDir, { recursive: true, force: true }));
 
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
 // action) passed. Every fixture body below is suffixed with it; tests that care

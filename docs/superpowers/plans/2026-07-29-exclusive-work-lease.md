@@ -385,7 +385,11 @@ real Git worktree directory. Raw display text never participates in uniqueness.
       propagate `AITM_LEASE_ID` and `AITM_FENCING_TOKEN` to owned child
       processes, and verify before governed effects. On the first governed
       action by a pre-upgrade bound session, acquire an adoption lease before
-      any effect and persist it only if acquisition wins. Use `switchLease` for
+      any effect and persist it only if acquisition wins. A resume that needs
+      renewal uses the same durable intent protocol with `operation: resume`:
+      persist the exact `RenewRequest` and all four projection inputs, attach
+      and validate the exact renewal receipt, then reconcile
+      session/fleet/timing/GitHub before clearing the intent. Use `switchLease` for
       issue switches. Split read-only eligibility from mutating assignee claim;
       acquisition/switch happens before claim, queue drain, pause finalization,
       session, timing, GitHub, or fleet effects. Authority writes its lease,

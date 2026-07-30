@@ -119,7 +119,7 @@ process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
-const { verbResume } = await import('../../../verbs/resume.mjs');
+const { verbResumeLegacyForTests: verbResume } = await import('../../../verbs/resume.mjs');
 test('fresh worktree binds locally but posts no row over an already-active live span', async () => {
   process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
   const statePath = path.join(tmp, 'state.json');

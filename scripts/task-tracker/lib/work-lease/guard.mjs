@@ -374,6 +374,65 @@ function validateAcquireReceipt(receipt, request) {
   return { durableLease, acquiredAt: lease.acquiredAt };
 }
 
+function validateResumeIntentCorrelation({ intent, issueId, store, persistedLease }) {
+  if (intent?.operation !== 'resume') {
+    throw leaseError('invalid-request', 'persisted work-lease intent operation must be resume');
+  }
+  let request;
+  try {
+    request = validateWorkLeaseIntent(intent, { requireAllProjections: true });
+    validateRenewRequest(request);
+  } catch (error) {
+    throw stableError(
+      error,
+      'invalid-request',
+      `persisted resume intent is malformed: ${error?.message || 'unknown validation error'}`
+    );
+  }
+  if (intent.issueId !== issueId) {
+    throw leaseError('invalid-request', 'persisted resume issue does not match current bind');
+  }
+  if (request.projectId !== store?.projectId) {
+    throw leaseError('invalid-request', 'persisted resume project does not match authority');
+  }
+  if (
+    request.projectId !== persistedLease.projectId ||
+    request.leaseId !== persistedLease.leaseId ||
+    request.fencingToken !== persistedLease.fencingToken
+  ) {
+    throw leaseError('invalid-request', 'persisted resume request does not match session lease');
+  }
+  return request;
+}
+
+function validateResumeReceipt(
+  receipt,
+  request,
+  expected,
+  issueId,
+  worktreeId,
+  sessionId,
+  hostId,
+  holderIdentity
+) {
+  const lease = normalizeAuthorityLease(
+    receipt,
+    expected,
+    issueId,
+    worktreeId,
+    sessionId,
+    hostId,
+    holderIdentity
+  );
+  const expectedExpiresAt = new Date(
+    parseTimestamp(request.requestedAt, 'renewal request requestedAt') + request.ttlMs
+  ).toISOString();
+  if (lease.heartbeatAt !== request.requestedAt || lease.expiresAt !== expectedExpiresAt) {
+    throw leaseError('invalid-request', 'renewal receipt does not match persisted request');
+  }
+  return lease;
+}
+
 function releaseAfterClaimRequest(lease, request, acquiredAt) {
   return {
     projectId: lease.projectId,
@@ -673,10 +732,226 @@ export async function coordinateWorkLeaseAcquire({
       store,
     });
   }
+  const reconciledProjectionInputs = Object.fromEntries(
+    WORK_LEASE_PROJECTIONS.map((name) => [name, currentIntent.projections[name].input])
+  );
   if ((await clearIntent(sessionId, currentIntent?.transitionId, projectDir)) !== true) {
     throw leaseError('authority-unavailable', 'cannot clear reconciled work-lease intent');
   }
-  return Object.freeze({ lease: durableLease, receipt, request, eligibility });
+  return Object.freeze({
+    lease: durableLease,
+    receipt,
+    request,
+    eligibility,
+    projectionInputs: reconciledProjectionInputs,
+  });
+}
+
+export async function coordinateWorkLeaseResume({
+  issueId,
+  sessionId,
+  projectDir,
+  hostId,
+  holderIdentity,
+  getStore,
+  projectionInputs,
+  projections,
+  loadSession = getActiveTask,
+  saveIntent = setWorkLeaseIntent,
+  attachReceipt = attachWorkLeaseIntentReceipt,
+  checkpointProjection = checkpointWorkLeaseProjection,
+  clearIntent = clearWorkLeaseIntent,
+  restoreSnapshot = restoreActiveTaskSnapshot,
+  resolveWorktreeIdentity: resolveIdentity = resolveWorktreeIdentity,
+  now = () => new Date(),
+  randomUUID = defaultRandomUUID,
+} = {}) {
+  const canonicalIssueId = canonicalIssue(issueId);
+  requiredString(sessionId, 'work-lease sessionId');
+  requiredString(projectDir, 'work-lease projectDir');
+  const trustedHostId = requiredString(hostId, 'work-lease hostId');
+  if (typeof getStore !== 'function') {
+    throw leaseError('invalid-request', 'lazy work-lease provider is required');
+  }
+  if (
+    !projectionInputs ||
+    typeof projectionInputs !== 'object' ||
+    Array.isArray(projectionInputs)
+  ) {
+    throw leaseError('invalid-request', 'work-lease projection inputs are required');
+  }
+  if (!projections || typeof projections !== 'object' || Array.isArray(projections)) {
+    throw leaseError('invalid-request', 'work-lease projection callbacks are required');
+  }
+  for (const name of WORK_LEASE_PROJECTIONS) {
+    if (!Object.hasOwn(projectionInputs, name) || typeof projections[name] !== 'function') {
+      throw leaseError('invalid-request', `work-lease ${name} projection is required`);
+    }
+  }
+
+  let worktree;
+  try {
+    worktree = await resolveIdentity(projectDir, { hostId: trustedHostId });
+  } catch (error) {
+    throw stableError(error, 'authority-unavailable', 'cannot resolve canonical worktree identity');
+  }
+  const worktreeId = requiredString(worktree?.worktreeId, 'canonical worktreeId');
+  const trustedHolderIdentity = normalizeHolderIdentity(holderIdentity);
+  const store = await getStore();
+  let session = await loadSession(sessionId, projectDir);
+  if (!session || typeof session !== 'object') {
+    throw leaseError('lease-not-held', 'session has no persisted work lease');
+  }
+  let persistedLease = expectedLease(session, canonicalIssueId, worktreeId);
+  let intent = session.workLeaseIntent;
+  if (!intent) {
+    const requestedAt = canonicalTimestamp(now(), 'work-lease resume time');
+    const request = renewRequest(
+      persistedLease,
+      requestedAt,
+      `resume:${sessionId}:${canonicalIssueId}:${randomUUID()}`
+    );
+    await saveIntent(
+      sessionId,
+      {
+        operation: 'resume',
+        issueId: canonicalIssueId,
+        request,
+        projectionInputs,
+      },
+      projectDir
+    );
+    session = await loadSession(sessionId, projectDir);
+    intent = session?.workLeaseIntent;
+  }
+
+  let request = validateResumeIntentCorrelation({
+    intent,
+    issueId: canonicalIssueId,
+    store,
+    persistedLease,
+  });
+  let receipt = intent.receipt;
+  if (!receipt) {
+    const verifyRequest = {
+      projectId: persistedLease.projectId,
+      leaseId: persistedLease.leaseId,
+      fencingToken: persistedLease.fencingToken,
+      operation: 'task-bind',
+      verifiedAt: request.requestedAt,
+    };
+    validateVerifyRequest(verifyRequest);
+    try {
+      verifiedAuthorityLease(
+        await store.verify(verifyRequest),
+        persistedLease,
+        canonicalIssueId,
+        worktreeId,
+        sessionId,
+        trustedHostId,
+        trustedHolderIdentity
+      );
+      receipt = await store.renew(request);
+      validateResumeReceipt(
+        receipt,
+        request,
+        persistedLease,
+        canonicalIssueId,
+        worktreeId,
+        sessionId,
+        trustedHostId,
+        trustedHolderIdentity
+      );
+    } catch (error) {
+      if (TERMINAL_ACQUIRE_CODES.has(error?.code)) {
+        const restored = await restoreSnapshot(
+          sessionId,
+          intent.priorSessionSnapshot,
+          request.idempotencyKey,
+          projectDir
+        );
+        if (!restored) {
+          throw leaseError(
+            'authority-unavailable',
+            'cannot restore prior session after definitive resume refusal'
+          );
+        }
+      }
+      throw stableError(error, 'authority-unavailable', 'work-lease resume renewal failed');
+    }
+    await attachReceipt(sessionId, { receipt }, projectDir);
+  }
+
+  session = await loadSession(sessionId, projectDir);
+  intent = session?.workLeaseIntent;
+  persistedLease = expectedLease(session, canonicalIssueId, worktreeId);
+  request = validateResumeIntentCorrelation({
+    intent,
+    issueId: canonicalIssueId,
+    store,
+    persistedLease,
+  });
+  receipt = intent.receipt;
+  const authorityLease = validateResumeReceipt(
+    receipt,
+    request,
+    persistedLease,
+    canonicalIssueId,
+    worktreeId,
+    sessionId,
+    trustedHostId,
+    trustedHolderIdentity
+  );
+  const durableLease = normalizeLeaseContext({
+    projectId: authorityLease.projectId,
+    leaseId: authorityLease.leaseId,
+    fencingToken: authorityLease.fencingToken,
+    worktreeId,
+  });
+
+  let currentIntent = intent;
+  for (const name of WORK_LEASE_PROJECTIONS) {
+    const projection = currentIntent.projections[name];
+    if (projection.completed === true) continue;
+    const proof = await projections[name]({
+      input: projection.input,
+      lease: durableLease,
+      receipt,
+      request,
+      projectionName: name,
+      projectionId: projection.projectionId,
+    });
+    validateProjectionProof(proof, name, projection.projectionId);
+    await checkpointProjection(
+      sessionId,
+      name,
+      proof,
+      currentIntent?.transitionId,
+      canonicalTimestamp(now(), `work-lease ${name} checkpoint time`),
+      projectDir
+    );
+    session = await loadSession(sessionId, projectDir);
+    currentIntent = session?.workLeaseIntent;
+    persistedLease = expectedLease(session, canonicalIssueId, worktreeId);
+    validateResumeIntentCorrelation({
+      intent: currentIntent,
+      issueId: canonicalIssueId,
+      store,
+      persistedLease,
+    });
+  }
+  const reconciledProjectionInputs = Object.fromEntries(
+    WORK_LEASE_PROJECTIONS.map((name) => [name, currentIntent.projections[name].input])
+  );
+  if ((await clearIntent(sessionId, currentIntent?.transitionId, projectDir)) !== true) {
+    throw leaseError('authority-unavailable', 'cannot clear reconciled work-lease intent');
+  }
+  return Object.freeze({
+    lease: durableLease,
+    receipt,
+    request,
+    projectionInputs: reconciledProjectionInputs,
+  });
 }
 
 // Verify authority immediately before a governed effect.  The dependencies are

@@ -1,4 +1,4 @@
-import { verbResume } from './resume.mjs';
+import { verbResume, verbResumeLegacyForTests } from './resume.mjs';
 
 // `/task start <N>` binds to issue #N (same path as `/task #N`).
 // `/task start` with no issue number exits with an error directing the user
@@ -11,4 +11,14 @@ export async function verbStart(ctx) {
     return;
   }
   await verbResume(ctx);
+}
+
+export async function verbStartLegacyForTests(ctx) {
+  const raw = ctx.rest[0];
+  if (!raw || !/^#?\d+$/.test(String(raw))) {
+    console.log('no task number provided; use "/task start <N>"');
+    process.exitCode = 1;
+    return;
+  }
+  await verbResumeLegacyForTests(ctx);
 }

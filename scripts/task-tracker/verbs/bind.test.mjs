@@ -83,7 +83,7 @@ process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
-const { verbResume } = await import('./resume.mjs');
+const { verbResumeLegacyForTests: verbResume } = await import('./resume.mjs');
 
 let stateSeq = 0;
 function writeState(obj) {

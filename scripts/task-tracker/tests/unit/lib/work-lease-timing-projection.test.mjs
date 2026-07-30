@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   buildRow,
-  postTimingEvent,
-  readTimingProjection,
+  postTimingEvent as postTimingEventWithProductionTimeout,
+  readTimingProjection as readTimingProjectionWithProductionTimeout,
   timingProjectionMarker,
 } from '../../../gh-timing-comment.mjs';
 import { drain, enqueueTimingProjection, peek } from '../../../queue.mjs';
@@ -31,6 +31,7 @@ const ghShim = path.join(binDir, 'gh');
 const priorPath = process.env.PATH;
 const priorStore = process.env.FAKE_GH_STORE;
 const priorProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+const FAKE_GH_TIMEOUT_MS = 10_000;
 
 mkdirSync(binDir, { recursive: true });
 writeFileSync(ghShim, `#!/bin/sh\nexec "${process.execPath}" "${fakeGh}" "$@"\n`);
@@ -39,6 +40,24 @@ writeFileSync(storePath, JSON.stringify({ comments: [], nextId: 1 }));
 process.env.PATH = `${binDir}:${priorPath}`;
 process.env.FAKE_GH_STORE = storePath;
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+
+// The production timeout is intentionally short for an interactive `gh`
+// command. This test launches dozens of fresh Node processes as its fake `gh`;
+// give those local fixtures a test-sized startup budget so a saturated parallel
+// lane cannot turn process scheduling delay into a network-behavior failure.
+function postTimingEvent(options) {
+  return postTimingEventWithProductionTimeout({
+    ...options,
+    timeoutMs: options?.timeoutMs ?? FAKE_GH_TIMEOUT_MS,
+  });
+}
+
+function readTimingProjection(options) {
+  return readTimingProjectionWithProductionTimeout({
+    ...options,
+    timeoutMs: options?.timeoutMs ?? FAKE_GH_TIMEOUT_MS,
+  });
+}
 
 const projectionId = 'acquire:request-1049:timing';
 const departureId = `${projectionId}:synthetic-departure`;

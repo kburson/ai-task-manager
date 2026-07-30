@@ -29,7 +29,7 @@ process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
 // Import AFTER env is set so path resolution honors the tmp project.
-const { verbResume } = await import('../../../verbs/resume.mjs');
+const { verbResumeLegacyForTests: verbResume } = await import('../../../verbs/resume.mjs');
 const { setActiveTask } = await import('../../../session-state.mjs');
 
 let stateSeq = 0;

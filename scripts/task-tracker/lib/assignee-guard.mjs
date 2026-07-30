@@ -66,6 +66,16 @@ async function defaultPostComment({ issueNumber, repo, body }) {
 
 export { defaultPostComment };
 
+async function defaultListComments({ issueNumber, repo }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const parsed = JSON.parse(stdout || '{}');
+  return Array.isArray(parsed.comments) ? parsed.comments : [];
+}
+
 export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('checkAssigneeMatch: issueNumber is required');
   if (!cfg) throw new Error('checkAssigneeMatch: cfg is required');
@@ -168,7 +178,17 @@ export function formatAssigneeUnverifiable({ verb, issueNumber, error }) {
 // #769 — audit trail written to the issue when Full-Auto auto-claims an
 // unassigned issue. Mirrors the existing `aitm-full-auto-*` audit discipline so
 // the machine-driven assignment is visible and greppable.
-export function formatClaimAuditComment({ verb, issueNumber, currentUser }) {
+function claimAuditProjectionMarker(projectionId) {
+  if (typeof projectionId !== 'string' || projectionId.trim() === '') {
+    throw new TypeError('claim audit projectionId is required');
+  }
+  return `<!-- aitm-full-auto-assignee-claim-projection id-b64="${Buffer.from(
+    projectionId,
+    'utf8'
+  ).toString('base64url')}" -->`;
+}
+
+export function formatClaimAuditComment({ verb, issueNumber, currentUser, projectionId }) {
   const who = currentUser ? `@${currentUser}` : 'the authenticated `gh` user';
   return [
     '### 🤖 Full-Auto assignee claim',
@@ -181,7 +201,41 @@ export function formatClaimAuditComment({ verb, issueNumber, currentUser }) {
     'GitHub UI.',
     '',
     '<!-- aitm-full-auto-assignee-claim -->',
+    ...(projectionId ? [claimAuditProjectionMarker(projectionId)] : []),
   ].join('\n');
+}
+
+export async function reconcileClaimAuditProjection({
+  issueNumber,
+  repo,
+  projectionId,
+  body,
+  listComments = defaultListComments,
+  postComment = defaultPostComment,
+} = {}) {
+  if (!issueNumber || !repo) {
+    throw new TypeError('claim audit projection issue and repo are required');
+  }
+  const marker = claimAuditProjectionMarker(projectionId);
+  if (typeof body !== 'string' || !body.includes(marker)) {
+    throw new TypeError('claim audit projection body does not match its identity');
+  }
+  const matching = (comments) =>
+    comments.filter((comment) => String(comment?.body ?? '').includes(marker));
+  let comments = await listComments({ issueNumber, repo });
+  let matches = matching(comments);
+  if (matches.length > 1) {
+    throw new Error('duplicate claim audit projection receipts');
+  }
+  if (matches.length === 0) {
+    await postComment({ issueNumber, repo, body });
+    comments = await listComments({ issueNumber, repo });
+    matches = matching(comments);
+  }
+  if (matches.length !== 1 || matches[0].body !== body) {
+    throw new Error('claim audit projection remote read-back does not match');
+  }
+  return { reconciled: true, projectionId };
 }
 
 // #769 — the single chokepoint for the "only permitted AI assignment"

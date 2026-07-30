@@ -12,6 +12,7 @@ import {
   deregisterTask,
   setTaskStatus,
 } from '../../../fleet-registry.mjs';
+import * as fleetRegistry from '../../../fleet-registry.mjs';
 
 const tmp = mkdtempProjectIsolated('tt-fleet-');
 
@@ -31,6 +32,28 @@ try {
   fleet = readFleet(preferred);
   assert.equal(fleet['#3'].branch, '3-test');
   assert.equal(fleet['#3'].status, 'active');
+
+  const projectedInput = {
+    issue: '#1049',
+    worktreePath: tmp,
+    branch: 'feature/child/1049',
+    kind: 'main',
+    startedAt: '2026-07-30T12:00:00.000Z',
+    status: 'active',
+  };
+  const projectionId = 'acquire:request-1:fleet';
+  fleetRegistry.registerTaskProjection(tmp, projectedInput, projectionId);
+  const projectedBytes = JSON.stringify(readFleet(preferred));
+  fleetRegistry.registerTaskProjection(tmp, projectedInput, projectionId);
+  assert.equal(JSON.stringify(readFleet(preferred)), projectedBytes, 'projection replay is exact');
+  assert.deepEqual(readFleet(preferred)['#1049'], {
+    worktreePath: tmp,
+    branch: 'feature/child/1049',
+    kind: 'main',
+    startedAt: '2026-07-30T12:00:00.000Z',
+    status: 'active',
+    projectionId,
+  });
 
   setTaskStatus(tmp, '#3', 'paused');
   fleet = readFleet(preferred);

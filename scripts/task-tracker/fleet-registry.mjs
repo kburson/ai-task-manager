@@ -222,6 +222,49 @@ export function registerTask(projectDir, issueRef, worktreePath, branch, kind) {
   });
 }
 
+export function registerTaskProjection(projectDir, input, projectionId) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('fleet projection input must be an object');
+  }
+  for (const field of ['issue', 'worktreePath', 'branch', 'startedAt', 'status']) {
+    if (typeof input[field] !== 'string' || input[field].trim() === '') {
+      throw new TypeError(`fleet projection ${field} is required`);
+    }
+  }
+  if (typeof projectionId !== 'string' || projectionId.trim() === '') {
+    throw new TypeError('fleet projectionId is required');
+  }
+  if (!/^#[1-9]\d*$/.test(input.issue) || input.status !== 'active') {
+    throw new TypeError('fleet projection requires a canonical active issue binding');
+  }
+  const mainPath = findMainWorktreePath(projectDir);
+  const registryPath = fleetRegistryPath(mainPath);
+  const kind = input.kind ?? (input.worktreePath === mainPath ? 'main' : 'worktree');
+  if (!['main', 'worktree'].includes(kind)) {
+    throw new TypeError('fleet projection kind is invalid');
+  }
+  const projected = {
+    worktreePath: input.worktreePath,
+    branch: input.branch,
+    kind,
+    startedAt: input.startedAt,
+    status: input.status,
+    projectionId,
+  };
+  withLock(registryPath, () => {
+    const fleet = readFleet(registryPath);
+    const existing = fleet[input.issue];
+    if (existing && JSON.stringify(existing) === JSON.stringify(projected)) return;
+    fleet[input.issue] = projected;
+    writeFleet(registryPath, fleet);
+  });
+  const receipt = readFleet(registryPath)[input.issue];
+  if (JSON.stringify(receipt) !== JSON.stringify(projected)) {
+    throw new Error('fleet projection read-back does not match');
+  }
+  return receipt;
+}
+
 export function deregisterTask(projectDir, issueRef) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);

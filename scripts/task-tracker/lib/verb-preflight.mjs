@@ -31,6 +31,7 @@ import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { saveState } from '../state.mjs';
+import { reviewRemediationHint } from './review-remediation-hint.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import {
   checkAssigneeMatch,
@@ -59,7 +60,7 @@ function normalizeIssueNumber(target) {
   return m ? m[1] : null;
 }
 
-async function defaultFetchLastKnownState({ issueNumber, repo, gqlFn = gql }) {
+async function defaultFetchIssueBody({ issueNumber, repo, gqlFn = gql }) {
   const { owner, repoName } = splitRepo(repo);
   try {
     const data = await gqlFn(
@@ -70,11 +71,15 @@ async function defaultFetchLastKnownState({ issueNumber, repo, gqlFn = gql }) {
       }`,
       { owner, repo: repoName, issue: Number(issueNumber) }
     );
-    const body = data?.repository?.issue?.body ?? '';
-    return readLastKnownState(body).state;
+    return data?.repository?.issue?.body ?? '';
   } catch {
     return null;
   }
+}
+
+async function defaultFetchLastKnownState(input) {
+  const body = await defaultFetchIssueBody(input);
+  return body === null ? null : readLastKnownState(body).state;
 }
 
 // Best-effort actor lookup via the issue timeline. Projects v2 does NOT
@@ -225,6 +230,7 @@ async function runPreflightCore({
   const fetchLive = deps.fetchLive || fetchLiveKanbanState;
   const fetchMarker =
     deps.fetchLastKnownState || ((a) => defaultFetchLastKnownState({ ...a, gqlFn }));
+  const fetchIssueBody = deps.fetchIssueBody || ((a) => defaultFetchIssueBody({ ...a, gqlFn }));
   const fetchActor =
     deps.fetchLastStatusActor || ((a) => defaultFetchLastStatusActor({ ...a, exec: execFn }));
 
@@ -244,17 +250,37 @@ async function runPreflightCore({
   if (!live) {
     return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
   }
+  if (readOnlyBind) {
+    bindEligibility = { ...bindEligibility, kanbanState: live };
+  }
 
   // #218: the issue body marker is the single local source of truth. Fetch
   // it unconditionally and compare to live; the loaded `stateBefore.state`
   // (if any legacy cache still carries it) is ignored.
   let marker = null;
+  let bindBody = null;
   try {
-    marker = await fetchMarker({ issueNumber: issueForReconcile, repo: cfg.repo });
+    if (readOnlyBind && (deps.fetchIssueBody || !deps.fetchLastKnownState)) {
+      bindBody = await fetchIssueBody({ issueNumber: issueForReconcile, repo: cfg.repo });
+      marker = bindBody === null ? null : readLastKnownState(bindBody).state;
+    } else {
+      marker = await fetchMarker({ issueNumber: issueForReconcile, repo: cfg.repo });
+    }
   } catch {
     marker = null;
+    bindBody = null;
   }
   marker = marker ? normalizeStateId(marker) : null;
+  if (readOnlyBind && bindBody !== null) {
+    bindEligibility = {
+      ...bindEligibility,
+      reviewRemediationHint: reviewRemediationHint({
+        state: live,
+        body: bindBody,
+        issueNumber: issueForReconcile,
+      }),
+    };
+  }
 
   // Marker absent (freshly created, never moved) or matches live: no drift.
   if (!marker || marker === live) {

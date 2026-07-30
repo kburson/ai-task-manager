@@ -13,6 +13,8 @@
 //   8. Legacy-encoded body is normalized to new encoding.
 
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import {
   runApprove,
   buildMarker,
@@ -20,6 +22,11 @@ import {
   insertApprovalMarker,
   detectFullAuto,
 } from '../../../verbs/approve.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+
+const isolatedProjectDir = mkdtempSync(path.join(projectScratchDir('test'), 'approve-core-'));
+process.env.AI_TASK_MANAGER_PROJECT_DIR = isolatedProjectDir;
+process.once('exit', () => rmSync(isolatedProjectDir, { recursive: true, force: true }));
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';

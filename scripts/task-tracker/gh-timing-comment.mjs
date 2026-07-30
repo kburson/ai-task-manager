@@ -596,7 +596,7 @@ function appendRow(body, row, { projection } = {}) {
     lastTableIdx = canonicalRegion.tableRowEnd - 1;
   } else {
     // Legacy comments without the canonical Timing Log header retain the
-    // historical global-table fallback rather than changing their append
+    // legacy global-table fallback rather than changing their append
     // placement as part of projection receipt hardening.
     for (let i = 0; i < lines.length; i++) {
       if (
