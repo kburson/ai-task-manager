@@ -303,6 +303,25 @@ test('terminal mutation errors replay even after authority state changes', () =>
   );
 });
 
+test('recordable invalid requests replay and corrected payload reuse conflicts', () => {
+  const store = createMemoryLeaseStore();
+  const malformed = acquire({ idempotencyKey: 'invalid-recorded', mode: 'read' });
+  assert.throws(
+    () => store.acquire(malformed),
+    (error) => error.code === 'invalid-request'
+  );
+  assert.throws(
+    () => store.acquire(malformed),
+    (error) => error.code === 'invalid-request',
+    'exact malformed replay returns the stored terminal response'
+  );
+  assert.throws(
+    () => store.acquire({ ...malformed, mode: 'write' }),
+    (error) => error.code === 'idempotency-conflict',
+    'correcting a payload cannot reuse the terminal response key'
+  );
+});
+
 test('takeover cannot claim a worktree that retains another issue lease', () => {
   const store = createMemoryLeaseStore();
   const observed = store.acquire(acquire());

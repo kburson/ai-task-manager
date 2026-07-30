@@ -82,7 +82,18 @@ export class MemoryLeaseStore extends WorkLeaseStore {
   }
 
   #mutate(operation, request, validate, apply) {
-    validate(request);
+    const hasIdempotencyEnvelope =
+      request &&
+      typeof request === 'object' &&
+      !Array.isArray(request) &&
+      typeof request.projectId === 'string' &&
+      request.projectId.trim() !== '' &&
+      typeof request.idempotencyKey === 'string' &&
+      request.idempotencyKey.trim() !== '';
+    if (!hasIdempotencyEnvelope) {
+      validate(request);
+      throw new WorkLeaseError('invalid-request', 'mutating request lacks an idempotency envelope');
+    }
     const scope = `${request.projectId}\0${request.idempotencyKey}`;
     const digest = canonicalRequestDigest(request);
     const previous = this.#idempotency.get(scope);
@@ -104,6 +115,7 @@ export class MemoryLeaseStore extends WorkLeaseStore {
       return clone(previous.result);
     }
     try {
+      validate(request);
       const result = apply();
       this.#idempotency.set(scope, { operation, digest, result: clone(result) });
       return clone(result);
