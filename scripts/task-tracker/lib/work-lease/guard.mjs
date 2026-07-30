@@ -148,6 +148,36 @@ function normalizeHolderIdentity(value) {
   return normalized;
 }
 
+function normalizeResumeBindingIdentity(value, { worktree, sessionId, hostId }) {
+  const identity = object(value, 'trusted bind identity');
+  const normalized = {};
+  for (const field of [...STABLE_HOLDER_FIELDS, 'displayPath']) {
+    normalized[field] = requiredString(identity[field], `trusted bind identity ${field}`);
+  }
+  if (!Number.isSafeInteger(identity.pid) || identity.pid <= 0) {
+    throw leaseError(
+      'invalid-request',
+      'trusted bind identity pid must be a positive safe integer'
+    );
+  }
+  if (normalized.principalKind !== 'worker') {
+    throw leaseError('invalid-request', 'trusted bind identity principalKind must be worker');
+  }
+  if (
+    normalized.sessionId !== sessionId ||
+    normalized.hostId !== hostId ||
+    normalized.worktreeId !== worktree.worktreeId ||
+    normalized.pathHash !== worktree.pathHash ||
+    normalized.displayPath !== worktree.displayPath
+  ) {
+    throw leaseError(
+      'lease-not-held',
+      'trusted bind identity does not match the canonical session worktree'
+    );
+  }
+  return Object.freeze(normalized);
+}
+
 function normalizeAuthorityLease(
   value,
   expected,
@@ -253,7 +283,7 @@ function renewalRequestIdentity(lease, verifiedAt) {
   };
 }
 
-export async function buildTrustedWorkLeaseHolder({
+export async function buildTrustedWorkLeaseBinding({
   projectDir,
   hostId,
   provider,
@@ -280,6 +310,7 @@ export async function buildTrustedWorkLeaseHolder({
   }
   const worktreeId = requiredString(worktree?.worktreeId, 'canonical worktreeId');
   const pathHash = requiredString(worktree?.pathHash, 'canonical worktree pathHash');
+  const displayPath = requiredString(worktree?.displayPath, 'canonical worktree displayPath');
   return Object.freeze({
     principalKind: 'worker',
     provider: trustedProvider,
@@ -290,7 +321,14 @@ export async function buildTrustedWorkLeaseHolder({
     worktreeId,
     pathHash,
     branch: trustedBranch,
+    displayPath,
   });
+}
+
+export async function buildTrustedWorkLeaseHolder(options = {}) {
+  const binding = await buildTrustedWorkLeaseBinding(options);
+  const { displayPath: _displayPath, ...holder } = binding;
+  return Object.freeze(holder);
 }
 
 function canonicalAcquireIssue(value) {
@@ -460,14 +498,97 @@ function validateProjectionProof(proof, projectionName, projectionId) {
   return proof;
 }
 
-function isCurrentAssigneeClaimReplay(claimResult, eligibility) {
-  if (claimResult?.ok === true) return true;
-  if (claimResult?.kind !== 'already-assigned') return false;
-  const currentUser = String(eligibility?.currentUser ?? '').toLowerCase();
-  return (
-    currentUser !== '' &&
-    (claimResult.assignees ?? []).some((assignee) => String(assignee).toLowerCase() === currentUser)
-  );
+function validatePreparedGithubInput(input, issueId) {
+  const value = object(input, 'persisted GitHub bind input');
+  if (
+    value.issueNumber !== issueId ||
+    typeof value.skippedNetwork !== 'boolean' ||
+    typeof value.claimRequired !== 'boolean' ||
+    !['enforced', 'disabled', 'offline'].includes(value.assigneePolicy) ||
+    typeof value.currentUser !== 'string' ||
+    typeof value.preparedKind !== 'string' ||
+    !Array.isArray(value.preparedAssignees) ||
+    value.preparedAssignees.some((assignee) => typeof assignee !== 'string') ||
+    !Object.hasOwn(value, 'auditBody')
+  ) {
+    throw leaseError('invalid-request', 'persisted GitHub bind input is malformed');
+  }
+  if (
+    value.assigneePolicy === 'enforced' &&
+    (value.currentUser.trim() === '' || value.preparedKind.trim() === '')
+  ) {
+    throw leaseError('invalid-request', 'persisted assignment intent is incomplete');
+  }
+  if (value.claimRequired && (typeof value.auditBody !== 'string' || value.auditBody === '')) {
+    throw leaseError('invalid-request', 'persisted assignment audit intent is incomplete');
+  }
+  if ((value.assigneePolicy === 'offline') !== value.skippedNetwork) {
+    throw leaseError('invalid-request', 'persisted offline bind policy is inconsistent');
+  }
+  return value;
+}
+
+function validatePreparedEligibility(prepared, githubInput) {
+  if (!prepared?.ok) {
+    throw leaseError('authority-forbidden', 'incoming issue is not eligible for bind');
+  }
+  if (githubInput.assigneePolicy !== 'enforced') return;
+  const preparedAssignees = (prepared.assignees ?? []).map((value) => String(value).toLowerCase());
+  if (
+    prepared.claimRequired !== githubInput.claimRequired ||
+    String(prepared.currentUser ?? '').toLowerCase() !== githubInput.currentUser.toLowerCase() ||
+    canonicalRequestJson(preparedAssignees) !==
+      canonicalRequestJson(githubInput.preparedAssignees.map((value) => value.toLowerCase()))
+  ) {
+    throw leaseError(
+      'invalid-request',
+      'prepared eligibility does not match persisted assignment intent'
+    );
+  }
+}
+
+async function reconcilePersistedClaim({ intent, issueId, readEligibility, reconcileClaim }) {
+  const projection = intent.projections.github;
+  const input = validatePreparedGithubInput(projection.input, issueId);
+  if (input.skippedNetwork) {
+    return {
+      reconciled: true,
+      projectionName: 'github-claim',
+      projectionId: projection.projectionId,
+      assignmentResult: 'network-skipped',
+    };
+  }
+  if (typeof readEligibility !== 'function') {
+    throw leaseError('invalid-request', 'post-authority bind eligibility reader is required');
+  }
+  const liveEligibility = await readEligibility();
+  if (!liveEligibility?.ok) {
+    throw leaseError('authority-forbidden', 'incoming issue is no longer eligible for bind');
+  }
+  if (input.assigneePolicy !== 'enforced') {
+    return {
+      reconciled: true,
+      projectionName: 'github-claim',
+      projectionId: projection.projectionId,
+      assignmentResult: 'assignment-disabled',
+    };
+  }
+  if (typeof reconcileClaim !== 'function') {
+    throw leaseError('invalid-request', 'persisted assignee claim reconciler is required');
+  }
+  const proof = await reconcileClaim({
+    input,
+    projectionId: projection.projectionId,
+    liveEligibility,
+  });
+  if (
+    proof?.reconciled !== true ||
+    proof.projectionName !== 'github-claim' ||
+    proof.projectionId !== projection.projectionId
+  ) {
+    throw leaseError('authority-unavailable', 'prepared assignee claim proof does not match');
+  }
+  return proof;
 }
 
 // Shared cold-bind/adoption coordinator. Every dependency that can touch
@@ -483,8 +604,9 @@ export async function coordinateWorkLeaseAcquire({
   pid,
   branch,
   getStore,
+  preparedEligibility,
   readEligibility,
-  claim,
+  reconcileClaim,
   projectionInputs,
   projections,
   loadSession = getActiveTask,
@@ -502,9 +624,6 @@ export async function coordinateWorkLeaseAcquire({
   requiredString(projectDir, 'work-lease projectDir');
   if (typeof getStore !== 'function') {
     throw leaseError('invalid-request', 'lazy work-lease provider is required');
-  }
-  if (typeof readEligibility !== 'function') {
-    throw leaseError('invalid-request', 'read-only bind eligibility is required');
   }
   if (
     !projectionInputs ||
@@ -524,19 +643,17 @@ export async function coordinateWorkLeaseAcquire({
 
   const existing = await loadSession(sessionId, projectDir);
   const existingIntent = existing?.workLeaseIntent;
-  let eligibility;
+  let eligibility = preparedEligibility;
   let holder;
   let store;
   let intent;
   let request;
 
   if (!existingIntent) {
-    eligibility = await readEligibility();
-    if (!eligibility?.ok) {
-      throw leaseError('authority-forbidden', 'incoming issue is not eligible for bind');
-    }
-    if (eligibility.claimRequired && typeof claim !== 'function') {
-      throw leaseError('invalid-request', 'deferred assignee claim is required');
+    const preparedGithub = validatePreparedGithubInput(projectionInputs.github, canonicalIssueId);
+    validatePreparedEligibility(eligibility, preparedGithub);
+    if (preparedGithub.assigneePolicy === 'enforced' && typeof reconcileClaim !== 'function') {
+      throw leaseError('invalid-request', 'deferred assignee claim reconciler is required');
     }
   }
 
@@ -649,51 +766,22 @@ export async function coordinateWorkLeaseAcquire({
     throw leaseError(code, message);
   };
 
-  if (existingIntent) {
-    try {
-      eligibility = await readEligibility();
-    } catch (error) {
-      await rejectGrantedLease({
-        code: 'authority-unavailable',
-        message: 'incoming issue eligibility cannot be verified',
-        cause: error,
-      });
-    }
-    if (!eligibility?.ok) {
-      await rejectGrantedLease({
-        code: 'authority-forbidden',
-        message: 'incoming issue is no longer eligible for bind',
-      });
-    }
-  }
-
-  if (eligibility.claimRequired) {
-    if (typeof claim !== 'function') {
-      await rejectGrantedLease({
-        code: 'invalid-request',
-        message: 'deferred assignee claim is required',
-      });
-    }
-    let claimResult;
-    let claimError;
-    try {
-      claimResult = await claim();
-    } catch (error) {
-      claimError = error;
-    }
-    if (claimError || !isCurrentAssigneeClaimReplay(claimResult, eligibility)) {
-      if (claimError) {
-        await rejectGrantedLease({
-          code: 'authority-unavailable',
-          message: 'assignee claim could not be verified after acquisition',
-          cause: claimError,
-        });
-      }
-      await rejectGrantedLease({
-        code: 'authority-forbidden',
-        message: 'issue assignee changed after work-lease acquisition',
-      });
-    }
+  try {
+    await reconcilePersistedClaim({
+      intent,
+      issueId: canonicalIssueId,
+      readEligibility,
+      reconcileClaim,
+    });
+  } catch (error) {
+    await rejectGrantedLease({
+      code: error?.code === 'authority-forbidden' ? 'authority-forbidden' : 'authority-unavailable',
+      message:
+        error?.code === 'authority-forbidden'
+          ? 'issue assignee changed after work-lease acquisition'
+          : 'assignee claim could not be verified after acquisition',
+      cause: error,
+    });
   }
 
   let currentIntent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
@@ -754,6 +842,8 @@ export async function coordinateWorkLeaseResume({
   hostId,
   holderIdentity,
   getStore,
+  readEligibility,
+  reconcileClaim,
   projectionInputs,
   projections,
   loadSession = getActiveTask,
@@ -796,7 +886,14 @@ export async function coordinateWorkLeaseResume({
     throw stableError(error, 'authority-unavailable', 'cannot resolve canonical worktree identity');
   }
   const worktreeId = requiredString(worktree?.worktreeId, 'canonical worktreeId');
-  const trustedHolderIdentity = normalizeHolderIdentity(holderIdentity);
+  const trustedHolderIdentity = normalizeResumeBindingIdentity(holderIdentity, {
+    worktree,
+    sessionId,
+    hostId: trustedHostId,
+  });
+  const trustedAuthorityHolder = Object.fromEntries(
+    STABLE_HOLDER_FIELDS.map((field) => [field, trustedHolderIdentity[field]])
+  );
   const store = await getStore();
   let session = await loadSession(sessionId, projectDir);
   if (!session || typeof session !== 'object') {
@@ -849,7 +946,7 @@ export async function coordinateWorkLeaseResume({
         worktreeId,
         sessionId,
         trustedHostId,
-        trustedHolderIdentity
+        trustedAuthorityHolder
       );
       receipt = await store.renew(request);
       validateResumeReceipt(
@@ -860,7 +957,7 @@ export async function coordinateWorkLeaseResume({
         worktreeId,
         sessionId,
         trustedHostId,
-        trustedHolderIdentity
+        trustedAuthorityHolder
       );
     } catch (error) {
       if (TERMINAL_ACQUIRE_CODES.has(error?.code)) {
@@ -900,13 +997,20 @@ export async function coordinateWorkLeaseResume({
     worktreeId,
     sessionId,
     trustedHostId,
-    trustedHolderIdentity
+    trustedAuthorityHolder
   );
   const durableLease = normalizeLeaseContext({
     projectId: authorityLease.projectId,
     leaseId: authorityLease.leaseId,
     fencingToken: authorityLease.fencingToken,
     worktreeId,
+  });
+
+  await reconcilePersistedClaim({
+    intent,
+    issueId: canonicalIssueId,
+    readEligibility,
+    reconcileClaim,
   });
 
   let currentIntent = intent;

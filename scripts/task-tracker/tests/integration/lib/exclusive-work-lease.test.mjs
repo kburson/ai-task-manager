@@ -9,6 +9,7 @@ import { WorkLeaseError } from '@kburson/aitm-ledger';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import {
   coordinateWorkLeaseAcquire,
+  buildTrustedWorkLeaseBinding,
   buildTrustedWorkLeaseHolder,
 } from '../../../lib/work-lease/guard.mjs';
 import * as workLeaseGuard from '../../../lib/work-lease/guard.mjs';
@@ -21,6 +22,7 @@ import {
 } from '../../../session-state.mjs';
 import { loadState } from '../../../state.mjs';
 import { renewWorkLeaseBeforeResume, verbResume } from '../../../verbs/resume.mjs';
+import { loadMarker, markerPathFor } from '../../../word-counter.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -85,13 +87,29 @@ function options(dir, overrides = {}) {
         log.push('provider');
         return store;
       },
+      preparedEligibility: {
+        ok: true,
+        claimRequired: true,
+        currentUser: 'worker',
+        assignees: [],
+      },
       readEligibility: async () => {
         log.push('eligibility');
-        return { ok: true, claimRequired: true, currentUser: 'worker' };
+        return {
+          ok: true,
+          claimRequired: false,
+          currentUser: 'worker',
+          assignees: ['worker'],
+        };
       },
-      claim: async () => {
+      reconcileClaim: async ({ projectionId }) => {
         log.push('claim');
-        return { ok: true, claimed: true };
+        return {
+          reconciled: true,
+          projectionName: 'github-claim',
+          projectionId,
+          assignmentResult: 'assigned-to-current',
+        };
       },
       resolveWorktreeIdentity: async () => {
         log.push('identity');
@@ -103,7 +121,17 @@ function options(dir, overrides = {}) {
         session: { issue: '#1049' },
         fleet: { issue: '#1049', worktreeId: WORKTREE.worktreeId },
         timing: { issue: '#1049', event: 'start' },
-        github: { issue: '#1049', claimRequired: true },
+        github: {
+          issueNumber: '1049',
+          repo: 'owner/repo',
+          skippedNetwork: false,
+          assigneePolicy: 'enforced',
+          claimRequired: true,
+          currentUser: 'worker',
+          preparedKind: 'unassigned',
+          preparedAssignees: [],
+          auditBody: 'exact prepared audit',
+        },
       },
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
@@ -156,10 +184,22 @@ function resumeOptions(dir, overrides = {}) {
       projectDir: dir,
       hostId: 'host-1',
       holderIdentity: {
-        provider: 'codex',
-        agentRunId: 'run-1',
+        ...LEASE.holder,
+        displayPath: WORKTREE.displayPath,
       },
       getStore: async () => store,
+      readEligibility: async () => ({
+        ok: true,
+        claimRequired: false,
+        currentUser: 'worker',
+        assignees: ['worker'],
+      }),
+      reconcileClaim: async ({ projectionId }) => ({
+        reconciled: true,
+        projectionName: 'github-claim',
+        projectionId,
+        assignmentResult: 'assigned-to-current',
+      }),
       resolveWorktreeIdentity: async () => WORKTREE,
       now: () => NOW,
       randomUUID: () => 'request-1',
@@ -167,7 +207,17 @@ function resumeOptions(dir, overrides = {}) {
         session: { issue: '#1049', paused: false },
         fleet: { issue: '#1049', status: 'active' },
         timing: { rows: [{ row: 'resume row', subOperationId: 'resume' }] },
-        github: { issue: '#1049', claimRequired: false },
+        github: {
+          issueNumber: '1049',
+          repo: 'owner/repo',
+          skippedNetwork: false,
+          assigneePolicy: 'enforced',
+          claimRequired: false,
+          currentUser: 'worker',
+          preparedKind: 'assigned-to-current',
+          preparedAssignees: ['worker'],
+          auditBody: null,
+        },
       },
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
@@ -207,6 +257,59 @@ test('trusted holder is built only from explicit runtime identity plus canonical
   assert.equal(JSON.stringify(holder).includes('untrusted'), false);
 });
 
+test('trusted bind identity includes the canonical display path while authority holder stays schema exact', async () => {
+  const identity = await buildTrustedWorkLeaseBinding({
+    projectDir: '/repo/worktree-1',
+    hostId: 'host-1',
+    provider: 'codex',
+    agentRunId: 'run-1',
+    sessionId: 'session-1',
+    pid: 123,
+    branch: 'codex/1049-exclusive-work-lease',
+    resolveWorktreeIdentity: async () => WORKTREE,
+  });
+  assert.deepEqual(identity, { ...LEASE.holder, displayPath: WORKTREE.displayPath });
+  const holder = await buildTrustedWorkLeaseHolder({
+    projectDir: '/repo/worktree-1',
+    hostId: 'host-1',
+    provider: 'codex',
+    agentRunId: 'run-1',
+    sessionId: 'session-1',
+    pid: 123,
+    branch: 'codex/1049-exclusive-work-lease',
+    resolveWorktreeIdentity: async () => WORKTREE,
+  });
+  assert.equal(Object.hasOwn(holder, 'displayPath'), false);
+});
+
+for (const [field, value] of [
+  ['principalKind', 'integration'],
+  ['provider', 'claude'],
+  ['agentRunId', 'run-other'],
+  ['sessionId', 'session-other'],
+  ['hostId', 'host-other'],
+  ['worktreeId', 'wt:v1:other'],
+  ['displayPath', '/repo/other'],
+  ['pathHash', 'path-other'],
+  ['branch', 'other-branch'],
+]) {
+  test(`resume rejects trusted bind identity drift in ${field} before projection`, async () => {
+    const dir = sandbox();
+    try {
+      const { input, log } = resumeOptions(dir, {
+        holderIdentity: { ...LEASE.holder, displayPath: WORKTREE.displayPath, [field]: value },
+      });
+      await assert.rejects(
+        () => workLeaseGuard.coordinateWorkLeaseResume(input),
+        /trusted|holder|canonical worktree/i
+      );
+      assert.equal(log.includes('session'), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
+
 test('cold Full-Auto bind persists intent, acquires, claims, and reconciles every projection in order', async () => {
   const dir = sandbox();
   try {
@@ -214,10 +317,10 @@ test('cold Full-Auto bind persists intent, acquires, claims, and reconciles ever
     const result = await coordinateWorkLeaseAcquire(input);
 
     assert.deepEqual(log, [
-      'eligibility',
       'identity',
       'provider',
       'acquire:acquire:session-1:1049:request-1',
+      'eligibility',
       'claim',
       'session',
       'fleet',
@@ -238,6 +341,117 @@ test('cold Full-Auto bind persists intent, acquires, claims, and reconciles ever
   }
 });
 
+test('fresh acquire persists one prepared claim intent and reconciles only that intent after authority', async () => {
+  const dir = sandbox();
+  try {
+    const { input, log } = options(dir);
+    const githubInput = {
+      issueNumber: '1049',
+      repo: 'owner/repo',
+      skippedNetwork: false,
+      assigneePolicy: 'enforced',
+      claimRequired: true,
+      currentUser: 'worker',
+      preparedKind: 'unassigned',
+      preparedAssignees: [],
+      auditBody: 'exact prepared audit',
+    };
+    input.projectionInputs.github = githubInput;
+    input.preparedEligibility = {
+      ok: true,
+      claimRequired: true,
+      currentUser: 'worker',
+      assignees: [],
+      assigneeKind: 'unassigned',
+    };
+    input.readEligibility = async () => {
+      log.push('eligibility-after-authority');
+      return {
+        ok: true,
+        claimRequired: false,
+        currentUser: 'worker',
+        assignees: ['worker'],
+        assigneeKind: 'assigned-to-current',
+      };
+    };
+    delete input.claim;
+    input.reconcileClaim = async ({ input: persisted, projectionId, liveEligibility }) => {
+      log.push(`claim:${projectionId}`);
+      assert.deepEqual(persisted, githubInput);
+      assert.deepEqual(liveEligibility.assignees, ['worker']);
+      return {
+        reconciled: true,
+        projectionName: 'github-claim',
+        projectionId,
+        assignmentResult: 'assigned-to-current',
+      };
+    };
+
+    await coordinateWorkLeaseAcquire(input);
+
+    const acquireIndex = log.findIndex((entry) => entry.startsWith('acquire:'));
+    const eligibilityIndex = log.indexOf('eligibility-after-authority');
+    const claimIndex = log.findIndex((entry) => entry.startsWith('claim:'));
+    const sessionIndex = log.indexOf('session');
+    assert.ok(acquireIndex >= 0 && acquireIndex < eligibilityIndex);
+    assert.ok(eligibilityIndex < claimIndex && claimIndex < sessionIndex);
+    assert.equal(
+      log.filter((entry) => entry === 'eligibility-after-authority').length,
+      1,
+      'the prepared decision must not be re-created before authority'
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('resume reconciles a persisted required claim before session, fleet, or timing', async () => {
+  const dir = sandbox();
+  try {
+    const { input, log } = resumeOptions(dir);
+    input.projectionInputs.github = {
+      issueNumber: '1049',
+      repo: 'owner/repo',
+      skippedNetwork: false,
+      assigneePolicy: 'enforced',
+      claimRequired: true,
+      currentUser: 'worker',
+      preparedKind: 'unassigned',
+      preparedAssignees: [],
+      auditBody: 'exact prepared audit',
+    };
+    input.readEligibility = async () => {
+      log.push('eligibility-after-authority');
+      return {
+        ok: true,
+        claimRequired: true,
+        currentUser: 'worker',
+        assignees: [],
+        assigneeKind: 'unassigned',
+      };
+    };
+    input.reconcileClaim = async ({ input: persisted, projectionId }) => {
+      log.push(`claim:${projectionId}`);
+      assert.equal(persisted.claimRequired, true);
+      return {
+        reconciled: true,
+        projectionName: 'github-claim',
+        projectionId,
+        assignmentResult: 'assigned-to-current',
+      };
+    };
+
+    await workLeaseGuard.coordinateWorkLeaseResume(input);
+
+    const renewIndex = log.findIndex((entry) => entry.startsWith('renew:'));
+    const claimIndex = log.findIndex((entry) => entry.startsWith('claim:'));
+    assert.ok(renewIndex >= 0 && renewIndex < claimIndex);
+    assert.ok(claimIndex < log.indexOf('session'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('terminal contention restores exact prior session bytes and performs no bind projection', async () => {
   const dir = sandbox();
   try {
@@ -253,7 +467,7 @@ test('terminal contention restores exact prior session bytes and performs no bin
           throw new WorkLeaseError('lease-contended', 'held elsewhere');
         },
       }),
-      claim: async () => assert.fail('claim must not run'),
+      reconcileClaim: async () => assert.fail('claim must not run'),
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
           name,
@@ -270,7 +484,7 @@ test('terminal contention restores exact prior session bytes and performs no bin
       }
     );
     assert.deepEqual(readFileSync(p), before);
-    assert.deepEqual(log, ['eligibility', 'identity', 'acquire:contended']);
+    assert.deepEqual(log, ['identity', 'acquire:contended']);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -322,9 +536,9 @@ test('foreign assignee discovered after acquire releases before restoring and ne
     setActiveTask('session-1', { issue: '#1049', wordsAtStart: 11 }, dir);
     const before = readFileSync(activeTaskPath('session-1', dir));
     const { input, log } = options(dir, {
-      claim: async () => {
+      reconcileClaim: async () => {
         log.push('claim:foreign');
-        return { ok: false, kind: 'already-assigned', assignees: ['other'] };
+        throw new WorkLeaseError('authority-forbidden', 'foreign assignee');
       },
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
@@ -342,10 +556,10 @@ test('foreign assignee discovered after acquire releases before restoring and ne
       }
     );
     assert.deepEqual(log, [
-      'eligibility',
       'identity',
       'provider',
       'acquire:acquire:session-1:1049:request-1',
+      'eligibility',
       'claim:foreign',
       'release:release-after-claim:acquire:session-1:1049:request-1:2026-07-30T12:00:00.000Z:assignee-changed-after-acquire',
     ]);
@@ -493,7 +707,7 @@ test('fresh bind validates deferred claim callback before acquiring', async () =
   try {
     let acquires = 0;
     const { input } = options(dir, {
-      claim: undefined,
+      reconcileClaim: undefined,
       getStore: async () => ({
         projectId: 'project-1',
         async acquire() {
@@ -727,7 +941,7 @@ test('resumed grant with missing claim releases and restores the durable prior s
 
     const releaseRequests = [];
     const retry = options(dir, {
-      claim: undefined,
+      reconcileClaim: undefined,
       getStore: async () => ({
         projectId: 'project-1',
         async acquire() {
@@ -744,7 +958,10 @@ test('resumed grant with missing claim releases and restores the durable prior s
         currentUser: 'worker',
       }),
     });
-    await assert.rejects(() => coordinateWorkLeaseAcquire(retry.input), /deferred assignee claim/);
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(retry.input),
+      /persisted assignee claim reconciler/
+    );
     assert.equal(releaseRequests.length, 1);
     assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), before);
   } finally {
@@ -866,16 +1083,14 @@ test('response-lost release replays byte-identical request then restores the dur
     const attempt = () =>
       options(dir, {
         getStore: async () => store,
-        claim: async () => ({
-          ok: false,
-          kind: 'already-assigned',
-          assignees: ['other'],
-        }),
+        reconcileClaim: async () => {
+          throw new WorkLeaseError('authority-forbidden', 'foreign assignee');
+        },
       }).input;
 
     await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /release response lost/);
     assert.ok(getActiveTask('session-1', dir).workLeaseIntent.receipt);
-    await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /assignee changed/);
+    await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /foreign assignee/);
     assert.equal(releaseRequests[0].releasedAt, lateLease.acquiredAt);
     assert.ok(releaseRequests[0].releasedAt >= lateLease.acquiredAt);
     assert.deepEqual(releaseRequests[1], releaseRequests[0]);
@@ -1188,12 +1403,16 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
   const runCoordinator = async (input) => {
     events.push(coordinator);
     if (coordinator === 'lose') throw new WorkLeaseError('lease-contended', 'held elsewhere');
+    const requestId = input.randomUUID();
+    const issueId = String(input.issueId).replace(/^#/, '');
+    const idempotencyKey = `${coordinator}:${input.sessionId}:${issueId}:${requestId}`;
+    const projectionSetId = `${coordinator}:${idempotencyKey}`;
     for (const name of ['session', 'fleet', 'timing', 'github']) {
       await input.projections[name]({
         input: input.projectionInputs[name],
         lease: durableLease,
         projectionName: name,
-        projectionId: `${coordinator}:request:${name}`,
+        projectionId: `${projectionSetId}:${name}`,
       });
     }
     return { lease: durableLease, projectionInputs: input.projectionInputs };
@@ -1227,10 +1446,22 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
       },
       coordinateWorkLeaseAcquire: runCoordinator,
       coordinateWorkLeaseResume: runCoordinator,
-      applyWorkLeaseSessionProjection: async () => events.push('session'),
-      applyWorkLeaseFleetProjection: async () => events.push('fleet'),
-      applyWorkLeaseTimingProjection: async () => events.push('timing'),
-      applyWorkLeaseGithubProjection: async () => events.push('github'),
+      applyWorkLeaseSessionProjection: async ({ projectionId }) => {
+        events.push('session');
+        return { reconciled: true, projectionName: 'session', projectionId };
+      },
+      applyWorkLeaseFleetProjection: async ({ projectionId }) => {
+        events.push('fleet');
+        return { reconciled: true, projectionName: 'fleet', projectionId };
+      },
+      applyWorkLeaseTimingProjection: async ({ projectionId }) => {
+        events.push('timing');
+        return { reconciled: true, projectionName: 'timing', projectionId };
+      },
+      applyWorkLeaseGithubProjection: async ({ projectionId }) => {
+        events.push('github');
+        return { reconciled: true, projectionName: 'github', projectionId };
+      },
       createWorkLeaseHeartbeat: () => events.push('heartbeat'),
       readWorkLeaseKanbanProjection: async () => null,
       readTimingCommentBody: async () => ({ status: 'absent', body: '', error: null }),
@@ -1267,6 +1498,39 @@ test('cold bind runs preflight, acquires, reconciles four projections, then star
   }
 });
 
+test('offline bind persists skip policy and performs no timing or GitHub network projection', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    ctx.runReadOnlyBindPreflight = async () => {
+      events.push('preflight');
+      return {
+        ok: true,
+        skippedNetwork: true,
+        claimRequired: false,
+        stateAfter: { active: null, lastActive: null },
+      };
+    };
+    ctx.readTimingCommentBody = async () => assert.fail('offline timing read must not run');
+    ctx.drainQueueIfAny = async () => assert.fail('offline queue drain must not run');
+    ctx.applyWorkLeaseTimingProjection = async () =>
+      assert.fail('offline timing override must not run');
+    ctx.applyWorkLeaseGithubProjection = async () =>
+      assert.fail('offline GitHub override must not run');
+    ctx.runMoveInvariantAudit = async () => assert.fail('offline GitHub audit must not run');
+
+    await verbResume(ctx);
+
+    assert.deepEqual(events, ['preflight', 'acquire', 'session', 'fleet', 'heartbeat']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('losing cold acquire has no queue, marker, session, fleet, timing, GitHub, or heartbeat effect', async () => {
   const dir = sandbox();
   try {
@@ -1277,6 +1541,58 @@ test('losing cold acquire has no queue, marker, session, fleet, timing, GitHub, 
     });
     await assert.rejects(() => verbResume(ctx), /held elsewhere/);
     assert.deepEqual(events, ['preflight', 'lose']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('production projection override cannot fabricate reconciliation success', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    ctx.applyWorkLeaseSessionProjection = async () => undefined;
+    await assert.rejects(() => verbResume(ctx), /session.*proof/i);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persisted projection input is validated before an override is invoked', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    let overrideCalls = 0;
+    ctx.applyWorkLeaseSessionProjection = async () => {
+      overrideCalls += 1;
+      return {
+        reconciled: true,
+        projectionName: 'session',
+        projectionId: 'wrong',
+      };
+    };
+    ctx.coordinateWorkLeaseAcquire = async (input) => {
+      await input.projections.session({
+        input: { malformed: true },
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+        projectionName: 'session',
+        projectionId: 'acquire:exact:session',
+      });
+    };
+    await assert.rejects(() => verbResume(ctx), /persisted session projection is malformed/);
+    assert.equal(overrideCalls, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -1426,6 +1742,46 @@ test('adoption session projection reads back exact global, session, lease, and k
   }
 });
 
+test('bind persists and replays one exact marker including timestamp, task, and full count', async () => {
+  const dir = sandbox();
+  try {
+    const fixedTs = new Date().toISOString();
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    ctx.nowIso = () => fixedTs;
+    delete ctx.applyWorkLeaseSessionProjection;
+    const coordinate = ctx.coordinateWorkLeaseAcquire;
+    let markerInput;
+    ctx.coordinateWorkLeaseAcquire = async (input) => {
+      markerInput = structuredClone(input.projectionInputs.session.marker);
+      return coordinate(input);
+    };
+
+    await verbResume(ctx);
+
+    assert.deepEqual(markerInput, {
+      path: markerPathFor(ctx.getWorkLeaseIdentity().sessionId),
+      line: 0,
+      words: 0,
+      wordsFull: 0,
+      task: '#1049',
+      ts: fixedTs,
+    });
+    assert.deepEqual(loadMarker(markerInput.path), {
+      line: 0,
+      words: 0,
+      wordsFull: 0,
+      task: '#1049',
+      ts: fixedTs,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('governed bind surfaces persisted review remediation only after reconciliation', async () => {
   const dir = sandbox();
   const lines = [];
@@ -1452,6 +1808,154 @@ test('governed bind surfaces persisted review remediation only after reconciliat
     assert.match(lines.join('\n'), /Do NOT demote/);
   } finally {
     console.log = originalLog;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('governed bind suppresses a duplicate timing row over a confirmed recent active span', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    const fixedNow = '2026-07-30T12:05:00.000Z';
+    const recentRow =
+      '| 2026-07-30 12:00:00 +00:00 | plan:started | 0 | 0 | 0 | 0 | test | <!-- row-sec: a=0 i=0 -->';
+    ctx.cfg = { repo: 'owner/repo' };
+    ctx.nowIso = () => fixedNow;
+    ctx.readTimingCommentBody = async () => ({
+      status: 'found',
+      body: ['| Timestamp | Event |', '|---|---|', recentRow].join('\n'),
+    });
+    let timingInput;
+    const coordinate = ctx.coordinateWorkLeaseAcquire;
+    ctx.coordinateWorkLeaseAcquire = async (input) => {
+      timingInput = structuredClone(input.projectionInputs.timing);
+      return coordinate(input);
+    };
+
+    await verbResume(ctx);
+
+    assert.equal(timingInput.decision.suppressed, true);
+    assert.equal(timingInput.rows.length, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('governed paused resume persists the paired reason and exact idle accounting', async () => {
+  const dir = sandbox();
+  try {
+    const resumeNow = new Date();
+    const resumeAt = resumeNow.toISOString();
+    const pausedAt = new Date(resumeNow.getTime() - 5_000).toISOString();
+    const { ctx } = governedResumeContext(dir, {
+      rest: [],
+      state: {
+        active: null,
+        lastActive: '#1049',
+        paused: true,
+        pausedAtTs: pausedAt,
+        pauseReasonSlug: 'question',
+        pauseReasonText: 'waiting for operator',
+      },
+      session: {
+        issue: null,
+        leaseIssue: '#1049',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    ctx.nowIso = () => resumeAt;
+    let projectionInputs;
+    const coordinate = ctx.coordinateWorkLeaseResume;
+    ctx.coordinateWorkLeaseResume = async (input) => {
+      projectionInputs = structuredClone(input.projectionInputs);
+      return coordinate(input);
+    };
+
+    await verbResume(ctx);
+
+    assert.equal(projectionInputs.timing.decision.mode, 'resume');
+    assert.equal(projectionInputs.timing.decision.selectedEvent, 'resume:question');
+    assert.equal(projectionInputs.timing.decision.idleSec, 5);
+    assert.match(projectionInputs.timing.rows[0].row, /\| resume:question \|/);
+    assert.equal(projectionInputs.session.state.active, '#1049');
+    assert.equal(projectionInputs.session.state.pausedAtTs, null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('governed bind prints the deferred pickup banner from the persisted kanban state', async () => {
+  const dir = sandbox();
+  const lines = [];
+  const originalLog = console.log;
+  try {
+    const { ctx } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: null, lastActive: null },
+      coordinator: 'acquire',
+    });
+    ctx.runReadOnlyBindPreflight = async () => ({
+      ok: true,
+      claimRequired: false,
+      currentUser: 'worker',
+      kanbanState: 'refine',
+      stateAfter: { active: null, lastActive: null },
+    });
+    console.log = (...args) => lines.push(args.join(' '));
+
+    await verbResume(ctx);
+
+    assert.match(lines.join('\n'), /PICKUP DIRECTIVE DEFERRED/);
+    assert.match(lines.join('\n'), /\/task promote #1049/);
+  } finally {
+    console.log = originalLog;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('same-issue held lease with a prepared claim uses governed resume before projections', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1049', lastActive: '#1049' },
+      session: {
+        issue: '#1049',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    ctx.runReadOnlyBindPreflight = async () => {
+      events.push('preflight');
+      return {
+        ok: true,
+        claimRequired: true,
+        assigneeKind: 'unassigned',
+        currentUser: 'worker',
+        assignees: [],
+      };
+    };
+
+    await verbResume(ctx);
+
+    assert.ok(events.indexOf('resume') > events.indexOf('preflight'));
+    assert.ok(events.indexOf('session') > events.indexOf('resume'));
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });

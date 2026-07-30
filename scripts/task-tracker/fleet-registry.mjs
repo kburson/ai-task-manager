@@ -237,6 +237,33 @@ export function registerTaskProjection(projectDir, input, projectionId) {
   if (!/^#[1-9]\d*$/.test(input.issue) || input.status !== 'active') {
     throw new TypeError('fleet projection requires a canonical active issue binding');
   }
+  const binding = input.binding;
+  const bindingFields = [
+    'principalKind',
+    'provider',
+    'agentRunId',
+    'sessionId',
+    'hostId',
+    'worktreeId',
+    'pathHash',
+    'branch',
+    'displayPath',
+  ];
+  if (
+    !binding ||
+    typeof binding !== 'object' ||
+    Array.isArray(binding) ||
+    bindingFields.some(
+      (field) => typeof binding[field] !== 'string' || binding[field].trim() === ''
+    ) ||
+    !Number.isSafeInteger(binding.pid) ||
+    binding.pid <= 0 ||
+    binding.principalKind !== 'worker' ||
+    binding.branch !== input.branch ||
+    binding.displayPath !== input.worktreePath
+  ) {
+    throw new TypeError('fleet projection binding identity is malformed');
+  }
   const mainPath = findMainWorktreePath(projectDir);
   const registryPath = fleetRegistryPath(mainPath);
   const kind = input.kind ?? (input.worktreePath === mainPath ? 'main' : 'worktree');
@@ -249,6 +276,7 @@ export function registerTaskProjection(projectDir, input, projectionId) {
     kind,
     startedAt: input.startedAt,
     status: input.status,
+    binding: JSON.parse(JSON.stringify(binding)),
     projectionId,
   };
   withLock(registryPath, () => {

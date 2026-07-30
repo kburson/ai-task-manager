@@ -214,6 +214,7 @@ async function runPreflightCore({
     if (readOnlyBind) {
       bindEligibility = {
         claimRequired: assigneeVerdict.claimRequired,
+        assigneeKind: assigneeVerdict.kind,
         issueNumber: issueForReconcile,
         currentUser: assigneeVerdict.currentUser,
         assignees: assigneeVerdict.assignees,
@@ -323,6 +324,71 @@ export function runPreflight(options) {
 // runPreflight callers always retain bind-mismatch behavior.
 export function runReadOnlyBindPreflight(options) {
   return runPreflightCore({ ...options, readOnlyBind: true });
+}
+
+// Present a read-only governed-bind refusal without re-running preflight or
+// replacing its structured verdict with a generic exception. The injected I/O
+// seams keep production exit semantics exact and make the presentation path
+// testable without terminating the test runner.
+export function refuseReadOnlyBindPreflight({
+  verdict,
+  verb = 'resume',
+  stdout = process.stdout,
+  stderr = process.stderr,
+  exit = process.exit,
+} = {}) {
+  if (!verdict || verdict.ok !== false) {
+    throw new TypeError('refused read-only bind verdict is required');
+  }
+  if (verdict.kind === 'bind-mismatch') {
+    stdout.write(`PROMPT_REQUIRED: bind-mismatch ${verdict.active}:${verdict.target}\n`);
+    stderr.write(
+      `⛔ Refusing /task ${verb}: target ${verdict.target} differs from active binding ${verdict.active}. Run \`/task ${verdict.target}\` to rebind, then retry.\n`
+    );
+  } else if (verdict.kind === 'assignee-mismatch') {
+    if (verdict.assigneeKind === 'unverifiable') {
+      stdout.write(`PROMPT_REQUIRED: assignee-unverifiable #${verdict.issueNumber}\n`);
+      stderr.write(
+        formatAssigneeUnverifiable({
+          verb,
+          issueNumber: verdict.issueNumber,
+          error: verdict.error,
+        }) + '\n'
+      );
+    } else {
+      const assigneeVerdict = {
+        kind: verdict.assigneeKind,
+        currentUser: verdict.currentUser,
+        assignees: verdict.assignees ?? [],
+      };
+      stdout.write(
+        formatAssigneePromptLine({
+          issueNumber: verdict.issueNumber,
+          verdict: assigneeVerdict,
+        }) + '\n'
+      );
+      stderr.write(
+        formatAssigneeRefusal({
+          verb,
+          issueNumber: verdict.issueNumber,
+          verdict: assigneeVerdict,
+        }) + '\n'
+      );
+    }
+  } else if (verdict.kind === 'human-move') {
+    const issue = `#${verdict.issueNumber}`;
+    const markerNote = verdict.marker ? `marker says "${verdict.marker}"` : `marker is unset`;
+    const actorNote = verdict.actor?.login ? ` (last status actor: @${verdict.actor.login})` : '';
+    stdout.write(`PROMPT_REQUIRED: human-move ${issue} ${verdict.local}:${verdict.live}\n`);
+    stderr.write(
+      `⛔ Refusing /task ${verb}: board for ${issue} is "${verdict.live}", local cache says "${verdict.local}", ${markerNote}${actorNote}. The board diverges from the marker — likely causes: a hand-edit through the GitHub UI, or a dropped/failed board-field write during an earlier move that left the board behind the marker. Run \`/task reconcile accept-live ${issue}\` if the board is correct, or fix the board then retry.\n`
+    );
+  } else {
+    stderr.write(`preflightVerb: unknown verdict ${verdict.kind}\n`);
+    exit(1);
+    return;
+  }
+  exit(verdict.code);
 }
 
 // Verb-facing wrapper. Reads stateBefore, runs preflight, writes back state

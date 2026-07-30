@@ -126,7 +126,14 @@ export function loadMarker(markerPath) {
   }
 }
 
-export function saveMarker(markerPath, line, words, task = null, wordsFull = words) {
+export function saveMarker(
+  markerPath,
+  line,
+  words,
+  task = null,
+  wordsFull = words,
+  ts = new Date().toISOString()
+) {
   mkdirSync(path.dirname(markerPath), { recursive: true });
   let existing = {};
   try {
@@ -136,11 +143,7 @@ export function saveMarker(markerPath, line, words, task = null, wordsFull = wor
   }
   writeFileSync(
     markerPath,
-    JSON.stringify(
-      { ...existing, wordCount: { line, words, wordsFull, task, ts: new Date().toISOString() } },
-      null,
-      2
-    ),
+    JSON.stringify({ ...existing, wordCount: { line, words, wordsFull, task, ts } }, null, 2),
     'utf8'
   );
 }

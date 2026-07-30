@@ -258,6 +258,85 @@ export async function claimAssignee({ issueNumber, cfg, deps = {} } = {}) {
   return { ok: true, claimed: true, assignees };
 }
 
+// Task 5A bind claim reconciler. The caller persists `input` and `projectionId`
+// before authority acquisition; this helper never accepts a replacement
+// eligibility decision at replay time. A prior response-lost mutation is
+// resolved by the same positive @me read-back as a fresh mutation.
+export async function reconcilePreparedAssigneeClaim({
+  input,
+  projectionId,
+  liveEligibility,
+  deps = {},
+} = {}) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    !String(input.issueNumber || '').match(/^[1-9]\d*$/) ||
+    typeof input.repo !== 'string' ||
+    !input.repo ||
+    typeof input.claimRequired !== 'boolean' ||
+    typeof input.currentUser !== 'string' ||
+    !input.currentUser ||
+    !Array.isArray(input.preparedAssignees) ||
+    typeof input.preparedKind !== 'string' ||
+    typeof projectionId !== 'string' ||
+    !projectionId
+  ) {
+    throw new TypeError('prepared assignment intent is malformed');
+  }
+  const fetchAssignees = deps.fetchAssignees || defaultFetchAssignees;
+  const addAssignee = deps.addAssignee || defaultAddAssignee;
+  const currentUser = input.currentUser.toLowerCase();
+  const fetch = async () =>
+    ((await fetchAssignees({ issueNumber: input.issueNumber, repo: input.repo })) || []).map((a) =>
+      String(a).toLowerCase()
+    );
+
+  let assignees = Array.isArray(liveEligibility?.assignees)
+    ? liveEligibility.assignees.map((assignee) => String(assignee).toLowerCase())
+    : await fetch();
+  if (assignees.length === 1 && assignees[0] === currentUser) {
+    return {
+      reconciled: true,
+      projectionName: 'github-claim',
+      projectionId,
+      assignmentResult: 'assigned-to-current',
+      currentUser,
+      assignees,
+    };
+  }
+  if (assignees.length > 0) {
+    throw new Error(`foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`);
+  }
+  if (!input.claimRequired) {
+    throw new Error('live assignee state no longer matches prepared assignment intent');
+  }
+
+  try {
+    await addAssignee({ issueNumber: input.issueNumber, repo: input.repo });
+  } catch {
+    // A mutation error may be a response-lost success. The authoritative
+    // follow-up read below distinguishes success from failure.
+  }
+  assignees = await fetch();
+  if (assignees.length !== 1 || assignees[0] !== currentUser) {
+    if (assignees.length > 0) {
+      throw new Error(
+        `foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`
+      );
+    }
+    throw new Error('assignee mutation did not reconcile prepared assignment intent');
+  }
+  return {
+    reconciled: true,
+    projectionName: 'github-claim',
+    projectionId,
+    assignmentResult: 'assigned-to-current',
+    currentUser,
+    assignees,
+  };
+}
+
 // #769 — extract the issue ids a commit command attributes to, via its leading
 // `[#N]` tokens. Deduped, numeric, order-preserving. A token-less command
 // (chore / un-bound commit) yields an empty array — the visible, un-gated

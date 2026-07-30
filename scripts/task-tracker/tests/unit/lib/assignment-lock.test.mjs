@@ -18,6 +18,7 @@ import {
   checkAssigneeMatch,
   claimAssignee,
   parseCommitIssueRefs,
+  reconcilePreparedAssigneeClaim,
 } from '../../../lib/assignee-guard.mjs';
 import * as assigneeGuard from '../../../lib/assignee-guard.mjs';
 import {
@@ -101,6 +102,91 @@ async function capturePreflightVerb(opts) {
     deps: depsOf({ assignees: ['kburson'], currentUser: 'kburson' }),
   });
   assert.equal(mine.ok, true);
+}
+
+// --- #1049 Task 5A: prepared claim intent is replay-safe ------------------
+{
+  const projectionId = 'acquire:request-1:github';
+  const prepared = {
+    issueNumber: '769',
+    repo: CFG.repo,
+    claimRequired: true,
+    currentUser: 'kburson',
+    preparedKind: 'unassigned',
+    preparedAssignees: [],
+  };
+  let reads = 0;
+  let mutations = 0;
+  const reconciled = await reconcilePreparedAssigneeClaim({
+    input: prepared,
+    projectionId,
+    deps: {
+      fetchAssignees: async () => {
+        reads += 1;
+        return reads === 1 ? [] : ['kburson'];
+      },
+      addAssignee: async () => {
+        mutations += 1;
+        throw new Error('assignment response lost');
+      },
+    },
+  });
+  assert.deepEqual(reconciled, {
+    reconciled: true,
+    projectionName: 'github-claim',
+    projectionId,
+    assignmentResult: 'assigned-to-current',
+    currentUser: 'kburson',
+    assignees: ['kburson'],
+  });
+  assert.equal(mutations, 1);
+  assert.equal(reads, 2, 'assignment must be positively re-fetched after mutation');
+
+  let replayMutations = 0;
+  const replay = await reconcilePreparedAssigneeClaim({
+    input: prepared,
+    projectionId,
+    deps: {
+      fetchAssignees: async () => ['kburson'],
+      addAssignee: async () => {
+        replayMutations += 1;
+      },
+    },
+  });
+  assert.equal(replay.assignmentResult, 'assigned-to-current');
+  assert.equal(replayMutations, 0, 'response-lost replay must not mutate an already-owned issue');
+
+  await assert.rejects(
+    () =>
+      reconcilePreparedAssigneeClaim({
+        input: prepared,
+        projectionId,
+        deps: { fetchAssignees: async () => ['alice'], addAssignee: async () => {} },
+      }),
+    /foreign assignee/i
+  );
+  await assert.rejects(
+    () =>
+      reconcilePreparedAssigneeClaim({
+        input: prepared,
+        projectionId,
+        deps: {
+          fetchAssignees: async () => ['kburson', 'alice'],
+          addAssignee: async () => {},
+        },
+      }),
+    /foreign assignee/i
+  );
+
+  await assert.rejects(
+    () =>
+      reconcilePreparedAssigneeClaim({
+        input: { ...prepared, claimRequired: false, preparedKind: 'assigned-to-current' },
+        projectionId,
+        deps: { fetchAssignees: async () => [], addAssignee: async () => {} },
+      }),
+    /prepared assignment intent/i
+  );
 }
 
 // --- AC2: unassigned alerts + claim-permitted; other→me forbidden ----------

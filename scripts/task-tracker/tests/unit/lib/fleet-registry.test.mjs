@@ -40,6 +40,18 @@ try {
     kind: 'main',
     startedAt: '2026-07-30T12:00:00.000Z',
     status: 'active',
+    binding: {
+      principalKind: 'worker',
+      provider: 'codex',
+      agentRunId: 'run-1',
+      sessionId: 'session-1',
+      hostId: 'host-1',
+      pid: 123,
+      worktreeId: 'wt:v1:main',
+      pathHash: 'path-hash',
+      branch: 'feature/child/1049',
+      displayPath: tmp,
+    },
   };
   const projectionId = 'acquire:request-1:fleet';
   fleetRegistry.registerTaskProjection(tmp, projectedInput, projectionId);
@@ -52,6 +64,7 @@ try {
     kind: 'main',
     startedAt: '2026-07-30T12:00:00.000Z',
     status: 'active',
+    binding: projectedInput.binding,
     projectionId,
   });
 

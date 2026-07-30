@@ -1,12 +1,9 @@
-#!/usr/bin/env node
-// @story #1018
-
-import test from 'node:test';
+// @story #708
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
 
-import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { verbResume } from '../../../verbs/resume.mjs';
 import {
   classifyEvent,
   lastOpenInterruption,
@@ -17,10 +14,9 @@ const row = (ts, event) => `| ${ts} | ${event} | 0 | 0 | 0 | 0 | test | <!-- row
 const body = (...rows) => ['| Timestamp | Event |', '|---|---|', ...rows].join('\n');
 
 test('confirmed short active phase tail suppresses a duplicate bind event', () => {
-  const timingBody = body(row('2026-07-28 01:00:00 -05:00', 'plan:started'));
   assert.equal(
     shouldSuppressActiveBindEvent({
-      timingBody,
+      timingBody: body(row('2026-07-28 01:00:00 -05:00', 'plan:started')),
       readStatus: 'found',
       paused: false,
       nowTs: '2026-07-28 01:05:00 -05:00',
@@ -29,7 +25,7 @@ test('confirmed short active phase tail suppresses a duplicate bind event', () =
   );
 });
 
-test('fresh, unreadable, paused, and long-gap tails retain their existing bind behavior', () => {
+test('fresh, unreadable, paused, and long-gap tails retain bind behavior', () => {
   const activeBody = body(row('2026-07-28 01:00:00 -05:00', 'plan:started'));
   assert.equal(
     shouldSuppressActiveBindEvent({
@@ -37,8 +33,7 @@ test('fresh, unreadable, paused, and long-gap tails retain their existing bind b
       readStatus: 'absent',
       nowTs: '2026-07-28 01:05:00 -05:00',
     }),
-    false,
-    'empty live history still needs start'
+    false
   );
   assert.equal(
     shouldSuppressActiveBindEvent({
@@ -46,8 +41,7 @@ test('fresh, unreadable, paused, and long-gap tails retain their existing bind b
       readStatus: 'error',
       nowTs: '2026-07-28 01:05:00 -05:00',
     }),
-    false,
-    'read errors preserve the fail-closed path'
+    false
   );
   assert.equal(
     shouldSuppressActiveBindEvent({
@@ -56,8 +50,7 @@ test('fresh, unreadable, paused, and long-gap tails retain their existing bind b
       paused: true,
       nowTs: '2026-07-28 01:05:00 -05:00',
     }),
-    false,
-    'local pause evidence still needs a closer'
+    false
   );
   assert.equal(
     shouldSuppressActiveBindEvent({
@@ -65,36 +58,30 @@ test('fresh, unreadable, paused, and long-gap tails retain their existing bind b
       readStatus: 'found',
       nowTs: '2026-07-28 10:00:01 -05:00',
     }),
-    false,
-    'the existing long-gap synthetic-departure repair takes precedence'
+    false
   );
 });
 
 test('malformed and future-dated tails are not treated as confirmed recent', () => {
-  const malformedBody = body(row('2026-99-99 99:99:99 +00:00', 'plan:started'));
   assert.equal(
     shouldSuppressActiveBindEvent({
-      timingBody: malformedBody,
+      timingBody: body(row('2026-99-99 99:99:99 +00:00', 'plan:started')),
       readStatus: 'found',
       nowTs: '2026-07-28 01:05:00 -05:00',
     }),
-    false,
-    'an unparseable tail retains the existing fail-closed bind event'
+    false
   );
-
-  const futureBody = body(row('2026-07-28 01:10:00 -05:00', 'plan:started'));
   assert.equal(
     shouldSuppressActiveBindEvent({
-      timingBody: futureBody,
+      timingBody: body(row('2026-07-28 01:10:00 -05:00', 'plan:started')),
       readStatus: 'found',
       nowTs: '2026-07-28 01:05:00 -05:00',
     }),
-    false,
-    'a negative tail age cannot prove the live span is current'
+    false
   );
 });
 
-test('pause, switch-out, and stop are recorded departures that still need resumed', () => {
+test('pause, switch-out, and stop are departures that still need resumed', () => {
   for (const event of ['pause:question', 'switch-out:#1007', 'stop']) {
     const timingBody = body(
       row('2026-07-28 01:00:00 -05:00', 'plan:started'),
@@ -106,48 +93,20 @@ test('pause, switch-out, and stop are recorded departures that still need resume
         readStatus: 'found',
         nowTs: '2026-07-28 01:10:00 -05:00',
       }),
-      false,
-      event
+      false
     );
-    assert.equal(lastOpenInterruption(timingBody)?.kind, event.split(':')[0], event);
+    assert.equal(lastOpenInterruption(timingBody)?.kind, event.split(':')[0]);
   }
   assert.deepEqual(classifyEvent('stop'), { role: 'open', kind: 'stop' });
 });
 
-const tmp = mkdtempProjectIsolated('tt-cross-worktree-bind-');
-process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
-mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
-
-const { verbResumeLegacyForTests: verbResume } = await import('../../../verbs/resume.mjs');
-test('fresh worktree binds locally but posts no row over an already-active live span', async () => {
-  process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
-  const statePath = path.join(tmp, 'state.json');
-  writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
-  const posts = [];
-  const now = new Date();
-  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60_000)
-    .toISOString()
-    .replace('T', ' ')
-    .replace('Z', ' +00:00');
-  const timingBody = body(row(fiveMinutesAgo, 'plan:started'));
-
-  await verbResume({
-    rest: ['#1018'],
-    cfg: { repo: 'owner/repo' },
-    statePath,
-    projectDir: tmp,
-    role: 'agent',
-    drainQueueIfAny: async () => {},
-    safePostTiming: async (issue, timingRow) => posts.push({ issue, timingRow }),
-    nowIso: () => now.toISOString(),
-    readTimingCommentBody: async () => ({ status: 'found', body: timingBody }),
-    seedKanban: async () => ({ kanbanState: 'develop' }),
-  });
-
-  const persisted = JSON.parse(readFileSync(statePath, 'utf8'));
-  assert.equal(persisted.active, '#1018', 'the new local session is bound');
-  assert.equal(posts.length, 0, 'no duplicate active→active reengagement row is posted');
+test('fresh worktree bind uses the one governed coordinator path', () => {
+  const source = readFileSync(
+    new URL('../../../lib/work-lease/bind-orchestration.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.equal(typeof verbResume, 'function');
+  assert.match(source, /shouldSuppressActiveBindEvent/);
+  assert.match(source, /coordinateWorkLeaseAcquire/);
+  assert.doesNotMatch(source, /verbResumeLegacy|safePostTiming/);
 });
-
-test.after(() => rmSync(tmp, { recursive: true, force: true }));

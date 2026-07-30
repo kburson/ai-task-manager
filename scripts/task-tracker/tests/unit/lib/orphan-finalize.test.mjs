@@ -17,7 +17,7 @@ import { mkdtempSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { pendingPausePath } from '../../../hooks/on-stop.mjs';
-import { finalizeOrphanPause } from '../../../orphan-finalize.mjs';
+import { consumePendingPauseForBind, finalizeOrphanPause } from '../../../orphan-finalize.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-orphan-fin-'));
 
@@ -106,6 +106,49 @@ for (const reason of ['natural', 'orphan-finalize', 'switch', 'stale-session']) 
   const r = await finalizeOrphanPause({ sid: `clean-${reason}`, reason, projDir: tmp });
   assert.equal(r, null, `reason ${reason} → null`);
 }
+
+// Task 5A bind projection uses a strict consume/read-back contract: foreign
+// ownership and deletion failure cannot be recorded as checkpoint success.
+{
+  const sid = 'strict-owned';
+  const p = writeMarker(sid, {
+    stoppedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    issue: '#1049',
+    sessionId: sid,
+  });
+  assert.deepEqual(await consumePendingPauseForBind({ sid, projDir: tmp }), {
+    reconciled: true,
+    status: 'absent',
+  });
+  assert.equal(existsSync(p), false);
+}
+
+{
+  const sid = 'strict-foreign';
+  const p = writeMarker(sid, {
+    stoppedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    issue: '#1049',
+    sessionId: 'foreign',
+  });
+  await assert.rejects(() => consumePendingPauseForBind({ sid, projDir: tmp }), /foreign session/i);
+  assert.equal(existsSync(p), true);
+}
+
+await assert.rejects(
+  () =>
+    consumePendingPauseForBind({
+      sid: 'strict-delete-failure',
+      projDir: tmp,
+      deps: {
+        readMarker: () => ({ sessionId: 'strict-delete-failure' }),
+        deleteMarker: () => {
+          throw new Error('delete failed');
+        },
+        markerExists: () => true,
+      },
+    }),
+  /delete failed|still present/
+);
 
 rmSync(tmp, { recursive: true });
 console.log('orphan-finalize.test.mjs: all passed');

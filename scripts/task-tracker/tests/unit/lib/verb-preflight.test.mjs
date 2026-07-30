@@ -16,6 +16,7 @@
 import { strict as assert } from 'node:assert';
 import {
   runPreflight,
+  refuseReadOnlyBindPreflight,
   EXIT_BIND_MISMATCH,
   EXIT_HUMAN_MOVE,
   EXIT_ASSIGNEE_MISMATCH,
@@ -42,6 +43,35 @@ function depsOf({
     fetchAssignees: async () => assignees,
     fetchCurrentUser: async () => currentUser,
   };
+}
+
+// Governed bind keeps the existing structured human-move refusal and exit.
+{
+  let stdout = '';
+  let stderr = '';
+  let exitCode;
+  refuseReadOnlyBindPreflight({
+    verdict: {
+      ok: false,
+      code: EXIT_HUMAN_MOVE,
+      kind: 'human-move',
+      issueNumber: '1049',
+      local: 'develop',
+      marker: 'develop',
+      live: 'review',
+      actor: { login: 'operator' },
+    },
+    verb: 'resume',
+    stdout: { write: (value) => (stdout += value) },
+    stderr: { write: (value) => (stderr += value) },
+    exit: (code) => {
+      exitCode = code;
+    },
+  });
+  assert.match(stdout, /PROMPT_REQUIRED: human-move #1049 develop:review/);
+  assert.match(stderr, /Refusing \/task resume/);
+  assert.match(stderr, /last status actor: @operator/);
+  assert.equal(exitCode, EXIT_HUMAN_MOVE);
 }
 
 // 1. No active, no target — nothing to reconcile.
