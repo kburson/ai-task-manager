@@ -10,7 +10,7 @@ const LEASE_CONTEXT_KEYS = Object.freeze(['projectId', 'leaseId', 'fencingToken'
 export const WORK_LEASE_PROJECTIONS = Object.freeze(['session', 'fleet', 'timing', 'github']);
 
 const SENSITIVE_KEY =
-  /authorization|credentials?|tokenenv|secrets?|password|api[_-]?key|access[_-]?token|auth[_-]?token|aitm[_-]?lease[_-]?auth[_-]?token/i;
+  /authorization|bearer|credentials?|token[_-]?env|secrets?|password|api[_-]?key|access[_-]?token|auth[_-]?token|aitm[_-]?lease[_-]?auth[_-]?token/i;
 
 function nonEmptyString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {

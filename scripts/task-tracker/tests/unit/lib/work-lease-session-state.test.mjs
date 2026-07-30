@@ -240,6 +240,23 @@ test('intent persists one exact request and rejects credential material before m
     );
     assert.equal(getActiveTask('session-variant-secret', dir), null);
 
+    assert.throws(
+      () =>
+        setWorkLeaseIntent(
+          'session-bearer-key',
+          {
+            operation: 'acquire',
+            request,
+            projectionInputs: {
+              session: { bearer: 'opaque-secret' },
+            },
+          },
+          dir
+        ),
+      /secret lease material/
+    );
+    assert.equal(getActiveTask('session-bearer-key', dir), null);
+
     setActiveTask('session-mismatch', { issue: '#1049', lease: LEASE }, dir);
     assert.throws(
       () =>
@@ -467,6 +484,38 @@ test('recovery mutations fail closed without replacing malformed session state',
   }
 });
 
+test('recovery mutations reject a present malformed intent without replacing it', () => {
+  const dir = sandbox();
+  try {
+    const p = activeTaskPath('session-malformed-intent', dir);
+    mkdirSync(path.dirname(p), { recursive: true });
+    const raw = JSON.stringify({ issue: '#1049', workLeaseIntent: null });
+    writeFileSync(p, raw, 'utf8');
+
+    assert.throws(
+      () =>
+        setWorkLeaseIntent(
+          'session-malformed-intent',
+          {
+            operation: 'acquire',
+            request: acquireRequest(),
+            projectionInputs: { session: { issue: '#1049' } },
+          },
+          dir
+        ),
+      /active-task workLeaseIntent is malformed/
+    );
+    assert.equal(readFileSync(p, 'utf8'), raw);
+    assert.throws(
+      () => setActiveTask('session-malformed-intent', { issue: '#1049', wordsAtStart: 1 }, dir),
+      /active-task workLeaseIntent is malformed/
+    );
+    assert.equal(readFileSync(p, 'utf8'), raw);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('receipt persistence refuses nested credentials and preserves prior intent', () => {
   const dir = sandbox();
   try {
@@ -493,6 +542,21 @@ test('receipt persistence refuses nested credentials and preserves prior intent'
     const record = getActiveTask('session-1', dir);
     assert.ok(record.workLeaseIntent);
     assert.equal(record.workLeaseIntent.receipt, undefined);
+    assert.throws(
+      () =>
+        attachWorkLeaseIntentReceipt(
+          'session-1',
+          {
+            receipt: {
+              lease: LEASE,
+              transport: { token_env: 'AITM_LEASE_AUTH_TOKEN' },
+            },
+          },
+          dir
+        ),
+      /secret lease material/
+    );
+    assert.equal(getActiveTask('session-1', dir).workLeaseIntent.receipt, undefined);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

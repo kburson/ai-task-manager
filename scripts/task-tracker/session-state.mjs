@@ -48,6 +48,14 @@ function readJsonForMutation(p) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('active-task state must be an object');
   }
+  if (
+    Object.hasOwn(parsed, 'workLeaseIntent') &&
+    (!parsed.workLeaseIntent ||
+      typeof parsed.workLeaseIntent !== 'object' ||
+      Array.isArray(parsed.workLeaseIntent))
+  ) {
+    throw new Error('active-task workLeaseIntent is malformed');
+  }
   return parsed;
 }
 
