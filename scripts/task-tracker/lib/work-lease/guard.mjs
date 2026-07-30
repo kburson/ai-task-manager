@@ -1081,16 +1081,6 @@ export async function coordinateWorkLeaseResume({
         );
       }
       receipt = await store.renew(request);
-      validateResumeReceipt(
-        receipt,
-        request,
-        persistedLease,
-        canonicalIssueId,
-        worktreeId,
-        sessionId,
-        trustedHostId,
-        trustedAuthorityHolder
-      );
     } catch (error) {
       if (TERMINAL_ACQUIRE_CODES.has(error?.code)) {
         const restored = await restoreSnapshot(
@@ -1108,6 +1098,16 @@ export async function coordinateWorkLeaseResume({
       }
       throw stableError(error, 'authority-unavailable', 'work-lease resume renewal failed');
     }
+    validateResumeReceipt(
+      receipt,
+      request,
+      persistedLease,
+      canonicalIssueId,
+      worktreeId,
+      sessionId,
+      trustedHostId,
+      trustedAuthorityHolder
+    );
     await attachReceipt(sessionId, { receipt }, projectDir);
   }
 

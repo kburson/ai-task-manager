@@ -2184,34 +2184,92 @@ test('resume retries the exact renew after authority success and receipt persist
   }
 });
 
-test('resume rejects a renewal receipt not stamped by its original exact request', async () => {
-  const dir = sandbox();
-  try {
-    const mismatch = resumeOptions(dir, {
-      getStore: async () => ({
-        projectId: 'project-1',
-        async verify() {
+test('resume retains its intent when a renewal receipt fails local validation', async () => {
+  const corruptions = [
+    ['malformed', () => ({})],
+    [
+      'request timestamps',
+      () => ({
+        ...LEASE,
+        heartbeatAt: '2026-07-30T12:00:01.000Z',
+        expiresAt: '2026-07-30T12:15:01.000Z',
+      }),
+    ],
+    ['holder', () => ({ ...LEASE, holder: { ...LEASE.holder, branch: 'feature/takeover' } })],
+    ['fencing token', () => ({ ...LEASE, fencingToken: '8' })],
+  ];
+  for (const [label, corrupt] of corruptions) {
+    const dir = sandbox();
+    try {
+      const authorityCalls = [];
+      const renewRequests = [];
+      let checkpointCalls = 0;
+      let heartbeatCalls = 0;
+      const store = {
+        projectId: LEASE.projectId,
+        async verify(request) {
+          authorityCalls.push(`verify:${request.verifiedAt}`);
           return { allowed: true, lease: LEASE };
         },
-        async renew() {
-          return {
-            ...LEASE,
-            heartbeatAt: '2026-07-30T12:00:01.000Z',
-            expiresAt: '2026-07-30T12:15:01.000Z',
-          };
+        async renew(request) {
+          authorityCalls.push(`renew:${request.idempotencyKey}`);
+          renewRequests.push(structuredClone(request));
+          return corrupt();
         },
-      }),
-    });
-    await assert.rejects(
-      () => workLeaseGuard.coordinateWorkLeaseResume(mismatch.input),
-      /renewal receipt.*request/
-    );
-    const session = getActiveTask('session-1', dir);
-    assert.equal(session.workLeaseIntent, undefined);
-    assert.equal(session.issue, '#1049');
-    assert.equal(session.lease.leaseId, LEASE.leaseId);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
+      };
+      const attempt = () =>
+        resumeOptions(dir, {
+          getStore: async () => store,
+          readEligibility: async () => assert.fail(`${label} receipt must fail before eligibility`),
+          reconcileClaim: async () => assert.fail(`${label} receipt must fail before claim`),
+          projections: Object.fromEntries(
+            ['session', 'fleet', 'timing', 'github'].map((name) => [
+              name,
+              async () => assert.fail(`${label} receipt must fail before ${name}`),
+            ])
+          ),
+          checkpointProjection: async () => {
+            checkpointCalls += 1;
+            assert.fail(`${label} receipt must not checkpoint`);
+          },
+        });
+
+      await assert.rejects(
+        async () => {
+          await workLeaseGuard.coordinateWorkLeaseResume(attempt().input);
+          heartbeatCalls += 1;
+        },
+        (error) =>
+          error instanceof WorkLeaseError &&
+          ['invalid-request', 'lease-not-held', 'fence-stale'].includes(error.code)
+      );
+      const originalIntent = structuredClone(getActiveTask('session-1', dir).workLeaseIntent);
+      assert.ok(originalIntent, `${label} receipt must retain the durable intent`);
+      assert.equal(originalIntent.receipt, undefined, `${label} receipt must not attach`);
+
+      await assert.rejects(
+        async () => {
+          await workLeaseGuard.coordinateWorkLeaseResume(attempt().input);
+          heartbeatCalls += 1;
+        },
+        (error) =>
+          error instanceof WorkLeaseError &&
+          ['invalid-request', 'lease-not-held', 'fence-stale'].includes(error.code)
+      );
+
+      assert.equal(renewRequests.length, 2);
+      assert.deepEqual(renewRequests[1], renewRequests[0]);
+      assert.deepEqual(authorityCalls, [
+        `verify:${NOW.toISOString()}`,
+        'renew:resume:session-1:1049:request-1',
+        'renew:resume:session-1:1049:request-1',
+      ]);
+      assert.equal(checkpointCalls, 0);
+      assert.equal(heartbeatCalls, 0);
+      assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 });
 
