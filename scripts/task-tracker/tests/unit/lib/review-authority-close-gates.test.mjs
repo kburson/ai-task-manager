@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { assertLifecycleSatisfied } from '../../../close-gate.mjs';
+import { deriveClosedIssueIntegrity } from '../../../lib/closed-issue-convergence.mjs';
 import { shouldEmitReviewApprovedRow } from '../../../lib/close-convergence.mjs';
 import { hasGenuineReviewApprovedMarker } from '../../../lib/human-reviewer-audit.mjs';
 import { reviewExitReviewApprovedGuard } from '../../../lib/review-exit-review-approved-guard.mjs';
@@ -138,4 +139,28 @@ test('#1050 Done-board convergence admits only current authority and preserves t
     }).action,
     'close-issue'
   );
+});
+
+test('#1050 already-closed integrity and finalization require current persisted Review authority', () => {
+  const currentBody = lifecycleBody(bodyWithAuthority());
+  const staleBody = lifecycleBody(bodyWithAuthority({ invalidated: true }));
+
+  assert.equal(deriveClosedIssueIntegrity({ body: currentBody, fullAuto: true }).allTicked, true);
+
+  const staleIntegrity = deriveClosedIssueIntegrity({ body: staleBody, fullAuto: true });
+  assert.equal(staleIntegrity.allTicked, false);
+  assert.deepEqual(staleIntegrity.unticked, ['Current Review authority']);
+
+  for (const boardState of ['review', 'develop', null]) {
+    assert.deepEqual(
+      decideCloseConvergence({
+        boardState,
+        issueClosed: true,
+        stateReason: 'completed',
+        nonLifecycleBoxesAllTicked: staleIntegrity.allTicked,
+      }),
+      { action: 'aberration' },
+      `closed ${boardState ?? 'unknown'} board must recover instead of finalizing`
+    );
+  }
 });

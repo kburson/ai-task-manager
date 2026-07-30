@@ -370,3 +370,37 @@ console.log('approve.test.mjs: all passed');
   );
   assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
 }
+
+// #1050 — an explicit human approval is higher-fidelity provenance even when
+// the existing Full-Auto approval is otherwise current for the same epoch and
+// proof. Preserve the machine approval as history and replace its authority;
+// do not let the idempotent fast path discard the human signal.
+{
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const currentFullAuto = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T10:00:00Z" -->',
+    `<!-- aitm-agent-review-proof schema="1" epoch="${epoch}" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
+    `<!-- aitm-review-approved schema="1" epoch="${epoch}" proof-sha="abc1234" ts="2026-07-29T10:02:00Z" provenance="full-auto" signals="old-signal" -->`,
+    '<!-- aitm-full-auto-footnote:start -->',
+    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
+    '<!-- aitm-full-auto-footnote:end -->',
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({
+    initialBody: currentFullAuto,
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'must-not-survive' }) },
+  });
+
+  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, false);
+  assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="full-auto"/);
+  assert.match(
+    getBody(),
+    /aitm-review-approved[^>]*epoch="review:1:2026-07-29T10:00:00Z"[^>]*provenance="human"/
+  );
+  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
+}

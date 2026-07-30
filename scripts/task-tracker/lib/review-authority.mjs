@@ -3,7 +3,11 @@
 // visit. It deliberately has no clock or I/O dependency.
 
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
-import { parseDodVerifiedMarker, stripFencedCodeBlocks } from './markers.mjs';
+import {
+  parseDodVerifiedMarker,
+  parseFullAutoApprovedMarker,
+  stripFencedCodeBlocks,
+} from './markers.mjs';
 import { parseEntryMarkers } from './stage-entry-markers.mjs';
 import { findReviewFailureBlockSpan } from './review-failure-block.mjs';
 
@@ -11,9 +15,11 @@ const SCHEMA = '1';
 const PROOF_NAME = 'agent-review-proof';
 const APPROVAL_NAME = 'review-approved';
 const INVALIDATION_NAME = 'review-invalidated';
+const LEGACY_FULL_AUTO_APPROVAL_NAME = 'full-auto-approved';
 const PROOF_KEYS = ['schema', 'epoch', 'sha', 'ts', 'validators', 'result'];
 const APPROVAL_KEYS = ['schema', 'epoch', 'proof-sha', 'ts', 'provenance', 'signals'];
 const INVALIDATION_KEYS = ['schema', 'epoch', 'ts', 'reason'];
+const GIT_OBJECT_ID_RE = /^[0-9a-f]{7,40}$/i;
 const ISO_DATE_TIME_RE =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(?:Z|[+-](\d{2}):(\d{2}))$/;
 
@@ -25,6 +31,21 @@ function exactKeys(props, keys) {
 
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function isGitObjectId(value) {
+  return typeof value === 'string' && GIT_OBJECT_ID_RE.test(value);
+}
+
+export function sameGitObjectId(left, right) {
+  if (!isGitObjectId(left) || !isGitObjectId(right)) return false;
+  const normalizedLeft = left.toLowerCase();
+  const normalizedRight = right.toLowerCase();
+  return (
+    normalizedLeft === normalizedRight ||
+    normalizedLeft.startsWith(normalizedRight) ||
+    normalizedRight.startsWith(normalizedLeft)
+  );
 }
 
 function isReviewVisit(value) {
@@ -116,12 +137,31 @@ function parseLegacyApproval(raw, parsed, index) {
   };
 }
 
+function parseLegacyFullAutoApproval(raw, parsed, index) {
+  const candidate =
+    parsed?.name === LEGACY_FULL_AUTO_APPROVAL_NAME ||
+    /^<!--\s*aitm-full-auto-approved(?::|\s|-->)/i.test(raw);
+  if (!candidate) return null;
+  const decoded = parseFullAutoApprovedMarker(raw);
+  if (!decoded || !isIsoDateTime(decoded.ts) || !hasText(decoded.signals)) {
+    return { malformed: true };
+  }
+  if (
+    parsed &&
+    (!exactKeys(parsed.props || {}, ['ts', 'signals']) ||
+      parsed.name !== LEGACY_FULL_AUTO_APPROVAL_NAME)
+  ) {
+    return { malformed: true };
+  }
+  return { legacyFullAutoApproval: { ...decoded, index } };
+}
+
 function parseVersionedProof(props, index) {
   if (
     !exactKeys(props, PROOF_KEYS) ||
     props.schema !== SCHEMA ||
     !isEpoch(props.epoch) ||
-    !hasText(props.sha) ||
+    !isGitObjectId(props.sha) ||
     !isIsoDateTime(props.ts) ||
     !hasText(props.validators) ||
     !['pass', 'fail'].includes(props.result)
@@ -138,7 +178,7 @@ function parseVersionedApproval(props, index) {
     !exactKeys(props, required) ||
     props.schema !== SCHEMA ||
     !isEpoch(props.epoch) ||
-    !hasText(props['proof-sha']) ||
+    !isGitObjectId(props['proof-sha']) ||
     !isIsoDateTime(props.ts) ||
     !['human', 'full-auto'].includes(props.provenance) ||
     (props.provenance === 'full-auto' && !hasText(props.signals))
@@ -199,8 +239,15 @@ export function parseReviewAuthority(body) {
   const source = stripFencedCodeBlocks(body);
   const markers = markerLines(source);
   const epochs = [];
+  const developEntries = [];
   const malformed = [];
   for (const { raw, index } of markers) {
+    if (/^<!--\s*aitm-entered-develop(?:-\d+)?(?:\s|:|-->)/i.test(raw)) {
+      const entries = parseEntryMarkers(raw).filter((entry) => entry.stage === 'develop');
+      if (entries.length === 1 && isReviewVisit(entries[0].visit) && isIsoDateTime(entries[0].ts)) {
+        developEntries.push({ ...entries[0], index });
+      }
+    }
     if (!/^<!--\s*aitm-entered-review(?:-\d+)?(?:\s|:|-->)/i.test(raw)) continue;
     const entries = parseEntryMarkers(raw).filter((entry) => entry.stage === 'review');
     if (entries.length !== 1) {
@@ -222,9 +269,19 @@ export function parseReviewAuthority(body) {
   const proofs = [];
   const approvals = [];
   const invalidations = [];
+  const legacyFullAutoApprovals = [];
 
   for (const { raw, index } of markers) {
     const parsed = parseMarker(raw);
+    const legacyFullAutoApproval = parseLegacyFullAutoApproval(raw, parsed, index);
+    if (legacyFullAutoApproval) {
+      if (legacyFullAutoApproval.malformed) {
+        malformed.push({ raw, index, reason: 'invalid-attributes' });
+      } else {
+        legacyFullAutoApprovals.push(legacyFullAutoApproval.legacyFullAutoApproval);
+      }
+      continue;
+    }
     const colonLegacyApproval = parsed ? null : parseLegacyApproval(raw, parsed, index);
     if (
       !colonLegacyApproval &&
@@ -253,7 +310,15 @@ export function parseReviewAuthority(body) {
     else if (result.invalidation) invalidations.push(result.invalidation);
   }
 
-  return { epochs, proofs, approvals, invalidations, malformed };
+  return {
+    epochs,
+    developEntries,
+    proofs,
+    approvals,
+    invalidations,
+    legacyFullAutoApprovals,
+    malformed,
+  };
 }
 
 function latestEpoch(epochs) {
@@ -295,6 +360,15 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
       reasons: ['verified-sha-missing'],
     };
   }
+  if (!isGitObjectId(verifiedSha)) {
+    return {
+      epoch,
+      proof: null,
+      approval: historicalApproval,
+      status: 'malformed',
+      reasons: ['verified-sha-invalid'],
+    };
+  }
 
   const legacyApprovals = parsed.approvals.filter((item) => item.legacy);
   if (legacyApprovals.length > 1) {
@@ -307,15 +381,36 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
     };
   }
   if (legacyApprovals.length === 1) {
-    if (
-      parsed.epochs.length > 1 ||
-      parsed.invalidations.length > 0 ||
-      parsed.epochs.some((item) => item.index > legacyApprovals[0].index)
-    ) {
+    const matchingFullAutoApprovals = parsed.legacyFullAutoApprovals.filter(
+      (item) => item.ts === legacyApprovals[0].ts
+    );
+    if (matchingFullAutoApprovals.length > 1) {
       return {
         epoch,
         proof: null,
         approval: legacyApprovals[0],
+        status: 'ambiguous',
+        reasons: ['multiple-legacy-full-auto-approvals'],
+      };
+    }
+    const approval =
+      matchingFullAutoApprovals.length === 1
+        ? {
+            ...legacyApprovals[0],
+            provenance: 'full-auto',
+            signals: matchingFullAutoApprovals[0].signals,
+          }
+        : legacyApprovals[0];
+    if (
+      parsed.epochs.length > 1 ||
+      parsed.invalidations.length > 0 ||
+      parsed.epochs.some((item) => item.index > legacyApprovals[0].index) ||
+      parsed.developEntries.some((item) => item.index > legacyApprovals[0].index)
+    ) {
+      return {
+        epoch,
+        proof: null,
+        approval,
         status: 'stale',
         reasons: ['legacy-authority-superseded'],
       };
@@ -323,7 +418,7 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
     return {
       epoch,
       proof: null,
-      approval: legacyApprovals[0],
+      approval,
       status: 'current',
       reasons: ['legacy-authority'],
     };
@@ -354,8 +449,10 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
     };
   }
   if (proof.result !== 'pass') reasons.push('agent-review-did-not-pass');
-  if (verifiedSha && proof.sha !== verifiedSha) reasons.push('verified-sha-mismatch');
-  if (approval.proofSha !== proof.sha) reasons.push('approval-proof-sha-mismatch');
+  if (!sameGitObjectId(proof.sha, verifiedSha)) reasons.push('verified-sha-mismatch');
+  if (!sameGitObjectId(approval.proofSha, proof.sha)) {
+    reasons.push('approval-proof-sha-mismatch');
+  }
   const laterInvalidation = parsed.invalidations.some(
     // An invalidation revokes approval authority, not only a particular proof.
     // A later retry can add a fresh passing proof, but a human must approve that

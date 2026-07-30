@@ -129,11 +129,27 @@ test('Review validates Test evidence only from persisted Test markers', () => {
 
   const mismatch = validatePersistedTestEvidence(
     [
-      `<!-- aitm-test-started sha="old1234" ts="2026-07-29T09:00:00.000Z" -->`,
+      `<!-- aitm-test-started sha="def1234" ts="2026-07-29T09:00:00.000Z" -->`,
       `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
     ].join('\n')
   );
   assert.deepEqual(mismatch, { ok: false, reason: 'test-evidence-sha-mismatch' });
+
+  const abbreviated = validatePersistedTestEvidence(
+    [
+      `<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="2026-07-29T09:00:00.000Z" -->`,
+      '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00.000Z" -->',
+    ].join('\n')
+  );
+  assert.deepEqual(abbreviated, { ok: true, sha: 'abc1234' });
+
+  const arbitraryText = validatePersistedTestEvidence(
+    [
+      '<!-- aitm-test-started sha="not-a-git-object" ts="2026-07-29T09:00:00.000Z" -->',
+      '<!-- aitm-dod-verified sha="not-a-git-object" ts="2026-07-29T09:59:00.000Z" -->',
+    ].join('\n')
+  );
+  assert.deepEqual(arbitraryText, { ok: false, reason: 'test-evidence-sha-invalid' });
 
   assert.deepEqual(
     validatePersistedTestEvidence(`<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="t" -->`),
@@ -150,7 +166,7 @@ test('Review refuses a passing stamp when Test evidence changes after preflight'
 
   const changedPassBase = [
     `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
-    '<!-- aitm-test-started sha="old1234" ts="2026-07-29T09:00:00.000Z" -->',
+    '<!-- aitm-test-started sha="def1234" ts="2026-07-29T09:00:00.000Z" -->',
     `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
     '- [ ] Agent Review Passed',
   ].join('\n');
@@ -179,7 +195,7 @@ test('the versioned Review mutator rejects evidence changed after preparation', 
     true
   );
 
-  const changedBase = validBase.replace(VERIFIED_SHA, 'old1234');
+  const changedBase = validBase.replace(VERIFIED_SHA, 'def1234');
   let prepared;
   const mutate = makeAgentReviewPassMutator({
     ts: '2026-07-29T10:01:00.000Z',
@@ -207,7 +223,7 @@ test('proof-bearing Review stamp fails closed when a versioned-write conflict ch
     `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
     '- [ ] Agent Review Passed',
   ].join('\n');
-  const changedDuringVerify = initial.replace(VERIFIED_SHA, 'old1234');
+  const changedDuringVerify = initial.replace(VERIFIED_SHA, 'def1234');
   const fetched = [initial, changedDuringVerify];
   let reads = 0;
   let prepares = 0;

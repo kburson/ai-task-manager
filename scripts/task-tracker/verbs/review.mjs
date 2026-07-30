@@ -37,7 +37,7 @@ import {
   stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
-import { reviewEpochId } from '../lib/review-authority.mjs';
+import { reviewEpochId, isGitObjectId, sameGitObjectId } from '../lib/review-authority.mjs';
 import { appendReviewAuthorityInvalidation } from '../lib/evidence-invalidation.mjs';
 import { latestStageEntry } from '../lib/stage-entry-markers.mjs';
 
@@ -253,10 +253,6 @@ export function buildDeferredReviewRow(spec, ts) {
   return kind === 'flush' ? buildFlushRow({ ...params, ts }) : buildRow({ ...params, ts });
 }
 
-function sameRevision(left, right) {
-  return Boolean(left && right && (left.startsWith(right) || right.startsWith(left)));
-}
-
 // Keep the durable invalidation before the visible failure block. The reducer
 // intentionally treats an active failure block as stale, so this ordering is
 // part of the write contract rather than presentation detail.
@@ -277,7 +273,11 @@ export function validatePersistedTestEvidence(body) {
   if (!testStarted?.sha || !dodVerified?.sha) {
     return { ok: false, reason: 'test-evidence-missing' };
   }
-  if (!sameRevision(testStarted.sha, dodVerified.sha)) {
+  // Reject arbitrary shared prefixes before comparing full and abbreviated IDs.
+  if (!isGitObjectId(testStarted.sha) || !isGitObjectId(dodVerified.sha)) {
+    return { ok: false, reason: 'test-evidence-sha-invalid' };
+  }
+  if (!sameGitObjectId(testStarted.sha, dodVerified.sha)) {
     return { ok: false, reason: 'test-evidence-sha-mismatch' };
   }
   return { ok: true, sha: dodVerified.sha };

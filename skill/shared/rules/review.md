@@ -85,7 +85,8 @@ subsection between `<!-- aitm-full-auto-footnote:start -->` and
 `<!-- aitm-full-auto-footnote:end -->` delimiters so a reader can see at a
 glance that no human reviewed the issue. The consolidated hidden
 `aitm-review-approved` marker records `provenance="full-auto"` and the audit
-signals. The footnote is idempotent (re-runs
+signals. The retired standalone `aitm-full-auto-approved` marker is historical
+only. The footnote is idempotent (re-runs
 replace the block in place). `gh-edit-guard` protects the delimiters from
 accidental drop. If the body lacks a recognized `Passed final human review`
 checklist line, approve emits a stderr warning

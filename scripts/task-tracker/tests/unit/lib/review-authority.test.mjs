@@ -16,7 +16,7 @@ import { hasReviewApprovedMarker, parseReviewApprovedMarker } from '../../../lib
 const review = (visit, enteredReviewAt) =>
   `<!-- aitm-entered-review${visit > 1 ? `-${visit}` : ''} ts="${enteredReviewAt}" -->`;
 
-const proof = ({ epoch, sha = 'abc123', ts = '2026-07-29T10:01:00Z', result = 'pass' } = {}) =>
+const proof = ({ epoch, sha = 'abc1234', ts = '2026-07-29T10:01:00Z', result = 'pass' } = {}) =>
   serializeAgentReviewProof({
     epoch,
     sha,
@@ -27,7 +27,7 @@ const proof = ({ epoch, sha = 'abc123', ts = '2026-07-29T10:01:00Z', result = 'p
 
 const approval = ({
   epoch,
-  proofSha = 'abc123',
+  proofSha = 'abc1234',
   ts = '2026-07-29T10:02:00Z',
   provenance = 'human',
   signals = '',
@@ -47,7 +47,7 @@ test('invalid Review entry timestamp cannot grandfather a following legacy appro
     '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
   ].join('\n');
 
-  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc123' });
+  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc1234' });
 
   assert.equal(authority.status, 'malformed');
 });
@@ -57,7 +57,7 @@ test('zero-valued Review visit is malformed and never throws during authority de
   let authority;
 
   assert.doesNotThrow(() => {
-    authority = deriveReviewAuthority(body, { verifiedSha: 'abc123' });
+    authority = deriveReviewAuthority(body, { verifiedSha: 'abc1234' });
   });
   assert.equal(authority.status, 'malformed');
 });
@@ -70,7 +70,7 @@ test('strict timestamp contract accepts UTC and offset date-times with fractiona
     approval({ epoch, ts: '2026-07-29T15:02:00Z' }),
   ].join('\n');
 
-  assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc123' }).status, 'current');
+  assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc1234' }).status, 'current');
 });
 
 test('malformed authority timestamps fail closed consistently', () => {
@@ -116,7 +116,7 @@ test('malformed authority timestamps fail closed consistently', () => {
 
   for (const item of cases) {
     assert.equal(
-      deriveReviewAuthority(item.body, { verifiedSha: 'abc123' }).status,
+      deriveReviewAuthority(item.body, { verifiedSha: 'abc1234' }).status,
       'malformed',
       item.name
     );
@@ -126,7 +126,7 @@ test('malformed authority timestamps fail closed consistently', () => {
 test('exact colon-form legacy approval remains compatible with legacy authority rules', () => {
   const body = '<!-- aitm-review-approved: 2026-07-29T10:02:00Z -->';
 
-  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc123' });
+  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc1234' });
 
   assert.equal(authority.status, 'current');
   assert.equal(authority.approval.legacy, true);
@@ -140,7 +140,7 @@ test('malformed colon-form legacy approvals fail closed', () => {
   ];
 
   for (const body of malformed) {
-    assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc123' }).status, 'malformed', body);
+    assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc1234' }).status, 'malformed', body);
   }
 });
 
@@ -148,11 +148,11 @@ test('serializers emit deterministic versioned markers', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   assert.equal(
     proof({ epoch }),
-    '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc123" ts="2026-07-29T10:01:00Z" validators="unit,lint" result="pass" -->'
+    '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit,lint" result="pass" -->'
   );
   assert.equal(
     approval({ epoch, provenance: 'full-auto', signals: 'env=both' }),
-    '<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z" proof-sha="abc123" ts="2026-07-29T10:02:00Z" provenance="full-auto" signals="env=both" -->'
+    '<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z" proof-sha="abc1234" ts="2026-07-29T10:02:00Z" provenance="full-auto" signals="env=both" -->'
   );
   assert.equal(
     serializeReviewInvalidation({
@@ -174,7 +174,7 @@ test('existing review-approved helpers recognize the versioned authority marker'
   assert.deepEqual(parseReviewApprovedMarker(marker), {
     ts: '2026-07-29T10:02:00Z',
     epoch: 'review:1:2026-07-29T10:00:00Z',
-    proofSha: 'abc123',
+    proofSha: 'abc1234',
     provenance: 'full-auto',
     fullAuto: true,
     signals: 'env=both',
@@ -193,7 +193,7 @@ test('derives current review authority and fails closed for stale, malformed, an
         proof({ epoch: epoch1 }),
         approval({ epoch: epoch1 }),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'current',
       epoch: epoch1,
       provenance: 'human',
@@ -202,15 +202,15 @@ test('derives current review authority and fails closed for stale, malformed, an
       name: 'same-visit retry retains its first epoch',
       body: [
         review(1, '2026-07-29T10:00:00Z'),
-        proof({ epoch: epoch1, sha: 'old123' }),
-        approval({ epoch: epoch1, proofSha: 'old123' }),
-        proof({ epoch: epoch1, sha: 'abc123', ts: '2026-07-29T10:03:00Z' }),
-        approval({ epoch: epoch1, proofSha: 'abc123', ts: '2026-07-29T10:04:00Z' }),
+        proof({ epoch: epoch1, sha: 'def1234' }),
+        approval({ epoch: epoch1, proofSha: 'def1234' }),
+        proof({ epoch: epoch1, sha: 'abc1234', ts: '2026-07-29T10:03:00Z' }),
+        approval({ epoch: epoch1, proofSha: 'abc1234', ts: '2026-07-29T10:04:00Z' }),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'current',
       epoch: epoch1,
-      proofSha: 'abc123',
+      proofSha: 'abc1234',
     },
     {
       name: 'Review re-entry makes prior authority stale',
@@ -220,7 +220,7 @@ test('derives current review authority and fails closed for stale, malformed, an
         approval({ epoch: epoch1 }),
         review(2, '2026-07-29T11:00:00Z'),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'stale',
       epoch: epoch2,
     },
@@ -231,7 +231,7 @@ test('derives current review authority and fails closed for stale, malformed, an
         proof({ epoch: epoch1 }),
         approval({ epoch: epoch1 }),
       ].join('\n'),
-      verifiedSha: 'def456',
+      verifiedSha: 'def4567',
       status: 'stale',
       epoch: epoch1,
     },
@@ -247,7 +247,7 @@ test('derives current review authority and fails closed for stale, malformed, an
           reason: 'demoted',
         }),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'stale',
       epoch: epoch1,
     },
@@ -258,7 +258,7 @@ test('derives current review authority and fails closed for stale, malformed, an
         proof({ epoch: epoch1 }),
         approval({ epoch: epoch1, provenance: 'full-auto', signals: 'env=both' }),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'current',
       epoch: epoch1,
       provenance: 'full-auto',
@@ -267,17 +267,17 @@ test('derives current review authority and fails closed for stale, malformed, an
       name: 'malformed versioned attributes fail closed',
       body: [
         review(1, '2026-07-29T10:00:00Z'),
-        '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc123" ts="2026-07-29T10:01:00Z" result="pass" -->',
+        '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc1234" ts="2026-07-29T10:01:00Z" result="pass" -->',
         approval({ epoch: epoch1 }),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'malformed',
       epoch: epoch1,
     },
     {
       name: 'legacy approval is current when no disqualifying history exists',
       body: legacyApproval,
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'current',
       epoch: null,
       legacy: true,
@@ -289,7 +289,7 @@ test('derives current review authority and fails closed for stale, malformed, an
         legacyApproval,
         review(1, '2026-07-29T10:00:00Z'),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'malformed',
       epoch: epoch1,
       legacy: true,
@@ -297,7 +297,7 @@ test('derives current review authority and fails closed for stale, malformed, an
     {
       name: 'legacy approval before a structural Review entry is stale',
       body: [legacyApproval, review(1, '2026-07-29T10:00:00Z')].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'stale',
       epoch: epoch1,
       legacy: true,
@@ -309,7 +309,7 @@ test('derives current review authority and fails closed for stale, malformed, an
         review(1, '2026-07-29T10:00:00Z'),
         review(2, '2026-07-29T11:00:00Z'),
       ].join('\n'),
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'stale',
       epoch: epoch2,
       legacy: true,
@@ -317,7 +317,7 @@ test('derives current review authority and fails closed for stale, malformed, an
     {
       name: 'multiple legacy approvals are ambiguous',
       body: `${legacyApproval}\n${legacyApproval}`,
-      verifiedSha: 'abc123',
+      verifiedSha: 'abc1234',
       status: 'ambiguous',
       epoch: null,
       legacy: true,
@@ -350,28 +350,28 @@ test('authority without a verified SHA fails closed', () => {
 test('derivePersistedReviewAuthority uses only the durable DoD SHA', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   const body = [
-    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
     review(1, '2026-07-29T10:00:00Z'),
-    proof({ epoch, sha: 'abc123' }),
-    approval({ epoch, proofSha: 'abc123' }),
+    proof({ epoch, sha: 'abc1234' }),
+    approval({ epoch, proofSha: 'abc1234' }),
   ].join('\n');
 
   const authority = derivePersistedReviewAuthority(body);
 
   assert.equal(authority.status, 'current');
   assert.equal(authority.epoch, epoch);
-  assert.equal(authority.verifiedSha, 'abc123');
+  assert.equal(authority.verifiedSha, 'abc1234');
 });
 
 test('derivePersistedReviewAuthority ignores a DoD-shaped marker in fenced code', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   const body = [
     '```md',
-    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
     '```',
     review(1, '2026-07-29T10:00:00Z'),
-    proof({ epoch, sha: 'abc123' }),
-    approval({ epoch, proofSha: 'abc123' }),
+    proof({ epoch, sha: 'abc1234' }),
+    approval({ epoch, proofSha: 'abc1234' }),
   ].join('\n');
 
   const authority = derivePersistedReviewAuthority(body);
@@ -384,10 +384,10 @@ test('derivePersistedReviewAuthority ignores a DoD-shaped marker in fenced code'
 test('derivePersistedReviewAuthority ignores a review-failed example in fenced code', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   const body = [
-    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
     review(1, '2026-07-29T10:00:00Z'),
-    proof({ epoch, sha: 'abc123' }),
-    approval({ epoch, proofSha: 'abc123' }),
+    proof({ epoch, sha: 'abc1234' }),
+    approval({ epoch, proofSha: 'abc1234' }),
     '```md',
     '<!-- aitm-review-failed:start -->',
     '<!-- aitm-review-failed:end -->',
@@ -416,7 +416,7 @@ test('parseReviewAuthority retains every historical authority marker', () => {
 test('#1050 a Review failure invalidation requires a renewed approval even after a later passing proof', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   const body = [
-    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
     review(1, '2026-07-29T10:00:00Z'),
     proof({ epoch, ts: '2026-07-29T10:01:00Z' }),
     approval({ epoch, ts: '2026-07-29T10:02:00Z' }),
@@ -424,7 +424,7 @@ test('#1050 a Review failure invalidation requires a renewed approval even after
     proof({ epoch, ts: '2026-07-29T10:04:00Z' }),
   ].join('\n');
 
-  assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc123' }).status, 'stale');
+  assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc1234' }).status, 'stale');
   const renewed = `${body}\n${approval({ epoch, ts: '2026-07-29T10:05:00Z' })}`;
-  assert.equal(deriveReviewAuthority(renewed, { verifiedSha: 'abc123' }).status, 'current');
+  assert.equal(deriveReviewAuthority(renewed, { verifiedSha: 'abc1234' }).status, 'current');
 });

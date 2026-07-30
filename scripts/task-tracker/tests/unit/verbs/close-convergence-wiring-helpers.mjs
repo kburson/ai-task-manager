@@ -6,10 +6,48 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { join } from 'node:path';
 
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import {
+  serializeAgentReviewProof,
+  serializeReviewApproval,
+  serializeReviewInvalidation,
+} from '../../../lib/review-authority.mjs';
 import { tickLifecycleOnClose, verbClose } from '../../../verbs/close.mjs';
 
-export function closeBody({ agentReview = 'x', finalReview = 'x' } = {}) {
+const REVIEW_EPOCH = 'review:1:2026-07-29T10:00:00Z';
+
+function reviewAuthority(authority) {
+  if (authority === 'missing') return [];
   return [
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    serializeAgentReviewProof({
+      epoch: REVIEW_EPOCH,
+      sha: 'abc1234',
+      ts: '2026-07-29T10:01:00Z',
+      validators: 'unit',
+      result: 'pass',
+    }),
+    serializeReviewApproval({
+      epoch: REVIEW_EPOCH,
+      proofSha: 'abc1234',
+      ts: '2026-07-29T10:02:00Z',
+      provenance: 'human',
+    }),
+    ...(authority === 'stale'
+      ? [
+          serializeReviewInvalidation({
+            epoch: REVIEW_EPOCH,
+            ts: '2026-07-29T10:03:00Z',
+            reason: 'demoted',
+          }),
+        ]
+      : []),
+  ];
+}
+
+export function closeBody({ agentReview = 'x', finalReview = 'x', authority = 'current' } = {}) {
+  return [
+    ...reviewAuthority(authority),
     '## Acceptance Criteria',
     '',
     '- [x] Delivered behavior is verified',

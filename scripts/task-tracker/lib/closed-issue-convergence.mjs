@@ -3,6 +3,7 @@ import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
 import { lifecycleSatisfaction } from './lifecycle-dod.mjs';
 import { parseMarker } from './marker-grammar.mjs';
 import { stripFencedCodeBlocks, upsertProgressMarker } from './markers.mjs';
+import { derivePersistedReviewAuthority } from './review-authority.mjs';
 
 const SATISFIED_LIFECYCLE_STATUSES = new Set(['ticked', 'audited', 'optout']);
 const UNAUTHORIZED_CLOSE_PHASES = new Set(['intent', 'reopened', 'review', 'timing', 'complete']);
@@ -108,12 +109,16 @@ function validateUnauthorizedCloseRecovery(recovery, prefix) {
 export function deriveClosedIssueIntegrity({ body, fullAuto = false, childBoardStates = [] } = {}) {
   const unticked = uncheckedPreCloseCheckboxes(body).map(checkboxLabel);
   const lifecycle = lifecycleSatisfaction(body);
+  const reviewAuthority = derivePersistedReviewAuthority(body);
 
   if (lifecycleKeyMissing(lifecycle, 'agent-review-passed')) {
     unticked.push('Agent Review Passed');
   }
   if (!fullAuto && lifecycleKeyMissing(lifecycle, 'passed-final-review')) {
     unticked.push('Final Review Passed');
+  }
+  if (reviewAuthority.status !== 'current') {
+    unticked.push('Current Review authority');
   }
 
   const unfinishedChildren = (childBoardStates || []).filter(

@@ -219,7 +219,23 @@ function hasCompleteCurrentPassingReview(body, authority) {
 }
 
 function shouldArchiveApproval(authority) {
-  return Boolean(authority.approval && (authority.status === 'stale' || authority.approval.legacy));
+  return Boolean(
+    authority.approval && (authority.status !== 'current' || authority.approval.legacy)
+  );
+}
+
+function shouldReplaceWithHumanApproval(authority, human) {
+  return Boolean(
+    human && authority.status === 'current' && authority.approval?.provenance === 'full-auto'
+  );
+}
+
+function approvalSatisfiesRequest(body, authority, human) {
+  return Boolean(
+    authority.status === 'current' &&
+    hasCompleteCurrentPassingReview(body, authority) &&
+    !shouldReplaceWithHumanApproval(authority, human)
+  );
 }
 
 function serializeApprovalHistory(approval, ts) {
@@ -316,20 +332,21 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     async () => {
       let body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
       let authority = deriveAuthorityForBody(body);
-      if (authority.status === 'current' && hasCompleteCurrentPassingReview(body, authority)) {
+      if (approvalSatisfiesRequest(body, authority, human)) {
         return { status: 'already-approved' };
       }
       // A stale approval must be retained as auditable history and explicitly
       // invalidated before we consider a replacement. This prevents a stale
       // lifecycle tick or Full-Auto footnote from being mistaken for current
       // human authority while the current Review still lacks a passing proof.
-      if (shouldArchiveApproval(authority)) {
+      if (shouldArchiveApproval(authority) || shouldReplaceWithHumanApproval(authority, human)) {
         const archiveResult = await mutateBody({
           issueNumber,
           repo: cfg.repo,
           mutate: (base) => {
             const freshAuthority = deriveAuthorityForBody(base);
-            return shouldArchiveApproval(freshAuthority)
+            return shouldArchiveApproval(freshAuthority) ||
+              shouldReplaceWithHumanApproval(freshAuthority, human)
               ? archiveStaleApprovals(base, nowIso())
               : base;
           },
@@ -338,7 +355,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         });
         body = archiveResult.body;
         authority = deriveAuthorityForBody(body);
-        if (authority.status === 'current' && hasCompleteCurrentPassingReview(body, authority)) {
+        if (approvalSatisfiesRequest(body, authority, human)) {
           return { status: 'already-approved' };
         }
       }
@@ -411,10 +428,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       let preparedAlreadyApproved = false;
       const stamp = (base) => {
         const freshAuthority = deriveAuthorityForBody(base);
-        if (
-          freshAuthority.status === 'current' &&
-          hasCompleteCurrentPassingReview(base, freshAuthority)
-        ) {
+        if (approvalSatisfiesRequest(base, freshAuthority, human)) {
           preparedAlreadyApproved = true;
           return base;
         }
@@ -425,7 +439,12 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         // `aitm-full-auto-approved` marker. The visible footnote stays as a
         // human-readable audit signal.
         let updated = base;
-        if (shouldArchiveApproval(freshAuthority)) updated = archiveStaleApprovals(updated, ts);
+        if (
+          shouldArchiveApproval(freshAuthority) ||
+          shouldReplaceWithHumanApproval(freshAuthority, human)
+        ) {
+          updated = archiveStaleApprovals(updated, ts);
+        }
         updated = freshAuthority.epoch
           ? insertApprovalMarker(updated, ts, {
               epoch: freshAuthority.epoch,
