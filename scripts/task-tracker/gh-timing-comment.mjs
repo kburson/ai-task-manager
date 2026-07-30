@@ -49,6 +49,7 @@ const TABLE_HEADER = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
+const [TABLE_HEADER_ROW, TABLE_SEPARATOR_ROW] = TABLE_HEADER.split('\n');
 
 export function fmtTs(iso) {
   const d = new Date(iso);
@@ -380,9 +381,26 @@ export function timingProjectionMarker({ projectionId, subOperationId } = {}) {
 
 function rowWithProjectionMarker(row, projection) {
   if (!projection) return row;
-  const { core, marker } = splitTimingRowMarker(String(row).replace(/\s+$/, ''));
+  const source = String(row).replace(/\s+$/, '');
+  const parsedRow = parseTimingRow(source);
+  if (
+    source.includes('\n') ||
+    source.includes('\r') ||
+    !source.startsWith('|') ||
+    !parsedRow ||
+    !isTableTimingTimestamp(parsedRow.ts)
+  ) {
+    throw new TypeError('projected timing row must be a canonical unindented timing data row');
+  }
+  const { core, marker } = splitTimingRowMarker(source);
+  if (!marker) {
+    throw new TypeError('projected timing row must include a trailing row-sec marker');
+  }
+  if (!core.trimEnd().endsWith('|')) {
+    throw new TypeError('projected timing row must end its table cells before the row-sec marker');
+  }
   const receipt = timingProjectionMarker(projection);
-  return marker ? `${core} ${receipt}${marker}` : `${core} ${receipt}`;
+  return `${core} ${receipt}${marker}`;
 }
 
 function decodeProjectionIdentity(value) {
@@ -415,11 +433,12 @@ function projectionReceiptFromTimingRow(line, rowIndex) {
 // receipt quoted in prose, a Markdown code fence, a Description cell, after the
 // row-sec marker, or beside another receipt is deliberately ignored.
 export function parseTimingProjectionReceipts(body) {
+  const lines = String(body ?? '').split('\n');
   const receipts = [];
   let fence = null;
-  for (const [lineIndex, line] of String(body ?? '')
-    .split('\n')
-    .entries()) {
+  let sawTimingHeading = false;
+  let tableRowStart = -1;
+  for (const [lineIndex, line] of lines.entries()) {
     const openingFence = line.match(/^\s{0,3}(`{3,}|~{3,})/);
     if (!fence && openingFence) {
       const delimiter = openingFence[1];
@@ -437,6 +456,30 @@ export function parseTimingProjectionReceipts(body) {
       }
       continue;
     }
+    if (/^(?:#{1,6}\s+)?⏱ Timing Log\s*$/.test(line)) {
+      sawTimingHeading = true;
+      continue;
+    }
+    if (
+      sawTimingHeading &&
+      line === TABLE_HEADER_ROW &&
+      lines[lineIndex + 1] === TABLE_SEPARATOR_ROW
+    ) {
+      tableRowStart = lineIndex + 2;
+      break;
+    }
+  }
+  if (tableRowStart < 0) return receipts;
+
+  // Projection receipts are authoritative only within the single contiguous
+  // data-row region immediately following the canonical Timing Log
+  // header/separator. Leading whitespace is meaningful Markdown here:
+  // indented rows are code, not table data.
+  for (let lineIndex = tableRowStart; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    if (!line.startsWith('|')) break;
+    const parsedRow = parseTimingRow(line);
+    if (!parsedRow || !isTableTimingTimestamp(parsedRow.ts)) break;
     const receipt = projectionReceiptFromTimingRow(line, lineIndex);
     if (receipt) receipts.push(receipt);
   }

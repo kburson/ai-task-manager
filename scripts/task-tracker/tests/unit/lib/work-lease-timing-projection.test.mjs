@@ -101,6 +101,9 @@ try {
       '```md',
       forgedMarker,
       '```',
+      '',
+      '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+      '|---|---|---|---|---|---|---|---|',
     ].join('\n'),
   });
   writeFileSync(storePath, JSON.stringify(forgedStore));
@@ -118,6 +121,92 @@ try {
       missingSubOperationIds: [forgedSubOperation],
     }
   );
+
+  const indentedProjection = 'acquire:indented-code:timing';
+  const indentedSubOperation = `${indentedProjection}:bind`;
+  const indentedMarker = timingProjectionMarker({
+    projectionId: indentedProjection,
+    subOperationId: indentedSubOperation,
+  });
+  const foreignProjection = 'acquire:foreign-table:timing';
+  const foreignSubOperation = `${foreignProjection}:bind`;
+  const foreignMarker = timingProjectionMarker({
+    projectionId: foreignProjection,
+    subOperationId: foreignSubOperation,
+  });
+  const legacyMinuteRow =
+    '| 2026-07-30 09:01 -05:00 | update | 1 | 0 | 0 | 17 | legacy minute row | |';
+  const beforeRejectedProjection = readFileSync(storePath, 'utf8');
+  await assert.rejects(
+    postTimingEvent({
+      issueNumber: 1045,
+      repo: 'owner/repo',
+      row: legacyMinuteRow,
+      projectionId: 'acquire:missing-row-sec:timing',
+      subOperationId: 'acquire:missing-row-sec:timing:bind',
+      projDir: tmp,
+    }),
+    /projected timing row.*row-sec/
+  );
+  assert.equal(
+    readFileSync(storePath, 'utf8'),
+    beforeRejectedProjection,
+    'invalid projected row must be rejected before GitHub mutation'
+  );
+  await postTimingEvent({
+    issueNumber: 1045,
+    repo: 'owner/repo',
+    row: legacyMinuteRow,
+    projDir: tmp,
+  });
+  assert.equal(timingBody('1045').includes('legacy minute row'), true);
+
+  const adversarialStore = JSON.parse(readFileSync(storePath, 'utf8'));
+  adversarialStore.comments.push(
+    {
+      id: `C_${adversarialStore.nextId++}`,
+      url: 'https://example/indented-code',
+      issue: '1046',
+      body: [
+        '⏱ Timing Log',
+        '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+        '|---|---|---|---|---|---|---|---|',
+        `    | 2026-07-30 09:00:00 -05:00 | update |  |  |  | 17 | indented code | ${indentedMarker} <!-- row-sec: a=0 i=0 -->`,
+      ].join('\n'),
+    },
+    {
+      id: `C_${adversarialStore.nextId++}`,
+      url: 'https://example/foreign-table',
+      issue: '1047',
+      body: [
+        '⏱ Timing Log',
+        '| Recorded at | Kind | A | B | C | Count | Notes | Extra |',
+        '|---|---|---|---|---|---|---|---|',
+        `| 2026-07-30 09:00:00 -05:00 | update |  |  |  | 17 | foreign table | ${foreignMarker} <!-- row-sec: a=0 i=0 -->`,
+      ].join('\n'),
+    }
+  );
+  writeFileSync(storePath, JSON.stringify(adversarialStore));
+  for (const [issueNumber, adversarialProjection, adversarialSubOperation] of [
+    [1046, indentedProjection, indentedSubOperation],
+    [1047, foreignProjection, foreignSubOperation],
+  ]) {
+    assert.deepEqual(
+      await readTimingProjection({
+        issueNumber,
+        repo: 'owner/repo',
+        projectionId: adversarialProjection,
+        subOperationIds: [adversarialSubOperation],
+      }),
+      {
+        reconciled: false,
+        projectionName: 'timing',
+        projectionId: adversarialProjection,
+        missingSubOperationIds: [adversarialSubOperation],
+      }
+    );
+  }
+
   await postTimingEvent({
     issueNumber: 1048,
     repo: 'owner/repo',
