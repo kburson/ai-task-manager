@@ -147,6 +147,40 @@ test('verifyGovernedEffect requires the authority holder session, host, and supp
   }
 });
 
+test('verifyGovernedEffect compares every supplied stable trusted holder field', async () => {
+  const trusted = {
+    principalKind: 'worker',
+    provider: 'codex',
+    agentRunId: 'run-1',
+    sessionId: 'session-1',
+    hostId: 'host-1',
+    worktreeId: 'wt-1',
+    pathHash: 'path-hash-1',
+    branch: 'feature/child/1049',
+  };
+  for (const [field, value] of [
+    ['principalKind', 'integration'],
+    ['pathHash', 'path-hash-other'],
+    ['branch', 'feature/other'],
+  ]) {
+    const options = baseOptions({
+      holderIdentity: trusted,
+      store: {
+        verify: () => ({
+          allowed: true,
+          lease: lease({ holder: { ...trusted, [field]: value } }),
+        }),
+        renew: () => lease(),
+      },
+    });
+    await assert.rejects(
+      () => verifyGovernedEffect(options),
+      (error) => error instanceof WorkLeaseError && error.code === 'lease-not-held',
+      field
+    );
+  }
+});
+
 test('verifyGovernedEffect fails closed for stale, unavailable, malformed, or disallowed authority replies', async () => {
   const cases = [
     ['stale', () => Promise.reject(new WorkLeaseError('fence-stale', 'stale')), 'fence-stale'],

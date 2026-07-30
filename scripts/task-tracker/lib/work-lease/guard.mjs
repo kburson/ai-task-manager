@@ -135,7 +135,7 @@ function normalizeHolderIdentity(value) {
   if (value === undefined) return {};
   const identity = object(value, 'trusted holder identity');
   const normalized = {};
-  for (const field of ['provider', 'agentRunId']) {
+  for (const field of STABLE_HOLDER_FIELDS) {
     if (identity[field] === undefined) continue;
     if (typeof identity[field] !== 'string' || identity[field].trim() === '') {
       throw leaseError(
@@ -774,14 +774,18 @@ export async function coordinateWorkLeaseAcquire({
       reconcileClaim,
     });
   } catch (error) {
-    await rejectGrantedLease({
-      code: error?.code === 'authority-forbidden' ? 'authority-forbidden' : 'authority-unavailable',
-      message:
-        error?.code === 'authority-forbidden'
-          ? 'issue assignee changed after work-lease acquisition'
-          : 'assignee claim could not be verified after acquisition',
-      cause: error,
-    });
+    if (error?.code === 'authority-forbidden') {
+      await rejectGrantedLease({
+        code: 'authority-forbidden',
+        message: 'issue assignee changed after work-lease acquisition',
+        cause: error,
+      });
+    }
+    throw stableError(
+      error,
+      'authority-unavailable',
+      'assignee claim outcome is indeterminate; durable work-lease intent retained'
+    );
   }
 
   let currentIntent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;

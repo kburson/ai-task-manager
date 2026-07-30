@@ -45,26 +45,22 @@ import {
   isPickupDirectiveEligible,
 } from '../pickup-directive-gate.mjs';
 
-export async function renewWorkLeaseBeforeResume(ctx, { issue, sessionId } = {}) {
+export async function renewWorkLeaseBeforeResume(ctx, { issue, sessionId, holderIdentity } = {}) {
   if (typeof ctx?.getWorkLeaseStore !== 'function') {
     throw new Error('resume requires a lazy work-lease authority');
   }
-  if (typeof ctx?.getWorkLeaseIdentity !== 'function') {
-    throw new Error('resume requires trusted runtime holder identity');
+  if (!holderIdentity || typeof holderIdentity !== 'object') {
+    throw new Error('resume requires a complete trusted holder binding');
   }
-  const identity = ctx.getWorkLeaseIdentity();
   return ctx.verifyGovernedEffect({
     issueId: String(issue ?? '').replace(/^#/, ''),
     sessionId,
     projectDir: ctx.projectDir,
-    hostId: identity.hostId,
+    hostId: holderIdentity.hostId,
     operation: 'task-bind',
     store: ctx.getWorkLeaseStore(),
     forceRenewal: true,
-    holderIdentity: {
-      provider: identity.provider,
-      agentRunId: identity.agentRunId,
-    },
+    holderIdentity,
   });
 }
 
@@ -641,7 +637,11 @@ async function verbResumeGoverned(ctx) {
   const selfHeldLease =
     !noArgument && state.active === target && session?.lease && !session?.workLeaseIntent;
   if (selfHeldLease && eligibility.claimRequired !== true) {
-    await renewWorkLeaseBeforeResume(ctx, { issue: target, sessionId });
+    await renewWorkLeaseBeforeResume(ctx, {
+      issue: target,
+      sessionId,
+      holderIdentity: binding,
+    });
     const startHeartbeat = ctx.createWorkLeaseHeartbeat ?? createWorkLeaseHeartbeat;
     startHeartbeat({
       ownerKey: heartbeatOwnerKey(sessionId, session.lease),
@@ -652,10 +652,7 @@ async function verbResumeGoverned(ctx) {
       hostId: identity.hostId,
       operation: 'task-bind',
       store: ctx.getWorkLeaseStore(),
-      holderIdentity: {
-        provider: identity.provider,
-        agentRunId: identity.agentRunId,
-      },
+      holderIdentity: { ...binding },
     });
     if (!eligibility.skippedNetwork) {
       const audit = ctx.runMoveInvariantAudit ?? runMoveInvariantAudit;
@@ -775,10 +772,7 @@ async function verbResumeGoverned(ctx) {
     hostId: identity.hostId,
     operation: 'task-bind',
     store: ctx.getWorkLeaseStore(),
-    holderIdentity: {
-      provider: identity.provider,
-      agentRunId: identity.agentRunId,
-    },
+    holderIdentity: { ...binding },
   });
   if (!eligibility.skippedNetwork) {
     const audit = ctx.runMoveInvariantAudit ?? runMoveInvariantAudit;

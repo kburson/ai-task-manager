@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { WorkLeaseError } from '@kburson/aitm-ledger';
 
+import { reconcilePreparedAssigneeClaim } from '../../../lib/assignee-guard.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import {
   coordinateWorkLeaseAcquire,
@@ -569,6 +570,104 @@ test('foreign assignee discovered after acquire releases before restoring and ne
   }
 });
 
+test('response-lost assignment with an unavailable read retains the grant and replays one exact claim audit', async () => {
+  const dir = sandbox();
+  try {
+    let assigned = false;
+    let addCalls = 0;
+    let fetchCalls = 0;
+    const projectionEffects = [];
+    const claimDeps = {
+      async addAssignee() {
+        addCalls += 1;
+        assigned = true;
+        throw new Error('assignment response lost');
+      },
+      async fetchAssignees() {
+        fetchCalls += 1;
+        throw new Error('post-assignment read unavailable');
+      },
+    };
+    const first = options(dir);
+    first.input.readEligibility = async () => ({
+      ok: true,
+      claimRequired: true,
+      currentUser: 'worker',
+      assignees: [],
+    });
+    first.input.reconcileClaim = (claim) =>
+      reconcilePreparedAssigneeClaim({ ...claim, deps: claimDeps });
+    first.input.projections = Object.fromEntries(
+      ['session', 'fleet', 'timing', 'github'].map((name) => [
+        name,
+        async () => assert.fail(`${name} must not run while the claim is indeterminate`),
+      ])
+    );
+
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(first.input),
+      (error) =>
+        error instanceof WorkLeaseError &&
+        error.code === 'authority-unavailable' &&
+        /assignee claim/i.test(error.message)
+    );
+
+    const pending = getActiveTask('session-1', dir).workLeaseIntent;
+    assert.equal(assigned, true);
+    assert.equal(addCalls, 1);
+    assert.equal(fetchCalls, 1);
+    assert.equal(pending.receipt.leaseId, LEASE.leaseId);
+    assert.equal(
+      first.log.some((entry) => entry.startsWith('release:')),
+      false,
+      'an indeterminate post-mutation read must retain the granted lease'
+    );
+    const originalGithubProjectionId = pending.projections.github.projectionId;
+    const originalGithubInput = structuredClone(pending.projections.github.input);
+
+    const retry = options(dir);
+    retry.input.readEligibility = async () => ({
+      ok: true,
+      claimRequired: false,
+      currentUser: 'worker',
+      assignees: assigned ? ['worker'] : [],
+    });
+    retry.input.reconcileClaim = (claim) =>
+      reconcilePreparedAssigneeClaim({ ...claim, deps: claimDeps });
+    retry.input.projections = Object.fromEntries(
+      ['session', 'fleet', 'timing', 'github'].map((name) => [
+        name,
+        async ({ input, lease, projectionName, projectionId }) => {
+          projectionEffects.push({ input, projectionName, projectionId });
+          if (name === 'session') {
+            setActiveTask('session-1', { issue: '#1049', lease }, dir);
+          }
+          return { reconciled: true, projectionName, projectionId };
+        },
+      ])
+    );
+
+    await coordinateWorkLeaseAcquire(retry.input);
+
+    assert.equal(addCalls, 1, 'replay must recognize @me without a duplicate assignment mutation');
+    assert.equal(fetchCalls, 1, 'the authoritative retry eligibility read is sufficient');
+    assert.equal(
+      retry.log.some((entry) => entry.startsWith('acquire:')),
+      false,
+      'the durable grant receipt must suppress a duplicate authority acquire'
+    );
+    const githubEffects = projectionEffects.filter(
+      ({ projectionName }) => projectionName === 'github'
+    );
+    assert.equal(githubEffects.length, 1);
+    assert.equal(githubEffects[0].projectionId, originalGithubProjectionId);
+    assert.deepEqual(githubEffects[0].input, originalGithubInput);
+    assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('persisted acquire replays authority before current eligibility and validates the replayed receipt', async () => {
   const dir = sandbox();
   try {
@@ -923,11 +1022,10 @@ test('incomplete persisted projection inputs fail before every projection effect
   }
 });
 
-test('resumed grant with missing claim releases and restores the durable prior session', async () => {
+test('resumed grant with missing claim retains its receipt and exact durable intent', async () => {
   const dir = sandbox();
   try {
     setActiveTask('session-1', { issue: '#1049', wordsAtStart: 19 }, dir);
-    const before = readFileSync(activeTaskPath('session-1', dir));
     const first = options(dir, {
       getStore: async () => ({
         projectId: 'project-1',
@@ -962,8 +1060,10 @@ test('resumed grant with missing claim releases and restores the durable prior s
       () => coordinateWorkLeaseAcquire(retry.input),
       /persisted assignee claim reconciler/
     );
-    assert.equal(releaseRequests.length, 1);
-    assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), before);
+    assert.equal(releaseRequests.length, 0);
+    const pending = getActiveTask('session-1', dir).workLeaseIntent;
+    assert.equal(pending.receipt.leaseId, LEASE.leaseId);
+    assert.equal(pending.idempotencyKey, 'acquire:session-1:1049:request-1');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -1363,6 +1463,18 @@ for (const crashProjection of ['session', 'fleet', 'timing', 'github']) {
 
 test('no-argument resume force-renews authority before queue, marker, timing, or GitHub effects', async () => {
   const log = [];
+  const holderIdentity = {
+    principalKind: 'worker',
+    provider: 'codex',
+    agentRunId: 'run-1',
+    sessionId: 'session-1',
+    hostId: 'host-1',
+    pid: 123,
+    worktreeId: WORKTREE.worktreeId,
+    pathHash: WORKTREE.pathHash,
+    branch: 'feature/child/1049',
+    displayPath: WORKTREE.displayPath,
+  };
   await renewWorkLeaseBeforeResume(
     {
       projectDir: '/repo/worktree-1',
@@ -1373,11 +1485,12 @@ test('no-argument resume force-renews authority before queue, marker, timing, or
         agentRunId: 'run-1',
       }),
       verifyGovernedEffect: async (input) => {
+        assert.deepEqual(input.holderIdentity, holderIdentity);
         log.push(`verify:${input.forceRenewal}:${input.operation}`);
         return { allowed: true };
       },
     },
-    { issue: '#1049', sessionId: 'session-1' }
+    { issue: '#1049', sessionId: 'session-1', holderIdentity }
   );
   log.push('queue');
   log.push('marker');
@@ -1435,6 +1548,7 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
         branch: 'feature/child/1049',
       }),
       getWorkLeaseStore: () => ({ projectId: LEASE.projectId }),
+      resolveWorktreeIdentity: async () => WORKTREE,
       runReadOnlyBindPreflight: async () => {
         events.push('preflight');
         return {
@@ -1482,6 +1596,11 @@ test('cold bind runs preflight, acquires, reconciles four projections, then star
       state: { active: null, lastActive: null },
       coordinator: 'acquire',
     });
+    let heartbeatHolder;
+    ctx.createWorkLeaseHeartbeat = ({ holderIdentity }) => {
+      heartbeatHolder = holderIdentity;
+      events.push('heartbeat');
+    };
     await verbResume(ctx);
     assert.deepEqual(events, [
       'preflight',
@@ -1493,6 +1612,30 @@ test('cold bind runs preflight, acquires, reconciles four projections, then star
       'heartbeat',
       'audit',
     ]);
+    assert.deepEqual(
+      Object.fromEntries(
+        [
+          'principalKind',
+          'provider',
+          'agentRunId',
+          'sessionId',
+          'hostId',
+          'worktreeId',
+          'pathHash',
+          'branch',
+        ].map((field) => [field, heartbeatHolder[field]])
+      ),
+      {
+        principalKind: 'worker',
+        provider: 'codex',
+        agentRunId: 'run-1',
+        sessionId: ctx.getWorkLeaseIdentity().sessionId,
+        hostId: 'host-1',
+        worktreeId: WORKTREE.worktreeId,
+        pathHash: WORKTREE.pathHash,
+        branch: 'feature/child/1049',
+      }
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -2002,16 +2145,105 @@ test('same-issue held-lease self-bind renews without duplicate bind projections'
       },
       coordinator: 'resume',
     });
-    ctx.verifyGovernedEffect = async ({ forceRenewal }) => {
+    let renewedHolder;
+    let heartbeatHolder;
+    ctx.verifyGovernedEffect = async ({ forceRenewal, holderIdentity }) => {
+      renewedHolder = holderIdentity;
       events.push(`renew:${forceRenewal}`);
       return { allowed: true };
     };
+    ctx.createWorkLeaseHeartbeat = ({ holderIdentity }) => {
+      heartbeatHolder = holderIdentity;
+      events.push('heartbeat');
+    };
     await verbResume(ctx);
     assert.deepEqual(events, ['preflight', 'renew:true', 'heartbeat', 'audit']);
+    const expectedStableBinding = {
+      principalKind: 'worker',
+      provider: 'codex',
+      agentRunId: 'run-1',
+      sessionId: ctx.getWorkLeaseIdentity().sessionId,
+      hostId: 'host-1',
+      worktreeId: WORKTREE.worktreeId,
+      pathHash: WORKTREE.pathHash,
+      branch: 'feature/child/1049',
+    };
+    assert.deepEqual(
+      Object.fromEntries(
+        Object.keys(expectedStableBinding).map((field) => [field, renewedHolder[field]])
+      ),
+      expectedStableBinding
+    );
+    assert.deepEqual(
+      Object.fromEntries(
+        Object.keys(expectedStableBinding).map((field) => [field, heartbeatHolder[field]])
+      ),
+      expectedStableBinding
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+for (const [field, authorityValue] of [
+  ['principalKind', 'integration'],
+  ['pathHash', 'path-hash-other'],
+  ['branch', 'feature/other'],
+]) {
+  test(`same-issue held-lease self-bind rejects authority ${field} drift`, async () => {
+    const dir = sandbox();
+    try {
+      const { ctx, events } = governedResumeContext(dir, {
+        rest: ['#1049'],
+        state: { active: '#1049', lastActive: '#1049' },
+        session: {
+          issue: '#1049',
+          lease: {
+            projectId: LEASE.projectId,
+            leaseId: LEASE.leaseId,
+            fencingToken: LEASE.fencingToken,
+            worktreeId: WORKTREE.worktreeId,
+          },
+        },
+        coordinator: 'resume',
+      });
+      const identity = ctx.getWorkLeaseIdentity();
+      const authorityLease = {
+        ...LEASE,
+        holder: {
+          principalKind: 'worker',
+          provider: identity.provider,
+          agentRunId: identity.agentRunId,
+          sessionId: identity.sessionId,
+          hostId: identity.hostId,
+          pid: identity.pid,
+          worktreeId: WORKTREE.worktreeId,
+          pathHash: WORKTREE.pathHash,
+          branch: identity.branch,
+          [field]: authorityValue,
+        },
+      };
+      ctx.verifyGovernedEffect = (input) =>
+        workLeaseGuard.verifyGovernedEffect({
+          ...input,
+          store: {
+            verify: () => ({ allowed: true, lease: authorityLease }),
+            renew: () => authorityLease,
+          },
+          resolveWorktreeIdentity: async () => WORKTREE,
+          now: () => NOW,
+        });
+
+      await assert.rejects(
+        () => verbResume(ctx),
+        (error) => error instanceof WorkLeaseError && error.code === 'lease-not-held'
+      );
+      assert.deepEqual(events, ['preflight']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
 
 test('genuine cross-issue bind refuses before unsafe legacy switch', async () => {
   const dir = sandbox();

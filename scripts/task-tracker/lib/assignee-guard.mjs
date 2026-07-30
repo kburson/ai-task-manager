@@ -17,6 +17,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { WorkLeaseError } from '@kburson/aitm-ledger';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { ISSUE_ID_GLOBAL_RE } from './commit-attribution-format.mjs';
@@ -306,10 +307,16 @@ export async function reconcilePreparedAssigneeClaim({
     };
   }
   if (assignees.length > 0) {
-    throw new Error(`foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`);
+    throw new WorkLeaseError(
+      'authority-forbidden',
+      `foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`
+    );
   }
   if (!input.claimRequired) {
-    throw new Error('live assignee state no longer matches prepared assignment intent');
+    throw new WorkLeaseError(
+      'authority-forbidden',
+      'live assignee state no longer matches prepared assignment intent'
+    );
   }
 
   try {
@@ -321,11 +328,15 @@ export async function reconcilePreparedAssigneeClaim({
   assignees = await fetch();
   if (assignees.length !== 1 || assignees[0] !== currentUser) {
     if (assignees.length > 0) {
-      throw new Error(
+      throw new WorkLeaseError(
+        'authority-forbidden',
         `foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`
       );
     }
-    throw new Error('assignee mutation did not reconcile prepared assignment intent');
+    throw new WorkLeaseError(
+      'authority-forbidden',
+      'assignee mutation did not reconcile prepared assignment intent'
+    );
   }
   return {
     reconciled: true,
