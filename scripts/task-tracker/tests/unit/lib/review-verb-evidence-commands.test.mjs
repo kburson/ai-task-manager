@@ -47,16 +47,16 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 {
   const sandboxRefusalIdx = reviewSource.indexOf('missing `aitm-dod-verified` marker');
   const seedIdx = reviewSource.indexOf('for (const cmd of STANDARD_DOD_COMMANDS)');
-  const evidenceLoopIdx = reviewSource.indexOf('evidenceCommands.filter');
+  const normalizeIdx = reviewSource.lastIndexOf('normalizeReviewVerificationCheckboxes({');
 
   assert.ok(sandboxRefusalIdx > 0, 'sandbox-verified refusal block exists');
   assert.ok(seedIdx > 0, 'STANDARD_DOD_COMMANDS seed loop exists');
-  assert.ok(evidenceLoopIdx > 0, 'evidenceCommands consumer loop exists');
+  assert.ok(normalizeIdx > 0, 'fresh-base checkbox normalization call exists');
   assert.ok(
     seedIdx > sandboxRefusalIdx,
     'seed runs after sandbox-verified refusal (only under sandbox authority)'
   );
-  assert.ok(seedIdx < evidenceLoopIdx, 'seed runs before evidenceCommands consumer loop');
+  assert.ok(seedIdx < normalizeIdx, 'seed runs before fresh-base checkbox normalization');
   console.log('PASS: review.mjs seeds STANDARD_DOD_COMMANDS in the correct position');
 }
 

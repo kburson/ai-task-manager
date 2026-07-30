@@ -59,6 +59,182 @@ export function extractUnverifiedTickLabels(rawBody) {
   return labels;
 }
 
+function parseReviewCheckboxes(body) {
+  const lines = String(body || '').split('\n');
+  const vcItems = parseVerificationCommands(body);
+  let inVerifSection = false;
+  let currentSection = '';
+  const checkboxes = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
+    if (headingMatch) currentSection = headingMatch[1].trim().toLowerCase();
+    if (/^#{1,6}\s+Verification Commands/.test(line)) {
+      inVerifSection = true;
+      continue;
+    }
+    if (/^#{1,6}\s/.test(line) && inVerifSection) inVerifSection = false;
+    const m = line.match(/^- \[([ x])\] (.+)$/);
+    if (!m) continue;
+    const checked = m[1] === 'x';
+    const label = m[2].trim();
+    const canRunCommand = inVerifSection || currentSection === 'definition of done';
+    const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
+    let evidenceCommands = [];
+    let proofPassed = false;
+    if (!cmdMatch) {
+      const props = parseProofMarker(label);
+      if (props && typeof props.cmd === 'string') {
+        evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
+      } else if (props && typeof props['vc-list'] === 'string') {
+        try {
+          evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
+        } catch {
+          evidenceCommands = [];
+        }
+      }
+      if (props && hasExecutionProof(label)) {
+        proofPassed = String(props.exit) === '0';
+      }
+    }
+    checkboxes.push({
+      lineIndex: i,
+      checked,
+      label,
+      command: cmdMatch ? cmdMatch[1] : null,
+      evidenceCommands,
+      proofPassed,
+      section: currentSection,
+    });
+  }
+
+  return { lines, checkboxes };
+}
+
+// Apply sandbox-established command outcomes to the body snapshot held by the
+// versioned writer. The command authority is intentionally captured before the
+// write, but every checkbox location, label, proof declaration, and surrounding
+// byte is reparsed from `body` so a concurrent UI edit cannot be overwritten by
+// an earlier serialization.
+export function normalizeReviewVerificationCheckboxes({
+  body,
+  commandResults,
+  commandFailureReasons = new Map(),
+  closeOwnedCheckboxes = new Set(),
+} = {}) {
+  const { lines, checkboxes } = parseReviewCheckboxes(body);
+  const freshCommandResults = new Map(commandResults || []);
+  const failures = [];
+  const regressions = [];
+  const proseCheckboxes = [];
+
+  for (const cb of checkboxes) {
+    if (cb.proofPassed) {
+      for (const cmd of cb.evidenceCommands) freshCommandResults.set(cmd, true);
+    }
+  }
+
+  const unverifiedTickLabels = extractUnverifiedTickLabels(body);
+  for (const cb of checkboxes) {
+    if (cb.command) {
+      if (cb.checked && unverifiedTickLabels.has(stripMarkers(cb.label))) {
+        freshCommandResults.set(cb.command, true);
+      }
+      const known = freshCommandResults.has(cb.command);
+      const passed = freshCommandResults.get(cb.command) === true;
+      if (passed) {
+        if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
+      } else {
+        if (cb.checked) {
+          regressions.push(cb.label);
+          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+        }
+        const reason = commandFailureReasons.get(cb.command);
+        failures.push(
+          reason
+            ? `${cb.label} (rejected: ${reason})`
+            : known
+              ? cb.label
+              : `${cb.label} (unknown evidence command: ${cb.command})`
+        );
+      }
+    } else if (
+      !closeOwnedCheckboxes.has(cb.label) &&
+      (cb.section === 'acceptance criteria' || cb.section === 'definition of done')
+    ) {
+      proseCheckboxes.push(cb);
+    }
+  }
+
+  const issueBodyCheckbox = proseCheckboxes.find(
+    (cb) => cb.label === 'Issue body checkboxes ticked'
+  );
+  const acceptanceCriteriaCheckbox = proseCheckboxes.find(
+    (cb) => cb.label === 'Acceptance criteria met'
+  );
+  const evidenceCheckboxes = proseCheckboxes.filter(
+    (cb) => cb.label !== 'Issue body checkboxes ticked' && cb.label !== 'Acceptance criteria met'
+  );
+
+  for (const cb of evidenceCheckboxes) {
+    if (NON_DEMONSTRABLE_TAG_RE.test(cb.label)) continue;
+    if (isAcWaived(cb.label)) continue;
+    if (cb.evidenceCommands.length === 0) {
+      if (cb.checked) {
+        regressions.push(cb.label);
+        lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+      }
+      failures.push(`${cb.label} (missing automated evidence)`);
+      continue;
+    }
+    const missingCommands = cb.evidenceCommands.filter((cmd) => !freshCommandResults.has(cmd));
+    if (missingCommands.length > 0) {
+      if (cb.checked) {
+        regressions.push(cb.label);
+        lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+      }
+      failures.push(`${cb.label} (unknown evidence command: ${missingCommands.join(', ')})`);
+      continue;
+    }
+    const failedCommands = cb.evidenceCommands.filter(
+      (cmd) => freshCommandResults.get(cmd) !== true
+    );
+    if (failedCommands.length > 0) {
+      if (cb.checked) {
+        regressions.push(cb.label);
+        lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
+      }
+      failures.push(`${cb.label} (evidence failed: ${failedCommands.join(', ')})`);
+      continue;
+    }
+    if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
+  }
+
+  for (const derivedCheckbox of [acceptanceCriteriaCheckbox, issueBodyCheckbox]) {
+    if (!derivedCheckbox) continue;
+    if (failures.length === 0) {
+      if (!derivedCheckbox.checked) {
+        lines[derivedCheckbox.lineIndex] = lines[derivedCheckbox.lineIndex].replace(
+          '- [ ]',
+          '- [x]'
+        );
+      }
+    } else {
+      if (derivedCheckbox.checked) {
+        regressions.push(derivedCheckbox.label);
+        lines[derivedCheckbox.lineIndex] = lines[derivedCheckbox.lineIndex].replace(
+          '- [x]',
+          '- [ ]'
+        );
+      }
+      failures.push(`${derivedCheckbox.label} (blocked by unchecked/unverified items)`);
+    }
+  }
+
+  return { body: lines.join('\n'), failures, regressions };
+}
+
 // #515 — build the deferred verb-level "starting review" timing row. The ts is
 // bound at CALL time (the post site, after runMoveState emits test:passed +
 // review:started), NOT when the spec was created. #463 deferred only the
@@ -520,84 +696,12 @@ export async function verbReview(ctx) {
       }
     }
 
-    const lines = rawBody.split('\n');
     // #774 — the authoritative VC list, parsed once, so a by-id `vc-list`
     // citation on an AC marker resolves to its declared command(s) the same way
     // the other read-sites do (ac-evidence/evidence-markers/proof-marker).
-    const vcItems = parseVerificationCommands(rawBody);
-
-    let inVerifSection = false;
-    let currentSection = '';
-    const checkboxes = [];
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
-      if (headingMatch) currentSection = headingMatch[1].trim().toLowerCase();
-      if (/^#{1,6}\s+Verification Commands/.test(line)) {
-        inVerifSection = true;
-        continue;
-      }
-      if (/^#{1,6}\s/.test(line) && inVerifSection) inVerifSection = false;
-      const m = line.match(/^- \[([ x])\] (.+)$/);
-      if (!m) continue;
-      const checked = m[1] === 'x';
-      const label = m[2].trim();
-      const canRunCommand = inVerifSection || currentSection === 'definition of done';
-      // Stop at the first closing backtick (no `$` anchor) so a VC/DoD entry
-      // whose command carries a trailing inline `aitm-verified` proof marker —
-      // stamped by auto-tick-verified on a green `test` run — still parses.
-      // Mirrors the shared parsers hardened in #368 AC9
-      // (parseVerificationCommands / parseEvidenceChecklist); review.mjs kept
-      // its own un-migrated copy with the anchored `$` that this fixes.
-      const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
-      // #396/#468 — consolidated declaration is the sole path. When this is a
-      // prose-evidence checkbox, read the declared command(s) from the
-      // `aitm-verified cmd="..."` form.
-      // #481 — `cmd` is the persistent declaration component, read regardless of
-      // run-props. The consolidated single-marker form carries declaration AND
-      // run-props (`exit`/`sha`/`ts`) in one comment; `ac-stamp`/`dod-stamp`
-      // upsert the passing sandbox run there. The pre-#481 `!hasExecutionProof`
-      // guard hid the declaration once proof landed, so review rejected the very
-      // markers `ac-stamp` produces ("missing automated evidence"). Read the cmd
-      // always; when run-props show `exit="0"` the marker itself is the passing
-      // sandbox evidence (`proofPassed`), seeded into `commandResults` below.
-      let evidenceCommands = [];
-      let proofPassed = false;
-      if (!cmdMatch) {
-        const props = parseProofMarker(label);
-        if (props && typeof props.cmd === 'string') {
-          evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
-        } else if (props && typeof props['vc-list'] === 'string') {
-          // #774 — the canonical by-id citation the Refine-exit guardrail (#773)
-          // mandates lives in `vc-list`; resolve it against the VC section so a
-          // vc-list-authored AC is not falsely un-ticked as "missing automated
-          // evidence" here (this was review.mjs's own un-migrated inline parser).
-          try {
-            evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
-          } catch {
-            evidenceCommands = [];
-          }
-        }
-        if (props && hasExecutionProof(label)) {
-          proofPassed = String(props.exit) === '0';
-        }
-      }
-      const cleanLabel = label.trim();
-      checkboxes.push({
-        lineIndex: i,
-        checked,
-        label: cleanLabel,
-        command: cmdMatch ? cmdMatch[1] : null,
-        evidenceCommands,
-        proofPassed,
-        section: currentSection,
-      });
-    }
-
-    const failures = [];
-    const regressions = [];
+    const { checkboxes } = parseReviewCheckboxes(rawBody);
     const commandResults = new Map();
-    const proseCheckboxes = [];
+    const commandFailureReasons = new Map();
     // #267 — `aitm-dod-verified` presence is now enforced by the
     // `test-exit-dod-verified` guard in `STATES.test.exitGuards`, evaluated
     // by runGuards just before the runMoveState call below. The inline check
@@ -634,155 +738,48 @@ export async function verbReview(ctx) {
     const { CLOSE_OWNED_CHECKBOXES } = await import('../runtime.mjs');
     const unverifiedTickLabels = extractUnverifiedTickLabels(rawBody);
     for (const cb of checkboxes) {
-      if (cb.command) {
-        // #975 — an honestly-ticked, categorically non-machine-runnable
-        // command (the `--allow-unverified-ticks` hatch) must not be
-        // re-validated against the sandbox allowlist and demoted as a
-        // regression; trust the audited tick the same way #481 trusts a
-        // sandbox-stamped proof marker, so AC lines citing this VC as
-        // evidence don't cascade into false regressions either.
-        if (cb.checked && unverifiedTickLabels.has(stripMarkers(cb.label))) {
-          commandResults.set(cb.command, true);
-          continue;
-        }
-        const validation = validateVerificationCommand(cb.command, { projectDir });
-        if (!validation.ok) {
-          commandResults.set(cb.command, false);
-          console.log(`[task-tracker] rejected: ${validation.reason}`);
-          if (cb.checked) {
-            regressions.push(cb.label);
-            lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
-          }
-          failures.push(`${cb.label} (rejected: ${validation.reason})`);
-          continue;
-        }
-        // #137 — trust the sandbox-verified marker; do not re-execute.
-        const passed = true;
-        commandResults.set(cb.command, passed);
-        if (passed) {
-          if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
-        } else {
-          if (cb.checked) {
-            regressions.push(cb.label);
-            lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
-          }
-          failures.push(cb.label);
-        }
-      } else if (
-        !CLOSE_OWNED_CHECKBOXES.has(cb.label) &&
-        (cb.section === 'acceptance criteria' || cb.section === 'definition of done')
-      ) {
-        proseCheckboxes.push(cb);
-      }
-    }
-
-    const issueBodyCheckbox = proseCheckboxes.find(
-      (cb) => cb.label === 'Issue body checkboxes ticked'
-    );
-    const acceptanceCriteriaCheckbox = proseCheckboxes.find(
-      (cb) => cb.label === 'Acceptance criteria met'
-    );
-    const evidenceCheckboxes = proseCheckboxes.filter(
-      (cb) => cb.label !== 'Issue body checkboxes ticked' && cb.label !== 'Acceptance criteria met'
-    );
-
-    for (const cb of evidenceCheckboxes) {
-      // #679 — honor the same honest `<!-- aitm-non-demonstrable -->` opt-out
-      // marker that refine-to-plan-gate.mjs and review-preflight.mjs already honor.
-      // Without this, a legitimately-tagged, zero-evidence checked box gets
-      // flagged as a regression and un-ticked on every `/task review` run,
-      // permanently bouncing the issue back to develop.
-      if (NON_DEMONSTRABLE_TAG_RE.test(cb.label)) continue;
-      // #841 — honor intentionally-waived ACs. An AC bearing an `aitm-ac-waived`
-      // marker is neither flagged nor un-ticked: the waiver is an explicit,
-      // audited decision that this AC is not gate-verifiable, the same shape the
-      // completeness scan and review-preflight honor. Reimplements the legit half
-      // of the reverted #840 fresh.
-      if (isAcWaived(cb.label)) continue;
-      if (cb.evidenceCommands.length === 0) {
-        if (cb.checked) {
-          regressions.push(cb.label);
-          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
-        }
-        failures.push(`${cb.label} (missing automated evidence)`);
+      if (!cb.command) continue;
+      // #975 — an honestly-ticked, categorically non-machine-runnable command
+      // remains trusted through its durable audit marker.
+      if (cb.checked && unverifiedTickLabels.has(stripMarkers(cb.label))) {
+        commandResults.set(cb.command, true);
         continue;
       }
-      const missingCommands = cb.evidenceCommands.filter((cmd) => !commandResults.has(cmd));
-      if (missingCommands.length > 0) {
-        if (cb.checked) {
-          regressions.push(cb.label);
-          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
-        }
-        failures.push(`${cb.label} (unknown evidence command: ${missingCommands.join(', ')})`);
+      const validation = validateVerificationCommand(cb.command, { projectDir });
+      if (!validation.ok) {
+        commandResults.set(cb.command, false);
+        commandFailureReasons.set(cb.command, validation.reason);
+        console.log(`[task-tracker] rejected: ${validation.reason}`);
         continue;
       }
-      const failedCommands = cb.evidenceCommands.filter((cmd) => commandResults.get(cmd) !== true);
-      if (failedCommands.length > 0) {
-        if (cb.checked) {
-          regressions.push(cb.label);
-          lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [x]', '- [ ]');
-        }
-        failures.push(`${cb.label} (evidence failed: ${failedCommands.join(', ')})`);
-        continue;
-      }
-      if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');
+      // #137 — trust the sandbox-verified marker; do not re-execute.
+      commandResults.set(cb.command, true);
     }
 
-    if (acceptanceCriteriaCheckbox) {
-      if (failures.length === 0) {
-        if (!acceptanceCriteriaCheckbox.checked) {
-          lines[acceptanceCriteriaCheckbox.lineIndex] = lines[
-            acceptanceCriteriaCheckbox.lineIndex
-          ].replace('- [ ]', '- [x]');
-        }
-      } else {
-        if (acceptanceCriteriaCheckbox.checked) {
-          regressions.push(acceptanceCriteriaCheckbox.label);
-          lines[acceptanceCriteriaCheckbox.lineIndex] = lines[
-            acceptanceCriteriaCheckbox.lineIndex
-          ].replace('- [x]', '- [ ]');
-        }
-        failures.push(
-          `${acceptanceCriteriaCheckbox.label} (blocked by unchecked/unverified items)`
-        );
-      }
-    }
-
-    if (issueBodyCheckbox) {
-      if (failures.length === 0) {
-        if (!issueBodyCheckbox.checked) {
-          lines[issueBodyCheckbox.lineIndex] = lines[issueBodyCheckbox.lineIndex].replace(
-            '- [ ]',
-            '- [x]'
-          );
-        }
-      } else {
-        if (issueBodyCheckbox.checked) {
-          regressions.push(issueBodyCheckbox.label);
-          lines[issueBodyCheckbox.lineIndex] = lines[issueBodyCheckbox.lineIndex].replace(
-            '- [x]',
-            '- [ ]'
-          );
-        }
-        failures.push(`${issueBodyCheckbox.label} (blocked by unchecked/unverified items)`);
-      }
-    }
-
-    const finalBody = lines.join('\n');
     // #362 — review's tick logic predates the same-line proof-marker invariant.
     // Every tick here is backed by machine evidence (commandResults from
     // sandbox-verified runs or derived `failures.length === 0` gates), so
     // `allowUnverifiedTicks: true` is correct semantically — the evidence
     // lives in commandResults, not yet stamped inline. Migrating review to
     // stamp same-line `aitm-verified-at` markers per tick is a follow-up.
+    let normalization = { failures: [], regressions: [] };
     await mutateBodyFn({
       issueNumber: issueNum,
       repo: cfg.repo,
-      mutate: () => finalBody,
+      mutate: (freshBase) => {
+        normalization = normalizeReviewVerificationCheckboxes({
+          body: freshBase,
+          commandResults,
+          commandFailureReasons,
+          closeOwnedCheckboxes: CLOSE_OWNED_CHECKBOXES,
+        });
+        return normalization.body;
+      },
       timeout: GH_API_TIMEOUT_MS,
       deps: { pexec },
       allowUnverifiedTicks: true,
     });
+    const { failures, regressions } = normalization;
 
     if (failures.length > 0) {
       if (regressions.length > 0) {

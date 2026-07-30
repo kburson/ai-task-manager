@@ -19,6 +19,7 @@ import {
   buildReviewFailureBody,
   emitReviewGateFailureTimeline,
   makeAgentReviewPassMutator,
+  normalizeReviewVerificationCheckboxes,
 } from '../../../verbs/review.mjs';
 import {
   derivePersistedReviewAuthority,
@@ -224,6 +225,56 @@ test('#1050 pass mutation stamps the fresh normalization and validator list, nev
   assert.match(returned, /fresh-normalization/);
   assert.match(returned, /validators="fresh-validator"/);
   assert.doesNotMatch(returned, /stale-validator/);
+});
+
+test('#1050 checkbox normalization preserves a fresh validator objection and the proof gate fails closed', () => {
+  const freshBase = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00.000Z" -->',
+    '<!-- aitm-test-started sha="abc1234" ts="2026-07-29T09:00:00.000Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00.000Z" -->',
+    '## Scope',
+    'concurrent-validator: objection',
+    '## Verification Commands',
+    '- [ ] `npm test`',
+    '## Definition of Done',
+    '- [ ] Acceptance criteria met',
+    '- [ ] Issue body checkboxes ticked',
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+  const normalized = normalizeReviewVerificationCheckboxes({
+    body: freshBase,
+    commandResults: new Map([['npm test', true]]),
+  });
+
+  assert.match(normalized.body, /concurrent-validator: objection/);
+  assert.match(normalized.body, /- \[x\] `npm test`/);
+
+  let prepared;
+  let gateBody;
+  const returned = makeAgentReviewPassMutator({
+    ts: '2026-07-29T10:01:00.000Z',
+    issueNumber: 1050,
+    repo: 'o/r',
+    runGate: ({ body }) => {
+      gateBody = body;
+      const blocked = body.includes('concurrent-validator: objection');
+      return {
+        pass: !blocked,
+        failures: blocked ? ['concurrent-validator: objection'] : [],
+        validatorsRun: ['concurrent-validator'],
+        normalizedBody: body,
+      };
+    },
+    onPrepared: (result) => {
+      prepared = result;
+    },
+  })(normalized.body);
+
+  assert.equal(gateBody, normalized.body);
+  assert.equal(prepared.ok, false);
+  assert.deepEqual(prepared.failures, ['concurrent-validator: objection']);
+  assert.equal(returned, normalized.body);
+  assert.doesNotMatch(returned, /aitm-agent-review-proof|gate="agent-review"[^>]*result="pass"/);
 });
 
 test('the failure path never passes --demote to anything', async () => {

@@ -160,6 +160,8 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
     assert.equal(derivePersistedReviewAuthority(liveBody).status, 'stale');
 
     const reviewTs = new Date().toISOString();
+    const concurrentReviewEdit = 'Concurrent operator note preserved through review normalization.';
+    let injectConcurrentReviewEdit = true;
     await verbReview({
       cfg: { repo: 'o/r', projectId: 'PROJ', idleThresholdMinutes: 5 },
       statePath,
@@ -192,12 +194,20 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
       nowIso: () => new Date().toISOString(),
       runReviewPreflight: async () => ({ ok: true, reasons: [] }),
       mutateIssueBody: async ({ mutate }) => {
+        if (injectConcurrentReviewEdit) {
+          injectConcurrentReviewEdit = false;
+          liveBody = liveBody.replace(
+            'Exercise the review success path.',
+            `Exercise the review success path.\n${concurrentReviewEdit}`
+          );
+        }
         liveBody = mutate(liveBody);
         return { status: 'ok', body: liveBody };
       },
       deriveAndStampFunctionalDod: async () => ({ status: 'no-op' }),
       runGuards: async () => ({ refusals: [] }),
     });
+    assert.match(liveBody, new RegExp(concurrentReviewEdit));
     assert.equal(reviewExitReviewApprovedGuard.run({ body: liveBody, toState: 'done' }).ok, false);
     assert.equal(
       decideCloseConvergence({ boardState: 'done', issueClosed: false, body: liveBody }).action,

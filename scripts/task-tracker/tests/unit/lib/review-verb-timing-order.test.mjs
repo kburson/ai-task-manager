@@ -324,25 +324,27 @@ test('gate-failure timeline: no demote is driven, with or without extraArgs (D3)
   assert.deepEqual(seen, [], 'the issue stays in Review - no move, demote or otherwise');
 });
 
-test('gate-failure timeline: a mutate throw is best-effort and does not lose the row', async () => {
+test('gate-failure timeline: a mutate throw propagates and suppresses the outcome row', async () => {
   const { log, deps } = drive({
     mutateBodyFn: async () => {
       throw new Error('gh edit failed');
     },
   });
-  await emitReviewGateFailureTimeline({
-    target: '#999',
-    issueNum: '999',
-    repo: 'o/r',
-    failures: ['x'],
-    failedBody: 'BODY',
-    ts: '2026-07-15T00:00:00.000Z',
-    delta: { activeSec: 0, idleSec: 0 },
-    wordMarker: 0,
-    deps: { ...deps, logError: () => {} },
-  });
-  const timing = log.filter((e) => e !== 'stamp:aitm-review-failed');
-  assert.deepEqual(timing, ['review:failed']);
+  await assert.rejects(
+    emitReviewGateFailureTimeline({
+      target: '#999',
+      issueNum: '999',
+      repo: 'o/r',
+      failures: ['x'],
+      failedBody: 'BODY',
+      ts: '2026-07-15T00:00:00.000Z',
+      delta: { activeSec: 0, idleSec: 0 },
+      wordMarker: 0,
+      deps: { ...deps, logError: () => {} },
+    }),
+    /gh edit failed/
+  );
+  assert.deepEqual(log, []);
 });
 
 // ── #904: gate-PASS timeline — the symmetric review:passed row ────────────────

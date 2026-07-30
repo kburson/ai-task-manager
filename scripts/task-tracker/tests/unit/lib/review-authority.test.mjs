@@ -41,6 +41,109 @@ test('reviewEpochId derives a stable structural identity', () => {
   assert.throws(() => reviewEpochId({ visit: 0, enteredReviewAt: '2026-07-29T10:00:00Z' }));
 });
 
+test('invalid Review entry timestamp cannot grandfather a following legacy approval', () => {
+  const body = [
+    review(1, 'not-an-iso'),
+    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
+  ].join('\n');
+
+  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc123' });
+
+  assert.equal(authority.status, 'malformed');
+});
+
+test('zero-valued Review visit is malformed and never throws during authority derivation', () => {
+  const body = review(0, '2026-07-29T10:00:00Z').replace('entered-review', 'entered-review-0');
+  let authority;
+
+  assert.doesNotThrow(() => {
+    authority = deriveReviewAuthority(body, { verifiedSha: 'abc123' });
+  });
+  assert.equal(authority.status, 'malformed');
+});
+
+test('strict timestamp contract accepts UTC and offset date-times with fractional seconds', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00.123456789-05:00';
+  const body = [
+    review(1, '2026-07-29T10:00:00.123456789-05:00'),
+    proof({ epoch, ts: '2026-07-29T16:01:00.1+01:00' }),
+    approval({ epoch, ts: '2026-07-29T15:02:00Z' }),
+  ].join('\n');
+
+  assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc123' }).status, 'current');
+});
+
+test('malformed authority timestamps fail closed consistently', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const validEntry = review(1, '2026-07-29T10:00:00Z');
+  const validProof = proof({ epoch });
+  const validApproval = approval({ epoch });
+  const cases = [
+    {
+      name: 'entry missing a zone',
+      body: review(1, '2026-07-29T10:00:00'),
+    },
+    {
+      name: 'entry with an invalid calendar date',
+      body: review(1, '2026-02-30T10:00:00Z'),
+    },
+    {
+      name: 'proof timestamp',
+      body: [validEntry, proof({ epoch, ts: 'not-an-iso' }), validApproval].join('\n'),
+    },
+    {
+      name: 'approval timestamp',
+      body: [validEntry, validProof, approval({ epoch, ts: '2026-07-29T25:02:00Z' })].join('\n'),
+    },
+    {
+      name: 'legacy approval timestamp',
+      body: '<!-- aitm-review-approved ts="2026-07-29T10:02:00" -->',
+    },
+    {
+      name: 'invalidation timestamp',
+      body: [
+        validEntry,
+        validProof,
+        validApproval,
+        serializeReviewInvalidation({
+          epoch,
+          ts: '2026-07-29T10:03:00+24:00',
+          reason: 'demoted',
+        }),
+      ].join('\n'),
+    },
+  ];
+
+  for (const item of cases) {
+    assert.equal(
+      deriveReviewAuthority(item.body, { verifiedSha: 'abc123' }).status,
+      'malformed',
+      item.name
+    );
+  }
+});
+
+test('exact colon-form legacy approval remains compatible with legacy authority rules', () => {
+  const body = '<!-- aitm-review-approved: 2026-07-29T10:02:00Z -->';
+
+  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc123' });
+
+  assert.equal(authority.status, 'current');
+  assert.equal(authority.approval.legacy, true);
+  assert.equal(authority.approval.ts, '2026-07-29T10:02:00Z');
+});
+
+test('malformed colon-form legacy approvals fail closed', () => {
+  const malformed = [
+    '<!-- aitm-review-approved: not-an-iso -->',
+    '<!-- aitm-review-approved: 2026-07-29T10:02:00Z unexpected -->',
+  ];
+
+  for (const body of malformed) {
+    assert.equal(deriveReviewAuthority(body, { verifiedSha: 'abc123' }).status, 'malformed', body);
+  }
+});
+
 test('serializers emit deterministic versioned markers', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   assert.equal(

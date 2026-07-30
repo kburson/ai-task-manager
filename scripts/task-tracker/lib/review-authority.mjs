@@ -14,6 +14,8 @@ const INVALIDATION_NAME = 'review-invalidated';
 const PROOF_KEYS = ['schema', 'epoch', 'sha', 'ts', 'validators', 'result'];
 const APPROVAL_KEYS = ['schema', 'epoch', 'proof-sha', 'ts', 'provenance', 'signals'];
 const INVALIDATION_KEYS = ['schema', 'epoch', 'ts', 'reason'];
+const ISO_DATE_TIME_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(?:Z|[+-](\d{2}):(\d{2}))$/;
 
 function exactKeys(props, keys) {
   const actual = Object.keys(props).sort();
@@ -25,9 +27,42 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function isReviewVisit(value) {
+  const numericVisit = Number(value);
+  return Number.isSafeInteger(numericVisit) && numericVisit >= 1;
+}
+
+function isIsoDateTime(value) {
+  if (typeof value !== 'string') return false;
+  const match = ISO_DATE_TIME_RE.exec(value);
+  if (!match) return false;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match;
+  const numericYear = Number(year);
+  const numericMonth = Number(month);
+  const numericDay = Number(day);
+  const numericHour = Number(hour);
+  const numericMinute = Number(minute);
+  const numericSecond = Number(second);
+  const numericOffsetHour = offsetHour === undefined ? 0 : Number(offsetHour);
+  const numericOffsetMinute = offsetMinute === undefined ? 0 : Number(offsetMinute);
+  const leapYear = numericYear % 4 === 0 && (numericYear % 100 !== 0 || numericYear % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return (
+    numericMonth >= 1 &&
+    numericMonth <= 12 &&
+    numericDay >= 1 &&
+    numericDay <= daysInMonth[numericMonth - 1] &&
+    numericHour <= 23 &&
+    numericMinute <= 59 &&
+    numericSecond <= 59 &&
+    numericOffsetHour <= 23 &&
+    numericOffsetMinute <= 59
+  );
+}
+
 function isEpoch(value) {
   const match = /^review:([1-9]\d*):(.+)$/.exec(String(value || ''));
-  return Boolean(match && hasText(match[2]));
+  return Boolean(match && isReviewVisit(match[1]) && isIsoDateTime(match[2]));
 }
 
 function markerLines(body) {
@@ -51,7 +86,7 @@ function parseLegacyApproval(raw, parsed, index) {
     }
     if (
       !exactKeys(props, props['full-auto'] ? ['ts', 'full-auto', 'signals'] : ['ts']) ||
-      !hasText(props.ts)
+      !isIsoDateTime(props.ts)
     ) {
       return { malformed: true };
     }
@@ -69,6 +104,7 @@ function parseLegacyApproval(raw, parsed, index) {
   }
   const legacy = raw.match(/^<!--\s*aitm-review-approved:\s*([^>\s]+)\s*-->$/i);
   if (!legacy) return null;
+  if (!isIsoDateTime(legacy[1])) return { malformed: true };
   return {
     approval: {
       legacy: true,
@@ -86,7 +122,7 @@ function parseVersionedProof(props, index) {
     props.schema !== SCHEMA ||
     !isEpoch(props.epoch) ||
     !hasText(props.sha) ||
-    !hasText(props.ts) ||
+    !isIsoDateTime(props.ts) ||
     !hasText(props.validators) ||
     !['pass', 'fail'].includes(props.result)
   ) {
@@ -103,7 +139,7 @@ function parseVersionedApproval(props, index) {
     props.schema !== SCHEMA ||
     !isEpoch(props.epoch) ||
     !hasText(props['proof-sha']) ||
-    !hasText(props.ts) ||
+    !isIsoDateTime(props.ts) ||
     !['human', 'full-auto'].includes(props.provenance) ||
     (props.provenance === 'full-auto' && !hasText(props.signals))
   ) {
@@ -127,7 +163,7 @@ function parseVersionedInvalidation(props, index) {
     !exactKeys(props, INVALIDATION_KEYS) ||
     props.schema !== SCHEMA ||
     !isEpoch(props.epoch) ||
-    !hasText(props.ts) ||
+    !isIsoDateTime(props.ts) ||
     !hasText(props.reason)
   ) {
     return { malformed: true };
@@ -137,8 +173,10 @@ function parseVersionedInvalidation(props, index) {
 
 export function reviewEpochId({ visit, enteredReviewAt }) {
   const numericVisit = Number(visit);
-  if (!Number.isSafeInteger(numericVisit) || numericVisit < 1 || !hasText(enteredReviewAt)) {
-    throw new Error('reviewEpochId requires a positive integer visit and enteredReviewAt');
+  if (!isReviewVisit(numericVisit) || !isIsoDateTime(enteredReviewAt)) {
+    throw new Error(
+      'reviewEpochId requires a positive integer visit and an ISO date-time enteredReviewAt'
+    );
   }
   return `review:${numericVisit}:${enteredReviewAt}`;
 }
@@ -170,6 +208,10 @@ export function parseReviewAuthority(body) {
       continue;
     }
     const [entry] = entries;
+    if (!isReviewVisit(entry.visit) || !isIsoDateTime(entry.ts)) {
+      malformed.push({ raw, index, reason: 'invalid-review-entry-marker' });
+      continue;
+    }
     epochs.push({
       visit: entry.visit,
       enteredReviewAt: entry.ts,
@@ -183,24 +225,26 @@ export function parseReviewAuthority(body) {
 
   for (const { raw, index } of markers) {
     const parsed = parseMarker(raw);
+    const colonLegacyApproval = parsed ? null : parseLegacyApproval(raw, parsed, index);
     if (
-      malformedMarker(raw, PROOF_NAME) ||
-      malformedMarker(raw, APPROVAL_NAME) ||
-      malformedMarker(raw, INVALIDATION_NAME)
+      !colonLegacyApproval &&
+      (malformedMarker(raw, PROOF_NAME) ||
+        malformedMarker(raw, APPROVAL_NAME) ||
+        malformedMarker(raw, INVALIDATION_NAME))
     ) {
       malformed.push({ raw, index, reason: 'invalid-marker-grammar' });
       continue;
     }
-    if (!parsed) continue;
-    let result = null;
-    if (parsed.name === PROOF_NAME) result = parseVersionedProof(parsed.props || {}, index);
-    if (parsed.name === APPROVAL_NAME) {
+    if (!parsed && !colonLegacyApproval) continue;
+    let result = colonLegacyApproval;
+    if (parsed?.name === PROOF_NAME) result = parseVersionedProof(parsed.props || {}, index);
+    if (parsed?.name === APPROVAL_NAME) {
       result =
         'schema' in (parsed.props || {})
           ? parseVersionedApproval(parsed.props || {}, index)
           : parseLegacyApproval(raw, parsed, index);
     }
-    if (parsed.name === INVALIDATION_NAME)
+    if (parsed?.name === INVALIDATION_NAME)
       result = parseVersionedInvalidation(parsed.props || {}, index);
     if (!result) continue;
     if (result.malformed) malformed.push({ raw, index, reason: 'invalid-attributes' });

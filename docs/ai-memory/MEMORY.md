@@ -29,7 +29,7 @@
 - [Reload skill context after compact, not every invocation](feedback_skill_reload_after_compact.md) — check for `aitm-skill-loaded` sentinel; reload only when absent (post-compact or first run), not unconditionally.
 - [Checkpoint Pause — no steamrolling queued messages](feedback_no_steamroll.md) — before any state transition, re-read recent user messages and respond to unaddressed input before advancing.
 - [Single state-mutator — only move-state.mjs writes Status](feedback_single_state_mutator.md) — verbs verify-then-delegate; entry-marker stamping centralizes in move-state.mjs so every transition is audited.
-- [Full-Auto review requires audit comment](feedback_full_auto_review_audit.md) — when ticking "Passed final human review" / running `approve` without a human, post an audit-correction comment documenting the auto-approval.
+- [Full-Auto review requires truthful approval provenance](feedback_full_auto_review_audit.md) — approve only after current Test and Agent Review proof; record consolidated Full-Auto provenance and visible audit context, never `--human`.
 - [Full-Auto must tick "Passed final human review"](feedback_full_auto_tick_review_box.md) — audit comment is not enough; flip the body checkbox too before close.
 - [Route issue bodies through scripts](feedback_route_issue_bodies_through_scripts.md) — never hand-roll issue bodies; always use preflight-issue.mjs (DoD+Pickup-Directive tail). Gates/requirements must have script-level enforcement, not behavioral discipline.
 - [Pickup directive doesn't block Develop→Test](feedback_pickup_directive_test_promotion.md) — CODE_COMPLETE means promote to Test; the directive only forbids skipping to Review/Done.
