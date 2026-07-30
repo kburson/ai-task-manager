@@ -302,7 +302,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
   for (const [operation, request] of requests) {
     assert.deepEqual(await store[operation](request), results[operation]);
   }
-  assert.equal(await store.observe({ projectId: PROJECT_ID, issueId: 'missing' }), null);
+  assert.equal(await store.observe({ projectId: PROJECT_ID, issueId: '999' }), null);
   assert.deepEqual(
     calls.map(({ operation, options }) => [operation, options.method]),
     [
@@ -318,7 +318,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
   );
   assert.equal('idempotency-key' in calls[2].options.headers, false);
   assert.equal(calls[7].options.body, undefined);
-  assert.match(calls[7].url, /projectId=.*&issueId=missing$/);
+  assert.match(calls[7].url, /projectId=.*&issueId=999$/);
   assert.deepEqual(JSON.parse(calls[6].options.body).evidence, takeoverEvidence);
 });
 

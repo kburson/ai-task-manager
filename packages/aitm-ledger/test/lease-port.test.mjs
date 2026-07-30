@@ -142,6 +142,10 @@ test('fencing token is a positive base-10 string on every boundary', () => {
 });
 
 test('request validators reject malformed holder, handoff identity changes, and weak takeover evidence', () => {
+  assert.throws(
+    () => validateAcquireRequest(acquire({ issueId: '#1049' })),
+    (error) => error.code === 'invalid-request'
+  );
   assert.doesNotThrow(() => validateAcquireRequest(acquire()));
   assert.throws(
     () => validateAcquireRequest(acquire({ holder: holder({ principalKind: 'integration' }) })),

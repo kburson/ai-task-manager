@@ -146,6 +146,9 @@ expiry, and switch supersession advance the fence; renewal does not.
 `{ principalKind: 'worker', provider, agentRunId, sessionId, hostId,
 worktreeId, pathHash, branch, pid }`. `RenewRequest` contains `projectId`,
 `leaseId`, `fencingToken`, `idempotencyKey`, `requestedAt`, and `ttlMs`.
+Every authority `issueId` is a canonical positive decimal string without a
+leading `#`; session/UI references normalize at the adapter boundary so `1049`
+and `#1049` can never create distinct authority records.
 `VerifyRequest` contains `projectId`, `leaseId`, `fencingToken`, `operation`,
 and `verifiedAt`. `SwitchLeaseRequest` contains the current project, issue,
 lease, and fencing identity plus one target acquisition request; the source

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -10,6 +10,7 @@ import {
   readWorkLeaseIntentRequest,
 } from '../../../lib/work-lease/context.mjs';
 import {
+  activeTaskPath,
   attachWorkLeaseIntentReceipt,
   checkpointWorkLeaseProjection,
   clearActiveTaskLease,
@@ -35,7 +36,7 @@ function sandbox() {
 function acquireRequest(overrides = {}) {
   return {
     projectId: 'project-1',
-    issueId: '#1049',
+    issueId: '1049',
     mode: 'write',
     idempotencyKey: 'acquire:session-1:#1049',
     requestedAt: '2026-07-30T12:00:00.000Z',
@@ -84,6 +85,10 @@ test('same-issue generic writes preserve lease and kanban while cross-issue writ
     );
 
     setActiveTask('session-1', { issue: '#1049', wordsAtStart: 2 }, dir);
+    assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
+    assert.equal(getActiveTask('session-1', dir).kanbanState, 'develop');
+
+    setActiveTask('session-1', { issue: '1049', wordsAtStart: 2 }, dir);
     assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
     assert.equal(getActiveTask('session-1', dir).kanbanState, 'develop');
 
@@ -215,6 +220,26 @@ test('intent persists one exact request and rejects credential material before m
     );
     assert.equal(getActiveTask('session-env-secret', dir), null);
 
+    assert.throws(
+      () =>
+        setWorkLeaseIntent(
+          'session-variant-secret',
+          {
+            operation: 'acquire',
+            request,
+            projectionInputs: {
+              session: {
+                authorizationHeader: 'opaque',
+                clientSecretValue: 'opaque',
+              },
+            },
+          },
+          dir
+        ),
+      /secret lease material/
+    );
+    assert.equal(getActiveTask('session-variant-secret', dir), null);
+
     setActiveTask('session-mismatch', { issue: '#1049', lease: LEASE }, dir);
     assert.throws(
       () =>
@@ -222,7 +247,7 @@ test('intent persists one exact request and rejects credential material before m
           'session-mismatch',
           {
             operation: 'acquire',
-            request: acquireRequest({ issueId: '#1051' }),
+            request: acquireRequest({ issueId: '1051' }),
             projectionInputs: { session: { issue: '#1051' } },
           },
           dir
@@ -230,6 +255,84 @@ test('intent persists one exact request and rejects credential material before m
       /intent issue does not match/
     );
     assert.equal(getActiveTask('session-mismatch', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('intent, receipt, and projection persistence is idempotent but never overwrites recovery state', () => {
+  const dir = sandbox();
+  try {
+    const input = {
+      operation: 'acquire',
+      request: acquireRequest(),
+      projectionInputs: { session: { issue: '#1049' } },
+    };
+    const first = setWorkLeaseIntent('session-1', input, dir);
+    assert.deepEqual(setWorkLeaseIntent('session-1', input, dir), first);
+    assert.throws(
+      () =>
+        setWorkLeaseIntent(
+          'session-1',
+          {
+            ...input,
+            request: acquireRequest({ idempotencyKey: 'different-intent' }),
+          },
+          dir
+        ),
+      /unreconciled work-lease intent/
+    );
+    assert.deepEqual(
+      readWorkLeaseIntentRequest(getActiveTask('session-1', dir).workLeaseIntent),
+      input.request
+    );
+
+    const receiptInput = { receipt: { lease: LEASE } };
+    const withReceipt = attachWorkLeaseIntentReceipt('session-1', receiptInput, dir);
+    assert.deepEqual(attachWorkLeaseIntentReceipt('session-1', receiptInput, dir), withReceipt);
+    assert.throws(
+      () =>
+        attachWorkLeaseIntentReceipt(
+          'session-1',
+          { receipt: { lease: { ...LEASE, leaseId: 'other' } } },
+          dir
+        ),
+      /receipt cannot be overwritten/
+    );
+
+    checkpointWorkLeaseProjection(
+      'session-1',
+      'session',
+      undefined,
+      '2026-07-30T12:02:00.000Z',
+      dir
+    );
+    const completed = getActiveTask('session-1', dir);
+    assert.equal(
+      clearWorkLeaseIntent('session-1', undefined, dir),
+      false,
+      'a session-only intent must not satisfy the fixed reconciliation set'
+    );
+    assert.deepEqual(
+      checkpointWorkLeaseProjection(
+        'session-1',
+        'session',
+        undefined,
+        '2026-07-30T12:03:00.000Z',
+        dir
+      ),
+      completed,
+      'a repeated checkpoint must preserve the first durable completion'
+    );
+    assert.deepEqual(
+      setWorkLeaseProjectionInput('session-1', 'session', { issue: '#1049' }, undefined, dir),
+      completed,
+      'replaying the same input must not reset a completed projection'
+    );
+    assert.throws(
+      () => setWorkLeaseProjectionInput('session-1', 'session', { issue: '#1051' }, undefined, dir),
+      /projection input cannot be overwritten/
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -245,13 +348,13 @@ test('intent receipt and projection checkpoints update atomically and clear only
         operation: 'switchLease',
         request: {
           projectId: 'project-1',
-          issueId: '#1049',
+          issueId: '1049',
           leaseId: 'lease-1',
           fencingToken: '42',
           idempotencyKey: 'switch:1049:1051',
           switchedAt: '2026-07-30T12:01:00.000Z',
           target: acquireRequest({
-            issueId: '#1051',
+            issueId: '1051',
             idempotencyKey: 'acquire:session-1:#1051',
           }),
         },
@@ -276,6 +379,13 @@ test('intent receipt and projection checkpoints update atomically and clear only
     setWorkLeaseProjectionInput(
       'session-1',
       'timing',
+      { from: '#1049', to: '#1051' },
+      'transition-1',
+      dir
+    );
+    setWorkLeaseProjectionInput(
+      'session-1',
+      'github',
       { from: '#1049', to: '#1051' },
       'transition-1',
       dir
@@ -305,10 +415,53 @@ test('intent receipt and projection checkpoints update atomically and clear only
       '2026-07-30T12:02:02.000Z',
       dir
     );
+    assert.equal(
+      clearWorkLeaseIntent('session-1', 'transition-1', dir),
+      false,
+      'a completed subset must not reconcile the fixed projection set'
+    );
+    checkpointWorkLeaseProjection(
+      'session-1',
+      'github',
+      'transition-1',
+      '2026-07-30T12:02:03.000Z',
+      dir
+    );
     assert.equal(clearWorkLeaseIntent('session-1', 'stale-transition', dir), false);
     assert.equal(clearWorkLeaseIntent('session-1', 'transition-1', dir), true);
     assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
     assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('recovery mutations fail closed without replacing malformed session state', () => {
+  const dir = sandbox();
+  try {
+    const p = activeTaskPath('session-corrupt', dir);
+    mkdirSync(path.dirname(p), { recursive: true });
+    writeFileSync(p, '{ malformed', 'utf8');
+
+    assert.throws(
+      () =>
+        setWorkLeaseIntent(
+          'session-corrupt',
+          {
+            operation: 'acquire',
+            request: acquireRequest(),
+            projectionInputs: { session: { issue: '#1049' } },
+          },
+          dir
+        ),
+      /active-task state is not valid JSON/
+    );
+    assert.equal(readFileSync(p, 'utf8'), '{ malformed');
+    assert.throws(
+      () => setActiveTask('session-corrupt', { issue: '#1049', wordsAtStart: 1 }, dir),
+      /active-task state is not valid JSON/
+    );
+    assert.equal(readFileSync(p, 'utf8'), '{ malformed');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -340,6 +493,38 @@ test('receipt persistence refuses nested credentials and preserves prior intent'
     const record = getActiveTask('session-1', dir);
     assert.ok(record.workLeaseIntent);
     assert.equal(record.workLeaseIntent.receipt, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('projection persistence rejects values that cannot replay as exact JSON', () => {
+  const dir = sandbox();
+  try {
+    const cyclic = {};
+    cyclic.self = cyclic;
+    for (const input of [
+      { missing: undefined },
+      { counter: 1n },
+      { callback() {} },
+      { cyclic },
+      { invalid: Number.NaN },
+    ]) {
+      assert.throws(
+        () =>
+          setWorkLeaseIntent(
+            'session-json',
+            {
+              operation: 'acquire',
+              request: acquireRequest(),
+              projectionInputs: { session: input },
+            },
+            dir
+          ),
+        /durable JSON/
+      );
+      assert.equal(getActiveTask('session-json', dir), null);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

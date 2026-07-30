@@ -37,6 +37,14 @@ function nonEmpty(value, label) {
   return value;
 }
 
+function issueIdentifier(value, label = 'issueId') {
+  nonEmpty(value, label);
+  if (!/^[1-9]\d*$/.test(value)) {
+    invalidRequest(`${label} must be a canonical positive decimal string`);
+  }
+  return value;
+}
+
 function timestamp(value, label) {
   nonEmpty(value, label);
   if (
@@ -108,7 +116,7 @@ export function validateAcquireRequest(request) {
     [],
     'request'
   );
-  nonEmpty(request.issueId, 'issueId');
+  issueIdentifier(request.issueId);
   if (request.mode !== 'write') invalidRequest('mode must be write');
   ttl(request.ttlMs);
   validateHolder(request.holder);
@@ -155,7 +163,7 @@ export function validateSwitchLeaseRequest(request) {
     [],
     'request'
   );
-  nonEmpty(request.issueId, 'issueId');
+  issueIdentifier(request.issueId);
   nonEmpty(request.leaseId, 'leaseId');
   assertFencingToken(request.fencingToken);
   validateAcquireRequest(request.target);
@@ -220,7 +228,7 @@ export function validateTakeoverRequest(request) {
     [],
     'request'
   );
-  nonEmpty(request.issueId, 'issueId');
+  issueIdentifier(request.issueId);
   nonEmpty(request.expectedLeaseId, 'expectedLeaseId');
   assertFencingToken(request.expectedToken, 'expectedToken');
   validateHolder(request.requester);
@@ -250,7 +258,8 @@ export function validateObserveSelector(selector) {
   nonEmpty(selector.projectId, 'projectId');
   const keys = ['issueId', 'worktreeId'].filter((key) => selector[key] != null);
   if (keys.length !== 1) invalidRequest('selector requires exactly one of issueId or worktreeId');
-  nonEmpty(selector[keys[0]], keys[0]);
+  if (keys[0] === 'issueId') issueIdentifier(selector.issueId);
+  else nonEmpty(selector.worktreeId, 'worktreeId');
   return selector;
 }
 

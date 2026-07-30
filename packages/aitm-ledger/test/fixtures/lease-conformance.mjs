@@ -405,10 +405,7 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   const request = acquireRequest();
   const acquired = await store.acquire(request);
   assert.deepEqual(await store.acquire(request), acquired);
-  await expectCode(
-    () => store.acquire({ ...request, issueId: 'different-payload' }),
-    'idempotency-conflict'
-  );
+  await expectCode(() => store.acquire({ ...request, issueId: '1051' }), 'idempotency-conflict');
   assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), acquired);
   assert.equal(
     (
@@ -489,7 +486,7 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     () =>
       switchStore.switchLease({
         projectId,
-        issueId: 'wrong-outgoing-issue',
+        issueId: '999',
         leaseId: switchCurrent.leaseId,
         fencingToken: switchCurrent.fencingToken,
         idempotencyKey: 'wrong-switch-source',

@@ -19,6 +19,7 @@ import {
   normalizeLeaseContext,
   setIntentProjectionInput,
   workLeaseIntentReconciled,
+  workLeaseIntentsEqual,
 } from './lib/work-lease/context.mjs';
 
 function readJson(p) {
@@ -32,6 +33,24 @@ function readJson(p) {
   }
 }
 
+function readJsonForMutation(p) {
+  if (!existsSync(p)) return null;
+  const raw = readFileSync(p, 'utf8');
+  if (!raw.trim()) {
+    throw new Error('active-task state is empty');
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('active-task state is not valid JSON');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('active-task state must be an object');
+  }
+  return parsed;
+}
+
 function atomicWrite(p, payload) {
   mkdirSync(path.dirname(p), { recursive: true });
   const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
@@ -43,9 +62,14 @@ function authorityIssue(record) {
   return record?.issue ?? record?.leaseIssue ?? null;
 }
 
+function canonicalIssue(value) {
+  const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
+  return match?.[1] ?? null;
+}
+
 function mutateActiveTask(sid, projDir, mutate) {
   const p = activeTaskPath(sid, projDir);
-  const existing = readJson(p);
+  const existing = readJsonForMutation(p);
   const next = mutate(existing);
   if (next == null) return existing;
   atomicWrite(p, next);
@@ -74,9 +98,11 @@ export function setActiveTask(sid, record, projDir) {
   }
   const { state: _droppedState, ...recordWithoutState } = record;
   void _droppedState;
-  const existing = readJson(activeTaskPath(sid, projDir));
+  const existing = readJsonForMutation(activeTaskPath(sid, projDir));
+  const existingAuthorityIssue = canonicalIssue(authorityIssue(existing));
+  const recordAuthorityIssue = canonicalIssue(authorityIssue(record));
   const sameAuthorityIssue =
-    authorityIssue(existing) != null && authorityIssue(existing) === authorityIssue(record);
+    existingAuthorityIssue != null && existingAuthorityIssue === recordAuthorityIssue;
   // `kanbanState` and fenced authority are issue-scoped sticky fields. Generic
   // timing/session saves preserve them only while they still describe the same
   // issue. A different issue starts without either projection.
@@ -165,13 +191,17 @@ export function setWorkLeaseIntent(sid, input, projDir) {
       wordsAtStart: 0,
       boundAt: new Date().toISOString(),
     };
+    if (base.workLeaseIntent) {
+      if (workLeaseIntentsEqual(base.workLeaseIntent, intent)) return base;
+      throw new Error('session has an unreconciled work-lease intent');
+    }
     const currentIssue = authorityIssue(base);
-    if (currentIssue != null && currentIssue !== request.issueId) {
+    if (currentIssue != null && canonicalIssue(currentIssue) !== request.issueId) {
       throw new Error('work-lease intent issue does not match the current session authority');
     }
     return {
       ...base,
-      ...(currentIssue == null ? { leaseIssue: request.issueId } : {}),
+      ...(currentIssue == null ? { leaseIssue: `#${request.issueId}` } : {}),
       workLeaseIntent: intent,
     };
   });
