@@ -367,4 +367,141 @@ async function capturePreflightVerb(opts) {
   assert.equal(postCalls, 0);
 }
 
+// --- Task 5 review: warm switch evaluates the incoming issue read-only -----
+{
+  const sourceState = { active: '#769', entryStartTs: 'source-open' };
+  const incomingReads = [];
+  let claimCalls = 0;
+  let postCalls = 0;
+  const mutationDeps = {
+    claimAssignee: async () => {
+      claimCalls += 1;
+      return { ok: true };
+    },
+    postComment: async () => {
+      postCalls += 1;
+    },
+  };
+  const switchDeps = ({ assignees = ['kburson'], live = 'develop', marker = 'develop' } = {}) => ({
+    env: { TT_FULL_AUTO: '1' },
+    fetchAssignees: async ({ issueNumber }) => {
+      incomingReads.push(['assignees', String(issueNumber)]);
+      return assignees;
+    },
+    fetchCurrentUser: async () => 'kburson',
+    fetchLive: async ({ issueNumber }) => {
+      incomingReads.push(['live', String(issueNumber)]);
+      return live;
+    },
+    fetchLastKnownState: async ({ issueNumber }) => {
+      incomingReads.push(['marker', String(issueNumber)]);
+      return marker;
+    },
+    fetchLastStatusActor: async () => null,
+    ...mutationDeps,
+  });
+
+  const defaultReadOnly = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    cfg: CFG,
+    deps: switchDeps(),
+  });
+  assert.equal(defaultReadOnly.ok, false);
+  assert.equal(defaultReadOnly.kind, 'bind-mismatch');
+  assert.deepEqual(incomingReads.splice(0), [], 'switch exception requires explicit opt-in');
+
+  const assigned = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    allowIssueSwitch: true,
+    cfg: CFG,
+    deps: switchDeps(),
+  });
+  assert.equal(assigned.ok, true);
+  assert.equal(assigned.sourceIssue, '769');
+  assert.equal(assigned.issueNumber, '770');
+  assert.equal(assigned.claimRequired, false);
+  assert.equal(assigned.stateAfter, sourceState, 'source binding remains unchanged');
+  assert.deepEqual(incomingReads.splice(0), [
+    ['assignees', '770'],
+    ['live', '770'],
+    ['marker', '770'],
+  ]);
+
+  const unassigned = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    allowIssueSwitch: true,
+    cfg: CFG,
+    deps: switchDeps({ assignees: [] }),
+  });
+  assert.equal(unassigned.ok, true);
+  assert.equal(unassigned.sourceIssue, '769');
+  assert.equal(unassigned.issueNumber, '770');
+  assert.equal(unassigned.claimRequired, true);
+  incomingReads.splice(0);
+
+  const foreign = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    allowIssueSwitch: true,
+    cfg: CFG,
+    deps: switchDeps({ assignees: ['alice'] }),
+  });
+  assert.equal(foreign.ok, false);
+  assert.equal(foreign.assigneeKind, 'assigned-to-other');
+  assert.equal(foreign.sourceIssue, '769');
+  assert.equal(foreign.issueNumber, '770');
+  assert.equal(foreign.claimRequired, false);
+  incomingReads.splice(0);
+
+  const unverifiable = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    allowIssueSwitch: true,
+    cfg: CFG,
+    deps: {
+      ...switchDeps(),
+      fetchAssignees: async ({ issueNumber }) => {
+        incomingReads.push(['assignees', String(issueNumber)]);
+        throw new Error('network down');
+      },
+    },
+  });
+  assert.equal(unverifiable.ok, false);
+  assert.equal(unverifiable.assigneeKind, 'unverifiable');
+  assert.equal(unverifiable.sourceIssue, '769');
+  assert.equal(unverifiable.issueNumber, '770');
+  assert.equal(unverifiable.claimRequired, false);
+  incomingReads.splice(0);
+
+  const drift = await runReadOnlyBindPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    allowIssueSwitch: true,
+    cfg: CFG,
+    deps: switchDeps({ live: 'review', marker: 'develop' }),
+  });
+  assert.equal(drift.ok, false);
+  assert.equal(drift.kind, 'human-move');
+  assert.equal(drift.sourceIssue, '769');
+  assert.equal(drift.issueNumber, '770');
+  assert.equal(drift.claimRequired, false);
+
+  assert.equal(claimCalls, 0, 'warm-switch eligibility never claims the incoming issue');
+  assert.equal(postCalls, 0, 'warm-switch eligibility never posts an audit comment');
+  assert.deepEqual(sourceState, { active: '#769', entryStartTs: 'source-open' });
+
+  const legacy = await runPreflight({
+    stateBefore: sourceState,
+    target: '#770',
+    cfg: CFG,
+    deps: switchDeps(),
+  });
+  assert.equal(legacy.ok, false);
+  assert.equal(legacy.kind, 'bind-mismatch');
+  assert.equal(legacy.code, 7);
+}
+
 console.log('assignment-lock.test.mjs: ok');

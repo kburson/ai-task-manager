@@ -110,13 +110,21 @@ async function runPreflightCore({
   cfg,
   deps = {},
   readOnlyBind = false,
+  allowIssueSwitch = false,
 } = {}) {
   if (!stateBefore) throw new Error('runPreflight: stateBefore is required');
 
   const targetIssue = normalizeIssueNumber(target);
   const activeIssue = normalizeIssueNumber(stateBefore.active);
+  const incomingSwitch =
+    readOnlyBind &&
+    allowIssueSwitch === true &&
+    targetIssue &&
+    activeIssue &&
+    targetIssue !== activeIssue;
+  const switchContext = incomingSwitch ? { sourceIssue: activeIssue } : {};
 
-  if (targetIssue && activeIssue && targetIssue !== activeIssue) {
+  if (targetIssue && activeIssue && targetIssue !== activeIssue && !incomingSwitch) {
     return {
       ok: false,
       code: EXIT_BIND_MISMATCH,
@@ -132,6 +140,7 @@ async function runPreflightCore({
     ? {
         claimRequired: false,
         issueNumber: issueForReconcile,
+        ...switchContext,
       }
     : {};
 
@@ -180,7 +189,7 @@ async function runPreflightCore({
         assignees: assigneeVerdict.assignees,
         error: assigneeVerdict.error,
         issueNumber: issueForReconcile,
-        ...(readOnlyBind ? { claimRequired: false } : {}),
+        ...(readOnlyBind ? { claimRequired: false, ...switchContext } : {}),
       };
     }
     if (readOnlyBind) {
@@ -189,6 +198,7 @@ async function runPreflightCore({
         issueNumber: issueForReconcile,
         currentUser: assigneeVerdict.currentUser,
         assignees: assigneeVerdict.assignees,
+        ...switchContext,
       };
     }
   }
@@ -253,7 +263,7 @@ async function runPreflightCore({
     marker,
     actor,
     issueNumber: issueForReconcile,
-    ...(readOnlyBind ? { claimRequired: false } : {}),
+    ...(readOnlyBind ? { claimRequired: false, ...switchContext } : {}),
   };
 }
 
@@ -264,6 +274,9 @@ export function runPreflight(options) {
 // Opt-in bind precursor for the lease coordinator. It performs only remote
 // reads and returns a structured deferred-claim requirement; it never writes
 // session state, assigns an issue, posts comments, or exits the process.
+// `allowIssueSwitch:true` is honored only on this read-only path: it preserves
+// the source binding while checks evaluate the incoming target. Legacy
+// runPreflight callers always retain bind-mismatch behavior.
 export function runReadOnlyBindPreflight(options) {
   return runPreflightCore({ ...options, readOnlyBind: true });
 }
