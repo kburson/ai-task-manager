@@ -33,7 +33,10 @@ const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';
 const HEAD_SHA = 'abcdef1234567890abcdef1234567890abcdef12';
-const DOD_VERIFIED_MARKER = `<!-- aitm-dod-verified: ${HEAD_SHA}:2026-05-17T00:00:00.000Z -->`;
+const DOD_VERIFIED_MARKER = [
+  `<!-- aitm-test-started sha="${HEAD_SHA}" ts="2026-05-16T23:59:00.000Z" -->`,
+  `<!-- aitm-dod-verified: ${HEAD_SHA}:2026-05-17T00:00:00.000Z -->`,
+].join('\n');
 const TRACE_COMMENT = [
   '### 🔗 Commits',
   '',

@@ -130,7 +130,16 @@ const BODY_NO_MARKER = [
   '',
 ].join('\n');
 
-const BODY_WITH_MARKER = BODY_NO_MARKER + '\n<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->\n';
+const REVIEW_SHA = 'abcdef1234567890abcdef1234567890abcdef12';
+const REVIEW_EPOCH = 'review:1:2026-05-10T00:00:00Z';
+const BODY_WITH_MARKER = [
+  BODY_NO_MARKER,
+  '<!-- aitm-entered-review ts="2026-05-10T00:00:00Z" -->',
+  `<!-- aitm-dod-verified sha="${REVIEW_SHA}" ts="2026-05-10T00:01:00Z" -->`,
+  `<!-- aitm-agent-review-proof schema="1" epoch="${REVIEW_EPOCH}" sha="${REVIEW_SHA}" ts="2026-05-10T00:02:00Z" validators="unit" result="pass" -->`,
+  `<!-- aitm-review-approved schema="1" epoch="${REVIEW_EPOCH}" proof-sha="${REVIEW_SHA}" ts="2026-05-10T00:03:00Z" provenance="human" -->`,
+  '',
+].join('\n');
 
 function writeState(sandbox, issueNum) {
   writeFileSync(

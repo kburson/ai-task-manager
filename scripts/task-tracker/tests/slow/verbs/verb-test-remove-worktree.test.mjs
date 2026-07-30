@@ -38,7 +38,8 @@ const wtPath = mkdtempOutsideRepo('aitm-346-wt-');
 rmSync(wtPath, { recursive: true, force: true });
 try {
   // 2. Stage a real worktree.
-  await defaultCreateWorktree({ projectDir, path: wtPath });
+  const sha = (await git(['rev-parse', 'HEAD'], projectDir)).stdout.trim();
+  await defaultCreateWorktree({ projectDir, path: wtPath, sha });
   assert.equal(existsSync(wtPath), true, 'worktree path must exist after createWorktree');
 
   // 3. Drop a nested .git/ fixture inside the worktree — this is the shape
