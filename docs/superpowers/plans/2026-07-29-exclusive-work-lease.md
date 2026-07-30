@@ -355,6 +355,11 @@ real Git worktree directory. Raw display text never participates in uniqueness.
       source/activity gates, body mutation, commit trail, child dispatch/merge,
       adoption of a pre-upgrade active session, crash after grant before
       session write, and crash after switch before outgoing/incoming effects.
+      Inject crashes before authority mutation, after authority commit before
+      receipt persistence, after each outgoing/incoming projection, and after a
+      remote write succeeds before its local checkpoint. Prove restart replays
+      the exact canonical request and reconciles each projection without a
+      duplicate.
       Prove exact runtime key names, absence of secrets, lease-context
       preservation across generic `saveState`, no cross-issue carry, and
       stale-token-safe clear.
@@ -369,7 +374,21 @@ real Git worktree directory. Raw display text never participates in uniqueness.
       acquisition/switch happens before claim, queue drain, pause finalization,
       session, timing, GitHub, or fleet effects. Authority writes its lease,
       event, and binding atomically; switch returns a durable transition receipt
-      whose projections replay exactly once after a crash. Persist session
+      whose projections replay exactly once after a crash. Before calling
+      `acquire` or `switchLease`, atomically persist a non-secret session intent
+      containing the exact canonical request, including its timestamps and
+      idempotency key. The intent remains associated with the outgoing binding
+      and records no granted authority. On restart, replay that byte-equivalent
+      request; exact authority replay recovers the original lease or transition
+      receipt. After the call succeeds, atomically attach the receipt and its
+      `transitionId` before any projection. Checkpoint session/fleet/timing/GitHub
+      projection inputs and completion per transition. A local checkpoint alone
+      is not completion proof: every retryable external projection must be
+      naturally idempotent or embed and read back the `transitionId` before retry
+      so a network-success/local-crash boundary cannot duplicate it. Clear the
+      intent only after all projections are positively reconciled. Persist
+      neither bearer credentials nor token environment names in the intent or
+      receipt. Persist session
       `lease: { projectId, leaseId, fencingToken, worktreeId }`, preserve it
       during same-issue state saves, and clear only on matching token. Register a
       60-second heartbeat hook while an owning process lives and renew at
