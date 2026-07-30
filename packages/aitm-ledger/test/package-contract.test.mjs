@@ -37,8 +37,8 @@ test('ledger workspace publishes an independently consumable ESM package', async
   assert.equal(root.scripts?.['test:ledger'], 'node --test packages/aitm-ledger/test/*.test.mjs');
   assert.equal(
     root.scripts?.release,
-    'npm run release:ledger && npm publish --access public',
-    'release must publish the ledger before the root package'
+    'node scripts/release/publish-ledger-if-needed.mjs && npm publish --access public',
+    'release must ensure the ledger version exists before publishing root'
   );
   assert.equal(
     root.scripts?.['release:ledger'],
@@ -56,6 +56,40 @@ test('ledger workspace publishes an independently consumable ESM package', async
 
   const ledgerModule = await import(pathToFileURL(join(LEDGER_ROOT, 'src', 'index.mjs')).href);
   assert.equal(ledgerModule.LEDGER_PACKAGE_NAME, '@kburson/aitm-ledger');
+});
+
+test('ledger release decision is idempotent and fails closed on ambiguous registry errors', async () => {
+  const releaseScript = join(ROOT, 'scripts', 'release', 'publish-ledger-if-needed.mjs');
+  assert.ok(existsSync(releaseScript), 'ledger release helper is missing');
+  const { decideLedgerPublish } = await import(pathToFileURL(releaseScript).href);
+
+  assert.equal(
+    decideLedgerPublish({ status: 0, stdout: '"1.0.0"\n', stderr: '', version: '1.0.0' }),
+    'skip'
+  );
+  assert.equal(
+    decideLedgerPublish({
+      status: 1,
+      stdout: '',
+      stderr: 'npm error code E404',
+      version: '1.0.0',
+    }),
+    'publish'
+  );
+  assert.throws(
+    () =>
+      decideLedgerPublish({
+        status: 1,
+        stdout: '',
+        stderr: 'npm error code EAI_AGAIN',
+        version: '1.0.0',
+      }),
+    /refusing to publish/
+  );
+  assert.throws(
+    () => decideLedgerPublish({ status: 0, stdout: '"2.0.0"', stderr: '', version: '1.0.0' }),
+    /unexpected version/
+  );
 });
 
 test('ledger dry-run pack contains runtime only and root pack keeps the workspace separate', () => {

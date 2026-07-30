@@ -33,7 +33,7 @@
     "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
     "prepare": "node scripts/task-tracker/ensure-self-link.mjs",
     "link:self": "node scripts/task-tracker/ensure-self-link.mjs",
-    "release": "npm run release:ledger && npm publish --access public",
+    "release": "node scripts/release/publish-ledger-if-needed.mjs && npm publish --access public",
     "release:ledger": "npm publish --access public --workspace @kburson/aitm-ledger",
     "sync:templates": "node scripts/sync-templates.mjs",
     "format": "prettier --write .",

@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 76 task assignments across 75 unique paths:
-  Tasks 1-7 contain 12, 5, 17, 5, 25, 8, and 4 paths respectively;
+- The reviewed file inventory has 77 task assignments across 76 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 25, 8, and 4 paths respectively;
   `fleet-registry.mjs` intentionally appears in Tasks 3 and 6. If
   implementation discovers another required production path, update this plan
   and its inventory before editing it.
@@ -67,6 +67,7 @@ the fencing token before governed effects. Fleet remains a projection.
 - Modify: `.gitignore`
 - Modify: `bin/cli.mjs`
 - Modify: `.github/workflows/ci.yml`
+- Create: `scripts/release/publish-ledger-if-needed.mjs`
 - Create: `packages/aitm-ledger/package.json`
 - Create: `packages/aitm-ledger/src/index.mjs`
 - Create: `packages/aitm-ledger/test/package-contract.test.mjs`
@@ -91,8 +92,10 @@ the fencing token before governed effects. Fleet remains a projection.
       `test:ledger` script, and independently publishable ledger metadata:
       version, license, engine, export map, files, and publish configuration.
       Root runtime resolution uses an exact ledger dependency and the release
-      contract publishes the ledger before the root. Root and ledger dry-run
-      packs must exclude tests and include every required runtime module.
+      contract publishes a missing ledger version before the root, skips an
+      already-published matching version, and fails closed on ambiguous
+      registry/network errors. Root and ledger dry-run packs must exclude tests
+      and include every required runtime module.
 - [ ] Build both tarballs in project scratch, install them into a clean
       consumer, prove the installed CLI and ledger export load without a
       workspace symlink, and run the installed initializer twice. Assert
