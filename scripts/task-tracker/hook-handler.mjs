@@ -104,6 +104,21 @@ function readStdin() {
   }
 }
 
+export async function postHookQueuedTimingEvent(
+  event,
+  { repo, timeoutMs, post = postTimingEvent } = {}
+) {
+  if (event?.kind !== 'timing') return undefined;
+  return post({
+    issueNumber: event.issue,
+    repo,
+    row: event.row,
+    ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
+    ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
+    timeoutMs,
+  });
+}
+
 async function safePost(issue, row) {
   try {
     await postTimingEvent({
@@ -198,16 +213,14 @@ function emitWorktreeBanner() {
 async function bestEffortDrainQueue() {
   if (process.env.TT_SKIP_NETWORK === '1') return;
   try {
-    await drain(async (evt) => {
-      if (evt.kind === 'timing') {
-        await postTimingEvent({
-          issueNumber: evt.issue,
+    await drain(
+      (evt) =>
+        postHookQueuedTimingEvent(evt, {
           repo: cfg.repo,
-          row: evt.row,
           timeoutMs: cfg.hookNetworkTimeoutMs,
-        });
-      }
-    }, queuePath);
+        }),
+      queuePath
+    );
   } catch {
     /* best-effort: failure must not abort the primary operation */
   }

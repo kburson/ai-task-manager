@@ -198,36 +198,36 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      148,
+      163,
       'event-call',
       "'pre-compact-flush'",
       ['pre-compact-flush']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      171,
+      186,
       'event-call',
       "'post-compact-resume'",
       ['post-compact-resume']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      232,
+      245,
       'event-spec',
       "'session-end-recovery'",
       ['session-end-recovery']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      245,
+      258,
       'event-spec',
       "'pause:orphan-recovery'",
       ['pause:orphan-recovery']
     ),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 254, 'event-spec', "'resumed'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 267, 'event-spec', "'resumed'", [
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 417, 'event-call', "'session-start'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 430, 'event-call', "'session-start'", [
       'session-start',
     ]),
     timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 183, 'event-call', "'paused'", [

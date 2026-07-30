@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
-import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import { parseMarker, serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 import {
   isTableTimingTimestamp,
   parseTimingRow,
@@ -385,6 +385,72 @@ function rowWithProjectionMarker(row, projection) {
   return marker ? `${core} ${receipt}${marker}` : `${core} ${receipt}`;
 }
 
+function decodeProjectionIdentity(value) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  const decoded = Buffer.from(value, 'base64url').toString('utf8');
+  if (!decoded || Buffer.from(decoded, 'utf8').toString('base64url') !== value) return null;
+  return decoded;
+}
+
+function projectionReceiptFromTimingRow(line, rowIndex) {
+  const parsedRow = parseTimingRow(line);
+  if (!parsedRow || !isTableTimingTimestamp(parsedRow.ts)) return null;
+  const { core, marker: rowSecMarker } = splitTimingRowMarker(line);
+  if (!rowSecMarker) return null;
+  const lastPipe = core.lastIndexOf('|');
+  if (lastPipe < 0) return null;
+  const receiptText = core.slice(lastPipe + 1).trim();
+  const receipt = parseMarker(receiptText);
+  if (!receipt || receipt.name !== 'work-lease-projection') return null;
+  const keys = Object.keys(receipt.props).sort();
+  if (keys.join(',') !== 'projection-id-b64,sub-operation-id-b64') return null;
+  const projectionId = decodeProjectionIdentity(receipt.props['projection-id-b64']);
+  const subOperationId = decodeProjectionIdentity(receipt.props['sub-operation-id-b64']);
+  if (!projectionId || !subOperationId) return null;
+  if (timingProjectionMarker({ projectionId, subOperationId }) !== receiptText) return null;
+  return { projectionId, subOperationId, rowIndex };
+}
+
+// Only a structurally valid Timing Log data row can prove a projection. A
+// receipt quoted in prose, a Markdown code fence, a Description cell, after the
+// row-sec marker, or beside another receipt is deliberately ignored.
+export function parseTimingProjectionReceipts(body) {
+  const receipts = [];
+  let fence = null;
+  for (const [lineIndex, line] of String(body ?? '')
+    .split('\n')
+    .entries()) {
+    const openingFence = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (!fence && openingFence) {
+      const delimiter = openingFence[1];
+      fence = { char: delimiter[0], length: delimiter.length };
+      continue;
+    }
+    if (fence) {
+      const closingFence = line.match(/^\s{0,3}(`{3,}|~{3,})\s*$/);
+      if (
+        closingFence &&
+        closingFence[1][0] === fence.char &&
+        closingFence[1].length >= fence.length
+      ) {
+        fence = null;
+      }
+      continue;
+    }
+    const receipt = projectionReceiptFromTimingRow(line, lineIndex);
+    if (receipt) receipts.push(receipt);
+  }
+  return receipts;
+}
+
+function matchingTimingProjectionReceipts(body, projection) {
+  return parseTimingProjectionReceipts(body).filter(
+    (receipt) =>
+      receipt.projectionId === projection.projectionId &&
+      receipt.subOperationId === projection.subOperationId
+  );
+}
+
 // #821 — rewrite ONLY the Timestamp cell (the 1st pipe-delimited field),
 // preserving every other cell and the trailing marker byte-for-byte.
 function rewriteTsCell(row, nextTs) {
@@ -399,11 +465,19 @@ function rewriteTsCell(row, nextTs) {
 //   • no open interruption → loud refusal via DuplicateStartError (AC3).
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
-function appendRow(body, row, { projectionMarker } = {}) {
+function appendRow(body, row, { projection } = {}) {
   // #1049 — an exact projection receipt is stronger than event-shape policy.
   // Check it before duplicate-start and redundant-departure handling so a retry
   // after remote success is a byte-preserving no-op for every event kind.
-  if (projectionMarker && body.includes(projectionMarker)) return body;
+  if (projection) {
+    const matches = matchingTimingProjectionReceipts(body, projection);
+    if (matches.length === 1) return body;
+    if (matches.length > 1) {
+      throw new Error(
+        `duplicate timing projection receipt: ${projection.projectionId} ${projection.subOperationId}`
+      );
+    }
+  }
 
   let effectiveRow = row;
   if (rowEventSlug(row) === 'start' && timingCommentHasRows(body)) {
@@ -531,22 +605,29 @@ export async function postTimingEvent({
   projDir,
 } = {}) {
   const projection = normalizeTimingProjection(projectionId, subOperationId);
-  const projectionMarker = projection ? timingProjectionMarker(projection) : null;
   const durableRow = rowWithProjectionMarker(row, projection);
   const work = async () => {
     const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
     if (existing) {
-      if (projectionMarker && existing.body.includes(projectionMarker)) {
-        return {
-          status: 'already-reconciled',
-          projectionId: projection.projectionId,
-          subOperationId: projection.subOperationId,
-        };
+      if (projection) {
+        const matches = matchingTimingProjectionReceipts(existing.body, projection);
+        if (matches.length === 1) {
+          return {
+            status: 'already-reconciled',
+            projectionId: projection.projectionId,
+            subOperationId: projection.subOperationId,
+          };
+        }
+        if (matches.length > 1) {
+          throw new Error(
+            `duplicate timing projection receipt: ${projection.projectionId} ${projection.subOperationId}`
+          );
+        }
       }
-      const updated = appendRow(existing.body, durableRow, { projectionMarker });
+      const updated = appendRow(existing.body, durableRow, { projection });
       await updateTimingComment(existing.id, repo, updated, { timeoutMs });
     } else {
-      const initial = appendRow(buildInitialComment(), durableRow, { projectionMarker });
+      const initial = appendRow(buildInitialComment(), durableRow, { projection });
       await createTimingComment(issueNumber, repo, initial, { timeoutMs });
     }
     if (!projection) return undefined;
@@ -621,14 +702,18 @@ export async function readTimingProjection({
   const read = deps.readTimingCommentBody || readTimingCommentBody;
   const result = await read({ issueNumber, repo, timeoutMs, deps });
   const body = bodyOf(result);
-  const markers = stableSubOperationIds.map((subOperationId) =>
-    timingProjectionMarker({
-      projectionId: stableProjectionId,
+  const receipts = parseTimingProjectionReceipts(body);
+  const matchesBySubOperation = new Map(
+    stableSubOperationIds.map((subOperationId) => [
       subOperationId,
-    })
+      receipts.filter(
+        (receipt) =>
+          receipt.projectionId === stableProjectionId && receipt.subOperationId === subOperationId
+      ),
+    ])
   );
   const missingSubOperationIds = stableSubOperationIds.filter(
-    (_subOperationId, index) => !body.includes(markers[index])
+    (subOperationId) => matchesBySubOperation.get(subOperationId).length === 0
   );
   if (missingSubOperationIds.length > 0) {
     return {
@@ -638,10 +723,22 @@ export async function readTimingProjection({
       missingSubOperationIds,
     };
   }
-  let priorIndex = -1;
-  for (const marker of markers) {
-    const markerIndex = body.indexOf(marker);
-    if (markerIndex <= priorIndex) {
+  const duplicateSubOperationIds = stableSubOperationIds.filter(
+    (subOperationId) => matchesBySubOperation.get(subOperationId).length > 1
+  );
+  if (duplicateSubOperationIds.length > 0) {
+    return {
+      reconciled: false,
+      projectionName: TIMING_PROJECTION_NAME,
+      projectionId: stableProjectionId,
+      missingSubOperationIds: [],
+      duplicateSubOperationIds,
+    };
+  }
+  let priorRowIndex = -1;
+  for (const subOperationId of stableSubOperationIds) {
+    const rowIndex = matchesBySubOperation.get(subOperationId)[0].rowIndex;
+    if (rowIndex <= priorRowIndex) {
       return {
         reconciled: false,
         projectionName: TIMING_PROJECTION_NAME,
@@ -650,7 +747,7 @@ export async function readTimingProjection({
         outOfOrder: true,
       };
     }
-    priorIndex = markerIndex;
+    priorRowIndex = rowIndex;
   }
   return {
     reconciled: true,

@@ -229,6 +229,21 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
   exit(result.status || 1);
 }
 
+export async function postRuntimeQueuedTimingEvent(
+  event,
+  { repo, timeoutMs, post = postTimingEvent } = {}
+) {
+  if (event?.kind !== 'timing') return undefined;
+  return post({
+    issueNumber: event.issue,
+    repo,
+    row: event.row,
+    ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
+    ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
+    timeoutMs,
+  });
+}
+
 // Legacy per-event description fallbacks. Used only when a caller does not
 // supply a description AND does not supply a phase descriptor that resolves
 // against PHASE_EVENTS. Retained for back-compat with callers that emit
@@ -393,16 +408,14 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
 
   ctx.drainQueueIfAny = async () => {
     if (SKIP_NETWORK) return;
-    await drain(async (evt) => {
-      if (evt.kind === 'timing') {
-        await postTimingEvent({
-          issueNumber: evt.issue,
+    await drain(
+      (evt) =>
+        postRuntimeQueuedTimingEvent(evt, {
           repo: cfg.repo,
-          row: evt.row,
           timeoutMs: cfg.hookNetworkTimeoutMs,
-        });
-      }
-    }, queuePath);
+        }),
+      queuePath
+    );
   };
 
   ctx.flushAndForgetQueueFor = async (issueRef) => {
@@ -410,14 +423,10 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     const ref = String(issueRef).replace(/^#/, '');
     return drainAndDiscard(
       async (evt) => {
-        if (evt.kind === 'timing') {
-          await postTimingEvent({
-            issueNumber: evt.issue,
-            repo: cfg.repo,
-            row: evt.row,
-            timeoutMs: cfg.hookNetworkTimeoutMs,
-          });
-        }
+        await postRuntimeQueuedTimingEvent(evt, {
+          repo: cfg.repo,
+          timeoutMs: cfg.hookNetworkTimeoutMs,
+        });
       },
       queuePath,
       (evt) => String(evt.issue).replace(/^#/, '') === ref

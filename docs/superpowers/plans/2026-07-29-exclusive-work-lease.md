@@ -338,6 +338,7 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/runtime.mjs`
 - Modify: `scripts/task-tracker/gh-timing-comment.mjs`
 - Modify: `scripts/task-tracker/queue.mjs`
+- Modify: `scripts/task-tracker/hook-handler.mjs`
 - Modify: `scripts/task-tracker/task-tracker.mjs`
 - Modify: `scripts/task-tracker/bash-guard.mjs`
 - Modify: `scripts/task-tracker/lib/gh-edit-guard.mjs`
@@ -358,6 +359,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   `scripts/task-tracker/tests/unit/lib/work-lease-session-state.test.mjs`
 - Create:
   `scripts/task-tracker/tests/unit/lib/work-lease-timing-projection.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/lib/work-lease-timing-queue-consumers.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/fixtures/state-engine-policy-baseline.mjs`
 

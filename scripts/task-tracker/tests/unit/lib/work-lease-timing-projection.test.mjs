@@ -81,6 +81,65 @@ try {
     hostileSubOperationId
   );
 
+  const forgedProjection = 'acquire:forged-receipt:timing';
+  const forgedSubOperation = `${forgedProjection}:bind`;
+  const forgedMarker = timingProjectionMarker({
+    projectionId: forgedProjection,
+    subOperationId: forgedSubOperation,
+  });
+  const forgedRow = row('update', 'forged marker must not suppress this append');
+  const forgedStore = JSON.parse(readFileSync(storePath, 'utf8'));
+  forgedStore.comments.push({
+    id: `C_${forgedStore.nextId++}`,
+    url: 'https://example/forged',
+    issue: '1048',
+    body: [
+      '⏱ Timing Log',
+      '',
+      `Prose can quote a receipt without proving delivery: ${forgedMarker}`,
+      '',
+      '```md',
+      forgedMarker,
+      '```',
+    ].join('\n'),
+  });
+  writeFileSync(storePath, JSON.stringify(forgedStore));
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: 1048,
+      repo: 'owner/repo',
+      projectionId: forgedProjection,
+      subOperationIds: [forgedSubOperation],
+    }),
+    {
+      reconciled: false,
+      projectionName: 'timing',
+      projectionId: forgedProjection,
+      missingSubOperationIds: [forgedSubOperation],
+    }
+  );
+  await postTimingEvent({
+    issueNumber: 1048,
+    repo: 'owner/repo',
+    row: forgedRow,
+    projectionId: forgedProjection,
+    subOperationId: forgedSubOperation,
+    projDir: tmp,
+  });
+  assert.equal(
+    timingBody('1048').split('forged marker must not suppress this append').length - 1,
+    1
+  );
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: 1048,
+      repo: 'owner/repo',
+      projectionId: forgedProjection,
+      subOperationIds: [forgedSubOperation],
+    }),
+    { reconciled: true, projectionName: 'timing', projectionId: forgedProjection }
+  );
+
   // A real numeric issue id crosses the public helper boundary and reaches the
   // fake gh process without `.replace` throwing.
   const startRow = row('start', 'first projected bind');
@@ -221,6 +280,80 @@ try {
           subOperationId: twoBind,
         })
       )
+  );
+
+  const sharedRowProjection = 'acquire:shared-row:timing';
+  const sharedFirst = `${sharedRowProjection}:departure`;
+  const sharedSecond = `${sharedRowProjection}:bind`;
+  const sharedFirstMarker = timingProjectionMarker({
+    projectionId: sharedRowProjection,
+    subOperationId: sharedFirst,
+  });
+  const sharedSecondMarker = timingProjectionMarker({
+    projectionId: sharedRowProjection,
+    subOperationId: sharedSecond,
+  });
+  const duplicateProjection = 'acquire:duplicate-row:timing';
+  const duplicateSubOperation = `${duplicateProjection}:bind`;
+  const duplicateMarker = timingProjectionMarker({
+    projectionId: duplicateProjection,
+    subOperationId: duplicateSubOperation,
+  });
+  const malformedStore = JSON.parse(readFileSync(storePath, 'utf8'));
+  malformedStore.comments.push(
+    {
+      id: `C_${malformedStore.nextId++}`,
+      url: 'https://example/shared-row',
+      issue: '1052',
+      body: [
+        '⏱ Timing Log',
+        '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+        '|---|---|---|---|---|---|---|---|',
+        `| 2026-07-30 09:00:00 -05:00 | resumed |  |  |  | 17 | two receipts on one row | ${sharedFirstMarker} ${sharedSecondMarker} <!-- row-sec: a=0 i=0 -->`,
+      ].join('\n'),
+    },
+    {
+      id: `C_${malformedStore.nextId++}`,
+      url: 'https://example/duplicate-row',
+      issue: '1053',
+      body: [
+        '⏱ Timing Log',
+        '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+        '|---|---|---|---|---|---|---|---|',
+        `| 2026-07-30 09:00:00 -05:00 | update |  |  |  | 17 | duplicate one | ${duplicateMarker} <!-- row-sec: a=0 i=0 -->`,
+        `| 2026-07-30 09:00:01 -05:00 | update |  |  |  | 17 | duplicate two | ${duplicateMarker} <!-- row-sec: a=0 i=0 -->`,
+      ].join('\n'),
+    }
+  );
+  writeFileSync(storePath, JSON.stringify(malformedStore));
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: 1052,
+      repo: 'owner/repo',
+      projectionId: sharedRowProjection,
+      subOperationIds: [sharedFirst, sharedSecond],
+    }),
+    {
+      reconciled: false,
+      projectionName: 'timing',
+      projectionId: sharedRowProjection,
+      missingSubOperationIds: [sharedFirst, sharedSecond],
+    }
+  );
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: 1053,
+      repo: 'owner/repo',
+      projectionId: duplicateProjection,
+      subOperationIds: [duplicateSubOperation],
+    }),
+    {
+      reconciled: false,
+      projectionName: 'timing',
+      projectionId: duplicateProjection,
+      missingSubOperationIds: [],
+      duplicateSubOperationIds: [duplicateSubOperation],
+    }
   );
 
   // Queueing preserves the exact prebuilt row and both identities. Queue
