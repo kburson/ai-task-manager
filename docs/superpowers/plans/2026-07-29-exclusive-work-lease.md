@@ -402,7 +402,13 @@ real Git worktree directory. Raw display text never participates in uniqueness.
       idempotency key; require callbacks to read back that identity and return a
       matching positive reconciliation proof before marking completion.
       Validate persisted request, trusted holder, authority project, receipt,
-      and all four projection identities before any projection callback. Persist
+      and all four projection identities before any projection callback. For
+      process-restart recovery, correlate the trusted holder by stable logical
+      identity (provider, run, session, host, worktree, path, and branch), not
+      PID, while replaying the original persisted acquire request byte-for-byte
+      and validating its receipt against that original holder. Build a
+      post-acquire release request from the validated receipt's `acquiredAt` so
+      release chronology and retry identity remain stable. Persist
       neither bearer credentials nor token environment names in the intent or
       receipt. Persist session
       `lease: { projectId, leaseId, fencingToken, worktreeId }`, preserve it

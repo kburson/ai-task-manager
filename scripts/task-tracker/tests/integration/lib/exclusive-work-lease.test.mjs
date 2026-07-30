@@ -336,6 +336,94 @@ test('persisted acquire replays authority before current eligibility and validat
   }
 });
 
+test('response-lost acquire replays the original PID request after process restart', async () => {
+  const dir = sandbox();
+  try {
+    const acquireRequests = [];
+    let acquireAttempts = 0;
+    const store = {
+      projectId: 'project-1',
+      async acquire(request) {
+        acquireRequests.push(structuredClone(request));
+        acquireAttempts += 1;
+        if (acquireAttempts === 1) {
+          throw new WorkLeaseError('authority-unavailable', 'response lost');
+        }
+        return LEASE;
+      },
+    };
+    const first = options(dir, {
+      getStore: async () => store,
+      readEligibility: async () => ({ ok: true, claimRequired: false }),
+    });
+    await assert.rejects(() => coordinateWorkLeaseAcquire(first.input), /response lost/);
+
+    const restarted = options(dir, {
+      pid: 456,
+      getStore: async () => store,
+      readEligibility: async () => ({ ok: true, claimRequired: false }),
+    });
+    await coordinateWorkLeaseAcquire(restarted.input);
+
+    assert.equal(acquireRequests.length, 2);
+    assert.deepEqual(acquireRequests[1], acquireRequests[0]);
+    assert.equal(acquireRequests[1].holder.pid, 123);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('response-lost acquire refuses changed logical holder identity before authority replay', async () => {
+  const dir = sandbox();
+  try {
+    const first = options(dir, {
+      getStore: async () => ({
+        projectId: 'project-1',
+        async acquire() {
+          throw new WorkLeaseError('authority-unavailable', 'response lost');
+        },
+      }),
+      readEligibility: async () => ({ ok: true, claimRequired: false }),
+    });
+    await assert.rejects(() => coordinateWorkLeaseAcquire(first.input), /response lost/);
+
+    let authorityCalls = 0;
+    const changedHolders = [
+      { provider: 'claude' },
+      { agentRunId: 'run-2' },
+      { hostId: 'host-2' },
+      { branch: 'codex/other-branch' },
+      {
+        resolveWorktreeIdentity: async () => ({
+          ...WORKTREE,
+          worktreeId: 'wt:v1:worktree-2',
+        }),
+      },
+      {
+        sessionId: 'session-2',
+        loadSession: async () => getActiveTask('session-1', dir),
+      },
+    ];
+    for (const changedHolder of changedHolders) {
+      const retry = options(dir, {
+        ...changedHolder,
+        getStore: async () => ({
+          projectId: 'project-1',
+          async acquire() {
+            authorityCalls += 1;
+            return LEASE;
+          },
+        }),
+        readEligibility: async () => assert.fail('eligibility must follow validated replay'),
+      });
+      await assert.rejects(() => coordinateWorkLeaseAcquire(retry.input), /holder/);
+    }
+    assert.equal(authorityCalls, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('fresh bind validates deferred claim callback before acquiring', async () => {
   const dir = sandbox();
   try {
@@ -689,12 +777,18 @@ test('response-lost release replays byte-identical request then restores the dur
   try {
     setActiveTask('session-1', { issue: '#1049', wordsAtStart: 29 }, dir);
     const before = readFileSync(activeTaskPath('session-1', dir));
+    const lateLease = {
+      ...LEASE,
+      acquiredAt: '2026-07-30T12:00:05.000Z',
+      heartbeatAt: '2026-07-30T12:00:05.000Z',
+      expiresAt: '2026-07-30T12:15:05.000Z',
+    };
     const releaseRequests = [];
     let releaseAttempts = 0;
     const store = {
       projectId: 'project-1',
       async acquire() {
-        return LEASE;
+        return lateLease;
       },
       async release(request) {
         releaseRequests.push(structuredClone(request));
@@ -718,6 +812,8 @@ test('response-lost release replays byte-identical request then restores the dur
     await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /release response lost/);
     assert.ok(getActiveTask('session-1', dir).workLeaseIntent.receipt);
     await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /assignee changed/);
+    assert.equal(releaseRequests[0].releasedAt, lateLease.acquiredAt);
+    assert.ok(releaseRequests[0].releasedAt >= lateLease.acquiredAt);
     assert.deepEqual(releaseRequests[1], releaseRequests[0]);
     assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), before);
   } finally {

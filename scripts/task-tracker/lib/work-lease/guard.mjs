@@ -42,6 +42,16 @@ const TERMINAL_ACQUIRE_CODES = new Set([
   'lease-not-held',
   'main-worktree-unresolved',
 ]);
+const STABLE_HOLDER_FIELDS = [
+  'principalKind',
+  'provider',
+  'agentRunId',
+  'sessionId',
+  'hostId',
+  'worktreeId',
+  'pathHash',
+  'branch',
+];
 
 function leaseError(code, message, details) {
   return new WorkLeaseError(code, message, details);
@@ -291,6 +301,10 @@ function sameDurableJson(left, right) {
   return canonicalRequestJson(left) === canonicalRequestJson(right);
 }
 
+function stableHolderIdentity(holder) {
+  return Object.fromEntries(STABLE_HOLDER_FIELDS.map((field) => [field, holder?.[field]]));
+}
+
 function validateAcquireIntentCorrelation({ intent, holder, issueId, store }) {
   if (intent?.operation !== 'acquire') {
     throw leaseError('invalid-request', 'persisted work-lease intent operation must be acquire');
@@ -312,7 +326,7 @@ function validateAcquireIntentCorrelation({ intent, holder, issueId, store }) {
   if (request.issueId !== issueId || request.mode !== 'write') {
     throw leaseError('invalid-request', 'persisted acquire target does not match current bind');
   }
-  if (!sameDurableJson(request.holder, holder)) {
+  if (!sameDurableJson(stableHolderIdentity(request.holder), stableHolderIdentity(holder))) {
     throw leaseError('invalid-request', 'persisted acquire holder does not match trusted holder');
   }
   return request;
@@ -357,16 +371,16 @@ function validateAcquireReceipt(receipt, request) {
   if (heartbeatAt < acquiredAt || expiresAt <= heartbeatAt) {
     throw leaseError('invalid-request', 'acquire receipt timestamps are inconsistent');
   }
-  return durableLease;
+  return { durableLease, acquiredAt: lease.acquiredAt };
 }
 
-function releaseAfterClaimRequest(lease, request) {
+function releaseAfterClaimRequest(lease, request, acquiredAt) {
   return {
     projectId: lease.projectId,
     leaseId: lease.leaseId,
     fencingToken: lease.fencingToken,
     idempotencyKey: `release-after-claim:${request.idempotencyKey}`,
-    releasedAt: request.requestedAt,
+    releasedAt: acquiredAt,
     reason: 'assignee-changed-after-acquire',
   };
 }
@@ -543,14 +557,14 @@ export async function coordinateWorkLeaseAcquire({
     store,
   });
   receipt = intent.receipt;
-  const durableLease = validateAcquireReceipt(receipt, request);
+  const { durableLease, acquiredAt } = validateAcquireReceipt(receipt, request);
 
   const rejectGrantedLease = async ({ code, message, cause }) => {
     try {
       if (typeof store.release !== 'function') {
         throw leaseError('authority-unavailable', 'work-lease release operation is required');
       }
-      await store.release(releaseAfterClaimRequest(durableLease, request));
+      await store.release(releaseAfterClaimRequest(durableLease, request, acquiredAt));
     } catch (releaseError) {
       throw stableError(
         releaseError,
