@@ -336,6 +336,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/issue-mutator-lock.mjs`
 - Modify: `scripts/task-tracker/lib/runtime-capabilities.mjs`
 - Modify: `scripts/task-tracker/runtime.mjs`
+- Modify: `scripts/task-tracker/gh-timing-comment.mjs`
+- Modify: `scripts/task-tracker/queue.mjs`
 - Modify: `scripts/task-tracker/task-tracker.mjs`
 - Modify: `scripts/task-tracker/bash-guard.mjs`
 - Modify: `scripts/task-tracker/lib/gh-edit-guard.mjs`
@@ -354,6 +356,10 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/tests/unit/lib/session-state.test.mjs`
 - Create:
   `scripts/task-tracker/tests/unit/lib/work-lease-session-state.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/lib/work-lease-timing-projection.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/fixtures/state-engine-policy-baseline.mjs`
 
 - [ ] Add failing tests proving acquisition precedes bind effects, loser has no
       assignee-claim/queue/timing/session/GitHub/fleet mutation, child process

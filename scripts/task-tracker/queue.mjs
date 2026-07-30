@@ -34,6 +34,44 @@ export function enqueue(event, queuePath) {
   write(items, queuePath);
 }
 
+function requiredProjectionString(value, label) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new TypeError(`${label} must be a non-empty string`);
+  }
+  return value;
+}
+
+// #1049 — durable timing-projection queue envelope. The exact prebuilt row and
+// both stable identities survive a network failure unchanged. Queueing is not a
+// positive remote reconciliation proof; the caller must deliver the event and
+// use gh-timing-comment.mjs::readTimingProjection before marking completion.
+export function enqueueTimingProjection(
+  { issue, row, projectionId, subOperationId } = {},
+  queuePath
+) {
+  const stableProjectionId = requiredProjectionString(projectionId, 'timing projectionId');
+  const stableSubOperationId = requiredProjectionString(subOperationId, 'timing subOperationId');
+  if (typeof row !== 'string' || row === '') {
+    throw new TypeError('timing projection row must be a non-empty string');
+  }
+  enqueue(
+    {
+      kind: 'timing',
+      issue,
+      row,
+      projectionId: stableProjectionId,
+      subOperationId: stableSubOperationId,
+    },
+    queuePath
+  );
+  return {
+    ok: false,
+    queued: true,
+    projectionId: stableProjectionId,
+    subOperationId: stableSubOperationId,
+  };
+}
+
 export async function drain(handler, queuePath) {
   const items = read(queuePath);
   const failed = [];

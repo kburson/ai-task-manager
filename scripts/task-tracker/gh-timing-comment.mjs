@@ -11,6 +11,7 @@ import {
   isTableTimingTimestamp,
   parseTimingRow,
   replaceTimingRowCell,
+  splitTimingRowMarker,
 } from './lib/timing-row-reader.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
@@ -34,6 +35,7 @@ export class DuplicateStartError extends Error {
 }
 
 const TIMING_HEADING = '⏱ Timing Log';
+const TIMING_PROJECTION_NAME = 'timing';
 
 // #475 AC3 — column legend. Documents that a `0` in the Δ Words column on a
 // lifecycle/audit row is CORRECT, not a defect: Δ Words is the per-segment word
@@ -347,6 +349,42 @@ function rowTs(row) {
   return parseTimingRow(String(row))?.ts ?? '';
 }
 
+function requiredProjectionString(value, label) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new TypeError(`${label} must be a non-empty string`);
+  }
+  return value;
+}
+
+function normalizeTimingProjection(projectionId, subOperationId) {
+  if (projectionId === undefined && subOperationId === undefined) return null;
+  return {
+    projectionId: requiredProjectionString(projectionId, 'timing projectionId'),
+    subOperationId: requiredProjectionString(subOperationId, 'timing subOperationId'),
+  };
+}
+
+export function timingProjectionMarker({ projectionId, subOperationId } = {}) {
+  const projection = normalizeTimingProjection(projectionId, subOperationId);
+  if (!projection) {
+    throw new TypeError('timing projection identity is required');
+  }
+  // Identities can contain provider/session text. Encode the UTF-8 bytes into
+  // the HTML-comment-safe base64url alphabet so a caller cannot inject quotes,
+  // newlines, or a `-->` terminator into the durable marker.
+  return serializeMarker('work-lease-projection', {
+    'projection-id-b64': Buffer.from(projection.projectionId, 'utf8').toString('base64url'),
+    'sub-operation-id-b64': Buffer.from(projection.subOperationId, 'utf8').toString('base64url'),
+  });
+}
+
+function rowWithProjectionMarker(row, projection) {
+  if (!projection) return row;
+  const { core, marker } = splitTimingRowMarker(String(row).replace(/\s+$/, ''));
+  const receipt = timingProjectionMarker(projection);
+  return marker ? `${core} ${receipt}${marker}` : `${core} ${receipt}`;
+}
+
 // #821 — rewrite ONLY the Timestamp cell (the 1st pipe-delimited field),
 // preserving every other cell and the trailing marker byte-for-byte.
 function rewriteTsCell(row, nextTs) {
@@ -361,7 +399,12 @@ function rewriteTsCell(row, nextTs) {
 //   • no open interruption → loud refusal via DuplicateStartError (AC3).
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
-function appendRow(body, row) {
+function appendRow(body, row, { projectionMarker } = {}) {
+  // #1049 — an exact projection receipt is stronger than event-shape policy.
+  // Check it before duplicate-start and redundant-departure handling so a retry
+  // after remote success is a byte-preserving no-op for every event kind.
+  if (projectionMarker && body.includes(projectionMarker)) return body;
+
   let effectiveRow = row;
   if (rowEventSlug(row) === 'start' && timingCommentHasRows(body)) {
     if (lastOpenInterruption(body)) {
@@ -433,8 +476,12 @@ async function ghExec(args, { timeoutMs = 2000 } = {}) {
   return stdout;
 }
 
+export function normalizeTimingIssueNumber(issueNumber) {
+  return String(issueNumber ?? '').replace(/^#/, '');
+}
+
 export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
-  const num = issueNumber.replace('#', '');
+  const num = normalizeTimingIssueNumber(issueNumber);
   const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
   const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
@@ -442,7 +489,7 @@ export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
 }
 
 async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
-  const num = issueNumber.replace('#', '');
+  const num = normalizeTimingIssueNumber(issueNumber);
   const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
   return out.trim(); // URL of new comment
 }
@@ -476,20 +523,38 @@ export async function postTimingEvent({
   issueNumber,
   repo,
   row,
+  projectionId,
+  subOperationId,
   timeoutMs = 2000,
   retries = 2,
   lock = true,
   projDir,
 } = {}) {
+  const projection = normalizeTimingProjection(projectionId, subOperationId);
+  const projectionMarker = projection ? timingProjectionMarker(projection) : null;
+  const durableRow = rowWithProjectionMarker(row, projection);
   const work = async () => {
     const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
     if (existing) {
-      const updated = appendRow(existing.body, row);
+      if (projectionMarker && existing.body.includes(projectionMarker)) {
+        return {
+          status: 'already-reconciled',
+          projectionId: projection.projectionId,
+          subOperationId: projection.subOperationId,
+        };
+      }
+      const updated = appendRow(existing.body, durableRow, { projectionMarker });
       await updateTimingComment(existing.id, repo, updated, { timeoutMs });
     } else {
-      const initial = appendRow(buildInitialComment(), row);
+      const initial = appendRow(buildInitialComment(), durableRow, { projectionMarker });
       await createTimingComment(issueNumber, repo, initial, { timeoutMs });
     }
+    if (!projection) return undefined;
+    return {
+      status: 'posted',
+      projectionId: projection.projectionId,
+      subOperationId: projection.subOperationId,
+    };
   };
   if (!lock) {
     return work();
@@ -533,6 +598,65 @@ export function bodyOf(result) {
   if (result == null) return '';
   if (typeof result === 'string') return result;
   return result.body ?? '';
+}
+
+export async function readTimingProjection({
+  issueNumber,
+  repo,
+  projectionId,
+  subOperationIds,
+  timeoutMs = 2000,
+  deps = {},
+} = {}) {
+  const stableProjectionId = requiredProjectionString(projectionId, 'timing projectionId');
+  if (!Array.isArray(subOperationIds) || subOperationIds.length === 0) {
+    throw new TypeError('timing subOperationIds must be a non-empty array');
+  }
+  const stableSubOperationIds = subOperationIds.map((id) =>
+    requiredProjectionString(id, 'timing subOperationId')
+  );
+  if (new Set(stableSubOperationIds).size !== stableSubOperationIds.length) {
+    throw new TypeError('timing subOperationIds must be unique');
+  }
+  const read = deps.readTimingCommentBody || readTimingCommentBody;
+  const result = await read({ issueNumber, repo, timeoutMs, deps });
+  const body = bodyOf(result);
+  const markers = stableSubOperationIds.map((subOperationId) =>
+    timingProjectionMarker({
+      projectionId: stableProjectionId,
+      subOperationId,
+    })
+  );
+  const missingSubOperationIds = stableSubOperationIds.filter(
+    (_subOperationId, index) => !body.includes(markers[index])
+  );
+  if (missingSubOperationIds.length > 0) {
+    return {
+      reconciled: false,
+      projectionName: TIMING_PROJECTION_NAME,
+      projectionId: stableProjectionId,
+      missingSubOperationIds,
+    };
+  }
+  let priorIndex = -1;
+  for (const marker of markers) {
+    const markerIndex = body.indexOf(marker);
+    if (markerIndex <= priorIndex) {
+      return {
+        reconciled: false,
+        projectionName: TIMING_PROJECTION_NAME,
+        projectionId: stableProjectionId,
+        missingSubOperationIds: [],
+        outOfOrder: true,
+      };
+    }
+    priorIndex = markerIndex;
+  }
+  return {
+    reconciled: true,
+    projectionName: TIMING_PROJECTION_NAME,
+    projectionId: stableProjectionId,
+  };
 }
 
 // Internal symbols — exported under a dedicated namespace strictly so the
