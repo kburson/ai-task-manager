@@ -52,6 +52,7 @@ test('packed root and ledger install and initialize without workspace links', ()
       'package.json',
       'src/index.mjs',
       'src/lease/errors.mjs',
+      'src/lease/http-contract.mjs',
       'src/lease/port.mjs',
       'src/lease/schema.mjs',
       'src/sqlite/migrations/001-leases.mjs',
@@ -70,6 +71,8 @@ test('packed root and ledger install and initialize without workspace links', ()
       'bin/cli.mjs',
       'bin/lib/stamp-skill-version.mjs',
       'scripts/task-tracker/lib/write-if-changed.mjs',
+      'scripts/task-tracker/lib/work-lease/http-store.mjs',
+      'scripts/task-tracker/lib/work-lease/provider.mjs',
     ]) {
       assert.ok(root.files.has(required), `root tarball is missing ${required}`);
     }

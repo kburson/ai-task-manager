@@ -99,6 +99,7 @@ test('ledger dry-run pack contains runtime only and root pack keeps the workspac
     'package.json',
     'src/index.mjs',
     'src/lease/errors.mjs',
+    'src/lease/http-contract.mjs',
     'src/lease/port.mjs',
     'src/lease/schema.mjs',
     'src/sqlite/migrations/001-leases.mjs',
@@ -114,8 +115,14 @@ test('ledger dry-run pack contains runtime only and root pack keeps the workspac
   );
 
   const rootFiles = packedFiles([]);
-  assert.ok(rootFiles.has('bin/cli.mjs'), 'root pack must retain the installer CLI');
-  assert.ok(rootFiles.has('package.json'), 'root pack must retain its manifest');
+  for (const required of [
+    'bin/cli.mjs',
+    'package.json',
+    'scripts/task-tracker/lib/work-lease/http-store.mjs',
+    'scripts/task-tracker/lib/work-lease/provider.mjs',
+  ]) {
+    assert.ok(rootFiles.has(required), `root pack is missing ${required}`);
+  }
   assert.equal(
     [...rootFiles].some((path) => path.startsWith('packages/aitm-ledger/')),
     false,
