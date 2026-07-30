@@ -4,14 +4,38 @@ import path from 'node:path';
 
 import { WorkLeaseError } from '@kburson/aitm-ledger';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function readConfig(configPath) {
   if (!existsSync(configPath)) return {};
+  let parsed;
   try {
-    const parsed = JSON.parse(readFileSync(configPath, 'utf8'));
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
+    parsed = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch (error) {
+    throw new WorkLeaseError('invalid-request', 'task-tracker config is not valid JSON', {
+      configPath,
+      cause: error?.message,
+    });
   }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new WorkLeaseError('invalid-request', 'task-tracker config must be a JSON object', {
+      configPath,
+    });
+  }
+  return parsed;
+}
+
+function assertLedgerProjectId(value, githubProjectId) {
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value)) {
+    throw new WorkLeaseError('invalid-request', 'ledger project identity must be a UUID');
+  }
+  if (typeof githubProjectId === 'string' && githubProjectId !== '' && value === githubProjectId) {
+    throw new WorkLeaseError(
+      'invalid-request',
+      'ledger project identity must differ from the GitHub Projects identity'
+    );
+  }
+  return value;
 }
 
 function atomicWriteConfig(configPath, config) {
@@ -59,10 +83,7 @@ export function ensureLedgerProjectIdentity({
         { configLedgerProjectId: configId, databaseLedgerProjectId: databaseId }
       );
     }
-    winner = databaseId || configId || uuid();
-    if (typeof winner !== 'string' || winner.trim() === '') {
-      throw new WorkLeaseError('invalid-request', 'ledger project identity must be non-empty');
-    }
+    winner = assertLedgerProjectId(databaseId || configId || uuid(), config.projectId);
     if (!databaseId) {
       db.prepare(
         `INSERT INTO ledger_metadata(key, value, updated_at)

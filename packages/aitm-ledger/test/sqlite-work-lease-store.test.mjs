@@ -233,3 +233,39 @@ test('paused leases retain both unique constraints and live holders resist takeo
   );
   store.close();
 });
+
+test('takeover fails closed when liveness authority is unavailable', () => {
+  const store = new SqliteWorkLeaseStore({
+    db: openProjectDatabase({ databasePath: ':memory:' }),
+  });
+  const lease = store.acquire(acquire());
+  assert.throws(
+    () =>
+      store.takeover({
+        projectId: 'project-1',
+        issueId: '1049',
+        expectedLeaseId: lease.leaseId,
+        expectedToken: lease.fencingToken,
+        idempotencyKey: 'unverified-expiry',
+        observedAt: '2026-07-30T12:30:00.000Z',
+        reason: 'TTL elapsed',
+        requester: holder({
+          agentRunId: 'run-2',
+          sessionId: 'session-2',
+          worktreeId: 'wt:v1:two',
+          pathHash: 'path-two',
+          pid: 456,
+        }),
+        evidence: {
+          kind: 'remote-expired',
+          hostId: 'host-1',
+          pid: 123,
+          checkedAt: '2026-07-30T12:30:00.000Z',
+          detailsHash: 'expiry-only',
+        },
+      }),
+    (error) => error.code === 'authority-unavailable'
+  );
+  assert.equal(store.observe({ projectId: 'project-1', issueId: '1049' }).leaseId, lease.leaseId);
+  store.close();
+});

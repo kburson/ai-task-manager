@@ -109,3 +109,62 @@ test('equal identities converge across connections and mismatch fails closed', (
     rmSync(box.root, { recursive: true, force: true });
   }
 });
+
+test('malformed config fails closed without destructive replacement', () => {
+  const box = sandbox();
+  try {
+    mkdirSync(path.dirname(box.configPath), { recursive: true });
+    writeFileSync(box.configPath, '{ malformed');
+    const db = openProjectDatabase({ databasePath: box.dbPath });
+    assert.throws(
+      () =>
+        ensureLedgerProjectIdentity({
+          db,
+          configPath: box.configPath,
+          uuid: () => '55555555-5555-4555-8555-555555555555',
+        }),
+      (error) => error.code === 'invalid-request'
+    );
+    assert.equal(readFileSync(box.configPath, 'utf8'), '{ malformed');
+    assert.equal(metadataId(db), undefined);
+    db.close();
+  } finally {
+    rmSync(box.root, { recursive: true, force: true });
+  }
+});
+
+test('ledger identity must be a UUID distinct from the GitHub Projects identity', () => {
+  const box = sandbox();
+  try {
+    mkdirSync(path.dirname(box.configPath), { recursive: true });
+    writeFileSync(
+      box.configPath,
+      JSON.stringify({
+        projectId: 'PVT_GITHUB_PROJECT',
+        ledgerProjectId: 'PVT_GITHUB_PROJECT',
+      })
+    );
+    const db = openProjectDatabase({ databasePath: box.dbPath });
+    assert.throws(
+      () => ensureLedgerProjectIdentity({ db, configPath: box.configPath }),
+      (error) => error.code === 'invalid-request'
+    );
+    assert.equal(metadataId(db), undefined);
+
+    writeFileSync(
+      box.configPath,
+      JSON.stringify({
+        projectId: 'PVT_GITHUB_PROJECT',
+        ledgerProjectId: 'not-a-uuid',
+      })
+    );
+    assert.throws(
+      () => ensureLedgerProjectIdentity({ db, configPath: box.configPath }),
+      (error) => error.code === 'invalid-request'
+    );
+    assert.equal(metadataId(db), undefined);
+    db.close();
+  } finally {
+    rmSync(box.root, { recursive: true, force: true });
+  }
+});

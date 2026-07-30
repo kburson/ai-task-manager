@@ -80,7 +80,7 @@ function rowToLease(row) {
 }
 
 export class SqliteWorkLeaseStore extends WorkLeaseStore {
-  constructor({ db, isHolderLive = () => false, uuid = randomUUID, now = () => new Date() } = {}) {
+  constructor({ db, isHolderLive = () => null, uuid = randomUUID, now = () => new Date() } = {}) {
     super();
     if (!db) throw new WorkLeaseError('invalid-request', 'db is required');
     this.db = db;
@@ -601,7 +601,8 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
           currentToken: observed.fencingToken,
         });
       }
-      if (this.isHolderLive(observed.holder, request.evidence) === true) {
+      const holderLiveness = this.isHolderLive(observed.holder, request.evidence);
+      if (holderLiveness === true) {
         throw new WorkLeaseError('holder-live', 'live holder cannot be displaced', {
           leaseId: observed.leaseId,
           holder: observed.holder,
@@ -622,6 +623,13 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         Date.parse(observed.expiresAt) > Date.parse(request.observedAt)
       ) {
         throw new WorkLeaseError('invalid-request', 'remote-expired evidence predates expiry');
+      }
+      if (request.evidence.kind !== 'operator-attestation' && holderLiveness !== false) {
+        throw new WorkLeaseError(
+          'authority-unavailable',
+          'holder liveness could not be authoritatively disproved',
+          { leaseId: observed.leaseId, evidenceKind: request.evidence.kind }
+        );
       }
       this.#assertAvailable(
         request.projectId,
