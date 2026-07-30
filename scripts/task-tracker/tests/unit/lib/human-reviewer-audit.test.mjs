@@ -188,6 +188,8 @@ test('current Full-Auto provenance overrides a human-gate call-site hint', async
   assert.equal(result.mode, 'full-auto');
   assert.equal(rec.writes.length, 0);
   assert.equal(rec.comments.length, 1);
+  assert.match(rec.comments[0], /persisted Full-Auto review authority/i);
+  assert.doesNotMatch(rec.comments[0], /without a `TASK_TRACKER_HUMAN_REVIEWER` signal/);
 });
 
 test('explicit review authority takes precedence over legacy reviewer environment detection', async () => {

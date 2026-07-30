@@ -2,7 +2,11 @@ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
-import { parseDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
+import {
+  parseDodVerifiedMarker,
+  parseTestStartedMarker,
+  stripFencedCodeBlocks,
+} from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
@@ -268,8 +272,9 @@ export function buildReviewFailureBody(body, failures, ts) {
 // persisted as green DoD evidence. This deliberately never reads ambient HEAD:
 // authority is the pair of durable Test markers, not the current checkout.
 export function validatePersistedTestEvidence(body) {
-  const testStarted = parseTestStartedMarker(body);
-  const dodVerified = parseDodVerifiedMarker(body);
+  const authorityBody = stripFencedCodeBlocks(body);
+  const testStarted = parseTestStartedMarker(authorityBody);
+  const dodVerified = parseDodVerifiedMarker(authorityBody);
   if (!testStarted?.sha || !dodVerified?.sha) {
     return { ok: false, reason: 'test-evidence-missing' };
   }
@@ -288,9 +293,10 @@ export function validatePersistedTestEvidence(body) {
 // and validator context, so this is deliberately called immediately before the
 // passing stamp rather than reusing any earlier validation result.
 export function prepareAgentReviewPassStamp({ body, ts, validators = [] } = {}) {
-  const evidence = validatePersistedTestEvidence(body);
+  const authorityBody = stripFencedCodeBlocks(body);
+  const evidence = validatePersistedTestEvidence(authorityBody);
   if (!evidence.ok) return { ...evidence, status: 'review-failed' };
-  const reviewEntry = latestStageEntry(body, 'review');
+  const reviewEntry = latestStageEntry(authorityBody, 'review');
   if (!reviewEntry?.ts) {
     return { ok: false, reason: 'review-epoch-missing', status: 'review-failed' };
   }
@@ -379,6 +385,7 @@ export async function emitReviewGateFailureTimeline({
   failures,
   failedBody,
   buildFailedBody = () => failedBody,
+  prepareFailedBody,
   ts,
   delta,
   wordMarker,
@@ -392,13 +399,21 @@ export async function emitReviewGateFailureTimeline({
     ghApiTimeoutMs = GH_API_TIMEOUT_MS,
     logError = (m) => console.error(m),
   } = deps;
-  const objectionSummary = `agent review failed — ${failures.length} objection(s)`;
+  let prepared = {
+    body: failedBody,
+    failures: Array.isArray(failures) ? failures : [],
+  };
   // (1) stamp the aitm-review-failed marker.
   try {
     await mutateBodyFn({
       issueNumber: issueNum,
       repo,
-      mutate: (base) => buildFailedBody(base),
+      mutate: (base) => {
+        prepared = prepareFailedBody
+          ? prepareFailedBody(base)
+          : { body: buildFailedBody(base), failures: prepared.failures };
+        return prepared.body;
+      },
       timeout: ghApiTimeoutMs,
       deps: { pexec },
       allowUnverifiedTicks: true,
@@ -407,6 +422,9 @@ export async function emitReviewGateFailureTimeline({
     logError(`[task-tracker] failed to stamp aitm-review-failed: ${e.message}`);
     throw e;
   }
+  if (prepared.failures.length === 0) return { status: 'superseded', failures: [] };
+
+  const objectionSummary = `agent review failed — ${prepared.failures.length} objection(s)`;
   // (2) the review outcome row itself.
   await safePostTiming(
     target,
@@ -421,6 +439,7 @@ export async function emitReviewGateFailureTimeline({
       description: `${objectionSummary}, staying in Review`,
     })
   );
+  return { status: 'failed', failures: prepared.failures };
 }
 
 // #904 — the PASS-path counterpart to `emitReviewGateFailureTimeline`. The fail
@@ -1031,15 +1050,16 @@ export async function verbReview(ctx) {
         // `review:approved`.
         const _tsRF = nowIso();
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
-        await emitReviewGateFailureTimeline({
+        const failureResult = await emitReviewGateFailureTimeline({
           target,
           issueNum,
           repo: cfg.repo,
           failures,
-          buildFailedBody: (freshBase) => {
+          prepareFailedBody: (freshBase) => {
             // Preserve the Agent Review normalizer without replaying a stale
             // snapshot over concurrent edits. Validators are pure, so rerun on
-            // the writer's base and adopt only its own normalized output.
+            // the writer's base and adopt its verdict, objections, and
+            // normalized output as one authoritative result.
             const freshGate = runAgentReviewGate({
               body: freshBase,
               issueNumber: Number(issueNum),
@@ -1047,13 +1067,28 @@ export async function verbReview(ctx) {
               comments,
               changedPaths,
             });
-            return buildReviewFailureBody(freshGate.normalizedBody ?? freshBase, failures, _tsRF);
+            if (freshGate.pass) return { body: freshBase, failures: [] };
+            return {
+              body: buildReviewFailureBody(
+                freshGate.normalizedBody ?? freshBase,
+                freshGate.failures,
+                _tsRF
+              ),
+              failures: freshGate.failures,
+            };
           },
           ts: _tsRF,
           delta: _dRF,
           wordMarker: s.lastWordMarker ?? 0,
           deps: { runMoveState, safePostTiming, mutateBodyFn, pexec },
         });
+        if (failureResult.status === 'superseded') {
+          process.stderr.write(
+            `\n⚠️ ${target} body changed while persisting Review failure; the fresh gate passed. Re-run \`/task review ${target}\` to record the passing result.\n\n`
+          );
+          process.exit(3);
+        }
+        failures = failureResult.failures;
         process.stderr.write('\n');
         process.stderr.write(
           `⛔ Agent Review Gate failed for ${target} — ${failures.length} objection(s):\n`

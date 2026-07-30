@@ -89,8 +89,39 @@ export function stripFencedCodeBlocks(body) {
   return transformFencedCodeBlocks(body, () => '');
 }
 
-function maskFencedCodeBlocksPreservingOffsets(body) {
+export function maskFencedCodeBlocksPreservingOffsets(body) {
   return transformFencedCodeBlocks(body, (block) => block.replace(/[^\r\n]/g, ' '));
+}
+
+function replaceUnfencedMatches(body, pattern, replacement) {
+  const src = String(body || '');
+  const masked = maskFencedCodeBlocksPreservingOffsets(src);
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const matches = [...masked.matchAll(new RegExp(pattern.source, flags))];
+  if (matches.length === 0) return src;
+
+  let cursor = 0;
+  let result = '';
+  for (const match of matches) {
+    result += src.slice(cursor, match.index);
+    const original = src.slice(match.index, match.index + match[0].length);
+    result += typeof replacement === 'function' ? replacement(original) : replacement;
+    cursor = match.index + match[0].length;
+  }
+  return result + src.slice(cursor);
+}
+
+export function collapseBlankRunsOutsideFencedCodeBlocks(body) {
+  const { src, ranges } = fencedCodeBlockRanges(body);
+  if (ranges.length === 0) return src.replace(/\n{3,}/g, '\n\n');
+  let cursor = 0;
+  let result = '';
+  for (const range of ranges) {
+    result += src.slice(cursor, range.start).replace(/\n{3,}/g, '\n\n');
+    result += src.slice(range.start, range.end);
+    cursor = range.end;
+  }
+  return result + src.slice(cursor).replace(/\n{3,}/g, '\n\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -317,7 +348,7 @@ export function hasFullAutoFootnote(body) {
   // `insertFullAutoFootnote` down the "replace existing" branch, which then
   // no-ops because the regex below can't match a single delimiter in prose.
   FULL_AUTO_FOOTNOTE_BLOCK_RE.lastIndex = 0;
-  return FULL_AUTO_FOOTNOTE_BLOCK_RE.test(body);
+  return FULL_AUTO_FOOTNOTE_BLOCK_RE.test(stripFencedCodeBlocks(body));
 }
 
 /**
@@ -332,30 +363,33 @@ export function insertFullAutoFootnote(body, { ts, signals } = {}) {
   const src = typeof body === 'string' ? body : '';
   const block = buildFullAutoFootnoteBlock({ ts, signals });
   if (hasFullAutoFootnote(src)) {
-    return src.replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, `${block}\n`).replace(/\n{3,}/g, '\n\n');
+    return collapseBlankRunsOutsideFencedCodeBlocks(
+      replaceUnfencedMatches(src, FULL_AUTO_FOOTNOTE_BLOCK_RE, `${block}\n`)
+    );
   }
 
   const lines = src.split('\n');
+  const scanLines = maskFencedCodeBlocksPreservingOffsets(src).split('\n');
 
   // Anchor 1 — Lifecycle subsection. Find `#### Lifecycle` heading; insert
   // after the last checklist line under it.
-  const lifeIdx = lines.findIndex((l) => /^#{3,4}\s+Lifecycle\b/i.test(l));
+  const lifeIdx = scanLines.findIndex((l) => /^#{3,4}\s+Lifecycle\b/i.test(l));
   if (lifeIdx !== -1) {
     let last = lifeIdx;
-    for (let i = lifeIdx + 1; i < lines.length; i++) {
-      if (/^#{1,4}\s/.test(lines[i])) break;
-      if (/^\s*[-*]\s+\[[ xX]\]/.test(lines[i])) last = i;
+    for (let i = lifeIdx + 1; i < scanLines.length; i++) {
+      if (/^#{1,4}\s/.test(scanLines[i])) break;
+      if (/^\s*[-*]\s+\[[ xX]\]/.test(scanLines[i])) last = i;
     }
     lines.splice(last + 1, 0, '', block);
     return lines.join('\n');
   }
 
   // Anchor 2 — Definition of Done section.
-  const dodIdx = lines.findIndex((l) => /^#{2,3}\s+Definition of Done\b/i.test(l));
+  const dodIdx = scanLines.findIndex((l) => /^#{2,3}\s+Definition of Done\b/i.test(l));
   if (dodIdx !== -1) {
     let endIdx = lines.length;
-    for (let i = dodIdx + 1; i < lines.length; i++) {
-      if (/^#{1,4}\s/.test(lines[i])) {
+    for (let i = dodIdx + 1; i < scanLines.length; i++) {
+      if (/^#{1,4}\s/.test(scanLines[i])) {
         endIdx = i;
         break;
       }
@@ -371,9 +405,9 @@ export function insertFullAutoFootnote(body, { ts, signals } = {}) {
 
 export function removeFullAutoFootnote(body) {
   if (!hasFullAutoFootnote(body)) return body;
-  return String(body)
-    .replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, '')
-    .replace(/\n{3,}/g, '\n\n');
+  return collapseBlankRunsOutsideFencedCodeBlocks(
+    replaceUnfencedMatches(body, FULL_AUTO_FOOTNOTE_BLOCK_RE, '')
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -422,11 +456,11 @@ export function buildDodVerifiedMarker(sha, ts) {
 }
 
 export function hasDodVerifiedMarker(body) {
-  return DOD_VERIFIED_RE.test(String(body || ''));
+  return DOD_VERIFIED_RE.test(stripFencedCodeBlocks(body));
 }
 
 export function parseDodVerifiedMarker(body) {
-  const s = String(body || '');
+  const s = stripFencedCodeBlocks(body);
   const legacy = s.match(DOD_VERIFIED_LEGACY_RE);
   if (legacy) return { sha: legacy[1], ts: legacy[2] };
   const neu = s.match(DOD_VERIFIED_NEW_RE);
@@ -434,13 +468,17 @@ export function parseDodVerifiedMarker(body) {
   return null;
 }
 
+export function clearDodVerifiedMarker(body) {
+  return collapseBlankRunsOutsideFencedCodeBlocks(
+    replaceUnfencedMatches(body, DOD_VERIFIED_RE, '')
+  );
+}
+
 export function insertDodVerifiedMarker(body, sha, ts) {
   // Replace any existing marker so re-running /task test refreshes the SHA.
   // Without this, a stale marker survives forever and Test→Review re-runs
   // can't pick up a moved HEAD.
-  const stripped = String(body || '')
-    .replace(DOD_VERIFIED_RE, '')
-    .replace(/\n{3,}/g, '\n\n');
+  const stripped = clearDodVerifiedMarker(body);
   return insertMarkerBeforeFieldDb(stripped, buildDodVerifiedMarker(sha, ts), hasDodVerifiedMarker);
 }
 
@@ -471,11 +509,11 @@ export function buildTestStartedMarker(sha, ts) {
 }
 
 export function hasTestStartedMarker(body) {
-  return TEST_STARTED_RE.test(String(body || ''));
+  return TEST_STARTED_RE.test(stripFencedCodeBlocks(body));
 }
 
 export function parseTestStartedMarker(body) {
-  const s = String(body || '');
+  const s = stripFencedCodeBlocks(body);
   const legacy = s.match(TEST_STARTED_LEGACY_RE);
   if (legacy) return { sha: legacy[1], ts: legacy[2] };
   const neu = s.match(TEST_STARTED_NEW_RE);
@@ -487,9 +525,9 @@ export function insertTestStartedMarker(body, sha, ts) {
   // Replace any existing marker so re-running /task test refreshes the SHA.
   // Without this, a stale entry-SHA survives forever and a re-test against
   // a newer HEAD would always look "drifted" at Review preflight.
-  const stripped = String(body || '')
-    .replace(TEST_STARTED_RE, '')
-    .replace(/\n{3,}/g, '\n\n');
+  const stripped = collapseBlankRunsOutsideFencedCodeBlocks(
+    replaceUnfencedMatches(body, TEST_STARTED_RE, '')
+  );
   return insertMarkerBeforeFieldDb(stripped, buildTestStartedMarker(sha, ts), hasTestStartedMarker);
 }
 

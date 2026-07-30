@@ -404,3 +404,90 @@ console.log('approve.test.mjs: all passed');
   );
   assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
 }
+
+// #1050 — the pre-consolidation marker pair is one Full-Auto approval. When it
+// becomes stale, archive the truthful provenance/signals together and retire
+// the standalone companion instead of rewriting history as human.
+{
+  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
+  const staleLegacyFullAuto = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
+    '<!-- aitm-full-auto-approved: 2026-07-29T10:02:00Z:old-signal -->',
+    '<!-- aitm-full-auto-footnote:start -->',
+    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
+    '<!-- aitm-full-auto-footnote:end -->',
+    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
+    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({
+    initialBody: staleLegacyFullAuto,
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'must-not-survive' }) },
+  });
+
+  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+
+  assert.equal(r.status, 'approved');
+  assert.match(
+    getBody(),
+    /aitm-review-approval-history[^>]*provenance="full-auto"[^>]*signals="old-signal"/
+  );
+  assert.doesNotMatch(getBody(), /<!-- aitm-full-auto-approved/);
+  assert.match(
+    getBody(),
+    /aitm-review-approved[^>]*epoch="review:2:2026-07-29T11:00:00Z"[^>]*provenance="human"/
+  );
+}
+
+// #1050 — do not erase or misattribute an unpaired legacy Full-Auto marker.
+// It remains historical evidence while the independently human legacy approval
+// is archived and the current epoch receives explicit human authority.
+{
+  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
+  const unmatched = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
+    '<!-- aitm-full-auto-approved: 2026-07-29T10:03:00Z:orphan-signal -->',
+    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
+    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({ initialBody: unmatched });
+
+  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+
+  assert.equal(r.status, 'approved');
+  assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="human"/);
+  assert.match(getBody(), /<!-- aitm-full-auto-approved: 2026-07-29T10:03:00Z:orphan-signal -->/);
+}
+
+// #1050 — duplicate same-timestamp companions are ambiguous, not two reasons
+// to rewrite the legacy approval as human. Preserve the evidence and refuse
+// the replacement until an operator repairs the historical ambiguity.
+{
+  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
+  const ambiguous = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
+    '<!-- aitm-full-auto-approved: 2026-07-29T10:02:00Z:first-signal -->',
+    '<!-- aitm-full-auto-approved: 2026-07-29T10:02:00Z:second-signal -->',
+    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
+    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+  ].join('\n');
+  const { deps, calls, getBody } = makeDeps({ initialBody: ambiguous });
+
+  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+
+  assert.equal(r.status, 'agent-review-incomplete');
+  assert.equal(calls.writes.length, 0);
+  assert.equal((getBody().match(/aitm-full-auto-approved/g) || []).length, 2);
+  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->/);
+}

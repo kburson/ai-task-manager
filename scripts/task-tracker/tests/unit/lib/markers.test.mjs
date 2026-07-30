@@ -271,6 +271,72 @@ const TS = '2026-05-11T12:00:00Z';
   assert.equal((fromLegacy.match(/aitm-test-started /g) || []).length, 1);
 }
 
+// ── #1050: Test authority writers ignore fenced examples ───────────────────
+{
+  const {
+    insertDodVerifiedMarker,
+    insertTestStartedMarker,
+    parseDodVerifiedMarker,
+    parseTestStartedMarker,
+  } = await import('../../../lib/markers.mjs');
+  const fenced = [
+    '```md',
+    '<!-- aitm-test-started sha="dec0de1" ts="2026-07-29T09:00:00Z" -->',
+    '',
+    '',
+    '<!-- aitm-dod-verified sha="dec0de1" ts="2026-07-29T09:01:00Z" -->',
+    '```',
+  ].join('\n');
+  const body = [
+    fenced,
+    '<!-- aitm-test-started sha="aaa1111" ts="2026-07-29T10:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="aaa1111" ts="2026-07-29T10:01:00Z" -->',
+  ].join('\n');
+
+  const started = insertTestStartedMarker(body, 'bbb2222', '2026-07-29T11:00:00Z');
+  const refreshed = insertDodVerifiedMarker(started, 'bbb2222', '2026-07-29T11:01:00Z');
+
+  assert.ok(refreshed.includes(fenced), 'fenced examples remain byte-for-byte');
+  assert.deepEqual(parseTestStartedMarker(refreshed), {
+    sha: 'bbb2222',
+    ts: '2026-07-29T11:00:00Z',
+  });
+  assert.deepEqual(parseDodVerifiedMarker(refreshed), {
+    sha: 'bbb2222',
+    ts: '2026-07-29T11:01:00Z',
+  });
+  assert.equal((refreshed.match(/aitm-test-started/g) || []).length, 2);
+  assert.equal((refreshed.match(/aitm-dod-verified/g) || []).length, 2);
+}
+
+// ── #1050: visible Full-Auto context must be live, not fenced ──────────────
+{
+  const { hasFullAutoFootnote, insertFullAutoFootnote } = await import('../../../lib/markers.mjs');
+  const fenced = [
+    '```md',
+    '<!-- aitm-full-auto-footnote:start -->',
+    '> example only',
+    '<!-- aitm-full-auto-footnote:end -->',
+    '```',
+  ].join('\n');
+  const body = `${fenced}
+
+#### Lifecycle (auto-ticked at Review/Close)
+
+- [x] Passed final human review`;
+
+  assert.equal(hasFullAutoFootnote(body), false);
+  const stamped = insertFullAutoFootnote(body, {
+    ts: '2026-07-29T12:00:00Z',
+    signals: 'env=1',
+  });
+
+  assert.ok(stamped.includes(fenced), 'the fenced example is not rewritten');
+  assert.equal(hasFullAutoFootnote(stamped), true);
+  assert.equal((stamped.match(/aitm-full-auto-footnote:start/g) || []).length, 2);
+  assert.match(stamped, /Full-Auto mode enabled: human review skipped/);
+}
+
 // ── #333: phantom-marker hardening — fenced code blocks are stripped before
 //        body-wide marker detection runs. Verifies all three plan/review-gate
 //        detectors (`hasPlanApprovedMarker`, `hasReviewApprovedMarker`,

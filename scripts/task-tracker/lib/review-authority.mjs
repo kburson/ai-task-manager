@@ -244,9 +244,17 @@ export function parseReviewAuthority(body) {
   for (const { raw, index } of markers) {
     if (/^<!--\s*aitm-entered-develop(?:-\d+)?(?:\s|:|-->)/i.test(raw)) {
       const entries = parseEntryMarkers(raw).filter((entry) => entry.stage === 'develop');
-      if (entries.length === 1 && isReviewVisit(entries[0].visit) && isIsoDateTime(entries[0].ts)) {
-        developEntries.push({ ...entries[0], index });
+      if (entries.length !== 1) {
+        malformed.push({ raw, index, reason: 'invalid-develop-entry-marker' });
+        continue;
       }
+      const [entry] = entries;
+      if (!isReviewVisit(entry.visit) || !isIsoDateTime(entry.ts)) {
+        malformed.push({ raw, index, reason: 'invalid-develop-entry-marker' });
+        continue;
+      }
+      developEntries.push({ ...entry, index });
+      continue;
     }
     if (!/^<!--\s*aitm-entered-review(?:-\d+)?(?:\s|:|-->)/i.test(raw)) continue;
     const entries = parseEntryMarkers(raw).filter((entry) => entry.stage === 'review');

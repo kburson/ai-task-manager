@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validate } from './v6-marker-organization.mjs';
+import { removeFullAutoFootnote } from '../../markers.mjs';
 
 // Collect every standalone `aitm-*` marker's full text (order-independent) so a
 // test can assert set-equality before/after normalization.
@@ -210,6 +211,74 @@ test('an unterminated review-failed start keeps every following line opaque thro
     undefined,
     'the body-version marker must remain inside the opaque span'
   );
+});
+
+test('#1050 — a Full-Auto footnote remains an opaque removable block through normalization', () => {
+  const body = `## Definition of Done
+
+### Lifecycle (auto-ticked at Review/Close)
+
+- [x] Final Review Passed
+
+<!-- aitm-full-auto-footnote:start -->
+> ⚙️ **Full-Auto mode enabled: human review skipped.**
+> Approval was stamped by an autonomous agent (\`env=1\`) at 2026-07-29T10:02:00Z.
+> Hidden marker: \`aitm-review-approved full-auto="yes"\`.
+<!-- aitm-full-auto-footnote:end -->
+
+## AITM Progress Markers
+
+<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->`;
+
+  const result = validate({ body });
+  assert.equal(result.pass, true);
+  const normalized = result.normalized ?? body;
+  const removed = removeFullAutoFootnote(normalized);
+
+  assert.doesNotMatch(removed, /aitm-full-auto-footnote/);
+  assert.doesNotMatch(removed, /Full-Auto mode enabled: human review skipped/);
+  assert.doesNotMatch(removed, /Approval was stamped by an autonomous agent/);
+});
+
+test('#1050 — fenced authority examples remain byte-in-place and never become live markers', () => {
+  const fenced = [
+    '```md',
+    '<!-- aitm-entered-review-9 ts="2026-07-29T19:00:00Z" -->',
+    '<!-- aitm-test-started sha="dec0de1" ts="2026-07-29T19:01:00Z" -->',
+    '<!-- aitm-dod-verified sha="dec0de1" ts="2026-07-29T19:02:00Z" -->',
+    '<!-- aitm-review-approved schema="1" epoch="review:9:2026-07-29T19:00:00Z" proof-sha="dec0de1" ts="2026-07-29T19:03:00Z" provenance="human" -->',
+    '```',
+  ].join('\n');
+  const body = `## Example
+
+${fenced}
+
+## AITM Progress Markers
+
+<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->`;
+
+  const result = validate({ body });
+  assert.equal(result.pass, true);
+  const normalized = result.normalized ?? body;
+  assert.ok(normalized.includes(fenced), 'the complete fenced block remains byte-for-byte');
+  assert.ok(
+    normalized.indexOf(fenced) < normalized.indexOf('## AITM Progress Markers'),
+    'fenced markers are not gathered under the live marker anchor'
+  );
+});
+
+test('#1050 — a fenced anchor cannot absorb live authority markers', () => {
+  const body = `\`\`\`md
+## AITM Progress Markers
+\`\`\`
+
+<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->`;
+
+  const result = validate({ body });
+
+  assert.equal(result.pass, false);
+  assert.equal(result.normalized, undefined);
+  assert.match(result.failures.join('\n'), /anchor heading absent/i);
 });
 
 test('existing marker-organization behavior for standalone (non-paired) aitm-* markers is unchanged', () => {

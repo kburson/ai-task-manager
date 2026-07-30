@@ -22,8 +22,11 @@ import {
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
   removeFullAutoFootnote,
+  FULL_AUTO_APPROVED_RE,
   REVIEW_APPROVED_RE,
+  parseFullAutoApprovedMarker,
   parseDodVerifiedMarker,
+  stripFencedCodeBlocks,
 } from '../lib/markers.mjs';
 import {
   tickLifecycleItem,
@@ -46,6 +49,7 @@ import {
 import {
   deriveReviewAuthority,
   parseReviewAuthority,
+  sameGitObjectId,
   serializeReviewInvalidation,
 } from '../lib/review-authority.mjs';
 import { serializeMarker } from '../lib/marker-grammar.mjs';
@@ -199,7 +203,7 @@ function deriveAuthorityForBody(body) {
   // The Test/DoD evidence is the authority source for a versioned proof. The
   // legacy fallback only lets the reducer classify a legacy marker as stale;
   // callers still require an epoch-bound matching proof before no-op or stamp.
-  const verifiedSha = parseDodVerifiedMarker(body)?.sha || 'legacy';
+  const verifiedSha = parseDodVerifiedMarker(stripFencedCodeBlocks(body))?.sha || 'legacy';
   return { ...deriveReviewAuthority(body, { verifiedSha }), verifiedSha };
 }
 
@@ -209,7 +213,7 @@ function hasCurrentPassingProof(authority) {
     authority.proof?.epoch === authority.epoch &&
     authority.proof.result === 'pass' &&
     authority.proof.sha &&
-    authority.proof.sha === authority.verifiedSha &&
+    sameGitObjectId(authority.proof.sha, authority.verifiedSha) &&
     !authority.reasons.includes('verified-sha-mismatch')
   );
 }
@@ -279,11 +283,52 @@ function replaceUnfencedApprovalMarkers(body, approvals, ts) {
     .join('');
 }
 
+function removeUnfencedFullAutoApprovalMarkers(body, foldedTimestamps) {
+  const lines = String(body || '').split(/(\n)/);
+  let fence = null;
+  const markerRe = new RegExp(FULL_AUTO_APPROVED_RE.source, 'gi');
+  return lines
+    .map((line) => {
+      const opener = line.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (!fence && opener) {
+        fence = { char: opener[1][0], length: opener[1].length };
+        return line;
+      }
+      if (fence) {
+        const closer = line.match(/^ {0,3}(`+|~+)[ \t]*$/);
+        if (closer && closer[1][0] === fence.char && closer[1].length >= fence.length) fence = null;
+        return line;
+      }
+      return line.replace(markerRe, (raw) => {
+        const parsed = parseFullAutoApprovedMarker(raw);
+        return parsed && foldedTimestamps.has(parsed.ts) ? '' : raw;
+      });
+    })
+    .join('');
+}
+
 function archiveStaleApprovals(body, ts) {
   const parsed = parseReviewAuthority(body);
-  const approvals = parsed.approvals;
+  const legacyApprovals = parsed.approvals.filter((approval) => approval.legacy);
+  if (legacyApprovals.length > 1) return body;
+
+  const foldedTimestamps = new Set();
+  const approvals = parsed.approvals.map((approval) => {
+    if (!approval.legacy) return approval;
+    const companions = parsed.legacyFullAutoApprovals.filter((item) => item.ts === approval.ts);
+    if (companions.length > 1) return null;
+    if (companions.length === 0) return approval;
+    foldedTimestamps.add(approval.ts);
+    return {
+      ...approval,
+      provenance: 'full-auto',
+      signals: companions[0].signals,
+    };
+  });
+  if (approvals.some((approval) => approval === null)) return body;
   if (approvals.length === 0) return body;
   let updated = replaceUnfencedApprovalMarkers(body, approvals, ts);
+  updated = removeUnfencedFullAutoApprovalMarkers(updated, foldedTimestamps);
   updated = removeFullAutoFootnote(updated);
   updated = untickLifecycleItem(updated, 'passed-final-review');
   const invalidatedEpochs = new Set(

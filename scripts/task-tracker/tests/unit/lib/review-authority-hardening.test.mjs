@@ -41,6 +41,18 @@ test('legacy approval is stale after later entered-Develop demotion evidence', (
   assert.deepEqual(authority.reasons, ['legacy-authority-superseded']);
 });
 
+test('malformed later entered-Develop evidence fails closed instead of preserving legacy authority', () => {
+  const body = [
+    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
+    '<!-- aitm-entered-develop-2 ts=2026-07-29T10:03:00Z -->',
+  ].join('\n');
+
+  const authority = deriveReviewAuthority(body, { verifiedSha: 'abc1234' });
+
+  assert.equal(authority.status, 'malformed');
+  assert.deepEqual(authority.reasons, ['malformed-review-authority-marker']);
+});
+
 test('legacy Full-Auto companion marker projects Full-Auto provenance', () => {
   const body = [
     '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',

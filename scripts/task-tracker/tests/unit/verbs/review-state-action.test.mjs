@@ -20,6 +20,7 @@ import {
   emitReviewGateFailureTimeline,
   makeAgentReviewPassMutator,
   normalizeReviewVerificationCheckboxes,
+  prepareAgentReviewPassStamp,
 } from '../../../verbs/review.mjs';
 import {
   derivePersistedReviewAuthority,
@@ -145,6 +146,55 @@ test('failure mutation derives both markers from the writer fresh base', async (
   assert.match(written, /aitm-review-invalidated[\s\S]*aitm-review-failed:start/);
 });
 
+test('#1050 failure persistence adopts the fresh gate objections for its body, timing, and result', async () => {
+  let written = '';
+  const { log, deps } = drive();
+  deps.mutateBodyFn = async ({ mutate }) => {
+    written = mutate('fresh concurrent text');
+  };
+
+  const result = await emitReviewGateFailureTimeline({
+    ...ARGS,
+    failures: ['stale objection'],
+    prepareFailedBody: (base) => ({
+      body: `${base}\n<!-- aitm-review-failed:start -->\n- fresh objection\n<!-- aitm-review-failed:end -->`,
+      failures: ['fresh objection'],
+    }),
+    deps,
+  });
+
+  assert.doesNotMatch(written, /stale objection/);
+  assert.match(written, /fresh objection/);
+  assert.deepEqual(result, { status: 'failed', failures: ['fresh objection'] });
+  assert.match(
+    log.find((entry) => entry.startsWith('ROW:')),
+    /1 objection\(s\)/
+  );
+});
+
+test('#1050 a concurrent fresh gate pass suppresses the obsolete failure marker and timing row', async () => {
+  let written = '';
+  const { log, deps } = drive();
+  deps.mutateBodyFn = async ({ mutate }) => {
+    written = mutate('fresh passing body');
+  };
+
+  const result = await emitReviewGateFailureTimeline({
+    ...ARGS,
+    failures: ['stale objection'],
+    prepareFailedBody: (base) => ({ body: base, failures: [] }),
+    deps,
+  });
+
+  assert.equal(written, 'fresh passing body');
+  assert.deepEqual(result, { status: 'superseded', failures: [] });
+  assert.equal(
+    log.some((entry) => entry.startsWith('ROW:')),
+    false,
+    'a superseded failure must not emit review:failed timing'
+  );
+});
+
 test('#1050 pass mutation reruns the gate on the writer fresh base and preserves a concurrent objection', () => {
   const comments = [{ body: 'fresh review context' }];
   const changedPaths = ['scripts/task-tracker/verbs/review.mjs'];
@@ -198,6 +248,32 @@ test('#1050 pass mutation reruns the gate on the writer fresh base and preserves
   assert.equal(returned, freshBase, 'the concurrent failure block must remain untouched');
   assert.match(returned, /aitm-review-failed:start/);
   assert.doesNotMatch(returned, /aitm-agent-review-proof|gate="agent-review"[^>]*result="pass"/);
+});
+
+test('#1050 pass preparation ignores fenced Test, DoD, and Review-entry examples', () => {
+  const body = [
+    '```md',
+    '<!-- aitm-entered-review-9 ts="2026-07-29T19:00:00Z" -->',
+    '<!-- aitm-test-started sha="dec0de1" ts="2026-07-29T19:01:00Z" -->',
+    '<!-- aitm-dod-verified sha="dec0de1" ts="2026-07-29T19:02:00Z" -->',
+    '```',
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    '<!-- aitm-test-started sha="abc1234" ts="2026-07-29T09:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+
+  const prepared = prepareAgentReviewPassStamp({
+    body,
+    ts: '2026-07-29T10:01:00Z',
+    validators: ['unit'],
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.verifiedSha, 'abc1234');
+  assert.equal(prepared.epoch, 'review:1:2026-07-29T10:00:00Z');
+  assert.match(prepared.body, /epoch="review:1:2026-07-29T10:00:00Z" sha="abc1234"/);
+  assert.ok(prepared.body.includes('<!-- aitm-entered-review-9'));
 });
 
 test('#1050 pass mutation stamps the fresh normalization and validator list, never preflight results', () => {
@@ -367,4 +443,12 @@ test('both gate outcome paths derive their write from the post-move body', () =>
     /:\s*scanBody;/,
     'neither baseBody nor passBase may fall back to the pre-move scanBody'
   );
+});
+
+test('#1050 the production failure path adopts the fresh gate verdict and objection list', () => {
+  const failurePath = reviewSrc.slice(reviewSrc.indexOf('if (failures) {'));
+  assert.match(failurePath, /prepareFailedBody:\s*\(freshBase\)/);
+  assert.match(failurePath, /failures:\s*freshGate\.failures/);
+  assert.match(failurePath, /if\s*\(freshGate\.pass\)/);
+  assert.match(failurePath, /failureResult\.failures/);
 });

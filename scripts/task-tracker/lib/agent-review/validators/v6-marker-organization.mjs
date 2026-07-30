@@ -38,6 +38,11 @@
 
 import { registry } from '../registry.mjs';
 import { findReviewFailureBlockSpan } from '../../review-failure-block.mjs';
+import {
+  FULL_AUTO_FOOTNOTE_END,
+  FULL_AUTO_FOOTNOTE_START,
+  maskFencedCodeBlocksPreservingOffsets,
+} from '../../markers.mjs';
 
 // A line that is EXACTLY one `<!-- aitm-<name> … -->` comment (ignoring
 // surrounding whitespace). `name` is captured so we can classify hoist vs.
@@ -81,11 +86,46 @@ function hoistRank(name) {
   return -1;
 }
 
+function fencedSpanEnd(lines, start) {
+  const opener = lines[start]?.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+  if (!opener) return null;
+  if (opener[1][0] === '`' && opener[2].includes('`')) return null;
+  const char = opener[1][0];
+  const length = opener[1].length;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const closer = lines[i].match(/^ {0,3}(`+|~+)[ \t]*$/);
+    if (closer && closer[1][0] === char && closer[1].length >= length) return i;
+  }
+  return lines.length - 1;
+}
+
+function collapseBlankRunsOutsideFences(body) {
+  const lines = body.split('\n');
+  const blocks = [];
+  const protectedLines = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const end = fencedSpanEnd(lines, i);
+    if (end === null) {
+      protectedLines.push(lines[i]);
+      continue;
+    }
+    const token = `\u0000AITM_FENCED_BLOCK_${blocks.length}\u0000`;
+    blocks.push(lines.slice(i, end + 1).join('\n'));
+    protectedLines.push(token);
+    i = end;
+  }
+  let normalized = protectedLines.join('\n').replace(/\n{3,}/g, '\n\n');
+  for (let i = 0; i < blocks.length; i += 1) {
+    normalized = normalized.replace(`\u0000AITM_FENCED_BLOCK_${i}\u0000`, blocks[i]);
+  }
+  return normalized;
+}
+
 export function validate({ body } = {}) {
   const src = typeof body === 'string' ? body : '';
 
   // Normalization needs the anchor heading to gather non-hoist markers under.
-  if (!ANCHOR_HEADING_RE.test(src)) {
+  if (!ANCHOR_HEADING_RE.test(maskFencedCodeBlocksPreservingOffsets(src))) {
     return {
       pass: false,
       failures: ["normalization impossible: '## AITM Progress Markers' anchor heading absent"],
@@ -99,6 +139,12 @@ export function validate({ body } = {}) {
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
+    const fenceEnd = fencedSpanEnd(lines, i);
+    if (fenceEnd !== null) {
+      for (let j = i; j <= fenceEnd; j += 1) kept.push(lines[j]);
+      i = fenceEnd;
+      continue;
+    }
     const reviewFailureSpan = findReviewFailureBlockSpan(lines, {
       fromIndex: i,
       requireStartAt: true,
@@ -107,6 +153,15 @@ export function validate({ body } = {}) {
     if (reviewFailureSpan) {
       for (let j = i; j <= reviewFailureSpan.end; j += 1) kept.push(lines[j]);
       i = reviewFailureSpan.end;
+      continue;
+    }
+    if (line.trim() === FULL_AUTO_FOOTNOTE_START) {
+      const end = lines.findIndex(
+        (candidate, index) => index >= i && candidate.trim() === FULL_AUTO_FOOTNOTE_END
+      );
+      const spanEnd = end === -1 ? lines.length - 1 : end;
+      for (let j = i; j <= spanEnd; j += 1) kept.push(lines[j]);
+      i = spanEnd;
       continue;
     }
     const m = STANDALONE_MARKER_RE.exec(line);
@@ -127,7 +182,8 @@ export function validate({ body } = {}) {
   // Re-emit the gather markers under the anchor heading. Walk `kept` and, at
   // the anchor heading line, drop in the gathered markers (blank-line
   // separated) before continuing with the rest of the kept content.
-  const anchorIdx = kept.findIndex((l) => ANCHOR_HEADING_RE.test(l));
+  const keptScanLines = maskFencedCodeBlocksPreservingOffsets(kept.join('\n')).split('\n');
+  const anchorIdx = keptScanLines.findIndex((line) => ANCHOR_HEADING_RE.test(line));
   const rebuilt = [];
   const preamble = hoist.map((h) => h.text);
   for (let i = 0; i < kept.length; i += 1) {
@@ -148,7 +204,7 @@ export function validate({ body } = {}) {
 
   // Collapse any run of 3+ blank lines the extraction may have opened up, so
   // re-runs converge to a fixed point regardless of the input's blank spacing.
-  normalized = normalized.replace(/\n{3,}/g, '\n\n');
+  normalized = collapseBlankRunsOutsideFences(normalized);
 
   if (normalized === src) {
     return { pass: true, failures: [] };

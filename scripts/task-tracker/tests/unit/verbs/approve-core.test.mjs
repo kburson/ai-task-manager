@@ -183,6 +183,47 @@ function makeDeps(overrides = {}) {
   assert.equal(calls.writes.length, 0);
 }
 
+// #1050 — validated Git abbreviations are the same revision authority at every
+// consumer. Approve must not reject a current reducer projection merely
+// because the persisted Test marker carries the full object ID.
+{
+  const fullSha = 'abc1234deadbeefabc1234deadbeefabc1234dea';
+  const current = [
+    `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
+    `<!-- aitm-dod-verified sha="${fullSha}" ts="2026-07-29T10:00:00Z" -->`,
+    reviewProof(EPOCH_ONE, PROOF_ONE),
+    AGENT_REVIEW_LINE.trim(),
+    reviewApproval({ epoch: EPOCH_ONE, proofSha: PROOF_ONE }),
+  ].join('\n');
+  const { deps, calls } = makeDeps({ initialBody: current });
+
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+
+  assert.equal(r.status, 'already-approved');
+  assert.equal(calls.writes.length, 0);
+}
+
+// #1050 — fenced DoD examples are documentation, never the revision authority
+// selected by the approval mutation.
+{
+  const current = [
+    '```md',
+    '<!-- aitm-dod-verified sha="dec0de1" ts="2026-07-29T09:00:00Z" -->',
+    '```',
+    `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
+    `<!-- aitm-dod-verified sha="${PROOF_ONE}" ts="2026-07-29T10:00:00Z" -->`,
+    reviewProof(EPOCH_ONE, PROOF_ONE),
+    AGENT_REVIEW_LINE.trim(),
+    reviewApproval({ epoch: EPOCH_ONE, proofSha: PROOF_ONE }),
+  ].join('\n');
+  const { deps, calls } = makeDeps({ initialBody: current });
+
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+
+  assert.equal(r.status, 'already-approved');
+  assert.equal(calls.writes.length, 0);
+}
+
 // #1050 — an Agent Review proof is current only when it binds the persisted
 // Test/DoD revision; feeding the proof's own SHA back into the reducer would
 // make this mismatch tautologically pass.

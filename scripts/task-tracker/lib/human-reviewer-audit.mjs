@@ -85,12 +85,17 @@ export function buildAuditCommentBody({ ts, reviewScope, reviewAuthority = null,
   const stamp = ts || new Date().toISOString();
   const scope = reviewScope || 'commits, tests, lint/format';
   const explicitBypass = reviewAuthority === 'gate-bypassed' && reason === 'explicit-gate-bypass';
-  const headline = explicitBypass
-    ? '> ⚠ auto-approved under Full-Auto — review gate explicitly bypassed'
-    : '> ⚠ auto-approved under Full-Auto — no human reviewer';
-  const decision = explicitBypass
-    ? `The review→done gate at ${stamp} was explicitly bypassed by close authority. This audit records that bypass; \`${HUMAN_REVIEWER_ENV}\` metadata did not determine the outcome.`
-    : `The review→done gate at ${stamp} was passed without a \`${HUMAN_REVIEWER_ENV}\` signal. The assistant ticked "Passed final human review" itself.`;
+  const persistedFullAuto = reason === 'persisted-full-auto-authority';
+  const headline = persistedFullAuto
+    ? '> ⚠ auto-approved under Full-Auto — persisted Full-Auto review authority'
+    : explicitBypass
+      ? '> ⚠ auto-approved under Full-Auto — review gate explicitly bypassed'
+      : '> ⚠ auto-approved under Full-Auto — no human reviewer';
+  const decision = persistedFullAuto
+    ? `The review→done gate at ${stamp} used the issue's current persisted Full-Auto review authority. Environment reviewer metadata and call-site hints did not replace that durable provenance.`
+    : explicitBypass
+      ? `The review→done gate at ${stamp} was explicitly bypassed by close authority. This audit records that bypass; \`${HUMAN_REVIEWER_ENV}\` metadata did not determine the outcome.`
+      : `The review→done gate at ${stamp} was passed without a \`${HUMAN_REVIEWER_ENV}\` signal. The assistant ticked "Passed final human review" itself.`;
   return [
     headline,
     '',
@@ -163,7 +168,11 @@ export async function enforceFullAutoAudit({
     (persistedMode || explicitMode || (isFullAuto(env) ? 'full-auto' : 'human-reviewer')) ===
     'full-auto';
   const fullAutoReason =
-    reviewAuthority === 'gate-bypassed' ? 'explicit-gate-bypass' : 'legacy-environment-fallback';
+    persistedMode === 'full-auto'
+      ? 'persisted-full-auto-authority'
+      : reviewAuthority === 'gate-bypassed'
+        ? 'explicit-gate-bypass'
+        : 'legacy-environment-fallback';
   const handle = getHumanReviewer(env) || (reviewAuthority === 'human-gate' ? 'review-gate' : null);
   const list = listComments || defaultListComments;
   const post = postComment || defaultPostComment;

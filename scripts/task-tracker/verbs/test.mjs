@@ -28,7 +28,11 @@ import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
 import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
-import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
+import {
+  clearDodVerifiedMarker,
+  insertDodVerifiedMarker,
+  insertTestStartedMarker,
+} from '../lib/markers.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -454,13 +458,13 @@ export async function runVerbTest({
     // entry SHA always reflects the current verification window.
     {
       const entryTs = now();
-      const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
+      const stampedEntry = insertTestStartedMarker(clearDodVerifiedMarker(body), sha, entryTs);
       if (stampedEntry !== body) {
         body = stampedEntry;
         await mutateBody({
           cfg,
           issueNum,
-          mutate: (base) => insertTestStartedMarker(base, sha, entryTs),
+          mutate: (base) => insertTestStartedMarker(clearDodVerifiedMarker(base), sha, entryTs),
         });
       }
     }
