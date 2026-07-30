@@ -126,9 +126,10 @@ The `activity-guard` hook enforces `.ai-task-manager/activity-policy.json` on ev
 
 ---
 
-## 4. State-machine rules (7-state model)
+## 4. State-machine rules (8-state model)
 
-The state chain is: `Backlog → Refine → Plan → Develop → Test → Review → Done`.
+The state chain is:
+`Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done`.
 
 Forward transitions run through the verb surface — never through direct `move-state.mjs` calls (§5). Backward transitions are limited to two named paths:
 
@@ -144,7 +145,7 @@ Two human gates exist between automation steps:
 | Gate                                 | Config key                  | What it blocks                                                                                                                 |
 | ------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Refine→Plan, Plan→Develop promotions | `gateAnalysisToDevelopment` | `/task promote` refuses unless the required issue-body approval marker exists when `true`. (config key retained for stability) |
-| Review→Done close                    | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve`) when `true`.                             |
+| Review→Done close                    | `gateReviewToDone`          | `/task close` refuses without current epoch/SHA-bound Review authority when `true`.                                            |
 
 Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disable only for an approved parallel batch (§ Disabling gates for a batch) and restore both to `true` after.
 
@@ -166,6 +167,19 @@ After the batch returns and the orchestrator has merged the worktree branches, *
 
 Two sub-agent terminal statuses look superficially identical — both end in `/task close` and Done — but encode different audit guarantees. `HUMAN_APPROVED` means a human ran `/task approve` after reading the diff (human eyes on the diff). `HUMAN_AUTHORIZED_AI_APPROVED` means a human pre-authorized the gate-keeper (Full-Auto via `TT_FULL_AUTO=1`, or single-gate-disable) but no human has yet read the diff; review is available retroactively via the commit trail and any follow-up defect/enhancement stories. Sub-agents running under `TT_FULL_AUTO=1` or single-gate-disable MUST emit `HUMAN_AUTHORIZED_AI_APPROVED`, never `HUMAN_APPROVED`. Use the right verb so the audit trail does not lie about which closures had human review.
 
+Both paths require truthful current Review authority before close: the
+persisted Test SHA, a current-epoch passing Agent Review proof for that SHA, a
+matching `aitm-review-approved` marker, and no later invalidation. For human
+approval relayed through chat, run `/task approve #N --human`. Full-Auto runs
+`/task approve #N` under the authorized signals and records
+`provenance="full-auto"` plus those signals on the same consolidated marker;
+do not use the retired standalone `aitm-full-auto-approved` marker.
+
+Demotion, demotion-shaped reconciliation, and Agent Review failure invalidate
+the current authority. The old proof and approval stay in the body for audit
+but cannot authorize close. The owning agent must re-run Test, Review, and
+approval in order; a visible `Final Review Passed` tick is not a repair.
+
 ---
 
 ## 5. `/task promote` / `/task demote` are mandatory
@@ -176,7 +190,7 @@ The canonical user-facing surface for state transitions is:
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/task promote [<N>]`                               | Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Applies to all forward transitions through `Refine → Plan → Develop → Test → Review → Done`. |
 | `/task next [<N>]`                                  | Alias of `/task promote`. Use whichever reads better in the moment.                                                                                                                                |
-| `/task demote [<N>]`                                | Back to `Develop` from any forward state. Records the demotion in the timing log.                                                                                                                  |
+| `/task demote [<N>]`                                | Back to `Develop` from any forward state. Records the demotion and invalidates current Review authority.                                                                                           |
 | `/task reconcile <accept-live\|revert-to-recorded>` | Drift recovery only — see §7.                                                                                                                                                                      |
 
 `/task approve`, `/task review`, and `/task close` remain first-class verbs (they carry side effects beyond the state move: marker stamps, verification dispatch, fleet deregister). The retired single-purpose verbs for the Refine-and-Plan transitions have been removed; use `/task promote` (or `/task next`) for those transitions.

@@ -141,11 +141,37 @@ export function prepareAgentReviewPassStamp({ body, ts, validators = [] } = {}) 
 export const PROOF_STAMP_MAX_RETRIES = 1;
 
 // `mutateIssueBody` supplies the fresh locked base only at write time. Keep the
-// authority read and serialization inside that callback so a body change after
-// the gate snapshot cannot be turned into a stale passing proof.
-export function makeAgentReviewPassMutator({ ts, validators = [], onPrepared = () => {} } = {}) {
+// gate, authority read, and serialization inside that callback so a body change
+// after the gate snapshot cannot be turned into a stale passing proof.
+export function makeAgentReviewPassMutator({
+  ts,
+  issueNumber,
+  repo,
+  comments = [],
+  changedPaths = [],
+  runGate = runAgentReviewGate,
+  onPrepared = () => {},
+} = {}) {
   return (base) => {
-    const prepared = prepareAgentReviewPassStamp({ body: base, ts, validators });
+    const freshGate = runGate({ body: base, issueNumber, repo, comments, changedPaths });
+    if (!freshGate.pass) {
+      const prepared = {
+        ok: false,
+        reason: 'agent-review-gate-failed',
+        status: 'review-failed',
+        failures: Array.isArray(freshGate.failures) ? freshGate.failures : [],
+        validators: Array.isArray(freshGate.validatorsRun) ? freshGate.validatorsRun : [],
+      };
+      onPrepared(prepared, base);
+      return base;
+    }
+    const validators = Array.isArray(freshGate.validatorsRun) ? freshGate.validatorsRun : [];
+    const authority = prepareAgentReviewPassStamp({
+      body: freshGate.normalizedBody ?? base,
+      ts,
+      validators,
+    });
+    const prepared = authority.ok ? { ...authority, failures: [], validators } : authority;
     onPrepared(prepared, base);
     return prepared.ok ? prepared.body : base;
   };
@@ -950,6 +976,7 @@ export async function verbReview(ctx) {
         changedPaths,
       });
       let failures = gate.pass ? null : gate.failures;
+      let passedValidators = gate.validatorsRun;
 
       if (gate.pass) {
         let finalPassStamp = null;
@@ -961,7 +988,10 @@ export async function verbReview(ctx) {
             repo: cfg.repo,
             mutate: makeAgentReviewPassMutator({
               ts: nowIso(),
-              validators: gate.validatorsRun,
+              issueNumber: Number(issueNum),
+              repo: cfg.repo,
+              comments,
+              changedPaths,
               onPrepared: (prepared) => {
                 finalPassStamp = prepared;
               },
@@ -976,12 +1006,17 @@ export async function verbReview(ctx) {
           console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
         }
         if (!finalPassStamp?.ok || passWriteError || passWriteResult?.status !== 'ok') {
-          failures = [
-            `persisted-test-evidence: ${
-              finalPassStamp?.reason ||
-              (passWriteError ? 'pass-stamp-write-failed' : 'pass-stamp-not-persisted')
-            }`,
-          ];
+          failures =
+            finalPassStamp?.failures?.length > 0
+              ? finalPassStamp.failures
+              : [
+                  `persisted-test-evidence: ${
+                    finalPassStamp?.reason ||
+                    (passWriteError ? 'pass-stamp-write-failed' : 'pass-stamp-not-persisted')
+                  }`,
+                ];
+        } else {
+          passedValidators = finalPassStamp.validators;
         }
       }
 
@@ -1053,7 +1088,7 @@ export async function verbReview(ctx) {
         ts: _tsRP,
         delta: _dRP,
         wordMarker: s.lastWordMarker ?? 0,
-        validators: gate.validatorsRun,
+        validators: passedValidators,
         deps: { safePostTiming, buildRow },
       });
     }

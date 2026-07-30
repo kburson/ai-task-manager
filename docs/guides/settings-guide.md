@@ -247,10 +247,24 @@ Done unless each item under the `#### Lifecycle (auto-ticked at Review/Close)`
 DoD subsection is satisfied by ONE of:
 
 1. Visible checkbox ticked (`- [x] <label>`),
-2. Corresponding audit marker present (`<!-- aitm-full-auto-approved: ... -->`
-   satisfies `passed-final-review`), or
+2. Current Full-Auto Review authority (the consolidated
+   `aitm-review-approved` marker has `provenance="full-auto"` and matches the
+   latest epoch, passing proof, and persisted Test SHA), or
 3. Explicit per-key opt-out marker:
    `<!-- aitm-lifecycle-optout: <key> -->`.
+
+Lifecycle satisfaction does not independently authorize close. With
+`gateReviewToDone=true`, Review → Done additionally requires a persisted
+`aitm-dod-verified` Test SHA, a current-epoch passing Agent Review proof for
+that SHA, a matching truthful human or Full-Auto `aitm-review-approved` marker,
+and no later invalidation. Demotion, demotion-shaped reconciliation, and Agent
+Review failure invalidate that authority. Re-run Test, Review, and approval;
+do not repair by ticking `Final Review Passed`.
+
+For approval given in chat, run `/task approve #N --human`. Authorized
+Full-Auto runs use `/task approve #N`, which records Full-Auto provenance and
+signals on the consolidated marker. The retired standalone
+`aitm-full-auto-approved` marker is not current authority.
 
 Set to `false` to downgrade the block to a `lifecycle-warn` row in the timing
 log — useful for migrations or experimental workflows. See

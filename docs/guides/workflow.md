@@ -49,7 +49,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                                                                       |
 | `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                                                           |
 | `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                                                                                                                                     |
-| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                                                                  |
+| `/task approve #N` | (gate stamp)           | Stamps Plan approval, or records Review approval bound to the current Review epoch and persisted Test SHA. Use `--human` for approval given in chat.                                                                                  |
 | `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                                                             |
 | `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                                                                                                                                  |
 
@@ -103,7 +103,9 @@ scripts/gh/move-state.mjs 42 develop
 - Before `/task review`, commit the implementation and run `/task commit-trace #N`; Review requires a clean tracked worktree and a `### 🔗 Commits` ledger comment. Attribution is **message-based**, not SHA-reachability — the gate is satisfied by a commit whose subject carries the `[#N]` prefix (see [Commit Attribution](#commit-attribution) below), regardless of which branch or worktree it lives on.
 - **Test** is entered automatically by `/task review` while the verification gate runs.
 - Move to **Review** automatically when verification passes (ready-for-review).
-- Move to **Done** only by `/task close` after a human approves.
+- Move to **Done** only by `/task close` after the current Review epoch has
+  passing Agent Review proof for the persisted Test SHA and a matching truthful
+  human or Full-Auto approval with no later invalidation.
 
 ## Commit Attribution
 
@@ -308,11 +310,38 @@ The config key `gateAnalysisToDevelopment` retains its legacy name for backward-
 
 The Plan → Develop gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Plan. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
 
-The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
+The Review → Done gate is enforced by the current Review-authority projection,
+not by the presence of any historical marker or checked box. The persisted
+`aitm-dod-verified` Test SHA must match a passing `aitm-agent-review-proof` in
+the latest Review epoch. An `aitm-review-approved` marker must bind that same
+epoch and proof SHA with truthful `provenance="human"` or
+`provenance="full-auto"`, and no later invalidation may exist. `/task close`
+refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when that authority is
+missing, stale, malformed, ambiguous, SHA-mismatched, or invalidated and
+`gateReviewToDone=true`.
+
+Demotion, demotion-shaped reconciliation, and an active Agent Review failure
+invalidate current authority. Historical proof and approval markers remain for
+audit but cannot authorize a later close. Repair by re-running Test to persist
+the verified SHA, re-running Review for a current-epoch pass, and recording a
+new authentic approval. Do not hand-edit hidden markers or tick
+`Final Review Passed` as a repair.
+
+When a human approves in chat, run `/task approve #N --human`. A genuine
+pre-ticked GitHub UI approval is also treated as human provenance. Under
+Full-Auto, `/task approve #N` writes the same consolidated
+`aitm-review-approved` marker with Full-Auto provenance and its detection
+signals; the standalone `aitm-full-auto-approved` marker is historical and must
+not be used as current authority.
 
 The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task ensureChecked "Deep dive complete"` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
 
-**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
+**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes`
+without current Review authority exits 8 with a refusal message. Record an
+authentic approval only after current Test and Agent Review proof exist, or use
+an explicitly authorized `gateReviewToDone false` configuration. `--answer
+yes|no` still works at the dirty-workspace prompt, which is operational, not an
+approval gate.
 
 Toggle a gate (project-wide, persisted to `.ai-task-manager/task-tracker.json`):
 

@@ -40,8 +40,9 @@ Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issu
 
 Field units (board `Estimate` in hours, timing fields in minutes — normalize
 before any comparison), the Full-Auto approve footnote (`TT_FULL_AUTO=1` stamps a
-visible "no human reviewed" blockquote plus the hidden `aitm-full-auto-approved`
-marker), and the Review-Notes → Drivers comment flow all live in
+visible "no human reviewed" blockquote plus consolidated
+`aitm-review-approved` Full-Auto provenance), and the Review-Notes → Drivers
+comment flow all live in
 `rules/review.md` (rule-id `review`, loads JIT on `/task review`).
 
 ## Rank rules

@@ -11,11 +11,12 @@ get auto-ticked by the verb whose run produced the side effect.
 
 Defined by `LIFECYCLE_LABELS` in `scripts/task-tracker/lib/lifecycle-dod.mjs`:
 
-| Key                   | Label                            | Ticked by                                |
-| --------------------- | -------------------------------- | ---------------------------------------- |
-| `passed-final-review` | `Passed final human review`      | `verbs/approve.mjs` (human or Full-Auto) |
-| `story-closed`        | `Story closed and moved to Done` | `verbs/close.mjs`                        |
-| `timing-flushed`      | `Timing data flushed to issue`   | timing-comment flush at close            |
+| Key                   | Label                            | Ticked by                                      |
+| --------------------- | -------------------------------- | ---------------------------------------------- |
+| `agent-review-passed` | `Agent Review Passed`            | passing current-epoch Agent Review gate        |
+| `passed-final-review` | `Final Review Passed`            | `verbs/approve.mjs` (human or Full-Auto)       |
+| `story-closed`        | `Story closed and moved to Done` | `verbs/close.mjs`                              |
+| `timing-flushed`      | `Timing data flushed to issue`   | timing-comment flush during the close workflow |
 
 ## The tick contract
 
@@ -54,9 +55,31 @@ stamp `<!-- aitm-lifecycle-optout: <key> -->` in the body to acknowledge the
 gate skip. `parseLifecycleOptouts(body)` returns the set of opted-out keys;
 `approve.mjs` suppresses the warning when the relevant key is opted out.
 
-## Reconciliation — manual tick under Full-Auto
+## Current Review authority
 
-A previous memory rule
+Lifecycle ticks are projections, not independent close authority. The current
+projection must join:
+
+1. The persisted `aitm-dod-verified` Test SHA.
+2. A passing `aitm-agent-review-proof` for that SHA in the latest Review epoch.
+3. A matching `aitm-review-approved` marker for the same epoch and proof SHA,
+   with truthful human or Full-Auto provenance.
+4. No later `aitm-review-invalidated` marker or active Agent Review failure.
+
+Demotion and demotion-shaped reconciliation invalidate current authority, as
+does an Agent Review failure. Historical markers and visible ticks remain audit
+evidence only. Re-run Test, Review, and authentic approval in order; never
+repair authority by ticking `Final Review Passed` or editing hidden markers.
+
+For a human approval given in chat, use `/task approve #N --human`. Full-Auto
+uses the consolidated `aitm-review-approved` marker with
+`provenance="full-auto"` and signals. The standalone
+`aitm-full-auto-approved` marker is accepted only as historical legacy evidence
+and does not establish current epoch-bound authority.
+
+## Historical reconciliation — manual tick under Full-Auto
+
+A previous pre-review-epoch memory rule
 (`feedback_full_auto_tick_review_box.md`) required operators to manually flip
 `- [ ] Passed final human review` to `- [x]` before running `/task close` under
 Full-Auto. That rule predates `approve.mjs:231`, which already calls
@@ -69,8 +92,7 @@ now stays silent when it finds the box pre-ticked. The memory rule is marked
 superseded. Operators may still pre-tick — approve will detect, no-op silently,
 and the audit trail stays clean.
 
-The audit-comment requirement (`feedback_full_auto_review_audit.md`) is
-unchanged: when Full-Auto bypasses human review, post an audit comment
-documenting it. That comment + the `aitm-full-auto-approved` body marker + the
-footnote between `<!-- aitm-full-auto-footnote:start/end -->` remain the
-authoritative trail.
+That #302 decision is historical. Current Full-Auto approval is recorded by the
+epoch-bound `aitm-review-approved` marker plus the visible footnote between
+`<!-- aitm-full-auto-footnote:start/end -->`; a standalone
+`aitm-full-auto-approved` marker is not current authority.

@@ -38,12 +38,34 @@ If `/task close` exits 3, unchecked items exist. The CLI prints them to stderr. 
 2. **Default behavior is resolution.** Walk each: verify by inspection + run the test/build/command, then `/task ensureChecked "<label>"`. Then `/task review` → human approval → `/task close`.
 3. If the user explicitly says close anyway (legitimate abandonment): drag the card to Done in the GitHub Projects UI, or delete the issue. No env override exists for the script-driven path.
 
-## Review-approval gate (exit 7 / 8)
+## Current Review-authority gate (exit 7 / 8)
 
-When `gateReviewToDone=true` (default), `/task close` refuses unless the body carries `<!-- aitm-review-approved: <ts> -->`:
+When `gateReviewToDone=true` (default), `/task close` requires one current
+Review-authority projection. A historical approval marker or checked lifecycle
+box is not sufficient. Authority is current only when all of these agree:
 
-- **Exit 7** — approval marker missing. Run `/task approve #N` first (only valid while the issue is in Review, and only after explicit human approval).
-- **Exit 8** — `--answer yes` passed in an attempt to satisfy the gate. The flag does NOT satisfy this gate; it satisfies only the dirty-workspace gate.
+1. The persisted `aitm-dod-verified` marker names the Test SHA.
+2. The latest Review epoch has a passing `aitm-agent-review-proof` for that SHA.
+3. An `aitm-review-approved` marker binds the same epoch and proof SHA, with
+   truthful `provenance="human"` or `provenance="full-auto"`.
+4. No later `aitm-review-invalidated` marker or active Agent Review failure
+   invalidates that authority.
+
+Demotion and demotion-shaped reconciliation invalidate current authority, as
+does an Agent Review failure. The old proof and approval remain in the body for
+audit, but cannot authorize close. Repair by re-running Test, Review, and
+approval in order. Never repair by hand-ticking `Final Review Passed` or editing
+hidden markers.
+
+- **Exit 7** — current approval authority is missing, stale, or invalid. After
+  current Test and Agent Review proof exist, record the real approval. For
+  approval given in chat, run `/task approve #N --human`. In Full-Auto, run
+  `/task approve #N` under the authorized Full-Auto signals; it writes the
+  consolidated `aitm-review-approved` marker with Full-Auto provenance and
+  signals. Do not create or rely on the retired standalone
+  `aitm-full-auto-approved` marker.
+- **Exit 8** — `--answer yes` passed in an attempt to satisfy the gate. The flag
+  does NOT satisfy this gate; it satisfies only the dirty-workspace gate.
 
 `gateReviewToDone=false` bypasses this gate; the bypass is logged as a `gate-bypassed` row.
 

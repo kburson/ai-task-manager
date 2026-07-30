@@ -159,23 +159,29 @@ export function serializeReviewInvalidation({ epoch, ts, reason }) {
 
 export function parseReviewAuthority(body) {
   const source = stripFencedCodeBlocks(body);
-  const reviewEntryIndexes = markerLines(source)
-    .filter(({ raw }) => /^<!--\s*aitm-entered-review(?:-\d+)?(?:\s|:|-->)/i.test(raw))
-    .map(({ index }) => index);
-  const epochs = parseEntryMarkers(source)
-    .filter((entry) => entry.stage === 'review')
-    .map((entry, index) => ({
+  const markers = markerLines(source);
+  const epochs = [];
+  const malformed = [];
+  for (const { raw, index } of markers) {
+    if (!/^<!--\s*aitm-entered-review(?:-\d+)?(?:\s|:|-->)/i.test(raw)) continue;
+    const entries = parseEntryMarkers(raw).filter((entry) => entry.stage === 'review');
+    if (entries.length !== 1) {
+      malformed.push({ raw, index, reason: 'invalid-review-entry-marker' });
+      continue;
+    }
+    const [entry] = entries;
+    epochs.push({
       visit: entry.visit,
       enteredReviewAt: entry.ts,
       epoch: reviewEpochId({ visit: entry.visit, enteredReviewAt: entry.ts }),
-      index: reviewEntryIndexes[index],
-    }));
+      index,
+    });
+  }
   const proofs = [];
   const approvals = [];
   const invalidations = [];
-  const malformed = [];
 
-  for (const { raw, index } of markerLines(source)) {
+  for (const { raw, index } of markers) {
     const parsed = parseMarker(raw);
     if (
       malformedMarker(raw, PROOF_NAME) ||

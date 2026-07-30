@@ -19,6 +19,11 @@ import {
 const REVIEW_ONE = '2026-07-29T10:00:00.000Z';
 const REVIEW_TWO = '2026-07-29T11:00:00.000Z';
 const VERIFIED_SHA = 'abc1234deadbeef';
+const passRequiredCommentsGate = () => ({
+  pass: true,
+  failures: [],
+  validatorsRun: ['required-comments'],
+});
 
 test('Review epoch follows canonical entry visits and retains its identity on an in-place retry', () => {
   let body = stampEntryMarker('', 'review', REVIEW_ONE);
@@ -178,7 +183,7 @@ test('the versioned Review mutator rejects evidence changed after preparation', 
   let prepared;
   const mutate = makeAgentReviewPassMutator({
     ts: '2026-07-29T10:01:00.000Z',
-    validators: ['required-comments'],
+    runGate: passRequiredCommentsGate,
     onPrepared: (result) => {
       prepared = result;
     },
@@ -216,7 +221,7 @@ test('proof-bearing Review stamp fails closed when a versioned-write conflict ch
         evidenceStamp: true,
         mutate: makeAgentReviewPassMutator({
           ts: '2026-07-29T10:01:00.000Z',
-          validators: ['required-comments'],
+          runGate: passRequiredCommentsGate,
           onPrepared: () => {
             prepares += 1;
           },

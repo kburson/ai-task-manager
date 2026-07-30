@@ -180,6 +180,18 @@ test('derives current review authority and fails closed for stale, malformed, an
       legacy: true,
     },
     {
+      name: 'malformed Review entry cannot hide a valid entry after legacy approval',
+      body: [
+        '<!-- aitm-entered-review ts=2026-07-29T09:00:00Z -->',
+        legacyApproval,
+        review(1, '2026-07-29T10:00:00Z'),
+      ].join('\n'),
+      verifiedSha: 'abc123',
+      status: 'malformed',
+      epoch: epoch1,
+      legacy: true,
+    },
+    {
       name: 'legacy approval before a structural Review entry is stale',
       body: [legacyApproval, review(1, '2026-07-29T10:00:00Z')].join('\n'),
       verifiedSha: 'abc123',

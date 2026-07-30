@@ -145,10 +145,21 @@ Under `TT_FULL_AUTO=1` (or any other signal `detectFullAuto` fires on),
 `<!-- aitm-full-auto-footnote:start -->` and
 `<!-- aitm-full-auto-footnote:end -->` under the Lifecycle DoD subsection
 so reviewers can see at a glance that no human was in the loop. The
-hidden `aitm-full-auto-approved` marker still records the audit signals.
+consolidated hidden `aitm-review-approved` marker records
+`provenance="full-auto"` and the audit signals. The retired standalone
+`aitm-full-auto-approved` marker is historical only.
 `gh-edit-guard` protects the delimiters; do not strip them. A
 `lifecycle-tick-noop` stderr warning fires if the DoD checklist label is
 missing or legacy — investigate the body shape rather than ignoring.
+
+Review authority is current only when the persisted `aitm-dod-verified` Test
+SHA matches a passing `aitm-agent-review-proof` in the latest Review epoch, the
+approval binds that same epoch and proof SHA with truthful human or Full-Auto
+provenance, and no later invalidation exists. Demotion, demotion-shaped
+reconciliation, and Agent Review failure invalidate current authority. Repair
+by re-running Test, Review, and approval in order; never hand-edit markers or
+tick `Final Review Passed`. When a human approves in chat, use
+`/task approve #N --human`.
 
 ## Rule 13 — Post-Compact/Clear recovery
 

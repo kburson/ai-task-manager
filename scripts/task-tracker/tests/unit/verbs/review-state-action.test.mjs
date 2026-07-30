@@ -15,7 +15,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { buildReviewFailureBody, emitReviewGateFailureTimeline } from '../../../verbs/review.mjs';
+import {
+  buildReviewFailureBody,
+  emitReviewGateFailureTimeline,
+  makeAgentReviewPassMutator,
+} from '../../../verbs/review.mjs';
 import {
   derivePersistedReviewAuthority,
   serializeAgentReviewProof,
@@ -138,6 +142,88 @@ test('failure mutation derives both markers from the writer fresh base', async (
   });
   assert.match(written, /^fresh concurrent text/);
   assert.match(written, /aitm-review-invalidated[\s\S]*aitm-review-failed:start/);
+});
+
+test('#1050 pass mutation reruns the gate on the writer fresh base and preserves a concurrent objection', () => {
+  const comments = [{ body: 'fresh review context' }];
+  const changedPaths = ['scripts/task-tracker/verbs/review.mjs'];
+  const freshBase = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00.000Z" -->',
+    '<!-- aitm-test-started sha="abc1234" ts="2026-07-29T09:00:00.000Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00.000Z" -->',
+    '- [ ] Agent Review Passed',
+    '<!-- aitm-review-failed:start -->',
+    '<!-- aitm-review-failed-meta ts="2026-07-29T10:00:30.000Z" -->',
+    '**Agent Review Gate failed.**',
+    '- concurrent-validator: objection',
+    '<!-- aitm-review-failed:end -->',
+  ].join('\n');
+  let prepared;
+  let gateInput;
+
+  const mutate = makeAgentReviewPassMutator({
+    ts: '2026-07-29T10:01:00.000Z',
+    issueNumber: 1050,
+    repo: 'o/r',
+    comments,
+    changedPaths,
+    validators: ['stale-validator'],
+    runGate: (input) => {
+      gateInput = input;
+      const blocked = input.body.includes('<!-- aitm-review-failed:start -->');
+      return {
+        pass: !blocked,
+        failures: blocked ? ['concurrent-validator: objection'] : [],
+        validatorsRun: ['concurrent-validator'],
+        normalizedBody: `${input.body}\n<!-- fresh-normalization -->`,
+      };
+    },
+    onPrepared: (result) => {
+      prepared = result;
+    },
+  });
+  const returned = mutate(freshBase);
+
+  assert.deepEqual(gateInput, {
+    body: freshBase,
+    issueNumber: 1050,
+    repo: 'o/r',
+    comments,
+    changedPaths,
+  });
+  assert.equal(prepared.ok, false);
+  assert.deepEqual(prepared.failures, ['concurrent-validator: objection']);
+  assert.deepEqual(prepared.validators, ['concurrent-validator']);
+  assert.equal(returned, freshBase, 'the concurrent failure block must remain untouched');
+  assert.match(returned, /aitm-review-failed:start/);
+  assert.doesNotMatch(returned, /aitm-agent-review-proof|gate="agent-review"[^>]*result="pass"/);
+});
+
+test('#1050 pass mutation stamps the fresh normalization and validator list, never preflight results', () => {
+  const freshBase = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00.000Z" -->',
+    '<!-- aitm-test-started sha="abc1234" ts="2026-07-29T09:00:00.000Z" -->',
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00.000Z" -->',
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+  const freshNormalized = `${freshBase}\n<!-- fresh-normalization -->`;
+
+  const returned = makeAgentReviewPassMutator({
+    ts: '2026-07-29T10:01:00.000Z',
+    issueNumber: 1050,
+    repo: 'o/r',
+    validators: ['stale-validator'],
+    runGate: () => ({
+      pass: true,
+      failures: [],
+      validatorsRun: ['fresh-validator'],
+      normalizedBody: freshNormalized,
+    }),
+  })(freshBase);
+
+  assert.match(returned, /fresh-normalization/);
+  assert.match(returned, /validators="fresh-validator"/);
+  assert.doesNotMatch(returned, /stale-validator/);
 });
 
 test('the failure path never passes --demote to anything', async () => {
