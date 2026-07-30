@@ -119,14 +119,28 @@ export function hasPlanApprovedMarker(body) {
 // Widened again (#480) so the new property form tolerates trailing attributes
 // (`full-auto="yes" signals="…"`) consolidated onto the same marker.
 export const REVIEW_APPROVED_RE =
-  /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+ts="[^"]*"[^>]*?)\s*-->/i;
+  /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+(?=[^>]*\bts=")[^>]*?)\s*-->/i;
 
 // #480 — the consolidated review-approved marker now optionally carries the
 // full-auto approval audit props. `full-auto="yes" signals="<env=…>"` collapse
 // what used to be a separate `aitm-full-auto-approved` marker + visible footnote
 // into a single marker. Pass `{ fullAuto: true, signals }` from the approve verb
 // when no human reviewed the work.
-export function buildReviewApprovedMarker(ts, { fullAuto = false, signals = '' } = {}) {
+export function buildReviewApprovedMarker(
+  ts,
+  { fullAuto = false, signals = '', epoch = '', proofSha = '', provenance = '' } = {}
+) {
+  if (epoch || proofSha || provenance) {
+    const props = {
+      schema: '1',
+      epoch,
+      'proof-sha': proofSha,
+      ts,
+      provenance: provenance || (fullAuto ? 'full-auto' : 'human'),
+    };
+    if (props.provenance === 'full-auto') props.signals = signals || '';
+    return serializeMarker('review-approved', props);
+  }
   const props = { ts };
   if (fullAuto) {
     props['full-auto'] = 'yes';
@@ -141,7 +155,7 @@ export function hasReviewApprovedMarker(body) {
 
 // Matches a consolidated review-approved marker that carries the full-auto prop.
 const REVIEW_APPROVED_FULL_AUTO_RE =
-  /<!--\s*aitm-review-approved\s+[^>]*\bfull-auto="(?:yes|true)"[^>]*-->/i;
+  /<!--\s*aitm-review-approved\s+[^>]*(?:\bfull-auto="(?:yes|true)"|\bprovenance="full-auto")[^>]*-->/i;
 
 // Decode a consolidated review-approved marker to `{ ts, fullAuto, signals }`,
 // or null when absent. Uses the generic marker parser so prop order is
@@ -154,7 +168,13 @@ export function parseReviewApprovedMarker(body) {
   const props = parsed.props || {};
   return {
     ts: props.ts || '',
-    fullAuto: props['full-auto'] === 'yes' || props['full-auto'] === 'true',
+    epoch: props.epoch || '',
+    proofSha: props['proof-sha'] || '',
+    provenance: props.provenance || '',
+    fullAuto:
+      props['full-auto'] === 'yes' ||
+      props['full-auto'] === 'true' ||
+      props.provenance === 'full-auto',
     signals: props.signals || '',
   };
 }
