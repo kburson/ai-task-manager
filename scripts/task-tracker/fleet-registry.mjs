@@ -7,9 +7,10 @@ import {
   rmdirSync,
   statSync,
 } from 'node:fs';
-import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { legacyPathFor, fleetPath } from './paths.mjs';
+import { resolveMainWorktreePath } from './lib/main-worktree-path.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const LOCK_STALE_MS = 30_000;
@@ -56,21 +57,10 @@ export function withLock(registryPath, fn) {
 }
 
 export function findMainWorktreePath(projectDir) {
-  try {
-    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
-      cwd: projectDir,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: GIT_TIMEOUT_MS,
-    });
-    const firstBlock = out.split(/\n\n/)[0];
-    const match = firstBlock.match(/^worktree (.+)$/m);
-    if (match) return match[1].trim();
-  } catch {
-    /* best-effort: failure must not abort the primary operation */
-  }
-  return projectDir;
+  return resolveMainWorktreePath(projectDir, { allowFallback: true });
 }
+
+export { resolveMainWorktreePath };
 
 export function fleetRegistryPath(mainWorktreePath) {
   return fleetPath(mainWorktreePath);

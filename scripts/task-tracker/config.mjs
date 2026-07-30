@@ -17,6 +17,14 @@ export const DEFAULTS = {
   trunkRef: '',
   // GitHub Projects V2 node ID (set by init script)
   projectId: '',
+  // Durable lease/ledger identity. Deliberately distinct from GitHub Projects.
+  ledgerProjectId: '',
+  workLease: {
+    authority: 'local',
+    endpoint: '',
+    projectId: '',
+    tokenEnv: 'AITM_LEASE_AUTH_TOKEN',
+  },
   // Kanban board field + state option IDs (set by init script).
   // The `kanbanOption*` key suffixes predate the 2026-05 column rename
   // (Groom→Refine, Analyze→Plan, Development→Develop, Validate→Test) and
@@ -112,6 +120,8 @@ export const TYPES = {
   wpm: 'number',
   repo: 'string',
   projectId: 'string',
+  ledgerProjectId: 'string',
+  workLease: 'object',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
   kanbanOptionOnDeck: 'string',

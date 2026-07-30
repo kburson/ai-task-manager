@@ -54,6 +54,9 @@ test('packed root and ledger install and initialize without workspace links', ()
       'src/lease/errors.mjs',
       'src/lease/port.mjs',
       'src/lease/schema.mjs',
+      'src/sqlite/migrations/001-leases.mjs',
+      'src/sqlite/open.mjs',
+      'src/sqlite/work-lease-store.mjs',
     ]) {
       assert.ok(ledger.files.has(required), `ledger tarball is missing ${required}`);
     }

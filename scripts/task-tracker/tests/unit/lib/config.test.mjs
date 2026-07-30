@@ -153,5 +153,29 @@ assert.equal(
   'configured trunkRef must survive loadConfig (not be dropped by the allow-list)'
 );
 
+// Test 19 (#1049): ledger identity and provider config remain distinct from GitHub projectId.
+writeFileSync(
+  projectPath,
+  JSON.stringify({
+    projectId: 'PVT_GITHUB',
+    ledgerProjectId: 'ledger-uuid',
+    workLease: {
+      authority: 'remote',
+      endpoint: 'https://ledger.example.test',
+      projectId: 'ledger-uuid',
+      tokenEnv: 'AITM_TEST_TOKEN',
+    },
+  })
+);
+cfg = loadConfig({ projectPath, userPath });
+assert.equal(cfg.projectId, 'PVT_GITHUB');
+assert.equal(cfg.ledgerProjectId, 'ledger-uuid');
+assert.deepEqual(cfg.workLease, {
+  authority: 'remote',
+  endpoint: 'https://ledger.example.test',
+  projectId: 'ledger-uuid',
+  tokenEnv: 'AITM_TEST_TOKEN',
+});
+
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

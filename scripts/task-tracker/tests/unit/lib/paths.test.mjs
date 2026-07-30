@@ -26,6 +26,7 @@ import {
   templatesDir,
   fleetPath,
   orchestratorLockPath,
+  projectDatabasePath,
 } from '../../../paths.mjs';
 
 const mappings = [
@@ -150,6 +151,11 @@ assert.equal(fleetPath(MAIN), path.join(MAIN, ...TMP_AITM, 'fleet', 'task-fleet.
 assert.equal(
   orchestratorLockPath(MAIN),
   path.join(MAIN, ...TMP_AITM, 'fleet', 'orchestrator.lock')
+);
+assert.equal(
+  projectDatabasePath(MAIN),
+  path.join(MAIN, '.db', 'aitm', 'project.sqlite'),
+  'durable project DB is main-anchored outside transient .tmp'
 );
 
 // cwd-anchored resolvers honor getProjectDir() default via env precedence.

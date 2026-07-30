@@ -249,3 +249,9 @@ export function fleetPath(mainWorktreePath) {
 export function orchestratorLockPath(mainWorktreePath) {
   return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.orchestratorLock);
 }
+
+// Durable governed-work authority. Unlike transient runtime state, the project
+// ledger lives under the main worktree and is shared by every linked worktree.
+export function projectDatabasePath(mainWorktreePath) {
+  return path.join(mainWorktreePath, '.db', 'aitm', 'project.sqlite');
+}

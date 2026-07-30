@@ -101,6 +101,9 @@ test('ledger dry-run pack contains runtime only and root pack keeps the workspac
     'src/lease/errors.mjs',
     'src/lease/port.mjs',
     'src/lease/schema.mjs',
+    'src/sqlite/migrations/001-leases.mjs',
+    'src/sqlite/open.mjs',
+    'src/sqlite/work-lease-store.mjs',
   ]) {
     assert.ok(ledgerFiles.has(required), `ledger pack is missing ${required}`);
   }

@@ -276,7 +276,9 @@ function stable(value, seen = new Map(), location = '$') {
 }
 
 export function canonicalRequestDigest(request) {
-  return createHash('sha256')
-    .update(JSON.stringify(stable(request)))
-    .digest('hex');
+  return createHash('sha256').update(canonicalRequestJson(request)).digest('hex');
+}
+
+export function canonicalRequestJson(request) {
+  return JSON.stringify(stable(request));
 }
