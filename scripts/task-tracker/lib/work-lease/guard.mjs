@@ -1069,15 +1069,17 @@ export async function coordinateWorkLeaseResume({
     };
     validateVerifyRequest(verifyRequest);
     try {
-      verifiedAuthorityLease(
-        await store.verify(verifyRequest),
-        persistedLease,
-        canonicalIssueId,
-        worktreeId,
-        sessionId,
-        trustedHostId,
-        trustedAuthorityHolder
-      );
+      if (!replayingPersistedIntent) {
+        verifiedAuthorityLease(
+          await store.verify(verifyRequest),
+          persistedLease,
+          canonicalIssueId,
+          worktreeId,
+          sessionId,
+          trustedHostId,
+          trustedAuthorityHolder
+        );
+      }
       receipt = await store.renew(request);
       validateResumeReceipt(
         receipt,

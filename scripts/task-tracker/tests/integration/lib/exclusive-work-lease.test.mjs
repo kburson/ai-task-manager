@@ -1689,14 +1689,17 @@ test('clear failure is fail-closed and leaves the reconciled journal persisted',
 test('response-lost resume renew replays one exact request before four projections', async () => {
   const dir = sandbox();
   try {
+    const authorityCalls = [];
     const renewRequests = [];
     let renewAttempts = 0;
     const store = {
       projectId: 'project-1',
-      async verify() {
+      async verify(request) {
+        authorityCalls.push(`verify:${request.verifiedAt}`);
         return { allowed: true, lease: LEASE };
       },
       async renew(request) {
+        authorityCalls.push(`renew:${request.idempotencyKey}`);
         renewRequests.push(structuredClone(request));
         renewAttempts += 1;
         if (renewAttempts === 1) {
@@ -1710,6 +1713,10 @@ test('response-lost resume renew replays one exact request before four projectio
       () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
       /renew response lost/
     );
+    assert.deepEqual(authorityCalls, [
+      `verify:${NOW.toISOString()}`,
+      'renew:resume:session-1:1049:request-1',
+    ]);
     const pending = getActiveTask('session-1', dir).workLeaseIntent;
     assert.equal(pending.operation, 'resume');
     assert.equal(pending.receipt, undefined);
@@ -1720,7 +1727,160 @@ test('response-lost resume renew replays one exact request before four projectio
 
     assert.equal(renewRequests.length, 2);
     assert.deepEqual(renewRequests[1], renewRequests[0]);
+    assert.deepEqual(authorityCalls, [
+      `verify:${NOW.toISOString()}`,
+      'renew:resume:session-1:1049:request-1',
+      'renew:resume:session-1:1049:request-1',
+      `verify:${NOW.toISOString()}`,
+    ]);
     assert.deepEqual(retry.log.slice(-4), ['session', 'fleet', 'timing', 'github']);
+    assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('resume recovery attaches cached renewal before current takeover verification', async () => {
+  const dir = sandbox();
+  try {
+    const historicalLease = {
+      ...LEASE,
+      acquiredAt: '2026-07-30T11:30:00.000Z',
+      heartbeatAt: HISTORICAL_NOW.toISOString(),
+      expiresAt: '2026-07-30T12:00:00.000Z',
+    };
+    const authorityCalls = [];
+    const renewRequests = [];
+    let cachedRenewalExists = false;
+    const store = {
+      projectId: LEASE.projectId,
+      async verify(request) {
+        authorityCalls.push(`verify:${request.verifiedAt}`);
+        return {
+          allowed: true,
+          lease: cachedRenewalExists ? { ...historicalLease, fencingToken: '8' } : historicalLease,
+        };
+      },
+      async renew(request) {
+        authorityCalls.push(`renew:${request.idempotencyKey}`);
+        renewRequests.push(structuredClone(request));
+        if (!cachedRenewalExists) {
+          cachedRenewalExists = true;
+          throw new WorkLeaseError('authority-unavailable', 'cached renew response lost');
+        }
+        return historicalLease;
+      },
+    };
+    const first = resumeOptions(dir, {
+      getStore: async () => store,
+      now: () => HISTORICAL_NOW,
+    });
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
+      /cached renew response lost/
+    );
+    const originalIntent = structuredClone(getActiveTask('session-1', dir).workLeaseIntent);
+    assert.equal(originalIntent.receipt, undefined);
+    assert.deepEqual(authorityCalls, [
+      `verify:${HISTORICAL_NOW.toISOString()}`,
+      'renew:resume:session-1:1049:request-1',
+    ]);
+
+    let checkpointCalls = 0;
+    let heartbeatCalls = 0;
+    const retry = resumeOptions(dir, {
+      getStore: async () => store,
+      readEligibility: async () => assert.fail('takeover recovery must fail before eligibility'),
+      reconcileClaim: async () => assert.fail('takeover recovery must fail before claim'),
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => assert.fail(`takeover recovery must fail before ${name}`),
+        ])
+      ),
+      checkpointProjection: async () => {
+        checkpointCalls += 1;
+        assert.fail('takeover recovery must not checkpoint');
+      },
+      now: () => DELAYED_NOW,
+    });
+    await assert.rejects(
+      async () => {
+        await workLeaseGuard.coordinateWorkLeaseResume(retry.input);
+        heartbeatCalls += 1;
+      },
+      (error) => error instanceof WorkLeaseError && error.code === 'fence-stale'
+    );
+
+    assert.equal(renewRequests.length, 2);
+    assert.deepEqual(renewRequests[1], renewRequests[0]);
+    assert.deepEqual(authorityCalls, [
+      `verify:${HISTORICAL_NOW.toISOString()}`,
+      'renew:resume:session-1:1049:request-1',
+      'renew:resume:session-1:1049:request-1',
+      `verify:${DELAYED_NOW.toISOString()}`,
+    ]);
+    assert.equal(checkpointCalls, 0);
+    assert.equal(heartbeatCalls, 0);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, {
+      ...originalIntent,
+      receipt: historicalLease,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('resume recovery restores only after a definitive renewal refusal without cached success', async () => {
+  const dir = sandbox();
+  try {
+    const authorityCalls = [];
+    let renewAttempts = 0;
+    const store = {
+      projectId: LEASE.projectId,
+      async verify(request) {
+        authorityCalls.push(`verify:${request.verifiedAt}`);
+        return { allowed: true, lease: LEASE };
+      },
+      async renew(request) {
+        authorityCalls.push(`renew:${request.idempotencyKey}`);
+        renewAttempts += 1;
+        if (renewAttempts === 1) {
+          throw new WorkLeaseError('authority-unavailable', 'renew response unavailable');
+        }
+        throw new WorkLeaseError('fence-stale', 'renewal definitively refused');
+      },
+    };
+    const first = resumeOptions(dir, { getStore: async () => store });
+    const originalBytes = readFileSync(activeTaskPath('session-1', dir));
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(first.input),
+      /renew response unavailable/
+    );
+    assert.ok(getActiveTask('session-1', dir).workLeaseIntent);
+
+    const retry = resumeOptions(dir, {
+      getStore: async () => store,
+      readEligibility: async () => assert.fail('definitive renewal refusal must stop eligibility'),
+      reconcileClaim: async () => assert.fail('definitive renewal refusal must stop claim'),
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => assert.fail(`definitive renewal refusal must stop ${name}`),
+        ])
+      ),
+    });
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(retry.input),
+      (error) => error instanceof WorkLeaseError && error.code === 'fence-stale'
+    );
+
+    assert.deepEqual(authorityCalls, [
+      `verify:${NOW.toISOString()}`,
+      'renew:resume:session-1:1049:request-1',
+      'renew:resume:session-1:1049:request-1',
+    ]);
+    assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), originalBytes);
     assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -1801,7 +1961,7 @@ test('pre-existing resume without a receipt re-proves liveness after historical 
 
     assert.deepEqual(
       verifyRequests.map(({ verifiedAt }) => verifiedAt),
-      [HISTORICAL_NOW.toISOString(), HISTORICAL_NOW.toISOString(), DELAYED_NOW.toISOString()]
+      [HISTORICAL_NOW.toISOString(), DELAYED_NOW.toISOString()]
     );
     assert.equal(renewRequests.length, 3);
     assert.deepEqual(renewRequests[1], renewRequests[0]);
