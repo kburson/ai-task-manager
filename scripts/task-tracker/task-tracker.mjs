@@ -62,8 +62,6 @@ const PREFLIGHT_MODE = {
   pause: 'active-only',
   stop: 'active-only',
   update: 'active-only',
-  resume: 'active-only',
-  start: 'active-only',
 };
 
 function targetFromRest(rest) {

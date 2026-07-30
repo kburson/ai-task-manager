@@ -24,6 +24,29 @@ import {
 } from '../lib/pickup-directive-gate.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 
+export async function renewWorkLeaseBeforeResume(ctx, { issue, sessionId } = {}) {
+  if (typeof ctx?.getWorkLeaseStore !== 'function') {
+    throw new Error('resume requires a lazy work-lease authority');
+  }
+  if (typeof ctx?.getWorkLeaseIdentity !== 'function') {
+    throw new Error('resume requires trusted runtime holder identity');
+  }
+  const identity = ctx.getWorkLeaseIdentity();
+  return ctx.verifyGovernedEffect({
+    issueId: String(issue ?? '').replace(/^#/, ''),
+    sessionId,
+    projectDir: ctx.projectDir,
+    hostId: identity.hostId,
+    operation: 'task-bind',
+    store: ctx.getWorkLeaseStore(),
+    forceRenewal: true,
+    holderIdentity: {
+      provider: identity.provider,
+      agentRunId: identity.agentRunId,
+    },
+  });
+}
+
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
 // a legacy state file predating the field) or when the clock would yield a

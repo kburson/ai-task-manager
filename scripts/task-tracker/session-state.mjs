@@ -66,6 +66,13 @@ function atomicWrite(p, payload) {
   renameSync(tmp, p);
 }
 
+function atomicWriteBytes(p, bytes) {
+  mkdirSync(path.dirname(p), { recursive: true });
+  const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
+  writeFileSync(tmp, bytes);
+  renameSync(tmp, p);
+}
+
 function authorityIssue(record) {
   return record?.issue ?? record?.leaseIssue ?? null;
 }
@@ -90,6 +97,43 @@ function mutateActiveTask(sid, projDir, mutate) {
 export function getActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
   return readJson(p);
+}
+
+// Capture the active-task file before a write-ahead acquire intent is persisted.
+// The raw bytes, including whitespace and final-newline choice, are retained so
+// a deterministic loser can restore the exact pre-attempt state. This snapshot
+// is process-local only and is never serialized into the intent.
+export function captureActiveTaskSnapshot(sid, projDir) {
+  const p = activeTaskPath(sid, projDir);
+  if (!existsSync(p)) return Object.freeze({ present: false, bytes: null });
+  return Object.freeze({ present: true, bytes: Buffer.from(readFileSync(p)) });
+}
+
+// Restore only while the file still contains the acquire intent created by this
+// attempt. The conditional guard prevents a delayed loser from overwriting a
+// newer session write. Exact prior absence is restored by removing the file.
+export function restoreActiveTaskSnapshot(sid, snapshot, expectedIdempotencyKey, projDir) {
+  if (
+    !snapshot ||
+    typeof snapshot !== 'object' ||
+    typeof snapshot.present !== 'boolean' ||
+    typeof expectedIdempotencyKey !== 'string' ||
+    expectedIdempotencyKey.trim() === ''
+  ) {
+    throw new Error('restoreActiveTaskSnapshot: invalid snapshot or idempotency key');
+  }
+  const p = activeTaskPath(sid, projDir);
+  const current = readJsonForMutation(p);
+  if (current?.workLeaseIntent?.idempotencyKey !== expectedIdempotencyKey) return false;
+  if (!snapshot.present) {
+    if (existsSync(p)) rmSync(p);
+    return true;
+  }
+  if (!Buffer.isBuffer(snapshot.bytes)) {
+    throw new Error('restoreActiveTaskSnapshot: present snapshot must contain raw bytes');
+  }
+  atomicWriteBytes(p, snapshot.bytes);
+  return true;
 }
 
 // Persists the active-task record for `sid`. Stamps `boundAt` to the current

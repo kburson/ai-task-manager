@@ -12,11 +12,23 @@ import { fileURLToPath } from 'node:url';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import { assembleCapabilities, CAPABILITY_SURFACES } from '../../../lib/runtime-capabilities.mjs';
-import { buildContext } from '../../../runtime.mjs';
+import { buildContext, createLazyWorkLeaseStore } from '../../../runtime.mjs';
 import { verbClose } from '../../../verbs/close.mjs';
 import { deps as githubProjectsDeps } from '../../../../gh/lib/github-projects.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
+
+test('work-lease authority is lazy and memoized outside read-only runtime construction', () => {
+  let opens = 0;
+  const getStore = createLazyWorkLeaseStore(() => {
+    opens += 1;
+    return { projectId: 'project-1' };
+  });
+
+  assert.equal(opens, 0);
+  assert.equal(getStore(), getStore());
+  assert.equal(opens, 1);
+});
 
 // --- AC1: buildContext exposes the grouped capability objects ---------------
 test('AC1: buildContext decomposes into named capability objects', () => {
@@ -54,6 +66,7 @@ test('AC1: buildContext decomposes into named capability objects', () => {
     // issueBodyMutator is the one synthesized capability (a narrow wrapper).
     assert.equal(typeof ctx.issueBodyMutator.mutate, 'function');
     assert.equal(typeof ctx.verifyGovernedEffect, 'function');
+    assert.equal(typeof ctx.getWorkLeaseStore, 'function');
     assert.equal(
       ctx.workLeaseGuard.verifyGovernedEffect,
       ctx.verifyGovernedEffect,

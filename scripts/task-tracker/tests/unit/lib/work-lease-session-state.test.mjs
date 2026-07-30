@@ -13,9 +13,11 @@ import {
   activeTaskPath,
   attachWorkLeaseIntentReceipt,
   checkpointWorkLeaseProjection,
+  captureActiveTaskSnapshot,
   clearActiveTaskLease,
   clearWorkLeaseIntent,
   getActiveTask,
+  restoreActiveTaskSnapshot,
   setActiveTask,
   setWorkLeaseIntent,
   setWorkLeaseProjectionInput,
@@ -73,6 +75,52 @@ test('lease context has an exact persisted shape and exposes only child fencing 
   });
   assert.deepEqual(leaseContextEnvironment(null), {});
   assert.equal('AITM_LEASE_AUTH_TOKEN' in leaseContextEnvironment(LEASE), false);
+});
+
+test('active-task snapshot restoration preserves exact prior bytes or exact absence', () => {
+  const dir = sandbox();
+  try {
+    const sid = 'session-byte-restore';
+    const p = activeTaskPath(sid, dir);
+    mkdirSync(path.dirname(p), { recursive: true });
+    const exact = '{ "issue": "#1049", "wordsAtStart": 7 }\n';
+    writeFileSync(p, exact, 'utf8');
+    const snapshot = captureActiveTaskSnapshot(sid, dir);
+
+    setWorkLeaseIntent(
+      sid,
+      {
+        operation: 'acquire',
+        request: acquireRequest({ idempotencyKey: 'restore-existing' }),
+        projectionInputs: { session: { issue: '#1049' } },
+      },
+      dir
+    );
+    assert.equal(restoreActiveTaskSnapshot(sid, snapshot, 'restore-existing', dir), true);
+    assert.equal(readFileSync(p, 'utf8'), exact);
+
+    const absentSid = 'session-absence-restore';
+    const absent = captureActiveTaskSnapshot(absentSid, dir);
+    setWorkLeaseIntent(
+      absentSid,
+      {
+        operation: 'acquire',
+        request: acquireRequest({
+          idempotencyKey: 'restore-absence',
+          holder: {
+            ...acquireRequest().holder,
+            sessionId: absentSid,
+          },
+        }),
+        projectionInputs: { session: { issue: '#1049' } },
+      },
+      dir
+    );
+    assert.equal(restoreActiveTaskSnapshot(absentSid, absent, 'restore-absence', dir), true);
+    assert.equal(getActiveTask(absentSid, dir), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('same-issue generic writes preserve lease and kanban while cross-issue writes carry neither', () => {

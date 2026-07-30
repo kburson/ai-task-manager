@@ -6,6 +6,7 @@
 // issue #10 so each lifecycle verb can live in its own file under verbs/.
 
 import path from 'node:path';
+import os from 'node:os';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
@@ -22,6 +23,7 @@ export { PHASE_EVENTS };
 import { enqueue, drain, drainAndDiscard } from './queue.mjs';
 import {
   currentSessionId,
+  aiAppName,
   jsonlPath,
   markerPathFor,
   loadMarker,
@@ -43,6 +45,7 @@ import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
+import { createWorkLeaseProvider } from './lib/work-lease/provider.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 
@@ -54,6 +57,21 @@ export function nowIso() {
 
 export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
+}
+
+export function createLazyWorkLeaseStore(factory) {
+  if (typeof factory !== 'function') {
+    throw new TypeError('work-lease provider factory must be a function');
+  }
+  let initialized = false;
+  let store;
+  return () => {
+    if (!initialized) {
+      store = factory();
+      initialized = true;
+    }
+    return store;
+  };
 }
 
 // #385 / #444 / #882 — classify a non-zero `move-state.mjs` outcome as benign or
@@ -279,6 +297,23 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     CLOSE_OWNED_CHECKBOXES,
     uncheckedPreCloseCheckboxes,
     verifyGovernedEffect,
+  };
+  // Opening the local authority may initialize SQLite and project identity.
+  // Keep it behind a memoized accessor so status/help and all other read-only
+  // commands build the runtime without opening any work-lease authority.
+  ctx.getWorkLeaseStore = createLazyWorkLeaseStore(() =>
+    createWorkLeaseProvider({ config: cfg, projectDir })
+  );
+  ctx.getWorkLeaseIdentity = () => {
+    const sessionId = currentSessionId();
+    return Object.freeze({
+      hostId: os.hostname(),
+      provider: aiAppName(),
+      agentRunId: sessionId,
+      sessionId,
+      pid: process.pid,
+      branch: currentBranch(projectDir),
+    });
   };
 
   ctx.safePostTiming = async (issue, row) => {

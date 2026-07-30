@@ -335,6 +335,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/lib/assignee-guard.mjs`
 - Modify: `scripts/task-tracker/issue-mutator-lock.mjs`
 - Modify: `scripts/task-tracker/lib/runtime-capabilities.mjs`
+- Modify: `scripts/task-tracker/runtime.mjs`
+- Modify: `scripts/task-tracker/task-tracker.mjs`
 - Modify: `scripts/task-tracker/bash-guard.mjs`
 - Modify: `scripts/task-tracker/lib/gh-edit-guard.mjs`
 - Modify: `scripts/task-tracker/source-edit-gate.mjs`

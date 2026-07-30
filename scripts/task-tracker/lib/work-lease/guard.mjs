@@ -1,7 +1,22 @@
+import { randomUUID as defaultRandomUUID } from 'node:crypto';
+
 import { WorkLeaseError, validateRenewRequest, validateVerifyRequest } from '@kburson/aitm-ledger';
 
-import { getActiveTask, setActiveTask } from '../../session-state.mjs';
-import { normalizeLeaseContext } from './context.mjs';
+import {
+  attachWorkLeaseIntentReceipt,
+  captureActiveTaskSnapshot,
+  checkpointWorkLeaseProjection,
+  clearWorkLeaseIntent,
+  getActiveTask,
+  restoreActiveTaskSnapshot,
+  setActiveTask,
+  setWorkLeaseIntent,
+} from '../../session-state.mjs';
+import {
+  normalizeLeaseContext,
+  readWorkLeaseIntentRequest,
+  WORK_LEASE_PROJECTIONS,
+} from './context.mjs';
 import { resolveWorktreeIdentity } from './worktree-identity.mjs';
 
 export const WORK_LEASE_TTL_MS = 15 * 60 * 1000;
@@ -10,6 +25,13 @@ export const WORK_LEASE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 
 const heartbeatOwners = new Map();
 const heartbeatFailures = new Map();
+const TERMINAL_ACQUIRE_CODES = new Set([
+  'lease-contended',
+  'holder-live',
+  'authority-forbidden',
+  'invalid-request',
+  'idempotency-conflict',
+]);
 
 function leaseError(code, message, details) {
   return new WorkLeaseError(code, message, details);
@@ -49,6 +71,13 @@ function parseTimestamp(value, label) {
 function object(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw leaseError('invalid-request', `${label} must be an object`);
+  }
+  return value;
+}
+
+function requiredString(value, label) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw leaseError('invalid-request', `${label} is required`);
   }
   return value;
 }
@@ -202,6 +231,251 @@ function renewalRequestIdentity(lease, verifiedAt) {
     idempotencyKey: `renew:${lease.leaseId}:${lease.fencingToken}:${bucket}`,
     requestedAt: new Date(bucket * WORK_LEASE_HEARTBEAT_AGE_MS).toISOString(),
   };
+}
+
+export async function buildTrustedWorkLeaseHolder({
+  projectDir,
+  hostId,
+  provider,
+  agentRunId,
+  sessionId,
+  pid,
+  branch,
+  resolveWorktreeIdentity: resolveIdentity = resolveWorktreeIdentity,
+} = {}) {
+  requiredString(projectDir, 'work-lease projectDir');
+  const trustedHostId = requiredString(hostId, 'work-lease hostId');
+  const trustedProvider = requiredString(provider, 'work-lease provider');
+  const trustedAgentRunId = requiredString(agentRunId, 'work-lease agentRunId');
+  const trustedSessionId = requiredString(sessionId, 'work-lease sessionId');
+  const trustedBranch = requiredString(branch, 'work-lease branch');
+  if (!Number.isSafeInteger(pid) || pid <= 0) {
+    throw leaseError('invalid-request', 'work-lease pid must be a positive safe integer');
+  }
+  let worktree;
+  try {
+    worktree = await resolveIdentity(projectDir, { hostId: trustedHostId });
+  } catch (error) {
+    throw stableError(error, 'authority-unavailable', 'cannot resolve canonical worktree identity');
+  }
+  const worktreeId = requiredString(worktree?.worktreeId, 'canonical worktreeId');
+  const pathHash = requiredString(worktree?.pathHash, 'canonical worktree pathHash');
+  return Object.freeze({
+    principalKind: 'worker',
+    provider: trustedProvider,
+    agentRunId: trustedAgentRunId,
+    sessionId: trustedSessionId,
+    hostId: trustedHostId,
+    pid,
+    worktreeId,
+    pathHash,
+    branch: trustedBranch,
+  });
+}
+
+function canonicalAcquireIssue(value) {
+  return canonicalIssue(value);
+}
+
+function durableLeaseFromReceipt(receipt, worktreeId) {
+  return normalizeLeaseContext({
+    projectId: receipt?.projectId,
+    leaseId: receipt?.leaseId,
+    fencingToken: receipt?.fencingToken,
+    worktreeId,
+  });
+}
+
+function releaseAfterClaimRequest(lease, releasedAt) {
+  return {
+    projectId: lease.projectId,
+    leaseId: lease.leaseId,
+    fencingToken: lease.fencingToken,
+    idempotencyKey: `release-after-claim:${lease.leaseId}:${lease.fencingToken}`,
+    releasedAt,
+    reason: 'assignee-changed-after-acquire',
+  };
+}
+
+function isCurrentAssigneeClaimReplay(claimResult, eligibility) {
+  if (claimResult?.ok === true) return true;
+  if (claimResult?.kind !== 'already-assigned') return false;
+  const currentUser = String(eligibility?.currentUser ?? '').toLowerCase();
+  return (
+    currentUser !== '' &&
+    (claimResult.assignees ?? []).some((assignee) => String(assignee).toLowerCase() === currentUser)
+  );
+}
+
+// Shared cold-bind/adoption coordinator. Every dependency that can touch
+// GitHub, timing, fleet, or the authority is injectable so tests can prove the
+// write ordering. The session intent is the only mutation before acquire.
+export async function coordinateWorkLeaseAcquire({
+  issueId,
+  sessionId,
+  projectDir,
+  hostId,
+  provider,
+  agentRunId,
+  pid,
+  branch,
+  getStore,
+  readEligibility,
+  claim,
+  projectionInputs,
+  projections,
+  loadSession = getActiveTask,
+  saveIntent = setWorkLeaseIntent,
+  attachReceipt = attachWorkLeaseIntentReceipt,
+  checkpointProjection = checkpointWorkLeaseProjection,
+  clearIntent = clearWorkLeaseIntent,
+  captureSnapshot = captureActiveTaskSnapshot,
+  restoreSnapshot = restoreActiveTaskSnapshot,
+  resolveWorktreeIdentity: resolveIdentity = resolveWorktreeIdentity,
+  now = () => new Date(),
+  randomUUID = defaultRandomUUID,
+} = {}) {
+  const canonicalIssueId = canonicalAcquireIssue(issueId);
+  requiredString(sessionId, 'work-lease sessionId');
+  requiredString(projectDir, 'work-lease projectDir');
+  if (typeof getStore !== 'function') {
+    throw leaseError('invalid-request', 'lazy work-lease provider is required');
+  }
+  if (typeof readEligibility !== 'function') {
+    throw leaseError('invalid-request', 'read-only bind eligibility is required');
+  }
+  if (
+    !projectionInputs ||
+    typeof projectionInputs !== 'object' ||
+    Array.isArray(projectionInputs)
+  ) {
+    throw leaseError('invalid-request', 'work-lease projection inputs are required');
+  }
+  if (!projections || typeof projections !== 'object' || Array.isArray(projections)) {
+    throw leaseError('invalid-request', 'work-lease projection callbacks are required');
+  }
+  for (const name of WORK_LEASE_PROJECTIONS) {
+    if (!Object.hasOwn(projectionInputs, name) || typeof projections[name] !== 'function') {
+      throw leaseError('invalid-request', `work-lease ${name} projection is required`);
+    }
+  }
+
+  const eligibility = await readEligibility();
+  if (!eligibility?.ok) {
+    throw leaseError('authority-forbidden', 'incoming issue is not eligible for bind');
+  }
+  const holder = await buildTrustedWorkLeaseHolder({
+    projectDir,
+    hostId,
+    provider,
+    agentRunId,
+    sessionId,
+    pid,
+    branch,
+    resolveWorktreeIdentity: resolveIdentity,
+  });
+  const snapshot = captureSnapshot(sessionId, projectDir);
+  const existing = await loadSession(sessionId, projectDir);
+  const existingIntent = existing?.workLeaseIntent;
+  let request;
+  let store;
+  if (existingIntent) {
+    request = readWorkLeaseIntentRequest(existingIntent);
+    if (request.issueId !== canonicalIssueId) {
+      throw leaseError('authority-forbidden', 'session has an intent for a different issue');
+    }
+  } else {
+    store = await getStore();
+    const requestedAt = canonicalTimestamp(now(), 'work-lease acquire time');
+    request = {
+      projectId: requiredString(store?.projectId, 'work-lease projectId'),
+      issueId: canonicalIssueId,
+      mode: 'write',
+      idempotencyKey: `acquire:${sessionId}:${canonicalIssueId}:${randomUUID()}`,
+      requestedAt,
+      ttlMs: WORK_LEASE_TTL_MS,
+      holder,
+    };
+    saveIntent(sessionId, { operation: 'acquire', request, projectionInputs }, projectDir);
+  }
+
+  let receipt = existingIntent?.receipt;
+  try {
+    store ??= await getStore();
+    if (!receipt) {
+      receipt = await store.acquire(request);
+      attachReceipt(sessionId, { receipt }, projectDir);
+    }
+  } catch (error) {
+    if (TERMINAL_ACQUIRE_CODES.has(error?.code)) {
+      restoreSnapshot(sessionId, snapshot, request.idempotencyKey, projectDir);
+    }
+    throw stableError(error, 'authority-unavailable', 'work-lease acquisition failed');
+  }
+
+  const durableLease = durableLeaseFromReceipt(receipt, holder.worktreeId);
+  if (eligibility.claimRequired) {
+    if (typeof claim !== 'function') {
+      throw leaseError('invalid-request', 'deferred assignee claim is required');
+    }
+    let claimResult;
+    let claimError;
+    try {
+      claimResult = await claim();
+    } catch (error) {
+      claimError = error;
+    }
+    if (claimError || !isCurrentAssigneeClaimReplay(claimResult, eligibility)) {
+      try {
+        await store.release(
+          releaseAfterClaimRequest(
+            durableLease,
+            canonicalTimestamp(now(), 'work-lease release time')
+          )
+        );
+        restoreSnapshot(sessionId, snapshot, request.idempotencyKey, projectDir);
+      } catch (releaseError) {
+        throw stableError(
+          releaseError,
+          'authority-unavailable',
+          'cannot release lease after assignee recheck'
+        );
+      }
+      if (claimError) {
+        throw stableError(
+          claimError,
+          'authority-unavailable',
+          'assignee claim could not be verified after acquisition'
+        );
+      }
+      throw leaseError(
+        'authority-forbidden',
+        'issue assignee changed after work-lease acquisition'
+      );
+    }
+  }
+
+  let currentIntent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
+  for (const name of WORK_LEASE_PROJECTIONS) {
+    if (currentIntent?.projections?.[name]?.completed === true) continue;
+    await projections[name]({
+      input: currentIntent?.projections?.[name]?.input ?? projectionInputs[name],
+      lease: durableLease,
+      receipt,
+      request,
+      eligibility,
+    });
+    checkpointProjection(
+      sessionId,
+      name,
+      currentIntent?.transitionId,
+      canonicalTimestamp(now(), `work-lease ${name} checkpoint time`),
+      projectDir
+    );
+    currentIntent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
+  }
+  clearIntent(sessionId, currentIntent?.transitionId, projectDir);
+  return Object.freeze({ lease: durableLease, receipt, request, eligibility });
 }
 
 // Verify authority immediately before a governed effect.  The dependencies are
