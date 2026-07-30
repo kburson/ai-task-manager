@@ -79,10 +79,8 @@ function verifiedLeaseContext(result) {
   });
 }
 
-function ownerKey(sessionId, lease) {
-  return [sessionId, lease.projectId, lease.leaseId, lease.fencingToken, lease.worktreeId].join(
-    ':'
-  );
+function commandOwnerKey(sessionId, issueId, operation) {
+  return `governed:${process.pid}:${sessionId}:${String(issueId).replace(/^#/, '')}:${operation}`;
 }
 
 // One operation-aware boundary for governed callbacks. Unknown operations are
@@ -115,6 +113,7 @@ export function createGovernedEffectAdapter({
 
     const identity = getIdentity();
     const holderIdentity = trustedHolderIdentity(identity);
+    const heartbeatOwnerKey = commandOwnerKey(identity.sessionId, issueId, operation);
     const verifyOptions = {
       issueId,
       sessionId: identity.sessionId,
@@ -123,6 +122,7 @@ export function createGovernedEffectAdapter({
       operation,
       store: getStore(),
       holderIdentity,
+      heartbeatOwnerKey,
     };
     let verified = await verifyEffect(verifyOptions);
     let leaseContext = verifiedLeaseContext(verified);
@@ -137,7 +137,7 @@ export function createGovernedEffectAdapter({
     if (heartbeat) {
       heartbeatController = createHeartbeat({
         ...verifyOptions,
-        ownerKey: ownerKey(identity.sessionId, leaseContext),
+        ownerKey: heartbeatOwnerKey,
         verifyEffect,
       });
     }

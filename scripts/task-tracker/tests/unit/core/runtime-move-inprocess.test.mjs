@@ -54,6 +54,9 @@ test('lifecycle host uses exact specialized operations instead of verb aliases',
   assert.equal(governedOperationForLifecycleVerb('plan-approve'), 'approval-mutation');
   assert.equal(governedOperationForLifecycleVerb('review'), 'review-mutation');
   assert.equal(governedOperationForLifecycleVerb('close'), 'close');
+  assert.equal(governedOperationForLifecycleVerb('end'), 'close');
+  assert.equal(governedOperationForLifecycleVerb('dispatch'), 'branch-worktree-orchestration');
+  assert.equal(governedOperationForLifecycleVerb('out-of-band'), 'lifecycle-mutation');
   assert.equal(governedOperationForLifecycleVerb('promote'), 'lifecycle-mutation');
 
   for (const [verbContext, operation] of [

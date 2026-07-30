@@ -1068,82 +1068,15 @@ export async function verbClose(ctx) {
       }
       const reviewChildren = childStates.filter((c) => c.state === 'review');
       if (reviewChildren.length > 0) {
-        console.log(`[task-tracker] Cascade closing ${reviewChildren.length} child issue(s)...`);
-        const { buildRow: br } = await import('../gh-timing-comment.mjs');
-        const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
-        for (const child of reviewChildren) {
-          try {
-            // #1041 — a cascade closes real delivered children, so classify
-            // each child before its Done move or GitHub close. A missing field,
-            // project item, or option aborts the parent close too: continuing
-            // would strand an OPEN child beneath a CLOSED epic.
-            if (
-              !(await writeDeliveredOrRefuse({
-                issueNumber: child.num,
-                targetRef: `#${child.num}`,
-              }))
-            ) {
-              return;
-            }
-            // Cascade close: per-child body not fetched here; activeSec=0 is
-            // honest because no per-child timing context is loaded.
-            await safePostTiming(
-              `#${child.num}`,
-              br({
-                ts: nowIso(),
-                event: _PEcascade.done.enter.event,
-                activeSec: 0,
-                idleSec: 0,
-                deltaWords: 0,
-                // #475 AC1 — stamp the epic session's durable marker (the session
-                // performing the cascade); the per-log monotonic-max in
-                // rollupTotals protects each child's own running total.
-                wordMarker: s.lastWordMarker ?? 0,
-                description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
-              })
-            );
-            // #385 — structured result; a genuine per-child board-move failure
-            // is surfaced (with its real stderr) but does not abort the cascade.
-            // The benign `done → done` no-op stays silent.
-            const childMove = await runMoveState(child.num, 'done', {
-              env: { AITM_CASCADE: '1' },
-              silent: true,
-            });
-            // #512 — fail CLOSED: a genuine non-benign board-move failure must NOT
-            // be followed by `gh issue close`, or the child is left CLOSED while
-            // its board card is not Done (split-brain). The benign done→done no-op
-            // still closes. One stuck child must not abort the cascade, so skip it
-            // and continue with actionable recovery guidance.
-            const { decideCascadeChildClose } = await import('../lib/cascade-child-close.mjs');
-            const childCloseDecision = decideCascadeChildClose({ childMove });
-            if (!childCloseDecision.shouldClose) {
-              console.warn(
-                `  ⚠ #${child.num} NOT closed — board move to "done" failed: ${childCloseDecision.detail}`
-              );
-              console.warn(
-                `     Recovery: re-run \`/task close ${child.num}\` once the board is reachable, ` +
-                  `or move the card to Done manually, then re-run the epic close.`
-              );
-              continue;
-            }
-            await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
-              timeout: GH_API_TIMEOUT_MS,
-            });
-            try {
-              deregisterTask(projectDir, `#${child.num}`);
-            } catch {
-              /* best-effort: cleanup; failure is non-fatal */
-            }
-            const childFlush = await flushAndForgetQueueFor(`#${child.num}`);
-            const childSuffix =
-              childFlush.delivered || childFlush.discarded
-                ? ` (queue: delivered ${childFlush.delivered}, discarded ${childFlush.discarded})`
-                : '';
-            console.log(`  ✓ #${child.num} closed${childSuffix}`);
-          } catch (err) {
-            console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
-          }
-        }
+        console.error(
+          `[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${reviewChildren.length} child issue(s) require their own work lease:`
+        );
+        reviewChildren.forEach((child) => console.error(`   #${child.num}: review`));
+        console.error(
+          'Close each child in its own governed session before retrying the parent close.'
+        );
+        process.exit(3);
+        return;
       }
     }
   }

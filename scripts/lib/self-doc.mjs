@@ -143,7 +143,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis:
       'Claim a sub-issue for an agent: flip the board to In Progress and post a start timing row.',
     audience: 'Orchestrator just before handing a sub-issue to an agent.',
-    usage: 'aitm dispatch-prep <issue#> [--description "<text>"]',
+    usage: 'aitm dispatch-prep <issue#> --anchor <parent-or-controller#> [--description "<text>"]',
   },
   'cut-epic-branch': {
     group: 'Epic Branching',
@@ -487,7 +487,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       exitCode(9, 'move-state human-move guard refused the transition'),
       exitCode(10, 'move-state assignee guard refused the transition'),
     ],
-    examples: ['npx aitm dispatch-prep 1023 --description "agent boot"'],
+    examples: ['npx aitm dispatch-prep 1023 --anchor 1005 --description "agent boot"'],
     relatedCommands: ['ensure-wave-parent', 'start'],
   }),
   'cut-epic-branch': routableContract({

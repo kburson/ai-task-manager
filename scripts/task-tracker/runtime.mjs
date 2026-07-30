@@ -50,6 +50,7 @@ import { governedOperationForLifecycleVerb, runMoveStateHost } from '../gh/move-
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
+import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
 import { createWorkLeaseProvider } from './lib/work-lease/provider.mjs';
 import { createGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
@@ -328,6 +329,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     minutesBetween,
     CLOSE_OWNED_CHECKBOXES,
     uncheckedPreCloseCheckboxes,
+    verifyGovernedEffect,
   };
   // Opening the local authority may initialize SQLite and project identity.
   // Keep it behind a memoized accessor so status/help and all other read-only

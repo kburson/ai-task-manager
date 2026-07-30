@@ -216,25 +216,9 @@ assert.ok(
   'the genuine-failure branch must guard the "Closed" success line'
 );
 
-// Cascade child move is also captured and surfaced (but does not abort).
-assert.match(
-  closeSrc,
-  /const childMove = await runMoveState\(child\.num, 'done'/,
-  'cascade child move must capture the structured result'
-);
-// #512 — the genuine-failure check moved into the `decideCascadeChildClose`
-// helper, which gates the child `gh issue close` (fail-closed: a non-benign
-// move failure must NOT close the child, avoiding split-brain). The cascade
-// still surfaces the failure and continues to the next child.
-assert.match(
-  closeSrc,
-  /decideCascadeChildClose\(\{ childMove \}\)/,
-  'cascade must route the child move result through decideCascadeChildClose'
-);
-assert.match(
-  closeSrc,
-  /!childCloseDecision\.shouldClose/,
-  'cascade must surface and skip a child whose move genuinely failed'
-);
+// A parent lease cannot authorize a review child's Delivered/timing/board/GitHub
+// effects. Task 6 will add explicit handoff; until then parent close refuses.
+assert.match(closeSrc, /child issue\(s\) require their own work lease/);
+assert.doesNotMatch(closeSrc, /runMoveState\(child\.num, 'done'/);
 
 console.log('move-state-structured-result.test.mjs: all passed');

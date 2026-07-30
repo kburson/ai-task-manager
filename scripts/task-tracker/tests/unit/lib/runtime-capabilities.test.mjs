@@ -14,6 +14,9 @@ import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import { assembleCapabilities, CAPABILITY_SURFACES } from '../../../lib/runtime-capabilities.mjs';
 import { buildContext, createLazyWorkLeaseStore } from '../../../runtime.mjs';
 import { verbClose } from '../../../verbs/close.mjs';
+import { renewWorkLeaseBeforeResume } from '../../../verbs/resume.mjs';
+import { clearActiveTask, setActiveTask } from '../../../session-state.mjs';
+import { resolveWorktreeIdentity } from '../../../lib/work-lease/worktree-identity.mjs';
 import { deps as githubProjectsDeps } from '../../../../gh/lib/github-projects.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -66,6 +69,11 @@ test('AC1: buildContext decomposes into named capability objects', () => {
     // issueBodyMutator is the one synthesized capability (a narrow wrapper).
     assert.equal(typeof ctx.issueBodyMutator.mutate, 'function');
     assert.equal(typeof ctx.withGovernedEffect, 'function');
+    assert.equal(
+      typeof ctx.verifyGovernedEffect,
+      'function',
+      'private Task5B resume renewal seam remains available'
+    );
     assert.equal(typeof ctx.getWorkLeaseStore, 'function');
     assert.equal(
       ctx.workLeaseGuard.withGovernedEffect,
@@ -131,6 +139,78 @@ test('workLeaseGuard capability exposes only the governed-effect adapter', () =>
   assert.deepEqual(CAPABILITY_SURFACES.workLeaseGuard, ['withGovernedEffect']);
   assert.deepEqual(Object.keys(caps.workLeaseGuard), ['withGovernedEffect']);
   assert.equal(caps.workLeaseGuard.withGovernedEffect, withGovernedEffect);
+});
+
+test('real buildContext resume renewal reaches the retained private verifier', async () => {
+  const priorSession = process.env.CODEX_SESSION_ID;
+  const priorProject = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const priorSkip = process.env.TT_SKIP_NETWORK;
+  const priorSelf = process.env.TT_SKIP_FIELD_SELF_CHECK;
+  const projectDir = path.resolve(here, '..', '..', '..', '..', '..');
+  const sessionId = `wave1-runtime-resume-${process.pid}`;
+  process.env.CODEX_SESSION_ID = sessionId;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.env.TT_SKIP_NETWORK = '1';
+  process.env.TT_SKIP_FIELD_SELF_CHECK = '1';
+  try {
+    const ctx = buildContext(['resume', '#1049']);
+    const identity = ctx.getWorkLeaseIdentity();
+    const worktree = await resolveWorktreeIdentity(projectDir, { hostId: identity.hostId });
+    const persistedLease = {
+      projectId: 'project-runtime-resume',
+      leaseId: 'lease-runtime-resume',
+      fencingToken: '42',
+      worktreeId: worktree.worktreeId,
+    };
+    setActiveTask(sessionId, { issue: '#1049', lease: persistedLease }, projectDir);
+    const holder = {
+      principalKind: 'worker',
+      provider: identity.provider,
+      agentRunId: identity.agentRunId,
+      sessionId,
+      hostId: identity.hostId,
+      worktreeId: worktree.worktreeId,
+      pathHash: worktree.pathHash,
+      branch: identity.branch,
+    };
+    const leaseAt = (timestamp) => ({
+      ...persistedLease,
+      issueId: '1049',
+      state: 'active',
+      acquiredAt: new Date(Date.parse(timestamp) - 60_000).toISOString(),
+      heartbeatAt: timestamp,
+      expiresAt: new Date(Date.parse(timestamp) + 15 * 60_000).toISOString(),
+      holder,
+    });
+    const calls = [];
+    ctx.getWorkLeaseStore = () => ({
+      verify(request) {
+        calls.push(`verify:${request.operation}`);
+        return { allowed: true, lease: leaseAt(request.verifiedAt) };
+      },
+      renew(request) {
+        calls.push('renew');
+        return leaseAt(request.requestedAt);
+      },
+    });
+
+    await renewWorkLeaseBeforeResume(ctx, {
+      issue: '#1049',
+      sessionId,
+      holderIdentity: holder,
+    });
+    assert.deepEqual(calls, ['verify:task-bind', 'renew']);
+  } finally {
+    clearActiveTask(sessionId, projectDir);
+    if (priorSession === undefined) delete process.env.CODEX_SESSION_ID;
+    else process.env.CODEX_SESSION_ID = priorSession;
+    if (priorProject === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorProject;
+    if (priorSkip === undefined) delete process.env.TT_SKIP_NETWORK;
+    else process.env.TT_SKIP_NETWORK = priorSkip;
+    if (priorSelf === undefined) delete process.env.TT_SKIP_FIELD_SELF_CHECK;
+    else process.env.TT_SKIP_FIELD_SELF_CHECK = priorSelf;
+  }
 });
 
 test('strict sub-issue capability fetches project identity and Status name in one query', () => {

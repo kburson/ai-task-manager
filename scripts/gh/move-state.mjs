@@ -72,6 +72,8 @@ const LIFECYCLE_OPERATION_BY_VERB = Object.freeze({
   'plan-approve': 'approval-mutation',
   review: 'review-mutation',
   close: 'close',
+  end: 'close',
+  dispatch: 'branch-worktree-orchestration',
 });
 const GENERIC_LIFECYCLE_VERBS = new Set([
   'promote',
@@ -86,6 +88,7 @@ const GENERIC_LIFECYCLE_VERBS = new Set([
   'next',
   'move-state',
   'runtime',
+  'out-of-band',
 ]);
 
 export function governedOperationForLifecycleVerb(verb) {
@@ -109,6 +112,7 @@ export function resolveGovernedLifecycleOperation(verb, suppliedOperation) {
 
 export async function runGovernedLifecycleMutation({
   issue,
+  governedIssue = issue,
   verb,
   operation,
   projectDir,
@@ -133,7 +137,7 @@ export async function runGovernedLifecycleMutation({
   const authorize = (callback) =>
     withGovernedEffect(
       {
-        issueId: issue,
+        issueId: governedIssue,
         operation,
         heartbeat: true,
       },
@@ -183,6 +187,7 @@ export async function runMoveStateHost({
   tailProfile = 'task-owner',
   reviewAuthority = null,
   governedOperation,
+  governedIssueId,
   withGovernedEffect,
 } = {}) {
   const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
@@ -278,10 +283,27 @@ export async function runMoveStateHost({
 
   let exactGovernedOperation;
   try {
-    exactGovernedOperation = resolveGovernedLifecycleOperation(
-      AITM_VERB_CONTEXT || (AITM_INTERNAL ? 'move-state' : ''),
-      governedOperation
-    );
+    const routingVerb =
+      AITM_VERB_CONTEXT ||
+      (outOfBandReason
+        ? 'out-of-band'
+        : AITM_INTERNAL || gate.decision === 'allow-with-warning'
+          ? 'move-state'
+          : '');
+    exactGovernedOperation = resolveGovernedLifecycleOperation(routingVerb, governedOperation);
+    if (routingVerb === 'dispatch') {
+      if (!/^[1-9]\d*$/.test(String(governedIssueId ?? ''))) {
+        throw new TypeError('dispatch governed issue anchor is required');
+      }
+      if (String(governedIssueId) === String(issueArg)) {
+        throw new TypeError('dispatch child cannot be its own governed issue anchor');
+      }
+    } else if (
+      governedIssueId !== undefined &&
+      String(governedIssueId).replace(/^#/, '') !== String(issueArg)
+    ) {
+      throw new TypeError('governed issue override is reserved for dispatch');
+    }
   } catch (error) {
     process.stderr.write(`move-state.mjs: ${error.message}\n`);
     return 3;
@@ -533,6 +555,7 @@ export async function runMoveStateHost({
   try {
     return await runGovernedLifecycleMutation({
       issue: issueArg,
+      governedIssue: governedIssueId ?? issueArg,
       verb: AITM_VERB_CONTEXT || 'move-state',
       operation: exactGovernedOperation,
       projectDir,

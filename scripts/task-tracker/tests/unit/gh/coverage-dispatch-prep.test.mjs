@@ -19,15 +19,15 @@ const argv = (...rest) => ['node', 'dispatch-prep.mjs', ...rest];
 // Records each call so tests can assert the issue flowed through unchanged.
 function fakeRunMoveState(code = 0) {
   const calls = [];
-  const fn = async ({ issue }) => {
-    calls.push({ issue });
+  const fn = async ({ issue, anchor }) => {
+    calls.push({ issue, anchor });
     return code;
   };
   fn.calls = calls;
   return fn;
 }
 
-function harness({ cfg = { repo: 'o/r' }, runMoveState } = {}) {
+function harness({ cfg = { repo: 'o/r' }, runMoveState, withGovernedEffect } = {}) {
   const logs = [];
   const errs = [];
   const exits = [];
@@ -43,6 +43,12 @@ function harness({ cfg = { repo: 'o/r' }, runMoveState } = {}) {
     log: (s) => logs.push(s),
     err: (s) => errs.push(s),
     exit: (c) => exits.push(c),
+    withGovernedEffect:
+      withGovernedEffect ||
+      (async (options, callback) => {
+        logs.push(`verify:${options.issueId}:${options.operation}`);
+        return callback({ reverify: async () => {} });
+      }),
   };
   return { overrides, logs, errs, exits, posts };
 }
@@ -70,18 +76,61 @@ test('non-numeric issue → invalid, exit 2', async () => {
 
 test('no repo configured → config-not-found, exit 2', async () => {
   const h = harness({ cfg: {} });
-  await main(argv('42'), h.overrides);
+  await main(argv('42', '--anchor', '7'), h.overrides);
   assert.deepEqual(h.exits, [2]);
   assert.match(h.errs.join(''), /config-not-found/);
 });
 
-test('skipNetwork happy path: flips board, posts no timing row', async () => {
+test('missing dispatch anchor refuses before child board or timing effects', async () => {
   const fx = fakeRunMoveState();
   const h = harness({ runMoveState: fx });
-  await main(argv('42'), { ...h.overrides, skipNetwork: true });
+  await main(argv('42'), { ...h.overrides, skipNetwork: false });
+  assert.deepEqual(h.exits, [2]);
+  assert.equal(fx.calls.length, 0);
+  assert.equal(h.posts.length, 0);
+  assert.match(h.errs.join(''), /--anchor/);
+});
+
+test('child self-anchor refuses before child board or timing effects', async () => {
+  const fx = fakeRunMoveState();
+  const h = harness({ runMoveState: fx });
+  await main(argv('42', '--anchor', '42'), { ...h.overrides, skipNetwork: false });
+  assert.deepEqual(h.exits, [2]);
+  assert.equal(fx.calls.length, 0);
+  assert.equal(h.posts.length, 0);
+  assert.match(h.errs.join(''), /cannot authorize its own dispatch/);
+});
+
+test('mismatched dispatch anchor authority refuses before child board or timing effects', async () => {
+  const fx = fakeRunMoveState();
+  const h = harness({
+    runMoveState: fx,
+    withGovernedEffect: async () => {
+      const error = new Error('anchor does not match persisted lease');
+      error.code = 'lease-not-held';
+      throw error;
+    },
+  });
+  await assert.rejects(
+    () =>
+      main(argv('42', '--anchor', '7'), {
+        ...h.overrides,
+        skipNetwork: false,
+      }),
+    (error) => error.code === 'lease-not-held'
+  );
+  assert.equal(fx.calls.length, 0);
+  assert.equal(h.posts.length, 0);
+});
+
+test('skipNetwork happy path: verifies anchor, flips board, posts no timing row', async () => {
+  const fx = fakeRunMoveState();
+  const h = harness({ runMoveState: fx });
+  await main(argv('42', '--anchor', '7'), { ...h.overrides, skipNetwork: true });
   assert.equal(fx.calls.length, 1);
   // in-process move flip invoked with the issue
   assert.equal(fx.calls[0].issue, '42');
+  assert.equal(fx.calls[0].anchor, '7');
   assert.equal(h.posts.length, 0);
   assert.match(h.logs.join(''), /flipped to In Progress/);
 });
@@ -89,18 +138,22 @@ test('skipNetwork happy path: flips board, posts no timing row', async () => {
 test('network happy path: flips board and posts a start timing row', async () => {
   const fx = fakeRunMoveState();
   const h = harness({ runMoveState: fx });
-  await main(argv('42', '--description', 'boot pending'), { ...h.overrides, skipNetwork: false });
+  await main(argv('42', '--anchor', '7', '--description', 'boot pending'), {
+    ...h.overrides,
+    skipNetwork: false,
+  });
   assert.equal(fx.calls.length, 1);
   assert.equal(h.posts.length, 1);
   assert.equal(h.posts[0].issueNumber, '#42');
   assert.equal(h.posts[0].repo, 'o/r');
+  assert.ok(h.logs.includes('verify:7:branch-worktree-orchestration'));
   assert.deepEqual(h.exits, []);
 });
 
 test('non-zero move exit: reports and exits with the move code, posts no row', async () => {
   const fx = fakeRunMoveState(3);
   const h = harness({ runMoveState: fx });
-  await main(argv('42'), { ...h.overrides, skipNetwork: false });
+  await main(argv('42', '--anchor', '7'), { ...h.overrides, skipNetwork: false });
   assert.equal(fx.calls.length, 1);
   assert.deepEqual(h.exits, [3]);
   assert.equal(h.posts.length, 0);
@@ -109,9 +162,10 @@ test('non-zero move exit: reports and exits with the move code, posts no row', a
 
 // ── direct unit tests for the exported parser ────────────────────────────────
 test('parseArgs strips leading # and reads --description', () => {
-  const out = parseArgs(['#77', '--description', 'hello']);
+  const out = parseArgs(['#77', '--anchor', '#8', '--description', 'hello']);
   assert.equal(out.issue, '77');
   assert.equal(out.description, 'hello');
+  assert.equal(out.anchor, '8');
 });
 
 test('parseArgs defaults description and marks help', () => {

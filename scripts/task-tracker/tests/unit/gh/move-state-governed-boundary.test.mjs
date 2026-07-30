@@ -81,10 +81,6 @@ test('guard refusal remains inside authority and invokes zero mutation effects',
 
 test('unsupported lifecycle callers fail closed instead of falling back to generic authority', () => {
   assert.throws(
-    () => governedOperationForLifecycleVerb('dispatch'),
-    /unsupported governed lifecycle verb: dispatch/
-  );
-  assert.throws(
     () => governedOperationForLifecycleVerb('unknown'),
     /unsupported governed lifecycle verb: unknown/
   );

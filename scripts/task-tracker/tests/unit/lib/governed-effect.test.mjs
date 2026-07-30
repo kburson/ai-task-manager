@@ -8,6 +8,7 @@ import {
   GOVERNED_EFFECT_OPERATIONS,
   createGovernedEffectAdapter,
 } from '../../../lib/work-lease/governed-effect.mjs';
+import { createWorkLeaseHeartbeat, verifyGovernedEffect } from '../../../lib/work-lease/guard.mjs';
 
 function authorityLease(overrides = {}) {
   return {
@@ -166,7 +167,21 @@ test('verified effect reverifies freshly and stops one optional heartbeat in fin
   );
 
   assert.equal(calls.stop, 1);
-  assert.equal(calls.heartbeat[0].ownerKey, 'session-1:project-1:lease-1:42:wt-1');
+  assert.equal(
+    calls.heartbeat[0].ownerKey,
+    `governed:${process.pid}:session-1:1049:close`,
+    'command heartbeat key cannot collide with the Task5B lease heartbeat owner'
+  );
+  assert.equal(
+    calls.verify[0].heartbeatOwnerKey,
+    calls.heartbeat[0].ownerKey,
+    'initial verify and command heartbeat share the command owner key'
+  );
+  assert.equal(
+    calls.verify[1].heartbeatOwnerKey,
+    calls.heartbeat[0].ownerKey,
+    'reverify observes remembered command-heartbeat failure under the same key'
+  );
   assert.equal(calls.heartbeat[0].operation, 'close');
 });
 
@@ -181,4 +196,103 @@ test('short governed effects do not start a heartbeat unless the caller opts in'
   assert.equal(calls.verify.length, 2, 'reverify is one additional fresh authority call');
   assert.equal(calls.heartbeat.length, 0, 'reverify does not implicitly start a heartbeat');
   assert.equal(calls.stop, 0);
+});
+
+test('command heartbeat does not collide with bind heartbeat and its failure blocks reverify', async () => {
+  const timers = new Map();
+  const cleared = [];
+  const bindOwner = 'session-1:project-1:lease-1:42:wt-1';
+  const bind = createWorkLeaseHeartbeat({
+    ownerKey: bindOwner,
+    verifyEffect: async () => {},
+    setInterval: (tick) => {
+      const timer = { tick, unref() {} };
+      timers.set(bindOwner, timer);
+      return timer;
+    },
+    clearInterval: (timer) => cleared.push(timer),
+  });
+
+  let heartbeatFails = false;
+  const persisted = {
+    issue: '#1049',
+    lease: {
+      projectId: 'project-1',
+      leaseId: 'lease-1',
+      fencingToken: '42',
+      worktreeId: 'wt-1',
+    },
+  };
+  const rawVerify = (options) =>
+    verifyGovernedEffect({
+      ...options,
+      loadSession: () => persisted,
+      saveSession: async () => {},
+      resolveWorktreeIdentity: async () => ({ worktreeId: 'wt-1' }),
+      now: () => new Date('2026-07-30T12:00:00.000Z'),
+    });
+  const withGovernedEffect = createGovernedEffectAdapter({
+    projectDir: '/project',
+    getStore: () => ({
+      verify: () => {
+        if (heartbeatFails) {
+          throw new WorkLeaseError('authority-unavailable', 'command heartbeat lost authority');
+        }
+        return {
+          allowed: true,
+          lease: authorityLease({
+            acquiredAt: '2026-07-30T11:00:00.000Z',
+            heartbeatAt: '2026-07-30T12:00:00.000Z',
+            expiresAt: '2026-07-30T12:15:00.000Z',
+            holder: {
+              principalKind: 'worker',
+              worktreeId: 'wt-1',
+              sessionId: 'session-1',
+              hostId: 'host-1',
+            },
+          }),
+        };
+      },
+    }),
+    getIdentity: () => ({
+      principalKind: 'worker',
+      sessionId: 'session-1',
+      hostId: 'host-1',
+    }),
+    verifyEffect: rawVerify,
+    createHeartbeat: (options) =>
+      createWorkLeaseHeartbeat({
+        ...options,
+        setInterval: (tick) => {
+          const timer = { tick, unref() {} };
+          timers.set(options.ownerKey, timer);
+          return timer;
+        },
+        clearInterval: (timer) => cleared.push(timer),
+      }),
+  });
+
+  const commandOwner = `governed:${process.pid}:session-1:1049:close`;
+  await withGovernedEffect(
+    { issueId: '1049', operation: 'close', heartbeat: true },
+    async (effect) => {
+      assert.notEqual(timers.get(commandOwner), timers.get(bindOwner));
+      heartbeatFails = true;
+      await timers.get(commandOwner).tick();
+      heartbeatFails = false;
+      await assert.rejects(
+        () => effect.reverify(),
+        (error) =>
+          error instanceof WorkLeaseError &&
+          error.code === 'authority-unavailable' &&
+          /command heartbeat lost authority/.test(error.message)
+      );
+      assert.equal(createWorkLeaseHeartbeat({ ownerKey: bindOwner }), bind);
+    }
+  );
+  assert.ok(
+    !cleared.includes(timers.get(bindOwner)),
+    'command cleanup must not stop bind heartbeat'
+  );
+  bind.stop();
 });

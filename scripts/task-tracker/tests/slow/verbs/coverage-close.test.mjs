@@ -385,7 +385,7 @@ test('gate-eval failure, no --force → fail-closed exit 3', async () => {
   assert.equal(r.exitCode, 3);
   assert.match(r.stderr, /close-gate evaluation failed/);
 });
-test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed', async () => {
+test('--force cannot use the parent lease for child cascade effects', async () => {
   const calls = [];
   const parentDoneOptions = [];
   const r = await run({
@@ -418,29 +418,13 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
       },
     },
   });
-  assert.match(r.stdout, /Closed #5/);
-  const childDispositionIndex = calls.indexOf('disposition 101 Delivered');
-  const childDoneIndex = calls.indexOf('move 101 done');
-  const childCloseIndex = calls.findIndex((c) => /issue close 101/.test(c));
-  const parentDispositionIndex = calls.indexOf('disposition 5 Delivered');
-  const parentDoneIndex = calls.indexOf('move 5 done');
-  const parentCloseIndex = calls.findIndex((c) => /issue close 5/.test(c));
-  assert.ok(childDispositionIndex >= 0, `expected child Delivered write; got ${calls}`);
-  assert.ok(
-    childDoneIndex > childDispositionIndex && childCloseIndex > childDoneIndex,
-    `expected child write before Done and close; got ${calls}`
-  );
-  assert.ok(parentDispositionIndex >= 0, `expected parent Delivered write; got ${calls}`);
-  assert.ok(
-    parentDoneIndex > parentDispositionIndex && parentCloseIndex > parentDoneIndex,
-    `expected parent write before Done and close; got ${calls}`
-  );
-  assert.equal(parentDoneOptions.length, 2, 'forced pre-move and final move must both run');
-  assert.deepEqual(parentDoneOptions[0].extraArgs, ['--force']);
-  assert.equal(parentDoneOptions[0].reviewAuthority, 'human-gate');
-  assert.equal(parentDoneOptions[1].reviewAuthority, 'human-gate');
+  assert.equal(r.exitCode, 3);
+  assert.match(r.stderr, /child issue\(s\) require their own work lease/);
+  assert.ok(!calls.some((c) => /disposition 101|move 101|issue close (101|5)/.test(c)), calls);
+  assert.ok(!calls.some((c) => /disposition 5/.test(c)), calls);
+  assert.equal(parentDoneOptions.length, 0, 'no parent Done move occurs before child refusal');
 });
-test('cascade: disposition failure leaves child and parent OPEN and active', async () => {
+test('cascade refusal leaves child and parent OPEN and active before disposition', async () => {
   resetExit();
   const ghCalls = [];
   const r = await run({
@@ -465,11 +449,11 @@ test('cascade: disposition failure leaves child and parent OPEN and active', asy
       },
     },
   });
-  assert.equal(exitOf(r), 1);
+  assert.equal(exitOf(r), 3);
   assert.equal(r.finalState.active, '#5');
   assert.ok(!ghCalls.some((c) => /issue close (101|5)/.test(c)));
   assert.doesNotMatch(r.stdout, /✓ #101 closed/);
-  assert.match(r.stderr, /Delivered option missing/);
+  assert.match(r.stderr, /require their own work lease/);
   resetExit();
 });
 
