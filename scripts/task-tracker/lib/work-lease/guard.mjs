@@ -752,6 +752,7 @@ export async function coordinateWorkLeaseAcquire({
 
   const existing = await loadSession(sessionId, projectDir);
   const existingIntent = existing?.workLeaseIntent;
+  const replayingPersistedIntent = Boolean(existingIntent);
   let eligibility = preparedEligibility;
   let holder;
   let store;
@@ -807,7 +808,6 @@ export async function coordinateWorkLeaseAcquire({
     });
   }
 
-  const replayingPersistedReceipt = intent.receipt !== undefined;
   let receipt = intent.receipt;
   if (!receipt) {
     let candidateReceipt;
@@ -844,7 +844,7 @@ export async function coordinateWorkLeaseAcquire({
   });
   receipt = intent.receipt;
   const { durableLease, acquiredAt } = validateAcquireReceipt(receipt, request);
-  if (replayingPersistedReceipt) {
+  if (replayingPersistedIntent) {
     const trustedAuthorityHolder = Object.fromEntries(
       STABLE_HOLDER_FIELDS.map((field) => [field, holder[field]])
     );
@@ -1030,6 +1030,7 @@ export async function coordinateWorkLeaseResume({
   }
   let persistedLease = expectedLease(session, canonicalIssueId, worktreeId);
   let intent = session.workLeaseIntent;
+  const replayingPersistedIntent = Boolean(intent);
   if (!intent) {
     const requestedAt = canonicalTimestamp(now(), 'work-lease resume time');
     const request = renewRequest(
@@ -1057,7 +1058,6 @@ export async function coordinateWorkLeaseResume({
     store,
     persistedLease,
   });
-  const replayingPersistedReceipt = intent.receipt !== undefined;
   let receipt = intent.receipt;
   if (!receipt) {
     const verifyRequest = {
@@ -1135,7 +1135,7 @@ export async function coordinateWorkLeaseResume({
     fencingToken: authorityLease.fencingToken,
     worktreeId,
   });
-  if (replayingPersistedReceipt) {
+  if (replayingPersistedIntent) {
     await verifyCurrentReplayAuthority({
       store,
       expectedLease: durableLease,
