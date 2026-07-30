@@ -195,6 +195,10 @@ test('canonical request digest is key-order independent but payload-sensitive', 
   assert.equal(one, same);
   assert.notEqual(one, other);
   assert.match(one, /^[a-f0-9]{64}$/);
+  assert.match(canonicalRequestDigest({ fencingToken: 1n }), /^[a-f0-9]{64}$/);
+  const cyclic = { projectId: 'project-1' };
+  cyclic.self = cyclic;
+  assert.match(canonicalRequestDigest(cyclic), /^[a-f0-9]{64}$/);
 });
 
 test('memory conformance: uniqueness, exact replay, conflict, verification, and release fencing', () => {
@@ -319,6 +323,28 @@ test('recordable invalid requests replay and corrected payload reuse conflicts',
     () => store.acquire({ ...malformed, mode: 'write' }),
     (error) => error.code === 'idempotency-conflict',
     'correcting a payload cannot reuse the terminal response key'
+  );
+
+  const lease = store.acquire(acquire({ idempotencyKey: 'bigint-base' }));
+  const invalidToken = {
+    projectId: 'project-1',
+    leaseId: lease.leaseId,
+    fencingToken: 1n,
+    idempotencyKey: 'bigint-invalid',
+    requestedAt: NOW,
+    ttlMs: 900_000,
+  };
+  assert.throws(
+    () => store.renew(invalidToken),
+    (error) => error.code === 'invalid-request'
+  );
+  assert.throws(
+    () => store.renew(invalidToken),
+    (error) => error.code === 'invalid-request'
+  );
+  assert.throws(
+    () => store.renew({ ...invalidToken, fencingToken: lease.fencingToken }),
+    (error) => error.code === 'idempotency-conflict'
   );
 });
 

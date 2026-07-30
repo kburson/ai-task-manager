@@ -253,13 +253,25 @@ export function validateObserveSelector(selector) {
   return selector;
 }
 
-function stable(value) {
-  if (Array.isArray(value)) return value.map(stable);
-  if (!value || typeof value !== 'object') return value;
+function stable(value, seen = new Map(), location = '$') {
+  if (value === null) return null;
+  if (typeof value === 'bigint') return { $aitmType: 'bigint', value: String(value) };
+  if (typeof value === 'undefined') return { $aitmType: 'undefined' };
+  if (typeof value === 'symbol') return { $aitmType: 'symbol', value: String(value.description) };
+  if (typeof value === 'function') return { $aitmType: 'function', value: value.name || '' };
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    return { $aitmType: 'number', value: String(value) };
+  }
+  if (typeof value !== 'object') return value;
+  if (seen.has(value)) return { $aitmRef: seen.get(value) };
+  seen.set(value, location);
+  if (Array.isArray(value)) {
+    return value.map((item, index) => stable(item, seen, `${location}[${index}]`));
+  }
   return Object.fromEntries(
     Object.keys(value)
       .sort()
-      .map((key) => [key, stable(value[key])])
+      .map((key) => [key, stable(value[key], seen, `${location}.${key}`)])
   );
 }
 
