@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
+import { WorkLeaseError } from '@kburson/aitm-ledger';
+
 import { loadState, saveState, advanceWordMarker } from '../../state.mjs';
 import { rawProjectConfig } from '../../config.mjs';
 import {
@@ -118,6 +120,34 @@ function canonicalIssueRef(value) {
   const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
   if (!match) throw new Error('resume requires a canonical issue number');
   return `#${match[1]}`;
+}
+
+function requireConfirmedSwitchTimingRead(result) {
+  if (result?.status === 'found' && typeof result.body === 'string' && result.error == null) {
+    return result;
+  }
+  if (result?.status === 'absent' && result.body === '' && result.error == null) {
+    return result;
+  }
+  throw new WorkLeaseError(
+    'authority-unavailable',
+    'source timing history is unavailable for governed switch'
+  );
+}
+
+async function readConfirmedSwitchTiming(ctx, source) {
+  const timingGh = await import('../../gh-timing-comment.mjs');
+  const read = ctx.readTimingCommentBody ?? timingGh.readTimingCommentBody;
+  let result;
+  try {
+    result = await read({
+      issueNumber: source.replace(/^#/, ''),
+      repo: ctx.cfg.repo,
+    });
+  } catch {
+    result = null;
+  }
+  return requireConfirmedSwitchTimingRead(result);
 }
 
 function heartbeatOwnerKey(sessionId, lease) {
@@ -575,7 +605,7 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
 
 async function buildGovernedSwitchPlan(
   ctx,
-  { source, target, state, sessionId, requestId, eligibility, binding }
+  { source, target, state, sessionId, requestId, eligibility, binding, sourceTimingRead }
 ) {
   const plan = await buildGovernedBindPlan(ctx, {
     target,
@@ -729,11 +759,9 @@ async function buildGovernedSwitchPlan(
   };
   if (!eligibility.skippedNetwork) {
     const timingGh = await import('../../gh-timing-comment.mjs');
-    const read = ctx.readTimingCommentBody ?? timingGh.readTimingCommentBody;
-    const sourceTiming = await read({
-      issueNumber: source.replace(/^#/, ''),
-      repo: ctx.cfg.repo,
-    });
+    const sourceTiming = requireConfirmedSwitchTimingRead(
+      sourceTimingRead ?? (await readConfirmedSwitchTiming(ctx, source))
+    );
     const sourceRows = plan.projectionInputs.timing.rows
       .filter((item) => item.issueNumber === source.replace(/^#/, ''))
       .map((item) => item.row)
@@ -844,7 +872,18 @@ async function applySwitchProjection(
 
 async function verbSwitchGoverned(
   ctx,
-  { source, target, state, session, sessionId, identity, eligibility, readEligibility, binding }
+  {
+    source,
+    target,
+    state,
+    session,
+    sessionId,
+    identity,
+    eligibility,
+    readEligibility,
+    binding,
+    sourceTimingRead,
+  }
 ) {
   const persistedIntent =
     session?.workLeaseIntent?.operation === 'switchLease' ? session.workLeaseIntent : null;
@@ -875,6 +914,7 @@ async function verbSwitchGoverned(
         requestId,
         eligibility,
         binding,
+        sourceTimingRead,
       });
   plan.projectionInputs.session.kanbanState = eligibility.kanbanState ?? null;
   plan.projectionInputs.session.reviewRemediationHint = eligibility.reviewRemediationHint ?? null;
@@ -1246,6 +1286,12 @@ async function verbResumeGoverned(ctx) {
     });
     return;
   }
+  const switchingIssues =
+    persistedSwitch || (boundIssue && canonicalIssueRef(boundIssue) !== target);
+  const sourceTimingRead =
+    !persistedSwitch && switchingIssues && !eligibility.skippedNetwork
+      ? await readConfirmedSwitchTiming(ctx, canonicalIssueRef(boundIssue))
+      : undefined;
   const binding = await buildTrustedWorkLeaseBinding({
     projectDir: ctx.projectDir,
     hostId: identity.hostId,
@@ -1268,6 +1314,7 @@ async function verbResumeGoverned(ctx) {
       eligibility,
       readEligibility,
       binding,
+      sourceTimingRead,
     });
   }
 

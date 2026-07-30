@@ -3499,6 +3499,73 @@ test('queued source timing survives delivery and checkpoint loss with one stable
   }
 });
 
+test('source timing read failure refuses a switch before intent, authority, or projection effects', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1048', lastActive: '#1048' },
+      session: {
+        issue: '#1048',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    ctx.queuePath = path.join(dir, 'timing-queue.json');
+    enqueue(
+      {
+        kind: 'timing',
+        issue: '#1048',
+        row: '| 2026-07-30 11:58:00 +00:00 | develop:completed | 2m 0s |  | 7 | 28 | queued source work | 9 | <!-- row-sec: a=120 i=0 -->',
+        projectionId: 'prior-projection:timing',
+        subOperationId: 'prior-projection:timing:test-started',
+      },
+      ctx.queuePath
+    );
+    const sessionId = process.env.AI_TASK_MANAGER_SESSION_ID;
+    const sessionBefore = structuredClone(getActiveTask(sessionId, dir));
+    const stateBefore = readFileSync(ctx.statePath, 'utf8');
+    const queueBefore = readFileSync(ctx.queuePath, 'utf8');
+    ctx.readTimingCommentBody = async () => ({
+      status: 'error',
+      body: '',
+      error: new Error('GitHub timing read unavailable'),
+    });
+    ctx.coordinateWorkLeaseSwitch = async () =>
+      assert.fail('switch coordinator must not persist intent or reach authority');
+    ctx.resolveWorktreeIdentity = async () =>
+      assert.fail('switch timing-read failure must precede identity resolution');
+    for (const name of [
+      'applyWorkLeaseSessionProjection',
+      'applyWorkLeaseSwitchFleetProjection',
+      'applyWorkLeaseTimingProjection',
+      'applyWorkLeaseGithubProjection',
+    ]) {
+      ctx[name] = async () => assert.fail(`${name} must not run after timing-read failure`);
+    }
+
+    await assert.rejects(
+      () => verbResume(ctx),
+      (error) =>
+        error.code === 'authority-unavailable' &&
+        /source timing history is unavailable/.test(error.message)
+    );
+
+    assert.deepEqual(getActiveTask(sessionId, dir), sessionBefore);
+    assert.equal(readFileSync(ctx.statePath, 'utf8'), stateBefore);
+    assert.equal(readFileSync(ctx.queuePath, 'utf8'), queueBefore);
+    assert.equal(getActiveTask(sessionId, dir).workLeaseIntent, undefined);
+    assert.deepEqual(events, ['preflight']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('governed switch keeps the immutable request timestamp but uses the live authority clock', async () => {
   const dir = sandbox();
   try {
