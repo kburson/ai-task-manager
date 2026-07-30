@@ -54,7 +54,7 @@ export const CAPABILITY_SURFACES = {
     'getIssueClosedState',
   ],
   issueBodyMutator: ['mutate'],
-  workLeaseGuard: ['verifyGovernedEffect'],
+  workLeaseGuard: ['withGovernedEffect'],
 };
 
 // Pluck the listed keys off the flat ctx into a fresh object. Functions are

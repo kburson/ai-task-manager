@@ -46,12 +46,12 @@ import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, projectValuesForIssue, splitRepo } from '../gh/lib/github-projects.mjs';
-import { runMoveStateHost } from '../gh/move-state.mjs';
+import { governedOperationForLifecycleVerb, runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
-import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
 import { createWorkLeaseProvider } from './lib/work-lease/provider.mjs';
+import { createGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 import { reconcileIssueTimeProjection } from './lib/work-lease/issue-time-projection.mjs';
@@ -151,6 +151,9 @@ export async function runMoveStateInProcess(
     skipNetwork = false,
     tailProfile = 'task-owner',
     reviewAuthority = null,
+    verbContext = 'runtime',
+    governedOperation,
+    withGovernedEffect,
   } = {},
   {
     host = runMoveStateHost,
@@ -170,7 +173,7 @@ export async function runMoveStateInProcess(
     ...process.env,
     ...(envOverride || {}),
     AITM_INTERNAL: '1',
-    AITM_VERB_CONTEXT: 'runtime',
+    AITM_VERB_CONTEXT: verbContext,
   };
 
   let outBuf = '';
@@ -191,7 +194,14 @@ export async function runMoveStateInProcess(
   stderr.write = capture(errParts);
   let code;
   try {
-    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority });
+    code = await host({
+      argv,
+      env: mergedEnv,
+      tailProfile,
+      reviewAuthority,
+      governedOperation: governedOperation ?? governedOperationForLifecycleVerb(verbContext),
+      withGovernedEffect,
+    });
   } finally {
     stdout.write = realOut;
     stderr.write = realErr;
@@ -318,7 +328,6 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     minutesBetween,
     CLOSE_OWNED_CHECKBOXES,
     uncheckedPreCloseCheckboxes,
-    verifyGovernedEffect,
   };
   // Opening the local authority may initialize SQLite and project identity.
   // Keep it behind a memoized accessor so status/help and all other read-only
@@ -329,6 +338,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   ctx.getWorkLeaseIdentity = () => {
     const sessionId = currentSessionId();
     return Object.freeze({
+      principalKind: 'worker',
       hostId: os.hostname(),
       provider: aiAppName(),
       agentRunId: sessionId,
@@ -337,6 +347,11 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       branch: currentBranch(projectDir),
     });
   };
+  ctx.withGovernedEffect = createGovernedEffectAdapter({
+    projectDir,
+    getStore: ctx.getWorkLeaseStore,
+    getIdentity: ctx.getWorkLeaseIdentity,
+  });
 
   ctx.safePostTiming = async (issue, row) => {
     if (SKIP_NETWORK) return { ok: true, skipped: true };
@@ -768,7 +783,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   // flag forwarding) lives in the exported `runMoveStateInProcess`; here we only
   // bind the SKIP_NETWORK short-circuit for offline/test runs.
   ctx.runMoveState = (issue, state, opts = {}) =>
-    runMoveStateInProcess(issue, state, { ...opts, skipNetwork: SKIP_NETWORK });
+    runMoveStateInProcess(issue, state, {
+      ...opts,
+      skipNetwork: SKIP_NETWORK,
+      verbContext: verb,
+      withGovernedEffect: ctx.withGovernedEffect,
+    });
 
   ctx.runMoveStateDone = (issue, opts) => ctx.runMoveState(issue, 'done', opts);
 

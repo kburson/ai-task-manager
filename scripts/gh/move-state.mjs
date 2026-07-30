@@ -62,9 +62,113 @@ import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
 import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
 import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit.mjs';
+import { createRuntimeGovernedEffectAdapter } from '../task-tracker/lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
+
+const LIFECYCLE_OPERATION_BY_VERB = Object.freeze({
+  approve: 'approval-mutation',
+  'plan-approve': 'approval-mutation',
+  review: 'review-mutation',
+  close: 'close',
+});
+const GENERIC_LIFECYCLE_VERBS = new Set([
+  'promote',
+  'demote',
+  'reconcile',
+  'supersede',
+  'park',
+  'reject',
+  'test',
+  'refine',
+  'plan',
+  'next',
+  'move-state',
+  'runtime',
+]);
+
+export function governedOperationForLifecycleVerb(verb) {
+  const canonical = String(verb ?? '')
+    .trim()
+    .toLowerCase();
+  if (LIFECYCLE_OPERATION_BY_VERB[canonical]) {
+    return LIFECYCLE_OPERATION_BY_VERB[canonical];
+  }
+  if (GENERIC_LIFECYCLE_VERBS.has(canonical)) return 'lifecycle-mutation';
+  throw new TypeError(`unsupported governed lifecycle verb: ${canonical || '(missing)'}`);
+}
+
+export function resolveGovernedLifecycleOperation(verb, suppliedOperation) {
+  const expected = governedOperationForLifecycleVerb(verb);
+  if (suppliedOperation !== undefined && suppliedOperation !== expected) {
+    throw new TypeError(`governed operation ${suppliedOperation} does not match ${verb}`);
+  }
+  return expected;
+}
+
+export async function runGovernedLifecycleMutation({
+  issue,
+  verb,
+  operation,
+  projectDir,
+  alreadyLocked = false,
+  withGovernedEffect,
+  runGuard,
+  runMutation,
+  acquireLock = withIssueLock,
+} = {}) {
+  if (typeof withGovernedEffect !== 'function') {
+    throw new TypeError('governed lifecycle adapter is required');
+  }
+  if (typeof runGuard !== 'function' || typeof runMutation !== 'function') {
+    throw new TypeError('governed lifecycle callbacks are required');
+  }
+
+  const guardedMutation = async (effect) => {
+    const guardOutcome = await runGuard(effect);
+    if (guardOutcome.exit !== null) return guardOutcome.exit;
+    return runMutation(effect);
+  };
+  const authorize = (callback) =>
+    withGovernedEffect(
+      {
+        issueId: issue,
+        operation,
+        heartbeat: true,
+      },
+      callback
+    );
+
+  if (alreadyLocked) return authorize(guardedMutation);
+  return acquireLock(
+    {
+      issue,
+      verb,
+      projDir: projectDir,
+      authorize,
+    },
+    guardedMutation
+  );
+}
+
+export async function runOfflineLifecycleProbe({
+  issue,
+  verb,
+  projectDir,
+  alreadyLocked = false,
+  acquireLock = withIssueLock,
+} = {}) {
+  if (alreadyLocked) return 0;
+  return acquireLock(
+    {
+      issue,
+      verb,
+      projDir: projectDir,
+    },
+    async () => 0
+  );
+}
 
 // #755 — the whole host body lives here and RETURNS a numeric exit code (0 =
 // success). Inputs default to the live process so the CLI shim and the spawn
@@ -78,6 +182,8 @@ export async function runMoveStateHost({
   isTty = process.stdin.isTTY,
   tailProfile = 'task-owner',
   reviewAuthority = null,
+  governedOperation,
+  withGovernedEffect,
 } = {}) {
   const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
@@ -168,6 +274,17 @@ export async function runMoveStateHost({
       `⚠ directMoveStateAllowed=true — permitting non-verb move-state invocation for #${issueArg} → ${stateArg}.\n` +
         `   Prefer routing through the /task verb pipeline.\n`
     );
+  }
+
+  let exactGovernedOperation;
+  try {
+    exactGovernedOperation = resolveGovernedLifecycleOperation(
+      AITM_VERB_CONTEXT || (AITM_INTERNAL ? 'move-state' : ''),
+      governedOperation
+    );
+  } catch (error) {
+    process.stderr.write(`move-state.mjs: ${error.message}\n`);
+    return 3;
   }
 
   if (!SKIP_NETWORK && (!cfg.projectId || !cfg.kanbanFieldId)) {
@@ -332,20 +449,6 @@ export async function runMoveStateHost({
     reviewAuthority,
   };
 
-  // #559 — guard-execution concern: the dirty-workspace warn, the universal
-  // exit/entry guard pipeline (#286/#359/#355/#511), and the sized→backlog warn
-  // (formerly three inline blocks here). runGuardExecution emits every banner +
-  // fire-and-forget timing row verbatim and returns `{ exit }` — a number when
-  // the pipeline refuses (6 contiguity / 4 generic / body-fetch-fail code), null
-  // otherwise. The host owns termination so the exact codes survive.
-  //
-  // #358 — the inline plan→develop deep-dive gate that once lived here is a
-  // strict duplicate of `planExitDeepDiveGuard` (#277), fired inside the
-  // pipeline. #355 — the forward contiguity guard is likewise a registry
-  // entry-guard whose refusal id the pipeline special-cases for exit 6.
-  const guardOutcome = await runGuardExecution(ctx);
-  if (guardOutcome.exit !== null) return guardOutcome.exit;
-
   // --- mutation block (per-issue advisory lock — EPIC #207 / #214) ---
   // Wrap every write that touches the issue (board status field, body markers,
   // timing-log comment, audit comments, local state file) so two parallel
@@ -399,22 +502,53 @@ export async function runMoveStateHost({
     return 0;
   };
 
-  if (env[ISSUE_LOCK_HELD_ENV] === '1') {
-    return await runMutation();
-  }
-  try {
-    return await withIssueLock(
-      {
+  // Offline test-mode is a dry-run boundary, not an authority bypass: after
+  // exercising lock contention it performs no guard, status/body/timing, local
+  // state/cache, tail, or child-process effect. Live mutations resolve the lazy
+  // runtime adapter only after the lock has been acquired.
+  if (SKIP_NETWORK) {
+    try {
+      return await runOfflineLifecycleProbe({
         issue: issueArg,
         verb: AITM_VERB_CONTEXT || 'move-state',
-        projDir: getProjectDir(env),
-      },
-      runMutation
-    );
+        projectDir: getProjectDir(env),
+        alreadyLocked: env[ISSUE_LOCK_HELD_ENV] === '1',
+      });
+    } catch (err) {
+      if (err instanceof IssueLockError) {
+        process.stderr.write(`⛔ ${err.message}\n`);
+        return 7;
+      }
+      throw err;
+    }
+  }
+
+  const projectDir = getProjectDir(env);
+  const govern =
+    withGovernedEffect ??
+    createRuntimeGovernedEffectAdapter({
+      projectDir,
+      config: cfg,
+    });
+  try {
+    return await runGovernedLifecycleMutation({
+      issue: issueArg,
+      verb: AITM_VERB_CONTEXT || 'move-state',
+      operation: exactGovernedOperation,
+      projectDir,
+      alreadyLocked: env[ISSUE_LOCK_HELD_ENV] === '1',
+      withGovernedEffect: govern,
+      runGuard: () => runGuardExecution(ctx),
+      runMutation,
+    });
   } catch (err) {
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);
       return 7;
+    }
+    if (err?.code) {
+      process.stderr.write(`⛔ governed lifecycle mutation refused: ${err.message}\n`);
+      return 8;
     }
     throw err;
   }

@@ -65,12 +65,12 @@ test('AC1: buildContext decomposes into named capability objects', () => {
     );
     // issueBodyMutator is the one synthesized capability (a narrow wrapper).
     assert.equal(typeof ctx.issueBodyMutator.mutate, 'function');
-    assert.equal(typeof ctx.verifyGovernedEffect, 'function');
+    assert.equal(typeof ctx.withGovernedEffect, 'function');
     assert.equal(typeof ctx.getWorkLeaseStore, 'function');
     assert.equal(
-      ctx.workLeaseGuard.verifyGovernedEffect,
-      ctx.verifyGovernedEffect,
-      'the runtime capability exposes the bound governed-effect verifier'
+      ctx.workLeaseGuard.withGovernedEffect,
+      ctx.withGovernedEffect,
+      'the runtime capability exposes only the operation-aware governed-effect adapter'
     );
   } finally {
     if (prev === undefined) delete process.env.TT_SKIP_NETWORK;
@@ -124,13 +124,13 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
   assert.equal(typeof caps.issueBodyMutator.mutate, 'function');
 });
 
-test('workLeaseGuard capability exposes only the governed-effect verifier', () => {
-  const verifyGovernedEffect = async () => ({ allowed: true });
-  const caps = assembleCapabilities({ verifyGovernedEffect });
+test('workLeaseGuard capability exposes only the governed-effect adapter', () => {
+  const withGovernedEffect = async () => ({ allowed: true });
+  const caps = assembleCapabilities({ withGovernedEffect });
 
-  assert.deepEqual(CAPABILITY_SURFACES.workLeaseGuard, ['verifyGovernedEffect']);
-  assert.deepEqual(Object.keys(caps.workLeaseGuard), ['verifyGovernedEffect']);
-  assert.equal(caps.workLeaseGuard.verifyGovernedEffect, verifyGovernedEffect);
+  assert.deepEqual(CAPABILITY_SURFACES.workLeaseGuard, ['withGovernedEffect']);
+  assert.deepEqual(Object.keys(caps.workLeaseGuard), ['withGovernedEffect']);
+  assert.equal(caps.workLeaseGuard.withGovernedEffect, withGovernedEffect);
 });
 
 test('strict sub-issue capability fetches project identity and Status name in one query', () => {
