@@ -7,6 +7,7 @@ import { parseReviewAuthority, reviewEpochId } from '../../../lib/review-authori
 import { latestStageEntry, stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
 import { runVerbTest } from '../../../verbs/test.mjs';
 import {
+  makeAgentReviewPassMutator,
   prepareAgentReviewPassStamp,
   validatePersistedTestEvidence,
 } from '../../../verbs/review.mjs';
@@ -150,5 +151,41 @@ test('Review refuses a passing stamp when Test evidence changes after preflight'
     validators: ['required-comments'],
   });
 
-  assert.deepEqual(prepared, { ok: false, reason: 'test-evidence-sha-mismatch' });
+  assert.deepEqual(prepared, {
+    ok: false,
+    reason: 'test-evidence-sha-mismatch',
+    status: 'review-failed',
+  });
+});
+
+test('the versioned Review mutator rejects evidence changed after preparation', () => {
+  const validBase = [
+    `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
+    `<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="2026-07-29T09:00:00.000Z" -->`,
+    `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+  assert.equal(
+    prepareAgentReviewPassStamp({ body: validBase, ts: '2026-07-29T10:01:00.000Z' }).ok,
+    true
+  );
+
+  const changedBase = validBase.replace(VERIFIED_SHA, 'old1234');
+  let prepared;
+  const mutate = makeAgentReviewPassMutator({
+    ts: '2026-07-29T10:01:00.000Z',
+    validators: ['required-comments'],
+    onPrepared: (result) => {
+      prepared = result;
+    },
+  });
+  const returned = mutate(changedBase);
+
+  assert.deepEqual(prepared, {
+    ok: false,
+    reason: 'test-evidence-sha-mismatch',
+    status: 'review-failed',
+  });
+  assert.equal(returned, changedBase, 'a stale fresh base must not gain passing evidence');
+  assert.doesNotMatch(returned, /aitm-agent-review-proof|gate="agent-review"[^>]*result="pass"/);
 });

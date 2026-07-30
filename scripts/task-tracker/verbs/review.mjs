@@ -101,12 +101,15 @@ export function validatePersistedTestEvidence(body) {
 // passing stamp rather than reusing any earlier validation result.
 export function prepareAgentReviewPassStamp({ body, ts, validators = [] } = {}) {
   const evidence = validatePersistedTestEvidence(body);
-  if (!evidence.ok) return evidence;
+  if (!evidence.ok) return { ...evidence, status: 'review-failed' };
   const reviewEntry = latestStageEntry(body, 'review');
-  if (!reviewEntry?.ts) return { ok: false, reason: 'review-epoch-missing' };
+  if (!reviewEntry?.ts) {
+    return { ok: false, reason: 'review-epoch-missing', status: 'review-failed' };
+  }
   const epoch = reviewEpochId({ visit: reviewEntry.visit, enteredReviewAt: reviewEntry.ts });
   return {
     ok: true,
+    status: 'review-passed',
     epoch,
     verifiedSha: evidence.sha,
     body: stampAgentReviewPassed(clearReviewFailed(body), {
@@ -115,6 +118,17 @@ export function prepareAgentReviewPassStamp({ body, ts, validators = [] } = {}) 
       ts,
       validators,
     }),
+  };
+}
+
+// `mutateIssueBody` supplies the fresh locked base only at write time. Keep the
+// authority read and serialization inside that callback so a body change after
+// the gate snapshot cannot be turned into a stale passing proof.
+export function makeAgentReviewPassMutator({ ts, validators = [], onPrepared = () => {} } = {}) {
+  return (base) => {
+    const prepared = prepareAgentReviewPassStamp({ body: base, ts, validators });
+    onPrepared(prepared, base);
+    return prepared.ok ? prepared.body : base;
   };
 }
 
@@ -915,14 +929,38 @@ export async function verbReview(ctx) {
         changedPaths,
       });
       const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
-      const passStamp = gate.pass
-        ? prepareAgentReviewPassStamp({
-            body: passBase,
-            ts: nowIso(),
-            validators: gate.validatorsRun,
-          })
-        : null;
-      if (!gate.pass || !passStamp.ok) {
+      let failures = gate.pass ? null : gate.failures;
+      let failureBase = passBase;
+
+      if (gate.pass) {
+        let finalPassStamp = null;
+        try {
+          await mutateBodyFn({
+            issueNumber: issueNum,
+            repo: cfg.repo,
+            mutate: makeAgentReviewPassMutator({
+              ts: nowIso(),
+              validators: gate.validatorsRun,
+              onPrepared: (prepared, freshBase) => {
+                finalPassStamp = prepared;
+                failureBase = freshBase;
+              },
+            }),
+            timeout: GH_API_TIMEOUT_MS,
+            deps: { pexec },
+            evidenceStamp: true,
+          });
+        } catch (e) {
+          console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
+        }
+        if (!finalPassStamp?.ok) {
+          failures = [
+            `persisted-test-evidence: ${finalPassStamp?.reason || 'pass-stamp-write-failed'}`,
+          ];
+        }
+      }
+
+      if (failures) {
         // FAIL — the Review state's action did not complete. The issue STAYS IN
         // REVIEW (#881); the objection is fixed in place and `review <N>` re-run.
         // EPIC #823 timing model v2 (C7 / defect D2) is preserved: the move above
@@ -934,11 +972,8 @@ export async function verbReview(ctx) {
         //
         // with no `demoted:develop` / `develop:started` pair and (by design) no
         // `review:approved`.
-        const failures = gate.pass
-          ? [`persisted-test-evidence: ${passStamp.reason}`]
-          : gate.failures;
         const _tsRF = nowIso();
-        const failedBody = stampReviewFailed(passBase, failures, { ts: _tsRF });
+        const failedBody = stampReviewFailed(failureBase, failures, { ts: _tsRF });
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
         await emitReviewGateFailureTimeline({
           target,
@@ -969,21 +1004,6 @@ export async function verbReview(ctx) {
       // — honest because the gate genuinely ran — WITHOUT the old
       // `allowUnverifiedTicks` bypass. A body with no such line (old template)
       // stamps to a noop and skips the write, which the close gate tolerates.
-      const tickedBody = passStamp.body;
-      if (tickedBody !== gateBody) {
-        try {
-          await mutateBodyFn({
-            issueNumber: issueNum,
-            repo: cfg.repo,
-            mutate: () => tickedBody,
-            timeout: GH_API_TIMEOUT_MS,
-            deps: { pexec },
-            evidenceStamp: true,
-          });
-        } catch (e) {
-          console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
-        }
-      }
       // #904 — emit the symmetric `review:passed` timing row, mirroring the fail
       // path's `review:failed`. Emitted UNCONDITIONALLY on pass (outside the
       // stamp `if` above, which is skipped for old-template bodies that tick to a
