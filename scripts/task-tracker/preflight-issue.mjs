@@ -32,7 +32,6 @@ import path from 'node:path';
 import { existingRuntimePath, RUNTIME_REL, SHARED_DIR } from './paths.mjs';
 import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
-import { hasFullAutoApproved } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
@@ -450,8 +449,7 @@ async function checkIntegrity(issueNumber) {
     die(`gh issue view #${num} failed: ${err.message}`);
     return;
   }
-  const fullAutoApproved = hasFullAutoApproved(String(body));
-  const results = lifecycleSatisfaction(String(body), { fullAutoApproved });
+  const results = lifecycleSatisfaction(String(body));
   process.stderr.write(`[task-tracker] integrity check for #${num}:\n`);
   for (const r of results) {
     process.stderr.write(`   - ${r.key} (${r.label}): ${r.status}\n`);

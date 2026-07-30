@@ -19,7 +19,15 @@ import { verbClose } from '../../../verbs/close.mjs';
 import { buildReviewToDoneClosePair } from '../../../gh-timing-comment.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-const APPROVAL_MARKER = '<!-- aitm-review-approved ts="2026-07-13T00:00:00Z" -->';
+const REVIEW_TS = '2026-07-13T00:00:00Z';
+const REVIEW_EPOCH = `review:1:${REVIEW_TS}`;
+const REVIEW_SHA = 'abc1234';
+const CURRENT_APPROVAL_AUTHORITY = [
+  `<!-- aitm-dod-verified sha="${REVIEW_SHA}" ts="2026-07-13T00:00:00Z" -->`,
+  `<!-- aitm-entered-review ts="${REVIEW_TS}" -->`,
+  `<!-- aitm-agent-review-proof schema="1" epoch="${REVIEW_EPOCH}" sha="${REVIEW_SHA}" ts="2026-07-13T00:00:01Z" validators="unit" result="pass" -->`,
+  `<!-- aitm-review-approved schema="1" epoch="${REVIEW_EPOCH}" proof-sha="${REVIEW_SHA}" ts="2026-07-13T00:00:02Z" provenance="human" -->`,
+].join('\n');
 
 const baseState = (active = '#5') => ({
   active,
@@ -101,7 +109,7 @@ const hasIssueWrap = (rows) => rows.some((r) => /\| issue:wrap \|/.test(r));
 
 test('Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1)', async () => {
   const posted = await runConverge({
-    issueBody: `## Some issue\n\n${APPROVAL_MARKER}\n`,
+    issueBody: `## Some issue\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
     timingBody: '',
   });
   assert.ok(hasReviewApproved(posted), 'review:approved row is posted on the converge path');
@@ -143,7 +151,7 @@ test('Case C — converge is idempotent when the pair already exists (#801 AC3)'
     '',
   ].join('\n');
   const posted = await runConverge({
-    issueBody: `## Some issue\n\n${APPROVAL_MARKER}\n`,
+    issueBody: `## Some issue\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
     timingBody: priorTiming,
   });
   assert.ok(!hasReviewApproved(posted), 'review:approved is NOT re-emitted when already present');

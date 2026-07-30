@@ -1,4 +1,4 @@
-// Review-exit guard: `aitm-review-approved` marker presence (#279).
+// Review-exit guard: current persisted review authority (#279 / #1050).
 //
 // Wraps the inline marker regex that used to live at
 // `scripts/task-tracker/verbs/close.mjs:164`. The review→done transition
@@ -14,21 +14,22 @@
 // Scope: only fires for review → done. Approve writes the marker; this
 // guard reads it. Symmetric with `planApprovedGuard` for plan → develop.
 
-export const GUARD_ID = 'review-exit-review-approved';
+import { derivePersistedReviewAuthority } from './review-authority.mjs';
 
-// Widened (#375) to accept both legacy colon and new `ts="..."` grammars.
-const APPROVED_RE = /<!--\s*aitm-review-approved(?:\s*:|\s+ts=")/i;
+export const GUARD_ID = 'review-exit-review-approved';
 
 export const reviewExitReviewApprovedGuard = {
   id: GUARD_ID,
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'done') return { ok: true };
     if (!ctx || typeof ctx.body !== 'string') return { ok: true };
-    if (APPROVED_RE.test(ctx.body)) return { ok: true };
+    const authority = derivePersistedReviewAuthority(ctx.body);
+    if (authority.status === 'current') return { ok: true };
     return {
       ok: false,
       reason:
-        'review-approval-missing: body must contain `<!-- aitm-review-approved: ... -->` — run `/task approve` to record human approval',
+        'review-approval-missing: current Review authority must contain `aitm-review-approved` with a passing proof — run `/task approve` to record human approval',
+      authority,
     };
   },
 };

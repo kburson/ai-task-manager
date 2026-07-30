@@ -39,8 +39,11 @@ function makeApprovedBody({ withApproved = true, withDod = true } = {}) {
     '<!-- aitm-entered-test: 2026-06-07T06:30:00Z -->',
     '<!-- aitm-entered-review: 2026-06-07T07:00:00Z -->',
     '<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->',
-    withDod ? `<!-- aitm-dod-verified: ${HEAD_SHA}:2026-06-07T07:30:00Z -->` : '',
-    withApproved ? '<!-- aitm-review-approved: 2026-06-07T08:00:00Z -->' : '',
+    withDod ? `<!-- aitm-dod-verified sha="${HEAD_SHA}" ts="2026-06-07T07:30:00Z" -->` : '',
+    '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-06-07T07:00:00Z" sha="abcdef1234567" ts="2026-06-07T07:45:00Z" validators="unit" result="pass" -->',
+    withApproved
+      ? '<!-- aitm-review-approved schema="1" epoch="review:1:2026-06-07T07:00:00Z" proof-sha="abcdef1234567" ts="2026-06-07T08:00:00Z" provenance="human" -->'
+      : '',
     '',
   ]
     .filter(Boolean)

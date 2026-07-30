@@ -9,15 +9,22 @@ import { runApprove } from '../../../verbs/approve.mjs';
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
-const AGENT_REVIEW_PASSED =
-  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+const REVIEW_TS = '2026-07-29T10:00:00Z';
+const REVIEW_EPOCH = `review:1:${REVIEW_TS}`;
+const REVIEW_SHA = 'abc1234';
+const AGENT_REVIEW_PASSED = [
+  `<!-- aitm-dod-verified sha="${REVIEW_SHA}" ts="2026-07-29T09:59:00Z" -->`,
+  `<!-- aitm-entered-review ts="${REVIEW_TS}" -->`,
+  `<!-- aitm-agent-review-proof schema="1" epoch="${REVIEW_EPOCH}" sha="${REVIEW_SHA}" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
+  `- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-07-29T10:01:00Z" sha="${REVIEW_SHA}" validators="unit" result="pass" -->`,
+].join('\n');
 
 function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = {}) {
   const posted = [];
   const written = [];
   let body =
     '## Definition of Done\n\n#### Lifecycle (auto-ticked at Review/Close)\n- [ ] Passed final human review\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n' +
-    AGENT_REVIEW_PASSED;
+    `\n${AGENT_REVIEW_PASSED}\n`;
   return {
     posted,
     written,

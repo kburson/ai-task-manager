@@ -5,6 +5,7 @@
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 import { parseDodVerifiedMarker, stripFencedCodeBlocks } from './markers.mjs';
 import { parseEntryMarkers } from './stage-entry-markers.mjs';
+import { findReviewFailureBlockSpan } from './review-failure-block.mjs';
 
 const SCHEMA = '1';
 const PROOF_NAME = 'agent-review-proof';
@@ -317,5 +318,14 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
 // not accidentally substitute an ambient checkout SHA.
 export function derivePersistedReviewAuthority(body) {
   const verifiedSha = parseDodVerifiedMarker(stripFencedCodeBlocks(body))?.sha || '';
-  return { ...deriveReviewAuthority(body, { verifiedSha }), verifiedSha };
+  const authority = deriveReviewAuthority(body, { verifiedSha });
+  if (findReviewFailureBlockSpan(stripFencedCodeBlocks(body).split('\n'))) {
+    return {
+      ...authority,
+      status: 'stale',
+      reasons: [...authority.reasons, 'review-failed'],
+      verifiedSha,
+    };
+  }
+  return { ...authority, verifiedSha };
 }

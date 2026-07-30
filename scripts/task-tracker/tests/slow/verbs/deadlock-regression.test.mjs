@@ -21,6 +21,7 @@ import { runReconcile } from '../../../verbs/reconcile.mjs';
 import { runUnblock } from '../../../verbs/unblock.mjs';
 import { blockedByGuard } from '../../../lib/blocked-by-guard.mjs';
 import { addBlockedBy, parseBlockedBy } from '../../../lib/blocked-marker.mjs';
+import { readLastKnownState } from '../../../gh-timing-comment.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const VERBS_DIR = path.resolve(__dir, '..', '..', 'verbs');
@@ -51,7 +52,8 @@ test('AC5: reconcile rejects a missing/unknown mode without touching the network
 test('AC5: reconcile accept-live resolves board/body drift via DI (no hand-edit)', async () => {
   // #700: body records "test" but the board live state is "develop" — the
   // drift that previously could only be fixed by editing the state file.
-  let writtenBody = null;
+  let liveBody = '<!-- aitm-last-known-state: test -->\n\n## Body\n';
+  let mutationCount = 0;
   const persisted = [];
   const res = await runReconcile({
     issueNumber: 700,
@@ -60,12 +62,13 @@ test('AC5: reconcile accept-live resolves board/body drift via DI (no hand-edit)
     now: () => '2026-06-17T00:00:00Z',
     deps: {
       fetchIssueBody: async () => ({
-        body: '<!-- aitm-last-known-state: test -->\n\n## Body\n',
+        body: liveBody,
       }),
       getLiveState: async () => 'develop',
-      writeIssueBody: async ({ body }) => {
-        writtenBody = body;
-        return { status: 'ok' };
+      mutateIssueBody: async ({ mutate }) => {
+        mutationCount += 1;
+        liveBody = mutate(liveBody);
+        return { status: 'ok', body: liveBody };
       },
       persistTrackerState: ({ state }) => persisted.push(state),
       postTimingRow: async () => {},
@@ -73,7 +76,8 @@ test('AC5: reconcile accept-live resolves board/body drift via DI (no hand-edit)
   });
   assert.equal(res.status, 'reconciled');
   assert.equal(res.to, 'develop');
-  assert.ok(writtenBody && /aitm-last-known-state/.test(writtenBody), 'body re-stamped to live');
+  assert.ok(mutationCount >= 1, 'accept-live executes its authoritative body mutation');
+  assert.equal(readLastKnownState(liveBody).state, 'develop', 'body re-stamped to live');
   assert.deepEqual(persisted, ['develop'], 'tracker state persisted to live — no manual edit');
 });
 

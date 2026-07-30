@@ -173,6 +173,7 @@ function makeDeps(overrides = {}) {
     `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
     `<!-- aitm-dod-verified sha="${PROOF_ONE}" ts="2026-07-29T10:00:00Z" -->`,
     reviewProof(EPOCH_ONE, PROOF_ONE),
+    AGENT_REVIEW_LINE.trim(),
     reviewApproval({ epoch: EPOCH_ONE, proofSha: PROOF_ONE }),
   ].join('\n');
   const { deps, calls } = makeDeps({ initialBody: current });
@@ -211,11 +212,13 @@ function makeDeps(overrides = {}) {
     `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
     `<!-- aitm-dod-verified sha="${PROOF_ONE}" ts="2026-07-29T10:00:00Z" -->`,
     reviewProof(EPOCH_ONE, PROOF_ONE),
+    AGENT_REVIEW_LINE.trim(),
   ].join('\n');
   let fresh = [
     `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
     `<!-- aitm-dod-verified sha="${PROOF_TWO}" ts="2026-07-29T10:00:00Z" -->`,
     reviewProof(EPOCH_ONE, PROOF_TWO),
+    AGENT_REVIEW_LINE.trim(),
   ].join('\n');
   let capturedOptions = null;
   const r = await runApprove({
@@ -250,6 +253,7 @@ function makeDeps(overrides = {}) {
     `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
     `<!-- aitm-dod-verified sha="${PROOF_ONE}" ts="2026-07-29T10:00:00Z" -->`,
     reviewProof(EPOCH_ONE, PROOF_ONE),
+    AGENT_REVIEW_LINE.trim(),
   ].join('\n');
   let fresh = `${preflight}\n${reviewApproval({ epoch: EPOCH_ONE, proofSha: PROOF_ONE })}`;
   const r = await runApprove({

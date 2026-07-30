@@ -1,5 +1,6 @@
 // cspell:ignore optout optouts Optouts
 import { hasVerifiedDeclaration, hasExecutionProof } from './proof-marker.mjs';
+import { derivePersistedReviewAuthority } from './review-authority.mjs';
 
 // Lifecycle DoD parser and ticker (#138).
 //
@@ -75,7 +76,10 @@ export function parseLifecycleOptouts(body) {
 //   'missing' — line present but unticked; close-gate must block when required
 //
 // Returns one entry per LIFECYCLE_LABELS key (stable order).
-export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
+export function lifecycleSatisfaction(
+  body,
+  { fullAutoApproved = false, reviewAuthority = derivePersistedReviewAuthority(body) } = {}
+) {
   const items = parseLifecycleItems(body);
   const byKey = new Map(items.filter((it) => it.key).map((it) => [it.key, it]));
   const optouts = parseLifecycleOptouts(body);
@@ -84,7 +88,16 @@ export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
     const label = LIFECYCLE_LABELS[key];
     const it = byKey.get(key);
     let status;
-    if (it && it.checked) status = 'ticked';
+    const currentFullAuto =
+      key === 'passed-final-review' &&
+      reviewAuthority?.status === 'current' &&
+      reviewAuthority.approval?.provenance === 'full-auto';
+    const staleAuthority =
+      key === 'passed-final-review' &&
+      ['stale', 'malformed', 'ambiguous'].includes(reviewAuthority?.status);
+    if (currentFullAuto) status = 'audited';
+    else if (staleAuthority) status = optouts.has(key) ? 'optout' : 'missing';
+    else if (it && it.checked) status = 'ticked';
     else if (key === 'passed-final-review' && fullAutoApproved) status = 'audited';
     else if (optouts.has(key)) status = 'optout';
     else if (!it) status = 'absent';
@@ -227,6 +240,7 @@ function _toggleLifecycleItem(body, key, tick) {
 // test to catch pre-ticks done by agents before the responsible verb fired.
 // Returns { body, regressions: [{ key, label }] }.
 export function detectLifecyclePretick(body) {
+  const authority = derivePersistedReviewAuthority(body);
   const items = parseLifecycleItems(body);
   const regressions = [];
   let next = String(body || '');
@@ -236,7 +250,7 @@ export function detectLifecyclePretick(body) {
       next = untickLifecycleItem(next, it.key);
     }
   }
-  return { body: next, regressions };
+  return { body: next, regressions, authority };
 }
 
 // #231 — Detect any Functional DoD items that carry an `aitm-verified cmd="..."`

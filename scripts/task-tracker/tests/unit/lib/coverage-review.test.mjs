@@ -15,6 +15,7 @@ import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { buildPlanApprovalAuditComment } from '../../../lib/plan-approval-audit.mjs';
+import { stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
 import { verbReview, buildDeferredReviewRow } from '../../../verbs/review.mjs';
 
 function tmpState(state) {
@@ -67,7 +68,7 @@ const REQUIRED_COMMENTS_STUB = [
   { body: '## New Automated Tests\n\n- `foo.test.mjs`\n  - exercises a thing' },
 ];
 
-function makePexec({ gateBody, rawBody, scanBody, headSha }) {
+function makePexec({ gateBody, rawBody, scanBody, headSha, getLiveBody }) {
   let jq = 0;
   return async (cmd, args = []) => {
     if (cmd === 'git') return { stdout: headSha, stderr: '' };
@@ -81,12 +82,12 @@ function makePexec({ gateBody, rawBody, scanBody, headSha }) {
       const payload = { comments: REQUIRED_COMMENTS_STUB };
       // The post-move snapshot the gate consumes is the post-derive `scanBody`,
       // which is what it received before the fetch was hoisted below the move.
-      if (jsonFields.includes('body')) payload.body = scanBody;
+      if (jsonFields.includes('body')) payload.body = getLiveBody();
       return { stdout: JSON.stringify(payload), stderr: '' };
     }
     if (Array.isArray(args) && args.includes('--jq')) {
       jq += 1;
-      return { stdout: jq === 1 ? gateBody : scanBody, stderr: '' };
+      return { stdout: jq === 1 ? gateBody : getLiveBody(), stderr: '' };
     }
     return { stdout: JSON.stringify({ body: rawBody }), stderr: '' };
   };
@@ -108,13 +109,14 @@ function makeCtx(opts = {}) {
   } = opts;
   const calls = { post: [], move: [], guards: [], mutate: 0, logTime: 0 };
   let gi = 0;
+  let liveBody = scanBody || rawBody;
   const ctx = {
     cfg: { repo: 'o/r', projectId: 'PROJ', idleThresholdMinutes: 5 },
     statePath,
     projectDir: '/proj',
     rest,
     SKIP_NETWORK: false,
-    pexec: makePexec({ gateBody, rawBody, scanBody, headSha }),
+    pexec: makePexec({ gateBody, rawBody, scanBody, headSha, getLiveBody: () => liveBody }),
     drainQueueIfAny: async () => {},
     safePostTiming: async (_t, row) => {
       calls.post.push(row);
@@ -128,6 +130,7 @@ function makeCtx(opts = {}) {
     }),
     runMoveState: async (_t, to) => {
       calls.move.push(to);
+      if (to === 'review') liveBody = stampEntryMarker(liveBody, to, ctx.nowIso());
       return moveResults[to] || { ok: true };
     },
     runLogIssueTime: async () => {
@@ -137,9 +140,12 @@ function makeCtx(opts = {}) {
     getIssueBoardState: async () => childState,
     nowIso: () => new Date().toISOString(), // within buildRow's retroactive window
     runReviewPreflight: async () => preflight,
-    mutateIssueBody: async () => {
+    mutateIssueBody: async ({ mutate }) => {
       calls.mutate += 1;
-      return { status: 'updated' };
+      const next = mutate(liveBody);
+      if (next === liveBody) return { status: 'no-op', body: liveBody };
+      liveBody = next;
+      return { status: 'ok', body: liveBody };
     },
     deriveAndStampFunctionalDod: async () => ({}),
     runGuards: async (_f, _to, gctx) => {
@@ -202,7 +208,13 @@ const CLEAN_BODY = [
   '- [ ] Lint clean <!-- aitm-verified cmd="`npm run lint`" exit="0" sha="d" ts="t" -->',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
+  '#### Lifecycle (auto-ticked at Review/Close)',
+  '- [ ] Agent Review Passed',
+  '- [ ] Final Review Passed',
+  '- [ ] Story closed and moved to Done',
+  '- [ ] Timing data flushed to issue',
   '## AITM Progress Markers',
+  '<!-- aitm-test-started sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
   '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
 ].join('\n');
 
@@ -299,14 +311,14 @@ test('dod-verified guard refusal → exit 4 (else timing branch)', async () => {
   }
 });
 
-test('HEAD drift from aitm-test-started → exit 4', async () => {
+test('persisted Test marker mismatch → exit 4 without consulting ambient HEAD', async () => {
   const { statePath, dir } = tmpState(baseState());
   try {
     const rawBody = [
       '## Definition of Done',
       '- [ ] `npm test` passes',
       '<!-- aitm-test-started sha="aaaaaaaa" ts="t" -->',
-      '<!-- aitm-dod-verified sha="aaaaaaaa" ts="t" -->',
+      '<!-- aitm-dod-verified sha="bbbbbbbb" ts="t" -->',
     ].join('\n');
     const { ctx } = makeCtx({ statePath, rawBody, headSha: 'bbbbbbbbcccc' });
     assert.equal(await runExit(ctx), 4);
@@ -320,7 +332,12 @@ test('unbacked checkbox → failures revert to Develop, exit 3', async () => {
   try {
     const { ctx, calls } = makeCtx({
       statePath,
-      rawBody: '## Definition of Done\n- [x] Unbacked claim\n',
+      rawBody: [
+        '## Definition of Done',
+        '- [x] Unbacked claim',
+        '<!-- aitm-test-started sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
+        '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
+      ].join('\n'),
     });
     assert.equal(await runExit(ctx), 3);
     assert.ok(calls.move.includes('develop'));

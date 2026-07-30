@@ -28,6 +28,13 @@ import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { verbClose } from '../../../verbs/close.mjs';
 
+const CURRENT_APPROVAL_AUTHORITY = [
+  '<!-- aitm-dod-verified sha="abc1234" ts="2026-06-28T00:00:00Z" -->',
+  '<!-- aitm-entered-review ts="2026-06-28T00:00:01Z" -->',
+  '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-06-28T00:00:01Z" sha="abc1234" ts="2026-06-28T00:00:02Z" validators="unit" result="pass" -->',
+  '<!-- aitm-review-approved schema="1" epoch="review:1:2026-06-28T00:00:01Z" proof-sha="abc1234" ts="2026-06-28T00:00:03Z" provenance="human" -->',
+].join('\n');
+
 // Extract the `Event` column (2nd cell) from a built timing-row string.
 function eventOf(row) {
   return String(row).split('|')[2].trim();
@@ -92,7 +99,7 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     // #655 — an honestly-approved live body; the review:approved row is now
     // gated on the persisted approval marker, so the order assertion requires a
     // body that actually carries it.
-    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
+    closeBody: `## Done\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {},
     flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
@@ -233,7 +240,7 @@ test('#692 AC2 — retried close does not re-emit an existing review:approved/is
     projectDir: dir,
     rest: ['#999'],
     SKIP_NETWORK: true,
-    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
+    closeBody: `## Done\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
     readTimingCommentBody: async () => ({ status: 'ok', body: priorTimingBody }),
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {},
@@ -312,7 +319,7 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     projectDir: dir,
     rest: ['#999'],
     SKIP_NETWORK: true,
-    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
+    closeBody: `## Done\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
     readTimingCommentBody: async () => ({ status: 'ok', body: priorTimingBody }),
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {},

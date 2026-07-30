@@ -63,12 +63,13 @@ const RECORDED_DEVELOP = writeLastKnownState(BASE, 'develop');
 // --- runReconcile dep harness ----------------------------------------------
 function makeDeps(overrides = {}) {
   const calls = { writes: [], mutations: [], moves: [], persists: [] };
+  let liveBody = overrides.body ?? BASE;
   return {
     calls,
     deps: {
       fetchIssueBody: async () => {
         if (overrides.fetchThrows) throw new Error('fetch boom');
-        return { body: overrides.body ?? BASE };
+        return { body: liveBody };
       },
       getLiveState: async () => overrides.live ?? null,
       writeIssueBody: async ({ body }) => {
@@ -81,8 +82,9 @@ function makeDeps(overrides = {}) {
       persistTrackerState: (a) => calls.persists.push(a),
       mutateIssueBody: async ({ mutate }) => {
         if (overrides.mutateThrows) throw new Error('mutate boom');
-        calls.mutations.push(mutate(overrides.body ?? BASE));
-        return { status: 'ok' };
+        liveBody = mutate(liveBody);
+        calls.mutations.push(liveBody);
+        return { status: 'ok', body: liveBody };
       },
       ...(overrides.listComments ? { listComments: overrides.listComments } : {}),
       ...overrides.deps,
@@ -171,10 +173,10 @@ test('runReconcile: accept-live reconciled (external-mutation reason)', async ()
   assert.equal(r.status, 'reconciled');
   assert.equal(r.from, null);
   assert.equal(r.to, 'develop');
-  assert.equal(calls.writes.length, 1);
-  assert.equal(calls.mutations.length, 1);
-  assert.match(calls.mutations[0], /aitm-reconciled/);
-  assert.match(calls.mutations[0], /external-mutation/);
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.mutations.length, 2);
+  assert.match(calls.mutations[1], /aitm-reconciled/);
+  assert.match(calls.mutations[1], /external-mutation/);
 });
 test('runReconcile: accept-live reason from recording-failure comment', async () => {
   const listComments = async () => [
@@ -185,7 +187,7 @@ test('runReconcile: accept-live reason from recording-failure comment', async ()
   ];
   const { r, calls } = await run('accept-live', { body: BASE, live: 'develop', listComments });
   assert.equal(r.status, 'reconciled');
-  assert.match(calls.mutations[0], /marker-write-failed at 2026-06-28T12:00:00Z/);
+  assert.match(calls.mutations[1], /marker-write-failed at 2026-06-28T12:00:00Z/);
 });
 test('runReconcile: accept-live tolerates listComments throwing', async () => {
   const listComments = async () => {
@@ -193,7 +195,7 @@ test('runReconcile: accept-live tolerates listComments throwing', async () => {
   };
   const { r, calls } = await run('accept-live', { body: BASE, live: 'develop', listComments });
   assert.equal(r.status, 'reconciled');
-  assert.match(calls.mutations[0], /external-mutation/);
+  assert.match(calls.mutations[1], /external-mutation/);
 });
 test('runReconcile: accept-live tolerates audit-marker write throwing', async () => {
   const { r, calls } = await run('accept-live', {
@@ -202,7 +204,8 @@ test('runReconcile: accept-live tolerates audit-marker write throwing', async ()
     mutateThrows: true,
   });
   assert.equal(r.status, 'reconciled');
-  assert.equal(calls.writes.length, 1);
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.mutations.length, 0);
 });
 
 // --- revert-to-recorded -----------------------------------------------------

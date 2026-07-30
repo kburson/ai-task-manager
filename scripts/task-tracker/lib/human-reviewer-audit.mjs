@@ -22,7 +22,7 @@ import { promisify } from 'node:util';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from './state-recording.mjs';
 import { serializeMarker } from './marker-grammar.mjs';
-import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './markers.mjs';
+import { derivePersistedReviewAuthority } from './review-authority.mjs';
 
 const pexec = promisify(execFile);
 
@@ -73,9 +73,8 @@ export function resolveReviewAuthority(reviewAuthority = null) {
 // be unset in this later process. The body already carries the ground
 // truth — check it before falling back to the env-only signal.
 export function hasGenuineReviewApprovedMarker(body) {
-  if (!hasReviewApprovedMarker(body)) return false;
-  const parsed = parseReviewApprovedMarker(body);
-  return parsed !== null && parsed.fullAuto === false;
+  const authority = derivePersistedReviewAuthority(body);
+  return authority.status === 'current' && authority.approval?.provenance === 'human';
 }
 
 export function buildHumanReviewerMarker(handle, ts) {
@@ -147,18 +146,22 @@ export async function enforceFullAutoAudit({
   if (!repo) throw new Error('enforceFullAutoAudit: repo is required');
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
   const ts = now();
-  const genuineReviewMarker = body != null && hasGenuineReviewApprovedMarker(body);
+  const persistedAuthority = body != null ? derivePersistedReviewAuthority(body) : null;
+  const persistedMode =
+    persistedAuthority?.status === 'current'
+      ? persistedAuthority.approval?.provenance === 'full-auto'
+        ? 'full-auto'
+        : 'human-reviewer'
+      : null;
   const explicitMode =
     reviewAuthority === 'gate-bypassed'
       ? 'full-auto'
       : reviewAuthority === 'human-gate'
         ? 'human-reviewer'
         : null;
-  const fullAuto = genuineReviewMarker
-    ? false
-    : explicitMode
-      ? explicitMode === 'full-auto'
-      : isFullAuto(env);
+  const fullAuto =
+    (persistedMode || explicitMode || (isFullAuto(env) ? 'full-auto' : 'human-reviewer')) ===
+    'full-auto';
   const fullAutoReason =
     reviewAuthority === 'gate-bypassed' ? 'explicit-gate-bypass' : 'legacy-environment-fallback';
   const handle = getHumanReviewer(env) || (reviewAuthority === 'human-gate' ? 'review-gate' : null);

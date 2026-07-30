@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // @story #154
-// #154 — Test→Review SHA drift gate.
+// #154 — Test→Review persisted-evidence gate.
 //
 // Coverage:
 //   1. `aitm-test-started` marker stamped by runVerbTest before sandbox runs.
 //   2. Marker round-trip: build, parse, insert, re-insert (refresh) — idempotent.
-//   3. Source-level wiring: verbReview parses the marker and refuses on drift.
+//   3. Source-level wiring: verbReview compares durable Test markers and never
+//      substitutes ambient checkout HEAD for their authority.
 
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
@@ -105,16 +106,21 @@ const finalParsed = parseTestStartedMarker(body);
 assert.ok(finalParsed, 'final body must contain aitm-test-started');
 assert.equal(finalParsed.sha, SHA);
 
-// --- 4. Source-level wiring: review.mjs reads the marker -------------------
+// --- 4. Source-level wiring: review.mjs trusts persisted Test evidence ------
 
 const reviewSrc = readFileSync(join(repoRoot, 'scripts/task-tracker/verbs/review.mjs'), 'utf8');
 assert.ok(
   /parseTestStartedMarker/.test(reviewSrc),
-  'verbs/review.mjs must import parseTestStartedMarker for the SHA-drift gate'
+  'verbs/review.mjs must import parseTestStartedMarker for persisted Test evidence'
 );
 assert.ok(
-  /HEAD drifted/.test(reviewSrc),
-  'verbs/review.mjs must emit a "HEAD drifted" remediation message'
+  /validatePersistedTestEvidence/.test(reviewSrc),
+  'verbs/review.mjs must validate the persisted Test marker pair before Review'
+);
+assert.equal(
+  /git['"],\s*\['rev-parse',\s*'HEAD'\]/.test(reviewSrc),
+  false,
+  'verbs/review.mjs must not substitute ambient HEAD for persisted Test authority'
 );
 
 console.log('test-sha-drift-gate: PASS');

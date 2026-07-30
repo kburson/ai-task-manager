@@ -265,6 +265,22 @@ test('derivePersistedReviewAuthority ignores a DoD-shaped marker in fenced code'
   assert.ok(authority.reasons.includes('verified-sha-missing'));
 });
 
+test('derivePersistedReviewAuthority ignores a review-failed example in fenced code', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const body = [
+    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    review(1, '2026-07-29T10:00:00Z'),
+    proof({ epoch, sha: 'abc123' }),
+    approval({ epoch, proofSha: 'abc123' }),
+    '```md',
+    '<!-- aitm-review-failed:start -->',
+    '<!-- aitm-review-failed:end -->',
+    '```',
+  ].join('\n');
+
+  assert.equal(derivePersistedReviewAuthority(body).status, 'current');
+});
+
 test('parseReviewAuthority retains every historical authority marker', () => {
   const epoch = 'review:1:2026-07-29T10:00:00Z';
   const parsed = parseReviewAuthority(

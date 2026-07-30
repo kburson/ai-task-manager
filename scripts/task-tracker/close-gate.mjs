@@ -8,8 +8,8 @@
 // paths in sync.
 
 import { LIFECYCLE_LABEL_SET, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
-import { hasFullAutoApproved } from './lib/markers.mjs';
 import { isAcWaived } from './lib/issue-kind.mjs';
+import { derivePersistedReviewAuthority } from './lib/review-authority.mjs';
 
 export const CLOSE_OWNED_CHECKBOXES = new Set([
   'Issue moved to Done',
@@ -74,8 +74,10 @@ export const ABSENT_TOLERANT_LIFECYCLE_KEYS = new Set(['agent-review-passed']);
 // gate is enforced as the prerequisite the final sign-off sits on.
 export function assertLifecycleSatisfied({ body, required = true } = {}) {
   const src = String(body || '');
-  const fullAutoApproved = hasFullAutoApproved(src);
-  const results = lifecycleSatisfaction(src, { fullAutoApproved });
+  const reviewAuthority = derivePersistedReviewAuthority(src);
+  const fullAutoApproved =
+    reviewAuthority.status === 'current' && reviewAuthority.approval?.provenance === 'full-auto';
+  const results = lifecycleSatisfaction(src, { fullAutoApproved, reviewAuthority });
   const missing = results.filter((r) => {
     if (CLOSE_OWNED_LIFECYCLE_KEYS.has(r.key)) return false;
     if (r.status === 'missing') return true;

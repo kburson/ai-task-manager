@@ -39,7 +39,10 @@ import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { assertMarkerPersisted } from '../lib/stamp-verify.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
-import { agentReviewIncompleteReason } from '../lib/agent-review/review-gate.mjs';
+import {
+  agentReviewIncompleteReason,
+  isAgentReviewComplete,
+} from '../lib/agent-review/review-gate.mjs';
 import {
   deriveReviewAuthority,
   parseReviewAuthority,
@@ -211,6 +214,10 @@ function hasCurrentPassingProof(authority) {
   );
 }
 
+function hasCompleteCurrentPassingReview(body, authority) {
+  return hasCurrentPassingProof(authority) && isAgentReviewComplete(body);
+}
+
 function shouldArchiveApproval(authority) {
   return Boolean(authority.approval && (authority.status === 'stale' || authority.approval.legacy));
 }
@@ -309,7 +316,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     async () => {
       let body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
       let authority = deriveAuthorityForBody(body);
-      if (authority.status === 'current' && hasCurrentPassingProof(authority)) {
+      if (authority.status === 'current' && hasCompleteCurrentPassingReview(body, authority)) {
         return { status: 'already-approved' };
       }
       // A stale approval must be retained as auditable history and explicitly
@@ -331,7 +338,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         });
         body = archiveResult.body;
         authority = deriveAuthorityForBody(body);
-        if (authority.status === 'current' && hasCurrentPassingProof(authority)) {
+        if (authority.status === 'current' && hasCompleteCurrentPassingReview(body, authority)) {
           return { status: 'already-approved' };
         }
       }
@@ -340,8 +347,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // with `result="pass"`. Refuse while it is incomplete or failing, so a human
       // is never asked to sign off on a story the agent has not signed off on
       // (observed on #878, where the gate ran only after the human was asked).
-      if (!hasCurrentPassingProof(authority)) {
-        const reason = authority.epoch ? 'review-incomplete' : agentReviewIncompleteReason(body);
+      if (!hasCompleteCurrentPassingReview(body, authority)) {
+        const reason = agentReviewIncompleteReason(body) || 'review-incomplete';
         return {
           status: 'agent-review-incomplete',
           reason,
@@ -404,11 +411,14 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       let preparedAlreadyApproved = false;
       const stamp = (base) => {
         const freshAuthority = deriveAuthorityForBody(base);
-        if (freshAuthority.status === 'current' && hasCurrentPassingProof(freshAuthority)) {
+        if (
+          freshAuthority.status === 'current' &&
+          hasCompleteCurrentPassingReview(base, freshAuthority)
+        ) {
           preparedAlreadyApproved = true;
           return base;
         }
-        preparedCanStamp = hasCurrentPassingProof(freshAuthority);
+        preparedCanStamp = hasCompleteCurrentPassingReview(base, freshAuthority);
         if (!preparedCanStamp) return base;
         // #480 — single consolidated marker: the full-auto audit props ride on
         // `aitm-review-approved` itself, replacing the separate hidden
@@ -435,7 +445,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // authoritative write.
       let updated = body;
       if (shouldArchiveApproval(authority)) updated = archiveStaleApprovals(updated, ts);
-      if (hasCurrentPassingProof(authority)) {
+      if (hasCompleteCurrentPassingReview(body, authority)) {
         updated = insertApprovalMarker(updated, ts, {
           epoch: authority.epoch,
           proofSha: authority.proof.sha,
@@ -505,7 +515,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // fetch (ok path) or the top-of-loop fetch (no-op / idempotent path).
       const persistedAuthority = deriveAuthorityForBody(writeResult.body);
       const persistedCurrent =
-        persistedAuthority.status === 'current' && hasCurrentPassingProof(persistedAuthority);
+        persistedAuthority.status === 'current' &&
+        hasCompleteCurrentPassingReview(writeResult.body, persistedAuthority);
       if (preparedAlreadyApproved) {
         if (!persistedCurrent) {
           throw new Error(`approve: current review authority did not persist for #${issueNumber}`);
@@ -524,7 +535,10 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         result: writeResult,
         predicate: (persistedBody) => {
           const currentAuthority = deriveAuthorityForBody(persistedBody);
-          return currentAuthority.status === 'current' && hasCurrentPassingProof(currentAuthority);
+          return (
+            currentAuthority.status === 'current' &&
+            hasCompleteCurrentPassingReview(persistedBody, currentAuthority)
+          );
         },
         marker: 'current aitm-review-approved',
         issueNumber,

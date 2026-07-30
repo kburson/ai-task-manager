@@ -18,7 +18,6 @@ import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
-import { hasReviewApprovedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
@@ -91,7 +90,7 @@ async function emitReviewToDoneClosePair({
   closeTarget,
   closeIssueNum,
   cfg,
-  hasApprovalMarker,
+  body,
   reviewGateBypassed,
   lastWordMarker,
   ctx,
@@ -135,10 +134,7 @@ async function emitReviewToDoneClosePair({
   });
   const { pendingClosePairState } = await import('../timing-rollup.mjs');
   const pending = pendingClosePairState(timingBody);
-  if (
-    !pending.reviewApproved &&
-    shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed })
-  ) {
+  if (!pending.reviewApproved && shouldEmitReviewApprovedRow({ body, reviewGateBypassed })) {
     await safePostTiming(closeTarget, reviewApprovedRow);
   }
   if (!pending.issueWrap) {
@@ -518,7 +514,7 @@ export async function verbClose(ctx) {
               closeTarget,
               closeIssueNum,
               cfg,
-              hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+              body: convergeBody,
               reviewGateBypassed: fullAuto,
               lastWordMarker: s.lastWordMarker,
               ctx,
@@ -1140,7 +1136,7 @@ export async function verbClose(ctx) {
     closeTarget,
     closeIssueNum,
     cfg,
-    hasApprovalMarker: hasReviewApprovedMarker(closeBody),
+    body: closeBody,
     reviewGateBypassed,
     lastWordMarker: s.lastWordMarker,
     ctx,

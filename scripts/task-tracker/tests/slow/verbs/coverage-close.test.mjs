@@ -14,10 +14,11 @@ import { execFileSync } from 'node:child_process';
 import { verbClose, tickLifecycleOnClose } from '../../../verbs/close.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-// Review-approval marker + populated aitm-fields (engagedTime non-null) so
-// assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
+// Current Full-Auto review authority + populated aitm-fields (engagedTime
+// non-null) so assertFieldsPersisted passes and shouldEmitReviewApprovedRow is
+// true without relying on legacy marker presence.
 const APPROVED_BODY =
-  '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
+  '## Done\n\n<!-- aitm-dod-verified sha="abc1234" ts="2026-06-28T00:00:00Z" -->\n<!-- aitm-entered-review ts="2026-06-28T00:00:01Z" -->\n<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-06-28T00:00:01Z" sha="abc1234" ts="2026-06-28T00:00:02Z" validators="unit" result="pass" -->\n<!-- aitm-review-approved schema="1" epoch="review:1:2026-06-28T00:00:01Z" proof-sha="abc1234" ts="2026-06-28T00:00:03Z" provenance="full-auto" signals="ci=1" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
 
 const baseState = (active = '#5') => ({
   active,

@@ -35,6 +35,12 @@ const closeSrc = readFileSync(path.resolve(__dirname, '..', '..', 'verbs/close.m
 const approveSrc = readFileSync(path.resolve(__dirname, '..', '..', 'verbs/approve.mjs'), 'utf8');
 
 const VERSIONED = (n) => `<!-- aitm-body-version version="${n}" -->`;
+const CURRENT_APPROVAL_BODY = [
+  '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T00:00:00Z" -->',
+  '<!-- aitm-entered-review ts="2026-07-29T00:00:01Z" -->',
+  '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T00:00:01Z" sha="abc1234" ts="2026-07-29T00:00:02Z" validators="unit" result="pass" -->',
+  '<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T00:00:01Z" proof-sha="abc1234" ts="2026-07-29T00:00:03Z" provenance="human" -->',
+].join('\n');
 
 // A stateful GitHub-body fake. `fetchBody` returns the current stored body and
 // counts calls; `pushBody` stores what was pushed (a write that lands). For the
@@ -186,8 +192,8 @@ test('AC3 source: approve captures the write result and asserts marker persisten
   assert.ok(assertIdx >= 0, 'approve must call assertMarkerPersisted');
   const block = approveSrc.slice(assertIdx, assertIdx + 300);
   assert.ok(
-    /predicate: hasReviewApprovedMarker/.test(block),
-    'the assertion must use hasReviewApprovedMarker as the predicate'
+    /deriveAuthorityForBody\(persistedBody\)/.test(block),
+    'the assertion must derive current persisted authority as the predicate'
   );
   // The assertion must precede the `status: 'approved'` success return.
   const approvedIdx = approveSrc.indexOf("status: 'approved'");
@@ -196,9 +202,9 @@ test('AC3 source: approve captures the write result and asserts marker persisten
 
 // ── AC4 / AC6: close gates the review:approved row on marker-or-bypass ────────
 
-test('AC4 emit: review:approved row is emitted when the approval marker is present', () => {
+test('AC4 emit: review:approved row is emitted when current persisted authority is present', () => {
   assert.equal(
-    shouldEmitReviewApprovedRow({ hasApprovalMarker: true, reviewGateBypassed: false }),
+    shouldEmitReviewApprovedRow({ body: CURRENT_APPROVAL_BODY, reviewGateBypassed: false }),
     true
   );
 });
@@ -206,28 +212,21 @@ test('AC4 emit: review:approved row is emitted when the approval marker is prese
 test('AC4 emit: review:approved row is emitted when the review gate was explicitly bypassed', () => {
   // Bypass carries its own aitm-gate-bypassed audit row, so the approval row is
   // still the honest record of the (waived) gate.
-  assert.equal(
-    shouldEmitReviewApprovedRow({ hasApprovalMarker: false, reviewGateBypassed: true }),
-    true
-  );
+  assert.equal(shouldEmitReviewApprovedRow({ body: '', reviewGateBypassed: true }), true);
 });
 
 test('AC6 regression: review:approved row is SUPPRESSED when no marker and the gate is active', () => {
   // The #652 half-state: gate active, marker never persisted. The row must NOT
   // be emitted — close may not fabricate a record of an approval that did not
   // happen.
-  assert.equal(
-    shouldEmitReviewApprovedRow({ hasApprovalMarker: false, reviewGateBypassed: false }),
-    false
-  );
+  assert.equal(shouldEmitReviewApprovedRow({ body: '', reviewGateBypassed: false }), false);
 });
 
 test('AC4 source: close gates ONLY the review:approved row on the decision; issue:wrap stays unconditional', () => {
   // #801 refactor: the emit is centralized in the `emitReviewToDoneClosePair`
   // helper, invoked from BOTH the converge/noop fast-path and the full close
-  // pipeline. The guard reads a pre-computed `hasApprovalMarker` param; each
-  // call site derives it from its own live body (closeBody / convergeBody) so
-  // review:approved is never fabricated.
+  // pipeline. Each call site supplies its live body (closeBody / convergeBody)
+  // so the shared authority projection prevents fabrication.
   const guardIdx = closeSrc.indexOf('shouldEmitReviewApprovedRow({');
   assert.ok(guardIdx >= 0, 'close must gate the row through shouldEmitReviewApprovedRow');
   const guardBlock = closeSrc.slice(guardIdx, guardIdx + 200);
@@ -236,15 +235,15 @@ test('AC4 source: close gates ONLY the review:approved row on the decision; issu
     'the gate must honor the explicit review-gate bypass'
   );
 
-  // Both call sites derive the approval marker from a live body, never a
-  // constant — the converge path off convergeBody, the full path off closeBody.
+  // Both call sites supply a live body, never a constant — the converge path
+  // off convergeBody, the full path off closeBody.
   assert.ok(
-    /hasApprovalMarker: hasReviewApprovedMarker\(convergeBody\)/.test(closeSrc),
-    'the converge-path call site must read the live convergeBody for the approval marker'
+    /body: convergeBody/.test(closeSrc),
+    'the converge-path call site must read the live convergeBody for authority'
   );
   assert.ok(
-    /hasApprovalMarker: hasReviewApprovedMarker\(closeBody\)/.test(closeSrc),
-    'the full-path call site must read the live closeBody for the approval marker'
+    /body: closeBody/.test(closeSrc),
+    'the full-path call site must read the live closeBody for authority'
   );
 
   // Inside the helper: the approved row is inside the shouldEmit guard; the wrap

@@ -134,8 +134,13 @@ test('assertLifecycleSatisfied: audit marker satisfies passed-final-review only'
   const lines = ALL_LIFECYCLE_LINES.map((l) =>
     l.includes(LIFECYCLE_LABELS['agent-review-passed']) ? l.replace('[ ]', '[x]') : l
   );
-  const body =
-    bodyWith(lines) + '\n<!-- aitm-full-auto-approved: 2026-05-19T00:00:00Z signals=test -->';
+  const body = [
+    bodyWith(lines),
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-05-19T00:00:00Z" -->',
+    '<!-- aitm-entered-review ts="2026-05-19T00:00:01Z" -->',
+    '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-05-19T00:00:01Z" sha="abc1234" ts="2026-05-19T00:00:02Z" validators="unit" result="pass" -->',
+    '<!-- aitm-review-approved schema="1" epoch="review:1:2026-05-19T00:00:01Z" proof-sha="abc1234" ts="2026-05-19T00:00:03Z" provenance="full-auto" signals="test" -->',
+  ].join('\n');
   const gate = assertLifecycleSatisfied({ body });
   // passed-final-review is audited; agent-review-passed is ticked; close-owned
   // keys are filtered → no block.
