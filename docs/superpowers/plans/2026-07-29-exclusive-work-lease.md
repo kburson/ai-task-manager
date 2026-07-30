@@ -394,6 +394,15 @@ real Git worktree directory. Raw display text never participates in uniqueness.
       naturally idempotent or embed and read back the `transitionId` before retry
       so a network-success/local-crash boundary cannot duplicate it. Clear the
       intent only after all projections are positively reconciled. Persist
+      an exact, non-secret prior-session snapshot (raw bytes plus digest, or
+      explicit absence) with acquire intent so a deterministic no-grant outcome
+      can restore the pre-attempt session after a process restart without
+      overwriting a newer intent. Give every session/fleet/timing/GitHub
+      projection a stable `projectionId` derived from the operation and acquire
+      idempotency key; require callbacks to read back that identity and return a
+      matching positive reconciliation proof before marking completion.
+      Validate persisted request, trusted holder, authority project, receipt,
+      and all four projection identities before any projection callback. Persist
       neither bearer credentials nor token environment names in the intent or
       receipt. Persist session
       `lease: { projectId, leaseId, fencingToken, worktreeId }`, preserve it

@@ -4,6 +4,7 @@ import {
   validateAcquireRequest,
   validateSwitchLeaseRequest,
 } from '@kburson/aitm-ledger';
+import { createHash } from 'node:crypto';
 
 const LEASE_CONTEXT_KEYS = Object.freeze(['projectId', 'leaseId', 'fencingToken', 'worktreeId']);
 
@@ -80,6 +81,95 @@ function validateProjectionName(name) {
   return name;
 }
 
+function projectionIdentity(operation, idempotencyKey, name) {
+  return `${operation}:${idempotencyKey}:${name}`;
+}
+
+function snapshotDigest(present, bytesBase64 = '') {
+  return createHash('sha256')
+    .update(present ? `present\0${bytesBase64}` : 'absent')
+    .digest('hex');
+}
+
+export function createPriorSessionSnapshot(snapshot) {
+  plainObject(snapshot, 'prior session snapshot');
+  if (snapshot.present === false) {
+    return Object.freeze({
+      present: false,
+      digest: snapshotDigest(false),
+    });
+  }
+  if (snapshot.present !== true || !Buffer.isBuffer(snapshot.bytes)) {
+    throw new TypeError('present prior session snapshot must contain raw bytes');
+  }
+  const bytesBase64 = snapshot.bytes.toString('base64');
+  let decoded;
+  try {
+    decoded = JSON.parse(snapshot.bytes.toString('utf8'));
+  } catch {
+    throw new TypeError('prior session snapshot must contain valid JSON');
+  }
+  assertNoSecretMaterial(decoded, '$.priorSessionSnapshot');
+  return Object.freeze({
+    present: true,
+    bytesBase64,
+    digest: snapshotDigest(true, bytesBase64),
+  });
+}
+
+export function normalizePriorSessionSnapshot(value) {
+  plainObject(value, 'prior session snapshot');
+  if (value.present === false) {
+    const keys = Object.keys(value).sort();
+    if (keys.join(',') !== 'digest,present' || value.digest !== snapshotDigest(false)) {
+      throw new TypeError('absent prior session snapshot is malformed');
+    }
+    return Object.freeze({ present: false, digest: value.digest });
+  }
+  if (value.present !== true) {
+    throw new TypeError('prior session snapshot presence is malformed');
+  }
+  const keys = Object.keys(value).sort();
+  if (keys.join(',') !== 'bytesBase64,digest,present') {
+    throw new TypeError('present prior session snapshot is malformed');
+  }
+  if (typeof value.bytesBase64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(value.bytesBase64)) {
+    throw new TypeError('prior session snapshot bytes are malformed');
+  }
+  if (value.digest !== snapshotDigest(true, value.bytesBase64)) {
+    throw new TypeError('prior session snapshot digest does not match');
+  }
+  let decoded;
+  try {
+    const bytes = Buffer.from(value.bytesBase64, 'base64');
+    if (bytes.toString('base64') !== value.bytesBase64) {
+      throw new Error('base64 encoding is not canonical');
+    }
+    decoded = JSON.parse(bytes.toString('utf8'));
+  } catch {
+    throw new TypeError('prior session snapshot must contain valid JSON');
+  }
+  assertNoSecretMaterial(decoded, '$.priorSessionSnapshot');
+  return Object.freeze({
+    present: true,
+    bytesBase64: value.bytesBase64,
+    digest: value.digest,
+  });
+}
+
+function validateProjectionProof(proof, name, projectionId) {
+  plainObject(proof, 'work-lease reconciliation proof');
+  if (
+    proof.reconciled !== true ||
+    proof.projectionName !== name ||
+    proof.projectionId !== projectionId
+  ) {
+    throw new Error(`work-lease ${name} reconciliation proof does not match`);
+  }
+  assertNoSecretMaterial(proof);
+  return cloneDurableJson(proof);
+}
+
 export function normalizeLeaseContext(value) {
   plainObject(value, 'lease context');
   const keys = Object.keys(value).sort();
@@ -107,7 +197,12 @@ export function leaseContextEnvironment(value) {
   };
 }
 
-export function createWorkLeaseIntent({ operation, request, projectionInputs = {} }) {
+export function createWorkLeaseIntent({
+  operation,
+  request,
+  projectionInputs = {},
+  priorSessionSnapshot,
+}) {
   if (!['acquire', 'switchLease'].includes(operation)) {
     throw new TypeError('work-lease intent operation must be acquire or switchLease');
   }
@@ -116,12 +211,14 @@ export function createWorkLeaseIntent({ operation, request, projectionInputs = {
   if (operation === 'acquire') validateAcquireRequest(request);
   else validateSwitchLeaseRequest(request);
   plainObject(projectionInputs, 'projectionInputs');
+  const durableSnapshot = normalizePriorSessionSnapshot(priorSessionSnapshot);
 
   const projections = {};
   for (const [name, input] of Object.entries(projectionInputs)) {
     validateProjectionName(name);
     projections[name] = {
       input: cloneDurableJson(input),
+      projectionId: projectionIdentity(operation, request.idempotencyKey, name),
       completed: false,
     };
   }
@@ -130,6 +227,7 @@ export function createWorkLeaseIntent({ operation, request, projectionInputs = {
     operation,
     canonicalRequest: canonicalRequestJson(request),
     idempotencyKey: request.idempotencyKey,
+    priorSessionSnapshot: durableSnapshot,
     projections,
   };
 }
@@ -138,6 +236,51 @@ export function readWorkLeaseIntentRequest(intent) {
   plainObject(intent, 'work-lease intent');
   nonEmptyString(intent.canonicalRequest, 'work-lease intent canonicalRequest');
   return JSON.parse(intent.canonicalRequest);
+}
+
+export function validateWorkLeaseIntent(intent, { requireAllProjections = false } = {}) {
+  plainObject(intent, 'work-lease intent');
+  assertNoSecretMaterial(intent);
+  if (!['acquire', 'switchLease'].includes(intent.operation)) {
+    throw new TypeError('work-lease intent operation is malformed');
+  }
+  const request = readWorkLeaseIntentRequest(intent);
+  if (intent.operation === 'acquire') validateAcquireRequest(request);
+  else validateSwitchLeaseRequest(request);
+  if (intent.idempotencyKey !== request.idempotencyKey) {
+    throw new Error('work-lease intent idempotency identity does not match');
+  }
+  normalizePriorSessionSnapshot(intent.priorSessionSnapshot);
+  plainObject(intent.projections, 'work-lease intent projections');
+  if (requireAllProjections) {
+    const names = Object.keys(intent.projections).sort();
+    if (
+      names.length !== WORK_LEASE_PROJECTIONS.length ||
+      names.some((name, index) => name !== [...WORK_LEASE_PROJECTIONS].sort()[index])
+    ) {
+      throw new Error('work-lease intent requires all four persisted projections');
+    }
+  }
+  for (const [name, projection] of Object.entries(intent.projections)) {
+    validateProjectionName(name);
+    plainObject(projection, `work-lease ${name} projection`);
+    if (!Object.hasOwn(projection, 'input')) {
+      throw new Error(`work-lease ${name} projection input is missing`);
+    }
+    cloneDurableJson(projection.input);
+    const expectedId = projectionIdentity(intent.operation, request.idempotencyKey, name);
+    if (projection.projectionId !== expectedId) {
+      throw new Error(`work-lease ${name} projection identity does not match`);
+    }
+    if (typeof projection.completed !== 'boolean') {
+      throw new Error(`work-lease ${name} projection completion is malformed`);
+    }
+    if (projection.completed) {
+      validateProjectionProof(projection.reconciliationProof, name, projection.projectionId);
+      nonEmptyString(projection.completedAt, `work-lease ${name} projection completedAt`);
+    }
+  }
+  return request;
 }
 
 export function attachIntentReceipt(intent, { receipt, transitionId } = {}) {
@@ -194,6 +337,7 @@ export function setIntentProjectionInput(intent, name, input, expectedTransition
       ...intent.projections,
       [name]: {
         input: durableInput,
+        projectionId: projectionIdentity(intent.operation, intent.idempotencyKey, name),
         completed: false,
       },
     },
@@ -203,6 +347,7 @@ export function setIntentProjectionInput(intent, name, input, expectedTransition
 export function checkpointIntentProjection(
   intent,
   name,
+  reconciliationProof,
   expectedTransitionId,
   completedAt = new Date().toISOString()
 ) {
@@ -216,7 +361,11 @@ export function checkpointIntentProjection(
   if (!projection) {
     throw new Error(`work-lease projection ${name} has no persisted input`);
   }
-  if (projection.completed === true) return intent;
+  const durableProof = validateProjectionProof(reconciliationProof, name, projection.projectionId);
+  if (projection.completed === true) {
+    validateProjectionProof(projection.reconciliationProof, name, projection.projectionId);
+    return intent;
+  }
   nonEmptyString(completedAt, 'work-lease projection completedAt');
   return {
     ...intent,
@@ -226,6 +375,7 @@ export function checkpointIntentProjection(
         ...projection,
         completed: true,
         completedAt,
+        reconciliationProof: durableProof,
       },
     },
   };

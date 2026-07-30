@@ -58,6 +58,11 @@ function acquireRequest(overrides = {}) {
   };
 }
 
+function reconciliationProof(sid, name, dir) {
+  const projectionId = getActiveTask(sid, dir).workLeaseIntent.projections[name].projectionId;
+  return { reconciled: true, projectionName: name, projectionId };
+}
+
 test('lease context has an exact persisted shape and exposes only child fencing env keys', () => {
   assert.deepEqual(normalizeLeaseContext({ ...LEASE }), LEASE);
   assert.throws(
@@ -118,6 +123,34 @@ test('active-task snapshot restoration preserves exact prior bytes or exact abse
     );
     assert.equal(restoreActiveTaskSnapshot(absentSid, absent, 'restore-absence', dir), true);
     assert.equal(getActiveTask(absentSid, dir), null);
+
+    const guardedSid = 'session-newer-intent';
+    mkdirSync(path.dirname(activeTaskPath(guardedSid, dir)), { recursive: true });
+    writeFileSync(
+      activeTaskPath(guardedSid, dir),
+      JSON.stringify({ issue: '#1049', wordsAtStart: 31 }),
+      { encoding: 'utf8', flag: 'w' }
+    );
+    const guardedSnapshot = captureActiveTaskSnapshot(guardedSid, dir);
+    setWorkLeaseIntent(
+      guardedSid,
+      {
+        operation: 'acquire',
+        request: acquireRequest({ idempotencyKey: 'original-intent' }),
+        projectionInputs: { session: { issue: '#1049' } },
+      },
+      dir
+    );
+    const newerPath = activeTaskPath(guardedSid, dir);
+    const newer = JSON.parse(readFileSync(newerPath, 'utf8'));
+    newer.workLeaseIntent.idempotencyKey = 'newer-intent';
+    writeFileSync(newerPath, JSON.stringify(newer, null, 2) + '\n');
+    const newerBytes = readFileSync(newerPath);
+    assert.equal(
+      restoreActiveTaskSnapshot(guardedSid, guardedSnapshot, 'original-intent', dir),
+      false
+    );
+    assert.deepEqual(readFileSync(newerPath), newerBytes);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -216,8 +249,11 @@ test('intent persists one exact request and rejects credential material before m
     assert.equal(stored.workLeaseIntent.transitionId, undefined);
     assert.deepEqual(stored.workLeaseIntent.projections.session, {
       input: { issue: '#1049' },
+      projectionId: `acquire:${request.idempotencyKey}:session`,
       completed: false,
     });
+    assert.equal(stored.workLeaseIntent.priorSessionSnapshot.present, false);
+    assert.equal(typeof stored.workLeaseIntent.priorSessionSnapshot.digest, 'string');
 
     assert.throws(
       () =>
@@ -368,6 +404,7 @@ test('intent, receipt, and projection persistence is idempotent but never overwr
     checkpointWorkLeaseProjection(
       'session-1',
       'session',
+      reconciliationProof('session-1', 'session', dir),
       undefined,
       '2026-07-30T12:02:00.000Z',
       dir
@@ -382,6 +419,7 @@ test('intent, receipt, and projection persistence is idempotent but never overwr
       checkpointWorkLeaseProjection(
         'session-1',
         'session',
+        reconciliationProof('session-1', 'session', dir),
         undefined,
         '2026-07-30T12:03:00.000Z',
         dir
@@ -458,6 +496,7 @@ test('intent receipt and projection checkpoints update atomically and clear only
     checkpointWorkLeaseProjection(
       'session-1',
       'session',
+      reconciliationProof('session-1', 'session', dir),
       'transition-1',
       '2026-07-30T12:02:00.000Z',
       dir
@@ -469,6 +508,7 @@ test('intent receipt and projection checkpoints update atomically and clear only
     checkpointWorkLeaseProjection(
       'session-1',
       'fleet',
+      reconciliationProof('session-1', 'fleet', dir),
       'transition-1',
       '2026-07-30T12:02:01.000Z',
       dir
@@ -476,6 +516,7 @@ test('intent receipt and projection checkpoints update atomically and clear only
     checkpointWorkLeaseProjection(
       'session-1',
       'timing',
+      reconciliationProof('session-1', 'timing', dir),
       'transition-1',
       '2026-07-30T12:02:02.000Z',
       dir
@@ -488,6 +529,7 @@ test('intent receipt and projection checkpoints update atomically and clear only
     checkpointWorkLeaseProjection(
       'session-1',
       'github',
+      reconciliationProof('session-1', 'github', dir),
       'transition-1',
       '2026-07-30T12:02:03.000Z',
       dir

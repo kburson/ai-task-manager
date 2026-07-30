@@ -15,7 +15,9 @@ import {
   assertIntentTransition,
   attachIntentReceipt,
   checkpointIntentProjection,
+  createPriorSessionSnapshot,
   createWorkLeaseIntent,
+  normalizePriorSessionSnapshot,
   normalizeLeaseContext,
   setIntentProjectionInput,
   workLeaseIntentReconciled,
@@ -33,9 +35,7 @@ function readJson(p) {
   }
 }
 
-function readJsonForMutation(p) {
-  if (!existsSync(p)) return null;
-  const raw = readFileSync(p, 'utf8');
+function parseJsonForMutation(raw) {
   if (!raw.trim()) {
     throw new Error('active-task state is empty');
   }
@@ -57,6 +57,25 @@ function readJsonForMutation(p) {
     throw new Error('active-task workLeaseIntent is malformed');
   }
   return parsed;
+}
+
+function readJsonForMutation(p) {
+  if (!existsSync(p)) return null;
+  return parseJsonForMutation(readFileSync(p, 'utf8'));
+}
+
+function readActiveTaskWithSnapshot(p) {
+  if (!existsSync(p)) {
+    return {
+      existing: null,
+      snapshot: createPriorSessionSnapshot({ present: false, bytes: null }),
+    };
+  }
+  const bytes = Buffer.from(readFileSync(p));
+  return {
+    existing: parseJsonForMutation(bytes.toString('utf8')),
+    snapshot: createPriorSessionSnapshot({ present: true, bytes }),
+  };
 }
 
 function atomicWrite(p, payload) {
@@ -101,8 +120,8 @@ export function getActiveTask(sid, projDir) {
 
 // Capture the active-task file before a write-ahead acquire intent is persisted.
 // The raw bytes, including whitespace and final-newline choice, are retained so
-// a deterministic loser can restore the exact pre-attempt state. This snapshot
-// is process-local only and is never serialized into the intent.
+// a deterministic loser can restore the exact pre-attempt state. setWorkLeaseIntent
+// converts this process-local form into the durable digest-checked intent form.
 export function captureActiveTaskSnapshot(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
   if (!existsSync(p)) return Object.freeze({ present: false, bytes: null });
@@ -113,26 +132,32 @@ export function captureActiveTaskSnapshot(sid, projDir) {
 // attempt. The conditional guard prevents a delayed loser from overwriting a
 // newer session write. Exact prior absence is restored by removing the file.
 export function restoreActiveTaskSnapshot(sid, snapshot, expectedIdempotencyKey, projDir) {
-  if (
-    !snapshot ||
-    typeof snapshot !== 'object' ||
-    typeof snapshot.present !== 'boolean' ||
-    typeof expectedIdempotencyKey !== 'string' ||
-    expectedIdempotencyKey.trim() === ''
-  ) {
+  if (typeof expectedIdempotencyKey !== 'string' || expectedIdempotencyKey.trim() === '') {
     throw new Error('restoreActiveTaskSnapshot: invalid snapshot or idempotency key');
   }
+  const persistedSnapshot = Object.hasOwn(snapshot ?? {}, 'bytes')
+    ? createPriorSessionSnapshot(snapshot)
+    : normalizePriorSessionSnapshot(snapshot);
+  const normalizedSnapshot = {
+    present: persistedSnapshot.present,
+    bytes: persistedSnapshot.present ? Buffer.from(persistedSnapshot.bytesBase64, 'base64') : null,
+  };
   const p = activeTaskPath(sid, projDir);
   const current = readJsonForMutation(p);
-  if (current?.workLeaseIntent?.idempotencyKey !== expectedIdempotencyKey) return false;
-  if (!snapshot.present) {
+  if (
+    current?.workLeaseIntent?.idempotencyKey !== expectedIdempotencyKey ||
+    current.workLeaseIntent.priorSessionSnapshot?.digest !== persistedSnapshot.digest
+  ) {
+    return false;
+  }
+  if (!normalizedSnapshot.present) {
     if (existsSync(p)) rmSync(p);
     return true;
   }
-  if (!Buffer.isBuffer(snapshot.bytes)) {
+  if (!Buffer.isBuffer(normalizedSnapshot.bytes)) {
     throw new Error('restoreActiveTaskSnapshot: present snapshot must contain raw bytes');
   }
-  atomicWriteBytes(p, snapshot.bytes);
+  atomicWriteBytes(p, normalizedSnapshot.bytes);
   return true;
 }
 
@@ -234,29 +259,38 @@ export function clearActiveTaskLease(sid, expectedFencingToken, projDir) {
 // Persists the exact canonical acquire/switch request before authority mutation.
 // The helper validates all content before touching the session record.
 export function setWorkLeaseIntent(sid, input, projDir) {
-  const intent = createWorkLeaseIntent(input);
+  const p = activeTaskPath(sid, projDir);
+  const { existing: existingBeforeMutation, snapshot: capturedSnapshot } =
+    readActiveTaskWithSnapshot(p);
+  const suppliedSnapshot = input?.priorSessionSnapshot;
+  const priorSessionSnapshot = suppliedSnapshot
+    ? Object.hasOwn(suppliedSnapshot, 'bytes')
+      ? createPriorSessionSnapshot(suppliedSnapshot)
+      : suppliedSnapshot
+    : (existingBeforeMutation?.workLeaseIntent?.priorSessionSnapshot ?? capturedSnapshot);
+  const intent = createWorkLeaseIntent({ ...input, priorSessionSnapshot });
   const request = JSON.parse(intent.canonicalRequest);
-  return mutateActiveTask(sid, projDir, (existing) => {
-    const base = existing ?? {
-      issue: null,
-      entryStartTs: null,
-      wordsAtStart: 0,
-      boundAt: new Date().toISOString(),
-    };
-    if (base.workLeaseIntent) {
-      if (workLeaseIntentsEqual(base.workLeaseIntent, intent)) return base;
-      throw new Error('session has an unreconciled work-lease intent');
-    }
-    const currentIssue = authorityIssue(base);
-    if (currentIssue != null && canonicalIssue(currentIssue) !== request.issueId) {
-      throw new Error('work-lease intent issue does not match the current session authority');
-    }
-    return {
-      ...base,
-      ...(currentIssue == null ? { leaseIssue: `#${request.issueId}` } : {}),
-      workLeaseIntent: intent,
-    };
-  });
+  const base = existingBeforeMutation ?? {
+    issue: null,
+    entryStartTs: null,
+    wordsAtStart: 0,
+    boundAt: new Date().toISOString(),
+  };
+  if (base.workLeaseIntent) {
+    if (workLeaseIntentsEqual(base.workLeaseIntent, intent)) return base;
+    throw new Error('session has an unreconciled work-lease intent');
+  }
+  const currentIssue = authorityIssue(base);
+  if (currentIssue != null && canonicalIssue(currentIssue) !== request.issueId) {
+    throw new Error('work-lease intent issue does not match the current session authority');
+  }
+  const next = {
+    ...base,
+    ...(currentIssue == null ? { leaseIssue: `#${request.issueId}` } : {}),
+    workLeaseIntent: intent,
+  };
+  atomicWrite(p, next);
+  return next;
 }
 
 export function attachWorkLeaseIntentReceipt(sid, receipt, projDir) {
@@ -291,6 +325,7 @@ export function setWorkLeaseProjectionInput(sid, projection, input, expectedTran
 export function checkpointWorkLeaseProjection(
   sid,
   projection,
+  reconciliationProof,
   expectedTransitionId,
   completedAt,
   projDir
@@ -304,6 +339,7 @@ export function checkpointWorkLeaseProjection(
       workLeaseIntent: checkpointIntentProjection(
         existing.workLeaseIntent,
         projection,
+        reconciliationProof,
         expectedTransitionId,
         completedAt
       ),

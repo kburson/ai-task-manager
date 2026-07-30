@@ -1,10 +1,15 @@
 import { randomUUID as defaultRandomUUID } from 'node:crypto';
 
-import { WorkLeaseError, validateRenewRequest, validateVerifyRequest } from '@kburson/aitm-ledger';
+import {
+  canonicalRequestJson,
+  WorkLeaseError,
+  validateAcquireRequest,
+  validateRenewRequest,
+  validateVerifyRequest,
+} from '@kburson/aitm-ledger';
 
 import {
   attachWorkLeaseIntentReceipt,
-  captureActiveTaskSnapshot,
   checkpointWorkLeaseProjection,
   clearWorkLeaseIntent,
   getActiveTask,
@@ -14,7 +19,7 @@ import {
 } from '../../session-state.mjs';
 import {
   normalizeLeaseContext,
-  readWorkLeaseIntentRequest,
+  validateWorkLeaseIntent,
   WORK_LEASE_PROJECTIONS,
 } from './context.mjs';
 import { resolveWorktreeIdentity } from './worktree-identity.mjs';
@@ -26,11 +31,16 @@ export const WORK_LEASE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 const heartbeatOwners = new Map();
 const heartbeatFailures = new Map();
 const TERMINAL_ACQUIRE_CODES = new Set([
-  'lease-contended',
-  'holder-live',
-  'authority-forbidden',
   'invalid-request',
   'idempotency-conflict',
+  'lease-contended',
+  'worktree-contended',
+  'fence-stale',
+  'authority-unauthenticated',
+  'authority-forbidden',
+  'holder-live',
+  'lease-not-held',
+  'main-worktree-unresolved',
 ]);
 
 function leaseError(code, message, details) {
@@ -277,24 +287,104 @@ function canonicalAcquireIssue(value) {
   return canonicalIssue(value);
 }
 
-function durableLeaseFromReceipt(receipt, worktreeId) {
-  return normalizeLeaseContext({
-    projectId: receipt?.projectId,
-    leaseId: receipt?.leaseId,
-    fencingToken: receipt?.fencingToken,
-    worktreeId,
-  });
+function sameDurableJson(left, right) {
+  return canonicalRequestJson(left) === canonicalRequestJson(right);
 }
 
-function releaseAfterClaimRequest(lease, releasedAt) {
+function validateAcquireIntentCorrelation({ intent, holder, issueId, store }) {
+  if (intent?.operation !== 'acquire') {
+    throw leaseError('invalid-request', 'persisted work-lease intent operation must be acquire');
+  }
+  let request;
+  try {
+    request = validateWorkLeaseIntent(intent, { requireAllProjections: true });
+    validateAcquireRequest(request);
+  } catch (error) {
+    throw stableError(
+      error,
+      'invalid-request',
+      `persisted acquire intent is malformed: ${error?.message || 'unknown validation error'}`
+    );
+  }
+  if (request.projectId !== store?.projectId) {
+    throw leaseError('invalid-request', 'persisted acquire project does not match authority');
+  }
+  if (request.issueId !== issueId || request.mode !== 'write') {
+    throw leaseError('invalid-request', 'persisted acquire target does not match current bind');
+  }
+  if (!sameDurableJson(request.holder, holder)) {
+    throw leaseError('invalid-request', 'persisted acquire holder does not match trusted holder');
+  }
+  return request;
+}
+
+function validateAcquireReceipt(receipt, request) {
+  const lease = object(receipt, 'acquire receipt');
+  for (const field of [
+    'projectId',
+    'leaseId',
+    'issueId',
+    'mode',
+    'fencingToken',
+    'state',
+    'holder',
+    'acquiredAt',
+    'heartbeatAt',
+    'expiresAt',
+  ]) {
+    if (!Object.hasOwn(lease, field)) {
+      throw leaseError('invalid-request', `acquire receipt ${field} is required`);
+    }
+  }
+  if (
+    lease.projectId !== request.projectId ||
+    lease.issueId !== request.issueId ||
+    lease.mode !== request.mode ||
+    lease.state !== 'active' ||
+    !sameDurableJson(lease.holder, request.holder)
+  ) {
+    throw leaseError('invalid-request', 'acquire receipt does not match persisted request');
+  }
+  const durableLease = normalizeLeaseContext({
+    projectId: lease.projectId,
+    leaseId: requiredString(lease.leaseId, 'acquire receipt leaseId'),
+    fencingToken: lease.fencingToken,
+    worktreeId: request.holder.worktreeId,
+  });
+  const acquiredAt = parseTimestamp(lease.acquiredAt, 'acquire receipt acquiredAt');
+  const heartbeatAt = parseTimestamp(lease.heartbeatAt, 'acquire receipt heartbeatAt');
+  const expiresAt = parseTimestamp(lease.expiresAt, 'acquire receipt expiresAt');
+  if (heartbeatAt < acquiredAt || expiresAt <= heartbeatAt) {
+    throw leaseError('invalid-request', 'acquire receipt timestamps are inconsistent');
+  }
+  return durableLease;
+}
+
+function releaseAfterClaimRequest(lease, request) {
   return {
     projectId: lease.projectId,
     leaseId: lease.leaseId,
     fencingToken: lease.fencingToken,
-    idempotencyKey: `release-after-claim:${lease.leaseId}:${lease.fencingToken}`,
-    releasedAt,
+    idempotencyKey: `release-after-claim:${request.idempotencyKey}`,
+    releasedAt: request.requestedAt,
     reason: 'assignee-changed-after-acquire',
   };
+}
+
+function validateProjectionProof(proof, projectionName, projectionId) {
+  if (
+    !proof ||
+    typeof proof !== 'object' ||
+    proof.reconciled !== true ||
+    proof.projectionName !== projectionName ||
+    proof.projectionId !== projectionId
+  ) {
+    throw leaseError(
+      'authority-unavailable',
+      `work-lease ${projectionName} reconciliation proof does not match`
+    );
+  }
+  return proof;
 }
 
 function isCurrentAssigneeClaimReplay(claimResult, eligibility) {
@@ -329,7 +419,6 @@ export async function coordinateWorkLeaseAcquire({
   attachReceipt = attachWorkLeaseIntentReceipt,
   checkpointProjection = checkpointWorkLeaseProjection,
   clearIntent = clearWorkLeaseIntent,
-  captureSnapshot = captureActiveTaskSnapshot,
   restoreSnapshot = restoreActiveTaskSnapshot,
   resolveWorktreeIdentity: resolveIdentity = resolveWorktreeIdentity,
   now = () => new Date(),
@@ -360,11 +449,25 @@ export async function coordinateWorkLeaseAcquire({
     }
   }
 
-  const eligibility = await readEligibility();
-  if (!eligibility?.ok) {
-    throw leaseError('authority-forbidden', 'incoming issue is not eligible for bind');
+  const existing = await loadSession(sessionId, projectDir);
+  const existingIntent = existing?.workLeaseIntent;
+  let eligibility;
+  let holder;
+  let store;
+  let intent;
+  let request;
+
+  if (!existingIntent) {
+    eligibility = await readEligibility();
+    if (!eligibility?.ok) {
+      throw leaseError('authority-forbidden', 'incoming issue is not eligible for bind');
+    }
+    if (eligibility.claimRequired && typeof claim !== 'function') {
+      throw leaseError('invalid-request', 'deferred assignee claim is required');
+    }
   }
-  const holder = await buildTrustedWorkLeaseHolder({
+
+  holder = await buildTrustedWorkLeaseHolder({
     projectDir,
     hostId,
     provider,
@@ -374,18 +477,17 @@ export async function coordinateWorkLeaseAcquire({
     branch,
     resolveWorktreeIdentity: resolveIdentity,
   });
-  const snapshot = captureSnapshot(sessionId, projectDir);
-  const existing = await loadSession(sessionId, projectDir);
-  const existingIntent = existing?.workLeaseIntent;
-  let request;
-  let store;
+  store = await getStore();
+
   if (existingIntent) {
-    request = readWorkLeaseIntentRequest(existingIntent);
-    if (request.issueId !== canonicalIssueId) {
-      throw leaseError('authority-forbidden', 'session has an intent for a different issue');
-    }
+    intent = existingIntent;
+    request = validateAcquireIntentCorrelation({
+      intent,
+      holder,
+      issueId: canonicalIssueId,
+      store,
+    });
   } else {
-    store = await getStore();
     const requestedAt = canonicalTimestamp(now(), 'work-lease acquire time');
     request = {
       projectId: requiredString(store?.projectId, 'work-lease projectId'),
@@ -396,27 +498,108 @@ export async function coordinateWorkLeaseAcquire({
       ttlMs: WORK_LEASE_TTL_MS,
       holder,
     };
-    saveIntent(sessionId, { operation: 'acquire', request, projectionInputs }, projectDir);
+    await saveIntent(sessionId, { operation: 'acquire', request, projectionInputs }, projectDir);
+    intent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
+    request = validateAcquireIntentCorrelation({
+      intent,
+      holder,
+      issueId: canonicalIssueId,
+      store,
+    });
   }
 
-  let receipt = existingIntent?.receipt;
-  try {
-    store ??= await getStore();
-    if (!receipt) {
-      receipt = await store.acquire(request);
-      attachReceipt(sessionId, { receipt }, projectDir);
+  let receipt = intent.receipt;
+  if (!receipt) {
+    let candidateReceipt;
+    try {
+      candidateReceipt = await store.acquire(request);
+    } catch (error) {
+      if (TERMINAL_ACQUIRE_CODES.has(error?.code)) {
+        const restored = await restoreSnapshot(
+          sessionId,
+          intent.priorSessionSnapshot,
+          request.idempotencyKey,
+          projectDir
+        );
+        if (!restored) {
+          throw leaseError(
+            'authority-unavailable',
+            'cannot restore prior session after definitive acquire refusal'
+          );
+        }
+      }
+      throw stableError(error, 'authority-unavailable', 'work-lease acquisition failed');
     }
-  } catch (error) {
-    if (TERMINAL_ACQUIRE_CODES.has(error?.code)) {
-      restoreSnapshot(sessionId, snapshot, request.idempotencyKey, projectDir);
-    }
-    throw stableError(error, 'authority-unavailable', 'work-lease acquisition failed');
+    validateAcquireReceipt(candidateReceipt, request);
+    await attachReceipt(sessionId, { receipt: candidateReceipt }, projectDir);
+    receipt = candidateReceipt;
   }
 
-  const durableLease = durableLeaseFromReceipt(receipt, holder.worktreeId);
+  intent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
+  request = validateAcquireIntentCorrelation({
+    intent,
+    holder,
+    issueId: canonicalIssueId,
+    store,
+  });
+  receipt = intent.receipt;
+  const durableLease = validateAcquireReceipt(receipt, request);
+
+  const rejectGrantedLease = async ({ code, message, cause }) => {
+    try {
+      if (typeof store.release !== 'function') {
+        throw leaseError('authority-unavailable', 'work-lease release operation is required');
+      }
+      await store.release(releaseAfterClaimRequest(durableLease, request));
+    } catch (releaseError) {
+      throw stableError(
+        releaseError,
+        'authority-unavailable',
+        'cannot release lease after assignee recheck'
+      );
+    }
+    const restored = await restoreSnapshot(
+      sessionId,
+      intent.priorSessionSnapshot,
+      request.idempotencyKey,
+      projectDir
+    );
+    if (!restored) {
+      throw leaseError(
+        'authority-unavailable',
+        'cannot restore prior session after released acquire'
+      );
+    }
+    if (cause) {
+      throw stableError(cause, code, message);
+    }
+    throw leaseError(code, message);
+  };
+
+  if (existingIntent) {
+    try {
+      eligibility = await readEligibility();
+    } catch (error) {
+      await rejectGrantedLease({
+        code: 'authority-unavailable',
+        message: 'incoming issue eligibility cannot be verified',
+        cause: error,
+      });
+    }
+    if (!eligibility?.ok) {
+      await rejectGrantedLease({
+        code: 'authority-forbidden',
+        message: 'incoming issue is no longer eligible for bind',
+      });
+    }
+  }
+
   if (eligibility.claimRequired) {
     if (typeof claim !== 'function') {
-      throw leaseError('invalid-request', 'deferred assignee claim is required');
+      await rejectGrantedLease({
+        code: 'invalid-request',
+        message: 'deferred assignee claim is required',
+      });
     }
     let claimResult;
     let claimError;
@@ -426,55 +609,59 @@ export async function coordinateWorkLeaseAcquire({
       claimError = error;
     }
     if (claimError || !isCurrentAssigneeClaimReplay(claimResult, eligibility)) {
-      try {
-        await store.release(
-          releaseAfterClaimRequest(
-            durableLease,
-            canonicalTimestamp(now(), 'work-lease release time')
-          )
-        );
-        restoreSnapshot(sessionId, snapshot, request.idempotencyKey, projectDir);
-      } catch (releaseError) {
-        throw stableError(
-          releaseError,
-          'authority-unavailable',
-          'cannot release lease after assignee recheck'
-        );
-      }
       if (claimError) {
-        throw stableError(
-          claimError,
-          'authority-unavailable',
-          'assignee claim could not be verified after acquisition'
-        );
+        await rejectGrantedLease({
+          code: 'authority-unavailable',
+          message: 'assignee claim could not be verified after acquisition',
+          cause: claimError,
+        });
       }
-      throw leaseError(
-        'authority-forbidden',
-        'issue assignee changed after work-lease acquisition'
-      );
+      await rejectGrantedLease({
+        code: 'authority-forbidden',
+        message: 'issue assignee changed after work-lease acquisition',
+      });
     }
   }
 
   let currentIntent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
+  validateAcquireIntentCorrelation({
+    intent: currentIntent,
+    holder,
+    issueId: canonicalIssueId,
+    store,
+  });
   for (const name of WORK_LEASE_PROJECTIONS) {
-    if (currentIntent?.projections?.[name]?.completed === true) continue;
-    await projections[name]({
-      input: currentIntent?.projections?.[name]?.input ?? projectionInputs[name],
+    const projection = currentIntent.projections[name];
+    if (projection.completed === true) continue;
+    const proof = await projections[name]({
+      input: projection.input,
       lease: durableLease,
       receipt,
       request,
       eligibility,
+      projectionName: name,
+      projectionId: projection.projectionId,
     });
-    checkpointProjection(
+    validateProjectionProof(proof, name, projection.projectionId);
+    await checkpointProjection(
       sessionId,
       name,
+      proof,
       currentIntent?.transitionId,
       canonicalTimestamp(now(), `work-lease ${name} checkpoint time`),
       projectDir
     );
     currentIntent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
+    validateAcquireIntentCorrelation({
+      intent: currentIntent,
+      holder,
+      issueId: canonicalIssueId,
+      store,
+    });
   }
-  clearIntent(sessionId, currentIntent?.transitionId, projectDir);
+  if ((await clearIntent(sessionId, currentIntent?.transitionId, projectDir)) !== true) {
+    throw leaseError('authority-unavailable', 'cannot clear reconciled work-lease intent');
+  }
   return Object.freeze({ lease: durableLease, receipt, request, eligibility });
 }
 
