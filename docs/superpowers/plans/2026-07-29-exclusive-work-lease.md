@@ -25,6 +25,10 @@ the fencing token before governed effects. Fleet remains a projection.
   renew, hand off, or take over; unavailable remote authority fails writes
   closed.
 - One active write lease exists per issue and per canonical worktree.
+- `worktreeId` is derived from host identity plus the real worktree Git
+  directory; `pathHash` hashes the real canonical display path. Symlink aliases
+  cannot create a second identity, and a changed display path does not change
+  the authoritative worktree ID.
 - Fencing tokens increase monotonically. Former holders cannot mutate after
   handoff, takeover, release, or expiry.
 - Live local holders are not reclaimed solely by elapsed TTL. Dead-holder
@@ -38,6 +42,17 @@ the fencing token before governed effects. Fleet remains a projection.
 - GitHub assignee remains human accountability; mutator locks remain
   short-lived serialization inside a valid lease; fleet is never authority.
 - Read-only status/reporting needs no write lease.
+- The session binding persists the non-secret lease context and preserves it
+  across generic state/timing saves. Authentication secrets are never
+  persisted.
+- SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
+  validation. Reuse of an idempotency key for a different canonical request
+  fails with `idempotency-conflict`.
+- The reviewed file inventory has 76 task assignments across 75 unique paths:
+  Tasks 1-7 contain 12, 5, 17, 5, 25, 8, and 4 paths respectively;
+  `fleet-registry.mjs` intentionally appears in Tasks 3 and 6. If
+  implementation discovers another required production path, update this plan
+  and its inventory before editing it.
 - This child excludes event write-ahead logging, Insights projections, remote service
   deployment, and PostgreSQL implementation.
 
@@ -56,17 +71,34 @@ the fencing token before governed effects. Fleet remains a projection.
 - Create: `packages/aitm-ledger/src/index.mjs`
 - Create: `packages/aitm-ledger/test/package-contract.test.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/install.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/core/package-boundary.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/core/ci-actions-node-pins.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/integration/core/packed-ledger-install.test.mjs`
 
 - [ ] Add failing package/installer tests for the workspace export, Node
-      `>=22.15.0`, and exactly one generated `/.db/` ignore in both this
-      repository and installed consumer projects.
+      `>=22.15.0`, root and ledger pack contents, and exactly one generated
+      root-scoped `/.db/` ignore in both this repository and installed consumer
+      projects after fresh and repeated installation. Seed a similar ignore
+      line to prove matching is line-aware, not substring-based.
 - [ ] Run
       `node --test packages/aitm-ledger/test/package-contract.test.mjs`.
       Expected RED: package is absent.
 - [ ] Add the workspace/package, root engine floor, lockfile entries, an exact
-      Node `22.15.0` CI lane plus the current supported lane, and package
-      export.
-- [ ] Re-run the test and `npm ci`. Expected GREEN.
+      Node `22.15.0` fast CI lane plus the current supported lane, an explicit
+      `test:ledger` script, and independently publishable ledger metadata:
+      version, license, engine, export map, files, and publish configuration.
+      Root runtime resolution uses an exact ledger dependency and the release
+      contract publishes the ledger before the root. Root and ledger dry-run
+      packs must exclude tests and include every required runtime module.
+- [ ] Build both tarballs in project scratch, install them into a clean
+      consumer, prove the installed CLI and ledger export load without a
+      workspace symlink, and run the installed initializer twice. Assert
+      required tarball paths and uniqueness rather than freezing incidental
+      repository or pack file totals.
+- [ ] Re-run the tests and `npm ci`. Expected GREEN.
 - [ ] Commit:
       `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] build(ledger): establish lease package boundary"`.
 
@@ -84,28 +116,55 @@ the fencing token before governed effects. Fleet remains a projection.
 
 ```js
 acquire(request);
-renew(leaseId, fencingToken);
-verify(leaseId, fencingToken, operation);
-switchLease(leaseId, fencingToken, targetRequest);
-handoff(leaseId, fencingToken, recipient);
-release(leaseId, fencingToken, reason);
-takeover(request, expectedToken, reason);
+renew(request);
+verify(request);
+switchLease(request);
+handoff(request);
+release(request);
+takeover(request);
 observe(selector);
 ```
 
+Every mutating request contains `projectId`, `idempotencyKey`, and an operation
+timestamp. `verify` and `observe` are non-mutating and do not require an
+idempotency key. `fencingToken` is a positive base-10 integer serialized as a
+string on every JavaScript and JSON boundary. Tokens come from one
+authority-wide strictly increasing sequence. Handoff, takeover, release,
+expiry, and switch supersession advance the fence; renewal does not.
+
+`verify.operation` is exactly one of `task-bind`, `source-write`,
+`issue-attributed-commit`, `lifecycle-mutation`, `issue-body-mutation`,
+`evidence-mutation`, `approval-mutation`, `review-mutation`, `close`, or
+`branch-worktree-orchestration`. Unknown operations and aliases fail with
+`invalid-request`.
+
 `AcquireRequest` contains `projectId`, `issueId`, `mode: 'write'`,
 `idempotencyKey`, `requestedAt`, `ttlMs`, and holder
-`{ provider, agentRunId, sessionId, hostId, worktreeId, pathHash, branch, pid }`.
+`{ principalKind: 'worker', provider, agentRunId, sessionId, hostId,
+worktreeId, pathHash, branch, pid }`. `RenewRequest` contains `projectId`,
+`leaseId`, `fencingToken`, `idempotencyKey`, `requestedAt`, and `ttlMs`.
+`VerifyRequest` contains `projectId`, `leaseId`, `fencingToken`, `operation`,
+and `verifiedAt`. `SwitchLeaseRequest` contains the current lease identity plus
+one target acquisition request. `ReleaseRequest` contains the lease identity,
+`releasedAt`, idempotency key, and a nonempty reason.
+
 The lease adds `leaseId`, `fencingToken`, `state`, `acquiredAt`, `heartbeatAt`,
-`expiresAt`, and audit metadata. State is `active`, `paused`, `handed-off`,
-`released`, `expired`, or `superseded`. Error codes are stable:
-`lease-contended`, `worktree-contended`, `fence-stale`,
-`authority-unavailable`, `holder-live`, and `lease-not-held`.
+`expiresAt`, and audit metadata. Current usable state is `active` or `paused`;
+terminal state is `released`, `expired`, or `superseded`. Stable error codes
+are `invalid-request`, `idempotency-conflict`, `lease-contended`,
+`worktree-contended`, `fence-stale`, `authority-unauthenticated`,
+`authority-forbidden`, `authority-unavailable`, `holder-live`, and
+`lease-not-held`.
 
 `switchLease` performs target acquisition and current release atomically; target
-failure preserves the old lease. Handoff retains the child worktree identity
-and changes the holder to an `integration` principal, so an orchestrator can
-retain its separate lease on a distinct epic worktree.
+failure preserves the old lease. Its result includes an idempotent transition
+receipt authorizing exactly-once outgoing projection/timing finalization after
+the authority transaction. Handoff retains the lease ID, issue, child worktree
+identity, path hash, and branch; changes only the holder to an
+`integration` principal; increments the fencing token; and returns an active
+lease. `handed-off` is an audit event, not a usable lease state. The giver's old
+token immediately fails, while an orchestrator may retain its separate epic
+lease on a distinct epic worktree.
 
 `TakeoverRequest` contains `projectId`, `issueId`, `expectedLeaseId`,
 `expectedToken`, requester identity, `observedAt`, `idempotencyKey`, a nonempty
@@ -113,9 +172,20 @@ reason, and evidence
 `{ kind, hostId, pid, checkedAt, detailsHash }`. Evidence kind is
 `local-process-dead`, `remote-expired`, or `operator-attestation`; it is
 validated and serialized identically by SQLite and HTTPS adapters.
+`operator-attestation` says the holder is dead or unreachable; it cannot
+displace a demonstrably live holder.
+
+Idempotency keys are scoped to the project authority. The authority stores the
+operation, canonical request digest, and terminal response. Exact replay returns
+the original status and response before current-state or fencing checks. Reuse
+for a different operation or canonical request fails with
+`idempotency-conflict`; transport failures and `5xx` responses are not recorded.
 
 - [ ] Add failing validation, idempotency, uniqueness, fencing, and sanitized
-      contention tests using an in-memory contract double.
+      contention tests using an in-memory contract double. Cover every mutator
+      replay, conflicting key reuse, replay-before-fence evaluation, rejected
+      numeric/zero/unsafe tokens, exhaustive operation vocabulary, handoff
+      identity/fence behavior, and rejection of old tokens.
 - [ ] Run `node --test packages/aitm-ledger/test/lease-port.test.mjs`.
       Expected RED.
 - [ ] Implement the provider-neutral types, validation, errors, and reusable
@@ -132,35 +202,68 @@ validated and serialized identically by SQLite and HTTPS adapters.
 - Create: `packages/aitm-ledger/src/sqlite/migrations/001-leases.mjs`
 - Create: `packages/aitm-ledger/src/sqlite/work-lease-store.mjs`
 - Create: `packages/aitm-ledger/test/sqlite-work-lease-store.test.mjs`
+- Create: `scripts/task-tracker/lib/main-worktree-path.mjs`
+- Modify: `scripts/task-tracker/fleet-registry.mjs`
+- Modify: `scripts/task-tracker/paths.mjs`
 - Create:
   `scripts/task-tracker/lib/ledger/project-database-path.mjs`
 - Create: `scripts/task-tracker/lib/ledger/project-identity.mjs`
+- Create:
+  `scripts/task-tracker/lib/work-lease/worktree-identity.mjs`
 - Modify: `scripts/task-tracker/config.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/config.test.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/paths.test.mjs`
 - Create:
   `scripts/task-tracker/tests/unit/lib/project-database-path.test.mjs`
 - Create:
   `scripts/task-tracker/tests/unit/lib/ledger-project-identity.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/lib/ledger-worktree-identity.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/slow/verbs/recovery-path-independence.test.mjs`
 
 **Schema:** `schema_migrations`, `ledger_metadata`, `work_leases`,
 `work_lease_events`, `work_bindings`, and `lease_fences`. `work_leases` has one
 column for every lease field named in Task 2; `work_lease_events` adds event
 ID/type, actor, reason, prior/new token, and canonical JSON; `work_bindings`
 stores the current session/issue/worktree projection plus observed timestamp.
-Partial unique indexes enforce active issue and active worktree ownership.
+Partial unique indexes enforce issue and worktree ownership for every
+ownership-retaining state (`active`, `paused`). Terminal states do not
+participate.
 Transactions use `BEGIN IMMEDIATE`, WAL, foreign keys, busy timeout, and atomic
 fence increments.
 
 `ledgerProjectId` is a generated UUID created once at initialization and stored
 in `.ai-task-manager/task-tracker.json` plus `ledger_metadata`; it is not the
 GitHub Projects node ID. Database open and remote configuration fail closed if
-the two identities differ.
+the two identities differ. Bootstrap follows this recovery matrix: config only
+initializes DB from config; DB only atomically backfills config; neither commits
+the winning UUID to DB under `BEGIN IMMEDIATE` and then atomically writes
+config; both equal proceeds; both different fails closed. Concurrent
+initializers must converge. The existing GitHub Projects `projectId` is never
+accepted as `ledgerProjectId`.
+
+`resolveMainWorktreePath(projectDir, { allowFallback = false })` becomes the
+shared resolver imported and re-exported by fleet. Fleet may request its legacy
+best-effort fallback; lease authority never does. Resolution failure returns
+`main-worktree-unresolved` and creates no database.
+
+`resolveWorktreeIdentity(projectDir, { hostId })` returns `{ worktreeId,
+pathHash, displayPath }`. `displayPath` is the real canonical project path,
+`pathHash` is its SHA-256 digest, and `worktreeId` hashes host identity plus the
+real Git worktree directory. Raw display text never participates in uniqueness.
 
 - [ ] Add failing tests for durable project identity, mismatch refusal, the
-      main-worktree resolver, two linked worktrees,
+      bootstrap crash boundaries, concurrent initialization, strict
+      main-worktree resolution, main and two linked worktrees sharing one
+      database, symlink aliases, path moves, linked-worktree identity,
       same issue/two processes, different issues, same worktree/two issues,
       renew/release/handoff/switch idempotency, failed-switch preservation,
-      stale fences, live protection, paused expiry, and dead-holder takeover.
-- [ ] Run the two new test files. Expected RED.
+      project-wide fence monotonicity, retained-state uniqueness, stale fences,
+      live protection, paused expiry, explicit dead-holder takeover, and
+      positive-liveness rejection of operator attestation.
+- [ ] Run the package store test plus the three new task-tracker tests. Expected
+      RED.
 - [ ] Implement path resolution, migration, store, liveness injection, and
       transactional operations.
 - [ ] Re-run, including a child-process contention fixture. Expected exactly
@@ -181,18 +284,30 @@ the two identities differ.
 
 - [ ] Add failing shared conformance tests for request/response schemas,
       authentication headers, idempotency keys, error mapping, stale fences,
-      and network failure. Assert remote mode never calls SQLite mutation.
+      and network failure. Cover header/body idempotency mismatch, selector XOR,
+      absent observation, redirect rejection, every status/error mapping,
+      malformed/unknown envelopes, missing credentials, TLS/DNS/timeout, and
+      token redaction. Assert remote mode never opens, migrates, reads as
+      authority, or mutates SQLite.
 - [ ] Run the two test files. Expected RED.
 - [ ] Implement `/v1/work-leases:acquire`, `:renew`, `:verify`, `:switch`,
       `:handoff`, `:release`, `:takeover`, and `GET /v1/work-leases` with JSON
       bodies matching Task 2, `Authorization: Bearer`, `Idempotency-Key`, and
-      `200/201/409/412/503` error mapping. Select from
+      shared success/error envelopes. Fresh acquire/takeover return `201`;
+      other successes and exact replays return their stored `200`/`201`.
+      `invalid-request` maps to `400`, authentication to `401`, authorization to
+      `403`, contention/live/idempotency conflict to `409`, stale/not-held to
+      `412`, and unavailable to `503`. `GET` requires exactly one issue/worktree
+      selector and returns `{ lease: null }` when absent. Select from
       `.ai-task-manager/task-tracker.json#workLease` fields `authority`,
       `endpoint`, `projectId`, and `tokenEnv`; `projectId` must equal the
       persisted `ledgerProjectId`. The default token environment name is
       `AITM_LEASE_AUTH_TOKEN`. Serialize `TakeoverRequest.evidence` verbatim
-      after schema validation. Never persist the token or auto-fallback from
-      `remote` to `local`.
+      after schema validation. Require HTTPS, reject redirects, validate the
+      token environment name, and read the nonempty token only at request time.
+      Never persist or expose the token. In remote mode every authority
+      operation, including verify, fails closed and never falls back to local
+      authority or an observation cache.
 - [ ] Re-run. Expected GREEN.
 - [ ] Commit:
       `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] feat(lease): define remote authority contract"`.
@@ -207,6 +322,7 @@ the two identities differ.
 - Modify: `scripts/task-tracker/verbs/resume.mjs`
 - Modify: `scripts/task-tracker/verbs/switch.mjs`
 - Modify: `scripts/task-tracker/session-state.mjs`
+- Modify: `scripts/task-tracker/state.mjs`
 - Modify: `scripts/task-tracker/lib/verb-preflight.mjs`
 - Modify: `scripts/task-tracker/lib/assignee-guard.mjs`
 - Modify: `scripts/task-tracker/issue-mutator-lock.mjs`
@@ -224,13 +340,21 @@ the two identities differ.
   `scripts/task-tracker/tests/integration/lib/exclusive-work-lease.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/lib/cross-worktree-bind-resume.test.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/state.test.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/session-state.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/lib/work-lease-session-state.test.mjs`
 
 - [ ] Add failing tests proving acquisition precedes bind effects, loser has no
-      bind/timing/GitHub/fleet mutation, child process inheritance works, and
-      state/body/evidence/approval/review/close/commit seams reject missing or
-      stale tokens. Include atomic issue switching, source/activity gates, body
-      mutation, commit trail, child dispatch/merge, and adoption of a
-      pre-upgrade active session.
+      assignee-claim/queue/timing/session/GitHub/fleet mutation, child process
+      inheritance works, and state/body/evidence/approval/review/close/commit
+      seams reject missing or stale tokens. Include atomic issue switching,
+      source/activity gates, body mutation, commit trail, child dispatch/merge,
+      adoption of a pre-upgrade active session, crash after grant before
+      session write, and crash after switch before outgoing/incoming effects.
+      Prove exact runtime key names, absence of secrets, lease-context
+      preservation across generic `saveState`, no cross-issue carry, and
+      stale-token-safe clear.
 - [ ] Run the named focused tests. Expected RED: cross-worktree bind currently
       succeeds and guarded seams lack lease context.
 - [ ] Acquire on work-intending bind, persist only non-secret identity,
@@ -238,8 +362,15 @@ the two identities differ.
       processes, and verify before governed effects. On the first governed
       action by a pre-upgrade bound session, acquire an adoption lease before
       any effect and persist it only if acquisition wins. Use `switchLease` for
-      issue switches. Register a 60-second heartbeat hook while an owning
-      process lives and renew at preflight/resume according to the TTL policy.
+      issue switches. Split read-only eligibility from mutating assignee claim;
+      acquisition/switch happens before claim, queue drain, pause finalization,
+      session, timing, GitHub, or fleet effects. Authority writes its lease,
+      event, and binding atomically; switch returns a durable transition receipt
+      whose projections replay exactly once after a crash. Persist session
+      `lease: { projectId, leaseId, fencingToken, worktreeId }`, preserve it
+      during same-issue state saves, and clear only on matching token. Register a
+      60-second heartbeat hook while an owning process lives and renew at
+      preflight/resume according to the TTL policy.
 - [ ] Re-run focused tests. Expected GREEN; read-only status remains available.
 - [ ] Commit:
       `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] feat(lease): enforce governed work ownership"`.
@@ -262,12 +393,17 @@ the two identities differ.
 - [ ] Add failing tests: pause retains with the paused TTL, resume renews,
       remote renewal loss fences writes, stop/close release, Review explicitly
       retains or hands off, deregistration cannot delete another holder,
-      takeover audits reason/token, and fleet reconstructs from lease plus bind
-      observations.
+      takeover audits reason/token, active/paused uniqueness, terminal release
+      of uniqueness, handoff leaving the new holder active, and fleet
+      reconstruction from lease plus bind observations.
 - [ ] Run focused tests. Expected RED.
 - [ ] Implement ownership-checked lifecycle operations and reconstruct fleet
       from `work_leases` plus `work_bindings`; these lease-scoped binding
-      observations are not the unrelated general event journal.
+      observations are not the unrelated general event journal. Fleet
+      deregistration and stale pruning are holder/token checked and can neither
+      release authority nor delete another holder. Review handoff increments the
+      fence and changes the principal; pause never releases uniqueness;
+      stop/close release only the matching holder and token.
 - [ ] Re-run. Expected GREEN.
 - [ ] Commit:
       `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] feat(lease): govern handoff and fleet projection"`.
@@ -286,22 +422,38 @@ the two identities differ.
 - [ ] Run:
 
   ```bash
-  node --test packages/aitm-ledger/test/*.test.mjs
+  npm ci
+  npm run test:ledger
   node --test \
+    scripts/task-tracker/tests/unit/lib/install.test.mjs \
+    scripts/task-tracker/tests/unit/core/package-boundary.test.mjs \
+    scripts/task-tracker/tests/unit/core/ci-actions-node-pins.test.mjs \
+    scripts/task-tracker/tests/integration/core/packed-ledger-install.test.mjs \
     scripts/task-tracker/tests/unit/lib/project-database-path.test.mjs \
+    scripts/task-tracker/tests/unit/lib/ledger-project-identity.test.mjs \
+    scripts/task-tracker/tests/unit/lib/ledger-worktree-identity.test.mjs \
     scripts/task-tracker/tests/unit/lib/work-lease-provider.test.mjs \
     scripts/task-tracker/tests/unit/lib/work-lease-lifecycle.test.mjs \
+    scripts/task-tracker/tests/unit/lib/work-lease-session-state.test.mjs \
+    scripts/task-tracker/tests/unit/lib/cross-worktree-bind-resume.test.mjs \
     scripts/task-tracker/tests/integration/lib/exclusive-work-lease.test.mjs \
     scripts/task-tracker/tests/integration/lib/two-sessions-same-issue.test.mjs
   npm run format:check
   npm run lint
-  npm test
-  npm run test:slow
+  # Generate exact unit and slow inventories from run-tests-lanes.mjs, split
+  # each deterministically into bounded disjoint halves, run all four halves
+  # with node --test, and assert each original inventory equals its partition
+  # union with no duplicate or omitted file.
+  npm run test:integration
+  npm pack --dry-run --json --ignore-scripts
+  npm pack --dry-run --json --ignore-scripts --workspace @kburson/aitm-ledger
   git diff --check
   ```
 
-  Expected: exit `0` throughout, exactly one lease winner in contention tests,
-  and no whitespace errors.
+  Expected: exit `0` throughout, exact inventory coverage with no duplicates or
+  omissions, every command below the verification ceiling, required runtime
+  files and no tests in both tarballs, exactly one lease winner in contention
+  tests, and no whitespace errors.
 
 - [ ] Commit:
       `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] docs(lease): document exclusive work authority"`.
