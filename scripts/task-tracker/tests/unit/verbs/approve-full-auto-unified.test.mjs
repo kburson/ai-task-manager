@@ -25,7 +25,7 @@ import {
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
 const AGENT_REVIEW_PASSED =
-  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+  '\n<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->\n<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T10:00:00Z" -->\n<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
@@ -35,7 +35,11 @@ function makeDeps(overrides = {}) {
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  let body = initialBody + AGENT_REVIEW_PASSED;
+  let body =
+    initialBody +
+    (initialBody.includes('aitm-entered-review')
+      ? '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n'
+      : AGENT_REVIEW_PASSED);
   return {
     calls,
     deps: {
@@ -100,7 +104,10 @@ function makeDeps(overrides = {}) {
     assert.equal(r.status, 'approved');
     assert.equal(r.fullAuto, true);
     // #480 AC6 — full-auto folded into the single aitm-review-approved marker.
-    assert.match(getBody(), /<!-- aitm-review-approved ts="[^"]*" full-auto="yes"/);
+    assert.match(
+      getBody(),
+      /<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z"[^>]*provenance="full-auto"/
+    );
     assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
     assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
     assert.match(getBody(), /reviewer-unset=1/);
@@ -328,3 +335,38 @@ function makeDeps(overrides = {}) {
 }
 
 console.log('approve.test.mjs: all passed');
+
+// #1050 / #979 — a fresh `--human` approval supersedes stale Full-Auto
+// authority, removes its footnote, and records human provenance regardless of
+// the stale lifecycle checkmark.
+{
+  const epochOne = 'review:1:2026-07-29T10:00:00Z';
+  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
+  const staleFullAuto = [
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    `<!-- aitm-agent-review-proof schema="1" epoch="${epochOne}" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
+    `<!-- aitm-review-approved schema="1" epoch="${epochOne}" proof-sha="abc1234" ts="2026-07-29T10:02:00Z" provenance="full-auto" signals="old-signal" -->`,
+    '<!-- aitm-full-auto-footnote:start -->',
+    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
+    '<!-- aitm-full-auto-footnote:end -->',
+    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
+    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
+    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
+    '#### Lifecycle (auto-ticked at Review/Close)',
+    '- [x] Passed final human review',
+  ].join('\n');
+  const { deps, getBody } = makeDeps({
+    initialBody: staleFullAuto,
+    deps: { detectFullAuto: () => ({ fired: true, signals: 'must-not-survive' }) },
+  });
+  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
+
+  assert.equal(r.status, 'approved');
+  assert.equal(r.fullAuto, false);
+  assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="full-auto"/);
+  assert.match(
+    getBody(),
+    /aitm-review-approved[^>]*epoch="review:2:2026-07-29T11:00:00Z"[^>]*provenance="human"/
+  );
+  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
+}
