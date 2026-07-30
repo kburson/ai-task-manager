@@ -95,6 +95,29 @@ export function validatePersistedTestEvidence(body) {
   return { ok: true, sha: dodVerified.sha };
 }
 
+// Bind the final Agent Review write to the body snapshot that will actually be
+// mutated. A preflight snapshot can become stale while Review fetches comments
+// and validator context, so this is deliberately called immediately before the
+// passing stamp rather than reusing any earlier validation result.
+export function prepareAgentReviewPassStamp({ body, ts, validators = [] } = {}) {
+  const evidence = validatePersistedTestEvidence(body);
+  if (!evidence.ok) return evidence;
+  const reviewEntry = latestStageEntry(body, 'review');
+  if (!reviewEntry?.ts) return { ok: false, reason: 'review-epoch-missing' };
+  const epoch = reviewEpochId({ visit: reviewEntry.visit, enteredReviewAt: reviewEntry.ts });
+  return {
+    ok: true,
+    epoch,
+    verifiedSha: evidence.sha,
+    body: stampAgentReviewPassed(clearReviewFailed(body), {
+      epoch,
+      verifiedSha: evidence.sha,
+      ts,
+      validators,
+    }),
+  };
+}
+
 // EPIC #823 timing model v2 (C7 / defect D2): emit an agent-review-gate failure
 // as a canonically-ordered timeline. Extracted from `verbReview` so the ORDER is
 // unit-testable without the verb's dynamic-import network path
@@ -891,7 +914,15 @@ export async function verbReview(ctx) {
         comments,
         changedPaths,
       });
-      if (!gate.pass) {
+      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
+      const passStamp = gate.pass
+        ? prepareAgentReviewPassStamp({
+            body: passBase,
+            ts: nowIso(),
+            validators: gate.validatorsRun,
+          })
+        : null;
+      if (!gate.pass || !passStamp.ok) {
         // FAIL — the Review state's action did not complete. The issue STAYS IN
         // REVIEW (#881); the objection is fixed in place and `review <N>` re-run.
         // EPIC #823 timing model v2 (C7 / defect D2) is preserved: the move above
@@ -903,15 +934,17 @@ export async function verbReview(ctx) {
         //
         // with no `demoted:develop` / `develop:started` pair and (by design) no
         // `review:approved`.
-        const baseBody = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
+        const failures = gate.pass
+          ? [`persisted-test-evidence: ${passStamp.reason}`]
+          : gate.failures;
         const _tsRF = nowIso();
-        const failedBody = stampReviewFailed(baseBody, gate.failures, { ts: _tsRF });
+        const failedBody = stampReviewFailed(passBase, failures, { ts: _tsRF });
         const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
         await emitReviewGateFailureTimeline({
           target,
           issueNum,
           repo: cfg.repo,
-          failures: gate.failures,
+          failures,
           failedBody,
           ts: _tsRF,
           delta: _dRF,
@@ -920,9 +953,9 @@ export async function verbReview(ctx) {
         });
         process.stderr.write('\n');
         process.stderr.write(
-          `⛔ Agent Review Gate failed for ${target} — ${gate.failures.length} objection(s):\n`
+          `⛔ Agent Review Gate failed for ${target} — ${failures.length} objection(s):\n`
         );
-        for (const f of gate.failures) process.stderr.write(`   ${f}\n`);
+        for (const f of failures) process.stderr.write(`   ${f}\n`);
         process.stderr.write(
           `\n${target} stays in Review with its state action incomplete. Fix the objections\nabove in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of\nfix every registered validator asks for — then re-run \`/task review ${target}\`.\n\n`
         );
@@ -936,21 +969,7 @@ export async function verbReview(ctx) {
       // — honest because the gate genuinely ran — WITHOUT the old
       // `allowUnverifiedTicks` bypass. A body with no such line (old template)
       // stamps to a noop and skips the write, which the close gate tolerates.
-      const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
-      const reviewEntry = latestStageEntry(passBase, 'review');
-      const epoch = reviewEntry
-        ? reviewEpochId({ visit: reviewEntry.visit, enteredReviewAt: reviewEntry.ts })
-        : '';
-      // Test's green sandbox result is the sole revision authority. The Review
-      // gate never asks git for ambient HEAD, so it cannot certify a revision
-      // that Test did not actually execute.
-      const verifiedSha = parseDodVerifiedMarker(passBase)?.sha || '';
-      const tickedBody = stampAgentReviewPassed(clearReviewFailed(passBase), {
-        epoch,
-        verifiedSha,
-        ts: nowIso(),
-        validators: gate.validatorsRun,
-      });
+      const tickedBody = passStamp.body;
       if (tickedBody !== gateBody) {
         try {
           await mutateBodyFn({

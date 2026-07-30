@@ -6,7 +6,10 @@ import { parseDodVerifiedMarker } from '../../../lib/markers.mjs';
 import { parseReviewAuthority, reviewEpochId } from '../../../lib/review-authority.mjs';
 import { latestStageEntry, stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
 import { runVerbTest } from '../../../verbs/test.mjs';
-import { validatePersistedTestEvidence } from '../../../verbs/review.mjs';
+import {
+  prepareAgentReviewPassStamp,
+  validatePersistedTestEvidence,
+} from '../../../verbs/review.mjs';
 
 const REVIEW_ONE = '2026-07-29T10:00:00.000Z';
 const REVIEW_TWO = '2026-07-29T11:00:00.000Z';
@@ -126,4 +129,26 @@ test('Review validates Test evidence only from persisted Test markers', () => {
     validatePersistedTestEvidence(`<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="t" -->`),
     { ok: false, reason: 'test-evidence-missing' }
   );
+});
+
+test('Review refuses a passing stamp when Test evidence changes after preflight', () => {
+  const initiallyValidated = [
+    `<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="2026-07-29T09:00:00.000Z" -->`,
+    `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
+  ].join('\n');
+  assert.equal(validatePersistedTestEvidence(initiallyValidated).ok, true);
+
+  const changedPassBase = [
+    `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
+    '<!-- aitm-test-started sha="old1234" ts="2026-07-29T09:00:00.000Z" -->',
+    `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+  const prepared = prepareAgentReviewPassStamp({
+    body: changedPassBase,
+    ts: '2026-07-29T10:01:00.000Z',
+    validators: ['required-comments'],
+  });
+
+  assert.deepEqual(prepared, { ok: false, reason: 'test-evidence-sha-mismatch' });
 });
