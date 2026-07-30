@@ -16,6 +16,7 @@ import { registry as defaultRegistry } from './registry.mjs';
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { tickLifecycleItem } from '../lifecycle-dod.mjs';
 import { serializeProofMarker } from '../proof-marker.mjs';
+import { serializeAgentReviewProof } from '../review-authority.mjs';
 import {
   REVIEW_FAILED_START,
   REVIEW_FAILED_END,
@@ -93,20 +94,21 @@ export function runAgentReviewGate({
 //
 // On a passing gate the review verb ticks "Agent Review Passed" AND stamps the
 // gate's OWN run-evidence onto the box — a real `aitm-verified` execution-proof
-// marker, never a bare `[x]`. Because the gate runs in-process (not anchored to
-// a commit) the `sha` is the `sandbox` sentinel; `ts` is the review runtime and
-// `validators` lists exactly which validators executed. The box now CARRIES
-// proof, so the verb writes it with `evidenceStamp: true` (a sanctioned stamper
-// — honest because the gate genuinely ran) and WITHOUT the `allowUnverifiedTicks`
-// bypass. This replaces the fake `agent-review-validator-suite` VC scheme.
+// marker, never a bare `[x]`. Production passes the persisted Test SHA; the
+// `sandbox` fallback remains only for legacy direct callers. `ts` is the review
+// runtime and `validators` lists exactly which validators executed. The box now
+// CARRIES proof, so the verb writes it with `evidenceStamp: true` (a sanctioned
+// stamper — honest because the gate genuinely ran) and WITHOUT the old
+// `allowUnverifiedTicks` bypass. This replaces the fake
+// `agent-review-validator-suite` VC scheme.
 
 // Build the run-evidence marker. `ts` must be a real ISO timestamp (caller
 // passes review-runtime `nowIso()`); `validators` is the executed-id list.
-export function buildAgentReviewEvidenceMarker({ ts, validators = [] } = {}) {
+export function buildAgentReviewEvidenceMarker({ ts, validators = [], verifiedSha = '' } = {}) {
   return serializeProofMarker({
     gate: 'agent-review',
     ts: ts || '',
-    sha: 'sandbox',
+    sha: verifiedSha || 'sandbox',
     validators: (Array.isArray(validators) ? validators : []).join(','),
     result: 'pass',
   });
@@ -116,10 +118,14 @@ export function buildAgentReviewEvidenceMarker({ ts, validators = [] } = {}) {
 // box, replacing any prior agent-review marker on the line (idempotent). Other
 // lines are untouched. Returns the rewritten body; when the box is absent the
 // body comes back with only the tick applied (a no-op if it too is absent).
-export function stampAgentReviewPassed(body, { ts, validators = [] } = {}) {
+export function stampAgentReviewPassed(
+  body,
+  { epoch = '', verifiedSha = '', ts, validators = [] } = {}
+) {
   const ticked = tickLifecycleItem(typeof body === 'string' ? body : '', 'agent-review-passed');
-  const marker = buildAgentReviewEvidenceMarker({ ts, validators });
+  const marker = buildAgentReviewEvidenceMarker({ ts, validators, verifiedSha });
   const lines = ticked.split('\n');
+  let stamped = false;
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     if (!/^- \[[ xX]\] /.test(line)) continue;
@@ -133,9 +139,19 @@ export function stampAgentReviewPassed(body, { ts, validators = [] } = {}) {
       ''
     );
     lines[i] = `${stripped.replace(/\s+$/, '')} ${marker}`;
+    stamped = true;
     break;
   }
-  return lines.join('\n');
+  const stampedBody = lines.join('\n');
+  if (!stamped || !epoch || !verifiedSha) return stampedBody;
+  const proof = serializeAgentReviewProof({
+    epoch,
+    sha: verifiedSha,
+    ts: ts || '',
+    validators: (Array.isArray(validators) ? validators : []).join(','),
+    result: 'pass',
+  });
+  return `${stampedBody.replace(/\s+$/, '')}\n${proof}\n`;
 }
 
 // --- aitm-review-failed body marker -----------------------------------------

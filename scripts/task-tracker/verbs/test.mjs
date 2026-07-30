@@ -129,8 +129,9 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-async function defaultCreateWorktree({ projectDir, path: wtPath }) {
-  await pexec('git', ['worktree', 'add', '--detach', wtPath, 'HEAD'], {
+async function defaultCreateWorktree({ projectDir, path: wtPath, sha }) {
+  if (!sha) throw new Error('defaultCreateWorktree: sha is required');
+  await pexec('git', ['worktree', 'add', '--detach', wtPath, sha], {
     cwd: projectDir,
     timeout: 60_000,
   });
@@ -281,6 +282,7 @@ async function runSetupWithRetry({
   attempts,
   projectDir,
   wtPath,
+  sha,
   createWorktree,
   npmCi,
   removeWorktree,
@@ -290,7 +292,9 @@ async function runSetupWithRetry({
   let lastErr = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      await runSetupStep('git worktree add', () => createWorktree({ projectDir, path: wtPath }));
+      await runSetupStep('git worktree add', () =>
+        createWorktree({ projectDir, path: wtPath, sha })
+      );
       onCreated();
       await runSetupStep('npm ci', () => npmCi({ path: wtPath }));
       return { attempts: attempt };
@@ -471,6 +475,7 @@ export async function runVerbTest({
       attempts: SETUP_MAX_ATTEMPTS,
       projectDir,
       wtPath,
+      sha,
       createWorktree,
       npmCi,
       removeWorktree,

@@ -2,7 +2,7 @@ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
-import { parseTestStartedMarker } from '../lib/markers.mjs';
+import { parseDodVerifiedMarker, parseTestStartedMarker } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
@@ -37,6 +37,8 @@ import {
   stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
+import { reviewEpochId } from '../lib/review-authority.mjs';
+import { latestStageEntry } from '../lib/stage-entry-markers.mjs';
 
 // #975 — a VC-section checkbox legitimately ticked via the honest
 // `--allow-unverified-ticks` hatch (#567, `check.mjs`'s `ensureChecked`) is
@@ -932,14 +934,24 @@ export async function verbReview(ctx) {
       }
       // PASS — adopt any normalizer rewrite, clear a stale review-failed marker,
       // and stamp the PROVEN "Agent Review Passed" box: tick it AND append the
-      // gate's own run-evidence marker (#841). The box now carries execution
-      // proof (ts + validators + result=pass, sha=`sandbox` since the gate runs
-      // in-process), so the write goes through as a sanctioned `evidenceStamp`
+      // gate's own run-evidence marker (#841), plus an epoch-bound authority
+      // proof tied to the revision persisted by Test. The box carries execution
+      // proof, so the write goes through as a sanctioned `evidenceStamp`
       // — honest because the gate genuinely ran — WITHOUT the old
       // `allowUnverifiedTicks` bypass. A body with no such line (old template)
       // stamps to a noop and skips the write, which the close gate tolerates.
       const passBase = typeof gate.normalizedBody === 'string' ? gate.normalizedBody : gateBody;
+      const reviewEntry = latestStageEntry(passBase, 'review');
+      const epoch = reviewEntry
+        ? reviewEpochId({ visit: reviewEntry.visit, enteredReviewAt: reviewEntry.ts })
+        : '';
+      // Test's green sandbox result is the sole revision authority. The Review
+      // gate never asks git for ambient HEAD, so it cannot certify a revision
+      // that Test did not actually execute.
+      const verifiedSha = parseDodVerifiedMarker(passBase)?.sha || '';
       const tickedBody = stampAgentReviewPassed(clearReviewFailed(passBase), {
+        epoch,
+        verifiedSha,
         ts: nowIso(),
         validators: gate.validatorsRun,
       });

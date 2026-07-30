@@ -135,6 +135,21 @@ export function parseEntryMarkers(body) {
   return out;
 }
 
+// Canonical structural source for a stage's current visit. Consumers that need
+// identity must read this entry history rather than infer an entry from a
+// timing row or their current wall clock.
+export function latestStageEntry(body, stage) {
+  if (!KNOWN_STAGES.has(stage)) {
+    throw new Error(`latestStageEntry: unknown stage "${stage}"`);
+  }
+  let latest = null;
+  for (const entry of parseEntryMarkers(body)) {
+    if (entry.stage !== stage) continue;
+    if (!latest || entry.visit > latest.visit) latest = entry;
+  }
+  return latest;
+}
+
 // First-visit-only view as a `{stage: ts}` map. For callers that only need
 // the legacy "first time we entered this stage" semantics — preserves
 // back-compat for heal-entry-markers and similar consumers that haven't been

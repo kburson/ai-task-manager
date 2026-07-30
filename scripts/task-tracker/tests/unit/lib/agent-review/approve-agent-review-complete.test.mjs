@@ -25,9 +25,20 @@ import { runApprove } from '../../../../verbs/approve.mjs';
 // real scratch dir rather than a path that cannot be created.
 const PROJECT_DIR = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-approve-881-'));
 
-const UNTICKED = ['## Definition of Done', '', '- [ ] Agent Review Passed', ''].join('\n');
+const REVIEW_EPOCH = 'review:1:2026-07-18T00:00:00.000Z';
+const VERIFIED_SHA = 'abc1234deadbeef';
+const UNTICKED = [
+  '<!-- aitm-entered-review ts="2026-07-18T00:00:00.000Z" -->',
+  `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-18T00:00:00.000Z" -->`,
+  '## Definition of Done',
+  '',
+  '- [ ] Agent Review Passed',
+  '',
+].join('\n');
 
 const PASSED = stampAgentReviewPassed(UNTICKED, {
+  epoch: REVIEW_EPOCH,
+  verifiedSha: VERIFIED_SHA,
   ts: '2026-07-18T00:00:00.000Z',
   validators: ['body-sections', 'required-comments'],
 });
