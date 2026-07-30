@@ -16,6 +16,7 @@ import { runDemote, defaultRunMoveState, parseArgs, DEMOTE_TARGET, LEGAL_FROM } 
 import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { upsertProofMarker } from '../lib/proof-marker.mjs';
 import { findLostMarkers } from '../lib/body-invariants.mjs';
+import { serializeAgentReviewProof, serializeReviewApproval } from '../lib/review-authority.mjs';
 
 const CFG = { repo: 'owner/repo', projectId: 'PROJ' };
 
@@ -310,6 +311,52 @@ test('#932 runDemote wires invalidateEvidence into the state-recording mutate an
   assert.equal(result.invalidated.length, 3);
   assert.ok(pushedBody.includes('- [ ] Demote invalidates stale evidence'));
   assert.ok(!pushedBody.includes('sha="abc1234"'));
+});
+
+test('#1050 demote appends the canonical review-authority invalidation in its locked body write', async () => {
+  let pushedBody = null;
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const authority = [
+    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
+    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
+    serializeAgentReviewProof({
+      epoch,
+      sha: 'abc1234',
+      ts: '2026-07-29T10:01:00Z',
+      validators: 'unit',
+      result: 'pass',
+    }),
+    serializeReviewApproval({
+      epoch,
+      proofSha: 'abc1234',
+      ts: '2026-07-29T10:02:00Z',
+      provenance: 'human',
+    }),
+  ].join('\n');
+  const deps = {
+    assertBound: () => {},
+    fetchIssueBody: async () => ({
+      body: `<!-- aitm-last-known-state: review -->\n${authority}`,
+    }),
+    getLiveState: async () => 'review',
+    runMoveState: async () => 0,
+    mutateIssueBody: async ({ mutate }) => {
+      pushedBody = await mutate(`<!-- aitm-last-known-state: review -->\n${authority}`);
+    },
+  };
+
+  await runDemote({
+    issueNumber: 1050,
+    cfg: CFG,
+    rework: 'repair authority boundary',
+    deps,
+    now: () => '2026-07-29T10:03:00Z',
+  });
+
+  assert.match(
+    pushedBody,
+    /<!-- aitm-review-invalidated schema="1" epoch="review:1:2026-07-29T10:00:00Z" ts="2026-07-29T10:03:00Z" reason="demoted" -->/
+  );
 });
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   deriveReviewAuthority,
+  derivePersistedReviewAuthority,
   parseReviewAuthority,
   reviewEpochId,
   serializeAgentReviewProof,
@@ -227,6 +228,40 @@ test('authority without a verified SHA fails closed', () => {
     {}
   );
   assert.equal(authority.status, 'missing');
+  assert.ok(authority.reasons.includes('verified-sha-missing'));
+});
+
+test('derivePersistedReviewAuthority uses only the durable DoD SHA', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const body = [
+    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    review(1, '2026-07-29T10:00:00Z'),
+    proof({ epoch, sha: 'abc123' }),
+    approval({ epoch, proofSha: 'abc123' }),
+  ].join('\n');
+
+  const authority = derivePersistedReviewAuthority(body);
+
+  assert.equal(authority.status, 'current');
+  assert.equal(authority.epoch, epoch);
+  assert.equal(authority.verifiedSha, 'abc123');
+});
+
+test('derivePersistedReviewAuthority ignores a DoD-shaped marker in fenced code', () => {
+  const epoch = 'review:1:2026-07-29T10:00:00Z';
+  const body = [
+    '```md',
+    '<!-- aitm-dod-verified sha="abc123" ts="2026-07-29T09:59:00Z" -->',
+    '```',
+    review(1, '2026-07-29T10:00:00Z'),
+    proof({ epoch, sha: 'abc123' }),
+    approval({ epoch, proofSha: 'abc123' }),
+  ].join('\n');
+
+  const authority = derivePersistedReviewAuthority(body);
+
+  assert.equal(authority.status, 'missing');
+  assert.equal(authority.verifiedSha, '');
   assert.ok(authority.reasons.includes('verified-sha-missing'));
 });
 

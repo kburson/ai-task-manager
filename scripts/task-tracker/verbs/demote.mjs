@@ -124,7 +124,13 @@ export function defaultRunMoveState(
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
+export async function runDemote({
+  issueNumber,
+  cfg,
+  rework,
+  deps = {},
+  now = () => new Date().toISOString(),
+} = {}) {
   if (!issueNumber) throw new Error('demote: issueNumber is required');
   if (!cfg) throw new Error('demote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
@@ -236,13 +242,17 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
   // closure may run more than once on a version-conflict retry, but
   // `invalidateEvidence` is idempotent so the last-observed list is correct.
   let invalidated = [];
+  const reviewInvalidatedAt = now();
   await writeIssueBodyWithRetry({
     issueNumber,
     repo: cfg.repo,
     target: DEMOTE_TARGET,
     mutate: (base) => {
       const withState = writeLastKnownState(base, DEMOTE_TARGET);
-      const stripped = invalidateEvidence(withState);
+      const stripped = invalidateEvidence(withState, {
+        reviewInvalidatedAt,
+        reviewInvalidationReason: 'demoted',
+      });
       invalidated = stripped.invalidated;
       return stripped.body;
     },

@@ -3,7 +3,7 @@
 // visit. It deliberately has no clock or I/O dependency.
 
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
-import { stripFencedCodeBlocks } from './markers.mjs';
+import { parseDodVerifiedMarker, stripFencedCodeBlocks } from './markers.mjs';
 import { parseEntryMarkers } from './stage-entry-markers.mjs';
 
 const SCHEMA = '1';
@@ -310,4 +310,12 @@ export function deriveReviewAuthority(body, { verifiedSha = '' } = {}) {
   );
   if (laterInvalidation) reasons.push('authority-invalidated');
   return { epoch, proof, approval, status: reasons.length ? 'stale' : 'current', reasons };
+}
+
+// The durable Test/DoD marker is the only persisted SHA authority for review
+// proof. Keep this body-only projection at the boundary so mutation writers do
+// not accidentally substitute an ambient checkout SHA.
+export function derivePersistedReviewAuthority(body) {
+  const verifiedSha = parseDodVerifiedMarker(stripFencedCodeBlocks(body))?.sha || '';
+  return { ...deriveReviewAuthority(body, { verifiedSha }), verifiedSha };
 }

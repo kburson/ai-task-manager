@@ -18,13 +18,34 @@
 
 import { hasExecutionProof, stripExecutionProof } from './proof-marker.mjs';
 import { stripMarkers } from './ac-evidence.mjs';
+import {
+  derivePersistedReviewAuthority,
+  serializeReviewInvalidation,
+} from './review-authority.mjs';
 
 const CHECKED_LINE_RE = /^(\s*- \[)x(\]\s+)(.+)$/gm;
 
 // Returns { body, invalidated: [label, ...] }. `invalidated` names the
 // human-readable label of every checkbox that was unchecked, for the caller's
 // audit trail. Idempotent — a body with nothing to strip returns unchanged.
-export function invalidateEvidence(body) {
+export function appendReviewAuthorityInvalidation(body, { ts, reason = 'demoted' } = {}) {
+  const src = String(body || '');
+  const authority = derivePersistedReviewAuthority(src);
+  if (authority.status !== 'current' || !authority.epoch || !ts) {
+    return { body: src, reviewInvalidated: false, authority };
+  }
+  const separator = src.length > 0 && !src.endsWith('\n') ? '\n' : '';
+  return {
+    body: `${src}${separator}${serializeReviewInvalidation({ epoch: authority.epoch, ts, reason })}`,
+    reviewInvalidated: true,
+    authority,
+  };
+}
+
+export function invalidateEvidence(
+  body,
+  { reviewInvalidatedAt = '', reviewInvalidationReason = 'demoted' } = {}
+) {
   const src = String(body || '');
   const invalidated = [];
   const next = src.replace(CHECKED_LINE_RE, (line, pre, post, rest) => {
@@ -32,5 +53,11 @@ export function invalidateEvidence(body) {
     invalidated.push(stripMarkers(rest));
     return `${pre} ${post}${stripExecutionProof(rest)}`;
   });
-  return { body: next, invalidated };
+  const review = reviewInvalidatedAt
+    ? appendReviewAuthorityInvalidation(next, {
+        ts: reviewInvalidatedAt,
+        reason: reviewInvalidationReason,
+      })
+    : { body: next, reviewInvalidated: false, authority: null };
+  return { body: review.body, invalidated, reviewInvalidated: review.reviewInvalidated };
 }
