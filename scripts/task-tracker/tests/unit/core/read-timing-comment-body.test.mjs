@@ -1,4 +1,4 @@
-// @story #168 #568
+// @story #168 #568 #1049
 // #168 — readTimingCommentBody contract.
 // #568 — fail-closed: the result is a discriminated { status, body, error } so a
 // genuine read failure (throw/timeout) is distinguishable from "no timing
@@ -7,7 +7,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readTimingCommentBody, bodyOf } from '../../../gh-timing-comment.mjs';
+import {
+  readTimingCommentBody,
+  bodyOf,
+  hasCanonicalTimingTable,
+} from '../../../gh-timing-comment.mjs';
 
 test('readTimingCommentBody: hit → status "found" with body', async () => {
   const res = await readTimingCommentBody({
@@ -59,4 +63,19 @@ test('bodyOf tolerates a legacy bare-string result', () => {
   assert.equal(bodyOf(''), '');
   assert.equal(bodyOf(null), '');
   assert.equal(bodyOf(undefined), '');
+});
+
+test('canonical timing table detection accepts an empty table but rejects a heading-only body', () => {
+  assert.equal(
+    hasCanonicalTimingTable(
+      [
+        '## ⏱ Timing Log',
+        '',
+        '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+        '|---|---|---|---|---|---|---|---|',
+      ].join('\n')
+    ),
+    true
+  );
+  assert.equal(hasCanonicalTimingTable('## ⏱ Timing Log\nbroken'), false);
 });

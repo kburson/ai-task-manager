@@ -122,8 +122,14 @@ function canonicalIssueRef(value) {
   return `#${match[1]}`;
 }
 
-function requireConfirmedSwitchTimingRead(result) {
-  if (result?.status === 'found' && typeof result.body === 'string' && result.error == null) {
+function requireConfirmedSwitchTimingRead(result, hasCanonicalTimingTable) {
+  if (
+    result?.status === 'found' &&
+    typeof result.body === 'string' &&
+    result.error == null &&
+    typeof hasCanonicalTimingTable === 'function' &&
+    hasCanonicalTimingTable(result.body)
+  ) {
     return result;
   }
   if (result?.status === 'absent' && result.body === '' && result.error == null) {
@@ -147,7 +153,7 @@ async function readConfirmedSwitchTiming(ctx, source) {
   } catch {
     result = null;
   }
-  return requireConfirmedSwitchTimingRead(result);
+  return requireConfirmedSwitchTimingRead(result, timingGh.hasCanonicalTimingTable);
 }
 
 function heartbeatOwnerKey(sessionId, lease) {
@@ -760,7 +766,8 @@ async function buildGovernedSwitchPlan(
   if (!eligibility.skippedNetwork) {
     const timingGh = await import('../../gh-timing-comment.mjs');
     const sourceTiming = requireConfirmedSwitchTimingRead(
-      sourceTimingRead ?? (await readConfirmedSwitchTiming(ctx, source))
+      sourceTimingRead ?? (await readConfirmedSwitchTiming(ctx, source)),
+      timingGh.hasCanonicalTimingTable
     );
     const sourceRows = plan.projectionInputs.timing.rows
       .filter((item) => item.issueNumber === source.replace(/^#/, ''))

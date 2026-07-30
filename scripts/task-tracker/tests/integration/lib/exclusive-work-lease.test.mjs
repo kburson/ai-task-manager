@@ -3499,7 +3499,7 @@ test('queued source timing survives delivery and checkpoint loss with one stable
   }
 });
 
-test('source timing read failure refuses a switch before intent, authority, or projection effects', async () => {
+test('unavailable or malformed source timing refuses a switch before identity or effects', async () => {
   const dir = sandbox();
   try {
     const { ctx, events } = governedResumeContext(dir, {
@@ -3531,11 +3531,6 @@ test('source timing read failure refuses a switch before intent, authority, or p
     const sessionBefore = structuredClone(getActiveTask(sessionId, dir));
     const stateBefore = readFileSync(ctx.statePath, 'utf8');
     const queueBefore = readFileSync(ctx.queuePath, 'utf8');
-    ctx.readTimingCommentBody = async () => ({
-      status: 'error',
-      body: '',
-      error: new Error('GitHub timing read unavailable'),
-    });
     ctx.coordinateWorkLeaseSwitch = async () =>
       assert.fail('switch coordinator must not persist intent or reach authority');
     ctx.resolveWorktreeIdentity = async () =>
@@ -3549,18 +3544,36 @@ test('source timing read failure refuses a switch before intent, authority, or p
       ctx[name] = async () => assert.fail(`${name} must not run after timing-read failure`);
     }
 
-    await assert.rejects(
-      () => verbResume(ctx),
-      (error) =>
-        error.code === 'authority-unavailable' &&
-        /source timing history is unavailable/.test(error.message)
-    );
+    const cases = [
+      {
+        status: 'error',
+        body: '',
+        error: new Error('GitHub timing read unavailable'),
+      },
+      {
+        status: 'found',
+        body: '## ⏱ Timing Log\nbroken',
+        error: null,
+      },
+    ];
+    for (const [index, result] of cases.entries()) {
+      ctx.readTimingCommentBody = async () => result;
+      await assert.rejects(
+        () => verbResume(ctx),
+        (error) =>
+          error.code === 'authority-unavailable' &&
+          /source timing history is unavailable/.test(error.message)
+      );
 
-    assert.deepEqual(getActiveTask(sessionId, dir), sessionBefore);
-    assert.equal(readFileSync(ctx.statePath, 'utf8'), stateBefore);
-    assert.equal(readFileSync(ctx.queuePath, 'utf8'), queueBefore);
-    assert.equal(getActiveTask(sessionId, dir).workLeaseIntent, undefined);
-    assert.deepEqual(events, ['preflight']);
+      assert.deepEqual(getActiveTask(sessionId, dir), sessionBefore);
+      assert.equal(readFileSync(ctx.statePath, 'utf8'), stateBefore);
+      assert.equal(readFileSync(ctx.queuePath, 'utf8'), queueBefore);
+      assert.equal(getActiveTask(sessionId, dir).workLeaseIntent, undefined);
+      assert.deepEqual(
+        events,
+        Array.from({ length: index + 1 }, () => 'preflight')
+      );
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

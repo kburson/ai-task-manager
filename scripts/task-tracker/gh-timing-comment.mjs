@@ -490,6 +490,10 @@ function locateCanonicalTimingTableRegion(body) {
   return { lines, tableRowStart, tableRowEnd };
 }
 
+export function hasCanonicalTimingTable(body) {
+  return locateCanonicalTimingTableRegion(body) !== null;
+}
+
 // Only a structurally valid Timing Log data row can prove a projection. A
 // receipt quoted in prose, a Markdown code fence, a Description cell, after the
 // row-sec marker, or beside another receipt is deliberately ignored.
